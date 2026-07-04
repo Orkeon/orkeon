@@ -28,6 +28,22 @@ namespace Orkeon.ConsoleApp.DependencyInjection;
 internal static class ConfiguredLlmProviderBootstrapper
 {
     /// <summary>
+    /// Reads the optional <c>Llm:Thinking</c> subsection into an <see cref="LlmThinkingConfig"/>.
+    /// </summary>
+    private static LlmThinkingConfig? ReadThinkingConfig(IConfigurationSection llmSection)
+    {
+        // Llm:Thinking:{Enabled,Effort} — forwarded to thinking-capable providers
+        // (DeepSeek, Z.AI GLM) as the `thinking` block + `reasoning_effort` field.
+        var thinkingSection = llmSection.GetSection("Thinking");
+        if (!thinkingSection.Exists()) return null;
+        return new LlmThinkingConfig
+        {
+            Enabled = bool.TryParse(thinkingSection["Enabled"], out var enabled) ? enabled : null,
+            Effort = thinkingSection["Effort"],
+        };
+    }
+
+    /// <summary>
     /// Binds the <c>Llm</c> section and registers a matching <see cref="ILlmProvider"/> +
     /// <see cref="IBasicLlmProvider"/>. No-op when the section is absent (the infrastructure
     /// default then stands).
@@ -53,6 +69,7 @@ internal static class ConfiguredLlmProviderBootstrapper
             Temperature = section.GetValue("Temperature", defaults.Temperature),
             MaxTokens = section.GetValue("MaxTokens", defaults.MaxTokens),
             TimeoutSeconds = section.GetValue("TimeoutSeconds", defaults.TimeoutSeconds),
+            Thinking = ReadThinkingConfig(section),
         };
 #pragma warning restore CS0618
 

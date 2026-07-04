@@ -322,6 +322,7 @@ public static class RunnerHost
             Temperature = double.TryParse(llmSection["Temperature"], out var t) ? t : 0.7,
             MaxTokens = int.TryParse(llmSection["MaxTokens"], out var m) ? m : 4096,
             TimeoutSeconds = int.TryParse(llmSection["TimeoutSeconds"], out var ts) ? ts : 30,
+            Thinking = ReadThinkingConfig(llmSection),
         };
 
         services.AddSingleton<IBasicLlmProvider>(sp =>
@@ -329,6 +330,19 @@ public static class RunnerHost
             var factory = sp.GetRequiredService<ILlmProviderFactory>();
             return factory.Create(llmConfig);
         });
+
+        static LlmThinkingConfig? ReadThinkingConfig(IConfigurationSection llmSection)
+        {
+            // Llm:Thinking:{Enabled,Effort} — forwarded to thinking-capable providers
+            // (DeepSeek, Z.AI GLM) as the `thinking` block + `reasoning_effort` field.
+            var thinkingSection = llmSection.GetSection("Thinking");
+            if (!thinkingSection.Exists()) return null;
+            return new LlmThinkingConfig
+            {
+                Enabled = bool.TryParse(thinkingSection["Enabled"], out var enabled) ? enabled : null,
+                Effort = thinkingSection["Effort"],
+            };
+        }
         services.AddSingleton<IChatClient>(sp =>
         {
             var basicProvider = sp.GetRequiredService<IBasicLlmProvider>();
