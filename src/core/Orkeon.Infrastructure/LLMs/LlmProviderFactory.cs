@@ -54,6 +54,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             "kimi" or "moonshot" => CreateKimiProvider(config),
             "mistral" => CreateMistralProvider(config),
             "huggingface" or "hf" => CreateHuggingFaceProvider(config),
+            "zai" or "glm" or "zhipu" => CreateZaiProvider(config),
             _ => CreateOpenAIProvider(config) // Default to OpenAI
         };
     }
@@ -80,6 +81,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             "kimi" or "moonshot" => CreateKimiProvider(config),
             "mistral" => CreateMistralProvider(config),
             "huggingface" or "hf" => CreateHuggingFaceProvider(config),
+            "zai" or "glm" or "zhipu" => CreateZaiProvider(config),
             _ => throw new NotSupportedException($"Provider type '{providerType}' is not supported.")
         };
     }
@@ -144,6 +146,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return "mistral";
         if (url.Contains("huggingface.co", StringComparison.Ordinal) || url.Contains("hf.co", StringComparison.Ordinal))
             return "huggingface";
+        // Z.AI (Zhipu GLM): match the full host, not the bare "z.ai" substring
+        // (which would also hit any *z.ai domain), plus the mainland bigmodel.cn twin.
+        if (url.Contains("api.z.ai", StringComparison.Ordinal) || url.Contains("bigmodel.cn", StringComparison.Ordinal))
+            return "zai";
         return null;
     }
 
@@ -184,6 +190,8 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return "deepseek";
         if (m.StartsWith("moonshot", StringComparison.Ordinal))
             return "kimi";
+        if (m.StartsWith("glm", StringComparison.Ordinal))
+            return "zai";
 
         return null;
     }
@@ -275,4 +283,8 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// <summary>Creates HuggingFace provider instance.</summary>
     private LlmProviderAdapter CreateHuggingFaceProvider(LlmConfig config)
         => Adapt<HuggingFaceLlmProvider>(logger => new HuggingFaceLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+
+    /// <summary>Creates Z.AI (Zhipu GLM) provider instance.</summary>
+    private LlmProviderAdapter CreateZaiProvider(LlmConfig config)
+        => Adapt<ZaiLlmProvider>(logger => new ZaiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 }

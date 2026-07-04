@@ -326,7 +326,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 state.TotalTokens = usage.TryGetProperty("total_tokens", out var t) && t.TryGetInt32(out var tv) ? tv : state.TotalTokens;
                 state.PromptTokens = TryReadInt(usage, "prompt_tokens") ?? state.PromptTokens;
                 state.CompletionTokens = TryReadInt(usage, "completion_tokens") ?? state.CompletionTokens;
-                state.CacheHitTokens = TryReadInt(usage, "prompt_cache_hit_tokens") ?? state.CacheHitTokens;
+                state.CacheHitTokens = TryReadInt(usage, "prompt_cache_hit_tokens")
+                    ?? TryReadNestedInt(usage, "prompt_tokens_details", "cached_tokens")
+                    ?? state.CacheHitTokens;
                 state.CacheMissTokens = TryReadInt(usage, "prompt_cache_miss_tokens") ?? state.CacheMissTokens;
             }
 
@@ -408,7 +410,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             PromptTokens = state.PromptTokens,
             CompletionTokens = state.CompletionTokens,
             CacheHitTokens = state.CacheHitTokens,
-            CacheMissTokens = state.CacheMissTokens,
+            CacheMissTokens = state.CacheMissTokens
+                ?? (state.CacheHitTokens is { } streamedHit ? DeriveCacheMiss(streamedHit, state.PromptTokens) : null),
             Model = effectiveConfig.Model,
             Metadata = metadata.Build().ToDictionary(),
             RawResponseBody = state.ToolCalls.Count > 0 ? SynthesizeChatBody(state) : null,
@@ -829,6 +832,14 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         // surfaces the keys gets the typed fields for free (others stay null = unmeasured).
         int? cacheHit = TryReadInt(usage, "prompt_cache_hit_tokens");
         int? cacheMiss = TryReadInt(usage, "prompt_cache_miss_tokens");
+        // OpenAI-standard variant (also Z.AI GLM): usage.prompt_tokens_details.cached_tokens
+        // reports cache reads only — map it onto the same typed fields, deriving the miss
+        // side from prompt_tokens so CacheHitRatio stays computable.
+        if (cacheHit is null && TryReadNestedInt(usage, "prompt_tokens_details", "cached_tokens") is { } cachedTokens)
+        {
+            cacheHit = cachedTokens;
+            cacheMiss ??= DeriveCacheMiss(cachedTokens, promptTokens);
+        }
 
         var metadata = LlmResponseMetadata.CreateBuilder()
             .AddProvider(Name);
@@ -857,6 +868,20 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (prop.ValueKind != JsonValueKind.Number) return null;
         return prop.TryGetInt32(out var value) ? value : null;
     }
+
+    private static int? TryReadNestedInt(JsonElement element, string objectName, string propertyName)
+    {
+        if (!element.TryGetProperty(objectName, out var nested)) return null;
+        if (nested.ValueKind != JsonValueKind.Object) return null;
+        return TryReadInt(nested, propertyName);
+    }
+
+    /// <summary>
+    /// Derives the cache-miss side from a read-only cache metric: providers that report only
+    /// <c>cached_tokens</c> (OpenAI, Z.AI) imply <c>miss = prompt_tokens - cached_tokens</c>.
+    /// </summary>
+    private static int? DeriveCacheMiss(int cacheHit, int? promptTokens)
+        => promptTokens is { } prompt && prompt >= cacheHit ? prompt - cacheHit : null;
 
     /// <summary>
     /// Extracts provider-specific metadata from the API response.

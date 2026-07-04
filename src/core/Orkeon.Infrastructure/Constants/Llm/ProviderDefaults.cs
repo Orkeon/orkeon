@@ -48,6 +48,13 @@ public static class ProviderDefaults
         public const string DefaultModel = "moonshot-v1-8k";
     }
 
+    /// <summary>Default model constants for Z.AI (Zhipu GLM).</summary>
+    internal static class ZaiDefaults
+    {
+        /// <summary>Default Z.AI model.</summary>
+        public const string DefaultModel = "glm-5.2";
+    }
+
     /// <summary>Default model constants for Qwen (Alibaba DashScope).</summary>
     internal static class QwenDefaults
     {

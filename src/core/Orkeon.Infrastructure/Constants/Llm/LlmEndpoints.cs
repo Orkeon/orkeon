@@ -33,6 +33,9 @@ public static class LlmEndpoints
     /// <summary>Mistral AI API base URL (OpenAI-compatible).</summary>
     public const string Mistral = "https://api.mistral.ai/v1";
 
+    /// <summary>Z.AI (Zhipu GLM) API base URL (OpenAI-compatible).</summary>
+    public const string Zai = "https://api.z.ai/api/paas/v4";
+
     // ── Local / self-hosted ─────────────────────────────────────────────────
 
     /// <summary>Default Ollama local server base URL.</summary>

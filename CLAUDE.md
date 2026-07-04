@@ -105,7 +105,7 @@ The project follows Clean Architecture with clear separation of concerns:
 **Working Features**:
 - ✅ Complete Agent, Task, Crew domain models with all Python attributes
 - ✅ 76 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XML, DirectoryRead, EmailParser, DatabaseQuery, RagTool, SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
-- ✅ 11 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace
+- ✅ 12 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM)
 - ✅ YAML configuration support
 - ✅ Memory abstractions (IMemoryProvider interface)
 - ✅ Tool validation framework with security, rate limiting, telemetry
@@ -137,6 +137,7 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ Qwen LLM provider implementation (`QwenLlmProvider`)
 - ✅ TogetherAI LLM provider implementation (`TogetherAiLlmProvider`)
 - ✅ HuggingFace LLM provider implementation (`HuggingFaceLlmProvider`)
+- ✅ Z.AI (Zhipu GLM) LLM provider implementation (`ZaiLlmProvider`, thinking + context-cache metrics)
 - ✅ SQLite memory provider (`SqliteMemoryProvider`, Microsoft.Data.Sqlite — persistent storage, cosine vector search; wire with type `"sqlite"` in `MemoryProviderFactory`)
 - ✅ File system tools implementations
 - ✅ ChromaDB vector store (`ChromaDbMemoryProvider`)
@@ -145,7 +146,7 @@ The project follows Clean Architecture with clear separation of concerns:
 
 ### Key Architectural Components
 
-**LLM Integration**: 11 providers implemented (OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace), all extending `HttpLlmProviderBase`. Simple HTTP-based providers. Full HTTP exchange logging via `LlmLoggingDelegatingHandler` (headers + payload, sanitized).
+**LLM Integration**: 12 providers implemented (OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI), all extending `HttpLlmProviderBase`. Simple HTTP-based providers. Full HTTP exchange logging via `LlmLoggingDelegatingHandler` (headers + payload, sanitized).
 
 **Tool System**: Extensible architecture with IBaseTool interface, validation, batch execution, and 76 built-in tool classes.
 
@@ -361,7 +362,7 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 ### Infrastructure Layer (Outer Circle)
 - Implementations of Application interfaces (adapters)
 - External service integrations:
-  - LLM Providers (OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace)
+  - LLM Providers (OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI)
   - Memory Stores (Redis, SQLite, InMemory, ChromaDB, Pinecone, LanceDB)
   - File System access
   - HTTP clients
