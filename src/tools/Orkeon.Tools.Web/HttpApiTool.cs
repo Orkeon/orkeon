@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Domain.Attributes;
+using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Abstractions.Security;
@@ -95,6 +96,9 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
 
     /// <inheritdoc />
     public override string Description => "Make HTTP API calls with support for GET, POST, PUT, DELETE, PATCH methods. Returns response body, status code, and headers.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Execute;
 
     /// <summary>Initializes a new instance of <see cref="HttpApiTool"/> with SSRF protection.</summary>
     /// <param name="urlValidator">URL validator for SSRF protection.</param>

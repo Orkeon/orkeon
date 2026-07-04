@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
 
@@ -20,6 +21,9 @@ public sealed class PackageSummaryTool : ToolBase<PackageSummaryRequest, Package
 
     public override string Name => "package_summary";
     public override string Description => "Details about a package (L1): file count, symbol count, exports, dependencies.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     protected override Task<PackageSummaryResponse> ExecuteTypedAsync(PackageSummaryRequest request, CancellationToken cancellationToken)
     {

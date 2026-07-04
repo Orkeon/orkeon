@@ -23,6 +23,13 @@ public interface IBaseTool
     ToolSchema Schema { get; }
 
     /// <summary>
+    /// Declared access classification consumed by permission gates. Defaults to
+    /// <see cref="ToolAccess.Unspecified"/> so existing implementations keep compiling;
+    /// gates then fall back to their own fail-closed classification.
+    /// </summary>
+    ToolAccess Access => ToolAccess.Unspecified;
+
+    /// <summary>
     /// Executes the tool with the given request.
     /// </summary>
     /// <param name="request">The tool call request with parameters.</param>

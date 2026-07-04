@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -8,7 +9,7 @@ namespace Orkeon.Infrastructure.Tools;
 /// <summary>Typed request for <see cref="SessionStoreTool"/> (exp 07 SPEC §7.3).</summary>
 public sealed class SessionStoreRequest
 {
-    /// <summary>Operation: read_messages / write_messages / append_note / get_metadata / set_title / truncate / reset.</summary>
+    /// <summary>Operation: read_messages / write_messages / append_note / get_metadata / set_title / truncate / reset / get_state / set_state.</summary>
     [JsonPropertyName("operation")]
     public string Operation { get; set; } = "read_messages";
 
@@ -27,6 +28,14 @@ public sealed class SessionStoreRequest
     /// <summary>Number of recent messages to keep for truncate.</summary>
     [JsonPropertyName("retain_count")]
     public int RetainCount { get; set; } = 3;
+
+    /// <summary>State key for get_state / set_state (session-scoped key/value bag).</summary>
+    [JsonPropertyName("key")]
+    public string? Key { get; set; }
+
+    /// <summary>State value for set_state; null removes the key.</summary>
+    [JsonPropertyName("value")]
+    public string? Value { get; set; }
 }
 
 /// <summary>Typed response for <see cref="SessionStoreTool"/>.</summary>
@@ -47,6 +56,10 @@ public sealed class SessionStoreResponse
     /// <summary>Messages removed by truncate / reset.</summary>
     [JsonPropertyName("removed_count")]
     public int RemovedCount { get; set; }
+
+    /// <summary>State value for get_state (null when the key was never set).</summary>
+    [JsonPropertyName("value")]
+    public string? Value { get; set; }
 }
 
 /// <summary>
@@ -60,6 +73,9 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
     /// <inheritdoc />
     public override string Description =>
         "Read, write, truncate, and annotate the current session conversation buffer and metadata.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     private readonly ISessionBufferService _buffer;
 
@@ -88,9 +104,21 @@ public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStor
             "set_title" => new SessionStoreResponse { Success = _buffer.SetTitle(request.Title ?? "") },
             "truncate" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Truncate(request.RetainCount) },
             "reset" => new SessionStoreResponse { Success = true, RemovedCount = _buffer.Reset() },
+            "get_state" => string.IsNullOrWhiteSpace(request.Key)
+                ? new SessionStoreResponse { Success = false }
+                : new SessionStoreResponse { Success = true, Value = _buffer.GetState(request.Key) },
+            "set_state" => SetState(request),
             _ => new SessionStoreResponse { Success = false },
         };
         return Task.FromResult(response);
+    }
+
+    private SessionStoreResponse SetState(SessionStoreRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Key))
+            return new SessionStoreResponse { Success = false };
+        _buffer.SetState(request.Key, request.Value);
+        return new SessionStoreResponse { Success = true, Value = request.Value };
     }
 
     private SessionStoreResponse WriteMessages(SessionStoreRequest request)

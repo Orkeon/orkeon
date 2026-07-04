@@ -44,7 +44,8 @@ public class JsExecutionContext
         events = environment.Crew.EventBroker;
         llm = new JsLlmFacade(
             environment.Engine, environment.LlmProvider, environment.Ct,
-            ResolveAgentTools(environment), environment.Budget, environment.PermissionGate);
+            ResolveAgentTools(environment), environment.Budget, environment.PermissionGate,
+            environment.DeltaSink);
     }
 
     /// <summary>

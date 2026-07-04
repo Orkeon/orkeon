@@ -11,6 +11,7 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
 {
     private readonly object _gate = new();
     private readonly List<SessionMessage> _messages = new();
+    private readonly Dictionary<string, string> _state = new(StringComparer.Ordinal);
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
     private string? _title;
     private readonly string? _model;
@@ -112,8 +113,27 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
         {
             var removed = _messages.Count;
             _messages.Clear();
+            _state.Clear();
             _title = null;
             return removed;
+        }
+    }
+
+    /// <inheritdoc />
+    public string? GetState(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return null;
+        lock (_gate) return _state.TryGetValue(key, out var v) ? v : null;
+    }
+
+    /// <inheritdoc />
+    public void SetState(string key, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return;
+        lock (_gate)
+        {
+            if (value is null) _state.Remove(key);
+            else _state[key] = value;
         }
     }
 

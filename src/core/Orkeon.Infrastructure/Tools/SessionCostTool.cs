@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -40,6 +41,9 @@ public sealed class SessionCostTool : ToolBase<SessionCostRequest, SessionCostRe
     /// <inheritdoc />
     public override string Description =>
         "Report cumulative session cost in USD, token usage, and a per-model breakdown.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     private readonly ICostBudgetManager? _costManager;
 

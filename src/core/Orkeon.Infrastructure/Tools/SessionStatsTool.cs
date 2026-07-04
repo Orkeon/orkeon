@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -49,6 +50,9 @@ public sealed class SessionStatsTool : ToolBase<SessionStatsRequest, SessionStat
     /// <inheritdoc />
     public override string Description =>
         "Report full session telemetry: message count, estimated tokens, cost, and call totals.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     private readonly ISessionBufferService _buffer;
     private readonly ICostBudgetManager? _costManager;

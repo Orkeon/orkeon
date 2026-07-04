@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
@@ -19,6 +20,9 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
 
     public override string Name => "flow_trace";
     public override string Description => "Trace call flow from a symbol (optionally to a target) within a depth budget.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     protected override Task<FlowTraceResponse> ExecuteTypedAsync(FlowTraceRequest request, CancellationToken cancellationToken)
     {

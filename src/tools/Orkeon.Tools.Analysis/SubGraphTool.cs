@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
 
@@ -19,6 +20,9 @@ public sealed class SubGraphTool : ToolBase<SubGraphRequest, SubGraphResponse>
 
     public override string Name => "sub_graph";
     public override string Description => "Sub-graph expansion around seeds, bounded by depth and node count.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     protected override Task<SubGraphResponse> ExecuteTypedAsync(SubGraphRequest request, CancellationToken cancellationToken)
     {

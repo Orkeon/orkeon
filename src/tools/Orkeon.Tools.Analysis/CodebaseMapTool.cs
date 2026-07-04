@@ -5,6 +5,7 @@ using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
@@ -20,6 +21,9 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
 
     public override string Name => "codebase_map";
     public override string Description => "Structural map of the codebase at a given zoom level (L0-L3).";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     protected override Task<CodebaseMapResponse> ExecuteTypedAsync(CodebaseMapRequest request, CancellationToken cancellationToken)
     {

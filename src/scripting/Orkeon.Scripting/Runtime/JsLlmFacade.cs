@@ -29,6 +29,7 @@ public sealed class JsLlmFacade
     private readonly IReadOnlyList<IBaseTool> _tools;
     private readonly Orkeon.Domain.Autonomous.AgentExecutionBudget? _budget;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
 
     internal JsLlmFacade(
         Engine engine,
@@ -36,7 +37,8 @@ public sealed class JsLlmFacade
         CancellationToken ct,
         IReadOnlyList<IBaseTool>? tools = null,
         Orkeon.Domain.Autonomous.AgentExecutionBudget? budget = null,
-        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null)
+        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null)
     {
         _engine = engine;
         _provider = provider;
@@ -49,6 +51,7 @@ public sealed class JsLlmFacade
         _tools = tools ?? System.Array.Empty<IBaseTool>();
         _budget = budget;
         _permissionGate = permissionGate;
+        _deltaSink = deltaSink;
         embed = EmbedAsync;
         act = ActAsync;
     }
@@ -281,11 +284,13 @@ public sealed class JsLlmFacade
                 var cfg = toolSchemas is null
                     ? baseCfg
                     : baseCfg with { Tools = toolSchemas, ToolMode = ToolCallMode.Auto };
-                // F5 L1: when the caller supplied onDelta and the provider streams, consume
-                // the SSE chat path — content deltas invoke the JS callback (sequentially, on
-                // this single enumeration — the Jint engine is never entered concurrently)
-                // and the Completed event yields a response iso-shape with ChatAsync.
-                var resp = onDelta is not null &&
+                // F5 L1: when the caller supplied onDelta — or the host registered a native
+                // delta sink (F5 L3, e.g. the REPL's incremental renderer) — and the provider
+                // streams, consume the SSE chat path: content deltas feed the sink (plain C#
+                // call) and the JS callback (sequentially, on this single enumeration — the
+                // Jint engine is never entered concurrently), and the Completed event yields
+                // a response iso-shape with ChatAsync.
+                var resp = (onDelta is not null || _deltaSink is not null) &&
                            _provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider streamingProvider &&
                            streamingProvider.SupportsStreaming
                     ? await ChatViaStreamAsync(streamingProvider, messages.ToArray(), cfg, onDelta).ConfigureAwait(false)
@@ -299,10 +304,16 @@ public sealed class JsLlmFacade
                 var (toolName, toolArgs) = call.Value;
                 activity?.SetTag("llm.act.tool", toolName);
 
+                // Resolved before the gate so the tool's self-declared access class
+                // (IBaseTool.Access) informs the verdict; unresolved tools stay
+                // Unspecified and the gate classifies them fail-closed.
+                var tool = FindTool(toolName);
                 string resultText;
                 var verdict = _permissionGate is null
                     ? null
-                    : await _permissionGate.CheckAsync(toolName, toolArgs, permissionMode, _ct).ConfigureAwait(false);
+                    : await _permissionGate.CheckAsync(
+                        toolName, toolArgs, permissionMode,
+                        tool?.Access ?? ToolAccess.Unspecified, _ct).ConfigureAwait(false);
                 if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
                 {
                     // Deny (and Ask without an interactive channel, already downgraded by the
@@ -316,7 +327,7 @@ public sealed class JsLlmFacade
                     // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
                     // BudgetExhaustedException into an "ERROR:" string fed back to the model.
                     _budget?.RecordToolCall();
-                    resultText = await ExecuteToolAsync(toolName, toolArgs).ConfigureAwait(false);
+                    resultText = await ExecuteToolAsync(tool, toolName, toolArgs).ConfigureAwait(false);
                 }
 
                 // Omit the assistant tool-call turn (empty content) to avoid the strict tool-role
@@ -348,10 +359,12 @@ public sealed class JsLlmFacade
         });
     }
 
+    private IBaseTool? FindTool(string name)
+        => _tools.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-boundary fault barrier: any tool failure is converted to an 'ERROR: ...' string fed back to the model as the tool result, so one faulty tool cannot crash the scripted LLM tool-call loop.")]
-    private async Task<string> ExecuteToolAsync(string name, Dictionary<string, object?> arguments)
+    private async Task<string> ExecuteToolAsync(IBaseTool? tool, string name, Dictionary<string, object?> arguments)
     {
-        var tool = _tools.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
         if (tool is null)
             return $"ERROR: tool '{name}' is not available to this agent.";
         try
@@ -406,25 +419,40 @@ public sealed class JsLlmFacade
     }
 
     /// <summary>
-    /// Consumes the streamed chat completion: every content delta invokes the JS
-    /// <paramref name="onDelta"/> callback, and the terminal event's response replaces the
-    /// buffered <c>ChatAsync</c> result. Callbacks run sequentially on this single
-    /// enumeration; the callback itself must stay cheap (rendering, logging).
+    /// Consumes the streamed chat completion: every content delta feeds the host's native
+    /// delta sink (when registered) and the JS <paramref name="onDelta"/> callback (when
+    /// supplied), and the terminal event's response replaces the buffered <c>ChatAsync</c>
+    /// result. Callbacks run sequentially on this single enumeration; both consumers must
+    /// stay cheap (rendering, logging). The sink's turn terminator is only emitted when at
+    /// least one delta was rendered, so tool-call-only turns leave the console untouched.
     /// </summary>
     private async Task<LlmResponse> ChatViaStreamAsync(
         Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider provider,
         LlmMessage[] messages,
         LlmConfig cfg,
-        JsValue onDelta)
+        JsValue? onDelta)
     {
         LlmResponse? final = null;
+        var sankDeltas = false;
         await foreach (var ev in provider.ChatStreamingAsync(messages, cfg, _ct).ConfigureAwait(false))
         {
             if (ev.Kind == LlmStreamEventKind.ContentDelta && !string.IsNullOrEmpty(ev.Delta))
-                _engine.Invoke(onDelta, ev.Delta);
+            {
+                if (_deltaSink is not null)
+                {
+                    _deltaSink.OnDelta(ev.Delta);
+                    sankDeltas = true;
+                }
+                if (onDelta is not null)
+                    _engine.Invoke(onDelta, ev.Delta);
+            }
             else if (ev.Kind == LlmStreamEventKind.Completed)
+            {
                 final = ev.FinalResponse;
+            }
         }
+        if (sankDeltas)
+            _deltaSink!.OnTurnCompleted();
         return final ?? new LlmResponse { Content = "" };
     }
 

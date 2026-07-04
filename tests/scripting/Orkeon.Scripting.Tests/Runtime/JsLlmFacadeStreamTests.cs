@@ -136,6 +136,102 @@ public sealed class JsLlmFacadeStreamTests
         Assert.Equal(1, provider.ChatCalls);
     }
 
+    [Fact]
+    public async Task Act_with_native_sink_streams_without_onDelta()
+    {
+        // F5 L3: a host-registered sink is enough to switch act() to the streaming path —
+        // no script-side onDelta required (native REPL rendering).
+        using var engine = new Engine();
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            turns: [new StreamedTurn(Deltas: ["Hel", "lo"], Final: new LlmResponse { Content = "Hello" })]);
+        var sink = new RecordingSink();
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, tools: null, budget: null,
+            permissionGate: null, deltaSink: sink);
+
+        var result = await facade.act("go", null);
+
+        Assert.Equal("Hello", result.Get("output").AsString());
+        Assert.Equal(1, provider.ChatStreamingCalls);
+        Assert.Equal(0, provider.ChatCalls);
+        Assert.Equal(["Hel", "lo"], sink.Deltas);
+        Assert.Equal(1, sink.TurnsCompleted);
+    }
+
+    [Fact]
+    public async Task Act_sink_and_onDelta_both_receive_every_delta()
+    {
+        using var engine = new Engine();
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            turns: [new StreamedTurn(Deltas: ["a", "b"], Final: new LlmResponse { Content = "ab" })]);
+        var sink = new RecordingSink();
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, tools: null, budget: null,
+            permissionGate: null, deltaSink: sink);
+
+        engine.SetValue("__deltas", new List<object>());
+        var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d) })");
+        var result = await facade.act("go", options);
+
+        Assert.Equal("ab", result.Get("output").AsString());
+        Assert.Equal(["a", "b"], sink.Deltas);
+        var jsDeltas = (List<object>)engine.GetValue("__deltas").ToObject()!;
+        Assert.Equal(new object[] { "a", "b" }, jsDeltas.ToArray());
+    }
+
+    [Fact]
+    public async Task Sink_turn_terminator_is_skipped_for_toolcall_only_turns()
+    {
+        // A turn that streams no visible content (pure tool call) must not emit the line
+        // terminator — otherwise every tool call would inject a blank line in the REPL.
+        using var engine = new Engine();
+        var tool = new RecordingTool("file_read");
+        var toolCallBody =
+            "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
+            "{\"id\":\"c1\",\"type\":\"function\",\"function\":{\"name\":\"file_read\",\"arguments\":\"{}\"}}]}}]}";
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            turns:
+            [
+                new StreamedTurn(Deltas: [], Final: new LlmResponse { Content = "", RawResponseBody = toolCallBody }),
+                new StreamedTurn(Deltas: ["done"], Final: new LlmResponse { Content = "done" }),
+            ]);
+        var sink = new RecordingSink();
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null,
+            permissionGate: null, deltaSink: sink);
+
+        var result = await facade.act("read then answer", null);
+
+        Assert.Equal("done", result.Get("output").AsString());
+        Assert.Equal(1, tool.CallCount);
+        Assert.Equal(["done"], sink.Deltas);
+        Assert.Equal(1, sink.TurnsCompleted); // only the visible turn terminated a line
+    }
+
+    [Fact]
+    public async Task Sink_with_non_streaming_provider_keeps_the_buffered_path()
+    {
+        using var engine = new Engine();
+        var provider = new PlainProvider("buffered answer");
+        var sink = new RecordingSink();
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, tools: null, budget: null,
+            permissionGate: null, deltaSink: sink);
+
+        var result = await facade.act("go", null);
+
+        Assert.Equal("buffered answer", result.Get("output").AsString());
+        Assert.Empty(sink.Deltas);
+        Assert.Equal(0, sink.TurnsCompleted);
+    }
+
     // ── helpers & fakes ──────────────────────────────────────────────────────
 
     private static Jint.Native.JsValue BuildOptions(Engine engine, string js) => engine.Evaluate(js);
@@ -191,6 +287,14 @@ public sealed class JsLlmFacadeStreamTests
         }
     }
 
+    private sealed class RecordingSink : ILlmDeltaSink
+    {
+        public List<string> Deltas { get; } = new();
+        public int TurnsCompleted { get; private set; }
+        public void OnDelta(string delta) => Deltas.Add(delta);
+        public void OnTurnCompleted() => TurnsCompleted++;
+    }
+
     private sealed class PlainProvider : ILlmProvider
     {
         private readonly string _content;
@@ -207,6 +311,7 @@ public sealed class JsLlmFacadeStreamTests
         public string? LastMode { get; private set; }
         public Task<PermissionVerdict> CheckAsync(
             string toolName, IReadOnlyDictionary<string, object?> arguments, string mode,
+            Orkeon.Domain.Tools.ToolAccess declaredAccess = Orkeon.Domain.Tools.ToolAccess.Unspecified,
             CancellationToken cancellationToken = default)
         {
             LastMode = mode;

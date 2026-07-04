@@ -1,6 +1,7 @@
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.FileSystem.Constants.Directory;
@@ -94,6 +95,9 @@ public record DirectoryReadResponse
     Category = "File System")]
 public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, DirectoryReadResponse>
 {
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
+
     private readonly IRaggableStore? _raggableStore;
 
     /// <summary>Initializes a new instance of <see cref="DirectoryReadTool"/> with an optional RaggableTree store for advisory warnings.</summary>

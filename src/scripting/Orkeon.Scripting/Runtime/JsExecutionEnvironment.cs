@@ -37,4 +37,10 @@ internal sealed record JsExecutionEnvironment
     /// tool execution. Null = ungated (pre-F2 behaviour).
     /// </summary>
     public Orkeon.Application.Interfaces.Security.IPermissionGate? PermissionGate { get; init; }
+
+    /// <summary>
+    /// Optional host-native renderer for streamed <c>ctx.llm.act</c> deltas (F5 L3).
+    /// Null = buffered behaviour unless the script passes <c>onDelta</c>.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
 }

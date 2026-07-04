@@ -29,5 +29,8 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional per-tool-call permission gate applied inside <c>ctx.llm.act</c>.</summary>
     public Orkeon.Application.Interfaces.Security.IPermissionGate? PermissionGate { get; init; }
 
+    /// <summary>Optional host-native renderer for streamed <c>ctx.llm.act</c> deltas (F5 L3).</summary>
+    public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
+
     public string? Goal { get; init; }
 }

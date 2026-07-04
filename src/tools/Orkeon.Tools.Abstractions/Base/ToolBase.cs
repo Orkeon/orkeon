@@ -65,6 +65,14 @@ public abstract partial class ToolBase : ITool
     public virtual bool RequiresHumanApproval => false;
 
     /// <summary>
+    /// Declared access classification consumed by permission gates. Defaults to
+    /// <see cref="ToolAccess.Unspecified"/> (the gate then applies its own fail-closed
+    /// classification). Override with <see cref="ToolAccess.Read"/> /
+    /// <see cref="ToolAccess.Edit"/> / <see cref="ToolAccess.Execute"/> to self-declare.
+    /// </summary>
+    public virtual ToolAccess Access => ToolAccess.Unspecified;
+
+    /// <summary>
     /// Gets the tool category. Defaults to [ToolContract].Category or "General".
     /// Override to customize.
     /// </summary>

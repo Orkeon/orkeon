@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
 
@@ -20,6 +21,9 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
     public override string Name => "dependency_graph";
     public override string Description => "Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols).";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     protected override Task<DependencyGraphResponse> ExecuteTypedAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
     {

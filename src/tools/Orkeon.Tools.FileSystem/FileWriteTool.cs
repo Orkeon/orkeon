@@ -5,6 +5,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.FileSystem.Constants.File;
@@ -95,6 +96,9 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
 
     /// <inheritdoc />
     public override string Description => "Write content to files. Can create new files or overwrite existing ones. Creates directories if needed.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Edit;
 
     private readonly ICitationBlockValidator? _citationValidator;
 

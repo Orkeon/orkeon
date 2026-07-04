@@ -99,6 +99,36 @@ public sealed class SessionBufferAndToolsTests
         Assert.Empty(buffer.GetMessages());
     }
 
+    [Fact]
+    public void State_bag_round_trips_removes_and_survives_message_rewrites()
+    {
+        var buffer = new InMemorySessionBufferService();
+
+        Assert.Null(buffer.GetState("autocompact_failures"));
+
+        buffer.SetState("autocompact_failures", "2");
+        Assert.Equal("2", buffer.GetState("autocompact_failures"));
+
+        // Message rewrites (compaction) must not touch the state bag.
+        buffer.ReplaceMessages(new[] { Msg("user", "a") });
+        buffer.Truncate(retainCount: 0);
+        Assert.Equal("2", buffer.GetState("autocompact_failures"));
+
+        buffer.SetState("autocompact_failures", null);
+        Assert.Null(buffer.GetState("autocompact_failures"));
+    }
+
+    [Fact]
+    public void Reset_clears_the_state_bag()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.SetState("k", "v");
+
+        buffer.Reset();
+
+        Assert.Null(buffer.GetState("k"));
+    }
+
     // ── SessionStoreTool ────────────────────────────────────────────────────
 
     [Fact]
@@ -159,6 +189,64 @@ public sealed class SessionBufferAndToolsTests
 
         var dict = ResultDict(resp);
         Assert.NotNull(dict["metadata"]);
+    }
+
+    [Fact]
+    public async Task SessionStore_set_state_then_get_state_round_trips()
+    {
+        var buffer = new InMemorySessionBufferService();
+        using var tool = new SessionStoreTool(buffer);
+
+        var set = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "set_state",
+            ["key"] = "autocompact_failures",
+            ["value"] = "3",
+        }), TestContext.Current.CancellationToken);
+        ResultDict(set);
+
+        var get = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "get_state",
+            ["key"] = "autocompact_failures",
+        }), TestContext.Current.CancellationToken);
+
+        var dict = ResultDict(get);
+        Assert.Equal("3", dict["value"]);
+    }
+
+    [Fact]
+    public async Task SessionStore_get_state_of_unset_key_returns_null_value()
+    {
+        var buffer = new InMemorySessionBufferService();
+        using var tool = new SessionStoreTool(buffer);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+        {
+            ["operation"] = "get_state",
+            ["key"] = "never_set",
+        }), TestContext.Current.CancellationToken);
+
+        var dict = ResultDict(resp);
+        Assert.True(!dict.TryGetValue("value", out var v) || v is null);
+    }
+
+    [Fact]
+    public async Task SessionStore_state_ops_without_key_fail()
+    {
+        var buffer = new InMemorySessionBufferService();
+        using var tool = new SessionStoreTool(buffer);
+
+        foreach (var op in new[] { "get_state", "set_state" })
+        {
+            var resp = await tool.CallAsync(new ToolCallRequest("session_store", new Dictionary<string, object?>
+            {
+                ["operation"] = op,
+            }), TestContext.Current.CancellationToken);
+
+            // The typed pipeline surfaces the operation's success=false at the protocol level.
+            Assert.False(resp.Success);
+        }
     }
 
     // ── SessionSnipTool ─────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.FileSystem;
@@ -18,6 +19,9 @@ namespace Orkeon.Tools.FileSystem;
     Category = "File System")]
 public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, DirectorySearchResponse>
 {
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
+
     private readonly IEmbeddingService _embeddingService;
     private readonly IFileSystemService _fileSystemService;
 

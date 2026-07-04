@@ -103,7 +103,8 @@ public static class ScriptingCliServiceCollectionExtensions
                 sp.GetService<IConfiguration>(),
                 sp.GetServices<Orkeon.Domain.Tools.IBaseTool>().ToArray(),
                 sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>(),
-                sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>());
+                sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
+                sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>());
         });
 
         // Transpiler: fall back to PassThrough when esbuild isn't configured.

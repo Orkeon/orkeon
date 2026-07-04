@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Code.Constants.Shell;
 using Microsoft.Extensions.Logging;
@@ -83,6 +84,9 @@ public sealed record ShellCommandResponse
     Category = "Code Operations")]
 public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellCommandResponse>
 {
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Execute;
+
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
     public const int MaxOutputLength = 10_000;
 

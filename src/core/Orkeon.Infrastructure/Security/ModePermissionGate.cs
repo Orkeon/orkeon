@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Infrastructure.Security;
 
@@ -54,11 +55,18 @@ public sealed class ModePermissionGate : IPermissionGate
         string toolName,
         IReadOnlyDictionary<string, object?> arguments,
         string mode,
+        ToolAccess declaredAccess = ToolAccess.Unspecified,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(toolName);
-        var isRead = IsReadTool(toolName);
-        var isEdit = EditTools.Contains(toolName);
+        // A self-declared access class (IBaseTool.Access) wins over the name tables; the
+        // tables remain the fallback for tools that declare nothing (Unspecified), so
+        // pre-flag tools keep their exact verdicts. Execute declarations are honoured
+        // as writes even if a name table said otherwise.
+        var isRead = declaredAccess == ToolAccess.Read ||
+                     (declaredAccess == ToolAccess.Unspecified && IsReadTool(toolName));
+        var isEdit = declaredAccess == ToolAccess.Edit ||
+                     (declaredAccess == ToolAccess.Unspecified && EditTools.Contains(toolName));
 
         var verdict = Normalize(mode) switch
         {

@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Microsoft.Extensions.Logging;
 
@@ -136,6 +137,9 @@ public partial class CountPatternTool : FileToolBase<CountPatternRequest, CountP
     public override string Description =>
         "Count regex occurrences in a file (deterministic, per-pattern). " +
         "Use when verification requires exact counts rather than LLM estimation.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     /// <inheritdoc />
     protected override string? ValidateTypedRequest(CountPatternRequest request)

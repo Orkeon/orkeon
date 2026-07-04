@@ -347,13 +347,18 @@ internal static partial class RunCommand
         // no IPermissionGate keep the ungated ctx.llm.act behaviour.
         var permissionGate = host.Services.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>();
 
+        // Optional native delta renderer (F5 L3): opt-in via DI — without a sink the act
+        // loop keeps its buffered behaviour unless the script passes onDelta.
+        var deltaSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>();
+
         var engineFactory = new JsEngineFactory(
             limits: cliLimits,
             loggerFactory: loggerFactory,
             configuration: configuration,
             builtInTools: tools,
             llmProvider: llmProvider,
-            permissionGate: permissionGate);
+            permissionGate: permissionGate,
+            deltaSink: deltaSink);
 
         // ScriptHost stores but does not own/dispose the transpiler, so we keep ownership
         // here and dispose it when this method returns (after RunFromFileAsync completes).

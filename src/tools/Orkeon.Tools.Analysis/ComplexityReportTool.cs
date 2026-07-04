@@ -3,6 +3,7 @@ using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
@@ -19,6 +20,9 @@ public sealed class ComplexityReportTool : ToolBase<ComplexityReportRequest, Com
 
     public override string Name => "complexity_report";
     public override string Description => "Top-N methods by complexity (Cyclomatic, NestingDepth, FanOut, LoC, Callers) with median and P95.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     protected override Task<ComplexityReportResponse> ExecuteTypedAsync(ComplexityReportRequest request, CancellationToken cancellationToken)
     {

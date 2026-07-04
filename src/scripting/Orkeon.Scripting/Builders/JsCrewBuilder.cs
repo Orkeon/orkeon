@@ -26,6 +26,7 @@ public sealed partial class JsCrewBuilder
     private readonly ILlmProvider? _llmProvider;
     private readonly IReadOnlyList<Orkeon.Domain.Tools.IBaseTool>? _builtInTools;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private string _name = "crew";
     private string? _goal;
     private string _process = "sequential";
@@ -42,13 +43,15 @@ public sealed partial class JsCrewBuilder
         ILogger? logger = null,
         ILlmProvider? llmProvider = null,
         IReadOnlyList<Orkeon.Domain.Tools.IBaseTool>? builtInTools = null,
-        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null)
+        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _logger = logger ?? NullLogger.Instance;
         _llmProvider = llmProvider;
         _builtInTools = builtInTools;
         _permissionGate = permissionGate;
+        _deltaSink = deltaSink;
     }
 
     public JsCrewBuilder name(string value) { _name = value; return this; }
@@ -152,6 +155,7 @@ public sealed partial class JsCrewBuilder
             LlmProvider = _llmProvider,
             BuiltInTools = _builtInTools,
             PermissionGate = _permissionGate,
+            DeltaSink = _deltaSink,
             Goal = _goal,
         });
         crew._onCrewStart = _onCrewStart;

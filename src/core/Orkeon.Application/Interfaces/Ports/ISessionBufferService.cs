@@ -38,6 +38,18 @@ public interface ISessionBufferService
 
     /// <summary>Current message count.</summary>
     int MessageCount { get; }
+
+    /// <summary>
+    /// Reads a session-scoped state value (e.g. the auto-compaction breaker counter),
+    /// or <see langword="null"/> when the key was never set. State lives as long as the
+    /// session (across crew runs) and is cleared by <see cref="Reset"/>.
+    /// </summary>
+    string? GetState(string key);
+
+    /// <summary>
+    /// Writes a session-scoped state value; <see langword="null"/> removes the key.
+    /// </summary>
+    void SetState(string key, string? value);
 }
 
 /// <summary>A single conversation message in the session buffer.</summary>

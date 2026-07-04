@@ -1,4 +1,5 @@
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Microsoft.Extensions.Logging;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
@@ -56,6 +57,9 @@ public class ListMountsTool : ToolBase
     /// <inheritdoc />
     public override string Description =>
         "Lists all available file system mounts with their virtual paths and access rights.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     /// <inheritdoc />
     public override string Category => "File Operations";

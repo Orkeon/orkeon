@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Security;
 
 namespace Orkeon.Infrastructure.Tests.Security;
@@ -39,7 +40,34 @@ public class ModePermissionGateTests
     {
         var gate = new ModePermissionGate(interactive);
 
-        var verdict = await gate.CheckAsync(tool, NoArgs, mode, TestContext.Current.CancellationToken);
+        var verdict = await gate.CheckAsync(
+            tool, NoArgs, mode, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected, verdict.Action);
+    }
+
+    [Theory]
+    // A self-declared access class (IBaseTool.Access) wins over the name tables:
+    // an unknown tool declaring Read becomes readable in plan mode...
+    [InlineData("plan", "my_custom_probe", ToolAccess.Read, PermissionAction.Allow)]
+    [InlineData("acceptEdits", "my_custom_probe", ToolAccess.Read, PermissionAction.Allow)]
+    // ...a tool declaring Edit is auto-accepted by acceptEdits but denied in plan...
+    [InlineData("acceptEdits", "my_custom_editor", ToolAccess.Edit, PermissionAction.Allow)]
+    [InlineData("plan", "my_custom_editor", ToolAccess.Edit, PermissionAction.Deny)]
+    // ...and an Execute declaration overrides even a name the read table knows.
+    [InlineData("plan", "file_read", ToolAccess.Execute, PermissionAction.Deny)]
+    [InlineData("acceptEdits", "file_read", ToolAccess.Execute, PermissionAction.Deny)]
+    // default mode still asks (→ deny non-interactive) regardless of the declaration.
+    [InlineData("default", "my_custom_probe", ToolAccess.Read, PermissionAction.Deny)]
+    // Unspecified keeps the name-table fallback intact.
+    [InlineData("plan", "file_read", ToolAccess.Unspecified, PermissionAction.Allow)]
+    public async Task CheckAsync_honours_the_declared_access_class(
+        string mode, string tool, ToolAccess declared, PermissionAction expected)
+    {
+        var gate = new ModePermissionGate(isInteractive: false);
+
+        var verdict = await gate.CheckAsync(
+            tool, NoArgs, mode, declared, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, verdict.Action);
     }
@@ -49,7 +77,8 @@ public class ModePermissionGateTests
     {
         var gate = new ModePermissionGate(isInteractive: true);
 
-        var verdict = await gate.CheckAsync("shell_command", NoArgs, "acceptEdits", TestContext.Current.CancellationToken);
+        var verdict = await gate.CheckAsync(
+            "shell_command", NoArgs, "acceptEdits", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(PermissionAction.Ask, verdict.Action);
         Assert.Contains("approval", verdict.Message, StringComparison.OrdinalIgnoreCase);
@@ -60,7 +89,8 @@ public class ModePermissionGateTests
     {
         var gate = new ModePermissionGate(isInteractive: false);
 
-        var verdict = await gate.CheckAsync("file_write", NoArgs, "default", TestContext.Current.CancellationToken);
+        var verdict = await gate.CheckAsync(
+            "file_write", NoArgs, "default", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(PermissionAction.Deny, verdict.Action);
         Assert.Contains("no interactive approval channel", verdict.Message, StringComparison.OrdinalIgnoreCase);
@@ -71,7 +101,8 @@ public class ModePermissionGateTests
     {
         var gate = new ModePermissionGate();
 
-        var verdict = await gate.CheckAsync("shell_command", NoArgs, "plan", TestContext.Current.CancellationToken);
+        var verdict = await gate.CheckAsync(
+            "shell_command", NoArgs, "plan", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(PermissionAction.Deny, verdict.Action);
         Assert.Contains("plan mode", verdict.Message, StringComparison.OrdinalIgnoreCase);

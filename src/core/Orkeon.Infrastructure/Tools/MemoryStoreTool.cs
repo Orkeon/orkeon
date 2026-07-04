@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -59,6 +60,9 @@ public sealed class MemoryStoreTool : ToolBase<MemoryStoreRequest, MemoryStoreRe
     /// <inheritdoc />
     public override string Description =>
         "List, add, delete, and get typed memory entries (user/project/feedback/reference).";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     private readonly ICategoryMemoryStore _store;
 

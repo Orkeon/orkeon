@@ -96,6 +96,49 @@ public sealed class JsLlmFacadeActPermissionTests
     }
 
     [Fact]
+    public async Task Declared_tool_access_is_forwarded_to_the_gate()
+    {
+        using var engine = new Engine();
+        var tool = new RecordingTool("my_probe", ToolAccess.Read);
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("my_probe", "{}") },
+            new LlmResponse { Content = "done", RawResponseBody = null },
+        });
+        var gate = new ScriptedGate((_, _) => PermissionVerdict.Allow());
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: gate);
+
+        await facade.act("probe", null);
+
+        Assert.Equal(ToolAccess.Read, gate.LastDeclaredAccess);
+    }
+
+    [Fact]
+    public async Task Unresolved_tool_reaches_the_gate_as_Unspecified()
+    {
+        using var engine = new Engine();
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("ghost_tool", "{}") },
+            new LlmResponse { Content = "done", RawResponseBody = null },
+        });
+        var gate = new ScriptedGate((_, _) => PermissionVerdict.Allow());
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, Array.Empty<IBaseTool>(), budget: null, permissionGate: gate);
+
+        var result = await facade.act("probe", null);
+
+        Assert.Equal("done", result.Get("output").AsString());
+        Assert.Equal(ToolAccess.Unspecified, gate.LastDeclaredAccess);
+        // The gate allowed it, but the tool does not exist: the loop feeds an ERROR back.
+        var turn2 = provider.MessagesPerCall[1];
+        Assert.Contains(turn2, m => m.Role == "user" && m.Content.Contains("ERROR:", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Null_gate_keeps_the_ungated_behaviour()
     {
         using var engine = new Engine();
@@ -120,14 +163,17 @@ public sealed class JsLlmFacadeActPermissionTests
     {
         private readonly Func<string, string, PermissionVerdict> _decide;
         public string? LastMode { get; private set; }
+        public ToolAccess? LastDeclaredAccess { get; private set; }
 
         public ScriptedGate(Func<string, string, PermissionVerdict> decide) => _decide = decide;
 
         public Task<PermissionVerdict> CheckAsync(
             string toolName, IReadOnlyDictionary<string, object?> arguments, string mode,
+            ToolAccess declaredAccess = ToolAccess.Unspecified,
             CancellationToken cancellationToken = default)
         {
             LastMode = mode;
+            LastDeclaredAccess = declaredAccess;
             return Task.FromResult(_decide(toolName, mode));
         }
     }
@@ -155,8 +201,14 @@ public sealed class JsLlmFacadeActPermissionTests
 
     private sealed class RecordingTool : IBaseTool
     {
-        public RecordingTool(string name) => Name = name;
+        public RecordingTool(string name, ToolAccess access = ToolAccess.Unspecified)
+        {
+            Name = name;
+            Access = access;
+        }
+
         public string Name { get; }
+        public ToolAccess Access { get; }
         public string Description => "test tool";
         public ToolSchema Schema => new(Name, Description, new Dictionary<string, ParameterSchema>());
         public int CallCount { get; private set; }

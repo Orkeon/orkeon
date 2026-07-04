@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
@@ -27,6 +28,9 @@ public sealed class IncrementalReindexTool : ToolBase<IncrementalReindexRequest,
 
     public override string Name => "incremental_reindex";
     public override string Description => "Reindex only files changed since a prior commit or from an explicit list.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     protected override Task<IndexCodebaseResponse> ExecuteTypedAsync(IncrementalReindexRequest request, CancellationToken cancellationToken)
     {

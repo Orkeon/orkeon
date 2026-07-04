@@ -21,6 +21,7 @@ public sealed class JsEngineFactory
     private readonly IEnumerable<IBaseTool>? _builtInTools;
     private readonly Orkeon.Domain.SharedKernel.ILlmProvider? _llmProvider;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
 
     /// <summary>
     /// Creates a factory that builds engines respecting <paramref name="limits"/>.
@@ -31,7 +32,8 @@ public sealed class JsEngineFactory
         IConfiguration? configuration = null,
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null,
-        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null)
+        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null)
     {
         ArgumentNullException.ThrowIfNull(limits);
         _limits = limits.Value;
@@ -40,6 +42,7 @@ public sealed class JsEngineFactory
         _builtInTools = builtInTools;
         _llmProvider = llmProvider;
         _permissionGate = permissionGate;
+        _deltaSink = deltaSink;
     }
 
     /// <summary>
@@ -52,8 +55,9 @@ public sealed class JsEngineFactory
         IConfiguration? configuration = null,
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null,
-        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null)
-        : this(Microsoft.Extensions.Options.Options.Create(limits ?? new ScriptingLimitsOptions()), loggerFactory, configuration, builtInTools, llmProvider, permissionGate)
+        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null)
+        : this(Microsoft.Extensions.Options.Options.Create(limits ?? new ScriptingLimitsOptions()), loggerFactory, configuration, builtInTools, llmProvider, permissionGate, deltaSink)
     {
     }
 
@@ -70,7 +74,7 @@ public sealed class JsEngineFactory
         // Register globals exposed to every script. Bindings are added incrementally as
         // builders land (SCR-03..SCR-06).
         AgentBuilderBinding.Register(engine);
-        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate);
+        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink);
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
         LlmNamespaceBinding.Register(engine, _configuration, _scriptLogger, _llmProvider);

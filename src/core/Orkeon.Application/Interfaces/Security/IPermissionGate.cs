@@ -1,3 +1,5 @@
+using Orkeon.Domain.Tools;
+
 namespace Orkeon.Application.Interfaces.Security;
 
 /// <summary>
@@ -16,11 +18,16 @@ public interface IPermissionGate
     /// <param name="toolName">Registered tool name (e.g. <c>file_write</c>).</param>
     /// <param name="arguments">Arguments the model supplied for the call.</param>
     /// <param name="mode">Permission mode the session runs under.</param>
+    /// <param name="declaredAccess">Access class the tool self-declares
+    /// (<see cref="IBaseTool.Access"/>); <see cref="ToolAccess.Unspecified"/> when the tool
+    /// declares nothing or could not be resolved — the gate then applies its own
+    /// fail-closed classification.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<PermissionVerdict> CheckAsync(
         string toolName,
         IReadOnlyDictionary<string, object?> arguments,
         string mode,
+        ToolAccess declaredAccess = ToolAccess.Unspecified,
         CancellationToken cancellationToken = default);
 }
 

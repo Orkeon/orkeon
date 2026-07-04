@@ -5,6 +5,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.FileSystem.Constants.File;
@@ -84,6 +85,9 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
 
     /// <inheritdoc />
     public override string Description => "Read content from files. Supports text, JSON, XML, and email files (.eml, .msg).";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     /// <summary>Initializes a new instance of <see cref="FileReadTool"/> with an optional RaggableTree store for cache lookups.</summary>
     public FileReadTool(

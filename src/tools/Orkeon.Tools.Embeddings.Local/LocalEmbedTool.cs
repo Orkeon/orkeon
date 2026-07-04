@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.DependencyInjection;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Embeddings.Local;
@@ -37,6 +38,9 @@ public sealed class LocalEmbedTool : ToolBase<LocalEmbedRequest, LocalEmbedRespo
     /// <inheritdoc />
     public override string Description =>
         "Generate embeddings for one or more texts using the on-device BGE-micro-v2 model.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     /// <summary>
     /// Initializes a new instance of <see cref="LocalEmbedTool"/>.

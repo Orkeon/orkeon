@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -35,6 +36,9 @@ public sealed class SessionSnipTool : ToolBase<SessionSnipRequest, SessionSnipRe
     /// <inheritdoc />
     public override string Description =>
         "Immediately truncate the conversation to a minimal window without analysis.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     private readonly ISessionBufferService _buffer;
 

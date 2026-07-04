@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
@@ -19,6 +20,9 @@ public sealed class StatementQueryTool : ToolBase<StatementQueryRequest, Stateme
 
     public override string Name => "statement_query";
     public override string Description => "Query L4 statements by kind, parent FQN, or semantic similarity.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     protected override Task<StatementQueryResponse> ExecuteTypedAsync(StatementQueryRequest request, CancellationToken cancellationToken)
     {

@@ -52,6 +52,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Execution state persistence (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Beta |
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
+| Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
 
 **Maturity** — *Beta*: complete and tested implementation, API likely to evolve
 before v1. *Experimental*: functional implementation but not wired into the
@@ -328,6 +329,11 @@ partial (flagged case by case below).
   `default` → ask everything. Headless, every ask degrades to a motivated
   `DENIED:` fed back to the model as the tool result (no exception). Unknown tools
   are classified as writes (fail-closed).
+- **Declarative classification**: tools can self-declare their class via
+  `IBaseTool.Access` (`ToolAccess.Read` / `Edit` / `Execute`) — a declaration wins
+  over the gate's name tables; `Unspecified` (the default) falls back to the tables.
+  The built-in read tools (file/directory/session/memory/analysis), `file_write`
+  (Edit) and `shell_command`/`http_api` (Execute) all declare themselves.
 - **Backward-compatible default**: flag absent → no gate registered → `act`
   behaves exactly as before. Scripts opt into a mode per call via the
   `permissionMode` act option.
@@ -343,6 +349,20 @@ partial (flagged case by case below).
   reference consumer; `/commit` cannot work without it).
 - **Backward-compatible default**: flag absent → strict read-only allowlist,
   historical behavior unchanged.
+
+## Native LLM console streaming — `AddLlmConsoleStreaming(configuration)` (exp07 F5 L3)
+
+- **Activation**: called by the ConsoleApp bootstrap, but registers nothing unless
+  `Orkeon:Cli:ConsoleStreaming:Enabled = true`.
+- **Effect**: registers `ConsoleLlmDeltaSink` as the `ILlmDeltaSink`. When a sink is
+  present and the LLM provider streams (`IStreamingLlmProvider`), the scripted
+  `ctx.llm.act` loop switches to the SSE path and every content delta is written
+  incrementally to the host `IConsoleAdapter` — the REPL renders tokens as they
+  arrive without the script passing `onDelta`. Turns that stream no visible content
+  (pure tool calls) emit nothing. The sink composes with a script-side `onDelta`
+  (both receive every delta).
+- **Backward-compatible default**: flag absent → no sink registered → `act` keeps
+  its buffered rendering (byte-identical), scripts can still stream via `onDelta`.
 
 ---
 

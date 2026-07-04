@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -46,6 +47,9 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
     /// <inheritdoc />
     public override string Description =>
         "Return the current model's context window size, used tokens, and available budget.";
+
+    /// <summary>Declared access class for permission gates.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     private const int DefaultContextWindow = 200_000;
 
