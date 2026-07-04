@@ -1,0 +1,43 @@
+name: random_forest_prediction
+description: >
+  Performs price prediction using Random Forest machine learning algorithm.
+  Automatically engineers technical features (returns, volatility, momentum, volume).
+  Handles non-linear relationships and provides feature importance analysis.
+parameters:
+  symbol:
+    type: string
+    description: "The stock symbol (e.g., 'AAPL')"
+    required: true
+  price_data:
+    type: array
+    description: "Historical OHLCV data (minimum 100 data points recommended)"
+    required: true
+  forecast_periods:
+    type: integer
+    description: "Number of periods ahead to forecast"
+    required: false
+    default: 5
+  n_estimators:
+    type: integer
+    description: "Number of trees in the forest"
+    required: false
+    default: 100
+  max_depth:
+    type: integer
+    description: "Maximum depth of trees"
+    required: false
+    default: 10
+  feature_set:
+    type: string
+    description: "Feature set to use: 'basic', 'technical', 'comprehensive'"
+    required: false
+    default: "technical"
+returns:
+  symbol: { type: string }
+  timestamp: { type: string }
+  model_config: { type: object }
+  forecast: { type: array }
+  feature_importance: { type: object }
+  model_metrics: { type: object }
+  current_price: { type: number }
+  forecast_direction: { type: string }

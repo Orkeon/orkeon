@@ -1,0 +1,112 @@
+# 90. Gestion Energetique — Cycle Continu FlowEngine
+# Use case: continuous energy management cycle (monitor -> predict -> optimize -> report) via FlowEngine
+# Source: project/marketing/content-strategy/101-USE-CASES.md #90
+
+name: "energy-management"
+goal: "Manage building energy with a continuous FlowEngine cycle: monitor consumption, predict peak loads, optimize parameters, and report efficiency gains using long-term consumption history"
+process: "sequential"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: false
+
+agents:
+  consumption_monitor:
+    role: "Energy Consumption Monitor"
+    goal: "Continuously monitor real-time energy consumption across all building zones and systems"
+    backstory: |
+      You interface with the Building Management System (BMS) to collect
+      real-time energy consumption data. You track electricity, gas, and
+      water usage per zone (HVAC, lighting, equipment, data center).
+      You detect anomalous consumption patterns and compare against
+      baseline profiles stored in long-term memory.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  peak_forecaster:
+    role: "Peak Load Forecaster"
+    goal: "Predict energy demand peaks using historical patterns and external factors"
+    backstory: |
+      You analyze historical consumption data from long-term memory combined
+      with weather forecasts, occupancy schedules, and event calendars to
+      predict upcoming peak demand periods. Your predictions enable
+      proactive optimization before peaks actually occur, reducing costs
+      and preventing grid overload.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  parameter_optimizer:
+    role: "Energy Parameter Optimizer"
+    goal: "Optimize HVAC setpoints, lighting schedules, and equipment operations to minimize consumption while maintaining comfort"
+    backstory: |
+      You take consumption data and peak forecasts to generate optimal
+      parameter settings for all building systems. You balance energy
+      savings against occupant comfort constraints. You calculate the
+      expected impact of each adjustment and prioritize changes with
+      the highest efficiency gains.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  efficiency_reporter:
+    role: "Energy Efficiency Reporter"
+    goal: "Generate energy efficiency reports with KPIs, savings achieved, and improvement recommendations"
+    backstory: |
+      You compile comprehensive energy reports comparing current performance
+      against baselines and targets. You calculate KPIs (kWh/m2, PUE for
+      data centers, cost per zone), track savings achieved from optimizations,
+      and recommend further improvements. Your reports feed into the next
+      FlowEngine cycle for continuous improvement.
+    tools:
+      - "json_tool"
+      - "csv_reader"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  monitor_consumption:
+    description: "Collect current energy consumption data from BMS for all zones and systems, detect any anomalous patterns compared to historical baselines"
+    expectedOutput: "Real-time consumption snapshot per zone with anomaly flags, comparison to baseline, and data quality indicators"
+    agent: "consumption_monitor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  forecast_peaks:
+    description: "Using current consumption trends, weather forecast, and historical patterns, predict the next 24-hour energy demand profile with peak periods"
+    expectedOutput: "24-hour demand forecast with predicted peak times, expected peak load values, confidence levels, and contributing factors"
+    agent: "peak_forecaster"
+    dependencies: ["monitor_consumption"]
+    asyncExecution: false
+    humanInput: false
+
+  optimize_parameters:
+    description: "Generate optimized parameter settings for HVAC, lighting, and equipment based on current consumption and forecasted peaks to minimize energy use"
+    expectedOutput: "Optimization plan with specific parameter adjustments per system, expected savings, and comfort impact assessment"
+    agent: "parameter_optimizer"
+    dependencies: ["monitor_consumption", "forecast_peaks"]
+    asyncExecution: false
+    humanInput: false
+
+  report_efficiency:
+    description: "Generate energy efficiency report comparing current cycle performance against targets, calculate savings from applied optimizations, and recommend next-cycle improvements"
+    expectedOutput: "Energy efficiency report with KPIs (kWh/m2, cost, PUE), savings achieved, trend analysis, and prioritized improvement recommendations"
+    agent: "efficiency_reporter"
+    dependencies: ["optimize_parameters"]
+    asyncExecution: false
+    humanInput: false

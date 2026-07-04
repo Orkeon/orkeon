@@ -1,0 +1,128 @@
+# 52. Pharmacovigilance Deduplication Semantique
+# Use case: Monitoring parallele de 3 sources avec deduplication semantique vectorielle et rate limiting
+# Source: project/marketing/content-strategy/101-USE-CASES.md #52
+
+name: "pharmacovigilance"
+goal: "Monitor drug safety across multiple sources with semantic deduplication to eliminate duplicate adverse event reports"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  report_monitor:
+    role: "Official Report Monitor"
+    goal: "Monitor official adverse event reporting databases (EudraVigilance, FAERS)"
+    backstory: |
+      Pharmacovigilance specialist monitoring official regulatory databases.
+      Extracts Individual Case Safety Reports (ICSRs) from EudraVigilance and
+      FDA FAERS. Normalizes reports to MedDRA terminology for consistent analysis.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  literature_monitor:
+    role: "Scientific Literature Monitor"
+    goal: "Scan scientific publications for adverse drug reaction reports and safety signals"
+    backstory: |
+      Medical literature specialist who monitors PubMed, Cochrane, and pharmaceutical
+      journals for published case reports, safety studies, and systematic reviews
+      of adverse drug reactions. Extracts structured safety data from publications.
+    tools:
+      - "http_api"
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  social_monitor:
+    role: "Social Media and Patient Forum Monitor"
+    goal: "Detect potential adverse event signals from patient reports on social media and forums"
+    backstory: |
+      Digital epidemiology specialist who monitors patient forums, social media,
+      and patient communities for potential adverse event reports. Filters noise
+      from genuine signals and maps informal language to medical terminology.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  signal_detector:
+    role: "Safety Signal Detector"
+    goal: "Detect new safety signals by analyzing deduplicated adverse event data across all sources"
+    backstory: |
+      Signal detection specialist who applies disproportionality analysis (PRR, ROR, IC)
+      to deduplicated adverse event data. Identifies emerging safety signals that
+      exceed statistical thresholds. Uses semantic vector search to deduplicate
+      reports from different sources describing the same event.
+    tools:
+      - "json_tool"
+      - "semantic_search"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  risk_evaluator:
+    role: "Risk-Benefit Evaluator"
+    goal: "Evaluate the risk-benefit balance of detected safety signals"
+    backstory: |
+      Senior pharmacovigilance scientist who evaluates detected signals
+      for clinical significance. Assesses causality, severity, frequency,
+      and impact on the overall risk-benefit balance. Recommends regulatory actions.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  monitor_reports:
+    description: "Query EudraVigilance and FAERS for new adverse event reports related to monitored drugs. Extract ICSRs, normalize to MedDRA, and store in memory for deduplication."
+    expectedOutput: "JSON array of normalized ICSRs with MedDRA coding, source database, and report dates"
+    agent: "report_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_literature:
+    description: "Search PubMed and pharmaceutical journals for new publications reporting adverse drug reactions. Extract structured safety data from case reports and safety studies."
+    expectedOutput: "JSON array of literature-sourced adverse event reports with publication references, patient demographics, and event details"
+    agent: "literature_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_social:
+    description: "Scan patient forums and social media for potential adverse event mentions. Filter noise, map informal language to medical terminology, and extract structured event data."
+    expectedOutput: "JSON array of social-sourced potential adverse events with source URLs, mapped medical terms, and confidence scores"
+    agent: "social_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  detect_signals:
+    description: "Deduplicate adverse events across all three sources using semantic vector similarity. Apply disproportionality analysis (PRR, ROR) to the deduplicated dataset. Flag signals exceeding statistical thresholds."
+    expectedOutput: "JSON signal detection report with deduplicated event counts, disproportionality statistics, and flagged signals with strength metrics"
+    agent: "signal_detector"
+    dependencies:
+      - "monitor_reports"
+      - "monitor_literature"
+      - "monitor_social"
+    asyncExecution: false
+    humanInput: false
+
+  evaluate_risk:
+    description: "For each detected signal, perform causality assessment (WHO-UMC criteria), severity evaluation, and risk-benefit impact analysis. Recommend regulatory actions (label update, DHPC, restriction, withdrawal)."
+    expectedOutput: "Risk evaluation report with causality assessment, severity classification, risk-benefit analysis, and recommended regulatory actions per signal"
+    agent: "risk_evaluator"
+    dependencies:
+      - "detect_signals"
+    asyncExecution: false
+    humanInput: false

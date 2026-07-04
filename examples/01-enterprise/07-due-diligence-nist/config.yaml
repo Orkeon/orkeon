@@ -1,0 +1,129 @@
+# 7. Due Diligence avec Audit NIST
+# Use case: Hierarchical due diligence with NIST-compliant audit trail and encrypted data storage
+# Source: project/marketing/content-strategy/101-USE-CASES.md #7
+
+name: "due-diligence-nist"
+goal: "Conduct comprehensive due diligence with NIST-compliant audit trail, encrypted data storage, and severity-classified findings"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "chief_analyst"
+
+agents:
+  chief_analyst:
+    role: "Chief Analyst"
+    goal: "Coordinate due diligence specialists and produce a consolidated risk assessment with full audit trail"
+    backstory: |
+      You are a senior M&A analyst leading due diligence processes. You coordinate
+      specialist teams, prioritize investigation areas, and produce risk-weighted
+      assessments that inform investment decisions. You ensure every finding is
+      traceable and NIST-compliant.
+    tools:
+      - "json_tool"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  legal_analyst:
+    role: "Analyste Juridique"
+    goal: "Investigate legal risks including litigation, IP disputes, and regulatory compliance"
+    backstory: |
+      You are a corporate lawyer specializing in M&A due diligence. You review
+      legal documents, identify pending litigation, assess IP portfolios, and
+      evaluate regulatory compliance across jurisdictions.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  financial_analyst:
+    role: "Analyste Financier"
+    goal: "Analyze financial health, detect anomalies, and assess valuation accuracy"
+    backstory: |
+      You are a forensic accountant who examines financial statements with a
+      critical eye. You detect revenue recognition irregularities, off-balance-sheet
+      liabilities, unusual related-party transactions, and working capital issues.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  reputation_analyst:
+    role: "Analyste Reputation"
+    goal: "Assess public reputation, media sentiment, and stakeholder perception risks"
+    backstory: |
+      You are a reputation risk analyst who monitors media, social signals, and
+      stakeholder sentiment. You identify reputational risks that could impact
+      the transaction, including ESG controversies, executive scandals, and
+      customer satisfaction trends.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  compliance_analyst:
+    role: "Analyste Conformite"
+    goal: "Verify compliance with industry regulations, data protection laws, and internal policies"
+    backstory: |
+      You are a compliance officer who evaluates adherence to regulations (GDPR,
+      SOX, industry-specific standards). You review policies, audit procedures,
+      and identify gaps that could result in fines or operational disruption.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  legal_review:
+    description: "Review legal documents, identify pending litigation, assess IP portfolio, and evaluate regulatory compliance. Rate each finding by criticality (critical/high/medium/low)."
+    expectedOutput: "JSON array of legal findings with: category, finding, criticality, evidence_reference, recommendation"
+    agent: "legal_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  financial_review:
+    description: "Analyze financial statements for anomalies, assess valuation accuracy, and identify hidden liabilities. Rate each finding by financial impact."
+    expectedOutput: "JSON array of financial findings with: category, finding, financial_impact, evidence_reference, recommendation"
+    agent: "financial_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  reputation_review:
+    description: "Assess public reputation through media analysis, social sentiment, and stakeholder perception. Identify ESG risks and controversies."
+    expectedOutput: "JSON array of reputation findings with: category, finding, severity, source, recommendation"
+    agent: "reputation_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  compliance_review:
+    description: "Verify compliance with relevant regulations (GDPR, SOX, industry standards). Identify gaps and assess remediation costs."
+    expectedOutput: "JSON array of compliance findings with: regulation, finding, gap_severity, remediation_cost_estimate, recommendation"
+    agent: "compliance_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  consolidated_assessment:
+    description: "Consolidate all specialist findings into a risk-weighted due diligence report with NIST audit trail. Classify overall risk level and provide go/no-go recommendation."
+    expectedOutput: "Comprehensive due diligence report with executive summary, risk matrix, classified findings by severity, NIST audit trail, and go/no-go recommendation"
+    agent: "chief_analyst"
+    dependencies:
+      - "legal_review"
+      - "financial_review"
+      - "reputation_review"
+      - "compliance_review"
+    asyncExecution: false
+    humanInput: false

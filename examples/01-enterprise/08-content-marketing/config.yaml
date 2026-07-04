@@ -1,0 +1,105 @@
+# 8. Creation de Contenu Marketing
+# Use case: Sequential content creation pipeline mimicking a natural content team workflow
+# Source: project/marketing/content-strategy/101-USE-CASES.md #8
+
+name: "content-marketing"
+goal: "Produce publication-ready marketing content through a 4-stage pipeline: strategy, writing, SEO editing, and fact-checking"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  strategist:
+    role: "Stratege d'Angle"
+    goal: "Define the content angle, target audience, and key messages based on market research"
+    backstory: |
+      You are a content strategist who identifies the most impactful angle for
+      each piece of content. You research trending topics, analyze competitor
+      content gaps, and define clear personas and messaging frameworks that
+      maximize engagement and conversion.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  writer:
+    role: "Redacteur"
+    goal: "Write compelling, well-structured content based on the strategic brief"
+    backstory: |
+      You are an experienced content writer who transforms strategic briefs into
+      engaging articles. You write with clarity, use storytelling techniques, and
+      maintain a consistent brand voice. Your content is always well-sourced and
+      properly structured with headers, subheaders, and calls to action.
+    tools:
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  seo_editor:
+    role: "Editeur SEO"
+    goal: "Optimize content for search engines while maintaining readability and quality"
+    backstory: |
+      You are an SEO specialist who optimizes content for organic search. You
+      refine titles, meta descriptions, heading structures, keyword density,
+      internal linking, and readability scores. You never sacrifice content
+      quality for keyword stuffing.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  fact_checker:
+    role: "Fact-Checker"
+    goal: "Verify all claims, statistics, and quotes in the content against original sources"
+    backstory: |
+      You are a rigorous fact-checker who verifies every claim, statistic, and
+      quote against authoritative sources. You flag unverified assertions, check
+      data recency, and ensure all citations are accurate and properly attributed.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  define_strategy:
+    description: "Research the topic, analyze competitor content, define the target audience persona, and create a strategic content brief with angle, key messages, and content structure."
+    expectedOutput: "JSON strategic brief with: topic, angle, target_persona, key_messages[], content_structure, competitor_gaps, tone_guidelines"
+    agent: "strategist"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  write_content:
+    description: "Write the full article based on the strategic brief. Include engaging introduction, well-structured body sections, data points, and a strong conclusion with call to action."
+    expectedOutput: "Complete Markdown article with title, introduction, 3-5 body sections, key takeaways, and call to action"
+    agent: "writer"
+    dependencies:
+      - "define_strategy"
+    asyncExecution: false
+    humanInput: false
+
+  optimize_seo:
+    description: "Optimize the article for SEO: refine title and meta description, optimize heading hierarchy, adjust keyword density, suggest internal links, and check readability score."
+    expectedOutput: "SEO-optimized Markdown article with metadata block (title, meta_description, keywords, readability_score)"
+    agent: "seo_editor"
+    dependencies:
+      - "write_content"
+    asyncExecution: false
+    humanInput: false
+
+  verify_facts:
+    description: "Verify all claims, statistics, and quotes in the article against original sources. Flag any unverified or outdated information."
+    expectedOutput: "JSON fact-check report with: verified_claims[], unverified_claims[], corrections_needed[], sources_checked[]"
+    agent: "fact_checker"
+    dependencies:
+      - "optimize_seo"
+    asyncExecution: false
+    humanInput: false

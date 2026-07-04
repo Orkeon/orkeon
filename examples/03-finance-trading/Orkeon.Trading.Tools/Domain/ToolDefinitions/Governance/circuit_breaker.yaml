@@ -1,0 +1,18 @@
+name: circuit_breaker
+description: >
+  Monitors risk limits and triggers circuit breakers to halt trading when thresholds are breached.
+parameters:
+  portfolio_metrics:
+    type: object
+    description: "Current portfolio metrics"
+    required: true
+  risk_limits:
+    type: object
+    description: "Risk limit thresholds"
+    required: true
+returns:
+  timestamp: { type: string }
+  breaker_triggered: { type: boolean }
+  violations: { type: array }
+  action: { type: string }
+  message: { type: string }

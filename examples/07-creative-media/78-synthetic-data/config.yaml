@@ -1,0 +1,108 @@
+# 78. Donnees Synthetiques Privacy-Safe — Anti-Reidentification
+# Use case: Privacy-safe synthetic data generation with anti-reidentification validation and zero persistence
+# Source: project/marketing/content-strategy/101-USE-CASES.md #78
+
+name: "synthetic-data"
+goal: "Generate privacy-safe synthetic datasets with guaranteed anti-reidentification and zero data persistence"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  schema_modeler:
+    role: "Schema Modeler"
+    goal: "Analyze the source data schema and model statistical properties for synthesis"
+    backstory: |
+      You are a data scientist who analyzes dataset schemas and statistical
+      distributions. You model column relationships, value distributions,
+      correlations, and constraints to create a blueprint for synthetic
+      data generation without accessing actual records.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  data_generator:
+    role: "Data Generator"
+    goal: "Generate synthetic records that match the modeled statistical properties"
+    backstory: |
+      You are a synthetic data engineer who generates realistic datasets.
+      You create records that match target distributions, maintain inter-column
+      correlations, and satisfy business constraints while ensuring no
+      real individual can be identified.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  distribution_validator:
+    role: "Distribution Validator"
+    goal: "Validate that synthetic data matches the target statistical distributions"
+    backstory: |
+      You are a statistician who validates synthetic data quality.
+      You compare distributions, correlations, and summary statistics
+      between source and synthetic datasets to ensure statistical
+      fidelity while maintaining privacy guarantees.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  anonymizer:
+    role: "Anti-Reidentification Validator"
+    goal: "Verify that no individual can be re-identified from the synthetic dataset"
+    backstory: |
+      You are a privacy engineer who validates anti-reidentification properties.
+      You apply k-anonymity, l-diversity, and t-closeness checks to ensure
+      that the synthetic dataset cannot be linked back to any real individual,
+      even with auxiliary data.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  model_schema:
+    description: "Analyze the source data schema. Model column types, value distributions, inter-column correlations, and business constraints. Do NOT store any actual records."
+    expectedOutput: "JSON schema model with column definitions, distribution parameters, correlation matrix, and constraints"
+    agent: "schema_modeler"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  generate_data:
+    description: "Generate synthetic records based on the schema model. Match target distributions and correlations while ensuring no real data patterns are reproduced."
+    expectedOutput: "Synthetic dataset file with generated records matching the schema model specifications"
+    agent: "data_generator"
+    dependencies:
+      - "model_schema"
+    asyncExecution: false
+    humanInput: false
+
+  validate_distributions:
+    description: "Compare synthetic data distributions against the schema model targets. Verify statistical fidelity using KS tests, chi-squared tests, and correlation analysis."
+    expectedOutput: "Validation report with statistical tests results, distribution comparisons, and fidelity scores"
+    agent: "distribution_validator"
+    dependencies:
+      - "generate_data"
+    asyncExecution: false
+    humanInput: false
+
+  verify_privacy:
+    description: "Run anti-reidentification checks on the synthetic dataset. Apply k-anonymity, l-diversity, and t-closeness validations. Certify privacy compliance."
+    expectedOutput: "Privacy certification report with k-anonymity, l-diversity, t-closeness scores, and compliance status"
+    agent: "anonymizer"
+    dependencies:
+      - "validate_distributions"
+    asyncExecution: false
+    humanInput: false

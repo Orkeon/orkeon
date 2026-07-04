@@ -1,0 +1,107 @@
+# 28. Validation Croisee par Triple Analyse Independante
+# Use case: Three independent analysts reproduce the same analysis with different methods; consensus validates on 2/3 convergence
+# Source: project/marketing/content-strategy/101-USE-CASES.md #28
+
+name: "triple-validation"
+goal: "Validate analysis results through triple independent reproduction using different methods, with 2/3 majority consensus and arbitration for divergences"
+process: "consensual"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  analyst_method_a:
+    role: "Analyste Methode A"
+    goal: "Perform the analysis using Method A (statistical/frequentist approach)"
+    backstory: |
+      You are a data scientist who applies frequentist statistical methods. You
+      use hypothesis testing, confidence intervals, regression analysis, and
+      classical statistical techniques. You document every assumption, test
+      choice, and result with full transparency.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  analyst_method_b:
+    role: "Analyste Methode B"
+    goal: "Perform the analysis using Method B (Bayesian/probabilistic approach)"
+    backstory: |
+      You are a Bayesian statistician who applies probabilistic methods. You
+      use prior distributions, posterior estimation, Bayesian model comparison,
+      and credible intervals. You document priors, model specifications, and
+      convergence diagnostics.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  analyst_method_c:
+    role: "Analyste Methode C"
+    goal: "Perform the analysis using Method C (machine learning/computational approach)"
+    backstory: |
+      You are a machine learning scientist who applies computational methods.
+      You use ensemble models, cross-validation, feature importance analysis,
+      and model interpretability techniques. You document hyperparameters,
+      validation strategy, and model performance metrics.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  arbiter:
+    role: "Arbitre"
+    goal: "Investigate divergences between methods and produce a validated consensus result"
+    backstory: |
+      You are a senior methodologist who arbitrates between conflicting analytical
+      results. You investigate root causes of divergence (different assumptions,
+      sensitivity to outliers, model misspecification), determine which results
+      are most reliable, and produce a validated consensus with clear justification.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  analyze_method_a:
+    description: "Perform the analysis using frequentist statistical methods. Document all assumptions, tests applied, and results with confidence intervals."
+    expectedOutput: "JSON with: method ('frequentist'), results{main_finding, effect_size, ci_lower, ci_upper, p_value}, assumptions[], tests_applied[], diagnostics"
+    agent: "analyst_method_a"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  analyze_method_b:
+    description: "Perform the analysis using Bayesian probabilistic methods. Document priors, posterior estimates, credible intervals, and model comparison results."
+    expectedOutput: "JSON with: method ('bayesian'), results{main_finding, posterior_mean, credible_interval, bayes_factor}, priors[], model_specs, convergence_diagnostics"
+    agent: "analyst_method_b"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  analyze_method_c:
+    description: "Perform the analysis using machine learning methods. Document model selection, cross-validation results, feature importance, and prediction performance."
+    expectedOutput: "JSON with: method ('machine_learning'), results{main_finding, accuracy, auc, feature_importance[]}, model_type, cv_results, hyperparameters"
+    agent: "analyst_method_c"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  arbitrate_results:
+    description: "Compare all three analyses. Check for 2/3 convergence. For divergent results, investigate root causes and produce a validated consensus with full justification."
+    expectedOutput: "Markdown arbitration report with: convergence_status (2/3 or 3/3), consensus_result, method_comparison_table, divergence_analysis, validated_conclusion, confidence_assessment"
+    agent: "arbiter"
+    dependencies:
+      - "analyze_method_a"
+      - "analyze_method_b"
+      - "analyze_method_c"
+    asyncExecution: false
+    humanInput: false

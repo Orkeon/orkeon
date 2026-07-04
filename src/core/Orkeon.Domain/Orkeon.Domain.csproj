@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Package Metadata (package-specific overrides) -->
+    <PackageId>Orkeon.Domain</PackageId>
+    <Description>Core domain layer for Orkeon - A C# port of the Python Orkeon library for building collaborative AI agent teams. Contains entities, value objects, domain events, and interfaces.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Domain;DDD;CleanArchitecture</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\nuget\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Application" />
+    <InternalsVisibleTo Include="Orkeon.Application.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Domain.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Infrastructure" />
+    <InternalsVisibleTo Include="Orkeon.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Ulid" />
+  </ItemGroup>
+
+  <!-- R4.5: typed-dictionary wrapper source generator (compile-time only). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\generators\Orkeon.Generators\Orkeon.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

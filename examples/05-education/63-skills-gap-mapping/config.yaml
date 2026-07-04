@@ -1,0 +1,82 @@
+# 63. Cartographie Lacunes Competences d'Equipe
+# Use case: Team skills gap mapping with parallel per-member assessment and semantic matching for training recommendations
+# Source: project/marketing/content-strategy/101-USE-CASES.md #63
+
+name: "skills-gap-mapping"
+goal: "Map team competency gaps through parallel individual assessments and recommend priority training via semantic matching"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  skills_assessor:
+    role: "Skills Assessor"
+    goal: "Assess individual team member competencies against role requirements"
+    backstory: |
+      You are an HR analytics specialist who evaluates individual competencies
+      against role requirements. You analyze performance data, certifications,
+      project history, and self-assessments to build a competency profile.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  team_consolidator:
+    role: "Team Map Consolidator"
+    goal: "Consolidate individual assessments into a team-wide competency map"
+    backstory: |
+      You are a workforce planning analyst who builds team-level competency
+      maps from individual assessments. You identify collective strengths,
+      critical gaps, single points of failure, and coverage redundancy.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  training_recommender:
+    role: "Training Recommender"
+    goal: "Recommend priority training programs matched to identified gaps via semantic search"
+    backstory: |
+      You are a learning and development specialist who matches competency
+      gaps to training programs using semantic similarity. You prioritize
+      recommendations by gap criticality, team impact, and training ROI.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  assess_members:
+    description: "Assess each team member's competencies against their role requirements. Analyze performance data, certifications, and project history from the HRIS system."
+    expectedOutput: "JSON array of individual competency profiles with scores per skill and identified gaps"
+    agent: "skills_assessor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  build_team_map:
+    description: "Consolidate individual assessments into a team-wide competency map. Identify collective gaps, single points of failure, and coverage analysis."
+    expectedOutput: "Team competency map with heat map data, critical gaps, and risk analysis"
+    agent: "team_consolidator"
+    dependencies:
+      - "assess_members"
+    asyncExecution: false
+    humanInput: false
+
+  recommend_training:
+    description: "Match identified gaps to available training programs using semantic similarity. Prioritize by criticality, team impact, and ROI. Generate an action plan."
+    expectedOutput: "Prioritized training recommendations with matched programs, timelines, and expected ROI"
+    agent: "training_recommender"
+    dependencies:
+      - "build_team_map"
+    asyncExecution: false
+    humanInput: false

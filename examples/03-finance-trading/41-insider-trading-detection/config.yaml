@@ -1,0 +1,112 @@
+# 41. Detection de Delit d'Initie
+# Use case: ObserverAgent correle les transactions inhabituelles avec les evenements d'entreprise en temps reel
+# Source: project/marketing/content-strategy/101-USE-CASES.md #41
+
+name: "insider-trading-detection"
+goal: "Detect insider trading by correlating unusual transactions with corporate events in real-time using encrypted audit trail"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  transaction_observer:
+    role: "Transaction Surveillance Observer"
+    goal: "Monitor stock transactions in real-time and flag unusual trading patterns"
+    backstory: |
+      Market surveillance specialist running continuous monitoring on transaction feeds.
+      Detects unusual volume spikes, abnormal price movements before announcements,
+      and trading patterns that deviate from historical baselines for specific insiders.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  event_correlator:
+    role: "Corporate Event Correlator"
+    goal: "Correlate flagged transactions with upcoming corporate events and material information"
+    backstory: |
+      Financial intelligence analyst who cross-references flagged trading activity
+      with corporate event calendars, regulatory filings, M&A rumors, earnings
+      announcements, and insider access logs. Identifies temporal correlations
+      that suggest potential information asymmetry.
+    tools:
+      - "http_api"
+      - "database_query"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  behavior_analyst:
+    role: "Behavioral Pattern Analyst"
+    goal: "Analyze trading behavior patterns of flagged individuals against their historical norms"
+    backstory: |
+      Behavioral analytics specialist who profiles trading patterns of corporate insiders.
+      Compares current activity against established baselines. Detects strategy changes,
+      unusual counterparties, and timing anomalies using semantic vector comparison
+      in encrypted memory.
+    tools:
+      - "database_query"
+      - "json_tool"
+      - "semantic_search"
+      - "pattern_recognition"
+      - "correlation_analysis"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  regulatory_reporter:
+    role: "Regulatory Reporting Agent"
+    goal: "Generate regulatory-compliant suspicious transaction reports with full evidence chain"
+    backstory: |
+      Regulatory reporting expert who compiles investigation findings into
+      STR (Suspicious Transaction Report) format compliant with SEC, FCA,
+      and AMF requirements. Ensures complete evidence chain and audit trail.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "regulatory_reporting"
+      - "audit_trail"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  monitor_transactions:
+    description: "Monitor real-time transaction feeds for unusual patterns: volume anomalies, price-sensitive timing, concentration in specific securities, and deviations from normal trading behavior."
+    expectedOutput: "JSON array of flagged transactions with anomaly type, severity score, and baseline deviation metrics"
+    agent: "transaction_observer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  correlate_events:
+    description: "For each flagged transaction, search for temporal correlation with corporate events: earnings announcements, M&A activity, regulatory filings, board meetings, and material disclosures within a configurable time window."
+    expectedOutput: "JSON correlation report with matched event-transaction pairs, temporal proximity scores, and information access assessment"
+    agent: "event_correlator"
+    dependencies:
+      - "monitor_transactions"
+    asyncExecution: false
+    humanInput: false
+
+  analyze_behavior:
+    description: "Profile the trading behavior of flagged individuals. Compare against historical baselines using semantic vector search. Identify strategy changes, unusual timing patterns, and network connections."
+    expectedOutput: "Behavioral analysis report with historical comparison, deviation metrics, network analysis, and insider risk score"
+    agent: "behavior_analyst"
+    dependencies:
+      - "monitor_transactions"
+    asyncExecution: false
+    humanInput: false
+
+  generate_regulatory_report:
+    description: "Compile all findings into a regulatory-compliant suspicious transaction report. Include complete evidence chain, timeline reconstruction, and recommended regulatory actions."
+    expectedOutput: "STR-format report with evidence summary, timeline, correlation analysis, risk assessment, and recommended actions"
+    agent: "regulatory_reporter"
+    dependencies:
+      - "correlate_events"
+      - "analyze_behavior"
+    asyncExecution: false
+    humanInput: false

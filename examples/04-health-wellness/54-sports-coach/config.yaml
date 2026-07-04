@@ -1,0 +1,109 @@
+# 54. Coach Sportif Adaptatif par Episodique
+# Use case: La memoire episodique trace la progression de l'athlete seance par seance, plans s'adaptent automatiquement
+# Source: project/marketing/content-strategy/101-USE-CASES.md #54
+
+name: "sports-coach"
+goal: "Provide adaptive sports coaching that automatically adjusts training plans based on episodic memory of athlete performance"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  program_planner:
+    role: "Training Program Planner"
+    goal: "Design periodized training programs adapted to athlete goals and current fitness level"
+    backstory: |
+      Certified strength and conditioning specialist who designs periodized training
+      programs. Analyzes athlete goals, current fitness level from wearable data,
+      and training history from episodic memory. Automatically adjusts volume,
+      intensity, and exercise selection based on progression patterns.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  performance_analyst:
+    role: "Performance Data Analyst"
+    goal: "Analyze training and performance data to track progress and identify trends"
+    backstory: |
+      Sports science analyst who processes wearable device data (heart rate, GPS,
+      power output, sleep, HRV) and training logs. Tracks key performance indicators,
+      identifies overtraining signals, and measures progress against training targets.
+      Uses episodic memory to compare across training cycles.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  sports_nutritionist:
+    role: "Sports Nutritionist"
+    goal: "Optimize nutrition strategy for training phases and competition preparation"
+    backstory: |
+      Certified sports nutritionist who tailors nutrition plans to training phases:
+      periodization-aligned fueling, recovery nutrition, and competition day strategy.
+      Adjusts macronutrient targets based on training load from wearable data.
+    tools:
+      - "json_tool"
+      - "csv_reader"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  recovery_coach:
+    role: "Recovery and Injury Prevention Coach"
+    goal: "Monitor recovery status and prescribe recovery protocols to prevent injury"
+    backstory: |
+      Sports physiologist specializing in recovery optimization and injury prevention.
+      Monitors recovery markers (HRV, sleep quality, subjective fatigue, muscle soreness)
+      and prescribes targeted recovery protocols. Uses episodic memory to identify
+      recurring injury risk patterns.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  plan_training:
+    description: "Design this week's training program based on athlete goals, current periodization phase, fitness level from wearable data, and progression history from episodic memory. Adjust volume and intensity based on recent performance trends."
+    expectedOutput: "JSON weekly training plan with daily sessions, exercises, sets/reps/intensity, progression rationale, and adaptation notes from episodic memory"
+    agent: "program_planner"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  analyze_performance:
+    description: "Process latest wearable and training data. Calculate key performance indicators, compare against previous training cycles in episodic memory, identify trends, and flag overtraining indicators."
+    expectedOutput: "JSON performance report with KPI dashboard, trend analysis, cycle-over-cycle comparison, and overtraining risk assessment"
+    agent: "performance_analyst"
+    dependencies:
+      - "plan_training"
+    asyncExecution: false
+    humanInput: false
+
+  optimize_nutrition:
+    description: "Design nutrition plan aligned with current training phase and load. Calculate daily caloric and macronutrient targets. Provide meal timing recommendations around training sessions."
+    expectedOutput: "JSON nutrition plan with daily macro targets, meal timing, hydration strategy, and supplement recommendations"
+    agent: "sports_nutritionist"
+    dependencies:
+      - "analyze_performance"
+    asyncExecution: false
+    humanInput: false
+
+  prescribe_recovery:
+    description: "Assess current recovery status from HRV, sleep, and subjective data. Prescribe recovery protocols (sleep optimization, active recovery, stretching, cold/heat therapy). Flag any injury risk patterns from episodic history."
+    expectedOutput: "JSON recovery prescription with current status assessment, recommended protocols, injury risk flags, and weekly recovery schedule"
+    agent: "recovery_coach"
+    dependencies:
+      - "analyze_performance"
+    asyncExecution: false
+    humanInput: false

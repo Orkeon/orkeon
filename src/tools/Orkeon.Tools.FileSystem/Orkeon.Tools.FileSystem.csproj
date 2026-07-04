@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Package Metadata -->
+    <PackageId>Orkeon.Tools.FileSystem</PackageId>
+    <Authors>Orkeon Contributors</Authors>
+    <Description>File system tools for Orkeon agents</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Tools;FileSystem</PackageTags>
+    <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+    <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
+  </ItemGroup>
+</Project>

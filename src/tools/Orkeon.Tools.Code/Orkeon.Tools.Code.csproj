@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Package Metadata -->
+    <PackageId>Orkeon.Tools.Code</PackageId>
+    <Authors>Orkeon Contributors</Authors>
+    <Description>Code interpreter tool for Orkeon agents (Roslyn scripting)</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Tools;Code;Roslyn;Scripting</PackageTags>
+    <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
+  </ItemGroup>
+</Project>

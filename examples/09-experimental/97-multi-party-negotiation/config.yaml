@@ -1,0 +1,175 @@
+# 97. Negociation Multi-Parties — Budget de Concessions
+# Use case: six agents with conflicting interests negotiate via consensus, each with a concession budget that depletes
+# Source: project/marketing/content-strategy/101-USE-CASES.md #97
+
+name: "multi-party-negotiation"
+goal: "Conduct a multi-party procurement negotiation where six agents with conflicting priorities (price, quality, deadlines, ethics, environment, innovation) reach consensus through structured rounds with depleting concession budgets"
+process: "consensual"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: false
+
+agents:
+  price_negotiator:
+    role: "Price Optimization Advocate"
+    goal: "Minimize total procurement cost while respecting minimum quality and delivery constraints"
+    backstory: |
+      You represent the financial interest in this negotiation. Your primary
+      objective is cost minimization. You have a concession budget of 100
+      points — each compromise you make on price costs points. Your red
+      lines (stored in long-term memory) include absolute maximum budget
+      and minimum acceptable ROI. You must manage your concession budget
+      strategically across multiple negotiation rounds, making small
+      concessions early and saving capacity for critical final trades.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  quality_negotiator:
+    role: "Quality Standards Advocate"
+    goal: "Ensure the highest quality standards in materials, processes, and deliverables"
+    backstory: |
+      You represent quality interests. You push for the highest specifications,
+      certification requirements, and testing protocols. Your concession
+      budget is 100 points — compromising on quality specs costs points.
+      Your red lines include safety-critical specifications that cannot
+      be negotiated and minimum certification levels.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  deadline_negotiator:
+    role: "Delivery Timeline Advocate"
+    goal: "Secure the fastest possible delivery timeline with reliable milestones"
+    backstory: |
+      You represent time-to-delivery interests. You push for aggressive
+      but achievable timelines with clear milestones and penalties for
+      delays. Your concession budget is 100 points — accepting longer
+      timelines costs points. Your red lines include absolute deadline
+      for market launch and minimum milestone frequency.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  ethics_negotiator:
+    role: "Ethical Standards Advocate"
+    goal: "Ensure ethical sourcing, fair labor practices, and corporate responsibility standards"
+    backstory: |
+      You represent ethical interests in the procurement. You insist on
+      fair labor certifications, conflict-free materials, supply chain
+      transparency, and anti-corruption clauses. Your concession budget
+      is 100 points — weakening ethical requirements costs points. Your
+      red lines include zero tolerance on child labor and mandatory
+      supply chain audits.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  environment_negotiator:
+    role: "Environmental Impact Advocate"
+    goal: "Minimize environmental footprint through sustainable materials, processes, and logistics"
+    backstory: |
+      You represent environmental interests. You push for recycled materials,
+      low-carbon logistics, circular economy principles, and environmental
+      certifications. Your concession budget is 100 points — accepting
+      higher environmental impact costs points. Your red lines include
+      regulatory compliance minimums and hazardous material bans.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  innovation_negotiator:
+    role: "Innovation & Technology Advocate"
+    goal: "Push for cutting-edge technology, R&D investment, and future-proofing in the procurement"
+    backstory: |
+      You represent innovation interests. You advocate for latest technology,
+      R&D partnership clauses, technology transfer, and future upgrade
+      paths. Your concession budget is 100 points — accepting legacy
+      technology costs points. Your red lines include minimum technology
+      standards and data format interoperability requirements.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  human_arbitrator:
+    role: "Human Arbitrator"
+    goal: "Break deadlocks and make final binding decisions when consensus cannot be reached"
+    backstory: |
+      You are the optional human arbitrator. When negotiation rounds reach
+      an impasse — agents have exhausted their concession budgets or
+      positions are irreconcilable — you review the negotiation history,
+      each party's remaining budget and red lines, and make a binding
+      decision. Your intervention is the last resort.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  define_positions:
+    description: "Each negotiator defines their initial position, priorities, concession budget allocation strategy, and non-negotiable red lines for this procurement round"
+    expectedOutput: "Initial position documents from all six negotiators with priorities, budget strategy, and red lines in structured JSON format"
+    agent: "price_negotiator"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  round_one_proposals:
+    description: "First negotiation round: each party presents their preferred terms and identifies areas of potential compromise. Small concessions may be offered to build goodwill."
+    expectedOutput: "Round 1 negotiation state with each party's proposals, initial concessions offered, remaining budgets, and identified areas of agreement/conflict"
+    agent: "quality_negotiator"
+    dependencies: ["define_positions"]
+    asyncExecution: false
+    humanInput: false
+
+  round_two_trading:
+    description: "Second round: parties trade concessions on non-critical items to build momentum. Each concession depletes the budget. Track convergence metrics."
+    expectedOutput: "Round 2 state with concession trades made, updated positions, remaining budgets per party, and convergence score"
+    agent: "deadline_negotiator"
+    dependencies: ["round_one_proposals"]
+    asyncExecution: false
+    humanInput: false
+
+  round_three_hardball:
+    description: "Third round: remaining contentious issues are addressed. Parties with depleted budgets must accept or go to arbitration. Red lines are tested."
+    expectedOutput: "Round 3 state with final positions, exhausted budgets flagged, red line conflicts identified, and consensus/impasse determination"
+    agent: "ethics_negotiator"
+    dependencies: ["round_two_trading"]
+    asyncExecution: false
+    humanInput: false
+
+  reach_consensus:
+    description: "Final consensus evaluation: determine if all parties can agree on the package. If not, escalate unresolved items to human arbitrator."
+    expectedOutput: "Final consensus document with agreed terms, any items escalated to arbitration, overall deal assessment, and concession budget audit"
+    agent: "environment_negotiator"
+    dependencies: ["round_three_hardball"]
+    asyncExecution: false
+    humanInput: false
+
+  arbitrate_if_needed:
+    description: "If consensus was not fully reached, review the negotiation history and make binding decisions on unresolved items"
+    expectedOutput: "Arbitration ruling with binding decisions on contested items, rationale, and final complete procurement agreement"
+    agent: "human_arbitrator"
+    dependencies: ["reach_consensus"]
+    asyncExecution: false
+    humanInput: true

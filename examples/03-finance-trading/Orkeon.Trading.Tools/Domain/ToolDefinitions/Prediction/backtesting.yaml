@@ -1,0 +1,52 @@
+name: backtesting
+description: >
+  Performs vectorized backtesting of trading strategies on historical data.
+  Includes transaction costs, slippage, and realistic execution assumptions.
+  Calculates comprehensive performance metrics: returns, Sharpe ratio, max drawdown, win rate.
+parameters:
+  symbol:
+    type: string
+    description: "The stock symbol (e.g., 'AAPL')"
+    required: true
+  price_data:
+    type: array
+    description: "Historical OHLCV data for backtesting"
+    required: true
+  strategy_signals:
+    type: array
+    description: "Trading signals: 1 (long), -1 (short), 0 (neutral)"
+    required: true
+  initial_capital:
+    type: number
+    description: "Initial capital for backtesting (default: $100,000)"
+    required: false
+    default: 100000
+  position_size:
+    type: number
+    description: "Position size as fraction of capital (default: 1.0 = 100%)"
+    required: false
+    default: 1.0
+  commission_pct:
+    type: number
+    description: "Commission per trade as percentage (default: 0.1%)"
+    required: false
+    default: 0.001
+  slippage_pct:
+    type: number
+    description: "Slippage per trade as percentage (default: 0.05%)"
+    required: false
+    default: 0.0005
+  allow_short:
+    type: boolean
+    description: "Allow short selling"
+    required: false
+    default: false
+returns:
+  symbol: { type: string }
+  timestamp: { type: string }
+  backtest_config: { type: object }
+  performance_metrics: { type: object }
+  trade_statistics: { type: object }
+  equity_curve: { type: array }
+  final_portfolio_value: { type: number }
+  strategy_quality: { type: string }

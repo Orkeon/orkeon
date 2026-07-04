@@ -1,0 +1,147 @@
+# 98. Archeologie Numerique de Codebase Legacy
+# Use case: five agents explore an unknown codebase and produce complete documentation using composite memory
+# Source: project/marketing/content-strategy/101-USE-CASES.md #98
+# TODO: feature planifiee — Composite memory (ShortTerm: session + LongTerm: codebase mental model)
+
+name: "legacy-code-archaeology"
+goal: "Explore an unknown legacy codebase with five specialized agents that progressively build a mental model in composite memory and produce complete documentation including architecture diagrams, pattern analysis, and modernization recommendations"
+process: "sequential"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: true
+
+agents:
+  structure_cartographer:
+    role: "Codebase Structure Cartographer"
+    goal: "Map the complete file and directory structure of the codebase, identifying modules, layers, and entry points"
+    backstory: |
+      You are the first explorer of the unknown codebase. You systematically
+      traverse the directory tree, catalog file types, identify build systems,
+      count lines of code per module, and map the overall architecture.
+      You build the initial mental model in composite memory that other
+      agents will refine. You identify entry points (main, controllers,
+      APIs) and configuration files that reveal the system's structure.
+    tools:
+      - "directory_read"
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 20
+    verbose: true
+
+  git_archaeologist:
+    role: "Git History Archaeologist"
+    goal: "Analyze the repository history to understand evolution, key contributors, and change patterns"
+    backstory: |
+      You dig through the git history to uncover the codebase's story.
+      You identify the most-changed files (hotspots), map contributor
+      patterns, find major refactoring events, and trace when key decisions
+      were made. You use git blame and log analysis to understand which
+      parts are actively maintained versus abandoned. Your findings add
+      temporal context to the mental model.
+    tools:
+      - "github"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  pattern_decoder:
+    role: "Design Pattern Decoder"
+    goal: "Identify design patterns, anti-patterns, coding conventions, and architectural decisions in the codebase"
+    backstory: |
+      You are an expert at reading code and recognizing patterns. You
+      identify design patterns (MVC, Repository, Factory, Observer),
+      architectural styles (layered, microservices, monolith), anti-patterns
+      (god classes, circular dependencies, copy-paste), and implicit
+      conventions. You read key source files to understand how the original
+      developers structured their thinking. Your analysis enriches the
+      mental model with architectural insights.
+    tools:
+      - "file_read"
+      - "directory_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 20
+    verbose: true
+
+  documenter:
+    role: "Documentation Generator"
+    goal: "Transform the accumulated codebase knowledge into comprehensive, navigable documentation"
+    backstory: |
+      You synthesize all findings from the cartographer, archaeologist,
+      and pattern decoder into polished documentation. You generate
+      architecture overview documents, module descriptions, dependency
+      maps, API documentation stubs, and a developer onboarding guide.
+      The generated documentation itself becomes a new knowledge source
+      in memory for the modernization planner.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  modernization_planner:
+    role: "Modernization Strategy Planner"
+    goal: "Propose a phased modernization plan based on the complete codebase understanding"
+    backstory: |
+      You are the final agent in the archaeology pipeline. Using the
+      complete mental model built by all previous agents, you assess
+      technical debt, identify modernization priorities, and propose a
+      phased migration plan. You consider risk, business impact, and
+      dependency ordering. You propose strangler fig patterns, module
+      extraction sequences, and technology upgrade paths.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+tasks:
+  map_structure:
+    description: "Traverse the entire codebase directory tree, catalog all files by type, identify modules and layers, locate entry points, build systems, and configuration files"
+    expectedOutput: "Codebase structure map with directory tree, module inventory, file type statistics, entry points, and initial architecture hypothesis"
+    agent: "structure_cartographer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  analyze_history:
+    description: "Analyze git history to identify change hotspots, contributor patterns, major refactoring events, and maintenance status per module"
+    expectedOutput: "Git archaeology report with hotspot analysis, contributor map, timeline of major changes, and maintenance status per module"
+    agent: "git_archaeologist"
+    dependencies: ["map_structure"]
+    asyncExecution: false
+    humanInput: false
+
+  decode_patterns:
+    description: "Read key source files to identify design patterns, anti-patterns, coding conventions, dependency relationships, and architectural decisions"
+    expectedOutput: "Pattern analysis report with identified patterns/anti-patterns, dependency graph, convention catalog, and architecture assessment"
+    agent: "pattern_decoder"
+    dependencies: ["map_structure", "analyze_history"]
+    asyncExecution: false
+    humanInput: false
+
+  generate_documentation:
+    description: "Synthesize all findings into comprehensive documentation: architecture overview, module descriptions, API stubs, dependency maps, and developer onboarding guide"
+    expectedOutput: "Complete documentation package with architecture document, module guides, API documentation, dependency diagrams, and onboarding guide"
+    agent: "documenter"
+    dependencies: ["decode_patterns"]
+    asyncExecution: false
+    humanInput: false
+
+  plan_modernization:
+    description: "Assess technical debt, prioritize modernization targets, and propose a phased migration plan with risk assessment and dependency ordering"
+    expectedOutput: "Modernization plan with technical debt inventory, prioritized migration phases, risk assessment, effort estimates, and recommended technology upgrades"
+    agent: "modernization_planner"
+    dependencies: ["generate_documentation"]
+    asyncExecution: false
+    humanInput: false

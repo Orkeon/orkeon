@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Tools.Embeddings.Local</PackageId>
+    <Authors>Orkeon Contributors</Authors>
+    <Description>Local on-device embedding provider for Orkeon, based on SmartComponents.LocalEmbeddings (BGE-micro-v2 ONNX, 384 dims, CPU). No network, no API key.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Embeddings;Local;ONNX;BGE</PackageTags>
+    <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="SmartComponents.LocalEmbeddings" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

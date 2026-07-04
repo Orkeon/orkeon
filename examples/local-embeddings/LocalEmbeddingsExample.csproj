@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Orkeon.Examples.LocalEmbeddings</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Orkeon.Analysis is referenced so this example can be extended into a full RaggableTree
+         indexing demo without a csproj edit. The minimal scenario below uses the local
+         provider directly via Orkeon.Tools.Embeddings.Local. -->
+    <ProjectReference Include="..\..\src\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
+    <ProjectReference Include="..\..\src\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="sample-files\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

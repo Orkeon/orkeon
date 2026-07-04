@@ -1,0 +1,108 @@
+# 72. Test de Charge — Trending Historique + Detection Regression
+# Use case: Load testing with historical trending, reproducible benchmarks, and automatic regression detection
+# Source: project/marketing/content-strategy/101-USE-CASES.md #72
+
+name: "load-testing"
+goal: "Execute load tests with historical trending, benchmark reproducibility, and automatic performance regression detection"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  scenario_designer:
+    role: "Scenario Designer"
+    goal: "Design realistic load test scenarios based on production traffic patterns"
+    backstory: |
+      You are a performance engineer who designs load test scenarios.
+      You analyze production traffic patterns, identify critical user journeys,
+      and create representative test scenarios with realistic think times
+      and concurrency profiles.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  test_executor:
+    role: "Test Executor"
+    goal: "Execute load test scenarios and collect performance metrics"
+    backstory: |
+      You are a load testing specialist who executes performance test
+      scenarios and collects comprehensive metrics. You manage test ramp-up,
+      steady state, and cool-down phases while monitoring system health.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  results_analyzer:
+    role: "Results Analyzer"
+    goal: "Analyze test results and compare with historical baselines to detect regressions"
+    backstory: |
+      You are a performance analyst who interprets load test results.
+      You calculate percentile response times, throughput, error rates,
+      and compare current results against historical baselines to detect
+      performance regressions.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  optimization_recommender:
+    role: "Optimization Recommender"
+    goal: "Recommend performance optimizations based on test results and regression analysis"
+    backstory: |
+      You are a senior performance consultant who translates test findings
+      into actionable optimization recommendations. You prioritize by
+      impact, estimate effort, and create a performance improvement roadmap.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  design_scenarios:
+    description: "Analyze production traffic data and design load test scenarios. Define user journeys, concurrency levels, ramp-up profiles, and success criteria."
+    expectedOutput: "JSON test plan with scenarios, concurrency profiles, duration, and success thresholds"
+    agent: "scenario_designer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  execute_tests:
+    description: "Execute the designed load test scenarios. Collect response times, throughput, error rates, and system resource metrics throughout the test."
+    expectedOutput: "Raw test results with timestamped metrics, response time distributions, and error logs"
+    agent: "test_executor"
+    dependencies:
+      - "design_scenarios"
+    asyncExecution: false
+    humanInput: false
+
+  analyze_results:
+    description: "Analyze test results: calculate P50/P95/P99 response times, throughput, error rates. Compare with historical baselines and detect any performance regressions."
+    expectedOutput: "Analysis report with percentile metrics, trend comparison, regression alerts, and historical charts data"
+    agent: "results_analyzer"
+    dependencies:
+      - "execute_tests"
+    asyncExecution: false
+    humanInput: false
+
+  recommend_optimizations:
+    description: "Based on the analysis, recommend performance optimizations. Prioritize by user impact and implementation effort. Create an actionable improvement plan."
+    expectedOutput: "Optimization roadmap with prioritized recommendations, estimated impact, and implementation steps"
+    agent: "optimization_recommender"
+    dependencies:
+      - "analyze_results"
+    asyncExecution: false
+    humanInput: false

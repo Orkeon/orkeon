@@ -1,0 +1,111 @@
+# 93. Controle Qualite Visuel — Auto-Calibration par Historique
+# Use case: visual quality inspection with auto-calibration from long-term memory and reproducible benchmarks
+# Source: project/marketing/content-strategy/101-USE-CASES.md #93
+
+name: "visual-quality-control"
+goal: "Inspect manufactured parts visually using camera-connected agents, with acceptance thresholds that auto-calibrate from long-term inspection history and benchmarked SPC analysis"
+process: "sequential"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: false
+
+agents:
+  image_capturer:
+    role: "Visual Inspection Image Capturer"
+    goal: "Capture high-resolution inspection images from industrial cameras at each inspection station"
+    backstory: |
+      You interface with the industrial camera system to capture inspection
+      images at each production station. You manage camera settings
+      (exposure, focus, lighting), ensure image quality meets inspection
+      standards, and organize captured images with production batch
+      metadata for downstream analysis.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  parts_inspector:
+    role: "Visual Parts Inspector"
+    goal: "Analyze captured images to detect surface defects, dimensional deviations, and assembly errors"
+    backstory: |
+      You perform visual inspection analysis on captured images. You detect
+      surface defects (scratches, dents, discoloration), dimensional
+      deviations from spec, and assembly errors. Your acceptance thresholds
+      are calibrated from long-term memory of previous inspections, adapting
+      as the system learns from confirmed defect classifications.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "csv_reader"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  defect_classifier:
+    role: "Defect Classifier"
+    goal: "Classify detected defects by type, severity, and root cause category"
+    backstory: |
+      You classify all detected defects into standardized categories
+      (cosmetic, functional, critical). You assign severity levels, identify
+      probable root causes (tooling wear, material defect, process drift),
+      and flag patterns that suggest systemic issues. Your classification
+      accuracy improves over time using calibration from inspection history.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  spc_statistician:
+    role: "SPC Statistician"
+    goal: "Perform statistical process control analysis and track quality trends across production batches"
+    backstory: |
+      You run Statistical Process Control (SPC) analysis on inspection
+      results. You maintain control charts (X-bar, R, p-charts), calculate
+      Cpk/Ppk indices, detect process drift and out-of-control conditions.
+      You use long-term data to establish and refine control limits,
+      providing the auto-calibration feedback loop for inspection thresholds.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  capture_images:
+    description: "Capture inspection images for the current production batch from all camera stations, validate image quality, and tag with batch metadata"
+    expectedOutput: "Image capture report with captured image references, quality scores, batch identifiers, and any camera issues flagged"
+    agent: "image_capturer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  inspect_parts:
+    description: "Analyze captured images to detect defects using calibrated thresholds from historical inspection data in long-term memory"
+    expectedOutput: "Inspection results per part with pass/fail status, detected defects with locations and measurements, and confidence scores"
+    agent: "parts_inspector"
+    dependencies: ["capture_images"]
+    asyncExecution: false
+    humanInput: false
+
+  classify_defects:
+    description: "Classify all detected defects by type (cosmetic/functional/critical), assign severity levels, and identify probable root causes"
+    expectedOutput: "Defect classification report with type, severity, root cause category per defect, and pattern analysis for systemic issues"
+    agent: "defect_classifier"
+    dependencies: ["inspect_parts"]
+    asyncExecution: false
+    humanInput: false
+
+  spc_analysis:
+    description: "Update SPC control charts with current batch results, calculate process capability indices, detect drift, and recommend threshold recalibrations"
+    expectedOutput: "SPC report with control chart status, Cpk/Ppk values, out-of-control flags, process drift analysis, and calibration recommendations"
+    agent: "spc_statistician"
+    dependencies: ["classify_defects"]
+    asyncExecution: false
+    humanInput: false

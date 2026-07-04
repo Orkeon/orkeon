@@ -1,0 +1,34 @@
+# 96. Crew Evolutive Auto-Adaptative
+
+> Meta-crew where an Architect agent observes performance and dynamically reconfigures the team. IConfigurationVersioning versions each configuration. IConfigurationRollbackService restores the previous one if performance degrades.
+
+## Quality
+
+💪 Robustesse — Self-optimization with rollback, configuration versioning, continuous benchmarking
+
+## Architecture
+
+- **Process**: `sequential` (cyclic via FlowEngine)
+- **Agents**: 4 — Performance Observer, Architect Reconfigurator, Dynamic Worker Alpha, Dynamic Worker Beta
+- **Tools**: `json_tool`, `file_write`, `web_scrape`
+- **Memory**: `Redis` (metrics) + `SQLite` (versioned configurations)
+- **Key features**: IConfigurationVersioning (planned), IConfigurationRollbackService (planned), IConfigurationDiffService (planned), EvaluationSuite, ObserverAgent, IFlowEngine, BenchmarkRunner
+- **Runner**: `standard`
+
+## Prerequisites
+
+1. .NET 10 SDK
+2. Configure `appsettings.json` with your LLM API key
+3. Redis instance running for performance metrics
+
+## Run
+
+```bash
+dotnet run --project examples/runners/standard -- --config examples/09-experimental/96-self-adaptive-crew/config.yaml
+```
+
+## What this example demonstrates
+
+- Self-adaptive crew that optimizes its own configuration based on performance metrics
+- Configuration versioning with automatic rollback when new configurations underperform
+- Continuous benchmarking to ensure measurable, comparable performance across configurations

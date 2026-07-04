@@ -1,0 +1,128 @@
+# 2. Revue de Code Automatisee
+# Use case: Automated code review with 4 specialized reviewers coordinated by a manager
+# Source: project/marketing/content-strategy/101-USE-CASES.md #2
+
+name: "code-review"
+goal: "Perform comprehensive automated code review across security, performance, tests, and style dimensions with consolidated findings"
+process: "hierarchical"
+verbose: true
+memory: false
+planning: false
+managerAgent: "review_lead"
+
+agents:
+  review_lead:
+    role: "Review Lead"
+    goal: "Coordinate specialized reviewers and produce a consolidated code review report"
+    backstory: |
+      You are a senior engineering lead with 15+ years of experience managing code
+      quality across large-scale projects. You know how to decompose a review into
+      orthogonal dimensions and synthesize findings into actionable recommendations
+      prioritized by severity.
+    tools:
+      - "file_read"
+      - "directory_read"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  security_reviewer:
+    role: "Revieweur Securite"
+    goal: "Identify security vulnerabilities, injection risks, and unsafe patterns in the code"
+    backstory: |
+      You are an application security specialist (OWASP Top 10 expert). You look for
+      SQL injection, XSS, CSRF, insecure deserialization, hardcoded secrets, and
+      authentication/authorization flaws. You rate each finding by CVSS severity.
+    tools:
+      - "file_read"
+      - "directory_read"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  performance_reviewer:
+    role: "Revieweur Performance"
+    goal: "Detect performance bottlenecks, memory leaks, and inefficient algorithms"
+    backstory: |
+      You are a performance engineer who specializes in profiling and optimization.
+      You look for N+1 queries, unnecessary allocations, blocking calls in async
+      contexts, inefficient data structures, and missing caching opportunities.
+    tools:
+      - "file_read"
+      - "directory_read"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  test_reviewer:
+    role: "Revieweur Tests"
+    goal: "Evaluate test coverage, test quality, and identify untested edge cases"
+    backstory: |
+      You are a QA engineer who believes in testing as documentation. You evaluate
+      whether tests are meaningful (not just green), check for missing edge cases,
+      validate test naming conventions, and assess integration test coverage.
+    tools:
+      - "file_read"
+      - "directory_read"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  style_reviewer:
+    role: "Revieweur Style"
+    goal: "Check code style, naming conventions, documentation, and architectural consistency"
+    backstory: |
+      You are a software craftsman who values clean code, consistent naming,
+      and clear documentation. You check for SOLID violations, code smells,
+      dead code, missing XML docs, and inconsistent patterns across the codebase.
+    tools:
+      - "file_read"
+      - "directory_read"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  review_security:
+    description: "Analyze the codebase for security vulnerabilities. Check for OWASP Top 10 issues, hardcoded secrets, injection risks, and unsafe patterns. Rate each finding by severity."
+    expectedOutput: "JSON array of security findings with: file, line, severity (critical/high/medium/low), category, description, recommendation"
+    agent: "security_reviewer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  review_performance:
+    description: "Analyze the codebase for performance issues. Check for N+1 queries, blocking async calls, unnecessary allocations, inefficient algorithms, and missing caching."
+    expectedOutput: "JSON array of performance findings with: file, line, impact (high/medium/low), category, description, recommendation"
+    agent: "performance_reviewer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  review_tests:
+    description: "Evaluate test coverage and quality. Identify untested code paths, missing edge cases, flaky tests, and test quality issues."
+    expectedOutput: "JSON report with: coverage_assessment, untested_areas, edge_cases_missing, test_quality_issues, recommendations"
+    agent: "test_reviewer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  review_style:
+    description: "Check code style, naming conventions, documentation quality, and architectural consistency. Identify SOLID violations and code smells."
+    expectedOutput: "JSON array of style findings with: file, line, category (naming/documentation/architecture/smell), description, recommendation"
+    agent: "style_reviewer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  consolidate_review:
+    description: "Aggregate all review findings into a consolidated report. Prioritize issues by severity, group by file, and provide an executive summary with overall code quality score."
+    expectedOutput: "Consolidated Markdown report with executive summary, quality score (0-100), prioritized findings by severity, and actionable improvement plan"
+    agent: "review_lead"
+    dependencies:
+      - "review_security"
+      - "review_performance"
+      - "review_tests"
+      - "review_style"
+    asyncExecution: false
+    humanInput: false

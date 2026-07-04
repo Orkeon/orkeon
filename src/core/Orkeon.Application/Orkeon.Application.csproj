@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Package Metadata (package-specific overrides) -->
+    <PackageId>Orkeon.Application</PackageId>
+    <Description>Application layer for Orkeon - Use cases, services, and orchestration logic for collaborative AI agent teams.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Application;UseCases;Orchestration</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Application.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\nuget\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
+  </ItemGroup>
+
+  <!-- R4.5: typed-dictionary wrapper source generator (compile-time only). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\generators\Orkeon.Generators\Orkeon.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+  </ItemGroup>
+
+</Project>

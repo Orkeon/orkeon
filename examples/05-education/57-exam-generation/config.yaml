@@ -1,0 +1,103 @@
+# 57. Generation d'Examens Calibres par Benchmark
+# Use case: Calibrated exam generation with Bloom taxonomy coverage and benchmark-based difficulty tuning
+# Source: project/marketing/content-strategy/101-USE-CASES.md #57
+
+name: "exam-generation"
+goal: "Generate calibrated exams with guaranteed Bloom taxonomy coverage and benchmark-tuned difficulty"
+process: "consensual"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  question_designer:
+    role: "Question Designer"
+    goal: "Create diverse exam questions covering the target learning objectives"
+    backstory: |
+      You are an expert item writer with 15 years of experience creating assessment
+      questions for standardized exams. You craft questions that are clear, unambiguous,
+      and precisely target specific learning objectives.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  bloom_taxonomist:
+    role: "Bloom Taxonomist"
+    goal: "Ensure questions cover all required levels of Bloom's taxonomy"
+    backstory: |
+      You are a curriculum design specialist with deep expertise in Bloom's revised
+      taxonomy. You classify questions by cognitive level (Remember, Understand, Apply,
+      Analyze, Evaluate, Create) and ensure balanced coverage.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  psychometrician:
+    role: "Psychometrician"
+    goal: "Calibrate question difficulty using statistical methods and benchmarks"
+    backstory: |
+      You are a psychometric specialist who calibrates item difficulty using
+      Item Response Theory (IRT). You ensure the exam discriminates effectively
+      across student ability levels and meets target difficulty distribution.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  clarity_reviewer:
+    role: "Clarity Reviewer"
+    goal: "Review each question for clarity, fairness, and absence of bias"
+    backstory: |
+      You are a quality assurance reviewer for educational assessments. You check
+      for ambiguous wording, cultural bias, trick questions, and ensure each item
+      has exactly one defensible correct answer.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  design_questions:
+    description: "Create a set of exam questions targeting the specified learning objectives. Each question must include the stem, options (for MCQ), correct answer, and targeted objective."
+    expectedOutput: "JSON array of exam questions with metadata (objective, type, answer)"
+    agent: "question_designer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  classify_taxonomy:
+    description: "Classify each question by Bloom's taxonomy level. Verify that the exam covers all required cognitive levels with appropriate distribution."
+    expectedOutput: "Taxonomy classification report with coverage analysis and gap identification"
+    agent: "bloom_taxonomist"
+    dependencies:
+      - "design_questions"
+    asyncExecution: false
+    humanInput: false
+
+  calibrate_difficulty:
+    description: "Calibrate question difficulty using benchmark data and IRT models. Ensure the overall exam meets target difficulty distribution."
+    expectedOutput: "Calibration report with difficulty indices and recommended adjustments"
+    agent: "psychometrician"
+    dependencies:
+      - "design_questions"
+    asyncExecution: false
+    humanInput: false
+
+  review_clarity:
+    description: "Review all questions for clarity, fairness, and bias. Flag any problematic items and suggest improvements."
+    expectedOutput: "Quality review report with flagged items and improvement suggestions"
+    agent: "clarity_reviewer"
+    dependencies:
+      - "classify_taxonomy"
+      - "calibrate_difficulty"
+    asyncExecution: false
+    humanInput: false

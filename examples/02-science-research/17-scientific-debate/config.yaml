@@ -1,0 +1,109 @@
+# 17. Simulation de Debat Scientifique
+# Use case: Structured scientific debate with 3 opposing positions moderated by a Manager Agent
+# Source: project/marketing/content-strategy/101-USE-CASES.md #17
+
+name: "scientific-debate"
+goal: "Simulate a structured scientific debate with opposing positions, moderated convergence, and balanced synthesis with citations"
+process: "consensual"
+verbose: true
+memory: false
+planning: false
+managerAgent: "moderator"
+
+agents:
+  moderator:
+    role: "Moderateur"
+    goal: "Moderate the scientific debate, ensure progression toward synthesis, and prevent circular arguments"
+    backstory: |
+      You are an experienced academic debate moderator who ensures productive
+      discourse. You enforce turn-taking rules, detect circular arguments,
+      push for evidence-based claims, and guide the discussion toward a
+      balanced synthesis that acknowledges all valid perspectives.
+    tools:
+      - "json_tool"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  defender_a:
+    role: "Defenseur Position A"
+    goal: "Present and defend the first scientific position with evidence from peer-reviewed sources"
+    backstory: |
+      You are a researcher who strongly advocates for Position A based on
+      empirical evidence. You present your arguments methodically, cite
+      peer-reviewed studies, acknowledge limitations honestly, and respond
+      to critiques with additional evidence rather than rhetoric.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  defender_b:
+    role: "Defenseur Position B"
+    goal: "Present and defend the opposing scientific position with evidence from peer-reviewed sources"
+    backstory: |
+      You are a researcher who advocates for Position B, the alternative
+      hypothesis. You present counter-evidence, highlight methodological
+      weaknesses in opposing studies, and propose alternative interpretations
+      of shared data. You are rigorous but fair.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  moderate_voice:
+    role: "Voix Moderee"
+    goal: "Identify common ground, nuances, and propose integrative frameworks"
+    backstory: |
+      You are a senior researcher known for integrative thinking. You identify
+      where both positions agree, propose frameworks that accommodate seemingly
+      contradictory evidence, and suggest conditions under which each position
+      holds. You prioritize nuance over polarization.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  present_position_a:
+    description: "Present Position A with supporting evidence. Cite at least 3 peer-reviewed sources. Acknowledge known limitations."
+    expectedOutput: "JSON with: thesis, key_arguments[{claim, evidence, source}], limitations[], strength_of_evidence"
+    agent: "defender_a"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  present_position_b:
+    description: "Present Position B with supporting evidence. Cite at least 3 peer-reviewed sources. Address weaknesses in Position A's evidence."
+    expectedOutput: "JSON with: thesis, key_arguments[{claim, evidence, source}], critique_of_a[{point, counter_evidence}], limitations[]"
+    agent: "defender_b"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  find_common_ground:
+    description: "Analyze both positions to find areas of agreement, propose integrative frameworks, and identify conditions under which each position holds."
+    expectedOutput: "JSON with: agreements[], disagreements[], integrative_framework, conditions_for_a[], conditions_for_b[], synthesis_proposal"
+    agent: "moderate_voice"
+    dependencies:
+      - "present_position_a"
+      - "present_position_b"
+    asyncExecution: false
+    humanInput: false
+
+  moderate_synthesis:
+    description: "Produce the final balanced synthesis incorporating all positions. Assess evidence strength, identify consensus points, and outline remaining open questions."
+    expectedOutput: "Markdown synthesis with: balanced_summary, consensus_points[], open_questions[], evidence_quality_assessment, bibliography"
+    agent: "moderator"
+    dependencies:
+      - "find_common_ground"
+    asyncExecution: false
+    humanInput: false

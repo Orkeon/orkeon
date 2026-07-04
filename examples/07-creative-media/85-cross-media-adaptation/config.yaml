@@ -1,0 +1,109 @@
+# 85. Adaptation Cross-Media — Pipeline Type ComponentBase
+# Use case: Cross-media adaptation from source to target medium via typed ComponentBase pipeline
+# Source: project/marketing/content-strategy/101-USE-CASES.md #85
+
+name: "cross-media-adaptation"
+goal: "Adapt creative content from one medium to another through a typed ComponentBase transformation pipeline"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  source_analyzer:
+    role: "Source Analyzer"
+    goal: "Analyze the source medium and extract its core narrative elements"
+    backstory: |
+      You are a media analyst who deconstructs creative works to identify
+      their essential narrative elements. You extract themes, character arcs,
+      plot structure, emotional beats, and medium-specific techniques
+      from the source material.
+    tools:
+      - "file_read"
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  element_extractor:
+    role: "Key Element Extractor"
+    goal: "Extract and catalog the transferable and medium-specific elements"
+    backstory: |
+      You are a transmedia specialist who identifies which elements of
+      a creative work are universal (transferable across media) and which
+      are medium-specific. You create a structured inventory separating
+      core narrative from medium-dependent expression.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  media_adapter:
+    role: "Target Media Adapter"
+    goal: "Transform extracted elements into the conventions of the target medium"
+    backstory: |
+      You are a cross-media adaptation specialist who transforms narrative
+      elements from one medium to another. You understand the strengths,
+      constraints, and conventions of each medium and make creative
+      decisions about how to best express the story in the new format.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  format_specialist:
+    role: "Format Specialist"
+    goal: "Finalize the adaptation in the target medium's professional format"
+    backstory: |
+      You are a format specialist who delivers content in industry-standard
+      formats. Whether screenplay, game design document, podcast script,
+      or graphic novel script, you know the professional formatting
+      conventions and ensure the final output is production-ready.
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  analyze_source:
+    description: "Analyze the source creative work. Identify themes, character arcs, plot structure, emotional beats, pacing, and medium-specific techniques used."
+    expectedOutput: "JSON source analysis with themes, characters, plot structure, emotional arc, and medium-specific techniques"
+    agent: "source_analyzer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  extract_elements:
+    description: "Catalog all narrative elements as transferable (universal) or medium-specific. Create a structured inventory with adaptation notes for each element."
+    expectedOutput: "JSON element inventory with transferable/specific classification and adaptation notes per element"
+    agent: "element_extractor"
+    dependencies:
+      - "analyze_source"
+    asyncExecution: false
+    humanInput: false
+
+  adapt_to_target:
+    description: "Transform the transferable elements into the target medium's conventions. Make creative adaptation decisions and design new medium-specific expressions."
+    expectedOutput: "Adaptation document with transformed elements, creative decisions, and target medium expression plan"
+    agent: "media_adapter"
+    dependencies:
+      - "extract_elements"
+    asyncExecution: false
+    humanInput: false
+
+  format_output:
+    description: "Finalize the adaptation in the target medium's professional format. Ensure industry-standard formatting and production-ready quality."
+    expectedOutput: "Production-ready adapted content in target medium format with formatting notes and production guidelines"
+    agent: "format_specialist"
+    dependencies:
+      - "adapt_to_target"
+    asyncExecution: false
+    humanInput: false

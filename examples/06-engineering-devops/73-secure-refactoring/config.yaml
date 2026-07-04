@@ -1,0 +1,112 @@
+# 73. Refactoring Securise — Sandbox + Analyse Securite
+# Use case: Secure code refactoring with sandbox execution and security analysis before any code reaches production
+# Source: project/marketing/content-strategy/101-USE-CASES.md #73
+
+name: "secure-refactoring"
+goal: "Refactor code securely with sandbox execution and security analysis validation before any production change"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  smell_detector:
+    role: "Code Smell Detector"
+    goal: "Identify code smells, anti-patterns, and refactoring opportunities"
+    backstory: |
+      You are a code quality expert who identifies code smells using
+      established catalogs (Fowler, SonarQube rules). You detect
+      long methods, duplicated code, feature envy, god classes,
+      and other anti-patterns that warrant refactoring.
+    tools:
+      - "file_read"
+      - "directory_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  refactoring_architect:
+    role: "Refactoring Architect"
+    goal: "Design safe refactoring strategies with clear transformation steps"
+    backstory: |
+      You are a refactoring specialist who designs safe transformation
+      strategies. You plan extract method, extract class, replace conditional
+      with polymorphism, and other refactoring patterns with clear
+      before/after specifications.
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  sandbox_implementer:
+    role: "Sandbox Implementer"
+    goal: "Implement refactorings in a sandboxed environment and verify correctness"
+    backstory: |
+      You are a developer who implements refactorings in an isolated
+      sandbox environment. You apply transformations, run the code in
+      the sandbox, and verify that behavior is preserved through
+      automated testing.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "shell_command"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  regression_tester:
+    role: "Non-Regression Tester"
+    goal: "Verify that refactored code passes all existing tests and security analysis"
+    backstory: |
+      You are a QA engineer who validates that refactored code maintains
+      identical behavior. You run the full test suite, perform security
+      analysis, and verify that no regressions have been introduced.
+    tools:
+      - "file_read"
+      - "shell_command"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  detect_smells:
+    description: "Scan the codebase for code smells and anti-patterns. Catalog findings with severity, location, and recommended refactoring pattern."
+    expectedOutput: "JSON catalog of code smells with severity, location, pattern name, and refactoring recommendation"
+    agent: "smell_detector"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  design_refactoring:
+    description: "For each identified smell, design a safe refactoring strategy. Specify the transformation steps, expected before/after states, and risk assessment."
+    expectedOutput: "Refactoring plan with step-by-step transformations, risk ratings, and dependency analysis"
+    agent: "refactoring_architect"
+    dependencies:
+      - "detect_smells"
+    asyncExecution: false
+    humanInput: false
+
+  implement_in_sandbox:
+    description: "Implement the planned refactorings in a sandboxed environment. Apply transformations, execute the code, and verify basic correctness."
+    expectedOutput: "Refactored code files with sandbox execution logs and basic verification results"
+    agent: "sandbox_implementer"
+    dependencies:
+      - "design_refactoring"
+    asyncExecution: false
+    humanInput: false
+
+  verify_no_regression:
+    description: "Run the full test suite and security analysis on the refactored code. Verify zero regressions and no new security vulnerabilities."
+    expectedOutput: "Verification report with test results, security scan results, and regression analysis"
+    agent: "regression_tester"
+    dependencies:
+      - "implement_in_sandbox"
+    asyncExecution: false
+    humanInput: false

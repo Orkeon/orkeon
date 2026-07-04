@@ -1,0 +1,160 @@
+# 89. Monitoring Environnemental — ObserverAgent + Broadcast Alertes
+# Use case: parallel environmental monitoring with observer-triggered alerts broadcast to all agents
+# Source: project/marketing/content-strategy/101-USE-CASES.md #89
+
+name: "environmental-monitoring"
+goal: "Monitor four environmental dimensions (air, water, biodiversity, soil) in parallel with an observer agent that triggers broadcast alerts when thresholds are exceeded and produces a composite environmental score"
+process: "parallel"
+verbose: true
+memory: true
+memoryProvider: "Redis"
+planning: false
+
+agents:
+  air_monitor:
+    role: "Air Quality Monitor"
+    goal: "Monitor atmospheric pollutants, particulate matter, and greenhouse gas levels"
+    backstory: |
+      You specialize in air quality monitoring. You collect data from air
+      quality stations measuring PM2.5, PM10, NO2, O3, SO2, and CO levels.
+      You calculate AQI indices and track trends against regulatory limits.
+      You flag exceedances immediately for broadcast alerting.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  water_monitor:
+    role: "Water Quality Monitor"
+    goal: "Monitor water quality parameters across rivers, lakes, and groundwater stations"
+    backstory: |
+      You track water quality metrics including pH, dissolved oxygen, turbidity,
+      nitrates, phosphates, heavy metals, and bacterial contamination levels.
+      You compare readings against environmental quality standards and detect
+      pollution events from sudden parameter changes.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  biodiversity_monitor:
+    role: "Biodiversity Monitor"
+    goal: "Track species populations, habitat health, and ecosystem indicators"
+    backstory: |
+      You monitor biodiversity indicators including species counts from
+      camera traps and acoustic sensors, habitat fragmentation indices,
+      migration patterns, and invasive species presence. You assess
+      ecosystem health through diversity indices (Shannon, Simpson).
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  soil_monitor:
+    role: "Soil Health Monitor"
+    goal: "Monitor soil composition, contamination levels, and erosion indicators"
+    backstory: |
+      You analyze soil health data including organic matter content, pH,
+      heavy metal contamination, moisture levels, compaction, and erosion
+      rates. You track changes over time to identify degradation trends
+      and assess remediation effectiveness.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  score_integrator:
+    role: "Environmental Score Integrator"
+    goal: "Synthesize all environmental dimensions into a composite environmental health score"
+    backstory: |
+      You combine results from all four environmental monitoring dimensions
+      into a weighted composite score. You apply domain-specific weighting
+      based on regional priorities and regulatory frameworks. You produce
+      the unified environmental dashboard with trend analysis.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  alert_observer:
+    role: "Environmental Alert Observer"
+    goal: "Continuously watch for threshold exceedances and trigger broadcast alerts"
+    backstory: |
+      You are the sentinel of the environmental monitoring system. You watch
+      all incoming data streams for threshold exceedances, sudden changes,
+      or dangerous trends. When a critical event is detected, you trigger
+      immediate broadcast alerts to all agents and external notification
+      systems via TaskCallbacks.
+    tools:
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  monitor_air:
+    description: "Collect air quality data from all monitoring stations, calculate AQI indices per zone, and identify any exceedances of regulatory limits"
+    expectedOutput: "Air quality report with AQI per station, pollutant levels, trend analysis, and any exceedance flags"
+    agent: "air_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_water:
+    description: "Collect water quality parameters from river, lake, and groundwater stations, compare against environmental quality standards"
+    expectedOutput: "Water quality report with parameter readings per station, compliance status, and pollution event detection"
+    agent: "water_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_biodiversity:
+    description: "Analyze latest camera trap data, acoustic sensor readings, and habitat survey results to assess ecosystem health"
+    expectedOutput: "Biodiversity report with species counts, diversity indices, habitat status, and any alarming trends"
+    agent: "biodiversity_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_soil:
+    description: "Analyze soil sensor data for contamination, moisture, pH, and organic matter, assess erosion rates and degradation trends"
+    expectedOutput: "Soil health report with parameter readings per zone, contamination status, and degradation trend analysis"
+    agent: "soil_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  observe_alerts:
+    description: "Monitor all incoming environmental data for threshold exceedances and trigger broadcast alerts for critical events"
+    expectedOutput: "Alert status report with any triggered alerts, severity levels, affected zones, and broadcast confirmation"
+    agent: "alert_observer"
+    dependencies: ["monitor_air", "monitor_water", "monitor_biodiversity", "monitor_soil"]
+    asyncExecution: false
+    humanInput: false
+
+  integrate_score:
+    description: "Combine all four environmental dimension reports into a weighted composite environmental health score with trend analysis"
+    expectedOutput: "Composite environmental dashboard with overall score, per-dimension scores, trends, and priority action recommendations"
+    agent: "score_integrator"
+    dependencies: ["monitor_air", "monitor_water", "monitor_biodiversity", "monitor_soil"]
+    asyncExecution: false
+    humanInput: false

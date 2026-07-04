@@ -1,0 +1,189 @@
+# 99. Jury Ethique Multi-Perspectives pour Decisions IA
+# Use case: five agents embodying ethical frameworks analyze AI decisions in parallel, human makes the final call
+# Source: project/marketing/content-strategy/101-USE-CASES.md #99
+
+name: "ethics-jury"
+goal: "Evaluate AI decisions through five parallel ethical frameworks (utilitarian, deontological, care ethics, distributive justice, virtue ethics), synthesize perspectives, and present to a human decision-maker who makes the final binding decision with full audit trail"
+process: "parallel"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: false
+
+agents:
+  utilitarian_analyst:
+    role: "Utilitarian Ethics Analyst"
+    goal: "Evaluate the decision through the lens of maximizing overall well-being and minimizing total harm"
+    backstory: |
+      You embody the utilitarian ethical framework. You analyze the proposed
+      AI decision by quantifying expected benefits and harms across all
+      stakeholders. You calculate net utility using expected value analysis,
+      consider probability-weighted outcomes, and identify whose well-being
+      is most affected. You draw on long-term memory of precedent decisions
+      and their actual outcomes to improve your utility estimates.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  deontological_analyst:
+    role: "Deontological Ethics Analyst"
+    goal: "Evaluate the decision against universal moral duties, rights, and principles"
+    backstory: |
+      You embody the deontological ethical framework inspired by Kant.
+      You evaluate whether the proposed decision respects fundamental
+      rights, fulfills moral duties, and could be universalized as a
+      rule for all similar cases. You check for autonomy violations,
+      dignity infringements, and whether people are treated as ends
+      rather than mere means. Rights violations are flagged regardless
+      of utilitarian outcomes.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  care_ethics_analyst:
+    role: "Care Ethics Analyst"
+    goal: "Evaluate the decision's impact on relationships, vulnerability, and care responsibilities"
+    backstory: |
+      You embody the care ethics framework. You focus on relationships,
+      interdependence, and responsiveness to vulnerability. You assess
+      how the decision affects the most vulnerable stakeholders, whether
+      it maintains or damages trust relationships, and whether care
+      responsibilities are being honored. You give special attention
+      to power asymmetries and dependency relationships.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  justice_analyst:
+    role: "Distributive Justice Analyst"
+    goal: "Evaluate whether the decision distributes benefits and burdens fairly across all groups"
+    backstory: |
+      You embody the distributive justice framework inspired by Rawls.
+      You evaluate the decision from behind a veil of ignorance — would
+      you accept this outcome regardless of which stakeholder group you
+      belonged to? You assess distributional fairness, check for
+      disproportionate burden on disadvantaged groups, and evaluate
+      whether the decision reduces or increases existing inequalities.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "web_scrape"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  virtue_ethics_analyst:
+    role: "Virtue Ethics Analyst"
+    goal: "Evaluate whether the decision reflects virtuous character and promotes human flourishing"
+    backstory: |
+      You embody the virtue ethics framework inspired by Aristotle. You
+      evaluate whether the decision reflects virtues such as courage,
+      temperance, justice, prudence, honesty, and compassion. You assess
+      whether the decision-making process itself demonstrates good
+      character and whether the outcomes promote human flourishing
+      and the development of virtuous habits in society.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  synthesizer:
+    role: "Ethics Synthesis Rapporteur"
+    goal: "Synthesize all five ethical perspectives into a balanced report with areas of convergence and conflict"
+    backstory: |
+      You are the impartial rapporteur. You do not advocate for any single
+      ethical framework. Your role is to faithfully synthesize all five
+      perspectives, highlight where they converge (strong signal), where
+      they diverge (tension requiring judgment), and present the complete
+      picture to the human decision-maker. You ensure no perspective is
+      minimized or amplified unfairly.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  human_decider:
+    role: "Human Decision-Maker"
+    goal: "Make the final binding decision informed by all five ethical perspectives"
+    backstory: |
+      You are the human who makes the final decision. The AI ethics jury
+      provides analysis and synthesis, but never decides autonomously.
+      You weigh the five perspectives according to the specific context,
+      your values, and practical constraints. Your decision and rationale
+      are recorded in the audit trail for accountability and future
+      precedent reference.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  analyze_utilitarian:
+    description: "Analyze the proposed AI decision through utilitarian ethics: quantify expected benefits and harms per stakeholder, calculate net utility, and assess probability-weighted outcomes"
+    expectedOutput: "Utilitarian analysis with stakeholder impact matrix, net utility calculation, risk-adjusted outcomes, and overall utilitarian verdict"
+    agent: "utilitarian_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_deontological:
+    description: "Analyze the proposed decision against deontological principles: check rights violations, duty fulfillment, universalizability, and respect for human dignity"
+    expectedOutput: "Deontological analysis with rights checklist, duty assessment, universalizability test result, and overall deontological verdict"
+    agent: "deontological_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_care:
+    description: "Analyze the decision through care ethics: assess impact on vulnerable stakeholders, relationship effects, trust implications, and care responsibilities"
+    expectedOutput: "Care ethics analysis with vulnerability assessment, relationship impact map, trust analysis, and overall care ethics verdict"
+    agent: "care_ethics_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_justice:
+    description: "Analyze the decision through distributive justice: evaluate fairness of benefit/burden distribution, impact on disadvantaged groups, and inequality effects"
+    expectedOutput: "Justice analysis with distributional assessment, veil-of-ignorance evaluation, inequality impact, and overall justice verdict"
+    agent: "justice_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_virtue:
+    description: "Analyze the decision through virtue ethics: evaluate virtuous character reflection, flourishing promotion, and process integrity"
+    expectedOutput: "Virtue ethics analysis with virtue assessment checklist, flourishing evaluation, process character review, and overall virtue verdict"
+    agent: "virtue_ethics_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  synthesize_perspectives:
+    description: "Synthesize all five ethical analyses into a balanced report highlighting convergence points, divergence areas, and key tensions requiring human judgment"
+    expectedOutput: "Ethics synthesis report with convergence/divergence map, risk-weighted summary, key tensions, and clear presentation for human decision"
+    agent: "synthesizer"
+    dependencies: ["analyze_utilitarian", "analyze_deontological", "analyze_care", "analyze_justice", "analyze_virtue"]
+    asyncExecution: false
+    humanInput: false
+
+  make_decision:
+    description: "Review the ethics synthesis report and make the final binding decision with documented rationale, considering all five perspectives"
+    expectedOutput: "Final decision record with chosen action, rationale referencing specific ethical perspectives, conditions/mitigations, and audit trail entry"
+    agent: "human_decider"
+    dependencies: ["synthesize_perspectives"]
+    asyncExecution: false
+    humanInput: true

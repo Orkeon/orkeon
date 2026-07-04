@@ -1,0 +1,106 @@
+# 20. Veille Brevets avec Deduplication Semantique
+# Use case: Continuous patent monitoring with Redis vector search for semantic deduplication
+# Source: project/marketing/content-strategy/101-USE-CASES.md #20
+
+name: "patent-monitoring"
+goal: "Monitor patent filings continuously with semantic deduplication ensuring zero duplicates via Redis vector search"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  patent_crawler:
+    role: "Crawler EPO/USPTO"
+    goal: "Crawl patent databases (EPO, USPTO) for new filings matching defined technology domains"
+    backstory: |
+      You are a patent intelligence specialist who monitors patent offices
+      worldwide. You query EPO and USPTO APIs with precise classification codes,
+      keyword combinations, and applicant filters to identify relevant new filings
+      in target technology domains.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  domain_classifier:
+    role: "Classificateur Domaine"
+    goal: "Classify patents into technology domains and assess relevance to monitoring criteria"
+    backstory: |
+      You are a patent classification expert who maps patents to technology
+      taxonomies. You analyze claims, abstracts, and IPC codes to classify
+      patents accurately and score their relevance to the monitoring criteria.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  landscape_analyst:
+    role: "Analyste Paysage"
+    goal: "Analyze the patent landscape to identify trends, whitespace, and competitive positions"
+    backstory: |
+      You are a patent landscape analyst who identifies technology trends,
+      filing velocity changes, key applicants, geographic patterns, and
+      whitespace opportunities. You produce strategic patent intelligence
+      for R&D and IP strategy teams.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  alerter:
+    role: "Alerteur"
+    goal: "Generate targeted alerts for high-relevance patent filings and landscape changes"
+    backstory: |
+      You are a patent alert specialist who filters noise and generates
+      actionable alerts. You compare new patents against semantic vectors
+      of existing entries to deduplicate, then trigger alerts only for
+      genuinely new and significant filings.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  crawl_patents:
+    description: "Query EPO and USPTO APIs for new patent filings in the target technology domains. Extract patent number, title, abstract, claims, applicant, and filing date."
+    expectedOutput: "JSON array of patents with: patent_number, office, title, abstract, claims_summary, applicant, filing_date, ipc_codes[]"
+    agent: "patent_crawler"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  classify_patents:
+    description: "Classify each new patent into technology domains. Score relevance to monitoring criteria (0-1). Filter out low-relevance patents."
+    expectedOutput: "JSON array of classified patents with: patent_number, domain, sub_domain, relevance_score, classification_rationale"
+    agent: "domain_classifier"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_landscape:
+    description: "Analyze the patent landscape from classified patents. Identify filing trends, key applicants, geographic patterns, and whitespace opportunities."
+    expectedOutput: "JSON landscape report with: trends[], top_applicants[], geographic_distribution{}, whitespace_areas[], competitive_positions[]"
+    agent: "landscape_analyst"
+    dependencies:
+      - "crawl_patents"
+      - "classify_patents"
+    asyncExecution: false
+    humanInput: false
+
+  generate_alerts:
+    description: "Compare new patents against existing entries using semantic similarity. Generate alerts only for genuinely new, high-relevance filings. Zero duplicates."
+    expectedOutput: "JSON with: alerts[{patent_number, alert_type, relevance_score, summary}], duplicates_filtered, new_entries_added"
+    agent: "alerter"
+    dependencies:
+      - "analyze_landscape"
+    asyncExecution: false
+    humanInput: false

@@ -1,0 +1,113 @@
+# 34. Optimisation Portefeuille par Consensus
+# Use case: Trois analystes avec des philosophies d'investissement differentes doivent s'accorder, vote pondere par track record historique
+# Source: project/marketing/content-strategy/101-USE-CASES.md #34
+
+name: "portfolio-consensus"
+goal: "Optimize portfolio allocation through weighted consensus among analysts with different investment philosophies"
+process: "consensual"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  fundamental_analyst:
+    role: "Fundamental Analyst"
+    goal: "Evaluate investment opportunities based on intrinsic value, earnings quality, and financial health"
+    backstory: |
+      Value investor with 15 years experience in bottom-up fundamental analysis.
+      Focuses on discounted cash flow models, earnings quality, balance sheet strength,
+      and competitive moats. Track record weighted by historical prediction accuracy.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  technical_analyst:
+    role: "Technical Analyst"
+    goal: "Identify optimal entry/exit points and trend direction using price action and indicators"
+    backstory: |
+      Chartered Market Technician specializing in multi-timeframe technical analysis.
+      Uses momentum indicators, support/resistance levels, and volume analysis.
+      Track record weighted by historical signal accuracy.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+      - "technical_indicators"
+      - "correlation_analysis"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  macro_analyst:
+    role: "Macro Strategist"
+    goal: "Assess macro-economic environment and its impact on asset allocation"
+    backstory: |
+      Global macro strategist covering monetary policy, fiscal trends, geopolitical risks,
+      and cross-asset correlations. Provides top-down allocation guidance based on
+      economic cycle positioning. Track record weighted by historical forecast accuracy.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  risk_validator:
+    role: "Risk Manager Validator"
+    goal: "Validate consensus allocation against risk constraints and regulatory limits"
+    backstory: |
+      Portfolio risk manager ensuring the consensus allocation respects maximum drawdown limits,
+      concentration caps, liquidity requirements, and regulatory constraints.
+      Acts as the final validation gate before implementation.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+      - "mean_variance_optimization"
+      - "risk_parity"
+      - "hierarchical_risk_parity"
+      - "black_litterman"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  fundamental_assessment:
+    description: "Perform fundamental analysis on the investment universe. Evaluate each asset on valuation, earnings quality, balance sheet, and competitive position. Produce ranked recommendations with target allocations."
+    expectedOutput: "JSON with ranked assets, intrinsic value estimates, conviction scores, and recommended allocation weights"
+    agent: "fundamental_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  technical_assessment:
+    description: "Run technical analysis on the investment universe. Identify trend direction, momentum, key levels, and optimal timing signals. Produce ranked recommendations with target allocations."
+    expectedOutput: "JSON with ranked assets, trend scores, momentum readings, entry/exit levels, and recommended allocation weights"
+    agent: "technical_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  macro_assessment:
+    description: "Assess macro-economic environment and determine optimal asset class and geographic allocation. Consider economic cycle, monetary policy, and geopolitical risks."
+    expectedOutput: "JSON with macro outlook, asset class preferences, geographic tilts, and recommended allocation weights"
+    agent: "macro_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  validate_allocation:
+    description: "Validate the consensus-weighted allocation against risk limits. Check maximum drawdown, concentration, liquidity, and regulatory constraints. Adjust if needed."
+    expectedOutput: "Final validated allocation with risk metrics, any adjustments made, and compliance confirmation"
+    agent: "risk_validator"
+    dependencies:
+      - "fundamental_assessment"
+      - "technical_assessment"
+      - "macro_assessment"
+    asyncExecution: false
+    humanInput: false

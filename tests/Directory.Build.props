@@ -1,0 +1,15 @@
+<Project>
+  <!-- Importer le Directory.Build.props parent (dual-OS, Debug/Release) -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!-- Test projects never ship as NuGet packages: guards `dotnet pack
+         Orkeon.sln` against emitting parasite *.Tests packages. -->
+    <IsPackable>false</IsPackable>
+    <!-- R6.8 ratchet (tests tree) — nullable warnings resorbed to zero on
+         2026-06-12 are frozen as build errors so they cannot silently
+         re-accumulate. Extend this list as further CS rules are cleaned.
+         (Analyzer rules — CA*/xUnit* — are escalated via tests/.editorconfig.) -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS8602;CS8604</WarningsAsErrors>
+  </PropertyGroup>
+</Project>

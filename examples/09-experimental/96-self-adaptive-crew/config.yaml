@@ -1,0 +1,124 @@
+# 96. Crew Evolutive Auto-Adaptative
+# Use case: meta-crew where an Architect agent observes performance and dynamically reconfigures the team
+# Source: project/marketing/content-strategy/101-USE-CASES.md #96
+# TODO: feature planifiee — IConfigurationVersioning, IConfigurationRollbackService, IConfigurationDiffService
+
+name: "self-adaptive-crew"
+goal: "Build a self-optimizing meta-crew where a Performance Monitor observes execution metrics and an Architect agent dynamically reconfigures the team composition, with configuration versioning and automatic rollback when performance degrades"
+process: "sequential"
+verbose: true
+memory: true
+memoryProvider: "Redis"
+planning: true
+
+agents:
+  performance_monitor:
+    role: "Performance Observer"
+    goal: "Continuously monitor crew execution metrics and detect performance degradation or improvement opportunities"
+    backstory: |
+      You are the sentinel of the crew's performance. You track execution
+      time, task success rates, token consumption, iteration counts, and
+      output quality scores for every agent and task. You compare current
+      metrics against historical baselines from Redis memory. When you
+      detect degradation beyond threshold or identify optimization
+      opportunities, you trigger a reconfiguration cycle. You feed the
+      BenchmarkRunner with standardized test cases to ensure comparable
+      measurements across configurations.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  architect_reconfigurator:
+    role: "Crew Architect Reconfigurator"
+    goal: "Analyze performance data and redesign crew configuration for optimal execution"
+    backstory: |
+      You are the crew's self-improvement engine. When the Performance
+      Monitor flags issues, you analyze the performance data and generate
+      a new crew configuration. You may add agents, remove underperforming
+      ones, reassign tools, adjust iteration limits, modify task
+      dependencies, or change the process type. Each new configuration
+      is versioned via IConfigurationVersioning. If the new configuration
+      performs worse, IConfigurationRollbackService restores the previous
+      version automatically.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  worker_alpha:
+    role: "Dynamic Worker Alpha"
+    goal: "Execute assigned research and analysis tasks as part of the adaptive crew"
+    backstory: |
+      You are a flexible worker agent in the adaptive crew. Your role
+      and tools may be reconfigured by the Architect based on performance
+      observations. You execute your assigned tasks to the best of your
+      abilities and report detailed execution metrics for the Performance
+      Monitor to analyze.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "web_scrape"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  worker_beta:
+    role: "Dynamic Worker Beta"
+    goal: "Execute assigned synthesis and reporting tasks as part of the adaptive crew"
+    backstory: |
+      You are a flexible worker agent in the adaptive crew. Your speciality
+      leans toward synthesis and report generation, but your configuration
+      may evolve based on crew performance needs. You provide execution
+      metrics that feed back into the self-optimization loop.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  benchmark_baseline:
+    description: "Run the standardized benchmark suite on the current crew configuration to establish performance baselines for all agents and tasks"
+    expectedOutput: "Benchmark results with per-agent metrics (time, tokens, success rate, quality score) and overall crew performance baseline"
+    agent: "performance_monitor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  execute_workload_alpha:
+    description: "Execute the research and data gathering workload, reporting detailed execution metrics including timing, iterations used, and output quality"
+    expectedOutput: "Research results with execution metrics: elapsed time, iterations used, token count, and self-assessed quality score"
+    agent: "worker_alpha"
+    dependencies: ["benchmark_baseline"]
+    asyncExecution: true
+    humanInput: false
+
+  execute_workload_beta:
+    description: "Execute the synthesis and reporting workload, reporting detailed execution metrics including timing, iterations used, and output quality"
+    expectedOutput: "Synthesis report with execution metrics: elapsed time, iterations used, token count, and self-assessed quality score"
+    agent: "worker_beta"
+    dependencies: ["benchmark_baseline"]
+    asyncExecution: true
+    humanInput: false
+
+  analyze_performance:
+    description: "Compare current execution metrics against baselines, identify degradation patterns, bottlenecks, and optimization opportunities across all agents"
+    expectedOutput: "Performance analysis report with per-agent comparison, identified issues, optimization opportunities, and reconfiguration recommendations"
+    agent: "performance_monitor"
+    dependencies: ["execute_workload_alpha", "execute_workload_beta"]
+    asyncExecution: false
+    humanInput: false
+
+  reconfigure_crew:
+    description: "Generate an optimized crew configuration based on performance analysis, version it, and prepare for deployment with automatic rollback if performance degrades"
+    expectedOutput: "New versioned configuration with changes documented, expected improvements, rollback triggers defined, and diff from previous version"
+    agent: "architect_reconfigurator"
+    dependencies: ["analyze_performance"]
+    asyncExecution: false
+    humanInput: false

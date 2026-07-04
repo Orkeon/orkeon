@@ -1,0 +1,112 @@
+# 76. Studio Narratif — FlowEngine Cyclique + Memoire Composite 3 Couches
+# Use case: Narrative studio with cyclic creation-revision via FlowEngine and 3-layer composite memory
+# Source: project/marketing/content-strategy/101-USE-CASES.md #76
+# TODO: feature planifiee — FlowEngine (IFlowEngine + FlowState) + Composite memory
+
+name: "narrative-studio"
+goal: "Create narrative content through cyclic creation-revision with 3-layer composite memory maintaining narrative coherence"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  plot_writer:
+    role: "Plot Writer"
+    goal: "Develop compelling story arcs and plot structures"
+    backstory: |
+      You are a master storyteller who crafts compelling narratives.
+      You develop plot arcs with proper pacing, rising action, climax,
+      and resolution. You maintain narrative tension and ensure
+      thematic coherence across chapters.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  dialogue_writer:
+    role: "Dialogue Writer"
+    goal: "Write authentic dialogue that reveals character and advances the plot"
+    backstory: |
+      You are a dialogue specialist who gives each character a distinct
+      voice. You write conversations that reveal personality, advance
+      the story, and create subtext. You ensure dialogue serves both
+      characterization and narrative purpose.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  artistic_director:
+    role: "Artistic Director"
+    goal: "Define and maintain the visual and atmospheric tone of the narrative"
+    backstory: |
+      You are an artistic director who defines the visual language
+      and atmospheric tone of the narrative. You create mood boards,
+      scene descriptions, and environmental details that support
+      the story's emotional beats.
+    tools:
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  coherence_editor:
+    role: "Coherence Editor"
+    goal: "Ensure narrative coherence across all story elements and chapters"
+    backstory: |
+      You are a continuity editor who maintains coherence across the
+      entire narrative. You check character consistency, timeline accuracy,
+      world-building rules, and unresolved plot threads. You reference
+      the project bible for canon verification.
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  develop_plot:
+    description: "Develop the current chapter's plot arc. Advance the story while maintaining consistency with the project bible and previous chapters stored in memory."
+    expectedOutput: "Chapter plot outline with scene breakdown, character arcs, and key plot points"
+    agent: "plot_writer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  write_dialogue:
+    description: "Write dialogue for the chapter scenes. Each character must have a distinct voice. Dialogue should reveal character and advance the plot naturally."
+    expectedOutput: "Scene scripts with dialogue, stage directions, and character notes"
+    agent: "dialogue_writer"
+    dependencies:
+      - "develop_plot"
+    asyncExecution: false
+    humanInput: false
+
+  set_atmosphere:
+    description: "Define the visual and atmospheric elements for each scene. Create mood descriptions, environmental details, and sensory cues that support the emotional tone."
+    expectedOutput: "Atmospheric guide with mood descriptions, visual references, and sensory details per scene"
+    agent: "artistic_director"
+    dependencies:
+      - "develop_plot"
+    asyncExecution: false
+    humanInput: false
+
+  verify_coherence:
+    description: "Review all chapter elements for narrative coherence. Check character consistency, timeline accuracy, world-building rules, and identify any continuity errors."
+    expectedOutput: "Coherence report with continuity check results, identified issues, and correction suggestions"
+    agent: "coherence_editor"
+    dependencies:
+      - "write_dialogue"
+      - "set_atmosphere"
+    asyncExecution: false
+    humanInput: false

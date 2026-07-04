@@ -1,0 +1,49 @@
+# Continuous integration — build + test on every push to main and every PR into main.
+#
+# Hosted runners (ubuntu-latest) only have ~14 GB free disk, but this repo pulls
+# heavy native deps (treesitter.dotnet ~640 MB, onnxruntime ~300 MB, openxml, etc.)
+# across 22 projects in Release. The first step frees ~20 GB so the build fits.
+#
+# The test phase runs unit + fast tests only. It EXCLUDES:
+#   - Category=Integration → Testcontainers DB tests (pull GBs of MsSql/Postgres/
+#     MySql/MariaDb/MongoDb images — the actual cause of "No space left on device",
+#     plus the ~26 min runtime). They stay runnable locally / in a nightly job.
+#   - Category=Slow
+#   - Orkeon.Tools.Embeddings.Local.Tests → SIGSEGVs at teardown (exit 139); all its
+#     tests still PASS, so it is re-run separately as a non-blocking step.
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free up runner disk space
+        run: |
+          echo "Avant:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          echo "Après:"; df -h / | tail -1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore Orkeon.sln
+      - run: dotnet build Orkeon.sln -c Release --no-restore
+      # Unit + fast tests only (see header for what's excluded and why).
+      - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow&FullyQualifiedName!~Orkeon.Tools.Embeddings.Local"
+      # Embeddings assembly alone, tolerating its known exit-139 teardown crash.
+      - run: dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build
+        continue-on-error: true

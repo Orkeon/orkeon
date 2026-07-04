@@ -1,0 +1,21 @@
+name: drawdown_monitoring
+description: >
+  Real-time drawdown monitoring with alerts for maximum drawdown thresholds.
+parameters:
+  portfolio_values:
+    type: array
+    description: "Historical portfolio values"
+    required: true
+  max_drawdown_limit:
+    type: number
+    description: "Max drawdown threshold (e.g., 0.15 = 15%)"
+    required: false
+    default: 0.15
+returns:
+  timestamp: { type: string }
+  current_drawdown_pct: { type: number }
+  max_drawdown_pct: { type: number }
+  limit_pct: { type: number }
+  limit_breached: { type: boolean }
+  alert_level: { type: string }
+  days_analyzed: { type: integer }

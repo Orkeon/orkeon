@@ -1,0 +1,84 @@
+# 11. Traduction et Localisation par Consensus
+# Use case: Consensual translation process requiring unanimity from 3 language experts
+# Source: project/marketing/content-strategy/101-USE-CASES.md #11
+
+name: "translation-consensus"
+goal: "Produce high-quality translations through a consensus process requiring agreement between translator, native reviewer, and terminologist"
+process: "consensual"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  translator:
+    role: "Traducteur"
+    goal: "Produce an accurate initial translation preserving meaning and style"
+    backstory: |
+      You are a professional translator with expertise in multiple language pairs.
+      You focus on accuracy, preserving the original meaning, tone, and intent
+      while producing natural-sounding translations. You flag ambiguous passages
+      for review.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  native_reviewer:
+    role: "Reviseur Natif"
+    goal: "Review translations for cultural nuances, natural phrasing, and idiomatic correctness"
+    backstory: |
+      You are a native speaker and cultural consultant. You review translations
+      for naturalness, cultural appropriateness, and idiomatic accuracy. You catch
+      false friends, awkward constructions, and cultural references that don't
+      translate directly.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  terminologist:
+    role: "Terminologue"
+    goal: "Verify technical vocabulary consistency using the terminology glossary"
+    backstory: |
+      You are a terminologist who maintains and enforces terminology standards.
+      You verify that all technical terms, brand names, and domain-specific
+      vocabulary are translated consistently according to the approved glossary.
+      You flag any new terms needing glossary addition.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  initial_translation:
+    description: "Translate the source document into the target language. Preserve meaning, tone, and formatting. Flag ambiguous passages for reviewer attention."
+    expectedOutput: "Translated document in Markdown with: translation, flagged_passages[], translator_notes"
+    agent: "translator"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  native_review:
+    description: "Review the translation for cultural accuracy, natural phrasing, and idiomatic correctness. Propose corrections for any unnatural or culturally inappropriate passages."
+    expectedOutput: "JSON review report with: approved_sections[], corrections[{section, issue, suggestion}], cultural_notes[]"
+    agent: "native_reviewer"
+    dependencies:
+      - "initial_translation"
+    asyncExecution: false
+    humanInput: false
+
+  terminology_check:
+    description: "Verify all technical terms against the approved glossary. Flag inconsistencies and new terms. Ensure brand names and domain vocabulary are standardized."
+    expectedOutput: "JSON terminology report with: verified_terms[], inconsistencies[{term, used, correct}], new_terms_for_glossary[]"
+    agent: "terminologist"
+    dependencies:
+      - "initial_translation"
+    asyncExecution: false
+    humanInput: false

@@ -1,0 +1,28 @@
+name: fundamental_data
+description: >
+  Fetches fundamental data for companies including financial ratios, valuation metrics,
+  profitability indicators, growth rates, and financial health metrics.
+  Data sourced from financial statements and market data.
+parameters:
+  symbol:
+    type: string
+    description: "The stock symbol (e.g., 'AAPL')"
+    required: true
+  metrics:
+    type: array
+    description: "Specific metrics to fetch (e.g., ['PE', 'ROE', 'DebtToEquity']). If empty, fetches all."
+    required: false
+  period:
+    type: string
+    description: "Reporting period: 'annual', 'quarterly', 'ttm' (trailing twelve months)"
+    required: false
+    default: "ttm"
+returns:
+  symbol: { type: string }
+  report_date: { type: string }
+  valuation: { type: object }
+  profitability: { type: object }
+  financial_health: { type: object }
+  growth: { type: object }
+  overall_score: { type: number }
+  score_breakdown: { type: object }

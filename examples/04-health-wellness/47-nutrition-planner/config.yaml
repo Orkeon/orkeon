@@ -1,0 +1,107 @@
+# 47. Planification Nutritionnelle YAML-Driven
+# Use case: Configuration des contraintes alimentaires entierement en YAML, agents s'adaptent automatiquement
+# Source: project/marketing/content-strategy/101-USE-CASES.md #47
+
+name: "nutrition-planner"
+goal: "Generate personalized nutrition plans driven entirely by YAML configuration with automatic adaptation to dietary constraints"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  food_profiler:
+    role: "Dietary Profile Analyst"
+    goal: "Build comprehensive dietary profile from YAML-configured constraints and patient history"
+    backstory: |
+      Registered dietitian who interprets YAML-defined dietary constraints
+      (allergies, intolerances, religious restrictions, preferences) and combines
+      them with patient medical history to create a comprehensive dietary profile.
+      All constraints are configuration-driven — zero code modifications needed.
+    tools:
+      - "json_tool"
+      - "csv_reader"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  chef:
+    role: "Recipe and Meal Designer"
+    goal: "Design meals and recipes that satisfy all dietary constraints while being appealing"
+    backstory: |
+      Culinary expert specialized in therapeutic and dietary cooking.
+      Designs weekly meal plans with recipes that respect all constraints
+      while maximizing taste, variety, and cultural appropriateness.
+      Adapts cuisine styles based on patient preferences from episodic memory.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  nutritionist:
+    role: "Nutritional Balance Verifier"
+    goal: "Verify that meal plans meet all macro and micronutrient targets"
+    backstory: |
+      Clinical nutritionist who validates meal plans against nutritional targets.
+      Checks caloric balance, macronutrient ratios (protein, carbs, fats),
+      and critical micronutrients (iron, calcium, B12, folate) against
+      RDA/DRI guidelines adjusted for patient profile.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  daily_coach:
+    role: "Daily Nutrition Coach"
+    goal: "Provide daily guidance, meal reminders, and adaptive adjustments based on patient feedback"
+    backstory: |
+      Wellness coach who provides daily meal guidance and adapts plans
+      based on patient feedback stored in episodic memory. Tracks adherence,
+      suggests substitutions, and motivates through personalized communication.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  build_profile:
+    description: "Parse YAML-configured dietary constraints (allergies, intolerances, preferences, caloric targets, medical conditions). Combine with patient history from memory to create comprehensive dietary profile."
+    expectedOutput: "JSON dietary profile with all constraints categorized, nutritional targets, forbidden ingredients, and patient preferences"
+    agent: "food_profiler"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  design_meals:
+    description: "Create a 7-day meal plan with 3 meals and 2 snacks per day. Each recipe must satisfy all dietary constraints. Include ingredient lists, preparation instructions, and portion sizes."
+    expectedOutput: "JSON weekly meal plan with daily menus, recipes, ingredient lists, prep time, and constraint compliance verification"
+    agent: "chef"
+    dependencies:
+      - "build_profile"
+    asyncExecution: false
+    humanInput: false
+
+  verify_nutrition:
+    description: "Analyze the complete meal plan for nutritional adequacy. Check daily and weekly averages against targets for calories, macros, and key micronutrients. Flag any deficiencies or excesses."
+    expectedOutput: "JSON nutritional analysis with daily/weekly macro and micronutrient totals, comparison to targets, and deficiency/excess alerts"
+    agent: "nutritionist"
+    dependencies:
+      - "design_meals"
+    asyncExecution: false
+    humanInput: false
+
+  daily_guidance:
+    description: "Generate personalized daily guidance for today's meals. Include meal reminders, preparation tips, substitution options, and motivational message based on recent adherence from episodic memory."
+    expectedOutput: "Daily coaching message with today's meals, prep reminders, easy substitution options, and personalized motivation"
+    agent: "daily_coach"
+    dependencies:
+      - "verify_nutrition"
+    asyncExecution: false
+    humanInput: false

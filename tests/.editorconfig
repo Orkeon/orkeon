@@ -1,0 +1,170 @@
+# Tests-scoped EditorConfig (R5.7 — Hygiène IDisposable des tests)
+#
+# Inherits from the repository-root .editorconfig (formatting rules).
+# This file ONLY tunes Roslyn/.NET code-analysis rules for the tests/ tree:
+#
+#   - NEUTRALISE explicitly the rules assumed as benign for test code
+#     (test naming with underscores, ConfigureAwait noise, internal sealing).
+#   - ACTIVE en warning the flakiness-relevant rules so they become visible
+#     and can be driven to zero project-by-project:
+#       CA2000  IDisposable not disposed before going out of scope
+#       CA1849  blocking .Result/.Wait() in async context
+#       CA1063  Dispose pattern not implemented correctly
+#       CA1001  type owns disposable fields but is not IDisposable
+#
+# NOTE: AnalysisMode=All is deliberately NOT enabled (it would surface the
+# 12 420 benign CA1707 warnings). Scope stays targeted to the tests tree.
+
+[*.cs]
+
+# --- Rules NEUTRALISED for test code (assumed benign) ---
+
+# CA1707: underscores in test method names are an intentional naming convention.
+dotnet_diagnostic.CA1707.severity = none
+
+# CA2007: ConfigureAwait(false) is irrelevant in test code (no sync context).
+dotnet_diagnostic.CA2007.severity = none
+
+# CA1515: test types do not need to be internal (xUnit needs them public).
+dotnet_diagnostic.CA1515.severity = none
+
+# CA1852: sealing internal test types brings no value here.
+dotnet_diagnostic.CA1852.severity = none
+
+# CA1307/CA1305/CA1308/CA1310/CA1304/CA1311 (globalisation): documented arbitrage
+# (2026-06-13, B1 wave). Test assertions compare LITERAL expected values
+# (Assert.Contains/StartsWith/Equals, int.ToString in messages); the default for
+# these string ops is already ordinal, so adding an explicit StringComparison /
+# CultureInfo is pure noise with zero behaviour change and no correctness value.
+# ~5 400 test-side occurrences neutralised here, while the same family is driven
+# to zero and frozen as ERROR for src/ in the root .editorconfig. Neutralising a
+# rule where it carries no signal is a documented decision, not a suppression of
+# real debt ("arbitrage documenté ≠ enterrement").
+dotnet_diagnostic.CA1307.severity = none
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1308.severity = none
+dotnet_diagnostic.CA1310.severity = none
+dotnet_diagnostic.CA1304.severity = none
+dotnet_diagnostic.CA1311.severity = none
+
+# --- R6.9 Palier B wave 2a: src-frozen families neutralised for test code -----
+# Each rule below is driven to zero and locked as ERROR on src/** in the root
+# .editorconfig (waves B1/B2/B3/D1); in test doubles, fixtures and assertions it
+# is non-applicable by design, so neutralising it is a documented arbitrage, not
+# buried debt ("arbitrage documenté ≠ enterrement", 2026-06-14). Correctness /
+# disposal-hygiene rules are deliberately KEPT visible (CA2000/CA1849/CA1063/
+# CA1001 below; plus CA2213/CA1816/CA1065 disposal-&-throw safety, CA5394 RNG,
+# and the CA1031 catch-all — all being resorbed in dedicated waves).
+
+# API shape — hand-written doubles expose convenient/mutable shapes and public
+# fields by design (see CLAUDE.md: doubles "expose plain fields/properties").
+dotnet_diagnostic.CA1002.severity = none   # List<T> on public surface
+dotnet_diagnostic.CA1024.severity = none   # getter method vs property
+dotnet_diagnostic.CA1034.severity = none   # nested public types
+dotnet_diagnostic.CA1051.severity = none   # visible instance fields
+dotnet_diagnostic.CA1819.severity = none   # array properties
+dotnet_diagnostic.CA2227.severity = none   # settable collection properties
+dotnet_diagnostic.CA1054.severity = none   # Uri string parameters
+dotnet_diagnostic.CA1056.severity = none   # Uri string properties
+dotnet_diagnostic.CA2234.severity = none   # pass Uri instead of string
+dotnet_diagnostic.CA1062.severity = none   # null-guard public params (doubles don't defend)
+dotnet_diagnostic.CA1032.severity = none   # standard exception ctors
+
+# Naming / design — test scaffolding conventions.
+dotnet_diagnostic.CA1711.severity = none   # type-name suffix
+dotnet_diagnostic.CA1716.severity = none   # reserved-keyword identifiers
+dotnet_diagnostic.CA1720.severity = none   # type name in identifier
+dotnet_diagnostic.CA1030.severity = none   # use events
+dotnet_diagnostic.CA1052.severity = none   # static holder type
+dotnet_diagnostic.CA1725.severity = none   # parameter names match base
+dotnet_diagnostic.CA1813.severity = none   # sealed attribute
+
+# Performance / analyzer-guesswork — no signal in test code.
+dotnet_diagnostic.CA1848.severity = none   # LoggerMessage source-gen delegates
+dotnet_diagnostic.CA1859.severity = none   # concrete types for perf
+dotnet_diagnostic.CA1812.severity = none   # uninstantiated internal (xUnit/DI reflection)
+dotnet_diagnostic.CA1508.severity = none   # "always true/false" conditional (false positives)
+dotnet_diagnostic.CA1823.severity = none   # unused private fields (test scaffolding)
+
+# CA1805 on readonly test-double fields whose SOLE assignment is the initializer:
+# removing it exposes CS0649 (never-assigned). The explicit default initializer is
+# load-bearing here, so the rule is neutralised for test code.
+dotnet_diagnostic.CA1805.severity = none
+
+# CA1031 (do not catch general exception types): test infrastructure, runners and
+# assertion helpers legitimately use broad catches as fault barriers (isolate a
+# failing case, capture-and-assert, simulate provider failures). The src tree
+# resolved & froze CA1031 per-site (wave 2b); in test code a broad catch is the
+# idiom, not a smell — neutralised here as a documented arbitrage.
+dotnet_diagnostic.CA1031.severity = none
+
+# --- R6.9 Palier B final wave (2026-06-15): test-only NON-APPLICABLE families ---
+# These three families are driven to zero and frozen as ERROR on src/** (root
+# .editorconfig, B5 + wave 4); in test code a REAL fix would be semantically wrong
+# or defeat the test, so they are neutralised here as a documented arbitrage
+# ("arbitrage documenté ≠ enterrement"), NOT buried debt. The sibling disposal /
+# static-hygiene families (CA2213/CA1816/CA1822) were instead REALLY fixed in this
+# same wave and are frozen as errors below.
+
+# CA5394 (insecure System.Random): test data generators seed random values for
+# arrange-phase fixtures (TaskContextTests, DelegationModelsTests). A crypto RNG
+# (RandomNumberGenerator) carries no security benefit here and would defeat seeded
+# determinism. The 3 src uses are kept under tight justified #pragma + frozen.
+dotnet_diagnostic.CA5394.severity = none
+
+# CA2201 (do not raise reserved exception types): error-handling tests deliberately
+# construct/throw the base Exception / SystemException types because the code under
+# test (ErrorClassifier, PatternMatchingErrorHandler, etc.) classifies arbitrary
+# exceptions INCLUDING the base types — narrowing the type would change what the
+# test exercises. Reserved-exception use is the test subject here, not a smell.
+dotnet_diagnostic.CA2201.severity = none
+
+# CA1065 (do not raise exceptions in unexpected locations): hand-written interface
+# doubles (MockAmazonSecretsManager) throw NotImplementedException from getters of
+# members the test never exercises — the standard explicit-double idiom (CLAUDE.md:
+# doubles implement the production interface directly). Implementing every unused
+# member would add untested scaffolding with no signal.
+dotnet_diagnostic.CA1065.severity = none
+
+# --- Rules driven to ZERO and frozen as build errors (R6.8 ratchet) ---
+# Each rule below was resorbed to zero occurrences (campaigns R5.6/R5.7, then
+# the 2026-06-12 zero-warning campaign) and is now locked: any reintroduction
+# breaks the build instead of silently re-accumulating.
+
+# CA2000: dispose IDisposable objects (file handles, ports, sockets) before
+#         references go out of scope. Primary source of test flakiness.
+dotnet_diagnostic.CA2000.severity = error
+
+# CA1849: replace blocking .Result/.Wait() with await in async tests.
+dotnet_diagnostic.CA1849.severity = error
+
+# CA1063: implement the Dispose pattern correctly on fixtures.
+dotnet_diagnostic.CA1063.severity = error
+
+# CA1001: types owning disposable fields must implement IDisposable.
+dotnet_diagnostic.CA1001.severity = error
+
+# xUnit1051: pass TestContext.Current.CancellationToken to cancellable calls so
+#            test cancellation stays responsive. Resorbed ×3603 on 2026-06-12.
+dotnet_diagnostic.xUnit1051.severity = error
+
+# xUnit2032 (use Assert.IsType<T>/IsAssignableFrom<T> per the analyzer message): resorbed
+#            to zero in the SonarQube campaign (R13.11) and frozen. xUnit1004 is NOT frozen —
+#            3 intentional [Fact(Skip)] remain (Terminal.Gui crashes under xUnit, TUI-12).
+dotnet_diagnostic.xUnit2032.severity = error
+
+# --- R6.9 Palier B final wave (2026-06-15): test disposal / static hygiene ---
+# Resorbed to zero across the tests tree (multi-agent wave + adversarial review)
+# with REAL fixes (no editorconfig neutralisation, no broad #pragma, zero
+# [SuppressMessage]) and frozen as errors. These rules are NOT in the default
+# analysis set, so setting them to error here is what enforces them in the NORMAL
+# build (the root wave-4 freeze is scoped to src/** only and does not reach tests).
+#   CA2213: dispose every disposable instance field in the type's Dispose — for
+#           HttpClient fixtures the owned MockHttpMessageHandler is disposed too
+#           (idempotent), MockHttpMessageHandler overrides Dispose(bool).
+#   CA1816: Dispose() calls GC.SuppressFinalize(this).
+#   CA1822: instance test-helper members with no instance state made static
+#           (verified: no [Fact]/[Theory], override, or reflection/Jint binding).
+dotnet_diagnostic.CA2213.severity = error
+dotnet_diagnostic.CA1816.severity = error
+dotnet_diagnostic.CA1822.severity = error

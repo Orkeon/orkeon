@@ -1,0 +1,132 @@
+# 82. Curation de Newsletter — Scraping Parallele + Deduplication
+# Use case: Newsletter curation with parallel scraping from multiple sources and semantic deduplication
+# Source: project/marketing/content-strategy/101-USE-CASES.md #82
+
+name: "newsletter-curation"
+goal: "Curate newsletter content through parallel multi-source scraping with semantic deduplication"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  news_collector:
+    role: "News Collector"
+    goal: "Collect breaking news and trending articles from news sources"
+    backstory: |
+      You are a news aggregation specialist who monitors major news
+      outlets and wire services. You identify breaking stories, trending
+      topics, and newsworthy articles relevant to the newsletter's
+      target audience.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  blog_collector:
+    role: "Blog Collector"
+    goal: "Collect insightful blog posts and opinion pieces from industry thought leaders"
+    backstory: |
+      You are a content curator specialized in industry blogs and
+      thought leadership. You find insightful analysis, opinion pieces,
+      and how-to articles from respected bloggers and industry experts.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  paper_collector:
+    role: "Paper Collector"
+    goal: "Collect relevant academic papers and research publications"
+    backstory: |
+      You are a research curator who monitors academic preprint servers,
+      journal publications, and conference proceedings. You identify
+      accessible and impactful research relevant to the newsletter audience.
+    tools:
+      - "http_api"
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  relevance_curator:
+    role: "Relevance Curator"
+    goal: "Filter and rank collected content by relevance and deduplicate similar articles"
+    backstory: |
+      You are an editorial curator who filters content for relevance
+      and quality. You apply semantic deduplication to remove similar
+      articles, rank content by audience value, and select the best
+      pieces for the newsletter.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  format_editor:
+    role: "Format Editor"
+    goal: "Format selected content into the newsletter template with summaries and commentary"
+    backstory: |
+      You are a newsletter editor who transforms curated content into
+      engaging newsletter sections. You write concise summaries, add
+      editorial commentary, create section headers, and format everything
+      for the newsletter template.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  collect_news:
+    description: "Scrape major news sources for relevant articles. Collect headlines, summaries, URLs, publication dates, and source credibility scores."
+    expectedOutput: "JSON array of news articles with title, summary, URL, date, source, and relevance score"
+    agent: "news_collector"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  collect_blogs:
+    description: "Scrape industry blogs and thought leadership platforms. Collect insightful posts with author info, key takeaways, and engagement metrics."
+    expectedOutput: "JSON array of blog posts with title, author, summary, key takeaways, URL, and engagement data"
+    agent: "blog_collector"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  collect_papers:
+    description: "Search academic sources for relevant research. Collect paper titles, abstracts, key findings, and accessibility information."
+    expectedOutput: "JSON array of papers with title, authors, abstract, key findings, URL, and access type"
+    agent: "paper_collector"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  curate_and_deduplicate:
+    description: "Merge all collected content, apply semantic deduplication to remove similar items, rank by audience relevance, and select the top articles for the newsletter."
+    expectedOutput: "Curated content list with ranked selections, deduplication report, and editorial recommendations"
+    agent: "relevance_curator"
+    dependencies:
+      - "collect_news"
+      - "collect_blogs"
+      - "collect_papers"
+    asyncExecution: false
+    humanInput: false
+
+  format_newsletter:
+    description: "Format the curated content into the newsletter template. Write section headers, content summaries, editorial commentary, and call-to-action links."
+    expectedOutput: "Formatted newsletter content with sections, summaries, commentary, and links ready for publishing"
+    agent: "format_editor"
+    dependencies:
+      - "curate_and_deduplicate"
+    asyncExecution: false
+    humanInput: false

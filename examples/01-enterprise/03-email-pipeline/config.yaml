@@ -1,0 +1,99 @@
+# 3. Pipeline de Traitement d'Emails
+# Use case: Sequential email processing pipeline with triage, extraction, drafting, and human validation
+# Source: project/marketing/content-strategy/101-USE-CASES.md #3
+
+name: "email-pipeline"
+goal: "Triage, categorize, and draft responses to incoming emails with mandatory human validation before sending"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  trieur:
+    role: "Trieur d'Emails"
+    goal: "Classify incoming emails by urgency and category"
+    backstory: |
+      You are an executive assistant with years of experience managing high-volume
+      inboxes. You can quickly assess email urgency (critical, high, normal, low)
+      and categorize by type (complaint, inquiry, order, support, spam).
+    tools:
+      - "email_parser"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  extracteur:
+    role: "Extracteur d'Actions"
+    goal: "Identify required actions, deadlines, and key entities from categorized emails"
+    backstory: |
+      You are a business analyst who excels at extracting actionable items from
+      communications. You identify who needs to do what, by when, and flag any
+      missing information that would block action.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  redacteur:
+    role: "Redacteur de Reponses"
+    goal: "Draft professional email responses based on extracted actions and context"
+    backstory: |
+      You are a communications specialist who writes clear, professional, and
+      empathetic email responses. You adapt your tone to the situation (formal
+      for complaints, friendly for inquiries) and always include next steps.
+    tools:
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  validateur:
+    role: "Validateur Humain"
+    goal: "Review and approve drafted email responses before sending"
+    backstory: |
+      You are the human supervisor who ensures no email is sent without explicit
+      approval. You review tone, accuracy, and completeness of each draft.
+    tools: []
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  triage_emails:
+    description: "Parse incoming emails and classify each by urgency (critical/high/normal/low) and category (complaint/inquiry/order/support/spam). Output a prioritized queue."
+    expectedOutput: "JSON array of classified emails with: id, subject, sender, urgency, category, summary"
+    agent: "trieur"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  extract_actions:
+    description: "For each classified email, extract required actions, deadlines, key entities (people, products, amounts), and flag any missing information."
+    expectedOutput: "JSON array of action items with: email_id, actions[], deadlines[], entities[], missing_info[]"
+    agent: "extracteur"
+    dependencies:
+      - "triage_emails"
+    asyncExecution: false
+    humanInput: false
+
+  draft_responses:
+    description: "Draft professional responses for each email based on its category, urgency, and extracted actions. Adapt tone and include clear next steps."
+    expectedOutput: "JSON array of draft responses with: email_id, subject, body, tone, next_steps"
+    agent: "redacteur"
+    dependencies:
+      - "extract_actions"
+    asyncExecution: false
+    humanInput: false
+
+  validate_responses:
+    description: "Review all drafted responses for accuracy, tone, and completeness. Approve or request revisions for each draft."
+    expectedOutput: "JSON array of validation results with: email_id, status (approved/revision_needed), comments"
+    agent: "validateur"
+    dependencies:
+      - "draft_responses"
+    asyncExecution: false
+    humanInput: true

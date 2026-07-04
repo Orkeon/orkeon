@@ -1,0 +1,107 @@
+# 27. Prediction de Tendances avec Auto-Calibration
+# Use case: Parallel weak signal analysis with long-term memory for prediction auto-correction
+# Source: project/marketing/content-strategy/101-USE-CASES.md #27
+
+name: "trend-prediction"
+goal: "Predict scientific and technology trends by analyzing weak signals in parallel, with long-term memory for auto-calibration against past predictions"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  publication_analyzer:
+    role: "Analyseur Publications"
+    goal: "Analyze publication trends, citation networks, and emerging research topics"
+    backstory: |
+      You are a bibliometric analyst who detects emerging research trends from
+      publication patterns. You analyze citation velocity, author collaboration
+      networks, keyword emergence, and journal impact shifts to identify
+      early-stage research trends before they become mainstream.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  patent_analyzer:
+    role: "Analyseur Brevets"
+    goal: "Analyze patent filing patterns to detect technology commercialization trends"
+    backstory: |
+      You are a patent intelligence analyst who tracks filing patterns across
+      patent offices. You identify technology areas with accelerating filings,
+      new entrant patterns, geographic shifts, and convergence across technology
+      domains.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  funding_analyzer:
+    role: "Analyseur Financements"
+    goal: "Track research funding patterns to identify priority shifts and emerging investment areas"
+    backstory: |
+      You are a research funding analyst who monitors grant awards, VC investments,
+      and government R&D budgets. You detect shifts in funding priorities, emerging
+      investment categories, and early indicators of technology maturation.
+    tools:
+      - "web_scrape"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  futurist_synthesizer:
+    role: "Futuriste-Synthetiseur"
+    goal: "Synthesize all signals into trend predictions with confidence levels and auto-calibration"
+    backstory: |
+      You are a technology futurist who synthesizes multi-source signals into
+      actionable trend predictions. You combine publication, patent, and funding
+      signals, assign confidence levels, and compare new predictions against
+      your historical prediction accuracy to auto-calibrate confidence estimates.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  analyze_publications:
+    description: "Analyze recent publications for emerging trends. Track citation velocity, keyword emergence, collaboration patterns, and journal shifts."
+    expectedOutput: "JSON with: emerging_topics[{topic, citation_velocity, keyword_growth, confidence}], author_networks[], journal_shifts[]"
+    agent: "publication_analyzer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_patents:
+    description: "Analyze patent filing patterns for technology commercialization signals. Track filing acceleration, new entrants, and cross-domain convergence."
+    expectedOutput: "JSON with: tech_trends[{domain, filing_growth_rate, key_applicants, convergence_domains}], new_entrants[], geographic_shifts[]"
+    agent: "patent_analyzer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_funding:
+    description: "Track research funding patterns. Identify shifts in grant priorities, emerging VC categories, and government R&D budget changes."
+    expectedOutput: "JSON with: funding_shifts[{area, direction, magnitude}], emerging_categories[], budget_changes[], vc_trends[]"
+    agent: "funding_analyzer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  synthesize_predictions:
+    description: "Synthesize all signals into trend predictions. Compare with historical prediction accuracy for auto-calibration. Produce a ranked prediction report with confidence intervals."
+    expectedOutput: "JSON with: predictions[{trend, confidence, timeframe, evidence_sources}], calibration_report{historical_accuracy, bias_corrections}, top_5_predictions"
+    agent: "futurist_synthesizer"
+    dependencies:
+      - "analyze_publications"
+      - "analyze_patents"
+      - "analyze_funding"
+    asyncExecution: false
+    humanInput: false

@@ -1,0 +1,43 @@
+name: var_calculation
+description: >
+  Calculates Value at Risk (VaR) using multiple methodologies: parametric (assumes normal distribution),
+  historical (empirical distribution), and Monte Carlo simulation.
+  VaR estimates the maximum potential loss over a given time horizon at a specified confidence level.
+parameters:
+  portfolio_value:
+    type: number
+    description: "Current portfolio value in USD"
+    required: true
+  returns_data:
+    type: array
+    description: "Historical returns data (daily returns as percentages or decimals)"
+    required: true
+  confidence_level:
+    type: number
+    description: "Confidence level for VaR calculation (e.g., 0.95, 0.99)"
+    required: false
+    default: 0.95
+  time_horizon:
+    type: integer
+    description: "Time horizon in days"
+    required: false
+    default: 1
+  method:
+    type: string
+    description: "Calculation method: 'parametric', 'historical', 'monte_carlo', 'all'"
+    required: false
+    default: "all"
+  monte_carlo_simulations:
+    type: integer
+    description: "Number of Monte Carlo simulations (if method is 'monte_carlo')"
+    required: false
+    default: 10000
+returns:
+  portfolio_value: { type: number }
+  confidence_level: { type: number }
+  time_horizon_days: { type: integer }
+  timestamp: { type: string }
+  parametric_var: { type: object }
+  historical_var: { type: object }
+  monte_carlo_var: { type: object }
+  summary: { type: object }

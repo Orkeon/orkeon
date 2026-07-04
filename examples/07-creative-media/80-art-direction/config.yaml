@@ -1,0 +1,126 @@
+# 80. Direction Artistique — Delegation Performance Report
+# Use case: Hierarchical creative process with art director managing creatives and delegation performance tracking
+# Source: project/marketing/content-strategy/101-USE-CASES.md #80
+
+name: "art-direction"
+goal: "Execute a creative campaign with hierarchical art direction, delegation tracking, and performance reporting"
+process: "hierarchical"
+verbose: true
+memory: false
+planning: false
+managerAgent: "art_director"
+
+agents:
+  art_director:
+    role: "Art Director"
+    goal: "Direct the creative team and ensure campaign vision coherence"
+    backstory: |
+      You are a senior art director who leads creative campaigns.
+      You define the creative vision, brief the team, review deliverables,
+      and ensure all outputs align with the brand strategy and campaign
+      objectives. You delegate tasks and track team performance.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  brief_strategist:
+    role: "Brief Strategist"
+    goal: "Develop the creative brief and strategic positioning for the campaign"
+    backstory: |
+      You are a creative strategist who translates business objectives
+      into inspiring creative briefs. You define target audience insights,
+      key messages, tone of voice, and success metrics that guide
+      the entire creative process.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  visual_designer:
+    role: "Visual Designer"
+    goal: "Create visual concepts and design directions for the campaign"
+    backstory: |
+      You are a visual designer who creates compelling visual concepts.
+      You develop mood boards, color palettes, typography systems,
+      and layout compositions that bring the creative brief to life
+      in a visually striking and brand-consistent way.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  copywriter:
+    role: "Copywriter"
+    goal: "Write compelling copy that supports the visual concepts and campaign strategy"
+    backstory: |
+      You are a creative copywriter who crafts headlines, taglines,
+      body copy, and calls-to-action. You write in the brand voice,
+      connect emotionally with the target audience, and ensure every
+      word serves the campaign objectives.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  media_planner:
+    role: "Media Planner"
+    goal: "Plan media placement and format adaptation for campaign deliverables"
+    backstory: |
+      You are a media planner who optimizes campaign reach and impact.
+      You select channels, define format requirements, plan timing,
+      and ensure creative assets are adapted for each platform's
+      specifications and best practices.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  create_brief:
+    description: "Develop the creative brief for the campaign. Define objectives, target audience, key messages, tone of voice, and success metrics."
+    expectedOutput: "Creative brief document with strategy, audience insights, messaging framework, and KPIs"
+    agent: "brief_strategist"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  design_visuals:
+    description: "Create visual concepts based on the creative brief. Develop mood boards, color palettes, typography, and layout compositions."
+    expectedOutput: "Visual concept document with mood boards, design system, and layout templates"
+    agent: "visual_designer"
+    dependencies:
+      - "create_brief"
+    asyncExecution: false
+    humanInput: false
+
+  write_copy:
+    description: "Write campaign copy aligned with the visual concepts. Create headlines, taglines, body copy, and CTAs for each campaign touchpoint."
+    expectedOutput: "Copy deck with headlines, taglines, body copy, and CTAs per channel"
+    agent: "copywriter"
+    dependencies:
+      - "create_brief"
+    asyncExecution: false
+    humanInput: false
+
+  plan_media:
+    description: "Plan media placement and format adaptation. Define channel mix, format specs, timing, and asset requirements for each platform."
+    expectedOutput: "Media plan with channel mix, format specifications, timeline, and budget allocation"
+    agent: "media_planner"
+    dependencies:
+      - "design_visuals"
+      - "write_copy"
+    asyncExecution: false
+    humanInput: false

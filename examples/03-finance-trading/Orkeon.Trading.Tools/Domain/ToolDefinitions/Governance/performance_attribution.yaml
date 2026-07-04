@@ -1,0 +1,19 @@
+name: performance_attribution
+description: >
+  Attributes portfolio returns to individual positions and factors.
+parameters:
+  positions:
+    type: array
+    description: "Position returns and weights"
+    required: true
+  total_return:
+    type: number
+    description: "Total portfolio return"
+    required: true
+returns:
+  timestamp: { type: string }
+  total_return_pct: { type: number }
+  attributions: { type: array }
+  top_5_contributors: { type: array }
+  top_5_detractors: { type: array }
+  positions_analyzed: { type: integer }

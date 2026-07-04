@@ -1,0 +1,107 @@
+# 22. Monitoring d'Essais Cliniques Chiffre
+# Use case: Continuous clinical trial monitoring with encrypted patient data, real-time alerts, and NIST audit
+# Source: project/marketing/content-strategy/101-USE-CASES.md #22
+
+name: "clinical-trials-encrypted"
+goal: "Monitor clinical trials continuously with encrypted patient data, real-time safety alerts via Observer Agent, and NIST-compliant audit trail"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  monitoring_observer:
+    role: "Observateur Monitoring Continu"
+    goal: "Continuously monitor clinical trial data streams and detect safety signals in real time"
+    backstory: |
+      You are a clinical trial monitor who watches incoming patient data for
+      safety signals. You detect adverse event clusters, protocol deviations,
+      enrollment anomalies, and data quality issues in real time. You trigger
+      immediate alerts for any concerning patterns.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  safety_analyst:
+    role: "Analyste Safety"
+    goal: "Analyze adverse events, assess causality, and recommend safety actions"
+    backstory: |
+      You are a pharmacovigilance specialist who analyzes adverse events in
+      clinical trials. You assess causality (certain, probable, possible, unlikely),
+      calculate incidence rates, compare with known drug profiles, and recommend
+      safety actions (dose adjustment, protocol amendment, trial halt).
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  trial_statistician:
+    role: "Statisticien Essais"
+    goal: "Perform interim statistical analyses and monitor efficacy/futility boundaries"
+    backstory: |
+      You are a clinical trial statistician who monitors efficacy and futility
+      boundaries. You perform group sequential analyses, calculate conditional
+      power, assess treatment effects at interim timepoints, and ensure
+      statistical integrity of the trial design.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  compliance_officer:
+    role: "Compliance Officer"
+    goal: "Ensure GCP compliance, maintain audit trail, and generate regulatory reports"
+    backstory: |
+      You are a regulatory compliance officer who ensures Good Clinical Practice
+      (GCP) adherence. You maintain NIST-compliant audit trails, verify informed
+      consent documentation, monitor protocol compliance, and prepare regulatory
+      submission documents.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  monitor_data_streams:
+    description: "Monitor incoming clinical trial data for safety signals. Check for adverse event clusters, protocol deviations, enrollment anomalies, and data quality issues."
+    expectedOutput: "JSON with: signals_detected[{type, severity, description, affected_subjects}], data_quality_issues[], protocol_deviations[]"
+    agent: "monitoring_observer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_safety:
+    description: "Analyze detected adverse events. Assess causality for each event, calculate incidence rates, and recommend safety actions with urgency levels."
+    expectedOutput: "JSON with: ae_analysis[{event, causality, incidence_rate, recommendation}], safety_summary, urgent_actions[]"
+    agent: "safety_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  interim_statistics:
+    description: "Perform interim statistical analysis. Check efficacy/futility boundaries, calculate conditional power, and assess whether trial should continue, modify, or stop."
+    expectedOutput: "JSON with: interim_results{treatment_effect, p_value, ci}, boundary_check{efficacy_crossed, futility_crossed}, conditional_power, recommendation"
+    agent: "trial_statistician"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  generate_compliance_report:
+    description: "Compile all monitoring, safety, and statistical findings into a NIST-compliant audit report. Ensure GCP documentation requirements are met."
+    expectedOutput: "Markdown compliance report with: executive_summary, safety_alerts, statistical_update, audit_trail_entries[], gcp_compliance_status, recommendations"
+    agent: "compliance_officer"
+    dependencies:
+      - "monitor_data_streams"
+      - "analyze_safety"
+      - "interim_statistics"
+    asyncExecution: false
+    humanInput: false

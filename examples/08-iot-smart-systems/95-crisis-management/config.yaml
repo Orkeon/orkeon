@@ -1,0 +1,161 @@
+# 95. Gestion de Crise — Broadcast + Priorite Critique
+# Use case: multi-agency crisis coordination with broadcast alerts and critical priority task handling
+# Source: project/marketing/content-strategy/101-USE-CASES.md #95
+
+name: "crisis-management"
+goal: "Coordinate multi-agency emergency response with broadcast alert diffusion, critical priority task handling, human decision-maker validation, and complete audit trail"
+process: "hierarchical"
+verbose: true
+memory: true
+memoryProvider: "Redis"
+planning: true
+managerAgent: "crisis_coordinator"
+
+agents:
+  crisis_coordinator:
+    role: "Crisis Coordinator"
+    goal: "Lead the emergency response, coordinate all agencies, and ensure rapid effective crisis management"
+    backstory: |
+      You are the central crisis coordinator. You receive emergency alerts,
+      assess severity, activate response protocols, and coordinate all
+      response agencies. You ensure Broadcast communication reaches all
+      agents simultaneously. You escalate critical decisions to the human
+      decision-maker and maintain the complete audit trail of all actions.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: true
+    maxIter: 20
+    verbose: true
+
+  event_detector:
+    role: "Crisis Event Detector"
+    goal: "Monitor alert feeds and detect crisis events requiring emergency response activation"
+    backstory: |
+      You continuously monitor emergency alert APIs (seismic, meteorological,
+      industrial, public safety) for events that require crisis response
+      activation. You correlate multiple data sources to confirm events
+      and classify their type and initial severity. Speed is critical —
+      you trigger immediate broadcast alerts.
+    tools:
+      - "http_api"
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  impact_assessor:
+    role: "Impact Assessment Specialist"
+    goal: "Rapidly assess the scope and severity of the crisis event to guide resource allocation"
+    backstory: |
+      You perform rapid impact assessment combining event data with
+      population density maps, infrastructure vulnerability data, and
+      historical impact models. You estimate affected population, at-risk
+      infrastructure, and potential cascade effects. Your assessment
+      directly drives resource allocation decisions.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "web_scrape"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  resource_allocator:
+    role: "Emergency Resource Allocator"
+    goal: "Optimize deployment of emergency resources (personnel, equipment, shelters) based on impact assessment"
+    backstory: |
+      You manage the allocation of emergency resources across the crisis
+      area. You track available resources (fire units, ambulances, police,
+      shelters, equipment), optimize deployment based on impact zones,
+      and handle dynamic reallocation as the situation evolves. You use
+      TaskPriority.Critical for life-threatening resource needs.
+    tools:
+      - "json_tool"
+      - "http_api"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  public_communicator:
+    role: "Public Communication Agent"
+    goal: "Issue timely, accurate public alerts and manage crisis communication across all channels"
+    backstory: |
+      You manage all public-facing crisis communication. You draft emergency
+      alerts for broadcast systems, update public information channels,
+      coordinate press releases, and manage social media response. You
+      ensure messaging is clear, consistent, and reaches all affected
+      populations including multilingual and accessibility requirements.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  political_decision_maker:
+    role: "Decision Maker (Human Authority)"
+    goal: "Validate critical decisions that have major political, financial, or humanitarian implications"
+    backstory: |
+      You are the human authority who validates critical crisis decisions
+      such as evacuation orders, state of emergency declarations, military
+      resource requests, and major budget commitments. No irreversible
+      large-scale action proceeds without your explicit authorization.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  detect_event:
+    description: "Monitor all emergency alert feeds for crisis events, correlate data sources to confirm the event, and classify type and initial severity level"
+    expectedOutput: "Crisis event detection report with event type, location, initial severity classification, source correlation, and confidence level"
+    agent: "event_detector"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  assess_impact:
+    description: "Perform rapid impact assessment: estimate affected population, at-risk infrastructure, potential cascade effects, and required response scale"
+    expectedOutput: "Impact assessment with affected zones map, population estimates, infrastructure risk, cascade scenarios, and recommended response level"
+    agent: "impact_assessor"
+    dependencies: ["detect_event"]
+    asyncExecution: false
+    humanInput: false
+
+  allocate_resources:
+    description: "Optimize emergency resource deployment based on impact assessment: assign units to zones, establish command posts, and activate shelters"
+    expectedOutput: "Resource deployment plan with unit assignments, command post locations, shelter activation, and logistics coordination"
+    agent: "resource_allocator"
+    dependencies: ["assess_impact"]
+    asyncExecution: false
+    humanInput: false
+
+  prepare_communication:
+    description: "Draft public emergency alerts, press briefings, and social media posts for all affected channels and populations"
+    expectedOutput: "Communication package with emergency alerts, press release, social media posts, multilingual versions, and distribution plan"
+    agent: "public_communicator"
+    dependencies: ["assess_impact"]
+    asyncExecution: true
+    humanInput: false
+
+  validate_critical_decisions:
+    description: "Review and authorize critical decisions: evacuation orders, emergency declarations, major resource commitments requiring political authority"
+    expectedOutput: "Authorization record with approved/modified/rejected decisions, rationale, and conditions"
+    agent: "political_decision_maker"
+    dependencies: ["allocate_resources", "prepare_communication"]
+    asyncExecution: false
+    humanInput: true
+
+  execute_response:
+    description: "Execute the validated crisis response plan: deploy resources, broadcast public alerts, and activate all response protocols with full audit logging"
+    expectedOutput: "Execution confirmation with deployed resources, broadcast alerts sent, protocols activated, and complete audit trail"
+    agent: "crisis_coordinator"
+    dependencies: ["validate_critical_decisions"]
+    asyncExecution: false
+    humanInput: false

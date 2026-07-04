@@ -1,0 +1,98 @@
+# 37. Conformite KYC/AML Triple Securite
+# Use case: Chaque etape est auditee NIST, chaque donnee chiffree, chaque prompt protege contre l'injection
+# Source: project/marketing/content-strategy/101-USE-CASES.md #37
+
+name: "kyc-aml-compliance"
+goal: "Perform KYC/AML compliance checks with triple-layer security: encryption, NIST audit, and prompt injection protection"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "compliance_manager"
+
+agents:
+  compliance_manager:
+    role: "Compliance Manager"
+    goal: "Coordinate KYC/AML verification workflow and ensure triple-layer security at every step"
+    backstory: |
+      Chief Compliance Officer with 20 years experience in anti-money laundering
+      and know-your-customer regulations. Ensures every verification step meets
+      regulatory standards with full audit trail and data protection.
+    tools:
+      - "compliance_check"
+      - "regulatory_reporting"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  identity_verifier:
+    role: "Identity Verification Specialist"
+    goal: "Verify client identity documents and perform identity authentication"
+    backstory: |
+      Identity verification expert specializing in document authentication,
+      biometric matching, and cross-referencing identity databases.
+      Validates passports, national IDs, and proof of address against
+      authoritative sources.
+    tools:
+      - "http_api"
+      - "pdf_reader"
+      - "json_tool"
+      - "audit_trail"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  sanctions_screener:
+    role: "Sanctions Screening Analyst"
+    goal: "Screen clients against global sanctions lists, PEP databases, and adverse media"
+    backstory: |
+      Sanctions compliance specialist who screens against OFAC, EU, UN,
+      and national sanctions lists. Also checks Politically Exposed Persons (PEP)
+      databases and adverse media for reputational risk indicators.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  country_risk_analyst:
+    role: "Country Risk Analyst"
+    goal: "Assess jurisdiction-specific AML risk factors and regulatory requirements"
+    backstory: |
+      Geopolitical risk analyst covering FATF grey/black lists, Transparency International
+      CPI scores, and jurisdiction-specific AML requirements. Calculates composite
+      country risk score for transaction monitoring thresholds.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  verify_identity:
+    description: "Perform identity verification: validate identity documents (passport, national ID), cross-reference against identity databases, and authenticate document integrity. All data stored encrypted."
+    expectedOutput: "JSON identity verification report with document validation results, database match scores, and overall identity confidence level"
+    agent: "identity_verifier"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  screen_sanctions:
+    description: "Screen the verified identity against global sanctions lists (OFAC, EU, UN), PEP databases, and adverse media sources. Record all screening results with timestamps for audit trail."
+    expectedOutput: "JSON sanctions screening report with match/no-match results per list, PEP status, adverse media findings, and composite screening score"
+    agent: "sanctions_screener"
+    dependencies:
+      - "verify_identity"
+    asyncExecution: false
+    humanInput: false
+
+  assess_country_risk:
+    description: "Evaluate AML risk based on client jurisdictions (residence, nationality, transaction origins). Calculate composite country risk score using FATF ratings, CPI scores, and bilateral treaty coverage."
+    expectedOutput: "JSON country risk assessment with per-jurisdiction scores, FATF status, CPI ranking, and overall AML risk rating"
+    agent: "country_risk_analyst"
+    dependencies:
+      - "verify_identity"
+    asyncExecution: false
+    humanInput: false

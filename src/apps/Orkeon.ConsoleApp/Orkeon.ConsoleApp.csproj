@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- R1.5/TST-004: the `orkeon` assembly name belongs to the dotnet tool
+         (Orkeon.Scripting.Cli, PackAsTool). This app uses the default assembly
+         name (Orkeon.ConsoleApp) and the tool command `orkeon-repl` to avoid
+         the binary/coverage collision. Packaged as a dotnet tool so
+         experiments/ can run the REPL in packages mode (no source clone). -->
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>orkeon-repl</ToolCommandName>
+
+    <!-- Version flows from the single source of truth (src/Directory.Build.props:
+         0.9.0-beta). No local override (OSS-010/R8.3). -->
+
+    <!-- Package Metadata -->
+    <Authors>Orkeon Contributors</Authors>
+    <Description>Simple console application for Orkeon</Description>
+    <Copyright>Copyright (c) 2025 Orkeon Contributors</Copyright>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
+    <ProjectReference Include="..\..\cli\Orkeon.Cli\Orkeon.Cli.csproj" />
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.TerminalGui\Orkeon.Cli.TerminalGui.csproj" />
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.Scripting\Orkeon.Cli.Scripting.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <!-- Concrete tool packages — composition root responsibility -->
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.FileSystem\Orkeon.Tools.FileSystem.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" />
+    <!-- RaggableTree semantic-codebase tools + on-device embeddings (for codebase_search) -->
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CA1515: command/service/bootstrapper types are internal to the executable
+         (not public API surface). The test project consumes them via a ProjectReference,
+         so expose internals to it. -->
+    <InternalsVisibleTo Include="Orkeon.ConsoleApp.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+
+</Project>

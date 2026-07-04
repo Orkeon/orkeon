@@ -1,0 +1,110 @@
+# 74. Gestion des Dependances — Priorisation CVE
+# Use case: Dependency management with CVE prioritization, sandbox compatibility testing, and tracked upgrade history
+# Source: project/marketing/content-strategy/101-USE-CASES.md #74
+
+name: "dependency-management"
+goal: "Scan dependencies for vulnerabilities, prioritize by CVE severity, test compatibility in sandbox, and apply upgrades"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  dependency_scanner:
+    role: "Dependency Scanner"
+    goal: "Scan all project dependencies and identify outdated or vulnerable packages"
+    backstory: |
+      You are a supply chain security specialist who scans project
+      dependency trees. You identify all direct and transitive dependencies,
+      check for known vulnerabilities, and catalog version currency.
+    tools:
+      - "file_read"
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  cve_checker:
+    role: "Security CVE Checker"
+    goal: "Assess CVE severity and prioritize vulnerabilities for remediation"
+    backstory: |
+      You are a vulnerability analyst who assesses CVE severity using
+      CVSS scoring. You check NVD and GitHub Advisory databases,
+      evaluate exploitability, and prioritize vulnerabilities based on
+      risk and exposure in the specific project context.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  compatibility_tester:
+    role: "Compatibility Tester"
+    goal: "Test dependency upgrades for compatibility in a sandboxed environment"
+    backstory: |
+      You are a QA automation engineer who tests dependency upgrades
+      for compatibility. You run builds, unit tests, and integration
+      tests in a sandboxed environment to verify that upgrades do not
+      introduce breaking changes.
+    tools:
+      - "file_read"
+      - "shell_command"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  upgrader:
+    role: "Upgrader"
+    goal: "Apply validated dependency upgrades and document changes"
+    backstory: |
+      You are a DevOps engineer who applies dependency upgrades
+      after validation. You update manifest files, generate changelogs,
+      and document any required code changes for breaking API updates.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  scan_dependencies:
+    description: "Scan the project dependency tree. List all direct and transitive dependencies with current versions, latest available versions, and license information."
+    expectedOutput: "JSON dependency inventory with version info, currency status, and license data"
+    agent: "dependency_scanner"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  check_cves:
+    description: "Check all dependencies against NVD and GitHub Advisory databases. Score each vulnerability using CVSS and prioritize by severity and exploitability."
+    expectedOutput: "Prioritized vulnerability report with CVE IDs, CVSS scores, affected packages, and remediation urgency"
+    agent: "cve_checker"
+    dependencies:
+      - "scan_dependencies"
+    asyncExecution: false
+    humanInput: false
+
+  test_compatibility:
+    description: "For each recommended upgrade, test compatibility in a sandbox. Run build, unit tests, and integration tests. Report any breaking changes."
+    expectedOutput: "Compatibility test report with pass/fail per upgrade, breaking changes, and required code modifications"
+    agent: "compatibility_tester"
+    dependencies:
+      - "check_cves"
+    asyncExecution: false
+    humanInput: false
+
+  apply_upgrades:
+    description: "Apply validated dependency upgrades. Update manifest files, generate changelog, and document any required code changes for breaking API updates."
+    expectedOutput: "Upgrade report with applied changes, updated manifest files, and changelog entries"
+    agent: "upgrader"
+    dependencies:
+      - "test_compatibility"
+    asyncExecution: false
+    humanInput: false

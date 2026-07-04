@@ -1,0 +1,18 @@
+name: regulatory_reporting
+description: >
+  Generates regulatory reports (Form PF, 13F, etc.) for compliance.
+parameters:
+  report_type:
+    type: string
+    description: "Report type: '13F', 'FORM_PF', 'DAILY_VAR'"
+    required: true
+  portfolio_data:
+    type: object
+    description: "Portfolio data for report"
+    required: true
+returns:
+  timestamp: { type: string }
+  report_type: { type: string }
+  report_generated: { type: boolean }
+  report_data: { type: object }
+  filing_deadline: { type: string }

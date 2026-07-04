@@ -1,0 +1,48 @@
+name: pov_execution
+description: >
+  Executes orders maintaining target Percentage of Volume (POV) relative to market.
+  Adapts execution rate dynamically based on observed market volume.
+  Ensures consistent market participation while managing impact.
+parameters:
+  symbol:
+    type: string
+    description: "Symbol to execute"
+    required: true
+  side:
+    type: string
+    description: "Order side: 'BUY' or 'SELL'"
+    required: true
+  quantity:
+    type: number
+    description: "Total quantity to execute"
+    required: true
+  target_pov:
+    type: number
+    description: "Target participation rate (0-1, e.g., 0.1 = 10% of volume)"
+    required: true
+  max_pov:
+    type: number
+    description: "Maximum participation rate (default: target * 1.5)"
+    required: false
+  min_pov:
+    type: number
+    description: "Minimum participation rate (default: target * 0.5)"
+    required: false
+  max_duration_minutes:
+    type: integer
+    description: "Maximum execution duration (default: 240 = 4 hours)"
+    required: false
+    default: 240
+returns:
+  timestamp: { type: string }
+  algorithm: { type: string }
+  symbol: { type: string }
+  side: { type: string }
+  total_quantity: { type: number }
+  target_participation_rate: { type: number }
+  min_participation_rate: { type: number }
+  max_participation_rate: { type: number }
+  monitoring_intervals: { type: array }
+  expected_completion_minutes: { type: integer }
+  adaptive_features: { type: array }
+  execution_strategy: { type: object }

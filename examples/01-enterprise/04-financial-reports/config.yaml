@@ -1,0 +1,102 @@
+# 4. Generation de Rapports Financiers avec Reprise
+# Use case: Parallel data collection converging to a final report with checkpoint/resume on failure
+# Source: project/marketing/content-strategy/101-USE-CASES.md #4
+
+name: "financial-reports"
+goal: "Generate comprehensive financial reports with parallel data collection, compliance verification, and checkpoint-based recovery on failure"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  api_collector:
+    role: "Collecteur API"
+    goal: "Collect financial data from multiple APIs (market data, company filings, economic indicators)"
+    backstory: |
+      You are a financial data engineer specializing in aggregating data from
+      disparate sources. You handle API rate limits, retries, and data normalization
+      to produce clean, unified datasets for analysis.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  quant_analyst:
+    role: "Analyste Quantitatif"
+    goal: "Perform quantitative analysis including ratios, trends, and statistical models"
+    backstory: |
+      You are a quantitative analyst with expertise in financial modeling. You
+      calculate key ratios (P/E, EBITDA, debt-to-equity), detect trends, and
+      apply statistical models to produce actionable financial insights.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  compliance_officer:
+    role: "Compliance Officer"
+    goal: "Verify regulatory compliance and flag any reporting inconsistencies"
+    backstory: |
+      You are a compliance specialist experienced in financial regulations (SOX,
+      IFRS, GAAP). You verify that all reported figures are consistent, properly
+      sourced, and meet regulatory disclosure requirements.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  final_writer:
+    role: "Redacteur Final"
+    goal: "Compile all analyses and compliance checks into a polished financial report"
+    backstory: |
+      You are a financial report writer who transforms complex analyses into
+      clear, professional documents. You structure reports with executive summaries,
+      detailed sections, charts descriptions, and risk disclaimers.
+    tools:
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  collect_data:
+    description: "Collect financial data from market APIs, company filings endpoints, and economic indicator sources. Normalize all data into a unified JSON format."
+    expectedOutput: "Unified JSON dataset with market_data, company_filings, and economic_indicators sections"
+    agent: "api_collector"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_quantitative:
+    description: "Perform quantitative analysis on the collected data. Calculate financial ratios, trend analysis, and statistical projections."
+    expectedOutput: "JSON report with calculated ratios, trend analysis, projections, and confidence intervals"
+    agent: "quant_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  verify_compliance:
+    description: "Review all collected data and analyses for regulatory compliance. Flag any inconsistencies, missing disclosures, or regulatory issues."
+    expectedOutput: "JSON compliance report with: status (compliant/issues_found), findings[], required_disclosures[], recommendations[]"
+    agent: "compliance_officer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  write_report:
+    description: "Compile all analyses and compliance findings into a comprehensive financial report with executive summary, detailed analysis sections, and risk disclaimers."
+    expectedOutput: "Complete financial report in Markdown with executive summary, financial analysis, compliance status, projections, and disclaimers"
+    agent: "final_writer"
+    dependencies:
+      - "collect_data"
+      - "analyze_quantitative"
+      - "verify_compliance"
+    asyncExecution: false
+    humanInput: false

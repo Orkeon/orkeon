@@ -1,0 +1,141 @@
+# 53. Essais Cliniques Checkpoint + Audit NIST
+# Use case: Architecture hierarchique stricte avec PI comme Manager, donnees chiffrees, actions auditees, checkpointing
+# Source: project/marketing/content-strategy/101-USE-CASES.md #53
+
+name: "clinical-trials-nist"
+goal: "Manage clinical trial operations with NIST-compliant audit trail, encrypted data, checkpointing, and human safety validation"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "principal_investigator"
+
+agents:
+  principal_investigator:
+    role: "Principal Investigator"
+    goal: "Oversee all clinical trial operations and make critical protocol decisions"
+    backstory: |
+      Principal Investigator managing the clinical trial. Has overall responsibility
+      for trial conduct, patient safety, and regulatory compliance.
+      Coordinates all team members and makes final decisions on protocol deviations
+      and safety signals.
+    tools: []
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  recruiter:
+    role: "Patient Recruitment Specialist"
+    goal: "Identify and screen eligible patients against inclusion/exclusion criteria"
+    backstory: |
+      Clinical trial recruitment specialist who screens potential participants
+      against protocol inclusion/exclusion criteria. Manages the screening pipeline,
+      consent documentation, and randomization process.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  protocol_manager:
+    role: "Protocol Compliance Manager"
+    goal: "Ensure all trial activities comply with the approved protocol"
+    backstory: |
+      Clinical operations specialist who monitors protocol adherence.
+      Tracks study visits, assessment completion, dosing compliance,
+      and protocol deviations. Ensures GCP (Good Clinical Practice) compliance.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  monitoring_agent:
+    role: "Data Monitoring Agent"
+    goal: "Monitor data quality and completeness in the Electronic Data Capture system"
+    backstory: |
+      Clinical data manager who monitors the EDC for data quality, completeness,
+      and consistency. Runs edit checks, identifies missing data, and generates
+      queries for site resolution. Checkpoints are saved at each monitoring cycle.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  safety_agent:
+    role: "Safety Monitoring Agent"
+    goal: "Monitor and report adverse events and serious adverse events"
+    backstory: |
+      Pharmacovigilance specialist responsible for adverse event collection,
+      assessment, and reporting. Ensures timely reporting to regulatory authorities
+      and the Data Safety Monitoring Board. Triggers safety alerts for SAEs.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  safety_board:
+    role: "Data Safety Monitoring Board"
+    goal: "Review safety data and make recommendations on trial continuation"
+    backstory: |
+      Independent Data Safety Monitoring Board (DSMB) that reviews unblinded
+      safety data at pre-specified intervals. Makes recommendations to continue,
+      modify, or stop the trial based on safety and efficacy data.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  screen_patients:
+    description: "Screen potential participants against protocol inclusion/exclusion criteria. Verify eligibility, document consent, and manage randomization. Checkpoint after each batch of screened patients."
+    expectedOutput: "JSON screening report with eligible/ineligible counts, screening failure reasons, and randomization assignments"
+    agent: "recruiter"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  monitor_protocol:
+    description: "Review protocol compliance across all sites. Track study visit completion, assessment adherence, dosing compliance, and any protocol deviations. Generate compliance report."
+    expectedOutput: "JSON protocol compliance report with per-site metrics, deviation log, and corrective action recommendations"
+    agent: "protocol_manager"
+    dependencies:
+      - "screen_patients"
+    asyncExecution: false
+    humanInput: false
+
+  monitor_data:
+    description: "Run data quality checks on EDC submissions. Identify missing data, inconsistencies, and outliers. Generate data queries for site resolution. Save checkpoint after each monitoring cycle."
+    expectedOutput: "JSON data monitoring report with quality metrics, open queries, and data completeness statistics per site"
+    agent: "monitoring_agent"
+    dependencies:
+      - "screen_patients"
+    asyncExecution: false
+    humanInput: false
+
+  monitor_safety:
+    description: "Collect and assess all adverse events. Classify by severity, causality, and expectedness. Report SAEs to regulatory authorities within required timelines. Flag safety signals."
+    expectedOutput: "JSON safety report with AE/SAE listings, causality assessments, regulatory reporting status, and safety signal alerts"
+    agent: "safety_agent"
+    dependencies:
+      - "monitor_data"
+    asyncExecution: false
+    humanInput: false
+
+  safety_board_review:
+    description: "Review unblinded safety and efficacy data. Assess risk-benefit balance. Make recommendation on trial continuation, modification, or early termination."
+    expectedOutput: "DSMB recommendation report with safety assessment, efficacy trends, risk-benefit evaluation, and formal recommendation"
+    agent: "safety_board"
+    dependencies:
+      - "monitor_safety"
+    asyncExecution: false
+    humanInput: true

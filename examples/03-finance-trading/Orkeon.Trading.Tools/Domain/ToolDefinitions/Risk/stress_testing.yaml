@@ -1,0 +1,31 @@
+name: stress_testing
+description: >
+  Performs stress testing on portfolio using historical crisis scenarios (2008, 2020, 2022, 1987, 2000)
+  and custom shock scenarios. Assesses portfolio resilience, identifies vulnerabilities,
+  and provides risk mitigation recommendations.
+parameters:
+  portfolio_positions:
+    type: array
+    description: "Portfolio positions with symbol, weight, asset_class"
+    required: true
+  portfolio_value:
+    type: number
+    description: "Current portfolio value in USD"
+    required: true
+  scenarios:
+    type: array
+    description: "Scenarios to test: ['2008_financial_crisis', '2020_covid_crash', '2022_bear_market', 'black_monday_1987', 'dot_com_bubble_2000', 'all']"
+    required: false
+    default: ["all"]
+  custom_shocks:
+    type: object
+    description: "Custom shock scenario: {equity_shock: -0.20, bond_shock: 0.05, ...}"
+    required: false
+returns:
+  portfolio_value: { type: number }
+  timestamp: { type: string }
+  scenarios_tested: { type: integer }
+  scenario_results: { type: array }
+  worst_case_scenario: { type: object }
+  summary: { type: object }
+  recommendations: { type: array }

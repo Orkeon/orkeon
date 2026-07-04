@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Cli.Scripting</PackageId>
+    <Description>TypeScript-scripted interactive commands for Orkeon CLI runners. Adapter between Orkeon.Cli.Abstractions and Orkeon.Scripting (Jint + esbuild).</Description>
+    <PackageTags>AI;Agents;Orkeon;Cli;Scripting;TypeScript;Jint</PackageTags>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Cli.Scripting.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
+    <ProjectReference Include="..\..\scripting\Orkeon.Scripting\Orkeon.Scripting.csproj" />
+    <!-- Command dispatch (design §8) branches on IAgentChannel (Application) and AgentId (Domain);
+         the DI wiring owns a default InMemoryAgentChannel (Infrastructure) as the dispatch bus. -->
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <!-- Phase 2 will populate Typings/orkeon-cli.d.ts; declared now so the resource hook is wired. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Typings\orkeon-cli.d.ts" Condition="Exists('Typings\orkeon-cli.d.ts')" />
+  </ItemGroup>
+</Project>

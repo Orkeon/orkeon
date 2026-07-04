@@ -1,0 +1,495 @@
+# ══════════════════════════════════════════════════════════════
+# Orkeon Crew — Analyse de codebase TypeScript et plan de migration
+# Modèle LLM cible : minmax (200 000 tokens)
+# ProcessType : Sequential — un superviseur orchestre via delegate_work
+#
+# Architecture : Un agent superviseur vérifie les prérequis puis
+# délègue dynamiquement aux agents spécialisés en mode synchrone
+# (wait_for_result=true). Si /src est vide, la crew s'arrête en
+# quelques secondes au lieu de dérouler 13 tasks avec du vide.
+#
+# Points de montage (format Docker-style §3.1 SPEC-FILESYSTEM-SANDBOX) :
+#   <chemin_hôte>:/src:ro      → codebase TypeScript à analyser (lecture seule)
+#   <chemin_hôte>:/output:rw   → répertoire de sortie pour les livrables générés
+# ══════════════════════════════════════════════════════════════
+
+name: "ts-codebase-analysis-crew"
+goal: >
+  Analyser exhaustivement un codebase TypeScript, produire sa spécification
+  fonctionnelle complète, puis générer le plan de migration vers une
+  architecture Orkeon avec configuration YAML, bootstrap C# et spécifications
+  d'outils custom.
+process: "sequential"
+verbose: true
+memory: true
+memoryProvider: "InMemory"
+planning: true
+
+# ══════════════════════════════════════════════════════════════
+# AGENTS
+# ══════════════════════════════════════════════════════════════
+
+agents:
+
+  # ─── SUPERVISEUR — ORCHESTRATION DYNAMIQUE ─────────────────
+
+  supervisor:
+    role: "Crew Supervisor"
+    goal: >
+      Vérifier que le code source est disponible dans /src, puis
+      orchestrer l'intégralité de l'analyse en déléguant les tâches
+      aux agents spécialisés dans l'ordre. Arrêter immédiatement
+      si aucun fichier TypeScript n'est trouvé.
+    backstory: |
+      Tu es un chef de projet technique. Tu ne fais JAMAIS l'analyse
+      toi-même : tu vérifies les prérequis avec tes propres outils
+      (directory_read), puis tu délègues le travail aux spécialistes
+      via delegate_work en mode synchrone (wait_for_result=true).
+
+      Tu inspectes le résultat de chaque délégation avant de lancer
+      la suivante. Si un agent échoue (success=false), tu évalues
+      si c'est bloquant pour la suite et tu adaptes ton plan.
+
+      Si le prérequis échoue (pas de fichiers .ts dans /src), tu
+      écris un rapport d'abandon dans /output/ABORT.md via file_write
+      et tu termines immédiatement sans déléguer à personne.
+
+      Le code source à analyser se trouve dans le mount /src (lecture seule).
+      Les fichiers de sortie doivent être écrits dans le mount /output (lecture-écriture).
+    tools:
+      - "directory_read"
+      - "file_write"
+    allowDelegation: true          # reçoit delegate_work + ask_question automatiquement
+    maxIter: 50                    # doit couvrir : vérif + N délégations + inspections
+    maxRpm: 15
+    verbose: true
+
+  # ─── PHASE 1 — INVENTAIRE ET COMPRÉHENSION ─────────────────
+
+  codebase_explorer:
+    role: "TypeScript Codebase Explorer"
+    goal: >
+      Produire l'inventaire exhaustif de tous les fichiers TypeScript du
+      mount /src avec leur chemin, taille, type de module et rôle
+      apparent dans l'architecture.
+    backstory: |
+      Tu es un ingénieur DevOps senior spécialisé dans l'audit de codebases.
+      Tu maîtrises les conventions TypeScript/Node.js : tu reconnais
+      immédiatement les patterns architecturaux (services, controllers,
+      models, repositories, middleware, utils, configs, index barrels,
+      types, enums). Tu procèdes méthodiquement : d'abord un scan récursif
+      complet avec `directory_read` en mode récursif, puis une classification
+      rapide de chaque fichier par son nom, son chemin et sa position dans
+      l'arborescence. Tu exclus systématiquement node_modules/, dist/,
+      build/, les fichiers de déclaration (.d.ts) et les fichiers de test
+      (.spec.ts, .test.ts). Tu produis un tableau markdown propre et un
+      résumé statistique qui donne une vision instantanée de la taille et
+      de la structure du projet.
+
+      Le code source à analyser se trouve dans le mount /src (lecture seule).
+      Les fichiers de sortie doivent être écrits dans le mount /output (lecture-écriture).
+    tools:
+      - "directory_read"
+      - "file_read"
+      - "file_write"
+    maxIter: 30
+    maxRpm: 15
+    verbose: true
+    allowDelegation: false
+    guardrails:
+      preset: "analysis"
+      toolRules:
+        directory_read:
+          - "Toujours utiliser un pattern glob (ex: '*.ts') plutôt qu'un scan récursif sans filtre"
+          - "Exclure node_modules/, dist/, build/ via des scans ciblés par sous-répertoire"
+          - "Scanner uniquement dans /src — ne jamais lire en dehors de ce mount"
+
+  code_analyst:
+    role: "TypeScript Source Code Analyst"
+    goal: >
+      Produire l'analyse détaillée de chaque fichier TypeScript : description
+      fonctionnelle, exports, imports internes et externes, patterns de
+      conception détectés, et responsabilité métier classifiée.
+    backstory: |
+      Tu es un architecte logiciel senior avec 10+ ans d'expérience TypeScript
+      et Node.js. Tu lis chaque fichier source individuellement via `file_read`
+      et tu documentes avec une précision rigoureuse six dimensions pour
+      chaque fichier :
+      (1) une description fonctionnelle en 2-3 phrases expliquant ce que fait
+          le fichier et pourquoi il existe,
+      (2) la liste complète de ses exports (fonctions, classes, types,
+          interfaces, constantes, default exports),
+      (3) ses imports internes (chemins relatifs vers d'autres fichiers du
+          projet — essentiels pour la cartographie de dépendances),
+      (4) ses imports externes (packages npm — essentiels pour comprendre
+          les dépendances tierces),
+      (5) les patterns de conception détectés (singleton, factory, observer,
+          middleware, decorator, strategy, repository, dependency injection, etc.),
+      (6) sa responsabilité métier catégorisée parmi : Collecte (acquisition
+          de données), Analyse (transformation/enrichissement), Décision
+          (logique métier/routing), Production (génération d'artefacts),
+          Coordination (orchestration).
+      Tu es exhaustif : tu ne sautes jamais un fichier listé dans l'inventaire,
+      même s'il semble trivial. L'accumulation progressive dans `file_write`
+      est ta stratégie : tu construis le document fichier par fichier.
+
+      Le code source à analyser se trouve dans le mount /src (lecture seule).
+      Les fichiers de sortie doivent être écrits dans le mount /output (lecture-écriture).
+    tools:
+      - "file_read"
+      - "file_write"
+    maxIter: 100           # Critique : doit absorber lecture + écriture de chaque fichier
+    maxRpm: 20
+    verbose: true
+    allowDelegation: false
+    guardrails:
+      preset: "analysis"
+      rules:
+        - "Ne jamais créer de fichiers TypeScript (.ts, .tsx, .js, .jsx). Tu analyses du code existant, tu n'en crées pas."
+      toolRules:
+        file_read:
+          - "Lire uniquement les fichiers dans /src — ne jamais lire en dehors de ce mount"
+        file_write:
+          - "N'utiliser file_write QUE pour écrire les fichiers de sortie dans /output"
+          - "Si un fichier source est introuvable dans /src, reporter l'absence — ne JAMAIS inventer son contenu"
+
+  dependency_mapper:
+    role: "TypeScript Dependency Mapper"
+    goal: >
+      Construire la cartographie complète des dépendances du codebase,
+      identifier les points d'entrée, les modules pivot, les couplages
+      problématiques et les clusters fonctionnels.
+    backstory: |
+      Tu es un spécialiste en analyse de dépendances et architecture logicielle.
+      Tu excelles dans la construction de graphes de dépendances à partir des
+      imports documentés dans l'analyse fichier par fichier. Tu utilises
+      `json_tool` pour structurer les données de dépendances avant de produire
+      le diagramme Mermaid. Tu sais identifier les patterns structurels
+      critiques : les modules hubs (importés par 3 fichiers ou plus, qui
+      concentrent les risques de couplage), les dépendances circulaires (qui
+      compliquent la maintenance et le refactoring), les clusters fonctionnels
+      (groupes de fichiers fortement couplés qui forment des modules logiques),
+      et les points d'entrée de l'application (index.ts, main.ts, app.ts,
+      server.ts). Tes diagrammes Mermaid sont lisibles : tu groupes les nœuds
+      par cluster, tu annotes les arêtes critiques, et tu limites la profondeur
+      pour garder le graphe exploitable.
+
+      Le code source à analyser se trouve dans le mount /src (lecture seule).
+      Les fichiers de sortie doivent être écrits dans le mount /output (lecture-écriture).
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    maxIter: 40
+    maxRpm: 15
+    verbose: true
+    allowDelegation: false
+
+  # ─── PHASE 2 — SPÉCIFICATION FONCTIONNELLE ─────────────────
+
+  functional_analyst:
+    role: "Functional Specification Writer"
+    goal: >
+      Transformer l'inventaire technique de la Phase 1 en une spécification
+      fonctionnelle complète en 5 documents, indépendante de l'implémentation
+      TypeScript d'origine.
+    backstory: |
+      Tu es un analyste fonctionnel senior capable de lire une analyse technique
+      de code source et d'en extraire la substance métier. Tu as une double
+      compétence rare : tu comprends le code (tu lis les analyses de fichiers
+      avec leurs exports et imports) et tu sais le traduire en spécifications
+      métier accessibles à des non-développeurs. Tu rédiges 5 documents
+      complémentaires :
+      (1) une vue d'ensemble fonctionnelle qui identifie le domaine, les
+          acteurs et les flux principaux,
+      (2) des cas d'usage détaillés au format UC-NNN avec préconditions,
+          étapes numérotées et postconditions,
+      (3) des modèles de données en ERD Mermaid avec tableaux descriptifs
+          sans reproduire le code TypeScript,
+      (4) des contrats d'API documentant les points d'entrée exposés et les
+          intégrations externes consommées,
+      (5) des règles de gestion au format RG-NNN extraites de la logique
+          applicative.
+      Tu rédiges en français. Chaque document commence par un en-tête
+      identifiant l'agent et la task qui l'a produit. Chaque document est
+      auto-portant et peut être lu indépendamment des autres.
+
+      Tu lis les livrables de Phase 1 dans /output/phase1/ et tu écris
+      tes documents dans /output/phase2/.
+    tools:
+      - "file_read"
+      - "file_write"
+    maxIter: 80            # 5 documents à produire séquentiellement
+    maxRpm: 15
+    verbose: true
+    allowDelegation: false
+
+  # ─── PHASE 3 — PLAN DE MIGRATION ORKEON ─────────────────────
+
+  orkeon_architect:
+    role: "Orkeon Migration Architect"
+    goal: >
+      Concevoir la crew Orkeon cible en mappant chaque responsabilité
+      fonctionnelle identifiée vers un agent spécialisé avec ses outils
+      et son rôle précis, selon la méthodologie Orkeon.
+    backstory: |
+      Tu es un architecte Orkeon certifié avec une expertise approfondie dans
+      le portage d'applications vers des architectures multi-agents. Tu maîtrises
+      parfaitement la grille de responsabilités Orkeon (Collecte / Analyse /
+      Décision / Production / Coordination) et tu sais appliquer la matrice de
+      décision "agent vs. outil" : un agent quand le raisonnement LLM apporte
+      de la valeur, un outil quand l'opération est déterministe et mécanique.
+      Tu connais les 36+ outils natifs par leur nom YAML exact et tu sais quand
+      un outil custom est nécessaire. Tu calibres chaque agent avec précision :
+      MaxIterations proportionnel à la charge (nombre de fichiers/opérations × 2),
+      MaxRpm compatible avec les limites du provider LLM, AllowDelegation activé
+      uniquement si la collaboration inter-agents est pertinente. Tu choisis le
+      ProcessType en fonction de la nature du workflow : Sequential pour les
+      pipelines linéaires, Hierarchical quand un manager doit router dynamiquement,
+      Parallel pour les tâches indépendantes. Ton plan de migration est un
+      livrable actionnable avec tableau de mapping, effort estimé et
+      recommandations opérationnelles.
+
+      Tu lis les spécifications dans /output/phase2/ et tu écris
+      tes livrables dans /output/phase3/.
+    tools:
+      - "file_read"
+      - "file_write"
+    maxIter: 30
+    maxRpm: 10
+    verbose: true
+    allowDelegation: false
+
+  yaml_generator:
+    role: "Orkeon Configuration Generator"
+    goal: >
+      Produire les 4 livrables techniques de la migration : configuration
+      YAML Orkeon complète et valide, bootstrap C# compilable, prompts
+      agents détaillés, et spécifications des outils custom.
+    backstory: |
+      Tu es un ingénieur spécialisé dans la génération de configurations
+      Orkeon de qualité production. Tu connais le schéma YAML exact : `name`,
+      `goal`, `process` (sequential/hierarchical/parallel/consensual),
+      `verbose`, `memory`, `memoryProvider`, `planning`, `agents` (avec
+      `role`, `goal`, `backstory`, `tools[]`, `maxIter`, `maxRpm`,
+      `allowDelegation`, `verbose`), `tasks` (avec `description`,
+      `expectedOutput`, `agent`, `dependencies[]`, `humanInput`,
+      `asyncExecution`). Tu maîtrises le pattern DI C# Orkeon :
+      `AddOrkeonApplication()`, `AddOrkeonInfrastructure()`, les suites
+      `AddOrkeonFileSystemTools()` / `AddOrkeonDataTools()` /
+      `AddOrkeonWebTools()` / `AddOrkeonCodeTools()`, et l'enregistrement
+      d'outils custom via `services.AddSingleton<IBaseTool, MonOutil>()`.
+      Tu connais le pattern d'outil custom typé : `ToolBase<TRequest,
+      TResponse>` avec `[FieldSchema]` sur TRequest et `[ReturnSchema]` sur
+      TResponse. Tu ne laisses jamais de placeholder non résolu. Ton YAML est
+      directement chargeable par `CrewFactory.CreateFromFileAsync()`. Ton C#
+      compile dans le namespace Orkeon.CodeForge. Tes prompts agents sont
+      suffisamment précis pour guider l'agent sans ambiguïté.
+
+      Tu lis le plan de migration dans /output/phase3/ et tu écris
+      tes livrables dans /output/phase3/.
+    tools:
+      - "file_read"
+      - "file_write"
+    maxIter: 60            # 4 livrables à produire
+    maxRpm: 10
+    verbose: true
+    allowDelegation: false
+
+# ══════════════════════════════════════════════════════════════
+# TASKS
+# ══════════════════════════════════════════════════════════════
+
+tasks:
+
+  # ─── TÂCHE UNIQUE — LE SUPERVISEUR ORCHESTRE TOUT ──────────
+
+  orchestrate_analysis:
+    description: |
+      Tu es le superviseur de cette crew. Tu ne fais JAMAIS l'analyse
+      toi-même. Tu vérifies les prérequis, puis tu délègues chaque
+      étape aux agents spécialisés via delegate_work avec
+      wait_for_result=true. Tu inspectes chaque résultat avant de
+      passer à l'étape suivante.
+
+      ═══════════════════════════════════════════════════
+      ÉTAPE 0 — VÉRIFICATION DES PRÉREQUIS
+      ═══════════════════════════════════════════════════
+
+      Utilise directory_read sur /src pour lister les fichiers *.ts.
+      Exclure mentalement : node_modules/, dist/, build/, *.d.ts,
+      *.spec.ts, *.test.ts.
+
+      SI AUCUN fichier .ts n'est trouvé dans /src :
+        → Écris un rapport d'abandon dans /output/ABORT.md via file_write
+          expliquant que /src est vide ou ne contient aucun fichier
+          TypeScript analysable.
+        → TERMINE IMMÉDIATEMENT. Ne délègue rien à personne.
+
+      SI des fichiers .ts sont trouvés, continue ci-dessous.
+
+      ═══════════════════════════════════════════════════
+      ÉTAPE 1 — INVENTAIRE (Phase 1a)
+      ═══════════════════════════════════════════════════
+
+      Délègue à "TypeScript Codebase Explorer" avec :
+        task: "Lister récursivement tous les fichiers *.ts dans /src.
+              Exclure node_modules/, dist/, build/, *.d.ts, *.spec.ts,
+              *.test.ts. Pour chaque fichier noter : chemin relatif,
+              extension, taille en lignes, pattern apparent (service,
+              controller, model, etc.). Écrire dans
+              /output/phase1/01_inventory.md."
+        expected_output: "Fichier markdown avec tableau (chemin, pattern,
+                         lignes) et résumé statistique."
+        wait_for_result: true
+
+      Vérifie que success=true. Si échec → écris dans /output/ABORT.md
+      et TERMINE.
+
+      ═══════════════════════════════════════════════════
+      ÉTAPE 2 — ANALYSE FICHIER PAR FICHIER (Phase 1b)
+      ═══════════════════════════════════════════════════
+
+      Délègue à "TypeScript Source Code Analyst" avec :
+        task: "Lire chaque fichier listé dans
+              /output/phase1/01_inventory.md. Pour chaque fichier
+              documenter : (1) description fonctionnelle, (2) exports,
+              (3) imports internes, (4) imports externes, (5) patterns
+              de conception, (6) responsabilité métier. Écrire dans
+              /output/phase1/02_files_analysis.md."
+        expected_output: "Fichier markdown avec une section H2 par
+                         fichier analysé."
+        wait_for_result: true
+
+      Vérifie success=true avant de continuer.
+
+      ═══════════════════════════════════════════════════
+      ÉTAPE 3 — CARTOGRAPHIE DES DÉPENDANCES (Phase 1c)
+      ═══════════════════════════════════════════════════
+
+      Délègue à "TypeScript Dependency Mapper" avec :
+        task: "Lire /output/phase1/02_files_analysis.md. Construire :
+              (1) graphe Mermaid des dépendances, (2) points d'entrée,
+              (3) modules hubs, (4) dépendances circulaires, (5) clusters
+              fonctionnels. Écrire dans /output/phase1/03_dependency_map.md."
+        expected_output: "Fichier markdown avec diagramme Mermaid et
+                         sections analytiques."
+        wait_for_result: true
+
+      Vérifie success=true avant de continuer.
+
+      ═══════════════════════════════════════════════════
+      ÉTAPE 4 — SPÉCIFICATION FONCTIONNELLE (Phase 2)
+      ═══════════════════════════════════════════════════
+
+      Délègue 5 sous-tâches séquentiellement à
+      "Functional Specification Writer" :
+
+      4a. Vue d'ensemble fonctionnelle :
+        task: "Lire les 3 documents de /output/phase1/. Rédiger la vue
+              d'ensemble : domaine, acteurs, périmètre, flux principaux.
+              Écrire dans /output/phase2/01_functional_overview.md."
+        expected_output: "Document markdown avec Domaine, Acteurs,
+                         Périmètre, Flux principaux."
+        wait_for_result: true
+
+      4b. Cas d'usage :
+        task: "Lire /output/phase2/01_functional_overview.md. Documenter
+              chaque cas d'usage au format UC-NNN avec préconditions,
+              étapes, postconditions, variantes. Écrire dans
+              /output/phase2/02_use_cases.md."
+        expected_output: "Document markdown avec sections UC-NNN."
+        wait_for_result: true
+
+      4c. Modèles de données :
+        task: "Lire /output/phase1/02_files_analysis.md et
+              /output/phase2/01_functional_overview.md. Extraire les
+              entités, produire un ERD Mermaid et des tableaux descriptifs.
+              Écrire dans /output/phase2/03_data_models.md."
+        expected_output: "Document markdown avec ERD Mermaid et tableaux."
+        wait_for_result: true
+
+      4d. Contrats d'API :
+        task: "Lire /output/phase1/02_files_analysis.md et
+              /output/phase2/01_functional_overview.md. Documenter les
+              points d'entrée exposés et intégrations consommées. Écrire
+              dans /output/phase2/04_api_contracts.md."
+        expected_output: "Document structuré par type d'intégration."
+        wait_for_result: true
+
+      4e. Règles de gestion :
+        task: "Lire /output/phase1/02_files_analysis.md et tous les
+              documents de /output/phase2/. Extraire les règles métier
+              au format RG-NNN. Écrire dans
+              /output/phase2/05_business_rules.md."
+        expected_output: "Tableau des règles métier (ID, nom, énoncé,
+                         fichier source)."
+        wait_for_result: true
+
+      ═══════════════════════════════════════════════════
+      ÉTAPE 5 — PLAN DE MIGRATION ORKEON (Phase 3a)
+      ═══════════════════════════════════════════════════
+
+      Délègue à "Orkeon Migration Architect" avec :
+        task: "Lire tous les documents de /output/phase2/. Appliquer la
+              grille Orkeon (Collecte/Analyse/Décision/Production/
+              Coordination). Pour chaque agent : rôle, objectif, outils,
+              effort. Déterminer le ProcessType. Écrire dans
+              /output/phase3/00_migration_plan.md."
+        expected_output: "Tableau de mapping complet, ProcessType justifié,
+                         outils custom, recommandations."
+        wait_for_result: true
+
+      ═══════════════════════════════════════════════════
+      ÉTAPE 6 — GÉNÉRATION YAML + CODE (Phase 3b)
+      ═══════════════════════════════════════════════════
+
+      Délègue 4 sous-tâches séquentiellement à
+      "Orkeon Configuration Generator" :
+
+      6a. Config YAML :
+        task: "Lire /output/phase3/00_migration_plan.md. Générer le
+              config.yaml complet de la crew Orkeon cible. Aucun
+              placeholder. Écrire dans /output/phase3/01_config.yaml."
+        expected_output: "Fichier YAML valide, chargeable par
+                         CrewFactory.CreateFromFileAsync()."
+        wait_for_result: true
+
+      6b. Bootstrap C# :
+        task: "Lire /output/phase3/00_migration_plan.md. Générer le
+              Program.cs avec setup DI, suites d'outils, outils custom,
+              KickoffAsync. Écrire dans /output/phase3/02_bootstrap.cs."
+        expected_output: "Code C# compilable dans Orkeon.CodeForge."
+        wait_for_result: true
+
+      6c. Prompts agents :
+        task: "Lire /output/phase3/00_migration_plan.md et
+              /output/phase3/01_config.yaml. Pour chaque agent, rédiger
+              role/goal/backstory. Écrire dans
+              /output/phase3/03_agent_prompts.md."
+        expected_output: "Document avec une section H2 par agent."
+        wait_for_result: true
+
+      6d. Outils custom :
+        task: "Lire /output/phase3/00_migration_plan.md. Pour chaque
+              outil custom : base class, TRequest, TResponse,
+              ExecuteTypedAsync, DI, exemple JSON. Si aucun outil custom,
+              écrire un README confirmant. Écrire dans
+              /output/phase3/tools/."
+        expected_output: "Un fichier markdown par outil custom ou un
+                         README si aucun."
+        wait_for_result: true
+
+      ═══════════════════════════════════════════════════
+      FIN — Résumé
+      ═══════════════════════════════════════════════════
+
+      Quand toutes les délégations sont terminées avec succès, rédige
+      un résumé final listant les livrables produits dans /output/ avec
+      leur statut (succès/échec).
+
+    expectedOutput: >
+      Soit un rapport d'abandon (/output/ABORT.md) si /src est vide,
+      soit un résumé confirmant que les 3 phases ont été exécutées
+      avec succès, avec la liste des livrables produits dans /output/.
+    agent: "supervisor"

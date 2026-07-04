@@ -1,0 +1,315 @@
+# Top-level EditorConfig — applies to all files in this repository
+root = true
+
+[*]
+end_of_line = lf
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{sln,slnx}]
+indent_style = tab
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# ── Framework library code (src/) ──────────────────────────────────────────
+# CA2007 — ConfigureAwait(false) is mandatory in library code so a host with a
+# SynchronizationContext (WPF/WinForms/classic ASP.NET) cannot deadlock or lose
+# throughput. The policy is already applied to ~94% of awaits; locking it as an
+# error prevents future regressions. The executable Orkeon.ConsoleApp is exempted
+# below (no SynchronizationContext to worry about, and ConfigureAwait noise hurts
+# readability of top-level program code).
+[src/**.cs]
+dotnet_diagnostic.CA2007.severity = error
+
+# ── B1 globalisation ratchet (2026-06-13) ──────────────────────────────────
+# Resorbed to zero across all src projects (363 sites, multi-agent wave R11.1/B1)
+# and frozen as errors so framework code can never silently reintroduce a
+# culture-sensitive string operation. Arbitrage applied: StringComparison.Ordinal
+# (OrdinalIgnoreCase for identifier/key matching) for comparisons; CultureInfo.
+# InvariantCulture for ToString/Parse/Format; ToLowerInvariant that PRODUCES a
+# wire/storage value kept under a tight, justified `#pragma warning disable CA1308`.
+# These rules are NOT in the default analysis set, so enabling them here makes the
+# normal build enforce them without needing AnalysisMode=All. Test code neutralises
+# the same family in tests/.editorconfig (assertions compare literal values, where
+# ordinal is already the default and an explicit StringComparison is pure noise).
+dotnet_diagnostic.CA1307.severity = error
+dotnet_diagnostic.CA1305.severity = error
+dotnet_diagnostic.CA1308.severity = error
+dotnet_diagnostic.CA1310.severity = error
+dotnet_diagnostic.CA1304.severity = error
+dotnet_diagnostic.CA1311.severity = error
+
+# ── B2 null-guards ratchet (2026-06-13) ───────────────────────────────────
+# CA1062 (validate externally-visible method parameters for null) resorbed to
+# zero across all src projects (605 unique sites, multi-agent wave R11.2/B2) and
+# frozen as an error. Arbitrage: guard ALL flagged sites with
+# ArgumentNullException.ThrowIfNull(param) (the canonical .NET 10 form; the
+# netstandard2.0 analyzer project uses the classic `if (x is null) throw` form);
+# the handful of contractually-nullable, null-tolerant JS-facing shim params
+# satisfy the rule by coalescing (`?? JsValue.Undefined`) instead of throwing,
+# preserving behaviour. Not in the default analysis set — enabling it here makes
+# the normal build enforce it without AnalysisMode=All. Tests/examples are out of
+# scope (separate solution / test doubles).
+dotnet_diagnostic.CA1062.severity = error
+
+# ── B3 source-generated logging ratchet (2026-06-13) ──────────────────────
+# CA1848 (use the LoggerMessage source generator) and CA1873 (don't evaluate
+# logging arguments when the level is disabled) resorbed to zero across all src
+# projects (113 CA1848 + 34 CA1873 unique sites, multi-agent wave R11.3/B3) and
+# frozen as errors. Arbitrage: convert every flagged ILogger call to a
+# [LoggerMessage] partial method (per-class EventIds from 1, message template &
+# args preserved verbatim, exceptions as method args); CA1873 sites that pass an
+# expensive expression to a generated method hoist that expression into a local
+# inside the IsEnabled guard. The one dynamic-level Log(level,…) site (audit sink)
+# uses cached LoggerMessage.Define delegates. Not in the default analysis set, so
+# enabling here enforces them in the normal build without AnalysisMode=All. Tests
+# and examples/ (separate solution / low-volume) are out of scope.
+dotnet_diagnostic.CA1848.severity = error
+dotnet_diagnostic.CA1873.severity = error
+
+# ── B5 hygiene ratchet (2026-06-13) ───────────────────────────────────────
+# CA1805 (do not initialize a member to its default value) resorbed to zero
+# across all src projects (89 sites, wave R11.5) by removing the redundant
+# initializers, and frozen as an error. CA5394 (insecure System.Random) is also
+# frozen as an error: the only 3 src uses are provably non-security (a SHA256-
+# seeded deterministic pseudo-embedding stub, retry-backoff jitter, and a
+# simulated research-confidence score) and carry a tight, justified
+# `#pragma warning disable CA5394` each — freezing the rule means any NEW Random
+# use trips the build and must be reviewed for security sensitivity. Neither rule
+# is in the default analysis set, so enabling them here enforces them in the
+# normal build without AnalysisMode=All. CA1822 (mark members static) is
+# deliberately NOT taken in this wave: several flagged members are exposed to JS
+# via Jint instance reflection (LlmNamespaceBinding, CommandRuntimeContext) where
+# making them static would break the scripting API — deferred to API-shape review.
+dotnet_diagnostic.CA1805.severity = error
+dotnet_diagnostic.CA5394.severity = error
+
+# ── D1 API-shape ratchet (2026-06-14, wave R11.7) ─────────────────────────
+# The public-API-shape family resorbed to zero across all src projects and frozen
+# as errors (maintainer decision D1 = "fix everything", 0.9.0-beta breaking window).
+# - CA1002/CA2227/CA1819: exposed mutable collections are read-only (List<T>/T[] ->
+#   IReadOnlyList<T>; settable collection props -> init/get-only). Deserialization-
+#   aware: IConfiguration-bound options use Collection<T> get-only, YamlDotNet DTOs
+#   keep a settable Collection<T>?, System.Text.Json DTOs use IReadOnlyList<T> init.
+# - CA1054/CA1056: string URL params/properties -> System.Uri.
+# - CA1716: interface/virtual params & members renamed off reserved keywords, and the
+#   Orkeon.Domain.Shared namespace renamed to Orkeon.Domain.SharedKernel (no carve-out).
+# - CA1024: getter methods -> properties. CA1034: public nested types un-nested
+#   (with a qualifying rename where the bare name was generic) or made internal.
+# None are in the default analysis set, so enabling them here enforces them in the
+# normal build without AnalysisMode=All. Tests/examples keep their occurrences.
+dotnet_diagnostic.CA1002.severity = error
+dotnet_diagnostic.CA2227.severity = error
+dotnet_diagnostic.CA1819.severity = error
+dotnet_diagnostic.CA1054.severity = error
+dotnet_diagnostic.CA1056.severity = error
+dotnet_diagnostic.CA1716.severity = error
+dotnet_diagnostic.CA1024.severity = error
+dotnet_diagnostic.CA1034.severity = error
+
+# ── R6.9 Palier B wave 2b — CA1031 catch-all ratchet (2026-06-14) ──────────
+# All 162 src occurrences of CA1031 ("do not catch general exception types")
+# resorbed to zero (maintainer decision "corrige tout") and frozen as an error.
+# Arbitrage per site (multi-agent wave + adversarial review): NARROW to specific
+# types where the try body's throw set is provably bounded (Path.GetExtension ->
+# ArgumentException; Convert.ToSingle -> FormatException/InvalidCastException/
+# OverflowException; YamlDotNet -> YamlException; 9 sites); otherwise a method-
+# level [SuppressMessage(... CA1031 ...)] with a SITE-SPECIFIC justification for
+# the ~146 deliberate fault barriers (service-boundary log-and-continue, best-
+# effort cleanup, fire-and-forget dispatch, listener isolation) — every one
+# preserves OperationCanceledException propagation and changes no control flow.
+# One review-flagged weak barrier (JsCrew.ResolveInitialState) was turned into a
+# real fix (callability check, broad catch removed). Not in the default analysis
+# set, so enabling here enforces it in the normal build without AnalysisMode=All.
+# Tests/examples keep their CA1031 occurrences (deferred).
+dotnet_diagnostic.CA1031.severity = error
+
+# ── R6.9 Palier B wave 3 — src style / API-shape ratchet (2026-06-14) ──────
+# 219 src occurrences across 27 analyzer rules resorbed to zero (maintainer
+# decision "corrige tout"; 0.9.0-beta breaking window) and frozen as errors.
+# Multi-agent wave + per-bucket adversarial review. Resolution mix: REAL fixes
+# (add standard exception ctors CA1032; add operator-alternate methods CA2225;
+# match base parameter names CA1725; concrete internal types CA1859; make
+# executable types internal CA1515 / seal CA1852/CA1813 / static-holder CA1052;
+# field -> property CA1051 where the source generator allows; rename CA1707/
+# CA1711/CA1710/CA1720/CA1721/CA1700/CA1708/CA1867; un-nest/relocate) and, only
+# for PROVABLE false positives, a [SuppressMessage] with a site-specific
+# Justification — CA1812 types instantiated via DI/reflection; CA1303 non-
+# localized framework diagnostic strings; CA1000 idiomatic static factories on
+# generic types; CA1003/CA1030 domain events not modeled as EventArgs; CA1724
+# core aggregate names matching their namespace; CA1051 Logger fields the
+# [LoggerMessage] generator requires (property breaks SYSLIB1019); CA1508
+# analyzer flow blind spots. Tests/examples keep their occurrences (neutralised
+# in wave 2a). Not in the default analysis set, so enabling here enforces them in
+# the normal build without AnalysisMode=All.
+dotnet_diagnostic.CA1515.severity = error
+dotnet_diagnostic.CA1032.severity = error
+dotnet_diagnostic.CA2234.severity = error
+dotnet_diagnostic.CA1725.severity = error
+dotnet_diagnostic.CA1000.severity = error
+dotnet_diagnostic.CA1812.severity = error
+dotnet_diagnostic.CA1051.severity = error
+dotnet_diagnostic.CA2225.severity = error
+dotnet_diagnostic.CA1859.severity = error
+dotnet_diagnostic.CA1711.severity = error
+dotnet_diagnostic.CA1707.severity = error
+dotnet_diagnostic.CA1303.severity = error
+dotnet_diagnostic.CA1724.severity = error
+dotnet_diagnostic.CA1813.severity = error
+dotnet_diagnostic.CA1720.severity = error
+dotnet_diagnostic.CA1508.severity = error
+dotnet_diagnostic.CA1030.severity = error
+dotnet_diagnostic.CA1003.severity = error
+dotnet_diagnostic.CA1721.severity = error
+dotnet_diagnostic.CA1708.severity = error
+dotnet_diagnostic.CA1867.severity = error
+dotnet_diagnostic.CA1852.severity = error
+dotnet_diagnostic.CA1814.severity = error
+dotnet_diagnostic.CA1710.severity = error
+dotnet_diagnostic.CA1700.severity = error
+dotnet_diagnostic.CA1052.severity = error
+dotnet_diagnostic.CA1033.severity = error
+
+# ── R6.9 Palier B wave 4 — src correctness / security ratchet (2026-06-14) ──
+# 131 src occurrences across 12 correctness & security rules resorbed to zero
+# (maintainer decision "corrige tout") and frozen as errors. Multi-agent wave +
+# adversarial SECURITY review (every CA2100 suppression confirmed: the dynamic
+# SQL fragment is either a real DbParameter or an identifier validated/whitelisted
+# BEFORE the query runs — PostgresStateStore SchemaNameValidator, SqliteMemory
+# ValidateTableName, DatabaseSchemaTool IsSafeIdentifier; DB tools that execute
+# caller-supplied SQL do so as their documented core capability behind the tool
+# security policy). REAL fixes: parameterize values, dispose owned resources /
+# implement IDisposable (CA2000/CA2213/CA1001), await instead of block (CA1849),
+# await monitor tasks before disposing (CA2025). Justified [SuppressMessage] only
+# for provable non-issues: CA1822 Jint-bound instance members (the deferred
+# 'mark static' tail — JS surface requires instance members), CA2000 genuine
+# ownership transfers (HttpClient disposeHandler:true, DI-owned singletons),
+# CA5351 MD5-as-non-security-deterministic-GUID, CA5359 cert-validation disabled
+# only behind an explicit, logged operator opt-out (default path validates &
+# pins to trusted CAs). Tests/examples keep their occurrences. Not in the default
+# analysis set, so enabling here enforces them in the normal build.
+dotnet_diagnostic.CA2100.severity = error
+dotnet_diagnostic.CA1849.severity = error
+dotnet_diagnostic.CA2000.severity = error
+dotnet_diagnostic.CA2213.severity = error
+dotnet_diagnostic.CA1822.severity = error
+dotnet_diagnostic.CA1065.severity = error
+dotnet_diagnostic.CA2217.severity = error
+dotnet_diagnostic.CA2025.severity = error
+dotnet_diagnostic.CA2008.severity = error
+dotnet_diagnostic.CA1001.severity = error
+dotnet_diagnostic.CA5351.severity = error
+dotnet_diagnostic.CA5359.severity = error
+
+# ── R6.9 mechanical hygiene ratchet (2026-06-14, Palier B wave 1) ──────────
+# Six behavior-preserving analyzer rules resorbed to zero across ALL THREE trees
+# (src/, tests/, examples/ — maintainer scope decision) and frozen as errors so
+# they cannot silently re-accumulate. None change observable behavior; the fixes
+# are purely local:
+#   - CA1860: '.Any()' -> '.Count > 0' / '.Length > 0' on countable collections.
+#   - CA1861: inline constant array arguments hoisted to 'static readonly' fields.
+#   - CA1854: 'ContainsKey' guard + indexer collapsed to a single 'TryGetValue'.
+#   - CA1847: 'Contains("x")' -> 'Contains(\'x\')' for single-char searches.
+#   - CA1826: Enumerable methods on indexable collections -> direct indexing /
+#     list patterns ('FirstOrDefault()' -> 'is [var first, ..] ? first : null').
+#   - CA2016: forward the in-scope CancellationToken to the called overload.
+# ~280 sites cleared (the bulk in examples/03-finance-trading/Orkeon.Trading.Tools).
+# None are in the default analysis set, so enabling them here enforces them in the
+# normal build without AnalysisMode=All. CA1822 (mark static) is again NOT taken:
+# its residual tail is public API surface / Jint-exposed members — see the B5 note
+# above; deferred to the API-shape review wave.
+[{src,tests,examples}/**.cs]
+dotnet_diagnostic.CA1860.severity = error
+dotnet_diagnostic.CA1861.severity = error
+dotnet_diagnostic.CA1854.severity = error
+dotnet_diagnostic.CA1847.severity = error
+dotnet_diagnostic.CA1826.severity = error
+dotnet_diagnostic.CA2016.severity = error
+
+# ── R13.11 SonarQube campaign — build-emitted roslyn ratchet (2026-06-15) ──
+# SYSLIB1045 (use the [GeneratedRegex] source generator instead of a runtime Regex) was
+# resorbed to zero across src/ and tests/ (R13.11) and is frozen as an error. Unlike the
+# csharpsquid Sxxxx rules — whose anti-regression is carried by the server Quality Gate
+# "new code" conditions (decision D8) — SYSLIB1045 is emitted by the .NET SDK analyzers at
+# build time, so it is ratcheted here exactly like the CA campaign (R11). examples/ is out
+# of scope (separate solution). xUnit2032 is frozen in tests/.editorconfig (test-only rule).
+[{src,tests}/**.cs]
+dotnet_diagnostic.SYSLIB1045.severity = error
+
+# ── R6.9 Palier B wave 2a — examples/ (demo & sample code) ─────────────────
+# examples/ is illustrative demo code and runnable sample apps, not shipped
+# library surface. The API-shape / logging-perf / globalisation / async /
+# visibility / naming families below are driven to zero and frozen as ERROR for
+# src/** (waves B1/B3/D1) but carry no signal in demo code, so they are
+# neutralised here (documented arbitrage, 2026-06-14). Correctness & resource-
+# safety rules are deliberately KEPT visible and were resorbed to zero in the final
+# wave (2026-06-15): CA1031 (catch-all), CA2000 / CA1849 / CA1001 (disposal &
+# sync-over-async) and CA1822 are REALLY fixed and frozen as errors below; only
+# CA5394 (insecure RNG) is neutralised — the Orkeon.Trading.Tools mock data
+# providers seed pseudo-random market/sentiment/tick data for a demo, where a
+# crypto RNG carries no benefit and would defeat reproducibility. Vendored
+# third-party trees under examples/others/ carry their own root .editorconfig and
+# are unaffected.
+[examples/**.cs]
+# API shape
+dotnet_diagnostic.CA1002.severity = none
+dotnet_diagnostic.CA1034.severity = none
+dotnet_diagnostic.CA1051.severity = none
+dotnet_diagnostic.CA2227.severity = none
+dotnet_diagnostic.CA2234.severity = none
+dotnet_diagnostic.CA1062.severity = none
+# Logging performance
+dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1873.severity = none
+# Async / ConfigureAwait (sample apps have no sync context — mirrors ConsoleApp)
+dotnet_diagnostic.CA2007.severity = none
+# Globalisation (demo string formatting is non-localised — mirrors tests/ arbitrage)
+dotnet_diagnostic.CA1304.severity = none
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1307.severity = none
+dotnet_diagnostic.CA1308.severity = none
+dotnet_diagnostic.CA1311.severity = none
+dotnet_diagnostic.CA1862.severity = none
+# Visibility / sealing (sample entry-point types are public by nature)
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA1852.severity = none
+# Naming / design
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1711.severity = none
+dotnet_diagnostic.CA1716.severity = none
+dotnet_diagnostic.CA1724.severity = none
+dotnet_diagnostic.CA1303.severity = none
+# Analyzer-guesswork / scaffolding
+dotnet_diagnostic.CA1812.severity = none
+dotnet_diagnostic.CA1823.severity = none
+# CA1031 (broad catch): demo runners use fault barriers so a sample step's failure
+# is shown, not fatal. src resolved CA1031 per-site (wave 2b); neutralised in demo.
+dotnet_diagnostic.CA1031.severity = none
+# CA5394 (insecure System.Random): demo mock data providers seed pseudo-random
+# market/sentiment/tick values for illustration — crypto RNG carries no benefit and
+# would defeat reproducibility. src froze CA5394 (3 justified non-security uses).
+dotnet_diagnostic.CA5394.severity = none
+
+# Correctness / resource-safety families resorbed to zero in the examples tree
+# (R6.9 Palier B final wave, 2026-06-15) with REAL fixes and frozen as errors:
+#   CA2000: dispose owned disposables before scope exit (Terminal.Gui toplevels).
+#   CA1849: await the async counterpart instead of the sync-over-async call.
+#   CA1001: types owning a disposable (SemaphoreSlim) implement IDisposable.
+#   CA1822: instance member with no instance state made static.
+# Not in the default analysis set, so setting them to error here enforces them.
+dotnet_diagnostic.CA2000.severity = error
+dotnet_diagnostic.CA1849.severity = error
+dotnet_diagnostic.CA1001.severity = error
+dotnet_diagnostic.CA1822.severity = error
+
+# The console application is an executable entry point, not a NuGet library:
+# exempt it from the CA2007 error gate.
+[src/apps/Orkeon.ConsoleApp/**.cs]
+dotnet_diagnostic.CA2007.severity = none

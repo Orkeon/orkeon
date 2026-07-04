@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Package Metadata (package-specific overrides).
+         Version, authors, license, repository URL, etc. are inherited from
+         src/Directory.Build.props — single version source (R1.6 / R1.9). -->
+    <PackageId>Orkeon.Plugins</PackageId>
+    <Description>Plugin system for Orkeon — directory-based discovery, isolated collectible AssemblyLoadContext loading, and opt-in DI activation (AddOrkeonPlugins) so third-party assemblies can contribute tools and providers.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Plugins;Extensions</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Plugins.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+</Project>

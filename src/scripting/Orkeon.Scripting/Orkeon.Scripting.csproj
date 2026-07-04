@@ -1,0 +1,138 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Package Metadata (package-specific overrides) -->
+    <PackageId>Orkeon.Scripting</PackageId>
+    <Description>TypeScript-syntax scripting DSL for Orkeon - Jint-based runtime that lets developers describe agents, crews, FSM and graph orchestrations in `.ork.ts` files without touching C# or YAML.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Scripting;DSL;TypeScript;Jint</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\nuget\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- SCR-21: bundle the rolled-up `orkeon.d.ts` produced by `GenerateRollupDts` into the package. -->
+  <ItemGroup>
+    <None Include="$(OutputPath)dist\orkeon.d.ts"
+          Pack="true"
+          PackagePath="content\typings\orkeon.d.ts"
+          Condition="Exists('$(OutputPath)dist\orkeon.d.ts')" />
+  </ItemGroup>
+
+  <!-- SCR-21: concatenate Typings/*.d.ts into bin/<config>/<tfm>/dist/orkeon.d.ts after each build.
+       Load order: errors.d.ts first (types referenced elsewhere), then the rest alphabetically. -->
+  <Target Name="GenerateRollupDts" AfterTargets="Build">
+    <ItemGroup>
+      <DtsFirst Include="Typings/errors.d.ts" />
+      <DtsRest Include="Typings/*.d.ts" Exclude="Typings/errors.d.ts" />
+    </ItemGroup>
+    <ReadLinesFromFile File="%(DtsFirst.Identity)">
+      <Output TaskParameter="Lines" ItemName="DtsLinesFirst" />
+    </ReadLinesFromFile>
+    <ReadLinesFromFile File="%(DtsRest.Identity)">
+      <Output TaskParameter="Lines" ItemName="DtsLinesRest" />
+    </ReadLinesFromFile>
+    <MakeDir Directories="$(OutputPath)dist" />
+    <PropertyGroup>
+      <RollupBanner>// Orkeon Scripting DSL v1.0 - TypeScript declarations
+// Generated from src/scripting/Orkeon.Scripting/Typings/*.d.ts
+// DO NOT EDIT - regenerate via `dotnet build src/scripting/Orkeon.Scripting`
+</RollupBanner>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(OutputPath)dist/orkeon.d.ts"
+                      Lines="$(RollupBanner)"
+                      Overwrite="true" />
+    <WriteLinesToFile File="$(OutputPath)dist/orkeon.d.ts"
+                      Lines="@(DtsLinesFirst);@(DtsLinesRest)"
+                      Overwrite="false" />
+  </Target>
+
+  <!-- Bootstrap the esbuild toolchain so EsbuildTranspiler.FindRepoLocalEsbuild can locate
+       a platform-specific binary on a fresh clone. The lockfile is generated on whichever
+       OS first ran `npm install`, and npm's optionalDependencies mechanism only activates
+       the variant matching THAT host - so a Windows dev pulling a lockfile generated on
+       Linux ends up with `@esbuild/linux-x64/` (useless) and no `@esbuild/win32-x64/`.
+       To handle that we run two steps:
+        1. `npm ci` on a fresh clone - installs strictly what the lockfile resolved.
+        2. If the host's expected `@esbuild/{os}-{arch}/{binary}` is still missing,
+           force-install that specific variant by name (npm honors it because the package's
+           own `os`/`cpu` constraints match the current host).
+       Skips when:
+        - SkipScriptingNpmInstall=true is passed (CI opt-out);
+        - tools/scripting-esbuild/package.json is missing (NuGet consumer of this package).
+       Failure to invoke npm is non-fatal: the build still succeeds and EsbuildTranspiler
+       falls back to PATH lookup + its own friendly EsbuildNotFoundException at runtime. -->
+  <Target Name="EnsureScriptingEsbuildInstalled"
+          BeforeTargets="BeforeBuild"
+          Condition="'$(SkipScriptingNpmInstall)' != 'true'">
+    <PropertyGroup>
+      <_ScriptingEsbuildRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\..\tools\scripting-esbuild'))</_ScriptingEsbuildRoot>
+      <_ScriptingEsbuildNodeModules>$(_ScriptingEsbuildRoot)\node_modules</_ScriptingEsbuildNodeModules>
+      <_EsbuildVersion>0.24.0</_EsbuildVersion>
+
+      <_EsbuildOs Condition="$([MSBuild]::IsOSPlatform('Windows'))">win32</_EsbuildOs>
+      <_EsbuildOs Condition="$([MSBuild]::IsOSPlatform('OSX'))">darwin</_EsbuildOs>
+      <_EsbuildOs Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux</_EsbuildOs>
+      <_EsbuildArch Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">x64</_EsbuildArch>
+      <_EsbuildArch Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">arm64</_EsbuildArch>
+
+      <_EsbuildBinaryName Condition="'$(_EsbuildOs)' == 'win32'">esbuild.exe</_EsbuildBinaryName>
+      <_EsbuildBinaryName Condition="'$(_EsbuildOs)' != 'win32'">esbuild</_EsbuildBinaryName>
+
+      <!-- Windows package layout: binary at the package root. Unix: under bin/. -->
+      <_EsbuildPlatformBinary Condition="'$(_EsbuildOs)' == 'win32'">$(_ScriptingEsbuildNodeModules)\@esbuild\$(_EsbuildOs)-$(_EsbuildArch)\$(_EsbuildBinaryName)</_EsbuildPlatformBinary>
+      <_EsbuildPlatformBinary Condition="'$(_EsbuildOs)' != 'win32'">$(_ScriptingEsbuildNodeModules)/@esbuild/$(_EsbuildOs)-$(_EsbuildArch)/bin/$(_EsbuildBinaryName)</_EsbuildPlatformBinary>
+    </PropertyGroup>
+
+    <!-- Step 1: bootstrap node_modules on a fresh clone from the locked dependency graph.
+         'npm ci' installs strictly from package-lock.json: it refuses a lockfile that
+         diverges from package.json (reproducible builds) and never mutates the lockfile.
+         The 'ignore-scripts' flag reduces the install-time script execution surface
+         of the @esbuild/* packages. -->
+    <Message Importance="High"
+             Condition="!Exists('$(_ScriptingEsbuildNodeModules)') AND Exists('$(_ScriptingEsbuildRoot)\package.json')"
+             Text="[Orkeon.Scripting] Bootstrapping esbuild toolchain via 'npm ci' under $(_ScriptingEsbuildRoot) (one-time per clone; opt out with -p:SkipScriptingNpmInstall=true)." />
+    <Exec Command="npm ci --no-audit --no-fund --silent --ignore-scripts"
+          WorkingDirectory="$(_ScriptingEsbuildRoot)"
+          Condition="!Exists('$(_ScriptingEsbuildNodeModules)') AND Exists('$(_ScriptingEsbuildRoot)\package.json')"
+          ContinueOnError="WarnAndContinue" />
+
+    <!-- Step 2: force the host's @esbuild variant if step 1 produced a foreign one
+         (lockfile cross-OS scenario). Idempotent: skips once the binary is present. -->
+    <Message Importance="High"
+             Condition="'$(_EsbuildOs)' != '' AND '$(_EsbuildArch)' != '' AND Exists('$(_ScriptingEsbuildNodeModules)') AND !Exists('$(_EsbuildPlatformBinary)')"
+             Text="[Orkeon.Scripting] Host-specific binary @esbuild/$(_EsbuildOs)-$(_EsbuildArch) missing under tools/scripting-esbuild/node_modules/; force-installing (lockfile resolved a foreign platform)." />
+    <Exec Command="npm install --no-save --no-audit --no-fund --silent @esbuild/$(_EsbuildOs)-$(_EsbuildArch)@$(_EsbuildVersion)"
+          WorkingDirectory="$(_ScriptingEsbuildRoot)"
+          Condition="'$(_EsbuildOs)' != '' AND '$(_EsbuildArch)' != '' AND Exists('$(_ScriptingEsbuildNodeModules)') AND !Exists('$(_EsbuildPlatformBinary)')"
+          ContinueOnError="WarnAndContinue" />
+  </Target>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Scripting.Tests" />
+    <!-- Orkeon.Scripting.Cli ships as the `orkeon` CLI assembly (see its
+         <AssemblyName>orkeon</AssemblyName>); InternalsVisibleTo matches the
+         assembly name, not the project. -->
+    <InternalsVisibleTo Include="orkeon" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Jint" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,79 @@
+# 1. Assistant de Recherche Multi-Sources
+# Use case: Multi-source research crew producing structured synthesis reports
+# Source: project/marketing/content-strategy/101-USE-CASES.md #1
+
+name: "research-assistant"
+goal: "Produce a comprehensive synthesis report from heterogeneous sources (web, PDF, CSV, JSON) with structured citations"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  web_researcher:
+    role: "Chercheur Web"
+    goal: "Find and scrape relevant web sources on the research topic"
+    backstory: |
+      You are an expert web researcher skilled at finding authoritative sources,
+      filtering noise, and extracting key information from web pages. You know
+      how to formulate effective search queries and evaluate source credibility.
+    tools:
+      - "web_scrape"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  document_analyst:
+    role: "Analyste Documentaire"
+    goal: "Extract and structure key data from PDF, CSV, and JSON documents"
+    backstory: |
+      You are a meticulous document analyst with expertise in extracting insights
+      from structured and unstructured data. You can parse financial tables, research
+      papers, and datasets, identifying the most relevant data points for synthesis.
+    tools:
+      - "pdf_reader"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  writer:
+    role: "Redacteur de Synthese"
+    goal: "Compile findings into a well-structured synthesis report with proper citations"
+    backstory: |
+      You are a professional technical writer who excels at synthesizing complex
+      information from multiple sources into clear, well-organized reports. You always
+      cite your sources and structure content with headings, summaries, and key takeaways.
+    tools:
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  research_web:
+    description: "Search and scrape the web for authoritative sources on the given research topic. Collect at least 5 relevant sources with key excerpts and URLs."
+    expectedOutput: "A JSON array of source objects, each containing: url, title, key_excerpts, credibility_score"
+    agent: "web_researcher"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  analyze_documents:
+    description: "Parse and analyze all provided documents (PDF, CSV, JSON). Extract key data points, statistics, and findings relevant to the research topic."
+    expectedOutput: "A structured JSON report with extracted data points, statistics, and document-level summaries"
+    agent: "document_analyst"
+    dependencies:
+      - "research_web"
+    asyncExecution: false
+    humanInput: false
+
+  write_synthesis:
+    description: "Compile all research findings and document analyses into a comprehensive synthesis report. Include an executive summary, thematic sections, and a bibliography."
+    expectedOutput: "A Markdown synthesis report with executive summary, 3-5 thematic sections, key findings, and a complete bibliography with citations"
+    agent: "writer"
+    dependencies:
+      - "analyze_documents"
+    asyncExecution: false
+    humanInput: false

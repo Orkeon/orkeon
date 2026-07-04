@@ -1,0 +1,133 @@
+using Microsoft.Extensions.Logging;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools.Security;
+
+namespace Orkeon.Infrastructure.FileSystem;
+
+/// <summary>
+/// Implementation of <see cref="IFileSystemService"/> that chains the domain
+/// <see cref="FileSystemRegistry"/> with <see cref="IPathValidator"/> for defense-in-depth.
+/// </summary>
+public sealed partial class FileSystemService : IFileSystemService
+{
+    private readonly FileSystemRegistry _registry;
+    private readonly IPathValidator _pathValidator;
+    private readonly ILogger<FileSystemService> _logger;
+
+    /// <summary>All known mount base paths, used to redact physical paths from error messages.</summary>
+    private readonly IReadOnlyList<string> _basePaths;
+
+    /// <summary>Initializes a new instance of <see cref="FileSystemService"/>.</summary>
+    /// <param name="registry">The file system registry.</param>
+    /// <param name="pathValidator">The path validator.</param>
+    /// <param name="logger">The logger.</param>
+    public FileSystemService(
+        FileSystemRegistry registry,
+        IPathValidator pathValidator,
+        ILogger<FileSystemService> logger)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(pathValidator);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _registry = registry;
+        _pathValidator = pathValidator;
+        _logger = logger;
+
+        // Collect base paths for redaction (normalize to full paths).
+        // Use GetAllMountsInternal to include internal mounts (e.g. sandbox) in redaction,
+        // so physical paths are never leaked regardless of mount visibility.
+        _basePaths = _registry.GetAllMountsInternal()
+            .Select(_ => GetBasePathFromRegistry(registry, _.VirtualPath))
+            .Where(p => p is not null)
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <inheritdoc />
+    public PathValidationResult ResolveAndValidate(string virtualPath, FileAccessRights requiredRight)
+    {
+        // Step 1: Resolve virtual path via the domain registry
+        string physicalPath;
+        try
+        {
+            physicalPath = _registry.ResolveAndCheckRights(virtualPath, requiredRight);
+        }
+        catch (FileAccessDeniedException ex)
+        {
+            LogAccessDeniedByRegistry(virtualPath, requiredRight);
+            var safeMessage = RedactPhysicalPaths(ex.Message);
+            return PathValidationResult.Denied(safeMessage);
+        }
+
+        // Step 2: Defense-in-depth — run through IPathValidator
+        var pathValidation = _pathValidator.ValidatePath(physicalPath);
+        if (!pathValidation.IsAllowed)
+        {
+            LogAccessDeniedByPathValidator(virtualPath);
+            var safeReason = RedactPhysicalPaths(pathValidation.DenialReason ?? "Path validation failed");
+            return PathValidationResult.Denied(safeReason);
+        }
+
+        LogAccessGranted(virtualPath);
+        return PathValidationResult.Allowed(physicalPath);
+    }
+
+    /// <inheritdoc />
+    public string? ToVirtualPath(string physicalPath)
+    {
+        return _registry.ToVirtualPath(physicalPath);
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<MountInfo> GetAvailableMounts()
+    {
+        return _registry.GetAvailableMounts();
+    }
+
+    /// <summary>
+    /// Replaces any occurrence of known physical base paths in <paramref name="message"/>
+    /// with "[REDACTED]" so that physical paths are never leaked to callers.
+    /// </summary>
+    internal string RedactPhysicalPaths(string message)
+    {
+        return _basePaths.Aggregate(message, (current, basePath) =>
+            current.Contains(basePath, StringComparison.Ordinal)
+                ? current.Replace(basePath, "[REDACTED]", StringComparison.Ordinal)
+                : current);
+    }
+
+    /// <summary>
+    /// Attempts to extract the physical base path for a given virtual path by resolving
+    /// the mount root with <see cref="FileAccessRights.Read"/>.
+    /// Falls back to <c>null</c> if the mount root cannot be resolved.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort base-path discovery: any resolution/rights failure yields null (path redaction is simply skipped for that mount) and must not propagate.")]
+    private static string? GetBasePathFromRegistry(FileSystemRegistry registry, string virtualPath)
+    {
+        try
+        {
+            // Resolve the mount root to discover the physical base path
+            var physicalRoot = registry.ResolveAndCheckRights(virtualPath, FileAccessRights.Read);
+            // The basePath is the directory of the resolved root (or the root itself)
+            return Path.GetFullPath(physicalRoot);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Access denied by registry for virtual path '{VirtualPath}' requiring {RequiredRight}")]
+    private partial void LogAccessDeniedByRegistry(string virtualPath, FileAccessRights requiredRight);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Access denied by path validator for virtual path '{VirtualPath}'")]
+    private partial void LogAccessDeniedByPathValidator(string virtualPath);
+
+    [LoggerMessage(Level = LogLevel.Debug,
+        Message = "Access granted for virtual path '{VirtualPath}'")]
+    private partial void LogAccessGranted(string virtualPath);
+}

@@ -1,0 +1,160 @@
+# 91. Maintenance Predictive — ObserverAgent par Machine
+# Use case: predictive maintenance with one observer per critical machine, episodic memory for failure pattern prediction
+# Source: project/marketing/content-strategy/101-USE-CASES.md #91
+
+name: "predictive-maintenance"
+goal: "Deploy observer agents per critical machine to predict failures by comparing current sensor patterns against episodic memory of past incidents, then plan and prioritize maintenance interventions"
+process: "parallel"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: false
+
+agents:
+  machine_observer_pump:
+    role: "Pump Station Observer"
+    goal: "Monitor pump station vibration, temperature, pressure, and flow data to detect early failure signatures"
+    backstory: |
+      You continuously observe the main pump station's SCADA data. You track
+      vibration spectra, bearing temperatures, seal pressures, and flow rates.
+      Your episodic memory contains patterns from previous pump failures —
+      you compare current readings against these known failure precursors
+      to predict breakdowns before they occur.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  machine_observer_compressor:
+    role: "Compressor Observer"
+    goal: "Monitor compressor performance metrics to detect degradation and predict maintenance needs"
+    backstory: |
+      You observe the industrial compressor bank via IoT sensors. You track
+      discharge pressure, oil temperature, current draw, and vibration levels.
+      Your episodic memory of past compressor incidents allows you to recognize
+      early degradation patterns such as bearing wear or valve leaks
+      weeks before critical failure.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  machine_observer_conveyor:
+    role: "Conveyor System Observer"
+    goal: "Monitor conveyor belt condition, motor health, and alignment to prevent production line stoppages"
+    backstory: |
+      You watch the main conveyor system sensors. You track belt tension,
+      motor current, speed variance, and alignment sensors. You detect
+      belt wear, motor degradation, and alignment drift that could cause
+      unplanned downtime. Your historical memory helps predict remaining
+      useful life of components.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  diagnostician:
+    role: "Maintenance Diagnostician"
+    goal: "Analyze observer alerts and diagnose root causes of detected anomalies"
+    backstory: |
+      When observer agents flag anomalies, you perform deep diagnostic
+      analysis. You correlate symptoms across multiple sensor streams,
+      identify root causes, and determine failure modes. You classify
+      issues by severity and estimate time-to-failure to help prioritize
+      the maintenance schedule.
+    tools:
+      - "json_tool"
+      - "database_query"
+      - "csv_reader"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  maintenance_planner:
+    role: "Maintenance Schedule Planner"
+    goal: "Plan and prioritize maintenance interventions based on criticality, available resources, and production schedule"
+    backstory: |
+      You create the maintenance schedule by balancing machine criticality,
+      failure urgency, spare parts availability, technician schedules, and
+      production demands. You use TaskPriority to ensure critical machines
+      get immediate attention while optimizing overall maintenance windows.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  parts_inventory:
+    role: "Spare Parts Inventory Manager"
+    goal: "Check spare parts availability and trigger procurement for predicted maintenance needs"
+    backstory: |
+      You manage the spare parts inventory database. When maintenance is
+      planned, you verify that required parts are in stock. For predicted
+      future needs, you trigger procurement orders to ensure parts arrive
+      before they are needed. You track lead times and critical spares.
+    tools:
+      - "database_query"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  observe_pump:
+    description: "Analyze latest SCADA data from the pump station, compare vibration and temperature patterns against episodic memory of past failures"
+    expectedOutput: "Pump health status with anomaly detection results, pattern match confidence, and estimated remaining useful life"
+    agent: "machine_observer_pump"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  observe_compressor:
+    description: "Analyze latest sensor data from compressor bank, compare performance metrics against historical degradation patterns"
+    expectedOutput: "Compressor health status with degradation assessment, anomaly flags, and predicted maintenance window"
+    agent: "machine_observer_compressor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  observe_conveyor:
+    description: "Analyze conveyor system sensor data, assess belt condition, motor health, and alignment status against known failure patterns"
+    expectedOutput: "Conveyor health status with component wear assessment, risk level, and recommended inspection points"
+    agent: "machine_observer_conveyor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  diagnose_issues:
+    description: "For all machines flagged with anomalies, perform root cause analysis correlating multi-sensor data and classify by failure mode and severity"
+    expectedOutput: "Diagnostic report per flagged machine with root cause, failure mode, severity classification, and time-to-failure estimate"
+    agent: "diagnostician"
+    dependencies: ["observe_pump", "observe_compressor", "observe_conveyor"]
+    asyncExecution: false
+    humanInput: false
+
+  check_parts:
+    description: "Verify spare parts availability for all diagnosed issues and trigger procurement for any missing critical components"
+    expectedOutput: "Parts availability report with stock status per required component and procurement orders placed"
+    agent: "parts_inventory"
+    dependencies: ["diagnose_issues"]
+    asyncExecution: false
+    humanInput: false
+
+  plan_maintenance:
+    description: "Create prioritized maintenance schedule based on diagnostics, parts availability, production calendar, and technician capacity"
+    expectedOutput: "Prioritized maintenance schedule with work orders, assigned time windows, required parts, and estimated downtime per machine"
+    agent: "maintenance_planner"
+    dependencies: ["diagnose_issues", "check_parts"]
+    asyncExecution: false
+    humanInput: false

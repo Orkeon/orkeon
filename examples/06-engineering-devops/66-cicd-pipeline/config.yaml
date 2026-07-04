@@ -1,0 +1,110 @@
+# 66. Pipeline CI/CD avec Rollback Automatique
+# Use case: CI/CD pipeline with checkpoint-based automatic rollback and real-time notifications
+# Source: project/marketing/content-strategy/101-USE-CASES.md #66
+
+name: "cicd-pipeline"
+goal: "Execute a CI/CD pipeline with checkpointing at each stage and automatic rollback on failure"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  pr_analyst:
+    role: "PR Analyst"
+    goal: "Analyze the pull request changes and determine impact scope"
+    backstory: |
+      You are a senior developer who reviews pull requests for quality and impact.
+      You analyze changed files, identify affected modules, and assess the risk
+      level of the changes to determine the appropriate test and review strategy.
+    tools:
+      - "github"
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  test_selector:
+    role: "Test Selector"
+    goal: "Select and run the most relevant tests based on the change scope"
+    backstory: |
+      You are a test engineering specialist who optimizes test execution.
+      Based on the change impact analysis, you select the minimum set of
+      tests that provides maximum coverage. You prioritize fast-feedback
+      tests and include integration tests for high-risk changes.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  security_reviewer:
+    role: "Security Reviewer"
+    goal: "Perform security analysis on the code changes before deployment"
+    backstory: |
+      You are a security engineer who reviews code changes for vulnerabilities.
+      You check for common security issues (injection, authentication bypass,
+      data exposure), dependency vulnerabilities, and configuration risks.
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  deployer:
+    role: "Deployer"
+    goal: "Deploy the validated changes with rollback capability"
+    backstory: |
+      You are a DevOps engineer who manages deployments with zero-downtime
+      strategies. You create checkpoints before deployment, execute the
+      deployment steps, verify health checks, and can rollback automatically
+      if post-deployment validation fails.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  analyze_pr:
+    description: "Analyze the pull request: identify changed files, affected modules, risk level, and recommended review strategy. Create an impact assessment report."
+    expectedOutput: "JSON impact assessment with changed files, affected modules, risk level, and review strategy"
+    agent: "pr_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  select_and_run_tests:
+    description: "Based on the impact assessment, select relevant tests and trigger execution. Monitor test results and report failures with diagnostic details."
+    expectedOutput: "Test execution report with pass/fail results, coverage metrics, and failure diagnostics"
+    agent: "test_selector"
+    dependencies:
+      - "analyze_pr"
+    asyncExecution: false
+    humanInput: false
+
+  review_security:
+    description: "Perform security analysis on the code changes. Check for vulnerabilities, dependency issues, and configuration risks. Produce a security clearance report."
+    expectedOutput: "Security review report with findings, severity ratings, and clearance decision"
+    agent: "security_reviewer"
+    dependencies:
+      - "analyze_pr"
+    asyncExecution: false
+    humanInput: false
+
+  deploy_with_checkpoint:
+    description: "Create a pre-deployment checkpoint, execute the deployment, run health checks, and verify the deployment. If any check fails, trigger automatic rollback to the checkpoint."
+    expectedOutput: "Deployment report with checkpoint ID, deployment status, health check results, and rollback status if applicable"
+    agent: "deployer"
+    dependencies:
+      - "select_and_run_tests"
+      - "review_security"
+    asyncExecution: false
+    humanInput: false

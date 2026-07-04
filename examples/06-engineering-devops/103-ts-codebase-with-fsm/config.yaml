@@ -1,0 +1,254 @@
+# ══════════════════════════════════════════════════════════════
+# Orkeon Crew — Analyse de codebase TypeScript avec FSM
+# Extension de l'exemple 102 avec orchestration par machine à états
+# et circuit breaker intégré pour la stabilité production.
+#
+# Nouveautés par rapport à 102 :
+#   - circuitBreaker au niveau crew (defaults pour toutes les tâches)
+#   - circuitBreaker au niveau task (override par tâche)
+#   - mode dégradé activé (la tâche passe en Degraded au lieu de crasher)
+#   - limites anti-boucle : maxRetries, maxToolCallsPerRound, maxStateVisits
+#
+# La FSM TaskExecutionStateMachine gère le cycle de vie runtime :
+#   Assigned → Planning → Executing ⇄ ToolCalling → Validating → Completed
+#   avec branches : Failed/Retry, WaitingForHumanInput, Degraded
+#
+# Points de montage :
+#   <chemin_hôte>:/src:ro      → codebase TypeScript à analyser
+#   <chemin_hôte>:/output:rw   → répertoire de sortie
+# ══════════════════════════════════════════════════════════════
+
+name: "ts-codebase-analysis-fsm"
+goal: >
+  Analyser exhaustivement un codebase TypeScript avec orchestration
+  par machine à états finis et protection circuit breaker, produire
+  sa spécification fonctionnelle et le plan de migration Orkeon.
+process: "sequential"
+verbose: true
+memory: true
+memoryProvider: "InMemory"
+planning: true
+
+# ══════════════════════════════════════════════════════════════
+# CIRCUIT BREAKER — Configuration par défaut pour toutes les tâches
+# ══════════════════════════════════════════════════════════════
+#
+# Ces valeurs s'appliquent à toute tâche qui ne définit pas son propre
+# bloc circuitBreaker. Elles peuvent être surchargées par tâche.
+#
+# Presets disponibles :
+#   - "strict"     : 50 transitions, 2min timeout, 5 visites, mode dégradé
+#   - "permissive" : 1000 transitions, 30min timeout, 50 visites
+#   - "default"    : 100 transitions, 5min timeout, 10 visites
+#
+# Chaque champ individuel surcharge la valeur du preset.
+
+circuitBreaker:
+  preset: "strict"
+  useDegradedMode: true          # la tâche passe en Degraded au lieu de crasher
+  maxRetries: 3                  # nombre max de retry après échec
+  maxToolCallsPerRound: 10       # appels d'outils max par round d'exécution
+  maxValidationRetries: 3        # boucles validation max avant échec
+
+# ══════════════════════════════════════════════════════════════
+# AGENTS
+# ══════════════════════════════════════════════════════════════
+
+agents:
+
+  supervisor:
+    role: "Crew Supervisor"
+    goal: >
+      Vérifier que le code source est disponible dans /src, puis
+      orchestrer l'intégralité de l'analyse en déléguant les tâches
+      aux agents spécialisés dans l'ordre.
+    backstory: |
+      Tu es un chef de projet technique. Tu ne fais JAMAIS l'analyse
+      toi-même : tu vérifies les prérequis avec tes propres outils
+      (directory_read), puis tu délègues le travail aux spécialistes
+      via delegate_work en mode synchrone (wait_for_result=true).
+
+      Si le prérequis échoue (pas de fichiers .ts dans /src), tu
+      écris un rapport d'abandon dans /output/ABORT.md via file_write
+      et tu termines immédiatement.
+
+      Le code source est dans /src (lecture seule).
+      Les sorties vont dans /output (lecture-écriture).
+    tools:
+      - "directory_read"
+      - "file_write"
+    allowDelegation: true
+    maxIter: 50
+    maxRpm: 15
+    verbose: true
+
+  codebase_explorer:
+    role: "TypeScript Codebase Explorer"
+    goal: >
+      Produire l'inventaire exhaustif de tous les fichiers TypeScript
+      du mount /src avec leur chemin, taille et rôle apparent.
+    backstory: |
+      Tu es un ingénieur DevOps senior spécialisé dans l'audit de codebases.
+      Tu procèdes méthodiquement : scan récursif avec directory_read,
+      puis classification par nom/chemin. Tu exclus node_modules/, dist/,
+      build/, *.d.ts, *.spec.ts, *.test.ts.
+
+      Le code source est dans /src. Les sorties dans /output.
+    tools:
+      - "directory_read"
+      - "file_read"
+      - "file_write"
+    maxIter: 30
+    maxRpm: 15
+    verbose: true
+    allowDelegation: false
+    guardrails:
+      preset: "analysis"
+      toolRules:
+        directory_read:
+          - "Scanner uniquement dans /src"
+          - "Exclure node_modules/, dist/, build/"
+
+  code_analyst:
+    role: "TypeScript Source Code Analyst"
+    goal: >
+      Produire l'analyse détaillée de chaque fichier TypeScript :
+      description, exports, imports, patterns, responsabilité métier.
+    backstory: |
+      Tu es un architecte logiciel senior TypeScript. Tu lis chaque
+      fichier via file_read et documentes 6 dimensions : description
+      fonctionnelle, exports, imports internes, imports externes,
+      patterns de conception, responsabilité métier.
+
+      Le code source est dans /src. Les sorties dans /output.
+    tools:
+      - "file_read"
+      - "file_write"
+    maxIter: 100
+    maxRpm: 20
+    verbose: true
+    allowDelegation: false
+    guardrails:
+      preset: "analysis"
+      rules:
+        - "Ne jamais créer de fichiers TypeScript"
+      toolRules:
+        file_read:
+          - "Lire uniquement dans /src"
+        file_write:
+          - "Écrire uniquement dans /output"
+
+  dependency_mapper:
+    role: "TypeScript Dependency Mapper"
+    goal: >
+      Construire la cartographie complète des dépendances, identifier
+      les points d'entrée, modules pivot et clusters fonctionnels.
+    backstory: |
+      Tu es un spécialiste en analyse de dépendances. Tu construis
+      des graphes Mermaid à partir des imports documentés. Tu identifies
+      les hubs, cycles et clusters.
+
+      Le code source est dans /src. Les sorties dans /output.
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    maxIter: 40
+    maxRpm: 15
+    verbose: true
+    allowDelegation: false
+
+  functional_analyst:
+    role: "Functional Specification Writer"
+    goal: >
+      Transformer l'inventaire technique en spécification fonctionnelle
+      complète en 5 documents.
+    backstory: |
+      Tu es un analyste fonctionnel senior. Tu rédiges 5 documents :
+      vue d'ensemble, cas d'usage (UC-NNN), modèles de données (ERD),
+      contrats d'API, règles de gestion (RG-NNN).
+
+      Tu lis dans /output/phase1/ et écris dans /output/phase2/.
+    tools:
+      - "file_read"
+      - "file_write"
+    maxIter: 80
+    maxRpm: 15
+    verbose: true
+    allowDelegation: false
+
+  orkeon_architect:
+    role: "Orkeon Migration Architect"
+    goal: >
+      Concevoir la crew Orkeon cible en mappant chaque responsabilité
+      fonctionnelle vers un agent spécialisé.
+    backstory: |
+      Tu es un architecte Orkeon. Tu appliques la grille Orkeon
+      (Collecte/Analyse/Décision/Production/Coordination) et la
+      matrice agent vs. outil.
+
+      Tu lis dans /output/phase2/ et écris dans /output/phase3/.
+    tools:
+      - "file_read"
+      - "file_write"
+    maxIter: 30
+    maxRpm: 10
+    verbose: true
+    allowDelegation: false
+
+  yaml_generator:
+    role: "Orkeon Configuration Generator"
+    goal: >
+      Produire les 4 livrables techniques : YAML, bootstrap C#,
+      prompts agents, spécifications outils custom.
+    backstory: |
+      Tu es un ingénieur spécialisé dans la génération de configurations
+      Orkeon. Tu connais le schéma YAML exact et le pattern DI C#.
+
+      Tu lis dans /output/phase3/ et écris dans /output/phase3/.
+    tools:
+      - "file_read"
+      - "file_write"
+    maxIter: 60
+    maxRpm: 10
+    verbose: true
+    allowDelegation: false
+
+# ══════════════════════════════════════════════════════════════
+# TASKS
+# ══════════════════════════════════════════════════════════════
+
+tasks:
+
+  # ─── ORCHESTRATION PRINCIPALE (superviseur) ────────────────
+  orchestrate_analysis:
+    description: |
+      Tu es le superviseur. Tu ne fais JAMAIS l'analyse toi-même.
+
+      ÉTAPE 0 — Vérifie /src avec directory_read. Si vide → ABORT.md.
+
+      ÉTAPE 1 — Délègue à "TypeScript Codebase Explorer" l'inventaire.
+      ÉTAPE 2 — Délègue à "TypeScript Source Code Analyst" l'analyse.
+      ÉTAPE 3 — Délègue à "TypeScript Dependency Mapper" la cartographie.
+      ÉTAPE 4 — Délègue à "Functional Specification Writer" les 5 specs.
+      ÉTAPE 5 — Délègue à "Orkeon Migration Architect" le plan de migration.
+      ÉTAPE 6 — Délègue à "Orkeon Configuration Generator" les 4 livrables.
+
+      Vérifie success=true entre chaque délégation.
+      Résumé final listant tous les livrables dans /output/.
+
+    expectedOutput: >
+      Soit un rapport d'abandon (/output/ABORT.md) si /src est vide,
+      soit un résumé confirmant que les 3 phases ont été exécutées
+      avec succès.
+    agent: "supervisor"
+
+    # ── CIRCUIT BREAKER — Override pour cette tâche spécifique ──
+    # Le superviseur fait beaucoup de délégations, donc on relève
+    # les limites par rapport au défaut crew.
+    circuitBreaker:
+      maxTransitions: 200          # 50 par défaut, mais le superviseur orchestre ~13 sous-tâches
+      stateTimeoutSeconds: 600     # 10 minutes par état (les délégations sont longues)
+      maxStateVisits: 20           # le cycle Executing→ToolCalling est fréquent ici
+      maxToolCallsPerRound: 30     # beaucoup de directory_read + file_write
+      maxRetries: 2                # si le superviseur échoue 2 fois, c'est structurel

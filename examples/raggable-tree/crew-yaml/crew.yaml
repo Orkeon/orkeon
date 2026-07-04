@@ -1,0 +1,71 @@
+raggableTree:
+  enabled: true
+  languages: [typescript, csharp]
+  exclude: [node_modules, dist, .git, bin, obj]
+  indexMode: frozen
+  enrichWithLlm: false
+  includeStatements: false
+  embedding:
+    provider: openai
+    model: text-embedding-3-small
+    apiKey: ${OPENAI_API_KEY}
+    dimensions: 1536
+  vectorStore:
+    provider: inMemory
+  cache:
+    enabled: true
+    path: .orkeon/raggable-tree.json
+
+crew:
+  name: codebase-explorer
+  goal: Answer architectural questions about the repository using the RaggableTree index.
+  processType: hierarchical
+
+  agents:
+    - name: navigator
+      role: Codebase navigator
+      goal: Locate packages, modules and symbols relevant to the user's question.
+      backstory: |
+        You hold a map of the codebase. Use codebase_map and package_summary to
+        narrow the scope before delegating deeper inspection.
+      tools: [codebase_map, package_summary, codebase_search]
+
+    - name: analyst
+      role: Symbol analyst
+      goal: Produce detailed explanations of specific symbols and their callers.
+      backstory: |
+        You read signatures and docstrings before bodies. Prefer symbol_detail
+        over symbol_source unless the full body is explicitly requested.
+      tools: [symbol_detail, symbol_source, dependency_graph, complexity_report]
+
+    - name: flow_tracer
+      role: Control-flow specialist
+      goal: Trace call paths between two symbols and estimate blast radius.
+      backstory: |
+        You never invent edges. If flow_trace returns no path, you say so and
+        propose a semantic alternative via codebase_search.
+      tools: [flow_trace, impact_analysis, sub_graph, statement_query]
+
+  tasks:
+    - name: answer
+      description: Answer the user's architectural question with cited FQNs.
+      expectedOutput: Markdown response referencing FQNs found via the tools.
+      agent: navigator
+
+  guardrails:
+    - type: tool-allowlist
+      tools:
+        - codebase_map
+        - package_summary
+        - codebase_search
+        - symbol_detail
+        - symbol_source
+        - dependency_graph
+        - complexity_report
+        - flow_trace
+        - impact_analysis
+        - sub_graph
+        - statement_query
+    - type: budget
+      maxToolCalls: 40
+      maxWallTimeSeconds: 60

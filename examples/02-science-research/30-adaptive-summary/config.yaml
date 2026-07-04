@@ -1,0 +1,55 @@
+# 30. Resume Adaptatif au Profil Lecteur
+# Use case: Single agent that adapts summarization style based on reader profile stored in long-term memory
+# Source: project/marketing/content-strategy/101-USE-CASES.md #30
+
+name: "adaptive-summary"
+goal: "Produce summaries that automatically adapt to the reader's profile (expert vs novice) using long-term memory for preference learning"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  adaptive_summarizer:
+    role: "Resumeur Adaptatif"
+    goal: "Summarize documents adapting style, depth, and vocabulary to the reader's profile and learned preferences"
+    backstory: |
+      You are an intelligent summarizer who adapts to each reader's level and
+      preferences. For experts, you produce concise technical summaries with
+      domain jargon and focus on novel findings. For novices, you write
+      pedagogical summaries with explanations, analogies, and progressive
+      complexity. You learn reader preferences over time from their feedback
+      and interaction patterns stored in long-term memory.
+    tools:
+      - "pdf_reader"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  analyze_reader_profile:
+    description: "Check long-term memory for the reader's profile (expertise level, past preferences, feedback history). If new reader, assess expertise from initial interaction context."
+    expectedOutput: "JSON with: reader_id, expertise_level (expert/intermediate/novice), preferences{detail_level, vocabulary_level, preferred_format}, interaction_history_count"
+    agent: "adaptive_summarizer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  generate_summary:
+    description: "Read the input document and generate a summary adapted to the reader's profile. Expert: concise, technical, focus on novelty. Novice: pedagogical, with explanations and analogies."
+    expectedOutput: "Markdown summary adapted to reader profile with: title, summary_body (adapted style), key_takeaways[], glossary (if novice), further_reading[]"
+    agent: "adaptive_summarizer"
+    dependencies:
+      - "analyze_reader_profile"
+    asyncExecution: false
+    humanInput: false
+
+  update_profile:
+    description: "Update the reader's long-term memory profile based on the current interaction. Record document type, summary style used, and any implicit preference signals."
+    expectedOutput: "JSON with: reader_id, profile_updates{new_preferences, interaction_logged, expertise_adjustment}, memory_store_confirmation"
+    agent: "adaptive_summarizer"
+    dependencies:
+      - "generate_summary"
+    asyncExecution: false
+    humanInput: false

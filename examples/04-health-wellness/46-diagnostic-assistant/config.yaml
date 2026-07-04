@@ -1,0 +1,96 @@
+# 46. Aide au Diagnostic — Humain Systematique
+# Use case: Validation humaine a chaque etape. Aucun diagnostic n'est jamais pose de maniere autonome.
+# Source: project/marketing/content-strategy/101-USE-CASES.md #46
+
+name: "diagnostic-assistant"
+goal: "Assist medical diagnosis with mandatory human validation at every step — zero autonomous diagnostic decisions"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  symptomatologist:
+    role: "Symptom Analyst"
+    goal: "Collect and structure patient symptoms into a systematic differential diagnosis framework"
+    backstory: |
+      Internal medicine specialist with expertise in systematic symptom analysis.
+      Structures patient complaints using standardized medical ontologies (ICD-11, SNOMED CT).
+      Produces structured symptom profiles for differential diagnosis.
+      Never makes diagnostic conclusions — always defers to the attending physician.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  diagnostician:
+    role: "Differential Diagnosis Generator"
+    goal: "Generate ranked differential diagnoses based on symptom analysis"
+    backstory: |
+      Diagnostic reasoning specialist who generates differential diagnoses ranked
+      by probability. Cross-references symptom profiles against medical databases.
+      All hypotheses are presented as suggestions for physician review only.
+      Delegation is disabled — no autonomous decisions allowed.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "pdf_reader"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  pharmacologist:
+    role: "Drug Interaction Checker"
+    goal: "Check for drug interactions, contraindications, and dosing considerations"
+    backstory: |
+      Clinical pharmacologist who reviews proposed treatments for drug-drug interactions,
+      drug-disease contraindications, and dosing adjustments based on patient factors
+      (age, weight, renal/hepatic function). All findings are advisory only.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  physician:
+    role: "Attending Physician"
+    goal: "Review, validate, or reject all AI-generated suggestions at every stage"
+    backstory: |
+      The attending physician has absolute authority over all clinical decisions.
+      Reviews every AI output — symptom analysis, differential diagnoses, and drug checks.
+      No clinical action proceeds without explicit physician approval.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  analyze_symptoms:
+    description: "Collect and structure patient symptoms. Map to ICD-11/SNOMED CT codes. Identify red flags and urgent symptoms. Present structured symptom profile for physician review."
+    expectedOutput: "JSON symptom profile with coded symptoms, red flags, organ system mapping, and suggested areas for further investigation"
+    agent: "symptomatologist"
+    dependencies: []
+    asyncExecution: false
+    humanInput: true
+
+  generate_differentials:
+    description: "Based on validated symptom profile, generate ranked differential diagnoses. Include probability estimates, supporting evidence, and recommended diagnostic tests for each hypothesis."
+    expectedOutput: "JSON ranked differential diagnoses with probability scores, evidence mapping, and recommended tests per hypothesis"
+    agent: "diagnostician"
+    dependencies:
+      - "analyze_symptoms"
+    asyncExecution: false
+    humanInput: true
+
+  check_interactions:
+    description: "For physician-selected treatment options, check all drug interactions, contraindications based on patient profile, and dosing recommendations. Flag any safety concerns."
+    expectedOutput: "JSON interaction report with safety flags, contraindication alerts, dosing recommendations, and alternative suggestions"
+    agent: "pharmacologist"
+    dependencies:
+      - "generate_differentials"
+    asyncExecution: false
+    humanInput: true

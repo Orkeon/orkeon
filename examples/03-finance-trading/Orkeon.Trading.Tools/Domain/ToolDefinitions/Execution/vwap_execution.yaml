@@ -1,0 +1,51 @@
+name: vwap_execution
+description: >
+  Executes large orders using Volume-Weighted Average Price (VWAP) algorithm.
+  Breaks orders into slices matched to intraday volume profile.
+  Minimizes market impact and achieves execution price close to VWAP benchmark.
+parameters:
+  symbol:
+    type: string
+    description: "Symbol to execute (e.g., 'AAPL')"
+    required: true
+  side:
+    type: string
+    description: "Order side: 'BUY' or 'SELL'"
+    required: true
+  quantity:
+    type: number
+    description: "Total quantity to execute"
+    required: true
+  start_time:
+    type: string
+    description: "Execution start time (HH:mm format, e.g., '09:30')"
+    required: false
+    default: "09:30"
+  end_time:
+    type: string
+    description: "Execution end time (HH:mm format, e.g., '16:00')"
+    required: false
+    default: "16:00"
+  historical_volume_profile:
+    type: array
+    description: "Historical intraday volume profile (optional, will use typical if not provided)"
+    required: false
+  participation_rate:
+    type: number
+    description: "Max participation rate (0-1, default: 0.1 = 10% of market volume)"
+    required: false
+    default: 0.1
+returns:
+  timestamp: { type: string }
+  algorithm: { type: string }
+  symbol: { type: string }
+  side: { type: string }
+  total_quantity: { type: number }
+  start_time: { type: string }
+  end_time: { type: string }
+  total_slices: { type: integer }
+  slice_interval_minutes: { type: number }
+  execution_schedule: { type: array }
+  estimated_completion: { type: string }
+  max_participation_rate: { type: number }
+  execution_strategy: { type: object }

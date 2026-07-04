@@ -1,0 +1,13 @@
+<Project>
+  <!-- Import the repository-root Directory.Build.props (dual-OS obj-linux layout,
+       Debug/Release tuning). Mirrors src/ and tests/ which import it the same way. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!-- Examples and demo runners are NOT shipped as NuGet packages, so
+         `dotnet pack Orkeon.sln` (which includes a few example projects) does not
+         emit parasite packages. The sole opt-in exception is Orkeon.Runners.Shared
+         (examples/runners/_shared), which sets <IsPackable>true</IsPackable>. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

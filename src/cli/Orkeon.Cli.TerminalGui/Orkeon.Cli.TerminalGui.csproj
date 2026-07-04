@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Cli.TerminalGui</PackageId>
+    <Description>Terminal.Gui v2-based split-pane console (REPL + dedicated logs pane) for Orkeon interactive runners.</Description>
+    <PackageTags>AI;Agents;Orkeon;Cli;TerminalGui;TUI</PackageTags>
+    <!-- CS0618: Terminal.Gui v2.1.0 marked the static Application.{Invoke,Run,Shutdown,Driver,...}
+         APIs obsolete in favour of an instance-based IApplication model. Migrating to the new
+         API is a deliberate v1.1 follow-up; the static API still works. Encapsulated in
+         Layout/UiDispatchers.cs and Hosting/TerminalGuiHost.cs. -->
+    <NoWarn>$(NoWarn);CS1591;CS0618</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Cli.TerminalGui.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Terminal.Gui" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+</Project>

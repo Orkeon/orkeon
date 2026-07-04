@@ -1,0 +1,92 @@
+# 5. Support Client Multi-Niveaux avec Escalade
+# Use case: 3-tier customer support with automatic escalation and episodic memory per client
+# Source: project/marketing/content-strategy/101-USE-CASES.md #5
+
+name: "customer-support"
+goal: "Provide multi-tier customer support with automatic escalation from L1 triage to L2 specialist to L3 human manager, preserving full client history"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "supervisor"
+
+agents:
+  supervisor:
+    role: "Superviseur Support"
+    goal: "Oversee customer support operations and manage escalation between tiers"
+    backstory: |
+      You are a customer support manager with deep experience in escalation
+      management. You monitor agent performance, decide when to escalate cases,
+      and ensure SLA compliance. You prioritize based on customer impact and urgency.
+    tools:
+      - "json_tool"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  triage_l1:
+    role: "Agent Triage L1"
+    goal: "Handle simple customer queries using the knowledge base and escalate complex cases"
+    backstory: |
+      You are a frontline support agent who handles common inquiries efficiently.
+      You consult the FAQ and knowledge base first, provide quick answers for
+      known issues, and escalate to L2 when the issue requires deeper investigation.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  specialist_l2:
+    role: "Specialiste L2"
+    goal: "Investigate and resolve complex customer issues requiring technical expertise"
+    backstory: |
+      You are a senior technical support specialist with deep product knowledge.
+      You can diagnose complex issues, access CRM data, check order histories,
+      and provide detailed technical solutions. You escalate to L3 only for
+      cases requiring management authorization.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  human_escalation:
+    role: "Manager Escalade L3"
+    goal: "Handle escalated cases requiring human judgment or management authorization"
+    backstory: |
+      You are the human manager who handles the most sensitive customer cases.
+      You make final decisions on refunds, exceptions, and policy overrides.
+    tools: []
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  triage_request:
+    description: "Receive the customer request, check the knowledge base for known solutions, and either resolve directly or prepare an escalation summary for L2."
+    expectedOutput: "JSON with: customer_id, issue_summary, resolution_attempted, resolved (true/false), escalation_reason (if not resolved)"
+    agent: "triage_l1"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  investigate_issue:
+    description: "For escalated cases, perform deep investigation using CRM data and technical resources. Diagnose the root cause and propose a resolution."
+    expectedOutput: "JSON with: customer_id, root_cause, proposed_resolution, requires_manager_approval (true/false), technical_details"
+    agent: "specialist_l2"
+    dependencies:
+      - "triage_request"
+    asyncExecution: false
+    humanInput: false
+
+  manager_decision:
+    description: "Review the proposed resolution for escalated cases. Approve, modify, or provide alternative resolution with management authorization."
+    expectedOutput: "JSON with: customer_id, decision (approved/modified/rejected), final_resolution, authorization_notes"
+    agent: "human_escalation"
+    dependencies:
+      - "investigate_issue"
+    asyncExecution: false
+    humanInput: true

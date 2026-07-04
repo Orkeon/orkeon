@@ -1,0 +1,123 @@
+# 55. Telemedecine Augmentee Streaming
+# Use case: Quatre agents assistent le medecin pendant une consultation via streaming temps reel
+# Source: project/marketing/content-strategy/101-USE-CASES.md #55
+
+name: "telemedicine-streaming"
+goal: "Augment telemedicine consultations with real-time streaming AI assistance while physician maintains full control"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  transcriber:
+    role: "Real-time Transcription Agent"
+    goal: "Transcribe the consultation in real-time and extract structured medical information"
+    backstory: |
+      Medical transcription specialist who processes consultation audio stream
+      in real-time. Extracts structured data: chief complaint, history of present
+      illness, review of systems, and relevant medical history mentions.
+      Streams transcription to all other agents as it becomes available.
+    tools:
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  question_suggester:
+    role: "Clinical Question Suggester"
+    goal: "Suggest relevant follow-up questions based on the evolving consultation context"
+    backstory: |
+      Clinical decision support specialist who analyzes the consultation in progress
+      and suggests pertinent follow-up questions the physician may want to ask.
+      Considers differential diagnosis pathways, red flag symptoms not yet explored,
+      and evidence-based clinical guidelines. Suggestions are advisory only.
+    tools:
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  prescription_preparer:
+    role: "Prescription Draft Preparer"
+    goal: "Prepare prescription drafts based on discussed treatments during the consultation"
+    backstory: |
+      Clinical pharmacist who prepares draft prescriptions as treatments are
+      discussed during the consultation. Checks drug interactions, suggests
+      appropriate dosages, and flags contraindications. All drafts are
+      preliminary — physician must review and sign every prescription.
+    tools:
+      - "json_tool"
+      - "http_api"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  dpi_updater:
+    role: "Electronic Health Record Updater"
+    goal: "Prepare structured updates for the electronic health record based on consultation content"
+    backstory: |
+      Health informatics specialist who prepares EHR (DPI) updates in real-time
+      as the consultation progresses. Structures consultation notes, diagnoses,
+      treatment plans, and follow-up instructions. All updates require
+      physician approval before being committed to the record.
+    tools:
+      - "json_tool"
+      - "http_api"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  physician:
+    role: "Consulting Physician"
+    goal: "Maintain full control over the consultation, validate all AI suggestions, and make all clinical decisions"
+    backstory: |
+      The consulting physician has absolute authority over the telemedicine session.
+      Reviews AI-generated suggestions, question prompts, prescription drafts,
+      and EHR updates in real-time. Accepts, modifies, or rejects each suggestion.
+      No clinical action is taken without explicit physician approval.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+tasks:
+  transcribe_consultation:
+    description: "Transcribe the consultation in real-time. Extract structured medical data: chief complaint, HPI, ROS, PMH, medications, allergies. Stream extracted data to other agents."
+    expectedOutput: "Streaming JSON transcript with structured medical data extraction, timestamped entries, and confidence scores"
+    agent: "transcriber"
+    dependencies: []
+    asyncExecution: true
+    humanInput: true
+
+  suggest_questions:
+    description: "Based on the evolving transcription, suggest relevant follow-up questions. Consider unexplored symptom domains, red flag symptoms, and evidence-based screening questions. Update suggestions as new information emerges."
+    expectedOutput: "JSON suggested questions with clinical rationale, priority ranking, and associated differential diagnoses"
+    agent: "question_suggester"
+    dependencies:
+      - "transcribe_consultation"
+    asyncExecution: true
+    humanInput: true
+
+  prepare_prescription:
+    description: "As treatments are discussed, prepare draft prescriptions with appropriate medications, dosages, frequencies, and durations. Check interactions and contraindications. Mark all as DRAFT pending physician review."
+    expectedOutput: "JSON draft prescriptions with drug details, interaction checks, contraindication alerts, and DRAFT status"
+    agent: "prescription_preparer"
+    dependencies:
+      - "transcribe_consultation"
+    asyncExecution: true
+    humanInput: true
+
+  update_dpi:
+    description: "Prepare structured EHR updates from consultation content: SOAP notes, diagnosis codes (ICD-10), treatment plan, follow-up schedule, and referrals. All updates require physician approval."
+    expectedOutput: "JSON structured EHR update with SOAP notes, coded diagnoses, treatment plan, and PENDING APPROVAL status"
+    agent: "dpi_updater"
+    dependencies:
+      - "transcribe_consultation"
+    asyncExecution: true
+    humanInput: true

@@ -1,0 +1,126 @@
+# 15. Redaction de Propositions Commerciales
+# Use case: Sequential proposal writing with YAML templates, JSON schema validation per section, and human approval
+# Source: project/marketing/content-strategy/101-USE-CASES.md #15
+
+name: "commercial-proposals"
+goal: "Generate structured commercial proposals with section-by-section validation, CRM integration, and mandatory human approval"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  needs_analyst:
+    role: "Analyste Besoins"
+    goal: "Analyze the client's RFP and extract requirements, constraints, and evaluation criteria"
+    backstory: |
+      You are a pre-sales analyst who dissects client RFPs to understand their
+      actual needs beyond the written requirements. You identify explicit and
+      implicit requirements, budget signals, decision criteria, and competitive
+      positioning opportunities.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  solution_architect:
+    role: "Architecte Solution"
+    goal: "Design the technical solution and architecture matching client requirements"
+    backstory: |
+      You are a solution architect who translates business requirements into
+      technical solutions. You design architectures, select technologies, define
+      integration points, and produce effort estimates. You balance technical
+      excellence with practical constraints.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  commercial_writer:
+    role: "Redacteur Commercial"
+    goal: "Write compelling proposal sections with clear value propositions and competitive differentiators"
+    backstory: |
+      You are a proposal writer who crafts persuasive commercial documents. You
+      translate technical solutions into business value, articulate ROI, highlight
+      competitive advantages, and write in a tone that builds confidence and trust.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  proposal_reviewer:
+    role: "Reviewer de Proposition"
+    goal: "Review the complete proposal for consistency, accuracy, and competitive positioning"
+    backstory: |
+      You are a senior bid manager who reviews proposals before submission. You
+      check for consistency across sections, verify pricing accuracy, ensure
+      all RFP requirements are addressed, and validate competitive positioning.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  approver:
+    role: "Approbateur Final"
+    goal: "Review and approve the final proposal before client submission"
+    backstory: |
+      You are the human decision-maker who gives final approval on commercial
+      proposals. You verify strategic alignment, pricing authorization, and
+      commitment accuracy before any proposal leaves the organization.
+    tools: []
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  analyze_rfp:
+    description: "Parse and analyze the client's RFP document. Extract all requirements (functional, technical, timeline), evaluation criteria, budget indicators, and competitive positioning opportunities."
+    expectedOutput: "JSON with: requirements[{type, description, priority}], evaluation_criteria[], budget_signals, timeline, competitive_insights[]"
+    agent: "needs_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  design_solution:
+    description: "Design a technical solution architecture that addresses all extracted requirements. Include technology choices, integration points, effort estimates, and risk mitigations."
+    expectedOutput: "JSON with: architecture_overview, components[], technology_stack, integrations[], effort_estimate_days, risks[{risk, mitigation}]"
+    agent: "solution_architect"
+    dependencies:
+      - "analyze_rfp"
+    asyncExecution: false
+    humanInput: false
+
+  write_proposal:
+    description: "Write the complete commercial proposal with executive summary, solution description, value proposition, pricing, timeline, and team presentation. Pull CRM data for client context."
+    expectedOutput: "Markdown proposal document with: executive_summary, solution_description, value_proposition, pricing_table, timeline, team_bios, references"
+    agent: "commercial_writer"
+    dependencies:
+      - "design_solution"
+    asyncExecution: false
+    humanInput: false
+
+  review_proposal:
+    description: "Review the complete proposal for consistency, accuracy, completeness against RFP requirements, and competitive positioning. Flag any issues."
+    expectedOutput: "JSON review with: overall_score, rfp_coverage_percent, issues[{section, issue, severity}], improvement_suggestions[]"
+    agent: "proposal_reviewer"
+    dependencies:
+      - "write_proposal"
+    asyncExecution: false
+    humanInput: false
+
+  approve_final:
+    description: "Present the reviewed proposal for final human approval. Highlight key commitments, pricing, and any flagged issues requiring management decision."
+    expectedOutput: "JSON with: decision (approved/rejected/revision_needed), comments, conditions[]"
+    agent: "approver"
+    dependencies:
+      - "review_proposal"
+    asyncExecution: false
+    humanInput: true

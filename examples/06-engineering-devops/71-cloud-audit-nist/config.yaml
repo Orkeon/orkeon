@@ -1,0 +1,150 @@
+# 71. Audit Cloud Multi-Piliers — NIST + Sanitization
+# Use case: Multi-pillar cloud audit with NIST compliance, header sanitization, and rate limiting
+# Source: project/marketing/content-strategy/101-USE-CASES.md #71
+
+name: "cloud-audit-nist"
+goal: "Audit cloud infrastructure across 5 pillars (compute, network, storage, IAM, costs) with NIST compliance and header sanitization"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  compute_auditor:
+    role: "Compute Auditor"
+    goal: "Audit compute resources for security, efficiency, and compliance"
+    backstory: |
+      You are a cloud compute specialist who audits VM instances, containers,
+      serverless functions, and orchestration services. You check for oversized
+      instances, unpatched systems, and security misconfigurations.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  network_auditor:
+    role: "Network Auditor"
+    goal: "Audit network configuration for security and compliance"
+    backstory: |
+      You are a cloud networking specialist who audits VPCs, security groups,
+      NACLs, load balancers, and DNS configurations. You identify overly
+      permissive rules, unencrypted traffic, and network segmentation issues.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  storage_auditor:
+    role: "Storage Auditor"
+    goal: "Audit storage resources for data protection and access controls"
+    backstory: |
+      You are a cloud storage specialist who audits S3 buckets, EBS volumes,
+      databases, and backup policies. You check for public access, encryption
+      at rest, lifecycle policies, and backup compliance.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  iam_auditor:
+    role: "IAM Auditor"
+    goal: "Audit identity and access management for least-privilege compliance"
+    backstory: |
+      You are an IAM security specialist who audits users, roles, policies,
+      and service accounts. You identify overprivileged identities, stale
+      credentials, missing MFA, and policy violations.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  cost_auditor:
+    role: "Cost Auditor"
+    goal: "Audit cloud spending for waste and optimization opportunities"
+    backstory: |
+      You are a FinOps analyst who audits cloud spending patterns. You identify
+      idle resources, rightsizing opportunities, reserved instance savings,
+      and cost allocation tagging compliance.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  audit_reporter:
+    role: "Audit Reporter"
+    goal: "Consolidate all pillar audits into a NIST-compliant report"
+    backstory: |
+      You are a compliance officer who consolidates multi-pillar audit findings
+      into a comprehensive NIST-compliant report. You map findings to NIST
+      controls, assign risk ratings, and prioritize remediation actions.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  audit_compute:
+    description: "Audit all compute resources via cloud provider APIs. Check instance configurations, patching status, security groups, and resource utilization."
+    expectedOutput: "Compute audit report with findings, severity ratings, and remediation recommendations"
+    agent: "compute_auditor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  audit_network:
+    description: "Audit network configurations. Check VPC setup, security group rules, encryption in transit, and network segmentation compliance."
+    expectedOutput: "Network audit report with findings, severity ratings, and remediation recommendations"
+    agent: "network_auditor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  audit_storage:
+    description: "Audit storage resources. Check access controls, encryption at rest, lifecycle policies, backup compliance, and data classification."
+    expectedOutput: "Storage audit report with findings, severity ratings, and remediation recommendations"
+    agent: "storage_auditor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  audit_iam:
+    description: "Audit IAM configurations. Check user privileges, role policies, MFA enforcement, credential rotation, and service account permissions."
+    expectedOutput: "IAM audit report with findings, severity ratings, and remediation recommendations"
+    agent: "iam_auditor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  audit_costs:
+    description: "Audit cloud spending. Identify idle resources, rightsizing opportunities, reserved instance savings, and tagging compliance."
+    expectedOutput: "Cost audit report with waste identification, savings opportunities, and optimization plan"
+    agent: "cost_auditor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  generate_nist_report:
+    description: "Consolidate all 5 pillar audits into a NIST-compliant report. Map findings to NIST controls, assign risk ratings, and create a prioritized remediation plan."
+    expectedOutput: "NIST-compliant audit report with control mappings, risk matrix, and prioritized remediation plan"
+    agent: "audit_reporter"
+    dependencies:
+      - "audit_compute"
+      - "audit_network"
+      - "audit_storage"
+      - "audit_iam"
+      - "audit_costs"
+    asyncExecution: false
+    humanInput: false

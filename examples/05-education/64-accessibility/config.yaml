@@ -1,0 +1,106 @@
+# 64. Accessibilite Universelle des Contenus
+# Use case: Parallel transformation of content into 4 accessible formats simultaneously with independent validation
+# Source: project/marketing/content-strategy/101-USE-CASES.md #64
+
+name: "accessibility"
+goal: "Transform content into 4 accessible formats simultaneously (text transcript, simplified language, audio description, screen reader) with independent validation"
+process: "parallel"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  text_transcriber:
+    role: "Text Transcriber"
+    goal: "Create a complete text transcript of all multimedia content"
+    backstory: |
+      You are an accessibility specialist focused on text alternatives.
+      You create detailed text transcripts that capture all spoken content,
+      significant sounds, and visual information for deaf and hard-of-hearing users.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  language_simplifier:
+    role: "Language Simplifier"
+    goal: "Create a simplified language version of the content for cognitive accessibility"
+    backstory: |
+      You are a plain language expert who makes content accessible to people
+      with cognitive disabilities, non-native speakers, and low literacy audiences.
+      You simplify vocabulary, shorten sentences, and add explanatory context.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  audio_describer:
+    role: "Audio Describer"
+    goal: "Create audio descriptions of visual content for visually impaired users"
+    backstory: |
+      You are an audio description writer specialized in making visual
+      content accessible to blind and visually impaired users. You describe
+      key visual elements, spatial relationships, and visual actions.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  screen_reader_formatter:
+    role: "Screen Reader Formatter"
+    goal: "Optimize content structure and markup for screen reader compatibility"
+    backstory: |
+      You are a web accessibility engineer who optimizes content for
+      assistive technologies. You ensure proper semantic structure,
+      ARIA labels, heading hierarchy, and navigation landmarks for
+      optimal screen reader experience.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "xml_parser"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  create_transcript:
+    description: "Create a complete text transcript of the content. Include all spoken words, significant sounds, speaker identification, and descriptions of visual-only information."
+    expectedOutput: "Text transcript file with timestamps, speaker labels, and visual descriptions"
+    agent: "text_transcriber"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  simplify_language:
+    description: "Create a simplified language version. Use plain vocabulary, short sentences, clear structure, and explanatory notes. Target reading level: 6th grade equivalent."
+    expectedOutput: "Simplified content file with vocabulary annotations and reading level metadata"
+    agent: "language_simplifier"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  describe_visuals:
+    description: "Create audio descriptions for all visual content. Describe key visual elements, spatial relationships, actions, and scene changes with appropriate timing cues."
+    expectedOutput: "Audio description script with timing cues and visual element descriptions"
+    agent: "audio_describer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  format_screen_reader:
+    description: "Optimize the content structure for screen readers. Add semantic HTML, ARIA labels, heading hierarchy, table summaries, and navigation landmarks."
+    expectedOutput: "Screen reader-optimized content with WCAG 2.1 AA compliance report"
+    agent: "screen_reader_formatter"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false

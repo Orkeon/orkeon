@@ -1,0 +1,158 @@
+# 94. Smart City Trafic — A2A Inter-Zones
+# Use case: per-zone traffic agents communicating via A2A protocol for decentralized traffic management
+# Source: project/marketing/content-strategy/101-USE-CASES.md #94
+
+name: "smart-city-traffic"
+goal: "Manage city traffic with per-zone agents that communicate via A2A protocol for inter-zone coordination, enabling decentralized scalable traffic optimization"
+process: "parallel"
+verbose: true
+memory: true
+memoryProvider: "Redis"
+planning: false
+
+agents:
+  zone_north:
+    role: "Traffic Zone North Controller"
+    goal: "Monitor and optimize traffic flow in the northern city zone"
+    backstory: |
+      You manage traffic signals, sensors, and flow in the northern zone.
+      You collect real-time data from induction loops, cameras, and radar
+      sensors at intersections. You optimize signal timing to minimize
+      congestion and communicate with adjacent zones via A2A protocol
+      to coordinate cross-zone traffic flows.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  zone_south:
+    role: "Traffic Zone South Controller"
+    goal: "Monitor and optimize traffic flow in the southern city zone"
+    backstory: |
+      You manage traffic in the southern zone including the main commercial
+      district. You handle high-variability patterns with rush-hour peaks,
+      event traffic, and weekend patterns. You coordinate with adjacent
+      zones to manage traffic entering and leaving the commercial area.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  zone_east:
+    role: "Traffic Zone East Controller"
+    goal: "Monitor and optimize traffic flow in the eastern city zone"
+    backstory: |
+      You manage traffic in the eastern zone which includes major highway
+      on/off ramps. You focus on metering highway entry traffic and managing
+      the transition between highway speeds and urban flow. You communicate
+      congestion state to adjacent zones so they can reroute traffic.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  zone_west:
+    role: "Traffic Zone West Controller"
+    goal: "Monitor and optimize traffic flow in the western city zone"
+    backstory: |
+      You manage traffic in the western residential zone. You optimize for
+      school zone safety during hours, residential quiet periods, and
+      emergency vehicle priority corridors. You coordinate with other zones
+      during events that affect cross-city traffic patterns.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  global_modeler:
+    role: "Global Traffic Modeler"
+    goal: "Synthesize zone data into a city-wide traffic model and detect system-level patterns"
+    backstory: |
+      You aggregate traffic data from all zones to build the city-wide
+      traffic picture. You detect macro patterns (citywide congestion waves,
+      event impacts, incident cascades) that individual zones cannot see.
+      You provide the global context that helps zone agents make better
+      local decisions.
+    tools:
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  display_informer:
+    role: "Public Information Display Agent"
+    goal: "Update variable message signs and navigation apps with traffic advisories"
+    backstory: |
+      You translate traffic optimization decisions into public-facing
+      information. You update variable message signs (VMS), feed navigation
+      apps with real-time routing advice, and publish travel time estimates.
+      You ensure information is timely, accurate, and actionable for drivers.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  monitor_zone_north:
+    description: "Collect traffic sensor data for all intersections in the northern zone, optimize signal timing, and report zone status to adjacent zones via A2A"
+    expectedOutput: "Zone North traffic status with intersection flow rates, signal timing adjustments, and cross-zone coordination messages"
+    agent: "zone_north"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_zone_south:
+    description: "Collect traffic sensor data for the southern commercial zone, optimize for current demand pattern, and coordinate with adjacent zones"
+    expectedOutput: "Zone South traffic status with commercial district flow analysis, signal adjustments, and inter-zone coordination"
+    agent: "zone_south"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_zone_east:
+    description: "Monitor highway ramp metering and urban transition traffic in the eastern zone, coordinate highway entry rates with adjacent zones"
+    expectedOutput: "Zone East traffic status with ramp metering rates, highway-urban transition metrics, and congestion state broadcast"
+    agent: "zone_east"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_zone_west:
+    description: "Monitor residential zone traffic with school zone enforcement, emergency corridors, and coordinate cross-zone residential flows"
+    expectedOutput: "Zone West traffic status with school zone compliance, emergency corridor availability, and residential flow metrics"
+    agent: "zone_west"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  build_global_model:
+    description: "Aggregate all zone data into the citywide traffic model, detect macro patterns and cascading congestion events"
+    expectedOutput: "Citywide traffic model with global congestion map, macro pattern analysis, and system-level optimization recommendations"
+    agent: "global_modeler"
+    dependencies: ["monitor_zone_north", "monitor_zone_south", "monitor_zone_east", "monitor_zone_west"]
+    asyncExecution: false
+    humanInput: false
+
+  update_displays:
+    description: "Generate public traffic advisories from the global model and update variable message signs and navigation feeds"
+    expectedOutput: "Display update report with VMS messages deployed, navigation feed updates, and travel time estimates published"
+    agent: "display_informer"
+    dependencies: ["build_global_model"]
+    asyncExecution: false
+    humanInput: false

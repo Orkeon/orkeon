@@ -1,0 +1,152 @@
+# 87. Gestion de Flotte — Mémoire par Véhicule + Checkpoint Missions
+# Use case: fleet management with per-vehicle memory and mission checkpointing
+# Source: project/marketing/content-strategy/101-USE-CASES.md #87
+
+name: "fleet-management"
+goal: "Manage a vehicle fleet where each vehicle has its own agent with dedicated memory, mission checkpointing, and continuous safety monitoring"
+process: "hierarchical"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: false
+managerAgent: "fleet_dispatcher"
+
+agents:
+  fleet_dispatcher:
+    role: "Fleet Dispatcher"
+    goal: "Assign missions to vehicles, optimize routes, and oversee the entire fleet operations"
+    backstory: |
+      You are the central fleet dispatcher. You receive delivery requests,
+      assign them to available vehicles based on location, capacity, and
+      schedule. You monitor mission progress via checkpoints and reassign
+      tasks when issues arise. You delegate to vehicle agents and the
+      maintenance coordinator.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "csv_reader"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  vehicle_alpha:
+    role: "Vehicle Agent Alpha"
+    goal: "Execute assigned delivery missions with GPS tracking and checkpoint reporting"
+    backstory: |
+      You represent vehicle Alpha in the fleet. You maintain your own SQLite
+      memory with mission history, route logs, and maintenance records.
+      You report checkpoint status at each delivery stop and flag any
+      anomalies (delays, route deviations, mechanical warnings).
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  vehicle_bravo:
+    role: "Vehicle Agent Bravo"
+    goal: "Execute assigned delivery missions with GPS tracking and checkpoint reporting"
+    backstory: |
+      You represent vehicle Bravo in the fleet. You maintain your own SQLite
+      memory with mission history, route logs, and maintenance records.
+      You report checkpoint status at each delivery stop and flag any
+      anomalies (delays, route deviations, mechanical warnings).
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  maintenance_coordinator:
+    role: "Maintenance Coordinator"
+    goal: "Track vehicle health metrics and schedule preventive maintenance"
+    backstory: |
+      You monitor vehicle diagnostics data (engine hours, tire pressure,
+      brake wear, oil levels) and schedule maintenance before failures
+      occur. You coordinate with the dispatcher to minimize fleet downtime
+      by scheduling maintenance during low-demand periods.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  safety_observer:
+    role: "Safety Observer"
+    goal: "Monitor driving behavior and safety compliance across the fleet in real time"
+    backstory: |
+      You are the fleet safety observer. You continuously monitor telematics
+      data for dangerous driving patterns (harsh braking, speeding, fatigue
+      indicators). You trigger immediate alerts for critical safety events
+      and generate daily safety compliance reports.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  load_missions:
+    description: "Load today's delivery missions from the logistics system, parse delivery addresses, time windows, and cargo specifications"
+    expectedOutput: "Structured list of missions with addresses, time windows, priorities, and cargo details in JSON format"
+    agent: "fleet_dispatcher"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  assign_missions:
+    description: "Assign loaded missions to available vehicles based on current location, capacity, route optimization, and driver hours"
+    expectedOutput: "Mission assignment plan mapping each mission to a vehicle with estimated routes and ETAs"
+    agent: "fleet_dispatcher"
+    dependencies: ["load_missions"]
+    asyncExecution: false
+    humanInput: false
+
+  execute_mission_alpha:
+    description: "Execute assigned missions for vehicle Alpha, reporting checkpoint status at each delivery stop and logging GPS coordinates"
+    expectedOutput: "Mission execution report with checkpoint confirmations, delivery timestamps, and any incident flags"
+    agent: "vehicle_alpha"
+    dependencies: ["assign_missions"]
+    asyncExecution: true
+    humanInput: false
+
+  execute_mission_bravo:
+    description: "Execute assigned missions for vehicle Bravo, reporting checkpoint status at each delivery stop and logging GPS coordinates"
+    expectedOutput: "Mission execution report with checkpoint confirmations, delivery timestamps, and any incident flags"
+    agent: "vehicle_bravo"
+    dependencies: ["assign_missions"]
+    asyncExecution: true
+    humanInput: false
+
+  monitor_safety:
+    description: "Continuously monitor telematics data from all active vehicles for safety violations, harsh events, and fatigue indicators"
+    expectedOutput: "Safety monitoring report with any alerts triggered, violation details, and overall fleet safety score"
+    agent: "safety_observer"
+    dependencies: ["assign_missions"]
+    asyncExecution: true
+    humanInput: false
+
+  check_maintenance:
+    description: "Review vehicle health diagnostics and determine if any vehicles need scheduled maintenance or have urgent issues"
+    expectedOutput: "Maintenance status report per vehicle with recommended actions and scheduling suggestions"
+    agent: "maintenance_coordinator"
+    dependencies: ["execute_mission_alpha", "execute_mission_bravo"]
+    asyncExecution: false
+    humanInput: false
+
+  daily_fleet_report:
+    description: "Compile daily fleet operations summary including mission completion rates, safety incidents, and maintenance needs"
+    expectedOutput: "Comprehensive daily fleet report in structured format with KPIs, incidents, and action items"
+    agent: "fleet_dispatcher"
+    dependencies: ["execute_mission_alpha", "execute_mission_bravo", "monitor_safety", "check_maintenance"]
+    asyncExecution: false
+    humanInput: false

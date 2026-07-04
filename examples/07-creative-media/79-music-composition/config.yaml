@@ -1,0 +1,132 @@
+# 79. Composition Musicale par Consensus Unanime
+# Use case: Musical composition by unanimous consensus across 5 musical dimension specialists
+# Source: project/marketing/content-strategy/101-USE-CASES.md #79
+
+name: "music-composition"
+goal: "Compose music through unanimous consensus of 5 specialists covering melody, harmony, rhythm, arrangement, and mixing"
+process: "consensual"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  melodist:
+    role: "Melodist"
+    goal: "Create compelling melodic lines that serve the composition's emotional intent"
+    backstory: |
+      You are a melodist with an intuitive ear for memorable themes.
+      You craft melodic lines that are singable, emotionally resonant,
+      and serve the narrative arc of the composition. You understand
+      intervallic tension and resolution.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  harmonist:
+    role: "Harmonist"
+    goal: "Develop harmonic progressions that support and enrich the melody"
+    backstory: |
+      You are a harmony specialist versed in both classical and modern
+      harmonic language. You create chord progressions that support the
+      melody, add emotional depth, and maintain harmonic interest
+      through tension and resolution patterns.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  rhythmician:
+    role: "Rhythmician"
+    goal: "Design rhythmic patterns that drive the composition's energy and groove"
+    backstory: |
+      You are a rhythm specialist who designs grooves and rhythmic
+      patterns. You create beats that complement the melodic and
+      harmonic content, drive the composition's energy, and maintain
+      listener engagement through rhythmic interest.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  arranger:
+    role: "Arranger"
+    goal: "Arrange the composition for the target instrumentation and format"
+    backstory: |
+      You are an arranger who orchestrates compositions for specific
+      ensembles. You assign parts to instruments, create countermelodies,
+      design textural contrasts, and ensure the arrangement serves
+      the composition's overall vision.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  mixer:
+    role: "Mixer"
+    goal: "Define the mix balance, spatial placement, and sonic characteristics"
+    backstory: |
+      You are a mixing engineer who defines the sonic landscape.
+      You specify volume balances, panning positions, frequency ranges,
+      dynamic processing, and spatial effects to create a polished
+      and immersive listening experience.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+tasks:
+  compose_melody:
+    description: "Create the main melodic themes for the composition. Define melodic motifs, phrase structure, and emotional arc. Output in JSON music notation format."
+    expectedOutput: "JSON melodic score with themes, phrases, dynamics, and emotional annotations"
+    agent: "melodist"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  develop_harmony:
+    description: "Develop harmonic progressions that support the melody. Specify chord voicings, modulations, and harmonic rhythm."
+    expectedOutput: "JSON harmonic chart with chord symbols, voicings, and harmonic analysis"
+    agent: "harmonist"
+    dependencies:
+      - "compose_melody"
+    asyncExecution: false
+    humanInput: false
+
+  design_rhythm:
+    description: "Design rhythmic patterns and grooves for each section. Specify tempo, time signature, beat patterns, and rhythmic variations."
+    expectedOutput: "JSON rhythm chart with beat patterns, fills, tempo map, and dynamic markings"
+    agent: "rhythmician"
+    dependencies:
+      - "compose_melody"
+    asyncExecution: false
+    humanInput: false
+
+  create_arrangement:
+    description: "Arrange the composition for the target instrumentation. Assign parts, create countermelodies, and design the overall sonic architecture."
+    expectedOutput: "JSON arrangement score with instrument assignments, countermelodies, and textural directions"
+    agent: "arranger"
+    dependencies:
+      - "develop_harmony"
+      - "design_rhythm"
+    asyncExecution: false
+    humanInput: false
+
+  define_mix:
+    description: "Define the mix specifications for the arrangement. Specify volume balances, panning, frequency treatment, dynamics, and spatial effects."
+    expectedOutput: "JSON mix document with channel settings, processing chains, and master settings"
+    agent: "mixer"
+    dependencies:
+      - "create_arrangement"
+    asyncExecution: false
+    humanInput: false

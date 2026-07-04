@@ -1,0 +1,128 @@
+# 62. Detection de Plagiat Multi-Couches Anti Faux-Positifs
+# Use case: Multi-layer plagiarism detection with parallel analysis and confidence scoring to eliminate false positives
+# Source: project/marketing/content-strategy/101-USE-CASES.md #62
+
+name: "plagiarism-detection"
+goal: "Detect plagiarism through 4 parallel analysis layers (style, sources, structure, semantics) to eliminate false positives"
+process: "parallel"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  style_analyzer:
+    role: "Style Analyzer"
+    goal: "Detect stylistic inconsistencies that may indicate plagiarism"
+    backstory: |
+      You are a computational linguist specialized in stylometry.
+      You analyze writing style fingerprints including vocabulary richness,
+      sentence complexity, and rhetorical patterns to detect sudden style
+      shifts that may indicate copied passages.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  source_comparator:
+    role: "Source Comparator"
+    goal: "Compare submission text against web sources to find matching content"
+    backstory: |
+      You are a web intelligence specialist who searches for textual matches
+      across online sources. You compare passages against academic databases,
+      websites, and open repositories to identify potential source material.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  structure_analyzer:
+    role: "Structure Analyzer"
+    goal: "Detect structural patterns indicating copy-paste from external sources"
+    backstory: |
+      You are a document forensics expert who analyzes structural patterns
+      in submissions. You detect formatting inconsistencies, citation anomalies,
+      and structural discontinuities that indicate assembled content.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  semantic_analyzer:
+    role: "Semantic Analyzer"
+    goal: "Perform deep semantic analysis to detect paraphrased or translated plagiarism"
+    backstory: |
+      You are an NLP specialist focused on semantic similarity detection.
+      You identify paraphrased content, translated passages, and idea-level
+      plagiarism that simple text matching would miss.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  verdict_reporter:
+    role: "Verdict Reporter"
+    goal: "Consolidate multi-layer analysis into a final verdict with confidence score"
+    backstory: |
+      You are a senior academic integrity officer who weighs evidence from
+      multiple detection methods. You eliminate false positives by requiring
+      corroboration across layers and produce a calibrated confidence score.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  analyze_style:
+    description: "Analyze the writing style of the submission. Detect stylistic inconsistencies, vocabulary shifts, and unusual patterns that may indicate plagiarism."
+    expectedOutput: "JSON style analysis with flagged passages, confidence scores, and stylometric evidence"
+    agent: "style_analyzer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  compare_sources:
+    description: "Search web and academic sources for matching content. Compare flagged passages against found sources and calculate similarity scores."
+    expectedOutput: "JSON source comparison report with matched passages, source URLs, and similarity percentages"
+    agent: "source_comparator"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_structure:
+    description: "Analyze document structure for formatting inconsistencies, citation anomalies, and structural patterns indicating assembled content from external sources."
+    expectedOutput: "JSON structural analysis with flagged anomalies, formatting inconsistencies, and evidence"
+    agent: "structure_analyzer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_semantics:
+    description: "Perform semantic analysis to detect paraphrased content, translated passages, and idea-level similarities with known sources."
+    expectedOutput: "JSON semantic analysis with paraphrase detection results, semantic similarity scores, and evidence"
+    agent: "semantic_analyzer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  produce_verdict:
+    description: "Consolidate all four analysis layers into a final plagiarism verdict. Cross-reference findings to eliminate false positives. Produce a calibrated confidence score."
+    expectedOutput: "Final plagiarism report with verdict, confidence score, corroborated evidence, and recommended actions"
+    agent: "verdict_reporter"
+    dependencies:
+      - "analyze_style"
+      - "compare_sources"
+      - "analyze_structure"
+      - "analyze_semantics"
+    asyncExecution: false
+    humanInput: false

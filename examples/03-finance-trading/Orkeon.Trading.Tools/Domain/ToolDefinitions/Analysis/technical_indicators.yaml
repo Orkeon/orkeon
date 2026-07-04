@@ -1,0 +1,25 @@
+name: technical_indicators
+description: >
+  Calculates comprehensive technical indicators including moving averages (SMA, EMA),
+  MACD, RSI, Bollinger Bands, ATR, ADX, Stochastic, OBV, VWAP, and support/resistance levels.
+  Returns structured indicator data with signals and interpretations.
+parameters:
+  symbol:
+    type: string
+    description: "The stock symbol (e.g., 'AAPL')"
+    required: true
+  price_data:
+    type: array
+    description: "Array of OHLCV data points (at least 200 for accurate indicators)"
+    required: true
+  indicators:
+    type: array
+    description: "Specific indicators to calculate (e.g., ['RSI', 'MACD', 'BB']). If empty, calculates all."
+    required: false
+returns:
+  symbol: { type: string }
+  timestamp: { type: string }
+  current_price: { type: number }
+  indicators: { type: object }
+  signals: { type: object }
+  metadata: { type: object }

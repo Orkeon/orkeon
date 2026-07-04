@@ -1,0 +1,161 @@
+# 101. Crew de Crews — L'Orchestre des Orchestres
+# Use case: meta-crew where each "agent" is itself a complete crew, routed by semantic embedding selection
+# Source: project/marketing/content-strategy/101-USE-CASES.md #101
+# TODO: feature planifiee — IConfigurationVersioning, semantic embedding selection for sub-crew routing
+
+name: "crew-of-crews"
+goal: "Orchestrate a meta-crew where each agent represents a complete sub-crew (Research, Development, Test, Documentation), with semantic embedding-based task routing, inter-crew A2A communication, multi-level checkpointing, and comprehensive audit trail"
+process: "hierarchical"
+verbose: true
+memory: true
+memoryProvider: "Redis"
+planning: true
+managerAgent: "conductor"
+
+agents:
+  conductor:
+    role: "Chief Conductor"
+    goal: "Route tasks to the appropriate sub-crew using semantic embeddings and orchestrate the overall workflow"
+    backstory: |
+      You are the Chief Conductor of this meta-crew — the orchestrator of
+      orchestrators. You receive high-level tasks and use semantic embedding
+      similarity to route them to the most appropriate sub-crew. You manage
+      inter-crew dependencies, aggregate results from sub-crews, handle
+      cross-cutting concerns, and maintain the top-level checkpoint state.
+      You communicate with sub-crews via A2A protocol and collect feedback
+      from each. You ensure NIST compliance and maintain the multi-level
+      audit trail.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "semantic_search"
+    allowDelegation: true
+    maxIter: 20
+    verbose: true
+
+  research_lead:
+    role: "Research Sub-Crew Lead"
+    goal: "Lead the research sub-crew to gather, analyze, and synthesize information from diverse sources"
+    backstory: |
+      You lead the Research sub-crew of 5 agents. Your team includes a
+      Web Researcher (web scraping and API calls), Academic Analyst (paper
+      analysis), Data Miner (structured data extraction), Source Validator
+      (fact-checking and credibility assessment), and Research Synthesizer
+      (combining findings into coherent reports). You receive research
+      tasks routed by the Conductor and coordinate your team to deliver
+      comprehensive, validated research output.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+      - "semantic_search"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  dev_lead:
+    role: "Development Sub-Crew Lead"
+    goal: "Lead the development sub-crew to design, implement, and integrate software components"
+    backstory: |
+      You lead the Development sub-crew of 4 agents. Your team includes
+      an Architect (system design and patterns), Implementer (code writing),
+      Code Reviewer (quality and security review), and Integration Engineer
+      (system integration and deployment). You receive development tasks
+      from the Conductor and coordinate your team through the design-build-
+      review-integrate pipeline. You checkpoint at each stage.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+      - "shell_command"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  test_lead:
+    role: "Test Sub-Crew Lead"
+    goal: "Lead the test sub-crew to design and execute comprehensive test strategies"
+    backstory: |
+      You lead the Test sub-crew of 3 agents. Your team includes a Test
+      Strategist (test plan design), Test Executor (test implementation
+      and execution), and Quality Reporter (results analysis and reporting).
+      You receive test requests from the Conductor, design appropriate
+      test strategies, execute tests, and report results. You checkpoint
+      test results for reproducibility.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+      - "shell_command"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  docs_lead:
+    role: "Documentation Sub-Crew Lead"
+    goal: "Lead the documentation sub-crew to produce high-quality technical and user documentation"
+    backstory: |
+      You lead the Documentation sub-crew of 3 agents. Your team includes
+      a Technical Writer (API and architecture docs), User Guide Author
+      (end-user documentation), and Documentation Reviewer (accuracy and
+      completeness verification). You receive documentation requests from
+      the Conductor, coordinate writing efforts, and ensure all output
+      meets quality standards and is consistent across the project.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+      - "directory_read"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+tasks:
+  receive_mission:
+    description: "Receive the top-level mission, break it down into sub-tasks, and use semantic embeddings to route each sub-task to the most appropriate sub-crew"
+    expectedOutput: "Mission breakdown with sub-tasks, semantic similarity scores for routing decisions, sub-crew assignments, and dependency graph"
+    agent: "conductor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  execute_research:
+    description: "Execute all research sub-tasks: gather information from web, APIs, and databases, validate sources, and synthesize findings into research deliverables"
+    expectedOutput: "Research deliverables with sourced findings, validation status, synthesis report, and inter-crew data packages for Development and Documentation"
+    agent: "research_lead"
+    dependencies: ["receive_mission"]
+    asyncExecution: true
+    humanInput: false
+
+  execute_development:
+    description: "Execute all development sub-tasks: design architecture, implement components, review code, and prepare for integration"
+    expectedOutput: "Development deliverables with architecture decisions, implemented components, code review results, and integration readiness status"
+    agent: "dev_lead"
+    dependencies: ["receive_mission"]
+    asyncExecution: true
+    humanInput: false
+
+  execute_testing:
+    description: "Execute all test sub-tasks: design test strategy based on development output, implement and run tests, analyze results and report quality metrics"
+    expectedOutput: "Test deliverables with test strategy, execution results, coverage metrics, defect report, and quality assessment"
+    agent: "test_lead"
+    dependencies: ["execute_development"]
+    asyncExecution: false
+    humanInput: false
+
+  execute_documentation:
+    description: "Execute all documentation sub-tasks: write technical docs from development output, create user guides from research, and verify accuracy"
+    expectedOutput: "Documentation deliverables with technical docs, user guides, API reference, and documentation quality review"
+    agent: "docs_lead"
+    dependencies: ["execute_research", "execute_development"]
+    asyncExecution: false
+    humanInput: false
+
+  integrate_results:
+    description: "Aggregate all sub-crew deliverables, verify cross-crew consistency, resolve any conflicts, and produce the final integrated output with complete audit trail"
+    expectedOutput: "Integrated mission output with all deliverables, cross-crew consistency verification, conflict resolutions, performance metrics, and complete multi-level audit trail"
+    agent: "conductor"
+    dependencies: ["execute_research", "execute_testing", "execute_documentation"]
+    asyncExecution: false
+    humanInput: false

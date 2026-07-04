@@ -1,0 +1,130 @@
+# 69. Analyse de Performance — 4 Couches Paralleles + OpenTelemetry
+# Use case: Four-layer parallel performance analysis fed by OpenTelemetry metrics with prioritized bottleneck synthesis
+# Source: project/marketing/content-strategy/101-USE-CASES.md #69
+
+name: "performance-analysis"
+goal: "Analyze application performance across 4 layers in parallel (backend, frontend, network, database) and synthesize prioritized bottlenecks"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  backend_profiler:
+    role: "Backend Profiler"
+    goal: "Profile backend application performance and identify server-side bottlenecks"
+    backstory: |
+      You are a backend performance engineer who analyzes application traces,
+      CPU profiles, memory allocation patterns, and thread contention.
+      You use OpenTelemetry spans to identify slow endpoints, N+1 queries,
+      and resource-intensive operations.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  frontend_analyzer:
+    role: "Frontend Analyzer"
+    goal: "Analyze frontend performance metrics and user experience impact"
+    backstory: |
+      You are a frontend performance specialist who analyzes Core Web Vitals,
+      rendering performance, bundle sizes, and client-side bottlenecks.
+      You identify issues affecting Largest Contentful Paint, First Input Delay,
+      and Cumulative Layout Shift.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  network_monitor:
+    role: "Network Monitor"
+    goal: "Analyze network performance including latency, bandwidth, and DNS resolution"
+    backstory: |
+      You are a network performance engineer who analyzes network traces,
+      TCP connection patterns, TLS handshakes, DNS resolution times,
+      and CDN cache hit rates to identify network-level bottlenecks.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  database_analyst:
+    role: "Database Analyst"
+    goal: "Analyze database query performance and identify data-layer bottlenecks"
+    backstory: |
+      You are a database performance tuning expert who analyzes query
+      execution plans, index usage, lock contention, connection pool
+      utilization, and replication lag to identify data-layer bottlenecks.
+    tools:
+      - "http_api"
+      - "database_query"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  optimization_synthesizer:
+    role: "Optimization Synthesizer"
+    goal: "Synthesize findings from all 4 layers into a prioritized optimization plan"
+    backstory: |
+      You are a performance optimization lead who synthesizes findings
+      from multiple analysis layers. You correlate cross-layer dependencies,
+      prioritize bottlenecks by user impact, and create an actionable
+      optimization roadmap.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  profile_backend:
+    description: "Analyze backend performance using OpenTelemetry traces from Prometheus/Grafana. Identify slow endpoints, resource bottlenecks, and optimization opportunities."
+    expectedOutput: "Backend performance report with bottleneck ranking, impact scores, and optimization suggestions"
+    agent: "backend_profiler"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_frontend:
+    description: "Analyze frontend performance metrics including Core Web Vitals. Identify rendering bottlenecks, large bundle issues, and client-side performance problems."
+    expectedOutput: "Frontend performance report with Core Web Vitals analysis and optimization recommendations"
+    agent: "frontend_analyzer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_network:
+    description: "Analyze network performance metrics. Identify latency issues, DNS problems, TLS overhead, and CDN inefficiencies affecting end-user experience."
+    expectedOutput: "Network performance report with latency analysis, DNS timing, and CDN cache statistics"
+    agent: "network_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  analyze_database:
+    description: "Analyze database performance. Review slow queries, index usage, connection pool stats, and replication health. Identify data-layer bottlenecks."
+    expectedOutput: "Database performance report with slow query analysis, index recommendations, and capacity assessment"
+    agent: "database_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  synthesize_optimizations:
+    description: "Correlate findings across all 4 layers. Identify cross-layer dependencies, prioritize bottlenecks by user impact, and create an actionable optimization plan."
+    expectedOutput: "Prioritized optimization plan with cross-layer analysis, estimated impact, and implementation roadmap"
+    agent: "optimization_synthesizer"
+    dependencies:
+      - "profile_backend"
+      - "analyze_frontend"
+      - "monitor_network"
+      - "analyze_database"
+    asyncExecution: false
+    humanInput: false

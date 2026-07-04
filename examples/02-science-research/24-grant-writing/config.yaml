@@ -1,0 +1,130 @@
+# 24. Redaction de Demandes de Subventions
+# Use case: 100% YAML-configurable grant writing pipeline with human PI validation per section
+# Source: project/marketing/content-strategy/101-USE-CASES.md #24
+
+name: "grant-writing"
+goal: "Produce grant applications through a YAML-driven pipeline with section-by-section validation and human PI approval"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  call_strategist:
+    role: "Stratege Appels"
+    goal: "Analyze grant call requirements and design a winning application strategy"
+    backstory: |
+      You are a research funding strategist who analyzes grant calls to identify
+      evaluation criteria, hidden priorities, and competitive positioning
+      opportunities. You design application strategies that maximize alignment
+      between the research proposal and the funder's objectives.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  scientific_writer:
+    role: "Redacteur Scientifique"
+    goal: "Write compelling scientific sections (background, objectives, methodology, impact)"
+    backstory: |
+      You are a scientific grant writer who transforms research ideas into
+      compelling narratives. You write clear background sections, articulate
+      novel objectives, describe rigorous methodologies, and quantify expected
+      impact. You follow each funder's specific formatting requirements.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  budget_manager:
+    role: "Gestionnaire Budget"
+    goal: "Create detailed, justified budgets aligned with funder guidelines and institutional policies"
+    backstory: |
+      You are a grants administrator who builds detailed budgets. You calculate
+      personnel costs, equipment, travel, consumables, and overheads according
+      to funder rules. You provide clear justifications for each budget line
+      and ensure compliance with cost caps.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  global_reviewer:
+    role: "Reviewer Global"
+    goal: "Review the complete application for consistency, completeness, and competitiveness"
+    backstory: |
+      You are a former grant panel member who reviews applications from the
+      evaluator's perspective. You check for logical coherence, completeness
+      of required sections, alignment with call criteria, and competitive
+      positioning against likely rival proposals.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  pi_validator:
+    role: "PI Validateur"
+    goal: "Review and validate each section of the grant application as the principal investigator"
+    backstory: |
+      You are the Principal Investigator who gives final approval on each section
+      of the grant application. You ensure scientific accuracy, strategic alignment,
+      and personal commitment to the proposed research plan.
+    tools: []
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  analyze_call:
+    description: "Analyze the grant call requirements: eligibility, evaluation criteria, priorities, budget limits, and formatting rules. Design the application strategy."
+    expectedOutput: "JSON with: eligibility_check, evaluation_criteria[{criterion, weight}], strategic_alignment[], budget_limits, formatting_rules, strategy_recommendations"
+    agent: "call_strategist"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  write_scientific_sections:
+    description: "Write the scientific sections: background/state of the art, objectives, methodology, expected results, and impact. Follow the funder's structure requirements."
+    expectedOutput: "Markdown grant sections: background, objectives, methodology, expected_results, impact, innovation_statement"
+    agent: "scientific_writer"
+    dependencies:
+      - "analyze_call"
+    asyncExecution: false
+    humanInput: false
+
+  prepare_budget:
+    description: "Create a detailed budget with justifications for each line item. Include personnel, equipment, travel, consumables, and overheads. Verify compliance with funder limits."
+    expectedOutput: "JSON budget with: line_items[{category, description, amount, justification}], total, overhead_calculation, compliance_notes"
+    agent: "budget_manager"
+    dependencies:
+      - "analyze_call"
+    asyncExecution: false
+    humanInput: false
+
+  review_application:
+    description: "Review the complete application for consistency, completeness, and competitiveness. Score against evaluation criteria and suggest improvements."
+    expectedOutput: "JSON with: overall_score, criteria_scores[{criterion, score, feedback}], consistency_issues[], improvement_suggestions[], competitiveness_assessment"
+    agent: "global_reviewer"
+    dependencies:
+      - "write_scientific_sections"
+      - "prepare_budget"
+    asyncExecution: false
+    humanInput: false
+
+  pi_approval:
+    description: "Present the reviewed application to the PI for final validation. Highlight key commitments, budget allocations, and any flagged issues."
+    expectedOutput: "JSON with: decision (approved/revision_needed), section_approvals{}, comments, revision_requests[]"
+    agent: "pi_validator"
+    dependencies:
+      - "review_application"
+    asyncExecution: false
+    humanInput: true

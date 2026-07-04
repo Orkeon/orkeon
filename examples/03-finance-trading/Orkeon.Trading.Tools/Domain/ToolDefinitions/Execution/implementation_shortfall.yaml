@@ -1,0 +1,57 @@
+name: implementation_shortfall
+description: >
+  Executes orders using Implementation Shortfall algorithm optimizing market impact vs. timing risk.
+  Front-loads execution when alpha is strong, spreads out when impact costs dominate.
+  Minimizes total implementation shortfall (difference from decision price).
+parameters:
+  symbol:
+    type: string
+    description: "Symbol to execute"
+    required: true
+  side:
+    type: string
+    description: "Order side: 'BUY' or 'SELL'"
+    required: true
+  quantity:
+    type: number
+    description: "Total quantity to execute"
+    required: true
+  decision_price:
+    type: number
+    description: "Price at decision time (benchmark)"
+    required: true
+  urgency:
+    type: string
+    description: "Execution urgency: 'low', 'medium', 'high', 'very_high'"
+    required: false
+    default: "medium"
+  alpha_forecast:
+    type: number
+    description: "Expected alpha/return (positive = bullish, negative = bearish)"
+    required: false
+    default: 0.0
+  volatility:
+    type: number
+    description: "Expected price volatility (for timing risk)"
+    required: false
+    default: 0.02
+  risk_aversion:
+    type: number
+    description: "Risk aversion parameter (default: 1e-6)"
+    required: false
+    default: 0.000001
+returns:
+  timestamp: { type: string }
+  algorithm: { type: string }
+  symbol: { type: string }
+  side: { type: string }
+  total_quantity: { type: number }
+  decision_price: { type: number }
+  urgency: { type: string }
+  alpha_forecast: { type: number }
+  front_load_factor: { type: number }
+  total_slices: { type: integer }
+  execution_duration_minutes: { type: integer }
+  execution_schedule: { type: array }
+  expected_costs: { type: object }
+  execution_strategy: { type: object }

@@ -1,0 +1,108 @@
+# 21. Peer Review Simule avec Calibration
+# Use case: Simulated peer review with 3 independent reviewers, benchmark calibration, and consensus
+# Source: project/marketing/content-strategy/101-USE-CASES.md #21
+
+name: "peer-review-calibration"
+goal: "Simulate peer review with 3 independent reviewers calibrated by benchmark, achieving consensus on critical points through structured evaluation"
+process: "consensual"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  reviewer_methodology:
+    role: "Reviewer Methodologie"
+    goal: "Evaluate the paper's research methodology, study design, and internal validity"
+    backstory: |
+      You are a methodologist reviewer who evaluates research design rigor. You
+      assess sample size justification, control group adequacy, randomization
+      procedures, blinding, measurement validity, and potential confounders.
+      You rate each aspect on a structured rubric.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  reviewer_statistics:
+    role: "Reviewer Statistiques"
+    goal: "Evaluate statistical analyses, data presentation, and quantitative claims"
+    backstory: |
+      You are a statistical reviewer who scrutinizes data analysis. You verify
+      statistical test appropriateness, check assumptions, assess effect sizes,
+      evaluate data visualizations, and identify p-hacking or selective reporting
+      indicators.
+    tools:
+      - "pdf_reader"
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  reviewer_relevance:
+    role: "Reviewer Pertinence"
+    goal: "Evaluate the paper's novelty, significance, and contribution to the field"
+    backstory: |
+      You are a domain expert reviewer who assesses scientific contribution. You
+      evaluate novelty relative to existing literature, practical significance,
+      generalizability of findings, and whether the paper advances the field
+      meaningfully.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  editor_synthesizer:
+    role: "Editeur-Synthetiseur"
+    goal: "Synthesize all reviews into a unified editorial decision with actionable feedback"
+    backstory: |
+      You are a journal editor who synthesizes peer reviews into fair, constructive
+      editorial decisions. You identify consensus points, resolve conflicting
+      opinions, weigh reviewer expertise, and produce actionable feedback
+      that helps authors improve their manuscript.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  review_methodology:
+    description: "Evaluate the paper's methodology: study design, sample size, controls, randomization, measurement validity. Score each aspect (1-5) with detailed justification."
+    expectedOutput: "JSON with: scores{design, sample, controls, measurement, overall}, strengths[], weaknesses[], critical_issues[], recommendation"
+    agent: "reviewer_methodology"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  review_statistics:
+    description: "Evaluate statistical analyses: test appropriateness, assumptions met, effect sizes reported, data visualization quality, selective reporting indicators."
+    expectedOutput: "JSON with: scores{test_choice, assumptions, effect_sizes, visualization, reporting, overall}, issues[], suggestions[], critical_flaws[]"
+    agent: "reviewer_statistics"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  review_relevance:
+    description: "Evaluate the paper's contribution: novelty vs existing literature, practical significance, generalizability, and field advancement."
+    expectedOutput: "JSON with: scores{novelty, significance, generalizability, advancement, overall}, prior_work_comparison, strengths[], limitations[]"
+    agent: "reviewer_relevance"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  synthesize_decision:
+    description: "Synthesize all reviews into a unified editorial decision. Identify consensus points, resolve conflicts, and produce a structured decision letter with actionable revision requests."
+    expectedOutput: "Markdown editorial decision with: decision (accept/minor_revision/major_revision/reject), consensus_points[], revision_requests[], reviewer_agreement_analysis"
+    agent: "editor_synthesizer"
+    dependencies:
+      - "review_methodology"
+      - "review_statistics"
+      - "review_relevance"
+    asyncExecution: false
+    humanInput: false

@@ -1,0 +1,105 @@
+# 10. Analyse de Sentiment Client Multi-Plateforme
+# Use case: Multi-platform sentiment analysis with parallel collection and composite memory for trending
+# Source: project/marketing/content-strategy/101-USE-CASES.md #10
+# TODO: feature planifiee — Composite Memory (SQLite + Redis)
+
+name: "sentiment-analysis"
+goal: "Collect and analyze customer sentiment from multiple platforms in parallel, aggregate into thematic scores with historical trending"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  amazon_collector:
+    role: "Collecteur Amazon"
+    goal: "Collect and analyze customer reviews from Amazon marketplace"
+    backstory: |
+      You are a review analyst specializing in e-commerce platforms. You scrape
+      Amazon reviews, extract sentiment signals, identify recurring themes
+      (quality, shipping, value), and detect review authenticity indicators.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  google_collector:
+    role: "Collecteur Google"
+    goal: "Collect and analyze reviews from Google Maps and Google Business"
+    backstory: |
+      You are a local SEO analyst who monitors Google Business reviews. You
+      extract sentiment, identify location-specific issues, and track review
+      velocity and rating trends over time.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  social_collector:
+    role: "Collecteur Reseaux Sociaux"
+    goal: "Collect and analyze sentiment from social media platforms (Twitter, Reddit, forums)"
+    backstory: |
+      You are a social media analyst who monitors brand mentions across platforms.
+      You extract sentiment from tweets, Reddit threads, and forum posts, identifying
+      viral complaints, brand advocates, and emerging sentiment shifts.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  aggregator:
+    role: "Agregateur de Sentiments"
+    goal: "Merge all platform sentiments into unified thematic scores with trend analysis"
+    backstory: |
+      You are a data analyst specializing in sentiment aggregation. You normalize
+      scores across platforms, identify cross-platform themes, compute weighted
+      sentiment scores, and generate trend charts comparing current vs historical data.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  collect_amazon:
+    description: "Scrape Amazon reviews for the target products. Extract sentiment score, themes, review date, and authenticity indicators for each review."
+    expectedOutput: "JSON array of reviews with: product_id, reviewer, date, rating, sentiment_score, themes[], authenticity_score"
+    agent: "amazon_collector"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  collect_google:
+    description: "Collect Google Business reviews. Extract sentiment, location data, rating, and identify location-specific service issues."
+    expectedOutput: "JSON array of reviews with: location_id, reviewer, date, rating, sentiment_score, themes[], location_issues[]"
+    agent: "google_collector"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  collect_social:
+    description: "Monitor social media for brand mentions. Extract sentiment, platform, reach metrics, and identify viral or trending discussions."
+    expectedOutput: "JSON array of mentions with: platform, author, date, sentiment_score, reach, themes[], is_viral"
+    agent: "social_collector"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  aggregate_sentiment:
+    description: "Merge all collected sentiment data into unified thematic scores. Compare with historical data to identify trends. Generate a comprehensive sentiment dashboard report."
+    expectedOutput: "JSON sentiment dashboard with: overall_score, platform_scores{}, theme_scores{}, trend_analysis{}, alerts[], recommendations[]"
+    agent: "aggregator"
+    dependencies:
+      - "collect_amazon"
+      - "collect_google"
+      - "collect_social"
+    asyncExecution: false
+    humanInput: false

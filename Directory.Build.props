@@ -1,0 +1,27 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Exclure les artefacts de l'autre OS pour éviter les doublons CS0579/CS0757 -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj-linux/**;obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj-linux/</BaseIntermediateOutputPath>
+    <RestorePackagesPath>$(MSBuildThisFileDirectory)packages</RestorePackagesPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <Optimize>false</Optimize>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+    <!-- R1.5/ORG-008: no global RID pin in Release — libraries must pack portable
+         (AnyCPU) packages. Executables that need a platform-specific build pass the
+         RID explicitly at publish time: `dotnet publish -c Release -r linux-x64`. -->
+    <!--<PublishReadyToRun>true</PublishReadyToRun>-->
+    <!--<PublishAot>true</PublishAot>-->
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,118 @@
+# 51. Coordination de Soins Broadcast
+# Use case: Un ManagerAgent coordonne les intervenants multi-disciplinaires avec protocole Broadcast garanti
+# Source: project/marketing/content-strategy/101-USE-CASES.md #51
+
+name: "care-coordination"
+goal: "Coordinate multi-disciplinary care team with guaranteed broadcast communication ensuring zero information loss"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "coordinator"
+
+agents:
+  coordinator:
+    role: "Care Coordinator"
+    goal: "Coordinate all care team members and ensure every update is broadcast to all stakeholders"
+    backstory: |
+      Clinical care coordinator managing multi-disciplinary teams.
+      Ensures every care plan update is communicated to all team members
+      via Broadcast protocol — no team member ever misses an update.
+      Tracks acknowledgments and escalates non-responses.
+    tools: []
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  treating_physician:
+    role: "Treating Physician"
+    goal: "Define and update the primary treatment plan and medical directives"
+    backstory: |
+      Primary care physician responsible for the overall treatment plan.
+      Makes medical decisions, prescribes treatments, and adjusts the care plan
+      based on specialist recommendations and patient progress.
+    tools:
+      - "json_tool"
+      - "http_api"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  specialist:
+    role: "Medical Specialist"
+    goal: "Provide specialist consultation and recommendations for the care plan"
+    backstory: |
+      Specialist consultant who provides expert opinions in their domain.
+      Reviews patient data, provides diagnostic insights, and recommends
+      specialized treatments that are integrated into the overall care plan.
+    tools:
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  physiotherapist:
+    role: "Physiotherapy Specialist"
+    goal: "Design and monitor rehabilitation and physical therapy programs"
+    backstory: |
+      Physiotherapist who designs rehabilitation protocols, monitors mobility
+      progress, and adjusts exercise programs based on patient recovery.
+      Reports progress to the care coordinator for plan updates.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  nurse:
+    role: "Care Nurse"
+    goal: "Monitor daily patient status and execute nursing care plan"
+    backstory: |
+      Registered nurse providing daily patient monitoring, medication administration,
+      wound care, and vital signs tracking. Reports status changes to the
+      coordinator and flags any clinical deterioration.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  define_care_plan:
+    description: "Define the initial care plan based on patient diagnosis, medical history, and treatment goals. Include medication, rehabilitation objectives, and monitoring schedule."
+    expectedOutput: "JSON care plan with treatment directives, medication schedule, rehabilitation goals, monitoring parameters, and team responsibilities"
+    agent: "treating_physician"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  specialist_consultation:
+    description: "Review patient data and provide specialist recommendations. Include diagnostic insights, specialized treatment options, and integration points with the overall care plan."
+    expectedOutput: "JSON specialist report with recommendations, diagnostic findings, and proposed care plan modifications"
+    agent: "specialist"
+    dependencies:
+      - "define_care_plan"
+    asyncExecution: false
+    humanInput: false
+
+  design_rehab:
+    description: "Design rehabilitation program aligned with care plan goals. Specify exercises, progression criteria, frequency, and outcome measures. Include contraindications and escalation triggers."
+    expectedOutput: "JSON rehabilitation protocol with exercise program, progression milestones, contraindications, and outcome measurement schedule"
+    agent: "physiotherapist"
+    dependencies:
+      - "define_care_plan"
+    asyncExecution: false
+    humanInput: false
+
+  daily_monitoring:
+    description: "Execute daily monitoring protocol. Record vital signs, medication administration, wound status, mobility assessment, and pain levels. Flag any status changes requiring physician attention."
+    expectedOutput: "JSON daily monitoring report with vital signs, medication compliance, clinical observations, and any flagged alerts"
+    agent: "nurse"
+    dependencies:
+      - "define_care_plan"
+    asyncExecution: false
+    humanInput: false

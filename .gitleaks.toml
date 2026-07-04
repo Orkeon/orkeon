@@ -1,0 +1,40 @@
+# gitleaks configuration for Orkeon
+#
+# Extends the bundled default ruleset (gitleaks' built-in detectors) and adds
+# a *targeted* allowlist for the single known false positive identified during
+# the open-source release audit (finding OSS-007 / chantier R1.8).
+#
+# IMPORTANT: this allowlist is intentionally scoped to one path. Do NOT widen it
+# into a global mask — every new secret-like match must be triaged, not silenced.
+
+title = "Orkeon gitleaks config"
+
+# Inherit gitleaks' default rules instead of redefining them.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known, reviewed false positives (scoped — do not generalize)"
+
+# examples/others/README.md is a curated catalogue of public TypeScript
+# repositories used as analysis benchmarks. It contains i18n / library jargon
+# that the default ruleset flags as a generic secret, but holds no credential.
+# Allowlisted by path only — all other paths remain fully scanned.
+#
+# The seven test files below contain intentionally FAKE placeholder credentials
+# (e.g. "sk-test-key-1234567890", "0123456789abcdef0123456789abcdef",
+# "tvly-test-api-key-12345"). Their purpose is precisely to exercise secret
+# *redaction*/sanitization, LLM-exchange log scrubbing, key-rotation naming, and
+# API-tool wiring — they hold no real credential. Each was triaged individually
+# during the open-source migration gitleaks run (14 generic-api-key hits); listed
+# by exact path, never a broad tests/ mask, so all other paths stay fully scanned.
+paths = [
+  '''examples/others/README\.md''',
+  '''tests/core/Orkeon\.Infrastructure\.Tests/Security/LogSanitizer/LogSanitizerTests\.cs''',
+  '''tests/core/Orkeon\.Infrastructure\.Tests/Security/Encryption/KeyRotationServiceTests\.cs''',
+  '''tests/core/Orkeon\.Infrastructure\.Tests/Logging/LlmLoggingDelegatingHandlerTests\.cs''',
+  '''tests/tools/Orkeon\.Tools\.Web\.Tests/ImageGenerationToolTests\.cs''',
+  '''tests/tools/Orkeon\.Tools\.Web\.Tests/ImageGenerationToolExtraTests\.cs''',
+  '''tests/tools/Orkeon\.Tools\.Web\.Tests/ImageGenerationToolPathTraversalTests\.cs''',
+  '''tests/tools/Orkeon\.Tools\.Web\.Tests/WebSearchToolTests\.cs''',
+]

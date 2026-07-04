@@ -1,0 +1,105 @@
+# 67. Incident Response — Humain Valide en Prod
+# Use case: Incident response pipeline with mandatory human validation for any production action
+# Source: project/marketing/content-strategy/101-USE-CASES.md #67
+
+name: "incident-response"
+goal: "Detect, diagnose, remediate, and document production incidents with mandatory human validation for all prod actions"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  detector:
+    role: "Incident Detector"
+    goal: "Detect and classify production incidents from monitoring data"
+    backstory: |
+      You are an SRE specialist who monitors production systems. You detect
+      anomalies in metrics, logs, and alerts, classify incident severity,
+      and trigger the response workflow with initial impact assessment.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  root_cause_diagnostician:
+    role: "Root Cause Diagnostician"
+    goal: "Identify the root cause of the incident through systematic analysis"
+    backstory: |
+      You are a debugging expert who performs systematic root cause analysis.
+      You correlate logs, metrics, recent deployments, and configuration
+      changes to pinpoint the exact cause of production incidents.
+    tools:
+      - "http_api"
+      - "database_query"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  remediator:
+    role: "Remediator"
+    goal: "Propose and execute remediation actions after human approval"
+    backstory: |
+      You are a DevOps engineer who designs remediation plans for production
+      incidents. You propose safe remediation steps, estimate risk and impact,
+      and execute approved actions with verification at each step.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  postmortem_writer:
+    role: "Post-Mortem Communicator"
+    goal: "Document the incident timeline and write a blameless post-mortem"
+    backstory: |
+      You are a technical writer specialized in incident documentation.
+      You create blameless post-mortems with detailed timelines, root cause
+      analysis, remediation steps, and preventive action items.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  detect_incident:
+    description: "Analyze monitoring data and alerts to detect and classify the incident. Determine severity, affected services, and initial impact scope."
+    expectedOutput: "Incident report with severity classification, affected services, and initial impact assessment"
+    agent: "detector"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  diagnose_root_cause:
+    description: "Perform systematic root cause analysis. Correlate logs, metrics, recent changes, and dependencies to identify the root cause."
+    expectedOutput: "Root cause analysis report with evidence chain, contributing factors, and confidence level"
+    agent: "root_cause_diagnostician"
+    dependencies:
+      - "detect_incident"
+    asyncExecution: false
+    humanInput: false
+
+  remediate:
+    description: "Design a remediation plan with specific steps. Each step touching production requires human approval. Execute approved steps and verify success."
+    expectedOutput: "Remediation report with executed steps, verification results, and rollback plan"
+    agent: "remediator"
+    dependencies:
+      - "diagnose_root_cause"
+    asyncExecution: false
+    humanInput: true
+
+  write_postmortem:
+    description: "Compile a blameless post-mortem with full incident timeline, root cause, remediation actions, and preventive measures. Include action items with owners."
+    expectedOutput: "Post-mortem document with timeline, root cause, remediation summary, and preventive action items"
+    agent: "postmortem_writer"
+    dependencies:
+      - "remediate"
+    asyncExecution: false
+    humanInput: false

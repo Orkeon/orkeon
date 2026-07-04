@@ -1,0 +1,105 @@
+# 59. Parcours de Formation Non-Lineaire via FlowEngine
+# Use case: Non-linear learning path with conditional branching driven by LLM decisions
+# Source: project/marketing/content-strategy/101-USE-CASES.md #59
+# TODO: feature planifiee — FlowEngine (IFlowEngine + FlowState + LlmFlowStep)
+
+name: "nonlinear-learning-path"
+goal: "Build adaptive non-linear learning paths that branch based on learner performance and LLM-driven decisions"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  gap_diagnostician:
+    role: "Gap Diagnostician"
+    goal: "Identify knowledge gaps and prerequisite deficiencies in the learner's profile"
+    backstory: |
+      You are a learning analytics specialist who diagnoses knowledge gaps
+      by analyzing learner performance data. You identify prerequisite
+      deficiencies that must be addressed before advancing to new topics.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  pedagogical_architect:
+    role: "Pedagogical Architect"
+    goal: "Design branching learning paths with remediation and advancement tracks"
+    backstory: |
+      You are an instructional designer specialized in adaptive learning systems.
+      You create learning paths with conditional branches: remediation paths for
+      struggling learners and acceleration paths for advanced learners.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  resource_curator:
+    role: "Resource Curator"
+    goal: "Select the most appropriate learning resources for each path segment"
+    backstory: |
+      You are a learning resource specialist who curates content from multiple
+      sources. You match resources to learner profiles, considering difficulty
+      level, format preference, and learning objectives.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  calendar_planner:
+    role: "Calendar Planner"
+    goal: "Schedule the learning path into a realistic calendar with milestones"
+    backstory: |
+      You are a project planning specialist who translates learning paths
+      into actionable schedules. You consider learner availability, cognitive
+      load limits, and spaced repetition principles.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  diagnose_gaps:
+    description: "Analyze the learner's current competency data from the LMS and identify knowledge gaps, prerequisite deficiencies, and areas needing remediation."
+    expectedOutput: "JSON gap analysis with prioritized list of deficiencies and recommended remediation areas"
+    agent: "gap_diagnostician"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  design_path:
+    description: "Design a non-linear learning path with conditional branches. Include remediation tracks for identified gaps and advancement tracks for mastered areas."
+    expectedOutput: "JSON learning path tree with branches, conditions, and learning objectives per node"
+    agent: "pedagogical_architect"
+    dependencies:
+      - "diagnose_gaps"
+    asyncExecution: false
+    humanInput: false
+
+  curate_resources:
+    description: "For each node in the learning path, select and organize appropriate learning resources from the catalogue. Match resources to learner profile and objectives."
+    expectedOutput: "Resource mapping with selected materials, formats, and difficulty levels per path node"
+    agent: "resource_curator"
+    dependencies:
+      - "design_path"
+    asyncExecution: false
+    humanInput: false
+
+  plan_schedule:
+    description: "Convert the learning path with resources into a realistic calendar schedule with milestones, checkpoints, and review sessions."
+    expectedOutput: "Calendar schedule with daily/weekly plan, milestones, and progress checkpoints"
+    agent: "calendar_planner"
+    dependencies:
+      - "curate_resources"
+    asyncExecution: false
+    humanInput: false

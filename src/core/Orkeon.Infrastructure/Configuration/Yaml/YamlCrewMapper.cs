@@ -1,0 +1,434 @@
+using Microsoft.Extensions.Logging;
+using Orkeon.Domain.Agent;
+using Orkeon.Domain.Common;
+using Orkeon.Domain.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Constants.Llm;
+
+namespace Orkeon.Infrastructure.Configuration;
+
+/// <summary>
+/// Maps YAML crew DTOs onto domain <see cref="CrewConfiguration"/> children (agents, tasks)
+/// and resolves the three-level LLM cascade (crew default → agent → task override).
+/// Extracted from <see cref="YamlCrewDefinitionLoader"/> (R4.2 god-file decomposition).
+/// </summary>
+public sealed partial class YamlCrewMapper
+{
+    private readonly ILogger _logger;
+
+    /// <summary>Initializes a new instance of <see cref="YamlCrewMapper"/>.</summary>
+    /// <param name="logger">Logger used to surface malformed-but-recoverable YAML values.</param>
+    public YamlCrewMapper(ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
+    /// <summary>Builds a full crew configuration from the single-file or multi-file crew/agents/tasks DTOs.</summary>
+    public CrewConfiguration BuildConfiguration(
+        CrewMappingSettings settings,
+        Dictionary<string, AgentYamlConfig>? agents,
+        Dictionary<string, TaskYamlConfig>? tasks)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        var mappedAgents = agents != null
+            ? MapAgents(agents, settings.CrewDefaultLlm, out var agentNameMap)
+            : MapAgentsEmpty(out agentNameMap);
+
+        return new CrewConfiguration
+        {
+            Name = settings.Name ?? string.Empty,
+            Goal = settings.Goal ?? string.Empty,
+            Process = ParseProcessType(settings.Process),
+            Verbose = settings.Verbose ?? false,
+            Memory = settings.Memory ?? false,
+            MemoryProvider = settings.MemoryProvider,
+            Planning = settings.Planning ?? false,
+            Agents = mappedAgents,
+            Tasks = tasks != null ? MapTasks(tasks, agentNameMap) : [],
+            ManagerAgentId = ResolveAgentId(settings.ManagerAgent, agentNameMap),
+            CircuitBreaker = MapCircuitBreaker(settings.CircuitBreaker),
+            GraphConfig = MapGraphConfig(settings.GraphConfig),
+        };
+    }
+
+    private static List<AgentConfiguration> MapAgentsEmpty(out Dictionary<string, AgentId> nameToId)
+    {
+        nameToId = [];
+        return [];
+    }
+
+    private List<AgentConfiguration> MapAgents(
+        Dictionary<string, AgentYamlConfig> agents,
+        LlmYamlConfig? crewDefaultLlm,
+        out Dictionary<string, AgentId> nameToId)
+    {
+        nameToId = [];
+        var result = new List<AgentConfiguration>();
+
+        foreach (var kvp in agents)
+        {
+            var agentId = AgentId.Create();
+            nameToId[kvp.Key] = agentId;
+
+            var effectiveLlm = MergeLlmYamlConfig(crewDefaultLlm, kvp.Value.Llm);
+            result.Add(new AgentConfiguration
+            {
+                Id = agentId,
+                Role = kvp.Value.Role ?? kvp.Key,
+                Goal = kvp.Value.Goal ?? string.Empty,
+                Backstory = kvp.Value.Backstory ?? string.Empty,
+                Tools = kvp.Value.Tools ?? [],
+                AllowDelegation = kvp.Value.AllowDelegation ?? true,
+                MaxIterations = kvp.Value.MaxIter ?? 20,
+                MaxRPM = kvp.Value.MaxRpm ?? 10,
+                Verbose = kvp.Value.Verbose ?? false,
+                LlmConfig = effectiveLlm != null
+                    ? LlmConfig.Create(effectiveLlm.Model ?? LlmDefaults.DefaultModelName) with
+                    {
+                        Temperature = effectiveLlm.Temperature ?? LlmDefaults.DefaultTemperature,
+                        MaxTokens = effectiveLlm.MaxTokens ?? 4096,
+                        TopP = effectiveLlm.TopP ?? 1.0,
+                        Thinking = MapThinking(effectiveLlm.Thinking),
+                        ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat),
+                    }
+                    : null,
+                Guardrails = MapGuardrails(kvp.Value.Guardrails),
+            });
+        }
+
+        return result;
+    }
+
+    private List<TaskConfiguration> MapTasks(
+        Dictionary<string, TaskYamlConfig> tasks, Dictionary<string, AgentId> agentNameMap)
+    {
+        // First pass: create TaskIds for all tasks so we can resolve dependencies
+        var taskNameToId = new Dictionary<string, TaskId>();
+        foreach (var kvp in tasks)
+        {
+            taskNameToId[kvp.Key] = TaskId.Create();
+        }
+
+        // Second pass: build TaskConfigurations with resolved references
+        var result = new List<TaskConfiguration>();
+        foreach (var kvp in tasks)
+        {
+            var dependencies = new List<TaskId>();
+            if (kvp.Value.Dependencies != null)
+            {
+                foreach (var dep in kvp.Value.Dependencies)
+                {
+                    if (taskNameToId.TryGetValue(dep, out var depId))
+                        dependencies.Add(depId);
+                }
+            }
+
+            result.Add(new TaskConfiguration
+            {
+                Id = taskNameToId[kvp.Key],
+                Description = kvp.Value.Description ?? string.Empty,
+                ExpectedOutput = kvp.Value.ExpectedOutput ?? string.Empty,
+                AssignedAgentId = kvp.Value.Agent != null && agentNameMap.TryGetValue(kvp.Value.Agent, out var agentId)
+                    ? agentId : null,
+                Dependencies = dependencies,
+                RequiredTools = kvp.Value.Tools ?? (IReadOnlyList<string>)Array.Empty<string>(),
+                AsyncExecution = kvp.Value.AsyncExecution ?? false,
+                HumanInput = kvp.Value.HumanInput ?? false,
+                Context = kvp.Value.Context ?? [],
+                CircuitBreaker = MapCircuitBreaker(kvp.Value.CircuitBreaker),
+                Deliverable = MapDeliverable(kvp.Value.Deliverable),
+                LlmOverride = MapTaskLlmOverride(kvp.Value.LlmOverride),
+            });
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Maps the YAML deliverable block to a <see cref="Orkeon.Domain.Task.ValueObjects.TaskDeliverable"/>.
+    /// Returns <c>null</c> when the block is absent so the task falls back to legacy tool_call behavior.
+    /// </summary>
+    private static Orkeon.Domain.Task.ValueObjects.TaskDeliverable? MapDeliverable(DeliverableYamlConfig? yaml)
+    {
+        if (yaml == null) return null;
+        if (string.IsNullOrWhiteSpace(yaml.Path)) return null;
+
+        var source = ParseDeliverableSource(yaml.Source);
+        var deliverable = new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = yaml.Path,
+            Source = source,
+            Format = string.IsNullOrWhiteSpace(yaml.Format) ? "markdown" : yaml.Format,
+            Sanitize = yaml.Sanitize ?? true,
+            SchemaPath = yaml.SchemaPath,
+            SchemaInline = yaml.SchemaInline,
+        };
+        deliverable.Validate();
+        return deliverable;
+    }
+
+    private static Orkeon.Domain.Task.ValueObjects.DeliverableSource ParseDeliverableSource(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall;
+
+#pragma warning disable CA1308 // lowercase is the normalized switch subject the YAML keys are matched against
+        return raw.Trim().ToLowerInvariant() switch
+#pragma warning restore CA1308
+        {
+            "none" => Orkeon.Domain.Task.ValueObjects.DeliverableSource.None,
+            "tool_call" or "toolcall" => Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+            "final_message" or "finalmessage" => Orkeon.Domain.Task.ValueObjects.DeliverableSource.FinalMessage,
+            "structured_output" or "structuredoutput" => Orkeon.Domain.Task.ValueObjects.DeliverableSource.StructuredOutput,
+            _ => throw new InvalidOperationException(
+                $"Unknown deliverable source '{raw}'. Expected: final_message, structured_output, tool_call, none."),
+        };
+    }
+
+    /// <summary>
+    /// Field-by-field merge of an agent's <c>llm:</c> block onto the crew-level default.
+    /// Each agent field that is set wins over the crew default; unset agent fields fall
+    /// back to the crew default. Returns null when neither side declares any LLM block.
+    /// Experiment 07 friction #7: prior behavior was whole-block replacement, which
+    /// silently dropped crew-default MaxTokens / Temperature when an agent only wanted
+    /// to override the model name.
+    /// </summary>
+    private static LlmYamlConfig? MergeLlmYamlConfig(LlmYamlConfig? crewLevel, LlmYamlConfig? agentLevel)
+    {
+        if (crewLevel is null && agentLevel is null) return null;
+        if (agentLevel is null) return crewLevel;
+        if (crewLevel is null) return agentLevel;
+
+        return new LlmYamlConfig
+        {
+            Model = agentLevel.Model ?? crewLevel.Model,
+            Temperature = agentLevel.Temperature ?? crewLevel.Temperature,
+            MaxTokens = agentLevel.MaxTokens ?? crewLevel.MaxTokens,
+            TopP = agentLevel.TopP ?? crewLevel.TopP,
+            Thinking = MergeThinkingYamlConfig(crewLevel.Thinking, agentLevel.Thinking),
+            ResponseFormat = string.IsNullOrWhiteSpace(agentLevel.ResponseFormat) ? crewLevel.ResponseFormat : agentLevel.ResponseFormat,
+        };
+    }
+
+    /// <summary>Field-by-field merge of an agent's <c>thinking:</c> sub-block onto the crew default.</summary>
+    private static ThinkingYamlConfig? MergeThinkingYamlConfig(ThinkingYamlConfig? crewLevel, ThinkingYamlConfig? agentLevel)
+    {
+        if (crewLevel is null && agentLevel is null) return null;
+        if (agentLevel is null) return crewLevel;
+        if (crewLevel is null) return agentLevel;
+
+        return new ThinkingYamlConfig
+        {
+            Enabled = agentLevel.Enabled ?? crewLevel.Enabled,
+            Effort = string.IsNullOrWhiteSpace(agentLevel.Effort) ? crewLevel.Effort : agentLevel.Effort,
+        };
+    }
+
+    /// <summary>
+    /// Maps a YAML thinking block to its domain value object. Returns null when no
+    /// fields were provided so the provider default stays in effect.
+    /// </summary>
+    private static LlmThinkingConfig? MapThinking(ThinkingYamlConfig? yaml)
+    {
+        if (yaml is null) return null;
+        if (yaml.Enabled is null && string.IsNullOrWhiteSpace(yaml.Effort)) return null;
+        return new LlmThinkingConfig { Enabled = yaml.Enabled, Effort = yaml.Effort };
+    }
+
+    /// <summary>
+    /// Maps a YAML <c>response_format:</c> string to its domain value object.
+    /// Accepts <c>"text"</c> (no-op = provider default) and <c>"json_object"</c>
+    /// (case-insensitive, normalised to lowercase). Any other value is downgraded
+    /// to <c>null</c> with a structured warning — a slightly malformed crew.yaml
+    /// must not crash the app.
+    /// </summary>
+    private LlmResponseFormat? MapResponseFormat(string? yaml)
+    {
+        if (string.IsNullOrWhiteSpace(yaml)) return null;
+
+        var trimmed = yaml.Trim();
+        if (string.Equals(trimmed, "text", StringComparison.OrdinalIgnoreCase)) return null; // provider default, no need to emit
+        if (string.Equals(trimmed, "json_object", StringComparison.OrdinalIgnoreCase)) return LlmResponseFormat.JsonObject();
+
+        LogUnknownResponseFormat(yaml);
+        return null;
+    }
+
+    /// <summary>
+    /// Maps the YAML <c>llm_override:</c> block to a <see cref="LlmConfigOverride"/>.
+    /// Returns <c>null</c> when no field is set (empty block = no patch).
+    /// </summary>
+    private LlmConfigOverride? MapTaskLlmOverride(LlmOverrideYamlConfig? yaml)
+    {
+        if (yaml is null) return null;
+        if (string.IsNullOrWhiteSpace(yaml.ResponseFormat)
+            && yaml.Temperature is null
+            && yaml.MaxTokens is null
+            && yaml.TopP is null
+            && yaml.Thinking is null)
+        {
+            return null;
+        }
+
+        return new LlmConfigOverride
+        {
+            ResponseFormat = MapResponseFormat(yaml.ResponseFormat),
+            Temperature = yaml.Temperature,
+            MaxTokens = yaml.MaxTokens,
+            TopP = yaml.TopP,
+            Thinking = MapThinking(yaml.Thinking),
+        };
+    }
+
+    [LoggerMessage(EventId = 101, Level = LogLevel.Warning,
+        Message = "Unknown response_format value '{RawValue}' in crew YAML — accepted: 'text' | 'json_object'. Downgrading to null (provider default).")]
+    private partial void LogUnknownResponseFormat(string rawValue);
+
+    /// <summary>
+    /// Maps a YAML guardrails section to a <see cref="GuardrailsConfig"/> domain model.
+    /// Supports preset resolution, custom rules, and tool-specific clauses — or any combination.
+    /// </summary>
+    private static GuardrailsConfig? MapGuardrails(GuardrailsYamlConfig? yaml)
+    {
+        if (yaml == null)
+            return null;
+
+        // Start from preset if specified
+        var baseConfig = GuardrailPresets.FromName(yaml.Preset);
+
+        // Build custom rules from YAML
+        var hasCustomRules = (yaml.Rules?.Count ?? 0) > 0 || (yaml.ToolRules?.Count ?? 0) > 0 || yaml.Header != null;
+
+        if (!hasCustomRules && baseConfig != null)
+            return baseConfig;
+
+        if (!hasCustomRules && baseConfig == null)
+            return null; // Empty guardrails section — nothing to do
+
+        var customConfig = new GuardrailsConfig
+        {
+            Header = yaml.Header,
+            Rules = yaml.Rules?.ToList() ?? [],
+            ToolRules = yaml.ToolRules?
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => (IReadOnlyList<string>)kvp.Value.ToList(),
+                    StringComparer.OrdinalIgnoreCase)
+                ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        };
+
+        return baseConfig != null
+            ? baseConfig.MergeWith(customConfig)
+            : customConfig;
+    }
+
+    /// <summary>
+    /// Maps a YAML circuit breaker section to a <see cref="CircuitBreakerConfig"/> domain model.
+    /// </summary>
+    private static CircuitBreakerConfig? MapCircuitBreaker(CircuitBreakerYamlConfig? yaml)
+    {
+        if (yaml == null)
+            return null;
+
+        return new CircuitBreakerConfig
+        {
+            Preset = yaml.Preset,
+            MaxTransitions = yaml.MaxTransitions,
+            StateTimeoutSeconds = yaml.StateTimeoutSeconds,
+            MaxStateVisits = yaml.MaxStateVisits,
+            MaxTotalDurationSeconds = yaml.MaxTotalDurationSeconds,
+            UseDegradedMode = yaml.UseDegradedMode,
+            MaxRetries = yaml.MaxRetries,
+            MaxToolCallsPerRound = yaml.MaxToolCallsPerRound,
+            MaxValidationRetries = yaml.MaxValidationRetries,
+        };
+    }
+
+    /// <summary>
+    /// Maps a YAML graph config section to a <see cref="GraphConfig"/> domain model.
+    /// </summary>
+    private static GraphConfig? MapGraphConfig(GraphYamlConfig? yaml)
+    {
+        if (yaml == null)
+            return null;
+
+        return new GraphConfig
+        {
+            MaxRetryCycles = yaml.MaxRetryCycles ?? 2,
+            CircuitBreakerPreset = yaml.CircuitBreakerPreset ?? "strict",
+            MaxTransitions = yaml.MaxTransitions,
+            MaxStateVisits = yaml.MaxStateVisits,
+            MaxTotalDurationSeconds = yaml.MaxTotalDurationSeconds,
+        };
+    }
+
+    private static AgentId? ResolveAgentId(string? name, Dictionary<string, AgentId> agentNameMap)
+    {
+        if (name == null) return null;
+        return agentNameMap.TryGetValue(name, out var id) ? id : null;
+    }
+
+    /// <summary>Parses a process-type string (case-insensitive) into the domain value object.</summary>
+    public static ProcessType ParseProcessType(string? processStr)
+    {
+        if (string.IsNullOrWhiteSpace(processStr))
+            return ProcessType.Sequential;
+
+#pragma warning disable CA1308 // lowercase is the normalized switch subject the YAML keys are matched against
+        return processStr.ToLowerInvariant() switch
+#pragma warning restore CA1308
+        {
+            "sequential" => ProcessType.Sequential,
+            "hierarchical" => ProcessType.Hierarchical,
+            "consensual" => ProcessType.Consensual,
+            "parallel" => ProcessType.Parallel,
+            "graph" => ProcessType.Graph,
+            "autonomous" => ProcessType.Autonomous,
+            _ => ProcessType.Sequential,
+        };
+    }
+}
+
+/// <summary>
+/// The crew's own settings block (everything sourced from the <c>crew:</c> section), as opposed
+/// to the agent and task children. Bundles the crew-level scalars (name, goal, process, flags,
+/// manager) together with the structured crew-level config blocks (circuit breaker, graph, default LLM).
+/// Consumed by <see cref="YamlCrewMapper.BuildConfiguration"/>.
+/// </summary>
+public sealed record CrewMappingSettings
+{
+    /// <summary>Crew display name (<c>crew.name</c>).</summary>
+    public string? Name { get; init; }
+
+    /// <summary>Crew goal / mission statement (<c>crew.goal</c>).</summary>
+    public string? Goal { get; init; }
+
+    /// <summary>Raw process-type string (<c>crew.process</c>); parsed via <see cref="YamlCrewMapper.ParseProcessType"/>.</summary>
+    public string? Process { get; init; }
+
+    /// <summary>Verbose logging flag (<c>crew.verbose</c>).</summary>
+    public bool? Verbose { get; init; }
+
+    /// <summary>Whether crew memory is enabled (<c>crew.memory</c>).</summary>
+    public bool? Memory { get; init; }
+
+    /// <summary>Memory provider identifier (<c>crew.memory_provider</c>).</summary>
+    public string? MemoryProvider { get; init; }
+
+    /// <summary>Whether planning is enabled (<c>crew.planning</c>).</summary>
+    public bool? Planning { get; init; }
+
+    /// <summary>Name of the manager agent for hierarchical crews (<c>crew.manager_agent</c>).</summary>
+    public string? ManagerAgent { get; init; }
+
+    /// <summary>Crew-level circuit breaker configuration (<c>crew.circuit_breaker</c>).</summary>
+    public CircuitBreakerYamlConfig? CircuitBreaker { get; init; }
+
+    /// <summary>Crew-level graph orchestration configuration (<c>crew.graph</c>).</summary>
+    public GraphYamlConfig? GraphConfig { get; init; }
+
+    /// <summary>Crew-level default LLM block, merged onto each agent (<c>crew.llm</c>).</summary>
+    public LlmYamlConfig? CrewDefaultLlm { get; init; }
+}

@@ -1,0 +1,39 @@
+name: unified_market_data
+description: >
+  Fetches market data from multiple sources with automatic fallback.
+  Supports Yahoo Finance, Alpha Vantage, and IEX Cloud. Returns OHLCV data
+  with metadata including source, latency, and quality metrics.
+parameters:
+  symbol:
+    type: string
+    description: "The stock symbol (e.g., 'AAPL', 'MSFT', 'SPY')"
+    required: true
+  start_date:
+    type: string
+    description: "Start date in ISO 8601 format (e.g., '2024-01-01')"
+    required: true
+  end_date:
+    type: string
+    description: "End date in ISO 8601 format (e.g., '2024-12-31')"
+    required: true
+  timeframe:
+    type: string
+    description: "Data timeframe: '1d' (daily), '1h' (hourly), '5m' (5-minute)"
+    required: false
+    default: "1d"
+  include_vwap:
+    type: boolean
+    description: "Whether to calculate VWAP for each period"
+    required: false
+    default: true
+returns:
+  symbol: { type: string }
+  data: { type: array }
+  start_date: { type: string }
+  end_date: { type: string }
+  timeframe: { type: string }
+  data_source: { type: string }
+  total_points: { type: integer }
+  latency_ms: { type: number }
+  quality_score: { type: number }
+  metadata: { type: object }

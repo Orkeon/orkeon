@@ -1,0 +1,84 @@
+# 49. Structuration Dossiers Medicaux FHIR
+# Use case: Extraction et normalisation FHIR de dossiers medicaux multi-format avec chunking intelligent
+# Source: project/marketing/content-strategy/101-USE-CASES.md #49
+
+name: "medical-records-fhir"
+goal: "Extract and normalize multi-format medical records into FHIR-compliant structured data with encryption and audit"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  ocr_extractor:
+    role: "Medical Document Extractor"
+    goal: "Extract text and data from medical records in multiple formats (PDF, XML, JSON, scanned)"
+    backstory: |
+      Medical document processing specialist handling diverse record formats.
+      Uses IDocumentLoaderFactory to automatically detect and parse PDFs, HL7 XML,
+      FHIR JSON, and scanned document images. ITextChunker splits large records
+      to respect context window limits while preserving medical context.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+      - "xml_parser"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  fhir_structurer:
+    role: "FHIR Data Structurer"
+    goal: "Map extracted medical data to FHIR R4 resource types and validate structure"
+    backstory: |
+      Health informatics specialist with deep FHIR R4 expertise.
+      Maps extracted clinical data to appropriate FHIR resources (Patient, Condition,
+      Observation, MedicationStatement, Procedure, DiagnosticReport).
+      Ensures conformance to FHIR profiles and value set bindings.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  coherence_verifier:
+    role: "Clinical Coherence Verifier"
+    goal: "Verify clinical coherence and completeness of structured FHIR records"
+    backstory: |
+      Clinical data quality specialist who validates the coherence of structured records.
+      Checks for contradictions between resources, missing mandatory fields,
+      coding accuracy (ICD-10, LOINC, SNOMED CT), and referential integrity
+      between linked FHIR resources.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  extract_records:
+    description: "Process medical records in multiple formats. Auto-detect format (PDF, XML, JSON, scanned). Extract all clinical data: demographics, diagnoses, medications, lab results, procedures, and notes. Use chunking for large documents."
+    expectedOutput: "JSON extracted medical data with source format, extraction confidence, and field-level provenance tracking"
+    agent: "ocr_extractor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  structure_fhir:
+    description: "Map extracted data to FHIR R4 resources. Create Patient, Condition, Observation, MedicationStatement, Procedure, and DiagnosticReport resources. Apply appropriate coding (ICD-10, LOINC, SNOMED CT). Validate against FHIR profiles."
+    expectedOutput: "FHIR R4 Bundle with all structured resources, coding validation results, and profile conformance status"
+    agent: "fhir_structurer"
+    dependencies:
+      - "extract_records"
+    asyncExecution: false
+    humanInput: false
+
+  verify_coherence:
+    description: "Validate clinical coherence of the FHIR bundle. Check for contradictions, verify referential integrity, validate coding accuracy, and ensure mandatory fields are populated. Flag any quality issues."
+    expectedOutput: "Quality report with coherence validation results, coding accuracy scores, completeness metrics, and flagged issues requiring review"
+    agent: "coherence_verifier"
+    dependencies:
+      - "structure_fhir"
+    asyncExecution: false
+    humanInput: false

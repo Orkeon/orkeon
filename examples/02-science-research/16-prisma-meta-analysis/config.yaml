@@ -1,0 +1,107 @@
+# 16. Meta-Analyse Scientifique PRISMA
+# Use case: Systematic literature review with full PRISMA-compliant inclusion/exclusion traceability
+# Source: project/marketing/content-strategy/101-USE-CASES.md #16
+
+name: "prisma-meta-analysis"
+goal: "Conduct a systematic literature review following PRISMA protocol with full traceability of inclusion/exclusion decisions and episodic memory journaling"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  bibliographer:
+    role: "Bibliographe"
+    goal: "Search academic databases and compile a comprehensive list of potentially relevant studies"
+    backstory: |
+      You are a research librarian specializing in systematic reviews. You design
+      comprehensive search strategies across PubMed, Scopus, and Web of Science,
+      manage deduplication, and ensure no relevant study is missed. You document
+      every search query and database with exact result counts.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  statistician:
+    role: "Statisticien"
+    goal: "Perform statistical meta-analysis on included studies (effect sizes, heterogeneity, forest plots)"
+    backstory: |
+      You are a biostatistician specializing in meta-analysis. You calculate
+      pooled effect sizes, assess heterogeneity (I-squared, Q-test), perform
+      sensitivity analyses, detect publication bias (funnel plot, Egger's test),
+      and produce forest plots with confidence intervals.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  methodologist:
+    role: "Methodologiste"
+    goal: "Assess study quality using validated risk-of-bias tools and grade evidence certainty"
+    backstory: |
+      You are a research methodologist who evaluates study quality. You apply
+      the Cochrane Risk of Bias tool (RoB 2), Newcastle-Ottawa Scale, or GRADE
+      framework depending on study design. You document each assessment with
+      detailed justification.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  synthesizer:
+    role: "Synthetiseur PRISMA"
+    goal: "Compile the systematic review report following PRISMA guidelines with flow diagram data"
+    backstory: |
+      You are a systematic review author who produces PRISMA-compliant reports.
+      You compile the flow diagram (identification, screening, eligibility, inclusion),
+      write the narrative synthesis, integrate statistical results, and ensure
+      every section meets PRISMA checklist requirements.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  search_literature:
+    description: "Search PubMed, Scopus, and other databases for studies matching the review criteria. Document each search strategy, database, date, and result count. Deduplicate results."
+    expectedOutput: "JSON with: search_strategies[{database, query, date, results}], total_identified, after_deduplication, study_list[]"
+    agent: "bibliographer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  assess_quality:
+    description: "Screen studies for eligibility and assess quality using validated tools (RoB 2, Newcastle-Ottawa, GRADE). Document each inclusion/exclusion decision with reasoning."
+    expectedOutput: "JSON with: screened[], included[], excluded[{study, reason}], quality_assessments[{study, tool, score, justification}]"
+    agent: "methodologist"
+    dependencies:
+      - "search_literature"
+    asyncExecution: false
+    humanInput: false
+
+  analyze_statistics:
+    description: "Perform meta-analysis on included studies. Calculate pooled effect sizes, heterogeneity statistics, perform sensitivity analysis, and assess publication bias."
+    expectedOutput: "JSON with: pooled_effect{estimate, ci_lower, ci_upper}, heterogeneity{i_squared, q_test_p}, sensitivity_results[], publication_bias{egger_p, trim_fill}"
+    agent: "statistician"
+    dependencies:
+      - "assess_quality"
+    asyncExecution: false
+    humanInput: false
+
+  write_prisma_report:
+    description: "Compile the complete systematic review following PRISMA guidelines. Include flow diagram data, narrative synthesis, statistical results, and PRISMA checklist compliance."
+    expectedOutput: "Markdown PRISMA report with: abstract, introduction, methods, results (with flow diagram data), discussion, conclusion, PRISMA checklist status"
+    agent: "synthesizer"
+    dependencies:
+      - "analyze_statistics"
+    asyncExecution: false
+    humanInput: false

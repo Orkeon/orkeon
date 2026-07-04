@@ -1,0 +1,109 @@
+# 88. Agriculture de Precision — Humain Valide les Actions Physiques
+# Use case: precision agriculture where IoT sensor agents analyze field data and a human farmer validates all physical actions
+# Source: project/marketing/content-strategy/101-USE-CASES.md #88
+
+name: "precision-agriculture"
+goal: "Connect agents to IoT field sensors, analyze crop and soil data, and plan physical interventions (irrigation, chemical treatment) that require human farmer validation before execution"
+process: "sequential"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: false
+
+agents:
+  sensor_collector:
+    role: "IoT Sensor Data Collector"
+    goal: "Collect and aggregate data from all field sensors including soil moisture, temperature, humidity, and crop health indicators"
+    backstory: |
+      You interface with the farm's IoT sensor network. You poll soil moisture
+      probes, weather stations, drone imagery endpoints, and plant health
+      sensors. You aggregate raw readings into structured datasets per
+      parcel with timestamps. You respect API rate limits to avoid
+      overwhelming the sensor infrastructure.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "csv_reader"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  agronomist_analyst:
+    role: "Agronomist Analyst"
+    goal: "Analyze sensor data to diagnose crop health issues, nutrient deficiencies, and pest risks"
+    backstory: |
+      You are an expert agronomist who interprets sensor data in agricultural
+      context. You compare current readings against optimal thresholds for
+      each crop variety, detect anomalies indicating disease or pest
+      presence, and assess nutrient levels. You use episodic memory to
+      compare with previous seasons' patterns on the same parcels.
+    tools:
+      - "json_tool"
+      - "csv_reader"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  action_planner:
+    role: "Intervention Action Planner"
+    goal: "Plan concrete physical interventions based on agronomist analysis with precise dosages and timing"
+    backstory: |
+      You translate agronomist diagnoses into actionable intervention plans.
+      You specify exact irrigation volumes, fertilizer types and dosages,
+      pesticide applications, and optimal timing windows. You consider
+      weather forecasts, regulatory constraints, and organic certification
+      requirements when planning interventions.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  farmer_validator:
+    role: "Farmer (Human Validator)"
+    goal: "Review and approve or reject all proposed physical interventions before execution"
+    backstory: |
+      You are the farmer who has the final say on all physical actions
+      on the land. No irrigation, chemical treatment, or mechanical
+      intervention can proceed without your explicit validation. You
+      bring local knowledge, experience, and practical constraints
+      that sensors cannot capture.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  collect_sensor_data:
+    description: "Poll all IoT sensors across field parcels: soil moisture at 10/20/30cm depth, air temperature and humidity, wind speed, leaf wetness, and NDVI from latest drone pass"
+    expectedOutput: "Structured JSON dataset with sensor readings per parcel, including timestamps and sensor health status"
+    agent: "sensor_collector"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  analyze_crop_health:
+    description: "Analyze collected sensor data to identify parcels requiring intervention. Compare against crop-specific thresholds, detect disease patterns, and assess overall field health"
+    expectedOutput: "Diagnostic report per parcel with health score, identified issues (drought stress, nutrient deficiency, pest risk), and severity levels"
+    agent: "agronomist_analyst"
+    dependencies: ["collect_sensor_data"]
+    asyncExecution: false
+    humanInput: false
+
+  plan_interventions:
+    description: "For each parcel with identified issues, plan specific physical interventions including irrigation volumes, fertilizer types/dosages, treatment products, and optimal timing windows"
+    expectedOutput: "Detailed intervention plan per parcel with action type, precise quantities, timing, estimated cost, and environmental impact assessment"
+    agent: "action_planner"
+    dependencies: ["analyze_crop_health"]
+    asyncExecution: false
+    humanInput: false
+
+  validate_actions:
+    description: "Review all proposed physical interventions. Approve, modify, or reject each action based on local knowledge, practical constraints, and experience"
+    expectedOutput: "Validated intervention list with farmer approval status, any modifications, and execution schedule"
+    agent: "farmer_validator"
+    dependencies: ["plan_interventions"]
+    asyncExecution: false
+    humanInput: true

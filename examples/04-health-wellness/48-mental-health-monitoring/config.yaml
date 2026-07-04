@@ -1,0 +1,94 @@
+# 48. Monitoring Bien-etre Mental
+# Use case: Donnees ultra-sensibles protegees par trois couches: chiffrement, validation humaine, prevention d'injection
+# Source: project/marketing/content-strategy/101-USE-CASES.md #48
+
+name: "mental-health-monitoring"
+goal: "Monitor mental well-being with triple security: encrypted storage, systematic human validation, and prompt injection prevention"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  indicator_monitor:
+    role: "Well-being Indicator Observer"
+    goal: "Continuously monitor mental health indicators and detect concerning trends"
+    backstory: |
+      Clinical psychology observer specialized in tracking well-being indicators:
+      mood patterns, sleep quality, activity levels, social engagement, and
+      stress markers. Detects concerning trends through longitudinal analysis.
+      All data is encrypted at rest. Triggers alerts when thresholds are breached.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  trend_analyst:
+    role: "Mental Health Trend Analyst"
+    goal: "Analyze longitudinal trends in well-being data and identify risk patterns"
+    backstory: |
+      Data analyst specializing in mental health trend analysis. Identifies
+      correlations between lifestyle factors and well-being indicators.
+      Detects early warning signs of deterioration through pattern recognition.
+      All analyses are advisory only — never diagnostic.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  exercise_coach:
+    role: "Therapeutic Exercise Coach"
+    goal: "Suggest evidence-based exercises and activities to support mental well-being"
+    backstory: |
+      Behavioral health coach trained in CBT-based coping strategies, mindfulness
+      exercises, and lifestyle interventions. Suggests personalized activities
+      based on current well-being state. All suggestions require psychologist approval.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  psychologist:
+    role: "Supervising Psychologist"
+    goal: "Review all AI-generated analyses and exercise suggestions before delivery to patient"
+    backstory: |
+      Licensed clinical psychologist who reviews and validates every output
+      before it reaches the patient. Has full authority to modify, reject,
+      or escalate any recommendation. No content is delivered without approval.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  monitor_indicators:
+    description: "Collect and analyze current well-being indicators: mood self-reports, sleep data, activity tracker data, social interaction frequency, and stress markers. Flag any indicators crossing alert thresholds."
+    expectedOutput: "JSON well-being dashboard with current indicator values, trend direction, threshold status, and any triggered alerts"
+    agent: "indicator_monitor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: true
+
+  analyze_trends:
+    description: "Perform longitudinal trend analysis on well-being data. Identify correlations between lifestyle factors and mental health indicators. Detect early warning patterns. All findings are advisory."
+    expectedOutput: "JSON trend analysis with trajectory assessment, identified correlations, early warning indicators, and risk level classification"
+    agent: "trend_analyst"
+    dependencies:
+      - "monitor_indicators"
+    asyncExecution: false
+    humanInput: true
+
+  suggest_exercises:
+    description: "Based on current well-being state and trends, suggest personalized therapeutic exercises: mindfulness activities, CBT-based coping strategies, physical activities, and social engagement prompts."
+    expectedOutput: "JSON exercise plan with personalized activities, timing recommendations, difficulty progression, and expected benefits"
+    agent: "exercise_coach"
+    dependencies:
+      - "analyze_trends"
+    asyncExecution: false
+    humanInput: true

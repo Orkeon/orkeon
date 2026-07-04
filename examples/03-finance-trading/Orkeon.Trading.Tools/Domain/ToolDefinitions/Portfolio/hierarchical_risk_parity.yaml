@@ -1,0 +1,36 @@
+name: hierarchical_risk_parity
+description: >
+  Constructs Hierarchical Risk Parity (HRP) portfolio using machine learning clustering.
+  Groups similar assets via hierarchical clustering, applies risk parity allocation.
+  More stable than Mean-Variance, handles fat tails and regime changes robustly.
+parameters:
+  symbols:
+    type: array
+    description: "Array of symbols (e.g., ['AAPL', 'MSFT', 'GOOGL', 'SPY', 'TLT'])"
+    required: true
+  returns_data:
+    type: object
+    description: "Dictionary of symbol -> historical returns array"
+    required: true
+  linkage_method:
+    type: string
+    description: "Clustering linkage method: 'single', 'complete', 'average', 'ward'"
+    required: false
+    default: "ward"
+  risk_free_rate:
+    type: number
+    description: "Risk-free rate"
+    required: false
+    default: 0.02
+returns:
+  timestamp: { type: string }
+  method: { type: string }
+  symbols: { type: array }
+  optimal_weights: { type: object }
+  expected_return: { type: number }
+  expected_volatility: { type: number }
+  sharpe_ratio: { type: number }
+  cluster_structure: { type: object }
+  sorted_order: { type: array }
+  linkage_method: { type: string }
+  diversification_ratio: { type: number }

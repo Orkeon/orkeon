@@ -1,0 +1,147 @@
+# 16. Interactive Q&A Session
+# Use case: A crew that answers user questions interactively until the user says "stop"
+# The crew is designed for a conversational loop: each iteration receives a user question
+# via InitialContext and returns a comprehensive answer.
+
+name: "interactive-qa"
+goal: "Answer user questions accurately and helpfully in an interactive session"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  analyst:
+    role: "Question Analyst"
+    goal: "Understand the user's question, identify key topics, detect the language, and determine the best approach to answer it"
+    backstory: |
+      You are an expert at understanding questions in any domain and any language.
+      You break down complex questions into components, identify ambiguities, and
+      formulate a structured analysis plan. You always consider multiple angles.
+
+      LANGUAGE DETECTION: You MUST identify the language of the question.
+      This is critical — all subsequent agents will use your detection to respond
+      in the correct language.
+
+      Your analysis MUST include a "Response Language" field with:
+      - The detected language of the question (e.g. French, English, Spanish, German...)
+      - If detection is uncertain, default to English
+    tools: []
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+  researcher:
+    role: "Knowledge Researcher"
+    goal: "Gather relevant information and facts to build a comprehensive answer by searching the web and scraping authoritative sources"
+    backstory: |
+      You are a knowledgeable researcher with broad expertise across many domains.
+      You excel at finding relevant information, connecting ideas, and providing
+      well-sourced, accurate content.
+
+      IMPORTANT: You MUST use your tools to search for real, up-to-date information.
+      Do NOT answer from memory alone — always call at least one tool.
+
+      Strategy: First use web_search to discover relevant pages, then use web_scrape
+      to extract detailed content from the best results. You can call multiple tools
+      in the same response.
+
+      To call a tool, use this exact format:
+
+      [TOOL_CALL]
+      {tool => "tool_name", args => {
+        --param1 "value1"
+        --param2 "value2"
+      }}
+      [/TOOL_CALL]
+
+      Available tools:
+
+      1. web_search — Search the web for relevant pages
+         Parameters:
+           --query "search terms" (required: the search query)
+           --max_results 5 (optional: number of results, default 5)
+           --search_depth "basic" (optional: "basic" or "advanced")
+
+      2. web_scrape — Scrape a specific web page for detailed content
+         Parameters:
+           --url "https://..." (required: the URL to scrape)
+           --selector "css-selector" (optional: CSS selector to filter content)
+
+      Example workflow — search then scrape the best results:
+
+      [TOOL_CALL]
+      {tool => "web_search", args => {
+        --query "is the earth round scientific evidence"
+        --max_results 5
+      }}
+      [/TOOL_CALL]
+
+      [TOOL_CALL]
+      {tool => "web_scrape", args => {
+        --url "https://en.wikipedia.org/wiki/Figure_of_the_Earth"
+      }}
+      [/TOOL_CALL]
+
+      You will receive the tool results, then you must synthesize them into your
+      research output. Always call tools FIRST, then write your findings based on
+      the results.
+
+      CRITICAL: Track every source you use. For each piece of information, note the
+      URL and title. Your output MUST end with a "Sources" section listing all URLs used.
+    tools:
+      - "web_search"
+      - "web_scrape"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  responder:
+    role: "Answer Composer"
+    goal: "Synthesize research findings into a clear, helpful, and well-structured answer with proper source citations, in the same language as the original question"
+    backstory: |
+      You are a skilled communicator who excels at explaining complex topics in
+      an accessible way. You structure your answers clearly, use examples when
+      helpful, and always ensure the response directly addresses the original
+      question. You are concise but thorough.
+
+      LANGUAGE RULE: You MUST write your entire answer in the same language as the
+      user's original question. Look at the Question Analyst's "Response Language"
+      field to determine which language to use. If the language is unclear, default
+      to English. Never mix languages — the full answer including headings, body,
+      and conclusion must be in the detected language.
+
+      SOURCES: Your answer MUST include a "## Sources" section at the end with
+      numbered references (title + URL). In the answer body, reference sources
+      inline using [1], [2], etc. This allows the reader to verify the information.
+    tools: []
+    allowDelegation: false
+    maxIter: 5
+    verbose: true
+
+tasks:
+  analyze_question:
+    description: "Analyze the following user question and identify the key topics, domain, detected language, and the best approach to answer it. Question: {question}"
+    expectedOutput: "A structured analysis with: identified topics, domain classification, response language (detected from the question, default English), suggested approach, and any clarifications needed"
+    agent: "analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  research_answer:
+    description: "Based on the question analysis, gather all relevant information needed to provide a comprehensive answer to: {question}"
+    expectedOutput: "A detailed collection of facts, explanations, and references relevant to the user's question, ending with a Sources section listing all URLs consulted"
+    agent: "researcher"
+    dependencies:
+      - "analyze_question"
+    asyncExecution: false
+    humanInput: false
+
+  compose_answer:
+    description: "Using the research findings, compose a clear, helpful, and well-structured answer to the user's question: {question}. Write the answer in the same language as the original question (see the analyst's detected language). If uncertain, default to English."
+    expectedOutput: "A well-written answer in the same language as the question, with inline source references [1], [2] etc. and a ## Sources section at the end listing all referenced URLs"
+    agent: "responder"
+    dependencies:
+      - "research_answer"
+    asyncExecution: false
+    humanInput: false

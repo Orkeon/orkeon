@@ -1,0 +1,30 @@
+name: invoice-extractor
+goal: Extract invoice fields and return them as a single JSON object
+process: sequential
+
+# Crew-default LLM — every agent below inherits this unless overridden.
+llm:
+  model: deepseek-chat
+  response_format: json_object   # provider-side JSON guarantee
+  temperature: 0.2
+
+agents:
+  extractor:
+    role: "Invoice extractor"
+    goal: "Read a pasted invoice and emit one JSON object with the fields."
+    backstory: "Tireless accountant who never adds prose."
+    # Inherits the crew's response_format. No agent-level override needed.
+
+tasks:
+  extract_invoice:
+    description: |
+      You will be handed the raw text of an invoice.
+      Reply with a single JSON object using the fields: vendor_name, invoice_number,
+      issue_date, due_date, currency, total_amount, line_items[] (each with
+      description, quantity, unit_price). Numbers stay as JSON numbers, dates as
+      YYYY-MM-DD strings. No prose, no markdown — json only.
+    expected_output: "JSON object with all invoice fields."
+    agent: extractor
+    llm_override:
+      response_format: json_object
+      temperature: 0.0   # surgical override: stricter sampling on this task only

@@ -1,0 +1,107 @@
+# 19. Analyse de Donnees Experimentales
+# Use case: Parallel-then-sequential experimental data analysis with sandbox code execution
+# Source: project/marketing/content-strategy/101-USE-CASES.md #19
+
+name: "experimental-data"
+goal: "Analyze experimental data through parallel statistical analysis and visualization, then sequential interpretation and report writing"
+process: "parallel"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  statistician:
+    role: "Statisticien"
+    goal: "Perform statistical analysis on experimental datasets (tests, regressions, ANOVA)"
+    backstory: |
+      You are an experimental statistician who applies rigorous statistical methods
+      to research data. You run hypothesis tests, regression analyses, ANOVA,
+      and non-parametric tests as appropriate. You always report effect sizes
+      and confidence intervals alongside p-values.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  visualizer:
+    role: "Visualisateur"
+    goal: "Create data visualizations that clearly communicate experimental findings"
+    backstory: |
+      You are a data visualization specialist who creates clear, informative
+      charts for scientific publications. You design scatter plots, box plots,
+      bar charts, and heatmaps following best practices for color accessibility,
+      labeling, and statistical annotation.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  interpreter:
+    role: "Interpreteur"
+    goal: "Interpret statistical results and visualizations to formulate scientific conclusions"
+    backstory: |
+      You are a domain expert who translates statistical outputs into meaningful
+      scientific conclusions. You assess practical significance beyond statistical
+      significance, identify confounders, discuss limitations, and compare results
+      with existing literature.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  report_writer:
+    role: "Redacteur de Rapport"
+    goal: "Produce the complete experimental data analysis report"
+    backstory: |
+      You are a scientific report writer who produces clear, complete analysis
+      reports. You structure results logically, integrate statistics and
+      visualizations, and write conclusions that are supported by the data.
+      You follow standard scientific reporting conventions.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  run_statistics:
+    description: "Perform comprehensive statistical analysis on the experimental dataset. Include descriptive stats, hypothesis tests, regressions, and effect sizes with confidence intervals."
+    expectedOutput: "JSON with: descriptive_stats{}, hypothesis_tests[{test, statistic, p_value, effect_size, ci}], regressions[{model, r_squared, coefficients}]"
+    agent: "statistician"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  create_visualizations:
+    description: "Generate visualization specifications for key findings. Design scatter plots, distributions, comparisons, and trend charts with proper annotations."
+    expectedOutput: "JSON array of visualization specs with: type, title, data_mapping, annotations[], accessibility_notes"
+    agent: "visualizer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  interpret_results:
+    description: "Interpret the statistical results and visualizations. Assess practical significance, identify confounders, discuss limitations, and compare with literature."
+    expectedOutput: "JSON with: key_findings[], practical_significance, confounders[], limitations[], literature_comparison[], conclusions"
+    agent: "interpreter"
+    dependencies:
+      - "run_statistics"
+      - "create_visualizations"
+    asyncExecution: false
+    humanInput: false
+
+  write_analysis_report:
+    description: "Compile the complete experimental data analysis report integrating statistics, visualizations, and interpretations into a cohesive document."
+    expectedOutput: "Markdown analysis report with: abstract, methods, results (stats + visualizations), discussion, conclusions, appendices"
+    agent: "report_writer"
+    dependencies:
+      - "interpret_results"
+    asyncExecution: false
+    humanInput: false

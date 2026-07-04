@@ -1,0 +1,139 @@
+# 102. Graph-Based Orchestration (LangGraph-Style)
+# Use case: State graph with typed state, conditional edges, controlled cycles, and circuit breaker
+# Demonstrates: process: "graph" with retry loops for flaky tasks and automatic circuit breaker protection
+#
+# Graph topology:
+#   START -> execute_task -> route -> [execute_task (retry) | END]
+#
+# The route node checks if there are pending or failed-but-retryable tasks.
+# Failed tasks are re-enqueued up to maxRetryCycles times.
+# The circuit breaker trips if the graph exceeds maxTransitions or maxStateVisits.
+
+name: "graph-orchestration-demo"
+goal: "Demonstrate LangGraph-style orchestration with typed state graph, conditional routing, and controlled retry cycles"
+process: "graph"
+verbose: true
+memory: false
+planning: false
+
+# --- Graph-specific configuration ---
+graphConfig:
+  maxRetryCycles: 2               # Retry failed tasks up to 2 times
+  circuitBreakerPreset: "strict"  # Use strict limits (50 transitions, 5 visits/node, 10min max)
+  # Override specific circuit breaker values (optional):
+  # maxTransitions: 30
+  # maxStateVisits: 3
+  # maxTotalDurationSeconds: 300
+
+# --- Circuit breaker at task level (optional, overrides crew-level) ---
+# circuitBreaker:
+#   preset: "strict"
+#   maxRetries: 3
+#   maxToolCallsPerRound: 10
+
+agents:
+  data_collector:
+    role: "Data Collector"
+    goal: "Gather raw data from multiple web sources on the given research topic"
+    backstory: |
+      You are a reliable data collector. You systematically query web sources,
+      APIs, and databases to gather raw data. You handle transient failures
+      gracefully and always report what you found, even partial results.
+      In graph mode, if you fail, the orchestrator will retry you automatically.
+    tools:
+      - "web_scrape"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  data_validator:
+    role: "Data Validator"
+    goal: "Validate, clean, and deduplicate the collected data"
+    backstory: |
+      You are a meticulous data quality engineer. You check for inconsistencies,
+      duplicates, missing fields, and format errors. You flag issues clearly
+      and produce a clean dataset. If the data is too corrupted, you report
+      failure so the graph can retry the collection step.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 8
+    verbose: true
+
+  analyst:
+    role: "Insight Analyst"
+    goal: "Analyze validated data and produce actionable insights with confidence scores"
+    backstory: |
+      You are a senior data analyst who transforms clean data into business
+      insights. You compute statistics, identify trends, and rank findings
+      by confidence. You always structure your output as JSON for downstream
+      consumption.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 12
+    verbose: true
+
+  report_writer:
+    role: "Report Writer"
+    goal: "Synthesize insights into a final executive report with recommendations"
+    backstory: |
+      You are a professional report writer who turns analytical findings
+      into clear, actionable executive reports. You structure your reports
+      with an executive summary, key findings, and prioritized recommendations.
+    tools:
+      - "file_write"
+    allowDelegation: false
+    maxIter: 8
+    verbose: true
+
+tasks:
+  collect_data:
+    description: |
+      Search and scrape the web for recent data on the given research topic.
+      Collect at least 5 data points with source URLs and timestamps.
+      Handle transient network errors gracefully.
+    expectedOutput: "JSON array of data objects with: source_url, timestamp, raw_content, reliability_score"
+    agent: "data_collector"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  validate_data:
+    description: |
+      Validate the collected data: check for duplicates, missing fields,
+      and format errors. Produce a clean dataset and a quality report
+      indicating how many items passed/failed validation.
+    expectedOutput: "JSON object with: clean_data (array), quality_report (pass_count, fail_count, issues)"
+    agent: "data_validator"
+    dependencies:
+      - "collect_data"
+    asyncExecution: false
+    humanInput: false
+
+  analyze_insights:
+    description: |
+      Analyze the validated dataset to extract key insights, trends,
+      and anomalies. Rank findings by confidence score (0-1).
+      Identify at least 3 actionable insights.
+    expectedOutput: "JSON object with: insights (array of {finding, confidence, evidence}), summary_stats"
+    agent: "analyst"
+    dependencies:
+      - "validate_data"
+    asyncExecution: false
+    humanInput: false
+
+  write_report:
+    description: |
+      Write a final executive report synthesizing all insights.
+      Include: executive summary, methodology, key findings (ranked),
+      recommendations, and data sources bibliography.
+      Save to output.md.
+    expectedOutput: "Markdown executive report with sections: Summary, Methodology, Findings, Recommendations, Sources"
+    agent: "report_writer"
+    dependencies:
+      - "analyze_insights"
+    asyncExecution: false
+    humanInput: false

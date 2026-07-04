@@ -1,0 +1,105 @@
+# 9. Gestion de Projet Agile — Scrum Master IA
+# Use case: AI Scrum Master that decomposes epics and assigns tasks via semantic embedding matching
+# Source: project/marketing/content-strategy/101-USE-CASES.md #9
+
+name: "agile-scrum-master"
+goal: "Decompose epics into tasks and assign them to the best-qualified agents using semantic embedding-based skill matching"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "scrum_master"
+
+agents:
+  scrum_master:
+    role: "Scrum Master IA"
+    goal: "Decompose epics into user stories and tasks, assign them to developers by skill matching, and track delegation performance"
+    backstory: |
+      You are an experienced Scrum Master who manages agile teams. You break down
+      epics into well-defined user stories with acceptance criteria, estimate
+      complexity, and assign tasks to developers based on their skills and
+      availability. You track velocity and delegation effectiveness.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  backend_dev:
+    role: "Developpeur Backend"
+    goal: "Implement backend features, APIs, and database operations"
+    backstory: |
+      You are a senior backend developer skilled in C#/.NET, REST APIs, database
+      design, and microservices architecture. You write clean, tested code following
+      SOLID principles and can estimate task complexity accurately.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  frontend_dev:
+    role: "Developpeur Frontend"
+    goal: "Implement user interfaces, components, and client-side logic"
+    backstory: |
+      You are a frontend specialist experienced in React/Angular, responsive design,
+      accessibility, and performance optimization. You translate designs into
+      pixel-perfect, accessible interfaces with clean component architecture.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  devops_engineer:
+    role: "Ingenieur DevOps"
+    goal: "Handle infrastructure, CI/CD pipelines, and deployment automation"
+    backstory: |
+      You are a DevOps engineer skilled in Docker, Kubernetes, CI/CD pipelines,
+      monitoring, and infrastructure as code. You automate deployments, manage
+      environments, and ensure system reliability and observability.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  decompose_epic:
+    description: "Take the input epic and decompose it into user stories with acceptance criteria, story points, and required skills. Query the project management API for current sprint context."
+    expectedOutput: "JSON array of user stories with: id, title, description, acceptance_criteria[], story_points, required_skills[], priority"
+    agent: "scrum_master"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  assign_backend_tasks:
+    description: "Implement the assigned backend user stories. For each story, produce a technical approach, code structure, and test plan."
+    expectedOutput: "JSON array of implementation plans with: story_id, technical_approach, code_structure, test_plan, estimated_hours"
+    agent: "backend_dev"
+    dependencies:
+      - "decompose_epic"
+    asyncExecution: false
+    humanInput: false
+
+  assign_frontend_tasks:
+    description: "Implement the assigned frontend user stories. For each story, produce a component design, interaction plan, and accessibility checklist."
+    expectedOutput: "JSON array of implementation plans with: story_id, component_design, interaction_plan, accessibility_checklist, estimated_hours"
+    agent: "frontend_dev"
+    dependencies:
+      - "decompose_epic"
+    asyncExecution: false
+    humanInput: false
+
+  assign_devops_tasks:
+    description: "Implement the assigned DevOps user stories. For each story, produce an infrastructure plan, pipeline configuration, and rollback strategy."
+    expectedOutput: "JSON array of implementation plans with: story_id, infrastructure_plan, pipeline_config, rollback_strategy, estimated_hours"
+    agent: "devops_engineer"
+    dependencies:
+      - "decompose_epic"
+    asyncExecution: false
+    humanInput: false

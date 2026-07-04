@@ -1,0 +1,103 @@
+# 58. Correction Multi-Criteres Reproductible
+# Use case: Reproducible multi-criteria grading with parallel independent graders and inter-grader consistency
+# Source: project/marketing/content-strategy/101-USE-CASES.md #58
+
+name: "multi-criteria-grading"
+goal: "Grade student submissions reproducibly using parallel independent graders with inter-grader consistency verification"
+process: "parallel"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  content_grader:
+    role: "Content Grader"
+    goal: "Evaluate the substance, accuracy, and depth of the submission"
+    backstory: |
+      You are a subject matter expert who evaluates the intellectual quality
+      of student work. You assess factual accuracy, depth of analysis,
+      use of evidence, and mastery of core concepts.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  form_grader:
+    role: "Form Grader"
+    goal: "Evaluate writing quality, structure, and presentation"
+    backstory: |
+      You are a writing quality specialist who evaluates the formal aspects
+      of student work. You assess clarity, organization, grammar, citation
+      format, and overall presentation quality.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  methodology_grader:
+    role: "Methodology Grader"
+    goal: "Evaluate the methodological rigor and critical thinking demonstrated"
+    backstory: |
+      You are a methodology expert who evaluates research design, logical
+      reasoning, appropriate use of methods, and critical thinking quality.
+      You check if conclusions are supported by the evidence presented.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  grade_consolidator:
+    role: "Grade Consolidator"
+    goal: "Consolidate independent grades into a final consistent score with detailed feedback"
+    backstory: |
+      You are a senior examiner who consolidates multi-criteria evaluations
+      into a coherent final grade. You verify inter-grader consistency,
+      normalize scores, and produce a comprehensive feedback report.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  grade_content:
+    description: "Evaluate the submission's content quality: accuracy, depth, evidence use, and concept mastery. Produce a structured score with justification."
+    expectedOutput: "JSON grading report with content score (0-100), sub-criteria scores, and detailed justification"
+    agent: "content_grader"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  grade_form:
+    description: "Evaluate the submission's formal quality: writing clarity, structure, grammar, citations, and presentation. Produce a structured score with justification."
+    expectedOutput: "JSON grading report with form score (0-100), sub-criteria scores, and detailed justification"
+    agent: "form_grader"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  grade_methodology:
+    description: "Evaluate the submission's methodological rigor: research design, logical reasoning, methods appropriateness, and critical thinking. Produce a structured score with justification."
+    expectedOutput: "JSON grading report with methodology score (0-100), sub-criteria scores, and detailed justification"
+    agent: "methodology_grader"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  consolidate_grades:
+    description: "Consolidate the three independent grading reports into a final score. Verify inter-grader consistency, flag discrepancies, normalize scores, and produce comprehensive student feedback."
+    expectedOutput: "Final grading report with consolidated score, inter-grader consistency analysis, and detailed feedback"
+    agent: "grade_consolidator"
+    dependencies:
+      - "grade_content"
+      - "grade_form"
+      - "grade_methodology"
+    asyncExecution: false
+    humanInput: false

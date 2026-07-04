@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
+    <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" />
+    <!--
+      Test-only reference (LE-12): needed by RaggableTreeE2E_WithLocalEmbeddings to call
+      AddOrkeonLocalEmbeddings() and exercise the LocalSmartComponents provider end-to-end.
+      Production code under src/analysis/ does NOT take a compile-time dep on this package
+      (it loads the provider via reflection at DI registration time — see
+      RaggableTreeServiceCollectionExtensions.TryCreateLocalProvider).
+    -->
+    <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
+    <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

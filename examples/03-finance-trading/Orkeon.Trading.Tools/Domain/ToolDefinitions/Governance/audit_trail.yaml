@@ -1,0 +1,20 @@
+name: audit_trail
+description: >
+  Creates immutable audit log entries for all trading activities.
+parameters:
+  action:
+    type: string
+    description: "Action performed"
+    required: true
+  actor:
+    type: string
+    description: "Who performed action"
+    required: true
+  details:
+    type: object
+    description: "Action details"
+    required: true
+returns:
+  audit_entry_created: { type: boolean }
+  audit_id: { type: string }
+  timestamp: { type: string }

@@ -1,0 +1,19 @@
+name: dashboard_metrics
+description: >
+  Aggregates real-time metrics for trading dashboard and monitoring.
+parameters:
+  portfolio_data:
+    type: object
+    description: "Current portfolio state"
+    required: true
+  market_data:
+    type: object
+    description: "Current market data"
+    required: false
+returns:
+  timestamp: { type: string }
+  portfolio: { type: object }
+  risk: { type: object }
+  trading: { type: object }
+  alerts: { type: object }
+  market: { type: object }

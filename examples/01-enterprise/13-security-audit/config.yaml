@@ -1,0 +1,122 @@
+# 13. Audit de Securite Informatique
+# Use case: Hierarchical security audit with CISO coordinating 4 specialists, sandbox execution, and path validation
+# Source: project/marketing/content-strategy/101-USE-CASES.md #13
+
+name: "security-audit"
+goal: "Conduct comprehensive IT security audit with sandboxed code analysis, path validation, URL sanitization, and rate-limited scanning"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "ciso"
+
+agents:
+  ciso:
+    role: "CISO Virtuel"
+    goal: "Coordinate security audit specialists and produce a prioritized security assessment"
+    backstory: |
+      You are a Chief Information Security Officer who leads comprehensive security
+      assessments. You coordinate vulnerability scanning, configuration review,
+      compliance checking, and report generation. You prioritize findings by risk
+      and business impact.
+    tools:
+      - "json_tool"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  vuln_scanner:
+    role: "Scanner Vulnerabilites"
+    goal: "Identify security vulnerabilities in applications, APIs, and infrastructure"
+    backstory: |
+      You are a penetration tester who identifies vulnerabilities using both
+      automated scanning and manual analysis. You check for OWASP Top 10,
+      known CVEs, misconfigurations, and zero-day indicators. You rate each
+      finding by CVSS score.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  config_analyst:
+    role: "Analyste Configuration"
+    goal: "Review system configurations for security hardening compliance"
+    backstory: |
+      You are a systems security analyst who reviews configuration files,
+      firewall rules, access controls, and encryption settings. You verify
+      compliance with CIS benchmarks and identify misconfigured services
+      that could expose attack surfaces.
+    tools:
+      - "file_read"
+      - "directory_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  compliance_auditor:
+    role: "Auditeur Compliance"
+    goal: "Verify compliance with security standards and regulations (ISO 27001, SOC 2, GDPR)"
+    backstory: |
+      You are a compliance auditor specializing in information security standards.
+      You map controls to frameworks (ISO 27001, SOC 2, GDPR), identify gaps,
+      and produce evidence-based compliance reports with remediation priorities.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  report_writer:
+    role: "Rapporteur Securite"
+    goal: "Compile all security findings into an executive-level security assessment report"
+    backstory: |
+      You are a security report writer who transforms technical findings into
+      executive-level assessments. You produce clear risk summaries, prioritized
+      remediation roadmaps, and compliance gap analyses understandable by
+      both technical and non-technical stakeholders.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  scan_vulnerabilities:
+    description: "Scan applications and infrastructure for security vulnerabilities. Check OWASP Top 10, known CVEs, and misconfigurations. Rate each finding by CVSS score."
+    expectedOutput: "JSON array of vulnerabilities with: id, type, cvss_score, affected_component, description, proof_of_concept, remediation"
+    agent: "vuln_scanner"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  review_configurations:
+    description: "Review system and application configurations against CIS benchmarks. Check firewall rules, access controls, encryption settings, and service hardening."
+    expectedOutput: "JSON array of configuration findings with: system, benchmark, finding, risk_level, current_value, recommended_value"
+    agent: "config_analyst"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  audit_compliance:
+    description: "Map current security controls to ISO 27001, SOC 2, and GDPR requirements. Identify gaps and assess remediation effort."
+    expectedOutput: "JSON compliance matrix with: framework, control_id, control_name, status (compliant/partial/non-compliant), gap_description, remediation_effort"
+    agent: "compliance_auditor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  generate_report:
+    description: "Compile all findings into a comprehensive security assessment report with executive summary, risk matrix, prioritized remediation roadmap, and compliance status."
+    expectedOutput: "Markdown security assessment report with executive summary, risk heat map, prioritized findings, remediation roadmap, and compliance dashboard"
+    agent: "report_writer"
+    dependencies:
+      - "scan_vulnerabilities"
+      - "review_configurations"
+      - "audit_compliance"
+    asyncExecution: false
+    humanInput: false

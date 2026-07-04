@@ -1,0 +1,49 @@
+name: prophet_prediction
+description: >
+  Performs time series forecasting using Facebook Prophet algorithm.
+  Automatically detects seasonality, trend changes, holidays, and irregular patterns.
+  Particularly effective for data with strong seasonal effects and multiple seasonality periods.
+parameters:
+  symbol:
+    type: string
+    description: "The stock symbol (e.g., 'AAPL')"
+    required: true
+  price_data:
+    type: array
+    description: "Historical price data with timestamps"
+    required: true
+  forecast_periods:
+    type: integer
+    description: "Number of periods ahead to forecast"
+    required: false
+    default: 5
+  seasonality_mode:
+    type: string
+    description: "Seasonality mode: 'additive' or 'multiplicative'"
+    required: false
+    default: "additive"
+  include_weekly_seasonality:
+    type: boolean
+    description: "Include weekly seasonality component"
+    required: false
+    default: true
+  include_yearly_seasonality:
+    type: boolean
+    description: "Include yearly seasonality component"
+    required: false
+    default: false
+  changepoint_prior_scale:
+    type: number
+    description: "Controls flexibility of trend (0.001-0.5, higher = more flexible)"
+    required: false
+    default: 0.05
+returns:
+  symbol: { type: string }
+  timestamp: { type: string }
+  model_config: { type: object }
+  forecast: { type: array }
+  components: { type: object }
+  current_price: { type: number }
+  forecast_direction: { type: string }
+  trend_strength: { type: string }
+  seasonality_strength: { type: string }

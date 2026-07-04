@@ -1,0 +1,46 @@
+name: cvar_calculation
+description: >
+  Calculates Conditional Value at Risk (CVaR), also known as Expected Shortfall (ES).
+  CVaR measures the expected loss given that the loss exceeds the VaR threshold,
+  providing a more conservative risk measure that accounts for tail risk.
+parameters:
+  portfolio_value:
+    type: number
+    description: "Current portfolio value in USD"
+    required: true
+  returns_data:
+    type: array
+    description: "Historical returns data (daily returns as percentages or decimals)"
+    required: true
+  confidence_level:
+    type: number
+    description: "Confidence level for CVaR calculation (e.g., 0.95, 0.99)"
+    required: false
+    default: 0.95
+  time_horizon:
+    type: integer
+    description: "Time horizon in days"
+    required: false
+    default: 1
+  method:
+    type: string
+    description: "Calculation method: 'historical', 'parametric'"
+    required: false
+    default: "historical"
+returns:
+  portfolio_value: { type: number }
+  confidence_level: { type: number }
+  time_horizon_days: { type: integer }
+  method: { type: string }
+  timestamp: { type: string }
+  cvar_amount: { type: number }
+  cvar_percentage: { type: number }
+  var_amount: { type: number }
+  var_percentage: { type: number }
+  tail_risk_premium: { type: number }
+  tail_risk_premium_pct: { type: number }
+  tail_observations: { type: integer }
+  worst_losses: { type: array }
+  cvar_to_var_ratio: { type: number }
+  interpretation: { type: string }
+  distribution_stats: { type: object }

@@ -1,0 +1,138 @@
+# 81. Worldbuilding Coherent — Consensus Croise
+# Use case: Coherent worldbuilding with parallel dimension creation and cross-validation by consensus
+# Source: project/marketing/content-strategy/101-USE-CASES.md #81
+# TODO: feature planifiee — Composite memory (ShortTerm + LongTerm: world bible)
+
+name: "worldbuilding"
+goal: "Build a coherent fictional world across 4 dimensions with cross-validation consensus"
+process: "consensual"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  geographer:
+    role: "Geographer"
+    goal: "Design the physical geography, climate, and natural resources of the world"
+    backstory: |
+      You are a fantasy geographer who designs believable physical worlds.
+      You create continents, oceans, mountain ranges, river systems,
+      climate zones, and natural resources. Your geography is internally
+      consistent and drives the world's history and cultures.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  historian:
+    role: "Historian"
+    goal: "Develop the historical timeline and major events that shaped the world"
+    backstory: |
+      You are a worldbuilding historian who creates deep historical
+      timelines. You design ages, empires, wars, discoveries, and
+      cultural shifts. Your history is shaped by geography and in turn
+      shapes the current political and social landscape.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  sociologist:
+    role: "Sociologist"
+    goal: "Design the societies, cultures, religions, and political systems of the world"
+    backstory: |
+      You are a cultural anthropologist who designs fictional societies.
+      You create social structures, belief systems, customs, governance
+      models, and cultural practices. Your societies are shaped by
+      geography and history and feel authentically human.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  linguist:
+    role: "Linguist"
+    goal: "Create naming conventions, language families, and communication systems"
+    backstory: |
+      You are a constructed language designer who creates linguistic
+      systems for fictional worlds. You design naming conventions,
+      language families, scripts, and how languages reflect cultural
+      history and geographic separation.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  coherence_guardian:
+    role: "Coherence Guardian"
+    goal: "Verify cross-dimensional coherence and maintain the world bible"
+    backstory: |
+      You are the world bible keeper who ensures coherence across all
+      dimensions. You verify that geography supports history, history
+      shapes culture, culture influences language, and all elements
+      are mutually consistent.
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  create_geography:
+    description: "Design the world's physical geography: continents, oceans, mountains, rivers, climate zones, and natural resources. Ensure internal physical consistency."
+    expectedOutput: "JSON world geography with maps data, climate zones, resource distribution, and physical descriptions"
+    agent: "geographer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  develop_history:
+    description: "Create the world's historical timeline influenced by geography. Design ages, empires, conflicts, discoveries, and their lasting effects on the present."
+    expectedOutput: "JSON historical timeline with eras, major events, cause-effect chains, and present-day legacy"
+    agent: "historian"
+    dependencies:
+      - "create_geography"
+    asyncExecution: false
+    humanInput: false
+
+  design_societies:
+    description: "Design the world's cultures and societies shaped by geography and history. Create social structures, religions, governance, customs, and inter-cultural relationships."
+    expectedOutput: "JSON cultural atlas with society profiles, belief systems, governance models, and cultural practices"
+    agent: "sociologist"
+    dependencies:
+      - "create_geography"
+      - "develop_history"
+    asyncExecution: false
+    humanInput: false
+
+  create_languages:
+    description: "Design naming conventions and language families reflecting cultural and geographic divisions. Create vocabulary samples, scripts, and linguistic relationships."
+    expectedOutput: "JSON linguistic guide with language families, naming rules, vocabulary samples, and script descriptions"
+    agent: "linguist"
+    dependencies:
+      - "design_societies"
+    asyncExecution: false
+    humanInput: false
+
+  validate_coherence:
+    description: "Cross-validate all world dimensions for coherence. Verify geography-history, history-culture, and culture-language consistency. Compile the world bible."
+    expectedOutput: "World bible document with cross-reference validation, coherence report, and identified inconsistencies"
+    agent: "coherence_guardian"
+    dependencies:
+      - "create_languages"
+    asyncExecution: false
+    humanInput: false

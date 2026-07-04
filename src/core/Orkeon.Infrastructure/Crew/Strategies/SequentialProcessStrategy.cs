@@ -1,0 +1,416 @@
+using System.Collections.Immutable;
+using Orkeon.Domain.Agent;
+using Orkeon.Domain.Crew;
+using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
+using Microsoft.Extensions.Logging;
+using Orkeon.Domain.Common;
+using Orkeon.Application.Crew;
+using Orkeon.Application.Interfaces.Services;
+using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Context;
+using Orkeon.Infrastructure.Agent;
+using Orkeon.Domain.Autonomous;
+using DomainCrew = Orkeon.Domain.Crew.Crew;
+using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
+using DomainAgent = Orkeon.Domain.Agent.Agent;
+using DomainExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
+using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
+using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
+
+namespace Orkeon.Infrastructure.Crew.Strategies;
+
+/// <summary>
+/// Sequential process strategy implementation.
+/// Executes tasks one after another in the order they are defined.
+/// </summary>
+public sealed partial class SequentialProcessStrategy : IProcessStrategy
+{
+    private readonly ITaskRepository _taskRepository;
+    private readonly IAgentRepository _agentRepository;
+    private readonly IAgentExecutionService _executionService;
+    private readonly IMemoryScope _memoryScope;
+    private readonly AgentDelegationToolsProvider _delegationProvider;
+    private readonly ILogger<SequentialProcessStrategy> _logger;
+
+    /// <summary>
+    /// Optional lifecycle hook that receives task-by-task and crew-level events.
+    /// When not registered in DI the field remains null and no callbacks are made.
+    /// </summary>
+    private readonly ICrewExecutionHook? _hook;
+
+    /// <summary>Initializes a new instance of <see cref="SequentialProcessStrategy"/>.</summary>
+    /// <param name="taskRepository">The task repository.</param>
+    /// <param name="agentRepository">The agent repository.</param>
+    /// <param name="executionService">The agent execution service.</param>
+    /// <param name="memoryScope">The memory scope.</param>
+    /// <param name="delegationProvider">The agent delegation tools provider.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="hook">Optional crew execution hook (e.g. <see cref="AutoSummaryWriter"/>). May be null.</param>
+    public SequentialProcessStrategy(
+        ITaskRepository taskRepository,
+        IAgentRepository agentRepository,
+        IAgentExecutionService executionService,
+        IMemoryScope memoryScope,
+        AgentDelegationToolsProvider delegationProvider,
+        ILogger<SequentialProcessStrategy> logger,
+        ICrewExecutionHook? hook = null)
+    {
+        ArgumentNullException.ThrowIfNull(taskRepository);
+        _taskRepository = taskRepository;
+        ArgumentNullException.ThrowIfNull(agentRepository);
+        _agentRepository = agentRepository;
+        ArgumentNullException.ThrowIfNull(executionService);
+        _executionService = executionService;
+        ArgumentNullException.ThrowIfNull(memoryScope);
+        _memoryScope = memoryScope;
+        ArgumentNullException.ThrowIfNull(delegationProvider);
+        _delegationProvider = delegationProvider;
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+        _hook = hook;
+    }
+
+    /// <inheritdoc />
+    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialAsync(
+        DomainCrew crew,
+        DomainExecutionPlan plan,
+        IReadOnlyDictionary<string, string>? inputVariables = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(crew);
+        ArgumentNullException.ThrowIfNull(plan);
+        return ExecuteSequentialCoreAsync(crew, plan, inputVariables, cancellationToken);
+    }
+
+    private async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialCoreAsync(
+        DomainCrew crew,
+        DomainExecutionPlan plan,
+        IReadOnlyDictionary<string, string>? inputVariables,
+        CancellationToken cancellationToken)
+    {
+        LogStartingSequentialExecutionForCrew(crew.Id);
+
+        var startedAt = DateTimeOffset.UtcNow;
+        var startTime = startedAt.UtcDateTime;
+        var domainResults = new List<Orkeon.Domain.Task.ValueObjects.TaskOutput>();
+        var applicationOutputs = new List<ApplicationTaskOutput>();
+        var taskSnapshots = new List<TaskExecutionSnapshot>();
+        var tokenTally = new TokenUsageTally();
+
+        var variables = inputVariables != null
+            ? new Dictionary<string, string>(inputVariables)
+            : [];
+
+        var context = new SimpleExecutionContext(
+            crew.Id,
+            variables,
+            _memoryScope,
+            applicationOutputs,
+            cancellationToken);
+
+        var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
+
+        // Register agent entities and add delegation tools
+        foreach (var agent in agents)
+        {
+            _delegationProvider.RegisterAgentEntity(agent);
+            _delegationProvider.AddDelegationToolsToAgent(agent);
+        }
+
+        if (agents.Count == 0 && crew.Tasks.Count > 0)
+            throw new InvalidOperationException("No agents available for sequential execution");
+
+        _delegationProvider.UpdateExecutionContext(context);
+
+        var taskIds = GetOrderedTaskIds(crew, plan);
+        var agentIndex = 0;
+
+        try
+        {
+            foreach (var taskId in taskIds)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                LogExecutingTask(taskId);
+
+                var task = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
+                if (task == null)
+                {
+                    LogTaskNotFoundSkipping(taskId);
+                    continue;
+                }
+
+                var agent = SelectAgent(task, agents, ref agentIndex);
+
+                Orkeon.Application.Interfaces.Services.TaskResult taskResult;
+                (context, var taskSnapshot, taskResult) = await ExecuteSingleTaskAsync(
+                    task, agent, context, applicationOutputs, domainResults, cancellationToken)
+                    .ConfigureAwait(false);
+                tokenTally.Record(taskResult);
+
+                _delegationProvider.UpdateExecutionContext(context);
+                LogTaskCompletedSuccess(taskId, taskSnapshot.Success);
+
+                if (_hook is not null)
+                {
+                    taskSnapshots.Add(taskSnapshot);
+                    await NotifyTaskCompletedAsync(taskSnapshot).ConfigureAwait(false);
+                }
+            }
+
+            var totalTime = DateTime.UtcNow - startTime;
+            var finalOutput = domainResults.LastOrDefault()?.Output ?? string.Empty;
+
+            LogSequentialExecutionCompletedForCrew(crew.Id, totalTime);
+            LogTotalTokensUsed(crew.Id, tokenTally.TotalTokens);
+
+            await NotifyCrewCompletedAsync(crew.Id.Value.ToString(), startedAt, taskSnapshots).ConfigureAwait(false);
+
+            var metadata = tokenTally
+                .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
+                .Build();
+
+            return DomainCrewOutput.CreateSuccess(
+                output: finalOutput,
+                structuredOutput: null,
+                taskOutputs: domainResults,
+                executionTime: totalTime,
+                metadata: metadata);
+        }
+        catch (OperationCanceledException) when (_hook is not null)
+        {
+            var crewSnapshot = BuildCrewSnapshot(
+                crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Canceled,
+                "Crew execution was canceled (timeout or external cancellation).");
+            await TryNotifyCrewFailedAsync(crewSnapshot, null).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception ex) when (_hook is not null)
+        {
+            var crewSnapshot = BuildCrewSnapshot(
+                crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Failed,
+                ex.Message);
+            await TryNotifyCrewFailedAsync(crewSnapshot, ex).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async System.Threading.Tasks.Task<(SimpleExecutionContext Context, TaskExecutionSnapshot Snapshot, Orkeon.Application.Interfaces.Services.TaskResult Result)> ExecuteSingleTaskAsync(
+        Orkeon.Domain.Task.CrewTask task,
+        DomainAgent agent,
+        SimpleExecutionContext context,
+        List<ApplicationTaskOutput> applicationOutputs,
+        List<DomainTaskOutput> domainResults,
+        CancellationToken cancellationToken)
+    {
+        var executionResult = await _executionService.ExecuteTaskAsync(
+            agent, task, context, cancellationToken).ConfigureAwait(false);
+
+        if (executionResult.ExitReason != AgentExitReason.Completed)
+        {
+            LogAgentExitedWithReason(
+                agent.Role,
+                executionResult.ExitReason.ToString(),
+                executionResult.IterationsUsed,
+                executionResult.LastError ?? executionResult.Error ?? "(none)");
+        }
+
+        var rawOutput = GetRawOutput(executionResult);
+
+        var appOutput = new ApplicationTaskOutput(
+            TaskId: task.Id.Value.ToString(),
+            AgentId: agent.Id.ToString(),
+            Content: rawOutput,
+            CompletedAt: DateTime.UtcNow,
+            Success: executionResult.Success,
+            ExecutionTime: executionResult.ExecutionTime,
+            ToolsUsed: executionResult.ToolsUsed);
+        applicationOutputs.Add(appOutput);
+
+        domainResults.Add(DomainTaskOutput.Create(
+            rawOutput: rawOutput,
+            format: "text",
+            formattedOutput: null,
+            taskId: task.Id,
+            success: executionResult.Success,
+            executionTime: executionResult.ExecutionTime,
+            structuredOutput: executionResult.StructuredOutput,
+            agentId: agent.Id.ToString()));
+
+        var updatedContext = new SimpleExecutionContext(
+            context.CrewId,
+            context.Variables,
+            context.Memory,
+            applicationOutputs,
+            context.CancellationToken);
+
+        var snapshot = new TaskExecutionSnapshot
+        {
+            TaskId = task.Id.Value.ToString(),
+            AgentRole = agent.Role?.ToString() ?? string.Empty,
+            Success = executionResult.Success,
+            Duration = executionResult.ExecutionTime,
+            CompletedAt = DateTimeOffset.UtcNow,
+            ToolCallCount = executionResult.ToolsUsed?.Count ?? 0,
+            TokensUsed = executionResult.TokensUsed,
+            CacheHitTokens = executionResult.CacheHitTokens,
+            CacheMissTokens = executionResult.CacheMissTokens,
+            UnknownFqns = executionResult.UnknownFqns,
+            RewrittenFqns = executionResult.RewrittenFqns,
+            AmbiguousFqns = executionResult.AmbiguousFqns,
+        };
+
+        return (updatedContext, snapshot, executionResult);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty completion hook is logged and must not break the crew execution pipeline.")]
+    private async System.Threading.Tasks.Task NotifyTaskCompletedAsync(TaskExecutionSnapshot snapshot)
+    {
+        if (_hook is null) return;
+        try
+        {
+            await _hook.OnTaskCompletedAsync(snapshot, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogHookOnTaskCompletedFailed(ex);
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty crew-completed hook is logged and must not break the crew execution pipeline.")]
+    private async System.Threading.Tasks.Task NotifyCrewCompletedAsync(
+        string crewId, DateTimeOffset startedAt, List<TaskExecutionSnapshot> taskSnapshots)
+    {
+        if (_hook is null) return;
+        var crewSnapshot = BuildCrewSnapshot(crewId, startedAt, taskSnapshots, CrewHookStatus.Completed, null);
+        try
+        {
+            await _hook.OnCrewCompletedAsync(crewSnapshot, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogHookOnCrewCompletedFailed(ex);
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a failure in the crew-failed hook is logged and must not mask the original failure being reported.")]
+    private async System.Threading.Tasks.Task TryNotifyCrewFailedAsync(CrewExecutionSnapshot snapshot, Exception? ex)
+    {
+        try
+        {
+            await _hook!.OnCrewFailedAsync(snapshot, ex, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception hookEx)
+        {
+            LogHookOnCrewFailedFailed(hookEx);
+        }
+    }
+
+    private static CrewExecutionSnapshot BuildCrewSnapshot(
+        string crewId,
+        DateTimeOffset startedAt,
+        List<TaskExecutionSnapshot> taskSnapshots,
+        CrewHookStatus status,
+        string? failureReason)
+    {
+        return new CrewExecutionSnapshot
+        {
+            CrewId = crewId,
+            StartedAt = startedAt,
+            EndedAt = DateTimeOffset.UtcNow,
+            Tasks = taskSnapshots.ToImmutableList(),
+            Status = status,
+            FailureReason = failureReason,
+        };
+    }
+
+    private async System.Threading.Tasks.Task<List<DomainAgent>> LoadAgentsAsync(DomainCrew crew)
+    {
+        var agents = new List<DomainAgent>();
+        foreach (var agentId in crew.Agents)
+        {
+            var agent = await _agentRepository.GetByIdAsync(agentId).ConfigureAwait(false);
+            if (agent != null) agents.Add(agent);
+        }
+        return agents;
+    }
+
+    private static IEnumerable<TaskId> GetOrderedTaskIds(DomainCrew crew, DomainExecutionPlan plan)
+    {
+        var plannedTasks = plan.GetTasksInOrder().ToList();
+        return plannedTasks.Count > 0
+            ? plannedTasks.Select(pt => pt.TaskId)
+            : crew.Tasks;
+    }
+
+    private static DomainAgent SelectAgent(
+        Orkeon.Domain.Task.CrewTask task,
+        List<DomainAgent> agents,
+        ref int agentIndex)
+    {
+        var agent = task.AssignedAgent != null
+            ? agents.FirstOrDefault(a => a.Id == task.AssignedAgent) ?? agents[agentIndex % agents.Count]
+            : agents[agentIndex % agents.Count];
+        agentIndex++;
+        return agent;
+    }
+
+    private static string GetRawOutput(Orkeon.Application.Interfaces.Services.TaskResult result)
+    {
+        if (!string.IsNullOrEmpty(result.Output))
+            return result.Output;
+        if (result.Success)
+            return "(no output)";
+        return $"Task failed: {result.Error ?? "unknown error"}";
+    }
+
+    /// <inheritdoc />
+    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException(
+            "Hierarchical execution is not supported by SequentialProcessStrategy. " +
+            "Use HierarchicalProcessStrategy instead.");
+    }
+
+    /// <inheritdoc />
+    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteParallelAsync(DomainCrew crew, DomainExecutionPlan plan, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException(
+            "Parallel execution is not supported by SequentialProcessStrategy. " +
+            "Use ParallelProcessStrategy instead.");
+    }
+
+    /// <inheritdoc />
+    public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteAutonomousAsync(DomainCrew crew, AgentExecutionBudget budget, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("Use AutonomousProcessStrategy for autonomous orchestration.");
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Starting sequential execution for crew {CrewId}")]
+    private partial void LogStartingSequentialExecutionForCrew(CrewId crewId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Executing task {TaskId}")]
+    private partial void LogExecutingTask(TaskId taskId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Task {TaskId} not found, skipping")]
+    private partial void LogTaskNotFoundSkipping(TaskId taskId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Task {TaskId} completed, success: {Success}")]
+    private partial void LogTaskCompletedSuccess(TaskId taskId, bool success);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Sequential execution completed for crew {CrewId} in {Duration}")]
+    private partial void LogSequentialExecutionCompletedForCrew(CrewId crewId, TimeSpan duration);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Total tokens used for crew {CrewId}: {TokensUsed}")]
+    private partial void LogTotalTokensUsed(CrewId crewId, int tokensUsed);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Agent [{AgentRole}] exited with reason {ExitReason} after {IterationsUsed} iterations. Last error: {LastError}")]
+    private partial void LogAgentExitedWithReason(object agentRole, string exitReason, int iterationsUsed, string lastError);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "ICrewExecutionHook.OnTaskCompletedAsync threw an exception")]
+    private partial void LogHookOnTaskCompletedFailed(Exception ex);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "ICrewExecutionHook.OnCrewCompletedAsync threw an exception")]
+    private partial void LogHookOnCrewCompletedFailed(Exception ex);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "ICrewExecutionHook.OnCrewFailedAsync threw an exception")]
+    private partial void LogHookOnCrewFailedFailed(Exception ex);
+
+}

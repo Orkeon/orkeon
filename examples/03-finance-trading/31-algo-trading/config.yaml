@@ -1,0 +1,197 @@
+# 31. Trading Algorithmique Multi-Strategies
+# Use case: Showcase complete du framework avec 8 agents, processus hierarchique complet
+# Source: project/marketing/content-strategy/101-USE-CASES.md #31
+
+name: "algo-trading"
+goal: "Coordinate multi-strategy algorithmic trading with real-time analysis, risk management, and compliance"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "cio"
+
+agents:
+  cio:
+    role: "Chief Investment Officer"
+    goal: "Coordinate all trading operations, balancing risk and return across strategies"
+    backstory: |
+      Senior CIO with 20+ years experience managing multi-strategy hedge funds.
+      Expert at capital allocation, risk oversight, and regulatory compliance.
+      Delegates analysis and execution to specialized teams while maintaining portfolio-level view.
+    tools: []
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  data_orchestrator:
+    role: "Data Orchestrator"
+    goal: "Collect and normalize market data from multiple sources in real-time"
+    backstory: |
+      Data engineer specializing in financial market feeds. Aggregates tick data,
+      order book snapshots, and alternative data into a unified format for downstream analysis.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "csv_reader"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  technical_analyst:
+    role: "Technical Analyst"
+    goal: "Identify trading signals using technical indicators and chart patterns"
+    backstory: |
+      Chartered Market Technician with expertise in momentum, mean-reversion,
+      and breakout strategies. Applies multi-timeframe analysis to generate actionable signals.
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+      - "technical_indicators"
+      - "market_regime_classification"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  quant_forecaster:
+    role: "Quantitative Forecaster"
+    goal: "Build and run quantitative models for price and volatility forecasting"
+    backstory: |
+      PhD in financial mathematics with deep expertise in stochastic models,
+      machine learning for finance, and statistical arbitrage strategies.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "code_interpreter"
+      - "arima_prediction"
+      - "ensemble_prediction"
+      - "backtesting"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  risk_officer:
+    role: "Risk Officer"
+    goal: "Monitor and enforce risk limits across all strategies and positions"
+    backstory: |
+      Former bank risk manager specializing in VaR, stress testing, and position limits.
+      Ensures no single strategy or position exceeds pre-defined risk thresholds.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "database_query"
+      - "var_calculation"
+      - "cvar_calculation"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  portfolio_manager:
+    role: "Portfolio Manager"
+    goal: "Optimize portfolio allocation and rebalancing across strategies"
+    backstory: |
+      CFA charterholder with expertise in modern portfolio theory, factor investing,
+      and dynamic asset allocation. Balances return targets with risk budgets.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+      - "mean_variance_optimization"
+      - "portfolio_rebalancing"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  trader:
+    role: "Execution Trader"
+    goal: "Execute orders with minimal market impact and optimal timing"
+    backstory: |
+      Experienced execution trader skilled in algorithmic order routing,
+      TWAP/VWAP strategies, and dark pool access. Minimizes slippage on every trade.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "twap_execution"
+      - "vwap_execution"
+      - "smart_order_routing"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  compliance_officer:
+    role: "Compliance Officer"
+    goal: "Ensure all trading activities comply with regulations and internal policies"
+    backstory: |
+      Regulatory compliance expert covering MiFID II, Dodd-Frank, and internal
+      trading policies. Reviews every order for pre-trade and post-trade compliance.
+    tools:
+      - "json_tool"
+      - "file_write"
+      - "database_query"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  collect_market_data:
+    description: "Collect real-time market data from multiple sources including price feeds, order book data, and alternative data. Normalize into a unified format for analysis."
+    expectedOutput: "JSON object with normalized market data including OHLCV, order book depth, and alternative signals"
+    agent: "data_orchestrator"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  analyze_technicals:
+    description: "Run technical analysis on collected market data. Calculate indicators (RSI, MACD, Bollinger Bands, etc.) and identify trading signals across multiple timeframes."
+    expectedOutput: "JSON report with technical signals, confidence scores, and recommended trade direction per instrument"
+    agent: "technical_analyst"
+    dependencies:
+      - "collect_market_data"
+    asyncExecution: false
+    humanInput: false
+
+  run_quant_models:
+    description: "Execute quantitative forecasting models on the market data. Generate price predictions, volatility forecasts, and statistical arbitrage signals."
+    expectedOutput: "JSON with model predictions, confidence intervals, and expected returns per strategy"
+    agent: "quant_forecaster"
+    dependencies:
+      - "collect_market_data"
+    asyncExecution: false
+    humanInput: false
+
+  assess_risk:
+    description: "Calculate current portfolio risk metrics including VaR, maximum drawdown, correlation exposure, and position concentration. Flag any limit breaches."
+    expectedOutput: "Risk dashboard JSON with VaR, drawdown, concentration metrics, and any limit violations"
+    agent: "risk_officer"
+    dependencies:
+      - "analyze_technicals"
+      - "run_quant_models"
+    asyncExecution: false
+    humanInput: false
+
+  optimize_portfolio:
+    description: "Based on signals, forecasts, and risk assessment, determine optimal portfolio allocation and generate rebalancing orders."
+    expectedOutput: "Portfolio allocation plan with target weights, rebalancing trades, and expected risk/return profile"
+    agent: "portfolio_manager"
+    dependencies:
+      - "assess_risk"
+    asyncExecution: false
+    humanInput: false
+
+  execute_trades:
+    description: "Execute the approved trading orders using optimal execution algorithms. Monitor fills and report execution quality."
+    expectedOutput: "Execution report with fill prices, slippage analysis, and market impact assessment"
+    agent: "trader"
+    dependencies:
+      - "optimize_portfolio"
+    asyncExecution: false
+    humanInput: false
+
+  compliance_review:
+    description: "Perform post-trade compliance review. Verify all trades meet regulatory requirements and internal policies. Generate audit trail."
+    expectedOutput: "Compliance report with pass/fail status per trade, any violations flagged, and complete audit trail"
+    agent: "compliance_officer"
+    dependencies:
+      - "execute_trades"
+    asyncExecution: false
+    humanInput: false

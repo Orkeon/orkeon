@@ -1,0 +1,220 @@
+# 100. Simulateur de Civilisation Emergente
+# Use case: 20+ agents representing factions play civilization turns via FlowEngine with A2A diplomacy
+# Source: project/marketing/content-strategy/101-USE-CASES.md #100
+# TODO: feature planifiee — Composite memory (ShortTerm: current turn + LongTerm: civilization history + Episodic: landmark events)
+
+name: "civilization-simulator"
+goal: "Simulate an emergent civilization with multiple factions each composed of specialized agents, turn-based progression via FlowEngine, A2A inter-faction diplomacy, and episodic memory creating a unique emergent history"
+process: "sequential"
+verbose: true
+memory: true
+memoryProvider: "SQLite"
+planning: true
+managerAgent: "game_master"
+
+agents:
+  game_master:
+    role: "Game Master"
+    goal: "Orchestrate civilization turns, enforce game rules, resolve conflicts, and advance the world state"
+    backstory: |
+      You are the Game Master of this civilization simulation. You manage
+      turn progression via FlowEngine, enforce game rules (resource limits,
+      technology prerequisites, diplomatic protocols), resolve inter-faction
+      conflicts, process world events (natural disasters, discoveries,
+      plagues), and maintain the canonical world state. You ensure fair
+      play and narrative coherence across the emergent history.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: true
+    maxIter: 20
+    verbose: true
+
+  realm_leader:
+    role: "Realm of the Sun — Faction Leader"
+    goal: "Lead the Realm of the Sun faction through expansion, technological advancement, and diplomatic maneuvering"
+    backstory: |
+      You lead the Realm of the Sun, a faction focused on technological
+      innovation and scientific advancement. Your civilization values
+      knowledge, education, and progress. You manage resource allocation
+      (food, materials, gold, knowledge points), direct research priorities,
+      negotiate with other factions via A2A, and decide military/peaceful
+      expansion strategies. Your episodic memory recalls key historical
+      events that shape your diplomatic stance.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  realm_general:
+    role: "Realm of the Sun — Military Commander"
+    goal: "Manage the Realm's military forces, defense, and strategic expansion"
+    backstory: |
+      You command the military forces of the Realm of the Sun. You manage
+      troop training, fortification building, strategic positioning, and
+      battlefield tactics. You advise the faction leader on military
+      capabilities and risks. You remember past battles and their outcomes
+      to inform future strategy.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  realm_scholar:
+    role: "Realm of the Sun — Chief Scholar"
+    goal: "Direct research, technology development, and cultural advancement"
+    backstory: |
+      You manage the Realm's research institutions. You prioritize technology
+      research (agriculture, metallurgy, navigation, medicine), manage
+      scholar workforce, and track the technology tree. Breakthroughs
+      you achieve may be traded with other factions or kept secret for
+      competitive advantage.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  forest_chief:
+    role: "Forest Tribes — Chieftain"
+    goal: "Lead the Forest Tribes through harmony with nature, guerrilla warfare, and trade network mastery"
+    backstory: |
+      You lead the Forest Tribes, a faction living in harmony with nature.
+      Your people excel at herbalism, guerrilla tactics, and controlling
+      trade routes through dense forests. You are suspicious of the
+      technologically aggressive Realm but open to trade. Your episodic
+      memory of past betrayals and alliances shapes your diplomatic
+      approach. You can use A2A to negotiate trade or form alliances.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  forest_shaman:
+    role: "Forest Tribes — Shaman"
+    goal: "Manage herbalism, healing, spiritual guidance, and nature-based resource management"
+    backstory: |
+      You are the spiritual and medical leader of the Forest Tribes.
+      You manage herbal medicine production, predict weather patterns,
+      interpret natural omens, and guide the tribe's spiritual decisions.
+      Your unique nature knowledge is valuable for trade with other factions.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  merchant_guild_master:
+    role: "Merchant Republic — Guild Master"
+    goal: "Lead the Merchant Republic through trade dominance, wealth accumulation, and diplomatic influence"
+    backstory: |
+      You lead the Merchant Republic, a faction built on trade and commerce.
+      Your power comes from controlling trade routes, accumulating wealth,
+      and using economic leverage in diplomacy. You negotiate trade
+      agreements with all factions, manipulate markets, and finance
+      infrastructure. Your long-term memory tracks every deal, debt, and
+      trade balance.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  historian_chronicler:
+    role: "World Historian-Chronicler"
+    goal: "Observe and record the emergent history of the civilization, tracking key events and narrative arcs"
+    backstory: |
+      You are the silent observer of this civilization. You record every
+      significant event — alliances formed, wars declared, technologies
+      discovered, natural disasters survived, cultures merged. You weave
+      individual events into narrative arcs and identify emergent patterns
+      (rise and fall of empires, technological ages, diplomatic eras).
+      Your chronicles become the civilization's collective memory.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+tasks:
+  setup_world:
+    description: "Initialize the world state: define the map with resource distribution, place factions in starting positions, set initial resource pools, and establish game rules"
+    expectedOutput: "World setup document with map layout, faction starting positions, initial resources per faction, technology trees, and game rules"
+    agent: "game_master"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  turn_realm_strategy:
+    description: "Realm of the Sun plans their turn: allocate resources, set research priorities, decide military and diplomatic actions"
+    expectedOutput: "Realm turn plan with resource allocation, research priority, military orders, diplomatic proposals (A2A), and expected outcomes"
+    agent: "realm_leader"
+    dependencies: ["setup_world"]
+    asyncExecution: true
+    humanInput: false
+
+  turn_realm_military:
+    description: "Execute Realm military actions: train troops, build fortifications, execute expansion or defense operations"
+    expectedOutput: "Military action report with troop status, fortification progress, combat results if any, and strategic position update"
+    agent: "realm_general"
+    dependencies: ["turn_realm_strategy"]
+    asyncExecution: false
+    humanInput: false
+
+  turn_realm_research:
+    description: "Execute Realm research: advance selected technologies, manage scholars, report breakthroughs"
+    expectedOutput: "Research report with technology progress, any breakthroughs achieved, new capabilities unlocked, and research queue"
+    agent: "realm_scholar"
+    dependencies: ["turn_realm_strategy"]
+    asyncExecution: false
+    humanInput: false
+
+  turn_forest_strategy:
+    description: "Forest Tribes plan their turn: manage natural resources, plan trade routes, decide on diplomacy and guerrilla operations"
+    expectedOutput: "Forest turn plan with resource management, trade proposals, diplomatic stance, guerrilla operations, and herbal production"
+    agent: "forest_chief"
+    dependencies: ["setup_world"]
+    asyncExecution: true
+    humanInput: false
+
+  turn_forest_rituals:
+    description: "Execute Forest spiritual and healing activities: produce medicines, read omens, manage tribe morale and health"
+    expectedOutput: "Spiritual report with medicine stocks, weather predictions, omen interpretations, morale status, and tribe health"
+    agent: "forest_shaman"
+    dependencies: ["turn_forest_strategy"]
+    asyncExecution: false
+    humanInput: false
+
+  turn_merchant_strategy:
+    description: "Merchant Republic plans their turn: negotiate trade deals, manage treasury, invest in infrastructure, leverage economic influence"
+    expectedOutput: "Merchant turn plan with trade proposals to each faction, treasury management, infrastructure investments, and market analysis"
+    agent: "merchant_guild_master"
+    dependencies: ["setup_world"]
+    asyncExecution: true
+    humanInput: false
+
+  resolve_turn:
+    description: "Resolve all turn actions: process diplomacy outcomes, resolve conflicts, apply world events, update resource pools, and advance world state"
+    expectedOutput: "Turn resolution report with diplomacy results, conflict outcomes, world event impacts, updated faction states, and new world state"
+    agent: "game_master"
+    dependencies: ["turn_realm_military", "turn_realm_research", "turn_forest_rituals", "turn_merchant_strategy"]
+    asyncExecution: false
+    humanInput: false
+
+  chronicle_turn:
+    description: "Record this turn's events in the civilization chronicle, identify narrative arcs, and update the emergent history"
+    expectedOutput: "Chronicle entry with key events, narrative arc updates, emergent patterns observed, and civilization timeline update"
+    agent: "historian_chronicler"
+    dependencies: ["resolve_turn"]
+    asyncExecution: false
+    humanInput: false

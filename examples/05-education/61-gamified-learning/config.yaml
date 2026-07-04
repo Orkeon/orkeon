@@ -1,0 +1,81 @@
+# 61. Plateforme Learning Gamifie avec Hooks
+# Use case: Gamified learning platform with progression tree, XP/badges via CrewHooks, and episodic memory
+# Source: project/marketing/content-strategy/101-USE-CASES.md #61
+# TODO: feature planifiee — FlowEngine (IFlowEngine + FlowState for progression tree)
+
+name: "gamified-learning"
+goal: "Deliver gamified learning experiences with progression trees, XP rewards, and badge unlocking via event hooks"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  game_master:
+    role: "Game Master"
+    goal: "Orchestrate the gamified learning experience and manage progression"
+    backstory: |
+      You are a game designer specialized in educational gamification.
+      You manage the skill tree progression, determine which challenges
+      to present, and orchestrate the overall learning adventure.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  challenge_designer:
+    role: "Challenge Designer"
+    goal: "Create engaging learning challenges adapted to the player's current level"
+    backstory: |
+      You are a puzzle and challenge designer who creates educational
+      exercises disguised as game challenges. You calibrate difficulty
+      to maintain flow state and design challenges that teach through doing.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  evaluator:
+    role: "Evaluator"
+    goal: "Evaluate challenge completions and award XP, badges, and level unlocks"
+    backstory: |
+      You are the scoring engine of the gamified platform. You evaluate
+      challenge completions, calculate XP rewards, determine badge eligibility,
+      and trigger level-up events when thresholds are reached.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  setup_session:
+    description: "Load the player's progression state from memory. Determine the current position in the skill tree and identify available challenges for the session."
+    expectedOutput: "JSON session setup with player state, available challenges, and session objectives"
+    agent: "game_master"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  present_challenge:
+    description: "Design and present an appropriate learning challenge based on the player's current level and skill tree position. Include clear instructions and success criteria."
+    expectedOutput: "Challenge specification with instructions, success criteria, XP reward, and optional badge"
+    agent: "challenge_designer"
+    dependencies:
+      - "setup_session"
+    asyncExecution: false
+    humanInput: true
+
+  evaluate_and_reward:
+    description: "Evaluate the player's challenge completion. Award XP, check badge eligibility, determine if level-up occurs, and update the progression state in memory."
+    expectedOutput: "Evaluation result with XP awarded, badges earned, level-up status, and updated progression state"
+    agent: "evaluator"
+    dependencies:
+      - "present_challenge"
+    asyncExecution: false
+    humanInput: false

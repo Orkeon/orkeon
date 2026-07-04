@@ -1,0 +1,109 @@
+# 14. Pipeline ETL Intelligent
+# Use case: Intelligent ETL pipeline processing 7 formats with idempotent steps and checkpoint recovery
+# Source: project/marketing/content-strategy/101-USE-CASES.md #14
+
+name: "etl-pipeline"
+goal: "Extract, transform, and load data from 7 different formats with idempotent steps, checkpointing, and tolerant format converters"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  multi_parser:
+    role: "Parseur Multi-Format"
+    goal: "Parse and extract data from PDF, CSV, XML, JSON, and other document formats into a unified structure"
+    backstory: |
+      You are a data engineer specializing in multi-format parsing. You handle
+      PDF tables, CSV with various delimiters, XML schemas, JSON nested structures,
+      and legacy formats. You normalize all data into a consistent schema regardless
+      of input format.
+    tools:
+      - "pdf_reader"
+      - "csv_reader"
+      - "xml_parser"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  data_cleaner:
+    role: "Nettoyeur de Donnees"
+    goal: "Clean, validate, and standardize extracted data with tolerant format handling"
+    backstory: |
+      You are a data quality engineer who handles messy, inconsistent data. You
+      normalize date formats, fix encoding issues, handle missing values, deduplicate
+      records, and apply validation rules. You use tolerant converters that handle
+      format variations automatically (boolean strings, locale-specific decimals, etc.).
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  api_enricher:
+    role: "Enrichisseur API"
+    goal: "Enrich cleaned data with additional context from external APIs"
+    backstory: |
+      You are a data enrichment specialist who augments datasets with external
+      data. You call reference APIs (geocoding, company data, market data) to
+      add missing fields, validate existing data, and enrich records with
+      additional context.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  db_loader:
+    role: "Chargeur Base de Donnees"
+    goal: "Load enriched data into the target database with idempotent upsert operations"
+    backstory: |
+      You are a database engineer who handles reliable data loading. You perform
+      idempotent upserts, manage schema migrations, handle constraint violations
+      gracefully, and verify data integrity after loading. You ensure each load
+      operation can be safely retried.
+    tools:
+      - "database_query"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  extract_data:
+    description: "Parse input files in all supported formats (PDF, CSV, XML, JSON). Extract structured data into a unified schema. Log format detection and parsing decisions."
+    expectedOutput: "JSON with: records[], format_stats{format: count}, parsing_errors[], schema_mapping"
+    agent: "multi_parser"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  clean_data:
+    description: "Clean and validate extracted data. Normalize formats, fix encoding, handle missing values, deduplicate records. Apply tolerant converters for format variations."
+    expectedOutput: "JSON with: cleaned_records[], quality_report{total, valid, invalid, deduped}, cleaning_rules_applied[]"
+    agent: "data_cleaner"
+    dependencies:
+      - "extract_data"
+    asyncExecution: false
+    humanInput: false
+
+  enrich_data:
+    description: "Enrich cleaned records with data from external APIs. Add geocoding, company details, and reference data. Track enrichment success rate."
+    expectedOutput: "JSON with: enriched_records[], enrichment_stats{total, enriched, failed}, api_calls_made"
+    agent: "api_enricher"
+    dependencies:
+      - "clean_data"
+    asyncExecution: false
+    humanInput: false
+
+  load_to_database:
+    description: "Load enriched data into the target database using idempotent upsert operations. Verify data integrity. Generate a load summary report."
+    expectedOutput: "JSON with: load_summary{inserted, updated, skipped, errors}, integrity_check{passed: true/false}, execution_time_ms"
+    agent: "db_loader"
+    dependencies:
+      - "enrich_data"
+    asyncExecution: false
+    humanInput: false

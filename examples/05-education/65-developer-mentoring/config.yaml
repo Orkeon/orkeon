@@ -1,0 +1,109 @@
+# 65. Mentorat IA pour Developpeurs — 4 Perspectives + Sandbox
+# Use case: AI mentoring for developers with 4 complementary perspectives and sandbox code demonstration
+# Source: project/marketing/content-strategy/101-USE-CASES.md #65
+
+name: "developer-mentoring"
+goal: "Provide developer mentoring through 4 complementary perspectives with live sandbox demonstrations"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  code_reviewer:
+    role: "Code Reviewer"
+    goal: "Review code quality, identify issues, and suggest improvements"
+    backstory: |
+      You are a senior code reviewer with 20 years of experience across
+      multiple languages. You identify code smells, bugs, performance issues,
+      and maintainability concerns. You provide actionable improvement suggestions
+      with clear explanations of the reasoning.
+    tools:
+      - "file_read"
+      - "directory_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  concept_pedagogue:
+    role: "Concept Pedagogue"
+    goal: "Explain underlying concepts and design principles behind the code"
+    backstory: |
+      You are a computer science educator who explains complex concepts
+      in accessible terms. You connect code to underlying design principles,
+      algorithms, and computer science fundamentals, helping developers
+      build deeper understanding.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  patterns_architect:
+    role: "Patterns Architect"
+    goal: "Identify applicable design patterns and architectural improvements"
+    backstory: |
+      You are a software architect specialized in design patterns and
+      clean architecture. You identify opportunities to apply well-known
+      patterns, suggest architectural refactorings, and explain trade-offs
+      of different approaches.
+    tools:
+      - "file_read"
+      - "directory_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  career_coach:
+    role: "Career Coach"
+    goal: "Guide the developer's professional growth and learning path"
+    backstory: |
+      You are a tech career coach who helps developers grow professionally.
+      You identify skill development opportunities from their code, suggest
+      learning resources, and help them build a progression roadmap
+      aligned with industry trends.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  review_code:
+    description: "Review the submitted code for quality issues, bugs, and improvement opportunities. Provide actionable suggestions with clear reasoning and priority ranking."
+    expectedOutput: "Code review report with issues ranked by severity, improvement suggestions, and code snippets"
+    agent: "code_reviewer"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  explain_concepts:
+    description: "Identify and explain the underlying concepts, principles, and patterns present in the code. Connect implementation details to CS fundamentals."
+    expectedOutput: "Concept explanation document with principles identified, explanations, and learning references"
+    agent: "concept_pedagogue"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  suggest_patterns:
+    description: "Analyze the code architecture and suggest applicable design patterns. Provide refactoring proposals with trade-off analysis and example implementations."
+    expectedOutput: "Architecture analysis with pattern suggestions, refactoring proposals, and trade-off comparisons"
+    agent: "patterns_architect"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  guide_growth:
+    description: "Based on the code analysis, identify growth areas for the developer. Suggest learning resources, skills to develop, and a progression roadmap."
+    expectedOutput: "Developer growth plan with skill gaps, learning resources, and 3-month progression roadmap"
+    agent: "career_coach"
+    dependencies:
+      - "review_code"
+      - "explain_concepts"
+      - "suggest_patterns"
+    asyncExecution: false
+    humanInput: false

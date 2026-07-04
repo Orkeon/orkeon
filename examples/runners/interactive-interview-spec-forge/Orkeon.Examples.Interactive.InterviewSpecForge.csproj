@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Orkeon.Examples.Interactive.InterviewSpecForge</RootNamespace>
+    <!-- Published as a dotnet tool so experiments/ can run the interactive REPL
+         in packages mode (no source clone). Version must be explicit: the
+         examples/ tree does not inherit src/Directory.Build.props (same
+         pattern as _shared/Orkeon.Examples.Shared.csproj). -->
+    <PackageId>Orkeon.Runners.InterviewSpecForge</PackageId>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>orkeon-spec-forge</ToolCommandName>
+    <Description>Interactive interview-spec-forge REPL runner for Orkeon (dotnet tool).</Description>
+    <Authors>Orkeon Contributors</Authors>
+    <VersionPrefix>0.9.0</VersionPrefix>
+    <VersionSuffix>beta</VersionSuffix>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../_shared/Orkeon.Examples.Shared.csproj" />
+    <ProjectReference Include="../../../src/cli/Orkeon.Cli/Orkeon.Cli.csproj" />
+    <ProjectReference Include="../../../src/cli/Orkeon.Cli.Abstractions/Orkeon.Cli.Abstractions.csproj" />
+    <ProjectReference Include="../../../src/cli/Orkeon.Cli.TerminalGui/Orkeon.Cli.TerminalGui.csproj" />
+    <ProjectReference Include="../../../src/tools/Orkeon.Tools.Embeddings.Local/Orkeon.Tools.Embeddings.Local.csproj" />
+  </ItemGroup>
+</Project>

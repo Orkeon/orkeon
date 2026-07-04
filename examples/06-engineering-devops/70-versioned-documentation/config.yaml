@@ -1,0 +1,109 @@
+# 70. Documentation Technique Versionnee comme du Code
+# Use case: Versioned technical documentation with diff between versions and automatic extraction from code
+# Source: project/marketing/content-strategy/101-USE-CASES.md #70
+# TODO: feature planifiee — IConfigurationVersioning + IConfigurationDiffService
+
+name: "versioned-documentation"
+goal: "Extract, generate, and version technical documentation like code with diff between versions"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  code_extractor:
+    role: "Code Extractor"
+    goal: "Extract documentation-relevant information from the codebase"
+    backstory: |
+      You are a code analysis specialist who extracts API signatures,
+      class hierarchies, configuration schemas, and inline documentation
+      from source code. You identify what needs to be documented.
+    tools:
+      - "file_read"
+      - "directory_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  api_documenter:
+    role: "API Documenter"
+    goal: "Generate comprehensive API documentation from extracted code information"
+    backstory: |
+      You are a technical writer specialized in API documentation.
+      You create clear, complete API references with endpoint descriptions,
+      parameter details, request/response examples, and error codes.
+    tools:
+      - "github"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  architecture_diagrammer:
+    role: "Architecture Diagrammer"
+    goal: "Generate architecture diagrams and dependency documentation"
+    backstory: |
+      You are a software architect who creates architecture documentation.
+      You generate component diagrams, dependency graphs, sequence diagrams,
+      and deployment topology descriptions from code analysis.
+    tools:
+      - "directory_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  coherence_editor:
+    role: "Coherence Editor"
+    goal: "Ensure documentation consistency and completeness across all sections"
+    backstory: |
+      You are a documentation quality engineer who reviews technical docs
+      for consistency, completeness, and accuracy. You verify cross-references,
+      detect stale content, and ensure terminology consistency.
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  extract_code_info:
+    description: "Scan the codebase and extract all documentation-relevant information: API signatures, class hierarchies, configuration schemas, and existing inline docs."
+    expectedOutput: "JSON extraction report with API inventory, class hierarchy, config schemas, and doc coverage analysis"
+    agent: "code_extractor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  generate_api_docs:
+    description: "Generate comprehensive API documentation from the extracted information. Include endpoint descriptions, parameters, examples, and error codes."
+    expectedOutput: "API documentation files with complete endpoint references and usage examples"
+    agent: "api_documenter"
+    dependencies:
+      - "extract_code_info"
+    asyncExecution: false
+    humanInput: false
+
+  create_diagrams:
+    description: "Generate architecture documentation including component diagrams, dependency graphs, and deployment topology descriptions."
+    expectedOutput: "Architecture documentation with diagram descriptions, dependency analysis, and deployment guide"
+    agent: "architecture_diagrammer"
+    dependencies:
+      - "extract_code_info"
+    asyncExecution: false
+    humanInput: false
+
+  review_coherence:
+    description: "Review all generated documentation for consistency, completeness, and accuracy. Fix cross-references, detect stale content, and ensure terminology consistency."
+    expectedOutput: "Final documentation package with coherence report and version changelog"
+    agent: "coherence_editor"
+    dependencies:
+      - "generate_api_docs"
+      - "create_diagrams"
+    asyncExecution: false
+    humanInput: false

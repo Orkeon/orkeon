@@ -1,0 +1,79 @@
+# 60. Simulation de Cas Pratiques Immersive
+# Use case: Immersive case study simulation with role-playing agents and real-time competency evaluation
+# Source: project/marketing/content-strategy/101-USE-CASES.md #60
+
+name: "case-study-simulation"
+goal: "Run immersive case study simulations with role-playing agents and real-time competency evaluation"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  scenario_master:
+    role: "Scenario Master"
+    goal: "Drive the case study scenario and introduce realistic complications"
+    backstory: |
+      You are a case study facilitator with expertise in experiential learning.
+      You create realistic professional scenarios, introduce complications at
+      appropriate moments, and maintain narrative coherence throughout the simulation.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  client_persona:
+    role: "Client Persona"
+    goal: "Realistically portray a client or stakeholder in the scenario"
+    backstory: |
+      You are an actor-trainer who realistically portrays clients and stakeholders.
+      You respond authentically to learner actions, express emotions, raise objections,
+      and provide realistic feedback based on the scenario script.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  competency_observer:
+    role: "Competency Observer"
+    goal: "Evaluate demonstrated competencies in real-time during the simulation"
+    backstory: |
+      You are an assessment specialist who observes professional interactions
+      and evaluates competencies in real-time. You track communication skills,
+      problem-solving, decision-making, and professional conduct.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+tasks:
+  setup_scenario:
+    description: "Initialize the case study scenario. Define the context, characters, initial situation, and learning objectives. Prepare the scenario script with potential complications."
+    expectedOutput: "JSON scenario setup with context, characters, objectives, and scripted events"
+    agent: "scenario_master"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  run_interaction:
+    description: "Facilitate the main interaction between the learner and the client persona. Introduce complications according to the scenario script. Collect interaction data for evaluation."
+    expectedOutput: "Interaction transcript with timestamped events and learner decisions"
+    agent: "client_persona"
+    dependencies:
+      - "setup_scenario"
+    asyncExecution: false
+    humanInput: true
+
+  evaluate_competencies:
+    description: "Analyze the interaction transcript and evaluate demonstrated competencies. Score each target competency with evidence-based justification. Provide formative feedback."
+    expectedOutput: "Competency evaluation report with scores, evidence citations, and improvement recommendations"
+    agent: "competency_observer"
+    dependencies:
+      - "run_interaction"
+    asyncExecution: false
+    humanInput: false

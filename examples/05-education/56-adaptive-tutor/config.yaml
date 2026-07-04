@@ -1,0 +1,102 @@
+# 56. Tuteur Adaptatif — Modèle Apprenant Persistant
+# Use case: Adaptive tutor with persistent learner model that enriches across sessions
+# Source: project/marketing/content-strategy/101-USE-CASES.md #56
+
+name: "adaptive-tutor"
+goal: "Provide personalized tutoring that adapts level and pedagogical style based on a persistent learner model"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  level_assessor:
+    role: "Level Assessor"
+    goal: "Evaluate the learner's current knowledge level through diagnostic questions"
+    backstory: |
+      You are an expert psychometrician specialized in formative assessment.
+      You design targeted diagnostic questions to precisely identify the learner's
+      strengths and weaknesses across multiple dimensions.
+    tools:
+      - "json_tool"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  adaptive_pedagogue:
+    role: "Adaptive Pedagogue"
+    goal: "Deliver learning content adapted to the learner's level and preferred learning style"
+    backstory: |
+      You are a master educator with expertise in differentiated instruction.
+      You adapt explanations, examples, and exercises based on the learner profile,
+      choosing the most effective pedagogical approach for each individual.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  motivation_coach:
+    role: "Motivation Coach"
+    goal: "Maintain learner engagement through encouragement and progress tracking"
+    backstory: |
+      You are a learning psychologist specialized in motivation and engagement.
+      You monitor the learner's emotional state and adapt encouragement strategies
+      to prevent dropout and maintain optimal challenge level.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  examiner:
+    role: "Examiner"
+    goal: "Assess learning outcomes and update the learner model with new data"
+    backstory: |
+      You are an assessment specialist who creates fair and comprehensive evaluations.
+      You measure learning progress against objectives and update the persistent
+      learner model with new competency data after each session.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  diagnose_level:
+    description: "Assess the learner's current knowledge level using the persistent learner model and diagnostic questions. Identify knowledge gaps and preferred learning style."
+    expectedOutput: "JSON diagnostic report with level assessment, identified gaps, and recommended learning style"
+    agent: "level_assessor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  deliver_content:
+    description: "Based on the diagnostic, deliver adapted learning content matching the learner's level and style. Include explanations, examples, and practice exercises."
+    expectedOutput: "Structured learning module with adapted content, examples, and exercises"
+    agent: "adaptive_pedagogue"
+    dependencies:
+      - "diagnose_level"
+    asyncExecution: false
+    humanInput: false
+
+  coach_engagement:
+    description: "Monitor learner engagement signals and provide motivational feedback. Track progress against learning objectives and adjust challenge level."
+    expectedOutput: "Engagement report with motivational interventions and challenge adjustments"
+    agent: "motivation_coach"
+    dependencies:
+      - "deliver_content"
+    asyncExecution: false
+    humanInput: false
+
+  assess_and_update:
+    description: "Evaluate learning outcomes through targeted assessment. Update the persistent learner model with new competency data and session history."
+    expectedOutput: "Assessment results and updated learner model with session progress data"
+    agent: "examiner"
+    dependencies:
+      - "coach_engagement"
+    asyncExecution: false
+    humanInput: false

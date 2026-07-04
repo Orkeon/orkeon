@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Package Metadata -->
+    <PackageId>Orkeon.Hosting</PackageId>
+    <Description>Host bootstrap for Orkeon runners and CLIs — appsettings resolution, VFS mounts, LLM provider wiring, standard tool registration, LLM exchange logging, graceful shutdown, and one-shot / interactive crew execution flows.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Hosting;Runner;CLI</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
+    <ProjectReference Include="..\..\scripting\Orkeon.Scripting\Orkeon.Scripting.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.FileSystem\Orkeon.Tools.FileSystem.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,92 @@
+# 83. Fiction Interactive — FlowEngine Arborescent
+# Use case: Interactive fiction with branching choice tree managed by FlowEngine and real-time coherence checking
+# Source: project/marketing/content-strategy/101-USE-CASES.md #83
+
+name: "interactive-fiction"
+goal: "Create interactive fiction with branching narrative choices managed by FlowEngine and real-time coherence verification"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  narrator:
+    role: "Narrator"
+    goal: "Narrate the story and present choices that branch the narrative"
+    backstory: |
+      You are an interactive fiction author who crafts branching narratives.
+      You write immersive scene descriptions, present meaningful choices
+      to the reader, and adapt the story based on their decisions.
+      Each choice leads to genuinely different outcomes.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 20
+    verbose: true
+
+  ambiance_writer:
+    role: "Ambiance Writer"
+    goal: "Create atmospheric descriptions that immerse the reader in each scene"
+    backstory: |
+      You are a descriptive writer who creates vivid atmospheric scenes.
+      You engage all senses, build tension, and adapt the mood to match
+      story events. Your descriptions make readers feel present in the
+      fictional world.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  consistency_checker:
+    role: "Consistency Checker"
+    goal: "Verify narrative coherence in real-time as the story branches"
+    backstory: |
+      You are a continuity editor for interactive narratives. You track
+      story state across branches, verify that consequences follow from
+      choices, check character consistency, and ensure no branch creates
+      plot holes or contradictions.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  setup_story:
+    description: "Initialize the interactive fiction world. Define the setting, protagonist, initial situation, and the branching tree structure with key decision points."
+    expectedOutput: "JSON story setup with world state, character definitions, initial scene, and branch tree structure"
+    agent: "narrator"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  write_scene:
+    description: "Write the current scene with atmospheric detail. Present the reader with meaningful choices. Each choice must lead to genuinely different narrative outcomes."
+    expectedOutput: "Scene text with atmosphere, dialogue, and choice options with brief preview of consequences"
+    agent: "ambiance_writer"
+    dependencies:
+      - "setup_story"
+    asyncExecution: false
+    humanInput: true
+
+  check_coherence:
+    description: "Verify that the chosen path maintains narrative coherence. Check that consequences follow from prior choices, character behavior is consistent, and no contradictions exist."
+    expectedOutput: "Coherence validation report with consistency checks, state verification, and any flagged issues"
+    agent: "consistency_checker"
+    dependencies:
+      - "write_scene"
+    asyncExecution: false
+    humanInput: false
+
+  advance_narrative:
+    description: "Based on the reader's choice and coherence validation, advance the narrative to the next scene. Update the story state and prepare the next set of choices."
+    expectedOutput: "Updated story state with next scene narrative, consequences of choice, and new decision points"
+    agent: "narrator"
+    dependencies:
+      - "check_coherence"
+    asyncExecution: false
+    humanInput: false

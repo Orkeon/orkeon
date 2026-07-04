@@ -1,0 +1,126 @@
+# 6. Veille Concurrentielle Continue
+# Use case: Continuous competitive monitoring with parallel agents and persistent Redis memory for change detection
+# Source: project/marketing/content-strategy/101-USE-CASES.md #6
+
+name: "competitive-intelligence"
+goal: "Monitor competitive landscape across multiple dimensions in parallel, detect significant changes via semantic comparison, and produce actionable intelligence reports"
+process: "parallel"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  web_scraper:
+    role: "Scraper Web"
+    goal: "Scrape competitor websites, blogs, and press releases for new content and announcements"
+    backstory: |
+      You are a web intelligence specialist who monitors competitor websites daily.
+      You detect new product launches, pricing changes, hiring trends, and strategic
+      announcements by comparing current content with previous snapshots.
+    tools:
+      - "web_scrape"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  patent_analyst:
+    role: "Analyste Brevets"
+    goal: "Monitor patent filings to detect competitor R&D directions"
+    backstory: |
+      You are a patent analyst who tracks intellectual property filings to
+      identify emerging technologies and strategic R&D investments by competitors.
+      You can interpret patent claims and map them to product categories.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  price_monitor:
+    role: "Moniteur Prix"
+    goal: "Track competitor pricing changes and promotional strategies"
+    backstory: |
+      You are a pricing analyst who monitors competitor pricing across channels.
+      You detect price changes, new promotions, bundle offers, and pricing strategy
+      shifts that could impact market positioning.
+    tools:
+      - "web_scrape"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  synthesizer:
+    role: "Synthetiseur"
+    goal: "Compile all competitive intelligence into an actionable summary report"
+    backstory: |
+      You are a strategic analyst who synthesizes multi-source intelligence into
+      clear, actionable reports. You identify patterns, assess threats and
+      opportunities, and prioritize findings by business impact.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  change_detector:
+    role: "Detecteur de Changements"
+    goal: "Detect significant changes by comparing new data with historical entries using semantic similarity"
+    backstory: |
+      You are an observer agent that monitors incoming intelligence for significant
+      changes compared to historical data. You use semantic comparison to detect
+      meaningful shifts versus noise, and trigger alerts for noteworthy changes.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  scrape_competitors:
+    description: "Scrape competitor websites, blogs, and press releases. Extract new announcements, product updates, and strategic signals."
+    expectedOutput: "JSON array of findings with: competitor, source_url, date, category, content_summary, significance_score"
+    agent: "web_scraper"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  monitor_patents:
+    description: "Query patent databases for recent filings by competitors. Classify by technology domain and assess strategic implications."
+    expectedOutput: "JSON array of patent findings with: competitor, patent_id, title, technology_domain, strategic_implication"
+    agent: "patent_analyst"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  track_pricing:
+    description: "Monitor competitor pricing across channels. Detect price changes, new promotions, and pricing strategy shifts."
+    expectedOutput: "JSON array of pricing changes with: competitor, product, old_price, new_price, change_type, channel"
+    agent: "price_monitor"
+    dependencies: []
+    asyncExecution: true
+    humanInput: false
+
+  detect_changes:
+    description: "Compare all new findings against historical data in memory. Identify statistically significant changes using semantic similarity. Flag new threats and opportunities."
+    expectedOutput: "JSON report with: significant_changes[], new_threats[], new_opportunities[], noise_filtered_count"
+    agent: "change_detector"
+    dependencies:
+      - "scrape_competitors"
+      - "monitor_patents"
+      - "track_pricing"
+    asyncExecution: false
+    humanInput: false
+
+  synthesize_report:
+    description: "Compile all intelligence and change detection results into a strategic competitive intelligence report with prioritized recommendations."
+    expectedOutput: "Markdown competitive intelligence report with executive summary, competitor profiles, significant changes, threats, opportunities, and recommended actions"
+    agent: "synthesizer"
+    dependencies:
+      - "detect_changes"
+    asyncExecution: false
+    humanInput: false

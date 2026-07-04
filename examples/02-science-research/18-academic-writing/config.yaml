@@ -1,0 +1,107 @@
+# 18. Assistant de Redaction Academique
+# Use case: 4-stage academic writing pipeline with automatic reference verification via bibliographic APIs
+# Source: project/marketing/content-strategy/101-USE-CASES.md #18
+
+name: "academic-writing"
+goal: "Produce academic papers through a 4-stage pipeline: structure planning, writing, citation verification, and style editing"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  structure_planner:
+    role: "Planificateur Structure"
+    goal: "Design the paper structure with sections, arguments flow, and key points per section"
+    backstory: |
+      You are an academic writing coach who helps researchers structure their
+      papers effectively. You design outlines that follow journal conventions,
+      organize arguments logically, and ensure each section has a clear purpose
+      and smooth transitions.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  academic_writer:
+    role: "Redacteur Academique"
+    goal: "Write each section of the paper following the approved structure and academic conventions"
+    backstory: |
+      You are a scientific writer who produces clear, precise academic prose.
+      You follow the structure plan exactly, use appropriate hedging language,
+      integrate citations naturally, and maintain a consistent academic register
+      throughout the manuscript.
+    tools:
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  citation_verifier:
+    role: "Verificateur de References"
+    goal: "Verify all citations against bibliographic APIs and ensure proper formatting"
+    backstory: |
+      You are a research librarian who verifies bibliographic accuracy. You check
+      every citation against CrossRef and Semantic Scholar, verify DOIs, correct
+      author names and publication years, and ensure the reference list follows
+      the target journal's citation style.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  style_editor:
+    role: "Editeur de Style"
+    goal: "Polish the manuscript for clarity, consistency, and adherence to academic style guidelines"
+    backstory: |
+      You are an academic editor who polishes manuscripts for publication. You
+      check for passive voice overuse, jargon clarity, sentence length variation,
+      logical flow between paragraphs, and consistency in terminology, tense, and
+      formatting throughout the paper.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  plan_structure:
+    description: "Design the paper structure based on the research topic and target journal. Create a detailed outline with sections, subsections, key arguments, and word count targets."
+    expectedOutput: "JSON with: title, abstract_outline, sections[{heading, purpose, key_points[], target_words}], argument_flow"
+    agent: "structure_planner"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  write_manuscript:
+    description: "Write the complete manuscript following the approved structure. Ensure proper citation integration, academic tone, and logical argumentation in each section."
+    expectedOutput: "Complete Markdown manuscript with: title, abstract, introduction, methods, results, discussion, conclusion, references_placeholder"
+    agent: "academic_writer"
+    dependencies:
+      - "plan_structure"
+    asyncExecution: false
+    humanInput: false
+
+  verify_citations:
+    description: "Verify all in-text citations against CrossRef and Semantic Scholar APIs. Check DOIs, author names, publication years, and format references in the target citation style."
+    expectedOutput: "JSON with: verified_citations[], unverified[], corrections[{original, corrected}], formatted_reference_list"
+    agent: "citation_verifier"
+    dependencies:
+      - "write_manuscript"
+    asyncExecution: false
+    humanInput: false
+
+  edit_style:
+    description: "Polish the manuscript for academic style: check passive voice, jargon clarity, sentence variation, paragraph transitions, and terminology consistency. Produce the final version."
+    expectedOutput: "Final Markdown manuscript with: polished content, style_edits_summary{changes_count, categories}, readability_assessment"
+    agent: "style_editor"
+    dependencies:
+      - "verify_citations"
+    asyncExecution: false
+    humanInput: false

@@ -1,0 +1,108 @@
+# 75. Chaos Engineering — Humain Approuve Chaque Injection
+# Use case: Chaos engineering with mandatory human approval before each fault injection and real-time impact observation
+# Source: project/marketing/content-strategy/101-USE-CASES.md #75
+
+name: "chaos-engineering"
+goal: "Run chaos engineering experiments with mandatory human approval for each injection and real-time impact monitoring"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  hypothesis_formulator:
+    role: "Hypothesis Formulator"
+    goal: "Formulate chaos engineering hypotheses about system resilience"
+    backstory: |
+      You are a reliability engineer who designs chaos experiments.
+      You formulate hypotheses about system behavior under failure
+      conditions, define steady-state metrics, and design experiments
+      that test specific resilience properties.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  injector:
+    role: "Fault Injector"
+    goal: "Design and prepare fault injection actions for human approval"
+    backstory: |
+      You are a chaos engineering specialist who designs fault injection
+      scenarios. You prepare network partitions, service shutdowns,
+      resource exhaustion, and latency injections with precise scope
+      and rollback procedures.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  impact_measurer:
+    role: "Impact Measurer"
+    goal: "Observe and measure the impact of fault injection in real-time"
+    backstory: |
+      You are an observability engineer who monitors system behavior
+      during chaos experiments. You track steady-state metrics, detect
+      deviations, measure recovery time, and determine if the system
+      maintained acceptable behavior during the experiment.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  results_analyst:
+    role: "Results Analyst"
+    goal: "Analyze experiment results and recommend resilience improvements"
+    backstory: |
+      You are a resilience expert who interprets chaos experiment results.
+      You determine if the hypothesis was confirmed, identify unexpected
+      behaviors, and recommend specific architectural improvements to
+      increase system resilience.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  formulate_hypothesis:
+    description: "Define the chaos experiment hypothesis. Specify steady-state metrics, failure scenario, expected behavior, and abort criteria."
+    expectedOutput: "Experiment plan with hypothesis, steady-state definition, failure scenario, and abort thresholds"
+    agent: "hypothesis_formulator"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  prepare_injection:
+    description: "Design the fault injection with precise scope, duration, and rollback procedure. Present the injection plan for human approval before any execution."
+    expectedOutput: "Injection plan with scope, duration, rollback procedure, and risk assessment"
+    agent: "injector"
+    dependencies:
+      - "formulate_hypothesis"
+    asyncExecution: false
+    humanInput: true
+
+  measure_impact:
+    description: "During and after fault injection, monitor all steady-state metrics. Detect deviations from expected behavior and measure recovery time."
+    expectedOutput: "Impact measurement report with metric deviations, recovery timeline, and anomaly detection"
+    agent: "impact_measurer"
+    dependencies:
+      - "prepare_injection"
+    asyncExecution: false
+    humanInput: false
+
+  analyze_results:
+    description: "Analyze the complete experiment results. Determine if the hypothesis was confirmed or refuted. Identify weaknesses and recommend resilience improvements."
+    expectedOutput: "Experiment report with hypothesis verdict, findings, weakness analysis, and improvement recommendations"
+    agent: "results_analyst"
+    dependencies:
+      - "measure_impact"
+    asyncExecution: false
+    humanInput: false

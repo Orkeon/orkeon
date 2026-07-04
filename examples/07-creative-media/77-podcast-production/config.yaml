@@ -1,0 +1,109 @@
+# 77. Production de Podcast — Pipeline Type Bout-en-Bout
+# Use case: End-to-end podcast production pipeline with typed contracts between stages
+# Source: project/marketing/content-strategy/101-USE-CASES.md #77
+
+name: "podcast-production"
+goal: "Produce podcast episodes through a typed pipeline where each stage outputs a deliverable with guaranteed contract"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  source_researcher:
+    role: "Source Researcher"
+    goal: "Research and compile source material for the podcast episode"
+    backstory: |
+      You are a research journalist who finds and curates source material
+      for podcast episodes. You scrape relevant articles, interviews,
+      and data points, then organize them into a structured research
+      brief for the scriptwriter.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  scriptwriter:
+    role: "Scriptwriter"
+    goal: "Write an engaging podcast script from the research material"
+    backstory: |
+      You are a podcast scriptwriter who transforms research into
+      compelling audio narratives. You write scripts with natural
+      conversational flow, clear segment transitions, and engaging
+      hooks that keep listeners interested.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  sound_designer:
+    role: "Sound Design Brief Writer"
+    goal: "Create detailed sound design briefs for each segment of the episode"
+    backstory: |
+      You are a sound designer who creates audio atmosphere briefs.
+      You specify music cues, sound effects, ambient backgrounds,
+      transition elements, and audio processing instructions for
+      each segment of the podcast.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  final_editor:
+    role: "Final Editor"
+    goal: "Review and finalize the complete episode package for production"
+    backstory: |
+      You are a podcast producer who reviews the complete episode package.
+      You ensure script and sound design are aligned, timing is correct,
+      show notes are complete, and the episode meets quality standards
+      for publication.
+    tools:
+      - "file_read"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  research_sources:
+    description: "Research the episode topic. Find relevant articles, interviews, data, and expert opinions. Compile into a structured research brief with key talking points."
+    expectedOutput: "JSON research brief with source list, key facts, talking points, and expert quotes"
+    agent: "source_researcher"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  write_script:
+    description: "Write the podcast script from the research brief. Structure with intro hook, segments, transitions, and outro. Include timing estimates per segment."
+    expectedOutput: "Podcast script with segments, timing markers, speaker notes, and call-to-action"
+    agent: "scriptwriter"
+    dependencies:
+      - "research_sources"
+    asyncExecution: false
+    humanInput: false
+
+  design_sound:
+    description: "Create sound design briefs for each script segment. Specify music beds, sound effects, transitions, and audio processing requirements."
+    expectedOutput: "Sound design brief with per-segment music cues, effects list, and production notes"
+    agent: "sound_designer"
+    dependencies:
+      - "write_script"
+    asyncExecution: false
+    humanInput: false
+
+  finalize_episode:
+    description: "Review the complete episode package. Verify script-sound alignment, check timing, write show notes, and prepare the episode description for publishing."
+    expectedOutput: "Final episode package with reviewed script, sound brief, show notes, and publishing metadata"
+    agent: "final_editor"
+    dependencies:
+      - "design_sound"
+    asyncExecution: false
+    humanInput: false

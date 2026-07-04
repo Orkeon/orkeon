@@ -1,0 +1,127 @@
+# 50. Imagerie Medicale — Radiologue Dernier Mot
+# Use case: Le rapport est genere automatiquement mais jamais finalise sans validation du Radiologue humain
+# Source: project/marketing/content-strategy/101-USE-CASES.md #50
+
+name: "radiology-assistant"
+goal: "Assist radiology reporting with automated analysis while ensuring the radiologist has final authority over every report"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  preprocessor:
+    role: "Image Preprocessing Agent"
+    goal: "Prepare and preprocess medical images for analysis"
+    backstory: |
+      Medical image processing specialist who prepares DICOM images for analysis.
+      Applies windowing, contrast adjustments, and quality checks.
+      Extracts DICOM metadata (patient info, study parameters, acquisition details)
+      and links to prior studies from encrypted memory.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  roi_analyst:
+    role: "Region of Interest Analyst"
+    goal: "Identify and characterize regions of interest in medical images"
+    backstory: |
+      Radiological AI analyst who identifies potential regions of interest:
+      abnormal densities, masses, calcifications, effusions, and anatomical variants.
+      Characterizes each finding with location, size, morphology, and confidence score.
+      All findings are preliminary and require radiologist validation.
+    tools:
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  history_comparator:
+    role: "Historical Comparison Analyst"
+    goal: "Compare current findings with patient imaging history to detect changes"
+    backstory: |
+      Longitudinal imaging specialist who retrieves prior studies from encrypted
+      patient memory and compares current findings against historical baseline.
+      Tracks lesion progression, new findings, and resolved findings over time.
+    tools:
+      - "json_tool"
+      - "file_read"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  report_writer:
+    role: "Radiology Report Drafter"
+    goal: "Draft structured radiology report incorporating all analyses"
+    backstory: |
+      Radiology reporting specialist who compiles preprocessing data, ROI findings,
+      and historical comparisons into a structured report following ACR standards.
+      The draft is always marked as preliminary pending radiologist review.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  radiologist:
+    role: "Supervising Radiologist"
+    goal: "Review, modify, and sign off on the final radiology report"
+    backstory: |
+      Board-certified radiologist with final authority over every report.
+      Reviews all AI-generated findings, modifies as needed, adds clinical
+      impressions, and signs the report. No report is ever auto-validated.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  preprocess_images:
+    description: "Load and preprocess medical images. Extract DICOM metadata, apply quality checks, and retrieve patient imaging history from encrypted memory for comparison."
+    expectedOutput: "JSON preprocessing report with DICOM metadata, quality assessment, and links to prior studies"
+    agent: "preprocessor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  analyze_roi:
+    description: "Analyze preprocessed images for regions of interest. Identify and characterize each finding: location (anatomical reference), size, morphology, enhancement pattern, and confidence score."
+    expectedOutput: "JSON findings list with location, characterization, measurements, confidence scores, and BI-RADS/LI-RADS/Lung-RADS classification where applicable"
+    agent: "roi_analyst"
+    dependencies:
+      - "preprocess_images"
+    asyncExecution: false
+    humanInput: false
+
+  compare_history:
+    description: "Compare current findings with prior imaging studies from patient history. Track changes: new findings, resolved findings, stable findings, and progressed findings with measurements."
+    expectedOutput: "JSON comparison report with change tracking per finding, temporal progression analysis, and interval change summary"
+    agent: "history_comparator"
+    dependencies:
+      - "analyze_roi"
+    asyncExecution: false
+    humanInput: false
+
+  draft_report:
+    description: "Draft structured radiology report incorporating all findings, historical comparison, and clinical context. Follow ACR reporting standards. Mark as PRELIMINARY - pending radiologist review."
+    expectedOutput: "Structured radiology report draft with findings, impression, comparison, recommendations, and PRELIMINARY watermark"
+    agent: "report_writer"
+    dependencies:
+      - "compare_history"
+    asyncExecution: false
+    humanInput: false
+
+  radiologist_review:
+    description: "Radiologist reviews the complete draft report. Modify findings, add clinical impressions, adjust recommendations, and sign the final report. Convert from PRELIMINARY to FINAL."
+    expectedOutput: "Signed final radiology report with radiologist modifications, clinical impressions, and formal sign-off"
+    agent: "radiologist"
+    dependencies:
+      - "draft_report"
+    asyncExecution: false
+    humanInput: true

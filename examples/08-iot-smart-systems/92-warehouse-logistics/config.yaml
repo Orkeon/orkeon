@@ -1,0 +1,119 @@
+# 92. Logistique Warehouse — Batch Haute Performance
+# Use case: high-performance parallel warehouse operations with batch execution and rate limiting
+# Source: project/marketing/content-strategy/101-USE-CASES.md #92
+
+name: "warehouse-logistics"
+goal: "Execute high-performance parallel warehouse operations for real-time order management using batch execution and rate limiting to maximize throughput while protecting backend systems"
+process: "parallel"
+verbose: true
+memory: true
+memoryProvider: "Redis"
+planning: false
+
+agents:
+  order_orchestrator:
+    role: "Order Orchestrator"
+    goal: "Receive and prioritize incoming orders, orchestrate picking waves for maximum throughput"
+    backstory: |
+      You manage the incoming order flow in the warehouse management system.
+      You batch orders into efficient picking waves based on warehouse zone
+      proximity, delivery priority, and carrier pickup schedules. You use
+      TaskPriority to escalate urgent orders (same-day, express) and batch
+      execution to process multiple orders simultaneously.
+    tools:
+      - "http_api"
+      - "database_query"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 15
+    verbose: true
+
+  agv_router:
+    role: "AGV Route Controller"
+    goal: "Optimize automated guided vehicle routes for efficient warehouse traversal and pick operations"
+    backstory: |
+      You control the fleet of automated guided vehicles (AGVs) in the
+      warehouse. You calculate optimal routes to minimize travel time and
+      avoid congestion. You handle real-time rerouting when paths are
+      blocked and coordinate multiple AGVs to prevent deadlocks. You
+      interface with the WMS for real-time warehouse map updates.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  inventory_tracker:
+    role: "Real-Time Inventory Tracker"
+    goal: "Maintain accurate real-time inventory counts and manage stock level alerts"
+    backstory: |
+      You maintain the real-time inventory database. You process inventory
+      movements (picks, putaways, adjustments, receipts) and keep stock
+      levels accurate. You trigger reorder alerts when stock falls below
+      safety thresholds and flag discrepancies for cycle counts.
+    tools:
+      - "database_query"
+      - "json_tool"
+      - "http_api"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  quality_agent:
+    role: "Quality Assurance Agent"
+    goal: "Verify order accuracy, packaging quality, and shipping label correctness before dispatch"
+    backstory: |
+      You perform quality checks on packed orders before they leave the
+      warehouse. You verify item counts match the order, check packaging
+      integrity, validate shipping labels, and ensure hazmat items are
+      properly marked. You flag failed checks for immediate correction.
+    tools:
+      - "json_tool"
+      - "http_api"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  receive_orders:
+    description: "Pull new orders from the WMS, validate order details, and batch them into picking waves by zone proximity and priority level"
+    expectedOutput: "Picking wave plan with orders grouped by zone, prioritized by delivery SLA, and estimated completion times"
+    agent: "order_orchestrator"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  route_agvs:
+    description: "Calculate optimal AGV routes for the current picking wave, assign vehicles to zones, and manage real-time traffic flow"
+    expectedOutput: "AGV routing plan with vehicle assignments, estimated route times, and congestion avoidance strategies"
+    agent: "agv_router"
+    dependencies: ["receive_orders"]
+    asyncExecution: true
+    humanInput: false
+
+  track_inventory:
+    description: "Process all inventory movements from the current wave, update stock levels in real-time, and check for reorder triggers"
+    expectedOutput: "Updated inventory snapshot with movement log, low-stock alerts, and discrepancy flags requiring cycle counts"
+    agent: "inventory_tracker"
+    dependencies: ["receive_orders"]
+    asyncExecution: true
+    humanInput: false
+
+  quality_check:
+    description: "Perform quality verification on all packed orders: item count, packaging integrity, label accuracy, and special handling compliance"
+    expectedOutput: "Quality check report with pass/fail per order, failure details, and overall wave quality rate"
+    agent: "quality_agent"
+    dependencies: ["route_agvs", "track_inventory"]
+    asyncExecution: false
+    humanInput: false
+
+  wave_report:
+    description: "Generate picking wave performance report with throughput metrics, error rates, AGV utilization, and SLA compliance"
+    expectedOutput: "Wave performance dashboard with orders/hour, pick accuracy, AGV utilization %, SLA hit rate, and bottleneck analysis"
+    agent: "order_orchestrator"
+    dependencies: ["quality_check"]
+    asyncExecution: false
+    humanInput: false

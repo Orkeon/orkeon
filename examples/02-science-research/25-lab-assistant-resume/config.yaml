@@ -1,0 +1,110 @@
+# 25. Assistant de Laboratoire avec Reprise d'Experiences
+# Use case: Lab assistant connected to IoT instruments with checkpoint/resume for experiment recovery
+# Source: project/marketing/content-strategy/101-USE-CASES.md #25
+
+name: "lab-assistant-resume"
+goal: "Manage laboratory experiments with IoT instrument monitoring, checkpoint-based recovery on interruption, and literature comparison"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  experiment_planner:
+    role: "Planificateur Experiences"
+    goal: "Design experimental protocols with parameters, controls, and expected outcomes"
+    backstory: |
+      You are a research scientist who designs rigorous experimental protocols.
+      You define variables, controls, measurement points, sample sizes, and
+      success criteria. You anticipate potential failure modes and include
+      contingency procedures.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  iot_monitor:
+    role: "Moniteur IoT"
+    goal: "Monitor laboratory instruments via IoT APIs and flag anomalous readings"
+    backstory: |
+      You are a lab automation specialist who monitors instruments in real time.
+      You read sensor data (temperature, pressure, pH, flow rates), detect
+      out-of-range values, identify instrument malfunctions, and trigger alerts
+      when readings deviate from expected parameters.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  results_recorder:
+    role: "Enregistreur Resultats"
+    goal: "Record experimental results with timestamps, measurements, and quality indicators"
+    backstory: |
+      You are a meticulous lab technician who records experimental data with
+      precision. You capture all measurements with timestamps, note environmental
+      conditions, flag quality issues, and maintain a complete audit trail of
+      the experiment.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  literature_comparator:
+    role: "Comparateur Litterature"
+    goal: "Compare experimental results with published literature to contextualize findings"
+    backstory: |
+      You are a research analyst who compares experimental results with published
+      literature. You search for comparable studies, assess whether results align
+      with or contradict existing findings, and identify novel contributions
+      or potential errors.
+    tools:
+      - "web_scrape"
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  plan_experiment:
+    description: "Design the experimental protocol: define variables, controls, measurement schedule, expected outcomes, and failure mode contingencies."
+    expectedOutput: "JSON protocol with: hypothesis, variables{independent, dependent, controlled}, measurements_schedule[], expected_outcomes, contingency_plans[]"
+    agent: "experiment_planner"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  monitor_instruments:
+    description: "Connect to laboratory IoT instruments and monitor readings. Flag any out-of-range values or instrument malfunctions. Checkpoint state at each measurement point."
+    expectedOutput: "JSON with: readings[{instrument, timestamp, value, unit, status}], alerts[], instrument_health{}, checkpoint_id"
+    agent: "iot_monitor"
+    dependencies:
+      - "plan_experiment"
+    asyncExecution: false
+    humanInput: false
+
+  record_results:
+    description: "Record all experimental measurements with timestamps and quality indicators. Compile into a structured dataset with environmental conditions noted."
+    expectedOutput: "JSON with: dataset[{measurement, value, timestamp, quality_flag}], environmental_conditions{}, data_quality_summary"
+    agent: "results_recorder"
+    dependencies:
+      - "monitor_instruments"
+    asyncExecution: false
+    humanInput: false
+
+  compare_literature:
+    description: "Compare experimental results with published literature. Find comparable studies, assess alignment or divergence, and contextualize findings."
+    expectedOutput: "Markdown comparison report with: results_summary, comparable_studies[], alignment_analysis, novel_findings[], discrepancies[], conclusions"
+    agent: "literature_comparator"
+    dependencies:
+      - "record_results"
+    asyncExecution: false
+    humanInput: false

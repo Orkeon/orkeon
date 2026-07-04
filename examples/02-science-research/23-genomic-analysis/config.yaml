@@ -1,0 +1,100 @@
+# 23. Analyse Genomique avec Chunking
+# Use case: Hierarchical genomic analysis with text chunking for long FASTA sequences and encrypted data
+# Source: project/marketing/content-strategy/101-USE-CASES.md #23
+
+name: "genomic-analysis"
+goal: "Analyze genomic sequences using chunking for long FASTA files, encrypted storage, and hierarchical coordination by a bioinformatics lead"
+process: "hierarchical"
+verbose: true
+memory: true
+planning: false
+managerAgent: "bioinfo_lead"
+
+agents:
+  bioinfo_lead:
+    role: "Bio-informaticien Lead"
+    goal: "Coordinate genomic analysis pipeline and ensure quality of variant annotations and clinical interpretations"
+    backstory: |
+      You are a senior bioinformatician who leads genomic analysis projects.
+      You coordinate sequencing QC, variant calling, annotation, and clinical
+      interpretation. You ensure analysis pipelines follow ACMG guidelines and
+      that all results are reproducible.
+    tools:
+      - "json_tool"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  sequencer:
+    role: "Sequenceur"
+    goal: "Process raw genomic sequence files, perform QC, and prepare data for variant analysis"
+    backstory: |
+      You are a genomics data engineer who handles raw sequencing data. You
+      process FASTA/FASTQ files, perform quality control (base quality, read
+      depth, coverage), chunk long sequences for manageable analysis, and
+      prepare clean data for downstream variant calling.
+    tools:
+      - "file_read"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  variant_annotator:
+    role: "Annotateur Variants"
+    goal: "Identify and annotate genetic variants with functional predictions and population frequencies"
+    backstory: |
+      You are a variant annotation specialist who identifies SNPs, indels, and
+      structural variants. You annotate each variant with gene location, functional
+      effect (missense, nonsense, splice), population frequency (gnomAD), and
+      pathogenicity predictions (SIFT, PolyPhen, CADD).
+    tools:
+      - "http_api"
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  clinical_interpreter:
+    role: "Interpreteur Clinique"
+    goal: "Provide clinical interpretation of variants following ACMG guidelines"
+    backstory: |
+      You are a clinical geneticist who interprets genomic variants in clinical
+      context. You classify variants using ACMG criteria (pathogenic, likely
+      pathogenic, VUS, likely benign, benign), cross-reference ClinVar and
+      literature, and produce clinical reports for healthcare providers.
+    tools:
+      - "http_api"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  process_sequences:
+    description: "Process raw genomic sequence files. Perform QC checks (base quality, coverage depth). Chunk long sequences for context window compatibility. Output cleaned data summary."
+    expectedOutput: "JSON with: qc_metrics{total_reads, avg_quality, coverage_depth}, chunks_created, quality_flags[], cleaned_data_summary"
+    agent: "sequencer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  annotate_variants:
+    description: "Identify variants from processed sequences. Annotate with gene location, functional effect, population frequency (gnomAD), and pathogenicity predictions (SIFT, PolyPhen, CADD)."
+    expectedOutput: "JSON array of variants with: position, ref, alt, gene, effect, gnomad_freq, sift_score, polyphen_score, cadd_score"
+    agent: "variant_annotator"
+    dependencies:
+      - "process_sequences"
+    asyncExecution: false
+    humanInput: false
+
+  interpret_clinically:
+    description: "Classify annotated variants using ACMG criteria. Cross-reference ClinVar. Produce a clinical interpretation report with actionable findings."
+    expectedOutput: "Markdown clinical report with: patient_summary, variants_classified[{variant, acmg_class, evidence, clinvar_status}], actionable_findings[], recommendations"
+    agent: "clinical_interpreter"
+    dependencies:
+      - "annotate_variants"
+    asyncExecution: false
+    humanInput: false

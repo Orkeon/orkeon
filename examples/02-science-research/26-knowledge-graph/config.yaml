@@ -1,0 +1,130 @@
+# 26. Construction de Graphe de Connaissances
+# Use case: Iterative knowledge graph construction via FlowEngine with 5 agents and feedback loops
+# Source: project/marketing/content-strategy/101-USE-CASES.md #26
+
+name: "knowledge-graph"
+goal: "Build a knowledge graph iteratively through cyclic refinement via FlowEngine with entity extraction, relation detection, and contradiction resolution"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+# Note: This example uses FlowEngine for cyclic processing.
+# The process is set to sequential as the base, with FlowEngine managing cycles.
+
+agents:
+  entity_extractor:
+    role: "Extracteur Entites"
+    goal: "Extract named entities, concepts, and their attributes from source documents"
+    backstory: |
+      You are a knowledge engineer who extracts entities from text. You identify
+      people, organizations, concepts, technologies, locations, and events. You
+      normalize entity names, resolve coreferences, and assign entity types
+      following a predefined ontology.
+    tools:
+      - "pdf_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  relation_detector:
+    role: "Detecteur Relations"
+    goal: "Identify and classify relationships between extracted entities"
+    backstory: |
+      You are a computational linguist who detects semantic relationships between
+      entities. You identify hierarchical (is-a, part-of), causal, temporal,
+      spatial, and domain-specific relations. You assign confidence scores and
+      cite evidence for each relation.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  taxonomic_classifier:
+    role: "Classificateur Taxonomique"
+    goal: "Organize entities and relations into a coherent taxonomic hierarchy"
+    backstory: |
+      You are an ontologist who builds coherent knowledge structures. You organize
+      entities into taxonomic hierarchies, ensure consistent classification,
+      merge duplicate categories, and validate that the taxonomy is both complete
+      and non-redundant.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  contradiction_detector:
+    role: "Detecteur Contradictions"
+    goal: "Identify and resolve contradictions within the knowledge graph"
+    backstory: |
+      You are a logic specialist who ensures knowledge graph consistency. You
+      detect contradictory facts, circular definitions, temporal inconsistencies,
+      and conflicting relation types. You propose resolutions based on source
+      reliability and evidence strength.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  graph_visualizer:
+    role: "Visualisateur Graphe"
+    goal: "Generate graph visualization data and summary statistics"
+    backstory: |
+      You are a data visualization specialist who creates graph representations.
+      You generate node/edge data structures, compute graph metrics (density,
+      centrality, clustering), identify key hubs, and produce visualization
+      configurations for rendering.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  extract_entities:
+    description: "Extract named entities from source documents. Identify types (person, org, concept, tech), normalize names, resolve coreferences, and assign to ontology categories."
+    expectedOutput: "JSON with: entities[{id, name, type, aliases[], attributes{}, source_evidence}], entity_count, type_distribution{}"
+    agent: "entity_extractor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  detect_relations:
+    description: "Identify relationships between extracted entities. Classify relation types, assign confidence scores, and cite evidence from source documents."
+    expectedOutput: "JSON with: relations[{source_entity, target_entity, type, confidence, evidence}], relation_count, type_distribution{}"
+    agent: "relation_detector"
+    dependencies:
+      - "extract_entities"
+    asyncExecution: false
+    humanInput: false
+
+  classify_taxonomy:
+    description: "Organize entities and relations into a coherent taxonomic hierarchy. Merge duplicates, ensure consistency, and validate completeness."
+    expectedOutput: "JSON with: taxonomy_tree{}, merged_entities[], classification_conflicts[], completeness_assessment"
+    agent: "taxonomic_classifier"
+    dependencies:
+      - "detect_relations"
+    asyncExecution: false
+    humanInput: false
+
+  detect_contradictions:
+    description: "Scan the knowledge graph for contradictions, circular definitions, and inconsistencies. Propose resolutions based on evidence strength."
+    expectedOutput: "JSON with: contradictions[{entities, issue, evidence_for, evidence_against, proposed_resolution}], consistency_score"
+    agent: "contradiction_detector"
+    dependencies:
+      - "classify_taxonomy"
+    asyncExecution: false
+    humanInput: false
+
+  visualize_graph:
+    description: "Generate graph visualization data with nodes, edges, and layout hints. Compute graph metrics and produce a summary report."
+    expectedOutput: "JSON with: graph{nodes[], edges[]}, metrics{density, avg_degree, top_hubs[]}, visualization_config, summary_report"
+    agent: "graph_visualizer"
+    dependencies:
+      - "detect_contradictions"
+    asyncExecution: false
+    humanInput: false

@@ -1,0 +1,137 @@
+# 86. Maison Intelligente — Protocole A2A Natif
+# Use case: smart home where each subsystem is an agent with A2A discovery and broadcast communication
+# Source: project/marketing/content-strategy/101-USE-CASES.md #86
+
+name: "smart-home-a2a"
+goal: "Orchestrate a smart home where each subsystem (heating, lighting, security, energy) is an autonomous agent communicating via A2A protocol with automatic discovery and broadcast state changes"
+process: "parallel"
+verbose: true
+memory: true
+memoryProvider: "Redis"
+planning: false
+managerAgent: "home_supervisor"
+
+agents:
+  home_supervisor:
+    role: "Smart Home Supervisor"
+    goal: "Coordinate all home subsystems and ensure coherent global behavior"
+    backstory: |
+      You are the central intelligence of the smart home. You oversee all subsystems,
+      detect conflicts (e.g., heating vs energy saving), and ensure the home operates
+      as a unified system. You discover available agents via A2A protocol and route
+      commands to the appropriate subsystems.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: true
+    maxIter: 15
+    verbose: true
+
+  heating_agent:
+    role: "Heating & Climate Control Agent"
+    goal: "Maintain optimal temperature and air quality across all rooms"
+    backstory: |
+      You manage the HVAC system including heating, cooling, and ventilation.
+      You read temperature sensors via IoT APIs and adjust parameters based on
+      occupancy, time of day, and energy budget constraints. You broadcast
+      state changes so other subsystems can adapt.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  lighting_agent:
+    role: "Lighting Control Agent"
+    goal: "Manage lighting scenes based on occupancy, time, and user preferences"
+    backstory: |
+      You control all smart lights in the home. You adjust brightness, color
+      temperature, and scenes based on room occupancy detected by sensors,
+      time of day, and natural light levels. You coordinate with the energy
+      agent to respect power budgets.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  security_agent:
+    role: "Home Security Agent"
+    goal: "Monitor security sensors and manage alarm states and access control"
+    backstory: |
+      You manage the security subsystem including motion detectors, door/window
+      sensors, cameras, and alarm system. You broadcast alerts when anomalies
+      are detected and coordinate with lighting agent for security illumination
+      protocols.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  energy_agent:
+    role: "Energy Management Agent"
+    goal: "Optimize energy consumption and manage solar/battery resources"
+    backstory: |
+      You monitor the overall energy consumption and manage distributed energy
+      resources (solar panels, battery storage, grid connection). You set power
+      budgets for other subsystems and broadcast energy state so all agents
+      can adapt their behavior to current availability.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  discover_subsystems:
+    description: "Discover all available smart home subsystems via A2A agent discovery protocol and build the current system topology map"
+    expectedOutput: "JSON map of all discovered agents with their capabilities (AgentCard and AgentSkill)"
+    agent: "home_supervisor"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  monitor_climate:
+    description: "Read all temperature, humidity, and air quality sensors via IoT APIs and determine required HVAC adjustments for each zone"
+    expectedOutput: "Climate status report with recommended adjustments per room in JSON format"
+    agent: "heating_agent"
+    dependencies: ["discover_subsystems"]
+    asyncExecution: true
+    humanInput: false
+
+  manage_lighting:
+    description: "Evaluate occupancy and natural light levels for each room and set appropriate lighting scenes"
+    expectedOutput: "Lighting state report with active scenes per room in JSON format"
+    agent: "lighting_agent"
+    dependencies: ["discover_subsystems"]
+    asyncExecution: true
+    humanInput: false
+
+  check_security:
+    description: "Poll all security sensors, evaluate threat level, and update alarm state accordingly"
+    expectedOutput: "Security status report with threat assessment and any triggered alerts in JSON format"
+    agent: "security_agent"
+    dependencies: ["discover_subsystems"]
+    asyncExecution: true
+    humanInput: false
+
+  optimize_energy:
+    description: "Analyze current energy consumption, solar production, battery state, and grid prices to set power budgets for each subsystem"
+    expectedOutput: "Energy optimization plan with power budgets per subsystem in JSON format"
+    agent: "energy_agent"
+    dependencies: ["discover_subsystems"]
+    asyncExecution: true
+    humanInput: false
+
+  coordinate_actions:
+    description: "Resolve conflicts between subsystem decisions (e.g., heating demand vs energy budget) and broadcast final coordinated actions"
+    expectedOutput: "Final coordinated action plan with resolved conflicts and broadcast confirmation"
+    agent: "home_supervisor"
+    dependencies: ["monitor_climate", "manage_lighting", "check_security", "optimize_energy"]
+    asyncExecution: false
+    humanInput: false

@@ -1,0 +1,28 @@
+name: factor_exposure
+description: >
+  Analyzes portfolio factor exposures using multi-factor risk model (Barra-style).
+  Decomposes risk into systematic factors: market, size, value, momentum, volatility, quality, liquidity.
+  Identifies factor concentrations, diversification, and residual risk.
+parameters:
+  portfolio_positions:
+    type: array
+    description: "Portfolio positions with symbol, weight, and optional factor loadings"
+    required: true
+  factor_returns:
+    type: object
+    description: "Dictionary of factor name -> historical returns array (optional, will use defaults if not provided)"
+    required: false
+  benchmark:
+    type: string
+    description: "Benchmark symbol for relative factor analysis (e.g., 'SPY')"
+    required: false
+    default: "SPY"
+returns:
+  timestamp: { type: string }
+  benchmark: { type: string }
+  factor_exposures: { type: object }
+  risk_decomposition: { type: object }
+  factor_concentrations: { type: array }
+  factor_correlation_matrix: { type: object }
+  diversification_metrics: { type: object }
+  recommendations: { type: array }

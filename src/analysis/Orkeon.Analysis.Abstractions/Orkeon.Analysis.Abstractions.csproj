@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Analysis.Abstractions</PackageId>
+    <Description>Abstractions for Orkeon RaggableTree: interfaces, DTOs, and domain models used for multi-language code analysis.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Analysis;RaggableTree;Abstractions</PackageTags>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Analysis" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Analysis" />
+    <InternalsVisibleTo Include="Orkeon.Analysis.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Analysis.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TreeSitter.DotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

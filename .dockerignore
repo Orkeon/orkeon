@@ -1,0 +1,14 @@
+**/.git
+**/bin
+**/obj
+**/artifacts
+**/.vs
+**/.vscode
+**/node_modules
+**/*.user
+**/*.suo
+_site
+sonarqube
+*.md
+!README.md
+!nuget/README.md

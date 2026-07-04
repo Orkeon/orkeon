@@ -1,0 +1,106 @@
+# 68. Migration de Base de Donnees — Reprise Exacte
+# Use case: Database migration with exact checkpoint-based resume on failure
+# Source: project/marketing/content-strategy/101-USE-CASES.md #68
+
+name: "database-migration"
+goal: "Execute database migrations with checkpoint at each step and exact resume on failure"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+
+agents:
+  schema_cartographer:
+    role: "Schema Cartographer"
+    goal: "Map the source database schema and identify all objects to migrate"
+    backstory: |
+      You are a database architect who analyzes and documents database schemas.
+      You identify tables, relationships, constraints, indexes, stored procedures,
+      and triggers, creating a complete migration inventory.
+    tools:
+      - "database_query"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  correspondence_mapper:
+    role: "Correspondence Mapper"
+    goal: "Map source schema objects to target schema with transformation rules"
+    backstory: |
+      You are a data migration specialist who creates correspondence mappings
+      between source and target database schemas. You handle data type conversions,
+      naming conventions, and structural differences between database platforms.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  script_transformer:
+    role: "Script Transformer"
+    goal: "Generate migration scripts based on the correspondence mapping"
+    backstory: |
+      You are a database developer who writes migration scripts. You generate
+      DDL and DML scripts for schema creation, data transformation, and data
+      loading. Each script is idempotent and checkpoint-friendly.
+    tools:
+      - "file_read"
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  integrity_validator:
+    role: "Integrity Validator"
+    goal: "Validate referential integrity and data completeness after migration"
+    backstory: |
+      You are a data quality engineer who validates migration results.
+      You verify referential integrity, row counts, data type consistency,
+      constraint satisfaction, and business rule compliance in the target database.
+    tools:
+      - "database_query"
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  map_source_schema:
+    description: "Analyze the source database schema. Catalog all tables, columns, relationships, constraints, indexes, and stored procedures. Create a complete migration inventory."
+    expectedOutput: "JSON schema inventory with all database objects, relationships, and dependencies"
+    agent: "schema_cartographer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  create_correspondences:
+    description: "Create a correspondence mapping between source and target schemas. Define data type mappings, naming translations, and transformation rules for each object."
+    expectedOutput: "JSON correspondence map with source-to-target mappings and transformation rules"
+    agent: "correspondence_mapper"
+    dependencies:
+      - "map_source_schema"
+    asyncExecution: false
+    humanInput: false
+
+  generate_scripts:
+    description: "Generate idempotent migration scripts based on the correspondence mapping. Include DDL for schema, DML for data, and verification queries. Each script is checkpoint-friendly."
+    expectedOutput: "Set of migration script files with execution order, rollback scripts, and verification queries"
+    agent: "script_transformer"
+    dependencies:
+      - "create_correspondences"
+    asyncExecution: false
+    humanInput: false
+
+  validate_integrity:
+    description: "Execute validation queries on the target database. Verify referential integrity, row counts, data types, constraints, and business rules. Report any discrepancies."
+    expectedOutput: "Validation report with integrity checks, row count comparisons, and discrepancy details"
+    agent: "integrity_validator"
+    dependencies:
+      - "generate_scripts"
+    asyncExecution: false
+    humanInput: false

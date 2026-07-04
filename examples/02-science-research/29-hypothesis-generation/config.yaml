@@ -1,0 +1,109 @@
+# 29. Generation et Test d'Hypotheses Cyclique
+# Use case: Cyclic hypothesis generation via FlowEngine: observation -> hypothesis -> critique -> experimental planning
+# Source: project/marketing/content-strategy/101-USE-CASES.md #29
+
+name: "hypothesis-generation"
+goal: "Generate and test scientific hypotheses through a cyclic FlowEngine process: observation, hypothesis creation, critique, and experimental planning"
+process: "sequential"
+verbose: true
+memory: true
+planning: false
+# Note: This example uses FlowEngine for cyclic processing.
+# The process is set to sequential as the base, with FlowEngine managing cycles.
+
+agents:
+  pattern_observer:
+    role: "Observateur Patterns"
+    goal: "Observe data patterns and anomalies that could lead to new scientific hypotheses"
+    backstory: |
+      You are a data-driven researcher who excels at pattern recognition. You
+      analyze datasets for unexpected correlations, outliers, temporal patterns,
+      and anomalies that don't fit existing models. You prioritize observations
+      by novelty and potential significance.
+    tools:
+      - "csv_reader"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  hypothesis_creator:
+    role: "Creatif Hypotheses"
+    goal: "Generate testable scientific hypotheses based on observed patterns"
+    backstory: |
+      You are a creative scientist who generates novel, testable hypotheses
+      from observed data patterns. You formulate clear null and alternative
+      hypotheses, identify confounding variables, and assess the potential
+      impact if the hypothesis is confirmed. You think laterally while
+      maintaining scientific rigor.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  hypothesis_critic:
+    role: "Critique"
+    goal: "Critically evaluate hypotheses for logical consistency, testability, and existing evidence"
+    backstory: |
+      You are a rigorous scientific critic who evaluates hypotheses for flaws.
+      You check logical consistency, testability, parsimony, compatibility
+      with existing evidence, and potential confounders. You rate each
+      hypothesis by scientific quality and suggest improvements.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  experimental_planner:
+    role: "Planificateur Experimental"
+    goal: "Design experiments to test the strongest hypotheses"
+    backstory: |
+      You are an experimental designer who translates hypotheses into testable
+      experiments. You define experimental variables, controls, sample sizes
+      (power analysis), measurement methods, and analysis plans. You optimize
+      for conclusiveness while minimizing resource requirements.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  observe_patterns:
+    description: "Analyze the dataset for unexpected patterns, anomalies, correlations, and deviations from existing models. Rank observations by novelty and significance."
+    expectedOutput: "JSON with: observations[{pattern, description, novelty_score, significance_score, data_support}], dataset_summary, anomalies[]"
+    agent: "pattern_observer"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  generate_hypotheses:
+    description: "Generate testable scientific hypotheses based on the observed patterns. Formulate null and alternative hypotheses, identify confounders, and assess potential impact."
+    expectedOutput: "JSON with: hypotheses[{id, null_hypothesis, alternative_hypothesis, based_on_pattern, confounders[], potential_impact, testability_score}]"
+    agent: "hypothesis_creator"
+    dependencies:
+      - "observe_patterns"
+    asyncExecution: false
+    humanInput: false
+
+  critique_hypotheses:
+    description: "Critically evaluate each hypothesis for logical consistency, testability, parsimony, and compatibility with existing evidence. Score and rank hypotheses."
+    expectedOutput: "JSON with: evaluations[{hypothesis_id, logical_consistency, testability, parsimony, evidence_compatibility, overall_score, improvements[]}], ranking[]"
+    agent: "hypothesis_critic"
+    dependencies:
+      - "generate_hypotheses"
+    asyncExecution: false
+    humanInput: false
+
+  plan_experiments:
+    description: "Design experiments to test the top-ranked hypotheses. Define variables, controls, sample sizes, measurement methods, and statistical analysis plans."
+    expectedOutput: "JSON with: experiments[{hypothesis_id, design, variables{iv, dv, controls}, sample_size, power_analysis, methods, analysis_plan, estimated_resources}]"
+    agent: "experimental_planner"
+    dependencies:
+      - "critique_hypotheses"
+    asyncExecution: false
+    humanInput: false

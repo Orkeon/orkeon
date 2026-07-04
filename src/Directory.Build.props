@@ -1,0 +1,55 @@
+<Project>
+  <!-- Importer le Directory.Build.props parent (dual-OS, Debug/Release) -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    
+    <!-- NuGet Package Properties -->
+    <VersionPrefix>0.9.1</VersionPrefix>
+    <VersionSuffix>beta</VersionSuffix>
+    <Authors>Orkeon Contributors</Authors>
+    <Company>Orkeon</Company>
+    <Product>Orkeon</Product>
+    <PackageProjectUrl>https://github.com/Orkeon/orkeon</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>AI;Agents;LLM;OpenAI;Anthropic;Orkeon</PackageTags>
+    <Description>Build and orchestrate AI agent teams in .NET</Description>
+    <Copyright>Copyright (c) 2024-2026 Orkeon Contributors</Copyright>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Warnings policy (R6.8) — restore the async signal and freeze the debt.
+
+         1. CS1998 (async method lacks await) is NO LONGER globally suppressed
+            (the previous `<NoWarn>$(NoWarn);CS1998</NoWarn>` was removed). A
+            forgotten `await` on a real async path used to compile and run
+            silently; it now surfaces. Legitimate trivial async implementations
+            (e.g. an interface-imposed async signature with no awaitable work)
+            must use a LOCAL, commented `#pragma warning disable CS1998`.
+
+         2. Budget on the NEW only: CS1998 is escalated to a build ERROR via
+            WarningsAsErrors so any newly introduced async-without-await breaks
+            the build. The ~2 283 pre-existing analyzer warnings are NOT
+            promoted (no global TreatWarningsAsErrors), so the existing debt is
+            frozen as a baseline without retroactively blocking the repo.
+            Extend the WarningsAsErrors list below as further rules are cleaned
+            to ratchet the budget down over time.
+
+         3. CS1574 (unresolvable XML doc cref) resorbed to zero on 2026-06-12
+            (zero-warning campaign) and frozen as an error. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS1998;CS1574</WarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- VFS compliance analyzer: forbids direct System.IO usage in framework code.
+       Path-based exemptions live in SystemIoUsageAnalyzer.IsExemptByPath.
+       Opt out per symbol with [SuppressVfsCompliance("reason")]. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Orkeon.Compliance.Vfs'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)analyzers\Orkeon.Compliance.Vfs\Orkeon.Compliance.Vfs.csproj">
+      <OutputItemType>Analyzer</OutputItemType>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,53 @@
+name: portfolio_rebalancing
+description: >
+  Generates optimal rebalancing trade list from current to target portfolio weights.
+  Minimizes transaction costs, supports threshold-based and calendar-based rebalancing.
+  Includes tax-loss harvesting opportunities and trade execution recommendations.
+parameters:
+  current_portfolio:
+    type: object
+    description: "Current portfolio: {symbol: {weight, quantity, price, cost_basis}}"
+    required: true
+  target_weights:
+    type: object
+    description: "Target portfolio weights (must sum to 1.0)"
+    required: true
+  portfolio_value:
+    type: number
+    description: "Total portfolio value"
+    required: true
+  rebalancing_threshold:
+    type: number
+    description: "Minimum weight deviation to trigger rebalancing (default: 0.05 = 5%)"
+    required: false
+    default: 0.05
+  commission_per_trade:
+    type: number
+    description: "Commission per trade in USD"
+    required: false
+    default: 0.0
+  tax_rate:
+    type: number
+    description: "Capital gains tax rate for tax-loss harvesting (default: 0.2 = 20%)"
+    required: false
+    default: 0.2
+  consider_tax_loss_harvesting:
+    type: boolean
+    description: "Consider tax-loss harvesting opportunities"
+    required: false
+    default: false
+  max_trades:
+    type: integer
+    description: "Maximum number of trades to execute (optional)"
+    required: false
+returns:
+  timestamp: { type: string }
+  portfolio_value: { type: number }
+  rebalancing_threshold: { type: number }
+  trades_count: { type: integer }
+  trades: { type: array }
+  total_turnover: { type: number }
+  estimated_costs: { type: object }
+  execution_plan: { type: object }
+  current_weights: { type: object }
+  target_weights: { type: object }

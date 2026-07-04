@@ -1,0 +1,494 @@
+using System.Text.Json;
+using CommandLine;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.SharedKernel;
+using Orkeon.Domain.Tools;
+using Orkeon.Hosting;
+using Orkeon.Scripting.Configuration;
+using Orkeon.Scripting.Internal;
+using Orkeon.Scripting.Toolchain;
+
+namespace Orkeon.Scripting.Cli.Commands;
+
+/// <summary>Parsed CLI options for the <c>run</c> verb.</summary>
+internal sealed class RunCommandOptions
+{
+    /// <summary>Path to the crew definition: a script (.ork.ts/.js) or a YAML crew (.yaml/.yml).</summary>
+    [Value(0, Required = true,
+        HelpText = "Path to the crew definition: .ork.ts/.js (Scripting DSL) or .yaml/.yml (YAML crew).")]
+    public string ScriptPath { get; set; } = string.Empty;
+
+        /// <summary>Path to appsettings.json (provides Llm section + RaggableTree).</summary>
+        [Option('s', "settings", Required = false,
+            HelpText = "Path to appsettings.json (defaults to same dir as script).")]
+        public string? SettingsPath { get; set; }
+
+        /// <summary>Repeatable mount strings in Docker-style format.</summary>
+        [Option('m', "mount", Required = false,
+            HelpText = "File system mount(s) in Docker-style format: <physical>:<virtual>:<rights>[;sub:rights]. Repeatable.")]
+        public IEnumerable<string> Mounts { get; set; } = [];
+
+        /// <summary>Allow mounts whose base path is outside the cwd.</summary>
+        [Option("allow-external-mounts", Required = false, Default = false,
+            HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist.")]
+        public bool AllowExternalMounts { get; set; }
+
+        /// <summary>Verbosity level 0-2 (aligned with YAML runner).</summary>
+        [Option('v', "verbose", Required = false, Default = 0,
+            HelpText = "Verbosity level: 0=quiet, 1=LLM & tool exchanges, 2=full debug.")]
+        public int Verbose { get; set; }
+
+        /// <summary>Enable LLM exchange logging to JSONL files.</summary>
+        [Option("llm-log", Required = false, Default = false,
+            HelpText = "Enable LLM exchange logging (writes JSONL to ./llm-logs unless --llm-log-path overrides).")]
+        public bool LlmLogEnabled { get; set; }
+
+        /// <summary>Custom directory for LLM exchange logs (implies --llm-log).</summary>
+        [Option("llm-log-path", Required = false, Default = null,
+            HelpText = "Directory for LLM exchange log files (.jsonl). Implies --llm-log.")]
+        public string? LlmLogPath { get; set; }
+
+        /// <summary>Inline JSON inputs forwarded to the script (assigned as global <c>inputs</c>).</summary>
+        [Option("inputs", HelpText = "Inline JSON inputs forwarded as a global `inputs` variable.")]
+        public string? InputsJson { get; set; }
+
+        /// <summary>Path to a JSON file holding the inputs.</summary>
+        [Option("inputs-file", HelpText = "Path to a JSON file holding the inputs.")]
+        public string? InputsFilePath { get; set; }
+
+        /// <summary>
+        /// Override the Jint memory limit for this run. Useful when a script
+        /// bundles large knowledge corpora or large prompt fixtures and the
+        /// default ceiling is too tight. Set to 0 to disable the limit
+        /// (use with care — runaway scripts will then OOM the host).
+        /// </summary>
+        [Option("memory-limit-mb", Required = false,
+            HelpText = "Jint memory limit in megabytes for this run (overrides appsettings). Set 0 to disable; default comes from Orkeon:Scripting:Limits:MemoryLimitBytes.")]
+        public long? MemoryLimitMb { get; set; }
+
+        /// <summary>
+        /// Repeatable <c>KEY=VALUE</c> variables forwarded to <c>CrewInput</c> — YAML crews only.
+        /// Mirrors the standard runner's <c>-V/--var</c>; ignored on the script (.ork.ts) path,
+        /// which receives structured inputs via <c>--inputs</c>/<c>--inputs-file</c> instead.
+        /// </summary>
+        [Option('V', "var", Required = false,
+            HelpText = "Variable for a YAML crew's CrewInput (KEY=VALUE). Repeatable. Used by task templates: {KEY} → VALUE. Ignored for .ork.ts scripts.")]
+        public IEnumerable<string> Variables { get; set; } = [];
+
+        /// <summary>Initial context string passed to <c>CrewInput</c> — YAML crews only.</summary>
+        [Option("initial-context", Required = false, Default = null,
+            HelpText = "Initial context string passed to a YAML crew's CrewInput. Ignored for .ork.ts scripts.")]
+        public string? InitialContext { get; set; }
+
+        /// <summary>Computed log path or null when logging is disabled.</summary>
+        internal string? ResolvedLlmLogPath
+        {
+            get
+            {
+                if (!LlmLogEnabled && string.IsNullOrWhiteSpace(LlmLogPath)) return null;
+                var dir = string.IsNullOrWhiteSpace(LlmLogPath) ? "llm-logs" : LlmLogPath;
+                return Path.GetFullPath(dir);
+            }
+        }
+}
+
+/// <summary>
+/// <c>orkeon run &lt;crew.ork.ts | crew.yaml&gt;</c> — runs a crew definition and emits its
+/// result on stdout. The dispatch is by file extension:
+/// <list type="bullet">
+///   <item><description><c>.yaml</c>/<c>.yml</c> → the shared one-shot YAML runner
+///   (<see cref="RunnerExecution.RunOneShotAsync"/>), identical to the standalone
+///   standard runner — loads the crew, kicks it off, prints the crew output.</description></item>
+///   <item><description><c>.ork.ts</c>/<c>.js</c> → the scripting host (esbuild + Jint),
+///   which evaluates the script and emits its <c>result</c> value as JSON.</description></item>
+/// </list>
+/// Both paths share the same host bootstrap surface: <c>--settings</c>, <c>--mount</c>,
+/// <c>--allow-external-mounts</c>, <c>--llm-log[-path]</c>, <c>--verbose</c>.
+/// </summary>
+internal static partial class RunCommand
+{
+    /// <summary>Concrete <see cref="RunnerOptionsBase"/> built from <see cref="RunCommandOptions"/> for the YAML path.</summary>
+    private sealed class YamlRunnerOptions : RunnerOptionsBase;
+
+    /// <summary>Serialization options for the primary result payload (relaxed escaping).</summary>
+    private static readonly JsonSerializerOptions ResultJsonOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    /// <summary>Serialization options for the ToString() fallback payload.</summary>
+    private static readonly JsonSerializerOptions FallbackJsonOptions = new()
+    {
+        WriteIndented = true,
+    };
+
+    /// <summary>Loads the script and executes it; returns the CLI exit code.</summary>
+    public static Task<int> ExecuteAsync(RunCommandOptions options)
+    {
+        // Validate eagerly (synchronously) so a null argument surfaces at the call
+        // site rather than being captured inside the returned Task (S4457).
+        ArgumentNullException.ThrowIfNull(options);
+        return ExecuteCoreAsync(options);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: after cancellation, file-not-found and esbuild errors are handled specifically, any other unexpected failure is converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
+    private static async Task<int> ExecuteCoreAsync(RunCommandOptions options)
+    {
+        // Dispatch by extension BEFORE any script-specific setup (esbuild, /script:ro mount).
+        // YAML crews delegate entirely to the shared one-shot runner — the same code path the
+        // standalone standard runner uses — so a single published `orkeon` tool runs both
+        // crew.ork.ts and crew.yaml without the consumer having to compile a runner.
+        if (IsYamlConfig(options.ScriptPath))
+            return await RunYamlCrewAsync(options).ConfigureAwait(false);
+
+        // OUT-OF-SCOPE: probing the user-supplied script path; CLI entry runs outside
+        // the VFS abstraction (scripts live wherever the user invokes us from).
+        if (!File.Exists(options.ScriptPath))
+        {
+            await Console.Error.WriteLineAsync($"orkeon run: script not found: {options.ScriptPath}").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        using var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true; // let the script wind down rather than crash.
+            cts.Cancel();
+        };
+
+        try
+        {
+            return await RunWithHostAsync(options, cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return Program.ExitCancelled;
+        }
+        catch (FileNotFoundException ex)
+        {
+            await Console.Error.WriteLineAsync($"orkeon run: {ex.Message}").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+        catch (EsbuildNotFoundException ex)
+        {
+            return ReportEsbuildNotFound(ex);
+        }
+        catch (EsbuildTranspileException ex)
+        {
+            return ReportEsbuildTranspileError(ex);
+        }
+        catch (Exception ex)
+        {
+            return ReportUnexpectedError(ex);
+        }
+    }
+
+    /// <summary>True when the config path is a YAML crew (<c>.yaml</c>/<c>.yml</c>, case-insensitive).</summary>
+    private static bool IsYamlConfig(string path)
+    {
+        var ext = Path.GetExtension(path);
+        return ext.Equals(".yaml", StringComparison.OrdinalIgnoreCase)
+            || ext.Equals(".yml", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Runs a YAML crew through <see cref="RunnerExecution.RunOneShotAsync"/>. That method owns
+    /// its own file-existence check, SIGINT/SIGTERM graceful shutdown, mount auto-injection and
+    /// exit codes (0/1/2/130) — which already coincide with
+    /// <see cref="Program.ExitOk"/>/<see cref="Program.ExitScriptError"/>/<see cref="Program.ExitRuntimeError"/>/<see cref="Program.ExitCancelled"/>,
+    /// so we return its code verbatim.
+    /// </summary>
+    private static Task<int> RunYamlCrewAsync(RunCommandOptions options)
+        => RunnerExecution.RunOneShotAsync(ToRunnerOptions(options), "orkeon");
+
+    /// <summary>
+    /// Maps the shared fields of <see cref="RunCommandOptions"/> onto a <see cref="RunnerOptionsBase"/>
+    /// for the YAML path. Script-only fields (<c>--inputs</c>, <c>--inputs-file</c>,
+    /// <c>--memory-limit-mb</c>) have no YAML equivalent and are intentionally not carried over.
+    /// </summary>
+    private static YamlRunnerOptions ToRunnerOptions(RunCommandOptions options)
+        => new YamlRunnerOptions
+        {
+            ConfigPath = options.ScriptPath,
+            SettingsPath = options.SettingsPath,
+            Mounts = options.Mounts,
+            AllowExternalMounts = options.AllowExternalMounts,
+            Verbose = options.Verbose,
+            LlmLogEnabled = options.LlmLogEnabled,
+            LlmLogPath = options.LlmLogPath,
+            Variables = options.Variables,
+            InitialContext = options.InitialContext,
+        };
+
+    private static int ReportEsbuildNotFound(EsbuildNotFoundException ex)
+    {
+        // Bundling is mandatory (always-bundle mode) so the user must have esbuild
+        // installed somewhere we can find it. Surface the diagnostic verbatim — it
+        // already enumerates the resolution chain and points at the install command.
+        Console.Error.WriteLine($"orkeon run: {ex.Message}");
+        Console.Error.WriteLine("  hint: a repo-local copy may live in tools/scripting-esbuild/ — run 'npm install' there.");
+        return Program.ExitScriptError;
+    }
+
+    private static int ReportEsbuildTranspileError(EsbuildTranspileException ex)
+    {
+        Console.Error.WriteLine($"orkeon run: esbuild rejected the script:");
+        Console.Error.WriteLine(ex.Message);
+        return Program.ExitScriptError;
+    }
+
+    private static int ReportUnexpectedError(Exception ex)
+    {
+        // Scripts that throw inside agent .body() callbacks bubble out as
+        // PromiseRejectedException → AggregateException → real exception.
+        // Print the root cause; keep the outer-type prefix so bug reports
+        // still capture the wrapper chain. See JsExceptionUnwrap.
+        var root = JsExceptionUnwrap.UnwrapToInnermost(ex);
+        var outerTypeHint = ReferenceEquals(root, ex)
+            ? ex.GetType().FullName
+            : $"{ex.GetType().Name} → {root.GetType().FullName}";
+        Console.Error.WriteLine($"orkeon run: unexpected error [{outerTypeHint}]: {root.Message}");
+        // Opt-in diagnostics: ORKEON_DEBUG=1 prints the full wrapper chain + stacks
+        // (root.Message alone is useless for NullReferenceException-class bugs).
+        if (Environment.GetEnvironmentVariable("ORKEON_DEBUG") == "1")
+            Console.Error.WriteLine(ex.ToString());
+        return Program.ExitRuntimeError;
+    }
+
+    private static async Task<int> RunWithHostAsync(RunCommandOptions options, CancellationToken externalCt)
+    {
+        var fullPath = Path.GetFullPath(options.ScriptPath);
+        var scriptDir = Path.GetDirectoryName(fullPath)!;
+        var fileName = Path.GetFileName(fullPath);
+
+        // Build the host with the same bootstrap surface as the YAML runner: appsettings,
+        // VFS mounts, LLM provider, tools, LLM exchange logging. Plus a /script:ro mount
+        // for the script itself.
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, scriptDir);
+        if (settingsPath != null)
+            await Console.Error.WriteLineAsync($"Using settings: {settingsPath}").ConfigureAwait(false);
+
+        var cliMounts = options.Mounts.ToList();
+        var llmLogPath = options.ResolvedLlmLogPath;
+
+        // The script itself is always implicitly readable — it's the CLI's primary
+        // input, not a user-declared mount — so we don't gate it behind
+        // --allow-external-mounts. Only LLM log directories outside the cwd require
+        // explicit opt-in (parity with the YAML runner's safety stance for writes).
+        var cwd = Directory.GetCurrentDirectory();
+        var llmLogOutsideCwd = llmLogPath != null && !llmLogPath.StartsWith(cwd, StringComparison.Ordinal);
+        if (llmLogOutsideCwd && !options.AllowExternalMounts)
+        {
+            await Console.Error.WriteLineAsync(
+                "ERROR: --allow-external-mounts is required when --llm-log-path "
+                + "points outside the current working directory.").ConfigureAwait(false);
+            await Console.Error.WriteLineAsync($"       llmLogPath  : {llmLogPath}").ConfigureAwait(false);
+            await Console.Error.WriteLineAsync($"       cwd         : {cwd}").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        // 1:1 mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
+        // the source through the same IFileSystemService the tools will see. We add it as
+        // an "allowed-external" mount regardless of cwd because the script is the input.
+        cliMounts.Insert(0, $"{scriptDir}:/script:ro");
+        if (llmLogPath != null)
+            cliMounts.Insert(1, $"{llmLogPath}:{llmLogPath}:rw");
+        // The script directory always needs to be on the security whitelist so the VFS
+        // can resolve /script/* even when the user didn't pass --allow-external-mounts.
+        var implicitlyAllow = options.AllowExternalMounts
+            || !scriptDir.StartsWith(cwd, StringComparison.Ordinal);
+
+        var verbosity = Math.Clamp(options.Verbose, 0, 2);
+
+        using var host = RunnerHost.Build(
+            settingsPath, cliMounts,
+            allowExternalMounts: implicitlyAllow,
+            llmLogPath: llmLogPath,
+            configureLogging: verbosity > 0
+                ? (_, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity)
+                : null);
+
+        var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Scripting.Cli");
+        if (llmLogPath != null)
+            LogLlmLoggingEnabled(logger, llmLogPath);
+        if (verbosity > 0)
+            RunnerLogging.LogMounts(cliMounts, logger);
+
+        using var linkCts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
+        using var lifetime = RunnerExecution.RegisterGracefulShutdown(linkCts, logger);
+
+        // The DI-provided IFileSystemService respects the mount list above; tools resolved
+        // from the host will use it natively. JsEngineFactory wraps it for the script body.
+        var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+        var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+        var configuration = host.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+        var tools = host.Services.GetServices<IBaseTool>().ToList();
+        // LLM provider is optional — scripts that never call ctx.llm work without one.
+        var llmProvider = host.Services.GetService<ILlmProvider>();
+
+        // Scripted ctx.llm.* calls (JsLlmFacade) hit the provider directly, bypassing the
+        // throttling ExecutionOrchestrator applies to the YAML/agent path. Wrap the provider
+        // in the rate-limited decorator so a dynamic fan-out (one spawned agent per command,
+        // fired concurrently) honours the RateLimiting appsettings block instead of opening N
+        // simultaneous sockets. Scoped here on purpose — the YAML path keeps its own limiter,
+        // so we never double-throttle.
+        var llmRateLimiter = host.Services.GetService<ILlmRateLimiter>();
+        llmProvider = WrapWithRateLimiter(llmProvider, llmRateLimiter, loggerFactory, logger);
+
+        LogToolsLoaded(logger, tools.Count, llmProvider?.GetType().Name ?? "(none)");
+
+        var cliLimits = ResolveEffectiveLimits(options, configuration, logger);
+
+        // Optional per-tool-call permission gate (F2): opt-in via DI — hosts that register
+        // no IPermissionGate keep the ungated ctx.llm.act behaviour.
+        var permissionGate = host.Services.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>();
+
+        var engineFactory = new JsEngineFactory(
+            limits: cliLimits,
+            loggerFactory: loggerFactory,
+            configuration: configuration,
+            builtInTools: tools,
+            llmProvider: llmProvider,
+            permissionGate: permissionGate);
+
+        // ScriptHost stores but does not own/dispose the transpiler, so we keep ownership
+        // here and dispose it when this method returns (after RunFromFileAsync completes).
+        using var transpiler = ResolveTranspiler();
+        var scriptHost = new Orkeon.Scripting.ScriptHost(
+            fileSystem,
+            transpiler,
+            engineFactory,
+            loggerFactory.CreateLogger<Orkeon.Scripting.ScriptHost>());
+
+        // Inputs surface (parity with the YAML runner's --var/--initial-context but delivered
+        // as a structured `inputs` global to fit the JS DSL). ScriptHost now exposes a
+        // pre-execution hook (the `inputsJson` parameter) that parses the JSON into
+        // `globalThis.inputs` before evaluation — wire --inputs / --inputs-file through it.
+        var inputsJson = options.InputsJson;
+        if (string.IsNullOrWhiteSpace(inputsJson) && !string.IsNullOrWhiteSpace(options.InputsFilePath))
+        {
+            // EXCEPTION-BOOTSTRAP: the inputs file is a user-supplied CLI argument resolved before
+            // the VFS is mounted; it is read once, not part of the sandboxed workspace.
+            inputsJson = await File.ReadAllTextAsync(options.InputsFilePath, linkCts.Token).ConfigureAwait(false);
+        }
+
+        var virtualPath = $"/script/{fileName}";
+        // Pass the physical path so esbuild can --bundle relative imports from the
+        // entry's directory. ScriptHost still uses virtualPath for VFS reads and logging.
+        var result = await scriptHost.RunFromFileAsync(fullPath, virtualPath, linkCts.Token, inputsJson).ConfigureAwait(false);
+
+        Console.WriteLine(SerializeRunResult(result));
+        return Program.ExitOk;
+    }
+
+    /// <summary>
+    /// Wraps <paramref name="llmProvider"/> in the rate-limited decorator when both a provider and
+    /// a rate limiter are available; otherwise returns the provider unchanged (possibly null).
+    /// </summary>
+    private static ILlmProvider? WrapWithRateLimiter(
+        ILlmProvider? llmProvider,
+        ILlmRateLimiter? llmRateLimiter,
+        ILoggerFactory loggerFactory,
+        ILogger logger)
+    {
+        // Scripted ctx.llm.* calls (JsLlmFacade) hit the provider directly, bypassing the
+        // throttling ExecutionOrchestrator applies to the YAML/agent path. Wrap the provider
+        // in the rate-limited decorator so a dynamic fan-out (one spawned agent per command,
+        // fired concurrently) honours the RateLimiting appsettings block instead of opening N
+        // simultaneous sockets. Scoped here on purpose — the YAML path keeps its own limiter,
+        // so we never double-throttle.
+        if (llmProvider is null || llmRateLimiter is null)
+            return llmProvider;
+
+        LogScriptedLlmRateLimited(logger);
+        return new Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider(
+            llmProvider, llmRateLimiter,
+            loggerFactory.CreateLogger<Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider>());
+    }
+
+    /// <summary>
+    /// Resolves the effective Jint sandbox limits for this run: binds the
+    /// <c>Orkeon:Scripting:Limits</c> appsettings section over the strict defaults
+    /// (the documented opt-in for trusted long runs — e.g. <c>ExecutionTimeout</c>,
+    /// which is wall-clock and keeps ticking across awaited tool calls), then applies
+    /// the <c>--memory-limit-mb</c> CLI override on top. A value ≤ 0 disables the
+    /// memory cap. The CLI flag must MERGE into the bound options, not replace them:
+    /// replacing would silently reset <c>ExecutionTimeout</c> back to the 30s default.
+    /// </summary>
+    internal static ScriptingLimitsOptions ResolveEffectiveLimits(
+        RunCommandOptions options,
+        Microsoft.Extensions.Configuration.IConfiguration configuration,
+        ILogger logger)
+    {
+        var limits = Microsoft.Extensions.Configuration.ConfigurationBinder
+            .Get<ScriptingLimitsOptions>(configuration.GetSection(ScriptingLimitsOptions.SectionName))
+            ?? new ScriptingLimitsOptions();
+
+        if (!options.MemoryLimitMb.HasValue)
+            return limits;
+
+        var mb = options.MemoryLimitMb.Value;
+        var bytes = mb <= 0 ? long.MaxValue : mb * 1024L * 1024L;
+        LogMemoryLimitOverridden(
+            logger,
+            mb <= 0 ? "∞" : mb.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return limits with { MemoryLimitBytes = bytes };
+    }
+
+    /// <summary>
+    /// Best-effort JSON serialization of the script result. Some scripts persist
+    /// <c>globalThis.result = await crew.run()</c> where the result is a CLR record carrying
+    /// async-state references that System.Text.Json can't serialize; on failure this falls back
+    /// to a ToString() summary so the CLI still emits useful stdout without changing the exit code.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort result serialization: JsonSerializer.Serialize can throw NotSupportedException/InvalidOperationException (or reflection-related errors) on CLR records carrying async-state references, so the failure falls back to a ToString() summary without changing the exit code.")]
+    private static string SerializeRunResult(object? result)
+    {
+        try
+        {
+            return JsonSerializer.Serialize(new { result }, ResultJsonOptions);
+        }
+        catch (Exception)
+        {
+            // JsonSerializer can throw NotSupportedException, InvalidOperationException, or
+            // even reflection-related exceptions on CLR objects with async-state fields.
+            return JsonSerializer.Serialize(new
+            {
+                result = result?.ToString() ?? "(null)",
+                note = "Result type was not JSON-serializable; emitted ToString() instead.",
+            }, FallbackJsonOptions);
+        }
+    }
+
+    private static EsbuildTranspiler ResolveTranspiler()
+    {
+        // Always bundle through esbuild — even when the script has no imports — so that:
+        //   1. relative 'import { … } from "./helpers.ts"' actually resolves,
+        //   2. TS-only syntax (enums, type-only imports, etc.) is consistently stripped
+        //      instead of relying on Jint's tolerance for TS-flavoured JS.
+        // EsbuildNotFoundException is caught upstream with a clear install hint.
+        return new EsbuildTranspiler();
+    }
+
+    // --- source-generated logging ---
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information,
+        Message = "LLM exchange logging enabled → {LogDir}/llm-exchanges-*.jsonl")]
+    static partial void LogLlmLoggingEnabled(ILogger logger, string? logDir);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information,
+        Message = "Scripted LLM calls are rate-limited (RateLimiting appsettings honored).")]
+    static partial void LogScriptedLlmRateLimited(ILogger logger);
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Information,
+        Message = "Loaded {ToolCount} tool(s); LLM provider: {Llm}")]
+    static partial void LogToolsLoaded(ILogger logger, int toolCount, string llm);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Information,
+        Message = "Jint memory limit overridden to {Mb} MB (--memory-limit-mb)")]
+    static partial void LogMemoryLimitOverridden(ILogger logger, string mb);
+}

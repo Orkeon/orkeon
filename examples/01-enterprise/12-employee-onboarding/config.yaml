@@ -1,0 +1,102 @@
+# 12. Onboarding Automatise des Employes
+# Use case: Fully YAML-configurable onboarding pipeline with semantic mentor matching
+# Source: project/marketing/content-strategy/101-USE-CASES.md #12
+
+name: "employee-onboarding"
+goal: "Automate the employee onboarding process with document generation, training scheduling, semantic mentor matching, and calendar planning"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  documentalist:
+    role: "Documentaliste"
+    goal: "Generate all onboarding documents (welcome kit, IT setup guide, policy summaries) for the new employee"
+    backstory: |
+      You are an HR documentation specialist who creates personalized onboarding
+      packages. You compile welcome kits, IT setup guides, policy summaries, and
+      team introductions tailored to the new employee's role and department.
+    tools:
+      - "file_write"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  trainer:
+    role: "Formateur"
+    goal: "Design a personalized training curriculum based on the employee's role and skill gaps"
+    backstory: |
+      You are a learning and development specialist who designs personalized
+      training paths. You assess skill gaps, recommend courses, schedule training
+      sessions, and define milestones for the first 30/60/90 days.
+    tools:
+      - "http_api"
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  mentor_matcher:
+    role: "Matcher Mentor"
+    goal: "Find the best mentor match based on semantic skill similarity between the new employee and potential mentors"
+    backstory: |
+      You are a talent development analyst who matches new employees with mentors.
+      You use skill profiles, personality indicators, and team dynamics to find
+      the optimal mentor pairing that maximizes knowledge transfer and integration.
+    tools:
+      - "json_tool"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+  planner:
+    role: "Planificateur"
+    goal: "Create a detailed first-week calendar with meetings, training sessions, and team introductions"
+    backstory: |
+      You are a project coordinator who organizes detailed onboarding schedules.
+      You ensure the first week includes all critical meetings, training sessions,
+      team lunches, and check-ins without overwhelming the new employee.
+    tools:
+      - "json_tool"
+      - "file_write"
+    allowDelegation: false
+    maxIter: 10
+    verbose: true
+
+tasks:
+  generate_documents:
+    description: "Generate the complete onboarding document package for the new employee: welcome kit, IT setup guide, policy summary, and team directory."
+    expectedOutput: "JSON with: welcome_kit (Markdown), it_setup_guide (Markdown), policy_summary (Markdown), team_directory"
+    agent: "documentalist"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false
+
+  design_training:
+    description: "Assess the employee's role requirements and design a personalized 30/60/90-day training curriculum with specific courses, sessions, and milestones."
+    expectedOutput: "JSON training plan with: skill_assessment, training_path[{day, course, type, duration}], milestones_30d[], milestones_60d[], milestones_90d[]"
+    agent: "trainer"
+    dependencies:
+      - "generate_documents"
+    asyncExecution: false
+    humanInput: false
+
+  match_mentor:
+    description: "Analyze the new employee's skill profile and match with the best available mentor using semantic skill similarity. Provide match rationale."
+    expectedOutput: "JSON with: recommended_mentor, match_score, skill_overlap[], complementary_skills[], match_rationale"
+    agent: "mentor_matcher"
+    dependencies:
+      - "design_training"
+    asyncExecution: false
+    humanInput: false
+
+  plan_first_week:
+    description: "Create a detailed first-week calendar integrating training sessions, mentor meetings, team introductions, and IT setup time slots."
+    expectedOutput: "JSON weekly calendar with: days[{date, slots[{time, activity, location, attendees}]}]"
+    agent: "planner"
+    dependencies:
+      - "match_mentor"
+    asyncExecution: false
+    humanInput: false
