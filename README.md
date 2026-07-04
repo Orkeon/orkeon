@@ -50,6 +50,35 @@ dotnet add package Orkeon.Application --version 0.9.0-beta
 dotnet add package Orkeon.Infrastructure --version 0.9.0-beta
 ```
 
+### Install the CLI from release archives
+
+Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) ships one archive
+per platform (`linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` as `.tar.gz`;
+`win-x64` as `.zip`) containing every CLI executable: `orkeon`, `orkeon-repl`,
+and the example runners (`orkeon-examples`, `orkeon-trading`, `orkeon-interactive`,
+`orkeon-tui-keytest`, `orkeon-claim-verify`, `orkeon-spec-forge`).
+
+Prerequisite: the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
+(binaries are framework-dependent).
+
+```bash
+# Linux / macOS
+tar -xzf orkeon-<version>-<rid>.tar.gz
+cd orkeon-<version>-<rid>
+./install.sh            # installs to ~/.local; --prefix /usr/local for system-wide
+```
+
+```powershell
+# Windows (PowerShell)
+Expand-Archive orkeon-<version>-win-x64.zip
+cd orkeon-<version>-win-x64
+.\install.ps1           # installs to %LOCALAPPDATA%\Programs\Orkeon, updates user PATH
+```
+
+Archives are produced by `scripts/package-installers.sh` (any OS target can be
+built from Linux/macOS) and attached automatically to releases by the
+`release.yml` workflow on `v*` tags.
+
 ---
 
 ## Features

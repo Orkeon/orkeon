@@ -1,0 +1,57 @@
+# Orkeon {{VERSION}} — {{RID}}
+
+Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI agent framework.
+
+## Prerequisite
+
+These binaries are **framework-dependent**: they require the **.NET 10 runtime**
+(`Microsoft.NETCore.App 10.x`). Install it from
+<https://dotnet.microsoft.com/download/dotnet/10.0>, then verify with
+`dotnet --list-runtimes`.
+
+## Install
+
+Linux / macOS:
+
+```sh
+./install.sh                 # installs to ~/.local (add --prefix /usr/local for system-wide)
+./install.sh --modify-path   # also appends ~/.local/bin to your shell rc files
+./install.sh --uninstall
+```
+
+Windows (PowerShell):
+
+```powershell
+.\install.ps1                # installs to %LOCALAPPDATA%\Programs\Orkeon, updates user PATH
+.\install.ps1 -Uninstall
+```
+
+## Contents
+
+| Command | Description |
+|---|---|
+| `orkeon` | Scripting CLI — `orkeon run script.ork.ts` or `orkeon run crew.yaml` |
+| `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) |
+| `orkeon-examples` | Standard example runner — `orkeon-examples --config <config.yaml>` |
+| `orkeon-trading` | Trading example runner |
+| `orkeon-interactive` | Interactive (TUI) example runner |
+| `orkeon-tui-keytest` | Terminal.Gui key diagnostic utility |
+| `orkeon-claim-verify` | Interactive claim-verification runner |
+| `orkeon-spec-forge` | Interactive interview/spec-forge runner |
+
+## Layout & esbuild
+
+```
+bin/       thin launchers (the only directory that goes on your PATH)
+libexec/   one self-contained publish per application
+libexec/esbuild-bin/esbuild   shared esbuild binary used to transpile .ork.ts scripts
+```
+
+The `bin/` launchers set `ORKEON_ESBUILD_PATH` to the bundled esbuild
+automatically (unless you already set it yourself). If you invoke an apphost
+directly from `libexec/`, either export `ORKEON_ESBUILD_PATH`, or have
+`esbuild` available on your PATH.
+
+## License
+
+MIT — see LICENSE.md.

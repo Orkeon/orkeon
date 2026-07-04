@@ -15,7 +15,7 @@
     <ToolCommandName>orkeon-spec-forge</ToolCommandName>
     <Description>Interactive interview-spec-forge REPL runner for Orkeon (dotnet tool).</Description>
     <Authors>Orkeon Contributors</Authors>
-    <VersionPrefix>0.9.0</VersionPrefix>
+    <VersionPrefix>0.9.1</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>
   </PropertyGroup>
 

@@ -1,0 +1,154 @@
+<#
+.SYNOPSIS
+  Builds per-OS installer archives containing all Orkeon CLI executables
+  (framework-dependent, published per RID). PowerShell mirror of
+  scripts/package-installers.sh, intended for local Windows use.
+.PARAMETER Version
+  Package version. Default: git describe (v-stripped), then src/Directory.Build.props.
+.PARAMETER Rids
+  RIDs to package. Default: win-x64 only. Unix RIDs are refused unless -Force:
+  archives produced on Windows lose the executable bits — build those on
+  Linux/WSL/CI with package-installers.sh instead.
+.PARAMETER Out
+  Output directory. Default: artifacts\installers.
+#>
+[CmdletBinding()]
+param(
+    [string]$Version = '',
+    [string[]]$Rids = @('win-x64'),
+    [string]$Out = '',
+    [string]$Configuration = 'Release',
+    [switch]$Force
+)
+$ErrorActionPreference = 'Stop'
+
+$RepoRoot = Split-Path -Parent $PSScriptRoot
+$Assets = Join-Path $RepoRoot 'scripts\installer-assets'
+if (-not $Out) { $Out = Join-Path $RepoRoot 'artifacts\installers' }
+
+$unixRids = $Rids | Where-Object { $_ -notlike 'win-*' }
+if ($unixRids -and -not $Force) {
+    throw "Unix RIDs ($($unixRids -join ', ')) would lose executable bits when archived on Windows. Build them with scripts/package-installers.sh (Linux/WSL/CI), or pass -Force."
+}
+
+# --- Version -----------------------------------------------------------------
+if (-not $Version) {
+    $tag = git -C $RepoRoot describe --tags --abbrev=0 2>$null
+    if ($LASTEXITCODE -eq 0 -and $tag) { $Version = $tag -replace '^v', '' }
+}
+if (-not $Version) {
+    $props = Get-Content (Join-Path $RepoRoot 'src\Directory.Build.props') -Raw
+    $prefix = [regex]::Match($props, '<VersionPrefix>(.*?)</VersionPrefix>').Groups[1].Value
+    $suffix = [regex]::Match($props, '<VersionSuffix>(.*?)</VersionSuffix>').Groups[1].Value
+    $Version = if ($suffix) { "$prefix-$suffix" } else { $prefix }
+}
+if (-not $Version) { throw 'Could not resolve a version; pass -Version.' }
+
+# --- esbuild version from the lockfile ----------------------------------------
+$EsbuildVersion = '0.24.0'
+$lock = Join-Path $RepoRoot 'tools\scripting-esbuild\package-lock.json'
+if (Test-Path $lock) {
+    $lockJson = Get-Content $lock -Raw | ConvertFrom-Json
+    $pkg = $lockJson.packages.'node_modules/esbuild'
+    if ($pkg -and $pkg.version) { $EsbuildVersion = $pkg.version }
+}
+
+# --- App table -----------------------------------------------------------------
+$Apps = @(
+    @{ Name = 'orkeon';              Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon' }
+    @{ Name = 'orkeon-repl';         Csproj = 'src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj';                                               Apphost = 'Orkeon.ConsoleApp' }
+    @{ Name = 'orkeon-examples';     Csproj = 'examples/runners/standard/Orkeon.Examples.Runner.csproj';                                           Apphost = 'Orkeon.Examples.Runner' }
+    @{ Name = 'orkeon-trading';      Csproj = 'examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj';                                    Apphost = 'Orkeon.Examples.Trading.Runner' }
+    @{ Name = 'orkeon-interactive';  Csproj = 'examples/runners/interactive/Orkeon.Examples.Interactive.csproj';                                   Apphost = 'Orkeon.Examples.Interactive' }
+    @{ Name = 'orkeon-tui-keytest';  Csproj = 'examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj';                                    Apphost = 'Orkeon.Examples.TuiKeyTest' }
+    @{ Name = 'orkeon-claim-verify'; Csproj = 'examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj'; Apphost = 'Orkeon.Examples.Interactive.ClaimVerification' }
+    @{ Name = 'orkeon-spec-forge';   Csproj = 'examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj'; Apphost = 'Orkeon.Examples.Interactive.InterviewSpecForge' }
+)
+
+$EsbuildNpmRid = @{
+    'linux-x64' = 'linux-x64'; 'linux-arm64' = 'linux-arm64'
+    'win-x64' = 'win32-x64'; 'osx-x64' = 'darwin-x64'; 'osx-arm64' = 'darwin-arm64'
+}
+
+$Stage = Join-Path $Out '_stage'
+$Cache = Join-Path $Out '_esbuild-cache'
+New-Item -ItemType Directory -Force -Path $Out, $Stage, $Cache | Out-Null
+
+Write-Host "==> Packaging Orkeon $Version (esbuild $EsbuildVersion) for: $($Rids -join ' ')"
+
+foreach ($rid in $Rids) {
+    $pkgName = "orkeon-$Version-$rid"
+    $root = Join-Path $Stage $pkgName
+    if (Test-Path $root) { Remove-Item -Recurse -Force $root }
+    New-Item -ItemType Directory -Force -Path (Join-Path $root 'bin'), (Join-Path $root 'libexec') | Out-Null
+    Write-Host "==> $rid"
+
+    foreach ($app in $Apps) {
+        Write-Host "    publish $($app.Name)"
+        dotnet publish (Join-Path $RepoRoot $app.Csproj) -c $Configuration -r $rid --self-contained false `
+            -p:Version=$Version -p:SkipScriptingNpmInstall=true `
+            -p:ErrorOnDuplicatePublishOutputFiles=false `
+            -o (Join-Path $root "libexec\$($app.Name)") --nologo -v quiet
+        if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $($app.Name) ($rid)" }
+
+        if ($rid -like 'win-*') {
+            (Get-Content (Join-Path $Assets 'wrapper.cmd.tmpl') -Raw).
+                Replace('{{APP}}', $app.Name).Replace('{{APPHOST}}', $app.Apphost) |
+                Set-Content -NoNewline (Join-Path $root "bin\$($app.Name).cmd")
+        } else {
+            $sh = (Get-Content (Join-Path $Assets 'wrapper.sh.tmpl') -Raw).
+                Replace('{{APP}}', $app.Name).Replace('{{APPHOST}}', $app.Apphost)
+            [IO.File]::WriteAllText((Join-Path $root "bin/$($app.Name)"), $sh.Replace("`r`n", "`n"))
+        }
+    }
+
+    # esbuild per RID, straight from the npm registry
+    $npmRid = $EsbuildNpmRid[$rid]
+    if (-not $npmRid) { throw "No esbuild mapping for RID $rid" }
+    $pkgDir = Join-Path $Cache "$npmRid-$EsbuildVersion"
+    if (-not (Test-Path $pkgDir)) {
+        $tgz = Join-Path $Cache "$npmRid-$EsbuildVersion.tgz"
+        Write-Host "    fetching @esbuild/$npmRid@$EsbuildVersion"
+        Invoke-WebRequest "https://registry.npmjs.org/@esbuild/$npmRid/-/$npmRid-$EsbuildVersion.tgz" -OutFile $tgz
+        New-Item -ItemType Directory -Force -Path $pkgDir | Out-Null
+        tar -xzf $tgz -C $pkgDir
+        if ($LASTEXITCODE -ne 0) { throw "tar extraction failed for $tgz" }
+    }
+    $esbuildDest = Join-Path $root 'libexec\esbuild-bin'
+    New-Item -ItemType Directory -Force -Path $esbuildDest | Out-Null
+    if ($rid -like 'win-*') {
+        Copy-Item (Join-Path $pkgDir 'package\esbuild.exe') (Join-Path $esbuildDest 'esbuild.exe')
+    } else {
+        Copy-Item (Join-Path $pkgDir 'package\bin\esbuild') (Join-Path $esbuildDest 'esbuild')
+    }
+
+    # Docs + installer
+    (Get-Content (Join-Path $Assets 'README.archive.md.tmpl') -Raw).
+        Replace('{{VERSION}}', $Version).Replace('{{RID}}', $rid) |
+        Set-Content (Join-Path $root 'README.md')
+    Copy-Item (Join-Path $RepoRoot 'LICENSE.md') (Join-Path $root 'LICENSE.md')
+    if ($rid -like 'win-*') {
+        Copy-Item (Join-Path $Assets 'install.ps1') (Join-Path $root 'install.ps1')
+    } else {
+        Copy-Item (Join-Path $Assets 'install.sh') (Join-Path $root 'install.sh')
+    }
+
+    # Archive
+    if ($rid -like 'win-*') {
+        $zip = Join-Path $Out "$pkgName.zip"
+        if (Test-Path $zip) { Remove-Item $zip }
+        Compress-Archive -Path $root -DestinationPath $zip
+        Write-Host "    -> $zip"
+    } else {
+        $tarball = Join-Path $Out "$pkgName.tar.gz"
+        tar -czf $tarball -C $Stage $pkgName
+        if ($LASTEXITCODE -ne 0) { throw "tar failed for $pkgName" }
+        Write-Host "    -> $tarball  (WARNING: exec bits not preserved from Windows)"
+    }
+}
+
+# Checksums
+$artifacts = Get-ChildItem $Out -File | Where-Object { $_.Extension -in '.zip', '.gz' }
+$lines = foreach ($f in $artifacts) { "{0}  {1}" -f (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower(), $f.Name }
+Set-Content -Path (Join-Path $Out 'SHA256SUMS') -Value $lines
+Write-Host "==> Done. Artifacts in $Out"

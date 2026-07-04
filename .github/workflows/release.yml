@@ -1,0 +1,37 @@
+# Builds per-OS installer archives on a v* tag and attaches them to the GitHub
+# Release. Coexists with publish.yml (NuGet push) on the same trigger.
+#
+# A single ubuntu runner cross-publishes every RID: framework-dependent publish
+# compiles nothing native (apphosts ship in the SDK packs, natives come from
+# NuGet runtimes/), and esbuild is fetched per-RID from the npm registry.
+name: Release installers
+on: { push: { tags: [ 'v*' ] } }
+permissions: { contents: write }
+jobs:
+  installers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free up runner disk space
+        run: |
+          echo "Avant:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          echo "Après:"; df -h / | tail -1
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Package installers
+        run: ./scripts/package-installers.sh --version "${GITHUB_REF_NAME#v}" --out artifacts/installers
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/installers/*.tar.gz
+            artifacts/installers/*.zip
+            artifacts/installers/SHA256SUMS
+          generate_release_notes: true

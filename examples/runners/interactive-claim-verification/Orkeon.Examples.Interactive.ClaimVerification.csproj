@@ -15,7 +15,7 @@
     <ToolCommandName>orkeon-claim-verify</ToolCommandName>
     <Description>Interactive claim-verification REPL runner for Orkeon (dotnet tool).</Description>
     <Authors>Orkeon Contributors</Authors>
-    <VersionPrefix>0.9.0</VersionPrefix>
+    <VersionPrefix>0.9.1</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>
     <!-- CS0618: Terminal.Gui v2.1.0 deprecated the static Application.* APIs.
          AddClaimCommand/AddClaimDialog use them deliberately — see the matching
