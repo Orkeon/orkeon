@@ -71,9 +71,14 @@ esbuild_npm_rid() {
   esac
 }
 
+# make_zip and the python fallback cd into the stage dir, so OUT must be
+# absolute (CI passes a relative --out, which broke the zip step).
+mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"
+
 STAGE="$OUT/_stage"
 CACHE="$OUT/_esbuild-cache"
-mkdir -p "$OUT" "$STAGE" "$CACHE"
+mkdir -p "$STAGE" "$CACHE"
 
 echo "==> Packaging Orkeon $VERSION (esbuild $ESBUILD_VERSION) for: $RIDS"
 
