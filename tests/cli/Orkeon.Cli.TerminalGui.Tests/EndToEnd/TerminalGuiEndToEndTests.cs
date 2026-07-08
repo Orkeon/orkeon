@@ -14,6 +14,10 @@ namespace Orkeon.Cli.TerminalGui.Tests.EndToEnd;
 // Skip is intentional. End-to-end coverage is deferred to TUI-12
 // because Terminal.Gui 2.1.0 ModuleInitializer crashes under xUnit (verified).
 // These tests are reported as Skipped (not Passed) in CI via [Fact(Skip = ...)].
+//
+// xUnit1004 ("test methods should not be skipped") is silenced because the skip
+// markers are deliberate CI-visible placeholders until TUI-12 lands.
+#pragma warning disable xUnit1004
 public class TerminalGuiEndToEndTests
 {
     private const string SkipReason = "End-to-end tests pending Terminal.Gui 2.1.x fix — see TUI-12";
@@ -27,3 +31,4 @@ public class TerminalGuiEndToEndTests
     [Fact(Skip = SkipReason)]
     public void CtrlQ_stops_application() { }
 }
+#pragma warning restore xUnit1004
