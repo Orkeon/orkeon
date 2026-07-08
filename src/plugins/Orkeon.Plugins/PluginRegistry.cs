@@ -15,17 +15,16 @@ public sealed class PluginRegistry : IPluginRegistry, IDisposable
     private readonly List<LoadedPluginAssembly> _assemblies = [];
     private readonly List<PluginLoadFailure> _failures = [];
 
-    // Flattened view of all plugins across assemblies. Cached so the property does not
-    // re-project the collection on every read (S2365); invalidated whenever the set of
-    // loaded assemblies changes (Add / UnloadAll).
-    private IReadOnlyList<IOrkeonPlugin>? _pluginsCache;
+    // Flattened view of all plugins across assemblies. Rebuilt eagerly whenever the set of
+    // loaded assemblies changes (Add / UnloadAll) so the property never re-projects the
+    // collection on read (S2365) — the getter just returns the pre-built list.
+    private IReadOnlyList<IOrkeonPlugin> _plugins = [];
 
     /// <inheritdoc />
     public IReadOnlyList<LoadedPluginAssembly> Assemblies => _assemblies;
 
     /// <inheritdoc />
-    public IReadOnlyList<IOrkeonPlugin> Plugins =>
-        _pluginsCache ??= _assemblies.SelectMany(static a => a.Plugins).ToList();
+    public IReadOnlyList<IOrkeonPlugin> Plugins => _plugins;
 
     /// <inheritdoc />
     public IReadOnlyList<PluginLoadFailure> Failures => _failures;
@@ -34,7 +33,7 @@ public sealed class PluginRegistry : IPluginRegistry, IDisposable
     {
         ArgumentNullException.ThrowIfNull(assembly);
         _assemblies.Add(assembly);
-        _pluginsCache = null;
+        _plugins = _assemblies.SelectMany(static a => a.Plugins).ToList();
     }
 
     internal void AddFailure(PluginLoadFailure failure)
@@ -54,7 +53,7 @@ public sealed class PluginRegistry : IPluginRegistry, IDisposable
             assembly.Unload();
 
         _assemblies.Clear();
-        _pluginsCache = null;
+        _plugins = [];
     }
 
     /// <inheritdoc />

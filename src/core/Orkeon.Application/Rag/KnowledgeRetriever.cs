@@ -1,5 +1,6 @@
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Rag;
+using Orkeon.Domain.Knowledge;
 
 namespace Orkeon.Application.Rag;
 
@@ -33,20 +34,28 @@ public sealed class KnowledgeRetriever : IRetriever
 
         async System.Threading.Tasks.Task<IReadOnlyList<RetrievedChunk>> RetrieveCoreAsync()
         {
-        // Retrieve more than TopK from knowledge service to allow for filtering
-        var knowledgeResults = await _knowledgeService.SearchAsync(
-            query,
-            topK: options.TopK * 2,
-            minSimilarity: 0.1,
-            sources: options.SourceFilter?.ToArray(),
-            cancellationToken: ct).ConfigureAwait(false);
+            // Retrieve more than TopK from knowledge service to allow for filtering
+            var knowledgeResults = await _knowledgeService.SearchAsync(
+                query,
+                topK: options.TopK * 2,
+                minSimilarity: 0.1,
+                sources: options.SourceFilter?.ToArray(),
+                cancellationToken: ct).ConfigureAwait(false);
 
-        float[]? queryEmbedding = null;
-        if (_embeddingProvider != null)
-        {
-            queryEmbedding = await _embeddingProvider.GetEmbeddingAsync(query, ct).ConfigureAwait(false);
+            float[]? queryEmbedding = null;
+            if (_embeddingProvider != null)
+            {
+                queryEmbedding = await _embeddingProvider.GetEmbeddingAsync(query, ct).ConfigureAwait(false);
+            }
+
+            var scored = ScoreChunks(knowledgeResults, queryEmbedding);
+            return DeduplicateAndFilter(scored, options);
         }
+    }
 
+    private static List<RetrievedChunk> ScoreChunks(
+        IReadOnlyList<KnowledgeItem> knowledgeResults, float[]? queryEmbedding)
+    {
         var scored = new List<RetrievedChunk>();
 
         foreach (var item in knowledgeResults)
@@ -70,6 +79,12 @@ public sealed class KnowledgeRetriever : IRetriever
             });
         }
 
+        return scored;
+    }
+
+    private static List<RetrievedChunk> DeduplicateAndFilter(
+        List<RetrievedChunk> scored, RetrievalOptions options)
+    {
         // Deduplicate by content prefix
         var seen = new HashSet<string>();
         var result = new List<RetrievedChunk>();
@@ -93,7 +108,6 @@ public sealed class KnowledgeRetriever : IRetriever
         }
 
         return result;
-        }
     }
 
     private static float CosineSimilarity(float[] a, IReadOnlyList<float> b)

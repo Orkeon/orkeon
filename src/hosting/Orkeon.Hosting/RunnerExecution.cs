@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -263,71 +264,120 @@ public static partial class RunnerExecution
 
             RunnerLogging.LogMounts(cliMounts, logger);
 
-            var questionNumber = 0;
-            CancellationTokenSource? currentKickoffCts = null;
-
-            // SIGINT during a kickoff cancels just that question. SIGINT outside cancels the loop
-            // (RegisterGracefulShutdown). We disambiguate via the volatile current-kickoff handle.
-            ConsoleCancelEventHandler perQuestionHandler = (_, e) =>
-            {
-                var cts = Volatile.Read(ref currentKickoffCts);
-                if (cts is null || cts.IsCancellationRequested) return;
-                e.Cancel = true;
-                cts.Cancel();
-                Console.Error.WriteLine(
-                    "\n[runner] Canceling current question — type a new question or a stop word to exit.");
-            };
+            // Shared handle to the in-flight kickoff's CTS, read by the SIGINT handler and
+            // written by the per-question runner. A StrongBox lets both the handler closure
+            // and the extracted runner method target the same volatile slot.
+            var currentKickoff = new StrongBox<CancellationTokenSource?>(null);
+            var perQuestionHandler = CreatePerQuestionCancelHandler(currentKickoff);
             Console.CancelKeyPress += perQuestionHandler;
 
             try
             {
-                onSessionStart(questionNumber);
-
-                while (!sessionCts.IsCancellationRequested)
-                {
-                    var input = ReadQuestion();
-                    if (input is null) break;
-                    if (string.IsNullOrWhiteSpace(input))
-                    {
-                        Console.WriteLine("  (empty input — type a question or a stop word to exit)");
-                        continue;
-                    }
-                    if (IsStopWord(stopWords, input))
-                    {
-                        Console.WriteLine();
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"Session ended. {questionNumber} question(s) answered.");
-                        Console.ResetColor();
-                        return 0;
-                    }
-
-                    questionNumber++;
-                    LogQuestion(logger, questionNumber, input);
-
-                    using var scope = host.Services.CreateScope();
-                    using var kickoffCts = CancellationTokenSource.CreateLinkedTokenSource(sessionCts.Token);
-                    Volatile.Write(ref currentKickoffCts, kickoffCts);
-
-                    try
-                    {
-                        var earlyExit = await RunSingleQuestionAsync(
-                            scope.ServiceProvider, input, questionNumber, kickoffCts.Token,
-                            sessionCts, kickoffPerInputAsync, logger).ConfigureAwait(false);
-                        if (earlyExit is { } code)
-                            return code;
-                    }
-                    finally
-                    {
-                        Volatile.Write(ref currentKickoffCts, null);
-                    }
-                }
-
-                return sessionCts.IsCancellationRequested ? 130 : 0;
+                onSessionStart(0);
+                return await RunQuestionLoopAsync(
+                    host, sessionCts, currentKickoff, stopWords, kickoffPerInputAsync, logger).ConfigureAwait(false);
             }
             finally
             {
                 Console.CancelKeyPress -= perQuestionHandler;
             }
+        }
+    }
+
+    /// <summary>
+    /// Builds the SIGINT handler for the interactive loop: a per-kickoff cancel that cancels only
+    /// the in-flight question (via <paramref name="currentKickoff"/>) and leaves the loop running.
+    /// SIGINT outside a kickoff is handled by <see cref="RegisterGracefulShutdown"/> instead.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    private static ConsoleCancelEventHandler CreatePerQuestionCancelHandler(
+        StrongBox<CancellationTokenSource?> currentKickoff)
+    {
+        return (_, e) =>
+        {
+            var cts = Volatile.Read(ref currentKickoff.Value);
+            if (cts is null || cts.IsCancellationRequested) return;
+            e.Cancel = true;
+            cts.Cancel();
+            Console.Error.WriteLine(
+                "\n[runner] Canceling current question — type a new question or a stop word to exit.");
+        };
+    }
+
+    /// <summary>
+    /// Reads and dispatches interactive questions until end-of-input, a stop word, or session
+    /// cancellation. Returns the loop exit code: 0 on stop word / EOF, 130 when the session was
+    /// canceled, or a non-null code propagated from a question run.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    private static async Task<int> RunQuestionLoopAsync(
+        IHost host,
+        CancellationTokenSource sessionCts,
+        StrongBox<CancellationTokenSource?> currentKickoff,
+        IReadOnlySet<string> stopWords,
+        Func<IServiceProvider, string, CancellationToken, Task<CrewOutput>> kickoffPerInputAsync,
+        ILogger logger)
+    {
+        var questionNumber = 0;
+        while (!sessionCts.IsCancellationRequested)
+        {
+            var input = ReadQuestion();
+            if (input is null) break;
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                Console.WriteLine("  (empty input — type a question or a stop word to exit)");
+                continue;
+            }
+            if (IsStopWord(stopWords, input))
+            {
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Session ended. {questionNumber} question(s) answered.");
+                Console.ResetColor();
+                return 0;
+            }
+
+            questionNumber++;
+            LogQuestion(logger, questionNumber, input);
+
+            var earlyExit = await RunScopedQuestionAsync(
+                host, input, questionNumber, sessionCts, currentKickoff, kickoffPerInputAsync, logger)
+                .ConfigureAwait(false);
+            if (earlyExit is { } code)
+                return code;
+        }
+
+        return sessionCts.IsCancellationRequested ? 130 : 0;
+    }
+
+    /// <summary>
+    /// Runs a single interactive question inside its own DI scope and linked kickoff CTS,
+    /// publishing that CTS to <paramref name="currentKickoff"/> for the duration so the SIGINT
+    /// handler can cancel just this question. Returns the same <c>int?</c> contract as
+    /// <see cref="RunSingleQuestionAsync"/>: non-null only when the loop must terminate.
+    /// </summary>
+    private static async Task<int?> RunScopedQuestionAsync(
+        IHost host,
+        string input,
+        int questionNumber,
+        CancellationTokenSource sessionCts,
+        StrongBox<CancellationTokenSource?> currentKickoff,
+        Func<IServiceProvider, string, CancellationToken, Task<CrewOutput>> kickoffPerInputAsync,
+        ILogger logger)
+    {
+        using var scope = host.Services.CreateScope();
+        using var kickoffCts = CancellationTokenSource.CreateLinkedTokenSource(sessionCts.Token);
+        Volatile.Write(ref currentKickoff.Value, kickoffCts);
+
+        try
+        {
+            return await RunSingleQuestionAsync(
+                scope.ServiceProvider, input, questionNumber,
+                sessionCts, kickoffPerInputAsync, logger, kickoffCts.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            Volatile.Write(ref currentKickoff.Value, null);
         }
     }
 
@@ -362,10 +412,10 @@ public static partial class RunnerExecution
         IServiceProvider services,
         string input,
         int questionNumber,
-        CancellationToken kickoffToken,
         CancellationTokenSource sessionCts,
         Func<IServiceProvider, string, CancellationToken, Task<CrewOutput>> kickoffPerInputAsync,
-        ILogger logger)
+        ILogger logger,
+        CancellationToken kickoffToken)
     {
         try
         {

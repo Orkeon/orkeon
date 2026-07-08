@@ -115,9 +115,17 @@ public sealed class TypedDictionaryGenerator : IIncrementalGenerator
 
         AppendEmptyAccessor(builder, className, immutableDictionary, emitEmpty, cacheEmpty);
         AppendBuilderFactories(builder, className, emitBuilderFrom, hasBaseDictionary);
-        AppendBuilderType(
-            builder, classSymbol, className, valueType, mutableDictionary, immutableDictionary,
-            emitBuilderFrom, hasBaseDictionary, emitGenericAdd);
+        AppendBuilderType(builder, new BuilderEmitContext
+        {
+            ClassSymbol = classSymbol,
+            ClassName = className,
+            ValueType = valueType,
+            MutableDictionary = mutableDictionary,
+            ImmutableDictionary = immutableDictionary,
+            EmitBuilderFrom = emitBuilderFrom,
+            HasBaseDictionary = hasBaseDictionary,
+            EmitGenericAdd = emitGenericAdd
+        });
 
         builder.Append("}\n");
 
@@ -168,17 +176,11 @@ public sealed class TypedDictionaryGenerator : IIncrementalGenerator
         }
     }
 
-    private static void AppendBuilderType(
-        StringBuilder builder,
-        INamedTypeSymbol classSymbol,
-        string className,
-        string valueType,
-        string mutableDictionary,
-        string immutableDictionary,
-        bool emitBuilderFrom,
-        bool hasBaseDictionary,
-        bool emitGenericAdd)
+    private static void AppendBuilderType(StringBuilder builder, BuilderEmitContext ctx)
     {
+        string className = ctx.ClassName;
+        string mutableDictionary = ctx.MutableDictionary;
+
         // Nested Builder shell.
         AppendSummary(builder, 1, $"Builder for constructing <see cref=\"{className}\"/> instances.");
         builder.Append("    public sealed partial class Builder\n    {\n");
@@ -187,23 +189,23 @@ public sealed class TypedDictionaryGenerator : IIncrementalGenerator
         builder.Append("        public Builder()\n        {\n            _items = new ")
                .Append(mutableDictionary).Append("();\n        }\n");
 
-        if (emitBuilderFrom && !hasBaseDictionary)
+        if (ctx.EmitBuilderFrom && !ctx.HasBaseDictionary)
         {
             builder.Append('\n');
-            builder.Append("        internal Builder(").Append(immutableDictionary).Append(" existing)\n");
+            builder.Append("        internal Builder(").Append(ctx.ImmutableDictionary).Append(" existing)\n");
             builder.Append("        {\n            _items = new ").Append(mutableDictionary)
                    .Append("(existing);\n        }\n");
         }
 
         // Strongly typed partial AddXxx implementations.
-        foreach (EntryMethod entry in CollectEntryMethods(classSymbol))
+        foreach (EntryMethod entry in CollectEntryMethods(ctx.ClassSymbol))
         {
             builder.Append('\n');
-            AppendEntryMethod(builder, entry, valueType);
+            AppendEntryMethod(builder, entry, ctx.ValueType);
         }
 
         // Untyped Add.
-        if (emitGenericAdd)
+        if (ctx.EmitGenericAdd)
         {
             builder.Append('\n');
             AppendSummary(builder, 2, "Adds an arbitrary key-value entry.");
@@ -211,7 +213,7 @@ public sealed class TypedDictionaryGenerator : IIncrementalGenerator
             builder.Append("        /// <param name=\"value\">The value.</param>\n");
             builder.Append("        /// <returns>This builder for chaining.</returns>\n");
             builder.Append("        public Builder Add(string key, object value)\n        {\n");
-            builder.Append("            _items[key] = ").Append(valueType).Append(".From(value);\n");
+            builder.Append("            _items[key] = ").Append(ctx.ValueType).Append(".From(value);\n");
             builder.Append("            return this;\n        }\n");
         }
 
@@ -452,6 +454,26 @@ public sealed class TypedDictionaryGenerator : IIncrementalGenerator
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Cohesive set of values threaded through the Builder-type emission. Groups the wrapper's
+    /// identity (symbol/name), the rendered dictionary type strings, and the emission flags so
+    /// they travel as a single argument instead of a long parameter list.
+    /// </summary>
+    // Plain settable properties (not a positional record): the project targets
+    // netstandard2.0, where init-only setters would require an IsExternalInit
+    // polyfill, and a constructor would reintroduce the long parameter list (S107).
+    private sealed class BuilderEmitContext
+    {
+        public INamedTypeSymbol ClassSymbol { get; set; } = null!;
+        public string ClassName { get; set; } = "";
+        public string ValueType { get; set; } = "";
+        public string MutableDictionary { get; set; } = "";
+        public string ImmutableDictionary { get; set; } = "";
+        public bool EmitBuilderFrom { get; set; }
+        public bool HasBaseDictionary { get; set; }
+        public bool EmitGenericAdd { get; set; }
     }
 
     private sealed class EntryMethod

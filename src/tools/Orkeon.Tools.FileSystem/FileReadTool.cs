@@ -133,28 +133,10 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
 
             var encoding = GetEncoding(request.Encoding);
 
-            string content;
+            var (content, servedFromCache) = await LoadContentAsync(
+                request, virtualPath, resolvedPath, encoding, cancellationToken).ConfigureAwait(false);
+
             bool truncated = false;
-            bool servedFromCache = false;
-
-            if (request.UseRaggableCache && _raggableStore is not null)
-            {
-                var cached = await TryReadFromCacheAsync(virtualPath, resolvedPath, encoding, cancellationToken).ConfigureAwait(false);
-                if (cached is not null)
-                {
-                    content = cached;
-                    servedFromCache = true;
-                }
-                else
-                {
-                    content = await ReadContentAsync(virtualPath, encoding, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            else
-            {
-                content = await ReadContentAsync(virtualPath, encoding, cancellationToken).ConfigureAwait(false);
-            }
-
             if (request.MaxLength.HasValue && content.Length > request.MaxLength.Value)
             {
                 content = content.Substring(0, request.MaxLength.Value);
@@ -180,6 +162,20 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
             LogReadFile(displayPath, entry.SizeBytes);
             return response;
         }
+    }
+
+    private async Task<(string Content, bool ServedFromCache)> LoadContentAsync(
+        FileReadRequest request, string virtualPath, string resolvedPath, Encoding encoding, CancellationToken ct)
+    {
+        if (request.UseRaggableCache && _raggableStore is not null)
+        {
+            var cached = await TryReadFromCacheAsync(virtualPath, resolvedPath, encoding, ct).ConfigureAwait(false);
+            if (cached is not null)
+                return (cached, true);
+        }
+
+        var content = await ReadContentAsync(virtualPath, encoding, ct).ConfigureAwait(false);
+        return (content, false);
     }
 
     private async Task<string> ReadContentAsync(string virtualPath, Encoding encoding, CancellationToken ct)

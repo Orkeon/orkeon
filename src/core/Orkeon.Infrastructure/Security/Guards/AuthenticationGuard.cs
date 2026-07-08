@@ -51,20 +51,12 @@ public partial class AuthenticationGuard : IGuardian
                 return GuardResult.Allow();
             }
 
-            // Check if a principal is already set
-            if (context.ToolArgs?.TryGetValue(PrincipalKey, out var existingPrincipal) == true
-                && existingPrincipal is ClaimsPrincipal { Identity.IsAuthenticated: true })
+            if (HasAuthenticatedPrincipal(context))
             {
                 return GuardResult.Allow();
             }
 
-            // Try to find a token
-            string? token = null;
-            if (context.ToolArgs?.TryGetValue(TokenKey, out var tokenObj) == true)
-            {
-                token = tokenObj as string;
-            }
-
+            var token = ExtractToken(context);
             if (string.IsNullOrWhiteSpace(token))
             {
                 var violation = new GuardViolation(
@@ -78,16 +70,8 @@ public partial class AuthenticationGuard : IGuardian
                 return GuardResult.Block("Authentication required", [violation]);
             }
 
-            // Try each provider until one succeeds
-            foreach (var provider in providers)
-            {
-                var result = await provider.AuthenticateAsync(token, ct).ConfigureAwait(false);
-                if (result.IsAuthenticated)
-                {
-                    LogAuthenticationSucceededViaForAgent(provider.ProviderName, context.AgentId);
-                    return GuardResult.Allow();
-                }
-            }
+            if (await TryAuthenticateWithProvidersAsync(providers, token, context, ct).ConfigureAwait(false))
+                return GuardResult.Allow();
 
             var authViolation = new GuardViolation(
                 nameof(AuthenticationGuard),
@@ -99,6 +83,36 @@ public partial class AuthenticationGuard : IGuardian
             LogAuthenticationFailedForAgentNo(context.AgentId);
             return GuardResult.Block("Authentication failed", [authViolation]);
         }
+    }
+
+    /// <summary>True when the context already carries an authenticated <see cref="ClaimsPrincipal"/>.</summary>
+    private static bool HasAuthenticatedPrincipal(GuardContext context)
+        => context.ToolArgs?.TryGetValue(PrincipalKey, out var existingPrincipal) == true
+            && existingPrincipal is ClaimsPrincipal { Identity.IsAuthenticated: true };
+
+    /// <summary>Extracts the bearer token from the context tool args, or null when absent.</summary>
+    private static string? ExtractToken(GuardContext context)
+        => context.ToolArgs?.TryGetValue(TokenKey, out var tokenObj) == true
+            ? tokenObj as string
+            : null;
+
+    /// <summary>Tries each provider until one authenticates the token, logging the winner.</summary>
+    private async Task<bool> TryAuthenticateWithProvidersAsync(
+        List<IAuthenticationProvider> providers,
+        string token,
+        GuardContext context,
+        CancellationToken ct)
+    {
+        foreach (var provider in providers)
+        {
+            var result = await provider.AuthenticateAsync(token, ct).ConfigureAwait(false);
+            if (result.IsAuthenticated)
+            {
+                LogAuthenticationSucceededViaForAgent(provider.ProviderName, context.AgentId);
+                return true;
+            }
+        }
+        return false;
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Authentication blocked: no token provided for agent {AgentId}")]

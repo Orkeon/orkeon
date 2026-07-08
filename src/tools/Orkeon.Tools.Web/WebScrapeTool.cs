@@ -198,12 +198,9 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
             // chunked + stored on a previous call, skip the HTTP fetch entirely and
             // reconstruct the response from the cache. Saves an HTTP round-trip and
             // keeps the agent context stable across redundant scrape calls.
-            if (request.Cached && _embeddingService is not null && _memoryProvider is not null)
-            {
-                var hit = await TryDedupAsync(request.Url, cancellationToken).ConfigureAwait(false);
-                if (hit is not null)
-                    return hit;
-            }
+            var dedupHit = await TryDedupShortCircuitAsync(request, cancellationToken).ConfigureAwait(false);
+            if (dedupHit is not null)
+                return dedupHit;
 
             // SSRF protection: validate the requested URL (or its resolved IP) before any
             // outbound fetch. Uses the injected IUrlValidator when available, otherwise the
@@ -227,50 +224,71 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
                 return await MaybeCacheAsync(wiki, request, cancellationToken).ConfigureAwait(false);
             }
 
-            string html;
-            try
-            {
-                html = await _httpClient.GetStringAsync(uri, cts.Token).ConfigureAwait(false);
-            }
-            catch (HttpRequestException ex)
-            {
-                // Re-throw with URL in the message so the agent's circuit breaker
-                // can distinguish between different URLs that all return the same
-                // HTTP status. Without this, three distinct 404s look identical
-                // to the breaker and trip it after one round of guessing.
-                var status = ex.StatusCode is { } sc ? $"HTTP {(int)sc}" : "HTTP error";
-                throw new HttpRequestException(
-                    $"web_scrape failed for {request.Url}: {status} — {ex.Message}",
-                    ex,
-                    ex.StatusCode);
-            }
-
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
-
-            var title = doc.DocumentNode.SelectSingleNode("//title")?.InnerText?.Trim() ?? "";
-
-            WebScrapeResponse fetched;
-            if (!string.IsNullOrWhiteSpace(request.Selector))
-            {
-                fetched = ExtractWithSelector(doc, request.Selector, title, request.Url);
-            }
-            else
-            {
-                var text = ExtractFullPageText(doc);
-                LogScrapedUrl(request.Url, text.Length);
-                fetched = new WebScrapeResponse
-                {
-                    Content = text,
-                    Title = title,
-                    Url = request.Url,
-                    ContentLength = text.Length,
-                    SelectorMatched = false
-                };
-            }
-
+            var html = await FetchHtmlAsync(uri, request.Url, cts.Token).ConfigureAwait(false);
+            var fetched = BuildResponseFromHtml(html, request.Selector, request.Url);
             return await MaybeCacheAsync(fetched, request, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// When caching is enabled and both RAG services are wired, probes the cache for a
+    /// previous scrape of this URL. Returns the reconstructed response on a hit, or null
+    /// (no dedup possible / cache miss) so the caller performs a normal fetch.
+    /// </summary>
+    private async Task<WebScrapeResponse?> TryDedupShortCircuitAsync(WebScrapeRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Cached && _embeddingService is not null && _memoryProvider is not null)
+            return await TryDedupAsync(request.Url!, cancellationToken).ConfigureAwait(false);
+
+        return null;
+    }
+
+    /// <summary>
+    /// Fetches raw HTML, re-throwing any <see cref="HttpRequestException"/> with the URL in
+    /// the message so the agent's circuit breaker can distinguish between different URLs that
+    /// all return the same HTTP status. Without this, three distinct 404s look identical to
+    /// the breaker and trip it after one round of guessing.
+    /// </summary>
+    private async Task<string> FetchHtmlAsync(Uri uri, Uri originalUrl, CancellationToken ct)
+    {
+        try
+        {
+            return await _httpClient.GetStringAsync(uri, ct).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex)
+        {
+            var status = ex.StatusCode is { } sc ? $"HTTP {(int)sc}" : "HTTP error";
+            throw new HttpRequestException(
+                $"web_scrape failed for {originalUrl}: {status} — {ex.Message}",
+                ex,
+                ex.StatusCode);
+        }
+    }
+
+    /// <summary>
+    /// Parses the fetched HTML into a <see cref="WebScrapeResponse"/>, honoring the optional
+    /// CSS/XPath selector (selector match) or falling back to full-page text extraction.
+    /// </summary>
+    private WebScrapeResponse BuildResponseFromHtml(string html, string? selector, Uri url)
+    {
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        var title = doc.DocumentNode.SelectSingleNode("//title")?.InnerText?.Trim() ?? "";
+
+        if (!string.IsNullOrWhiteSpace(selector))
+            return ExtractWithSelector(doc, selector, title, url);
+
+        var text = ExtractFullPageText(doc);
+        LogScrapedUrl(url, text.Length);
+        return new WebScrapeResponse
+        {
+            Content = text,
+            Title = title,
+            Url = url,
+            ContentLength = text.Length,
+            SelectorMatched = false
+        };
     }
 
     /// <summary>

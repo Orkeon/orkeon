@@ -71,23 +71,63 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
 
         async Task<PdfSearchResponse> ExecuteTypedCoreAsync()
         {
-        // Step 1: Resolve PDF files
-        var pdfFiles = await ResolvePdfFilesVfsAsync(_fs, request.Path, cancellationToken).ConfigureAwait(false);
+            // Step 1: Resolve PDF files
+            var pdfFiles = await ResolvePdfFilesVfsAsync(_fs, request.Path, cancellationToken).ConfigureAwait(false);
+            if (pdfFiles.Count == 0)
+                return EmptyResponse(request.Query, totalPages: 0, filesProcessed: 0);
 
-        if (pdfFiles.Count == 0)
-        {
+            // Step 2: Extract and chunk text from all PDFs
+            var (allChunks, totalPages) = await ExtractAllChunksAsync(pdfFiles, request, cancellationToken).ConfigureAwait(false);
+            if (allChunks.Count == 0)
+                return EmptyResponse(request.Query, totalPages, pdfFiles.Count);
+
+            // Steps 3 & 4: Embed query + chunks, then compute cosine similarity and rank
+            var scoredResults = await ScoreChunksAsync(allChunks, request, cancellationToken).ConfigureAwait(false);
+
+            // Step 5: Sort by score descending, take top-K
+            var topResults = scoredResults
+                .OrderByDescending(r => r.Score)
+                .Take(request.TopK)
+                .Select(r => new PdfSearchResult
+                {
+                    Content = r.Chunk.Text,
+                    Score = r.Score,
+                    SourceFile = r.Chunk.SourceFile,
+                    PageNumber = r.Chunk.PageNumber,
+                    ChunkIndex = r.Chunk.ChunkIndex
+                })
+                .ToList();
+
+            LogSearchCompleted(request.Query, topResults.Count, allChunks.Count, pdfFiles.Count);
+
             return new PdfSearchResponse
             {
-                Query = request.Query,
-                Results = [],
-                ResultCount = 0,
-                TotalChunks = 0,
-                TotalPages = 0,
-                FilesProcessed = 0
+                Results = topResults,
+                ResultCount = topResults.Count,
+                TotalChunks = allChunks.Count,
+                TotalPages = totalPages,
+                FilesProcessed = pdfFiles.Count,
+                Query = request.Query
             };
         }
+    }
 
-        // Step 2: Extract and chunk text from all PDFs
+    // ── Private helpers ──────────────────────────────────────────────
+
+    private static PdfSearchResponse EmptyResponse(string query, int totalPages, int filesProcessed)
+        => new()
+        {
+            Query = query,
+            Results = [],
+            ResultCount = 0,
+            TotalChunks = 0,
+            TotalPages = totalPages,
+            FilesProcessed = filesProcessed
+        };
+
+    private async Task<(List<PdfChunk> Chunks, int TotalPages)> ExtractAllChunksAsync(
+        List<string> pdfFiles, PdfSearchRequest request, CancellationToken cancellationToken)
+    {
         var allChunks = new List<PdfChunk>();
         var totalPages = 0;
 
@@ -105,29 +145,21 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
             totalPages += pageCount;
         }
 
-        if (allChunks.Count == 0)
-        {
-            return new PdfSearchResponse
-            {
-                Query = request.Query,
-                Results = [],
-                ResultCount = 0,
-                TotalChunks = 0,
-                TotalPages = totalPages,
-                FilesProcessed = pdfFiles.Count
-            };
-        }
+        return (allChunks, totalPages);
+    }
 
+    private async Task<List<(PdfChunk Chunk, float Score)>> ScoreChunksAsync(
+        List<PdfChunk> allChunks, PdfSearchRequest request, CancellationToken cancellationToken)
+    {
         // Step 3: Generate embeddings for query and all chunks
         var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query, cancellationToken).ConfigureAwait(false);
 
-        var chunkTexts = allChunks.Select(c => c.Text).ToList();
-        var chunkEmbeddings = new float[chunkTexts.Count][];
-        for (var i = 0; i < chunkTexts.Count; i++)
+        var chunkEmbeddings = new float[allChunks.Count][];
+        for (var i = 0; i < allChunks.Count; i++)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
-            chunkEmbeddings[i] = await _embeddingService.GetEmbeddingAsync(chunkTexts[i], cancellationToken).ConfigureAwait(false);
+            chunkEmbeddings[i] = await _embeddingService.GetEmbeddingAsync(allChunks[i].Text, cancellationToken).ConfigureAwait(false);
         }
 
         // Step 4: Compute cosine similarity and rank
@@ -141,35 +173,8 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
             }
         }
 
-        // Step 5: Sort by score descending, take top-K
-        var topResults = scoredResults
-            .OrderByDescending(r => r.Score)
-            .Take(request.TopK)
-            .Select(r => new PdfSearchResult
-            {
-                Content = r.Chunk.Text,
-                Score = r.Score,
-                SourceFile = r.Chunk.SourceFile,
-                PageNumber = r.Chunk.PageNumber,
-                ChunkIndex = r.Chunk.ChunkIndex
-            })
-            .ToList();
-
-        LogSearchCompleted(request.Query, topResults.Count, allChunks.Count, pdfFiles.Count);
-
-        return new PdfSearchResponse
-        {
-            Results = topResults,
-            ResultCount = topResults.Count,
-            TotalChunks = allChunks.Count,
-            TotalPages = totalPages,
-            FilesProcessed = pdfFiles.Count,
-            Query = request.Query
-        };
-        }
+        return scoredResults;
     }
-
-    // ── Private helpers ──────────────────────────────────────────────
 
     private static async Task<List<string>> ResolvePdfFilesVfsAsync(
         IFileSystemService fs, string vPath, CancellationToken ct)

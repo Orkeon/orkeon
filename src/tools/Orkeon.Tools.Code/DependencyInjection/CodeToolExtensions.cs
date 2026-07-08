@@ -28,9 +28,9 @@ public static class CodeToolExtensions
         // SECURITY: interpreters (node/dotnet/npm/find) and mutating git subcommands are
         // intentionally NOT enabled by default — they are RCE-equivalent on the host. The
         // documented opt-in for trusted coding-agent hosts (which must run `git commit`,
-        // builds and tests) is `Orkeon:Tools:Shell:AllowInterpreters = true` in appsettings;
-        // the tool emits its security warning when active. Hosts without IConfiguration (or
-        // without the flag) keep the strict read-only default.
+        // builds and tests) is the appsettings flag `Orkeon:Tools:Shell:AllowInterpreters`,
+        // set to true; the tool emits its security warning when active. Hosts without
+        // IConfiguration (or without the flag) keep the strict read-only default.
         services.AddTransient<IBaseTool>(sp =>
         {
             var fs = sp.GetRequiredService<IFileSystemService>();

@@ -124,48 +124,13 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // Consensual, routes through the factory — R3.3)
             var processStrategy = _processStrategyFactory.CreateStrategy(crew.ProcessType);
 
-            DomainCrewOutput domainOutput;
-            try
-            {
-                // Planning (moved from Crew.KickoffAsync)
-                DomainExecutionPlan? plan = null;
-                if (crew.Planning && crew.PlanningLlm != null)
-                {
-                    var planner = CrewPlanner.Create(crew.PlanningLlm, _executionPlanParser);
-                    var planningContext = new PlanningContext(crew.Id, crew.Goal, crew.Agents);
-                    plan = await planner.CreatePlanAsync(planningContext, crew.Tasks, domainInput).ConfigureAwait(false);
-                }
-
-                // Extract string variables from input for template interpolation
-                var stringVariables = input.GetStringVariables();
-
-                // Execute according to process type (moved from Crew.KickoffAsync)
-                domainOutput = await ExecuteDomainStrategyAsync(
-                    crew, plan, processStrategy, stringVariables, cancellationToken).ConfigureAwait(false);
-
-                // Transition to completed state
-                var completedTasks = domainOutput.TaskOutputs?.Count(t => t.Success) ?? 0;
-                var failedTasks = domainOutput.TaskOutputs?.Count(t => !t.Success) ?? 0;
-                crew.CompleteExecution(completedTasks, failedTasks);
-            }
-            catch (Exception innerEx)
-            {
-                crew.FailExecution(innerEx.Message, innerEx);
-                throw;
-            }
+            var domainOutput = await ExecuteAndCompleteAsync(
+                crew, processStrategy, domainInput, input, cancellationToken).ConfigureAwait(false);
 
             // Checkpoint each task output
             if (_checkpointManager != null && sessionId != null)
             {
-                foreach (var taskOutput in domainOutput.TaskOutputs ?? Enumerable.Empty<Domain.Task.ValueObjects.TaskOutput>())
-                {
-                    await _checkpointManager.CheckpointAsync(
-                        sessionId,
-                        taskOutput.TaskId?.ToString() ?? Guid.NewGuid().ToString(),
-                        taskOutput.Output,
-                        cancellationToken).ConfigureAwait(false);
-                }
-                await _checkpointManager.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
+                await CheckpointTaskOutputsAsync(sessionId, domainOutput, cancellationToken).ConfigureAwait(false);
             }
 
             stopwatch.Stop();
@@ -199,6 +164,72 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 TokensUsed: null); // failed before telemetry could be collected
         }
         }
+    }
+
+    /// <summary>
+    /// Runs planning (when enabled), executes the process strategy, and transitions the crew to
+    /// its completed state. On any failure the crew is transitioned to failed and the exception
+    /// is rethrown so the outer fault barrier can surface it as a failed <see cref="CrewOutput"/>.
+    /// </summary>
+    private async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteAndCompleteAsync(
+        Orkeon.Domain.Crew.Crew crew,
+        IProcessStrategy processStrategy,
+        DomainCrewInput domainInput,
+        CrewInput input,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Planning (moved from Crew.KickoffAsync)
+            var plan = await CreatePlanIfEnabledAsync(crew, domainInput).ConfigureAwait(false);
+
+            // Extract string variables from input for template interpolation
+            var stringVariables = input.GetStringVariables();
+
+            // Execute according to process type (moved from Crew.KickoffAsync)
+            var domainOutput = await ExecuteDomainStrategyAsync(
+                crew, plan, processStrategy, stringVariables, cancellationToken).ConfigureAwait(false);
+
+            // Transition to completed state
+            var completedTasks = domainOutput.TaskOutputs?.Count(t => t.Success) ?? 0;
+            var failedTasks = domainOutput.TaskOutputs?.Count(t => !t.Success) ?? 0;
+            crew.CompleteExecution(completedTasks, failedTasks);
+
+            return domainOutput;
+        }
+        catch (Exception innerEx)
+        {
+            crew.FailExecution(innerEx.Message, innerEx);
+            throw;
+        }
+    }
+
+    private async System.Threading.Tasks.Task<DomainExecutionPlan?> CreatePlanIfEnabledAsync(
+        Orkeon.Domain.Crew.Crew crew,
+        DomainCrewInput domainInput)
+    {
+        if (!crew.Planning || crew.PlanningLlm == null)
+            return null;
+
+        var planner = CrewPlanner.Create(crew.PlanningLlm, _executionPlanParser);
+        var planningContext = new PlanningContext(crew.Id, crew.Goal, crew.Agents);
+        return await planner.CreatePlanAsync(planningContext, crew.Tasks, domainInput).ConfigureAwait(false);
+    }
+
+    private async System.Threading.Tasks.Task CheckpointTaskOutputsAsync(
+        string sessionId,
+        DomainCrewOutput domainOutput,
+        CancellationToken cancellationToken)
+    {
+        foreach (var taskOutput in domainOutput.TaskOutputs ?? Enumerable.Empty<Domain.Task.ValueObjects.TaskOutput>())
+        {
+            await _checkpointManager!.CheckpointAsync(
+                sessionId,
+                taskOutput.TaskId?.ToString() ?? Guid.NewGuid().ToString(),
+                taskOutput.Output,
+                cancellationToken).ConfigureAwait(false);
+        }
+        await _checkpointManager!.CompleteSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
     }
 
     private static async System.Threading.Tasks.Task<DomainCrewOutput> ExecuteDomainStrategyAsync(
@@ -369,62 +400,86 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         async IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingCoreAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-        // If streaming service is available, use real streaming
-        if (_streamingService != null && _agentRepository != null)
+            // If streaming service is available, use real streaming; otherwise fall back
+            // to a normal execution whose task outputs are replayed as events.
+            var events = _streamingService != null && _agentRepository != null
+                ? StreamViaServiceAsync(crewId, input, cancellationToken)
+                : StreamViaFallbackAsync(crewId, input, cancellationToken);
+
+            await foreach (var ev in events.ConfigureAwait(false))
+                yield return ev;
+        }
+    }
+
+    private async IAsyncEnumerable<CrewExecutionEvent> StreamViaServiceAsync(
+        CrewId crewId,
+        CrewInput input,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
+            ?? throw new InvalidOperationException($"Crew {crewId.ToString()} not found");
+
+        var agents = await LoadAgentsAsync(crew, cancellationToken).ConfigureAwait(false);
+
+        if (agents.Count == 0)
         {
-            var crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
-                ?? throw new InvalidOperationException($"Crew {crewId.ToString()} not found");
-
-            var agents = new List<Domain.Agent.Agent>();
-            foreach (var agentId in crew.Agents)
-            {
-                var agent = await _agentRepository.GetByIdAsync(agentId, cancellationToken).ConfigureAwait(false);
-                if (agent != null)
-                    agents.Add(agent);
-            }
-
-            if (agents.Count == 0)
-            {
-                yield return new CrewExecutionEvent("unknown", "error",
-                    new AgentThought("No agents found for crew", AgentThought.ThoughtType.Error, null, DateTime.UtcNow),
-                    DateTime.UtcNow);
-                yield break;
-            }
-
-            var context = new Orkeon.Application.Context.SimpleExecutionContext(
-                crewId,
-                new Dictionary<string, string>(input.GetStringVariables()),
-                Orkeon.Application.Context.NullMemoryScope.Instance,
-                []);
-            var agentIndex = 0;
-
-            foreach (var taskId in crew.Tasks)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var agent = agents[agentIndex % agents.Count];
-                agentIndex++;
-
-                // Create a domain task for streaming
-                var domainTask = new CrewTaskBuilder()
-                    .Description(taskId.ToString())
-                    .ExpectedOutput("Complete the assigned task")
-                    .Build();
-
-                await foreach (var thought in _streamingService.StreamExecutionAsync(
-                    agent, domainTask, context, cancellationToken).ConfigureAwait(false))
-                {
-                    yield return new CrewExecutionEvent(
-                        AgentRole: agent.Role.ToString(),
-                        TaskDescription: domainTask.Description,
-                        Thought: thought,
-                        Timestamp: thought.Timestamp);
-                }
-            }
-
+            yield return new CrewExecutionEvent("unknown", "error",
+                new AgentThought("No agents found for crew", AgentThought.ThoughtType.Error, null, DateTime.UtcNow),
+                DateTime.UtcNow);
             yield break;
         }
 
+        var context = new Orkeon.Application.Context.SimpleExecutionContext(
+            crewId,
+            new Dictionary<string, string>(input.GetStringVariables()),
+            Orkeon.Application.Context.NullMemoryScope.Instance,
+            []);
+        var agentIndex = 0;
+
+        foreach (var taskId in crew.Tasks)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var agent = agents[agentIndex % agents.Count];
+            agentIndex++;
+
+            // Create a domain task for streaming
+            var domainTask = new CrewTaskBuilder()
+                .Description(taskId.ToString())
+                .ExpectedOutput("Complete the assigned task")
+                .Build();
+
+            await foreach (var thought in _streamingService!.StreamExecutionAsync(
+                agent, domainTask, context, cancellationToken).ConfigureAwait(false))
+            {
+                yield return new CrewExecutionEvent(
+                    AgentRole: agent.Role.ToString(),
+                    TaskDescription: domainTask.Description,
+                    Thought: thought,
+                    Timestamp: thought.Timestamp);
+            }
+        }
+    }
+
+    private async System.Threading.Tasks.Task<List<Domain.Agent.Agent>> LoadAgentsAsync(
+        Orkeon.Domain.Crew.Crew crew,
+        CancellationToken cancellationToken)
+    {
+        var agents = new List<Domain.Agent.Agent>();
+        foreach (var agentId in crew.Agents)
+        {
+            var agent = await _agentRepository!.GetByIdAsync(agentId, cancellationToken).ConfigureAwait(false);
+            if (agent != null)
+                agents.Add(agent);
+        }
+        return agents;
+    }
+
+    private async IAsyncEnumerable<CrewExecutionEvent> StreamViaFallbackAsync(
+        CrewId crewId,
+        CrewInput input,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         // Fallback: execute normally and emit events for each task output
         var result = await KickoffAsync(crewId, input, cancellationToken).ConfigureAwait(false);
 
@@ -439,7 +494,6 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     null,
                     taskOutput.CompletedAt),
                 Timestamp: taskOutput.CompletedAt);
-        }
         }
     }
 

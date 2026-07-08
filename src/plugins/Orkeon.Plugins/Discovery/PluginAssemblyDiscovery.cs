@@ -47,39 +47,55 @@ public sealed class PluginAssemblyDiscovery : IPluginAssemblyDiscovery
             await foreach (var entry in _fileSystem.EnumerateFilesAsync(root, topLevelOnly, ct).ConfigureAwait(false))
             {
                 ct.ThrowIfCancellationRequested();
-
-                switch (entry.Kind)
-                {
-                    // Layout 1 — flat: <dir>/MyPlugin.dll
-                    case VirtualEntryKind.File when IsCandidateFileName(GetVirtualFileName(entry.VirtualPath), options.SearchPattern):
-                        if (TryResolveCandidate(entry.VirtualPath) is { } fileCandidate)
-                            candidates.Add(fileCandidate);
-                        break;
-
-                    // Layout 2 — folder-per-plugin: <dir>/MyPlugin/MyPlugin.dll
-                    case VirtualEntryKind.Directory:
-                    {
-                        var dirName = GetVirtualFileName(entry.VirtualPath);
-                        var conventionalFileName = dirName + AssemblyExtension;
-                        if (!IsCandidateFileName(conventionalFileName, options.SearchPattern))
-                            break;
-
-                        var conventionalPath = $"{entry.VirtualPath}/{conventionalFileName}";
-                        if (await _fileSystem.ExistsAsync(conventionalPath, ct).ConfigureAwait(false)
-                            && TryResolveCandidate(conventionalPath) is { } dirCandidate)
-                            candidates.Add(dirCandidate);
-                        break;
-                    }
-
-                    default:
-                        // Symbolic links are not followed in v1.
-                        break;
-                }
+                if (await ResolveEntryCandidateAsync(entry, options, ct).ConfigureAwait(false) is { } candidate)
+                    candidates.Add(candidate);
             }
 
             candidates.Sort(static (a, b) => string.CompareOrdinal(a.VirtualPath, b.VirtualPath));
             return candidates;
         }
+    }
+
+    /// <summary>
+    /// Resolves a single enumerated entry to a plugin candidate, or <c>null</c> when the entry
+    /// is not a plugin assembly (or is denied by the VFS). Handles the two supported layouts:
+    /// flat (<c>&lt;dir&gt;/MyPlugin.dll</c>) and folder-per-plugin
+    /// (<c>&lt;dir&gt;/MyPlugin/MyPlugin.dll</c>). Symbolic links are not followed in v1.
+    /// </summary>
+    private async Task<PluginAssemblyCandidate?> ResolveEntryCandidateAsync(
+        VirtualFileEntry entry, OrkeonPluginsOptions options, CancellationToken ct)
+    {
+        switch (entry.Kind)
+        {
+            // Layout 1 — flat: <dir>/MyPlugin.dll
+            case VirtualEntryKind.File when IsCandidateFileName(GetVirtualFileName(entry.VirtualPath), options.SearchPattern):
+                return TryResolveCandidate(entry.VirtualPath);
+
+            // Layout 2 — folder-per-plugin: <dir>/MyPlugin/MyPlugin.dll
+            case VirtualEntryKind.Directory:
+                return await ResolveConventionalDirCandidateAsync(entry, options, ct).ConfigureAwait(false);
+
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the conventional <c>&lt;dir&gt;/&lt;dir&gt;.dll</c> assembly inside a plugin folder,
+    /// or <c>null</c> when the convention is not matched, the file is absent, or the VFS denies it.
+    /// </summary>
+    private async Task<PluginAssemblyCandidate?> ResolveConventionalDirCandidateAsync(
+        VirtualFileEntry entry, OrkeonPluginsOptions options, CancellationToken ct)
+    {
+        var dirName = GetVirtualFileName(entry.VirtualPath);
+        var conventionalFileName = dirName + AssemblyExtension;
+        if (!IsCandidateFileName(conventionalFileName, options.SearchPattern))
+            return null;
+
+        var conventionalPath = $"{entry.VirtualPath}/{conventionalFileName}";
+        return await _fileSystem.ExistsAsync(conventionalPath, ct).ConfigureAwait(false)
+            ? TryResolveCandidate(conventionalPath)
+            : null;
     }
 
     /// <summary>

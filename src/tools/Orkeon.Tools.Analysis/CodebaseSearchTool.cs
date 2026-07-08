@@ -29,25 +29,12 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
 
         async Task<CodebaseSearchResponse> ExecuteCoreAsync()
         {
-            NodeQuery? preFilter = null;
-            if (!request.FilterKinds.IsDefaultOrEmpty || !request.FilterPackages.IsDefaultOrEmpty || !request.FilterLanguages.IsDefaultOrEmpty || !request.Levels.IsDefaultOrEmpty)
-            {
-                preFilter = new NodeQuery
-                {
-                    Level = request.Levels.IsDefaultOrEmpty ? null : request.Levels[0],
-                    Kinds = request.FilterKinds.IsDefaultOrEmpty ? null : request.FilterKinds,
-                    Languages = request.FilterLanguages.IsDefaultOrEmpty ? null : request.FilterLanguages,
-                    Packages = request.FilterPackages.IsDefaultOrEmpty ? null : request.FilterPackages,
-                    Take = 1000,
-                };
-            }
-
             var query = new SemanticQuery
             {
                 Text = request.Query,
                 TopK = request.TopK,
                 MinScore = request.MinScore,
-                PreFilter = preFilter,
+                PreFilter = BuildPreFilter(request),
             };
             var hits = await _store.SemanticSearchAsync(query, cancellationToken).ConfigureAwait(false);
 
@@ -61,5 +48,23 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
                 Truncated = hits.Count >= request.TopK,
             };
         }
+    }
+
+    private static NodeQuery? BuildPreFilter(CodebaseSearchRequest request)
+    {
+        if (request.FilterKinds.IsDefaultOrEmpty && request.FilterPackages.IsDefaultOrEmpty
+            && request.FilterLanguages.IsDefaultOrEmpty && request.Levels.IsDefaultOrEmpty)
+        {
+            return null;
+        }
+
+        return new NodeQuery
+        {
+            Level = request.Levels.IsDefaultOrEmpty ? null : request.Levels[0],
+            Kinds = request.FilterKinds.IsDefaultOrEmpty ? null : request.FilterKinds,
+            Languages = request.FilterLanguages.IsDefaultOrEmpty ? null : request.FilterLanguages,
+            Packages = request.FilterPackages.IsDefaultOrEmpty ? null : request.FilterPackages,
+            Take = 1000,
+        };
     }
 }

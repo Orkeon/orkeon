@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
@@ -32,6 +33,37 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
         async Task<DependencyGraphResponse> ExecuteCoreAsync()
         {
+            var nodes = await ResolveNodesAsync(request, cancellationToken).ConfigureAwait(false);
+            var kindMask = ResolveKindMask(request);
+            var edges = await CollectEdgesAsync(request, nodes, kindMask, cancellationToken).ConfigureAwait(false);
+
+            var graphNodes = nodes.Select(n => new GraphNode
+            {
+                Fqn = n.Fqn,
+                Name = n.Name,
+                Kind = n.EffectiveKind,
+                Level = n.Level,
+            }).ToImmutableArray();
+            var graphEdges = edges.ToImmutableArray();
+
+            var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = request.EdgeKinds }, cancellationToken).ConfigureAwait(false);
+            var metrics = BuildMetrics(graphNodes, graphEdges, cycles.Count);
+            var truncated = nodes.Count >= request.MaxNodes;
+
+            return new DependencyGraphResponse
+            {
+                Nodes = graphNodes,
+                Edges = graphEdges,
+                Metrics = metrics,
+                MermaidFlowchart = request.IncludeMermaid ? MermaidGenerator.ToFlowchart(graphNodes, graphEdges) : null,
+                Dot = request.IncludeDot ? MermaidGenerator.ToDot(graphNodes, graphEdges) : null,
+                Truncated = truncated,
+            };
+        }
+    }
+
+    private async Task<IReadOnlyList<RaggableNode>> ResolveNodesAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
+    {
         var nodes = await _store.QueryAsync(
             new NodeQuery { Level = request.Scope, Take = Math.Max(1, request.MaxNodes) },
             cancellationToken).ConfigureAwait(false);
@@ -44,10 +76,23 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             }
         }
 
+        return nodes;
+    }
+
+    private static EdgeKind ResolveKindMask(DependencyGraphRequest request)
+    {
         var kindMask = EdgeKind.None;
         foreach (var k in request.EdgeKinds) kindMask |= k;
         if (kindMask == EdgeKind.None) kindMask = EdgeKind.Imports;
+        return kindMask;
+    }
 
+    private async Task<List<GraphEdge>> CollectEdgesAsync(
+        DependencyGraphRequest request,
+        IReadOnlyList<RaggableNode> nodes,
+        EdgeKind kindMask,
+        CancellationToken cancellationToken)
+    {
         var nodeIdSet = new HashSet<string>(nodes.Select(n => n.Id), StringComparer.Ordinal);
         var edges = new List<GraphEdge>();
         foreach (var node in nodes)
@@ -61,29 +106,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             }
         }
 
-        var graphNodes = nodes.Select(n => new GraphNode
-        {
-            Fqn = n.Fqn,
-            Name = n.Name,
-            Kind = n.EffectiveKind,
-            Level = n.Level,
-        }).ToImmutableArray();
-        var graphEdges = edges.ToImmutableArray();
-
-        var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = request.EdgeKinds }, cancellationToken).ConfigureAwait(false);
-        var metrics = BuildMetrics(graphNodes, graphEdges, cycles.Count);
-        var truncated = nodes.Count >= request.MaxNodes;
-
-        return new DependencyGraphResponse
-        {
-            Nodes = graphNodes,
-            Edges = graphEdges,
-            Metrics = metrics,
-            MermaidFlowchart = request.IncludeMermaid ? MermaidGenerator.ToFlowchart(graphNodes, graphEdges) : null,
-            Dot = request.IncludeDot ? MermaidGenerator.ToDot(graphNodes, graphEdges) : null,
-            Truncated = truncated,
-        };
-        }
+        return edges;
     }
 
     private static GraphMetrics BuildMetrics(IReadOnlyList<GraphNode> nodes, IReadOnlyList<GraphEdge> edges, int cycleCount)

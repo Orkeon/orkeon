@@ -284,17 +284,7 @@ public sealed class JsLlmFacade
                 var cfg = toolSchemas is null
                     ? baseCfg
                     : baseCfg with { Tools = toolSchemas, ToolMode = ToolCallMode.Auto };
-                // F5 L1: when the caller supplied onDelta — or the host registered a native
-                // delta sink (F5 L3, e.g. the REPL's incremental renderer) — and the provider
-                // streams, consume the SSE chat path: content deltas feed the sink (plain C#
-                // call) and the JS callback (sequentially, on this single enumeration — the
-                // Jint engine is never entered concurrently), and the Completed event yields
-                // a response iso-shape with ChatAsync.
-                var resp = (onDelta is not null || _deltaSink is not null) &&
-                           _provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider streamingProvider &&
-                           streamingProvider.SupportsStreaming
-                    ? await ChatViaStreamAsync(streamingProvider, messages.ToArray(), cfg, onDelta).ConfigureAwait(false)
-                    : await _provider.ChatAsync(messages.ToArray(), cfg, _ct).ConfigureAwait(false);
+                var resp = await SendChatAsync(messages.ToArray(), cfg, onDelta).ConfigureAwait(false);
                 _budget?.RecordTokens(resp.TokensUsed);
 
                 var call = TryParseToolCall(resp.RawResponseBody);
@@ -304,31 +294,7 @@ public sealed class JsLlmFacade
                 var (toolName, toolArgs) = call.Value;
                 activity?.SetTag("llm.act.tool", toolName);
 
-                // Resolved before the gate so the tool's self-declared access class
-                // (IBaseTool.Access) informs the verdict; unresolved tools stay
-                // Unspecified and the gate classifies them fail-closed.
-                var tool = FindTool(toolName);
-                string resultText;
-                var verdict = _permissionGate is null
-                    ? null
-                    : await _permissionGate.CheckAsync(
-                        toolName, toolArgs, permissionMode,
-                        tool?.Access ?? ToolAccess.Unspecified, _ct).ConfigureAwait(false);
-                if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
-                {
-                    // Deny (and Ask without an interactive channel, already downgraded by the
-                    // gate) becomes a motivated refusal fed back as the tool result — no
-                    // exception, the model can adapt. Denied calls consume no tool-call budget.
-                    activity?.SetTag("llm.act.permission", "denied");
-                    resultText = $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}";
-                }
-                else
-                {
-                    // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
-                    // BudgetExhaustedException into an "ERROR:" string fed back to the model.
-                    _budget?.RecordToolCall();
-                    resultText = await ExecuteToolAsync(tool, toolName, toolArgs).ConfigureAwait(false);
-                }
+                var resultText = await ResolveToolResultAsync(toolName, toolArgs, permissionMode, activity).ConfigureAwait(false);
 
                 // Omit the assistant tool-call turn (empty content) to avoid the strict tool-role
                 // protocol; feed the result back as a plain user turn. The tool schemas stay in
@@ -357,6 +323,56 @@ public sealed class JsLlmFacade
             iterations = maxIterations,
             exhausted = true,
         });
+    }
+
+    /// <summary>
+    /// One chat turn for the tool-call loop. When the caller supplied onDelta — or the host
+    /// registered a native delta sink (F5 L3, e.g. the REPL's incremental renderer) — and the
+    /// provider streams, consume the SSE chat path: content deltas feed the sink (plain C# call)
+    /// and the JS callback (sequentially, on this single enumeration — the Jint engine is never
+    /// entered concurrently), and the Completed event yields a response iso-shape with ChatAsync.
+    /// Otherwise falls back to the buffered <see cref="ILlmProvider.ChatAsync"/>.
+    /// </summary>
+    private async Task<LlmResponse> SendChatAsync(LlmMessage[] messages, LlmConfig cfg, JsValue? onDelta)
+    {
+        if ((onDelta is not null || _deltaSink is not null) &&
+            _provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider streamingProvider &&
+            streamingProvider.SupportsStreaming)
+            return await ChatViaStreamAsync(streamingProvider, messages, cfg, onDelta).ConfigureAwait(false);
+        return await _provider!.ChatAsync(messages, cfg, _ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Applies the permission gate to one tool call and, when allowed, executes it. Returns the
+    /// text fed back to the model: a <c>DENIED: …</c> refusal on a non-Allow verdict, otherwise
+    /// the tool's result string.
+    /// </summary>
+    private async Task<string> ResolveToolResultAsync(
+        string toolName, Dictionary<string, object?> toolArgs, string permissionMode,
+        System.Diagnostics.Activity? activity)
+    {
+        // Resolved before the gate so the tool's self-declared access class
+        // (IBaseTool.Access) informs the verdict; unresolved tools stay
+        // Unspecified and the gate classifies them fail-closed.
+        var tool = FindTool(toolName);
+        var verdict = _permissionGate is null
+            ? null
+            : await _permissionGate.CheckAsync(
+                toolName, toolArgs, permissionMode,
+                tool?.Access ?? ToolAccess.Unspecified, _ct).ConfigureAwait(false);
+        if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
+        {
+            // Deny (and Ask without an interactive channel, already downgraded by the
+            // gate) becomes a motivated refusal fed back as the tool result — no
+            // exception, the model can adapt. Denied calls consume no tool-call budget.
+            activity?.SetTag("llm.act.permission", "denied");
+            return $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}";
+        }
+
+        // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
+        // BudgetExhaustedException into an "ERROR:" string fed back to the model.
+        _budget?.RecordToolCall();
+        return await ExecuteToolAsync(tool, toolName, toolArgs).ConfigureAwait(false);
     }
 
     private IBaseTool? FindTool(string name)

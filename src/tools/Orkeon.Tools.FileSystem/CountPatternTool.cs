@@ -169,16 +169,11 @@ public partial class CountPatternTool : FileToolBase<CountPatternRequest, CountP
             if (!await _fs.ExistsAsync(virtualPath, cancellationToken).ConfigureAwait(false))
                 throw new FileNotFoundException($"File not found: {virtualPath}");
 
-            var content = await _fs.TryReadAllTextAsync(virtualPath, cancellationToken).ConfigureAwait(false)
+            var rawContent = await _fs.TryReadAllTextAsync(virtualPath, cancellationToken).ConfigureAwait(false)
                 ?? string.Empty;
 
             // R30-P1: defensively strip a leading U+FEFF.
-            var bomStripped = false;
-            if (content.Length > 0 && content[0] == Utf8BomCodePoint)
-            {
-                content = content.Substring(1);
-                bomStripped = true;
-            }
+            var (content, bomStripped) = StripLeadingBom(rawContent);
 
             var options = request.Multiline
                 ? RegexOptions.Multiline | RegexOptions.CultureInvariant
@@ -187,23 +182,7 @@ public partial class CountPatternTool : FileToolBase<CountPatternRequest, CountP
             var maxMatchesReturned = request.MaxMatchesReturned ?? DefaultMaxMatchesReturned;
             if (maxMatchesReturned < 0) maxMatchesReturned = 0;
 
-            var counts = new List<PatternCount>(request.Patterns.Count);
-            foreach (var pattern in request.Patterns)
-            {
-                try
-                {
-                    var regex = new Regex(pattern, options, TimeSpan.FromMilliseconds(500));
-                    counts.Add(BuildPatternCount(pattern, regex, content, request, maxMatchesReturned));
-                }
-                catch (ArgumentException ex)
-                {
-                    counts.Add(new PatternCount { Pattern = pattern, Count = 0, Error = ex.Message });
-                }
-                catch (RegexMatchTimeoutException ex)
-                {
-                    counts.Add(new PatternCount { Pattern = pattern, Count = 0, Error = ex.Message });
-                }
-            }
+            var counts = CountAllPatterns(request, content, options, maxMatchesReturned);
 
             return new CountPatternResponse
             {
@@ -215,6 +194,37 @@ public partial class CountPatternTool : FileToolBase<CountPatternRequest, CountP
     }
 
     private const int DefaultMaxMatchesReturned = 200;
+
+    // R30-P1: strip a single leading U+FEFF (UTF-8 BOM as a code point) so ^ anchors match line 1.
+    private static (string Content, bool BomStripped) StripLeadingBom(string content)
+    {
+        if (content.Length > 0 && content[0] == Utf8BomCodePoint)
+            return (content.Substring(1), true);
+        return (content, false);
+    }
+
+    private static List<PatternCount> CountAllPatterns(
+        CountPatternRequest request, string content, RegexOptions options, int maxMatchesReturned)
+    {
+        var counts = new List<PatternCount>(request.Patterns.Count);
+        foreach (var pattern in request.Patterns)
+        {
+            try
+            {
+                var regex = new Regex(pattern, options, TimeSpan.FromMilliseconds(500));
+                counts.Add(BuildPatternCount(pattern, regex, content, request, maxMatchesReturned));
+            }
+            catch (ArgumentException ex)
+            {
+                counts.Add(new PatternCount { Pattern = pattern, Count = 0, Error = ex.Message });
+            }
+            catch (RegexMatchTimeoutException ex)
+            {
+                counts.Add(new PatternCount { Pattern = pattern, Count = 0, Error = ex.Message });
+            }
+        }
+        return counts;
+    }
 
     /// <summary>
     /// Computes a single pattern's count + optional match list. Honors the request flags

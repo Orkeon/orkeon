@@ -136,12 +136,12 @@ public sealed class GraphTraversal
 
         var state = new PathSearchState(
             query,
-            ct,
             maxDepth: Math.Clamp(query.MaxDepth, 1, _maxDepth),
             maxPaths: Math.Clamp(query.MaxPaths, 1, _maxNodes),
             kindMask: CombineKinds(query.EdgeKinds),
             toId: query.To is null ? null : _resolve(query.To)?.Id,
-            fromId: from.Id);
+            fromId: from.Id,
+            cancellationToken: ct);
 
         DfsPaths(state, from.Id, 0);
         return state.Results;
@@ -185,12 +185,12 @@ public sealed class GraphTraversal
     {
         public PathSearchState(
             PathQuery query,
-            CancellationToken cancellationToken,
             int maxDepth,
             int maxPaths,
             EdgeKind kindMask,
             string? toId,
-            string fromId)
+            string fromId,
+            CancellationToken cancellationToken)
         {
             Query = query;
             CancellationToken = cancellationToken;

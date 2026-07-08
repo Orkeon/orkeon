@@ -33,65 +33,76 @@ public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetai
 
         async Task<SymbolDetailResponse> ExecuteTypedCoreAsync()
         {
-        var node = await _store.GetAsync(request.Fqn, cancellationToken).ConfigureAwait(false);
-        if (node is null) throw await FqnSuggestions.BuildAsync(_store, request.Fqn, cancellationToken).ConfigureAwait(false);
+            var node = await _store.GetAsync(request.Fqn, cancellationToken).ConfigureAwait(false);
+            if (node is null) throw await FqnSuggestions.BuildAsync(_store, request.Fqn, cancellationToken).ConfigureAwait(false);
 
-        var expand = request.Expand;
-        var truncated = false;
-        var maxChildren = Math.Clamp(request.MaxChildren, 1, 200);
+            var expand = request.Expand;
+            var maxChildren = Math.Clamp(request.MaxChildren, 1, 200);
 
-        ImmutableArray<CompactNode> members = [];
-        if (expand.HasFlag(ExpandModes.Members))
-        {
-            var children = await _store.GetChildrenAsync(node.Id, cancellationToken).ConfigureAwait(false);
-            if (children.Count > maxChildren) { truncated = true; children = [.. children.Take(maxChildren)]; }
-            members = [.. children.Select(ToCompact)];
+            var (members, truncated) = await LoadMembersAsync(node, expand, maxChildren, cancellationToken).ConfigureAwait(false);
+            var (extends, implements) = await LoadInheritanceAsync(node, expand, cancellationToken).ConfigureAwait(false);
+
+            var callers = expand.HasFlag(ExpandModes.Callers)
+                ? await ResolveCompactAsync(node.CalledByIds, cancellationToken).ConfigureAwait(false)
+                : ImmutableArray<CompactNode>.Empty;
+
+            var callees = expand.HasFlag(ExpandModes.Callees)
+                ? await ResolveCompactAsync(node.CallIds, cancellationToken).ConfigureAwait(false)
+                : ImmutableArray<CompactNode>.Empty;
+
+            var statements = await LoadStatementsAsync(node, expand, cancellationToken).ConfigureAwait(false);
+
+            return new SymbolDetailResponse
+            {
+                Fqn = node.Fqn,
+                Name = node.Name,
+                Kind = node.EffectiveKind,
+                Level = node.Level,
+                Signature = request.IncludeSignature ? node.Signature : null,
+                DocComment = request.IncludeDoc ? node.DocComment : null,
+                SummaryShort = node.SemanticSummary,
+                Body = request.IncludeBodyMetrics ? node.Body : null,
+                Members = members,
+                Extends = extends,
+                Implements = implements,
+                TopCallers = callers,
+                TopCallees = callees,
+                Statements = statements,
+                Truncated = truncated,
+            };
         }
+    }
 
-        ImmutableArray<string> extends = [];
-        ImmutableArray<string> implements = [];
-        if (expand.HasFlag(ExpandModes.Inheritance))
-        {
-            var parents = await _store.GetEdgesAsync(node.Fqn, EdgeKind.Extends, Direction.Forward, cancellationToken).ConfigureAwait(false);
-            extends = [.. parents.Select(e => e.ToId).Distinct(StringComparer.Ordinal)];
-            var impls = await _store.GetEdgesAsync(node.Fqn, EdgeKind.Implements, Direction.Forward, cancellationToken).ConfigureAwait(false);
-            implements = [.. impls.Select(e => e.ToId).Distinct(StringComparer.Ordinal)];
-        }
+    private async Task<(ImmutableArray<CompactNode> Members, bool Truncated)> LoadMembersAsync(
+        RaggableNode node, ExpandModes expand, int maxChildren, CancellationToken cancellationToken)
+    {
+        if (!expand.HasFlag(ExpandModes.Members)) return ([], false);
 
-        var callers = expand.HasFlag(ExpandModes.Callers)
-            ? await ResolveCompactAsync(node.CalledByIds, cancellationToken).ConfigureAwait(false)
-            : ImmutableArray<CompactNode>.Empty;
+        var children = await _store.GetChildrenAsync(node.Id, cancellationToken).ConfigureAwait(false);
+        var truncated = children.Count > maxChildren;
+        if (truncated) children = [.. children.Take(maxChildren)];
+        return ([.. children.Select(ToCompact)], truncated);
+    }
 
-        var callees = expand.HasFlag(ExpandModes.Callees)
-            ? await ResolveCompactAsync(node.CallIds, cancellationToken).ConfigureAwait(false)
-            : ImmutableArray<CompactNode>.Empty;
+    private async Task<(ImmutableArray<string> Extends, ImmutableArray<string> Implements)> LoadInheritanceAsync(
+        RaggableNode node, ExpandModes expand, CancellationToken cancellationToken)
+    {
+        if (!expand.HasFlag(ExpandModes.Inheritance)) return ([], []);
 
-        ImmutableArray<StatementNode> statements = [];
-        if (expand.HasFlag(ExpandModes.Statements))
-        {
-            var stmts = await _store.GetStatementsAsync(node.Id, cancellationToken).ConfigureAwait(false);
-            statements = [.. stmts];
-        }
+        var parents = await _store.GetEdgesAsync(node.Fqn, EdgeKind.Extends, Direction.Forward, cancellationToken).ConfigureAwait(false);
+        ImmutableArray<string> extends = [.. parents.Select(e => e.ToId).Distinct(StringComparer.Ordinal)];
+        var impls = await _store.GetEdgesAsync(node.Fqn, EdgeKind.Implements, Direction.Forward, cancellationToken).ConfigureAwait(false);
+        ImmutableArray<string> implements = [.. impls.Select(e => e.ToId).Distinct(StringComparer.Ordinal)];
+        return (extends, implements);
+    }
 
-        return new SymbolDetailResponse
-        {
-            Fqn = node.Fqn,
-            Name = node.Name,
-            Kind = node.EffectiveKind,
-            Level = node.Level,
-            Signature = request.IncludeSignature ? node.Signature : null,
-            DocComment = request.IncludeDoc ? node.DocComment : null,
-            SummaryShort = node.SemanticSummary,
-            Body = request.IncludeBodyMetrics ? node.Body : null,
-            Members = members,
-            Extends = extends,
-            Implements = implements,
-            TopCallers = callers,
-            TopCallees = callees,
-            Statements = statements,
-            Truncated = truncated,
-        };
-        }
+    private async Task<ImmutableArray<StatementNode>> LoadStatementsAsync(
+        RaggableNode node, ExpandModes expand, CancellationToken cancellationToken)
+    {
+        if (!expand.HasFlag(ExpandModes.Statements)) return [];
+
+        var stmts = await _store.GetStatementsAsync(node.Id, cancellationToken).ConfigureAwait(false);
+        return [.. stmts];
     }
 
     private async Task<ImmutableArray<CompactNode>> ResolveCompactAsync(IReadOnlyList<string> ids, CancellationToken ct)

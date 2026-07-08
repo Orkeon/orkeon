@@ -144,26 +144,36 @@ public partial class CallbackOrchestrator : ICallbackOrchestrator
             // Dispatch to TaskCallbacks
             if (handlers?.TaskCallbacks != null)
             {
-                if (completionInfo.Result.Success && handlers.TaskCallbacks.OnCompleted != null)
-                {
-                    await InvokeDelegateSafelyAsync(
-                        () => handlers.TaskCallbacks.OnCompleted(context),
-                        "TaskCallbacks.OnCompleted", cancellationToken).ConfigureAwait(false);
-                }
-                else if (!completionInfo.Result.Success && handlers.TaskCallbacks.OnFailed != null)
-                {
-                    await InvokeDelegateSafelyAsync(
-                        () => handlers.TaskCallbacks.OnFailed(context),
-                        "TaskCallbacks.OnFailed", cancellationToken).ConfigureAwait(false);
-                }
-
-                if (handlers.TaskCallbacks.OnFinally != null)
-                {
-                    await InvokeDelegateSafelyAsync(
-                        () => handlers.TaskCallbacks.OnFinally(context),
-                        "TaskCallbacks.OnFinally", cancellationToken).ConfigureAwait(false);
-                }
+                await DispatchTaskCompletedCallbacksAsync(
+                    handlers.TaskCallbacks, context, completionInfo.Result.Success, cancellationToken).ConfigureAwait(false);
             }
+        }
+    }
+
+    private async System.Threading.Tasks.Task DispatchTaskCompletedCallbacksAsync(
+        TaskCallbacks callbacks,
+        TaskCompletedContext context,
+        bool success,
+        CancellationToken cancellationToken)
+    {
+        if (success && callbacks.OnCompleted != null)
+        {
+            await InvokeDelegateSafelyAsync(
+                () => callbacks.OnCompleted(context),
+                "TaskCallbacks.OnCompleted", cancellationToken).ConfigureAwait(false);
+        }
+        else if (!success && callbacks.OnFailed != null)
+        {
+            await InvokeDelegateSafelyAsync(
+                () => callbacks.OnFailed(context),
+                "TaskCallbacks.OnFailed", cancellationToken).ConfigureAwait(false);
+        }
+
+        if (callbacks.OnFinally != null)
+        {
+            await InvokeDelegateSafelyAsync(
+                () => callbacks.OnFinally(context),
+                "TaskCallbacks.OnFinally", cancellationToken).ConfigureAwait(false);
         }
     }
 

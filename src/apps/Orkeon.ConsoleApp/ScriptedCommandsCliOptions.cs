@@ -38,10 +38,12 @@ internal sealed record ScriptedCommandsCliOptions(
             if (a == "--runner=scripted-commands") boot = true;
             else if (a == "--no-script-commands") disabled = true;
             else if (a == "--strict-commands") strict = true;
-            else if (TryAddValueOption(a, "--commands-dir", args, ref i, dirs)) { }
-            else if (TryAddValueOption(a, "--settings", args, ref i, settings)) { }
-            else if (TryAddValueOption(a, "--mount", args, ref i, mounts)) { }
-            else if (TryAddValueOption(a, "--crews-dir", args, ref i, crewDirs)) { }
+            // Value options: TryAddValueOption captures the value (and advances i) as its side
+            // effect; a true return only stops the chain, so the bodies are intentionally empty.
+            else if (TryAddValueOption(a, "--commands-dir", args, ref i, dirs)) { /* captured */ }
+            else if (TryAddValueOption(a, "--settings", args, ref i, settings)) { /* captured */ }
+            else if (TryAddValueOption(a, "--mount", args, ref i, mounts)) { /* captured */ }
+            else if (TryAddValueOption(a, "--crews-dir", args, ref i, crewDirs)) { /* captured */ }
         }
 
         return new ScriptedCommandsCliOptions(boot, dirs, disabled, strict, settings, mounts, crewDirs);

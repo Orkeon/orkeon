@@ -101,25 +101,30 @@ public class RagTool : IBaseTool, IRagTool
                 new RagOptions { Retrieval = new RetrievalOptions { TopK = topK } },
                 cancellationToken).ConfigureAwait(false);
 
-            var response = new StringBuilder();
-            response.AppendLine(result.Answer);
-
-            if (result.Sources.Count > 0)
-            {
-                response.AppendLine();
-                response.AppendLine("Sources:");
-                foreach (var source in result.Sources)
-                {
-                    var preview = source.Content.Length > 100
-                        ? source.Content[..100] + "..."
-                        : source.Content;
-                    response.AppendLine(
-                        Inv.Format($"- [{source.SourceId}] (score: {source.RelevanceScore:F2}): {preview}"));
-                }
-            }
-
-            return new ToolCallResponse(true, response.ToString(), null);
+            return new ToolCallResponse(true, FormatPipelineResult(result), null);
         }
+    }
+
+    private static string FormatPipelineResult(RagResult result)
+    {
+        var response = new StringBuilder();
+        response.AppendLine(result.Answer);
+
+        if (result.Sources.Count > 0)
+        {
+            response.AppendLine();
+            response.AppendLine("Sources:");
+            foreach (var source in result.Sources)
+            {
+                var preview = source.Content.Length > 100
+                    ? source.Content[..100] + "..."
+                    : source.Content;
+                response.AppendLine(
+                    Inv.Format($"- [{source.SourceId}] (score: {source.RelevanceScore:F2}): {preview}"));
+            }
+        }
+
+        return response.ToString();
     }
 
     /// <inheritdoc />

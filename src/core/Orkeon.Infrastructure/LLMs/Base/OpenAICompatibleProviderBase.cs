@@ -294,7 +294,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     private sealed class StreamedToolCall
     {
         public string Id { get; set; } = "";
-        public string Name { get; set; } = "";
+        public StringBuilder Name { get; } = new();
         public StringBuilder Arguments { get; } = new();
     }
 
@@ -322,50 +322,56 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
             // Usage arrives on a dedicated (often choices-less) final chunk with include_usage.
             if (root.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
-            {
-                state.TotalTokens = usage.TryGetProperty("total_tokens", out var t) && t.TryGetInt32(out var tv) ? tv : state.TotalTokens;
-                state.PromptTokens = TryReadInt(usage, "prompt_tokens") ?? state.PromptTokens;
-                state.CompletionTokens = TryReadInt(usage, "completion_tokens") ?? state.CompletionTokens;
-                state.CacheHitTokens = TryReadInt(usage, "prompt_cache_hit_tokens")
-                    ?? TryReadNestedInt(usage, "prompt_tokens_details", "cached_tokens")
-                    ?? state.CacheHitTokens;
-                state.CacheMissTokens = TryReadInt(usage, "prompt_cache_miss_tokens") ?? state.CacheMissTokens;
-            }
+                AccumulateUsage(usage, state);
 
             if (!root.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array)
                 return events;
 
             foreach (var choice in choices.EnumerateArray())
             {
-                if (!choice.TryGetProperty("delta", out var delta) || delta.ValueKind != JsonValueKind.Object)
-                    continue;
-
-                if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
-                {
-                    var token = content.GetString();
-                    if (!string.IsNullOrEmpty(token))
-                    {
-                        state.Content.Append(token);
-                        events.Add(LlmStreamEvent.Content(token));
-                    }
-                }
-
-                if (delta.TryGetProperty("reasoning_content", out var reasoning) && reasoning.ValueKind == JsonValueKind.String)
-                {
-                    var token = reasoning.GetString();
-                    if (!string.IsNullOrEmpty(token))
-                    {
-                        state.Reasoning.Append(token);
-                        events.Add(LlmStreamEvent.Reasoning(token));
-                    }
-                }
-
-                if (delta.TryGetProperty("tool_calls", out var toolCalls) && toolCalls.ValueKind == JsonValueKind.Array)
-                    AccumulateToolCallFragments(toolCalls, state);
+                if (choice.TryGetProperty("delta", out var delta) && delta.ValueKind == JsonValueKind.Object)
+                    AccumulateDelta(delta, state, events);
             }
         }
 
         return events;
+    }
+
+    private static void AccumulateUsage(JsonElement usage, ChatStreamState state)
+    {
+        state.TotalTokens = usage.TryGetProperty("total_tokens", out var t) && t.TryGetInt32(out var tv) ? tv : state.TotalTokens;
+        state.PromptTokens = TryReadInt(usage, "prompt_tokens") ?? state.PromptTokens;
+        state.CompletionTokens = TryReadInt(usage, "completion_tokens") ?? state.CompletionTokens;
+        state.CacheHitTokens = TryReadInt(usage, "prompt_cache_hit_tokens")
+            ?? TryReadNestedInt(usage, "prompt_tokens_details", "cached_tokens")
+            ?? state.CacheHitTokens;
+        state.CacheMissTokens = TryReadInt(usage, "prompt_cache_miss_tokens") ?? state.CacheMissTokens;
+    }
+
+    private static void AccumulateDelta(JsonElement delta, ChatStreamState state, List<LlmStreamEvent> events)
+    {
+        if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+        {
+            var token = content.GetString();
+            if (!string.IsNullOrEmpty(token))
+            {
+                state.Content.Append(token);
+                events.Add(LlmStreamEvent.Content(token));
+            }
+        }
+
+        if (delta.TryGetProperty("reasoning_content", out var reasoning) && reasoning.ValueKind == JsonValueKind.String)
+        {
+            var token = reasoning.GetString();
+            if (!string.IsNullOrEmpty(token))
+            {
+                state.Reasoning.Append(token);
+                events.Add(LlmStreamEvent.Reasoning(token));
+            }
+        }
+
+        if (delta.TryGetProperty("tool_calls", out var toolCalls) && toolCalls.ValueKind == JsonValueKind.Array)
+            AccumulateToolCallFragments(toolCalls, state);
     }
 
     private static void AccumulateToolCallFragments(JsonElement toolCalls, ChatStreamState state)
@@ -379,17 +385,22 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 state.ToolCalls[index] = call;
             }
 
-            if (fragment.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
-                call.Id = id.GetString() ?? call.Id;
-
-            if (fragment.TryGetProperty("function", out var fn) && fn.ValueKind == JsonValueKind.Object)
-            {
-                if (fn.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String)
-                    call.Name += name.GetString();
-                if (fn.TryGetProperty("arguments", out var args) && args.ValueKind == JsonValueKind.String)
-                    call.Arguments.Append(args.GetString());
-            }
+            MergeToolCallFragment(fragment, call);
         }
+    }
+
+    private static void MergeToolCallFragment(JsonElement fragment, StreamedToolCall call)
+    {
+        if (fragment.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
+            call.Id = id.GetString() ?? call.Id;
+
+        if (!fragment.TryGetProperty("function", out var fn) || fn.ValueKind != JsonValueKind.Object)
+            return;
+
+        if (fn.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String)
+            call.Name.Append(name.GetString());
+        if (fn.TryGetProperty("arguments", out var args) && args.ValueKind == JsonValueKind.String)
+            call.Arguments.Append(args.GetString());
     }
 
     /// <summary>
@@ -432,7 +443,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ["type"] = "function",
             ["function"] = new Dictionary<string, object?>
             {
-                ["name"] = c.Name,
+                ["name"] = c.Name.ToString(),
                 ["arguments"] = c.Arguments.ToString(),
             },
         }).ToList();

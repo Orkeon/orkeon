@@ -77,25 +77,11 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
             var scope = request.SchemaScope;
             var isSqlite = IsSqliteConnection(connection);
 
-            var tables = isSqlite
-                ? await GetTablesSqliteAsync(connection, filter, scope, cancellationToken).ConfigureAwait(false)
-                : await GetTablesGenericAsync(connection, filter, scope).ConfigureAwait(false);
+            var tables = await GetTablesAsync(connection, filter, scope, isSqlite, cancellationToken).ConfigureAwait(false);
+            var indexes = await GetIndexesIfScopedAsync(connection, filter, scope, isSqlite, cancellationToken).ConfigureAwait(false);
+            var foreignKeys = await GetForeignKeysIfScopedAsync(connection, filter, scope, isSqlite, cancellationToken).ConfigureAwait(false);
 
-            List<IndexInfo>? indexes = null;
-            if (scope is SchemaScope.Indexes or SchemaScope.All)
-                indexes = isSqlite
-                    ? await GetIndexesSqliteAsync(connection, filter, cancellationToken).ConfigureAwait(false)
-                    : await GetIndexesGenericAsync(connection, filter).ConfigureAwait(false);
-
-            List<ForeignKeyInfo>? foreignKeys = null;
-            if (scope is SchemaScope.ForeignKeys or SchemaScope.All)
-                foreignKeys = isSqlite
-                    ? await GetForeignKeysSqliteAsync(connection, filter, cancellationToken).ConfigureAwait(false)
-                    : await GetForeignKeysGenericAsync(connection, filter).ConfigureAwait(false);
-
-            var dbName = connection.Database;
-            if (string.IsNullOrEmpty(dbName))
-                dbName = ExtractDatabaseNameFromConnectionString(request.ConnectionString);
+            var dbName = ResolveDatabaseName(connection, request.ConnectionString);
 
             LogSchemaIntrospectionCompleted(tables.Count, indexes?.Count ?? 0, foreignKeys?.Count ?? 0);
 
@@ -108,6 +94,42 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
                 ProviderName = request.ProviderName,
             };
         }
+    }
+
+    private Task<List<TableInfo>> GetTablesAsync(
+        DbConnection connection, Regex? filter, SchemaScope scope, bool isSqlite, CancellationToken ct)
+        => isSqlite
+            ? GetTablesSqliteAsync(connection, filter, scope, ct)
+            : GetTablesGenericAsync(connection, filter, scope);
+
+    private async Task<List<IndexInfo>?> GetIndexesIfScopedAsync(
+        DbConnection connection, Regex? filter, SchemaScope scope, bool isSqlite, CancellationToken ct)
+    {
+        if (scope is not (SchemaScope.Indexes or SchemaScope.All))
+            return null;
+
+        return isSqlite
+            ? await GetIndexesSqliteAsync(connection, filter, ct).ConfigureAwait(false)
+            : await GetIndexesGenericAsync(connection, filter).ConfigureAwait(false);
+    }
+
+    private async Task<List<ForeignKeyInfo>?> GetForeignKeysIfScopedAsync(
+        DbConnection connection, Regex? filter, SchemaScope scope, bool isSqlite, CancellationToken ct)
+    {
+        if (scope is not (SchemaScope.ForeignKeys or SchemaScope.All))
+            return null;
+
+        return isSqlite
+            ? await GetForeignKeysSqliteAsync(connection, filter, ct).ConfigureAwait(false)
+            : await GetForeignKeysGenericAsync(connection, filter).ConfigureAwait(false);
+    }
+
+    private static string ResolveDatabaseName(DbConnection connection, string connectionString)
+    {
+        var dbName = connection.Database;
+        if (string.IsNullOrEmpty(dbName))
+            dbName = ExtractDatabaseNameFromConnectionString(connectionString);
+        return dbName;
     }
 
     // ── SQLite-specific introspection ────────────────────────────────────
