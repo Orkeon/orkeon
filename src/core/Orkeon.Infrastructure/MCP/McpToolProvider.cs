@@ -44,6 +44,10 @@ public partial class McpToolProvider : IAsyncDisposable
         string serverId, McpServerConfig config, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(config);
+        if (config.Transport == McpTransportType.Sse && config.Url is null)
+            throw new ArgumentException("URL required for SSE transport.", nameof(config));
+        if (config.Transport is not (McpTransportType.Stdio or McpTransportType.Sse))
+            throw new ArgumentException($"Unknown transport type: {config.Transport}", nameof(config));
         return ConnectServerCoreAsync();
 
         async Task ConnectServerCoreAsync()
@@ -51,14 +55,15 @@ public partial class McpToolProvider : IAsyncDisposable
             if (_clients.ContainsKey(serverId))
                 throw new InvalidOperationException($"Server '{serverId}' is already connected.");
 
+            // SSE URL presence and transport-type validity are checked eagerly in
+            // ConnectServerAsync, before the async state machine starts.
             IMcpTransport transport = config.Transport switch
             {
                 McpTransportType.Stdio => new StdioMcpTransport(config,
                     _loggerFactory?.CreateLogger<StdioMcpTransport>()),
-                McpTransportType.Sse => new SseMcpTransport(
-                    config.Url ?? throw new ArgumentException("URL required for SSE transport.", nameof(config)),
+                McpTransportType.Sse => new SseMcpTransport(config.Url!,
                     logger: _loggerFactory?.CreateLogger<SseMcpTransport>()),
-                _ => throw new ArgumentException($"Unknown transport type: {config.Transport}", nameof(config))
+                _ => throw new InvalidOperationException($"Unknown transport type: {config.Transport}")
             };
 
             var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>());

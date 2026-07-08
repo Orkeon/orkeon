@@ -108,7 +108,7 @@ public partial class MongoDbTool : ToolBase<MongoDbRequest, MongoDbResponse>
                     MongoDbOperation.DeleteOne => await ExecuteDeleteOneAsync(collection, request, cancellationToken).ConfigureAwait(false),
                     MongoDbOperation.Count => await ExecuteCountAsync(collection, request, cancellationToken).ConfigureAwait(false),
                     MongoDbOperation.Distinct => await ExecuteDistinctAsync(collection, request, cancellationToken).ConfigureAwait(false),
-                    _ => throw new ArgumentOutOfRangeException(nameof(request), request.Operation, "Unsupported operation")
+                    _ => throw new InvalidOperationException($"Unsupported operation: {request.Operation}")
                 };
 
                 sw.Stop();

@@ -83,7 +83,7 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
                 RelationalQueryType.Select => await ExecuteSelectAsync(connection, request, cancellationToken).ConfigureAwait(false),
                 RelationalQueryType.Execute => await ExecuteNonQueryAsync(connection, request, cancellationToken).ConfigureAwait(false),
                 RelationalQueryType.Scalar => await ExecuteScalarAsync(connection, request, cancellationToken).ConfigureAwait(false),
-                _ => throw new ArgumentOutOfRangeException(nameof(request), $"Unknown query type: {request.QueryType}")
+                _ => throw new InvalidOperationException($"Unknown query type: {request.QueryType}")
             };
 
             sw.Stop();

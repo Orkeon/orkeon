@@ -129,11 +129,16 @@ public sealed class PostgresStateStore : IStateStore, IAsyncDisposable, IDisposa
     }
 
     /// <inheritdoc />
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
-        Justification = "Only the {_schema} identifier is interpolated (validated at construction via SchemaNameValidator; identifiers cannot be parameterized); all caller values are passed as command parameters.")]
-    public async Task SaveAsync(SessionState state, CancellationToken ct = default)
+    public Task SaveAsync(SessionState state, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(state);
+        return SaveCoreAsync(state, ct);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
+        Justification = "Only the {_schema} identifier is interpolated (validated at construction via SchemaNameValidator; identifiers cannot be parameterized); all caller values are passed as command parameters.")]
+    private async Task SaveCoreAsync(SessionState state, CancellationToken ct)
+    {
         await EnsureMigratedAsync(ct).ConfigureAwait(false);
         var json = JsonSerializer.Serialize(state, JsonOptions);
 
@@ -255,11 +260,16 @@ public sealed class PostgresStateStore : IStateStore, IAsyncDisposable, IDisposa
     // ── Time-travel methods ──
 
     /// <inheritdoc />
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
-        Justification = "Only the {_schema} identifier is interpolated (validated at construction via SchemaNameValidator; identifiers cannot be parameterized); all caller values are passed as command parameters.")]
-    public async Task<VersionedState> SaveVersionedAsync(SessionState state, string? stepId = null, string? label = null, CancellationToken ct = default)
+    public Task<VersionedState> SaveVersionedAsync(SessionState state, string? stepId = null, string? label = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(state);
+        return SaveVersionedCoreAsync(state, stepId, label, ct);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
+        Justification = "Only the {_schema} identifier is interpolated (validated at construction via SchemaNameValidator; identifiers cannot be parameterized); all caller values are passed as command parameters.")]
+    private async Task<VersionedState> SaveVersionedCoreAsync(SessionState state, string? stepId, string? label, CancellationToken ct)
+    {
         await EnsureMigratedAsync(ct).ConfigureAwait(false);
         var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
         await using var __conn = conn.ConfigureAwait(false);

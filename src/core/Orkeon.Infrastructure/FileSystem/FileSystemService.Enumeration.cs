@@ -163,16 +163,26 @@ public sealed partial class FileSystemService
         else
         {
             const int bufferSize = 64 * 1024;
-            // `await using var __x = stream.ConfigureAwait(false)` disposes each stream on scope
-            // exit (incl. exceptions) while staying CA2007-compliant — the repo's standard idiom
-            // (see PostgresStateStore/SqliteStateStore).
+            // Explicit try/finally DisposeAsync (not the repo's usual `await using var __x =
+            // stream.ConfigureAwait(false)` idiom): SonarQube's S2930 does not track disposal
+            // through ConfiguredAsyncDisposable and reported srcStream as leaked.
             var srcStream = new FileStream(srcPhysical, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync: true);
-            await using var __srcStream = srcStream.ConfigureAwait(false);
-
-            var dstStream = new FileStream(dstPhysical, overwrite ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize, useAsync: true);
-            await using var __dstStream = dstStream.ConfigureAwait(false);
-
-            await srcStream.CopyToAsync(dstStream, bufferSize, ct).ConfigureAwait(false);
+            try
+            {
+                var dstStream = new FileStream(dstPhysical, overwrite ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize, useAsync: true);
+                try
+                {
+                    await srcStream.CopyToAsync(dstStream, bufferSize, ct).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await dstStream.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                await srcStream.DisposeAsync().ConfigureAwait(false);
+            }
         }
     }
 

@@ -60,7 +60,7 @@ public partial class GraphSchemaTool : ToolBase<GraphSchemaRequest, GraphSchemaR
             {
                 GraphType.JanusGraph => await IntrospectJanusGraphAsync(request).ConfigureAwait(false),
                 GraphType.ArcadeDB => await IntrospectArcadeDbAsync(request).ConfigureAwait(false),
-                _ => throw new ArgumentOutOfRangeException(nameof(request), request.GraphType, "Unsupported graph type")
+                _ => throw new InvalidOperationException($"Unsupported graph type: {request.GraphType}")
             };
         }
     }
