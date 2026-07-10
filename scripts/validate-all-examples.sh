@@ -10,6 +10,21 @@
 #
 # Output: a per-config OK/FAIL table plus a final tally. Exits non-zero if any FAIL.
 #
+# NOTE: the FULL 105-config sweep is meant for CI (examples-ci.yml), NOT for local dev
+# runs. On a slow/virtiofs filesystem each --validate spends 1-7 min purely loading the
+# host, so the whole set can take hours. Locally, use --sample N (or --configs) to smoke
+# a handful of representative crews.
+#
+# Usage:
+#   scripts/validate-all-examples.sh                 # full sweep (CI)
+#   scripts/validate-all-examples.sh --sample 8      # ~1 config per category, up to N
+#   scripts/validate-all-examples.sh --configs a,b   # exactly these configs
+#
+# Options:
+#   --sample <N>             validate one config per category (in category order), up to N.
+#   --configs <csv>          validate exactly this comma-separated list of config paths
+#                            (absolute, repo-relative, or examples/-relative).
+#
 # Environment overrides:
 #   VALIDATE_JOBS=<n>        parallel workers (default 4). Each --validate is I/O-wait
 #                            bound, so overlapping them cuts wall time substantially.
@@ -18,7 +33,9 @@
 #   VALIDATE_EXCLUDES=<csv>  comma/space/newline-separated substrings; any config whose
 #                            path matches one is skipped (for interactive examples whose
 #                            load genuinely needs a live console). Empty by default.
+#   VALIDATE_SAMPLE=<N>      same as --sample N.
 #   VALIDATE_SKIP_BUILD=1    reuse existing Release binaries (skip the build step).
+#   VALIDATE_RESULT_DIR=<d>  keep per-config results in <d> (survives a killed parent).
 #
 set -uo pipefail
 
@@ -30,6 +47,8 @@ JOBS="${VALIDATE_JOBS:-4}"
 PER_TIMEOUT="${VALIDATE_TIMEOUT:-300}"
 FILTER="${VALIDATE_FILTER:-}"
 EXCLUDES="${VALIDATE_EXCLUDES:-}"
+SAMPLE="${VALIDATE_SAMPLE:-}"
+EXPLICIT_CONFIGS=""
 
 STD_PROJ="examples/runners/standard/Orkeon.Examples.Runner.csproj"
 TRD_PROJ="examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj"
@@ -69,8 +88,21 @@ if [[ "${1:-}" == "__worker" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Main
+# Main — parse CLI args (env vars already provide defaults).
 # ---------------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --sample)   SAMPLE="${2:-}"; shift 2 ;;
+        --configs)  EXPLICIT_CONFIGS="${2:-}"; shift 2 ;;
+        -h|--help)  grep -E '^#( |$)' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "ERROR: unknown argument '$1' (see --help)" >&2; exit 2 ;;
+    esac
+done
+
+if [[ -n "$SAMPLE" && ! "$SAMPLE" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: --sample expects a positive integer, got '$SAMPLE'" >&2; exit 2
+fi
+
 echo "==> validate-all-examples (jobs=$JOBS, per-config timeout=${PER_TIMEOUT}s)"
 
 if [[ "${VALIDATE_SKIP_BUILD:-0}" != "1" ]]; then
@@ -108,13 +140,44 @@ is_excluded() {
     return 1
 }
 
+# Category key = the top-level numbered dir, e.g. "examples/03-finance-trading/.." -> "03-finance-trading".
+category_of() { local p="${1#examples/}"; printf '%s' "${p%%/*}"; }
+
 declare -a CONFIGS=()
 declare -a SKIPPED=()
-for cfg in "${ALL_CONFIGS[@]}"; do
-    [[ -n "$FILTER" && ! "$cfg" =~ $FILTER ]] && continue
-    if is_excluded "$cfg"; then SKIPPED+=("$cfg"); continue; fi
-    CONFIGS+=("$cfg")
-done
+
+if [[ -n "$EXPLICIT_CONFIGS" ]]; then
+    # Explicit list wins over discovery. Accept absolute, repo-relative, or examples/-relative.
+    IFS=', ' read -r -a WANTED <<< "$(printf '%s' "$EXPLICIT_CONFIGS" | tr '\n' ' ')"
+    for w in "${WANTED[@]}"; do
+        [[ -z "$w" ]] && continue
+        if [[ -f "$w" ]]; then CONFIGS+=("$w")
+        elif [[ -f "examples/$w" ]]; then CONFIGS+=("examples/$w")
+        else echo "WARNING: config not found, skipping: $w" >&2; fi
+    done
+else
+    for cfg in "${ALL_CONFIGS[@]}"; do
+        [[ -n "$FILTER" && ! "$cfg" =~ $FILTER ]] && continue
+        if is_excluded "$cfg"; then SKIPPED+=("$cfg"); continue; fi
+        CONFIGS+=("$cfg")
+    done
+
+    # --sample N: keep the first config of each distinct category (category order),
+    # capped at N — a fast, representative smoke set spanning the example taxonomy.
+    if [[ -n "$SAMPLE" ]]; then
+        declare -a SAMPLED=()
+        declare -A SEEN_CAT=()
+        for cfg in "${CONFIGS[@]}"; do
+            cat="$(category_of "$cfg")"
+            [[ -n "${SEEN_CAT[$cat]:-}" ]] && continue
+            SEEN_CAT[$cat]=1
+            SAMPLED+=("$cfg")
+            [[ "${#SAMPLED[@]}" -ge "$SAMPLE" ]] && break
+        done
+        CONFIGS=("${SAMPLED[@]}")
+        echo "==> Sample mode: ${#CONFIGS[@]} config(s), one per category (cap $SAMPLE)."
+    fi
+fi
 
 total=${#CONFIGS[@]}
 echo "==> Validating $total config(s)$([[ ${#SKIPPED[@]} -gt 0 ]] && echo ", skipping ${#SKIPPED[@]} excluded")..."
