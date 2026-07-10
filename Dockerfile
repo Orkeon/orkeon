@@ -32,8 +32,8 @@ FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Run as non-root user
-RUN adduser --disabled-password --gecos "" app
+# Run as the non-root `app` user built into the GA runtime image
+# (the minimal runtime:10.0 image has no `adduser`).
 USER app
 
 ENTRYPOINT ["dotnet", "Orkeon.ConsoleApp.dll"]

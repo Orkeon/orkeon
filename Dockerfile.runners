@@ -111,10 +111,10 @@ RUN printf '%s\n' \
   > /usr/local/bin/orkeon-entrypoint \
   && chmod +x /usr/local/bin/orkeon-entrypoint
 
-# Conventional virtual roots crews write to; created so bind mounts land cleanly.
-RUN mkdir -p /output /workspace \
-  && adduser --disabled-password --gecos "" app \
-  && chown -R app:app /output /workspace
+# Conventional virtual roots crews write to; owned by the image's built-in
+# non-root user (app / uid 1654, shipped by the .NET runtime image — no user
+# creation needed, and the minimal image has no `adduser`).
+RUN mkdir -p /output /workspace && chown -R app:app /output /workspace
 USER app
 
 ENTRYPOINT ["orkeon-entrypoint"]
