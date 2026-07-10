@@ -56,8 +56,26 @@ public sealed class RunnerSettingsContractTests : IDisposable
     }
 
     [Fact]
-    public void Walks_up_to_shared_appsettings()
+    public void Walks_up_to_canonical_appsettings()
     {
+        var settingsDir = Path.Combine(_root, "appsettings");
+        Directory.CreateDirectory(settingsDir);
+        var canonical = Path.Combine(settingsDir, "appsettings.json");
+        File.WriteAllText(canonical, "{}");
+
+        var configDir = Path.Combine(_root, "examples", "deep");
+        Directory.CreateDirectory(configDir);
+
+        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir);
+
+        Assert.Equal(canonical, resolved);
+    }
+
+    [Fact]
+    public void Walks_up_to_legacy_shared_appsettings_when_canonical_absent()
+    {
+        // Deprecated compatibility fallback: the _shared location is still honored
+        // when no appsettings/appsettings.json exists above the config dir.
         var sharedDir = Path.Combine(_root, "_shared");
         Directory.CreateDirectory(sharedDir);
         var shared = Path.Combine(sharedDir, "appsettings.json");
@@ -69,6 +87,28 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var resolved = RunnerSettings.ResolveSettingsPath(null, configDir);
 
         Assert.Equal(shared, resolved);
+    }
+
+    [Fact]
+    public void Canonical_appsettings_wins_over_legacy_shared()
+    {
+        // When both live at the same level, the canonical appsettings/ folder
+        // takes precedence over the deprecated _shared/ fallback.
+        var settingsDir = Path.Combine(_root, "appsettings");
+        Directory.CreateDirectory(settingsDir);
+        var canonical = Path.Combine(settingsDir, "appsettings.json");
+        File.WriteAllText(canonical, "{}");
+
+        var sharedDir = Path.Combine(_root, "_shared");
+        Directory.CreateDirectory(sharedDir);
+        File.WriteAllText(Path.Combine(sharedDir, "appsettings.json"), "{}");
+
+        var configDir = Path.Combine(_root, "examples", "deep");
+        Directory.CreateDirectory(configDir);
+
+        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir);
+
+        Assert.Equal(canonical, resolved);
     }
 
     [Fact]

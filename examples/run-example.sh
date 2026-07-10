@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage: ./examples/run-example.sh <category/example> [--settings path/to/appsettings.json]
 # Ex:    ./examples/run-example.sh 01-enterprise/01-research-assistant
-# Ex:    ./examples/run-example.sh 01-enterprise/01-research-assistant --settings examples/_shared/appsettings.docker.json
+# Ex:    ./examples/run-example.sh 01-enterprise/01-research-assistant --settings examples/appsettings/appsettings.json
 set -euo pipefail
 
 EXAMPLE_PATH="$1"

@@ -11,7 +11,7 @@
 #   ./examples/test-all-examples.sh --category 01          # Single category
 #   ./examples/test-all-examples.sh --example 01-enterprise/01-research-assistant
 #   ./examples/test-all-examples.sh --timeout 300          # Custom timeout
-#   ./examples/test-all-examples.sh --settings examples/_shared/appsettings.docker.json
+#   ./examples/test-all-examples.sh --settings examples/appsettings/appsettings.json
 #   ./examples/test-all-examples.sh --stop-on-error        # Stop at first failure
 set -uo pipefail
 

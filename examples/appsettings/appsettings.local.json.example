@@ -1,0 +1,25 @@
+{
+  "_comment": "Generic (default) settings template — points at DeepSeek V4 Flash. Copy this file WITHOUT the .example suffix (-> appsettings.local.json), then fill in your key, or switch BaseUrl/Model/ApiKey to another provider. The ${DEEPSEEK_API_KEY} placeholder is NOT expanded automatically: replace it, or override via ORKEON_Llm__ApiKey=... The provider is auto-detected from the BaseUrl host.",
+  "_models": [
+    "deepseek-v4-flash — 1M ctx, 384K max output, non-thinking + thinking (default) modes",
+    "deepseek-v4-pro   — 1M ctx, advanced reasoning"
+  ],
+  "Llm": {
+    "Model": "deepseek-v4-flash",
+    "BaseUrl": "https://api.deepseek.com",
+    "ApiKey": "${DEEPSEEK_API_KEY}",
+    "Temperature": 0.2,
+    "MaxTokens": 24576,
+    "TimeoutSeconds": 600
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 16,
+    "GlobalRequestsPerMinute": 300,
+    "ProviderRequestsPerMinute": 300,
+    "AgentRequestsPerMinute": 10,
+    "QueueLimit": 512
+  },
+  "LlmLogging": {
+    "FullEmbeddingLog": false
+  }
+}

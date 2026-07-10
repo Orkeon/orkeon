@@ -33,8 +33,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "interactive-claim-verificat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Examples.Interactive.ClaimVerification", "runners\interactive-claim-verification\Orkeon.Examples.Interactive.ClaimVerification.csproj", "{CF85460A-D1AC-4719-B493-8B7D1FA351CA}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_shared", "_shared", "{2F51B836-2EED-870D-4276-9E044D41070A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Cli", "..\src\cli\Orkeon.Cli\Orkeon.Cli.csproj", "{12107BBA-82EE-4A03-92FE-FE10B57AF55C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Compliance.Vfs", "..\src\analyzers\Orkeon.Compliance.Vfs\Orkeon.Compliance.Vfs.csproj", "{FA43CB0D-6282-4615-B8C9-7460289604A5}"
@@ -280,7 +278,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{4744DEBB-2182-E342-D67F-F53A5B8229CC} = {E6522D2C-A0D2-0AFB-6208-EAE0F209FD8A}
 		{CF85460A-D1AC-4719-B493-8B7D1FA351CA} = {4744DEBB-2182-E342-D67F-F53A5B8229CC}
-		{2F51B836-2EED-870D-4276-9E044D41070A} = {E6522D2C-A0D2-0AFB-6208-EAE0F209FD8A}
 		{D124475E-8F53-0BBC-790B-D9D64DFCF221} = {E6522D2C-A0D2-0AFB-6208-EAE0F209FD8A}
 		{0E19F846-B076-4DE3-9ADA-D9A9058FC605} = {D124475E-8F53-0BBC-790B-D9D64DFCF221}
 	EndGlobalSection

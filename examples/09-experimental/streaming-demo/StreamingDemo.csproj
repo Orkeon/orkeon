@@ -22,9 +22,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\core\Orkeon.Application\Orkeon.Application.csproj" />
-    <ProjectReference Include="..\..\src\core\Orkeon.Domain\Orkeon.Domain.csproj" />
-    <ProjectReference Include="..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

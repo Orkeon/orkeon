@@ -13,10 +13,10 @@ Tu travailles dans le repo Orkeon (.NET 10). Tu dois tester les 101 exemples dan
 ## Contexte
 
 Le projet utilise un systeme de configuration centralise :
-- `examples/_shared/appsettings.json` : config par defaut (localhost)
-- `examples/_shared/appsettings.docker.json` : config Docker (host.docker.internal)
-- `examples/_shared/appsettings.openai.json` : config OpenAI
-- Les runners resolvent automatiquement : --settings > local appsettings.json > _shared/appsettings.json
+- `examples/appsettings/appsettings.json` : config par defaut (localhost, Docker Model Runner)
+- `examples/appsettings/appsettings.docker-model-runner.local.json.example` : gabarit Docker (localhost ; remplacer par host.docker.internal en conteneur)
+- `examples/appsettings/appsettings.openai.local.json.example` : gabarit OpenAI
+- Les runners resolvent automatiquement : --settings > local appsettings.json > appsettings/appsettings.json
 
 Tu es dans un container Docker, donc il faut utiliser `appsettings.docker.json` via --settings.
 
@@ -64,7 +64,7 @@ fi
 timeout 60s dotnet run --project "$RUNNER" \
   --no-build --configuration Release \
   -- --config "examples/$example/config.yaml" \
-     --settings "examples/_shared/appsettings.docker.json" \
+     --settings "examples/appsettings/appsettings.json" \
   2>&1
 ```
 

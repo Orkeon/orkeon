@@ -7,10 +7,11 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Task.ValueObjects;
-using Orkeon.Domain.Shared.ValueObjects;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Task;
 
@@ -34,21 +35,22 @@ services.AddHttpClient();
 
 // Register LLM provider from appsettings.json (Docker Model Runner)
 var llmSection = config.GetSection("Llm");
-var llmConfig = new LlmConfig
+var llmConfig = LlmConfig.Create(llmSection["Model"] ?? "gpt-4") with
 {
-    Model = llmSection["Model"] ?? "gpt-4",
-    BaseUrl = llmSection["BaseUrl"],
+    BaseUrl = llmSection["BaseUrl"] is { } baseUrl ? new Uri(baseUrl) : null,
+#pragma warning disable CS0618 // demo wires the key directly from appsettings
     ApiKey = llmSection["ApiKey"],
+#pragma warning restore CS0618
     Temperature = double.TryParse(llmSection["Temperature"], out var temp) ? temp : 0.7,
     MaxTokens = int.TryParse(llmSection["MaxTokens"], out var mt) ? mt : 4096
 };
-services.AddSingleton<Orkeon.Domain.Shared.ILlmProvider>(sp =>
+services.AddSingleton<Orkeon.Domain.SharedKernel.ILlmProvider>(sp =>
     new OpenAIProvider(llmConfig, sp.GetRequiredService<IHttpClientFactory>(),
         sp.GetRequiredService<ILogger<OpenAIProvider>>()));
 services.AddSingleton<IBasicLlmProvider>(sp =>
-    new LlmProviderAdapter(sp.GetRequiredService<Orkeon.Domain.Shared.ILlmProvider>()));
+    new LlmProviderAdapter(sp.GetRequiredService<Orkeon.Domain.SharedKernel.ILlmProvider>()));
 services.AddSingleton<IChatClient>(sp =>
-    new LlmProviderToChatClientAdapter(sp.GetRequiredService<Orkeon.Domain.Shared.ILlmProvider>()));
+    new LlmProviderToChatClientAdapter(sp.GetRequiredService<Orkeon.Domain.SharedKernel.ILlmProvider>()));
 
 services.AddOrkeonApplication();
 services.AddOrkeonInfrastructure();
@@ -72,7 +74,7 @@ var task = new CrewTaskBuilder()
 var context = new SimpleExecutionContext(
     CrewId.Create(),
     new Dictionary<string, string>(),
-    new NullMemoryScope(),
+    NullMemoryScope.Instance,
     new List<Orkeon.Application.Execution.TaskOutput>());
 
 // 4. Stream execution
@@ -107,55 +109,3 @@ await foreach (var thought in streamingService.StreamExecutionAsync(agent, task,
 }
 
 Console.WriteLine("\n\n--- Done ---");
-
-// ====================================================================
-// Mock chat client that simulates streaming responses
-// ====================================================================
-
-class MockStreamingChatClient : IChatClient
-{
-    public ChatClientMetadata Metadata => new("MockStreaming");
-
-    public Task<ChatResponse> GetResponseAsync(
-        IEnumerable<ChatMessage> messages, ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(new ChatResponse(
-            new ChatMessage(ChatRole.Assistant, "Mock response")));
-    }
-
-    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> messages, ChatOptions? options = null,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var tokens = new[]
-        {
-            "Based on ", "my analysis, ", "the top 3 ", "AI agent ",
-            "frameworks in 2026 ", "are:\n\n",
-            "1. **Orkeon** - ", "Multi-agent orchestration ", "with role-based collaboration\n",
-            "2. **AutoGen** - ", "Microsoft's framework ", "for conversational agents\n",
-            "3. **LangGraph** - ", "Graph-based agent ", "workflow engine\n\n",
-            "Each framework ", "excels at ", "different use cases."
-        };
-
-        foreach (var token in tokens)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await Task.Delay(50, cancellationToken); // Simulate latency
-            yield return new ChatResponseUpdate(ChatRole.Assistant, token);
-        }
-    }
-
-    public object? GetService(Type serviceType, object? serviceKey = null) => null;
-    public void Dispose() { }
-}
-
-// Minimal memory scope for the demo
-class NullMemoryScope : Orkeon.Application.Interfaces.Ports.IMemoryScope
-{
-    public string AgentId => "demo";
-    public string ScopeId => "demo-scope";
-    public Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> operation) => operation();
-    public Task ExecuteInScopeAsync(Func<Task> operation) => operation();
-    public void Dispose() { }
-}

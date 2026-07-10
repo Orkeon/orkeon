@@ -28,7 +28,7 @@ This example demonstrates how to build an **interactive session** where:
 ```bash
 dotnet run --project examples/runners/interactive \
   -c examples/01-enterprise/16-interactive-qa/config.yaml \
-  -s examples/_shared/appsettings.json \
+  -s examples/appsettings/appsettings.json \
   -v 1
 ```
 

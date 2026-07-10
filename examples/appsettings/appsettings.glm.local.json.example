@@ -1,0 +1,25 @@
+{
+  "_comment": "Settings template — Z.AI GLM (OpenAI-compatible endpoint). Copy this file WITHOUT the .example suffix (-> appsettings.glm.local.json), then fill in your key. The ${ZAI_API_KEY} placeholder is NOT expanded automatically: replace it with the plain key, or override at runtime via ORKEON_Llm__ApiKey=... The factory auto-detects ZaiLlmProvider (host api.z.ai / model glm-*): native thinking passthrough + context-cache metrics.",
+  "_docs": "https://docs.z.ai/api-reference/introduction",
+  "_models": [
+    "glm-5.2 — 1M ctx, 128K max output, thinking (reasoning_content) — https://docs.z.ai/guides/llm/glm-5.2"
+  ],
+  "Llm": {
+    "Model": "glm-5.2",
+    "BaseUrl": "https://api.z.ai/api/paas/v4",
+    "ApiKey": "${ZAI_API_KEY}",
+    "Temperature": 0.2,
+    "MaxTokens": 131072,
+    "TimeoutSeconds": 600
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 16,
+    "GlobalRequestsPerMinute": 300,
+    "ProviderRequestsPerMinute": 300,
+    "AgentRequestsPerMinute": 10,
+    "QueueLimit": 512
+  },
+  "LlmLogging": {
+    "FullEmbeddingLog": false
+  }
+}
