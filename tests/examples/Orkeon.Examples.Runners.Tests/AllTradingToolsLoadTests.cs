@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Orkeon.Domain.Common;
+using Orkeon.Domain.Tools;
 using Orkeon.Trading.Tools.Infrastructure.DependencyInjection;
 
 namespace Orkeon.Examples.Runners.Tests;
@@ -9,6 +9,12 @@ namespace Orkeon.Examples.Runners.Tests;
 /// has its Name, Description, and Schema loaded successfully from its YAML
 /// definition (catches missing yaml files, malformed yaml, or missing
 /// CopyToOutputDirectory wiring).
+///
+/// Tools are resolved as <see cref="IBaseTool"/> (the service type they are
+/// registered under and the type <c>ServiceProviderToolRegistry</c> consumes),
+/// not as <c>ITool</c>: MS DI resolves by the exact registered service type and
+/// does not upcast a registration to a base interface, so resolving <c>ITool</c>
+/// would yield zero services even though every tool implements it.
 /// </summary>
 public class AllTradingToolsLoadTests
 {
@@ -24,7 +30,7 @@ public class AllTradingToolsLoadTests
     public void AddTradingTools_registers_exactly_44_tools()
     {
         var sp = BuildProvider();
-        var tools = sp.GetServices<ITool>().ToList();
+        var tools = sp.GetServices<IBaseTool>().ToList();
         Assert.Equal(44, tools.Count);
     }
 
@@ -32,7 +38,7 @@ public class AllTradingToolsLoadTests
     public void All_44_tools_load_their_yaml_metadata()
     {
         var sp = BuildProvider();
-        var tools = sp.GetServices<ITool>().ToList();
+        var tools = sp.GetServices<IBaseTool>().ToList();
 
         var failures = new List<string>();
         foreach (var tool in tools)
@@ -62,7 +68,7 @@ public class AllTradingToolsLoadTests
     public void All_44_tools_have_distinct_names()
     {
         var sp = BuildProvider();
-        var names = sp.GetServices<ITool>().Select(t => t.Name).ToList();
+        var names = sp.GetServices<IBaseTool>().Select(t => t.Name).ToList();
         var duplicates = names.GroupBy(n => n).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
         Assert.True(duplicates.Count == 0,
             "Duplicate tool names: " + string.Join(", ", duplicates));

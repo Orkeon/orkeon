@@ -1,4 +1,4 @@
-using Orkeon.Domain.Common;
+using Orkeon.Domain.Tools;
 using Orkeon.Trading.Tools.Domain.Services;
 using Orkeon.Trading.Tools.Infrastructure.Analysis;
 using Orkeon.Trading.Tools.Infrastructure.Data;
@@ -37,62 +37,62 @@ public static class TradingToolsServiceCollectionExtensions
         services.AddSingleton<IVenueDataProvider, MockVenueDataProvider>();
 
         // Analysis tools
-        services.AddSingleton<ITool, CorrelationAnalysisTool>();
-        services.AddSingleton<ITool, MarketRegimeClassificationTool>();
-        services.AddSingleton<ITool, MultiAssetComparisonTool>();
-        services.AddSingleton<ITool, PatternRecognitionTool>();
-        services.AddSingleton<ITool, TechnicalIndicatorsTool>();
+        services.AddSingleton<IBaseTool, CorrelationAnalysisTool>();
+        services.AddSingleton<IBaseTool, MarketRegimeClassificationTool>();
+        services.AddSingleton<IBaseTool, MultiAssetComparisonTool>();
+        services.AddSingleton<IBaseTool, PatternRecognitionTool>();
+        services.AddSingleton<IBaseTool, TechnicalIndicatorsTool>();
 
         // Data tools
-        services.AddSingleton<ITool, AlternativeDataTool>();
-        services.AddSingleton<ITool, FundamentalDataTool>();
-        services.AddSingleton<ITool, HistoricalDataFetchTool>();
-        services.AddSingleton<ITool, OrderBookDepthTool>();
-        services.AddSingleton<ITool, RealTimeTickDataTool>();
-        services.AddSingleton<ITool, UnifiedMarketDataTool>();
+        services.AddSingleton<IBaseTool, AlternativeDataTool>();
+        services.AddSingleton<IBaseTool, FundamentalDataTool>();
+        services.AddSingleton<IBaseTool, HistoricalDataFetchTool>();
+        services.AddSingleton<IBaseTool, OrderBookDepthTool>();
+        services.AddSingleton<IBaseTool, RealTimeTickDataTool>();
+        services.AddSingleton<IBaseTool, UnifiedMarketDataTool>();
 
         // Execution tools
-        services.AddSingleton<ITool, ImplementationShortfallTool>();
-        services.AddSingleton<ITool, POVExecutionTool>();
-        services.AddSingleton<ITool, SmartOrderRoutingTool>();
-        services.AddSingleton<ITool, TWAPExecutionTool>();
-        services.AddSingleton<ITool, VWAPExecutionTool>();
+        services.AddSingleton<IBaseTool, ImplementationShortfallTool>();
+        services.AddSingleton<IBaseTool, POVExecutionTool>();
+        services.AddSingleton<IBaseTool, SmartOrderRoutingTool>();
+        services.AddSingleton<IBaseTool, TWAPExecutionTool>();
+        services.AddSingleton<IBaseTool, VWAPExecutionTool>();
 
         // Governance tools
-        services.AddSingleton<ITool, AlertManagementTool>();
-        services.AddSingleton<ITool, AuditTrailTool>();
-        services.AddSingleton<ITool, CircuitBreakerTool>();
-        services.AddSingleton<ITool, ComplianceCheckTool>();
-        services.AddSingleton<ITool, ConcentrationRiskTool>();
-        services.AddSingleton<ITool, DashboardMetricsTool>();
-        services.AddSingleton<ITool, DrawdownMonitoringTool>();
-        services.AddSingleton<ITool, LiquidityAnalysisTool>();
-        services.AddSingleton<ITool, PerformanceAttributionTool>();
-        services.AddSingleton<ITool, PositionLimitMonitoringTool>();
-        services.AddSingleton<ITool, RegulatoryReportingTool>();
-        services.AddSingleton<ITool, TransactionCostAnalysisTool>();
+        services.AddSingleton<IBaseTool, AlertManagementTool>();
+        services.AddSingleton<IBaseTool, AuditTrailTool>();
+        services.AddSingleton<IBaseTool, CircuitBreakerTool>();
+        services.AddSingleton<IBaseTool, ComplianceCheckTool>();
+        services.AddSingleton<IBaseTool, ConcentrationRiskTool>();
+        services.AddSingleton<IBaseTool, DashboardMetricsTool>();
+        services.AddSingleton<IBaseTool, DrawdownMonitoringTool>();
+        services.AddSingleton<IBaseTool, LiquidityAnalysisTool>();
+        services.AddSingleton<IBaseTool, PerformanceAttributionTool>();
+        services.AddSingleton<IBaseTool, PositionLimitMonitoringTool>();
+        services.AddSingleton<IBaseTool, RegulatoryReportingTool>();
+        services.AddSingleton<IBaseTool, TransactionCostAnalysisTool>();
 
         // Portfolio tools
-        services.AddSingleton<ITool, BlackLittermanTool>();
-        services.AddSingleton<ITool, ConstraintOptimizationTool>();
-        services.AddSingleton<ITool, HierarchicalRiskParityTool>();
-        services.AddSingleton<ITool, MeanVarianceOptimizationTool>();
-        services.AddSingleton<ITool, PortfolioRebalancingTool>();
-        services.AddSingleton<ITool, RiskParityTool>();
+        services.AddSingleton<IBaseTool, BlackLittermanTool>();
+        services.AddSingleton<IBaseTool, ConstraintOptimizationTool>();
+        services.AddSingleton<IBaseTool, HierarchicalRiskParityTool>();
+        services.AddSingleton<IBaseTool, MeanVarianceOptimizationTool>();
+        services.AddSingleton<IBaseTool, PortfolioRebalancingTool>();
+        services.AddSingleton<IBaseTool, RiskParityTool>();
 
         // Prediction tools
-        services.AddSingleton<ITool, ARIMAPredictionTool>();
-        services.AddSingleton<ITool, BacktestingTool>();
-        services.AddSingleton<ITool, EnsemblePredictionTool>();
-        services.AddSingleton<ITool, ProphetPredictionTool>();
-        services.AddSingleton<ITool, RandomForestPredictionTool>();
-        services.AddSingleton<ITool, XGBoostPredictionTool>();
+        services.AddSingleton<IBaseTool, ARIMAPredictionTool>();
+        services.AddSingleton<IBaseTool, BacktestingTool>();
+        services.AddSingleton<IBaseTool, EnsemblePredictionTool>();
+        services.AddSingleton<IBaseTool, ProphetPredictionTool>();
+        services.AddSingleton<IBaseTool, RandomForestPredictionTool>();
+        services.AddSingleton<IBaseTool, XGBoostPredictionTool>();
 
         // Risk tools
-        services.AddSingleton<ITool, CVaRCalculationTool>();
-        services.AddSingleton<ITool, FactorExposureTool>();
-        services.AddSingleton<ITool, StressTestingTool>();
-        services.AddSingleton<ITool, VaRCalculationTool>();
+        services.AddSingleton<IBaseTool, CVaRCalculationTool>();
+        services.AddSingleton<IBaseTool, FactorExposureTool>();
+        services.AddSingleton<IBaseTool, StressTestingTool>();
+        services.AddSingleton<IBaseTool, VaRCalculationTool>();
 
         return services;
     }

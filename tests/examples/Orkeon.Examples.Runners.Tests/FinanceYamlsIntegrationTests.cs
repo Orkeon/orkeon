@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Domain.Common;
+using Orkeon.Domain.Tools;
 using Orkeon.Trading.Tools.Infrastructure.DependencyInjection;
 
 namespace Orkeon.Examples.Runners.Tests;
@@ -26,7 +27,9 @@ public partial class FinanceYamlsIntegrationTests
         services.AddLogging();
         services.AddTradingTools();
         var sp = services.BuildServiceProvider();
-        foreach (var t in sp.GetServices<ITool>())
+        // Trading tools are registered under IBaseTool — the service type consumed by
+        // ServiceProviderToolRegistry (MS DI does not upcast ITool registrations).
+        foreach (var t in sp.GetServices<IBaseTool>())
             KnownTradingTools.Add(t.Name);
     }
 
