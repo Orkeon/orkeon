@@ -40,8 +40,9 @@
 #       -v "$PWD/data:/data:ro" -v "$PWD/out:/output" \
 #       ghcr.io/orkeon/orkeon-runners \
 #       --config examples/.../config.yaml \
-#       --mount /data:/data:Read --mount /output:/output:Write
-#   Rights are Read | Write | Create | Delete (repeat --mount for several mounts).
+#       --mount /data:/data:ro --mount /output:/output:rw
+#   Rights are ro (read-only) | rw (read-write) | rwnd (read-write, no delete);
+#   repeat --mount for several mounts.
 
 # ---- Stage 1: build — publish both runners (framework-dependent) -------------
 # global.json pins SDK 10.0.300 (rollForward latestFeature); the GA sdk:10.0 tag
@@ -63,16 +64,30 @@ COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
 COPY examples/ examples/
 
-# Framework-dependent publish (no -r / --self-contained): the runtime is present
-# in the final base image, keeping the layer small.
+# Framework-dependent publish (--self-contained false: the runtime ships in the
+# final base image). Pinned to linux-x64: a portable/RID-agnostic publish drags
+# in every platform's native assets (onnxruntime, tree-sitter grammars, SQLite,
+# ...) for all of win/linux/osx, ballooning the image to ~3 GB. RID-scoping
+# prunes those to just this image's arch. (For a multi-arch image, drive the RID
+# from $TARGETARCH.)
 RUN dotnet publish examples/runners/standard/Orkeon.Examples.Runner.csproj \
-      -c Release -p:SkipScriptingNpmInstall=true \
+      -c Release -r linux-x64 --self-contained false \
+      -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o /app/runners/standard --nologo
 RUN dotnet publish examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj \
-      -c Release -p:SkipScriptingNpmInstall=true \
+      -c Release -r linux-x64 --self-contained false \
+      -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o /app/runners/trading --nologo
+
+# Make the payload world-readable/traversable HERE, in the build stage: some
+# NuGet content lands with perms that deny the final image's non-root user
+# (uid 1654) — e.g. the local-embeddings model.onnx — which EACCES-crashes DI at
+# startup. Doing it here (not after COPY --from) keeps the extra layer inside the
+# discarded build stage; `COPY --from` preserves these mode bits into the final
+# image with no added layer.
+RUN chmod -R a+rX /app/runners
 
 # ---- Stage 2: runtime --------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
@@ -113,7 +128,8 @@ RUN printf '%s\n' \
 
 # Conventional virtual roots crews write to; owned by the image's built-in
 # non-root user (app / uid 1654, shipped by the .NET runtime image — no user
-# creation needed, and the minimal image has no `adduser`).
+# creation needed, and the minimal image has no `adduser`). Payload read perms
+# are handled in the build stage (see chmod above) so no extra layer lands here.
 RUN mkdir -p /output /workspace && chown -R app:app /output /workspace
 USER app
 
