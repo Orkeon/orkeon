@@ -51,3 +51,7 @@ All other YAML fields (agents, tasks, dependencies, tools) work identically to `
 ```bash
 dotnet run --project src/apps/Orkeon.ConsoleApp -- --config examples/09-experimental/102-graph-orchestration/config.yaml
 ```
+
+**LLM profile** — this runner resolves the LLM profile from the nearest `appsettings.json`. Copy one of the ready-made profiles from [`examples/appsettings/`](../../appsettings/README.md) (drop the `.example` suffix, add your key), or pass one explicitly with `--settings`. First run? See [Run your first example](../../../docs/getting-started/run-your-first-example.md).
+
+**Data** — this example does not ship sample data yet; see [docs/reference/example-data-policy.md](../../../docs/reference/example-data-policy.md).

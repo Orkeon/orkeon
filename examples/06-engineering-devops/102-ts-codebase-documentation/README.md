@@ -51,6 +51,10 @@ dotnet run --project examples/runners/standard -- \
 
 Le runner standard gere automatiquement : DI (Application + Infrastructure + toutes les suites d'outils), resolution du provider LLM depuis `appsettings.json`, `CrewFactory.CreateFromFileAsync()` et `KickoffAsync`.
 
+**Profil LLM** — ajoutez `--settings examples/appsettings/appsettings.deepseek.local.json` pour choisir explicitement un profil. Les profils prêts à l'emploi sont dans [`examples/appsettings/`](../../appsettings/README.md) : copiez un gabarit `*.example` (retirez le suffixe `.example`) et ajoutez votre clé. Première fois ? Voir [Lancer votre premier exemple](../../../docs/getting-started/run-your-first-example.md).
+
+**Données** — cet exemple ne fournit pas de données d'exemple : il analyse le projet TypeScript que vous montez via `--mount` ci-dessus (voir [docs/reference/example-data-policy.md](../../../docs/reference/example-data-policy.md)).
+
 ## Grille de responsabilites
 
 | Responsabilite | Categorie | Description |

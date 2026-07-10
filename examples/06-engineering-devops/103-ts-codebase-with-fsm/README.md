@@ -83,6 +83,10 @@ dotnet run --project examples/runners/standard -- \
   --mount /home/cyril/analysis-output:/output:rw
 ```
 
+**Profil LLM** — ajoutez `--settings examples/appsettings/appsettings.deepseek.local.json` pour choisir explicitement un profil. Les profils prêts à l'emploi sont dans [`examples/appsettings/`](../../appsettings/README.md) : copiez un gabarit `*.example` (retirez le suffixe `.example`) et ajoutez votre clé. Première fois ? Voir [Lancer votre premier exemple](../../../docs/getting-started/run-your-first-example.md).
+
+**Données** — cet exemple ne fournit pas de données d'exemple : il analyse le projet TypeScript que vous montez via `--mount` ci-dessus (voir [docs/reference/example-data-policy.md](../../../docs/reference/example-data-policy.md)).
+
 ## Differences avec l'exemple 102
 
 | Aspect | 102 (sans FSM) | 103 (avec FSM) |
