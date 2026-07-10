@@ -47,16 +47,19 @@ ESBUILD_VERSION="$(grep -A1 '"node_modules/esbuild"' "$REPO_ROOT/tools/scripting
   | sed -n 's/.*"version": "\([^"]*\)".*/\1/p' | head -1)"
 ESBUILD_VERSION="${ESBUILD_VERSION:-0.24.0}"
 
-# --- App table: name | csproj (repo-relative) | apphost assembly name ---------
+# --- App table: name | csproj (repo-relative) | apphost assembly name | self-contained
+# self-contained=true bundles the .NET runtime so end users need no SDK/runtime
+# install; the runner packages (orkeon-examples, orkeon-trading) opt in. The CLI
+# tools stay framework-dependent (smaller archives; devs already have the runtime).
 APPS=(
-  "orkeon|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon"
-  "orkeon-repl|src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj|Orkeon.ConsoleApp"
-  "orkeon-examples|examples/runners/standard/Orkeon.Examples.Runner.csproj|Orkeon.Examples.Runner"
-  "orkeon-trading|examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj|Orkeon.Examples.Trading.Runner"
-  "orkeon-interactive|examples/runners/interactive/Orkeon.Examples.Interactive.csproj|Orkeon.Examples.Interactive"
-  "orkeon-tui-keytest|examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj|Orkeon.Examples.TuiKeyTest"
-  "orkeon-claim-verify|examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj|Orkeon.Examples.Interactive.ClaimVerification"
-  "orkeon-spec-forge|examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj|Orkeon.Examples.Interactive.InterviewSpecForge"
+  "orkeon|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|false"
+  "orkeon-repl|src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj|Orkeon.ConsoleApp|false"
+  "orkeon-examples|examples/runners/standard/Orkeon.Examples.Runner.csproj|Orkeon.Examples.Runner|true"
+  "orkeon-trading|examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj|Orkeon.Examples.Trading.Runner|true"
+  "orkeon-interactive|examples/runners/interactive/Orkeon.Examples.Interactive.csproj|Orkeon.Examples.Interactive|false"
+  "orkeon-tui-keytest|examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj|Orkeon.Examples.TuiKeyTest|false"
+  "orkeon-claim-verify|examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj|Orkeon.Examples.Interactive.ClaimVerification|false"
+  "orkeon-spec-forge|examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj|Orkeon.Examples.Interactive.InterviewSpecForge|false"
 )
 
 # RID -> npm platform package for @esbuild/*
@@ -124,9 +127,11 @@ for RID in $RIDS; do
   echo "==> $RID"
 
   for entry in "${APPS[@]}"; do
-    IFS='|' read -r name csproj apphost <<<"$entry"
-    echo "    publish $name"
-    dotnet publish "$REPO_ROOT/$csproj" -c "$CONFIG" -r "$RID" --self-contained false \
+    IFS='|' read -r name csproj apphost selfcontained <<<"$entry"
+    selfcontained="${selfcontained:-false}"
+    echo "    publish $name (self-contained=$selfcontained)"
+    dotnet publish "$REPO_ROOT/$csproj" -c "$CONFIG" -r "$RID" \
+      --self-contained "$selfcontained" -p:PublishTrimmed=false \
       -p:Version="$VERSION" -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o "$ROOT/libexec/$name" --nologo -v quiet

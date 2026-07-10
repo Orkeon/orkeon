@@ -1,7 +1,10 @@
 **/.git
 **/bin
 **/obj
+**/obj-linux
+**/bin-linux
 **/artifacts
+examples/others
 **/.vs
 **/.vscode
 **/node_modules
