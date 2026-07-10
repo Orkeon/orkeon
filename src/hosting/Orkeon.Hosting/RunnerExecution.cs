@@ -98,7 +98,12 @@ public static partial class RunnerExecution
         }
         cliMounts.Insert(0, $"{configDir}:{configDir}:ro");
         if (llmLogPath != null)
+        {
+            // Mount base paths must exist before FileSystemRegistry is built
+            // (FileSystemServiceRegistration throws DirectoryNotFoundException otherwise).
+            Directory.CreateDirectory(llmLogPath);
             cliMounts.Insert(1, $"{llmLogPath}:{llmLogPath}:rw");
+        }
 
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
         var outputMountPath = DetectOutputMountPath(cliMounts);
