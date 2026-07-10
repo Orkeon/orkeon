@@ -169,6 +169,9 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         // Base-host tools that are always registered by RunnerHost.
         Assert.Contains("file_read", lines);
         Assert.Contains("publish_event", lines);
+        // human_input is injected on the crew path (TryBuildHost) — --list-tools must mirror it
+        // so the manifest lists exactly the tools a real kickoff exposes.
+        Assert.Contains("human_input", lines);
         // stdout must carry ONLY tool names — one token per line, no whitespace/log noise.
         Assert.All(lines, l => Assert.DoesNotContain(' ', l));
         // Names are emitted sorted (ordinal).

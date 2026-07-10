@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces;
 using Orkeon.Domain.Tools;
+using Orkeon.Infrastructure.DependencyInjection;
 
 namespace Orkeon.Hosting;
 
@@ -114,7 +115,15 @@ public static partial class RunnerExecution
                 settingsPath, cliMounts,
                 allowExternalMounts: opts.AllowExternalMounts,
                 configureLogging: (_, b) => ConfigureStderrOnlyLogging(b),
-                configureServices: configureServices);
+                configureServices: (ctx, services) =>
+                {
+                    // Mirror the crew-execution path (TryBuildHost registers the human_input
+                    // tool + AutoApprove provider before the runner's own hook). The manifest
+                    // must list exactly the tools a real kickoff exposes — without this,
+                    // human_input is silently absent from --list-tools.
+                    services.AddOrkeonHumanInput();
+                    configureServices?.Invoke(ctx, services);
+                });
 
             var registry = host.Services.GetRequiredService<IToolRegistry>();
             var tools = await registry.GetAllToolsAsync().ConfigureAwait(false);
