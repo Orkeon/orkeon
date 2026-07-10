@@ -15,6 +15,11 @@
 
 Orkeon is a C# framework for creating and managing collaborative AI agent teams that tackle complex, multi-step tasks using large language models. Agents are organized into crews, each with a defined role, goal, and toolset, and work together through one of six orchestration strategies (sequential, hierarchical, parallel, consensual, graph, or autonomous). Built on Clean Architecture principles, Orkeon provides a fully typed, extensible foundation for production-grade agentic workflows in .NET.
 
+> **Getting started:** the fastest way to see a crew run is
+> [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) —
+> from source, a release binary, or a container — or jump straight to
+> [Run your first example](docs/getting-started/run-your-first-example.md).
+
 ---
 
 ## Quick Start

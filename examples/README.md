@@ -1,6 +1,6 @@
 # Orkeon Examples
 
-101 use cases demonstrating Orkeon's capabilities, from enterprise classics to experimental AI agent orchestrations.
+105 use cases demonstrating Orkeon's capabilities, from enterprise classics to experimental AI agent orchestrations.
 
 ## Runner Architecture
 
@@ -18,29 +18,38 @@ The runners use a **fallback chain** to find `appsettings.json`:
 
 1. `--settings path/to/appsettings.json` (explicit CLI arg)
 2. `appsettings.json` next to the example's `config.yaml` (per-example override)
-3. `_shared/appsettings.json` (shared default for all examples)
+3. `appsettings/appsettings.json` (shared default for all examples)
 
-Pre-configured profiles are available in `_shared/`:
+Pre-configured profiles are available in `appsettings/` (see `appsettings/README.md`):
 
 | Profile | File | Use case |
 |---------|------|----------|
-| **Docker Models (localhost)** | `_shared/appsettings.json` | Default -- Docker Desktop Models on Windows/Mac |
-| **Docker Models (container)** | `_shared/appsettings.docker.json` | Running from inside a Docker container |
-| **OpenAI** | `_shared/appsettings.openai.json` | OpenAI API (requires `OPENAI_API_KEY`) |
+| **Docker Models (localhost)** | `appsettings/appsettings.json` | Default -- Docker Desktop Models on Windows/Mac |
+| **Docker Models (container)** | `appsettings/appsettings.docker-model-runner.local.json.example` | From inside a container (swap `localhost` for `host.docker.internal`) |
+| **OpenAI** | `appsettings/appsettings.openai.local.json.example` | OpenAI API (requires `OPENAI_API_KEY`) |
+| **DeepSeek / Z.AI GLM** | `appsettings/appsettings.{deepseek,glm,glm-medium}.local.json.example` | Cloud providers (see `appsettings/README.md`) |
 
-To switch profile, either copy a profile to `_shared/appsettings.json` or pass `--settings`:
+The committed default is `appsettings/appsettings.json`; runners pick it up
+automatically. To use another profile, copy the matching `.example` template
+(dropping the `.example` suffix), fill in your key, and pass `--settings` (see
+`appsettings/README.md`):
 
 ```bash
-# Use Docker profile from a container:
+# Docker Models from a container:
+cp examples/appsettings/appsettings.docker-model-runner.local.json.example \
+   examples/appsettings/appsettings.docker-model-runner.local.json
+# then edit localhost -> host.docker.internal
 dotnet run --project examples/runners/standard -- \
   --config examples/01-enterprise/01-research-assistant/config.yaml \
-  --settings examples/_shared/appsettings.docker.json
+  --settings examples/appsettings/appsettings.docker-model-runner.local.json
 
-# Use OpenAI:
-export OPENAI_API_KEY="sk-..."
+# OpenAI:
+cp examples/appsettings/appsettings.openai.local.json.example \
+   examples/appsettings/appsettings.openai.local.json
+export OPENAI_API_KEY="sk-..."   # or put the key in the copied file
 dotnet run --project examples/runners/standard -- \
   --config examples/01-enterprise/01-research-assistant/config.yaml \
-  --settings examples/_shared/appsettings.openai.json
+  --settings examples/appsettings/appsettings.openai.local.json
 ```
 
 Environment variables with prefix `ORKEON_` override any JSON setting.
@@ -63,7 +72,7 @@ dotnet run --project examples/runners/standard -- --config examples/01-enterpris
 
 ## Automated Testing
 
-Test all 101 examples at once:
+Test all 105 examples at once:
 
 ```bash
 # Build only:
@@ -86,6 +95,8 @@ Reports are generated in `examples/test-reports/`.
 
 ## Categories
 
+The full generated catalog (process, agents, tools per example) lives in [INDEX.md](INDEX.md) — regenerate it with `bash scripts/generate-examples-index.sh`.
+
 | # | Category | Examples | Description |
 |---|----------|----------|-------------|
 | 01 | [Enterprise](01-enterprise/) | 1-15 | Classiques Entreprise -- research, code review, email, reports, support |
@@ -100,9 +111,8 @@ Reports are generated in `examples/test-reports/`.
 
 ## Shared Resources
 
-- [`_shared/tools/`](_shared/tools/) -- Custom tools shared across examples
-- [`_shared/templates/`](_shared/templates/) -- YAML configuration templates
-- [`_shared/appsettings*.json`](_shared/) -- LLM configuration profiles
+- [`appsettings/`](appsettings/) -- LLM configuration profiles (committed default + provider templates; see [`appsettings/README.md`](appsettings/README.md))
+- [`runners/_shared/`](runners/_shared/) -- Shared runner library (ServiceProviderToolRegistry, common utilities)
 
 ## Solution
 

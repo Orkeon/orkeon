@@ -1,0 +1,89 @@
+# Example README template
+
+> A gabarit for `examples/**/README.md`. Copy the block below into a new example's
+> `README.md` and fill each section. Delete this preamble and any optional section
+> that does not apply. Keep it short — the point is to let someone run the example
+> without reading the code.
+>
+> **Required sections**: What it does · Prerequisites · Required data · Run it ·
+> Expected output · Approx. duration & cost.
+
+---
+
+# <Example title>
+
+> One or two sentences: what this crew produces and why it is interesting.
+
+## What it does
+
+- **Process**: `Sequential` | `Hierarchical` | `Parallel` | `Consensual` | `Graph` | `Autonomous`
+- **Agents**: <n> — brief role list
+- **Tools**: `tool_a`, `tool_b`, …
+- **Key features**: what this example demonstrates (task dependencies, memory, A2A, …)
+- **Runner**: `standard` | `trading` | `interactive` | …
+
+## Prerequisites
+
+- .NET SDK ≥ 10.0.300 (source) — or the .NET 10 runtime (release binary)
+- An LLM profile (see the [profile matrix](../../appsettings/)); this example was
+  validated against `<provider>`.
+- <Any other prerequisite: a running service, an API key beyond the LLM, …>
+
+## Required data
+
+If the crew reads input files, list them so the reader knows what to mount.
+Delete this section if the example needs no input data.
+
+| Virtual path | Mount flag | Purpose |
+|---|---|---|
+| `/data/<file>` | `--mount ./data:/data:ro` | <what it contains> |
+
+## Run it
+
+Give the **exact**, copy-pasteable command for each supported way. Source is
+always required; add binary and container rows for showcase examples.
+
+**From source:**
+
+```bash
+dotnet run --project examples/runners/<runner> -- \
+  --config examples/<path>/config.yaml \
+  --settings examples/appsettings/appsettings.<provider>.local.json \
+  --mount ./out:/output:rw
+```
+
+**From a release binary** (showcase examples only):
+
+```bash
+orkeon-<runner> \
+  --config examples/<path>/config.yaml \
+  --settings path/to/appsettings.local.json \
+  --mount ./out:/output:rw
+```
+
+**From the container** (showcase examples only):
+
+```bash
+docker run --rm \
+  -v "$PWD/out:/output" \
+  -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
+  ghcr.io/orkeon/orkeon-runners \
+  --config examples/<path>/config.yaml \
+  --settings /app/appsettings.local.json \
+  --mount /output:/output:rw
+```
+
+> Flag reference: [Run your first example](../../../docs/getting-started/run-your-first-example.md#every-flag-explained).
+
+## Expected output
+
+Describe what a successful run prints and/or writes. If the crew writes a file to
+`/output`, name it and describe its shape (e.g. "a Markdown report with an
+executive summary, thematic sections, and a bibliography").
+
+## Approx. duration & cost
+
+- **Duration**: ~<n> min on <provider/model>
+- **Cost**: ~<n> LLM calls; rough token / \$ estimate if known (say "local model —
+  no API cost" when applicable)
+</content>

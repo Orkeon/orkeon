@@ -10,6 +10,8 @@ The documentation is organized into 6 thematic sections.
 
 | File | Description |
 |------|-------------|
+| [Three ways to run Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Hub page: from source vs. release binary vs. container — prerequisites, commands, and a comparison table |
+| [Run your first example (from source)](./getting-started/run-your-first-example.md) | End-to-end first run: prerequisites, LLM profile matrix, the full crew command, every runner flag, settings resolution, troubleshooting |
 | [Overview](./getting-started/overview.md) | Architecture, core concepts (Agent, Task, Tool, Crew), YAML vs Fluent Builder |
 | [Bootstrap and execution](./getting-started/bootstrap.md) | Dependency injection, running a Crew, batch/streaming/fire-and-forget modes |
 | [YAML, Builders and CrewFactory](./getting-started/yaml-and-builders.md) | Fluent Builders, YAML schema, CrewFactory pipeline, loading modes |
@@ -67,6 +69,7 @@ The documentation is organized into 6 thematic sections.
 | [Catalog of the 104 examples](./reference/examples-catalog.md) | 9 business categories, notable examples detailed |
 | [Limits and constraints](./reference/limitations.md) | Known constraints of the current version |
 | [Opt-in subsystems](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, tool rate-limiting, key rotation, benchmarking, multi-modal, kickoff hooks — explicit activation `AddOrkeonXxx()` (outside default DI) |
+| [Example README template](./templates/example-readme.md) | Gabarit for `examples/**/README.md`: What it does / Prerequisites / Required data / Run it (per way) / Expected output / Duration & cost |
 | [LLM provider comparison](./arkeon/llm-providers-comparatif.md) | Capability matrix per provider (SSE streaming, native tool calling, GBNF grammar, `response_format`, thinking, metrics, resilience), derived from the source code |
 
 ---
