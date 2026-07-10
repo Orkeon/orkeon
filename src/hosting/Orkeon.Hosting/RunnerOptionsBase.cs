@@ -11,10 +11,14 @@ namespace Orkeon.Hosting;
 [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: normalizes the user-supplied --llm-log-path argument before the VFS mounts that will host it are provisioned.")]
 public abstract class RunnerOptionsBase
 {
-    /// <summary>Path to the crew definition (.yaml or .ork.ts).</summary>
-    [Option('c', "config", Required = true,
+    /// <summary>
+    /// Path to the crew definition (.yaml or .ork.ts). Required for every mode except
+    /// <c>--list-tools</c>, which dumps the runtime tool registry without loading a crew.
+    /// </summary>
+    [Option('c', "config", Required = false,
         HelpText = "Path to the crew definition. Accepts .yaml (YAML loader) or .ork.ts " +
-                   "(Orkéon Scripting DSL, loaded via Jint + esbuild).")]
+                   "(Orkéon Scripting DSL, loaded via Jint + esbuild). " +
+                   "Required unless --list-tools is used.")]
     public string ConfigPath { get; set; } = "";
 
     /// <summary>Path to appsettings.json (defaults to same dir as config).</summary>
@@ -59,6 +63,27 @@ public abstract class RunnerOptionsBase
     [Option("initial-context", Required = false, Default = null,
         HelpText = "Initial context string passed to CrewInput.")]
     public string? InitialContext { get; set; }
+
+    /// <summary>
+    /// Dry-run: resolve settings, build the host and load the crew (strict tool
+    /// resolution), without probing the LLM endpoint or running any kickoff.
+    /// </summary>
+    [Option("validate", Required = false, Default = false,
+        HelpText = "Dry-run: resolve settings, build the host and load the crew (strict " +
+                   "tool resolution) WITHOUT probing the LLM endpoint or running a kickoff. " +
+                   "Prints 'VALIDATION OK: <config> (agents=N, tasks=M, tools resolved=K)' " +
+                   "and exits 0, or reports the load error and exits non-zero.")]
+    public bool Validate { get; set; }
+
+    /// <summary>
+    /// Build the host and print the sorted registry tool names (one per line) to stdout,
+    /// then exit. The runtime tool manifest consumed by tooling/linting.
+    /// </summary>
+    [Option("list-tools", Required = false, Default = false,
+        HelpText = "Build the host and print the sorted list of registered tool names " +
+                   "(one per line) to stdout, then exit 0. Logs stay on stderr; no crew " +
+                   "is loaded, so --config is not required.")]
+    public bool ListTools { get; set; }
 
     /// <summary>
     /// Resolves the effective LLM log directory path.

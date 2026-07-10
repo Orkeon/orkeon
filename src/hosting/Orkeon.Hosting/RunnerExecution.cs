@@ -56,6 +56,15 @@ public static partial class RunnerExecution
         bootstrap = null;
         errorCode = 0;
 
+        if (string.IsNullOrWhiteSpace(opts.ConfigPath))
+        {
+            // --config is optional at the parser level (so --list-tools can run without it);
+            // every crew-loading mode still needs it, so enforce presence here.
+            Console.Error.WriteLine("ERROR: --config is required (path to the crew .yaml or .ork.ts).");
+            errorCode = 1;
+            return false;
+        }
+
         var configPath = Path.GetFullPath(opts.ConfigPath);
         if (!File.Exists(configPath))
         {
@@ -171,6 +180,13 @@ public static partial class RunnerExecution
 
         async Task<int> RunOneShotCoreAsync()
         {
+        // Diagnostic modes short-circuit the kickoff: --list-tools dumps the runtime tool
+        // registry (no crew), --validate loads the crew strictly but never probes the LLM.
+        if (opts.ListTools)
+            return await RunListToolsAsync(opts, loggerCategory, configureServices).ConfigureAwait(false);
+        if (opts.Validate)
+            return await RunValidateAsync(opts, loggerCategory, configureServices, externalCt).ConfigureAwait(false);
+
         if (!TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out var errorCode))
             return errorCode;
 
@@ -188,9 +204,7 @@ public static partial class RunnerExecution
             LogLoadingCrew(logger, configPath);
 
             var factory = host.Services.GetRequiredService<ICrewFactory>();
-            var crew = IsScriptedCrewDefinition(configPath)
-                ? await LoadCrewFromScriptAsync(host, factory, configPath, logger, cts.Token).ConfigureAwait(false)
-                : await factory.CreateFromFileAsync(configPath, cts.Token).ConfigureAwait(false);
+            var crew = await LoadCrewAsync(host, factory, configPath, logger, cts.Token).ConfigureAwait(false);
 
             var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 
@@ -357,6 +371,7 @@ public static partial class RunnerExecution
         Action<int> onSessionStart,
         Action<HostBuilderContext, IServiceCollection>? configureServices = null)
     {
+        ArgumentNullException.ThrowIfNull(opts);
         ArgumentNullException.ThrowIfNull(stopWords);
         ArgumentNullException.ThrowIfNull(kickoffPerInputAsync);
         ArgumentNullException.ThrowIfNull(onSessionStart);
@@ -364,6 +379,12 @@ public static partial class RunnerExecution
 
         async Task<int> RunInteractiveLoopCoreAsync()
         {
+            // Diagnostic modes are shared with the one-shot flow so every runner honours them.
+            if (opts.ListTools)
+                return await RunListToolsAsync(opts, loggerCategory, configureServices).ConfigureAwait(false);
+            if (opts.Validate)
+                return await RunValidateAsync(opts, loggerCategory, configureServices, CancellationToken.None).ConfigureAwait(false);
+
             if (!TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out var errorCode))
                 return errorCode;
 
