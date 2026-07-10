@@ -208,6 +208,22 @@ public static partial class RunnerExecution
                 return 1;
             }
 
+            // Pre-kickoff reachability probe. LLM providers wrap connection failures in sanitized
+            // exceptions behind Polly retries, so a dead endpoint otherwise yields an empty crew
+            // output at exit 0 with no hint — the connection-refused catch below never sees it.
+            // A short TCP probe turns "nothing is listening" into a fast, explicit failure. Only an
+            // active refusal short-circuits; ambiguous results (no URL, DNS, TLS, slow-link timeout)
+            // fall through so a legitimate run is never blocked by the probe itself.
+            var probeEndpoint = ResolveConfiguredLlmEndpoint(host);
+            if (probeEndpoint is not null
+                && !await IsLlmEndpointReachableAsync(probeEndpoint, TimeSpan.FromSeconds(2), cts.Token)
+                    .ConfigureAwait(false))
+            {
+                await Console.Error.WriteLineAsync(BuildUnreachableLlmMessage(probeEndpoint)).ConfigureAwait(false);
+                LogLlmEndpointUnreachable(logger, probeEndpoint);
+                return 2;
+            }
+
             LogKickingOffCrew(logger, crew.Goal);
             var output = await orchestrator.KickoffAsync(crew.Id, input, cts.Token).ConfigureAwait(false);
 
@@ -227,12 +243,101 @@ public static partial class RunnerExecution
             LogCrewExecutionCanceled(logger);
             return 130;
         }
+        catch (Exception ex) when (IsConnectionRefused(ex))
+        {
+            // Safety net for the case the pre-kickoff probe let through (e.g. the endpoint died
+            // between the probe and kickoff): the raw failure is a "Connection refused"
+            // SocketException buried under HTTP retries — surface the actionable one-liner
+            // instead of the cryptic stack trace.
+            var endpoint = ResolveConfiguredLlmEndpoint(host);
+            await Console.Error.WriteLineAsync(BuildUnreachableLlmMessage(endpoint)).ConfigureAwait(false);
+            LogLlmEndpointUnreachable(logger, endpoint ?? "(default)");
+            return 2;
+        }
         catch (Exception ex)
         {
             LogCrewExecutionFailed(logger, ex);
             return 2;
         }
         }
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="ex"/> or any inner exception is a
+    /// "connection refused" socket failure — the signature of an LLM endpoint that is configured
+    /// but not listening (e.g. Docker Model Runner is not running).
+    /// </summary>
+    private static bool IsConnectionRefused(Exception ex)
+    {
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+        {
+            if (e is System.Net.Sockets.SocketException
+                { SocketErrorCode: System.Net.Sockets.SocketError.ConnectionRefused })
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Builds the actionable one-line diagnostic shown when the configured LLM endpoint cannot be
+    /// reached, pointing at the example profiles, <c>--settings</c>, and the getting-started doc.
+    /// </summary>
+    private static string BuildUnreachableLlmMessage(string? endpoint)
+    {
+        var target = endpoint is null ? "the configured LLM endpoint" : $"endpoint {endpoint}";
+        return $"ERROR: No reachable LLM endpoint ({target} refused the connection). " +
+            "Copy an example profile (examples/appsettings/*.example) and pass it with " +
+            "--settings, or start Docker Model Runner. " +
+            "See docs/getting-started/run-your-first-example.md.";
+    }
+
+    /// <summary>
+    /// Probes whether the configured LLM endpoint accepts a TCP connection. Returns
+    /// <see langword="false"/> ONLY when the host actively refuses the connection (a fast, reliable
+    /// "nothing is listening" signal). Every ambiguous outcome — no/blank URL, unparseable URL, DNS
+    /// failure, TLS/other socket error, or a probe timeout on a slow link — returns
+    /// <see langword="true"/> so a legitimate run is never blocked by the probe itself.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Probe is intentionally best-effort: any non-refusal outcome (timeout, DNS, TLS, unexpected) is treated as inconclusive and must never block a legitimate run.")]
+    internal static async System.Threading.Tasks.Task<bool> IsLlmEndpointReachableAsync(
+        string? baseUrl, TimeSpan timeout, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl)
+            || !Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+            return true;
+
+        var port = uri.Port > 0
+            ? uri.Port
+            : string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ? 443 : 80;
+
+        try
+        {
+            using var probe = new System.Net.Sockets.TcpClient();
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            linked.CancelAfter(timeout);
+            await probe.ConnectAsync(uri.Host, port, linked.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch (System.Net.Sockets.SocketException ex)
+        {
+            // Only an active refusal is conclusive; other socket errors are inconclusive.
+            return ex.SocketErrorCode != System.Net.Sockets.SocketError.ConnectionRefused;
+        }
+        catch (Exception)
+        {
+            // Timeout (OperationCanceledException), DNS, etc. — inconclusive; do not block.
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Reads the configured LLM base URL (<c>Llm:BaseUrl</c>) for use in diagnostics, or
+    /// <see langword="null"/> when no configuration is available.
+    /// </summary>
+    private static string? ResolveConfiguredLlmEndpoint(IHost host)
+    {
+        var url = host.Services.GetService<IConfiguration>()?["Llm:BaseUrl"];
+        return string.IsNullOrWhiteSpace(url) ? null : url;
     }
 
     /// <summary>
@@ -649,6 +754,9 @@ public static partial class RunnerExecution
 
     [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "Crew execution failed")]
     private static partial void LogCrewExecutionFailed(ILogger logger, Exception ex);
+
+    [LoggerMessage(EventId = 12, Level = LogLevel.Error, Message = "LLM endpoint unreachable (connection refused): {Endpoint}")]
+    private static partial void LogLlmEndpointUnreachable(ILogger logger, string endpoint);
 
     [LoggerMessage(EventId = 6, Level = LogLevel.Information, Message = "Question #{Number}: {Question}")]
     private static partial void LogQuestion(ILogger logger, int number, string question);

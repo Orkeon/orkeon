@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.EventHub\Orkeon.Tools.EventHub.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.FileSystem\Orkeon.Tools.FileSystem.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" />
   </ItemGroup>
@@ -28,5 +29,9 @@
   <ItemGroup>
     <PackageReference Include="CommandLineParser" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Hosting.Tests" />
   </ItemGroup>
 </Project>

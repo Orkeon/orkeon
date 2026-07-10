@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
@@ -26,6 +27,7 @@ public partial class CrewFactory : ICrewFactory
     private readonly ICrewRepository _crewRepository;
     private readonly IAgentRepository _agentRepository;
     private readonly ITaskRepository _taskRepository;
+    private readonly bool _strictTools;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -34,13 +36,18 @@ public partial class CrewFactory : ICrewFactory
     /// <param name="crewRepository">The crew repository for persisting created crews.</param>
     /// <param name="agentRepository">The agent repository for persisting created agents.</param>
     /// <param name="taskRepository">The task repository for persisting created tasks.</param>
+    /// <param name="options">
+    /// Factory options; when omitted, tool resolution is lenient (missing tools are logged and skipped).
+    /// See <see cref="CrewFactoryOptions.StrictTools"/>.
+    /// </param>
     public CrewFactory(
         ICrewDefinitionLoader loader,
         IToolRegistry toolRegistry,
         ILogger<CrewFactory> logger,
         ICrewRepository crewRepository,
         IAgentRepository agentRepository,
-        ITaskRepository taskRepository)
+        ITaskRepository taskRepository,
+        IOptions<CrewFactoryOptions>? options = null)
     {
         ArgumentNullException.ThrowIfNull(loader);
         _loader = loader;
@@ -54,6 +61,7 @@ public partial class CrewFactory : ICrewFactory
         _agentRepository = agentRepository;
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
+        _strictTools = options?.Value.StrictTools ?? false;
     }
 
     /// <inheritdoc />
@@ -127,7 +135,7 @@ public partial class CrewFactory : ICrewFactory
 
             if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
                 builder.Backstory(agentConfig.Backstory);
-            if (resolvedTools != null)
+            if (resolvedTools.Count > 0)
                 builder.WithTools(resolvedTools);
 
             var agent = builder.Build();
@@ -262,13 +270,14 @@ public partial class CrewFactory : ICrewFactory
         }
     }
 
-    private async Task<List<ITool>?> ResolveToolsAsync(
+    private async Task<List<ITool>> ResolveToolsAsync(
         IReadOnlyList<string> toolNames)
     {
-        if (toolNames == null || toolNames.Count == 0)
-            return null;
-
         var tools = new List<ITool>();
+        if (toolNames == null || toolNames.Count == 0)
+            return tools;
+
+        List<string>? missing = null;
         foreach (var toolName in toolNames)
         {
             var tool = await _toolRegistry.GetToolByNameAsync(toolName).ConfigureAwait(false);
@@ -278,11 +287,27 @@ public partial class CrewFactory : ICrewFactory
             }
             else
             {
-                LogToolNotFoundInRegistry(toolName);
+                (missing ??= []).Add(toolName);
+                if (!_strictTools)
+                    LogToolNotFoundInRegistry(toolName);
             }
         }
 
-        return tools.Count > 0 ? tools : null;
+        if (_strictTools && missing is { Count: > 0 })
+            throw await BuildMissingToolsExceptionAsync(missing).ConfigureAwait(false);
+
+        return tools;
+    }
+
+    private async Task<InvalidOperationException> BuildMissingToolsExceptionAsync(IReadOnlyList<string> missing)
+    {
+        var available = await _toolRegistry.GetAllToolsAsync().ConfigureAwait(false);
+        var availableNames = available.Count > 0
+            ? string.Join(", ", available.Select(t => t.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+            : "(none registered)";
+        return new InvalidOperationException(
+            $"Crew configuration references unknown tool(s): {string.Join(", ", missing)}. " +
+            $"Available tools: {availableNames}.");
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Creating crew '{CrewName}' with {AgentCount} agents and {TaskCount} tasks")]

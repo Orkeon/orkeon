@@ -8,6 +8,7 @@ using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.EventHub.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
@@ -20,6 +21,7 @@ using Orkeon.Tools.Analysis.DependencyInjection;
 using Orkeon.Tools.Embeddings.Local.DependencyInjection;
 using Orkeon.Tools.Code.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
+using Orkeon.Tools.EventHub.DependencyInjection;
 using Orkeon.Tools.FileSystem.DependencyInjection;
 using Orkeon.Tools.Web.DependencyInjection;
 
@@ -114,6 +116,16 @@ public static class RunnerHost
         services.AddOrkeonApplication();
         services.AddOrkeonInfrastructure();
 
+        // Runners load crews from user-authored YAML/TS: a tool referenced by a crew but
+        // absent from the registry is almost always a typo or a missing registration, not an
+        // intentional degrade. Fail loading with an explicit "unknown tool(s): …; available: …"
+        // message rather than silently dropping the tool (the library default stays lenient).
+        // A host can still opt back out via "Orkeon:CrewFactory:StrictTools": false.
+        var strictTools = context.Configuration.GetValue(
+            "Orkeon:CrewFactory:StrictTools", defaultValue: true);
+        services.Configure<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>(
+            o => o.StrictTools = strictTools);
+
         // Per-tool-call permission gate (exp 07 F2) — config opt-in:
         // Orkeon:Security:PermissionGate:Enabled = true. No-op otherwise.
         services.AddOrkeonPermissionGate(context.Configuration);
@@ -129,6 +141,14 @@ public static class RunnerHost
         // (ConsoleApp), which made standalone crew runs silently lose the session
         // buffer, auto-compaction and memory. In-memory backing; idempotent.
         services.AddOrkeonSessionTools();
+
+        // EventHub — the in-memory hub plus its seven agent tools (publish_event,
+        // post_message, send_request, reply_to, receive_message, wait_for_event,
+        // get_last_value). Four+ example crews reference these tools; without the hub
+        // singleton the tools can't be constructed, so both must be wired together.
+        // Registered under IBaseTool, which is what ServiceProviderToolRegistry enumerates.
+        services.AddOrkeonInMemoryEventHub();
+        services.AddOrkeonEventHubTools();
 
         // Virtual file system mounts (from appsettings + CLI --mount args)
         var fsSection = context.Configuration.GetSection("Orkeon:FileSystem:Mounts");

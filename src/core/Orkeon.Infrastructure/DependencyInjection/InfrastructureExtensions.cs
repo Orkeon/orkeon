@@ -633,6 +633,11 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonYaml(this IServiceCollection services)
     {
+        // Plain AddOptions (no BindConfiguration) keeps this usable in minimal containers that
+        // register no IConfiguration; the library default is lenient tool resolution. Hosts that
+        // want strict mode set CrewFactoryOptions.StrictTools explicitly (RunnerHost reads the
+        // "Orkeon:CrewFactory:StrictTools" key and defaults it to true for runners).
+        services.AddOptions<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>();
         services.TryAddSingleton<ICrewDefinitionLoader, YamlCrewDefinitionLoader>();
         services.TryAddScoped<ICrewFactory, CrewFactory>();
         services.TryAddSingleton<YamlCrewExporter>();

@@ -1,4 +1,5 @@
 using CommandLine;
+using Orkeon.Examples.Shared;
 using Orkeon.Hosting;
 using Orkeon.Trading.Tools.Infrastructure.DependencyInjection;
 
@@ -20,6 +21,9 @@ static class Program
                     configureServices: (_, services) =>
                     {
                         services.AddTradingTools();
+                        // Same registration as the standard runner: fraud-detection (32) and
+                        // insider-trading-detection (41) list semantic_search in their YAML.
+                        services.AddSemanticSearchTool();
                     }),
                 _ => Task.FromResult(1));
     }
