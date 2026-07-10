@@ -73,7 +73,7 @@ agents:
       the maintenance schedule.
     tools:
       - "json_tool"
-      - "database_query"
+      - "relational_database_query"
       - "csv_reader"
     allowDelegation: false
     maxIter: 10
@@ -103,7 +103,7 @@ agents:
       future needs, you trigger procurement orders to ensure parts arrive
       before they are needed. You track lead times and critical spares.
     tools:
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
       - "file_write"
     allowDelegation: false

@@ -65,7 +65,7 @@ agents:
       gracefully, and verify data integrity after loading. You ensure each load
       operation can be safely retried.
     tools:
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
       - "file_write"
     allowDelegation: false

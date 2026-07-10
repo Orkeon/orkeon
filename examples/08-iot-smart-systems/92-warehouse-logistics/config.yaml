@@ -22,7 +22,7 @@ agents:
       execution to process multiple orders simultaneously.
     tools:
       - "http_api"
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
     allowDelegation: false
     maxIter: 15
@@ -54,7 +54,7 @@ agents:
       levels accurate. You trigger reorder alerts when stock falls below
       safety thresholds and flag discrepancies for cycle counts.
     tools:
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
       - "http_api"
     allowDelegation: false

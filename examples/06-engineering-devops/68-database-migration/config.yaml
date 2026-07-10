@@ -18,7 +18,7 @@ agents:
       You identify tables, relationships, constraints, indexes, stored procedures,
       and triggers, creating a complete migration inventory.
     tools:
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
       - "file_write"
     allowDelegation: false
@@ -62,7 +62,7 @@ agents:
       You verify referential integrity, row counts, data type consistency,
       constraint satisfaction, and business rule compliance in the target database.
     tools:
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
       - "file_write"
     allowDelegation: false

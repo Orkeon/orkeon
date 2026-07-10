@@ -34,7 +34,7 @@ agents:
       that suggest potential information asymmetry.
     tools:
       - "http_api"
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
     allowDelegation: false
     maxIter: 10
@@ -49,7 +49,7 @@ agents:
       unusual counterparties, and timing anomalies using semantic vector comparison
       in encrypted memory.
     tools:
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
       - "semantic_search"
       - "pattern_recognition"

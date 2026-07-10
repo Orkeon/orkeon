@@ -48,7 +48,7 @@ agents:
       purchase orders, and goods receipt. Identifies discrepancies in quantities,
       prices, and totals. Flags exceptions for review.
     tools:
-      - "database_query"
+      - "relational_database_query"
       - "csv_reader"
       - "json_tool"
       - "file_write"

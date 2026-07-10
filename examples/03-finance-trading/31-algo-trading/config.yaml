@@ -62,7 +62,6 @@ agents:
     tools:
       - "csv_reader"
       - "json_tool"
-      - "code_interpreter"
       - "arima_prediction"
       - "ensemble_prediction"
       - "backtesting"
@@ -79,7 +78,7 @@ agents:
     tools:
       - "csv_reader"
       - "json_tool"
-      - "database_query"
+      - "relational_database_query"
       - "var_calculation"
       - "cvar_calculation"
     allowDelegation: false
@@ -127,7 +126,7 @@ agents:
     tools:
       - "json_tool"
       - "file_write"
-      - "database_query"
+      - "relational_database_query"
     allowDelegation: false
     maxIter: 10
     verbose: true

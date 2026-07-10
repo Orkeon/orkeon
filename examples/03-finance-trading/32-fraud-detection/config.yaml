@@ -32,7 +32,7 @@ agents:
       Uses statistical methods and semantic similarity to identify unusual transaction
       patterns that deviate from established baselines.
     tools:
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
       - "semantic_search"
       - "pattern_recognition"
@@ -50,7 +50,7 @@ agents:
       to build a complete picture of suspicious activity.
     tools:
       - "http_api"
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
     allowDelegation: false
     maxIter: 10

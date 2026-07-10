@@ -33,7 +33,7 @@ agents:
       changes to pinpoint the exact cause of production incidents.
     tools:
       - "http_api"
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
     allowDelegation: false
     maxIter: 15

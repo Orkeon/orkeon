@@ -63,7 +63,7 @@ agents:
       utilization, and replication lag to identify data-layer bottlenecks.
     tools:
       - "http_api"
-      - "database_query"
+      - "relational_database_query"
       - "json_tool"
     allowDelegation: false
     maxIter: 10

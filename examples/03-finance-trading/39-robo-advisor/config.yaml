@@ -20,7 +20,7 @@ agents:
       Client responses are stored in encrypted episodic memory.
     tools:
       - "json_tool"
-      - "ask_question"
+      - "human_input"
     allowDelegation: false
     maxIter: 15
     verbose: true
