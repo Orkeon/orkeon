@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""lint-example-readmes.py — Static lint for the numbered example ``README.md`` files.
+
+Scans every ``examples/NN-category/NN-slug/README.md`` and checks:
+
+  (a) PRESENCE    — the example ships a README.md.
+
+  (b) LAUNCH      — the README contains a launch section (a heading such as
+      ``## Run`` / ``## Run it`` / ``## Lancer`` / ``## Running`` …) that carries a
+      ``dotnet run --project examples/runners/<runner> … --config <path>`` command,
+      and that ``--config`` path resolves to a file that exists on disk. A missing or
+      broken launch command is an ERROR; a launch command that exists but sits outside
+      a recognized heading is a WARNING.
+
+  (c) LINKS       — every relative Markdown link ``[text](path)`` resolves to a file or
+      directory (external ``http(s)://`` / ``mailto:`` and pure ``#anchor`` links are
+      skipped). Broken relative links are ERRORS.
+
+  (d) INDEX       — ``examples/INDEX.md`` is up to date, verified by delegating to
+      ``bash scripts/generate-examples-index.sh --check``. A stale index is an ERROR.
+
+Exit status: non-zero if any ERROR is found; warnings never fail the build.
+
+Usage:
+  python3 scripts/lint-example-readmes.py
+  python3 scripts/lint-example-readmes.py --no-index-check   # skip the INDEX freshness check
+"""
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+EXAMPLES = ROOT / "examples"
+SCRIPTS = ROOT / "scripts"
+
+CATEGORY_RE = re.compile(r"^\d{2}-")
+EXAMPLE_RE = re.compile(r"^(\d+)-(.+)$")
+
+# Headings that introduce a "how to launch this example" section.
+LAUNCH_HEADING_RE = re.compile(
+    r"^#{2,6}\s+(run(?:\s+it)?|running|lancer|lancement|ex[eé]cuter|usage)\b",
+    re.IGNORECASE,
+)
+HEADING_RE = re.compile(r"^#{1,6}\s+")
+# A dotnet-run launch line: capture the --project value and the config path.
+# Config flag is --config or its short form -c. Commands may span backslash-continued
+# lines, so the gap between --project and the config flag is matched across newlines.
+RUN_CMD_RE = re.compile(
+    r"dotnet\s+run\s+--project\s+(\S+).*?(?:--config|(?<!\w)-c)\s+(\S+)",
+    re.DOTALL,
+)
+LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)]+)\)")
+
+
+class Finding:
+    __slots__ = ("level", "line", "msg")
+
+    def __init__(self, level: str, line: int, msg: str):
+        self.level = level
+        self.line = line
+        self.msg = msg
+
+
+def find_launch(text: str) -> tuple[list[tuple[str, str]], bool]:
+    """Return (commands, under_recognized_heading).
+
+    commands is every (project, config_path) pair found in a dotnet-run command.
+    under_recognized_heading is True if such a command appears after a launch heading.
+    """
+    lines = text.splitlines()
+    heading_lines: list[int] = [
+        i for i, ln in enumerate(lines) if LAUNCH_HEADING_RE.match(ln)
+    ]
+
+    def heading_level(ln: str) -> int:
+        return len(ln) - len(ln.lstrip("#"))
+
+    # A launch section runs until the next heading of the same or higher level;
+    # deeper sub-headings (e.g. "### Via the interactive runner") stay inside it.
+    section_ranges = []
+    for h in heading_lines:
+        level = heading_level(lines[h])
+        end = len(lines)
+        for j in range(h + 1, len(lines)):
+            if HEADING_RE.match(lines[j]) and heading_level(lines[j]) <= level:
+                end = j
+                break
+        section_ranges.append((h, end))
+
+    commands: list[tuple[str, str]] = []
+    under_heading = False
+    for m in RUN_CMD_RE.finditer(text):
+        project = m.group(1).strip().strip("`\"'")
+        cfg = m.group(2).strip().strip("`\"'")
+        commands.append((project, cfg))
+        # locate the line of this match
+        line_no = text.count("\n", 0, m.start())
+        if any(h < line_no < end for h, end in section_ranges):
+            under_heading = True
+    return commands, under_heading
+
+
+def lint_readme(readme: Path) -> list[Finding]:
+    findings: list[Finding] = []
+    if not readme.is_file():
+        return [Finding("error", 0, "README.md is missing")]
+
+    text = readme.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+
+    # (b) launch command
+    commands, under_heading = find_launch(text)
+    if not commands:
+        findings.append(Finding(
+            "error", 0,
+            "no launch command found "
+            "('dotnet run --project … --config …')",
+        ))
+    else:
+        for project, cfg in commands:
+            target = (ROOT / cfg).resolve()
+            if not target.is_file():
+                findings.append(Finding(
+                    "error", 0, f"launch --config path does not exist: {cfg}",
+                ))
+            if not project.startswith("examples/runners/"):
+                findings.append(Finding(
+                    "warning", 0,
+                    f"launch uses project '{project}', not examples/runners/*",
+                ))
+        if not under_heading:
+            findings.append(Finding(
+                "warning", 0,
+                "launch command is not under a recognized run/launch heading "
+                "(## Run / ## Run it / ## Lancer …)",
+            ))
+
+    # (c) relative markdown links
+    base = readme.parent
+    for i, ln in enumerate(lines, start=1):
+        for m in LINK_RE.finditer(ln):
+            href = m.group(1).split()[0].strip()  # drop optional "title"
+            if not href or href.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            path_part = href.split("#", 1)[0]
+            if not path_part:
+                continue
+            target = (base / path_part).resolve()
+            if not target.exists():
+                findings.append(Finding(
+                    "error", i, f"broken relative link '{href}' → {path_part}",
+                ))
+    return findings
+
+
+def iter_examples():
+    for cat in sorted(EXAMPLES.iterdir()):
+        if not cat.is_dir() or not CATEGORY_RE.match(cat.name):
+            continue
+        for sub in sorted(cat.iterdir()):
+            if not sub.is_dir() or not EXAMPLE_RE.match(sub.name):
+                continue
+            if (sub / "config.yaml").is_file():
+                yield sub / "README.md"
+
+
+def check_index() -> Finding | None:
+    script = SCRIPTS / "generate-examples-index.sh"
+    if not script.is_file():
+        return Finding("warning", 0, "generate-examples-index.sh not found; INDEX check skipped")
+    try:
+        res = subprocess.run(
+            ["bash", str(script), "--check"],
+            capture_output=True, text=True, timeout=120, cwd=str(ROOT),
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        return Finding("warning", 0, f"could not run INDEX --check: {exc}")
+    if res.returncode != 0:
+        detail = (res.stdout + res.stderr).strip().splitlines()
+        tail = detail[-1] if detail else "examples/INDEX.md is stale"
+        return Finding("error", 0, f"examples/INDEX.md is out of date — run "
+                                   f"'bash scripts/generate-examples-index.sh' ({tail})")
+    return None
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Lint example README.md launch sections and links.")
+    ap.add_argument("--no-index-check", action="store_true",
+                    help="skip the examples/INDEX.md freshness check")
+    args = ap.parse_args()
+
+    total = 0
+    n_err = 0
+    n_warn = 0
+    files_with_findings = 0
+
+    for readme in iter_examples():
+        total += 1
+        findings = lint_readme(readme)
+        if not findings:
+            continue
+        files_with_findings += 1
+        rel = readme.relative_to(ROOT)
+        print(f"\n{rel}")
+        for f in sorted(findings, key=lambda x: (x.level != "error", x.line)):
+            loc = f":{f.line}" if f.line else ""
+            tag = "ERROR " if f.level == "error" else "warn  "
+            print(f"  {tag}{rel}{loc}: {f.msg}")
+            if f.level == "error":
+                n_err += 1
+            else:
+                n_warn += 1
+
+    if not args.no_index_check:
+        idx = check_index()
+        if idx:
+            print("\nexamples/INDEX.md")
+            tag = "ERROR " if idx.level == "error" else "warn  "
+            print(f"  {tag}{idx.msg}")
+            if idx.level == "error":
+                n_err += 1
+            else:
+                n_warn += 1
+
+    print(f"\n{'─' * 60}")
+    print(f"Linted {total} README.md — {n_err} error(s), {n_warn} warning(s) "
+          f"across {files_with_findings} file(s).")
+    return 1 if n_err else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

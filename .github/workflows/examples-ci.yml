@@ -1,0 +1,71 @@
+# Examples CI — validates the numbered example catalog (config.yaml + README.md) and
+# their hosting/runner wiring on every change under examples/, src/hosting/ or scripts/.
+#
+# Two of the three jobs are pure-Python static lints (no dotnet build, no PyYAML): the
+# tool manifests they check against are committed under scripts/data/ and regenerated
+# from the runners' --list-tools contract. The third job builds and runs the shared
+# validate-all-examples.sh over the whole catalog, so it needs the .NET 10 SDK and,
+# like the main CI, some extra free disk on the hosted runner.
+name: Examples CI
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'examples/**'
+      - 'src/hosting/**'
+      - 'scripts/**'
+      - '.github/workflows/examples-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'examples/**'
+      - 'src/hosting/**'
+      - 'scripts/**'
+      - '.github/workflows/examples-ci.yml'
+permissions:
+  contents: read
+concurrency:
+  group: examples-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint-configs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Lint example config.yaml (tool names, structure)
+        run: python3 scripts/lint-example-configs.py
+
+  lint-readmes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Lint example README.md (launch section, links)
+        run: python3 scripts/lint-example-readmes.py
+      # lint-example-readmes.py already runs INDEX --check, but keep an explicit
+      # step so a stale INDEX is easy to spot in the job log.
+      - name: Verify examples/INDEX.md is up to date
+        run: bash scripts/generate-examples-index.sh --check
+
+  validate-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free up runner disk space
+        run: |
+          echo "Before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          echo "After:"; df -h / | tail -1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Build runners and validate all example configs
+        run: bash scripts/validate-all-examples.sh

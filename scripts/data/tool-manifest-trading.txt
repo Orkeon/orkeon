@@ -1,0 +1,47 @@
+# Runtime tool manifest — TRADING runner extras (one tool name per line).
+# Regenerate via: dotnet run --project examples/runners/trading -- --list-tools 2>/dev/null > scripts/data/tool-manifest-trading.txt
+# For 03-finance-trading the allowed set is standard ∪ trading.
+alert_management
+alternative_data
+arima_prediction
+audit_trail
+backtesting
+black_litterman
+circuit_breaker
+compliance_check
+concentration_risk
+constraint_optimization
+correlation_analysis
+cvar_calculation
+dashboard_metrics
+drawdown_monitoring
+ensemble_prediction
+factor_exposure
+fundamental_data
+hierarchical_risk_parity
+historical_data_fetch
+implementation_shortfall
+liquidity_analysis
+market_regime_classification
+mean_variance_optimization
+multi_asset_comparison
+orderbook_depth
+pattern_recognition
+performance_attribution
+portfolio_rebalancing
+position_limit_monitoring
+pov_execution
+prophet_prediction
+random_forest_prediction
+realtime_tick_data
+regulatory_reporting
+risk_parity
+smart_order_routing
+stress_testing
+technical_indicators
+transaction_cost_analysis
+twap_execution
+unified_market_data
+var_calculation
+vwap_execution
+xgboost_prediction
