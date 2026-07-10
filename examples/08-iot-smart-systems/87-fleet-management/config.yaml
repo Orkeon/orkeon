@@ -96,7 +96,7 @@ agents:
 
 tasks:
   load_missions:
-    description: "Load today's delivery missions from the logistics system, parse delivery addresses, time windows, and cargo specifications"
+    description: "Load today's delivery missions from /data/missions.csv (csv_reader; mission_id, address, lat, lon, time_window, priority, cargo_kg), parsing delivery addresses, time windows, and cargo specifications"
     expectedOutput: "Structured list of missions with addresses, time windows, priorities, and cargo details in JSON format"
     agent: "fleet_dispatcher"
     dependencies: []
@@ -136,7 +136,7 @@ tasks:
     humanInput: false
 
   check_maintenance:
-    description: "Review vehicle health diagnostics and determine if any vehicles need scheduled maintenance or have urgent issues"
+    description: "Review vehicle health diagnostics from /data/vehicle-diagnostics.csv (csv_reader; vehicle, engine_hours, tire_pressure_psi, brake_wear_pct, oil_level_pct, last_service_date) and determine if any vehicles need scheduled maintenance or have urgent issues"
     expectedOutput: "Maintenance status report per vehicle with recommended actions and scheduling suggestions"
     agent: "maintenance_coordinator"
     dependencies: ["execute_mission_alpha", "execute_mission_bravo"]

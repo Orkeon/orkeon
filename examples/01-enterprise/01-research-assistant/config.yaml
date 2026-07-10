@@ -61,7 +61,7 @@ tasks:
     humanInput: false
 
   analyze_documents:
-    description: "Parse and analyze all provided documents (PDF, CSV, JSON). Extract key data points, statistics, and findings relevant to the research topic."
+    description: "Parse and analyze all provided documents. The documents are mounted read-only under /data: a market report at /data/ev-market-report.pdf (read with pdf_reader) and a statistics table at /data/ev-sales-by-region.csv (read with csv_reader). Extract key data points, statistics, and findings relevant to the research topic."
     expectedOutput: "A structured JSON report with extracted data points, statistics, and document-level summaries"
     agent: "document_analyst"
     dependencies:

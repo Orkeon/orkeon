@@ -48,6 +48,7 @@ agents:
       recommendations by gap criticality, team impact, and training ROI.
     tools:
       - "http_api"
+      - "csv_reader"
       - "json_tool"
       - "file_write"
     allowDelegation: false
@@ -56,7 +57,7 @@ agents:
 
 tasks:
   assess_members:
-    description: "Assess each team member's competencies against their role requirements. Analyze performance data, certifications, and project history from the HRIS system."
+    description: "Assess each team member's competencies against their role requirements. Read the team competency export from /data/team-skills.csv and the per-role targets from /data/role-requirements.csv (csv_reader). Compare proficiency, certifications, and experience against required levels."
     expectedOutput: "JSON array of individual competency profiles with scores per skill and identified gaps"
     agent: "skills_assessor"
     dependencies: []
@@ -73,7 +74,7 @@ tasks:
     humanInput: false
 
   recommend_training:
-    description: "Match identified gaps to available training programs using semantic similarity. Prioritize by criticality, team impact, and ROI. Generate an action plan."
+    description: "Match identified gaps to the available training programs at /data/training-catalog.csv (csv_reader; program_id, title, skill, target_level, duration_hours, cost_usd) using semantic similarity. Prioritize by criticality, team impact, and ROI. Generate an action plan."
     expectedOutput: "Prioritized training recommendations with matched programs, timelines, and expected ROI"
     agent: "training_recommender"
     dependencies:

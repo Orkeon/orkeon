@@ -1,0 +1,57 @@
+member,role,skill,proficiency_1to5,certified,years_experience
+Ada,SRE,Kubernetes,5,no,5
+Ada,SRE,Terraform,5,no,2
+Ada,SRE,Python,3,no,5
+Ada,SRE,SQL,3,no,3
+Ada,SRE,Incident Response,3,yes,6
+Ada,SRE,CI/CD,1,no,5
+Ada,SRE,Threat Modeling,4,no,4
+Bela,SRE,Kubernetes,1,no,9
+Bela,SRE,Terraform,1,no,2
+Bela,SRE,Python,3,no,9
+Bela,SRE,SQL,4,no,3
+Bela,SRE,Incident Response,5,yes,8
+Bela,SRE,CI/CD,5,no,0
+Bela,SRE,Threat Modeling,1,no,9
+Cai,Platform Eng,Kubernetes,1,no,3
+Cai,Platform Eng,Terraform,2,yes,3
+Cai,Platform Eng,Python,4,no,9
+Cai,Platform Eng,SQL,3,yes,9
+Cai,Platform Eng,Incident Response,3,no,3
+Cai,Platform Eng,CI/CD,5,yes,8
+Cai,Platform Eng,Threat Modeling,3,no,3
+Devi,Platform Eng,Kubernetes,5,no,8
+Devi,Platform Eng,Terraform,5,no,0
+Devi,Platform Eng,Python,4,no,9
+Devi,Platform Eng,SQL,4,no,0
+Devi,Platform Eng,Incident Response,5,no,5
+Devi,Platform Eng,CI/CD,5,no,4
+Devi,Platform Eng,Threat Modeling,3,yes,2
+Ege,Security Eng,Kubernetes,1,no,5
+Ege,Security Eng,Terraform,1,yes,8
+Ege,Security Eng,Python,3,no,8
+Ege,Security Eng,SQL,2,no,9
+Ege,Security Eng,Incident Response,1,no,2
+Ege,Security Eng,CI/CD,1,no,5
+Ege,Security Eng,Threat Modeling,4,yes,5
+Faye,Security Eng,Kubernetes,5,no,3
+Faye,Security Eng,Terraform,2,yes,6
+Faye,Security Eng,Python,5,no,4
+Faye,Security Eng,SQL,2,yes,5
+Faye,Security Eng,Incident Response,4,no,9
+Faye,Security Eng,CI/CD,4,no,7
+Faye,Security Eng,Threat Modeling,5,no,5
+Gus,Data Eng,Kubernetes,1,yes,9
+Gus,Data Eng,Terraform,2,no,4
+Gus,Data Eng,Python,5,no,6
+Gus,Data Eng,SQL,3,yes,4
+Gus,Data Eng,Incident Response,4,no,6
+Gus,Data Eng,CI/CD,2,no,4
+Gus,Data Eng,Threat Modeling,2,no,1
+Hana,Data Eng,Kubernetes,4,no,5
+Hana,Data Eng,Terraform,1,no,4
+Hana,Data Eng,Python,4,no,9
+Hana,Data Eng,SQL,4,no,0
+Hana,Data Eng,Incident Response,5,no,3
+Hana,Data Eng,CI/CD,4,yes,3
+Hana,Data Eng,Threat Modeling,3,yes,3

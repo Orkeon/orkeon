@@ -60,7 +60,7 @@ agents:
 
 tasks:
   extract_invoices:
-    description: "Process incoming invoices in various formats (PDF, CSV, XML). Extract all fields: vendor, invoice number, date, line items, amounts, tax, payment terms. Handle format variations using tolerant converters."
+    description: "Process incoming invoices from /data/invoices: two PDF invoices (/data/invoices/INV-2024-0001.pdf and /data/invoices/INV-2024-0002.pdf, read with pdf_reader) and a CSV batch of electronic invoices (/data/invoices/invoices-batch.csv, read with csv_reader). Extract all fields: vendor, invoice number, date, line items, amounts, tax, payment terms. Handle format variations using tolerant converters."
     expectedOutput: "JSON array of raw extracted invoice data with confidence scores per field"
     agent: "extractor"
     dependencies: []
@@ -77,7 +77,7 @@ tasks:
     humanInput: false
 
   reconcile_accounts:
-    description: "Match each structured invoice against purchase orders and receiving records in the accounting system. Perform three-way match on quantities, unit prices, and totals. Generate exception report for mismatches."
+    description: "Match each structured invoice against purchase orders at /data/purchase-orders.csv and receiving records at /data/goods-receipts.csv (read with csv_reader). Perform three-way match on quantities, unit prices, and totals. Generate exception report for mismatches."
     expectedOutput: "Reconciliation report with matched invoices, exception list with discrepancy details, and recommended actions per exception"
     agent: "reconciler"
     dependencies:

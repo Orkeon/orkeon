@@ -1,0 +1,4 @@
+invoice_number,vendor,invoice_date,po_number,line_count,total_amount,currency,terms
+INV-2024-0003,Initech Parts,2024-05-15,PO-5503,3,1240.0,USD,Net 30
+INV-2024-0004,Umbrella Materials,2024-05-16,PO-5504,2,512.4,USD,Net 60
+INV-2024-0005,Hooli Logistics,2024-05-17,PO-9999,1,78.9,USD,Net 15

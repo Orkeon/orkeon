@@ -79,4 +79,58 @@ If your example genuinely needs a bundled fixture:
   the [example README template](../templates/example-readme.md). That table (plus
   a `--mount` in the run command) is what moves the example out of the
   "does not ship sample data yet" category.
+
+## Curated showcase datasets
+
+A set of showcase examples (one per category) ship a bundled fixture so they run
+against real files out of the box. Their data is produced by a single generator:
+
+```bash
+python3 scripts/generate-vitrine-data.py      # (re)generate every showcase data/ folder
+```
+
+Rules these fixtures follow, on top of the "keep it tiny and synthetic" guidance
+above:
+
+- **Deterministic.** The generator uses a fixed RNG seed, so re-running it
+  reproduces the committed files byte-for-byte. Never hand-edit a generated
+  file — change the generator and re-run it.
+- **Synthetic and small.** Data must be synthetic only (no real, personal, or
+  proprietary content) and **under 100 KB per file** unless a larger file is
+  essential and justified in the README.
+- **No external dependency.** CSV/JSON come from the Python stdlib; PDFs are
+  written by a tiny built-in writer (standard Helvetica font, text-extractable by
+  `pdf_reader`). The script runs on a bare Python 3.9+ install.
+- **Tasks name the virtual paths.** The `config.yaml` task descriptions reference
+  the concrete VFS paths (e.g. `/data/experiment-measurements.csv`) so the agent
+  reads the shipped file instead of inventing a path the VFS would reject.
+
+### Which tools trigger the data requirement
+
+A tool triggers the "ship a fixture" requirement only if it reads a
+caller-supplied path through the VFS — `csv_reader`, `pdf_reader`, `file_read`,
+`directory_read`, `docx_reader`, and similar. Tools that do **not** by themselves
+require a bundled file include `json_tool` (operates on inline JSON strings),
+`file_write` (writes only), `http_api` / `web_scrape` (fetch remote resources),
+and `relational_database_query` (uses a caller-supplied connection string). An
+example built purely from those needs no `data/` folder; see
+`examples/09-experimental/97-multi-party-negotiation`, which ships none and passes
+its scenario via `--initial-context`.
+
+### Verifying a fixture
+
+Use the runner's dry-run flag to confirm the crew loads under strict tool
+resolution and the data mount is accepted, without calling an LLM:
+
+```bash
+dotnet run --project examples/runners/standard -- \
+  --config examples/<path>/config.yaml \
+  --mount examples/<path>/data:/data:ro --validate
+```
+
+A `VALIDATION OK: … (agents=N, tasks=M, tools resolved=K)` line means success.
+
+> **Mount syntax gotcha.** Repeatable `--mount` values are passed **space-separated
+> under one flag** — `--mount a:/data:ro b:/output:rw` — not as two separate
+> `--mount` flags (the CLI parser rejects a repeated option).
 </content>

@@ -1,0 +1,9 @@
+{
+  "experiment_id": "EXP-SYNTH-0421",
+  "title": "Synthetic dose-response study (illustrative)",
+  "design": "two-arm randomized, control vs treatment",
+  "primary_endpoint": "response_score",
+  "hypothesis": "treatment increases response_score vs control",
+  "sample_size": 120,
+  "notes": "All values are synthetic and generated for demo purposes."
+}

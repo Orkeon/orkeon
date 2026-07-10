@@ -73,7 +73,7 @@ agents:
 
 tasks:
   model_schema:
-    description: "Analyze the source data schema. Model column types, value distributions, inter-column correlations, and business constraints. Do NOT store any actual records."
+    description: "Analyze the source data schema at /data/source-customers.csv (csv_reader; customer_id, age, city, plan, tenure_months, monthly_charge_usd, churned). Model column types, value distributions, inter-column correlations, and business constraints. Do NOT store or copy any actual records into the output."
     expectedOutput: "JSON schema model with column definitions, distribution parameters, correlation matrix, and constraints"
     agent: "schema_modeler"
     dependencies: []
@@ -90,7 +90,7 @@ tasks:
     humanInput: false
 
   validate_distributions:
-    description: "Compare synthetic data distributions against the schema model targets. Verify statistical fidelity using KS tests, chi-squared tests, and correlation analysis."
+    description: "Compare synthetic data distributions against the source distributions in /data/source-customers.csv (csv_reader) and the schema model targets. Verify statistical fidelity using KS tests, chi-squared tests, and correlation analysis."
     expectedOutput: "Validation report with statistical tests results, distribution comparisons, and fidelity scores"
     agent: "distribution_validator"
     dependencies:

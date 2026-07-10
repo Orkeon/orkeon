@@ -1,0 +1,4 @@
+receipt_id,po_number,received_date,items,status
+GR-8801,PO-5501,2024-05-11,Widget A;Bracket B;Fastener C,complete
+GR-8802,PO-5502,2024-05-13,Steel sheet;Coating kit,complete
+GR-8803,PO-5503,2024-05-15,Assorted parts,partial

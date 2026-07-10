@@ -1,0 +1,15 @@
+role,skill,required_level_1to5
+SRE,Kubernetes,4
+SRE,Terraform,3
+SRE,Incident Response,4
+SRE,CI/CD,4
+Platform Eng,Kubernetes,4
+Platform Eng,Terraform,4
+Platform Eng,Python,3
+Platform Eng,CI/CD,4
+Security Eng,Threat Modeling,4
+Security Eng,Incident Response,4
+Security Eng,Python,3
+Data Eng,Python,4
+Data Eng,SQL,4
+Data Eng,CI/CD,3

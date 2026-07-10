@@ -72,7 +72,7 @@ agents:
 
 tasks:
   run_statistics:
-    description: "Perform comprehensive statistical analysis on the experimental dataset. Include descriptive stats, hypothesis tests, regressions, and effect sizes with confidence intervals."
+    description: "Perform comprehensive statistical analysis on the experimental dataset. Read the dataset from /data/experiment-measurements.csv using csv_reader (columns: subject_id, group, age, dose_mg, baseline_score, response_score); study metadata is at /data/experiment-metadata.json. Include descriptive stats, hypothesis tests (control vs treatment), regressions, and effect sizes with confidence intervals."
     expectedOutput: "JSON with: descriptive_stats{}, hypothesis_tests[{test, statistic, p_value, effect_size, ci}], regressions[{model, r_squared, coefficients}]"
     agent: "statistician"
     dependencies: []
@@ -80,7 +80,7 @@ tasks:
     humanInput: false
 
   create_visualizations:
-    description: "Generate visualization specifications for key findings. Design scatter plots, distributions, comparisons, and trend charts with proper annotations."
+    description: "Generate visualization specifications for key findings, based on the dataset at /data/experiment-measurements.csv (csv_reader). Design scatter plots, distributions, comparisons, and trend charts with proper annotations."
     expectedOutput: "JSON array of visualization specs with: type, title, data_mapping, annotations[], accessibility_notes"
     agent: "visualizer"
     dependencies: []

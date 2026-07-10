@@ -1,0 +1,5 @@
+po_number,vendor,po_date,po_amount,currency,status
+PO-5501,Acme Components Ltd.,2024-05-01,800.0,USD,open
+PO-5502,Globex Supplies GmbH,2024-05-02,845.0,EUR,open
+PO-5503,Initech Parts,2024-05-03,1240.0,USD,open
+PO-5504,Umbrella Materials,2024-05-04,500.0,USD,open

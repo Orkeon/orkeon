@@ -1,0 +1,51 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 475 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 770 Td
+(FACTURE / INVOICE  \(synthetic sample\)) Tj
+T* (Vendor: Globex Supplies GmbH) Tj
+T* (Invoice No.: INV-2024-0002) Tj
+T* (Date: 2024-05-14) Tj
+T* (PO Ref: PO-5502) Tj
+T* () Tj
+T* (Detail:) Tj
+T* (  MAT-01  Steel sheet   qty  20  unit 33.00  amount 660.00) Tj
+T* (  MAT-07  Coating kit   qty  10  unit 18.50  amount 185.00) Tj
+T* () Tj
+T* (Net amount: 845.00) Tj
+T* (VAT \(19%\): 160.55) Tj
+T* (Grand total: 1005.55 EUR) Tj
+T* (Terms: Net 45) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000744 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+870
+%%EOF

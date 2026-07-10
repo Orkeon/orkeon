@@ -1,33 +1,61 @@
-# 47. Planification Nutritionnelle YAML-Driven
+# 47. Nutrition Planner
 
-> Configuration des contraintes alimentaires (allergies, preferences, objectifs caloriques) entierement en YAML. Les agents s'adaptent automatiquement sans modifier le code. La memoire suit l'evolution du patient.
+> A dietitian crew builds a patient dietary profile, designs a week of meals,
+> verifies nutritional adequacy against a food composition table, and produces
+> daily coaching guidance.
 
-## Quality
+## What it does
 
-:dart: Simplicite -- Configuration YAML pure, adaptation automatique, zero code
-
-## Architecture
-
-- **Process**: `sequential`
-- **Agents**: 4 -- Dietary Profile Analyst, Recipe Designer, Nutritional Verifier, Daily Coach
+- **Process**: `Sequential`
+- **Agents**: 4 — Dietary Profile Analyst, Recipe Designer, Nutritional
+  Verifier, Daily Coach
 - **Tools**: `http_api`, `json_tool`, `csv_reader`, `file_write`
-- **Memory**: `SQLite` (episodic per patient)
-- **Key features**: AgentConfiguration YAML (dietary constraints), AgentMemory.Episodic, TaskContext typed, IKnowledgeSource (nutritional tables)
+- **Key features**: config-driven dietary constraints, episodic memory across
+  sessions, nutrient verification against a shipped composition table
 - **Runner**: `standard`
 
 ## Prerequisites
 
-1. .NET 10 SDK
-2. Configure `appsettings.json` with your LLM API key
+- .NET SDK ≥ 10.0.300 (source) — or the .NET 10 runtime (release binary)
+- An LLM profile (see the [profile matrix](../../appsettings/)). Runs offline
+  against the bundled data.
 
-## Run
+## Required data
+
+Ships a small synthetic dataset (regenerate with
+`python3 scripts/generate-vitrine-data.py`). The patient is entirely fictional.
+
+| Virtual path | Mount flag | Purpose |
+|---|---|---|
+| `/data/patient-history.csv` | `--mount examples/04-health-wellness/47-nutrition-planner/data:/data:ro` | Synthetic patient profile: allergies, intolerances, condition, calorie target (read by `csv_reader`) |
+| `/data/food-nutrition.csv` | (same mount) | Food composition per 100 g: calories, macros, iron, calcium, B12, folate |
+
+## Run it
+
+**From source:**
 
 ```bash
-dotnet run --project examples/runners/standard -- --config examples/04-health-wellness/47-nutrition-planner/config.yaml
+mkdir -p out
+dotnet run --project examples/runners/standard -- \
+  --config examples/04-health-wellness/47-nutrition-planner/config.yaml \
+  --settings examples/appsettings/appsettings.deepseek.local.json \
+  --mount examples/04-health-wellness/47-nutrition-planner/data:/data:ro ./out:/output:rw
 ```
 
-## What this example demonstrates
+Swap the `--settings` profile for any provider in
+[`examples/appsettings/`](../../appsettings/). To only confirm the crew loads
+and the data mount is accepted (no LLM), append `--validate`.
 
-- Fully YAML-driven dietary constraint configuration with zero code changes
-- Episodic memory tracking patient progress and preferences across sessions
-- End-to-end nutrition pipeline from profiling to daily coaching
+> Flag reference: [Run your first example](../../../docs/getting-started/run-your-first-example.md#every-flag-explained).
+
+## Expected output
+
+A personalized nutrition plan written to `/output` (plus an `AUTO_SUMMARY.md`): a
+dietary profile honoring the shipped constraints, a 7-day meal plan, a nutrient
+adequacy analysis computed from the food composition table, and a daily coaching
+message.
+
+## Approx. duration & cost
+
+- **Duration**: ~3–5 min
+- **Cost**: ~10–14 LLM calls; a few thousand tokens.

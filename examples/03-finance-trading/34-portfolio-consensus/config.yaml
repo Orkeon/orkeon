@@ -78,7 +78,7 @@ agents:
 
 tasks:
   fundamental_assessment:
-    description: "Perform fundamental analysis on the investment universe. Evaluate each asset on valuation, earnings quality, balance sheet, and competitive position. Produce ranked recommendations with target allocations."
+    description: "Perform fundamental analysis on the investment universe. Read per-asset fundamentals from /data/fundamentals.csv (csv_reader; columns: ticker, sector, pe_ratio, pb_ratio, roe, debt_to_equity, market_cap_bn, dividend_yield_pct). Evaluate each asset on valuation, earnings quality, balance sheet, and competitive position. Produce ranked recommendations with target allocations."
     expectedOutput: "JSON with ranked assets, intrinsic value estimates, conviction scores, and recommended allocation weights"
     agent: "fundamental_analyst"
     dependencies: []
@@ -86,7 +86,7 @@ tasks:
     humanInput: false
 
   technical_assessment:
-    description: "Run technical analysis on the investment universe. Identify trend direction, momentum, key levels, and optimal timing signals. Produce ranked recommendations with target allocations."
+    description: "Run technical analysis on the investment universe. Read the 60-day daily close price history from /data/price-history.csv (csv_reader; columns: date, ticker, close) and feed it to the technical_indicators and correlation_analysis tools. Identify trend direction, momentum, key levels, and optimal timing signals. Produce ranked recommendations with target allocations."
     expectedOutput: "JSON with ranked assets, trend scores, momentum readings, entry/exit levels, and recommended allocation weights"
     agent: "technical_analyst"
     dependencies: []

@@ -1,0 +1,8 @@
+program_id,title,skill,target_level,duration_hours,cost_usd
+TRN-01,Certified Kubernetes Administrator,Kubernetes,4,40,1200
+TRN-02,Terraform Associate Prep,Terraform,3,24,600
+TRN-03,Incident Command Foundations,Incident Response,4,16,800
+TRN-04,Applied Threat Modeling,Threat Modeling,4,20,950
+TRN-05,SQL for Data Engineers,SQL,4,30,500
+TRN-06,Python Automation Bootcamp,Python,4,32,700
+TRN-07,CI/CD Pipeline Mastery,CI/CD,4,18,550

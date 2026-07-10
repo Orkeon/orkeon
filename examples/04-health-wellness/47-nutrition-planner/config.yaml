@@ -72,7 +72,7 @@ agents:
 
 tasks:
   build_profile:
-    description: "Parse YAML-configured dietary constraints (allergies, intolerances, preferences, caloric targets, medical conditions). Combine with patient history from memory to create comprehensive dietary profile."
+    description: "Parse the patient profile from /data/patient-history.csv (csv_reader; attribute/value rows covering allergies, intolerances, preferences, caloric target, and medical conditions). Combine with patient history from memory to create a comprehensive dietary profile."
     expectedOutput: "JSON dietary profile with all constraints categorized, nutritional targets, forbidden ingredients, and patient preferences"
     agent: "food_profiler"
     dependencies: []
@@ -89,7 +89,7 @@ tasks:
     humanInput: false
 
   verify_nutrition:
-    description: "Analyze the complete meal plan for nutritional adequacy. Check daily and weekly averages against targets for calories, macros, and key micronutrients. Flag any deficiencies or excesses."
+    description: "Analyze the complete meal plan for nutritional adequacy. Use the food composition table at /data/food-nutrition.csv (csv_reader; per-100g calories, protein, carbs, fat, iron, calcium, vitamin B12, folate) to compute nutrient totals. Check daily and weekly averages against targets for calories, macros, and key micronutrients. Flag any deficiencies or excesses."
     expectedOutput: "JSON nutritional analysis with daily/weekly macro and micronutrient totals, comparison to targets, and deficiency/excess alerts"
     agent: "nutritionist"
     dependencies:

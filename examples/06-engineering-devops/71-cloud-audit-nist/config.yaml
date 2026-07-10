@@ -129,7 +129,7 @@ tasks:
     humanInput: false
 
   audit_costs:
-    description: "Audit cloud spending. Identify idle resources, rightsizing opportunities, reserved instance savings, and tagging compliance."
+    description: "Audit cloud spending. Read the billing export from /data/cloud-billing.csv (csv_reader; resource_id, service, region, monthly_cost_usd, utilization_pct, cost_tag_present). Identify idle resources (low utilization), rightsizing opportunities, reserved instance savings, and tagging compliance gaps."
     expectedOutput: "Cost audit report with waste identification, savings opportunities, and optimization plan"
     agent: "cost_auditor"
     dependencies: []

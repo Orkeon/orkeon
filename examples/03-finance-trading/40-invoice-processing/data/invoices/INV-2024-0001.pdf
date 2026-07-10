@@ -1,0 +1,52 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 556 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 770 Td
+(INVOICE  \(synthetic sample\)) Tj
+T* (Vendor: Acme Components Ltd.) Tj
+T* (Invoice Number: INV-2024-0001) Tj
+T* (Invoice Date: 2024-05-12) Tj
+T* (Purchase Order: PO-5501) Tj
+T* () Tj
+T* (Line items:) Tj
+T* (  SKU-100  Widget A     qty 100  unit 4.50   amount 450.00) Tj
+T* (  SKU-220  Bracket B    qty  40  unit 7.25   amount 290.00) Tj
+T* (  SKU-330  Fastener C   qty 500  unit 0.12   amount  60.00) Tj
+T* () Tj
+T* (Subtotal: 800.00) Tj
+T* (Tax \(8%\): 64.00) Tj
+T* (Total Due: 864.00 USD) Tj
+T* (Payment Terms: Net 30) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000825 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+951
+%%EOF
