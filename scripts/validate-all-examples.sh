@@ -203,7 +203,9 @@ fi
 idx=0
 for cfg in "${CONFIGS[@]}"; do
     idx=$((idx + 1))
-    "$0" __worker "$cfg" "$RESULT_DIR/$idx.res" &
+    # bash "$0" (not bare "$0"): survives a checkout without the exec bit,
+    # e.g. a CI runner invoking this script via `bash scripts/...`.
+    bash "$0" __worker "$cfg" "$RESULT_DIR/$idx.res" &
     # Throttle: wait for a slot once JOBS workers are running.
     while [[ "$(jobs -r | wc -l)" -ge "$JOBS" ]]; do wait -n; done
 done
