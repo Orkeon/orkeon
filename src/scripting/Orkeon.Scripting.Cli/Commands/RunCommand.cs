@@ -17,8 +17,8 @@ namespace Orkeon.Scripting.Cli.Commands;
 internal sealed class RunCommandOptions
 {
     /// <summary>Path to the crew definition: a script (.ork.ts/.js) or a YAML crew (.yaml/.yml).</summary>
-    [Value(0, Required = true,
-        HelpText = "Path to the crew definition: .ork.ts/.js (Scripting DSL) or .yaml/.yml (YAML crew).")]
+    [Value(0, Required = false,
+        HelpText = "Path to the crew definition: .ork.ts/.js (Scripting DSL) or .yaml/.yml (YAML crew). Required unless --list-tools.")]
     public string ScriptPath { get; set; } = string.Empty;
 
         /// <summary>Path to appsettings.json (provides Llm section + RaggableTree).</summary>
@@ -83,6 +83,27 @@ internal sealed class RunCommandOptions
             HelpText = "Initial context string passed to a YAML crew's CrewInput. Ignored for .ork.ts scripts.")]
         public string? InitialContext { get; set; }
 
+        /// <summary>
+        /// Dry-run: build the host and load the crew (strict tool resolution) without probing the
+        /// LLM endpoint or running a kickoff. Mirrors the standard runner's <c>--validate</c>.
+        /// </summary>
+        [Option("validate", Required = false, Default = false,
+            HelpText = "Dry-run: resolve settings, build the host and load the crew (strict tool " +
+                       "resolution) WITHOUT probing the LLM endpoint or running a kickoff. Prints " +
+                       "'VALIDATION OK/FAILED: <config> ...' and exits 0 (ok) or non-zero (failed).")]
+        public bool Validate { get; set; }
+
+        /// <summary>
+        /// Build the host and print the sorted runtime tool registry (one name per line), then exit.
+        /// Mirrors the standard runner's <c>--list-tools</c>; no crew is loaded, so the crew path
+        /// is not required.
+        /// </summary>
+        [Option("list-tools", Required = false, Default = false,
+            HelpText = "Build the host and print the sorted list of registered tool names (one per " +
+                       "line) to stdout, then exit 0. No crew is loaded, so the crew path is not " +
+                       "required.")]
+        public bool ListTools { get; set; }
+
         /// <summary>Computed log path or null when logging is disabled.</summary>
         internal string? ResolvedLlmLogPath
         {
@@ -138,12 +159,32 @@ internal static partial class RunCommand
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: after cancellation, file-not-found and esbuild errors are handled specifically, any other unexpected failure is converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
     private static async Task<int> ExecuteCoreAsync(RunCommandOptions options)
     {
+        // --list-tools dumps the runtime tool registry and needs no crew definition: it goes
+        // straight to the shared runner (same host, same tool set as a real kickoff), so the
+        // emitted manifest matches the standard runner byte-for-byte. Handled BEFORE the
+        // config-path checks precisely because it must run without a path.
+        if (options.ListTools)
+            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
+
+        // Every remaining mode (validate or run) needs a crew definition path.
+        if (string.IsNullOrWhiteSpace(options.ScriptPath))
+        {
+            await Console.Error.WriteLineAsync(
+                "orkeon run: a crew definition path is required (unless --list-tools).").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        // --validate is a crew-load concern (YAML or .ork.ts crew definition): the shared runner
+        // loads the crew strictly and never probes the LLM, dispatching on the config extension.
+        if (options.Validate)
+            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
+
         // Dispatch by extension BEFORE any script-specific setup (esbuild, /script:ro mount).
         // YAML crews delegate entirely to the shared one-shot runner — the same code path the
         // standalone standard runner uses — so a single published `orkeon` tool runs both
         // crew.ork.ts and crew.yaml without the consumer having to compile a runner.
         if (IsYamlConfig(options.ScriptPath))
-            return await RunYamlCrewAsync(options).ConfigureAwait(false);
+            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
 
         // OUT-OF-SCOPE: probing the user-supplied script path; CLI entry runs outside
         // the VFS abstraction (scripts live wherever the user invokes us from).
@@ -196,21 +237,30 @@ internal static partial class RunCommand
     }
 
     /// <summary>
-    /// Runs a YAML crew through <see cref="RunnerExecution.RunOneShotAsync"/>. That method owns
-    /// its own file-existence check, SIGINT/SIGTERM graceful shutdown, mount auto-injection and
-    /// exit codes (0/1/2/130) — which already coincide with
+    /// Delegates to the shared one-shot runner (<see cref="RunnerExecution.RunOneShotAsync"/>) — the
+    /// same code path the standalone standard runner used. Registers the <c>semantic_search</c> tool
+    /// (via <see cref="SemanticSearchToolExtensions.AddSemanticSearchTool"/>) so YAML crews that list
+    /// it resolve it, and so <c>--list-tools</c> reports the full runtime manifest. The runner
+    /// short-circuits on <c>--list-tools</c> (no crew loaded) and <c>--validate</c> (strict crew load,
+    /// no LLM probe / no kickoff), and otherwise runs the crew end-to-end. It owns the file-existence
+    /// check, SIGINT/SIGTERM graceful shutdown, mount auto-injection and exit codes (0/1/2/130) —
+    /// which already coincide with
     /// <see cref="Program.ExitOk"/>/<see cref="Program.ExitScriptError"/>/<see cref="Program.ExitRuntimeError"/>/<see cref="Program.ExitCancelled"/>,
     /// so we return its code verbatim.
     /// </summary>
-    private static Task<int> RunYamlCrewAsync(RunCommandOptions options)
-        => RunnerExecution.RunOneShotAsync(ToRunnerOptions(options), "orkeon");
+    private static Task<int> RunViaSharedRunnerAsync(RunCommandOptions options)
+        => RunnerExecution.RunOneShotAsync(
+            ToRunnerOptions(options),
+            "orkeon",
+            configureServices: (_, services) => services.AddSemanticSearchTool());
 
     /// <summary>
     /// Maps the shared fields of <see cref="RunCommandOptions"/> onto a <see cref="RunnerOptionsBase"/>
-    /// for the YAML path. Script-only fields (<c>--inputs</c>, <c>--inputs-file</c>,
-    /// <c>--memory-limit-mb</c>) have no YAML equivalent and are intentionally not carried over.
+    /// for the shared-runner path (YAML run, <c>--validate</c>, <c>--list-tools</c>). Script-only
+    /// fields (<c>--inputs</c>, <c>--inputs-file</c>, <c>--memory-limit-mb</c>) have no YAML equivalent
+    /// and are intentionally not carried over.
     /// </summary>
-    private static YamlRunnerOptions ToRunnerOptions(RunCommandOptions options)
+    internal static RunnerOptionsBase ToRunnerOptions(RunCommandOptions options)
         => new YamlRunnerOptions
         {
             ConfigPath = options.ScriptPath,
@@ -222,6 +272,8 @@ internal static partial class RunCommand
             LlmLogPath = options.LlmLogPath,
             Variables = options.Variables,
             InitialContext = options.InitialContext,
+            Validate = options.Validate,
+            ListTools = options.ListTools,
         };
 
     private static int ReportEsbuildNotFound(EsbuildNotFoundException ex)

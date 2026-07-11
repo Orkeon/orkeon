@@ -8,7 +8,7 @@ using Orkeon.Infrastructure.Memory;
 using Orkeon.Infrastructure.Tools.Search;
 using IEmbeddingService = Orkeon.Application.Interfaces.Ports.IEmbeddingService;
 
-namespace Orkeon.Examples.Shared;
+namespace Orkeon.Hosting;
 
 /// <summary>
 /// Opt-in DI registration for the <c>semantic_search</c> agent tool.
@@ -26,9 +26,9 @@ namespace Orkeon.Examples.Shared;
 /// tool list will silently lose it at crew load with the log line
 /// <c>"Tool 'semantic_search' not found in registry; skipping."</c>.
 ///
-/// Called by experiment 06 (interview-spec-forge) from its per-run host
-/// build (<see cref="RunnerExecution.RunOneShotAsync"/> configureServices
-/// callback). Other runners may opt in similarly.
+/// Registered on the shared runner's <see cref="RunnerExecution.RunOneShotAsync"/>
+/// configureServices callback (the <c>orkeon run</c> YAML path and the trading /
+/// interview-spec-forge runners) so crews that reference it resolve it.
 ///
 /// Embedding quality note : by default the host registers a hash-based stub
 /// (<c>Stubs.HashBasedEmbeddingProvider</c>, deterministic, no real semantics).
@@ -67,7 +67,7 @@ public static class SemanticSearchToolExtensions
 /// depends on). Both interfaces live in the same Application namespace but
 /// were never bridged — this adapter does it.
 /// </summary>
-internal sealed class EmbeddingServiceAdapter : IEmbeddingService
+internal sealed partial class EmbeddingServiceAdapter : IEmbeddingService
 {
     private readonly IEmbeddingProvider _provider;
     private readonly ILogger<EmbeddingServiceAdapter>? _logger;
@@ -85,9 +85,14 @@ internal sealed class EmbeddingServiceAdapter : IEmbeddingService
             .ConfigureAwait(false);
         if (vec is null || vec.Length == 0)
         {
-            _logger?.LogWarning("IEmbeddingProvider returned no vector for input length={Len}", text?.Length ?? 0);
+            if (_logger is not null)
+                LogNoVector(_logger, text?.Length ?? 0);
             return Array.Empty<float>();
         }
         return vec;
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
+        Message = "IEmbeddingProvider returned no vector for input length={Len}")]
+    private static partial void LogNoVector(ILogger logger, int len);
 }

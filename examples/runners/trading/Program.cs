@@ -1,5 +1,4 @@
 using CommandLine;
-using Orkeon.Examples.Shared;
 using Orkeon.Hosting;
 using Orkeon.Trading.Tools.Infrastructure.DependencyInjection;
 
