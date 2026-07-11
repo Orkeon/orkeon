@@ -34,22 +34,18 @@ La crew utilise deux points de montage pour separer clairement le code source de
 ## Run
 
 ```bash
-dotnet run --project examples/runners/standard -- \
-  --config examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml \
-  --mount /home/cyril/my-ts-project:/src:ro \
-  --mount /home/cyril/analysis-output:/output:rw
+orkeon run examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml \
+  --mount /home/cyril/my-ts-project:/src:ro /home/cyril/analysis-output:/output:rw
 ```
 
 Windows :
 
 ```bash
-dotnet run --project examples/runners/standard -- \
-  --config examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml \
-  --mount C:\Projects\my-ts-project:/src:ro \
-  --mount C:\temp\analysis-output:/output:rw
+orkeon run examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml \
+  --mount C:\Projects\my-ts-project:/src:ro C:\temp\analysis-output:/output:rw
 ```
 
-Le runner standard gere automatiquement : DI (Application + Infrastructure + toutes les suites d'outils), resolution du provider LLM depuis `appsettings.json`, `CrewFactory.CreateFromFileAsync()` et `KickoffAsync`.
+La CLI `orkeon` gere automatiquement : DI (Application + Infrastructure + toutes les suites d'outils), resolution du provider LLM depuis `appsettings.json`, `CrewFactory.CreateFromFileAsync()` et `KickoffAsync`.
 
 **Profil LLM** — ajoutez `--settings examples/appsettings/appsettings.deepseek.local.json` pour choisir explicitement un profil. Les profils prêts à l'emploi sont dans [`examples/appsettings/`](../../appsettings/README.md) : copiez un gabarit `*.example` (retirez le suffixe `.example`) et ajoutez votre clé. Première fois ? Voir [Lancer votre premier exemple](../../../docs/getting-started/run-your-first-example.md).
 

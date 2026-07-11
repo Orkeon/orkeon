@@ -32,11 +32,11 @@ is not read by any tool.
 
 ## Run it
 
-**From source:**
+With the installed `orkeon` CLI (release archive or `dotnet tool install`) — or,
+from a source checkout, `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …`:
 
 ```bash
-dotnet run --project examples/runners/standard -- \
-  --config examples/09-experimental/97-multi-party-negotiation/config.yaml \
+orkeon run examples/09-experimental/97-multi-party-negotiation/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --initial-context "24-month electronics supply contract. Target unit price \$42 (seller asks \$49.50, buyer max \$46). Required: ISO 9001 + IPC-A-610 Class 3, first shipment in 8-10 weeks, conflict-free materials with annual audit, >=30% recycled content, firmware-upgrade path. Each party has a 100-point concession budget." \
   --mount ./out:/output:rw

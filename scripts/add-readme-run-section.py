@@ -4,7 +4,8 @@
 Item P1-3 (rollout): each numbered example under ``examples/0N-*/NN-name/`` gets a
 standard, copy-pasteable launch section:
 
-  * the exact ``dotnet run`` command (correct runner + real config path),
+  * the exact launch command — ``orkeon run <config>`` for regular examples,
+    ``orkeon-trading --config <config>`` for the ``03-finance-trading`` showcase,
   * a pointer to the appsettings LLM profiles and the getting-started guide,
   * a note about the example-data policy.
 
@@ -12,10 +13,10 @@ Design goals
 ------------
 * **Idempotent** — the generated block is wrapped in sentinel comments; a second run
   regenerates an identical block and rewrites nothing.
-* **Non-destructive** — a *simple* existing ``## Run`` section (a single standard/trading
-  ``dotnet run`` command) is upgraded in place; a *curated* run section (mounts, ``###``
-  sub-steps, or a non-default runner such as the interactive or ConsoleApp runners) is left
-  untouched and reported so it can be handled by hand.
+* **Non-destructive** — a *simple* existing ``## Run`` section (a single ``orkeon run`` /
+  ``orkeon-trading`` command) is upgraded in place; a *curated* run section (mounts, ``###``
+  sub-steps, or a legacy ``examples/runners/*`` command) is left untouched and reported so
+  it can be handled by hand.
 * **Language-aware** — French READMEs get a ``## Lancer`` section, English ones ``## Run it``.
 
 The 10 "vitrine" (showcase) examples are excluded — they are curated by hand in parallel.
@@ -93,8 +94,9 @@ def rel_example(readme: Path) -> str:
     return readme.parent.relative_to(EXAMPLES_ROOT).as_posix()
 
 
-def runner_for(rel: str) -> str:
-    return "trading" if rel.startswith("03-finance-trading/") else "standard"
+def is_finance(rel: str) -> bool:
+    """Finance/trading examples run on the dedicated ``orkeon-trading`` runner."""
+    return rel.startswith("03-finance-trading/")
 
 
 def is_french(text: str) -> bool:
@@ -102,20 +104,53 @@ def is_french(text: str) -> bool:
 
 
 def build_block(rel: str, french: bool) -> str:
-    """The canonical Run-it block, sentinel-wrapped, including its own H2 header."""
-    runner = runner_for(rel)
-    command = (
-        "```bash\n"
-        f"dotnet run --project examples/runners/{runner} -- \\\n"
-        f"  --config examples/{rel}/config.yaml \\\n"
-        "  --settings examples/appsettings/appsettings.deepseek.local.json\n"
-        "```"
-    )
+    """The canonical Run-it block, sentinel-wrapped, including its own H2 header.
+
+    Non-finance examples launch through the ``orkeon`` CLI (``orkeon run <config>``);
+    ``03-finance-trading/*`` keep the specialized ``orkeon-trading --config <config>``
+    runner (it adds the 44 trading tools the base CLI does not carry).
+    """
+    config = f"examples/{rel}/config.yaml"
+    settings = "examples/appsettings/appsettings.deepseek.local.json"
+    if is_finance(rel):
+        command = (
+            "```bash\n"
+            f"orkeon-trading --config {config} \\\n"
+            f"  --settings {settings}\n"
+            "```"
+        )
+        intro_en = (
+            "With the **`orkeon-trading`** runner (it adds 44 specialized trading "
+            "tools on top of the standard toolset) — or, from a source checkout, "
+            "`dotnet run --project examples/runners/trading -- --config …`:"
+        )
+        intro_fr = (
+            "Avec le *runner* **`orkeon-trading`** (il ajoute 44 outils de trading "
+            "spécialisés au socle standard) — ou, depuis un clone du dépôt, "
+            "`dotnet run --project examples/runners/trading -- --config …` :"
+        )
+    else:
+        command = (
+            "```bash\n"
+            f"orkeon run {config} \\\n"
+            f"  --settings {settings}\n"
+            "```"
+        )
+        intro_en = (
+            "With the installed `orkeon` CLI (release archive or "
+            "`dotnet tool install`) — or, from a source checkout, `dotnet run "
+            "--project src/scripting/Orkeon.Scripting.Cli -- run …`:"
+        )
+        intro_fr = (
+            "Avec la CLI `orkeon` installée (archive de version ou "
+            "`dotnet tool install`) — ou, depuis un clone du dépôt, `dotnet run "
+            "--project src/scripting/Orkeon.Scripting.Cli -- run …` :"
+        )
     if french:
         body = (
             "## Lancer\n\n"
             f"{BEGIN_MARK}\n"
-            "Depuis la racine du dépôt :\n\n"
+            f"{intro_fr}\n\n"
             f"{command}\n\n"
             "**Profil LLM** — le fichier passé à `--settings` ci-dessus est l'un des profils prêts à "
             "l'emploi de [`examples/appsettings/`](../../appsettings/README.md). Copiez un gabarit "
@@ -130,7 +165,7 @@ def build_block(rel: str, french: bool) -> str:
         body = (
             "## Run it\n\n"
             f"{BEGIN_MARK}\n"
-            "From the repository root:\n\n"
+            f"{intro_en}\n\n"
             f"{command}\n\n"
             "**LLM profile** — the file passed to `--settings` above is one of the ready-made profiles "
             "in [`examples/appsettings/`](../../appsettings/README.md). Copy a `*.example` template "
@@ -152,8 +187,8 @@ def find_section_span(lines: list[str], header_idx: int) -> int:
     return len(lines)
 
 
-def section_is_curated(section_lines: list[str], runner: str) -> bool:
-    """A run section we must NOT overwrite: mounts, sub-steps, or a non-default runner."""
+def section_is_curated(section_lines: list[str]) -> bool:
+    """A run section we must NOT overwrite: mounts, sub-steps, or a hand-tuned command."""
     text = "\n".join(section_lines)
     if "--mount" in text:
         return True
@@ -161,12 +196,11 @@ def section_is_curated(section_lines: list[str], runner: str) -> bool:
         return True
     if "runners/interactive" in text or "src/apps" in text:
         return True
-    # References a different examples/runners/<x> than the category default.
-    for m in re.finditer(r"examples/runners/([\w-]+)", text):
-        if m.group(1) != runner:
-            return True
-    # Has no launch command at all -> treat as curated/ambiguous, don't clobber.
-    if "dotnet run" not in text:
+    # Any legacy examples/runners/* reference is hand-curated now — leave it for manual review.
+    if re.search(r"examples/runners/[\w-]+", text):
+        return True
+    # Has no recognizable launch command at all -> treat as curated/ambiguous, don't clobber.
+    if not any(tok in text for tok in ("orkeon run", "orkeon-trading", "dotnet run")):
         return True
     return False
 
@@ -214,8 +248,8 @@ def process(readme: Path, result: Result, write: bool) -> None:
     if header_idx is not None:
         end_idx = find_section_span(lines, header_idx)
         section = lines[header_idx:end_idx]
-        if section_is_curated(section, runner_for(rel)):
-            reason = "curated run section (mount / sub-steps / non-default runner)"
+        if section_is_curated(section):
+            reason = "curated run section (mount / sub-steps / legacy runner)"
             result.special_skipped.append((rel, reason))
             return
         # Simple section -> replace in place.

@@ -32,12 +32,12 @@ Ships a small synthetic dataset (regenerate with
 
 ## Run it
 
-**From source:**
+With the installed `orkeon` CLI (release archive or `dotnet tool install`) — or,
+from a source checkout, `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …`:
 
 ```bash
 mkdir -p out
-dotnet run --project examples/runners/standard -- \
-  --config examples/01-enterprise/01-research-assistant/config.yaml \
+orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --initial-context "Electric vehicle (EV) adoption trends 2019-2024" \
   --mount examples/01-enterprise/01-research-assistant/data:/data:ro ./out:/output:rw

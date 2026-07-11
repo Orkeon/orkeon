@@ -32,12 +32,12 @@ Ships a small synthetic dataset (regenerate with
 
 ## Run it
 
-**From source:**
+With the installed `orkeon` CLI (release archive or `dotnet tool install`) — or,
+from a source checkout, `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …`:
 
 ```bash
 mkdir -p out
-dotnet run --project examples/runners/standard -- \
-  --config examples/08-iot-smart-systems/87-fleet-management/config.yaml \
+orkeon run examples/08-iot-smart-systems/87-fleet-management/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --mount examples/08-iot-smart-systems/87-fleet-management/data:/data:ro ./out:/output:rw
 ```

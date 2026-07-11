@@ -26,17 +26,16 @@ This example demonstrates how to build an **interactive session** where:
 ### Via the interactive runner
 
 ```bash
-dotnet run --project examples/runners/interactive \
+orkeon-interactive \
   -c examples/01-enterprise/16-interactive-qa/config.yaml \
   -s examples/appsettings/appsettings.json \
   -v 1
 ```
 
-### Via the standard runner (single question)
+### Via the `orkeon` CLI (single question)
 
 ```bash
-dotnet run --project examples/runners/standard \
-  -c examples/01-enterprise/16-interactive-qa/config.yaml
+orkeon run examples/01-enterprise/16-interactive-qa/config.yaml
 ```
 
 **LLM profile** — the `-s` / `--settings` file above is one of the ready-made profiles in [`examples/appsettings/`](../../appsettings/README.md). Copy a `*.example` template (drop the `.example` suffix) and add your key, or point it at any other profile (OpenAI, GLM, local Docker Model Runner). First run? See [Run your first example](../../../docs/getting-started/run-your-first-example.md).

@@ -45,11 +45,9 @@ Depending on the crew, one of three things is true:
    [virtual file system](../architecture/vfs-compliance.md):
 
    ```bash
-   dotnet run --project examples/runners/standard -- \
-     --config examples/<path>/config.yaml \
+   orkeon run examples/<path>/config.yaml \
      --settings examples/appsettings/appsettings.deepseek.local.json \
-     --mount ./data:/data:ro \
-     --mount ./out:/output:rw
+     --mount ./data:/data:ro ./out:/output:rw
    ```
 
    The crew's `config.yaml` refers to input by its **virtual** path (e.g.
@@ -123,8 +121,7 @@ Use the runner's dry-run flag to confirm the crew loads under strict tool
 resolution and the data mount is accepted, without calling an LLM:
 
 ```bash
-dotnet run --project examples/runners/standard -- \
-  --config examples/<path>/config.yaml \
+orkeon run examples/<path>/config.yaml \
   --mount examples/<path>/data:/data:ro --validate
 ```
 

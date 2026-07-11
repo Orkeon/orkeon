@@ -32,12 +32,12 @@ pillars query live APIs via `http_api`; only the cost pillar reads a local file.
 
 ## Run it
 
-**From source:**
+With the installed `orkeon` CLI (release archive or `dotnet tool install`) — or,
+from a source checkout, `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …`:
 
 ```bash
 mkdir -p out
-dotnet run --project examples/runners/standard -- \
-  --config examples/06-engineering-devops/71-cloud-audit-nist/config.yaml \
+orkeon run examples/06-engineering-devops/71-cloud-audit-nist/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --mount examples/06-engineering-devops/71-cloud-audit-nist/data:/data:ro ./out:/output:rw
 ```

@@ -34,12 +34,13 @@ Ships a small synthetic dataset (regenerate with
 
 ## Run it
 
-**From source:**
+With the **`orkeon-trading`** runner (it adds 44 specialized trading tools on top
+of the standard toolset) — or, from a source checkout,
+`dotnet run --project examples/runners/trading -- --config …`:
 
 ```bash
 mkdir -p out
-dotnet run --project examples/runners/trading -- \
-  --config examples/03-finance-trading/34-portfolio-consensus/config.yaml \
+orkeon-trading --config examples/03-finance-trading/34-portfolio-consensus/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --mount examples/03-finance-trading/34-portfolio-consensus/data:/data:ro ./out:/output:rw
 ```

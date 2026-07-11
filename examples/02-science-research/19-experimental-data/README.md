@@ -31,12 +31,12 @@ Ships a small synthetic dataset (regenerate with
 
 ## Run it
 
-**From source:**
+With the installed `orkeon` CLI (release archive or `dotnet tool install`) — or,
+from a source checkout, `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …`:
 
 ```bash
 mkdir -p out
-dotnet run --project examples/runners/standard -- \
-  --config examples/02-science-research/19-experimental-data/config.yaml \
+orkeon run examples/02-science-research/19-experimental-data/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --mount examples/02-science-research/19-experimental-data/data:/data:ro ./out:/output:rw
 ```

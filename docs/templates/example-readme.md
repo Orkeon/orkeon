@@ -20,7 +20,7 @@
 - **Agents**: <n> — brief role list
 - **Tools**: `tool_a`, `tool_b`, …
 - **Key features**: what this example demonstrates (task dependencies, memory, A2A, …)
-- **Runner**: `standard` | `trading` | `interactive` | …
+- **Runner**: `orkeon` CLI (default) | `orkeon-trading` (finance) | `orkeon-interactive` | …
 
 ## Prerequisites
 
@@ -40,39 +40,42 @@ Delete this section if the example needs no input data.
 
 ## Run it
 
-Give the **exact**, copy-pasteable command for each supported way. Source is
-always required; add binary and container rows for showcase examples.
+Give the **exact**, copy-pasteable command for each supported way. The `orkeon`
+CLI is the default entry point (`orkeon run <config>`); the always-required
+"from source" row plus, for showcase examples, a binary and a container row.
 
-**From source:**
-
-```bash
-dotnet run --project examples/runners/<runner> -- \
-  --config examples/<path>/config.yaml \
-  --settings examples/appsettings/appsettings.<provider>.local.json \
-  --mount ./out:/output:rw
-```
-
-**From a release binary** (showcase examples only):
+**With the `orkeon` CLI** (installed release binary or `dotnet tool install`):
 
 ```bash
-orkeon-<runner> \
-  --config examples/<path>/config.yaml \
+orkeon run examples/<path>/config.yaml \
   --settings path/to/appsettings.local.json \
   --mount ./out:/output:rw
 ```
 
-**From the container** (showcase examples only):
+**From a source checkout** (no install — runs your local code):
+
+```bash
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run \
+  examples/<path>/config.yaml \
+  --settings examples/appsettings/appsettings.<provider>.local.json \
+  --mount ./out:/output:rw
+```
+
+**From the container** (showcase examples only — entry point is `orkeon`):
 
 ```bash
 docker run --rm \
   -v "$PWD/out:/output" \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
   ghcr.io/orkeon/orkeon-runners \
-  --config examples/<path>/config.yaml \
+  run examples/<path>/config.yaml \
   --settings /app/appsettings.local.json \
   --mount /output:/output:rw
 ```
 
+> **Finance / trading example?** Swap the CLI for `orkeon-trading --config
+> examples/<path>/config.yaml …` (it adds the 44 trading tools). In the
+> container, select it with `-e ORKEON_RUNNER=trading`.
 > Flag reference: [Run your first example](../../../docs/getting-started/run-your-first-example.md#every-flag-explained).
 
 ## Expected output

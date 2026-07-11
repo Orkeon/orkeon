@@ -33,12 +33,12 @@ the crew models its schema without copying records into its output.
 
 ## Run it
 
-**From source:**
+With the installed `orkeon` CLI (release archive or `dotnet tool install`) — or,
+from a source checkout, `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …`:
 
 ```bash
 mkdir -p out
-dotnet run --project examples/runners/standard -- \
-  --config examples/07-creative-media/78-synthetic-data/config.yaml \
+orkeon run examples/07-creative-media/78-synthetic-data/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --mount examples/07-creative-media/78-synthetic-data/data:/data:ro ./out:/output:rw
 ```

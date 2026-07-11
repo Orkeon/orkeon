@@ -7,10 +7,12 @@ Scans every ``examples/NN-category/NN-slug/README.md`` and checks:
 
   (b) LAUNCH      — the README contains a launch section (a heading such as
       ``## Run`` / ``## Run it`` / ``## Lancer`` / ``## Running`` …) that carries a
-      ``dotnet run --project examples/runners/<runner> … --config <path>`` command,
-      and that ``--config`` path resolves to a file that exists on disk. A missing or
-      broken launch command is an ERROR; a launch command that exists but sits outside
-      a recognized heading is a WARNING.
+      recognized launch command — ``orkeon run <config>`` (or the from-source
+      ``dotnet run --project …Orkeon.Scripting.Cli -- run <config>``), or the
+      ``orkeon-trading --config <config>`` trading runner — and that config path
+      resolves to a file that exists on disk. A missing or broken launch command is an
+      ERROR; a launch command that exists but sits outside a recognized heading is a
+      WARNING.
 
   (c) LINKS       — every relative Markdown link ``[text](path)`` resolves to a file or
       directory (external ``http(s)://`` / ``mailto:`` and pure ``#anchor`` links are
@@ -46,13 +48,29 @@ LAUNCH_HEADING_RE = re.compile(
     re.IGNORECASE,
 )
 HEADING_RE = re.compile(r"^#{1,6}\s+")
-# A dotnet-run launch line: capture the --project value and the config path.
-# Config flag is --config or its short form -c. Commands may span backslash-continued
-# lines, so the gap between --project and the config flag is matched across newlines.
-RUN_CMD_RE = re.compile(
-    r"dotnet\s+run\s+--project\s+(\S+).*?(?:--config|(?<!\w)-c)\s+(\S+)",
-    re.DOTALL,
-)
+# Launch commands, each capturing the crew config path (group 1). A config path is a
+# ``.yaml`` / ``.yml`` / ``.ork.ts`` token, so prose ellipses (``… -- run …``) are ignored.
+# Commands may span backslash-continued lines, hence DOTALL between tokens.
+_CONFIG = r"(\S+\.(?:ya?ml|ork\.ts))"
+LAUNCH_CMD_RES = [
+    # orkeon run <config>                                      (installed CLI, positional)
+    re.compile(r"\borkeon\s+run\s+" + _CONFIG, re.IGNORECASE),
+    # dotnet run --project …Orkeon.Scripting.Cli… -- run <config>   (from a source checkout)
+    re.compile(
+        r"dotnet\s+run\s+--project\s+\S*Scripting\.Cli\S*\s+--\s+run\s+" + _CONFIG,
+        re.IGNORECASE | re.DOTALL,
+    ),
+    # orkeon-trading / orkeon-interactive … --config|-c <config>    (specialized runners)
+    re.compile(
+        r"\borkeon-[\w-]+\b.*?(?:--config|(?<!\w)-c)\s+" + _CONFIG,
+        re.IGNORECASE | re.DOTALL,
+    ),
+    # legacy fallback: dotnet run --project <x> … --config|-c <config>
+    re.compile(
+        r"dotnet\s+run\s+--project\s+\S+.*?(?:--config|(?<!\w)-c)\s+" + _CONFIG,
+        re.IGNORECASE | re.DOTALL,
+    ),
+]
 LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)]+)\)")
 
 
@@ -65,11 +83,12 @@ class Finding:
         self.msg = msg
 
 
-def find_launch(text: str) -> tuple[list[tuple[str, str]], bool]:
-    """Return (commands, under_recognized_heading).
+def find_launch(text: str) -> tuple[list[str], bool]:
+    """Return (config_paths, under_recognized_heading).
 
-    commands is every (project, config_path) pair found in a dotnet-run command.
-    under_recognized_heading is True if such a command appears after a launch heading.
+    config_paths is every crew config path referenced by a recognized launch command
+    (deduplicated). under_recognized_heading is True if such a command appears after a
+    launch heading.
     """
     lines = text.splitlines()
     heading_lines: list[int] = [
@@ -91,17 +110,17 @@ def find_launch(text: str) -> tuple[list[tuple[str, str]], bool]:
                 break
         section_ranges.append((h, end))
 
-    commands: list[tuple[str, str]] = []
-    under_heading = False
-    for m in RUN_CMD_RE.finditer(text):
-        project = m.group(1).strip().strip("`\"'")
-        cfg = m.group(2).strip().strip("`\"'")
-        commands.append((project, cfg))
-        # locate the line of this match
-        line_no = text.count("\n", 0, m.start())
-        if any(h < line_no < end for h, end in section_ranges):
-            under_heading = True
-    return commands, under_heading
+    configs: dict[str, int] = {}  # config path -> first line seen
+    for rx in LAUNCH_CMD_RES:
+        for m in rx.finditer(text):
+            cfg = m.group(1).strip().strip("`\"'")
+            line_no = text.count("\n", 0, m.start())
+            configs.setdefault(cfg, line_no)
+
+    under_heading = any(
+        any(h < ln < end for h, end in section_ranges) for ln in configs.values()
+    )
+    return list(configs), under_heading
 
 
 def lint_readme(readme: Path) -> list[Finding]:
@@ -113,24 +132,20 @@ def lint_readme(readme: Path) -> list[Finding]:
     lines = text.splitlines()
 
     # (b) launch command
-    commands, under_heading = find_launch(text)
-    if not commands:
+    configs, under_heading = find_launch(text)
+    if not configs:
         findings.append(Finding(
             "error", 0,
             "no launch command found "
-            "('dotnet run --project … --config …')",
+            "('orkeon run <config>' / 'orkeon-trading --config …' / "
+            "'dotnet run --project …Scripting.Cli -- run <config>')",
         ))
     else:
-        for project, cfg in commands:
+        for cfg in configs:
             target = (ROOT / cfg).resolve()
             if not target.is_file():
                 findings.append(Finding(
-                    "error", 0, f"launch --config path does not exist: {cfg}",
-                ))
-            if not project.startswith("examples/runners/"):
-                findings.append(Finding(
-                    "warning", 0,
-                    f"launch uses project '{project}', not examples/runners/*",
+                    "error", 0, f"launch config path does not exist: {cfg}",
                 ))
         if not under_heading:
             findings.append(Finding(

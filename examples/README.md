@@ -4,17 +4,16 @@
 
 ## Runner Architecture
 
-Examples are **data-driven**: each example is a directory containing a `config.yaml` (crew definition). A shared **runner** binary loads the configuration and executes the crew.
+Examples are **data-driven**: each example is a directory containing a `config.yaml` (crew definition). The **`orkeon` CLI** loads the configuration and executes the crew.
 
-| Runner | Location | Purpose |
-|--------|----------|---------|
-| **standard** | `runners/standard/` | General-purpose runner with all standard tools (FileSystem, Web, Data, Code) |
-| **trading** | `runners/trading/` | Extends standard with 44 specialized trading tools |
-| **_shared** | `runners/_shared/` | Shared library (ServiceProviderToolRegistry, common utilities) |
+| Command | Scope | Purpose |
+|--------|-------|---------|
+| **`orkeon run <config.yaml>`** | all non-finance examples | The default entry point — general-purpose toolset (FileSystem, Web, Data, Code). Available as an installed binary, a `dotnet tool`, or `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …` from a source checkout |
+| **`orkeon-trading --config <config.yaml>`** | `03-finance-trading/*` | Adds 44 specialized trading tools on top of the standard toolset |
 
 ## LLM Configuration
 
-The runners use a **fallback chain** to find `appsettings.json`:
+The CLI uses a **fallback chain** to find `appsettings.json`:
 
 1. `--settings path/to/appsettings.json` (explicit CLI arg)
 2. `appsettings.json` next to the example's `config.yaml` (per-example override)
@@ -29,7 +28,7 @@ Pre-configured profiles are available in `appsettings/` (see `appsettings/README
 | **OpenAI** | `appsettings/appsettings.openai.local.json.example` | OpenAI API (requires `OPENAI_API_KEY`) |
 | **DeepSeek / Z.AI GLM** | `appsettings/appsettings.{deepseek,glm,glm-medium}.local.json.example` | Cloud providers (see `appsettings/README.md`) |
 
-The committed default is `appsettings/appsettings.json`; runners pick it up
+The committed default is `appsettings/appsettings.json`; the CLI picks it up
 automatically. To use another profile, copy the matching `.example` template
 (dropping the `.example` suffix), fill in your key, and pass `--settings` (see
 `appsettings/README.md`):
@@ -39,16 +38,14 @@ automatically. To use another profile, copy the matching `.example` template
 cp examples/appsettings/appsettings.docker-model-runner.local.json.example \
    examples/appsettings/appsettings.docker-model-runner.local.json
 # then edit localhost -> host.docker.internal
-dotnet run --project examples/runners/standard -- \
-  --config examples/01-enterprise/01-research-assistant/config.yaml \
+orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
   --settings examples/appsettings/appsettings.docker-model-runner.local.json
 
 # OpenAI:
 cp examples/appsettings/appsettings.openai.local.json.example \
    examples/appsettings/appsettings.openai.local.json
 export OPENAI_API_KEY="sk-..."   # or put the key in the copied file
-dotnet run --project examples/runners/standard -- \
-  --config examples/01-enterprise/01-research-assistant/config.yaml \
+orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
   --settings examples/appsettings/appsettings.openai.local.json
 ```
 
@@ -66,8 +63,11 @@ Environment variables with prefix `ORKEON_` override any JSON setting.
 # PowerShell:
 .\examples\run-example.ps1 01-enterprise/01-research-assistant
 
-# Direct dotnet run:
-dotnet run --project examples/runners/standard -- --config examples/01-enterprise/01-research-assistant/config.yaml
+# Direct via the orkeon CLI (installed binary or dotnet tool):
+orkeon run examples/01-enterprise/01-research-assistant/config.yaml
+
+# ...or from a source checkout, through the CLI project:
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/01-enterprise/01-research-assistant/config.yaml
 ```
 
 ## Automated Testing
@@ -112,12 +112,11 @@ The full generated catalog (process, agents, tools per example) lives in [INDEX.
 ## Shared Resources
 
 - [`appsettings/`](appsettings/) -- LLM configuration profiles (committed default + provider templates; see [`appsettings/README.md`](appsettings/README.md))
-- [`runners/_shared/`](runners/_shared/) -- Shared runner library (ServiceProviderToolRegistry, common utilities)
 
 ## Solution
 
-The examples solution (`Orkeon.Examples.sln`) references the runner projects. Build with:
+Build the framework (and the `orkeon` CLI) from the root solution:
 
 ```bash
-dotnet build examples/Orkeon.Examples.sln
+dotnet build Orkeon.sln
 ```
