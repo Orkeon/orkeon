@@ -1,36 +1,60 @@
-# Orkeon example runners — container image (ghcr.io/orkeon/orkeon-runners)
+# Orkeon runners — container image (ghcr.io/orkeon/orkeon-runners)
 #
-# Bundles the two batch runners (standard + trading) together with the example
-# crew definitions, so any bundled crew can be run with nothing but Docker and
-# an LLM endpoint. Runners are framework-dependent inside the image (the .NET
-# runtime ships in the base image).
+# Bundles every Orkeon executable together with the example crew definitions, so
+# any bundled crew can be run with nothing but Docker and an LLM endpoint. All
+# apps are framework-dependent inside the image (the .NET runtime ships in the
+# base image). Which executable runs is chosen by the ORKEON_RUNNER env var:
+#
+#   orkeon (default) | trading | repl | interactive | claim-verify
+#                    | spec-forge | tui-keytest
 #
 # Build:
 #   docker build -f Dockerfile.runners -t orkeon-runners .
 #
-# Run the standard runner on a bundled example (results written to a mounted
-# host directory, LLM settings supplied from a mounted appsettings file):
+# --- Default runner: the `orkeon` CLI ----------------------------------------
+# `orkeon run <crew.yaml | crew.ork.ts>` runs both YAML crews and .ork.ts
+# Scripting-DSL crews from a single pre-compiled tool. Run a bundled example
+# (results written to a mounted host directory, LLM settings from a mounted
+# appsettings file):
 #   docker run --rm \
 #     -v "$PWD/out:/output" \
 #     -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
 #     ghcr.io/orkeon/orkeon-runners \
-#     --config examples/01-enterprise/01-research-assistant/config.yaml \
+#     run examples/01-enterprise/01-research-assistant/config.yaml \
 #     --settings /app/appsettings.local.json
 #
-# Select the trading runner instead of the standard one (ORKEON_RUNNER=trading):
+# Run a .ork.ts script instead (esbuild is bundled in the image, so scripts
+# transpile with no extra setup):
+#   docker run --rm \
+#     -v "$PWD/my.ork.ts:/script/my.ork.ts:ro" \
+#     ghcr.io/orkeon/orkeon-runners run /script/my.ork.ts
+#
+# --- Selecting another runner ------------------------------------------------
+# Trading batch runner (uses the older --config flag):
 #   docker run --rm -e ORKEON_RUNNER=trading \
 #     -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
 #     ghcr.io/orkeon/orkeon-runners \
 #     --config examples/03-finance-trading/<example>/config.yaml \
 #     --settings /app/appsettings.local.json
 #
+# The interactive runners (repl, interactive, claim-verify, spec-forge,
+# tui-keytest) are Terminal.Gui/console apps that read from stdin — they REQUIRE
+# an interactive TTY, so run them with `docker run -it`:
+#   docker run -it --rm -e ORKEON_RUNNER=repl ghcr.io/orkeon/orkeon-runners
+# NOTE (terminfo): the runtime:10.0 base image is Debian-slim and ships a minimal
+# terminfo database. Terminal.Gui apps generally cope (they fall back to a basic
+# profile), but exotic $TERM values may render degraded. If a richer terminal is
+# needed, pass `-e TERM=xterm-256color` or install `ncurses-term` in a derived
+# image rather than bloating this base image.
+#
+# --- Settings profiles -------------------------------------------------------
 # A ready-made local-model profile lives at
 # examples/appsettings/appsettings.docker-model-runner.local.json.example.
 # Copy it (dropping .example), point the LLM BaseUrl host at host.docker.internal
 # so the container can reach a model server on the host, and mount the result as
 # your --settings file. examples/appsettings/appsettings.json is the base profile.
 #
-# Docker volume  ->  Orkeon VFS mount:
+# --- Docker volume  ->  Orkeon VFS mount -------------------------------------
 #   Runners expose a virtual filesystem gated by rights. To let a crew read/write
 #   host files, bind-mount the host dir with `-v host:container`, then hand the
 #   in-container path to the runner as a VFS mount with
@@ -39,12 +63,12 @@
 #     docker run --rm \
 #       -v "$PWD/data:/data:ro" -v "$PWD/out:/output" \
 #       ghcr.io/orkeon/orkeon-runners \
-#       --config examples/.../config.yaml \
+#       run examples/.../config.yaml \
 #       --mount /data:/data:ro --mount /output:/output:rw
 #   Rights are ro (read-only) | rw (read-write) | rwnd (read-write, no delete);
 #   repeat --mount for several mounts.
 
-# ---- Stage 1: build — publish both runners (framework-dependent) -------------
+# ---- Stage 1: build — publish every app (framework-dependent) ----------------
 # global.json pins SDK 10.0.300 (rollForward latestFeature); the GA sdk:10.0 tag
 # ships 10.0.3xx. This matters: Orkeon.Domain runs a source generator
 # (Orkeon.Generators) whose partial-method output only matches under that SDK
@@ -57,29 +81,89 @@ WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props ./
 
 # Full framework + examples sources. The runners' project graph spans src/core,
-# src/hosting, examples/runners/_shared and examples/03-finance-trading, so the
-# whole tree is copied rather than an enumerated per-csproj list (kept robust as
-# references evolve). .dockerignore strips bin/obj/.git/artifacts/node_modules
-# and non-README *.md from the context.
+# src/hosting, src/scripting, examples/runners/* and examples/03-finance-trading,
+# so the whole tree is copied rather than an enumerated per-csproj list (kept
+# robust as references evolve). .dockerignore strips bin/obj/.git/artifacts/
+# node_modules and non-README *.md from the context.
 COPY src/ src/
 COPY examples/ examples/
 
 # Framework-dependent publish (--self-contained false: the runtime ships in the
 # final base image). Pinned to linux-x64: a portable/RID-agnostic publish drags
 # in every platform's native assets (onnxruntime, tree-sitter grammars, SQLite,
-# ...) for all of win/linux/osx, ballooning the image to ~3 GB. RID-scoping
-# prunes those to just this image's arch. (For a multi-arch image, drive the RID
-# from $TARGETARCH.)
-RUN dotnet publish examples/runners/standard/Orkeon.Examples.Runner.csproj \
+# ...) for all of win/linux/osx, ballooning the image. RID-scoping prunes those
+# to just this image's arch. (For a multi-arch image, drive the RID from
+# $TARGETARCH.) SkipScriptingNpmInstall skips the esbuild npm bootstrap (we fetch
+# the binary directly below); ErrorOnDuplicatePublishOutputFiles tolerates the
+# shared transitive assets several runners pull in.
+#
+# Default runner: the `orkeon` CLI (src/scripting/Orkeon.Scripting.Cli,
+# AssemblyName `orkeon`) — runs both `orkeon run crew.yaml` and
+# `orkeon run script.ork.ts`.
+RUN dotnet publish src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj \
       -c Release -r linux-x64 --self-contained false \
       -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
-      -o /app/runners/standard --nologo
+      -o /app/runners/orkeon --nologo
+# Trading batch runner.
 RUN dotnet publish examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj \
       -c Release -r linux-x64 --self-contained false \
       -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o /app/runners/trading --nologo
+# REPL console app (src/apps/Orkeon.ConsoleApp).
+RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj \
+      -c Release -r linux-x64 --self-contained false \
+      -p:SkipScriptingNpmInstall=true \
+      -p:ErrorOnDuplicatePublishOutputFiles=false \
+      -o /app/runners/repl --nologo
+# Interactive split-pane runner.
+RUN dotnet publish examples/runners/interactive/Orkeon.Examples.Interactive.csproj \
+      -c Release -r linux-x64 --self-contained false \
+      -p:SkipScriptingNpmInstall=true \
+      -p:ErrorOnDuplicatePublishOutputFiles=false \
+      -o /app/runners/interactive --nologo
+# Interactive claim-verification runner.
+RUN dotnet publish examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj \
+      -c Release -r linux-x64 --self-contained false \
+      -p:SkipScriptingNpmInstall=true \
+      -p:ErrorOnDuplicatePublishOutputFiles=false \
+      -o /app/runners/claim-verify --nologo
+# Interactive interview / spec-forge runner.
+RUN dotnet publish examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj \
+      -c Release -r linux-x64 --self-contained false \
+      -p:SkipScriptingNpmInstall=true \
+      -p:ErrorOnDuplicatePublishOutputFiles=false \
+      -o /app/runners/spec-forge --nologo
+# Terminal.Gui key-test harness.
+RUN dotnet publish examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj \
+      -c Release -r linux-x64 --self-contained false \
+      -p:SkipScriptingNpmInstall=true \
+      -p:ErrorOnDuplicatePublishOutputFiles=false \
+      -o /app/runners/tui-keytest --nologo
+
+# esbuild binary — required at runtime by `orkeon run script.ork.ts` (the .ork.ts
+# transpile path; the YAML path never touches it). The transpiler resolves the
+# binary via, in order: the EsbuildPath option, the ORKEON_ESBUILD_PATH env var,
+# a bundled `esbuild-bin/esbuild` next to the app, a PATH lookup, then repo-local
+# candidates (EsbuildTranspiler.cs). We fetch the Go-built binary straight from
+# the npm registry (@esbuild/linux-x64) — the SDK image has curl+tar but no npm —
+# mirroring scripts/package-installers.sh, and expose it below via
+# ORKEON_ESBUILD_PATH so every app finds it regardless of its base directory.
+# The version is read from the lockfile (single source of truth), with the same
+# 0.24.0 fallback the packaging script uses.
+COPY tools/scripting-esbuild/package-lock.json ./esbuild-lock.json
+RUN ESBUILD_VERSION="$(grep -A1 '"node_modules/esbuild"' esbuild-lock.json \
+      | sed -n 's/.*"version": "\([^"]*\)".*/\1/p' | head -1)" \
+    && ESBUILD_VERSION="${ESBUILD_VERSION:-0.24.0}" \
+    && echo "Fetching @esbuild/linux-x64@${ESBUILD_VERSION}" \
+    && curl -fsSL "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-${ESBUILD_VERSION}.tgz" \
+         -o /tmp/esbuild.tgz \
+    && mkdir -p /app/esbuild-bin \
+    && tar -xzf /tmp/esbuild.tgz -C /tmp \
+    && cp /tmp/package/bin/esbuild /app/esbuild-bin/esbuild \
+    && chmod +x /app/esbuild-bin/esbuild \
+    && rm -rf /tmp/esbuild.tgz /tmp/package
 
 # Make the payload world-readable/traversable HERE, in the build stage: some
 # NuGet content lands with perms that deny the final image's non-root user
@@ -87,14 +171,17 @@ RUN dotnet publish examples/runners/trading/Orkeon.Examples.Trading.Runner.cspro
 # startup. Doing it here (not after COPY --from) keeps the extra layer inside the
 # discarded build stage; `COPY --from` preserves these mode bits into the final
 # image with no added layer.
-RUN chmod -R a+rX /app/runners
+RUN chmod -R a+rX /app/runners /app/esbuild-bin
 
 # ---- Stage 2: runtime --------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 WORKDIR /app
 
-# Published runners: /app/runners/standard, /app/runners/trading.
+# Published apps, one directory per runner (see the dispatcher below).
 COPY --from=build /app/runners ./runners
+# Bundled esbuild binary, exposed to every app via ORKEON_ESBUILD_PATH.
+COPY --from=build /app/esbuild-bin ./esbuild-bin
+ENV ORKEON_ESBUILD_PATH=/app/esbuild-bin/esbuild
 
 # Example crew definitions (config.yaml + README) and the shared appsettings.
 # Only the numbered categories plus appsettings/ are shipped — others/, _legacy/
@@ -111,17 +198,23 @@ COPY examples/08-iot-smart-systems  examples/08-iot-smart-systems
 COPY examples/09-experimental       examples/09-experimental
 COPY examples/appsettings           examples/appsettings
 
-# Entry dispatcher: standard runner by default, trading when ORKEON_RUNNER=trading.
-# All `docker run` args after the image name are forwarded to the runner (e.g.
-# --config …). Written with printf so the build works on the classic builder too
-# (no BuildKit heredoc dependency).
+# Entry dispatcher: the `orkeon` CLI by default, or the runner named by
+# ORKEON_RUNNER. All `docker run` args after the image name are forwarded to the
+# selected executable verbatim (e.g. `run <crew> --settings …` for orkeon, or
+# `--config … --settings …` for trading). Written with printf so the build works
+# on the classic builder too (no BuildKit heredoc dependency).
 RUN printf '%s\n' \
   '#!/bin/sh' \
   'set -e' \
-  'case "${ORKEON_RUNNER:-standard}" in' \
-  '  trading) exec dotnet /app/runners/trading/Orkeon.Examples.Trading.Runner.dll "$@" ;;' \
-  '  standard) exec dotnet /app/runners/standard/Orkeon.Examples.Runner.dll "$@" ;;' \
-  '  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: standard|trading)" >&2; exit 2 ;;' \
+  'case "${ORKEON_RUNNER:-orkeon}" in' \
+  '  orkeon)       exec dotnet /app/runners/orkeon/orkeon.dll "$@" ;;' \
+  '  trading)      exec dotnet /app/runners/trading/Orkeon.Examples.Trading.Runner.dll "$@" ;;' \
+  '  repl)         exec dotnet /app/runners/repl/Orkeon.ConsoleApp.dll "$@" ;;' \
+  '  interactive)  exec dotnet /app/runners/interactive/Orkeon.Examples.Interactive.dll "$@" ;;' \
+  '  claim-verify) exec dotnet /app/runners/claim-verify/Orkeon.Examples.Interactive.ClaimVerification.dll "$@" ;;' \
+  '  spec-forge)   exec dotnet /app/runners/spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.dll "$@" ;;' \
+  '  tui-keytest)  exec dotnet /app/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.dll "$@" ;;' \
+  '  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|trading|repl|interactive|claim-verify|spec-forge|tui-keytest)" >&2; exit 2 ;;' \
   'esac' \
   > /usr/local/bin/orkeon-entrypoint \
   && chmod +x /usr/local/bin/orkeon-entrypoint
