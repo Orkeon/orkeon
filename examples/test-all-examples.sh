@@ -63,6 +63,19 @@ if ! dotnet build "$SCRIPT_DIR/Orkeon.Examples.sln" --configuration Release --ve
 fi
 echo -e "${GREEN}Build OK${NC}"
 
+# Non-trading examples run on the `orkeon` CLI, which lives in the root solution (not
+# Orkeon.Examples.sln). Build it once here so the per-example runs can invoke its dll.
+# YAML crews don't need esbuild; skip the scripting npm bootstrap during build.
+ORKEON_CLI_PROJ="$REPO_ROOT/src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj"
+ORKEON_CLI_DLL="$REPO_ROOT/src/scripting/Orkeon.Scripting.Cli/bin/Release/net10.0/orkeon.dll"
+echo -e "\n${CYAN}=== Building the orkeon CLI ===${NC}"
+if ! dotnet build "$ORKEON_CLI_PROJ" --configuration Release --verbosity quiet \
+        -p:SkipScriptingNpmInstall=true 2>&1; then
+    echo -e "${RED}BUILD FAILED (orkeon CLI)${NC}"
+    exit 1
+fi
+echo -e "${GREEN}Build OK${NC}"
+
 if [ "$LEVEL" = "build" ]; then
     echo -e "\n${GREEN}=== Build-only mode: done ===${NC}"
     exit 0
@@ -111,20 +124,22 @@ for example in "${EXAMPLES[@]}"; do
     INDEX=$((INDEX + 1))
     config_path="$SCRIPT_DIR/$example/config.yaml"
 
-    # Determine runner
+    # Build the run command: trading crews use the dedicated trading runner
+    # (`--config <yaml>`); everything else runs on the `orkeon` CLI
+    # (`orkeon run <yaml>`, config passed positionally after the `run` verb).
     cat_dir="${example%%/*}"
     if [ "$cat_dir" = "03-finance-trading" ]; then
-        runner="$SCRIPT_DIR/runners/trading"
+        run_cmd=(dotnet run --project "$SCRIPT_DIR/runners/trading" --no-build \
+                 --configuration Release -- --config "$config_path")
     else
-        runner="$SCRIPT_DIR/runners/standard"
+        run_cmd=(dotnet "$ORKEON_CLI_DLL" run "$config_path")
     fi
 
     printf "[%d/%d] %-60s " "$INDEX" "$TOTAL" "$example"
 
-    # Build settings args
-    settings_args=""
+    # Append settings args
     if [ -n "$SETTINGS" ]; then
-        settings_args="--settings $SETTINGS"
+        run_cmd+=(--settings "$SETTINGS")
     fi
 
     # Run with timeout
@@ -132,8 +147,7 @@ for example in "${EXAMPLES[@]}"; do
     tmpfile=$(mktemp)
 
     set +e
-    timeout "${TIMEOUT}s" dotnet run --project "$runner" --no-build --configuration Release \
-        -- --config "$config_path" $settings_args > "$tmpfile" 2>&1
+    timeout "${TIMEOUT}s" "${run_cmd[@]}" > "$tmpfile" 2>&1
     exit_code=$?
     set -e
 

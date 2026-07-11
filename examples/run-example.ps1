@@ -18,21 +18,24 @@ if (-not (Test-Path $ConfigPath)) {
     exit 1
 }
 
-# Determine runner: 03-finance-trading -> trading, others -> standard
+# Pick the runner: the 03-finance-trading examples reference the trading tool pack
+# and use the dedicated trading runner (`--config <yaml>`); everything else runs on
+# the `orkeon` CLI (`orkeon run <yaml>`), which loads a YAML crew through the same
+# one-shot host as the trading runner.
 $Category = ($ExamplePath -split '/')[0]
 if ($Category -eq "03-finance-trading") {
-    $Runner = "examples/runners/trading"
+    Write-Host "Running $ExamplePath with the trading runner..."
+    $dotnetArgs = @("run", "--project", "examples/runners/trading", "--", "--config", $ConfigPath)
 } else {
-    $Runner = "examples/runners/standard"
+    Write-Host "Running $ExamplePath with the orkeon CLI..."
+    # YAML crews don't need esbuild; skip the scripting npm bootstrap during build.
+    $dotnetArgs = @("run", "--project", "src/scripting/Orkeon.Scripting.Cli", "-c", "Release",
+                    "-p:SkipScriptingNpmInstall=true", "--", "run", $ConfigPath)
 }
 
-$RunnerName = Split-Path $Runner -Leaf
-Write-Host "Running $ExamplePath with runner $RunnerName..."
-
-$args = @("run", "--project", $Runner, "--", "--config", $ConfigPath)
 if ($Settings) {
-    $args += "--settings"
-    $args += $Settings
+    $dotnetArgs += "--settings"
+    $dotnetArgs += $Settings
 }
 
-& dotnet @args
+& dotnet @dotnetArgs

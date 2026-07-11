@@ -9,7 +9,7 @@
 #
 #   A — from sources : docs/getting-started/run-your-first-example.md
 #       clone → copy an appsettings.*.local.json.example → run a bundled crew
-#       through the `standard` runner.
+#       through the `orkeon` CLI (`orkeon run <crew.yaml>`).
 #   B — experiments  : experiments/09-factures-extraction/run.sh
 #       (1) missing settings must print the actionable `cp …` message and exit 1;
 #       (2) after `cp` of the template it must start and fail cleanly on the LLM
@@ -101,10 +101,10 @@ probe_unreachable() {
 }
 
 # --------------------------------------------------------------------------- #
-# Scenario A — from sources (standard runner)
+# Scenario A — from sources (orkeon CLI)
 # --------------------------------------------------------------------------- #
 scenario_a() {
-  log "Scenario A — from sources (standard runner)"
+  log "Scenario A — from sources (orkeon CLI)"
   local start=$SECONDS
   local settings out log
   out="$(mktemp -d)"; CLEANUP+=("$out")
@@ -123,10 +123,12 @@ scenario_a() {
     info "Copied $DEEPSEEK_EXAMPLE (no key); endpoint redirected to an unreachable port"
   fi
 
-  info "Running the research-assistant crew via examples/runners/standard …"
+  info "Running the research-assistant crew via the orkeon CLI …"
+  # YAML crews don't need esbuild; skip the scripting npm bootstrap during build.
   "${env_prefix[@]}" timeout "$ORKEON_SMOKE_TIMEOUT" \
-    dotnet run --project "$REPO_ROOT/examples/runners/standard" -c Release -- \
-      --config "$REPO_ROOT/$SHOWCASE_CONFIG" \
+    dotnet run --project "$REPO_ROOT/src/scripting/Orkeon.Scripting.Cli" -c Release \
+      -p:SkipScriptingNpmInstall=true -- \
+      run "$REPO_ROOT/$SHOWCASE_CONFIG" \
       --settings "$settings" \
       --mount "$out:/output:rw" \
       -v 1 >"$log" 2>&1
@@ -250,12 +252,14 @@ scenario_c_container() {
   fi
 
   info "Running the research-assistant crew inside the container …"
+  # The image forwards to the `orkeon` CLI, so the crew config is passed
+  # positionally after the `run` verb (same convention as scenarios A/binary).
   timeout "$ORKEON_SMOKE_TIMEOUT" \
     docker run --rm "${docker_env[@]}" \
       -v "$out:/output" \
       -v "$settings:/app/appsettings.smoke.json:ro" \
       "$image" \
-      --config "$SHOWCASE_CONFIG" \
+      run "$SHOWCASE_CONFIG" \
       --settings /app/appsettings.smoke.json \
       --mount /output:/output:rw \
       -v 1 >"$log" 2>&1
@@ -282,9 +286,9 @@ scenario_c_binary() {
   case "$ORKEON_SMOKE_RELEASE_URL" in
     *.tar.gz|*.tgz) tar -xzf "$work/pkg" -C "$work" ;;
     *.zip)          unzip -q "$work/pkg" -d "$work" ;;
-    *)              cp "$work/pkg" "$work/orkeon-examples"; chmod +x "$work/orkeon-examples" ;;
+    *)              cp "$work/pkg" "$work/orkeon"; chmod +x "$work/orkeon" ;;
   esac
-  bin="$(find "$work" -maxdepth 2 -type f \( -name 'orkeon-examples' -o -name 'Orkeon.Examples.Runner' \) -perm -u+x | head -n1)"
+  bin="$(find "$work" -maxdepth 2 -type f -name 'orkeon' -perm -u+x | head -n1)"
   if [ -z "$bin" ]; then
     RESULT[C]=FAIL; SECS[C]=$(( SECONDS - start ))
     NOTE[C]="no runnable binary found inside $ORKEON_SMOKE_RELEASE_URL"
@@ -303,7 +307,7 @@ scenario_c_binary() {
   info "Running the research-assistant crew from the downloaded binary …"
   "${env_prefix[@]}" timeout "$ORKEON_SMOKE_TIMEOUT" \
     "$bin" \
-      --config "$REPO_ROOT/$SHOWCASE_CONFIG" \
+      run "$REPO_ROOT/$SHOWCASE_CONFIG" \
       --settings "$settings" \
       --mount "$out:/output:rw" \
       -v 1 >"$log" 2>&1

@@ -15,7 +15,7 @@ It walks the three documented onboarding paths, **times each**, and reports
 
 | # | Path | What it exercises |
 |---|------|-------------------|
-| **A** | From sources | `docs/getting-started/run-your-first-example.md`: copy an `appsettings.*.local.json.example`, then run the `01-research-assistant` crew through `examples/runners/standard`. |
+| **A** | From sources | `docs/getting-started/run-your-first-example.md`: copy an `appsettings.*.local.json.example`, then run the `01-research-assistant` crew through the `orkeon` CLI (`orkeon run <crew.yaml>`). |
 | **B** | Experiments submodule | `experiments/09-factures-extraction/run.sh`: (1) missing settings must print the actionable `cp …` message and exit 1; (2) after `cp` of the template, the runner (source mode) starts and reaches the LLM call. |
 | **C** | No SDK | The same showcase crew from a **self-contained Releases binary** (`ORKEON_SMOKE_RELEASE_URL`) or the **container image** (`ORKEON_SMOKE_IMAGE`, or a locally-built `orkeon-runners` image) — nothing is compiled. |
 
@@ -57,7 +57,7 @@ bash scripts/smoke-onboarding/run-smoke.sh
 
 # Scenario C against a published container image or a self-contained binary.
 export ORKEON_SMOKE_IMAGE=ghcr.io/orkeon/orkeon-runners:latest
-export ORKEON_SMOKE_RELEASE_URL=https://github.com/Orkeon/orkeon/releases/download/vX/orkeon-examples-linux-x64.tar.gz
+export ORKEON_SMOKE_RELEASE_URL=https://github.com/Orkeon/orkeon/releases/download/vX/orkeon-linux-x64.tar.gz
 bash scripts/smoke-onboarding/run-smoke.sh
 ```
 
