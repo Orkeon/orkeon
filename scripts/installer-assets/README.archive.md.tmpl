@@ -4,10 +4,14 @@ Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI a
 
 ## Prerequisite
 
-These binaries are **framework-dependent**: they require the **.NET 10 runtime**
+Most binaries here are **framework-dependent**: they require the **.NET 10 runtime**
 (`Microsoft.NETCore.App 10.x`). Install it from
 <https://dotnet.microsoft.com/download/dotnet/10.0>, then verify with
 `dotnet --list-runtimes`.
+
+The exceptions are **self-contained** (the .NET runtime is bundled, so no install
+is needed): `orkeon` — the onboarding entry point — and `orkeon-trading`. Devs who
+already have .NET 10 can use the smaller framework-dependent `orkeon-slim` instead.
 
 ## Install
 
@@ -30,10 +34,10 @@ Windows (PowerShell):
 
 | Command | Description |
 |---|---|
-| `orkeon` | Scripting CLI — `orkeon run script.ork.ts` or `orkeon run crew.yaml` |
+| `orkeon` | **The entry point** — runs everything the retired `orkeon-examples` did and more. `orkeon run crew.yaml` executes the YAML crews under `examples/`; `orkeon run script.ork.ts` runs the `.ork.ts` scripting DSL. Self-contained (no .NET runtime needed). |
+| `orkeon-slim` | Same CLI as `orkeon`, framework-dependent (smaller; requires the .NET 10 runtime). Pick this if you already have .NET 10. |
 | `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) |
-| `orkeon-examples` | Standard example runner — `orkeon-examples --config <config.yaml>` |
-| `orkeon-trading` | Trading example runner |
+| `orkeon-trading` | Trading example runner for `examples/03-finance-trading` (self-contained) |
 | `orkeon-interactive` | Interactive (TUI) example runner |
 | `orkeon-tui-keytest` | Terminal.Gui key diagnostic utility |
 | `orkeon-claim-verify` | Interactive claim-verification runner |

@@ -51,6 +51,27 @@ launcher needs a source clone:
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
 | `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
 
+## Installer archives (`release.yml`)
+
+On a `v*` tag, `release.yml` runs `scripts/package-installers.sh` to attach per-OS
+installer archives (`orkeon-<version>-<rid>.tar.gz` / `.zip`) to the GitHub Release. Each
+archive bundles every CLI launcher plus one shared esbuild binary. The retired
+`orkeon-examples` runner is **no longer packaged** — the `orkeon` CLI replaces it
+(`orkeon run crew.yaml` runs the `examples/` YAML crews; `orkeon run script.ork.ts` runs the
+scripting DSL).
+
+The `orkeon` CLI is distributed through **three channels**:
+
+| Channel | Artifact | Runtime | Audience |
+|---|---|---|---|
+| NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers |
+| Installer archive — slim | `orkeon-slim` launcher | framework-dependent (needs .NET 10 runtime) | devs who already have .NET 10 |
+| Installer archive — self-contained | `orkeon` launcher | self-contained (runtime bundled) | onboarding; no .NET install required |
+
+Both installer flavours are built from the same `src/scripting/Orkeon.Scripting.Cli`
+csproj and share the one bundled esbuild. `orkeon-trading` is likewise self-contained;
+the remaining CLI launchers stay framework-dependent.
+
 ## Build-time / internal (not standalone packages)
 
 | PackageId | Note |

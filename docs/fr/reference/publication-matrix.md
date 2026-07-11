@@ -52,6 +52,28 @@ pour qu'aucun launcher n'exige un clone source :
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
 | `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
 
+## Archives d'installation (`release.yml`)
+
+Sur un tag `v*`, `release.yml` exécute `scripts/package-installers.sh` pour attacher à la
+GitHub Release des archives d'installation par OS (`orkeon-<version>-<rid>.tar.gz` / `.zip`).
+Chaque archive embarque tous les launchers CLI plus un binaire esbuild partagé. Le runner
+`orkeon-examples`, retiré, n'est **plus packagé** — le CLI `orkeon` le remplace
+(`orkeon run crew.yaml` exécute les crews YAML de `examples/` ; `orkeon run script.ork.ts`
+exécute le DSL de scripting).
+
+Le CLI `orkeon` est distribué via **trois canaux** :
+
+| Canal | Artefact | Runtime | Public |
+|---|---|---|---|
+| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET |
+| Archive d'installation — slim | launcher `orkeon-slim` | framework-dependent (requiert le runtime .NET 10) | devs ayant déjà .NET 10 |
+| Archive d'installation — self-contained | launcher `orkeon` | self-contained (runtime embarqué) | onboarding ; aucune install .NET requise |
+
+Les deux variantes d'archive sont construites depuis le même csproj
+`src/scripting/Orkeon.Scripting.Cli` et partagent l'unique esbuild embarqué.
+`orkeon-trading` est également self-contained ; les autres launchers CLI restent
+framework-dependent.
+
 ## Build-time / interne (pas des paquets autonomes)
 
 | PackageId | Note |

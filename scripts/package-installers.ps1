@@ -1,8 +1,9 @@
 <#
 .SYNOPSIS
-  Builds per-OS installer archives containing all Orkeon CLI executables
-  (framework-dependent, published per RID). PowerShell mirror of
-  scripts/package-installers.sh, intended for local Windows use.
+  Builds per-OS installer archives containing all Orkeon CLI executables,
+  published per RID (some self-contained, some framework-dependent — see the
+  $Apps table). PowerShell mirror of scripts/package-installers.sh, intended
+  for local Windows use.
 .PARAMETER Version
   Package version. Default: git describe (v-stripped), then src/Directory.Build.props.
 .PARAMETER Rids
@@ -54,15 +55,19 @@ if (Test-Path $lock) {
 }
 
 # --- App table -----------------------------------------------------------------
+# SelfContained = $true bundles the .NET runtime (no SDK/runtime needed at run
+# time). The `orkeon` CLI ships in two flavours from the *same* csproj: `orkeon`
+# (self-contained, onboarding channel) and `orkeon-slim` (framework-dependent, for
+# devs with .NET 10). Both share the one bundled esbuild (fetched once per RID).
 $Apps = @(
-    @{ Name = 'orkeon';              Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon' }
-    @{ Name = 'orkeon-repl';         Csproj = 'src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj';                                               Apphost = 'Orkeon.ConsoleApp' }
-    @{ Name = 'orkeon-examples';     Csproj = 'examples/runners/standard/Orkeon.Examples.Runner.csproj';                                           Apphost = 'Orkeon.Examples.Runner' }
-    @{ Name = 'orkeon-trading';      Csproj = 'examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj';                                    Apphost = 'Orkeon.Examples.Trading.Runner' }
-    @{ Name = 'orkeon-interactive';  Csproj = 'examples/runners/interactive/Orkeon.Examples.Interactive.csproj';                                   Apphost = 'Orkeon.Examples.Interactive' }
-    @{ Name = 'orkeon-tui-keytest';  Csproj = 'examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj';                                    Apphost = 'Orkeon.Examples.TuiKeyTest' }
-    @{ Name = 'orkeon-claim-verify'; Csproj = 'examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj'; Apphost = 'Orkeon.Examples.Interactive.ClaimVerification' }
-    @{ Name = 'orkeon-spec-forge';   Csproj = 'examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj'; Apphost = 'Orkeon.Examples.Interactive.InterviewSpecForge' }
+    @{ Name = 'orkeon';              Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon';                                       SelfContained = $true }
+    @{ Name = 'orkeon-slim';         Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon';                                       SelfContained = $false }
+    @{ Name = 'orkeon-repl';         Csproj = 'src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj';                                               Apphost = 'Orkeon.ConsoleApp';                            SelfContained = $false }
+    @{ Name = 'orkeon-trading';      Csproj = 'examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj';                                    Apphost = 'Orkeon.Examples.Trading.Runner';               SelfContained = $true }
+    @{ Name = 'orkeon-interactive';  Csproj = 'examples/runners/interactive/Orkeon.Examples.Interactive.csproj';                                   Apphost = 'Orkeon.Examples.Interactive';                  SelfContained = $false }
+    @{ Name = 'orkeon-tui-keytest';  Csproj = 'examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj';                                    Apphost = 'Orkeon.Examples.TuiKeyTest';                   SelfContained = $false }
+    @{ Name = 'orkeon-claim-verify'; Csproj = 'examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj'; Apphost = 'Orkeon.Examples.Interactive.ClaimVerification'; SelfContained = $false }
+    @{ Name = 'orkeon-spec-forge';   Csproj = 'examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj'; Apphost = 'Orkeon.Examples.Interactive.InterviewSpecForge'; SelfContained = $false }
 )
 
 $EsbuildNpmRid = @{
@@ -84,8 +89,10 @@ foreach ($rid in $Rids) {
     Write-Host "==> $rid"
 
     foreach ($app in $Apps) {
-        Write-Host "    publish $($app.Name)"
-        dotnet publish (Join-Path $RepoRoot $app.Csproj) -c $Configuration -r $rid --self-contained false `
+        $selfContained = if ($app.SelfContained) { 'true' } else { 'false' }
+        Write-Host "    publish $($app.Name) (self-contained=$selfContained)"
+        dotnet publish (Join-Path $RepoRoot $app.Csproj) -c $Configuration -r $rid --self-contained $selfContained `
+            -p:PublishTrimmed=false `
             -p:Version=$Version -p:SkipScriptingNpmInstall=true `
             -p:ErrorOnDuplicatePublishOutputFiles=false `
             -o (Join-Path $root "libexec\$($app.Name)") --nologo -v quiet

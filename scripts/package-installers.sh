@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds per-OS installer archives (tar.gz / zip) containing all Orkeon CLI
-# executables, framework-dependent, published per RID.
+# executables, published per RID. Some ship self-contained (the `orkeon`
+# onboarding binary, `orkeon-trading`), the rest framework-dependent — see APPS.
 #
 # Usage:
 #   scripts/package-installers.sh [--version X.Y.Z[-suffix]] [--rids "linux-x64 ..."]
@@ -49,12 +50,16 @@ ESBUILD_VERSION="${ESBUILD_VERSION:-0.24.0}"
 
 # --- App table: name | csproj (repo-relative) | apphost assembly name | self-contained
 # self-contained=true bundles the .NET runtime so end users need no SDK/runtime
-# install; the runner packages (orkeon-examples, orkeon-trading) opt in. The CLI
-# tools stay framework-dependent (smaller archives; devs already have the runtime).
+# install. The `orkeon` CLI ships in two flavours from the *same* csproj:
+#   - `orkeon`      self-contained — the onboarding channel, no .NET runtime needed;
+#   - `orkeon-slim` framework-dependent — smaller, for devs who already have .NET 10.
+# `orkeon-trading` opts into self-contained too; the remaining CLI tools stay
+# framework-dependent. Both `orkeon` flavours share the one bundled esbuild
+# (see fetch_esbuild below — fetched once per RID into libexec/esbuild-bin).
 APPS=(
-  "orkeon|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|false"
+  "orkeon|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|true"
+  "orkeon-slim|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|false"
   "orkeon-repl|src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj|Orkeon.ConsoleApp|false"
-  "orkeon-examples|examples/runners/standard/Orkeon.Examples.Runner.csproj|Orkeon.Examples.Runner|true"
   "orkeon-trading|examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj|Orkeon.Examples.Trading.Runner|true"
   "orkeon-interactive|examples/runners/interactive/Orkeon.Examples.Interactive.csproj|Orkeon.Examples.Interactive|false"
   "orkeon-tui-keytest|examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj|Orkeon.Examples.TuiKeyTest|false"
