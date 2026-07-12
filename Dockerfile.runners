@@ -6,10 +6,28 @@
 # base image). Which executable runs is chosen by the ORKEON_RUNNER env var:
 #
 #   orkeon (default) | trading | repl | interactive | claim-verify
-#                    | spec-forge | tui-keytest
+#                    | spec-forge | tui-keytest | shell
 #
 # Build:
 #   docker build -f Dockerfile.runners -t orkeon-runners .
+#
+# --- The /workspace convention (start here) -----------------------------------
+# Mount your project at /workspace and reference everything from there — no
+# extra flags needed:
+#   docker run --rm -v "$PWD:/workspace" ghcr.io/orkeon/orkeon-runners \
+#     run /workspace/crews/my-crew/config.yaml \
+#     --settings /workspace/appsettings/appsettings.local.json \
+#     --mount /workspace/data:/data:ro /workspace/output:/output:rw
+# Three image conveniences make this Just Work:
+#   1. ORKEON_ALLOW_EXTERNAL_MOUNTS=1 is baked in, so configs/mounts outside the
+#      cwd (/app) need no --allow-external-mounts.
+#   2. The entrypoint adopts the uid:gid that owns /workspace before running, so
+#      the crew can write to your bind mount and the files it creates belong to
+#      you on the host — no --user, no chmod (details at the dispatcher below).
+#   3. /workspace exists (and is writable) even when nothing is mounted.
+# For an interactive zsh inside the image (starts in /workspace):
+#   docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
+#     ghcr.io/orkeon/orkeon-runners
 #
 # --- Default runner: the `orkeon` CLI ----------------------------------------
 # `orkeon run <crew.yaml | crew.ork.ts>` runs both YAML crews and .ork.ts
@@ -177,6 +195,116 @@ RUN chmod -R a+rX /app/runners /app/esbuild-bin
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 WORKDIR /app
 
+# zsh: interactive shell for `ORKEON_RUNNER=shell` sessions. gosu: lets the
+# root entrypoint drop to the bind-mount owner's uid (see the dispatcher below).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends zsh gosu \
+    && rm -rf /var/lib/apt/lists/*
+
+# Command wrappers on PATH — the same command names the release archives
+# install (orkeon, orkeon-trading, orkeon-repl, …), so the interactive shell
+# and any `docker exec` can invoke runners directly instead of spelling out
+# `dotnet /app/runners/<x>/<y>.dll`.
+RUN set -e; \
+    for pair in "orkeon:orkeon/orkeon.dll" \
+                "orkeon-trading:trading/Orkeon.Examples.Trading.Runner.dll" \
+                "orkeon-repl:repl/Orkeon.ConsoleApp.dll" \
+                "orkeon-interactive:interactive/Orkeon.Examples.Interactive.dll" \
+                "orkeon-claim-verify:claim-verify/Orkeon.Examples.Interactive.ClaimVerification.dll" \
+                "orkeon-spec-forge:spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.dll" \
+                "orkeon-tui-keytest:tui-keytest/Orkeon.Examples.TuiKeyTest.dll"; do \
+      name="${pair%%:*}"; dll="${pair#*:}"; \
+      printf '%s\n' '#!/bin/sh' "exec dotnet /app/runners/$dll \"\$@\"" > "/usr/local/bin/$name"; \
+      chmod +x "/usr/local/bin/$name"; \
+    done
+
+# Baked zsh config: ZDOTDIR points every uid (the entrypoint may drop to an
+# arbitrary mount-owner uid with no home) at a read-only rc, which both
+# suppresses the zsh-newuser-install first-run wizard and gives the shell a
+# usable prompt/completion. The compdump goes to /tmp — ZDOTDIR itself is not
+# writable by the dropped uid. The banner (suppressible via ORKEON_NO_BANNER=1)
+# orients first-time users: commands, paths, a typical run.
+RUN mkdir -p /etc/orkeon/zsh && printf '%s\n' \
+  '───────────────────────────────────────────────────────────────────' \
+  '  Orkeon — interactive shell            ghcr.io/orkeon/orkeon-runners' \
+  '───────────────────────────────────────────────────────────────────' \
+  'Commands' \
+  '  orkeon run <crew.yaml | script.ork.ts>   run a crew — the main CLI' \
+  '  orkeon run <config> --validate           dry-run: config + tool check' \
+  '  orkeon run <config> --list-tools         print the tool registry' \
+  '  orkeon --help                            every flag explained' \
+  '  orkeon-trading --config <crew.yaml>      trading showcase (+44 tools)' \
+  '  orkeon-repl | orkeon-interactive | orkeon-claim-verify | orkeon-spec-forge' \
+  'Paths' \
+  '  /workspace                   your project (bind mount — current dir)' \
+  '  /app/examples                bundled examples — try: ls /app/examples' \
+  '  /app/examples/appsettings    LLM settings profiles (*.example)' \
+  'Typical run' \
+  '  orkeon run /workspace/crews/my-crew/config.yaml \' \
+  '    --settings /workspace/appsettings.local.json \' \
+  '    --mount /workspace/data:/data:ro /workspace/output:/output:rw' \
+  'With LLM exchange logging (full request/response .jsonl per call)' \
+  '  orkeon run /workspace/crews/my-crew/config.yaml \' \
+  '    --settings /workspace/appsettings.local.json \' \
+  '    --mount /workspace/data:/data:ro /workspace/output:/output:rw \' \
+  '    --llm-log-path /workspace/output/llm-logs' \
+  'Copy/paste in the TUI runners (repl, interactive)' \
+  '  copy: Ctrl+C on a selection reaches your HOST clipboard (OSC 52)' \
+  '  paste from host: Ctrl+Shift+V (the terminal own paste)' \
+  '───────────────────────────────────────────────────────────────────' \
+  > /etc/orkeon/motd \
+  && printf '%s\n' \
+  'autoload -Uz compinit && compinit -u -d /tmp/.zcompdump' \
+  'PROMPT="%F{cyan}orkeon%f %~ %# "' \
+  'alias ll="ls -la"' \
+  'HISTFILE=/tmp/.zsh_history SAVEHIST=1000 HISTSIZE=1000' \
+  '[ -z "$ORKEON_NO_BANNER" ] && cat /etc/orkeon/motd' \
+  > /etc/orkeon/zsh/.zshrc
+ENV ZDOTDIR=/etc/orkeon/zsh
+
+# Shim orkeon.sh embarqué : permet aux run*.sh des expériences de fonctionner
+# quand SEULE l'expérience est montée (le helper central experiments/scripts/
+# orkeon.sh n'est alors pas visible). Même API de fonctions, mode cli
+# uniquement — le CLI `orkeon` et les wrappers sont déjà sur le PATH, esbuild
+# est embarqué, donc les ensure_* sont des no-ops.
+RUN printf '%s\n' \
+  '# shim orkeon.sh (image orkeon-runners) — mode cli uniquement' \
+  'ORKEON_MODE=cli' \
+  'orkeon_parse_mode() {' \
+  '  ORKEON_ARGS=()' \
+  '  while [ "$#" -gt 0 ]; do' \
+  '    case "$1" in' \
+  '      --mode|-M) [ "${2:-cli}" != "cli" ] && echo "[orkeon] shim conteneur : --mode ${2} ignore (mode cli force)" >&2; shift 2 ;;' \
+  '      --mode=*)  shift ;;' \
+  '      *)         ORKEON_ARGS+=("$1"); shift ;;' \
+  '    esac' \
+  '  done' \
+  '  return 0' \
+  '}' \
+  'orkeon_banner() { echo "=== orkeon mode : cli (shim conteneur, bin=$(command -v orkeon)) ==="; }' \
+  'orkeon_ensure_dotnet()   { return 0; }' \
+  'orkeon_ensure_esbuild()  { return 0; }' \
+  'orkeon_ensure_pkg_auth() { return 0; }' \
+  'orkeon_run_yaml() {' \
+  '  local config="" rest=()' \
+  '  while [ "$#" -gt 0 ]; do' \
+  '    case "$1" in' \
+  '      --config|-c) config="$2"; shift 2 ;;' \
+  '      *)           rest+=("$1"); shift ;;' \
+  '    esac' \
+  '  done' \
+  '  orkeon run "$config" "${rest[@]}"' \
+  '}' \
+  'orkeon_run_ts() { local s="$1"; shift; orkeon run "$s" "$@"; }' \
+  'orkeon_run_tool() { local cmd="$1"; shift 2; "$cmd" "$@"; }' \
+  > /etc/orkeon/orkeon.sh
+
+# The container boundary IS the sandbox: every path a crew can reach is already
+# confined by Docker, so the CLI's cwd guard (--allow-external-mounts) would be
+# redundant friction here. Bake the env opt-in so `run /workspace/...` works out
+# of the box; pass -e ORKEON_ALLOW_EXTERNAL_MOUNTS=0 to restore the guard.
+ENV ORKEON_ALLOW_EXTERNAL_MOUNTS=1
+
 # Published apps, one directory per runner (see the dispatcher below).
 COPY --from=build /app/runners ./runners
 # Bundled esbuild binary, exposed to every app via ORKEON_ESBUILD_PATH.
@@ -199,31 +327,56 @@ COPY examples/09-experimental       examples/09-experimental
 COPY examples/appsettings           examples/appsettings
 
 # Entry dispatcher: the `orkeon` CLI by default, or the runner named by
-# ORKEON_RUNNER. All `docker run` args after the image name are forwarded to the
-# selected executable verbatim (e.g. `run <crew> --settings …` for orkeon, or
-# `--config … --settings …` for trading). Written with printf so the build works
-# on the classic builder too (no BuildKit heredoc dependency).
+# ORKEON_RUNNER (`shell` opens an interactive zsh, starting in /workspace). All
+# `docker run` args after the image name are forwarded to the selected executable
+# verbatim (e.g. `run <crew> --settings …` for orkeon, or `--config … --settings …`
+# for trading). Written with printf so the build works on the classic builder too
+# (no BuildKit heredoc dependency).
+#
+# Privilege drop: the image no longer bakes `USER app` — the entrypoint starts as
+# root, reads the owner uid:gid of /workspace (then /output), and re-execs itself
+# through gosu as that user, so files the crew writes on a bind mount land with
+# the host owner's uid and host-owned mounts are writable with zero flags. When
+# neither root is owned by a regular user (nothing mounted, or a root-owned
+# Docker Desktop mount — those are world-writable anyway), it drops to the
+# built-in non-root `app` user (uid 1654) exactly as before. An explicit
+# `docker run --user` skips the logic entirely (id -u != 0); ORKEON_STAY_ROOT=1
+# keeps root for debugging.
 RUN printf '%s\n' \
   '#!/bin/sh' \
   'set -e' \
   'case "${ORKEON_RUNNER:-orkeon}" in' \
-  '  orkeon)       exec dotnet /app/runners/orkeon/orkeon.dll "$@" ;;' \
-  '  trading)      exec dotnet /app/runners/trading/Orkeon.Examples.Trading.Runner.dll "$@" ;;' \
-  '  repl)         exec dotnet /app/runners/repl/Orkeon.ConsoleApp.dll "$@" ;;' \
-  '  interactive)  exec dotnet /app/runners/interactive/Orkeon.Examples.Interactive.dll "$@" ;;' \
-  '  claim-verify) exec dotnet /app/runners/claim-verify/Orkeon.Examples.Interactive.ClaimVerification.dll "$@" ;;' \
-  '  spec-forge)   exec dotnet /app/runners/spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.dll "$@" ;;' \
-  '  tui-keytest)  exec dotnet /app/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.dll "$@" ;;' \
-  '  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|trading|repl|interactive|claim-verify|spec-forge|tui-keytest)" >&2; exit 2 ;;' \
+  '  orkeon)       set -- dotnet /app/runners/orkeon/orkeon.dll "$@" ;;' \
+  '  trading)      set -- dotnet /app/runners/trading/Orkeon.Examples.Trading.Runner.dll "$@" ;;' \
+  '  repl)         set -- dotnet /app/runners/repl/Orkeon.ConsoleApp.dll "$@" ;;' \
+  '  interactive)  set -- dotnet /app/runners/interactive/Orkeon.Examples.Interactive.dll "$@" ;;' \
+  '  claim-verify) set -- dotnet /app/runners/claim-verify/Orkeon.Examples.Interactive.ClaimVerification.dll "$@" ;;' \
+  '  spec-forge)   set -- dotnet /app/runners/spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.dll "$@" ;;' \
+  '  tui-keytest)  set -- dotnet /app/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.dll "$@" ;;' \
+  '  shell)        cd /workspace && set -- zsh "$@" ;;' \
+  '  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|trading|repl|interactive|claim-verify|spec-forge|tui-keytest|shell)" >&2; exit 2 ;;' \
   'esac' \
+  'if [ "$(id -u)" = "0" ] && [ "${ORKEON_STAY_ROOT:-0}" != "1" ]; then' \
+  '  runas="app:app"' \
+  '  for d in /workspace /output; do' \
+  '    uid="$(stat -c %u "$d" 2>/dev/null || echo 0)"' \
+  '    if [ "$uid" != "0" ] && [ "$uid" != "1654" ]; then' \
+  '      runas="$uid:$(stat -c %g "$d")"' \
+  '      break' \
+  '    fi' \
+  '  done' \
+  '  export HOME=/tmp' \
+  '  exec gosu "$runas" "$@"' \
+  'fi' \
+  'exec "$@"' \
   > /usr/local/bin/orkeon-entrypoint \
   && chmod +x /usr/local/bin/orkeon-entrypoint
 
-# Conventional virtual roots crews write to; owned by the image's built-in
-# non-root user (app / uid 1654, shipped by the .NET runtime image — no user
-# creation needed, and the minimal image has no `adduser`). Payload read perms
-# are handled in the build stage (see chmod above) so no extra layer lands here.
-RUN mkdir -p /output /workspace && chown -R app:app /output /workspace
-USER app
+# Conventional roots: /workspace is where users bind-mount their project
+# (`-v $PWD:/workspace`), /output is where crews write. World-writable so that
+# whatever uid the entrypoint drops to can still write when nothing is mounted
+# over them. Payload read perms are handled in the build stage (see chmod above)
+# so no extra layer lands here.
+RUN mkdir -p /output /workspace && chmod 0777 /output /workspace
 
 ENTRYPOINT ["orkeon-entrypoint"]
