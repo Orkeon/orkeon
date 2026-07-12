@@ -1,0 +1,18 @@
+{
+  "_comment": "OpenAI cloud profile. The ApiKey is deliberately empty — pass it via the environment: docker run -e ORKEON_LLM_PROFILE=openai -e ORKEON_Llm__ApiKey=sk-... (env vars override this file). Override the model the same way: -e ORKEON_Llm__Model=gpt-4o.",
+  "Llm": {
+    "Model": "gpt-4o-mini",
+    "BaseUrl": "https://api.openai.com/v1",
+    "ApiKey": "",
+    "Temperature": 0.7,
+    "MaxTokens": 4096,
+    "TimeoutSeconds": 120
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 2,
+    "GlobalRequestsPerMinute": 60,
+    "ProviderRequestsPerMinute": 30,
+    "AgentRequestsPerMinute": 20,
+    "QueueLimit": 32
+  }
+}

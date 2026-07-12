@@ -65,12 +65,36 @@
 # needed, pass `-e TERM=xterm-256color` or install `ncurses-term` in a derived
 # image rather than bloating this base image.
 #
-# --- Settings profiles -------------------------------------------------------
-# A ready-made local-model profile lives at
-# examples/appsettings/appsettings.docker-model-runner.local.json.example.
-# Copy it (dropping .example), point the LLM BaseUrl host at host.docker.internal
-# so the container can reach a model server on the host, and mount the result as
-# your --settings file. examples/appsettings/appsettings.json is the base profile.
+# --- Bundled examples: the orkeon-example helper ------------------------------
+# The image ships 105 example crews under /app/examples plus a helper that makes
+# running them a one-liner from the interactive shell (or via docker run):
+#   orkeon-example list                 browse them
+#   orkeon-example run 1                run one by number (03 category → trading)
+#   orkeon-example show 42              print an example's README
+#   orkeon-example settings             show which LLM settings apply and why
+# Interactive session (recommended first contact):
+#   docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
+#     ghcr.io/orkeon/orkeon-runners
+#   orkeon-example run 1
+#
+# --- Settings profiles ---------------------------------------------------------
+# The baked default (/app/examples/appsettings/appsettings.json, overwritten at
+# build time from docker/profiles/host-dmr.json) targets Docker Model Runner on
+# the HOST via host.docker.internal:12434 — `docker model pull
+# ai/granite-4.0-h-tiny` on the host and every bundled example runs with zero
+# flags. Ready-made alternatives live in /etc/orkeon/profiles and are selected
+# with -e ORKEON_LLM_PROFILE=<name>:
+#   host-dmr     Docker Model Runner on the host (the default)
+#   host-ollama  Ollama on the host (http://host.docker.internal:11434)
+#   openai       OpenAI cloud — pair with -e ORKEON_Llm__ApiKey=sk-...
+#   local        embedded model (local-llm image variant only, see below)
+# ORKEON_Llm__* env vars override any settings file (e.g. -e ORKEON_Llm__Model=…).
+#
+# --- Optional: embed a local model (--target local-llm) ------------------------
+# Build a variant that needs NO host-side model server and no API key: llama.cpp's
+# llama-server + one GGUF baked in, served on 127.0.0.1:12434 with the same URL
+# shape as Docker Model Runner, so the default settings just work. Recipes at the
+# local-llm stage at the bottom of this file (Granite 4.0 h-tiny / Gemma 4).
 #
 # --- Docker volume  ->  Orkeon VFS mount -------------------------------------
 #   Runners expose a virtual filesystem gated by rights. To let a crew read/write
@@ -197,8 +221,9 @@ WORKDIR /app
 
 # zsh: interactive shell for `ORKEON_RUNNER=shell` sessions. gosu: lets the
 # root entrypoint drop to the bind-mount owner's uid (see the dispatcher below).
+# curl: the orkeon-example preflight check + the local-llm variant's health wait.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends zsh gosu \
+    && apt-get install -y --no-install-recommends zsh gosu curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Command wrappers on PATH — the same command names the release archives
@@ -223,36 +248,50 @@ RUN set -e; \
 # suppresses the zsh-newuser-install first-run wizard and gives the shell a
 # usable prompt/completion. The compdump goes to /tmp — ZDOTDIR itself is not
 # writable by the dropped uid. The banner (suppressible via ORKEON_NO_BANNER=1)
-# orients first-time users: commands, paths, a typical run.
-RUN mkdir -p /etc/orkeon/zsh && printf '%s\n' \
-  '───────────────────────────────────────────────────────────────────' \
-  '  Orkeon — interactive shell            ghcr.io/orkeon/orkeon-runners' \
-  '───────────────────────────────────────────────────────────────────' \
-  'Commands' \
-  '  orkeon run <crew.yaml | script.ork.ts>   run a crew — the main CLI' \
-  '  orkeon run <config> --validate           dry-run: config + tool check' \
-  '  orkeon run <config> --list-tools         print the tool registry' \
-  '  orkeon --help                            every flag explained' \
-  '  orkeon-trading --config <crew.yaml>      trading showcase (+44 tools)' \
-  '  orkeon-repl | orkeon-interactive | orkeon-claim-verify | orkeon-spec-forge' \
-  'Paths' \
-  '  /workspace                   your project (bind mount — current dir)' \
-  '  /app/examples                bundled examples — try: ls /app/examples' \
-  '  /app/examples/appsettings    LLM settings profiles (*.example)' \
-  'Typical run' \
-  '  orkeon run /workspace/crews/my-crew/config.yaml \' \
-  '    --settings /workspace/appsettings.local.json \' \
-  '    --mount /workspace/data:/data:ro /workspace/output:/output:rw' \
-  'With LLM exchange logging (full request/response .jsonl per call)' \
-  '  orkeon run /workspace/crews/my-crew/config.yaml \' \
-  '    --settings /workspace/appsettings.local.json \' \
-  '    --mount /workspace/data:/data:ro /workspace/output:/output:rw \' \
-  '    --llm-log-path /workspace/output/llm-logs' \
-  'Copy/paste in the TUI runners (repl, interactive)' \
-  '  copy: Ctrl+C on a selection reaches your HOST clipboard (OSC 52)' \
-  '  paste from host: Ctrl+Shift+V (the terminal own paste)' \
-  '───────────────────────────────────────────────────────────────────' \
-  > /etc/orkeon/motd \
+# opens with the Orkeon mascot (docker/orkeon-banner.txt — a copy of
+# backstage/marketing/assets/media/mascot/orkeon_banner_80-2.txt, duplicated
+# here because backstage/ is not part of the published tree), then orients
+# first-time users: commands, paths, a typical run.
+COPY docker/orkeon-banner.txt /etc/orkeon/banner.txt
+RUN mkdir -p /etc/orkeon/zsh && cat /etc/orkeon/banner.txt > /etc/orkeon/motd && printf '%b\n' \
+  '' \
+  '\033[36m──────────────────────────────────────────────────────────────────────────\033[0m' \
+  '  \033[1mOrkeon\033[0m — interactive shell' \
+  '  \033[2msource & docs\033[0m  https://github.com/Orkeon/orkeon' \
+  '  \033[2mimage\033[0m          ghcr.io/orkeon/orkeon-runners' \
+  '\033[36m──────────────────────────────────────────────────────────────────────────\033[0m' \
+  '' \
+  '  \033[1;36mTry it now\033[0m \033[2m(copy-paste)\033[0m' \
+  '    orkeon-example list                     browse the 105 bundled examples' \
+  '    orkeon-example run 1                    run #1 — research assistant' \
+  '    orkeon run /app/examples/scripting/01-hello-world.ork.ts   \033[2mno LLM needed\033[0m' \
+  '    \033[2mfirst time? on your host:\033[0m docker model pull ai/granite-4.0-h-tiny' \
+  '' \
+  '  \033[1;36mCommands\033[0m' \
+  '    orkeon run <crew.yaml | script.ork.ts>  run a crew — the main CLI' \
+  '    orkeon run <config> --validate          dry-run: config + tool check' \
+  '    orkeon run <config> --list-tools        print the tool registry' \
+  '    orkeon --help                           every flag explained' \
+  '    orkeon-trading --config <crew.yaml>     trading showcase (+44 tools)' \
+  '    orkeon-repl · orkeon-interactive · orkeon-claim-verify · orkeon-spec-forge' \
+  '' \
+  '  \033[1;36mPaths\033[0m' \
+  '    /workspace              your project (bind mount — you are here)' \
+  '    /app/examples           bundled examples — browse: orkeon-example list' \
+  '    /etc/orkeon/profiles    LLM profiles — select: ORKEON_LLM_PROFILE=<name>' \
+  '' \
+  '  \033[1;36mTypical run\033[0m' \
+  '    orkeon run /workspace/crews/my-crew/config.yaml --settings /workspace/appsettings.local.json --mount /workspace/data:/data:ro /workspace/output:/output:rw' \
+  '    \033[2madd\033[0m --llm-log-path /workspace/output/llm-logs \033[2mto log every LLM exchange (.jsonl)\033[0m' \
+  '' \
+  '  \033[1;36mCopy/paste in the TUI runners\033[0m \033[2m(repl, interactive)\033[0m' \
+  '    copy: Ctrl+C on a selection reaches your host clipboard (OSC 52)' \
+  '    paste from host: Ctrl+Shift+V (terminal-side paste)' \
+  '' \
+  '\033[36m──────────────────────────────────────────────────────────────────────────\033[0m' \
+  '  \033[2mORKEON_NO_BANNER=1 hides this banner\033[0m · https://github.com/Orkeon/orkeon' \
+  '\033[36m──────────────────────────────────────────────────────────────────────────\033[0m' \
+  >> /etc/orkeon/motd \
   && printf '%s\n' \
   'autoload -Uz compinit && compinit -u -d /tmp/.zcompdump' \
   'PROMPT="%F{cyan}orkeon%f %~ %# "' \
@@ -326,51 +365,37 @@ COPY examples/08-iot-smart-systems  examples/08-iot-smart-systems
 COPY examples/09-experimental       examples/09-experimental
 COPY examples/appsettings           examples/appsettings
 
+# Bundled scripting demos — the zero-dependency first touch. The deliberately
+# empty settings baked next to them shadow the appsettings/ walk-up, so no LLM
+# provider is registered and the demos run on the UndefinedLlm echo fallback:
+# no key, no model server, no network.
+COPY examples/scripting                   examples/scripting
+COPY docker/profiles/scripting-empty.json examples/scripting/appsettings.json
+
+# Ready-made LLM settings profiles (select with ORKEON_LLM_PROFILE=<name>, read
+# by the orkeon-example helper). host-dmr.json also OVERWRITES the baked copy of
+# the examples' default settings: the committed file targets localhost:12434
+# (right for source runs on the host) which is unreachable from inside a
+# container — host.docker.internal is the container-appropriate default. The
+# git file examples/appsettings/appsettings.json itself is untouched.
+COPY docker/profiles/              /etc/orkeon/profiles/
+COPY docker/profiles/host-dmr.json examples/appsettings/appsettings.json
+
+# Example browser/runner: orkeon-example list|show|run|settings (see the file
+# header in docker/orkeon-example for the full UX).
+COPY docker/orkeon-example /usr/local/bin/orkeon-example
+
 # Entry dispatcher: the `orkeon` CLI by default, or the runner named by
 # ORKEON_RUNNER (`shell` opens an interactive zsh, starting in /workspace). All
-# `docker run` args after the image name are forwarded to the selected executable
-# verbatim (e.g. `run <crew> --settings …` for orkeon, or `--config … --settings …`
-# for trading). Written with printf so the build works on the classic builder too
-# (no BuildKit heredoc dependency).
-#
-# Privilege drop: the image no longer bakes `USER app` — the entrypoint starts as
-# root, reads the owner uid:gid of /workspace (then /output), and re-execs itself
-# through gosu as that user, so files the crew writes on a bind mount land with
-# the host owner's uid and host-owned mounts are writable with zero flags. When
-# neither root is owned by a regular user (nothing mounted, or a root-owned
-# Docker Desktop mount — those are world-writable anyway), it drops to the
-# built-in non-root `app` user (uid 1654) exactly as before. An explicit
-# `docker run --user` skips the logic entirely (id -u != 0); ORKEON_STAY_ROOT=1
-# keeps root for debugging.
-RUN printf '%s\n' \
-  '#!/bin/sh' \
-  'set -e' \
-  'case "${ORKEON_RUNNER:-orkeon}" in' \
-  '  orkeon)       set -- dotnet /app/runners/orkeon/orkeon.dll "$@" ;;' \
-  '  trading)      set -- dotnet /app/runners/trading/Orkeon.Examples.Trading.Runner.dll "$@" ;;' \
-  '  repl)         set -- dotnet /app/runners/repl/Orkeon.ConsoleApp.dll "$@" ;;' \
-  '  interactive)  set -- dotnet /app/runners/interactive/Orkeon.Examples.Interactive.dll "$@" ;;' \
-  '  claim-verify) set -- dotnet /app/runners/claim-verify/Orkeon.Examples.Interactive.ClaimVerification.dll "$@" ;;' \
-  '  spec-forge)   set -- dotnet /app/runners/spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.dll "$@" ;;' \
-  '  tui-keytest)  set -- dotnet /app/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.dll "$@" ;;' \
-  '  shell)        cd /workspace && set -- zsh "$@" ;;' \
-  '  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|trading|repl|interactive|claim-verify|spec-forge|tui-keytest|shell)" >&2; exit 2 ;;' \
-  'esac' \
-  'if [ "$(id -u)" = "0" ] && [ "${ORKEON_STAY_ROOT:-0}" != "1" ]; then' \
-  '  runas="app:app"' \
-  '  for d in /workspace /output; do' \
-  '    uid="$(stat -c %u "$d" 2>/dev/null || echo 0)"' \
-  '    if [ "$uid" != "0" ] && [ "$uid" != "1654" ]; then' \
-  '      runas="$uid:$(stat -c %g "$d")"' \
-  '      break' \
-  '    fi' \
-  '  done' \
-  '  export HOME=/tmp' \
-  '  exec gosu "$runas" "$@"' \
-  'fi' \
-  'exec "$@"' \
-  > /usr/local/bin/orkeon-entrypoint \
-  && chmod +x /usr/local/bin/orkeon-entrypoint
+# `docker run` args after the image name are forwarded to the selected
+# executable verbatim. Maintained as a real file (docker/orkeon-entrypoint.sh)
+# now that it also hosts the embedded local-LLM startup — see that file for the
+# full story: runner dispatch, llama-server launch (local-llm variant only),
+# and the gosu privilege drop to the /workspace bind-mount owner's uid.
+# chmod +x here rather than trusting context mode bits: exec bits can be lost
+# through Windows checkouts of the repo.
+COPY docker/orkeon-entrypoint.sh /usr/local/bin/orkeon-entrypoint
+RUN chmod +x /usr/local/bin/orkeon-entrypoint /usr/local/bin/orkeon-example
 
 # Conventional roots: /workspace is where users bind-mount their project
 # (`-v $PWD:/workspace`), /output is where crews write. World-writable so that
@@ -380,3 +405,87 @@ RUN printf '%s\n' \
 RUN mkdir -p /output /workspace && chmod 0777 /output /workspace
 
 ENTRYPOINT ["orkeon-entrypoint"]
+
+# ---- Stage 3 (optional): local-llm — embed a model in the image ---------------
+# Build-your-own variant that needs NO host-side model server and no API key:
+# llama.cpp's llama-server plus one GGUF are baked in and served on
+# 127.0.0.1:12434 with the /engines/llama.cpp prefix — the exact URL shape of
+# the Docker Model Runner profile the examples default to, so the baked settings
+# work with ZERO configuration. Weights are downloaded at build time from the
+# URL you pass; these variants are built locally and never published (no model
+# weight redistribution — mind each model's license before pushing such a tag).
+#
+# Granite 4.0 h-tiny (Apache 2.0, ~4.2 GB GGUF → ~6 GB image):
+#   docker build -f Dockerfile.runners --target local-llm \
+#     --build-arg LOCAL_MODEL_URL=https://huggingface.co/ibm-granite/granite-4.0-h-tiny-GGUF/resolve/main/granite-4.0-h-tiny-Q4_K_M.gguf \
+#     -t orkeon-runners:granite .
+#
+# Gemma 4 E4B with a 128K context window (Gemma license — keep the image local):
+#   docker build -f Dockerfile.runners --target local-llm \
+#     --build-arg LOCAL_MODEL_URL=https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF/resolve/main/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf \
+#     --build-arg LOCAL_MODEL_NAME=ai/gemma4 \
+#     --build-arg LOCAL_MODEL_CTX=131072 \
+#     -t orkeon-runners:gemma4 .
+#
+# Then (CPU inference — give the container memory, expect ~5-15 tok/s):
+#   docker run -it --rm -m 8g -e ORKEON_RUNNER=shell orkeon-runners:granite
+#   orkeon-example run 1
+# The entrypoint starts the server before dispatch and waits for the model to
+# load (30-90 s); -e ORKEON_LOCAL_LLM=0 skips it. Tunables:
+# ORKEON_LOCAL_LLM_CTX (context size — baked default LOCAL_MODEL_CTX, overridable
+# per run: -e ORKEON_LOCAL_LLM_CTX=131072; a 128K KV cache needs several extra GB
+# of RAM, raise -m accordingly).
+#
+# llama-server comes from the official GitHub release tarball (the upstream
+# GHCR server-b* image tags stopped at b5350, which predates --api-prefix).
+# The ubuntu-x64 build matches this image's Ubuntu 24.04 base — verified by
+# running --version and probing --api-prefix during the build.
+FROM runtime AS local-llm
+ARG LLAMA_CPP_BUILD=b9972
+ARG LOCAL_MODEL_URL
+ARG LOCAL_MODEL_NAME=ai/granite-4.0-h-tiny
+ARG LOCAL_MODEL_SHA256=
+# Default llama-server context size for this variant (tokens). Baked as the
+# ORKEON_LOCAL_LLM_CTX default; still overridable at `docker run -e`.
+ARG LOCAL_MODEL_CTX=8192
+# libgomp1: OpenMP runtime llama-server links against (the only lib the
+# ubuntu-x64 release build needs beyond what the base already ships).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+# Server binary + its shared libs (libllama/libggml*), kept out of /app/runners.
+# The sanity checks prove the binary runs on THIS base image and still supports
+# --api-prefix (the entrypoint depends on it) — failures surface at build time
+# instead of at first container start.
+RUN curl -fL --retry 3 --retry-delay 5 -o /tmp/llama.tgz \
+      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_CPP_BUILD}/llama-${LLAMA_CPP_BUILD}-bin-ubuntu-x64.tar.gz" \
+    && mkdir -p /app/local-llm \
+    && tar -xzf /tmp/llama.tgz -C /tmp \
+    && cp "/tmp/llama-${LLAMA_CPP_BUILD}/llama-server" "/tmp/llama-${LLAMA_CPP_BUILD}/"*.so* /app/local-llm/ \
+    && rm -rf /tmp/llama.tgz "/tmp/llama-${LLAMA_CPP_BUILD}" \
+    && LD_LIBRARY_PATH=/app/local-llm /app/local-llm/llama-server --version \
+    && LD_LIBRARY_PATH=/app/local-llm /app/local-llm/llama-server --help | grep -q -- --api-prefix
+# Download the weights at build time (URL is mandatory for this target; sha256
+# optional but recommended for reproducible builds).
+RUN [ -n "$LOCAL_MODEL_URL" ] \
+      || { echo "ERROR: --build-arg LOCAL_MODEL_URL=<gguf url> is required for --target local-llm" >&2; exit 1; } \
+    && curl -fL --retry 3 --retry-delay 5 -o /app/local-llm/model.gguf "$LOCAL_MODEL_URL" \
+    && { [ -z "$LOCAL_MODEL_SHA256" ] \
+         || echo "$LOCAL_MODEL_SHA256  /app/local-llm/model.gguf" | sha256sum -c; } \
+    && chmod -R a+rX /app/local-llm
+ENV ORKEON_LOCAL_LLM_ALIAS=$LOCAL_MODEL_NAME
+ENV ORKEON_LOCAL_LLM_CTX=$LOCAL_MODEL_CTX
+# In this variant the embedded server IS localhost:12434 — materialize the
+# `local` profile from its template, make it the baked default settings, and
+# announce the model in the shell banner.
+RUN sed -e "s|__BASEURL__|http://127.0.0.1:12434/engines/llama.cpp/v1|" \
+        -e "s|__MODEL__|$LOCAL_MODEL_NAME|" \
+        /etc/orkeon/profiles/local.json.tpl > /etc/orkeon/profiles/local.json \
+    && cp /etc/orkeon/profiles/local.json /app/examples/appsettings/appsettings.json \
+    && printf 'Local model\n  %s — serving on localhost:12434 (ORKEON_LOCAL_LLM=0 disables)\n' \
+         "$LOCAL_MODEL_NAME" >> /etc/orkeon/motd
+
+# ---- Final stage: the default image ------------------------------------------
+# Kept last so a flag-less `docker build -f Dockerfile.runners .` still produces
+# the plain runtime image (no embedded model).
+FROM runtime

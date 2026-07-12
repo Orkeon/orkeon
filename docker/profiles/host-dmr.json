@@ -1,0 +1,18 @@
+{
+  "_comment": "Docker Model Runner on the HOST, reached from inside the container (no API key). Pull a model on the host first: `docker model pull ai/granite-4.0-h-tiny`. Linux engine (no Docker Desktop): add --add-host=host.docker.internal:host-gateway to `docker run`.",
+  "Llm": {
+    "Model": "ai/granite-4.0-h-tiny",
+    "BaseUrl": "http://host.docker.internal:12434/engines/llama.cpp/v1",
+    "ApiKey": "not-needed",
+    "Temperature": 0.7,
+    "MaxTokens": 4096,
+    "TimeoutSeconds": 120
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 1,
+    "GlobalRequestsPerMinute": 60,
+    "ProviderRequestsPerMinute": 30,
+    "AgentRequestsPerMinute": 20,
+    "QueueLimit": 32
+  }
+}

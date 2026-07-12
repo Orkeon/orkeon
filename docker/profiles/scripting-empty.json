@@ -1,0 +1,3 @@
+{
+  "_comment": "Deliberately empty settings, baked next to the bundled scripting demos (/app/examples/scripting). No Llm section means the host registers no LLM provider and the demos run on the UndefinedLlm echo fallback — no key, no server, no network."
+}

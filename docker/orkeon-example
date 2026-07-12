@@ -1,0 +1,255 @@
+#!/bin/sh
+# orkeon-example — run the examples bundled in the orkeon-runners image with
+# zero friction. Baked into the image at /usr/local/bin/orkeon-example.
+#
+#   orkeon-example                    usage + category table
+#   orkeon-example list [filter]      list every bundled example
+#   orkeon-example show <id>          print an example's README + config path
+#   orkeon-example run <id> [args..]  run it (extra args go to the runner)
+#   orkeon-example <id> [args..]      shorthand for `run <id>`
+#   orkeon-example settings           show which LLM settings apply and why
+#
+# <id> forms: a number (`1`, `42`), category-qualified (`02/16` — needed when a
+# number exists in two categories), or a name substring (`research-assistant`).
+#
+# LLM settings precedence (strongest first):
+#   1. ORKEON_Llm__* env vars            (always win, even over --settings)
+#   2. an explicit --settings you pass   (the helper injects nothing)
+#   3. ORKEON_LLM_PROFILE=<name>         (a profile from /etc/orkeon/profiles)
+#   4. the image default                 (/app/examples/appsettings/appsettings.json)
+set -eu
+
+EXAMPLES_ROOT="${ORKEON_EXAMPLES_ROOT:-/app/examples}"
+PROFILES_DIR="${ORKEON_PROFILES_DIR:-/etc/orkeon/profiles}"
+DEFAULT_SETTINGS="$EXAMPLES_ROOT/appsettings/appsettings.json"
+
+die() { echo "orkeon-example: $*" >&2; exit 1; }
+
+# ---------------------------------------------------------------- id resolution
+pad2() { if [ "${#1}" -eq 1 ]; then echo "0$1"; else echo "$1"; fi; }
+
+# Prints the matching example dirs (one per line) for an id.
+find_matches() {
+    id=$1
+    case "$id" in
+        */*)  # category-qualified: CC/NN
+            cc=$(pad2 "${id%%/*}"); nn=$(pad2 "${id#*/}")
+            set -- "$EXAMPLES_ROOT/${cc}-"*"/${nn}-"* ;;
+        [0-9]|[0-9][0-9]|[0-9][0-9][0-9])
+            nn=$(pad2 "$id")
+            set -- "$EXAMPLES_ROOT"/0[1-9]-*/"${nn}-"* ;;
+        *)    # name substring
+            set -- "$EXAMPLES_ROOT"/0[1-9]-*/*"$id"* ;;
+    esac
+    for d in "$@"; do
+        [ -f "$d/config.yaml" ] && echo "$d"
+    done
+    return 0
+}
+
+# Resolves an id to exactly one example dir, or exits with guidance.
+resolve() {
+    matches=$(find_matches "$1")
+    count=$(printf '%s' "$matches" | grep -c . || true)
+    if [ "$count" -eq 0 ]; then
+        die "no bundled example matches '$1' — try: orkeon-example list"
+    fi
+    if [ "$count" -gt 1 ]; then
+        echo "'$1' matches more than one example — pick one:" >&2
+        echo "$matches" | while IFS= read -r d; do
+            cat_dir=$(basename "$(dirname "$d")"); name=$(basename "$d")
+            printf '  orkeon-example run %s/%s   %-40s (%s)\n' \
+                "${cat_dir%%-*}" "${name%%-*}" "$name" "$cat_dir" >&2
+        done
+        exit 2
+    fi
+    echo "$matches"
+}
+
+# ------------------------------------------------------------------- settings
+# Echoes the --settings args to inject (possibly nothing), honoring the
+# precedence chain documented above. $@ = user args (checked for --settings).
+settings_args() {
+    for a in "$@"; do
+        case "$a" in --settings|--settings=*|-s) return 0 ;; esac
+    done
+    if [ -n "${ORKEON_LLM_PROFILE:-}" ]; then
+        p="$PROFILES_DIR/$ORKEON_LLM_PROFILE.json"
+        [ -f "$p" ] || die "unknown profile '$ORKEON_LLM_PROFILE' (available: $(profiles_list))"
+        printf -- '--settings %s' "$p"
+    fi
+    return 0
+}
+
+json_value() { sed -n 's/.*"'"$2"'"[^"]*"\([^"]*\)".*/\1/p' "$1" | head -1; }
+
+# Selectable profile names (drops the local.json.tpl template and the
+# scripting-empty marker, which are not meant for ORKEON_LLM_PROFILE).
+profiles_list() {
+    ls "$PROFILES_DIR" 2>/dev/null | sed -n 's/\.json$//p' | grep -v '^scripting-empty$' | tr '\n' ' '
+}
+
+# The settings file that will effectively apply (empty string if env-only).
+effective_settings_file() {
+    if [ -n "${ORKEON_LLM_PROFILE:-}" ] && [ -f "$PROFILES_DIR/$ORKEON_LLM_PROFILE.json" ]; then
+        echo "$PROFILES_DIR/$ORKEON_LLM_PROFILE.json"
+    elif [ -f "$DEFAULT_SETTINGS" ]; then
+        echo "$DEFAULT_SETTINGS"
+    fi
+}
+
+# Fail fast with guidance when the LLM endpoint is unreachable or the model is
+# not pulled, instead of letting the first agent call fail cryptically. An auth
+# error (401) still counts as reachable and skips the model check (cloud
+# providers validate keys at run time). ORKEON_SKIP_PREFLIGHT=1 skips.
+preflight() {
+    [ "${ORKEON_SKIP_PREFLIGHT:-0}" = "1" ] && return 0
+    command -v curl >/dev/null 2>&1 || return 0
+    f=$(effective_settings_file)
+    base_url="${ORKEON_Llm__BaseUrl:-}"
+    if [ -z "$base_url" ] && [ -n "$f" ]; then
+        base_url=$(json_value "$f" BaseUrl)
+    fi
+    [ -z "$base_url" ] && return 0
+    http_code=$(curl -sS -m 3 -o /tmp/.orkeon-models.json -w '%{http_code}' \
+        "$base_url/models" 2>/dev/null) || {
+        cat >&2 <<EOF
+orkeon-example: cannot reach the LLM endpoint $base_url — pick one:
+  1. Embedded model image:  build the local-llm variant (see Dockerfile.runners)
+                            and run that tag — no setup at all
+  2. Host model server:     docker model pull ai/granite-4.0-h-tiny   (Docker Desktop)
+                            Linux engine: add --add-host=host.docker.internal:host-gateway
+  3. Cloud key:             restart the container with
+                            -e ORKEON_LLM_PROFILE=openai -e ORKEON_Llm__ApiKey=sk-...
+(ORKEON_SKIP_PREFLIGHT=1 skips this check.)
+EOF
+        exit 3
+    }
+    # Endpoint answered. On a clean 200, also make sure the configured model is
+    # actually served — "model not found" from a local server is the #1 trap.
+    [ "$http_code" = "200" ] || return 0
+    model="${ORKEON_Llm__Model:-}"
+    if [ -z "$model" ] && [ -n "$f" ]; then
+        model=$(json_value "$f" Model)
+    fi
+    [ -z "$model" ] && return 0
+    # Substring match: servers often announce fully-qualified ids — Docker Model
+    # Runner serves `ai/granite-4.0-h-tiny` as "docker.io/ai/granite-4.0-h-tiny:latest".
+    grep -qF "$model" /tmp/.orkeon-models.json 2>/dev/null && return 0
+    # Locally tagged aliases (docker model tag gemma4 gemma4:128K) are resolvable
+    # for inference but not announced under that tag — retry with the base name.
+    base="${model%%:*}"
+    if [ "$base" != "$model" ]; then
+        grep -qF "$base" /tmp/.orkeon-models.json 2>/dev/null && return 0
+    fi
+    served=$(sed -n 's/.*"id":"\([^"]*\)".*/\1/p' /tmp/.orkeon-models.json | head -5 | tr '\n' ' ')
+    cat >&2 <<EOF
+orkeon-example: the endpoint $base_url is up,
+but it does not serve the configured model '$model'.
+  Docker Model Runner (host):  docker model pull $model
+  Ollama (host):               ollama pull $model
+  Or use a model it already serves: ${served:-(none)}
+     e.g. restart with -e ORKEON_Llm__Model=<name>
+(ORKEON_SKIP_PREFLIGHT=1 skips this check.)
+EOF
+    exit 4
+}
+
+# ------------------------------------------------------------------- commands
+cmd_list() {
+    filter="${1:-}"
+    for cat_dir in "$EXAMPLES_ROOT"/0[1-9]-*/; do
+        [ -d "$cat_dir" ] || continue
+        cat_name=$(basename "$cat_dir")
+        # sort -n: glob order is lexicographic, which puts 102 before 66.
+        for d in "$cat_dir"*/; do
+            [ -f "$d/config.yaml" ] || continue
+            name=$(basename "$d")
+            case "$name" in
+                *"$filter"*|"") ;;
+                *) case "$cat_name" in *"$filter"*) ;; *) continue ;; esac ;;
+            esac
+            printf '  %-4s %-45s (%s)\n' "${name%%-*}" "$name" "$cat_name"
+        done | sort -n -k1,1
+    done
+}
+
+cmd_show() {
+    [ $# -ge 1 ] || die "usage: orkeon-example show <id>"
+    dir=$(resolve "$1")
+    [ -f "$dir/README.md" ] && cat "$dir/README.md" && echo
+    echo "config: $dir/config.yaml"
+    echo "run it: orkeon-example run $1"
+}
+
+cmd_settings() {
+    if [ -n "${ORKEON_Llm__BaseUrl:-}${ORKEON_Llm__Model:-}${ORKEON_Llm__ApiKey:+set}" ]; then
+        echo "env overrides active (ORKEON_Llm__*) — these beat any settings file:"
+        [ -n "${ORKEON_Llm__BaseUrl:-}" ] && echo "  BaseUrl = $ORKEON_Llm__BaseUrl"
+        [ -n "${ORKEON_Llm__Model:-}" ]   && echo "  Model   = $ORKEON_Llm__Model"
+        [ -n "${ORKEON_Llm__ApiKey:-}" ]  && echo "  ApiKey  = (set)"
+    fi
+    f=$(effective_settings_file)
+    if [ -n "${ORKEON_LLM_PROFILE:-}" ]; then
+        echo "profile: $ORKEON_LLM_PROFILE ($f)"
+    else
+        echo "settings file: ${f:-none} (image default — set ORKEON_LLM_PROFILE to switch)"
+    fi
+    if [ -n "$f" ]; then
+        echo "  BaseUrl = $(json_value "$f" BaseUrl)"
+        echo "  Model   = $(json_value "$f" Model)"
+    fi
+    echo "available profiles ($PROFILES_DIR): $(profiles_list)"
+}
+
+cmd_run() {
+    [ $# -ge 1 ] || die "usage: orkeon-example run <id> [runner args...]"
+    dir=$(resolve "$1"); shift
+    cfg="$dir/config.yaml"
+    extra=$(settings_args "$@")
+    # Preflight only when the run will actually call the LLM and we know which
+    # settings apply — --validate/--list-tools never hit the endpoint, and a
+    # user-supplied --settings points at a file we don't parse.
+    skip_preflight=0
+    for a in "$@"; do
+        case "$a" in --settings|--settings=*|-s|--validate|--list-tools) skip_preflight=1 ;; esac
+    done
+    [ "$skip_preflight" = "1" ] || preflight
+    # --mount is a single multi-value flag: only inject ours when the user did
+    # not pass their own --mount (a second flag occurrence is a parse error).
+    # /output collects file results; the example's bundled data/ dir (when it
+    # has one) is what its config references as /data/... — without it the
+    # crew runs blind on documentless prompts.
+    mount_args="--mount /output:/output:rw"
+    [ -d "$dir/data" ] && mount_args="$mount_args $dir/data:/data:ro"
+    for a in "$@"; do
+        case "$a" in --mount|--mount=*|-m) mount_args="" ;; esac
+    done
+    echo "[orkeon-example] $(basename "$dir") — file output (if any) lands under /output;"
+    echo "[orkeon-example] start the container with -v \$PWD/out:/output to keep it."
+    # $extra/$mount_args are unquoted on purpose: word-split into flag + value.
+    case "$dir" in
+        */03-finance-trading/*) exec orkeon-trading --config "$cfg" $extra $mount_args "$@" ;;
+        *)                      exec orkeon run "$cfg" $extra $mount_args "$@" ;;
+    esac
+}
+
+usage() {
+    awk 'NR > 1 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0"
+    echo
+    echo "Categories:"
+    for cat_dir in "$EXAMPLES_ROOT"/0[1-9]-*/; do
+        [ -d "$cat_dir" ] || continue
+        n=$(find "$cat_dir" -maxdepth 2 -name config.yaml 2>/dev/null | grep -c . || true)
+        printf '  %-25s %s examples\n' "$(basename "$cat_dir")" "$n"
+    done
+}
+
+case "${1:-}" in
+    ""|help|--help|-h) usage ;;
+    list)              shift; cmd_list "$@" ;;
+    show)              shift; cmd_show "$@" ;;
+    settings)          cmd_settings ;;
+    run)               shift; cmd_run "$@" ;;
+    *)                 cmd_run "$@" ;;
+esac

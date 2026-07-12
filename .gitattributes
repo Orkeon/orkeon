@@ -3,6 +3,8 @@
 ###############################################################################
 * text=auto eol=lf
 *.sh text eol=lf
+# Scripts baked into the orkeon-runners image (some have no extension)
+docker/* text eol=lf
 ###############################################################################
 # Source files - force LF for cross-platform consistency
 ###############################################################################
