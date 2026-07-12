@@ -37,10 +37,14 @@ public sealed partial class FileSystemService : IFileSystemService
         // Collect base paths for redaction (normalize to full paths).
         // Use GetAllMountsInternal to include internal mounts (e.g. sandbox) in redaction,
         // so physical paths are never leaked regardless of mount visibility.
+        // 1:1 mounts (physical == virtual, e.g. the container convention /output:/output)
+        // are excluded: their "physical" path IS the public virtual name, and redacting it
+        // strips the only actionable hint from denial messages ("Available mounts: [REDACTED]").
         _basePaths = _registry.GetAllMountsInternal()
-            .Select(_ => GetBasePathFromRegistry(registry, _.VirtualPath))
-            .Where(p => p is not null)
-            .Cast<string>()
+            .Select(m => (m.VirtualPath, BasePath: GetBasePathFromRegistry(registry, m.VirtualPath)))
+            .Where(x => x.BasePath is not null
+                        && !string.Equals(x.BasePath, x.VirtualPath, StringComparison.Ordinal))
+            .Select(x => x.BasePath!)
             .Distinct(StringComparer.Ordinal)
             .ToList();
     }

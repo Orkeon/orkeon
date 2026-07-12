@@ -60,8 +60,13 @@ public sealed class FileSystemRegistry : IDisposable
             if (mount is null)
             {
                 var availableVirtualPaths = _mounts.Select(m => m.VirtualPath).ToList();
+                // Annotate rights so a tool-calling agent can self-correct on the next
+                // iteration (e.g. retry a write under the mount marked writable).
+                var described = _mounts.Select(m => m.DefaultRights.HasFlag(FileAccessRights.Write)
+                    ? $"{m.VirtualPath} (writable)"
+                    : $"{m.VirtualPath} (read-only)");
                 throw new FileAccessDeniedException(
-                    $"No mount found for virtual path '{virtualPath}'. Available mounts: {string.Join(", ", availableVirtualPaths)}",
+                    $"No mount found for virtual path '{virtualPath}'. Available mounts: {string.Join(", ", described)}",
                     virtualPath,
                     requiredRight,
                     availableVirtualPaths);
@@ -74,8 +79,13 @@ public sealed class FileSystemRegistry : IDisposable
             var effectiveRights = mount.ResolveRights(relativePath);
             if (!effectiveRights.HasFlag(requiredRight))
             {
+                var granting = _mounts
+                    .Where(m => m.DefaultRights.HasFlag(requiredRight))
+                    .Select(m => m.VirtualPath)
+                    .ToList();
                 throw new FileAccessDeniedException(
-                    $"Access denied for '{virtualPath}': required {requiredRight}, effective {effectiveRights}.",
+                    $"Access denied for '{virtualPath}': required {requiredRight}, effective {effectiveRights}. " +
+                    $"Mounts granting {requiredRight}: {(granting.Count > 0 ? string.Join(", ", granting) : "(none)")}.",
                     virtualPath,
                     requiredRight);
             }
