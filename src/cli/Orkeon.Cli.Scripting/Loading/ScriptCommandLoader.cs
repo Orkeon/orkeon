@@ -202,6 +202,19 @@ public sealed partial class ScriptCommandLoader
             return false;
         }
 
+        // Deliberate default-shadowing (e.g. a surface redefining /clear) is allowed but
+        // never silent — the scripted version will win name resolution in the runner.
+        // CA1873: the string.Join stays out of the disabled-logging path.
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            var shadowed = CommandDescriptorValidator.GetShadowedDefaults(d);
+            if (shadowed.Count > 0)
+            {
+                var shadowedNames = string.Join(", ", shadowed);
+                LogDefaultShadowed(d.Name, d.SourceVirtualPath, shadowedNames);
+            }
+        }
+
         // Phase 3: resolve the typed args schema from the captured JS value.
         try
         {
@@ -382,6 +395,10 @@ public sealed partial class ScriptCommandLoader
     [LoggerMessage(EventId = 8, Level = LogLevel.Warning,
         Message = "Failed to enumerate {Directory}; skipping.")]
     partial void LogEnumerateFailed(Exception ex, string directory);
+
+    [LoggerMessage(EventId = 9, Level = LogLevel.Information,
+        Message = "Scripted command '{Name}' ({VirtualPath}) shadows the built-in default(s): {Shadowed}. The scripted version wins name resolution.")]
+    partial void LogDefaultShadowed(string name, string virtualPath, string shadowed);
 }
 
 /// <summary>

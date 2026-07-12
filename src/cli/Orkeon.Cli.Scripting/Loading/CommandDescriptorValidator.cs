@@ -20,11 +20,22 @@ public static partial class CommandDescriptorValidator
     private static readonly Regex NameRegex = NameRegexFactory();
 
     /// <summary>
-    /// Names of commands provided by <c>DefaultCommandRegistry</c> (help/exit/clear). A
-    /// scripted command may not collide with these.
+    /// Hard-reserved names a scripted command may never take: <c>help</c> and its aliases are
+    /// the user's escape hatch for command discovery — a broken script that shadowed them
+    /// would leave the REPL unexplorable.
     /// </summary>
     public static readonly IReadOnlySet<string> ReservedNames =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "help", "exit", "clear", "?", "h", "quit", "q", "cls" };
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "help", "?", "h" };
+
+    /// <summary>
+    /// Default-command names a scripted command MAY deliberately shadow (the runner resolves
+    /// the scripted registry before the defaults — <c>InteractiveRunnerBase</c>: Specific ??
+    /// Defaults). Lets a command surface redefine e.g. <c>/clear</c> as "clear the
+    /// conversation" instead of the built-in screen-only clear. The loader logs each
+    /// shadowing so it stays visible and intentional.
+    /// </summary>
+    public static readonly IReadOnlySet<string> ShadowableDefaultNames =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "exit", "quit", "q", "clear", "cls" };
 
     /// <summary>Validates a single descriptor in isolation. Cross-descriptor checks live in <see cref="ValidateGlobalUniqueness"/>.</summary>
     public static ValidationResult Validate(CommandDescriptor descriptor)
@@ -42,7 +53,7 @@ public static partial class CommandDescriptorValidator
         if (ReservedNames.Contains(descriptor.Name))
             return ValidationResult.Fail(
                 ValidationFailure.NameIsBuiltin,
-                $"Command name '{descriptor.Name}' collides with a default command (help/exit/clear).");
+                $"Command name '{descriptor.Name}' collides with the reserved built-in 'help' surface (help/?/h).");
 
         var aliasVerdict = ValidateAliases(descriptor);
         if (!aliasVerdict.IsValid)
@@ -73,7 +84,7 @@ public static partial class CommandDescriptorValidator
             if (ReservedNames.Contains(alias))
                 return ValidationResult.Fail(
                     ValidationFailure.NameIsBuiltin,
-                    $"Alias '{alias}' of command '{descriptor.Name}' collides with a default command.");
+                    $"Alias '{alias}' of command '{descriptor.Name}' collides with the reserved built-in 'help' surface (help/?/h).");
         }
 
         // Aliases internal duplicates
@@ -107,6 +118,25 @@ public static partial class CommandDescriptorValidator
                 $"Command '{descriptor.Name}' description must be a single line.");
 
         return ValidationResult.Success;
+    }
+
+    /// <summary>
+    /// Names among the descriptor's name + aliases that shadow a default command
+    /// (<see cref="ShadowableDefaultNames"/>). Empty when nothing is shadowed. The loader
+    /// logs these so a deliberate override never passes silently.
+    /// </summary>
+    public static IReadOnlyList<string> GetShadowedDefaults(CommandDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        var shadowed = new List<string>();
+        if (ShadowableDefaultNames.Contains(descriptor.Name))
+            shadowed.Add(descriptor.Name);
+        foreach (var alias in descriptor.Aliases)
+        {
+            if (ShadowableDefaultNames.Contains(alias))
+                shadowed.Add(alias);
+        }
+        return shadowed;
     }
 
     /// <summary>

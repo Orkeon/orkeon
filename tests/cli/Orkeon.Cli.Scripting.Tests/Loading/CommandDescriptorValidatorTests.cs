@@ -50,14 +50,35 @@ public sealed class CommandDescriptorValidatorTests
     }
 
     [Theory]
+    // "?" is unreachable here — it already fails the name regex (InvalidName) before the
+    // reserved check; only regex-valid spellings of the help surface exercise NameIsBuiltin.
     [InlineData("help")]
-    [InlineData("exit")]
-    [InlineData("clear")]
+    [InlineData("h")]
     public void Validate_rejects_reserved_names(string name)
     {
         var result = CommandDescriptorValidator.Validate(MakeDescriptor(name: name));
         Assert.False(result.IsValid);
         Assert.Equal(ValidationFailure.NameIsBuiltin, result.Failure);
+    }
+
+    [Theory]
+    // Deliberate shadowing of the non-help defaults is allowed (the scripted registry wins
+    // resolution); the loader logs it. Only the help surface stays hard-reserved.
+    [InlineData("exit")]
+    [InlineData("clear")]
+    [InlineData("quit")]
+    [InlineData("cls")]
+    public void Validate_allows_shadowing_non_help_defaults(string name)
+    {
+        var result = CommandDescriptorValidator.Validate(MakeDescriptor(name: name));
+        Assert.True(result.IsValid);
+        Assert.Equal([name], CommandDescriptorValidator.GetShadowedDefaults(MakeDescriptor(name: name)));
+    }
+
+    [Fact]
+    public void GetShadowedDefaults_is_empty_for_ordinary_names()
+    {
+        Assert.Empty(CommandDescriptorValidator.GetShadowedDefaults(MakeDescriptor(name: "deploy")));
     }
 
     [Fact]
