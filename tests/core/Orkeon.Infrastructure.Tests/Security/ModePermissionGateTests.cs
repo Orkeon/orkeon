@@ -13,9 +13,13 @@ public class ModePermissionGateTests
     private static readonly Dictionary<string, object?> NoArgs = new();
 
     [Theory]
-    // default: ask on everything → denied when non-interactive
-    [InlineData("default", "file_read", false, PermissionAction.Deny)]
+    // default: reads auto-accepted (headless sessions must be able to observe);
+    // everything else asks → denied when non-interactive
+    [InlineData("default", "file_read", false, PermissionAction.Allow)]
+    [InlineData("default", "directory_read", false, PermissionAction.Allow)]
+    [InlineData("default", "codebase_map", false, PermissionAction.Allow)]
     [InlineData("default", "file_write", false, PermissionAction.Deny)]
+    [InlineData("default", "shell_command", false, PermissionAction.Deny)]
     // acceptEdits: reads AND file edits auto-accepted (SPEC §3.3); shell asks (→ deny non-interactive)
     [InlineData("acceptEdits", "file_read", false, PermissionAction.Allow)]
     [InlineData("acceptEdits", "codebase_search", false, PermissionAction.Allow)]
@@ -33,8 +37,9 @@ public class ModePermissionGateTests
     // unknown tool → classified as write (fail-closed)
     [InlineData("acceptEdits", "mystery_tool", false, PermissionAction.Deny)]
     [InlineData("bypassPermissions", "mystery_tool", false, PermissionAction.Allow)]
-    // unknown mode → treated as default
-    [InlineData("yolo", "file_read", false, PermissionAction.Deny)]
+    // unknown mode → treated as default (reads allowed, writes ask → deny headless)
+    [InlineData("yolo", "file_read", false, PermissionAction.Allow)]
+    [InlineData("yolo", "file_write", false, PermissionAction.Deny)]
     public async Task CheckAsync_maps_mode_and_tool_class_to_expected_action(
         string mode, string tool, bool interactive, PermissionAction expected)
     {
@@ -57,8 +62,9 @@ public class ModePermissionGateTests
     // ...and an Execute declaration overrides even a name the read table knows.
     [InlineData("plan", "file_read", ToolAccess.Execute, PermissionAction.Deny)]
     [InlineData("acceptEdits", "file_read", ToolAccess.Execute, PermissionAction.Deny)]
-    // default mode still asks (→ deny non-interactive) regardless of the declaration.
-    [InlineData("default", "my_custom_probe", ToolAccess.Read, PermissionAction.Deny)]
+    // default mode auto-accepts a declared Read; a declared Execute still asks (→ deny headless).
+    [InlineData("default", "my_custom_probe", ToolAccess.Read, PermissionAction.Allow)]
+    [InlineData("default", "my_custom_runner", ToolAccess.Execute, PermissionAction.Deny)]
     // Unspecified keeps the name-table fallback intact.
     [InlineData("plan", "file_read", ToolAccess.Unspecified, PermissionAction.Allow)]
     public async Task CheckAsync_honours_the_declared_access_class(
