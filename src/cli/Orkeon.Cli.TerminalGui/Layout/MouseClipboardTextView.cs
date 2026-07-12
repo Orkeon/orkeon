@@ -71,12 +71,9 @@ public sealed class MouseClipboardTextView : TextView
         if (mouse.Flags.HasFlag(MouseFlags.LeftButtonReleased)
             || mouse.Flags.HasFlag(MouseFlags.LeftButtonClicked))
         {
-            var selected = SelectedText;
-            var clipboard = Application.Clipboard;
-            if (clipboard is not null && !string.IsNullOrEmpty(selected))
-            {
-                clipboard.TrySetClipboardData(selected);
-            }
+            // TuiClipboard fans out to the OS clipboard, the hosting terminal (OSC 52 — reaches
+            // the host clipboard across Docker/SSH) and the in-process paste fallback.
+            TuiClipboard.Copy(SelectedText);
         }
 
         return handled;

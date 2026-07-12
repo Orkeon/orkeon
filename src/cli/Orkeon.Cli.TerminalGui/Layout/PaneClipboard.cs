@@ -19,9 +19,11 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 ///   "copy the focused selection" and "cancel the running command".</item>
 /// </list>
 /// </para>
-/// The clipboard target is the OS clipboard (<see cref="Application.Clipboard"/>: xclip on Linux,
-/// PowerShell on WSL, pbcopy on macOS, native API on Windows) — the same surface the mouse
-/// auto-copy path uses, so keyboard and mouse copy land in one place.
+/// The clipboard target is <see cref="TuiClipboard"/> — a hybrid that fans copies out to the OS
+/// clipboard when available (xclip/X11, PowerShell on WSL, pbcopy on macOS), to the hosting
+/// terminal via OSC 52 (reaches the host clipboard across Docker/SSH), and to an in-process
+/// cache used as the paste fallback. The mouse auto-copy path uses the same surface, so
+/// keyboard and mouse copy land in one place.
 /// </summary>
 internal static class PaneClipboard
 {
@@ -53,7 +55,7 @@ internal static class PaneClipboard
 
     /// <summary>
     /// Copies the current selection of a focused <see cref="TextField"/> / <see cref="TextView"/>
-    /// to the OS clipboard.
+    /// to <see cref="TuiClipboard"/> (OS clipboard + OSC 52 + in-process cache).
     /// <para>
     /// Returns <c>false</c> — without touching the clipboard — when there is no selection. Callers use
     /// this to fall back to other Ctrl+C semantics (the host cancels the running command instead).
@@ -72,14 +74,15 @@ internal static class PaneClipboard
         if (string.IsNullOrEmpty(selected))
             return false;
 
-        Application.Clipboard?.TrySetClipboardData(selected);
+        TuiClipboard.Copy(selected);
         return true;
     }
 
     /// <summary>
-    /// Pastes the OS clipboard contents into <paramref name="input"/> at the caret, preserving any
-    /// existing text. No-op (returns false) for a read-only input, an unavailable clipboard, or empty
-    /// clipboard contents.
+    /// Pastes the best available clipboard content (<see cref="TuiClipboard.TryGetText"/>: OS
+    /// clipboard, else the last in-TUI copy) into <paramref name="input"/> at the caret,
+    /// preserving any existing text. No-op (returns false) for a read-only input or when every
+    /// clipboard surface is empty.
     /// </summary>
     public static bool PasteInto(TextView input)
     {
@@ -87,10 +90,7 @@ internal static class PaneClipboard
         if (input.ReadOnly)
             return false;
 
-        var clipboard = Application.Clipboard;
-        if (clipboard is null)
-            return false;
-        if (!clipboard.TryGetClipboardData(out var text) || string.IsNullOrEmpty(text))
+        if (!TuiClipboard.TryGetText(out var text))
             return false;
 
         // TextView.InsertText honours the caret position and multi-line content (embedded "\n").

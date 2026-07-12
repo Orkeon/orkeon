@@ -34,6 +34,29 @@ the prompt.
 The active log level is shown in the Logs pane title in real time
 (`Logs — Level: Information`).
 
+## Copy / paste — including Docker and SSH
+
+Clipboard traffic goes through `Layout.TuiClipboard`, a hybrid built for hosts
+where Terminal.Gui's OS clipboard integration is unavailable (a Docker container
+or an SSH session has no xclip/X11 and no `powershell.exe`):
+
+- **Copy** (`Ctrl+C` on a selection, `Ctrl+A` select-all, or mouse drag-select —
+  auto-copies on release) fans out to the OS clipboard when supported, to the
+  **hosting terminal via OSC 52** (Windows Terminal, iTerm2, kitty… set the
+  *host* clipboard even across docker/ssh), and to an in-process cache.
+- **Paste** (`Ctrl+V` or right click) reads the OS clipboard when available,
+  else the in-process cache (so copy → paste round-trips inside the TUI).
+- **Paste from the host OS** when the container cannot read the host clipboard:
+  use the **terminal's own paste** — `Ctrl+Shift+V` (or the terminal's menu) —
+  which arrives as bracketed paste and is inserted natively by Terminal.Gui.
+- **Select with the terminal instead of the TUI**: hold **Shift** while
+  dragging — the terminal bypasses mouse tracking and its native
+  `Ctrl+Shift+C` copies without involving the app at all.
+
+> Windows Terminal note: plain `Ctrl+V` is a Windows Terminal *paste* binding —
+> it never reaches the app; the pasted text arrives as bracketed-paste input,
+> which lands in the focused field. Both routes end up doing the right thing.
+
 Color scheme: `Orkeon.Cli.TerminalGui.Layout.SchemeFactory` builds explicit
 white-on-black schemes. Without this Terminal.Gui paints gray-on-gray
 (unreadable until you select with the mouse).
