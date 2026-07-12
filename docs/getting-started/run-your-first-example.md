@@ -110,7 +110,7 @@ ones you will actually reach for:
 | `--settings <path>` | `-s` | Path to the `appsettings.json` holding LLM config. Optional — see [settings resolution](#how-settings-are-resolved). |
 | `--verbose <0-2>` | `-v` | Verbosity. `0` (default) = quiet, `1` = LLM & tool exchanges, `2` = full debug. |
 | `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro` or `rw`. Repeatable. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |
-| `--allow-external-mounts` | | Permit mounts (and a `--config` / `--llm-log-path`) located **outside** the current working directory. Without it, external paths are refused as a safety guard. |
+| `--allow-external-mounts` | | Permit mounts (and a `--config` / `--llm-log-path`) located **outside** the current working directory. Without it, external paths are refused as a safety guard. The env var `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` enables it for every invocation (the `orkeon-runners` container image bakes this in). |
 | `--var KEY=VALUE` | `-V` | Inject a variable into the crew input. Task descriptions that contain `{KEY}` are expanded to `VALUE`. Repeatable. |
 | `--initial-context <text>` | | A free-form context string passed to the crew input. |
 | `--llm-log` | | Capture every LLM HTTP exchange (request + response, headers + payload) as `.jsonl` under `./llm-logs`. |
@@ -129,7 +129,8 @@ bridge a host directory into that virtual space:
 
 The runner automatically mounts the config's own directory read-only, so the
 YAML and any sibling data files are always visible. Paths outside the working
-directory require `--allow-external-mounts`.
+directory require `--allow-external-mounts` (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`
+in the environment — the container image's default).
 
 ### How settings are resolved
 
@@ -157,7 +158,7 @@ Symptoms you may hit on a fresh machine, with the exact message and fix:
 | `dotnet: command not found` (in a script, though `dotnet` works interactively) | `dotnet` is a shell alias/function not visible to non-interactive shells | Put the SDK on `PATH` in `~/.zprofile` / `~/.profile`, e.g. `export PATH="$HOME/.dotnet:$PATH"`. |
 | `Connection refused (localhost:12434)` | The default profile targets Docker Model Runner, which isn't running | Start Docker Model Runner, or copy a cloud profile (e.g. `appsettings.deepseek.local.json`) and pass it with `--settings`. |
 | `401 (Unauthorized)` when restoring from GitHub Packages | `gh` token lacks the `read:packages` scope, or you used a fine-grained PAT | Use a **classic** PAT with `read:packages` (fine-grained tokens are not supported). Test: `curl -u <user>:$TOKEN https://nuget.pkg.github.com/Orkeon/orkeon.hosting/index.json` must return `200`. |
-| `ERROR: --allow-external-mounts is required ...` | Your `--config`, a `--mount`, or `--llm-log-path` points outside the working directory | Add `--allow-external-mounts`, or move the paths under the cwd. |
+| `ERROR: --allow-external-mounts is required ...` | Your `--config`, a `--mount`, or `--llm-log-path` points outside the working directory | Add `--allow-external-mounts` (or set `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), or move the paths under the cwd. |
 | `WARNING: No appsettings.json found. Using environment variables only.` | Settings resolution found nothing | Pass `--settings <path>` explicitly (see [resolution order](#how-settings-are-resolved)). |
 
 ## Next steps

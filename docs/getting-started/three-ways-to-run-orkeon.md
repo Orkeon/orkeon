@@ -111,9 +111,41 @@ The `ghcr.io/orkeon/orkeon-runners` image (built from `Dockerfile.runners`,
 published to GHCR) has the **`orkeon` CLI as its default entry point** and ships
 all the other runners **plus the bundled examples** — zero local .NET required.
 
+### The `/workspace` convention
+
+Mount your project directory at `/workspace` and reference everything from
+there. **One volume, no extra flags**:
+
+```bash
+docker run --rm -v "$PWD:/workspace" ghcr.io/orkeon/orkeon-runners \
+  run /workspace/crews/my-crew/config.yaml \
+  --settings /workspace/appsettings.local.json \
+  --mount /workspace/data:/data:ro /workspace/output:/output:rw
+```
+
+Three image conveniences make this Just Work:
+
+1. **No `--allow-external-mounts` needed** — the image bakes
+   `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`, because the container boundary already
+   sandboxes every reachable path (pass `-e ORKEON_ALLOW_EXTERNAL_MOUNTS=0` to
+   restore the guard).
+2. **Writes just work** — the entrypoint adopts the uid/gid that owns
+   `/workspace` before running, so the crew can write to your bind mount and the
+   files it creates belong to you on the host. No `--user`, no `chmod`. (It
+   still runs unprivileged: when nothing is mounted it falls back to the
+   image's non-root `app` user.)
+3. **`/workspace` always exists** — even with nothing mounted, so the same
+   commands work in CI.
+
 Volume mounts are how the host filesystem reaches the crew's
-[VFS](../architecture/vfs-compliance.md): map a host directory to a container
-path, then point the config/`--mount`/`--settings` at the container path.
+[VFS](../architecture/vfs-compliance.md): the Docker `-v` maps host → container,
+the `--mount` flag maps container → the crew's virtual paths (`/data`,
+`/output`, …).
+
+### Running a bundled example
+
+The examples ship inside the image under `/app/examples`, so only the output
+and settings need mounting:
 
 ```bash
 docker run --rm \
@@ -125,17 +157,12 @@ docker run --rm \
   --mount /output:/output:rw
 ```
 
-Volume-to-VFS mapping in that command:
-
-| Host | Container volume | Crew VFS mount |
-|---|---|---|
-| `$PWD/out` | `/output` | `--mount /output:/output:rw` → virtual `/output` |
-| `$PWD/appsettings.local.json` | `/app/appsettings.local.json` | passed via `--settings` |
+### Other runners and the interactive shell
 
 The entry point **is** `orkeon`, so everything after the image name is CLI
 arguments (`run <config> …`). To launch a different runner, set the
 `ORKEON_RUNNER` env var — `trading`, `repl`, `interactive`, `claim-verify`,
-`spec-forge`, or `tui-keytest`:
+`spec-forge`, `tui-keytest`, or `shell`:
 
 ```bash
 docker run --rm -e ORKEON_RUNNER=trading \
@@ -143,6 +170,18 @@ docker run --rm -e ORKEON_RUNNER=trading \
   ghcr.io/orkeon/orkeon-runners \
   --config examples/03-finance-trading/31-algo-trading/config.yaml \
   --settings /app/appsettings.local.json
+```
+
+`ORKEON_RUNNER=shell` opens an interactive **zsh** inside the image (starting
+in `/workspace`) — handy for poking at the bundled examples or debugging mounts.
+A welcome banner lists the available commands and paths (suppress it with
+`-e ORKEON_NO_BANNER=1`), and every runner is on the PATH under the same names
+as the release archives (`orkeon`, `orkeon-trading`, `orkeon-repl`, …):
+
+```bash
+docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
+  ghcr.io/orkeon/orkeon-runners
+# orkeon /workspace % orkeon run /app/examples/01-enterprise/01-research-assistant/config.yaml --validate
 ```
 
 ---
