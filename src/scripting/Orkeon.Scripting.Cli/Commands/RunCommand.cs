@@ -33,8 +33,16 @@ internal sealed class RunCommandOptions
 
         /// <summary>Allow mounts whose base path is outside the cwd.</summary>
         [Option("allow-external-mounts", Required = false, Default = false,
-            HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist.")]
+            HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist. " +
+                       "Can also be enabled for every invocation via ORKEON_ALLOW_EXTERNAL_MOUNTS=1.")]
         public bool AllowExternalMounts { get; set; }
+
+        /// <summary>
+        /// Effective opt-in: the <c>--allow-external-mounts</c> flag OR the
+        /// <c>ORKEON_ALLOW_EXTERNAL_MOUNTS</c> environment variable (see <see cref="RunnerEnvironment"/>).
+        /// </summary>
+        internal bool EffectiveAllowExternalMounts
+            => AllowExternalMounts || RunnerEnvironment.AllowExternalMounts;
 
         /// <summary>Verbosity level 0-2 (aligned with YAML runner).</summary>
         [Option('v', "verbose", Required = false, Default = 0,
@@ -333,11 +341,12 @@ internal static partial class RunCommand
         // explicit opt-in (parity with the YAML runner's safety stance for writes).
         var cwd = Directory.GetCurrentDirectory();
         var llmLogOutsideCwd = llmLogPath != null && !llmLogPath.StartsWith(cwd, StringComparison.Ordinal);
-        if (llmLogOutsideCwd && !options.AllowExternalMounts)
+        if (llmLogOutsideCwd && !options.EffectiveAllowExternalMounts)
         {
             await Console.Error.WriteLineAsync(
                 "ERROR: --allow-external-mounts is required when --llm-log-path "
-                + "points outside the current working directory.").ConfigureAwait(false);
+                + "points outside the current working directory "
+                + "(or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1).").ConfigureAwait(false);
             await Console.Error.WriteLineAsync($"       llmLogPath  : {llmLogPath}").ConfigureAwait(false);
             await Console.Error.WriteLineAsync($"       cwd         : {cwd}").ConfigureAwait(false);
             return Program.ExitScriptError;
@@ -351,7 +360,7 @@ internal static partial class RunCommand
             cliMounts.Insert(1, $"{llmLogPath}:{llmLogPath}:rw");
         // The script directory always needs to be on the security whitelist so the VFS
         // can resolve /script/* even when the user didn't pass --allow-external-mounts.
-        var implicitlyAllow = options.AllowExternalMounts
+        var implicitlyAllow = options.EffectiveAllowExternalMounts
             || !scriptDir.StartsWith(cwd, StringComparison.Ordinal);
 
         var verbosity = Math.Clamp(options.Verbose, 0, 2);

@@ -33,8 +33,17 @@ public abstract class RunnerOptionsBase
 
     /// <summary>Allow mounts whose base path is outside the cwd.</summary>
     [Option("allow-external-mounts", Required = false, Default = false,
-        HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist.")]
+        HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist. " +
+                   "Can also be enabled for every invocation via ORKEON_ALLOW_EXTERNAL_MOUNTS=1.")]
     public bool AllowExternalMounts { get; set; }
+
+    /// <summary>
+    /// Effective opt-in for external mounts: the <c>--allow-external-mounts</c> flag OR the
+    /// <c>ORKEON_ALLOW_EXTERNAL_MOUNTS</c> environment variable (see <see cref="RunnerEnvironment"/>).
+    /// Read sites must use this property, not <see cref="AllowExternalMounts"/>.
+    /// </summary>
+    public bool EffectiveAllowExternalMounts
+        => AllowExternalMounts || RunnerEnvironment.AllowExternalMounts;
 
     /// <summary>Verbosity level 0-2.</summary>
     [Option('v', "verbose", Required = false, Default = 0,

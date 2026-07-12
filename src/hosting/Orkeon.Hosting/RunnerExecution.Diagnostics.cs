@@ -113,7 +113,7 @@ public static partial class RunnerExecution
 
             using var host = RunnerHost.Build(
                 settingsPath, cliMounts,
-                allowExternalMounts: opts.AllowExternalMounts,
+                allowExternalMounts: opts.EffectiveAllowExternalMounts,
                 configureLogging: (_, b) => ConfigureStderrOnlyLogging(b),
                 configureServices: (ctx, services) =>
                 {

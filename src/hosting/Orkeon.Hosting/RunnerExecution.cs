@@ -89,14 +89,14 @@ public static partial class RunnerExecution
         var cwd = Directory.GetCurrentDirectory();
         var configOutsideCwd = !configDir.StartsWith(cwd, StringComparison.Ordinal);
         var llmLogOutsideCwd = llmLogPath != null && !llmLogPath.StartsWith(cwd, StringComparison.Ordinal);
-        if ((configOutsideCwd || llmLogOutsideCwd) && !opts.AllowExternalMounts)
+        if ((configOutsideCwd || llmLogOutsideCwd) && !opts.EffectiveAllowExternalMounts)
         {
             // Conservative: external paths require opt-in. Avoids silently widening
             // the VFS surface for users who expect workspace-relative execution.
             Console.Error.WriteLine(
                 "ERROR: --allow-external-mounts is required when reading the crew config "
                 + "or writing LLM logs outside the current working directory. Add "
-                + "--allow-external-mounts to proceed.");
+                + "--allow-external-mounts (or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1) to proceed.");
             if (configOutsideCwd)
                 Console.Error.WriteLine($"       configDir   : {configDir}");
             if (llmLogOutsideCwd)
@@ -119,7 +119,7 @@ public static partial class RunnerExecution
 
         var host = RunnerHost.Build(
             settingsPath, cliMounts,
-            allowExternalMounts: opts.AllowExternalMounts,
+            allowExternalMounts: opts.EffectiveAllowExternalMounts,
             llmLogPath: llmLogPath,
             configureLogging: verbosity > 0
                 ? (_, b) => ConfigureVerboseLogging(b, verbosity)
