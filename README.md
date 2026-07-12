@@ -1,8 +1,8 @@
 > 🇫🇷 [Version française](README.fr.md)
 
-# Orkeon
+# <img src="docs/assets/orkeon-mascot.png" alt="Orkeon mascot — a curious chameleon" width="96" align="absmiddle"> Orkeon
 
-**Build and orchestrate AI agent teams in .NET**
+**Build and orchestrate AI agent teams — describe them in declarative YAML, programmatic TypeScript (`.ork.ts`), or pure C#; a single full-.NET stack executes them all**
 
 [![NuGet](https://img.shields.io/nuget/v/Orkeon.Domain.svg)](https://www.nuget.org/packages/Orkeon.Domain/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
@@ -15,19 +15,68 @@
 
 Orkeon is a C# framework for creating and managing collaborative AI agent teams that tackle complex, multi-step tasks using large language models. Agents are organized into crews, each with a defined role, goal, and toolset, and work together through one of six orchestration strategies (sequential, hierarchical, parallel, consensual, graph, or autonomous). Built on Clean Architecture principles, Orkeon provides a fully typed, extensible foundation for production-grade agentic workflows in .NET.
 
-> **Getting started:** the fastest way to see a crew run is
-> [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) —
-> from source, a release binary, or a container — or jump straight to
-> [Run your first example](docs/getting-started/run-your-first-example.md).
-
 ---
 
-## Quick Start
+## Quick Start — one crew, three ways
 
-> For the full step-by-step guide, see [Getting Started — Overview](docs/getting-started/overview.md).
+The same crew, written at three levels of abstraction. Pick the one that fits — or mix them: they all run on the same .NET execution engine.
+
+**1. Declarative YAML** — no code, no build: edit the file, run it again (`crew.yaml`):
+
+```yaml
+name: "research-crew"
+goal: "Research AI trends for 2026"
+process: "sequential"
+
+agents:
+  researcher:
+    role: "Researcher"
+    goal: "Find and summarize information about AI trends"
+    verbose: true
+
+tasks:
+  research:
+    description: "Search for the latest AI developments and trends"
+    expectedOutput: "A comprehensive summary report"
+    agent: "researcher"
+```
+
+```bash
+orkeon run crew.yaml
+```
+
+**2. Programmatic TypeScript** — scripting ergonomics (agent bodies, hooks, dynamic spawning, FSM/graph literals), .NET runtime underneath — and still no rebuild: scripts are transpiled on the fly (`crew.ork.ts`):
+
+```typescript
+/// <reference orkeon-script="1.0" />
+
+const researcher = agentBuilder()
+    .name("Researcher").role("Researcher")
+    .goal("Find and summarize information about AI trends")
+    .build();
+
+const crew = crewBuilder()
+    .name("research-crew")
+    .goal("Research AI trends for 2026")
+    .withAgent(researcher)
+    .withTask({
+        description: "Search for the latest AI developments and trends",
+        expectedOutput: "A comprehensive summary report",
+    })
+    .build();
+
+await crew.run();
+```
+
+```bash
+orkeon run crew.ork.ts
+```
+
+**3. Pure C#** — the builder API embedded in your own application, strongly typed end-to-end:
 
 ```csharp
-using Orkeon.Domain.Builders;
+using Orkeon.Domain.Agent;
+using Orkeon.Domain.Crew;
 
 var agent = new AgentBuilder()
     .Role("Researcher")
@@ -43,46 +92,26 @@ var crew = new CrewBuilder()
         .Description("Search for the latest AI developments and trends")
         .ExpectedOutput("A comprehensive summary report"))
     .Build();
+
+// wire the host and kick it off — see docs/getting-started/bootstrap.md
 ```
+
+**No API key?** Run everything on a model on your own machine (Docker Model
+Runner, Ollama, or a model embedded in the container image) — see the
+[Local models guide](docs/guides/local-models.md). Full walkthroughs:
+[Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) ·
+[Run your first example](docs/getting-started/run-your-first-example.md).
 
 ---
 
 ## Installation
 
-```bash
-dotnet add package Orkeon.Domain --version 0.9.0-beta
-dotnet add package Orkeon.Application --version 0.9.0-beta
-dotnet add package Orkeon.Infrastructure --version 0.9.0-beta
-```
-
-### Install the CLI from release archives
-
-Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) ships one archive
-per platform (`linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` as `.tar.gz`;
-`win-x64` as `.zip`) containing every CLI executable: `orkeon`, `orkeon-repl`,
-and the example runners (`orkeon-examples`, `orkeon-trading`, `orkeon-interactive`,
-`orkeon-tui-keytest`, `orkeon-claim-verify`, `orkeon-spec-forge`).
-
-Prerequisite: the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
-(binaries are framework-dependent).
-
-```bash
-# Linux / macOS
-tar -xzf orkeon-<version>-<rid>.tar.gz
-cd orkeon-<version>-<rid>
-./install.sh            # installs to ~/.local; --prefix /usr/local for system-wide
-```
-
-```powershell
-# Windows (PowerShell)
-Expand-Archive orkeon-<version>-win-x64.zip
-cd orkeon-<version>-win-x64
-.\install.ps1           # installs to %LOCALAPPDATA%\Programs\Orkeon, updates user PATH
-```
-
-Archives are produced by `scripts/package-installers.sh` (any OS target can be
-built from Linux/macOS) and attached automatically to releases by the
-`release.yml` workflow on `v*` tags.
+| You want to… | Do this | Details |
+|---|---|---|
+| **Run crews with zero install** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — interactive shell, 105 bundled examples (`orkeon-example run 1`), local-model ready | [Container guide](docs/getting-started/three-ways-to-run-orkeon.md#3-container) |
+| **Install the `orkeon` CLI** | Grab the archive for your platform from the [releases](https://github.com/Orkeon/orkeon/releases) (`linux-x64/arm64`, `osx-x64/arm64`, `win-x64`), then `./install.sh` / `.\install.ps1`. Ships `orkeon`, `orkeon-repl`, and the example runners. Needs the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0) | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
+| **Embed Orkeon in your app** | `dotnet add package Orkeon.Domain` (+ `Orkeon.Application`, `Orkeon.Infrastructure`, and opt-in packs as needed) | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
+| **Hack on the framework** | `git clone` + `dotnet build Orkeon.sln` | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
 
 ---
 
@@ -91,7 +120,7 @@ built from Linux/macOS) and attached automatically to releases by the
 | Capability | Details |
 |---|---|
 | **70+ built-in tools** | File system, web scraping (AngleSharp), HTTP APIs, JSON/CSV/XML/PDF, databases, secure code execution, RAG and semantic search, EventHub messaging, RaggableTree code analysis, delegation/collaboration — see the [tool inventory](docs/tools/inventory.md) |
-| **11 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Groq, Together AI, Qwen, DeepSeek, Kimi (Moonshot), HuggingFace, and Mistral AI — all HTTP-based, extending `HttpLlmProviderBase` |
+| **12 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Groq, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, and Z.AI (GLM) — all HTTP-based, extending `HttpLlmProviderBase`; local models via Docker Model Runner, Ollama, or embedded llama.cpp — see the [local models guide](docs/guides/local-models.md) |
 | **Vision / multimodal** | Image content flows end-to-end (`MultiModalContent` → Anthropic image blocks / OpenAI `image_url`) with a VFS-backed loader; opt-in via `AddOrkeonMultiModal(...)` — see the [multimodal guide](docs/guides/multimodal.md) |
 | **6 memory providers** | Redis (vector search), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (remote REST server) — all composable with the AES-256-GCM at-rest encryption decorator |
 | **6 orchestration strategies** | Sequential, Hierarchical, Parallel, Consensual (Majority / SuperMajority / Unanimity voting strategies), Graph (LangGraph-style), Autonomous (multi-dimensional execution budget) — see the [process-type guide](docs/orchestration/process-types.md) |
@@ -139,53 +168,45 @@ Orkeon follows Clean Architecture with three concentric layers:
 
 Around the core, dedicated packages cover hosting (`Orkeon.Hosting`), plugins (`Orkeon.Plugins`), Roslyn source generators (`Orkeon.Generators`), the VFS-compliance analyzer (`Orkeon.Compliance.Vfs`), the TypeScript-syntax scripting DSL (`Orkeon.Scripting` plus the `orkeon` CLI tool), tool packs (`Orkeon.Tools.*`), and the RaggableTree semantic code-analysis engine (`Orkeon.Analysis`).
 
-For a detailed walkthrough, see the [documentation index](docs/INDEX.md).
+---
+
+## Documentation
+
+| You are looking for… | Go to |
+|---|---|
+| **First run, step by step** | [Getting-started overview](docs/getting-started/overview.md) · [Run your first example](docs/getting-started/run-your-first-example.md) |
+| **The three ways to run Orkeon** (source / binary / container) | [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) |
+| **Local models** (Docker Model Runner, Ollama, embedded, 128K contexts) | [Local models guide](docs/guides/local-models.md) |
+| **The 105 runnable examples** (9 themed categories + `orkeon-example`) | [Examples](examples/README.md) · [Catalog](docs/reference/examples-catalog.md) |
+| **Writing crews**: YAML vs builders, host wiring, execution | [YAML & builders](docs/getting-started/yaml-and-builders.md) · [Bootstrap and execution](docs/getting-started/bootstrap.md) |
+| **Orchestration modes** (incl. FSM and graph deep dives) | [Process types](docs/orchestration/process-types.md) · [FSM](docs/orchestration/fsm.md) · [Graph](docs/orchestration/graph.md) |
+| **Writing your own tools** | [New tool pattern](docs/tools/new-tool-pattern.md) · [Tool inventory](docs/tools/inventory.md) |
+| **Architecture deep dives** (plugins, scripting, VFS, security, RaggableTree) | [Architecture docs](docs/architecture/) · [ADRs](docs/adr/) |
+| **Everything else** | [Documentation index](docs/INDEX.md) *(also available [in French](docs/fr/INDEX.md))* |
 
 ---
 
 ## Why Orkeon?
 
-| Feature | Orkeon | Semantic Kernel |
-|---|---|---|
-| Language | C# / .NET 10 | C# / .NET 8+ |
-| Multi-Agent | Native crews | Plugins |
-| Tools | 70+ built-in | Plugin-based |
-| Architecture | Clean Architecture | Kernel pattern |
-| LLM Providers | 11 built-in | 3+ via connectors |
+- **Three authoring surfaces, one engine** — the same crew can be a YAML file an analyst edits, a TypeScript script a developer iterates on (both run with zero rebuild), or C# embedded in your product. No rewrite when you graduate from one to the next.
+- **Orchestration beyond pipelines** — six strategies, including LangGraph-style state graphs with conditional edges and a fully autonomous mode where agents delegate, spawn, and communicate under a multi-dimensional execution budget (tool calls, depth, wall time, tokens, spawns).
+- **Batteries included** — 70+ tools, 12 LLM providers, 6 memory stores, vision, RAG, code analysis: usable out of the box, replaceable through Clean Architecture ports.
+- **Local-first** — every example runs against a model on your own machine (Docker Model Runner, Ollama, or llama.cpp embedded in the container image). No API key required to evaluate it.
+- **Production posture** — a rights-audited virtual filesystem sandboxes every file access; circuit breakers stop runaway agents; execution state checkpoints and resumes; memory encrypts at rest; DLP and rate limiting are one `AddOrkeonXxx()` away.
+- **Typed all the way down** — no `Dictionary<string, object>` plumbing; source generators keep the typed surface boilerplate-free.
 
 ---
 
 ## Project Status
 
-Orkeon is in **0.9.0-beta** on .NET 10, working toward V1. Recent additions include the plugin system, the `Orkeon.Hosting` bootstrap package, Roslyn source generators, execution-state persistence with resume, Consensual voting strategies, key rotation, and native vision support.
+Orkeon is **0.9.1-beta** on .NET 10, driving toward V1. Recent milestones: the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; LLM exchange logging; forced JSON response formats; and a 12th LLM provider (Z.AI GLM).
 
 Every pull request is gated in CI:
 
-- merged line coverage must stay at or above **70 %** (scheduled to rise to 75 %)
-- a **blocking SonarQube quality gate** ("Orkeon Transitional") with a documented hardening trajectory — see the [quality-gate policy](docs/guides/quality-gate.md)
+- merged line coverage must stay at or above **70 %** (scheduled to rise to 75 %) — currently measured at **82 %** overall
+- a **blocking SonarQube quality gate** ("Orkeon Transitional") with a documented hardening trajectory — see the [quality-gate policy](docs/guides/quality-gate.md). Latest analysis (July 2026): gate green, **0 vulnerabilities, 0 code smells**, 2.2 % duplication across ~114 k lines of code
 
 Known constraints are tracked in [docs/reference/limitations.md](docs/reference/limitations.md).
-
----
-
-## Docker
-
-Run Orkeon with Docker and Ollama (free local LLM):
-
-```bash
-# Using Ollama (free, local)
-docker compose up
-
-# Using OpenAI
-OPENAI_API_KEY=your-key docker compose up
-```
-
-Build the image manually:
-
-```bash
-docker build -t orkeon .
-docker run -e OPENAI_API_KEY=your-key orkeon
-```
 
 ---
 
