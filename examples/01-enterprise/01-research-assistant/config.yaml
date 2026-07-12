@@ -70,7 +70,7 @@ tasks:
     humanInput: false
 
   write_synthesis:
-    description: "Compile all research findings and document analyses into a comprehensive synthesis report. Include an executive summary, thematic sections, and a bibliography."
+    description: "Compile all research findings and document analyses into a comprehensive synthesis report. Include an executive summary, thematic sections, and a bibliography. Save the report with file_write to /output/synthesis_report.md — /output is the only writable location."
     expectedOutput: "A Markdown synthesis report with executive summary, 3-5 thematic sections, key findings, and a complete bibliography with citations"
     agent: "writer"
     dependencies:

@@ -2,6 +2,43 @@
 
 105 use cases demonstrating Orkeon's capabilities, from enterprise classics to experimental AI agent orchestrations.
 
+## Run in Docker (simplest path)
+
+All 105 examples ship inside the `ghcr.io/orkeon/orkeon-runners` image with an
+`orkeon-example` helper — no .NET, no checkout:
+
+```bash
+# one-time, on the host: pull the default model (Docker Desktop → Model Runner)
+docker model pull ai/granite-4.0-h-tiny
+
+docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
+  ghcr.io/orkeon/orkeon-runners
+# then, inside the shell:
+orkeon-example list            # browse the examples
+orkeon-example run 1           # run #1 — trading examples dispatch automatically
+orkeon-example show 42         # read an example's README first
+orkeon run /app/examples/scripting/01-hello-world.ork.ts   # no LLM needed at all
+```
+
+Without the pulled model, `orkeon-example run` stops before the crew with the
+exact `docker model pull` command to fix it (`docker model list` shows what you
+have; run a different one with `-e ORKEON_Llm__Model=<name>`). File output
+lands under `/output` — the `-v $PWD/out:/output` above keeps it on the host.
+LLM settings default to **Docker Model Runner on your host**; switch with
+`-e ORKEON_LLM_PROFILE=<name>`:
+
+| `ORKEON_LLM_PROFILE` | Endpoint | Needs |
+|---|---|---|
+| *(unset)* = `host-dmr` | Docker Model Runner on the host | `docker model pull …` |
+| `host-ollama` | Ollama on the host (`:11434`) | `ollama pull llama3.2` |
+| `openai` | OpenAI cloud | `-e ORKEON_Llm__ApiKey=sk-…` |
+| `local` | model embedded in the image | a `--target local-llm` build |
+
+Full container guide — including baking a Granite/Gemma model into your own
+image variant: [Three ways to run Orkeon §3](../docs/getting-started/three-ways-to-run-orkeon.md#3-container).
+Everything about local models (DMR, Ollama, context sizes, troubleshooting):
+[Local models guide](../docs/guides/local-models.md).
+
 ## Runner Architecture
 
 Examples are **data-driven**: each example is a directory containing a `config.yaml` (crew definition). The **`orkeon` CLI** loads the configuration and executes the crew.

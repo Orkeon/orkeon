@@ -21,6 +21,18 @@ The provider is **auto-detected from the `Llm.BaseUrl` host** — there is no `P
 key. `api.deepseek.com` → DeepSeek, `api.z.ai` → Z.AI GLM, `api.openai.com` → OpenAI,
 `.../engines/...` (Docker Model Runner) → OpenAI-compatible, etc.
 
+## Inside the `orkeon-runners` container image
+
+The image bakes a **container-appropriate default** over its copy of
+`appsettings.json`: the BaseUrl targets `host.docker.internal:12434` (Docker
+Model Runner on the host) instead of `localhost`, which is unreachable from a
+container. This file on disk is unchanged — it stays correct for source runs.
+Ready-made in-container profiles also ship at `/etc/orkeon/profiles`
+(`host-dmr`, `host-ollama`, `openai`, plus `local` in the embedded-model
+variant); select one with `-e ORKEON_LLM_PROFILE=<name>` and see
+[Three ways to run Orkeon §3](../../docs/getting-started/three-ways-to-run-orkeon.md#3-container)
+and the [Local models guide](../../docs/guides/local-models.md).
+
 ## Using a profile
 
 1. Copy the template, dropping the `.example` suffix:

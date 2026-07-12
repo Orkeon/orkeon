@@ -2,7 +2,7 @@
   "_comment": "Settings template — Docker Model Runner (local, no API key). Copy this file WITHOUT the .example suffix (-> appsettings.docker-model-runner.local.json). No key needed: Docker Model Runner exposes an OpenAI-compatible endpoint on localhost:12434. From a container, swap localhost for host.docker.internal. Pull a model first, e.g. `docker model pull ai/granite-4.0-h-tiny`.",
   "_models": [
     "ai/granite-4.0-h-tiny — small, fast, good for smoke-testing examples",
-    "ai/gemma4:128K        — larger context window"
+    "ai/gemma4             — larger model (catalog tag; `docker model list` shows what you have)"
   ],
   "Llm": {
     "Model": "ai/granite-4.0-h-tiny",
