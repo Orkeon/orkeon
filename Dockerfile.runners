@@ -106,9 +106,9 @@
 #       -v "$PWD/data:/data:ro" -v "$PWD/out:/output" \
 #       ghcr.io/orkeon/orkeon-runners \
 #       run examples/.../config.yaml \
-#       --mount /data:/data:ro --mount /output:/output:rw
+#       --mount /data:/data:ro /output:/output:rw
 #   Rights are ro (read-only) | rw (read-write) | rwnd (read-write, no delete);
-#   repeat --mount for several mounts.
+#   for several mounts pass all specs to a single --mount, space-separated.
 
 # ---- Stage 1: build — publish every app (framework-dependent) ----------------
 # global.json pins SDK 10.0.300 (rollForward latestFeature); the GA sdk:10.0 tag
