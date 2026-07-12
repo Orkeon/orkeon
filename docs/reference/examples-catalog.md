@@ -57,8 +57,8 @@ Each example includes:
 Loading an example:
 
 ```csharp
-var crew = await YamlCrewDefinitionLoader.LoadFromDirectoryAsync(
-    "examples/03-Finance-Trading/portfolio-optimizer/"
-);
-var result = await orchestrator.KickoffAsync(crew, cancellationToken: ct);
+// crewFactory : ICrewFactory, orchestrator : ICrewOrchestrationService (via DI)
+var crew = await crewFactory.CreateFromDirectoryAsync(
+    "examples/03-Finance-Trading/portfolio-optimizer/", ct);
+var result = await orchestrator.KickoffAsync(crew.Id, CrewInput.Empty(), ct);
 ```

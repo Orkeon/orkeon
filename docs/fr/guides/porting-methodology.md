@@ -253,30 +253,32 @@ var host = Host.CreateDefaultBuilder(args)
 var crewFactory = host.Services.GetRequiredService<ICrewFactory>();
 var crew = await crewFactory.CreateFromFileAsync("config.yaml");
 
-// Préparer l'input avec des variables typées
-var variables = CrewVariables.Empty
-    .Set("date", DateTime.Today.ToString("yyyy-MM-dd"))
-    .Set("environment", "production");
+// Préparer l'input avec des variables d'exécution
+var variables = new Dictionary<string, object>
+{
+    ["date"] = DateTime.Today.ToString("yyyy-MM-dd"),
+    ["environment"] = "production"
+};
 
 var input = new CrewInput(
-    initialContext: "Contexte initial pour l'exécution",
-    variables: variables);
+    "Contexte initial pour l'exécution",
+    variables);
 
 // Exécuter et récupérer les résultats
 var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 var output = await orchestrator.KickoffAsync(crew.Id, input);
 
 // Exploiter les résultats
-if (output.Success)
+var failedTasks = output.TaskOutputs.Where(t => !t.Success).ToList();
+if (failedTasks.Count == 0)
 {
     // Succès — traiter le résultat final
-    Console.WriteLine(output.Output);
+    Console.WriteLine(output.FinalOutput);
 }
 else
 {
     // Échec — identifier les tasks en erreur
-    Console.Error.WriteLine($"Crew failed: {output.Error}");
-    foreach (var failed in output.TaskOutputs.Where(t => !t.Success))
+    foreach (var failed in failedTasks)
         Console.Error.WriteLine($"Task {failed.TaskId} failed: {failed.RawOutput}");
 }
 ```

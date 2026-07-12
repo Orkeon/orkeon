@@ -228,7 +228,7 @@ Console.WriteLine($"Total transitions: {result.TotalTransitions}");
 
 ```csharp
 using Orkeon.Infrastructure.Configuration;
-using Orkeon.Domain.Shared.ValueObjects;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 
 // Charger la config YAML
 var loader = serviceProvider.GetRequiredService<ICrewDefinitionLoader>();

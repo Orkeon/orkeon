@@ -245,7 +245,7 @@ var crew = new CrewBuilder()
 
 ## Inter-agent communication
 
-Communication between agents is handled by the protocol system defined in `CommunicationProtocol` (`Orkeon.Domain.Shared.ValueObjects`).
+Communication between agents is handled by the protocol system defined in `CommunicationProtocol` (`Orkeon.Domain.SharedKernel.ValueObjects`).
 
 Four protocol types are available via `ProtocolType`:
 

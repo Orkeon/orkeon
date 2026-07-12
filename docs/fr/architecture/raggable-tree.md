@@ -23,11 +23,13 @@ Les tools exposés (`codebase_map`, `symbol_detail`, `flow_trace`, `impact_analy
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
+using Orkeon.Domain.FileSystem;
 
-var builder = new RaggableTreeBuilder(new TypeScriptAdapter());
+// fileSystem : IFileSystemService (VFS) avec le projet monté sur /src
+var builder = new RaggableTreeBuilder(new TypeScriptAdapter(), fileSystem);
 var result = await builder.BuildAsync(
-    "/path/to/project",
-    new IndexCodebaseRequest { RootPath = "/path/to/project" },
+    "/src",
+    new IndexCodebaseRequest { RootPath = "/src" },
     CancellationToken.None);
 
 Console.WriteLine($"{result.Tree.Nodes.Count} nodes, {result.Tree.Edges.Count} edges, indexId={result.IndexId}");

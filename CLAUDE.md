@@ -291,7 +291,8 @@ Implement `IBaseTool` interface. Tools should:
 New code should prefer the Fluent Builder API for creating Agents, Tasks, and Crews:
 
 ```csharp
-using Orkeon.Domain.Builders;
+using Orkeon.Domain.Agent;   // AgentBuilder
+using Orkeon.Domain.Crew;    // CrewBuilder
 
 var agent = new AgentBuilder()
     .Role("Analyst")

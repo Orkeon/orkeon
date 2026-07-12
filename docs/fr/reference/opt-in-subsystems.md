@@ -263,7 +263,7 @@ partiel (signalé au cas par cas ci-dessous).
   ```csharp
   var runner = provider.GetRequiredService<ICrewKickoffHookRunner>();
   await runner.RunBeforeKickoffAsync(crew, ct);
-  var result = await crewService.KickoffAsync(crew, ct);
+  var result = await orchestrator.KickoffAsync(crew.Id, input, ct);
   await runner.RunAfterKickoffAsync(crew, result, ct);
   ```
 

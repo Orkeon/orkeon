@@ -4,7 +4,7 @@
 
 ## Domain Events
 
-Le framework implémente un système d'événements domaine complet. `DomainEvent` (`Orkeon.Domain.Shared.Events`) est la classe de base abstraite (record) avec `Id`, `OccurredAt` et `Version`.
+Le framework implémente un système d'événements domaine complet. `DomainEvent` (`Orkeon.Domain.SharedKernel.Events`) est la classe de base abstraite (record) avec `Id`, `OccurredAt` et `Version`.
 
 Les agrégats émettent des événements via `RaiseDomainEvent()` (hérité de `AggregateRoot<T>`). Le dispatch est assuré par `DomainEventDispatcher` (`Orkeon.Infrastructure.DomainEvents`) qui résout les `IDomainEventHandler<TEvent>` enregistrés via DI.
 

@@ -366,20 +366,17 @@ using Orkeon.Infrastructure.DependencyInjection;
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
-        // Enregistrer les services Orkeon
+        // Enregistrer les services Orkeon.
+        // Pour un provider LLM configuré (clé API, modèle), enregistrez un ILlmProvider
+        // AVANT AddOrkeonInfrastructure() — ses TryAdd* respectent l'enregistrement existant.
         services.AddOrkeonApplication();
-        services.AddOrkeonInfrastructure();
+        // L'overload avec IConfiguration active aussi les modules liés aux sections
+        // "Orkeon:*" (ChromaDb, Pinecone, Telemetry, MCP, RAG, ...)
+        services.AddOrkeonInfrastructure(context.Configuration);
         services.AddOrkeonFileSystemTools();
         services.AddOrkeonDataTools();
         services.AddOrkeonWebTools();
         services.AddOrkeonCodeTools();
-
-        // Configurer les providers LLM
-        services.Configure<OpenAIOptions>(context.Configuration.GetSection("OpenAI"));
-        services.Configure<OllamaOptions>(context.Configuration.GetSection("Ollama"));
-
-        // Configurer la mémoire
-        services.Configure<RedisMemoryOptions>(context.Configuration.GetSection("Memory:Redis"));
     })
     .Build();
 
@@ -392,9 +389,9 @@ await host.StartAsync();
 **File: `OrderProcessingService.cs`**
 
 ```csharp
-using Orkeon.Application.Services;
-using Orkeon.Domain.Crews;
-using Orkeon.Domain.Crews.Factories;
+using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces;
+using Orkeon.Application.Interfaces.Services;
 
 public class OrderProcessingService
 {
@@ -423,8 +420,8 @@ public class OrderProcessingService
                 cancellationToken);
 
             // 2. Préparer l'entrée
-            var input = new CrewInput(
-                initialContext: "Process all pending orders from today with fraud analysis and pricing");
+            var input = CrewInput.Empty(
+                "Process all pending orders from today with fraud analysis and pricing");
 
             // 3. Exécuter la crew
             _logger.LogInformation("Starting crew execution: {CrewId}", crew.Id);
@@ -432,8 +429,8 @@ public class OrderProcessingService
 
             // 4. Exploiter les résultats
             _logger.LogInformation("Crew execution completed in {Duration}ms",
-                output.ExecutionTime.TotalMilliseconds);
-            _logger.LogInformation("Final output:\n{Output}", output.Output);
+                output.Duration.TotalMilliseconds);
+            _logger.LogInformation("Final output:\n{Output}", output.FinalOutput);
 
             // 5. Traiter les sorties de chaque task
             foreach (var taskOutput in output.TaskOutputs)

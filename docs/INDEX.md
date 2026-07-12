@@ -61,6 +61,7 @@ The documentation is organized into 6 thematic sections.
 | [Multi-modal content (vision)](./guides/multimodal.md) | Real vision (R3.9): `MultiModalContent` → `LlmMessage` → Anthropic (image blocks) / OpenAI (`image_url`) payloads, VFS loader, opt-in activation |
 | [LLM response format](./guides/llm-response-format.md) | Forced JSON output at the provider boundary (`response_format: json_object`), 5-level override cascade (crew → agent → task → script → call), first wired provider: DeepSeek |
 | [SonarQube Quality Gate](./guides/quality-gate.md) | Blocking "Orkeon Transitional" gate (R5.4): transitional thresholds, hardening trajectory, automatic provisioning by the scripts |
+| [Local models](./guides/local-models.md) | Run everything on your own machine: Docker Model Runner (pull/configure/inspect, 128K contexts), Ollama, embedded `local-llm` image variant, model switching, troubleshooting |
 
 ### Reference
 

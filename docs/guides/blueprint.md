@@ -233,12 +233,12 @@ public static class <NomType>PolicyFactory
     /// Construit le guard context avec fusion hiérarchique des limites.
     /// Le task override prend les champs non-null, sinon crew default, sinon valeur par défaut du record.
     /// </summary>
-    public static <Scope><NomType>Machine.<Scope>GuardContext CreateGuardContext(
+    public static <Scope>GuardContext CreateGuardContext(
         <NomType>Config? crewDefault,
         <NomType>Config? taskOverride)
     {
         var effective = taskOverride ?? crewDefault;
-        return new <Scope><NomType>Machine.<Scope>GuardContext
+        return new <Scope>GuardContext
         {
             MaxRetries = effective?.MaxRetries ?? 3,
             // ... autres champs avec fallback par défaut

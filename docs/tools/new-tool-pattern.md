@@ -165,7 +165,6 @@ For a tool calling an external API, use `HttpToolBase<TRequest, TResponse>`, whi
 ```csharp
 using Microsoft.Extensions.Logging;
 using Orkeon.Tools.Abstractions.Base;
-using Orkeon.Tools.Abstractions.Security;
 using Orkeon.Domain.Attributes;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -207,11 +206,13 @@ public sealed class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse>
     private const string BaseUrl = "https://api.weatherapi.com/v1";
     private readonly string _apiKey;
 
+    // Ctor simple (HttpClient statique partagé). Pour la protection SSRF, utiliser le ctor
+    // base(IUrlValidator, HttpHeaderSanitizer, HttpClient?, ILogger?).
     public WeatherTool(
         string apiKey,
-        IUrlValidator? urlValidator = null,
+        HttpClient? httpClient = null,
         ILogger<WeatherTool>? logger = null)
-        : base(urlValidator, logger)
+        : base(httpClient, logger)
     {
         _apiKey = apiKey;
     }
@@ -291,23 +292,21 @@ services.AddSingleton<IBaseTool>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
     var logger = sp.GetService<ILogger<WeatherTool>>();
-    var urlValidator = sp.GetService<IUrlValidator>();
     return new WeatherTool(
         apiKey: config["Weather:ApiKey"]!,
-        urlValidator: urlValidator,
         logger: logger);
 });
 ```
 
-The tool will then be available via `IEnumerable<IBaseTool>` or resolved by the `ToolRegistry` (`Orkeon.Infrastructure.Tools`).
+The tool will then be available via `IEnumerable<IBaseTool>` or resolved by the `IToolRegistry` (`Orkeon.Domain.Tools`).
 
-### Option C — Via ToolFactory
+### Option C — Via IToolRegistry
 
-`ToolFactory` (`Orkeon.Infrastructure.Tools`) enables dynamic registration and resolution of tools by name:
+`IToolRegistry` (`Orkeon.Domain.Tools`, implementation `InMemoryToolRegistry`) enables dynamic registration and resolution of tools by name:
 
 ```csharp
-var toolFactory = serviceProvider.GetRequiredService<IToolFactory>();
-var tool = toolFactory.Create("weather");
+var toolRegistry = serviceProvider.GetRequiredService<IToolRegistry>();
+var tool = await toolRegistry.GetToolByNameAsync("weather");
 ```
 
 ## Step 6 — Internal composition pattern (FileToolBase / HttpToolBase)

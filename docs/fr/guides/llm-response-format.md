@@ -140,9 +140,9 @@ Les 6 stratégies de process (Sequential, Hierarchical, Autonomous, Graph, Paral
 
 ## Référence
 
-- Value object : `Orkeon.Domain.Shared.ValueObjects.LlmResponseFormat`
-- Record de patch : `Orkeon.Domain.Shared.ValueObjects.LlmConfigOverride`
-- Fusion : `Orkeon.Domain.Shared.ValueObjects.LlmConfigResolver.Resolve`
+- Value object : `Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat`
+- Record de patch : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride`
+- Fusion : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve`
 - Câblage DeepSeek : `Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.ApplyProviderSpecificOptions`
 - Loader YAML : `Orkeon.Infrastructure.Configuration.YamlCrewDefinitionLoader.MapResponseFormat`
 - Extensions call-time : `Orkeon.Infrastructure.LLMs.Extensions.LlmProviderExtensions`

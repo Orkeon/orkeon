@@ -18,7 +18,7 @@ MultiModalContent (Domain)            LlmMessage (Domain)              Payload p
 └──────────────────────────┘   └───────────────────────────────┘   └─────────────────────────────────────┘
 ```
 
-- `MultiModalContent` (value object immuable, `Orkeon.Domain.Shared.ValueObjects.Content`)
+- `MultiModalContent` (value object immuable, `Orkeon.Domain.SharedKernel.ValueObjects.Content`)
   porte les parts texte/image/audio/fichier.
 - `LlmMessage.User(MultiModalContent)` crée un message utilisateur qui transporte les
   parts **et** un repli texte (`Content = ToTextOnly()`) pour les providers sans vision.
@@ -28,8 +28,8 @@ MultiModalContent (Domain)            LlmMessage (Domain)              Payload p
 ## Composer et envoyer une image
 
 ```csharp
-using Orkeon.Domain.Shared.ValueObjects;
-using Orkeon.Domain.Shared.ValueObjects.Content;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.SharedKernel.ValueObjects.Content;
 
 // 1. Depuis des bytes (envoyés en base64)
 var content = MultiModalContent.Empty()

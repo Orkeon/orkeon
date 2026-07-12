@@ -7,6 +7,11 @@ crew from source. In about five minutes you will run a real 3-agent example and 
 synthesis report back. If you would rather download a prebuilt binary or use a
 container, see [Three ways to run Orkeon](./three-ways-to-run-orkeon.md).
 
+> **Fastest path (no build, no clone)**:
+> `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners`
+> then `orkeon-example run 1` — details in
+> [Three ways to run Orkeon §3](./three-ways-to-run-orkeon.md#3-container).
+
 ## Prerequisites
 
 | Requirement | Notes |

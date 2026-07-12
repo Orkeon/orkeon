@@ -11,7 +11,7 @@
 Orkeon offers **6 orchestration strategies** via the `ProcessType` value object (Domain layer). Each strategy defines how agents coordinate to execute a Crew's tasks. The choice of ProcessType is the architectural lever with the biggest impact on the behavior of a multi-agent system.
 
 ```csharp
-// Orkeon.Domain.Shared.ValueObjects.ProcessType (sealed record)
+// Orkeon.Domain.SharedKernel.ValueObjects.ProcessType (sealed record)
 ProcessType.Sequential    // Pipeline linéaire
 ProcessType.Hierarchical  // Manager + workers
 ProcessType.Parallel      // Exécution concurrente
@@ -512,19 +512,16 @@ Manager (LLM) ── assigns ──→ Agent A
 
 ```csharp
 // Request/Response
-var request = new AgentChannelRequest
-{
-    CorrelationId = Guid.NewGuid().ToString(),
-    FromAgentId = "analyst",
-    ToAgentId = "researcher",
-    Intent = "find_data",
-    Payload = "Statistiques marché 2025"
-};
+var request = AgentChannelRequest.Create(
+    from: analyst.Id,
+    to: researcher.Id,
+    intent: "find_data",
+    payload: "Statistiques marché 2025");
 
 var response = await channel.RequestAsync(request, timeout);
 
 // Broadcast (fire-and-forget)
-await channel.BroadcastAsync(notification);
+await channel.BroadcastAsync(analyst.Id, crew.Id, "Résultats disponibles", ct);
 ```
 
 ### YAML configuration

@@ -135,25 +135,24 @@ public sealed record PublishOptions
     public string? LastValueKey { get; init; }
 }
 
-public abstract record WaitDescriptor
+public abstract record WaitDescriptor;
+
+public sealed record WaitOnTopic(
+    string Topic,
+    ImmutableDictionary<string, string>? MetadataMatch) : WaitDescriptor;
+
+public sealed record WaitOnMailbox(MailboxAddress Address) : WaitDescriptor;
+
+public sealed record WaitOnReply(CorrelationId Correlation) : WaitDescriptor;
+
+public abstract record WaitTimeout;
+
+public sealed record FiniteWaitTimeout(TimeSpan Duration) : WaitTimeout;
+// FiniteWaitTimeout.Of(TimeSpan) valide Duration > 0
+
+public sealed record ForeverWaitTimeout : WaitTimeout
 {
-    public sealed record OnTopic(
-        string Topic,
-        ImmutableDictionary<string, string>? MetadataMatch) : WaitDescriptor;
-
-    public sealed record OnMailbox(MailboxAddress Address) : WaitDescriptor;
-
-    public sealed record OnReply(CorrelationId Correlation) : WaitDescriptor;
-}
-
-public abstract record WaitTimeout
-{
-    public sealed record Finite(TimeSpan Duration) : WaitTimeout;
-
-    public sealed record Forever : WaitTimeout
-    {
-        public static readonly Forever Instance = new();
-    }
+    public static readonly ForeverWaitTimeout Instance = new();
 }
 ```
 
@@ -201,10 +200,10 @@ public interface IWaitScheduler
 public interface IEventSchemaRegistry
 {
     // Récupère le schéma JSON enregistré pour un SchemaId donné
-    Task<JsonSchema?> GetAsync(string schemaId, CancellationToken ct);
+    Task<JsonNode?> GetAsync(string schemaId, CancellationToken ct);
 
     // Enregistre un schéma (versionné). Rejet si SchemaId déjà enregistré avec un schéma différent.
-    Task RegisterAsync(string schemaId, JsonSchema schema, CancellationToken ct);
+    Task RegisterAsync(string schemaId, JsonNode schema, CancellationToken ct);
 }
 ```
 

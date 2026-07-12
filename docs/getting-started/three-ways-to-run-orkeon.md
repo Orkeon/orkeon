@@ -144,16 +144,110 @@ the `--mount` flag maps container → the crew's virtual paths (`/data`,
 
 ### Running a bundled example
 
-The examples ship inside the image under `/app/examples`, so only the output
-and settings need mounting:
+The examples ship inside the image under `/app/examples`, along with a helper
+that makes running them a one-liner. The simplest possible session:
+
+```bash
+# one-time, on the host: pull the default model (Docker Desktop → Model Runner)
+docker model pull ai/granite-4.0-h-tiny
+
+docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
+  ghcr.io/orkeon/orkeon-runners
+# then, inside the shell:
+orkeon-example list            # browse the 105 bundled examples
+orkeon-example run 1           # run #1 (research assistant)
+orkeon-example show 42         # read an example's README first
+```
+
+`orkeon-example run` resolves the number to its config, dispatches the
+`03-finance-trading` category to `orkeon-trading` automatically, mounts
+`/output` for file results, and picks LLM settings for you (next section). When
+a number exists in two categories (`16`, `102`), it lists the candidates —
+qualify with the category: `orkeon-example run 02/16`.
+
+**LLM settings inside the container** — the baked default targets **Docker
+Model Runner on your host** (`host.docker.internal:12434`): the
+`docker model pull` above is the only setup, and every example then works with
+zero flags. Forget it and `orkeon-example run` fails fast *before* the crew,
+printing the exact pull command (and, when the endpoint serves other models,
+the `-e ORKEON_Llm__Model=<name>` override to use one of them —
+`docker model list` on the host shows what you have). To use something else,
+pick a profile from `/etc/orkeon/profiles` with `ORKEON_LLM_PROFILE`:
+
+| `-e ORKEON_LLM_PROFILE=` | Endpoint | Needs |
+|---|---|---|
+| *(unset)* = `host-dmr` | Docker Model Runner on the host, `:12434` | `docker model pull …` on the host |
+| `host-ollama` | Ollama on the host, `:11434` | `ollama pull llama3.2` on the host |
+| `openai` | OpenAI cloud | `-e ORKEON_Llm__ApiKey=sk-…` |
+| `local` | model embedded in the image | the `local-llm` image variant (below) |
+
+`ORKEON_Llm__*` env vars override any profile (e.g. `-e ORKEON_Llm__Model=…`).
+On a plain Linux engine (no Docker Desktop), add
+`--add-host=host.docker.internal:host-gateway` so the host profiles resolve.
+
+**Bigger context window (host models)** — Docker Model Runner serves each model
+with its default context size. On recent Docker Desktop versions you can raise
+it per model, e.g. 128K for Gemma 4:
+
+```bash
+docker model configure --context-size 131072 gemma4:latest   # see: docker model configure --help
+docker model inspect gemma4:latest                           # verify the applied config
+```
+
+A large KV cache is RAM-hungry (several extra GB at 128K) — size the host
+accordingly. `Llm.MaxTokens` in the Orkeon settings caps the *response* length
+and is independent of the server-side context size.
+
+Everything local-model related (DMR pitfalls, Ollama, model switching, context
+sizing, troubleshooting) is consolidated in the
+[Local models guide](../guides/local-models.md).
+
+No model at all? The bundled scripting demos run on the echo LLM fallback —
+no key, no server, no network:
+
+```bash
+orkeon run /app/examples/scripting/01-hello-world.ork.ts
+```
+
+### Fully local: bake a model into your image
+
+Build a variant that needs **no host-side model server and no API key** —
+llama.cpp's `llama-server` plus one GGUF are embedded and served inside the
+container on the same URL shape the default settings already use:
+
+```bash
+# Granite 4.0 h-tiny (Apache 2.0, ~4.2 GB of weights → ~6 GB image)
+docker build -f Dockerfile.runners --target local-llm \
+  --build-arg LOCAL_MODEL_URL=https://huggingface.co/ibm-granite/granite-4.0-h-tiny-GGUF/resolve/main/granite-4.0-h-tiny-Q4_K_M.gguf \
+  -t orkeon-runners:granite .
+
+# Gemma 4 E4B with a 128K context (Gemma license — keep the image local, don't push it)
+docker build -f Dockerfile.runners --target local-llm \
+  --build-arg LOCAL_MODEL_URL=https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF/resolve/main/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf \
+  --build-arg LOCAL_MODEL_NAME=ai/gemma4 \
+  --build-arg LOCAL_MODEL_CTX=131072 \
+  -t orkeon-runners:gemma4 .
+# LOCAL_MODEL_CTX bakes the llama-server context size (default 8192); override
+# per run with -e ORKEON_LOCAL_LLM_CTX=… — at 128K plan several extra GB of RAM.
+
+docker run -it --rm -m 8g -e ORKEON_RUNNER=shell orkeon-runners:granite
+# the model loads at startup (30-90 s), then:
+orkeon-example run 1
+```
+
+CPU inference: expect roughly 5–15 tokens/s and give the container memory
+(`-m 8g`; on WSL2, raise the VM memory in `.wslconfig` if needed).
+`-e ORKEON_LOCAL_LLM=0` skips the embedded server. These variants are
+build-your-own by design — no pre-built tag is published, so model-license
+obligations stay on your side of the wall.
+
+One-shot (no shell) still works — the entry point **is** `orkeon`:
 
 ```bash
 docker run --rm \
   -v "$PWD/out:/output" \
-  -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
   ghcr.io/orkeon/orkeon-runners \
   run examples/01-enterprise/01-research-assistant/config.yaml \
-  --settings /app/appsettings.local.json \
   --mount /output:/output:rw
 ```
 
@@ -181,7 +275,8 @@ as the release archives (`orkeon`, `orkeon-trading`, `orkeon-repl`, …):
 ```bash
 docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
   ghcr.io/orkeon/orkeon-runners
-# orkeon /workspace % orkeon run /app/examples/01-enterprise/01-research-assistant/config.yaml --validate
+# orkeon /workspace % orkeon-example run 1
+# orkeon /workspace % orkeon run /workspace/crews/my-crew/config.yaml --validate
 ```
 
 ---

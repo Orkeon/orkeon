@@ -196,7 +196,7 @@ fsm.OnCircuitBroken += (_, status) =>
     Console.WriteLine($"CIRCUIT BROKEN: {status.BrokenReason}");
 
 // Contexte de garde
-var ctx = new TaskExecutionStateMachine.TaskExecutionGuardContext
+var ctx = new TaskExecutionGuardContext
 {
     RetryCount = 0,
     MaxRetries = 3,

@@ -103,19 +103,16 @@ Le loader `YamlCrewDefinitionLoader` supporte deux modes :
 **Mode fichier unique** : contient agents et tasks dans un seul fichier
 
 ```csharp
-var crew = await YamlCrewDefinitionLoader.LoadFromFileAsync(
-    filePath: "crews/research_crew.yaml",
-    cancellationToken: ct
-);
+// loader : ICrewDefinitionLoader (implémentation YamlCrewDefinitionLoader) résolu via DI
+var config = await loader.LoadFromFileAsync("crews/research_crew.yaml", ct);
+var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 ```
 
 **Mode multi-fichier** : séparation agents.yaml, tasks.yaml, et crew.yaml dans un répertoire
 
 ```csharp
-var crew = await YamlCrewDefinitionLoader.LoadFromDirectoryAsync(
-    directoryPath: "crews/research/",
-    cancellationToken: ct
-);
+var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
+var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 // Charge automatiquement : crew.yaml, agents.yaml, tasks.yaml
 ```
 

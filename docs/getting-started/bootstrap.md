@@ -112,23 +112,22 @@ var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>()
 var crew = await crewFactory.CreateFromFileAsync("config/sales-report-crew.yaml");
 
 // Préparer l'entrée
-var input = new CrewInput(initialContext: "Process last week's sales data");
+var input = CrewInput.Empty("Process last week's sales data");
 
 // Exécuter la Crew de manière synchrone
 var output = await orchestrator.KickoffAsync(crew.Id, input);
 
 // Afficher les résultats
 Console.WriteLine("=== Résultat Final ===");
-Console.WriteLine(output.Output);
+Console.WriteLine(output.FinalOutput);
 
 Console.WriteLine("\n=== Résultats par Task ===");
 foreach (var taskOutput in output.TaskOutputs)
 {
-    Console.WriteLine($"[{taskOutput.TaskId}] {taskOutput.Output[..Math.Min(100, taskOutput.Output.Length)]}...");
+    Console.WriteLine($"[{taskOutput.TaskId}] {taskOutput.Content[..Math.Min(100, taskOutput.Content.Length)]}...");
 }
 
-Console.WriteLine($"\nDurée totale : {output.ExecutionTime.TotalSeconds:F2}s");
-Console.WriteLine($"Succès : {output.Success}");
+Console.WriteLine($"\nDurée totale : {output.Duration.TotalSeconds:F2}s");
 ```
 
 ### Approach 2: From the Fluent Builder
@@ -142,70 +141,66 @@ var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>()
 
 // (Après avoir créé analyst, writer, analyzeTask, reportTask, crew avec builders)
 // Persister les entités dans les repositories
-await agentRepository.SaveAsync(analyst);
-await agentRepository.SaveAsync(writer);
-await taskRepository.SaveAsync(analyzeTask);
-await taskRepository.SaveAsync(reportTask);
-await crewRepository.SaveAsync(crew);
+await agentRepository.AddAsync(analyst);
+await agentRepository.AddAsync(writer);
+await taskRepository.AddAsync(analyzeTask);
+await taskRepository.AddAsync(reportTask);
+await crewRepository.AddAsync(crew);
 
 // Exécuter la Crew
-var variables = CrewVariables.Empty
-    .Set("start_date", "2024-10-01")
-    .Set("end_date", "2024-12-31");
+var variables = new Dictionary<string, object>
+{
+    ["start_date"] = "2024-10-01",
+    ["end_date"] = "2024-12-31"
+};
 
 var input = new CrewInput(
-    initialContext: "Generate sales report for Q4 2024",
-    variables: variables);
+    "Generate sales report for Q4 2024",
+    variables);
 
 var output = await orchestrator.KickoffAsync(crew.Id, input);
 
-Console.WriteLine(output.Output);
+Console.WriteLine(output.FinalOutput);
 ```
 
 ### Input/output types
 
 Running a Crew uses the following types:
 
-**CrewInput** (`Orkeon.Domain.Crew`):
+**CrewInput** (`Orkeon.Application.Interfaces.Services`):
 ```csharp
-public sealed record CrewInput
-{
-    public string InitialContext { get; init; }       // Contexte initial textuel
-    public CrewVariables Variables { get; init; }     // Variables typées (string, int, bool, double)
-    public Dictionary<string, object> Parameters => Variables.ToDictionary();
-    public CrewMetadata Metadata { get; init; }       // Métadonnées d'exécution
-    public DateTime CreatedAt { get; init; }
-}
+public record CrewInput(
+    string? InitialContext,                          // Contexte initial textuel
+    IReadOnlyDictionary<string, object> Variables);  // Variables d'exécution
+
+// Helpers :
+//   CrewInput.Empty(initialContext)
+//   CrewInput.WithStringVariables(initialContext, variables)
 ```
 
-`CrewVariables` is a strongly typed immutable container with separate dictionaries for `string`, `int`, `bool` and `double`. Each `Set` method returns a new instance (immutability pattern).
+`Variables` is a plain read-only dictionary. The Domain layer also defines richer `CrewInput`/`CrewOutput` records (`Orkeon.Domain.Crew`, with typed `CrewVariables`) used internally by crew execution.
 
-**CrewOutput** (`Orkeon.Domain.Crew`):
+**CrewOutput** (`Orkeon.Application.Interfaces.Services`):
 ```csharp
-public sealed record CrewOutput
-{
-    public string Output { get; init; }                          // Résultat final textuel
-    public object? StructuredOutput { get; init; }               // Résultat structuré (JSON désérialisé)
-    public IReadOnlyList<TaskOutput> TaskOutputs { get; init; }  // Résultats par tâche
-    public bool Success { get; init; }                           // Succès global
-    public string? Error { get; init; }                          // Message d'erreur si échec
-    public TimeSpan ExecutionTime { get; init; }                 // Durée d'exécution
-    public DateTime CompletedAt { get; init; }                   // Horodatage de fin
-    public CrewMetadata Metadata { get; init; }                  // Métadonnées
-}
+public record CrewOutput(
+    string FinalOutput,                       // Résultat final textuel
+    IReadOnlyList<TaskOutput> TaskOutputs,    // Résultats par tâche
+    TimeSpan Duration,                        // Durée d'exécution
+    TokenUsage? TokensUsed);                  // Consommation de tokens (si disponible)
 ```
 
-**TaskOutput** (`Orkeon.Domain.Task.ValueObjects`):
+**TaskOutput** (`Orkeon.Application.Execution`):
 ```csharp
-public sealed record TaskOutput
+public record TaskOutput(
+    string TaskId,
+    string? AgentId,
+    string Content,                                  // Sortie de la tâche
+    DateTime CompletedAt,
+    bool Success,
+    TimeSpan ExecutionTime,
+    IReadOnlyList<ToolUsage>? ToolsUsed = null)
 {
-    public TaskId? TaskId { get; init; }
-    public string RawOutput { get; init; }           // Sortie brute
-    public string? FormattedOutput { get; init; }    // Sortie formatée (optionnel)
-    public string Output { get; init; }              // Alias de RawOutput
-    public bool Success { get; init; }
-    public TimeSpan ExecutionTime { get; init; }
-    public object? StructuredOutput { get; init; }
+    public string RawOutput => Content;              // Alias de Content
 }
 ```
 
@@ -218,9 +213,9 @@ Orkeon supports several execution modes via `ICrewOrchestrationService`:
 // Exécuter la Crew pour chaque élément d'une collection
 var inputs = new List<CrewInput>
 {
-    new(initialContext: "Process sales data for region 1"),
-    new(initialContext: "Process sales data for region 2"),
-    new(initialContext: "Process sales data for region 3")
+    CrewInput.Empty("Process sales data for region 1"),
+    CrewInput.Empty("Process sales data for region 2"),
+    CrewInput.Empty("Process sales data for region 3")
 };
 
 var batchOutput = await orchestrator.KickoffForEachAsync(crew.Id, inputs);
@@ -233,18 +228,9 @@ var batchOutput = await orchestrator.KickoffForEachAsync(crew.Id, inputs);
 // Exécuter la Crew et recevoir les événements en temps réel via IAsyncEnumerable
 await foreach (var executionEvent in orchestrator.KickoffStreamingAsync(crew.Id, input))
 {
-    switch (executionEvent)
-    {
-        case TaskStartedEvent taskStarted:
-            Console.WriteLine($"Tâche démarrée : {taskStarted.TaskId}");
-            break;
-        case ToolUsedEvent toolUsed:
-            Console.WriteLine($"Outil utilisé : {toolUsed.ToolName}");
-            break;
-        case TaskCompletedEvent taskCompleted:
-            Console.WriteLine($"Tâche complétée : {taskCompleted.Content[..50]}...");
-            break;
-    }
+    Console.WriteLine(
+        $"[{executionEvent.Timestamp:HH:mm:ss}] {executionEvent.AgentRole} — {executionEvent.TaskDescription}");
+    Console.WriteLine($"  {executionEvent.Thought.Type} : {executionEvent.Thought.Content}");
 }
 ```
 
