@@ -58,8 +58,8 @@ public static partial class RunnerExecution
 
         if (string.IsNullOrWhiteSpace(opts.ConfigPath))
         {
-            // --config is optional at the parser level (so --list-tools can run without it);
-            // every crew-loading mode still needs it, so enforce presence here.
+            // --config is optional at the parser level so --list-tools can run without it,
+            // but every crew-loading mode still needs it — enforce presence here.
             Console.Error.WriteLine("ERROR: --config is required (path to the crew .yaml or .ork.ts).");
             errorCode = 1;
             return false;
@@ -86,22 +86,8 @@ public static partial class RunnerExecution
         // Same rationale applies to the LLM log directory (AppendAllTextAsync) when
         // --llm-log[-path] is set. We inject 1:1 mounts (physical = virtual) so the
         // VFS resolves the absolute paths that framework code already computes.
-        var cwd = Directory.GetCurrentDirectory();
-        var configOutsideCwd = !configDir.StartsWith(cwd, StringComparison.Ordinal);
-        var llmLogOutsideCwd = llmLogPath != null && !llmLogPath.StartsWith(cwd, StringComparison.Ordinal);
-        if ((configOutsideCwd || llmLogOutsideCwd) && !opts.EffectiveAllowExternalMounts)
+        if (!EnsureExternalMountsAllowed(opts, configDir, llmLogPath))
         {
-            // Conservative: external paths require opt-in. Avoids silently widening
-            // the VFS surface for users who expect workspace-relative execution.
-            Console.Error.WriteLine(
-                "ERROR: --allow-external-mounts is required when reading the crew config "
-                + "or writing LLM logs outside the current working directory. Add "
-                + "--allow-external-mounts (or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1) to proceed.");
-            if (configOutsideCwd)
-                Console.Error.WriteLine($"       configDir   : {configDir}");
-            if (llmLogOutsideCwd)
-                Console.Error.WriteLine($"       llmLogPath  : {llmLogPath}");
-            Console.Error.WriteLine($"       cwd         : {cwd}");
             errorCode = 1;
             return false;
         }
@@ -149,6 +135,33 @@ public static partial class RunnerExecution
 
         bootstrap = new HostBootstrap(host, logger, configPath, cliMounts);
         return true;
+    }
+
+    /// <summary>
+    /// Validates the external-mounts guard: paths outside the current working directory
+    /// require an explicit opt-in (<c>--allow-external-mounts</c>). Conservative by design —
+    /// avoids silently widening the VFS surface for users who expect workspace-relative
+    /// execution. Returns <see langword="false"/> (after printing the diagnostic) when blocked.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    private static bool EnsureExternalMountsAllowed(RunnerOptionsBase opts, string configDir, string? llmLogPath)
+    {
+        var cwd = Directory.GetCurrentDirectory();
+        var configOutsideCwd = !configDir.StartsWith(cwd, StringComparison.Ordinal);
+        var llmLogOutsideCwd = llmLogPath != null && !llmLogPath.StartsWith(cwd, StringComparison.Ordinal);
+        if (!(configOutsideCwd || llmLogOutsideCwd) || opts.EffectiveAllowExternalMounts)
+            return true;
+
+        Console.Error.WriteLine(
+            "ERROR: --allow-external-mounts is required when reading the crew config "
+            + "or writing LLM logs outside the current working directory. Add "
+            + "--allow-external-mounts (or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1) to proceed.");
+        if (configOutsideCwd)
+            Console.Error.WriteLine($"       configDir   : {configDir}");
+        if (llmLogOutsideCwd)
+            Console.Error.WriteLine($"       llmLogPath  : {llmLogPath}");
+        Console.Error.WriteLine($"       cwd         : {cwd}");
+        return false;
     }
 
     /// <summary>
@@ -208,48 +221,17 @@ public static partial class RunnerExecution
 
             var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 
-            CrewInput input;
-            try
-            {
-                var vars = opts.ParseVariables();
-                input = vars.Count > 0 || !string.IsNullOrEmpty(opts.InitialContext)
-                    ? CrewInput.WithStringVariables(opts.InitialContext, vars)
-                    : CrewInput.Empty();
-            }
-            catch (FormatException ex)
-            {
-                await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
+            var input = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
+            if (input is null)
                 return 1;
-            }
 
-            // Pre-kickoff reachability probe. LLM providers wrap connection failures in sanitized
-            // exceptions behind Polly retries, so a dead endpoint otherwise yields an empty crew
-            // output at exit 0 with no hint — the connection-refused catch below never sees it.
-            // A short TCP probe turns "nothing is listening" into a fast, explicit failure. Only an
-            // active refusal short-circuits; ambiguous results (no URL, DNS, TLS, slow-link timeout)
-            // fall through so a legitimate run is never blocked by the probe itself.
-            var probeEndpoint = ResolveConfiguredLlmEndpoint(host);
-            if (probeEndpoint is not null
-                && !await IsLlmEndpointReachableAsync(probeEndpoint, TimeSpan.FromSeconds(2), cts.Token)
-                    .ConfigureAwait(false))
-            {
-                await Console.Error.WriteLineAsync(BuildUnreachableLlmMessage(probeEndpoint)).ConfigureAwait(false);
-                LogLlmEndpointUnreachable(logger, probeEndpoint);
+            if (!await EnsureLlmEndpointReachableAsync(host, logger, cts.Token).ConfigureAwait(false))
                 return 2;
-            }
 
             LogKickingOffCrew(logger, crew.Goal);
             var output = await orchestrator.KickoffAsync(crew.Id, input, cts.Token).ConfigureAwait(false);
 
-            Console.WriteLine();
-            Console.WriteLine("=== Crew Output ===");
-            Console.WriteLine(output.FinalOutput);
-            Console.WriteLine();
-            Console.WriteLine($"Duration: {output.Duration}");
-            Console.WriteLine(output.TokensUsed is { } usage
-                ? $"Tokens used: {usage.TotalTokens}"
-                : "Tokens used: (not measured)");
-
+            PrintCrewOutput(output);
             return 0;
         }
         catch (OperationCanceledException)
@@ -274,6 +256,67 @@ public static partial class RunnerExecution
             return 2;
         }
         }
+    }
+
+    /// <summary>
+    /// Builds the <see cref="CrewInput"/> for a one-shot kickoff from the parsed CLI variables
+    /// and initial context. Returns <see langword="null"/> (after printing the diagnostic) when
+    /// a <c>--var</c> value is malformed.
+    /// </summary>
+    private static async Task<CrewInput?> TryParseCrewInputAsync(RunnerOptionsBase opts)
+    {
+        try
+        {
+            var vars = opts.ParseVariables();
+            return vars.Count > 0 || !string.IsNullOrEmpty(opts.InitialContext)
+                ? CrewInput.WithStringVariables(opts.InitialContext, vars)
+                : CrewInput.Empty();
+        }
+        catch (FormatException ex)
+        {
+            await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Pre-kickoff reachability probe. LLM providers wrap connection failures in sanitized
+    /// exceptions behind Polly retries, so a dead endpoint otherwise yields an empty crew
+    /// output at exit 0 with no hint — the connection-refused catch in the caller never sees it.
+    /// A short TCP probe turns "nothing is listening" into a fast, explicit failure. Only an
+    /// active refusal returns <see langword="false"/>; ambiguous results (no URL, DNS, TLS,
+    /// slow-link timeout) pass so a legitimate run is never blocked by the probe itself.
+    /// </summary>
+    private static async Task<bool> EnsureLlmEndpointReachableAsync(
+        IHost host, ILogger logger, CancellationToken ct)
+    {
+        var probeEndpoint = ResolveConfiguredLlmEndpoint(host);
+        if (probeEndpoint is null
+            || await IsLlmEndpointReachableAsync(probeEndpoint, TimeSpan.FromSeconds(2), ct)
+                .ConfigureAwait(false))
+        {
+            return true;
+        }
+
+        await Console.Error.WriteLineAsync(BuildUnreachableLlmMessage(probeEndpoint)).ConfigureAwait(false);
+        LogLlmEndpointUnreachable(logger, probeEndpoint);
+        return false;
+    }
+
+    /// <summary>
+    /// Renders the one-shot crew result (final output, duration, token usage) to the console.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    private static void PrintCrewOutput(CrewOutput output)
+    {
+        Console.WriteLine();
+        Console.WriteLine("=== Crew Output ===");
+        Console.WriteLine(output.FinalOutput);
+        Console.WriteLine();
+        Console.WriteLine($"Duration: {output.Duration}");
+        Console.WriteLine(output.TokensUsed is { } usage
+            ? $"Tokens used: {usage.TotalTokens}"
+            : "Tokens used: (not measured)");
     }
 
     /// <summary>
@@ -320,9 +363,10 @@ public static partial class RunnerExecution
             || !Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
             return true;
 
-        var port = uri.Port > 0
-            ? uri.Port
-            : string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ? 443 : 80;
+        var defaultPort = string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            ? 443
+            : 80;
+        var port = uri.Port > 0 ? uri.Port : defaultPort;
 
         try
         {

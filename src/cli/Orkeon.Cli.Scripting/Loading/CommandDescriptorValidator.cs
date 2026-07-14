@@ -131,11 +131,7 @@ public static partial class CommandDescriptorValidator
         var shadowed = new List<string>();
         if (ShadowableDefaultNames.Contains(descriptor.Name))
             shadowed.Add(descriptor.Name);
-        foreach (var alias in descriptor.Aliases)
-        {
-            if (ShadowableDefaultNames.Contains(alias))
-                shadowed.Add(alias);
-        }
+        shadowed.AddRange(descriptor.Aliases.Where(ShadowableDefaultNames.Contains));
         return shadowed;
     }
 

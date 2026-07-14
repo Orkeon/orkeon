@@ -52,7 +52,7 @@ public static class SemanticSearchToolExtensions
         services.TryAddSingleton<IEmbeddingService, EmbeddingServiceAdapter>();
         services.TryAddSingleton<IVectorMemoryStore, InMemoryVectorStore>();
 
-        // Multiple IBaseTool implementations cohabit in DI (stored as a list);
+        // Multiple IBaseTool implementations cohabit in DI, stored as a list.
         // AddSingleton is intentional — TryAddSingleton would silently drop us
         // when other IBaseTool registrations already exist.
         services.AddSingleton<IBaseTool, SearchTool>();

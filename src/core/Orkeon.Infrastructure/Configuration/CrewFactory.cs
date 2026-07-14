@@ -287,7 +287,8 @@ public partial class CrewFactory : ICrewFactory
             }
             else
             {
-                (missing ??= []).Add(toolName);
+                missing ??= [];
+                missing.Add(toolName);
                 if (!_strictTools)
                     LogToolNotFoundInRegistry(toolName);
             }
