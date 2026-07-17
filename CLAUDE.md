@@ -234,6 +234,18 @@ Allowed exceptions:
 
 Adding a new tool or service that needs filesystem access? Inject `IFileSystemService` and work in virtual paths (e.g., `/workspace/...`, `/output/...`, `/tmp/...`). The service validates paths against mounts + `FileAccessRights` (Read/Write/Create/Delete) and redacts physical paths from error messages.
 
+### Shell Scripts — executable bit is mandatory
+
+Every `.sh` script MUST be tracked by git as executable (mode `100755`). This workspace often lives on a Windows/NTFS mount where `chmod +x` does not persist and everything appears as `rwxrwxrwx`, which masks the problem — but macOS/Linux clones faithfully restore the committed mode, and a script committed as `100644` fails there with `permission denied`.
+
+When creating or modifying a `.sh` file, always set the bit directly in the git index before committing:
+
+```bash
+git update-index --chmod=+x path/to/script.sh
+```
+
+Verify with `git ls-files -s -- '*.sh'` — every line must start with `100755`. This applies to this repository and to the `experiments` and `backstage` submodules alike.
+
 ### Tool Development (Typed Pipeline)
 
 New tools should use the typed `ToolBase<TRequest, TResponse>` pattern:
