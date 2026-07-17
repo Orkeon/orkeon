@@ -236,15 +236,15 @@ Adding a new tool or service that needs filesystem access? Inject `IFileSystemSe
 
 ### Shell Scripts — executable bit is mandatory
 
-Every `.sh` script MUST be tracked by git as executable (mode `100755`). This workspace often lives on a Windows/NTFS mount where `chmod +x` does not persist and everything appears as `rwxrwxrwx`, which masks the problem — but macOS/Linux clones faithfully restore the committed mode, and a script committed as `100644` fails there with `permission denied`.
+Every `.sh` script — and any script with a shebang line (`#!`), e.g. `.py` or `.mjs` meant to be run directly — MUST be tracked by git as executable (mode `100755`). This workspace often lives on a Windows/NTFS mount where `chmod +x` does not persist and everything appears as `rwxrwxrwx`, which masks the problem — but macOS/Linux clones faithfully restore the committed mode, and a script committed as `100644` fails there with `permission denied`.
 
-When creating or modifying a `.sh` file, always set the bit directly in the git index before committing:
+When creating or modifying such a script, always set the bit directly in the git index before committing:
 
 ```bash
 git update-index --chmod=+x path/to/script.sh
 ```
 
-Verify with `git ls-files -s -- '*.sh'` — every line must start with `100755`. This applies to this repository and to the `experiments` and `backstage` submodules alike.
+Verify with `git ls-files -s -- '*.sh'` — every line must start with `100755` (same check for shebang `.py`/`.mjs` files). Scripts without a shebang that are only invoked via an interpreter (`python script.py`) may stay `100644`. This applies to this repository and to the `experiments` and `backstage` submodules alike.
 
 ### Tool Development (Typed Pipeline)
 
