@@ -116,6 +116,40 @@ var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 // Charge automatiquement : crew.yaml, agents.yaml, tasks.yaml
 ```
 
+**Per-entity directory mode**: crew settings in `config.yaml`
+(or `crew.yaml`), one agent per file under `agents/`, one task per file under `tasks/`.
+The **file-name stem is the entity id** — i.e. the dictionary key used in the flat formats.
+`LoadFromDirectoryAsync` selects this mode automatically as soon as an `agents/` or `tasks/`
+sub-directory is present.
+
+```
+crews/research/
+├── config.yaml          # crew settings (name, goal, process, llm, …) — or crew.yaml
+├── agents/
+│   ├── researcher.yaml  # → agent id "researcher"
+│   └── writer.yaml      # → agent id "writer"
+└── tasks/
+    ├── collect.yaml     # → task id "collect"
+    └── report.yaml      # → task id "report"
+```
+
+```csharp
+// Même appel : la disposition est détectée automatiquement.
+var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
+var crew = await crewFactory.CreateFromConfigAsync(config, ct);
+```
+
+Notes:
+
+- `config.yaml` is preferred over `crew.yaml` when both are present; a missing settings file
+  raises `FileNotFoundException` (parity with flat mode).
+- Empty or absent `agents/`/`tasks/` folders simply yield no agents/tasks — the usual
+  "at least one agent/task" validation error then surfaces via `loader.Validate(config)`.
+- Mixing the two layouts (e.g. both `agents.yaml` *and* an `agents/` directory) raises
+  `InvalidOperationException` rather than picking a silent precedence.
+- **Limitation:** YAML anchors cannot span files — each file is preprocessed independently
+  (this was already true across the three flat files).
+
 ## CrewFactory — From YAML to domain objects
 
 The creation pipeline transforms the YAML configuration into operational domain objects via `CrewFactory` (`Orkeon.Infrastructure.Configuration`), which implements `ICrewFactory` (`Orkeon.Application.Interfaces`).

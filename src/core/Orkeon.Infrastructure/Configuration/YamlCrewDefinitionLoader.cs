@@ -68,9 +68,25 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
     {
         LogLoadingCrewDefinitionFromDirectory(directoryPath);
 
-        var crewFilePath = directoryPath.TrimEnd('/') + "/crew.yaml";
-        var agentsFilePath = directoryPath.TrimEnd('/') + "/agents.yaml";
-        var tasksFilePath = directoryPath.TrimEnd('/') + "/tasks.yaml";
+        var root = directoryPath.TrimEnd('/');
+
+        // Per-entity layout: a crew is described by config.yaml/crew.yaml + agents/*.yaml + tasks/*.yaml.
+        // It is selected as soon as an agents/ or tasks/ sub-directory exists; otherwise we fall back
+        // to the flat legacy triplet (crew.yaml + agents.yaml + tasks.yaml), byte-for-byte unchanged.
+        var agentsDirExists = await IsDirectoryAsync(root + "/agents", ct).ConfigureAwait(false);
+        var tasksDirExists = await IsDirectoryAsync(root + "/tasks", ct).ConfigureAwait(false);
+
+        if (agentsDirExists || tasksDirExists)
+            return await LoadPerEntityDirectoryAsync(root, ct).ConfigureAwait(false);
+
+        return await LoadFlatDirectoryAsync(root, directoryPath, ct).ConfigureAwait(false);
+    }
+
+    private async Task<CrewConfiguration> LoadFlatDirectoryAsync(string root, string directoryPath, CancellationToken ct)
+    {
+        var crewFilePath = root + "/crew.yaml";
+        var agentsFilePath = root + "/agents.yaml";
+        var tasksFilePath = root + "/tasks.yaml";
 
         var crewYaml = await _fs.TryReadAllTextAsync(crewFilePath, ct).ConfigureAwait(false);
         if (crewYaml is null)
@@ -92,6 +108,77 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         var agents = _yamlSerializer.Deserialize<Dictionary<string, AgentYamlConfig>>(agentsYaml);
         var tasks = _yamlSerializer.Deserialize<Dictionary<string, TaskYamlConfig>>(tasksYaml);
 
+        return BuildFromSettings(crewSettings, agents, tasks);
+    }
+
+    private async Task<CrewConfiguration> LoadPerEntityDirectoryAsync(string root, CancellationToken ct)
+    {
+        // Guard against a mixed tree — a flat file and its per-entity directory side by side would be
+        // ambiguous, so we refuse rather than pick a silent precedence.
+        await ThrowIfMixedAsync(root, "agents", ct).ConfigureAwait(false);
+        await ThrowIfMixedAsync(root, "tasks", ct).ConfigureAwait(false);
+
+        // Crew settings: config.yaml is preferred, crew.yaml is accepted as a fallback name.
+        var settingsPath = root + "/config.yaml";
+        var settingsYaml = await _fs.TryReadAllTextAsync(settingsPath, ct).ConfigureAwait(false);
+        if (settingsYaml is null)
+        {
+            settingsPath = root + "/crew.yaml";
+            settingsYaml = await _fs.TryReadAllTextAsync(settingsPath, ct).ConfigureAwait(false);
+        }
+        if (settingsYaml is null)
+            throw new FileNotFoundException(
+                $"config.yaml (or crew.yaml) not found in directory: {root}", root + "/config.yaml");
+
+        settingsYaml = YamlAnchorPreprocessor.Preprocess(settingsYaml);
+        var crewSettings = _yamlSerializer.Deserialize<CrewSettingsYamlConfig>(settingsYaml);
+
+        var agents = await LoadEntityFolderAsync<AgentYamlConfig>(root + "/agents", ct).ConfigureAwait(false);
+        var tasks = await LoadEntityFolderAsync<TaskYamlConfig>(root + "/tasks", ct).ConfigureAwait(false);
+
+        return BuildFromSettings(crewSettings, agents, tasks);
+    }
+
+    /// <summary>
+    /// Enumerates <c>{folder}/*.yaml</c> (non-recursive, ordinally sorted), using each file-name stem as the
+    /// entity key — the equivalent of the dictionary key in the flat single-file layout. Anchors are
+    /// preprocessed per file (they cannot span files). An absent or empty folder yields an empty dictionary.
+    /// </summary>
+    private async Task<Dictionary<string, T>> LoadEntityFolderAsync<T>(string folder, CancellationToken ct)
+    {
+        var result = new Dictionary<string, T>(StringComparer.Ordinal);
+
+        if (!await IsDirectoryAsync(folder, ct).ConfigureAwait(false))
+            return result;
+
+        var paths = new List<string>();
+        await foreach (var entry in _fs.EnumerateFilesAsync(
+                           folder, new VirtualEnumerationOptions(Recursive: false, SearchPattern: "*.yaml"), ct)
+                           .ConfigureAwait(false))
+        {
+            if (entry.Kind == VirtualEntryKind.File)
+                paths.Add(entry.VirtualPath);
+        }
+        paths.Sort(StringComparer.Ordinal);
+
+        foreach (var path in paths)
+        {
+            var yaml = await _fs.TryReadAllTextAsync(path, ct).ConfigureAwait(false);
+            if (yaml is null)
+                continue;
+
+            yaml = YamlAnchorPreprocessor.Preprocess(yaml);
+            result[StemOf(path)] = _yamlSerializer.Deserialize<T>(yaml);
+        }
+
+        return result;
+    }
+
+    private CrewConfiguration BuildFromSettings(
+        CrewSettingsYamlConfig? crewSettings,
+        Dictionary<string, AgentYamlConfig>? agents,
+        Dictionary<string, TaskYamlConfig>? tasks)
+    {
         var config = _mapper.BuildConfiguration(
             new CrewMappingSettings
             {
@@ -113,6 +200,32 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         LogLoadedCrewDefinitionFromDirectory(config.Agents.Count, config.Tasks.Count);
 
         return config;
+    }
+
+    private async Task ThrowIfMixedAsync(string root, string entity, CancellationToken ct)
+    {
+        var flatFile = $"{root}/{entity}.yaml";
+        var dir = $"{root}/{entity}";
+        if (await IsDirectoryAsync(dir, ct).ConfigureAwait(false) &&
+            await _fs.ExistsAsync(flatFile, ct).ConfigureAwait(false))
+        {
+            throw new InvalidOperationException(
+                $"Mixed crew layout: both '{flatFile}' and '{dir}/' exist. " +
+                "Use either the flat single-file layout or the per-entity directory layout, not both.");
+        }
+    }
+
+    private async Task<bool> IsDirectoryAsync(string path, CancellationToken ct)
+    {
+        if (!await _fs.ExistsAsync(path, ct).ConfigureAwait(false))
+            return false;
+        return await _fs.GetEntryKindAsync(path, ct).ConfigureAwait(false) == VirtualEntryKind.Directory;
+    }
+
+    private static string StemOf(string virtualPath)
+    {
+        var name = virtualPath[(virtualPath.LastIndexOf('/') + 1)..];
+        return name.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) ? name[..^".yaml".Length] : name;
     }
 
     /// <inheritdoc />
