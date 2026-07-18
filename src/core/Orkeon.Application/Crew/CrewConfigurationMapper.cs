@@ -46,14 +46,19 @@ public static class CrewConfigurationMapper
 
     private static DomainCrew CreateCrew(CrewConfiguration configuration)
     {
-        return new CrewBuilder()
+        var builder = new CrewBuilder()
             .Goal(configuration.Goal ?? "Default goal")
             .Process(configuration.Process)
             .Verbose(configuration.Verbose)
             .Planning(configuration.Planning)
             .MaxRpm(configuration.ExecutionConfig?.MaxConcurrentTasks ?? 10)
-            .EnableMemory(configuration.Memory)
-            .Build();
+            .EnableMemory(configuration.Memory);
+
+        // Carry the declared memory provider onto the aggregate so it survives to kickoff (P2-O-02).
+        if (!string.IsNullOrWhiteSpace(configuration.MemoryProvider))
+            builder.WithMemoryProvider(configuration.MemoryProvider);
+
+        return builder.Build();
     }
 
     private static void MapAgents(

@@ -30,6 +30,7 @@ public sealed class CrewBuilder
     private ITaskCallback? _taskCallback;
     private ILlmProvider? _planningLlm;
     private bool _memoryEnabled;
+    private string? _memoryProvider;
     private bool _allowDynamicAgents;
     private int? _maxConcurrentDynamicAgents;
     private GraphConfig? _graphConfig;
@@ -185,6 +186,14 @@ public sealed class CrewBuilder
         return this;
     }
 
+    /// <summary>Selects the crew's memory provider (e.g. <c>redis</c>, <c>sqlite</c>); resolved at kickoff.</summary>
+    public CrewBuilder WithMemoryProvider(string memoryProvider)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(memoryProvider);
+        _memoryProvider = memoryProvider;
+        return this;
+    }
+
     /// <summary>Enables or disables sharing crew information among agents.</summary>
     public CrewBuilder ShareCrew(bool shareCrew = true)
     {
@@ -310,6 +319,7 @@ public sealed class CrewBuilder
             TaskCallback = _taskCallback,
             PlanningLlm = _planningLlm,
             MemoryEnabled = _memoryEnabled,
+            MemoryProvider = _memoryProvider,
             AllowDynamicAgents = _allowDynamicAgents,
             MaxConcurrentDynamicAgents = _maxConcurrentDynamicAgents,
             GraphConfig = _graphConfig,

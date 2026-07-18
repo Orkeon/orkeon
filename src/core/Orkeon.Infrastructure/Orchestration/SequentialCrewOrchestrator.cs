@@ -35,6 +35,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly IAgentRepository? _agentRepository;
     private readonly ICheckpointManager? _checkpointManager;
     private readonly IExecutionPlanParser _executionPlanParser;
+    private readonly Orkeon.Application.Memory.CrewMemoryProviderRegistry? _memoryProviderRegistry;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -49,7 +50,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         IExecutionPlanParser executionPlanParser,
         IStreamingAgentExecutionService? streamingService = null,
         IAgentRepository? agentRepository = null,
-        ICheckpointManager? checkpointManager = null)
+        ICheckpointManager? checkpointManager = null,
+        Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -65,6 +67,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _streamingService = streamingService;
         _agentRepository = agentRepository;
         _checkpointManager = checkpointManager;
+        _memoryProviderRegistry = memoryProviderRegistry;
     }
 
     /// <summary>
@@ -103,6 +106,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // Load crew from repository
             var crew = await _crewRepository.GetByIdAsync(crewId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Crew {crewId} not found");
+
+            // Record the crew's declared memory provider so the memory subsystem resolves it to a
+            // concrete IMemoryProvider for this run (P2-O-02). Idempotent; null clears to host default.
+            _memoryProviderRegistry?.SetProvider(crew.Id, crew.MemoryProvider);
 
             // Start checkpoint session if checkpoint manager is available
             if (_checkpointManager != null)

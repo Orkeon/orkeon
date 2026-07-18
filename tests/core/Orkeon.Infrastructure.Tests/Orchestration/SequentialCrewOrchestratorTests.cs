@@ -9,6 +9,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Context;
+using Orkeon.Application.Memory;
 using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.Parsing;
 using Orkeon.Infrastructure.Persistence.Agent;
@@ -196,6 +197,63 @@ public class SequentialCrewOrchestratorTests
             yield return new AgentThought("Final answer", AgentThought.ThoughtType.Conclusion, null, DateTime.UtcNow);
             await System.Threading.Tasks.Task.CompletedTask;
         }
+    }
+
+    #endregion
+
+    #region Memory Provider Recording (P2-O-02)
+
+    [Fact]
+    public async Task KickoffAsync_ShouldRecordCrewMemoryProvider_AtKickoff()
+    {
+        // Arrange — a crew declaring a memory provider; the orchestrator must record it so the
+        // memory subsystem can resolve it for this run.
+        var repository = new TestCrewRepository();
+        var logger = new TestLogger();
+        var stateManager = new TestStateManager();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var registry = new CrewMemoryProviderRegistry();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(),
+            memoryProviderRegistry: registry);
+
+        var crew = DomainCrew.Create(new CrewCreateOptions
+        {
+            Goal = "Test crew",
+            ProcessType = ProcessType.Sequential,
+            MemoryProvider = "redis"
+        });
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        // Act
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal("redis", registry.GetProvider(crew.Id));
+    }
+
+    [Fact]
+    public async Task KickoffAsync_ShouldLeaveRegistryEmpty_WhenCrewDeclaresNoProvider()
+    {
+        var repository = new TestCrewRepository();
+        var logger = new TestLogger();
+        var stateManager = new TestStateManager();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var registry = new CrewMemoryProviderRegistry();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(),
+            memoryProviderRegistry: registry);
+
+        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.Null(registry.GetProvider(crew.Id));
     }
 
     #endregion

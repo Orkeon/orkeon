@@ -89,6 +89,13 @@ public sealed class CrewCreateOptions
     public bool MemoryEnabled { get; init; }
 
     /// <summary>
+    /// Optional memory-provider selection (e.g. <c>inmemory</c>, <c>redis</c>, <c>sqlite</c>,
+    /// <c>chromadb</c>, <c>pinecone</c>, <c>lancedb</c>). Null falls back to the host's configured
+    /// default provider. Resolved to a concrete <c>IMemoryProvider</c> at kickoff.
+    /// </summary>
+    public string? MemoryProvider { get; init; }
+
+    /// <summary>
     /// Whether to allow dynamic agent creation during execution.
     /// </summary>
     public bool AllowDynamicAgents { get; init; }

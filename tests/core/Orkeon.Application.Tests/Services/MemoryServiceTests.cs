@@ -589,4 +589,77 @@ public class MemoryServiceTests
     }
 
     #endregion
+
+    #region Crew-declared Provider (P2-O-02)
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldBackLongTermMemory_WithCrewDeclaredProvider()
+    {
+        // Arrange — a crew declares "redis"; the registry records it and MemoryService must resolve
+        // that provider via the factory and route long-term stores to it.
+        var provider = new TestMemoryProvider();
+        var factory = new TestMemoryProviderFactory(provider);
+        var registry = new CrewMemoryProviderRegistry();
+        var crewId = CreateTestCrewId();
+        registry.SetProvider(crewId, "redis");
+        using var service = new MemoryService(factory, new TestLogger(), registry);
+
+        // Act — high importance (> 0.7) routes to long-term memory.
+        await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
+
+        // Assert — the crew's declared provider was resolved and actually received the store.
+        Assert.Contains("Create:redis", factory.CreatedConfigs);
+        Assert.Contains(provider.MethodCalls, c => c.StartsWith("StoreAsync", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldSearchLongTermMemory_ThroughCrewDeclaredProvider()
+    {
+        var provider = new TestMemoryProvider();
+        var factory = new TestMemoryProviderFactory(provider);
+        var registry = new CrewMemoryProviderRegistry();
+        var crewId = CreateTestCrewId();
+        registry.SetProvider(crewId, "redis");
+        using var service = new MemoryService(factory, new TestLogger(), registry);
+
+        await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
+        var results = await service.SearchMemoryAsync(crewId, "insight", 5, DomainMemoryType.LongTerm, TestContext.Current.CancellationToken);
+
+        Assert.Contains(provider.MethodCalls, c => c.StartsWith("SearchAsync", StringComparison.Ordinal));
+        Assert.Single(results);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldNotTouchProvider_WhenCrewDeclaredNoProvider()
+    {
+        // Default path: registry has no entry for the crew → in-process store, factory never invoked.
+        var provider = new TestMemoryProvider();
+        var factory = new TestMemoryProviderFactory(provider);
+        var registry = new CrewMemoryProviderRegistry();
+        var crewId = CreateTestCrewId();
+        using var service = new MemoryService(factory, new TestLogger(), registry);
+
+        await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
+
+        Assert.Empty(factory.CreatedConfigs);
+        Assert.Empty(provider.MethodCalls);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldUseInProcessStore_WhenNoRegistrySupplied()
+    {
+        // Backward compatibility: the registry ctor arg is optional; omitting it keeps the pre-P2-O-02
+        // in-process behavior with no provider resolution.
+        var provider = new TestMemoryProvider();
+        var factory = new TestMemoryProviderFactory(provider);
+        var crewId = CreateTestCrewId();
+        using var service = new MemoryService(factory, new TestLogger());
+
+        await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
+
+        Assert.Empty(factory.CreatedConfigs);
+        Assert.Empty(provider.MethodCalls);
+    }
+
+    #endregion
 }

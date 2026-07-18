@@ -235,6 +235,11 @@ public partial class CrewFactory : ICrewFactory
         if (config.CircuitBreaker is not null)
             builder.WithCircuitBreaker(config.CircuitBreaker);
 
+        // The declared memory provider must survive to kickoff, where it is resolved to a concrete
+        // IMemoryProvider (P2-O-02). Dropped here previously, so the choice never reached the run.
+        if (!string.IsNullOrWhiteSpace(config.MemoryProvider))
+            builder.WithMemoryProvider(config.MemoryProvider);
+
         if (config.Process == ProcessType.Hierarchical
             && config.ManagerAgentId is not null
             && agentMap.TryGetValue(config.ManagerAgentId.ToString(), out var managerAgent))

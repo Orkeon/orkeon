@@ -47,6 +47,12 @@ public sealed class Crew : AggregateRoot<CrewId>
     public bool Planning { get; private set; }
 
     /// <summary>
+    /// Gets the memory-provider selection (e.g. <c>redis</c>, <c>sqlite</c>). Null falls back to the
+    /// host's configured default provider. Resolved to a concrete <c>IMemoryProvider</c> at kickoff.
+    /// </summary>
+    public string? MemoryProvider { get; private set; }
+
+    /// <summary>
     /// Gets the manager agent ID for hierarchical process.
     /// </summary>
     public AgentId? ManagerAgentId { get; private set; }
@@ -198,6 +204,7 @@ public sealed class Crew : AggregateRoot<CrewId>
             TaskCallback = options.TaskCallback,
             PlanningLlm = options.PlanningLlm,
             MemoryEnabled = options.MemoryEnabled,
+            MemoryProvider = options.MemoryProvider,
             AllowDynamicAgents = options.AllowDynamicAgents,
             MaxConcurrentDynamicAgents = options.MaxConcurrentDynamicAgents,
             ToolAccessPolicy = options.ToolAccessPolicy,

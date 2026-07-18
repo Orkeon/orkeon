@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
 #pragma warning restore CS0618
 
         // Memory services
+        services.AddSingleton<Memory.CrewMemoryProviderRegistry>();
         services.AddSingleton<IMemoryService, MemoryService>();
         services.AddScoped<IMemorySearchService, MemorySearchService>();
 

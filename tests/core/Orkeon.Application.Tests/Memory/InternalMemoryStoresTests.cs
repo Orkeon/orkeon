@@ -254,7 +254,7 @@ public class InternalMemoryStoresTests
     {
         using var system = new CrewMemorySystem(
             CrewId.From(Guid.NewGuid()),
-            new Orkeon.Application.Tests.TestDoubles.TestMemoryProviderFactory(),
+            provider: null,
             NullLogger.Instance);
 
         Assert.NotNull(system.ShortTerm);
@@ -268,7 +268,7 @@ public class InternalMemoryStoresTests
     {
         var system = new CrewMemorySystem(
             CrewId.From(Guid.NewGuid()),
-            new Orkeon.Application.Tests.TestDoubles.TestMemoryProviderFactory(),
+            provider: null,
             NullLogger.Instance);
 
         system.Dispose();

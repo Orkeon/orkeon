@@ -132,6 +132,22 @@ LanceDB Cloud/Enterprise REST endpoint and `Options` may carry `ApiKey`, `TableN
 (without an endpoint: explicit warning and In-Memory fallback; DI wiring via
 `AddOrkeonLanceDb`). An unknown type falls back to In-Memory with an explicit warning.
 
+### Per-crew provider selection
+
+A crew can declare its own provider via `memoryProvider` in YAML (or `CrewBuilder.WithMemoryProvider`).
+The selection travels to the run rather than being fixed globally by `Memory:Provider` config:
+
+1. `memoryProvider` maps into `CrewConfiguration.MemoryProvider`, which `CrewFactory` carries onto the
+   domain `Crew` aggregate (`Crew.MemoryProvider`).
+2. At kickoff the orchestrator records `Crew.Id → Crew.MemoryProvider` in the singleton
+   `CrewMemoryProviderRegistry` (keyed by crew, so selections never leak across crews).
+3. When `MemoryService` materializes that crew's memory system, it resolves the recorded string to a
+   concrete `IMemoryProvider` through `MemoryProviderFactory` and backs the crew's **long-term** memory
+   with it (short-term memory stays an in-process sliding window). Unknown/unavailable types keep the
+   factory's In-Memory-with-warning fallback.
+
+A crew that declares no `memoryProvider` uses the in-process default store — behavior is unchanged.
+
 ## Encryption at rest
 
 `EncryptedMemoryProviderDecorator` wraps any `IMemoryProvider` (SQLite,
