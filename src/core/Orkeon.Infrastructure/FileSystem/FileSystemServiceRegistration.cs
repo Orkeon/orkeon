@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.Configuration;
@@ -51,10 +52,15 @@ public static class FileSystemServiceRegistration
             return new FileSystemRegistry(mounts);
         });
 
-        // 3. Register FileSystemService as the IFileSystemService implementation
+        // 3. Register the ambient per-execution mount scope (P2-O-05). Singleton so the host that
+        //    enters a scoped registry and the singleton FileSystemService that reads it share the
+        //    same AsyncLocal slot. A host that never enters a scope keeps the boot mounts unchanged.
+        services.TryAddSingleton<IFileSystemScope, AsyncLocalFileSystemScope>();
+
+        // 4. Register FileSystemService as the IFileSystemService implementation
         services.AddSingleton<IFileSystemService, FileSystemService>();
 
-        // 4. Register VirtualFileSystemWatcher (transient: each caller owns one watcher lifetime)
+        // 5. Register VirtualFileSystemWatcher (transient: each caller owns one watcher lifetime)
         services.AddTransient<IVirtualFileSystemWatcher, VirtualFileSystemWatcher>();
 
         return services;

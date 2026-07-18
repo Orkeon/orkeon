@@ -10,37 +10,56 @@ namespace Orkeon.Infrastructure.FileSystem;
 /// </summary>
 public sealed partial class FileSystemService : IFileSystemService
 {
-    private readonly FileSystemRegistry _registry;
+    private readonly FileSystemRegistry _bootRegistry;
+    private readonly IFileSystemScope? _scope;
     private readonly IPathValidator _pathValidator;
     private readonly ILogger<FileSystemService> _logger;
 
-    /// <summary>All known mount base paths, used to redact physical paths from error messages.</summary>
+    /// <summary>Boot mount base paths, used to redact physical paths from error messages.</summary>
     private readonly IReadOnlyList<string> _basePaths;
 
     /// <summary>Initializes a new instance of <see cref="FileSystemService"/>.</summary>
-    /// <param name="registry">The file system registry.</param>
+    /// <param name="registry">The boot-time file system registry (default mounts).</param>
     /// <param name="pathValidator">The path validator.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="scope">
+    /// Optional ambient scope override (P2-O-05). When an execution flow has entered a scoped
+    /// registry, operations resolve against it; otherwise they use the boot registry (unchanged).
+    /// </param>
     public FileSystemService(
         FileSystemRegistry registry,
         IPathValidator pathValidator,
-        ILogger<FileSystemService> logger)
+        ILogger<FileSystemService> logger,
+        IFileSystemScope? scope = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(pathValidator);
         ArgumentNullException.ThrowIfNull(logger);
 
-        _registry = registry;
+        _bootRegistry = registry;
+        _scope = scope;
         _pathValidator = pathValidator;
         _logger = logger;
 
-        // Collect base paths for redaction (normalize to full paths).
-        // Use GetAllMountsInternal to include internal mounts (e.g. sandbox) in redaction,
-        // so physical paths are never leaked regardless of mount visibility.
-        // 1:1 mounts (physical == virtual, e.g. the container convention /output:/output)
-        // are excluded: their "physical" path IS the public virtual name, and redacting it
-        // strips the only actionable hint from denial messages ("Available mounts: [REDACTED]").
-        _basePaths = _registry.GetAllMountsInternal()
+        _basePaths = CollectBasePaths(registry);
+    }
+
+    /// <summary>
+    /// The registry active for the current operation: the ambient scope's registry when an execution
+    /// flow has entered one, otherwise the boot registry. Read per operation so scoped mounts never
+    /// leak across async flows and existing (no-scope) behavior is byte-identical.
+    /// </summary>
+    private FileSystemRegistry ActiveRegistry => _scope?.Current ?? _bootRegistry;
+
+    // Collects mount base paths for redaction (normalize to full paths).
+    // Uses GetAllMountsInternal to include internal mounts (e.g. sandbox) in redaction,
+    // so physical paths are never leaked regardless of mount visibility.
+    // 1:1 mounts (physical == virtual, e.g. the container convention /output:/output)
+    // are excluded: their "physical" path IS the public virtual name, and redacting it
+    // strips the only actionable hint from denial messages ("Available mounts: [REDACTED]").
+    private static List<string> CollectBasePaths(FileSystemRegistry registry)
+    {
+        return registry.GetAllMountsInternal()
             .Select(m => (m.VirtualPath, BasePath: GetBasePathFromRegistry(registry, m.VirtualPath)))
             .Where(x => x.BasePath is not null
                         && !string.Equals(x.BasePath, x.VirtualPath, StringComparison.Ordinal))
@@ -56,7 +75,7 @@ public sealed partial class FileSystemService : IFileSystemService
         string physicalPath;
         try
         {
-            physicalPath = _registry.ResolveAndCheckRights(virtualPath, requiredRight);
+            physicalPath = ActiveRegistry.ResolveAndCheckRights(virtualPath, requiredRight);
         }
         catch (FileAccessDeniedException ex)
         {
@@ -81,13 +100,13 @@ public sealed partial class FileSystemService : IFileSystemService
     /// <inheritdoc />
     public string? ToVirtualPath(string physicalPath)
     {
-        return _registry.ToVirtualPath(physicalPath);
+        return ActiveRegistry.ToVirtualPath(physicalPath);
     }
 
     /// <inheritdoc />
     public IReadOnlyList<MountInfo> GetAvailableMounts()
     {
-        return _registry.GetAvailableMounts();
+        return ActiveRegistry.GetAvailableMounts();
     }
 
     /// <summary>
@@ -96,7 +115,15 @@ public sealed partial class FileSystemService : IFileSystemService
     /// </summary>
     internal string RedactPhysicalPaths(string message)
     {
-        return _basePaths.Aggregate(message, (current, basePath) =>
+        // Redact boot mount paths plus, when an execution flow has entered a scoped registry, that
+        // scope's mount paths too — so scoped physical paths are never leaked in denial messages.
+        // Only runs on the (cold) access-denied path, so recomputing scope base paths is cheap.
+        var scoped = _scope?.Current;
+        var basePaths = scoped is not null && !ReferenceEquals(scoped, _bootRegistry)
+            ? _basePaths.Concat(CollectBasePaths(scoped))
+            : _basePaths;
+
+        return basePaths.Aggregate(message, (current, basePath) =>
             current.Contains(basePath, StringComparison.Ordinal)
                 ? current.Replace(basePath, "[REDACTED]", StringComparison.Ordinal)
                 : current);

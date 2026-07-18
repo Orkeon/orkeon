@@ -95,6 +95,28 @@ public sealed class FileSystemServiceRegistrationTests : IDisposable
         Assert.Equal("/workspace", mounts[0].VirtualPath);
     }
 
+    [Fact]
+    public void AddOrkeonFileSystem_ShouldRegisterFileSystemScope_AsSingleton()
+    {
+        // P2-O-05: the ambient mount scope must be a singleton so the host that enters a scoped
+        // registry and the singleton FileSystemService that reads it share the same AsyncLocal slot.
+        var config = BuildConfiguration([$"{_tempDir}:/workspace:rw"]);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IPathValidator>(new StubPathValidator().AllowAll());
+        services.AddOrkeonFileSystem(config);
+
+        var descriptor = Assert.Single(services, d => d.ServiceType == typeof(IFileSystemScope));
+        Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
+        Assert.Equal(typeof(AsyncLocalFileSystemScope), descriptor.ImplementationType);
+
+        using var provider = services.BuildServiceProvider();
+        // With no scope entered, the service exposes the boot mount unchanged.
+        var scope = provider.GetRequiredService<IFileSystemScope>();
+        Assert.Null(scope.Current);
+        Assert.Single(provider.GetRequiredService<IFileSystemService>().GetAvailableMounts());
+    }
+
     private static IConfiguration BuildConfiguration(string[] mounts)
     {
         var data = new Dictionary<string, string?>();

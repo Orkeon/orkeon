@@ -108,6 +108,39 @@ These accesses cannot go through the VFS by nature and are **permanently** allow
 3. Never add a `string`-path `System.IO` fallback. There is no back-compat ctor — DI is the only construction path.
 4. If you need to enumerate, stream, copy, or watch, use the dedicated `IFileSystemService` methods rather than the equivalent `System.IO` primitives (including `StreamReader`/`StreamWriter` — wrap a `Stream` from `OpenReadStreamAsync`/`OpenWriteStreamAsync`, never a path).
 
+## Per-scope mounts (ambient mount override)
+
+The mount set is a boot-time singleton: `AddOrkeonFileSystem` builds one `FileSystemRegistry` from
+`Orkeon:FileSystem:Mounts`, and `IFileSystemService` is a singleton over it. That is correct for a
+single-tenant runner, but a host that runs many crews in one process (e.g. a run engine driving a
+different profile per run) needs to give **one execution flow its own mounts** without disturbing the
+others.
+
+`IFileSystemService` cannot become DI-scoped for this: dozens of singletons inject it, so a scoped
+lifetime would be a captive dependency. Instead, per-scope mounts are provided by an **ambient
+override** — `IFileSystemScope` (registered as a singleton, backed by `AsyncLocal<FileSystemRegistry?>`,
+`AsyncLocalFileSystemScope`). The singleton `FileSystemService` reads it **per operation**: it resolves
+against the ambient registry when an execution flow has entered one, and against the boot registry
+otherwise. `AsyncLocal` isolates the value per asynchronous control flow, so concurrent runs never see
+each other's mounts, and a host that never enters a scope keeps byte-identical behavior.
+
+```csharp
+// Inside a run scope: install the run profile's mounts for this async flow only.
+var mounts = profileMountStrings.Select(FileSystemMount.Parse).ToList();
+using var registry = new FileSystemRegistry(mounts);   // caller owns the registry lifetime
+using var _ = fileSystemScope.Enter(registry);          // restored on dispose (nesting supported)
+
+// Every IFileSystemService call on THIS async flow now resolves against `mounts`;
+// other concurrent runs continue to see the boot mounts.
+```
+
+The guards apply to scoped mounts exactly as to boot mounts, because they run per operation over
+whichever registry is active: the registry enforces mount rights + path-traversal containment, and
+`IPathValidator` independently enforces the workspace-root / blocked-path / extension checks
+(`PathSecurity:DefaultWorkspaceRoot`, `AdditionalAllowedDirectories`). A scoped mount whose physical
+base sits outside the allowed workspace root is denied just like a boot mount would be. The caller owns
+the scoped `FileSystemRegistry`'s lifetime (`Enter` does not dispose it — dispose it yourself, as above).
+
 ## CI behaviour
 
 All seven diagnostics (`ORKVFS001`–`ORKVFS007`) are **errors**, so CI blocks any merge that reintroduces `System.IO` file access, a string-path `StreamReader`/`StreamWriter`, a `Path.GetFullPath` on user input, or a nullable `IFileSystemService` in framework code without a justified `[SuppressVfsCompliance]` attribute.
