@@ -1,13 +1,20 @@
+using System.Runtime.CompilerServices;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using Orkeon.Domain.Autonomous;
+using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Crew;
 using Orkeon.Domain.Crew.ValueObjects;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Task;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Context;
 using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.Parsing;
+using Orkeon.Infrastructure.Persistence.Agent;
+using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Application.Interfaces.Services;
+using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using CrewInput = Orkeon.Application.Interfaces.Services.CrewInput;
 using ExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
@@ -168,6 +175,100 @@ public class SequentialCrewOrchestratorTests
     {
         public TestProcessStrategy Strategy { get; } = new();
         public IProcessStrategy CreateStrategy(ProcessType processType) => Strategy;
+    }
+
+    /// <summary>
+    /// Streaming service that emits the full AgentThought granularity (reasoning + tool selection +
+    /// tool execution + conclusion) an <see cref="IStreamingAgentExecutionService"/> is expected to
+    /// surface — used to prove the orchestrator relays it instead of collapsing to a single output.
+    /// </summary>
+    private sealed class FakeStreamingAgentExecutionService : IStreamingAgentExecutionService
+    {
+        public async IAsyncEnumerable<AgentThought> StreamExecutionAsync(
+            DomainAgent agent,
+            CrewTask task,
+            SimpleExecutionContext context,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            yield return new AgentThought("Thinking about the task", AgentThought.ThoughtType.Reasoning, null, DateTime.UtcNow);
+            yield return new AgentThought("Calling tool: search", AgentThought.ThoughtType.ToolSelection, null, DateTime.UtcNow);
+            yield return new AgentThought("search returned 3 rows", AgentThought.ThoughtType.ToolExecution, null, DateTime.UtcNow);
+            yield return new AgentThought("Final answer", AgentThought.ThoughtType.Conclusion, null, DateTime.UtcNow);
+            await System.Threading.Tasks.Task.CompletedTask;
+        }
+    }
+
+    #endregion
+
+    #region KickoffStreamingAsync Tests (P2-O-03)
+
+    [Fact]
+    public async Task KickoffStreamingAsync_ShouldYieldAgentThoughtLevelEvents_WhenStreamingServiceRegistered()
+    {
+        // Arrange — orchestrator wired with the streaming service + agent repository (the default
+        // AddOrkeonInfrastructure registration path).
+        var repository = new TestCrewRepository();
+        var logger = new TestLogger();
+        var stateManager = new TestStateManager();
+        var strategyFactory = new TestProcessStrategyFactory();
+
+        var agent = new AgentBuilder().Role("Researcher").Goal("Find data").Build();
+        var agentRepository = new InMemoryAgentRepository(new NullUnitOfWork());
+        await agentRepository.AddAsync(agent, TestContext.Current.CancellationToken);
+
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser(),
+            new FakeStreamingAgentExecutionService(), agentRepository);
+
+        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
+        crew.AddAgent(agent.Id);
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        var input = new CrewInput("ctx", new Dictionary<string, object>());
+
+        // Act
+        var events = new List<CrewExecutionEvent>();
+        await foreach (var ev in orchestrator.KickoffStreamingAsync(crew.Id, input, TestContext.Current.CancellationToken))
+            events.Add(ev);
+
+        // Assert — tool-call granularity is preserved (not collapsed to a single conclusion),
+        // and no degradation warning is emitted.
+        Assert.Contains(events, e => e.Thought.Type == AgentThought.ThoughtType.ToolSelection);
+        Assert.Contains(events, e => e.Thought.Type == AgentThought.ThoughtType.ToolExecution);
+        Assert.Contains(events, e => e.Thought.Type == AgentThought.ThoughtType.Conclusion);
+        Assert.DoesNotContain(logger.Logs, l => l.Contains("degrading to per-task replay"));
+    }
+
+    [Fact]
+    public async Task KickoffStreamingAsync_ShouldLogLoudFallbackWarning_WhenStreamingServiceMissing()
+    {
+        // Arrange — no streaming service and no agent repository (optional ctor args default to null).
+        var repository = new TestCrewRepository();
+        var logger = new TestLogger();
+        var stateManager = new TestStateManager();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, logger, stateManager, strategyFactory, new ExecutionPlanParser());
+
+        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        var input = new CrewInput("ctx", new Dictionary<string, object>());
+
+        // Act — the warning fires lazily when the stream is enumerated.
+        await foreach (var _ in orchestrator.KickoffStreamingAsync(crew.Id, input, TestContext.Current.CancellationToken))
+        {
+            // drain
+        }
+
+        // Assert — the fallback is loud and names the missing registration.
+        Assert.Contains(logger.Logs, l =>
+            l.Contains("[Warning]") &&
+            l.Contains("degrading to per-task replay") &&
+            l.Contains("IStreamingAgentExecutionService"));
     }
 
     #endregion

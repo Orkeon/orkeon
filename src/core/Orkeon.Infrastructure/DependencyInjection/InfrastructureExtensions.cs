@@ -366,7 +366,11 @@ public static class InfrastructureExtensions
         services.AddScoped<ITaskRepository, InMemoryTaskRepository>();
         services.AddScoped<IAgentMemoryStoreRepository, InMemoryAgentMemoryStoreRepository>();
 
-        // Streaming agent execution service
+        // Streaming agent execution service — registered by default so that
+        // ICrewOrchestrationService.KickoffStreamingAsync streams AgentThought-level
+        // (tool-call granular) events instead of degrading to per-task replay. It resolves
+        // an IChatClient (see AddOrkeonChatClientAdapters); a host that omits an LLM provider
+        // gets the loud fallback warning from SequentialCrewOrchestrator, not a silent downgrade.
         services.AddScoped<Orkeon.Application.Interfaces.Services.IStreamingAgentExecutionService, StreamingAgentExecutionService>();
 
         // Agent lifecycle manager (kill switch)

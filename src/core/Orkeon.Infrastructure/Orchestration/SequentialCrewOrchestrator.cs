@@ -401,8 +401,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             // If streaming service is available, use real streaming; otherwise fall back
-            // to a normal execution whose task outputs are replayed as events.
-            var events = _streamingService != null && _agentRepository != null
+            // to a normal execution whose task outputs are replayed as events. The fallback
+            // silently loses tool-call granularity, so we warn loudly (once per kickoff)
+            // naming the missing registration.
+            var canStreamGranularly = _streamingService != null && _agentRepository != null;
+            if (!canStreamGranularly)
+                LogStreamingDegraded();
+
+            var events = canStreamGranularly
                 ? StreamViaServiceAsync(crewId, input, cancellationToken)
                 : StreamViaFallbackAsync(crewId, input, cancellationToken);
 
@@ -523,6 +529,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         }
     }
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "KickoffStreamingAsync is degrading to per-task replay — tool-call granularity is lost. No IStreamingAgentExecutionService (and/or IAgentRepository) is registered: call AddOrkeonInfrastructure() (which registers StreamingAgentExecutionService) with an IChatClient/LLM provider configured to stream AgentThought-level events.")]
+    private partial void LogStreamingDegraded();
     [LoggerMessage(Level = LogLevel.Error, Message = "Cannot execute crew: CrewId is null")]
     private partial void LogCrewIdNull();
     [LoggerMessage(Level = LogLevel.Information, Message = "Orchestrating crew execution for {CrewId}")]
