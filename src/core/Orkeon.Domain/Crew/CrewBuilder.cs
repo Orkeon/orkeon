@@ -1,4 +1,5 @@
 using Orkeon.Domain.Common;
+using Orkeon.Domain.Configuration;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Agent;
@@ -31,6 +32,8 @@ public sealed class CrewBuilder
     private bool _memoryEnabled;
     private bool _allowDynamicAgents;
     private int? _maxConcurrentDynamicAgents;
+    private GraphConfig? _graphConfig;
+    private CircuitBreakerConfig? _circuitBreaker;
 
     private readonly List<DomainAgent> _agents = [];
     private readonly List<CrewTask> _tasks = [];
@@ -240,6 +243,22 @@ public sealed class CrewBuilder
         return this;
     }
 
+    /// <summary>Sets the graph-orchestration configuration (only consumed for the Graph process).</summary>
+    public CrewBuilder WithGraphConfig(GraphConfig graphConfig)
+    {
+        ArgumentNullException.ThrowIfNull(graphConfig);
+        _graphConfig = graphConfig;
+        return this;
+    }
+
+    /// <summary>Sets the crew-level circuit-breaker configuration.</summary>
+    public CrewBuilder WithCircuitBreaker(CircuitBreakerConfig circuitBreaker)
+    {
+        ArgumentNullException.ThrowIfNull(circuitBreaker);
+        _circuitBreaker = circuitBreaker;
+        return this;
+    }
+
     /// <summary>
     /// Builds and returns a new <see cref="Crew"/> instance.
     /// </summary>
@@ -292,7 +311,9 @@ public sealed class CrewBuilder
             PlanningLlm = _planningLlm,
             MemoryEnabled = _memoryEnabled,
             AllowDynamicAgents = _allowDynamicAgents,
-            MaxConcurrentDynamicAgents = _maxConcurrentDynamicAgents
+            MaxConcurrentDynamicAgents = _maxConcurrentDynamicAgents,
+            GraphConfig = _graphConfig,
+            CircuitBreaker = _circuitBreaker
         });
 
         // 6. Add agents

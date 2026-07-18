@@ -8,6 +8,8 @@ using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Common.StateMachine;
+using Orkeon.Domain.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Application.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Orkeon.Infrastructure.Agent;
@@ -413,6 +415,103 @@ public sealed class GraphProcessStrategyTests : IDisposable
 
     #endregion
 
+    #region Crew GraphConfig Wiring (P2-O-01)
+
+    [Fact]
+    public async Task ShouldHonorCrewGraphConfigMaxRetryCycles_WhenStrategyUsesDefaults()
+    {
+        // The strategy is built with its DEFAULT init props (MaxRetryCycles = 2, CircuitPolicy = Strict).
+        // The crew carries GraphConfig{ MaxRetryCycles = 5, permissive } — proving the per-crew config,
+        // not the strategy default, drives execution: a task that only succeeds on its 5th attempt
+        // completes, which the default of 2 retry cycles could never reach.
+        var agent = CreateAgent("retrier");
+        var task = CreateTask("flaky_task");
+        _agents[agent.Id] = agent;
+        _tasks[task.Id] = task;
+
+        var crew = CreateGraphCrew([task], [agent], new GraphConfig
+        {
+            MaxRetryCycles = 5,
+            CircuitBreakerPreset = "permissive"
+        });
+        var plan = CrewExecutionPlan.Create();
+
+        var callCount = 0;
+        _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
+        {
+            callCount++;
+            var success = callCount >= 5;
+            return new TaskResult(success,
+                success ? "Finally succeeded" : $"Attempt {callCount} failed",
+                null, [], TimeSpan.FromSeconds(1));
+        });
+
+        // Default-configured strategy (no object-initializer overrides).
+        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, $"Expected success once the crew's 5 retry cycles are honored; callCount={callCount}");
+        Assert.True(callCount >= 5, $"Expected at least 5 attempts (crew MaxRetryCycles=5) but got {callCount}");
+    }
+
+    [Fact]
+    public async Task ShouldTripCircuitBreaker_WhenCrewGraphConfigSetsTightMaxTransitions()
+    {
+        // Crew GraphConfig overrides MaxTransitions down to a tiny value; an always-failing task
+        // then trips the breaker. Uses the default strategy — the tight limit comes from the crew.
+        var agent = CreateAgent("looper");
+        var task = CreateTask("infinite_retry");
+        _agents[agent.Id] = agent;
+        _tasks[task.Id] = task;
+
+        var crew = CreateGraphCrew([task], [agent], new GraphConfig
+        {
+            CircuitBreakerPreset = "permissive", // permissive => throws (no degraded mode)
+            MaxTransitions = 8,                  // very low — trips quickly
+            MaxStateVisits = 0,                  // disable visit-based tripping; rely on transitions
+            MaxRetryCycles = 100                 // high — rely on the breaker, not the retry cap
+        });
+        var plan = CrewExecutionPlan.Create();
+
+        _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
+            new TaskResult(false, "Fails forever", null, [], TimeSpan.FromSeconds(0)));
+
+        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("circuit breaker", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShouldUseStrategyDefaults_WhenCrewHasNoGraphConfig()
+    {
+        // Regression: a crew without GraphConfig must fall back to the strategy's built-in defaults
+        // (MaxRetryCycles = 2, CircuitPolicy = Strict) — the pre-P2-O-01 behavior, unchanged.
+        var agent = CreateAgent("doomed");
+        var task = CreateTask("always_fails");
+        _agents[agent.Id] = agent;
+        _tasks[task.Id] = task;
+
+        var crew = CreateCrewWithTasksAndAgents([task], [agent]);
+        Assert.Null(crew.GraphConfig); // no per-crew config
+        var plan = CrewExecutionPlan.Create();
+
+        var callCount = 0;
+        _mockExecutionService.SetExecuteFunc((a, t, ctx, ct) =>
+        {
+            callCount++;
+            return new TaskResult(false, "Always fails", null, [], TimeSpan.FromSeconds(1));
+        });
+
+        var result = await _strategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Stops per the default cap/breaker (does not run away) and reports giving up — as before.
+        Assert.NotNull(result);
+        Assert.True(_logger.HasLoggedError("failed after") || _logger.HasLoggedWarning("will retry"));
+        Assert.True(callCount <= 4, $"Default MaxRetryCycles=2 should bound attempts; got {callCount}");
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static DomainCrew CreateSimpleCrew()
@@ -428,6 +527,21 @@ public sealed class GraphProcessStrategyTests : IDisposable
         var builder = new CrewBuilder()
             .Goal("Crew with tasks and agents")
             .Sequential();
+
+        foreach (var task in tasks)
+            builder.WithTask(task);
+        foreach (var agent in agents)
+            builder.WithAgent(agent);
+
+        return builder.Build();
+    }
+
+    private static DomainCrew CreateGraphCrew(DomainTask[] tasks, DomainAgent[] agents, GraphConfig graphConfig)
+    {
+        var builder = new CrewBuilder()
+            .Goal("Graph crew")
+            .Process(ProcessType.Graph)
+            .WithGraphConfig(graphConfig);
 
         foreach (var task in tasks)
             builder.WithTask(task);

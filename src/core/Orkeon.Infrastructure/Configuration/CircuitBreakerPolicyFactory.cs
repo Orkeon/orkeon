@@ -42,6 +42,32 @@ public static class CircuitBreakerPolicyFactory
     }
 
     /// <summary>
+    /// Resolves the effective <see cref="CircuitBreakerPolicy"/> for a graph execution.
+    /// Precedence: the graph-specific <paramref name="graphConfig"/> wins; failing that, a
+    /// crew-level <paramref name="crewDefault"/> circuit-breaker config; failing both,
+    /// <paramref name="fallback"/> (the strategy's built-in default). Keeps the graph default
+    /// path byte-identical when neither config is present.
+    /// </summary>
+    /// <param name="graphConfig">Graph-specific config (preset + node/visit/duration limits), nullable.</param>
+    /// <param name="crewDefault">Crew-level circuit-breaker config, nullable.</param>
+    /// <param name="fallback">Policy to use when no config is supplied.</param>
+    public static CircuitBreakerPolicy ResolveGraph(
+        GraphConfig? graphConfig,
+        CircuitBreakerConfig? crewDefault,
+        CircuitBreakerPolicy fallback)
+    {
+        ArgumentNullException.ThrowIfNull(fallback);
+
+        if (graphConfig is not null)
+            return ApplyGraphOverrides(ResolvePreset(graphConfig.CircuitBreakerPreset), graphConfig);
+
+        if (crewDefault is not null)
+            return Resolve(crewDefault, null);
+
+        return fallback;
+    }
+
+    /// <summary>
     /// Creates a fully configured <see cref="TaskExecutionStateMachine"/> for a task.
     /// </summary>
     public static StateMachine<TaskExecutionState, TaskExecutionEvent> CreateTaskFsm(
@@ -97,6 +123,21 @@ public static class CircuitBreakerPolicyFactory
                 ? TimeSpan.FromSeconds(config.MaxTotalDurationSeconds.Value)
                 : policy.MaxTotalDuration,
             UseDegradedMode = config.UseDegradedMode ?? policy.UseDegradedMode,
+        };
+    }
+
+    // GraphConfig exposes only the node/visit/duration limits (no state timeout or degraded-mode
+    // toggle); those stay at the preset value.
+    private static CircuitBreakerPolicy ApplyGraphOverrides(
+        CircuitBreakerPolicy policy, GraphConfig config)
+    {
+        return policy with
+        {
+            MaxTransitions = config.MaxTransitions ?? policy.MaxTransitions,
+            MaxStateVisits = config.MaxStateVisits ?? policy.MaxStateVisits,
+            MaxTotalDuration = config.MaxTotalDurationSeconds.HasValue
+                ? TimeSpan.FromSeconds(config.MaxTotalDurationSeconds.Value)
+                : policy.MaxTotalDuration,
         };
     }
 }

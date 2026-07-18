@@ -228,6 +228,13 @@ public partial class CrewFactory : ICrewFactory
             .WithAgents(agentMap.Values)
             .WithTasks(taskMap.Values);
 
+        // Graph/circuit-breaker config are crew-definition settings that must survive to
+        // execution time — the GraphProcessStrategy reads them off the domain crew (P2-O-01).
+        if (config.GraphConfig is not null)
+            builder.WithGraphConfig(config.GraphConfig);
+        if (config.CircuitBreaker is not null)
+            builder.WithCircuitBreaker(config.CircuitBreaker);
+
         if (config.Process == ProcessType.Hierarchical
             && config.ManagerAgentId is not null
             && agentMap.TryGetValue(config.ManagerAgentId.ToString(), out var managerAgent))

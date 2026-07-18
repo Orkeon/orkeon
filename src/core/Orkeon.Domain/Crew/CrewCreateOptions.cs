@@ -1,5 +1,6 @@
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Agent.ValueObjects;
+using Orkeon.Domain.Configuration;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -102,4 +103,15 @@ public sealed class CrewCreateOptions
     /// When set, this policy overrides individual agent policies.
     /// </summary>
     public ToolAccessPolicy? ToolAccessPolicy { get; init; }
+
+    /// <summary>
+    /// Optional graph-orchestration configuration (retry cycles, circuit-breaker preset/limits).
+    /// Only consumed when <see cref="ProcessType"/> is <c>Graph</c>.
+    /// </summary>
+    public GraphConfig? GraphConfig { get; init; }
+
+    /// <summary>
+    /// Optional crew-level circuit-breaker configuration (default FSM limits for tasks).
+    /// </summary>
+    public CircuitBreakerConfig? CircuitBreaker { get; init; }
 }

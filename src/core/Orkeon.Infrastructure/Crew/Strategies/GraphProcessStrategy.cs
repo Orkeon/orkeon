@@ -9,6 +9,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
 using Orkeon.Infrastructure.Agent;
+using Orkeon.Infrastructure.Configuration;
 using Orkeon.Domain.Autonomous;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
@@ -40,13 +41,16 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private readonly ILogger<GraphProcessStrategy> _logger;
 
     /// <summary>
-    /// Optional: custom circuit breaker policy. Defaults to Strict.
+    /// Fallback circuit breaker policy used when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>
+    /// (nor a crew-level circuit-breaker config). Defaults to Strict. Per-crew config, when present,
+    /// takes precedence and is resolved off the crew at execution time — never stored on this
+    /// (scoped, potentially shared) strategy instance.
     /// </summary>
     public CircuitBreakerPolicy CircuitPolicy { get; init; } = CircuitBreakerPolicy.Strict;
 
     /// <summary>
-    /// Maximum number of retry cycles for failed tasks before giving up.
-    /// Applied in addition to the circuit breaker.
+    /// Fallback maximum retry cycles for failed tasks, used when the crew carries no
+    /// <see cref="Domain.Configuration.GraphConfig"/>. Applied in addition to the circuit breaker.
     /// </summary>
     public int MaxRetryCycles { get; init; } = 2;
 
@@ -111,6 +115,14 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
         var taskIds = GetOrderedTaskIds(crew, plan).ToList();
 
+        // Resolve the effective graph config off the crew (P2-O-01): per-crew GraphConfig wins,
+        // then a crew-level circuit-breaker config, then this strategy's fallback defaults. The
+        // config travels with the crew argument, not on the shared scoped strategy, so concurrent
+        // crews can never clobber one another's policy.
+        var effectivePolicy = CircuitBreakerPolicyFactory.ResolveGraph(
+            crew.GraphConfig, crew.CircuitBreaker, CircuitPolicy);
+        var effectiveMaxRetryCycles = crew.GraphConfig?.MaxRetryCycles ?? MaxRetryCycles;
+
         // Build the initial graph state
         var initialState = new CrewGraphState
         {
@@ -120,11 +132,11 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             Variables = variables,
             TotalTokensUsed = 0,
             RetryCounts = new Dictionary<string, int>(),
-            MaxRetryCycles = MaxRetryCycles
+            MaxRetryCycles = effectiveMaxRetryCycles
         };
 
         // Build and compile the state graph
-        var graph = BuildCrewGraph(initialState);
+        var graph = BuildCrewGraph(initialState, effectivePolicy);
         var runner = graph.Compile();
 
         // Wire up observability
@@ -192,7 +204,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     ///
     /// The "route" node checks if there are pending tasks or failed tasks to retry.
     /// </summary>
-    private StateGraph<CrewGraphState> BuildCrewGraph(CrewGraphState initialState)
+    private StateGraph<CrewGraphState> BuildCrewGraph(CrewGraphState initialState, CircuitBreakerPolicy policy)
     {
         var context = new SimpleExecutionContext(
             initialState.CrewId,
@@ -203,7 +215,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
         _delegationProvider.UpdateExecutionContext(context);
 
-        var graph = new StateGraph<CrewGraphState>(CircuitPolicy);
+        var graph = new StateGraph<CrewGraphState>(policy);
 
         // Node: execute_task — delegates the heavy lifting to a dedicated method
         // to keep this builder's cognitive complexity low.

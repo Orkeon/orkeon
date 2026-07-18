@@ -2,6 +2,7 @@ using Orkeon.Domain.Common;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Agent.ValueObjects;
+using Orkeon.Domain.Configuration;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Crew.Events;
 using Orkeon.Domain.Crew.ValueObjects;
@@ -49,6 +50,19 @@ public sealed class Crew : AggregateRoot<CrewId>
     /// Gets the manager agent ID for hierarchical process.
     /// </summary>
     public AgentId? ManagerAgentId { get; private set; }
+
+    /// <summary>
+    /// Gets the graph-orchestration configuration (retry cycles, circuit-breaker preset/limits).
+    /// Only consumed when <see cref="ProcessType"/> is <c>Graph</c>. Null falls back to the
+    /// strategy's built-in defaults.
+    /// </summary>
+    public GraphConfig? GraphConfig { get; private set; }
+
+    /// <summary>
+    /// Gets the crew-level circuit-breaker configuration (default FSM limits for tasks).
+    /// Null falls back to the strategy's built-in defaults.
+    /// </summary>
+    public CircuitBreakerConfig? CircuitBreaker { get; private set; }
 
     /// <summary>
     /// Gets the crew status.
@@ -186,7 +200,9 @@ public sealed class Crew : AggregateRoot<CrewId>
             MemoryEnabled = options.MemoryEnabled,
             AllowDynamicAgents = options.AllowDynamicAgents,
             MaxConcurrentDynamicAgents = options.MaxConcurrentDynamicAgents,
-            ToolAccessPolicy = options.ToolAccessPolicy
+            ToolAccessPolicy = options.ToolAccessPolicy,
+            GraphConfig = options.GraphConfig,
+            CircuitBreaker = options.CircuitBreaker
         };
 
         if (options.ProcessType == ProcessType.Hierarchical && options.ManagerAgentId == null && options.ManagerLlm == null)
