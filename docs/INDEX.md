@@ -71,6 +71,7 @@ The documentation is organized into 6 thematic sections.
 | [Limits and constraints](./reference/limitations.md) | Known constraints of the current version |
 | [Example data policy](./reference/example-data-policy.md) | Why examples ship config not datasets, how to mount your own input (`/data:ro`, `/output:rw`), and contributor rules for bundled sample fixtures |
 | [Opt-in subsystems](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, tool rate-limiting, key rotation, benchmarking, multi-modal, kickoff hooks — explicit activation `AddOrkeonXxx()` (outside default DI) |
+| [Hosting & runner bootstrap](./reference/hosting.md) | `Orkeon.Hosting`: `RunnerHost.Build`, `ConfigureRunnerServices` wiring order (LLM-first, tool suites, VFS, `ServiceProviderToolRegistry`), `RunnerExecution` flows, and the web-host consumption pattern |
 | [Example README template](./templates/example-readme.md) | Gabarit for `examples/**/README.md`: What it does / Prerequisites / Required data / Run it (per way) / Expected output / Duration & cost |
 | [LLM provider comparison](./arkeon/llm-providers-comparatif.md) | Capability matrix per provider (SSE streaming, native tool calling, GBNF grammar, `response_format`, thinking, metrics, resilience), derived from the source code |
 
