@@ -152,12 +152,16 @@ public static class CrewConfigurationMapper
     {
         foreach (var taskConfig in configuration.Tasks)
         {
-            var task = new CrewTaskBuilder()
+            var builder = new CrewTaskBuilder()
                 .Description(TaskDescription.From(taskConfig.Description))
                 .ExpectedOutput(taskConfig.ExpectedOutput)
                 .Async(taskConfig.AsyncExecution)
-                .HumanInput(taskConfig.HumanInput)
-                .Build();
+                .HumanInput(taskConfig.HumanInput);
+
+            if (taskConfig.Guardrails is not null)
+                builder.WithGuardrails(taskConfig.Guardrails);
+
+            var task = builder.Build();
 
             taskPostProcessor?.Invoke(task);
             crew.AddTask(task.Id);
@@ -290,7 +294,8 @@ public static class CrewConfigurationMapper
             HumanInput = task.HumanInput,
             Context = new Dictionary<string, object>(task.Context),
             Deliverable = task.Deliverable,
-            LlmOverride = task.LlmOverride
+            LlmOverride = task.LlmOverride,
+            Guardrails = task.Guardrails
         };
     }
 }

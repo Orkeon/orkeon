@@ -223,7 +223,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             try
             {
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
-                    agent, _toolCallingStrategy?.SupportsNativeToolCalling == true);
+                    agent, task, _toolCallingStrategy?.SupportsNativeToolCalling == true);
                 var userPrompt = AgentPromptComposer.BuildUserPrompt(task, context);
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
 

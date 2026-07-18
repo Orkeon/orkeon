@@ -67,9 +67,19 @@ tasks:
       maxRetries: int           # Retries après échec
       maxToolCallsPerRound: int # Tool calls max par round
       maxValidationRetries: int # Boucles validation max
+    guardrails:           # Guardrails au niveau tâche (optionnel) — même forme qu'au niveau agent
+      preset: string      # "analysis" | "strict" | "creative"
+      header: string
+      rules: [string]
+      toolRules:
+        <tool_name>: [string]
 ```
 
 The `circuitBreaker` block can also be used at the root level of the YAML (default for all tasks). See [FSM Orchestration](../orchestration/fsm.md) for the full details.
+
+Guardrails may be declared on an agent (all its tasks) and/or on a task (that task only). When both
+exist, both apply — agent rules first, then the task's — injected into the executing agent's system
+prompt. See [YAML schema — Guardrails configuration](../architecture/yaml-schema.md#guardrails-configuration).
 
 When `process: "graph"` is used, an additional `graphConfig` block configures the state graph engine:
 

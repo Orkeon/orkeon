@@ -33,6 +33,12 @@ agents:
       model: string       # LLM model ("gpt-4", "claude-3-opus", etc.)
       temperature: float  # Creativity (0.0-1.0)
       maxTokens: int      # Output token limit
+    guardrails:           # Operational rules injected into the agent's system prompt (optional)
+      preset: string      # "analysis" | "strict" | "creative"
+      header: string      # Section header (overrides the preset header)
+      rules: [string]     # Global numbered rules
+      toolRules:          # Rules rendered only when the agent has the tool
+        <tool_name>: [string]
 
 tasks:
   <task_id>:              # Key = unique task identifier
@@ -53,9 +59,24 @@ tasks:
       maxRetries: int           # Retries after failure
       maxToolCallsPerRound: int # Max tool calls per round
       maxValidationRetries: int # Max validation loops
+    guardrails:           # Task-level guardrails, same shape as the agent block (optional)
+      preset: string      # "analysis" | "strict" | "creative"
+      header: string
+      rules: [string]
+      toolRules:
+        <tool_name>: [string]
 ```
 
 The `circuitBreaker` block can also be used at the root level of the YAML (default for all tasks).
+
+## Guardrails configuration
+
+Guardrails are operational rules rendered into the executing agent's **system prompt**. They can be
+declared on an **agent** (apply to every task the agent runs) and/or on a **task** (apply only to that
+task). When both are present, **both apply — the agent's guardrails render first, then the task's** as a
+separate section. `preset` (`analysis` / `strict` / `creative`) seeds a base set of rules; explicit
+`rules`/`toolRules` are merged on top, and `toolRules` for a given tool are only emitted when the
+executing agent actually holds that tool. A `preset` header takes precedence over a custom `header`.
 
 ## Graph configuration
 

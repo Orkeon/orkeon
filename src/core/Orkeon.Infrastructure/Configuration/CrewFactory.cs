@@ -175,6 +175,9 @@ public partial class CrewFactory : ICrewFactory
             if (taskConfig.LlmOverride is not null)
                 task.SetLlmOverride(taskConfig.LlmOverride);
 
+            if (taskConfig.Guardrails is not null)
+                task.SetGuardrails(taskConfig.Guardrails);
+
             taskMap[taskConfig.Id] = task;
 
             LogCreatedTaskWithDomainId(taskConfig.Id, task.Id);

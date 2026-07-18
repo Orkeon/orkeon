@@ -106,4 +106,10 @@ public sealed record TaskConfiguration
     /// over the agent's base config by <c>LlmConfigResolver</c>. <c>null</c> = no per-task patch.
     /// </summary>
     public Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? LlmOverride { get; init; }
+
+    /// <summary>
+    /// Gets the optional per-task guardrails, injected into this task's prompt in addition to the
+    /// assigned agent's guardrails (same <see cref="GuardrailsConfig"/> shape). <c>null</c> = none.
+    /// </summary>
+    public GuardrailsConfig? Guardrails { get; init; }
 }

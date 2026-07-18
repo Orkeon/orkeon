@@ -25,6 +25,7 @@ public sealed class CrewTaskBuilder
     private ITaskCallback? _callback;
     private bool _humanInput;
     private LlmConfigOverride? _llmOverride;
+    private Orkeon.Domain.Agent.GuardrailsConfig? _guardrails;
 
     /// <summary>Sets the task description from a string value.</summary>
     public CrewTaskBuilder Description(string description)
@@ -185,6 +186,16 @@ public sealed class CrewTaskBuilder
     }
 
     /// <summary>
+    /// Assigns per-task guardrails, injected into this task's prompt alongside the agent's. Replaces
+    /// any previously set value in this builder (not merged). Pass <c>null</c> to clear.
+    /// </summary>
+    public CrewTaskBuilder WithGuardrails(Orkeon.Domain.Agent.GuardrailsConfig? guardrails)
+    {
+        _guardrails = guardrails;
+        return this;
+    }
+
+    /// <summary>
     /// Builds and returns a new <see cref="CrewTask"/> instance.
     /// </summary>
     /// <exception cref="BuilderValidationException">
@@ -233,6 +244,11 @@ public sealed class CrewTaskBuilder
         if (_llmOverride is not null)
         {
             task.SetLlmOverride(_llmOverride);
+        }
+
+        if (_guardrails is not null)
+        {
+            task.SetGuardrails(_guardrails);
         }
 
         return task;

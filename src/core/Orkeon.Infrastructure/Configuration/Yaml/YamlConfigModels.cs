@@ -83,6 +83,8 @@ public class TaskYamlConfig
     public DeliverableYamlConfig? Deliverable { get; set; }
     /// <summary>Gets or sets the optional per-task LLM override (response_format, temperature, …).</summary>
     public LlmOverrideYamlConfig? LlmOverride { get; set; }
+    /// <summary>Gets or sets the optional per-task guardrails (same shape as agent-level guardrails).</summary>
+    public GuardrailsYamlConfig? Guardrails { get; set; }
 }
 
 /// <summary>

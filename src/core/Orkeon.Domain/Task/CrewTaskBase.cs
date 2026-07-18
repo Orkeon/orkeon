@@ -111,6 +111,12 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     public LlmConfigOverride? LlmOverride { get; private set; }
 
     /// <summary>
+    /// Optional per-task guardrails. Injected into this task's prompt in addition to the assigned
+    /// agent's guardrails (agent rules first, then task rules). <c>null</c> means no task guardrails.
+    /// </summary>
+    public Orkeon.Domain.Agent.GuardrailsConfig? Guardrails { get; private set; }
+
+    /// <summary>
     /// Gets whether human input is required.
     /// </summary>
     public bool HumanInput { get; private set; }
@@ -467,6 +473,17 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
             throw new InvalidOperationException("Cannot update LlmOverride after task has started.");
 
         LlmOverride = llmOverride;
+    }
+
+    /// <summary>
+    /// Assigns or replaces the per-task <see cref="Orkeon.Domain.Agent.GuardrailsConfig"/>. Callable before the task starts.
+    /// </summary>
+    public void SetGuardrails(Orkeon.Domain.Agent.GuardrailsConfig? guardrails)
+    {
+        if (Status != TaskStatus.Pending)
+            throw new InvalidOperationException("Cannot update Guardrails after task has started.");
+
+        Guardrails = guardrails;
     }
 
     /// <inheritdoc />

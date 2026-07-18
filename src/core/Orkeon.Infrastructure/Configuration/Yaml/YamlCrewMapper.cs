@@ -140,6 +140,7 @@ public sealed partial class YamlCrewMapper
                 CircuitBreaker = MapCircuitBreaker(kvp.Value.CircuitBreaker),
                 Deliverable = MapDeliverable(kvp.Value.Deliverable),
                 LlmOverride = MapTaskLlmOverride(kvp.Value.LlmOverride),
+                Guardrails = MapGuardrails(kvp.Value.Guardrails),
             });
         }
 

@@ -22,13 +22,15 @@ internal static class AgentPromptComposer
     /// </summary>
     private const int MaxPreviousOutputContextChars = 8000;
 
-    internal static string BuildSystemPrompt(DomainAgent agent, bool supportsNativeToolCalling)
+    internal static string BuildSystemPrompt(DomainAgent agent, CrewTask task, bool supportsNativeToolCalling)
     {
         var prompt = new StringBuilder();
 
         AppendRoleSection(prompt, agent);
         AppendToolsSection(prompt, agent, supportsNativeToolCalling);
+        // Agent-level guardrails first, then the task's own — both apply, agent rules before task rules.
         AppendGuardrails(prompt, agent);
+        AppendTaskGuardrails(prompt, task, agent);
         AppendResponseTemplate(prompt, agent);
 
         return prompt.ToString();
@@ -120,7 +122,26 @@ internal static class AgentPromptComposer
     /// </summary>
     private static void AppendGuardrails(StringBuilder prompt, DomainAgent agent)
     {
-        var guardrails = agent.Guardrails;
+        var agentToolNames = agent.Tools.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        AppendGuardrailsSection(prompt, agent.Guardrails, agentToolNames);
+    }
+
+    /// <summary>
+    /// Appends the task's own guardrails (P2-O-04) as a separate section after the agent's, gating
+    /// tool-specific rules by the executing agent's actual tools (mirrors the agent-level rules).
+    /// No-op when the task has none.
+    /// </summary>
+    private static void AppendTaskGuardrails(StringBuilder prompt, CrewTask task, DomainAgent agent)
+    {
+        var agentToolNames = agent.Tools.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        AppendGuardrailsSection(prompt, task.Guardrails, agentToolNames);
+    }
+
+    private static void AppendGuardrailsSection(
+        StringBuilder prompt,
+        Domain.Agent.GuardrailsConfig? guardrails,
+        HashSet<string> agentToolNames)
+    {
         if (guardrails == null || guardrails.IsEmpty)
             return;
 
@@ -139,8 +160,6 @@ internal static class AgentPromptComposer
         }
 
         // Tool-specific rules: only rendered when the agent actually has the tool
-        var agentToolNames = agent.Tools.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         foreach (var kvp in guardrails.ToolRules)
         {
             if (!agentToolNames.Contains(kvp.Key))
