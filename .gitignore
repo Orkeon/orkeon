@@ -389,6 +389,9 @@ coverage/
 DebugMarkdown/
 TestJson/
 
+# Scratch sandboxes (embedded throwaway repos, never tracked)
+dummy/
+
 # Log files in examples
 examples/**/logs/
 project/experiments/**/logs/
