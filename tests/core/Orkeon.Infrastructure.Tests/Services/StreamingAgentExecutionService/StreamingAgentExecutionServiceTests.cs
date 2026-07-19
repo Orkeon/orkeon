@@ -113,7 +113,72 @@ public sealed class StreamingAgentExecutionServiceTests : IDisposable
         });
     }
 
+    [Fact]
+    public async Task ShouldRenderAgentAndTaskGuardrails_InStreamingSystemPrompt()
+    {
+        var agent = new AgentBuilder()
+            .Role("Researcher")
+            .Goal("Research topics")
+            .Backstory("Expert researcher")
+            .WithGuardrails(g => g.AddRule("Never expose secrets"))
+            .Build();
+        var task = new CrewTaskBuilder()
+            .Description("Research AI trends")
+            .ExpectedOutput("Summary")
+            .WithGuardrails(new GuardrailsConfig { Rules = ["Cite all sources"] })
+            .Build();
+
+        var systemPrompt = await CaptureSystemPrompt(agent, task);
+
+        Assert.Contains("Never expose secrets", systemPrompt);
+        Assert.Contains("Cite all sources", systemPrompt);
+        // Agent section renders before the task's own (same order as the non-streaming path).
+        Assert.True(
+            systemPrompt.IndexOf("Never expose secrets", StringComparison.Ordinal)
+            < systemPrompt.IndexOf("Cite all sources", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ShouldGateToolRulesByAgentTools_InStreamingSystemPrompt()
+    {
+        var agent = new AgentBuilder()
+            .Role("Researcher")
+            .Goal("Research topics")
+            .Backstory("Expert researcher")
+            .WithGuardrails(g => g.WhenUsing("file_write", "Only write under /output"))
+            .Build();
+        var task = CreateTask();
+
+        var systemPrompt = await CaptureSystemPrompt(agent, task);
+
+        // The agent does not have file_write, so its tool rule must not render.
+        Assert.DoesNotContain("Only write under /output", systemPrompt);
+    }
+
+    [Fact]
+    public async Task ShouldOmitGuardrailsSection_WhenNoneConfigured()
+    {
+        var systemPrompt = await CaptureSystemPrompt(CreateAgent(), CreateTask());
+
+        Assert.DoesNotContain("OPERATIONAL RULES", systemPrompt);
+    }
+
     #region Helpers
+
+    private async Task<string> CaptureSystemPrompt(DomainAgent agent, DomainTask task)
+    {
+        string? systemPrompt = null;
+        _mockChatClient.SetStreamingFunc((msgs, opts, ct) =>
+        {
+            systemPrompt = msgs.First(m => m.Role == ChatRole.System).Text;
+            return CreateAsyncEnumerable(["Done"], ct);
+        });
+
+        await CollectThoughts(agent, task, CreateContext());
+
+        Assert.NotNull(systemPrompt);
+        return systemPrompt!;
+    }
 
     private static DomainAgent CreateAgent()
     {

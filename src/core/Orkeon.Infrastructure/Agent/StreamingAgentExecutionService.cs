@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Context;
 using Orkeon.Domain.FileSystem;
@@ -67,7 +68,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
 
             var messages = new List<ChatMessage>
             {
-                new(ChatRole.System, BuildSystemPrompt(agent)),
+                new(ChatRole.System, BuildSystemPrompt(agent, task)),
                 new(ChatRole.User, BuildUserPrompt(task, context))
             };
 
@@ -191,7 +192,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         return new AgentThought(content, type, null, DateTime.UtcNow);
     }
 
-    private string BuildSystemPrompt(DomainAgent agent)
+    private string BuildSystemPrompt(DomainAgent agent, CrewTask task)
     {
         var sb = new StringBuilder();
         sb.AppendLine(CultureInfo.InvariantCulture, $"You are {agent.Role}, {agent.Backstory}.");
@@ -220,6 +221,10 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
             sb.AppendLine();
             sb.AppendLine("All file operations must use these virtual paths. Absolute or unmounted paths are not allowed.");
         }
+
+        // Same renderer as the non-streaming path (AgentPromptComposer): agent-level guardrails
+        // first, then the task's own, tool rules gated by the agent's tools.
+        GuardrailsPromptRenderer.AppendAgentAndTaskGuardrails(sb, agent, task);
 
         return sb.ToString();
     }
