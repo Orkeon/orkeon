@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2-beta] - 2026-07-24
+
+First version actually published to GitHub Packages since `0.9.1-beta` (2026-07-04): the intermediate `v0.9.1-beta.rc*` tags re-packed the unchanged `0.9.1-beta` version from `Directory.Build.props`, so `--skip-duplicate` silently skipped every push. This release bumps the props version so the feed picks up everything below.
+
+### Added
+
+- **`IFileSystemScope`** (`Orkeon.Domain.FileSystem`) — ambient per-scope mount override for the VFS.
+- **`ILlmDeltaSink`** (`Orkeon.Application.Interfaces.Ports`) — streaming delta sink port for LLM output.
+
 ### Security
 
 - **A2A mTLS server now authenticates the client certificate instead of merely checking its dates** (SEC-012, R9.1). With `RequireMutualTls = true`, an incoming certificate must chain to one of `A2ASecurityOptions.TrustedCertificateAuthorities` (X509 `CustomRootTrust` chain — also covers validity dates, removing the last `DateTime.Now` in `src/`) or match the new `TrustedClientCertificateThumbprints` pin list; unpinned self-signed certificates are rejected (403). Starting the server with `RequireMutualTls` and no trust anchor now **throws** (fail-closed) — previously any date-valid certificate passed the guard. Revocation is not checked (private CAs without CRL/OCSP assumed).
