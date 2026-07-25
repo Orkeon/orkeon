@@ -3,6 +3,7 @@ using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Constants.Agent;
+using Orkeon.Domain.Knowledge;
 
 namespace Orkeon.Domain.Agent;
 
@@ -85,6 +86,12 @@ public sealed class AgentCreateOptions
     /// Optional collection of tools to assign to the agent.
     /// </summary>
     public IEnumerable<ITool>? Tools { get; init; }
+
+    /// <summary>
+    /// Optional knowledge (RAG) collections attached to the agent. Each attachment is
+    /// validated on creation (<see cref="KnowledgeAttachment.Validate"/>). Empty/null = none.
+    /// </summary>
+    public IEnumerable<KnowledgeAttachment>? KnowledgeAttachments { get; init; }
 
     /// <summary>
     /// Optional step callback handler.

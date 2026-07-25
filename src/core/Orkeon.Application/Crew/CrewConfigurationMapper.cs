@@ -96,6 +96,8 @@ public static class CrewConfigurationMapper
                 builder.WithGuardrails(agentConfig.Guardrails);
             if (agentConfig.LlmConfig != null)
                 builder.WithLlmConfig(agentConfig.LlmConfig);
+            foreach (var attachment in agentConfig.KnowledgeAttachments)
+                builder.WithKnowledge(attachment);
 
             var agent = builder.Build();
 
@@ -258,7 +260,8 @@ public static class CrewConfigurationMapper
             MaxRPM = agent.MaxRpm,
             Verbose = agent.Verbose,
             LlmConfig = agent.LlmConfig,
-            Guardrails = agent.Guardrails
+            Guardrails = agent.Guardrails,
+            KnowledgeAttachments = agent.KnowledgeAttachments.ToList()
         };
     }
 

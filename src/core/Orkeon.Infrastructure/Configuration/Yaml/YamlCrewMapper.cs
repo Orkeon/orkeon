@@ -1,7 +1,9 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
+using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Constants.Llm;
 
@@ -50,6 +52,7 @@ public sealed partial class YamlCrewMapper
             ManagerAgentId = ResolveAgentId(settings.ManagerAgent, agentNameMap),
             CircuitBreaker = MapCircuitBreaker(settings.CircuitBreaker),
             GraphConfig = MapGraphConfig(settings.GraphConfig),
+            Rag = MapRag(settings.Rag),
         };
     }
 
@@ -95,6 +98,7 @@ public sealed partial class YamlCrewMapper
                     }
                     : null,
                 Guardrails = MapGuardrails(kvp.Value.Guardrails),
+                KnowledgeAttachments = MapKnowledge(kvp.Key, kvp.Value.Knowledge),
             });
         }
 
@@ -288,6 +292,179 @@ public sealed partial class YamlCrewMapper
     private partial void LogUnknownResponseFormat(string rawValue);
 
     /// <summary>
+    /// Normalizes the agent-level <c>knowledge:</c> block into validated
+    /// <see cref="KnowledgeAttachment"/> values. Two item forms are accepted:
+    /// a plain string (short form: the collection name with default options) and a mapping
+    /// (long form: <c>collection</c> required, plus <c>top_k</c> / <c>min_score</c> /
+    /// <c>profile</c> / <c>max_context_tokens</c>, snake_case or camelCase). Malformed
+    /// entries are skipped with a structured warning — a slightly broken crew.yaml must
+    /// not crash the loader (same tolerance policy as <c>response_format</c>).
+    /// </summary>
+    private IReadOnlyList<KnowledgeAttachment> MapKnowledge(string agentKey, IEnumerable<object>? knowledge)
+    {
+        if (knowledge is null)
+            return Array.Empty<KnowledgeAttachment>();
+
+        var result = new List<KnowledgeAttachment>();
+        foreach (var entry in knowledge)
+        {
+            var attachment = MapKnowledgeEntry(agentKey, entry);
+            if (attachment is not null)
+                result.Add(attachment);
+        }
+
+        return result;
+    }
+
+    private KnowledgeAttachment? MapKnowledgeEntry(string agentKey, object? entry)
+    {
+        try
+        {
+            switch (entry)
+            {
+                // Short form: `knowledge: [produits, procedures]`
+                case string shortForm:
+                    return KnowledgeAttachment.Create(shortForm);
+
+                // Long form: `knowledge: [{ collection: procedures, top_k: 8, … }]`.
+                // YamlDotNet materializes untyped mappings as Dictionary<object, object>.
+                case System.Collections.IDictionary longForm:
+                {
+                    var fields = NormalizeKnowledgeKeys(longForm);
+                    if (!fields.TryGetValue("collection", out var collection) || string.IsNullOrWhiteSpace(collection))
+                    {
+                        LogKnowledgeEntryMissingCollection(agentKey);
+                        return null;
+                    }
+
+                    return KnowledgeAttachment.Create(
+                        collection,
+                        topK: ParseIntField(agentKey, fields, "topk") ?? KnowledgeAttachment.DefaultTopK,
+                        minScore: ParseDoubleField(agentKey, fields, "minscore"),
+                        profile: fields.GetValueOrDefault("profile"),
+                        maxContextTokens: ParseIntField(agentKey, fields, "maxcontexttokens"));
+                }
+
+                default:
+                    LogKnowledgeEntryUnsupportedShape(agentKey, entry?.GetType().Name ?? "null");
+                    return null;
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            LogKnowledgeEntryInvalid(agentKey, ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Flattens an untyped YAML mapping into string fields keyed by their normalized name
+    /// (lowercase, underscores stripped) so <c>top_k</c>, <c>topK</c> and <c>TopK</c> all
+    /// resolve to <c>topk</c> — the same camelCase/snake_case tolerance the typed models get
+    /// from the serializer's type inspector.
+    /// </summary>
+    private static Dictionary<string, string> NormalizeKnowledgeKeys(System.Collections.IDictionary mapping)
+    {
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (System.Collections.DictionaryEntry kv in mapping)
+        {
+            var key = kv.Key?.ToString();
+            if (string.IsNullOrWhiteSpace(key))
+                continue;
+#pragma warning disable CA1308 // lowercase is the normalized lookup key the YAML fields are matched against
+            var normalized = key.Replace("_", "", StringComparison.Ordinal).ToLowerInvariant();
+#pragma warning restore CA1308
+            fields[normalized] = kv.Value?.ToString() ?? string.Empty;
+        }
+        return fields;
+    }
+
+    private int? ParseIntField(string agentKey, Dictionary<string, string> fields, string key)
+    {
+        if (!fields.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw))
+            return null;
+        if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+            return value;
+        LogKnowledgeFieldNotNumeric(agentKey, key, raw);
+        return null;
+    }
+
+    private double? ParseDoubleField(string agentKey, Dictionary<string, string> fields, string key)
+    {
+        if (!fields.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw))
+            return null;
+        if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+            return value;
+        LogKnowledgeFieldNotNumeric(agentKey, key, raw);
+        return null;
+    }
+
+    /// <summary>
+    /// Maps the crew-level <c>rag:</c> YAML block to its typed model. Returns null when the
+    /// block is absent. Pure parsing — no ingestion is triggered here (kickoff is a later lot).
+    /// </summary>
+    private static RagCrewConfig? MapRag(RagYamlConfig? yaml)
+    {
+        if (yaml is null)
+            return null;
+
+        var collections = new Dictionary<string, RagCollectionConfig>(StringComparer.Ordinal);
+        if (yaml.Collections is not null)
+        {
+            foreach (var kvp in yaml.Collections)
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Key))
+                    continue;
+
+                collections[kvp.Key] = new RagCollectionConfig
+                {
+                    Sources = kvp.Value?.Sources?.ToList() ?? (IReadOnlyList<string>)Array.Empty<string>(),
+                    Chunking = MapRagChunking(kvp.Value?.Chunking),
+                };
+            }
+        }
+
+        return new RagCrewConfig
+        {
+            Provider = string.IsNullOrWhiteSpace(yaml.Provider) ? null : yaml.Provider.Trim(),
+            Collections = collections,
+            DefaultProfile = string.IsNullOrWhiteSpace(yaml.Defaults?.Profile) ? null : yaml.Defaults.Profile.Trim(),
+        };
+    }
+
+    private static RagChunkingConfig? MapRagChunking(RagChunkingYamlConfig? yaml)
+    {
+        if (yaml is null)
+            return null;
+        if (string.IsNullOrWhiteSpace(yaml.Strategy) && yaml.MaxTokens is null && yaml.Overlap is null)
+            return null;
+
+        var defaults = new RagChunkingConfig();
+        return new RagChunkingConfig
+        {
+            Strategy = string.IsNullOrWhiteSpace(yaml.Strategy) ? defaults.Strategy : yaml.Strategy.Trim(),
+            MaxTokens = yaml.MaxTokens ?? defaults.MaxTokens,
+            Overlap = yaml.Overlap ?? defaults.Overlap,
+        };
+    }
+
+    [LoggerMessage(EventId = 102, Level = LogLevel.Warning,
+        Message = "Agent '{AgentKey}': knowledge entry (long form) has no 'collection' key — entry skipped.")]
+    private partial void LogKnowledgeEntryMissingCollection(string agentKey);
+
+    [LoggerMessage(EventId = 103, Level = LogLevel.Warning,
+        Message = "Agent '{AgentKey}': knowledge entry of unsupported shape '{Shape}' — expected a collection name (string) or a mapping with 'collection'. Entry skipped.")]
+    private partial void LogKnowledgeEntryUnsupportedShape(string agentKey, string shape);
+
+    [LoggerMessage(EventId = 104, Level = LogLevel.Warning,
+        Message = "Agent '{AgentKey}': invalid knowledge entry — {Reason} Entry skipped.")]
+    private partial void LogKnowledgeEntryInvalid(string agentKey, string reason);
+
+    [LoggerMessage(EventId = 105, Level = LogLevel.Warning,
+        Message = "Agent '{AgentKey}': knowledge field '{Field}' value '{RawValue}' is not numeric — field ignored.")]
+    private partial void LogKnowledgeFieldNotNumeric(string agentKey, string field, string rawValue);
+
+    /// <summary>
     /// Maps a YAML guardrails section to a <see cref="GuardrailsConfig"/> domain model.
     /// Supports preset resolution, custom rules, and tool-specific clauses — or any combination.
     /// </summary>
@@ -432,4 +609,7 @@ public sealed record CrewMappingSettings
 
     /// <summary>Crew-level default LLM block, merged onto each agent (<c>crew.llm</c>).</summary>
     public LlmYamlConfig? CrewDefaultLlm { get; init; }
+
+    /// <summary>Crew-level RAG block — provider, declared collections, retrieval defaults (<c>crew.rag</c>).</summary>
+    public RagYamlConfig? Rag { get; init; }
 }

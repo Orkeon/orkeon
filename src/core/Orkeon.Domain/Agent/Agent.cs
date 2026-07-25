@@ -6,6 +6,7 @@ using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Constants.Agent;
+using Orkeon.Domain.Knowledge;
 
 namespace Orkeon.Domain.Agent;
 
@@ -19,6 +20,7 @@ public sealed class Agent : AggregateRoot<AgentId>
     private readonly List<ITool> _tools;
     private readonly List<TaskId> _assignedTasks;
     private readonly List<AgentMemory> _memories;
+    private readonly List<KnowledgeAttachment> _knowledgeAttachments;
     private readonly AgentToolManager _toolManager;
     private readonly AgentMemoryManager _memoryManager;
     private TaskId? _currentTask;
@@ -129,6 +131,13 @@ public sealed class Agent : AggregateRoot<AgentId>
     public IReadOnlyList<ITool> Tools => _tools.AsReadOnly();
 
     /// <summary>
+    /// Gets the knowledge (RAG) collections attached to this agent. Empty by default.
+    /// Consumed at execution-context assembly time to retrieve and inject relevant
+    /// context into the agent's prompts (RAG-03/C4 — wiring arrives in a later lot).
+    /// </summary>
+    public IReadOnlyList<KnowledgeAttachment> KnowledgeAttachments => _knowledgeAttachments.AsReadOnly();
+
+    /// <summary>
     /// Gets the tasks assigned to this agent.
     /// </summary>
     public IReadOnlyList<TaskId> AssignedTasks => _assignedTasks.AsReadOnly();
@@ -151,6 +160,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         _tools = [];
         _assignedTasks = [];
         _memories = [];
+        _knowledgeAttachments = [];
         _toolManager = new AgentToolManager(_tools, () => ToolAccessPolicy!);
         _memoryManager = new AgentMemoryManager(_memories);
         Role = AgentRole.From(AgentDefaults.UnassignedValue);
@@ -196,6 +206,16 @@ public sealed class Agent : AggregateRoot<AgentId>
             foreach (var tool in options.Tools)
             {
                 agent._tools.Add(tool);
+            }
+        }
+
+        if (options.KnowledgeAttachments != null)
+        {
+            foreach (var attachment in options.KnowledgeAttachments)
+            {
+                ArgumentNullException.ThrowIfNull(attachment, nameof(options));
+                attachment.Validate();
+                agent._knowledgeAttachments.Add(attachment);
             }
         }
 
@@ -355,6 +375,9 @@ public sealed class Agent : AggregateRoot<AgentId>
 
         if (snapshot.Memories != null)
             agent._memories.AddRange(snapshot.Memories);
+
+        if (snapshot.KnowledgeAttachments != null)
+            agent._knowledgeAttachments.AddRange(snapshot.KnowledgeAttachments);
 
         agent._currentTask = snapshot.CurrentTask;
 

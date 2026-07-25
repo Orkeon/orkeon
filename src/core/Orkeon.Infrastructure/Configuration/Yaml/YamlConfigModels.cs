@@ -38,6 +38,14 @@ public class AgentYamlConfig
     public LlmYamlConfig? Llm { get; set; }
     /// <summary>Gets or sets the guardrails configuration.</summary>
     public GuardrailsYamlConfig? Guardrails { get; set; }
+    /// <summary>
+    /// Gets or sets the knowledge (RAG) collections attached to the agent. Two forms are
+    /// accepted per item: the short form (a plain collection-name string) and the long form
+    /// (a mapping with <c>collection</c>, <c>top_k</c>, <c>min_score</c>, <c>profile</c>,
+    /// <c>max_context_tokens</c>). Deserialized as raw objects; <see cref="YamlCrewMapper"/>
+    /// normalizes both forms into <see cref="Orkeon.Domain.Knowledge.KnowledgeAttachment"/>.
+    /// </summary>
+    public Collection<object>? Knowledge { get; set; }
 }
 
 /// <summary>
@@ -210,6 +218,55 @@ public class ThinkingYamlConfig
 }
 
 /// <summary>
+/// YAML model for the crew-level <c>rag:</c> block (RAG-03/C4, plan §8.2): provider,
+/// declared collections with their ingestion sources, and crew-wide retrieval defaults.
+/// Parsed into <see cref="Orkeon.Domain.Configuration.RagCrewConfig"/> without triggering
+/// any ingestion (kickoff wiring is a later lot).
+/// </summary>
+public class RagYamlConfig
+{
+    /// <summary>Gets or sets the memory/vector store provider name for the RAG collections.</summary>
+    public string? Provider { get; set; }
+    /// <summary>Gets or sets the declared collections keyed by collection name.</summary>
+    public Dictionary<string, RagCollectionYamlConfig>? Collections { get; set; }
+    /// <summary>Gets or sets the crew-wide retrieval defaults.</summary>
+    public RagDefaultsYamlConfig? Defaults { get; set; }
+}
+
+/// <summary>
+/// YAML model for a single declared RAG collection (<c>rag.collections.&lt;name&gt;</c>).
+/// </summary>
+public class RagCollectionYamlConfig
+{
+    /// <summary>Gets or sets the ingestion source patterns (file globs or directories).</summary>
+    public Collection<string>? Sources { get; set; }
+    /// <summary>Gets or sets the chunking configuration for ingestion.</summary>
+    public RagChunkingYamlConfig? Chunking { get; set; }
+}
+
+/// <summary>
+/// YAML model for the chunking sub-block of a RAG collection.
+/// </summary>
+public class RagChunkingYamlConfig
+{
+    /// <summary>Gets or sets the chunking strategy name (e.g. "recursive").</summary>
+    public string? Strategy { get; set; }
+    /// <summary>Gets or sets the maximum tokens per chunk.</summary>
+    public int? MaxTokens { get; set; }
+    /// <summary>Gets or sets the token overlap between consecutive chunks.</summary>
+    public int? Overlap { get; set; }
+}
+
+/// <summary>
+/// YAML model for the crew-wide retrieval defaults (<c>rag.defaults</c>).
+/// </summary>
+public class RagDefaultsYamlConfig
+{
+    /// <summary>Gets or sets the default query profile applied to knowledge attachments without one.</summary>
+    public string? Profile { get; set; }
+}
+
+/// <summary>
 /// YAML model for a single-file crew definition.
 /// </summary>
 public class CrewYamlConfig
@@ -236,6 +293,8 @@ public class CrewYamlConfig
     public GraphYamlConfig? GraphConfig { get; set; }
     /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (Python Orkeon parity).</summary>
     public LlmYamlConfig? Llm { get; set; }
+    /// <summary>Gets or sets the crew-level RAG configuration (provider, collections, defaults).</summary>
+    public RagYamlConfig? Rag { get; set; }
     /// <summary>Gets or sets the agent configurations keyed by agent identifier.</summary>
     public Dictionary<string, AgentYamlConfig>? Agents { get; set; }
     /// <summary>Gets or sets the task configurations keyed by task identifier.</summary>
@@ -269,6 +328,8 @@ public class CrewSettingsYamlConfig
     public GraphYamlConfig? GraphConfig { get; set; }
     /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (Python Orkeon parity).</summary>
     public LlmYamlConfig? Llm { get; set; }
+    /// <summary>Gets or sets the crew-level RAG configuration (provider, collections, defaults).</summary>
+    public RagYamlConfig? Rag { get; set; }
 }
 
 #pragma warning restore CA2227 // Collection properties should be read only

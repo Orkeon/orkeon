@@ -1,5 +1,6 @@
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
+using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 
 namespace Orkeon.Domain.Configuration;
@@ -33,6 +34,12 @@ public sealed record CrewConfiguration
     public CircuitBreakerConfig? CircuitBreaker { get; init; }
     /// <summary>Gets the graph-specific configuration (only used when Process is Graph), or null for defaults.</summary>
     public GraphConfig? GraphConfig { get; init; }
+    /// <summary>
+    /// Gets the crew-level RAG configuration (<c>rag:</c> block — provider, declared collections
+    /// with their ingestion sources, retrieval defaults), or null when the crew declares none.
+    /// Parsing-only for now: kickoff-time ingestion consumes it in a later lot (RAG-03/C4).
+    /// </summary>
+    public RagCrewConfig? Rag { get; init; }
     /// <summary>Gets additional metadata for this crew configuration.</summary>
     public Dictionary<string, object> Metadata { get; init; } = [];
 }
@@ -68,6 +75,11 @@ public sealed record AgentConfiguration
     public string? ResponseTemplate { get; init; }
     /// <summary>Gets the guardrails configuration for this agent, or null for no guardrails.</summary>
     public GuardrailsConfig? Guardrails { get; init; }
+    /// <summary>
+    /// Gets the knowledge (RAG) collections attached to this agent (<c>knowledge:</c> block,
+    /// short or long form). Empty when the agent declares none.
+    /// </summary>
+    public IReadOnlyList<KnowledgeAttachment> KnowledgeAttachments { get; init; } = Array.Empty<KnowledgeAttachment>();
 }
 
 /// <summary>Configuration for task setup.</summary>

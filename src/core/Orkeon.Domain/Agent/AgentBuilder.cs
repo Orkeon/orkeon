@@ -4,6 +4,7 @@ using Orkeon.Domain.Common;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Constants.Llm;
+using Orkeon.Domain.Knowledge;
 
 namespace Orkeon.Domain.Agent;
 
@@ -32,6 +33,7 @@ public sealed class AgentBuilder
     private ToolAccessPolicy? _toolAccessPolicy;
     private GuardrailsConfig? _guardrails;
     private LlmConfig? _llmConfig;
+    private readonly List<KnowledgeAttachment> _knowledgeAttachments = [];
 
     /// <summary>Sets the agent role from a string value.</summary>
     public AgentBuilder Role(string role)
@@ -210,6 +212,56 @@ public sealed class AgentBuilder
         return this;
     }
 
+    /// <summary>
+    /// Attaches a knowledge (RAG) collection to the agent with default retrieval options.
+    /// Cumulative: call once per collection to attach several collections.
+    /// </summary>
+    /// <param name="collection">Name of the knowledge collection (required, never blank).</param>
+    /// <exception cref="ArgumentException">When <paramref name="collection"/> is blank.</exception>
+    public AgentBuilder WithKnowledge(string collection)
+    {
+        _knowledgeAttachments.Add(KnowledgeAttachment.Create(collection));
+        return this;
+    }
+
+    /// <summary>
+    /// Attaches a knowledge (RAG) collection to the agent with custom retrieval options.
+    /// Cumulative: call once per collection to attach several collections.
+    /// </summary>
+    /// <param name="collection">Name of the knowledge collection (required, never blank).</param>
+    /// <param name="configure">Configures TopK / MinScore / Profile / MaxContextTokens.</param>
+    /// <example>
+    /// <code>
+    /// builder.WithKnowledge("produits", opts =>
+    /// {
+    ///     opts.TopK = 8;
+    ///     opts.MinScore = 0.35;
+    ///     opts.Profile = "quality";
+    /// });
+    /// </code>
+    /// </example>
+    /// <exception cref="ArgumentException">When <paramref name="collection"/> is blank or an option violates an invariant.</exception>
+    public AgentBuilder WithKnowledge(string collection, Action<KnowledgeAttachmentOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        var options = new KnowledgeAttachmentOptions();
+        configure(options);
+        _knowledgeAttachments.Add(KnowledgeAttachment.Create(
+            collection, options.TopK, options.MinScore, options.Profile, options.MaxContextTokens));
+        return this;
+    }
+
+    /// <summary>
+    /// Attaches a pre-built (already validated) <see cref="KnowledgeAttachment"/>. Cumulative.
+    /// </summary>
+    public AgentBuilder WithKnowledge(KnowledgeAttachment attachment)
+    {
+        ArgumentNullException.ThrowIfNull(attachment);
+        attachment.Validate();
+        _knowledgeAttachments.Add(attachment);
+        return this;
+    }
+
     /// <summary>Sets the step callback for execution progress.</summary>
     public AgentBuilder WithStepCallback(IStepCallback stepCallback)
     {
@@ -340,7 +392,8 @@ public sealed class AgentBuilder
             StepCallback = _stepCallback,
             ToolAccessPolicy = _toolAccessPolicy,
             Guardrails = _guardrails,
-            LlmConfig = _llmConfig
+            LlmConfig = _llmConfig,
+            KnowledgeAttachments = _knowledgeAttachments
         });
     }
 }

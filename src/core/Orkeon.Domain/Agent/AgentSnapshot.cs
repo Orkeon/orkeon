@@ -2,6 +2,7 @@ using Orkeon.Domain.Common;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
+using Orkeon.Domain.Knowledge;
 
 namespace Orkeon.Domain.Agent;
 
@@ -81,4 +82,7 @@ public sealed record AgentSnapshot
 
     /// <summary>The optional guardrails configuration.</summary>
     public GuardrailsConfig? Guardrails { get; init; }
+
+    /// <summary>The knowledge (RAG) collections attached to the agent, if any.</summary>
+    public IEnumerable<KnowledgeAttachment>? KnowledgeAttachments { get; init; }
 }

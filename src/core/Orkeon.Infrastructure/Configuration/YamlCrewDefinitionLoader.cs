@@ -193,6 +193,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 CircuitBreaker = crewSettings?.CircuitBreaker,
                 GraphConfig = crewSettings?.GraphConfig,
                 CrewDefaultLlm = crewSettings?.Llm,
+                Rag = crewSettings?.Rag,
             },
             agents,
             tasks);
@@ -250,6 +251,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 CircuitBreaker = crewYaml?.CircuitBreaker,
                 GraphConfig = crewYaml?.GraphConfig,
                 CrewDefaultLlm = crewYaml?.Llm,
+                Rag = crewYaml?.Rag,
             },
             crewYaml?.Agents,
             crewYaml?.Tasks);

@@ -19,6 +19,18 @@ memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pine
 planning: bool            # default: false
 managerAgent: string      # Required if process = "hierarchical"
 
+rag:                      # Crew-level RAG configuration (optional)
+  provider: string        # Memory/vector store for the collections ("InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb")
+  collections:
+    <collection_name>:
+      sources: [string]   # Ingestion sources (file globs or directories), resolved at kickoff
+      chunking:
+        strategy: string  # default: "recursive"
+        max_tokens: int   # default: 512 — tokens per chunk
+        overlap: int      # default: 64 — token overlap between chunks
+  defaults:
+    profile: string       # Default query profile for knowledge attachments without one
+
 agents:
   <agent_id>:             # Key = unique agent identifier
     role: string          # Agent role (required)
@@ -39,6 +51,13 @@ agents:
       rules: [string]     # Global numbered rules
       toolRules:          # Rules rendered only when the agent has the tool
         <tool_name>: [string]
+    knowledge:            # Knowledge (RAG) collections attached to the agent (optional)
+      - string            # Short form: collection name with default options
+      - collection: string       # Long form (required key)
+        top_k: int               # default: 5 — chunks retained per query
+        min_score: float         # Minimum relevance score in [0, 1]
+        profile: string          # Query profile ("fast" | "balanced" | "quality", free-form)
+        max_context_tokens: int  # Cap on injected context tokens
 
 tasks:
   <task_id>:              # Key = unique task identifier
@@ -77,6 +96,58 @@ task). When both are present, **both apply — the agent's guardrails render fir
 separate section. `preset` (`analysis` / `strict` / `creative`) seeds a base set of rules; explicit
 `rules`/`toolRules` are merged on top, and `toolRules` for a given tool are only emitted when the
 executing agent actually holds that tool. A `preset` header takes precedence over a custom `header`.
+
+## Knowledge & RAG configuration
+
+Two complementary blocks (RAG-03/C4). The crew-level `rag:` block declares the **collections**
+(provider, ingestion sources, chunking, crew-wide defaults). The agent-level `knowledge:` block
+**attaches** collections to an agent with its retrieval options. At execution-context assembly
+time the attached collections are queried with the task input and the results are injected into
+the agent's prompts (prompt wiring ships in a later lot; parsing is fully functional today —
+no ingestion is triggered at load time).
+
+Short form — attach collections with default options:
+
+```yaml
+rag:
+  collections:
+    produits:
+      sources: ["./data/catalogue/**/*.pdf", "./data/faq.md"]
+
+agents:
+  support:
+    role: "Customer support agent"
+    goal: "Answer product questions"
+    knowledge: [produits, procedures]
+```
+
+Long form — per-collection retrieval options (mixable with the short form in the same list):
+
+```yaml
+rag:
+  provider: Sqlite
+  collections:
+    procedures:
+      sources: ["./docs/procedures/"]
+      chunking: { strategy: recursive, max_tokens: 512, overlap: 64 }
+  defaults: { profile: balanced }
+
+agents:
+  expert:
+    role: "Domain expert"
+    goal: "Provide sourced answers"
+    knowledge:
+      - collection: procedures
+        profile: quality
+        top_k: 8
+        min_score: 0.35
+        max_context_tokens: 1500
+```
+
+Keys accept snake_case (canonical) and camelCase. A malformed `knowledge` entry (missing
+`collection`, non-numeric `top_k`, …) is skipped or downgraded with a warning — it never
+crashes the loader. The fluent equivalent is `AgentBuilder.WithKnowledge("produits")` /
+`WithKnowledge("produits", opts => { opts.TopK = 8; opts.Profile = "quality"; })` (cumulative).
 
 ## Graph configuration
 
@@ -140,6 +211,8 @@ The YAML models include:
 - `CircuitBreakerYamlConfig` (preset, thresholds, guards)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, overrides)
 - `AutonomousBudgetYamlConfig` (presets, multi-dimensional limits)
+- `RagYamlConfig` (provider, collections + sources/chunking, defaults) → `RagCrewConfig`
+- `AgentYamlConfig.Knowledge` (short/long form entries) → `KnowledgeAttachment`
 
 Predefined configurations are available via `OrkeonConfig`: `Default`, `Development` (debug enabled, InMemory), `Production` (debug disabled, Redis).
 

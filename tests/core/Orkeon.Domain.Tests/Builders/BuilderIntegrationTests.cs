@@ -160,7 +160,8 @@ public class BuilderIntegrationTests
             ["WithStepCallback"] = "StepCallback",
             ["WithToolAccessPolicy"] = "ToolAccessPolicy",
             ["WithGuardrails"] = "Guardrails",
-            ["WithLlmConfig"] = "LlmConfig"
+            ["WithLlmConfig"] = "LlmConfig",
+            ["WithKnowledge"] = "KnowledgeAttachments"
         };
 
         // Every property in AgentCreateOptions should be covered by at least one builder method

@@ -137,6 +137,8 @@ public partial class CrewFactory : ICrewFactory
                 builder.Backstory(agentConfig.Backstory);
             if (resolvedTools.Count > 0)
                 builder.WithTools(resolvedTools);
+            foreach (var attachment in agentConfig.KnowledgeAttachments)
+                builder.WithKnowledge(attachment);
 
             var agent = builder.Build();
 
