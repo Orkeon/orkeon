@@ -64,3 +64,29 @@ land first (RAG-02 / C1-C2); the references below are added by the subsequent mi
   `Orkeon.Application.Rag.*`, `Orkeon.Infrastructure.Knowledge.*`) are removed without shims
   once the migration batches complete (assumed break, version `0.9.x-beta`; migration table in
   `CHANGELOG.md`).
+
+## Amendment — 2026-07-25 (RAG-02/C3)
+
+The migration batch that ports the implementations into `Orkeon.Rag` adds two outbound
+couplings **of the concrete `Orkeon.Rag` project** (never of `Orkeon.Rag.Abstractions`,
+whose Domain-only rule is unchanged):
+
+1. **`Orkeon.Rag → Orkeon.Application`** — `Orkeon.Rag` is an outer-ring implementation
+   project (same ring as `Orkeon.Infrastructure`) and consumes the Application ports
+   directly: `Orkeon.Application.Interfaces.Ports.IEmbeddingProvider` (canonical embedding
+   interface, plan §4.1) for the ingestion/query pipelines, and the
+   `Orkeon.Application.Interfaces.Security` validation contracts (`IDataValidator`,
+   `IProvenanceTracker`, `DataValidationResult`…) for the ingestion-path validation.
+   This follows the onion direction (outer ring → Application) and creates no cycle:
+   `Application` references `Rag.Abstractions` only, never `Orkeon.Rag`.
+2. **`Orkeon.Rag → Orkeon.Analysis.Abstractions`** — hosts `AnalysisEmbeddingProviderAdapter`
+   (moved out of `Orkeon.Infrastructure/LLMs/Embeddings/`), the bridge from the Analysis
+   embedding abstraction to the Application port ("dans `Orkeon.Rag`, qui référence les deux
+   mondes", plan §4.1).
+
+Vigilance note: besides the DI wiring file, `Orkeon.Infrastructure` currently also uses
+`Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter` from
+`LLMs/Embeddings/DefaultEmbeddingProviderResolver.cs` — composition-time resolution logic
+invoked by `AddOrkeonInfrastructure`. It is accepted as part of the composition-root role;
+any use of `Orkeon.Rag` from Infrastructure **runtime** code (non-composition) still requires
+reopening this ADR.

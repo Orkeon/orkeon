@@ -1,7 +1,7 @@
 using Orkeon.Application.Interfaces.Ports;
 using AnalysisEmbeddingProvider = Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider;
 
-namespace Orkeon.Infrastructure.LLMs.Embeddings;
+namespace Orkeon.Rag.Embeddings;
 
 /// <summary>
 /// Bridges the Analysis embedding abstraction
@@ -15,9 +15,9 @@ namespace Orkeon.Infrastructure.LLMs.Embeddings;
 /// This makes any Analysis-side provider — notably the on-device
 /// <c>LocalEmbeddingProvider</c> (BGE-micro-v2 ONNX, 384 dims, zero API key) — consumable
 /// everywhere the Application port is expected (RAG, knowledge, agent selection).
-/// RAG-01/C3; provisional home in <c>Orkeon.Infrastructure</c> per ADR-003
-/// (Infrastructure → Analysis.Abstractions coupling), slated to move to
-/// <c>Orkeon.Rag</c> in RAG-02.
+/// Introduced in RAG-01/C3 with a provisional home in <c>Orkeon.Infrastructure</c>;
+/// moved to <c>Orkeon.Rag</c> in RAG-02/C3 per the plan (§4.1 — "dans Orkeon.Rag,
+/// qui référence les deux mondes") and the ADR-006 amendment.
 /// </para>
 /// <para>
 /// Both the unary and the batch port methods route through the inner provider's

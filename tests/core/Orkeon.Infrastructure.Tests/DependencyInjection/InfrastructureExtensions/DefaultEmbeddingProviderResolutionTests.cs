@@ -6,6 +6,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.LLMs.Embeddings;
 using Orkeon.Infrastructure.Tests.Doubles;
+using Orkeon.Rag.Embeddings;
 using AnalysisEmbeddingProvider = Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider;
 
 namespace Orkeon.Infrastructure.Tests.DependencyInjection;

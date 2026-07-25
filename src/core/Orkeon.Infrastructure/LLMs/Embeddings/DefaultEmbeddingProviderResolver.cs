@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Rag.Embeddings;
 using AnalysisEmbeddingProvider = Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider;
 
 namespace Orkeon.Infrastructure.LLMs.Embeddings;

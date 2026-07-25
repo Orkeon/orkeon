@@ -20,6 +20,23 @@
   <ItemGroup>
     <ProjectReference Include="..\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <!-- Outer-ring coupling (ADR-006 amendment): Orkeon.Rag consumes the Application
+         ports (IEmbeddingProvider, security validation contracts), like Infrastructure. -->
+    <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <!-- Embedding bridge: AnalysisEmbeddingProviderAdapter adapts the Analysis-side
+         IEmbeddingProvider to the Application port (plan RAG §4.1). -->
+    <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <!-- HTML text extraction (HtmlDocumentLoader) — same package as the legacy Infrastructure loader -->
+    <PackageReference Include="HtmlAgilityPack" />
+    <!-- PDF text extraction (PdfDocumentLoader) — same package as the legacy Infrastructure loader -->
+    <PackageReference Include="PdfPig" />
   </ItemGroup>
 
 </Project>

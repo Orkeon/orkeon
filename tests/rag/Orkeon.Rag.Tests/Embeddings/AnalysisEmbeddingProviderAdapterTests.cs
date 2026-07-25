@@ -1,12 +1,13 @@
-using Orkeon.Infrastructure.LLMs.Embeddings;
-using Orkeon.Infrastructure.Tests.Doubles;
+using Orkeon.Rag.Embeddings;
+using Orkeon.Rag.Tests.Doubles;
 using Xunit;
 
-namespace Orkeon.Infrastructure.Tests.LLMs.Embeddings;
+namespace Orkeon.Rag.Tests.Embeddings;
 
 /// <summary>
 /// Tests for <see cref="AnalysisEmbeddingProviderAdapter"/> — the RAG-01/C3 bridge from the
-/// Analysis embedding abstraction (batch-only EmbedBatchAsync) to the Application port.
+/// Analysis embedding abstraction (batch-only EmbedBatchAsync) to the Application port,
+/// relocated to <c>Orkeon.Rag.Embeddings</c> in RAG-02/C3.
 /// </summary>
 public class AnalysisEmbeddingProviderAdapterTests
 {
