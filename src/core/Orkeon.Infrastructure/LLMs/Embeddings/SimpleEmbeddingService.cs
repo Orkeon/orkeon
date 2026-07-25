@@ -15,6 +15,7 @@ public partial class SimpleEmbeddingService : IEmbeddingService
 {
     private readonly ILogger<SimpleEmbeddingService> _logger;
     private readonly int _dimension;
+    private int _warnedOnce;
 
     /// <summary>Initializes a new instance of <see cref="SimpleEmbeddingService"/>.</summary>
     /// <param name="logger">The logger.</param>
@@ -39,6 +40,7 @@ public partial class SimpleEmbeddingService : IEmbeddingService
     public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(text);
+        WarnOnce();
 
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -149,6 +151,22 @@ public partial class SimpleEmbeddingService : IEmbeddingService
 
         return dotProduct / (magnitude1 * magnitude2);
     }
+
+    /// <summary>
+    /// Emits a one-time warning at the first embedding generation so that hash-based
+    /// (non-semantic) usage is never silent (RAG-01/C4).
+    /// </summary>
+    private void WarnOnce()
+    {
+        if (Interlocked.Exchange(ref _warnedOnce, 1) == 0)
+            LogHashBasedNotSemantic();
+    }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "Using SimpleEmbeddingService — embeddings are hash-based, not semantic. " +
+            "For real semantics add AddOrkeonLocalEmbeddings() or configure Orkeon:Embeddings. " +
+            "This obsolete service will be removed (RAG-02).")]
+    private partial void LogHashBasedNotSemantic();
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Generating embedding for text of length {Length}")]
     private partial void LogGeneratingEmbeddingForTextOf(int length);

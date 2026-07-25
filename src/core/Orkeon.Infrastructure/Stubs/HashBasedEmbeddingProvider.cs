@@ -7,10 +7,17 @@ using Orkeon.Domain.Constants.Llm;
 namespace Orkeon.Infrastructure.Stubs;
 
 /// <summary>
-/// Fallback implementation of <see cref="IEmbeddingProvider"/> that generates deterministic
-/// hash-based embeddings. Suitable for development and testing only.
-/// Logs a warning on first use.
+/// Explicit test double for <see cref="IEmbeddingProvider"/> that generates deterministic
+/// hash-based embeddings (no semantic signal). Logs a warning on first use.
 /// </summary>
+/// <remarks>
+/// RAG-01/C4: this stub is <b>never resolved implicitly</b> — <c>AddOrkeonInfrastructure()</c>
+/// no longer registers it. The default port resolution is semantic-first
+/// (<see cref="Orkeon.Infrastructure.LLMs.Embeddings.DefaultEmbeddingProviderResolver"/>:
+/// local BGE → configured remote → fail-fast). Register this class explicitly
+/// (<c>services.AddSingleton&lt;IEmbeddingProvider, HashBasedEmbeddingProvider&gt;()</c>)
+/// only in tests or deterministic offline scenarios where semantics do not matter.
+/// </remarks>
 public sealed partial class HashBasedEmbeddingProvider : IEmbeddingProvider
 {
     private readonly ILogger<HashBasedEmbeddingProvider> _logger;
@@ -42,8 +49,8 @@ public sealed partial class HashBasedEmbeddingProvider : IEmbeddingProvider
     }
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
-        Message = "Using HashBasedEmbeddingProvider — embeddings are hash-based, not semantic. " +
-            "Register OpenAIEmbeddingProvider or OllamaEmbeddingProvider via AddOrkeonVectorSearch() for production.")]
+        Message = "Using HashBasedEmbeddingProvider (explicitly registered test double) — embeddings are " +
+            "hash-based, not semantic. For real semantics add AddOrkeonLocalEmbeddings() or configure Orkeon:Embeddings.")]
     private partial void LogHashBasedFallback();
 
     /// <inheritdoc />

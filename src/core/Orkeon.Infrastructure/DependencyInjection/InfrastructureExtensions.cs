@@ -275,14 +275,16 @@ public static class InfrastructureExtensions
         // IMemorySystem (Domain) — in-memory agent memory system
         services.TryAddSingleton<Domain.Memory.IMemorySystem, Stubs.InMemoryMemorySystem>();
 
-        // IEmbeddingProvider (Application) — hash-based fallback when no IConfiguration overload is used
-        services.TryAddSingleton<Application.Interfaces.Ports.IEmbeddingProvider>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<Stubs.HashBasedEmbeddingProvider>>();
-            var options = sp.GetService<IOptions<OrkeonApplicationOptions>>();
-            var dim = options?.Value?.EmbeddingDimension ?? 384;
-            return new Stubs.HashBasedEmbeddingProvider(logger, dim);
-        });
+        // IEmbeddingProvider (Application) — semantic-first default resolution (RAG-01/C4):
+        //   1. Analysis-side provider in the container (AddOrkeonLocalEmbeddings → BGE local,
+        //      RaggableTree providers) → wrapped in AnalysisEmbeddingProviderAdapter;
+        //   2. Orkeon:Embeddings configuration → remote provider (Ollama / OpenAI-compatible);
+        //   3. otherwise fail-fast at FIRST USE (UnconfiguredEmbeddingProvider — actionable
+        //      InvalidOperationException, never at container build time).
+        // The hash stub (Stubs.HashBasedEmbeddingProvider) is no longer resolved implicitly
+        // anywhere — it is an explicit, opt-in test double only.
+        services.TryAddSingleton<Application.Interfaces.Ports.IEmbeddingProvider>(
+            DefaultEmbeddingProviderResolver.Resolve);
 
         // ILlmCache — no-op cache that always misses
         services.TryAddSingleton<Application.Interfaces.Infrastructure.Caching.ILlmCache, Stubs.NullLlmCache>();

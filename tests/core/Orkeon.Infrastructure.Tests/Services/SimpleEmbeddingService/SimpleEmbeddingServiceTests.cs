@@ -430,6 +430,19 @@ public class SimpleEmbeddingServiceTests
     }
 
     [Fact]
+    public async Task ShouldWarnOnce_AtFirstEmbeddingGeneration_SoHashUsageIsNeverSilent()
+    {
+        // Act — two generations, warning must fire exactly once (RAG-01/C4)
+        await _service.GenerateEmbeddingAsync("first", TestContext.Current.CancellationToken);
+        await _service.GenerateEmbeddingAsync("second", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.True(_logger.HasLoggedWarning("hash-based, not semantic"));
+        Assert.Equal(1, _logger.LogMessages.Count(m =>
+            m.Contains("[Warning]") && m.Contains("hash-based, not semantic")));
+    }
+
+    [Fact]
     public async Task ShouldProduceSameEmbedding_WhenGenerateEmbeddingAsyncCaseInsensitive()
     {
         // Arrange

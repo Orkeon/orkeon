@@ -30,12 +30,16 @@ namespace Orkeon.Hosting;
 /// configureServices callback (the <c>orkeon run</c> YAML path and the trading /
 /// interview-spec-forge runners) so crews that reference it resolve it.
 ///
-/// Embedding quality note : by default the host registers a hash-based stub
-/// (<c>Stubs.HashBasedEmbeddingProvider</c>, deterministic, no real semantics).
-/// For real on-device BGE-micro-v2 embeddings, register
-/// <c>Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider</c> as the
-/// <see cref="IEmbeddingProvider"/> BEFORE calling this extension — the
-/// adapter will pick it up via the same port.
+/// Embedding resolution note (RAG-01/C4) : the hash-based stub is no longer the
+/// implicit default. The Application-port <see cref="IEmbeddingProvider"/> resolves
+/// semantic-first (see <c>DefaultEmbeddingProviderResolver</c> in Infrastructure) :
+/// local BGE-micro-v2 when <c>AddOrkeonLocalEmbeddings()</c> was called, else the
+/// remote provider from the <c>Orkeon:Embeddings</c> configuration, else a fail-fast
+/// provider whose first embed call throws an actionable
+/// <see cref="InvalidOperationException"/> (« aucun embedding provider sémantique
+/// configuré ; ajoutez AddOrkeonLocalEmbeddings() ou configurez Orkeon:Embeddings »).
+/// Hosts wanting deterministic non-semantic embeddings (tests) must register
+/// <c>Stubs.HashBasedEmbeddingProvider</c> explicitly.
 /// </remarks>
 public static class SemanticSearchToolExtensions
 {
