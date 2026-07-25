@@ -12,9 +12,18 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ConfigPath = "examples/$ExamplePath/config.yaml"
+$ExampleDir = "examples/$ExamplePath"
 
 if (-not (Test-Path $ConfigPath)) {
-    Write-Error "ERROR: config.yaml not found at $ConfigPath"
+    # Code-driven examples (e.g. rag/basic-ingestion) ship a console project
+    # instead of a config.yaml crew: run the folder's csproj directly.
+    $Csproj = Get-ChildItem -Path $ExampleDir -Filter *.csproj -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($Csproj) {
+        Write-Host "Running $ExamplePath as a console project..."
+        & dotnet run --project $Csproj.FullName
+        exit $LASTEXITCODE
+    }
+    Write-Error "ERROR: neither config.yaml nor a .csproj found under $ExampleDir"
     exit 1
 }
 

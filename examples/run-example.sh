@@ -17,9 +17,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 CONFIG_PATH="examples/${EXAMPLE_PATH}/config.yaml"
+EXAMPLE_DIR="examples/${EXAMPLE_PATH}"
 
 if [ ! -f "$CONFIG_PATH" ]; then
-  echo "ERROR: config.yaml not found at $CONFIG_PATH" >&2
+  # Code-driven examples (e.g. rag/basic-ingestion) ship a console project
+  # instead of a config.yaml crew: run the folder's csproj directly.
+  CSPROJ=$(find "$EXAMPLE_DIR" -maxdepth 1 -name '*.csproj' 2>/dev/null | head -n 1)
+  if [ -n "$CSPROJ" ]; then
+    echo "Running $EXAMPLE_PATH as a console project..."
+    exec dotnet run --project "$CSPROJ"
+  fi
+  echo "ERROR: neither config.yaml nor a .csproj found under $EXAMPLE_DIR" >&2
   exit 1
 fi
 

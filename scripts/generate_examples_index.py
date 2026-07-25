@@ -309,6 +309,7 @@ def render(cats: list[Category]) -> str:
     a("| [`scripting/`](scripting/) | `.ork.ts` scripts | TypeScript-syntax scripting DSL samples (hello-world → FSM/graph). |")
     a("| [`cli-ts-commands/`](cli-ts-commands/) | `.cmd.ts` / `.ork.ts` | TypeScript CLI command examples. |")
     a("| [`local-embeddings/`](local-embeddings/) | C# program | On-device BGE-micro-v2 ONNX embeddings. |")
+    a("| [`rag/`](rag/) | C# program | RAG subsystem: `basic-ingestion` — incremental ingestion + cited offline queries (local BGE, no API key). |")
     a("| [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |")
     a("")
 

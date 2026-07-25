@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Orkeon.Examples.Rag.BasicIngestion</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
+    <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Rag\Orkeon.Tools.Rag.csproj" />
+    <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
+    <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="data\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
