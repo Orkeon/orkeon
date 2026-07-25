@@ -100,11 +100,11 @@ public static class InfrastructureExtensions
         // === Phase 4: Standards & Interoperability ===
         services.AddOrkeonMcp(configuration);
         services.AddOrkeonVectorSearch(configuration);
-        services.AddOrkeonKnowledge(configuration);
-        services.AddOrkeonRag(configuration);
 
-        // === Phase 8: RAG Data Validation (S6) ===
-        services.AddOrkeonRagValidation();
+        // RAG subsystem (R4.9 — opt-in, RAG-01/C6): AddOrkeonKnowledge, AddOrkeonRag and
+        // AddOrkeonRagValidation are intentionally NOT registered by default. Hosts that
+        // need rag_search / knowledge bases enable them explicitly.
+        // See docs/reference/opt-in-subsystems.md.
 
         // === Phase 10: Vector Store Providers (N5) ===
         if (configuration.GetSection("Orkeon:ChromaDb").Exists())

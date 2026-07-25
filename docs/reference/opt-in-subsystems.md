@@ -49,6 +49,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Multi-modal content (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Beta (real since R3.9) |
 | Kickoff hooks | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Experimental |
 | Codebase context (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Beta |
+| RAG & knowledge bases (RAG-01/C6) | `AddOrkeonKnowledge(config)` + `AddOrkeonRag(config)` + `AddOrkeonRagValidation()` | Infrastructure | `IKnowledgeService`, `IRagPipeline`, `rag_search` (`IBaseTool`) | Beta |
 | Execution state persistence (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Beta |
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |

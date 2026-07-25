@@ -49,6 +49,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Contenu multi-modal (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Bêta (réel depuis R3.9) |
 | Hooks de kickoff | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Expérimental |
 | Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Bêta |
+| RAG & bases de connaissances (RAG-01/C6) | `AddOrkeonKnowledge(config)` + `AddOrkeonRag(config)` + `AddOrkeonRagValidation()` | Infrastructure | `IKnowledgeService`, `IRagPipeline`, `rag_search` (`IBaseTool`) | Bêta |
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
 
 **Maturité** — *Bêta* : implémentation complète et testée, API susceptible d'évoluer

@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\..\src\core\Orkeon.Domain\Orkeon.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />

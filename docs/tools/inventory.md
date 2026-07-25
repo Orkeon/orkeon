@@ -16,7 +16,7 @@
 | Tool | Class | Base | Use case | Call example |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `ToolBase<SearchRequest, SearchResponse>` | Embedding-based semantic search across memories | `{ "query": "customer churn patterns", "limit": 5 }` |
-| `rag_search` | `RagTool` | `IBaseTool` (direct) | RAG search in the agent's knowledge bases | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagTool` | `IBaseTool` (direct) | RAG search in the agent's knowledge bases (opt-in: requires `AddOrkeonRag`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
 
 ## Code execution tools (`Orkeon.Infrastructure.Sandbox` / `Orkeon.Tools.Code`)
 
@@ -132,7 +132,7 @@ services.AddOrkeonWebTools();          // web_search, brave_search, web_scrape, 
 services.AddOrkeonCodeTools();         // shell_command
 ```
 
-The infrastructure tools (`ask_question`, `delegate_work`, `semantic_search`, `code_interpreter`, `rag_search`) are registered by `AddOrkeonInfrastructure()`.
+The infrastructure tools (`ask_question`, `delegate_work`, `semantic_search`, `code_interpreter`) are registered by `AddOrkeonInfrastructure()`. `rag_search` is opt-in: it is only registered by `AddOrkeonRag(configuration)` (see `docs/reference/opt-in-subsystems.md`).
 
 ### Names to use in YAML
 

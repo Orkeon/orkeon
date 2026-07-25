@@ -29,6 +29,9 @@ public static class RagServiceExtensions
         services.AddScoped<IResponseGenerator, ChatClientResponseGenerator>();
         services.AddScoped<IRagPipeline, RagPipeline>();
         services.AddScoped<RagTool>();
+        // Tool registries discover tools via GetServices<IBaseTool>() — without this
+        // registration rag_search is invisible to agents (RAG-01/C1).
+        services.AddScoped<Domain.Tools.IBaseTool>(sp => sp.GetRequiredService<RagTool>());
 
         return services;
     }
