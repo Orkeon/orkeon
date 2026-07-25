@@ -102,18 +102,42 @@ public sealed partial class SqliteMemoryProvider
         return SearchSimilarAsyncCore(queryEmbedding, topK, minScore, filter, cancellationToken);
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
-        Justification = "The only interpolated fragments are the {_options.TableName} identifier (validated at construction via ValidateTableName regex ^[A-Za-z_][A-Za-z0-9_]*$; identifiers cannot be parameterized) and the {ColumnList} const; no caller values are interpolated.")]
-    private async Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsyncCore(
+    private Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsyncCore(
         float[] queryEmbedding,
         int topK,
         float minScore,
         Dictionary<string, object>? filter,
         CancellationToken cancellationToken)
     {
+        // Legacy semantics preserved: non-positive thresholds fall back to the configured
+        // provider defaults, and the dictionary filter is matched at record level.
         var effectiveTopK = topK > 0 ? topK : _options.DefaultTopK;
         var effectiveMinScore = minScore > 0 ? minScore : _options.MinSimilarityScore;
 
+        return ScoreEmbeddingRowsAsync(
+            queryEmbedding,
+            effectiveTopK,
+            effectiveMinScore,
+            recordFilter: filter != null ? record => record.MatchesFilter(filter) : null,
+            itemFilter: null,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Shared brute-force scoring core: streams all embedding-bearing rows, applies the
+    /// optional record-level then item-level filters, scores with cosine similarity, applies
+    /// the threshold and returns the top-K best-first — with storage keys preserved.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
+        Justification = "The only interpolated fragments are the {_options.TableName} identifier (validated at construction via ValidateTableName regex ^[A-Za-z_][A-Za-z0-9_]*$; identifiers cannot be parameterized) and the {ColumnList} const; no caller values are interpolated.")]
+    private async Task<IReadOnlyList<ScoredMemoryItem>> ScoreEmbeddingRowsAsync(
+        float[] queryEmbedding,
+        int topK,
+        float minScore,
+        Func<SqliteMemoryRecord, bool>? recordFilter,
+        Func<MemoryItem, bool>? itemFilter,
+        CancellationToken cancellationToken)
+    {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -129,22 +153,26 @@ public sealed partial class SqliteMemoryProvider
                 if (record.Embedding == null || record.Embedding.Length != queryEmbedding.Length)
                     continue;
 
-                if (filter != null && !record.MatchesFilter(filter))
+                if (recordFilter != null && !recordFilter(record))
                     continue;
 
                 var score = VectorMath.CosineSimilarity(queryEmbedding, record.Embedding);
-                if (score >= effectiveMinScore)
-                {
-                    scored.Add(new ScoredMemoryItem(record.ToMemoryItem(), score));
-                }
+                if (score < minScore)
+                    continue;
+
+                var item = record.ToMemoryItem();
+                if (itemFilter != null && !itemFilter(item))
+                    continue;
+
+                scored.Add(new ScoredMemoryItem(item, score, record.Key));
             }
 
             var results = scored
                 .OrderByDescending(s => s.Score)
-                .Take(effectiveTopK)
+                .Take(topK)
                 .ToList();
 
-            LogVectorSearchResults(results.Count, effectiveMinScore, effectiveTopK);
+            LogVectorSearchResults(results.Count, minScore, topK);
             return results;
         }
         catch (Exception ex)

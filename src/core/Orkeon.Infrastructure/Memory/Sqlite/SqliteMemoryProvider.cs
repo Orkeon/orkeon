@@ -140,24 +140,7 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
         try
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"""
-                INSERT INTO {_options.TableName} ({ColumnList})
-                VALUES (@key, @itemId, @content, @embedding, @importance, @source, @relevance, @tagsJson,
-                        @createdBy, @createdAt, @lastAccessedAt, @accessCount, @customPropertiesJson)
-                ON CONFLICT(key) DO UPDATE SET
-                    item_id = @itemId,
-                    content = @content,
-                    embedding = @embedding,
-                    importance = @importance,
-                    source = @source,
-                    relevance = @relevance,
-                    tags_json = @tagsJson,
-                    created_by = @createdBy,
-                    created_at = @createdAt,
-                    last_accessed_at = @lastAccessedAt,
-                    access_count = @accessCount,
-                    custom_properties_json = @customPropertiesJson
-                """;
+            cmd.CommandText = UpsertSql;
             AddRecordParameters(cmd, record);
 
             await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -395,6 +378,30 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
         item.SetEmbedding(embedding);
         return StoreAsync(key, item, cancellationToken);
     }
+
+    /// <summary>
+    /// Shared <c>INSERT … ON CONFLICT(key) DO UPDATE</c> statement used by
+    /// <see cref="StoreAsync"/> and the batch upsert capability. The only interpolated
+    /// fragments are the validated table identifier and the <see cref="ColumnList"/> const.
+    /// </summary>
+    private string UpsertSql => $"""
+        INSERT INTO {_options.TableName} ({ColumnList})
+        VALUES (@key, @itemId, @content, @embedding, @importance, @source, @relevance, @tagsJson,
+                @createdBy, @createdAt, @lastAccessedAt, @accessCount, @customPropertiesJson)
+        ON CONFLICT(key) DO UPDATE SET
+            item_id = @itemId,
+            content = @content,
+            embedding = @embedding,
+            importance = @importance,
+            source = @source,
+            relevance = @relevance,
+            tags_json = @tagsJson,
+            created_by = @createdBy,
+            created_at = @createdAt,
+            last_accessed_at = @lastAccessedAt,
+            access_count = @accessCount,
+            custom_properties_json = @customPropertiesJson
+        """;
 
     private static void AddRecordParameters(SqliteCommand cmd, SqliteMemoryRecord record)
     {

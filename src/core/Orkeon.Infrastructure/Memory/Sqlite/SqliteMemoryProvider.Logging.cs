@@ -43,4 +43,7 @@ public sealed partial class SqliteMemoryProvider
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Vector search found {Count} items above min score {MinScore} (topK={TopK})")]
     private partial void LogVectorSearchResults(int count, float minScore, int topK);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Batch-upserted {Count} memory items in a single transaction")]
+    private partial void LogBatchUpserted(int count);
 }

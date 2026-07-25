@@ -12,14 +12,21 @@ namespace Orkeon.Infrastructure.Memory;
 /// Business logic (similarity search, validation) moved to domain services.
 /// </summary>
 /// <remarks>
+/// <para>
 /// <see cref="IMemoryProvider"/> is re-listed on purpose (same pattern as
 /// <c>SqliteMemoryProvider</c>/<c>LanceDbMemoryProvider</c>, R10.1): without
 /// re-implementation, calls made through the interface would resolve
 /// <c>StoreWithEmbeddingAsync</c>/<c>SearchSimilarAsync</c> to the interface's default
 /// bodies (empty results) instead of the cosine-similarity search defined here
 /// (interface mapping is otherwise frozen at <see cref="MemoryProviderBase"/>).
+/// </para>
+/// <para>
+/// Implements the optional vector capabilities <see cref="IScoredVectorSearch"/> and
+/// <see cref="IBatchUpsert"/> (RAG-02/C4): keys are recoverable, scores are cosine
+/// similarities preserved end to end, and batches are validated before any write.
+/// </para>
 /// </remarks>
-public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
+public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider, IScoredVectorSearch, IBatchUpsert
 {
     private readonly ConcurrentDictionary<string, MemoryItem> _storage = new();
 
@@ -272,7 +279,7 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
     /// Uses cosine similarity via VectorMath for scoring, honoring the optional metadata
     /// <paramref name="filter"/> (<c>source</c> equality, <c>tag</c>/<c>tags</c> membership,
     /// any other key matched against custom properties — same semantics as the Redis and
-    /// SQLite providers).
+    /// SQLite providers); the legacy dictionary is converted to a typed <see cref="MemoryFilter"/>.
     /// Overrides the abstract <see cref="MemoryProviderBase.SearchSimilarAsync"/> so calls
     /// made through <see cref="IMemoryProvider"/> dispatch here instead of the interface's
     /// empty default body.
@@ -285,11 +292,37 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(queryEmbedding);
+        return Task.FromResult<IReadOnlyList<ScoredMemoryItem>>(
+            SearchSimilarCore(queryEmbedding, topK, minScore, MemoryFilter.FromDictionary(filter)));
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarWithScoresAsync(
+        ReadOnlyMemory<float> embedding,
+        int topK,
+        float minScore,
+        MemoryFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyList<ScoredMemoryItem>>(
+            SearchSimilarCore(embedding.ToArray(), topK, minScore, filter));
+    }
+
+    /// <summary>
+    /// Shared cosine-similarity scan over the store: embedding compatibility check, typed
+    /// metadata filter, scoring, threshold, descending order, top-K — keys preserved.
+    /// </summary>
+    private List<ScoredMemoryItem> SearchSimilarCore(
+        float[] queryEmbedding,
+        int topK,
+        float minScore,
+        MemoryFilter? filter)
+    {
         try
         {
             var scored = new List<ScoredMemoryItem>();
 
-            foreach (var item in _storage.Values)
+            foreach (var (key, item) in _storage)
             {
                 if (item.Embedding == null || item.Embedding.Count == 0)
                     continue;
@@ -297,14 +330,14 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
                 if (item.Embedding.Count != queryEmbedding.Length)
                     continue;
 
-                if (filter is { Count: > 0 } && !MatchesMetadataFilter(item, filter))
+                if (filter != null && !filter.Matches(item))
                     continue;
 
                 var score = VectorMath.CosineSimilarity(queryEmbedding, item.Embedding.ToArray());
 
                 if (score >= minScore)
                 {
-                    scored.Add(new ScoredMemoryItem(item, score));
+                    scored.Add(new ScoredMemoryItem(item, score, key));
                 }
             }
 
@@ -315,7 +348,7 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
 
             LogVectorSearchResults(results.Count, minScore, topK);
 
-            return Task.FromResult<IReadOnlyList<ScoredMemoryItem>>(results);
+            return results;
         }
         catch (Exception ex)
         {
@@ -324,42 +357,46 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
         }
     }
 
-    /// <summary>
-    /// Applies the metadata filter to a candidate item, mirroring the semantics of the
-    /// Redis and SQLite providers: <c>source</c> equality, <c>tag</c>/<c>tags</c> membership,
-    /// any other key matched against the item's custom properties.
-    /// </summary>
-    private static bool MatchesMetadataFilter(MemoryItem item, Dictionary<string, object> filter)
+    /// <inheritdoc />
+    /// <remarks>
+    /// Reasonable atomicity (see <see cref="IBatchUpsert"/>): every entry is validated before
+    /// any write, so an invalid entry never yields a partially applied batch. Writes are then
+    /// applied per key; concurrent readers may observe the batch mid-application.
+    /// </remarks>
+    public Task UpsertBatchAsync(
+        IReadOnlyList<MemoryUpsertEntry> entries,
+        CancellationToken cancellationToken = default)
     {
-        foreach (var (key, value) in filter)
+        ArgumentNullException.ThrowIfNull(entries);
+
+        // Validate-first: nothing is written when any entry is invalid.
+        foreach (var entry in entries)
         {
-            var filterValue = value?.ToString();
-
-#pragma warning disable CA1308 // lowercase is the required wire/storage form, not a comparison normalization
-            switch (key.ToLowerInvariant())
-#pragma warning restore CA1308
-            {
-                case "source":
-                    if (!string.Equals(item.Source, filterValue, StringComparison.OrdinalIgnoreCase))
-                        return false;
-                    break;
-
-                case "tag" or "tags":
-                    if (filterValue == null || !item.Tags.Contains(filterValue, StringComparer.OrdinalIgnoreCase))
-                        return false;
-                    break;
-
-                default:
-                    var props = item.Metadata.CustomProperties;
-                    if (props == null ||
-                        !props.TryGetValue(key, out var propValue) ||
-                        !string.Equals(propValue, filterValue, StringComparison.OrdinalIgnoreCase))
-                        return false;
-                    break;
-            }
+            ArgumentNullException.ThrowIfNull(entry);
+            ValidateKey(entry.Key);
+            ValidateMemoryItem(entry.Item);
         }
 
-        return true;
+        try
+        {
+            foreach (var entry in entries)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (entry.Embedding is { } embedding)
+                    entry.Item.SetEmbedding(embedding.ToArray());
+
+                _storage.AddOrUpdate(entry.Key, entry.Item, (_, _) => entry.Item);
+            }
+
+            LogBatchUpserted(entries.Count);
+            return Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            LogException(ex, "UpsertBatchAsync");
+            throw;
+        }
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Stored memory item with key: {Key}")]
@@ -397,4 +434,7 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Vector search found {Count} items above min score {MinScore} (topK={TopK})")]
     private partial void LogVectorSearchResults(int count, float minScore, int topK);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Batch-upserted {Count} memory items")]
+    private partial void LogBatchUpserted(int count);
 }

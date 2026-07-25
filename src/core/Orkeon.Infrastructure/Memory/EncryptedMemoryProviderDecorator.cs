@@ -12,7 +12,26 @@ namespace Orkeon.Infrastructure.Memory;
 /// (<see cref="StoreWithEmbeddingAsync"/>/<see cref="SearchSimilarAsync"/>) is delegated to
 /// the inner provider and result contents are decrypted on the way out.
 /// </summary>
-public sealed partial class EncryptedMemoryProviderDecorator : IMemoryProvider
+/// <remarks>
+/// <para>
+/// <b>Conditional capability forwarding (RAG-02/C4).</b> C# has no conditional interface
+/// implementation, so this decorator statically implements every optional capability
+/// (<see cref="IScoredVectorSearch"/>, <see cref="IBatchUpsert"/>,
+/// <see cref="IHybridSearchCapable"/>) and reports the ones the wrapped provider actually has
+/// through <see cref="IMemoryCapabilityProbe"/>. Discover capabilities with
+/// <see cref="MemoryCapabilityExtensions.TryGetCapability{TCapability}"/> — a raw
+/// <c>is IScoredVectorSearch</c> test on the decorator is always true and therefore NOT a
+/// reliable capability check. Calling a capability member the inner provider lacks throws
+/// <see cref="NotSupportedException"/>.
+/// </para>
+/// <para>
+/// Encryption semantics are unchanged for capabilities: batch upserts encrypt content before
+/// delegation (embeddings stay clear for indexing); scored/hybrid search delegates to the
+/// inner provider and decrypts result contents on the way out, preserving scores and keys.
+/// </para>
+/// </remarks>
+public sealed partial class EncryptedMemoryProviderDecorator
+    : IMemoryProvider, IMemoryCapabilityProbe, IScoredVectorSearch, IBatchUpsert, IHybridSearchCapable
 {
     private readonly IMemoryProvider _inner;
     private readonly IEncryptionProvider _encryption;
@@ -172,7 +191,6 @@ public sealed partial class EncryptedMemoryProviderDecorator : IMemoryProvider
     /// <param name="filter">Optional metadata filter.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The scored results with decrypted contents.</returns>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Per-item decrypt fault barrier: an item whose content fails to decrypt is logged and skipped so the remaining scored results are still returned.")]
     public async Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsync(
         float[] queryEmbedding,
         int topK = 10,
@@ -181,6 +199,111 @@ public sealed partial class EncryptedMemoryProviderDecorator : IMemoryProvider
         CancellationToken cancellationToken = default)
     {
         var results = await _inner.SearchSimilarAsync(queryEmbedding, topK, minScore, filter, cancellationToken).ConfigureAwait(false);
+        return await DecryptScoredResultsAsync(results, cancellationToken).ConfigureAwait(false);
+    }
+
+    // ── Optional capability forwarding (RAG-02/C4) ────────────────────────
+    // See the class remarks: capabilities are statically implemented, effectively
+    // advertised via IMemoryCapabilityProbe, and forwarded only when the inner
+    // provider possesses them (NotSupportedException otherwise).
+
+    /// <inheritdoc />
+    public bool HasCapability<TCapability>() where TCapability : class
+        => _inner.TryGetCapability<TCapability>(out _);
+
+    /// <inheritdoc />
+    /// <exception cref="NotSupportedException">The wrapped provider does not implement <see cref="IScoredVectorSearch"/>.</exception>
+    public async Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarWithScoresAsync(
+        ReadOnlyMemory<float> embedding,
+        int topK,
+        float minScore,
+        MemoryFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var search = RequireCapability<IScoredVectorSearch>();
+        var results = await search.SearchSimilarWithScoresAsync(embedding, topK, minScore, filter, cancellationToken).ConfigureAwait(false);
+        return await DecryptScoredResultsAsync(results, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    /// <exception cref="NotSupportedException">The wrapped provider does not implement <see cref="IHybridSearchCapable"/>.</exception>
+    public async Task<IReadOnlyList<ScoredMemoryItem>> HybridSearchAsync(
+        string query,
+        ReadOnlyMemory<float> embedding,
+        int topK,
+        MemoryFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var hybrid = RequireCapability<IHybridSearchCapable>();
+        var results = await hybrid.HybridSearchAsync(query, embedding, topK, filter, cancellationToken).ConfigureAwait(false);
+        return await DecryptScoredResultsAsync(results, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// When encryption is enabled, each entry's content is encrypted before delegation;
+    /// embeddings (both the explicit entry embedding and the one carried by the item)
+    /// stay clear so the inner store can index them.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">The wrapped provider does not implement <see cref="IBatchUpsert"/>.</exception>
+    public async Task UpsertBatchAsync(
+        IReadOnlyList<MemoryUpsertEntry> entries,
+        CancellationToken cancellationToken = default)
+    {
+        var batch = RequireCapability<IBatchUpsert>();
+        ArgumentNullException.ThrowIfNull(entries);
+
+        if (!_encryption.IsEnabled)
+        {
+            await batch.UpsertBatchAsync(entries, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var encryptedEntries = new List<MemoryUpsertEntry>(entries.Count);
+        foreach (var entry in entries)
+        {
+            ArgumentNullException.ThrowIfNull(entry);
+            ArgumentNullException.ThrowIfNull(entry.Item);
+
+            var encryptedContent = await _encryption.EncryptStringAsync(entry.Item.Content, cancellationToken).ConfigureAwait(false);
+            var encryptedItem = MemoryItem.Create(
+                encryptedContent,
+                entry.Item.Embedding,
+                entry.Item.Importance,
+                entry.Item.Source,
+                entry.Item.Tags);
+
+            encryptedEntries.Add(entry with { Item = encryptedItem });
+        }
+
+        await batch.UpsertBatchAsync(encryptedEntries, cancellationToken).ConfigureAwait(false);
+        LogBatchUpsertedEncrypted(encryptedEntries.Count);
+    }
+
+    /// <summary>
+    /// Resolves the requested capability on the wrapped provider or throws a
+    /// <see cref="NotSupportedException"/> with an actionable message.
+    /// </summary>
+    private TCapability RequireCapability<TCapability>() where TCapability : class
+    {
+        if (_inner.TryGetCapability<TCapability>(out var capability))
+            return capability;
+
+        throw new NotSupportedException(
+            $"The wrapped memory provider '{_inner.GetType().Name}' does not implement {typeof(TCapability).Name}. " +
+            $"Check availability with IMemoryProvider.TryGetCapability<{typeof(TCapability).Name}>() before calling this member.");
+    }
+
+    /// <summary>
+    /// Decrypts the content of each scored result while preserving score and storage key.
+    /// Items that fail to decrypt are skipped with a warning. No-op when encryption is
+    /// disabled or the result set is empty.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Per-item decrypt fault barrier: an item whose content fails to decrypt is logged and skipped so the remaining scored results are still returned.")]
+    private async Task<IReadOnlyList<ScoredMemoryItem>> DecryptScoredResultsAsync(
+        IReadOnlyList<ScoredMemoryItem> results,
+        CancellationToken cancellationToken)
+    {
         if (!_encryption.IsEnabled || results.Count == 0)
             return results;
 
@@ -196,7 +319,7 @@ public sealed partial class EncryptedMemoryProviderDecorator : IMemoryProvider
                     scored.Item.Importance,
                     scored.Item.Source,
                     scored.Item.Tags);
-                decrypted.Add(new ScoredMemoryItem(decryptedItem, scored.Score));
+                decrypted.Add(scored with { Item = decryptedItem });
             }
             catch (Exception ex)
             {
@@ -215,5 +338,8 @@ public sealed partial class EncryptedMemoryProviderDecorator : IMemoryProvider
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Failed to decrypt memory item during search, skipping.")]
     private partial void LogFailedToDecryptMemoryItem(Exception ex);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Batch-upserted {Count} encrypted memory items")]
+    private partial void LogBatchUpsertedEncrypted(int count);
 
 }
