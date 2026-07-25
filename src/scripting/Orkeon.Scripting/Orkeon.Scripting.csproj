@@ -125,6 +125,10 @@
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <!-- RAG-03/C3: first-class `rag.*` binding (RagNamespaceBinding) over the RAG
+         subsystem contracts. Abstractions only — pipeline implementations are wired
+         by the host (AddOrkeonRag). -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

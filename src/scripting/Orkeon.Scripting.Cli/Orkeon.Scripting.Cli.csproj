@@ -19,6 +19,10 @@
     <!-- Shared runner host bootstrap (settings, mounts, LLM wiring) — extracted to
          src/hosting so the packable tool no longer ships sample code (R1.5 / ORG-001). -->
     <ProjectReference Include="..\..\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
+    <!-- RAG-03/C3: `orkeon rag ingest | search` verbs — subsystem DI (AddOrkeonRag)
+         and agent tools (AddOrkeonRagTools, shared report formatting). -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Rag\Orkeon.Tools.Rag.csproj" />
   </ItemGroup>
 
   <ItemGroup>

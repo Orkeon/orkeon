@@ -22,6 +22,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Domain.SharedKernel.ILlmProvider? _llmProvider;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
+    private readonly Bindings.RagScriptingBackend? _ragBackend;
 
     /// <summary>
     /// Creates a factory that builds engines respecting <paramref name="limits"/>.
@@ -33,7 +34,8 @@ public sealed class JsEngineFactory
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null,
         Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null)
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
+        Bindings.RagScriptingBackend? ragBackend = null)
     {
         ArgumentNullException.ThrowIfNull(limits);
         _limits = limits.Value;
@@ -43,6 +45,7 @@ public sealed class JsEngineFactory
         _llmProvider = llmProvider;
         _permissionGate = permissionGate;
         _deltaSink = deltaSink;
+        _ragBackend = ragBackend;
     }
 
     /// <summary>
@@ -56,8 +59,9 @@ public sealed class JsEngineFactory
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null,
         Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null)
-        : this(Microsoft.Extensions.Options.Options.Create(limits ?? new ScriptingLimitsOptions()), loggerFactory, configuration, builtInTools, llmProvider, permissionGate, deltaSink)
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
+        Bindings.RagScriptingBackend? ragBackend = null)
+        : this(Microsoft.Extensions.Options.Options.Create(limits ?? new ScriptingLimitsOptions()), loggerFactory, configuration, builtInTools, llmProvider, permissionGate, deltaSink, ragBackend)
     {
     }
 
@@ -79,6 +83,7 @@ public sealed class JsEngineFactory
         ToolBuilderBinding.Register(engine);
         LlmNamespaceBinding.Register(engine, _configuration, _scriptLogger, _llmProvider);
         ToolsNamespaceBinding.Register(engine, _builtInTools ?? Array.Empty<IBaseTool>(), _scriptLogger);
+        RagNamespaceBinding.Register(engine, _ragBackend, _scriptLogger);
         ErrorActionBinding.Register(engine);
         StateMachineBinding.Register(engine);
         StateGraphBinding.Register(engine);

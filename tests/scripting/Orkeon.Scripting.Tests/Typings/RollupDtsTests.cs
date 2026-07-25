@@ -24,6 +24,8 @@ public sealed class RollupDtsTests
         Assert.Contains("ExecutionContext", content);
         Assert.Contains("AgentContext", content);
         Assert.Contains("namespace tools", content);
+        Assert.Contains("namespace rag", content);
+        Assert.Contains("RagIngestReport", content);
     }
 
     private static string? ResolveRollupPath()

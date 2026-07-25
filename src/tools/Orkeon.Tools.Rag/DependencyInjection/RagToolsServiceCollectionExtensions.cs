@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Rag.Abstractions.Interfaces;
 
@@ -13,12 +14,14 @@ namespace Orkeon.Tools.Rag.DependencyInjection;
 public static class RagToolsServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <see cref="RagSearchTool"/> (<c>rag_search</c>) as an
-    /// <see cref="IBaseTool"/> so tool registries discover it via
-    /// <c>GetServices&lt;IBaseTool&gt;()</c>. Requires the RAG subsystem
-    /// (<c>AddOrkeonRag(configuration)</c> from <c>Orkeon.Rag.DependencyInjection</c>)
-    /// for the <see cref="IRagPipeline"/>; picks up an <see cref="IRaggableStore"/>
-    /// automatically when the RaggableTree subsystem is registered.
+    /// Registers <see cref="RagSearchTool"/> (<c>rag_search</c>) and
+    /// <see cref="RagIngestTool"/> (<c>rag_ingest</c>) as <see cref="IBaseTool"/>s
+    /// so tool registries discover them via <c>GetServices&lt;IBaseTool&gt;()</c>.
+    /// Requires the RAG subsystem (<c>AddOrkeonRag(configuration)</c> from
+    /// <c>Orkeon.Rag.DependencyInjection</c>) for the <see cref="IRagPipeline"/> /
+    /// <see cref="IIngestionPipeline"/>; picks up an <see cref="IRaggableStore"/>
+    /// (rag_search code-index routing) and an <see cref="IFileSystemService"/>
+    /// (rag_ingest glob expansion) automatically when available.
     /// </summary>
     public static IServiceCollection AddOrkeonRagTools(this IServiceCollection services)
     {
@@ -29,6 +32,10 @@ public static class RagToolsServiceCollectionExtensions
         services.AddSingleton<IBaseTool>(sp => new RagSearchTool(
             sp.GetRequiredService<IRagPipeline>(),
             sp.GetService<IRaggableStore>()));
+
+        services.AddSingleton<IBaseTool>(sp => new RagIngestTool(
+            sp.GetRequiredService<IIngestionPipeline>(),
+            sp.GetRequiredService<IFileSystemService>()));
 
         return services;
     }
