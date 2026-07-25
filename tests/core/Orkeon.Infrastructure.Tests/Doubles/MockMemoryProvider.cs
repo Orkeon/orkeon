@@ -30,6 +30,8 @@ public sealed class MockMemoryProvider : IMemoryProvider
     public float[]? LastStoreEmbedding { get; private set; }
     public float[]? LastSearchSimilarQueryEmbedding { get; private set; }
     public Dictionary<string, object>? LastSearchSimilarFilter { get; private set; }
+    public int? LastSearchSimilarTopK { get; private set; }
+    public float? LastSearchSimilarMinScore { get; private set; }
 
     private Exception? _searchException;
 
@@ -120,6 +122,8 @@ public sealed class MockMemoryProvider : IMemoryProvider
         SearchSimilarCallCount++;
         LastSearchSimilarQueryEmbedding = queryEmbedding;
         LastSearchSimilarFilter = filter;
+        LastSearchSimilarTopK = topK;
+        LastSearchSimilarMinScore = minScore;
         return Task.FromResult(_searchSimilarResult);
     }
 
@@ -143,6 +147,8 @@ public sealed class MockMemoryProvider : IMemoryProvider
         LastDeleteKey = null;
         LastStoreEmbedding = null;
         LastSearchSimilarQueryEmbedding = null;
+        LastSearchSimilarTopK = null;
+        LastSearchSimilarMinScore = null;
         _storage.Clear();
     }
 }

@@ -37,7 +37,7 @@ public class RetrievalOptions
     /// <summary>
     /// Minimum relevance score threshold (0.0 to 1.0). Chunks below this are filtered out.
     /// </summary>
-    public float MinRelevanceScore { get; set; } = (float)DefaultSimilarityThreshold;
+    public float MinRelevanceScore { get; set; } = DefaultMinRelevanceScore;
 
     /// <summary>
     /// Whether to use hybrid search combining semantic and keyword matching.

@@ -1,6 +1,6 @@
+using Orkeon.Application.Constants.Rag;
 using Orkeon.Application.Rag;
 using Orkeon.Domain.Knowledge;
-using Orkeon.Domain.Constants.Memory;
 
 namespace Orkeon.Application.Interfaces.Ports;
 
@@ -45,7 +45,7 @@ public interface IKnowledgeService
     System.Threading.Tasks.Task<IReadOnlyList<KnowledgeItem>> SearchAsync(
         string query,
         int topK = 5,
-        double minSimilarity = SearchDefaults.DefaultSimilarityThreshold,
+        double minSimilarity = RagDefaults.DefaultMinRelevanceScore,
         string[]? sources = null,
         IDictionary<string, object>? filters = null,
         CancellationToken cancellationToken = default);

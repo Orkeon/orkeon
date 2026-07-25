@@ -4,6 +4,7 @@ using Orkeon.Domain.Common;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Infrastructure.Knowledge;
 using Orkeon.Infrastructure.Knowledge.Chunking;
+using Orkeon.Infrastructure.Memory;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
@@ -17,6 +18,9 @@ public sealed class KnowledgeServiceTestsFixture : IDisposable
     // Pass-through VFS (delegates to real disk) so export/import round-trips and the
     // tests' File.Exists assertions on temp paths hold.
     private readonly PassThroughFileSystemService _fs = new();
+    // Deterministic lexical embeddings + real in-memory vector store, so cosine search
+    // behaves like term overlap and the lexical expectations of these tests still hold.
+    private readonly StubLexicalEmbeddingProvider _embeddings = new();
     private readonly List<string> _tempFiles = [];
 
     public KnowledgeService Service { get; }
@@ -24,7 +28,7 @@ public sealed class KnowledgeServiceTestsFixture : IDisposable
     public KnowledgeServiceTestsFixture()
     {
         _chunker = new RecursiveTextChunker();
-        Service = new KnowledgeService(_chunker, _fs);
+        Service = new KnowledgeService(_chunker, _fs, _embeddings, new InMemoryProvider());
     }
 
     public static MockKnowledgeSource CreateMockSource(string name, string content, string type = "test")
@@ -85,7 +89,7 @@ public sealed class KnowledgeServiceTestsFixture : IDisposable
 
     public Task ExportAsync(string path) => Service.ExportAsync(path);
 
-    public KnowledgeService CreateNewService() => new(_chunker, _fs);
+    public KnowledgeService CreateNewService() => new(_chunker, _fs, _embeddings, new InMemoryProvider());
 
     public Task<int> ImportAsync(string path) => Service.ImportAsync(path);
 

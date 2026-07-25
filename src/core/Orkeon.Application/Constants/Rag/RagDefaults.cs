@@ -11,8 +11,13 @@ public static class RagDefaults
     /// <summary>Default maximum number of chunks to retrieve from knowledge sources.</summary>
     public const int DefaultTopK = 5;
 
-    /// <summary>Default minimum relevance score threshold (0.0–1.0). Chunks below this are filtered out.</summary>
-    public const float DefaultMinRelevanceScore = 0.7f;
+    /// <summary>
+    /// Default minimum relevance score threshold (0.0–1.0). Chunks below this are filtered out.
+    /// Kept low on purpose: it only discards clear noise while <see cref="DefaultTopK"/> ranking
+    /// does the actual selection — real-world cosine scores for relevant chunks routinely sit
+    /// below 0.7 depending on the embedding model, so a high default silently returns nothing.
+    /// </summary>
+    public const float DefaultMinRelevanceScore = 0.3f;
 
     /// <summary>Default weight for semantic similarity in hybrid search (0.0–1.0).</summary>
     public const float DefaultSemanticWeight = 0.7f;

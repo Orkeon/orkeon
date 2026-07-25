@@ -107,7 +107,11 @@ public class RagToolFiltersPropagationTests
     {
         // Arrange — fully real chain: RagTool → RagPipeline → KnowledgeRetriever →
         // KnowledgeService. Two items match the query text; the filter must keep only one.
-        var service = new KnowledgeServiceImpl(new RecursiveTextChunker(), new FakeFileSystemService());
+        var service = new KnowledgeServiceImpl(
+            new RecursiveTextChunker(),
+            new FakeFileSystemService(),
+            new StubLexicalEmbeddingProvider(),
+            new Orkeon.Infrastructure.Memory.InMemoryProvider());
         await service.AddKnowledgeAsync(
             "Alpha guide to quantum computing.",
             metadata: new Dictionary<string, object> { ["category"] = "computing" },

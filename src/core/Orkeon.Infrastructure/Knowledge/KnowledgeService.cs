@@ -2,43 +2,68 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Orkeon.Application.Constants.Rag;
 using Orkeon.Application.Rag;
 using Orkeon.Application.Interfaces.Knowledge;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Knowledge;
+using Orkeon.Domain.Memory;
 using Orkeon.Domain.Constants.Serialization;
-using Orkeon.Domain.Constants.Memory;
 
 namespace Orkeon.Infrastructure.Knowledge;
 
 /// <summary>
 /// In-memory implementation of IKnowledgeService.
-/// Stores knowledge items using a ConcurrentDictionary, provides keyword-based search,
-/// and supports source management, export/import.
+/// Stores knowledge items using a ConcurrentDictionary, embeds them at ingestion via
+/// <see cref="IEmbeddingProvider"/>, and serves searches through the memory provider's
+/// cosine vector search (<see cref="IMemoryProvider.SearchSimilarAsync"/>).
+/// Supports source management, export/import.
 /// </summary>
 public partial class KnowledgeService : IKnowledgeService
 {
     private static readonly JsonSerializerOptions s_indentedOptions = new() { WriteIndented = true, MaxDepth = SerializationDefaults.JsonMaxDepth };
+
+    /// <summary>Custom property key linking a stored memory item back to its knowledge item.</summary>
+    private const string KnowledgeIdProperty = "knowledge_id";
+
+    /// <summary>
+    /// Oversampling factor applied to the vector-search candidate window when a source
+    /// filter is requested, since source filtering happens after the provider search.
+    /// </summary>
+    private const int SourceFilterOversampling = 4;
 
     private readonly ConcurrentDictionary<string, KnowledgeItem> _items = new();
     private readonly ConcurrentDictionary<string, IKnowledgeSource> _sources = new();
     private readonly ConcurrentDictionary<string, List<string>> _sourceItemIds = new();
     private readonly ITextChunker _chunker;
     private readonly IFileSystemService _fs;
+    private readonly IEmbeddingProvider _embeddings;
+    private readonly IMemoryProvider _memory;
     private readonly ILogger _logger;
     private DateTime _lastUpdate = DateTime.UtcNow;
 
     /// <summary>Initializes a new instance of <see cref="KnowledgeService"/>.</summary>
     /// <param name="chunker">The text chunker for splitting knowledge content.</param>
     /// <param name="fs">Virtual file system for export/import operations. Required.</param>
+    /// <param name="embeddings">Embedding provider used to embed items at ingestion and queries at search time. Required.</param>
+    /// <param name="memory">Memory provider hosting the vector index (cosine similarity search). Required.</param>
     /// <param name="logger">Optional logger.</param>
-    public KnowledgeService(ITextChunker chunker, IFileSystemService fs, ILogger<KnowledgeService>? logger = null)
+    public KnowledgeService(
+        ITextChunker chunker,
+        IFileSystemService fs,
+        IEmbeddingProvider embeddings,
+        IMemoryProvider memory,
+        ILogger<KnowledgeService>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(chunker);
         ArgumentNullException.ThrowIfNull(fs);
+        ArgumentNullException.ThrowIfNull(embeddings);
+        ArgumentNullException.ThrowIfNull(memory);
         _chunker = chunker;
         _fs = fs;
+        _embeddings = embeddings;
+        _memory = memory;
         _logger = logger ?? NullLogger<KnowledgeService>.Instance;
     }
 
@@ -69,26 +94,23 @@ public partial class KnowledgeService : IKnowledgeService
     }
 
     /// <inheritdoc />
-    public Task<bool> RemoveSourceAsync(
+    public async Task<bool> RemoveSourceAsync(
         string sourceName,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(sourceName))
-            return Task.FromResult(false);
+            return false;
 
         var removed = _sources.TryRemove(sourceName, out _);
 
         if (removed && _sourceItemIds.TryRemove(sourceName, out var itemIds))
         {
-            foreach (var id in itemIds)
-            {
-                _items.TryRemove(id, out _);
-            }
+            await RemoveFromIndexAsync(itemIds, cancellationToken).ConfigureAwait(false);
         }
 
         _lastUpdate = DateTime.UtcNow;
         LogRemovedKnowledgeSource(sourceName, removed);
-        return Task.FromResult(removed);
+        return removed;
     }
 
     /// <inheritdoc />
@@ -103,23 +125,29 @@ public partial class KnowledgeService : IKnowledgeService
         // Remove existing items for this source if reloading
         if (_sourceItemIds.TryGetValue(sourceName, out var existingIds))
         {
-            foreach (var id in existingIds)
-            {
-                _items.TryRemove(id, out _);
-            }
+            await RemoveFromIndexAsync(existingIds, cancellationToken).ConfigureAwait(false);
             existingIds.Clear();
         }
 
         var content = await source.GetContentAsync(cancellationToken).ConfigureAwait(false);
-        var chunks = _chunker.Chunk(content.Content);
-        var itemIds = _sourceItemIds.GetOrAdd(sourceName, _ => []);
-        int count = 0;
+        IEnumerable<TextChunk> chunks = _chunker.Chunk(content.Content);
 
-        foreach (var chunk in chunks)
+        if (options?.MaxItems is int maxItems)
         {
-            if (options?.MaxItems.HasValue == true && count >= options.MaxItems.Value)
-                break;
+            chunks = chunks.Take(maxItems);
+        }
 
+        var chunkList = chunks.ToList();
+        var itemIds = _sourceItemIds.GetOrAdd(sourceName, _ => []);
+
+        // Embed all chunks at ingestion (single batch call)
+        var embeddings = chunkList.Count > 0
+            ? await _embeddings.GetEmbeddingsAsync(chunkList.Select(c => c.Content).ToList(), cancellationToken).ConfigureAwait(false)
+            : [];
+
+        for (int i = 0; i < chunkList.Count; i++)
+        {
+            var chunk = chunkList[i];
             var item = KnowledgeItem.Create(
                 content: chunk.Content,
                 source: sourceName,
@@ -130,50 +158,60 @@ public partial class KnowledgeService : IKnowledgeService
                     ["source_type"] = source.Type
                 });
 
-            _items[item.Id] = item;
+            await IndexAsync(item, embeddings[i], cancellationToken).ConfigureAwait(false);
             itemIds.Add(item.Id);
-            count++;
         }
 
         _lastUpdate = DateTime.UtcNow;
-        LogLoadedItemsFromSource(count, sourceName);
-        return count;
+        LogLoadedItemsFromSource(chunkList.Count, sourceName);
+        return chunkList.Count;
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<KnowledgeItem>> SearchAsync(
+    public async Task<IReadOnlyList<KnowledgeItem>> SearchAsync(
         string query,
         int topK = 5,
-        double minSimilarity = SearchDefaults.DefaultSimilarityThreshold,
+        double minSimilarity = RagDefaults.DefaultMinRelevanceScore,
         string[]? sources = null,
         IDictionary<string, object>? filters = null,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(query))
-            return Task.FromResult<IReadOnlyList<KnowledgeItem>>(Array.Empty<KnowledgeItem>());
+        if (string.IsNullOrWhiteSpace(query) || topK <= 0)
+            return Array.Empty<KnowledgeItem>();
 
-        var queryTerms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var queryEmbedding = await _embeddings.GetEmbeddingAsync(query, cancellationToken).ConfigureAwait(false);
+
         var sourceSet = sources != null ? new HashSet<string>(sources, StringComparer.OrdinalIgnoreCase) : null;
+        var hasFilters = filters is { Count: > 0 };
+        var candidateTopK = sourceSet is null && !hasFilters ? topK : topK * SourceFilterOversampling;
 
-        var results = _items.Values
-            .Where(item => (sourceSet == null || sourceSet.Contains(item.Source)) && MatchesFilters(item, filters))
-            .Select(item =>
-            {
-                int matchCount = queryTerms.Count(term => item.Content.Contains(term, StringComparison.OrdinalIgnoreCase));
+        var scored = await _memory.SearchSimilarAsync(
+            queryEmbedding,
+            topK: candidateTopK,
+            minScore: (float)minSimilarity,
+            filter: null,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                double similarity = queryTerms.Length > 0
-                    ? (double)matchCount / queryTerms.Length
-                    : 0.0;
+        var results = new List<KnowledgeItem>(Math.Min(topK, scored.Count));
 
-                return (Item: item, Similarity: similarity);
-            })
-            .Where(x => x.Similarity >= minSimilarity)
-            .OrderByDescending(x => x.Similarity)
-            .Take(topK)
-            .Select(x => x.Item with { SimilarityScore = x.Similarity })
-            .ToList();
+        foreach (var match in scored)
+        {
+            if (!TryResolveKnowledgeItem(match.Item, out var item))
+                continue;
 
-        return Task.FromResult<IReadOnlyList<KnowledgeItem>>(results.AsReadOnly());
+            if (sourceSet != null && !sourceSet.Contains(item.Source))
+                continue;
+
+            if (!MatchesFilters(item, filters))
+                continue;
+
+            results.Add(item with { SimilarityScore = match.Score });
+
+            if (results.Count >= topK)
+                break;
+        }
+
+        return results.AsReadOnly();
     }
 
     /// <inheritdoc />
@@ -185,8 +223,7 @@ public partial class KnowledgeService : IKnowledgeService
     {
         var context = new KnowledgeContext();
 
-        // Search with relaxed similarity threshold for context building
-        var items = await SearchAsync(query, topK: 10, minSimilarity: 0.3, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var items = await SearchAsync(query, topK: 10, cancellationToken: cancellationToken).ConfigureAwait(false);
         context.AddRelevantKnowledge(items);
 
         context.SetMetadata("query", query);
@@ -208,7 +245,7 @@ public partial class KnowledgeService : IKnowledgeService
     }
 
     /// <inheritdoc />
-    public Task<string> AddKnowledgeAsync(
+    public async Task<string> AddKnowledgeAsync(
         string content,
         Dictionary<string, object>? metadata = null,
         string? source = null,
@@ -216,12 +253,14 @@ public partial class KnowledgeService : IKnowledgeService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
 
+        var embedding = await _embeddings.GetEmbeddingAsync(content, cancellationToken).ConfigureAwait(false);
+
         var item = KnowledgeItem.Create(
             content: content,
             source: source ?? "direct",
             metadata: metadata);
 
-        _items[item.Id] = item;
+        await IndexAsync(item, embedding, cancellationToken).ConfigureAwait(false);
 
         if (source != null)
         {
@@ -230,18 +269,22 @@ public partial class KnowledgeService : IKnowledgeService
         }
 
         _lastUpdate = DateTime.UtcNow;
-        return Task.FromResult(item.Id);
+        return item.Id;
     }
 
     /// <inheritdoc />
-    public Task<bool> UpdateKnowledgeAsync(
+    public async Task<bool> UpdateKnowledgeAsync(
         string id,
         string content,
         Dictionary<string, object>? metadata = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(content);
+
         if (!_items.TryGetValue(id, out var existing))
-            return Task.FromResult(false);
+            return false;
+
+        var embedding = await _embeddings.GetEmbeddingAsync(content, cancellationToken).ConfigureAwait(false);
 
         var updated = existing with
         {
@@ -249,13 +292,13 @@ public partial class KnowledgeService : IKnowledgeService
             Metadata = metadata ?? existing.Metadata
         };
 
-        _items[id] = updated;
+        await IndexAsync(updated, embedding, cancellationToken).ConfigureAwait(false);
         _lastUpdate = DateTime.UtcNow;
-        return Task.FromResult(true);
+        return true;
     }
 
     /// <inheritdoc />
-    public Task<bool> DeleteKnowledgeAsync(
+    public async Task<bool> DeleteKnowledgeAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
@@ -263,6 +306,8 @@ public partial class KnowledgeService : IKnowledgeService
 
         if (removed && item != null)
         {
+            await _memory.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
+
             // Remove from source tracking
             foreach (var kvp in _sourceItemIds)
             {
@@ -271,7 +316,7 @@ public partial class KnowledgeService : IKnowledgeService
         }
 
         _lastUpdate = DateTime.UtcNow;
-        return Task.FromResult(removed);
+        return removed;
     }
 
     /// <inheritdoc />
@@ -291,6 +336,11 @@ public partial class KnowledgeService : IKnowledgeService
 
         long totalSize = _items.Values.Sum(item => (long)(item.Content?.Length ?? 0));
 
+        var embeddedDimensions = _items.Values
+            .Where(item => item.Embedding is { Count: > 0 })
+            .Select(item => (double)item.Embedding!.Count)
+            .ToList();
+
         var stats = new KnowledgeStatistics
         {
             TotalItems = _items.Count,
@@ -298,7 +348,7 @@ public partial class KnowledgeService : IKnowledgeService
             ItemsPerSource = itemsPerSource,
             LastUpdate = _lastUpdate,
             TotalSizeBytes = totalSize,
-            AverageEmbeddingDimension = 0 // No embeddings in keyword-based implementation
+            AverageEmbeddingDimension = embeddedDimensions.Count > 0 ? embeddedDimensions.Average() : 0
         };
 
         return Task.FromResult(stats);
@@ -393,6 +443,7 @@ public partial class KnowledgeService : IKnowledgeService
             ?? throw new InvalidOperationException("Failed to deserialize import file.");
 
         int count = 0;
+        var pendingIndex = new List<KnowledgeItem>();
 
         foreach (var entry in entries)
         {
@@ -411,6 +462,11 @@ public partial class KnowledgeService : IKnowledgeService
 
             _items[item.Id] = item;
 
+            if (!string.IsNullOrWhiteSpace(item.Content))
+            {
+                pendingIndex.Add(item);
+            }
+
             var itemIds = _sourceItemIds.GetOrAdd(source, _ => []);
             if (!itemIds.Contains(item.Id))
                 itemIds.Add(item.Id);
@@ -418,13 +474,26 @@ public partial class KnowledgeService : IKnowledgeService
             count++;
         }
 
+        // Embed all imported items at ingestion (single batch call)
+        if (pendingIndex.Count > 0)
+        {
+            var embeddings = await _embeddings.GetEmbeddingsAsync(
+                pendingIndex.Select(item => item.Content).ToList(),
+                cancellationToken).ConfigureAwait(false);
+
+            for (int i = 0; i < pendingIndex.Count; i++)
+            {
+                await IndexAsync(pendingIndex[i], embeddings[i], cancellationToken).ConfigureAwait(false);
+            }
+        }
+
         _lastUpdate = DateTime.UtcNow;
         return count;
     }
 
     /// <summary>
-    /// Metadata pre-filter applied before scoring (RAG-01/C5): <c>source</c> matches the item
-    /// source, any other key is matched against the item's metadata by string equality.
+    /// Metadata post-filter applied to vector-search candidates (RAG-01/C5): <c>source</c> matches
+    /// the item source, any other key is matched against the item's metadata by string equality.
     /// </summary>
     private static bool MatchesFilters(KnowledgeItem item, IDictionary<string, object>? filters)
     {
@@ -451,6 +520,52 @@ public partial class KnowledgeService : IKnowledgeService
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Stores an embedded knowledge item in the local catalog and in the memory provider's
+    /// vector index, keyed by the knowledge item id and carrying a back-reference in
+    /// custom properties for search-time resolution.
+    /// </summary>
+    private async Task<KnowledgeItem> IndexAsync(
+        KnowledgeItem item,
+        float[] embedding,
+        CancellationToken cancellationToken)
+    {
+        var embedded = item with { Embedding = embedding };
+        _items[embedded.Id] = embedded;
+
+        var memoryItem = MemoryItem.Create(
+            content: embedded.Content,
+            source: embedded.Source,
+            customProperties: new Dictionary<string, string> { [KnowledgeIdProperty] = embedded.Id });
+
+        await _memory.StoreWithEmbeddingAsync(embedded.Id, memoryItem, embedding, cancellationToken).ConfigureAwait(false);
+        return embedded;
+    }
+
+    /// <summary>Removes items from both the local catalog and the vector index.</summary>
+    private async Task RemoveFromIndexAsync(
+        IEnumerable<string> ids,
+        CancellationToken cancellationToken)
+    {
+        foreach (var id in ids.ToList())
+        {
+            _items.TryRemove(id, out _);
+            await _memory.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Resolves a memory item returned by the vector search back to its knowledge item.
+    /// </summary>
+    private bool TryResolveKnowledgeItem(MemoryItem memoryItem, out KnowledgeItem item)
+    {
+        item = null!;
+        var props = memoryItem.Metadata.CustomProperties;
+        return props != null
+            && props.TryGetValue(KnowledgeIdProperty, out var id)
+            && _items.TryGetValue(id, out item!);
     }
 
     /// <summary>
