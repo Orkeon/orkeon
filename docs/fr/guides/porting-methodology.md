@@ -151,7 +151,7 @@ Pour chaque agent défini en Étape 2, lister les opérations concrètes qu'il d
 | Demander à un collègue | `AskQuestionTool` | `Orkeon.Infrastructure` |
 | Déléguer une tâche | `DelegateWorkTool` | `Orkeon.Infrastructure` |
 | Recherche sémantique | `SearchTool` | `Orkeon.Infrastructure` |
-| RAG sur documents | `RagTool` | `Orkeon.Infrastructure` |
+| RAG sur documents | `RagSearchTool` | `Orkeon.Tools.Rag` (opt-in : `AddOrkeonRag` + `AddOrkeonRagTools`) |
 
 ## Étape 4 — Définir les tasks et le flux d'orchestration
 

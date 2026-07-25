@@ -7,7 +7,7 @@ namespace Orkeon.Rag.Validation;
 /// <summary>
 /// Validates content integrity using SHA-256 hashing.
 /// On first ingestion, allows the content. On subsequent access, verifies the hash matches.
-/// Port of <c>Orkeon.Infrastructure.Knowledge.Validation.ContentIntegrityValidator</c> (RAG-02/C3).
+/// Port of legacy Infrastructure <c>ContentIntegrityValidator</c> (RAG-02/C3).
 /// </summary>
 public sealed class ContentIntegrityValidator : IDataValidator
 {

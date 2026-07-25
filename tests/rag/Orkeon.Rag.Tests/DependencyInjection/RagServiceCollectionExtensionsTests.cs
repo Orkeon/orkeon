@@ -17,7 +17,7 @@ using Orkeon.Tests.Shared.FileSystem;
 namespace Orkeon.Rag.Tests.DependencyInjection;
 
 /// <summary>
-/// Tests for <see cref="RagServiceCollectionExtensions.AddOrkeonRagPipeline"/> —
+/// Tests for <see cref="RagServiceCollectionExtensions.AddOrkeonRag"/> —
 /// the self-sufficient opt-in of the new RAG subsystem (TryAdd*, host wins).
 /// </summary>
 public class RagServiceCollectionExtensionsTests
@@ -37,27 +37,58 @@ public class RagServiceCollectionExtensionsTests
         services.AddSingleton(chatClient);
         hostRegistrations?.Invoke(services);
 
-        services.AddOrkeonRagPipeline(configuration ?? EmptyConfiguration());
+        services.AddOrkeonRag(configuration ?? EmptyConfiguration());
         return services.BuildServiceProvider();
     }
 
     [Fact]
-    public void AddOrkeonRagPipeline_RegistersTheFourFileLoaders()
+    public void AddOrkeonRag_RegistersTheFiveLoaders()
     {
         using var chat = new FakeChatClient();
         using var provider = BuildProvider(chat);
 
         var loaders = provider.GetServices<IDocumentLoader>().ToList();
 
-        Assert.Equal(4, loaders.Count);
+        Assert.Equal(5, loaders.Count);
         Assert.Contains(loaders, l => l is TextFileLoader);
         Assert.Contains(loaders, l => l is CsvDocumentLoader);
         Assert.Contains(loaders, l => l is HtmlDocumentLoader);
         Assert.Contains(loaders, l => l is PdfDocumentLoader);
+        Assert.Contains(loaders, l => l is WebPageLoader);
     }
 
     [Fact]
-    public void AddOrkeonRagPipeline_ResolvesPipelinesAndValidation()
+    public void AddOrkeonRag_DefaultsTheDocumentStore_ToMemoryProviderDocumentStore()
+    {
+        using var chat = new FakeChatClient();
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService().AddMount("/kb"));
+        services.AddSingleton<Orkeon.Domain.Memory.IMemoryProvider>(
+            new Stores.Doubles.FakeMemoryProvider());
+        services.AddSingleton<IEmbeddingProvider>(new FakeEmbeddingProvider());
+        services.AddSingleton<IChatClient>(chat);
+
+        services.AddOrkeonRag(EmptyConfiguration());
+
+        using var provider = services.BuildServiceProvider();
+        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(
+            provider.GetRequiredService<IDocumentStore>());
+    }
+
+    [Fact]
+    public void AddOrkeonRag_HostDocumentStoreWins_OverTheMemoryProviderDefault()
+    {
+        using var chat = new FakeChatClient();
+        using var provider = BuildProvider(chat, services =>
+            services.AddSingleton<Orkeon.Domain.Memory.IMemoryProvider>(
+                new Stores.Doubles.FakeMemoryProvider()));
+
+        // BuildProvider registered FakeDocumentStore before AddOrkeonRag: it must win.
+        Assert.IsType<FakeDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+    }
+
+    [Fact]
+    public void AddOrkeonRag_ResolvesPipelinesAndValidation()
     {
         using var chat = new FakeChatClient();
         using var provider = BuildProvider(chat);
@@ -71,7 +102,7 @@ public class RagServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddOrkeonRagPipeline_IsIdempotent()
+    public void AddOrkeonRag_IsIdempotent()
     {
         using var chat = new FakeChatClient();
         var services = new ServiceCollection();
@@ -80,16 +111,16 @@ public class RagServiceCollectionExtensionsTests
         services.AddSingleton<IEmbeddingProvider>(new FakeEmbeddingProvider());
         services.AddSingleton<IChatClient>(chat);
 
-        services.AddOrkeonRagPipeline(EmptyConfiguration());
-        services.AddOrkeonRagPipeline(EmptyConfiguration());
+        services.AddOrkeonRag(EmptyConfiguration());
+        services.AddOrkeonRag(EmptyConfiguration());
 
         using var provider = services.BuildServiceProvider();
-        Assert.Equal(4, provider.GetServices<IDocumentLoader>().Count());
+        Assert.Equal(5, provider.GetServices<IDocumentLoader>().Count());
         Assert.Equal(2, provider.GetServices<IDataValidator>().Count());
     }
 
     [Fact]
-    public void AddOrkeonRagPipeline_HostRegistrationWins()
+    public void AddOrkeonRag_HostRegistrationWins()
     {
         var hostPipeline = new HostRagPipeline();
         using var chat = new FakeChatClient();
@@ -100,7 +131,7 @@ public class RagServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddOrkeonRagPipeline_BindsOptionsFromConfiguration()
+    public void AddOrkeonRag_BindsOptionsFromConfiguration()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>

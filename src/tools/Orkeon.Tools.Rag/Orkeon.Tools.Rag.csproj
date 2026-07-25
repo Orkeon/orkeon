@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Tools.Rag</PackageId>
-    <Description>Agent tools for the Orkeon RAG subsystem (rag_search, rag_ingest, rag_eval). Skeleton project — the tools migrate here in a later batch (see README.md).</Description>
+    <Description>Agent tools for the Orkeon RAG subsystem (rag_search) over Orkeon.Rag.Abstractions (IRagPipeline).</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;RAG;Retrieval</PackageTags>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
@@ -19,6 +19,13 @@
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
     <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+    <!-- Optional raggable-tree routing: collection="raggable-tree" queries the
+         semantic code index (IRaggableStore) instead of the document store. -->
+    <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 
 </Project>

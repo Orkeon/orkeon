@@ -7,7 +7,7 @@ namespace Orkeon.Rag.Loaders;
 
 /// <summary>
 /// Loads HTML files and extracts clean text content via the virtual file system.
-/// Port of <c>Orkeon.Infrastructure.Knowledge.Loaders.HtmlDocumentLoader</c> onto
+/// Port of legacy Infrastructure <c>HtmlDocumentLoader</c> onto
 /// the <c>Orkeon.Rag.Abstractions</c> contract (RAG-02/C3).
 /// </summary>
 public sealed partial class HtmlDocumentLoader : FileDocumentLoaderBase

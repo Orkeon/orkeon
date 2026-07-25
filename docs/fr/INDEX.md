@@ -31,7 +31,7 @@ La documentation est organisée en 6 sections thématiques.
 | [Référence YAML](./architecture/yaml-schema.md) | **Source unique** du schéma YAML complet (crew, agents, tasks, circuitBreaker, graphConfig, autonomousBudget) |
 | [RaggableTree — graphe sémantique](./architecture/raggable-tree.md) | Pipeline 6 phases, 15 tools, 5 langages, réindexation incrémentale, watcher, injection de contexte |
 | [ADR — RaggableTree](./architecture/raggable-tree-adr.md) | Décision graphe stratifié à 6 niveaux via Tree-sitter, alternatives rejetées, conséquences |
-| [Décisions d'architecture (ADR)](./adr/) | ADR-002 (shared kernel Tools.Abstractions), ADR-003 (shared kernels Analysis), ADR-004 (jumeaux de nommage scripting), ADR-005 (famille Tools.* hétérogène) |
+| [Décisions d'architecture (ADR)](./adr/) | ADR-002 (shared kernel Tools.Abstractions), ADR-003 (shared kernels Analysis), ADR-004 (jumeaux de nommage scripting), ADR-005 (famille Tools.* hétérogène), ADR-006 (sous-système RAG `src/rag/`) |
 
 ### Orchestration
 

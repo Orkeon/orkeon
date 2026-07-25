@@ -43,6 +43,11 @@ dotnet test tests/tools/Orkeon.Tools.Data.Tests/Orkeon.Tools.Data.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.FileSystem.Tests/Orkeon.Tools.FileSystem.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj
 
+# Run RAG subsystem tests
+dotnet test tests/rag/Orkeon.Rag.Abstractions.Tests/Orkeon.Rag.Abstractions.Tests.csproj
+dotnet test tests/rag/Orkeon.Rag.Tests/Orkeon.Rag.Tests.csproj
+dotnet test tests/tools/Orkeon.Tools.Rag.Tests/Orkeon.Tools.Rag.Tests.csproj
+
 # Run Analysis (RaggableTree) tests
 dotnet test tests/analysis/Orkeon.Analysis.Tests/Orkeon.Analysis.Tests.csproj
 
@@ -104,7 +109,7 @@ The project follows Clean Architecture with clear separation of concerns:
 
 **Working Features**:
 - ✅ Complete Agent, Task, Crew domain models with all Python attributes
-- ✅ 76 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XML, DirectoryRead, EmailParser, DatabaseQuery, RagTool, SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
+- ✅ 76 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XML, DirectoryRead, EmailParser, DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
 - ✅ 12 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM)
 - ✅ YAML configuration support
 - ✅ Memory abstractions (IMemoryProvider interface)
@@ -123,6 +128,16 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ **NEW**: `LlmResponseFormat` value object + `LlmConfigOverride` cascade
   (crew → agent → task → script → call-site). DeepSeek câble
   `response_format: json_object`.
+- ✅ **NEW**: RAG subsystem `src/rag/` (RAG-02, ADR-006) — contracts in
+  `Orkeon.Rag.Abstractions` (`IRagPipeline`, `IIngestionPipeline`, `IDocumentStore`,
+  `IChunkingStrategy`, `IDocumentLoader`, `RagAnswer` with citations + trace),
+  implementations in `Orkeon.Rag` (loaders incl. `WebPageLoader`, 4 chunking
+  strategies, ingestion-path validation, `LinearRagPipeline`,
+  `MemoryProviderDocumentStore`), agent tool `rag_search` in `Orkeon.Tools.Rag`
+  (`RagSearchTool`). Opt-in: `AddOrkeonRag(configuration)`
+  (`Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()`. The legacy
+  `Orkeon.Infrastructure.Knowledge` / `Orkeon.Application.{Interfaces.Rag,Rag}`
+  namespaces are **removed** (breaking, no shims — migration table in `CHANGELOG.md`).
 
 **Infrastructure Layer Components**:
 - ✅ Redis memory provider with vector search (`RedisMemoryProvider`, `EncryptedRedisMemoryProvider`)
@@ -387,13 +402,13 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **22 src projects** and **24 test projects**, plus two solutions:
+The repository contains **27 src projects** and **28 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
 /workspace/
 ├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 22 projects
+├── src/                          # 27 projects
 │   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
 │   ├── core/
 │   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
@@ -417,21 +432,31 @@ The repository contains **22 src projects** and **24 test projects**, plus two s
 │   │   ├── Orkeon.Tools.Embeddings.Local/ # Local on-device embeddings (SmartComponents BGE-micro-v2 ONNX, 384 dims, CPU, no API key)
 │   │   ├── Orkeon.Tools.EventHub/      # EventHub agent tools (publish_event, post_message, send_request, reply_to, receive_message, wait_for_event, get_last_value)
 │   │   ├── Orkeon.Tools.FileSystem/    # File system tools
+│   │   ├── Orkeon.Tools.Rag/           # RAG agent tools (rag_search → RagSearchTool; AddOrkeonRagTools)
 │   │   └── Orkeon.Tools.Web/           # Web/HTTP tools
+│   ├── rag/
+│   │   ├── Orkeon.Rag.Abstractions/    # RAG contracts + DTOs + options (Domain-only dependency, ADR-006)
+│   │   └── Orkeon.Rag/                 # Loaders, chunking, validation, pipelines, stores, factories, AddOrkeonRag DI
 │   ├── analysis/
 │   │   ├── Orkeon.Analysis.Abstractions/ # RaggableTree interfaces + DTOs + models
 │   │   └── Orkeon.Analysis/             # Tree-sitter pipeline, adapters, store, watcher
+│   ├── generators/
+│   │   └── Orkeon.Generators/    # Source generators (TypedDictionary…)
+│   ├── hosting/
+│   │   └── Orkeon.Hosting/       # Shared runner host (RunnerHost/RunnerExecution, semantic_search opt-in)
 │   ├── plugins/
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
 │   └── apps/
 │       └── Orkeon.ConsoleApp/    # Console application
-├── tests/                        # 24 projects
+├── tests/                        # 28 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
 │   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
 │   ├── analyzers/                # Orkeon.Compliance.Vfs.Tests
-│   ├── tools/                    # Abstractions, Analysis, Code, Data, Embeddings.Local, EventHub, FileSystem, Web (8 projects)
+│   ├── tools/                    # Abstractions, Analysis, Code, Data, Embeddings.Local, EventHub, FileSystem, Rag, Web (9 projects)
+│   ├── rag/                      # Orkeon.Rag.Abstractions.Tests (incl. ArchitectureTests), Orkeon.Rag.Tests
 │   ├── analysis/                 # Orkeon.Analysis.Tests (RaggableTree)
+│   ├── hosting/                  # Orkeon.Hosting.Tests
 │   ├── plugins/                  # Orkeon.Plugins.Tests
 │   ├── apps/                     # Orkeon.ConsoleApp.Tests
 │   ├── e2e/                      # Orkeon.E2E.Tests
@@ -475,7 +500,7 @@ The repository contains **22 src projects** and **24 test projects**, plus two s
   - `Orkeon.Cli.Scripting` (`src/cli/`) — library of **TypeScript-scripted interactive commands** for CLI runners (adapter between `Orkeon.Cli.Abstractions` and `Orkeon.Scripting`).
   - `Orkeon.Scripting.Cli` (`src/scripting/`) — the installable **`orkeon` tool** entrypoint (`orkeon run script.ork.ts`, `PackAsTool=true`, `AssemblyName=orkeon`).
   - Mnemonic: the project whose **last** segment is `Cli` is the executable.
-- **Architecture Decision Records** live in `docs/adr/`. Notably ADR-002 documents the `Infrastructure → Tools.Abstractions` shared-kernel exception; ADR-003 covers the `Application → Analysis.Abstractions` and `Infrastructure → Analysis` couplings; ADR-005 covers `Tools.Web`/`Tools.EventHub → Application`.
+- **Architecture Decision Records** live in `docs/adr/`. Notably ADR-002 documents the `Infrastructure → Tools.Abstractions` shared-kernel exception; ADR-003 covers the `Application → Analysis.Abstractions` and `Infrastructure → Analysis` couplings; ADR-005 covers `Tools.Web`/`Tools.EventHub → Application`; ADR-006 covers the RAG subsystem (`Orkeon.Rag.Abstractions` shared kernel, `Orkeon.Rag → Application`/`Analysis.Abstractions` couplings, legacy RAG namespaces removed without shims).
 - `InMemoryUnitOfWork` intentionally has no durable persist step (aggregates live in the in-memory repositories; `SaveChangesAsync` dispatches domain events). The former EF-migration TODO has been removed (R3.8). Durable crew **execution-state** persistence is a separate opt-in: `AddCrewExecutionStatePersistence(...)` + a checkpointing `IStateStore` (see `docs/reference/opt-in-subsystems.md`)
 - ChromaDB, Pinecone, and LanceDB are implemented (REST API-based), not placeholders
 - Infrastructure layer has been redesigned without Akka.NET; all projects target `net10.0`

@@ -35,12 +35,6 @@ land first (RAG-02 / C1-C2); the references below are added by the subsequent mi
    `RaggableTreeInfrastructureExtensions.cs`), notably to wrap embedding calls in
    `LlmLoggingDelegatingHandler`.
 
-   *Transitional exception (RAG-02/C3 → C5)*: the legacy chunkers in
-   `Infrastructure/Knowledge/Chunking/` (`RecursiveTextChunker`, `SentenceChunker`) are thin
-   delegations to the canonical `Orkeon.Rag.Chunking` strategies until the whole
-   `Infrastructure/Knowledge/` namespace is removed in RAG-02/C5, at which point the
-   confinement to the single DI file becomes effective.
-
 ## Decision
 
 - `Orkeon.Rag.Abstractions` is a **secondary shared kernel** (same status as
@@ -68,8 +62,10 @@ land first (RAG-02 / C1-C2); the references below are added by the subsequent mi
   reopen this ADR.
 - **Break**: the legacy namespaces (`Orkeon.Application.Interfaces.Rag.*`,
   `Orkeon.Application.Rag.*`, `Orkeon.Infrastructure.Knowledge.*`) are removed without shims
-  once the migration batches complete (assumed break, version `0.9.x-beta`; migration table in
-  `CHANGELOG.md`).
+  (assumed break, version `0.9.x-beta`; migration table in `CHANGELOG.md`).
+  **Done in RAG-02/C5 (2026-07-25)** — `rag_search` now lives in `Orkeon.Tools.Rag`
+  (`RagSearchTool` + `AddOrkeonRagTools()`), and the subsystem opt-in is
+  `AddOrkeonRag(configuration)` in `Orkeon.Rag.DependencyInjection`.
 
 ## Amendment — 2026-07-25 (RAG-02/C3)
 

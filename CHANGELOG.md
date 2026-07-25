@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — **BREAKING: RAG subsystem extraction (RAG-02, no shims)**
+
+The RAG feature set is promoted to a first-rank subsystem (`src/rag/` — `Orkeon.Rag.Abstractions` contracts + `Orkeon.Rag` implementations, agent tools in `src/tools/Orkeon.Tools.Rag`; see [ADR-006](docs/adr/ADR-006-rag-subsystem.md)). The legacy namespaces `Orkeon.Application.Interfaces.Rag.*`, `Orkeon.Application.Rag.*`, `Orkeon.Application.Interfaces.Knowledge.*` and `Orkeon.Infrastructure.Knowledge.*` are **removed without `[Obsolete]` shims** (assumed break, decision 2026-07-25, `0.9.x-beta` window).
+
+Opt-in wiring: `services.AddOrkeonRag(configuration)` (namespace `Orkeon.Rag.DependencyInjection`, self-sufficient `TryAdd*`, default `IDocumentStore` = `MemoryProviderDocumentStore` over the ambient `IMemoryProvider`) + `services.AddOrkeonRagTools()` (`Orkeon.Tools.Rag.DependencyInjection`, registers `rag_search`). Neither is called by `AddOrkeonInfrastructure()`.
+
+Migration table (old type → new type):
+
+| Old (removed) | New |
+|---|---|
+| `Orkeon.Infrastructure.Knowledge.RagTool` (`rag_search`) | `Orkeon.Tools.Rag.RagSearchTool` (`rag_search` — same name, schema `question`/`top_k`/`collection`, and output format `answer` + `Sources:` block; `collection = "raggable-tree"` still routes to `IRaggableStore`) |
+| `AddOrkeonRag` (Infrastructure `RagServiceExtensions`) + `AddOrkeonKnowledge` + `AddOrkeonRagValidation` | `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection.RagServiceCollectionExtensions` — loaders + ingestion validation + pipelines + factories) + `AddOrkeonRagTools()` |
+| `Orkeon.Application.Interfaces.Rag.IRagPipeline` (`ExecuteAsync(question, RagOptions)` → `RagResult`) | `Orkeon.Rag.Abstractions.Interfaces.IRagPipeline` (`QueryAsync(RagQuery)` → `RagAnswer` with citations + trace) |
+| `Orkeon.Application.Rag.RagPipeline` + `ChatClientResponseGenerator` | `Orkeon.Rag.Pipeline.LinearRagPipeline` |
+| `KnowledgeService` (ingestion side) | `Orkeon.Rag.Pipeline.DefaultIngestionPipeline` (`IIngestionPipeline`) |
+| `IKnowledgeService` (Application port) | `Orkeon.Rag.Abstractions.Interfaces.IDocumentStore` (storage/search) + `IIngestionPipeline` (ingestion) + `IRagPipeline` (query) |
+| `TextFileLoader` / `CsvDocumentLoader` / `HtmlDocumentLoader` / `PdfDocumentLoader` / `DocumentLoaderFactory` (`Infrastructure.Knowledge.Loaders`) | `Orkeon.Rag.Loaders.*` (same names, `IDocumentLoader` over `SourceDescriptor` → `RagDocument`) |
+| `WebPageLoader` (`Infrastructure.Knowledge.Loaders`) | `Orkeon.Rag.Loaders.WebPageLoader` (typed `HttpClient`, kinds `url`/`web`) |
+| `RecursiveTextChunker` / `SentenceChunker` (+ tool-local chunker copies) | `Orkeon.Rag.Chunking.*` — `IChunkingStrategy` implementations `recursive`, `sentence`, `structural`, `semantic` |
+| `ContentIntegrityValidator` / `PromptInjectionDocumentValidator` / `DataValidationPipeline` / `ProvenanceTracker` / `IQuarantineStore` + `InMemoryQuarantineStore` (`Infrastructure.Knowledge.Validation`) | `Orkeon.Rag.Validation.*` (same names — validation stays on the ingestion path) |
+| `AnalysisEmbeddingProviderAdapter` (`Infrastructure.LLMs.Embeddings`) | `Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter` |
+| `SimpleEmbeddingService` (hash-based, `[Obsolete]`) | **Removed without replacement.** The default `IEmbeddingService` now adapts the `IEmbeddingProvider` port (`EmbeddingProviderServiceAdapter`): local BGE → remote `Orkeon:Embeddings` → fail-fast at first use. Semantic agent selection inherits the real chain. |
+| `HybridScorer` (`Infrastructure.Knowledge.Retrieval`, dead code) | **Removed without replacement** (hybrid search capability lives in `Orkeon.Domain.Memory.IHybridSearchCapable`) |
+| `FileKnowledgeSource` / `DirectoryKnowledgeSource` / `WebKnowledgeSource` / `DatabaseKnowledgeSource` (`Infrastructure.Knowledge.Sources`) | **Removed without replacement** — describe sources with `SourceDescriptor` and run them through `IIngestionPipeline` (`IngestionRequest`). The Domain contract `Orkeon.Domain.Knowledge.IKnowledgeSource` remains (no framework implementations). |
+| `RagOptions` / `RagPipelineOptions` / `RagDefaults` / `KnowledgeContext` / `KnowledgeItem` / `RagTypes` (`RagResult`, `RetrievalOptions`…) | `Orkeon.Rag.Abstractions.Models.*` (`RagQuery`, `RagAnswer`, `Citation`, `ScoredChunk`, `RetrievalQuery`…) + `Orkeon.Rag.Pipeline.LinearRagPipelineOptions` / `RagIngestionOptions` (sections `Orkeon:Rag:Pipeline` / `Orkeon:Rag:Ingestion`) |
+| `ResearchFindings` (was in `Orkeon.Application.Rag`) | **Kept** (not RAG) — moved to `Orkeon.Application.Services.Generic` |
+
 ## [0.9.2-beta] - 2026-07-24
 
 First version actually published to GitHub Packages since `0.9.1-beta` (2026-07-04): the intermediate `v0.9.1-beta.rc*` tags re-packed the unchanged `0.9.1-beta` version from `Directory.Build.props`, so `--skip-duplicate` silently skipped every push. This release bumps the props version so the feed picks up everything below.

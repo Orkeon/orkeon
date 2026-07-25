@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Orkeon.Application.Rag;
 using Orkeon.Application.Execution;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Constants.Orchestration;

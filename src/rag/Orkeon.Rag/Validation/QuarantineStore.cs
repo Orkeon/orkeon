@@ -5,7 +5,7 @@ namespace Orkeon.Rag.Validation;
 
 /// <summary>
 /// A quarantined document pending review.
-/// Port of <c>Orkeon.Infrastructure.Knowledge.Validation</c> quarantine types (RAG-02/C3).
+/// Port of legacy Infrastructure validation quarantine types (RAG-02/C3).
 /// </summary>
 public record QuarantinedDocument(
     string DocumentId,

@@ -6,7 +6,7 @@ namespace Orkeon.Rag.Validation;
 /// <summary>
 /// Detects prompt injection attempts embedded in documents entering the RAG pipeline.
 /// Reuses patterns from PromptSanitizer for consistency.
-/// Port of <c>Orkeon.Infrastructure.Knowledge.Validation.PromptInjectionDocumentValidator</c> (RAG-02/C3).
+/// Port of legacy Infrastructure <c>PromptInjectionDocumentValidator</c> (RAG-02/C3).
 /// </summary>
 public sealed partial class PromptInjectionDocumentValidator : IDataValidator
 {

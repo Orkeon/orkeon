@@ -9,7 +9,7 @@ namespace Orkeon.Rag.Loaders;
 /// Selects the <see cref="IDocumentLoader"/> able to handle a
 /// <see cref="SourceDescriptor"/> (first registered loader whose
 /// <see cref="IDocumentLoader.CanLoad"/> accepts it). Port of the legacy
-/// <c>Orkeon.Infrastructure.Knowledge.Loaders.DocumentLoaderFactory</c> onto the
+/// legacy Infrastructure <c>DocumentLoaderFactory</c> onto the
 /// new contract; resolution failures are loud, never silent.
 /// </summary>
 public sealed class DocumentLoaderFactory

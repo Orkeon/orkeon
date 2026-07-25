@@ -20,8 +20,8 @@ public static class EmbeddingDefaults
 
     /// <summary>
     /// Embedding dimension for local/simple providers such as sentence-transformers (384).
-    /// Use this constant for development stubs (<c>SimpleEmbeddingService</c>,
-    /// <c>HashBasedEmbeddingProvider</c>) and opt-in local deployments.
+    /// Use this constant for development stubs (<c>HashBasedEmbeddingProvider</c>)
+    /// and opt-in local deployments (BGE-micro-v2).
     /// </summary>
     public const int LocalDimension = 384;
 

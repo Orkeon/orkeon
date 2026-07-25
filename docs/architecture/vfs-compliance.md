@@ -12,8 +12,9 @@ This document describes:
 
 > **VFS-70 (2026-06-17):** all tool/service `IFileSystemService` dependencies are now
 > **required** (non-nullable) — the `EXCEPTION-BACKCOMPAT` `if (_fs is null) { …System.IO… }`
-> fallbacks have been eliminated, the FS-related `[Obsolete]` shims removed, and `KnowledgeService`
-> fully routed through the VFS. SQLite persistence (`SqliteMemoryProvider`, `SqliteStateStore`) now
+> fallbacks have been eliminated, the FS-related `[Obsolete]` shims removed, and the knowledge
+> ingestion path fully routed through the VFS (the `KnowledgeService` audited then was replaced
+> by the `Orkeon.Rag` loaders in RAG-02 — same VFS rule, `FileDocumentLoaderBase`). SQLite persistence (`SqliteMemoryProvider`, `SqliteStateStore`) now
 > resolves its `Data Source` file through `ResolveAndValidate` (decision 2F-A); the RaggableTree
 > batch discovery runs on `IFileSystemService.EnumerateFilesAsync` (decision 2E-A). Two new rules
 > (`ORKVFS006`, `ORKVFS007`) close the previously-undetected blind spots.
@@ -152,4 +153,4 @@ All seven diagnostics (`ORKVFS001`–`ORKVFS007`) are **errors**, so CI blocks a
 - [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — currently 7, all legitimate (`SandboxMountBootstrapper`).
 - [x] Roslyn analyzer `Orkeon.Compliance.Vfs` in place and wired in `src/Directory.Build.props`.
 - [x] Build passes clean; negative test confirms a deliberate `File.ReadAllText` in framework code trips `ORKVFS001`.
-- [x] Eliminate residual `EXCEPTION-BACKCOMPAT` suppressions by migrating all tool callers to DI — **done in VFS-70**: 0 `EXCEPTION-BACKCOMPAT` and 0 FS-related `EXCEPTION-OBSOLETE` remain in `src/`; all file tools + `KnowledgeService` require a non-nullable `IFileSystemService`; SQLite governed via `ResolveAndValidate`; `ORKVFS004` promoted to error and `ORKVFS006`/`ORKVFS007` added to close the `StreamReader/Writer(string)` and nullable-`IFileSystemService` blind spots.
+- [x] Eliminate residual `EXCEPTION-BACKCOMPAT` suppressions by migrating all tool callers to DI — **done in VFS-70**: 0 `EXCEPTION-BACKCOMPAT` and 0 FS-related `EXCEPTION-OBSOLETE` remain in `src/`; all file tools + the knowledge ingestion path (now the `Orkeon.Rag` loaders, RAG-02) require a non-nullable `IFileSystemService`; SQLite governed via `ResolveAndValidate`; `ORKVFS004` promoted to error and `ORKVFS006`/`ORKVFS007` added to close the `StreamReader/Writer(string)` and nullable-`IFileSystemService` blind spots.

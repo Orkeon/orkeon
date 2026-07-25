@@ -16,7 +16,7 @@
 | Outil | Classe | Base | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `ToolBase<SearchRequest, SearchResponse>` | Recherche sémantique par embeddings dans les mémoires | `{ "query": "customer churn patterns", "limit": 5 }` |
-| `rag_search` | `RagTool` | `IBaseTool` (direct) | Recherche RAG dans les bases de connaissances de l'agent | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagSearchTool` | `IBaseTool` (direct) | Recherche RAG dans les bases de connaissances de l'agent via `IRagPipeline` (opt-in : `AddOrkeonRag(config)` + `AddOrkeonRagTools()`, projet `Orkeon.Tools.Rag`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
 
 ## Outils d'exécution de code (`Orkeon.Infrastructure.Sandbox` / `Orkeon.Tools.Code`)
 
@@ -96,7 +96,7 @@
 | Catégorie | Nombre | Package |
 |-----------|--------|---------|
 | Collaboration | 2 | `Orkeon.Infrastructure` |
-| Recherche / RAG | 2 | `Orkeon.Infrastructure` |
+| Recherche / RAG | 2 | `Orkeon.Infrastructure` + `Orkeon.Tools.Rag` |
 | Code | 2 | `Orkeon.Infrastructure` + `Orkeon.Tools.Code` |
 | Fichiers | 5 | `Orkeon.Tools.FileSystem` |
 | Données | 17+ | `Orkeon.Tools.Data` |
@@ -132,7 +132,7 @@ services.AddOrkeonWebTools();          // web_search, brave_search, web_scrape, 
 services.AddOrkeonCodeTools();         // shell_command
 ```
 
-Les outils d'infrastructure (`ask_question`, `delegate_work`, `semantic_search`, `code_interpreter`, `rag_search`) sont enregistrés par `AddOrkeonInfrastructure()`.
+Les outils d'infrastructure (`ask_question`, `delegate_work`, `semantic_search`, `code_interpreter`) sont enregistrés par `AddOrkeonInfrastructure()`. `rag_search` est opt-in : il n'est enregistré que par `AddOrkeonRag(configuration)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — voir `docs/reference/opt-in-subsystems.md`.
 
 ### Noms à utiliser dans le YAML
 
@@ -179,7 +179,7 @@ Le nom exact à utiliser dans la section `tools:` du YAML est la valeur de la pr
 | `delegate_work` | `DelegateWorkTool` | `Orkeon.Infrastructure` |
 | `semantic_search` | `SearchTool` | `Orkeon.Infrastructure` |
 | `code_interpreter` | `SecureCodeInterpreterTool` | `Orkeon.Infrastructure` |
-| `rag_search` | `RagTool` | `Orkeon.Infrastructure` |
+| `rag_search` | `RagSearchTool` | `Orkeon.Tools.Rag` (opt-in) |
 
 ### Enregistrer un outil custom dans le registry
 

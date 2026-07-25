@@ -42,7 +42,6 @@ using Orkeon.Infrastructure.CostTracking;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Telemetry;
 using Orkeon.Infrastructure.Evaluation;
-using Orkeon.Infrastructure.Knowledge;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.Flows;
 using Orkeon.Infrastructure.MCP;
@@ -101,9 +100,9 @@ public static class InfrastructureExtensions
         services.AddOrkeonMcp(configuration);
         services.AddOrkeonVectorSearch(configuration);
 
-        // RAG subsystem (R4.9 — opt-in, RAG-01/C6): AddOrkeonKnowledge, AddOrkeonRag and
-        // AddOrkeonRagValidation are intentionally NOT registered by default. Hosts that
-        // need rag_search / knowledge bases enable them explicitly.
+        // RAG subsystem (opt-in, RAG-02): AddOrkeonRag (Orkeon.Rag.DependencyInjection)
+        // and AddOrkeonRagTools (Orkeon.Tools.Rag) are intentionally NOT registered by
+        // default. Hosts that need rag_search / document ingestion enable them explicitly.
         // See docs/reference/opt-in-subsystems.md.
 
         // === Phase 10: Vector Store Providers (N5) ===
@@ -207,30 +206,17 @@ public static class InfrastructureExtensions
         // Execution plan parser (extracted from CrewPlanner — AUDIT-P3-04)
         services.TryAddSingleton<IExecutionPlanParser, ExecutionPlanParser>();
 
-        // Add embedding service
-#pragma warning disable CS0618 // Type or member is obsolete
-        services.AddSingleton<Domain.Memory.IEmbeddingService>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<SimpleEmbeddingService>>();
-            var options = sp.GetService<IOptions<OrkeonApplicationOptions>>();
-            var dimension = options?.Value?.EmbeddingDimension ?? 384;
-            var simpleService = new SimpleEmbeddingService(logger, dimension);
-            // Adapter to match Domain interface
-            return new DomainEmbeddingServiceAdapter(simpleService);
-        });
+        // Application-port embedding service (consumed by EmbeddingBasedSelectionStrategy
+        // and search tools). Since RAG-02/C5 the hash-based SimpleEmbeddingService is gone:
+        // the default adapts the IEmbeddingProvider port, whose resolution is semantic-first
+        // (local BGE → remote Orkeon:Embeddings → fail-fast at first use, RAG-01/C4).
+        // TryAdd so a service registered by the host earlier wins.
+        services.TryAddSingleton<Application.Interfaces.Ports.IEmbeddingService, EmbeddingProviderServiceAdapter>();
 
-        // Application-port embedding service (consumed by EmbeddingBasedSelectionStrategy).
-        // TryAdd so a real provider (OpenAI / Ollama / Local) registered earlier wins.
-        // NOTE: this default SimpleEmbeddingService is hash-based and carries no semantic
-        // signal — semantic agent selection requires a real embedding provider.
-        services.TryAddSingleton<Application.Interfaces.Ports.IEmbeddingService>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<SimpleEmbeddingService>>();
-            var options = sp.GetService<IOptions<OrkeonApplicationOptions>>();
-            var dimension = options?.Value?.EmbeddingDimension ?? 384;
-            return new SimpleEmbeddingService(logger, dimension);
-        });
-#pragma warning restore CS0618
+        // Domain-side embedding service: same chain, adapted to the Domain interface.
+        services.TryAddSingleton<Domain.Memory.IEmbeddingService>(sp =>
+            new DomainEmbeddingServiceAdapter(
+                sp.GetRequiredService<Application.Interfaces.Ports.IEmbeddingService>()));
 
         return services;
     }

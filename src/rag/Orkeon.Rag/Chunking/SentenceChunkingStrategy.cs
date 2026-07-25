@@ -8,7 +8,7 @@ namespace Orkeon.Rag.Chunking;
 /// <see cref="ChunkingOptions.Overlap"/> between consecutive chunks.
 /// </summary>
 /// <remarks>
-/// Canonical port of the historical <c>Orkeon.Infrastructure.Knowledge.Chunking.SentenceChunker</c>
+/// Canonical port of the historical legacy Infrastructure <c>SentenceChunker</c>
 /// (RAG-02/C3 consolidation). A single sentence longer than <c>MaxChunkSize</c> is emitted
 /// whole — this strategy never splits inside a sentence.
 /// </remarks>

@@ -13,9 +13,10 @@ namespace Orkeon.Application.Services.AgentSelection;
 /// agents, instead of returning the first available one.
 /// </summary>
 /// <remarks>
-/// Semantic (embedding) selection only carries real meaning when the injected
-/// embedding provider is a real one (OpenAI / Ollama / Local). With the default
-/// hash-based <c>SimpleEmbeddingService</c> the embeddings have no semantic signal.
+/// Semantic (embedding) selection inherits the real embedding resolution chain: the
+/// default <c>IEmbeddingService</c> adapts the <c>IEmbeddingProvider</c> port (local
+/// BGE → remote <c>Orkeon:Embeddings</c> → fail-fast at first use). There is no
+/// silent hash-based fallback anymore (RAG-02/C5).
 /// </remarks>
 public sealed class StrategyAgentSelectionService : IAgentSelectionService
 {

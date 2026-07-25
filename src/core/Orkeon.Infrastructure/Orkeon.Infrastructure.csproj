@@ -51,9 +51,6 @@
     <!-- Parsing packages moved from Application -->
     <PackageReference Include="Markdig" />
 
-    <!-- PDF document loading -->
-    <PackageReference Include="PdfPig" />
-
     <!-- Arrow IPC payloads for the LanceDB Cloud/Enterprise REST protocol (Memory/LanceDb) -->
     <PackageReference Include="Apache.Arrow" />
 

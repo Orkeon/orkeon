@@ -11,12 +11,12 @@
 | `ask_question` | `AskQuestionTool` | `ToolBase<AskQuestionRequest, AskQuestionResponse>` | Ask a question to a specialized coworker agent | `{ "question": "What is the Q4 revenue?", "coworker": "Financial Analyst" }` |
 | `delegate_work` | `DelegateWorkTool` | `ToolBase<DelegateWorkRequest, DelegateWorkResponse>` | Delegate a complete task to a specialized agent | `{ "task": "Analyze competitor pricing", "coworker": "Market Researcher", "context": "Focus on SaaS B2B" }` |
 
-## Search and knowledge tools (`Orkeon.Infrastructure`)
+## Search and knowledge tools (`Orkeon.Infrastructure` / `Orkeon.Tools.Rag`)
 
 | Tool | Class | Base | Use case | Call example |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `ToolBase<SearchRequest, SearchResponse>` | Embedding-based semantic search across memories | `{ "query": "customer churn patterns", "limit": 5 }` |
-| `rag_search` | `RagTool` | `IBaseTool` (direct) | RAG search in the agent's knowledge bases (opt-in: requires `AddOrkeonRag`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagSearchTool` | `IBaseTool` (direct) | RAG search in the agent's knowledge bases over `IRagPipeline` (opt-in: `AddOrkeonRag(config)` + `AddOrkeonRagTools()`, project `Orkeon.Tools.Rag`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
 
 ## Code execution tools (`Orkeon.Infrastructure.Sandbox` / `Orkeon.Tools.Code`)
 
@@ -96,7 +96,7 @@
 | Category | Count | Package |
 |-----------|--------|---------|
 | Collaboration | 2 | `Orkeon.Infrastructure` |
-| Search / RAG | 2 | `Orkeon.Infrastructure` |
+| Search / RAG | 2 | `Orkeon.Infrastructure` + `Orkeon.Tools.Rag` |
 | Code | 2 | `Orkeon.Infrastructure` + `Orkeon.Tools.Code` |
 | Files | 5 | `Orkeon.Tools.FileSystem` |
 | Data | 17+ | `Orkeon.Tools.Data` |
@@ -132,7 +132,7 @@ services.AddOrkeonWebTools();          // web_search, brave_search, web_scrape, 
 services.AddOrkeonCodeTools();         // shell_command
 ```
 
-The infrastructure tools (`ask_question`, `delegate_work`, `semantic_search`, `code_interpreter`) are registered by `AddOrkeonInfrastructure()`. `rag_search` is opt-in: it is only registered by `AddOrkeonRag(configuration)` (see `docs/reference/opt-in-subsystems.md`).
+The infrastructure tools (`ask_question`, `delegate_work`, `semantic_search`, `code_interpreter`) are registered by `AddOrkeonInfrastructure()`. `rag_search` is opt-in: it is only registered by `AddOrkeonRag(configuration)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — see `docs/reference/opt-in-subsystems.md`.
 
 ### Names to use in YAML
 
@@ -179,7 +179,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `delegate_work` | `DelegateWorkTool` | `Orkeon.Infrastructure` |
 | `semantic_search` | `SearchTool` | `Orkeon.Infrastructure` |
 | `code_interpreter` | `SecureCodeInterpreterTool` | `Orkeon.Infrastructure` |
-| `rag_search` | `RagTool` | `Orkeon.Infrastructure` |
+| `rag_search` | `RagSearchTool` | `Orkeon.Tools.Rag` (opt-in) |
 
 ### Registering a custom tool in the registry
 

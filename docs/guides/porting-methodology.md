@@ -151,7 +151,7 @@ For each agent defined in Step 2, list the concrete operations it must perform. 
 | Ask a colleague | `AskQuestionTool` | `Orkeon.Infrastructure` |
 | Delegate a task | `DelegateWorkTool` | `Orkeon.Infrastructure` |
 | Semantic search | `SearchTool` | `Orkeon.Infrastructure` |
-| RAG over documents | `RagTool` | `Orkeon.Infrastructure` |
+| RAG over documents | `RagSearchTool` | `Orkeon.Tools.Rag` (opt-in: `AddOrkeonRag` + `AddOrkeonRagTools`) |
 
 ## Step 4 — Define the tasks and the orchestration flow
 

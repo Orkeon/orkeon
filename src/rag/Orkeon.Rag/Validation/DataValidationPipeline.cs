@@ -9,7 +9,7 @@ namespace Orkeon.Rag.Validation;
 /// First Reject wins. Any Quarantine triggers quarantine. All Allow means allow.
 /// Tracks provenance for allowed documents. Sits on the ingestion path of the
 /// RAG subsystem (differentiating security feature — plan §3.3).
-/// Port of <c>Orkeon.Infrastructure.Knowledge.Validation.DataValidationPipeline</c> (RAG-02/C3).
+/// Port of legacy Infrastructure <c>DataValidationPipeline</c> (RAG-02/C3).
 /// </summary>
 public sealed partial class DataValidationPipeline
 {

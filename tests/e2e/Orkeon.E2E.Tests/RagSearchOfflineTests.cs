@@ -1,19 +1,26 @@
+using System.Collections.Immutable;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Application.Interfaces.Rag;
-using Orkeon.Application.Rag;
 using Orkeon.Domain.Tools;
-using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using Orkeon.Infrastructure.DependencyInjection;
-using Orkeon.Infrastructure.Knowledge;
+using Orkeon.Rag.Abstractions.Interfaces;
+using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Rag.DependencyInjection;
 using Orkeon.Tools.Embeddings.Local.DependencyInjection;
+using Orkeon.Tools.Rag;
+using Orkeon.Tools.Rag.DependencyInjection;
+using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.E2E.Tests;
 
 /// <summary>
-/// RAG-01 acceptance: a crew-visible <c>rag_search</c> tool returns semantic results
-/// end-to-end, fully offline (no LLM API key — generation is stubbed, retrieval is real).
+/// RAG acceptance (RAG-01, re-based on the RAG-02 subsystem): a crew-visible
+/// <c>rag_search</c> tool returns semantic results end-to-end, fully offline
+/// (no LLM API key — generation is stubbed, retrieval is real). Wiring is the
+/// new world only: <c>AddOrkeonRag</c> + <c>AddOrkeonRagTools</c> over the
+/// memory-provider-backed <see cref="IDocumentStore"/>.
 /// </summary>
 public class RagSearchOfflineTests
 {
@@ -41,26 +48,57 @@ public class RagSearchOfflineTests
             services.AddSingleton<IEmbeddingProvider>(new BagOfWordsEmbeddingProvider());
         }
 
-        services.AddOrkeonInfrastructure();
-        services.AddOrkeonKnowledge(configuration);
-        services.AddOrkeonRag(configuration);
+        // Offline: stub chat client registered first — the TryAdd default of
+        // AddOrkeonInfrastructure() must not wire a real LLM. Retrieval stays fully real.
+        services.AddSingleton<IChatClient, EchoChatClient>();
 
-        // Offline: replace the LLM-backed generator, retrieval stays fully real.
-        services.AddScoped<IResponseGenerator, EchoResponseGenerator>();
+        services.AddOrkeonInfrastructure();
+        services.AddOrkeonRag(configuration);
+        services.AddOrkeonRagTools();
 
         return services.BuildServiceProvider();
     }
 
+    private static async Task IngestAsync(ServiceProvider provider, CancellationToken ct)
+    {
+        // Ingestion through the subsystem's IDocumentStore default (the
+        // MemoryProviderDocumentStore over the ambient IMemoryProvider), embeddings
+        // from the resolved Application port — the exact chain rag_search queries.
+        var store = provider.GetRequiredService<IDocumentStore>();
+        var embedder = provider.GetRequiredService<IEmbeddingProvider>();
+
+        var documents = new (string Id, string Source, string Content)[]
+        {
+            ("doc-refund", "policy", RefundDoc),
+            ("doc-quantum", "physics", QuantumDoc),
+            ("doc-bread", "cooking", BreadDoc),
+        };
+
+        foreach (var (id, source, content) in documents)
+        {
+            var vector = await embedder.GetEmbeddingAsync(content, ct);
+            var chunk = new Chunk
+            {
+                Id = $"{id}#0",
+                DocumentId = id,
+                SourceId = source,
+                Content = content,
+                EndOffset = content.Length,
+            };
+
+            await store.UpsertAsync(
+                RagSearchTool.DefaultCollection,
+                [new EmbeddedChunk { Chunk = chunk, Embedding = [.. vector] }],
+                ct);
+        }
+    }
+
     private static async Task AssertRagSearchIsSemanticAsync(ServiceProvider provider, string question)
     {
-        var knowledge = provider.GetRequiredService<IKnowledgeService>();
         var ct = TestContext.Current.CancellationToken;
-        await knowledge.AddKnowledgeAsync(RefundDoc, source: "policy", cancellationToken: ct);
-        await knowledge.AddKnowledgeAsync(QuantumDoc, source: "physics", cancellationToken: ct);
-        await knowledge.AddKnowledgeAsync(BreadDoc, source: "cooking", cancellationToken: ct);
+        await IngestAsync(provider, ct);
 
-        using var scope = provider.CreateScope();
-        var tools = scope.ServiceProvider.GetServices<IBaseTool>().ToList();
+        var tools = provider.GetServices<IBaseTool>().ToList();
         var ragSearch = tools.FirstOrDefault(t => t.Name == "rag_search");
         Assert.NotNull(ragSearch); // RAG-01/C1: the tool is discoverable by agent registries
 
@@ -134,12 +172,29 @@ public class RagSearchOfflineTests
     }
 
     /// <summary>Hand-written double: echoes that generation happened; sources carry the signal.</summary>
-    private sealed class EchoResponseGenerator : IResponseGenerator
+    private sealed class EchoChatClient : IChatClient
     {
-        public Task<GeneratedResponse> GenerateAsync(
-            AugmentedPrompt prompt,
-            GenerationOptions options,
-            CancellationToken ct = default)
-            => Task.FromResult(new GeneratedResponse { Text = "offline stub answer", TokensUsed = 0 });
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "offline stub answer")));
+
+        public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var response = await GetResponseAsync(messages, options, cancellationToken);
+            yield return new ChatResponseUpdate(ChatRole.Assistant, response.Text);
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) =>
+            serviceType == typeof(IChatClient) ? this : null;
+
+        public void Dispose()
+        {
+            // Nothing to dispose.
+        }
     }
 }

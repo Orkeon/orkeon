@@ -5,7 +5,7 @@ namespace Orkeon.Rag.Loaders;
 
 /// <summary>
 /// Loads plain text and markdown files via the virtual file system.
-/// Port of <c>Orkeon.Infrastructure.Knowledge.Loaders.TextFileLoader</c> onto the
+/// Port of legacy Infrastructure <c>TextFileLoader</c> onto the
 /// <c>Orkeon.Rag.Abstractions</c> contract (RAG-02/C3).
 /// </summary>
 public sealed class TextFileLoader : FileDocumentLoaderBase

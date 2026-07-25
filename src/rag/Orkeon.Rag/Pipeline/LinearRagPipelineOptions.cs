@@ -3,7 +3,7 @@ namespace Orkeon.Rag.Pipeline;
 /// <summary>
 /// Options of the <see cref="LinearRagPipeline"/>.
 /// Bound from configuration section <c>Orkeon:Rag:Pipeline</c> by
-/// <c>AddOrkeonRagPipeline</c>.
+/// <c>AddOrkeonRag</c>.
 /// </summary>
 public sealed record LinearRagPipelineOptions
 {

@@ -1,4 +1,4 @@
-using Orkeon.Application.Rag;
+using Orkeon.Application.Services.Generic;
 
 namespace Orkeon.Application.Tests.Common;
 

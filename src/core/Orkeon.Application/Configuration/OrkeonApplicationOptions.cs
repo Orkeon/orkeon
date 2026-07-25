@@ -114,10 +114,10 @@ public class OrkeonApplicationOptions
     /// <summary>
     /// Gets or sets the strategy used to select the best agent for a task.
     /// <para>
-    /// <see cref="AgentSelectionStrategyKind.Embedding"/> uses semantic similarity and
-    /// <b>requires a real <c>IEmbeddingProvider</c>/<c>IEmbeddingService</c></b>
-    /// (OpenAI / Ollama / Local) — the default hash-based <c>SimpleEmbeddingService</c>
-    /// has no semantic signal and degrades selection quality.
+    /// <see cref="AgentSelectionStrategyKind.Embedding"/> uses semantic similarity.
+    /// The default <c>IEmbeddingService</c> adapts the <c>IEmbeddingProvider</c> port,
+    /// whose resolution is semantic-first (local BGE via <c>AddOrkeonLocalEmbeddings()</c>,
+    /// else the <c>Orkeon:Embeddings</c> remote configuration, else fail-fast at first use).
     /// </para>
     /// </summary>
     public AgentSelectionStrategyKind AgentSelectionStrategy { get; set; } = AgentSelectionStrategyKind.FirstFit;

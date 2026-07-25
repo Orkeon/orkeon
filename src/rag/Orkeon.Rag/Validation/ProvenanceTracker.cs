@@ -5,7 +5,7 @@ namespace Orkeon.Rag.Validation;
 
 /// <summary>
 /// In-memory provenance tracker that records document hashes and metadata.
-/// Port of <c>Orkeon.Infrastructure.Knowledge.Validation.ProvenanceTracker</c> (RAG-02/C3).
+/// Port of legacy Infrastructure <c>ProvenanceTracker</c> (RAG-02/C3).
 /// </summary>
 public sealed class ProvenanceTracker : IProvenanceTracker
 {

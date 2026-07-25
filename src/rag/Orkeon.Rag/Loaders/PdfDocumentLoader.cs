@@ -8,7 +8,7 @@ namespace Orkeon.Rag.Loaders;
 
 /// <summary>
 /// Loads PDF files and extracts their text content using PdfPig via the virtual
-/// file system. Port of <c>Orkeon.Infrastructure.Knowledge.Loaders.PdfDocumentLoader</c>
+/// file system. Port of legacy Infrastructure <c>PdfDocumentLoader</c>
 /// onto the <c>Orkeon.Rag.Abstractions</c> contract (RAG-02/C3).
 /// </summary>
 public sealed class PdfDocumentLoader : FileDocumentLoaderBase

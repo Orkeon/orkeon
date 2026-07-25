@@ -8,7 +8,7 @@ namespace Orkeon.Rag.Loaders;
 /// <summary>
 /// Loads CSV files and converts them to a <c>header: value</c> text representation
 /// via the virtual file system. Port of
-/// <c>Orkeon.Infrastructure.Knowledge.Loaders.CsvDocumentLoader</c> onto the
+/// legacy Infrastructure <c>CsvDocumentLoader</c> onto the
 /// <c>Orkeon.Rag.Abstractions</c> contract (RAG-02/C3).
 /// </summary>
 public sealed class CsvDocumentLoader : FileDocumentLoaderBase

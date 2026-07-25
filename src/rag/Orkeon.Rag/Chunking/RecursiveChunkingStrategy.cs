@@ -10,7 +10,7 @@ namespace Orkeon.Rag.Chunking;
 /// Default separator hierarchy: paragraph breaks, line breaks, sentences, words, characters.
 /// </summary>
 /// <remarks>
-/// Canonical port of the historical <c>Orkeon.Infrastructure.Knowledge.Chunking.RecursiveTextChunker</c>
+/// Canonical port of the historical legacy Infrastructure <c>RecursiveTextChunker</c>
 /// (RAG-02/C3 consolidation), extended with exact global offsets.
 /// </remarks>
 public sealed class RecursiveChunkingStrategy : ChunkingStrategyBase
