@@ -141,9 +141,20 @@ public class RagTool : IBaseTool, IRagTool
             return await SearchRaggableTreeAsync(query.Text, query.TopK, ct).ConfigureAwait(false);
         }
 
+        // Propagate the caller's typed filters down the retrieval chain
+        // (pipeline -> retriever -> knowledge service -> provider). RAG-01/C5.
         var pipelineResult = await _ragPipeline.ExecuteAsync(
             query.Text,
-            new RagOptions { Retrieval = new RetrievalOptions { TopK = query.TopK } },
+            new RagOptions
+            {
+                Retrieval = new RetrievalOptions
+                {
+                    TopK = query.TopK,
+                    MetadataFilter = query.Filters is null
+                        ? null
+                        : new Dictionary<string, object>(query.Filters),
+                },
+            },
             ct).ConfigureAwait(false);
 
         return pipelineResult.Sources

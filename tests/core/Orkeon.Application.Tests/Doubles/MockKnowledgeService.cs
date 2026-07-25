@@ -38,6 +38,7 @@ public sealed class MockKnowledgeService : IKnowledgeService
     public string? LastLoadSourceName { get; private set; }
     public string? LastSearchQuery { get; private set; }
     public int? LastSearchTopK { get; private set; }
+    public IDictionary<string, object>? LastSearchFilters { get; private set; }
     public string? LastGetContextQuery { get; private set; }
     public string? LastAddKnowledgeContent { get; private set; }
     public string? LastUpdateKnowledgeId { get; private set; }
@@ -91,11 +92,13 @@ public sealed class MockKnowledgeService : IKnowledgeService
         int topK = 5,
         double minSimilarity = 0.7,
         string[]? sources = null,
+        IDictionary<string, object>? filters = null,
         CancellationToken cancellationToken = default)
     {
         SearchCallCount++;
         LastSearchQuery = query;
         LastSearchTopK = topK;
+        LastSearchFilters = filters;
         return System.Threading.Tasks.Task.FromResult(_searchResult);
     }
 
@@ -197,6 +200,7 @@ public sealed class MockKnowledgeService : IKnowledgeService
         LastLoadSourceName = null;
         LastSearchQuery = null;
         LastSearchTopK = null;
+        LastSearchFilters = null;
         LastGetContextQuery = null;
         LastAddKnowledgeContent = null;
         LastUpdateKnowledgeId = null;

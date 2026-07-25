@@ -40,6 +40,7 @@ public sealed class KnowledgeRetriever : IRetriever
                 topK: options.TopK * 2,
                 minSimilarity: 0.1,
                 sources: options.SourceFilter?.ToArray(),
+                filters: options.MetadataFilter,
                 cancellationToken: ct).ConfigureAwait(false);
 
             float[]? queryEmbedding = null;

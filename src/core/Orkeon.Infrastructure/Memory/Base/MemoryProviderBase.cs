@@ -20,8 +20,12 @@ public abstract partial class MemoryProviderBase : Orkeon.Domain.Memory.IMemoryP
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051", Justification = "Must remain a protected field: the [LoggerMessage] source generator in derived partial classes resolves the inherited ILogger via a field; a property breaks generation (SYSLIB1019).")]
     protected readonly ILogger Logger;
 
-    /// <summary>The runtime memory provider configuration, set during initialization.</summary>
-    protected MemoryProviderConfig? Configuration { get; set; }
+    /// <summary>
+    /// The runtime memory provider configuration, set during initialization.
+    /// Publicly readable so callers (and tests) can verify that configuration such as
+    /// <c>RetentionPeriod</c>, <c>MaxItems</c> and <c>KeyPrefix</c> actually reached the provider.
+    /// </summary>
+    public MemoryProviderConfig? Configuration { get; protected set; }
 
     /// <summary>
     /// Gets the provider name.

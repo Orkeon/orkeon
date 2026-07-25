@@ -29,6 +29,7 @@ public sealed class MockMemoryProvider : IMemoryProvider
     public string? LastDeleteKey { get; private set; }
     public float[]? LastStoreEmbedding { get; private set; }
     public float[]? LastSearchSimilarQueryEmbedding { get; private set; }
+    public Dictionary<string, object>? LastSearchSimilarFilter { get; private set; }
 
     private Exception? _searchException;
 
@@ -118,6 +119,7 @@ public sealed class MockMemoryProvider : IMemoryProvider
     {
         SearchSimilarCallCount++;
         LastSearchSimilarQueryEmbedding = queryEmbedding;
+        LastSearchSimilarFilter = filter;
         return Task.FromResult(_searchSimilarResult);
     }
 

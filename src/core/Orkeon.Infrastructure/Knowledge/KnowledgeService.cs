@@ -146,6 +146,7 @@ public partial class KnowledgeService : IKnowledgeService
         int topK = 5,
         double minSimilarity = SearchDefaults.DefaultSimilarityThreshold,
         string[]? sources = null,
+        IDictionary<string, object>? filters = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -155,7 +156,7 @@ public partial class KnowledgeService : IKnowledgeService
         var sourceSet = sources != null ? new HashSet<string>(sources, StringComparer.OrdinalIgnoreCase) : null;
 
         var results = _items.Values
-            .Where(item => sourceSet == null || sourceSet.Contains(item.Source))
+            .Where(item => (sourceSet == null || sourceSet.Contains(item.Source)) && MatchesFilters(item, filters))
             .Select(item =>
             {
                 int matchCount = queryTerms.Count(term => item.Content.Contains(term, StringComparison.OrdinalIgnoreCase));
@@ -419,6 +420,37 @@ public partial class KnowledgeService : IKnowledgeService
 
         _lastUpdate = DateTime.UtcNow;
         return count;
+    }
+
+    /// <summary>
+    /// Metadata pre-filter applied before scoring (RAG-01/C5): <c>source</c> matches the item
+    /// source, any other key is matched against the item's metadata by string equality.
+    /// </summary>
+    private static bool MatchesFilters(KnowledgeItem item, IDictionary<string, object>? filters)
+    {
+        if (filters == null || filters.Count == 0)
+            return true;
+
+        foreach (var (key, value) in filters)
+        {
+            var expected = value?.ToString();
+
+            if (string.Equals(key, "source", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.Equals(item.Source, expected, StringComparison.OrdinalIgnoreCase))
+                    return false;
+                continue;
+            }
+
+            if (item.Metadata == null ||
+                !item.Metadata.TryGetValue(key, out var actual) ||
+                !string.Equals(actual?.ToString(), expected, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

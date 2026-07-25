@@ -35,11 +35,19 @@ public interface IKnowledgeService
     /// <summary>
     /// Searches for relevant knowledge based on a query.
     /// </summary>
+    /// <param name="query">The search query text.</param>
+    /// <param name="topK">Maximum number of items to return.</param>
+    /// <param name="minSimilarity">Minimum similarity threshold.</param>
+    /// <param name="sources">Optional restriction to specific source names.</param>
+    /// <param name="filters">Optional metadata filters propagated down to the underlying store
+    /// (e.g. <c>source</c>, custom metadata keys). Semantics are provider-specific.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     System.Threading.Tasks.Task<IReadOnlyList<KnowledgeItem>> SearchAsync(
         string query,
         int topK = 5,
         double minSimilarity = SearchDefaults.DefaultSimilarityThreshold,
         string[]? sources = null,
+        IDictionary<string, object>? filters = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

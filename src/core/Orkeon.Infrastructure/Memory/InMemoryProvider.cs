@@ -269,7 +269,10 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
 
     /// <summary>
     /// Searches for memory items similar to the provided query embedding.
-    /// Uses cosine similarity via VectorMath for scoring.
+    /// Uses cosine similarity via VectorMath for scoring, honoring the optional metadata
+    /// <paramref name="filter"/> (<c>source</c> equality, <c>tag</c>/<c>tags</c> membership,
+    /// any other key matched against custom properties — same semantics as the Redis and
+    /// SQLite providers).
     /// Overrides the abstract <see cref="MemoryProviderBase.SearchSimilarAsync"/> so calls
     /// made through <see cref="IMemoryProvider"/> dispatch here instead of the interface's
     /// empty default body.
@@ -294,6 +297,9 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
                 if (item.Embedding.Count != queryEmbedding.Length)
                     continue;
 
+                if (filter is { Count: > 0 } && !MatchesMetadataFilter(item, filter))
+                    continue;
+
                 var score = VectorMath.CosineSimilarity(queryEmbedding, item.Embedding.ToArray());
 
                 if (score >= minScore)
@@ -316,6 +322,44 @@ public partial class InMemoryProvider : MemoryProviderBase, IMemoryProvider
             LogException(ex, "SearchSimilarAsync");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Applies the metadata filter to a candidate item, mirroring the semantics of the
+    /// Redis and SQLite providers: <c>source</c> equality, <c>tag</c>/<c>tags</c> membership,
+    /// any other key matched against the item's custom properties.
+    /// </summary>
+    private static bool MatchesMetadataFilter(MemoryItem item, Dictionary<string, object> filter)
+    {
+        foreach (var (key, value) in filter)
+        {
+            var filterValue = value?.ToString();
+
+#pragma warning disable CA1308 // lowercase is the required wire/storage form, not a comparison normalization
+            switch (key.ToLowerInvariant())
+#pragma warning restore CA1308
+            {
+                case "source":
+                    if (!string.Equals(item.Source, filterValue, StringComparison.OrdinalIgnoreCase))
+                        return false;
+                    break;
+
+                case "tag" or "tags":
+                    if (filterValue == null || !item.Tags.Contains(filterValue, StringComparer.OrdinalIgnoreCase))
+                        return false;
+                    break;
+
+                default:
+                    var props = item.Metadata.CustomProperties;
+                    if (props == null ||
+                        !props.TryGetValue(key, out var propValue) ||
+                        !string.Equals(propValue, filterValue, StringComparison.OrdinalIgnoreCase))
+                        return false;
+                    break;
+            }
+        }
+
+        return true;
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Stored memory item with key: {Key}")]

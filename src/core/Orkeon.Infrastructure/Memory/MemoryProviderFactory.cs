@@ -1,7 +1,9 @@
+using System.Globalization;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Memory;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
+using Orkeon.Infrastructure.Memory.Base;
 using Orkeon.Infrastructure.Memory.ChromaDb;
 using Orkeon.Infrastructure.Memory.LanceDb;
 using Orkeon.Infrastructure.Memory.Pinecone;
@@ -213,13 +215,87 @@ public sealed partial class MemoryProviderFactory : IMemoryProviderFactory
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Unlike <see cref="Create"/>, this method really initializes the provider: the DTO is
+    /// mapped to the Domain <see cref="MemoryProviderConfig"/> (including the
+    /// <c>RetentionPeriod</c>, <c>MaxItems</c> and <c>KeyPrefix</c> options) and passed to
+    /// <see cref="MemoryProviderBase.InitializeAsync"/>, so the configuration actually reaches
+    /// the provider instead of being silently dropped (RAG-01/C5).
+    /// </remarks>
     public async Task<IMemoryProvider> CreateAndInitializeAsync(
         MemoryProviderConfigDto config,
         ILoggerFactory? loggerFactory = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(config);
+
         var provider = Create(config, loggerFactory);
-        return await Task.FromResult(provider).ConfigureAwait(false);
+
+        if (provider is MemoryProviderBase configurable)
+        {
+            var domainConfig = BuildDomainConfig(config);
+            await configurable.InitializeAsync(domainConfig, cancellationToken).ConfigureAwait(false);
+        }
+
+        return provider;
+    }
+
+    /// <summary>
+    /// Maps the Application-layer DTO to the Domain <see cref="MemoryProviderConfig"/> consumed
+    /// by <see cref="MemoryProviderBase.InitializeAsync"/>. Recognized options:
+    /// <c>RetentionPeriod</c> (<see cref="TimeSpan"/>, invariant <c>TimeSpan</c> string, or a
+    /// numeric day count), <c>MaxItems</c> (integer or invariant integer string) and
+    /// <c>KeyPrefix</c> (string). All options are also carried through verbatim as settings.
+    /// </summary>
+    private static MemoryProviderConfig BuildDomainConfig(MemoryProviderConfigDto config)
+    {
+        return new MemoryProviderConfig(
+            providerType: config.Type ?? string.Empty,
+            settings: config.Options is null ? null : new Dictionary<string, object>(config.Options),
+            retentionPeriod: TryGetRetentionPeriod(config.Options),
+            maxItems: TryGetMaxItems(config.Options),
+            connectionString: string.IsNullOrWhiteSpace(config.ConnectionString) ? null : config.ConnectionString,
+            keyPrefix: TryGetKeyPrefix(config.Options));
+    }
+
+    private static TimeSpan? TryGetRetentionPeriod(Dictionary<string, object>? options)
+    {
+        if (options is null || !options.TryGetValue("RetentionPeriod", out var value))
+            return null;
+
+        return value switch
+        {
+            TimeSpan timeSpan => timeSpan,
+            string text when TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            int days => TimeSpan.FromDays(days),
+            long days => TimeSpan.FromDays(days),
+            double days => TimeSpan.FromDays(days),
+            _ => null,
+        };
+    }
+
+    private static int? TryGetMaxItems(Dictionary<string, object>? options)
+    {
+        if (options is null || !options.TryGetValue("MaxItems", out var value))
+            return null;
+
+        return value switch
+        {
+            int intValue => intValue,
+            long longValue => checked((int)longValue),
+            string text when int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) => parsed,
+            _ => null,
+        };
+    }
+
+    private static string? TryGetKeyPrefix(Dictionary<string, object>? options)
+    {
+        return options is not null
+            && options.TryGetValue("KeyPrefix", out var value)
+            && value is string text
+            && !string.IsNullOrWhiteSpace(text)
+                ? text
+                : null;
     }
 
     // --- source-generated logging ---
