@@ -1,7 +1,7 @@
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
+using Orkeon.Rag.Chunking;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Data.Constants.Search;
 
@@ -225,111 +225,17 @@ public abstract partial class FileSearchToolBase<TRequest> : ToolBase<TRequest, 
     }
 
     /// <summary>
-    /// Chunks content by paragraphs (split on double newlines), then re-splits long paragraphs by sentences.
+    /// Chunks content with the canonical RAG recursive strategy (RAG-02/C3 consolidation),
+    /// mapping chunk offsets back to 1-based approximate source lines.
     /// </summary>
     internal static List<(string Text, int ApproximateLine)> ChunkContent(string content, int maxChunkSize)
     {
-        var paragraphs = content.Split(["\n\n", "\r\n\r\n"], StringSplitOptions.RemoveEmptyEntries);
-        var chunks = new List<(string Text, int ApproximateLine)>();
-        var currentLine = 1;
-
-        foreach (var paragraph in paragraphs)
-        {
-            var trimmed = paragraph.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-            {
-                currentLine += CountLines(paragraph) + 2; // +2 for the double newline separator
-                continue;
-            }
-
-            if (trimmed.Length <= maxChunkSize)
-            {
-                chunks.Add((trimmed, currentLine));
-            }
-            else
-            {
-                AppendSentenceChunks(chunks, trimmed, maxChunkSize, currentLine);
-            }
-
-            currentLine += CountLines(paragraph) + 2;
-        }
-
-        return chunks;
-    }
-
-    private static void AppendSentenceChunks(
-        List<(string Text, int ApproximateLine)> chunks, string paragraph, int maxChunkSize, int currentLine)
-    {
-        var sentences = SplitBySentences(paragraph);
-        var buffer = new StringBuilder();
-        var chunkStartLine = currentLine;
-
-        foreach (var sentence in sentences)
-        {
-            if (buffer.Length + sentence.Length > maxChunkSize && buffer.Length > 0)
-            {
-                chunks.Add((buffer.ToString().Trim(), chunkStartLine));
-                buffer.Clear();
-                chunkStartLine = currentLine + CountLines(buffer.ToString());
-            }
-            buffer.Append(sentence);
-        }
-
-        if (buffer.Length > 0)
-        {
-            chunks.Add((buffer.ToString().Trim(), chunkStartLine));
-        }
-    }
-
-    private static string[] SplitBySentences(string text)
-    {
-        // Split on sentence boundaries while keeping the delimiter
-        var result = new List<string>();
-        var start = 0;
-
-        for (var i = 0; i < text.Length; i++)
-        {
-            if ((text[i] == '.' || text[i] == '!' || text[i] == '?') &&
-                (i + 1 >= text.Length || text[i + 1] == ' ' || text[i + 1] == '\n'))
-            {
-                result.Add(text.Substring(start, i - start + 1));
-                start = i + 1;
-            }
-        }
-
-        if (start < text.Length)
-            result.Add(text[start..]);
-
-        return result.ToArray();
-    }
-
-    private static int CountLines(string text)
-    {
-        if (string.IsNullOrEmpty(text)) return 0;
-        var count = 1;
-        foreach (var c in text)
-        {
-            if (c == '\n') count++;
-        }
-        return count;
+        var chunks = new RecursiveChunkingStrategy().ChunkText(content, maxChunkSize);
+        return [.. chunks.Select(c => (c.Content, PlainTextChunking.LineNumberAt(content, c.StartOffset)))];
     }
 
     private static float CosineSimilarity(float[] a, float[] b)
-    {
-        if (a.Length != b.Length) return 0f;
-
-        float dotProduct = 0f, magnitudeA = 0f, magnitudeB = 0f;
-
-        for (var i = 0; i < a.Length; i++)
-        {
-            dotProduct += a[i] * b[i];
-            magnitudeA += a[i] * a[i];
-            magnitudeB += b[i] * b[i];
-        }
-
-        var denominator = (float)(Math.Sqrt(magnitudeA) * Math.Sqrt(magnitudeB));
-        return denominator == 0 ? 0f : dotProduct / denominator;
-    }
+        => new EmbeddingVector(a).CosineSimilarity(new EmbeddingVector(b));
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "{Category} search for '{Query}' returned {Count} results from {TotalChunks} chunks")]

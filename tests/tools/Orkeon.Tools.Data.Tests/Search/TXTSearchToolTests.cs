@@ -105,7 +105,10 @@ public sealed class TXTSearchToolTests : IDisposable
                 [ParamPath] = filePath,
                 [ParamQuery] = "testing software",
                 ["top_k"] = 3,
-                ["threshold"] = 0.0
+                ["threshold"] = 0.0,
+                // The canonical recursive chunker (RAG-02/C3) merges small adjacent
+                // paragraphs up to chunk_size; keep chunks small so >3 chunks exist.
+                ["chunk_size"] = 100
             });
 
         // Act

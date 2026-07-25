@@ -1,10 +1,10 @@
 using System.Globalization;
-using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
+using Orkeon.Rag.Chunking;
 using Orkeon.Tools.Abstractions.Base;
 using UglyToad.PdfPig;
 
@@ -237,80 +237,14 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
     }
 
     /// <summary>
-    /// Splits text into chunks of approximately the given size, splitting on paragraph
-    /// boundaries first, then sentence boundaries if a paragraph exceeds the chunk size.
+    /// Splits text into chunks of approximately the given size using the canonical RAG
+    /// recursive strategy (RAG-02/C3 consolidation): paragraph boundaries first, then
+    /// sentences, words, and characters as needed.
     /// </summary>
     internal static List<string> ChunkText(string text, int chunkSize)
     {
-        var chunks = new List<string>();
-
-        // Split into paragraphs on double-newline or single-newline
-        var paragraphs = text.Split(["\r\n\r\n", "\n\n", "\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => p.Trim())
-            .Where(p => p.Length > 0)
-            .ToList();
-
-        var currentChunk = new StringBuilder();
-
-        foreach (var paragraph in paragraphs)
-        {
-            if (paragraph.Length > chunkSize)
-            {
-                FlushChunk(chunks, currentChunk);
-                AppendSentenceChunks(chunks, paragraph, chunkSize);
-            }
-            else if (currentChunk.Length + paragraph.Length + 1 > chunkSize && currentChunk.Length > 0)
-            {
-                FlushChunk(chunks, currentChunk);
-                currentChunk.Append(paragraph);
-            }
-            else
-            {
-                if (currentChunk.Length > 0)
-                    currentChunk.Append(' ');
-                currentChunk.Append(paragraph);
-            }
-        }
-
-        FlushChunk(chunks, currentChunk);
-
-        return chunks;
-    }
-
-    private static void FlushChunk(List<string> chunks, StringBuilder buffer)
-    {
-        if (buffer.Length == 0)
-            return;
-
-        chunks.Add(buffer.ToString().Trim());
-        buffer.Clear();
-    }
-
-    private static void AppendSentenceChunks(List<string> chunks, string paragraph, int chunkSize)
-    {
-        var sentences = SplitIntoSentences(paragraph);
-        var sentenceChunk = new StringBuilder();
-        foreach (var sentence in sentences)
-        {
-            if (sentenceChunk.Length + sentence.Length + 1 > chunkSize && sentenceChunk.Length > 0)
-            {
-                FlushChunk(chunks, sentenceChunk);
-            }
-            if (sentenceChunk.Length > 0)
-                sentenceChunk.Append(' ');
-            sentenceChunk.Append(sentence);
-        }
-        FlushChunk(chunks, sentenceChunk);
-    }
-
-    private static List<string> SplitIntoSentences(string text)
-    {
-        // Simple sentence splitting on . ! ? followed by space or end
-        var parts = Regex.Split(text, @"(?<=[.!?])\s+", RegexOptions.None, TimeSpan.FromSeconds(5));
-        return parts
-            .Select(s => s.Trim())
-            .Where(s => s.Length > 0)
-            .ToList();
+        var chunks = new RecursiveChunkingStrategy().ChunkText(text, chunkSize);
+        return [.. chunks.Select(c => c.Content)];
     }
 
     /// <summary>
@@ -363,24 +297,11 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
     }
 
     /// <summary>
-    /// Computes cosine similarity between two embedding vectors.
+    /// Computes cosine similarity between two embedding vectors (delegates to the
+    /// Domain <see cref="EmbeddingVector"/> value object).
     /// </summary>
     internal static float CosineSimilarity(float[] a, float[] b)
-    {
-        if (a.Length != b.Length || a.Length == 0)
-            return 0f;
-
-        float dot = 0f, normA = 0f, normB = 0f;
-        for (int i = 0; i < a.Length; i++)
-        {
-            dot += a[i] * b[i];
-            normA += a[i] * a[i];
-            normB += b[i] * b[i];
-        }
-
-        var denominator = MathF.Sqrt(normA) * MathF.Sqrt(normB);
-        return denominator == 0f ? 0f : dot / denominator;
-    }
+        => new EmbeddingVector(a).CosineSimilarity(new EmbeddingVector(b));
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "PDF search completed: query='{Query}', results={ResultCount}, chunks={ChunkCount}, files={FileCount}")]

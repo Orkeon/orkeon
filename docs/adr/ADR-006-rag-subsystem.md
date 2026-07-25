@@ -35,6 +35,12 @@ land first (RAG-02 / C1-C2); the references below are added by the subsequent mi
    `RaggableTreeInfrastructureExtensions.cs`), notably to wrap embedding calls in
    `LlmLoggingDelegatingHandler`.
 
+   *Transitional exception (RAG-02/C3 → C5)*: the legacy chunkers in
+   `Infrastructure/Knowledge/Chunking/` (`RecursiveTextChunker`, `SentenceChunker`) are thin
+   delegations to the canonical `Orkeon.Rag.Chunking` strategies until the whole
+   `Infrastructure/Knowledge/` namespace is removed in RAG-02/C5, at which point the
+   confinement to the single DI file becomes effective.
+
 ## Decision
 
 - `Orkeon.Rag.Abstractions` is a **secondary shared kernel** (same status as

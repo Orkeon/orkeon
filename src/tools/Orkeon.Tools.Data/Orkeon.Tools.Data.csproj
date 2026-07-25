@@ -17,6 +17,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
+    <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CsvHelper" />

@@ -1,9 +1,9 @@
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.Tools;
+using Orkeon.Rag.Chunking;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.FileSystem;
@@ -291,126 +291,21 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
 
     // -- Text chunking ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Chunks file content with the canonical RAG recursive strategy (RAG-02/C3
+    /// consolidation), mapping chunk offsets back to 1-based approximate source lines.
+    /// </summary>
     internal static List<ChunkInfo> ChunkText(
         string content, int maxChunkSize, string sourceFile, string fileExtension)
     {
-        var chunks = new List<ChunkInfo>();
+        var chunks = new RecursiveChunkingStrategy().ChunkText(content, maxChunkSize, overlap: 0, sourceId: sourceFile);
 
-        // Split by double newline (paragraphs)
-        var paragraphs = content.Split(
-            ["\r\n\r\n", "\n\n"],
-            StringSplitOptions.RemoveEmptyEntries);
-
-        int chunkIndex = 0;
-        int charOffset = 0;
-
-        foreach (var paragraph in paragraphs)
-        {
-            var trimmed = paragraph.Trim();
-            if (string.IsNullOrWhiteSpace(trimmed))
-            {
-                charOffset += paragraph.Length + 2; // account for the delimiter
-                continue;
-            }
-
-            if (trimmed.Length <= maxChunkSize)
-            {
-                var lineNumber = CountLines(content, charOffset);
-                chunks.Add(new ChunkInfo(
-                    trimmed, sourceFile, lineNumber, chunkIndex++, fileExtension));
-            }
-            else
-            {
-                SplitLongParagraph(
-                    new ChunkingContext(content, maxChunkSize, sourceFile, fileExtension),
-                    trimmed, charOffset, chunks, ref chunkIndex);
-            }
-
-            charOffset += paragraph.Length + 2;
-        }
-
-        return chunks;
-    }
-
-    /// <summary>
-    /// Invariant context for a single <see cref="ChunkText"/> pass: the full source text, the
-    /// chunk size cap, and the source-file metadata stamped onto every emitted <see cref="ChunkInfo"/>.
-    /// </summary>
-    private sealed record ChunkingContext(
-        string Content,
-        int MaxChunkSize,
-        string SourceFile,
-        string FileExtension);
-
-    /// <summary>
-    /// Splits a paragraph that exceeds <see cref="ChunkingContext.MaxChunkSize"/> into sentence-aligned
-    /// chunks, appending the resulting <see cref="ChunkInfo"/> entries to <paramref name="chunks"/>.
-    /// </summary>
-    private static void SplitLongParagraph(
-        ChunkingContext context,
-        string trimmed,
-        int charOffset,
-        List<ChunkInfo> chunks,
-        ref int chunkIndex)
-    {
-        var sentences = SplitBySentences(trimmed);
-        var builder = new StringBuilder();
-        var sentenceStartOffset = charOffset;
-
-        foreach (var sentence in sentences)
-        {
-            if (builder.Length + sentence.Length > context.MaxChunkSize && builder.Length > 0)
-            {
-                var lineNumber = CountLines(context.Content, sentenceStartOffset);
-                chunks.Add(new ChunkInfo(
-                    builder.ToString().Trim(), context.SourceFile, lineNumber, chunkIndex++, context.FileExtension));
-                builder.Clear();
-                sentenceStartOffset = charOffset + (trimmed.Length - sentence.Length);
-            }
-
-            builder.Append(sentence);
-        }
-
-        if (builder.Length > 0)
-        {
-            var lineNumber = CountLines(context.Content, sentenceStartOffset);
-            chunks.Add(new ChunkInfo(
-                builder.ToString().Trim(), context.SourceFile, lineNumber, chunkIndex++, context.FileExtension));
-        }
-    }
-
-    private static string[] SplitBySentences(string text)
-    {
-        // Simple sentence splitting on . ! ? followed by space or end
-        var result = new List<string>();
-        int start = 0;
-
-        for (int i = 0; i < text.Length; i++)
-        {
-            if ((text[i] == '.' || text[i] == '!' || text[i] == '?') &&
-                (i + 1 >= text.Length || char.IsWhiteSpace(text[i + 1])))
-            {
-                result.Add(text[start..(i + 1)]);
-                start = i + 1;
-            }
-        }
-
-        if (start < text.Length)
-            result.Add(text[start..]);
-
-        return result.ToArray();
-    }
-
-    private static int CountLines(string content, int charOffset)
-    {
-        int lineCount = 1;
-        int limit = Math.Min(charOffset, content.Length);
-        for (int i = 0; i < limit; i++)
-        {
-            if (content[i] == '\n')
-                lineCount++;
-        }
-        return lineCount;
+        return [.. chunks.Select((c, i) => new ChunkInfo(
+            c.Content,
+            sourceFile,
+            PlainTextChunking.LineNumberAt(content, c.StartOffset),
+            i,
+            fileExtension))];
     }
 
     [LoggerMessage(Level = LogLevel.Information,

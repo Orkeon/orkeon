@@ -8,8 +8,8 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Constants.Http;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.Tools.Security;
+using Orkeon.Rag.Chunking;
 using Orkeon.Tools.Abstractions.Base;
-using Orkeon.Tools.Abstractions.Helpers;
 using Orkeon.Tools.Abstractions.Security;
 using Orkeon.Tools.Web.Constants.Scrape;
 
@@ -309,15 +309,18 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
         var url = fetched.Url!;
         var keyPrefix = $"{CacheKeyNamespace}:{ShortHash(url)}";
 
-        var chunks = TextChunker.ChunkContent(fetched.Content, request.ChunkSize);
+        // Canonical RAG chunking (RAG-02/C3): recursive strategy replaces the old
+        // Tools.Abstractions.Helpers.TextChunker paragraph/sentence splitter.
+        var chunks = new RecursiveChunkingStrategy()
+            .ChunkText(fetched.Content, request.ChunkSize, overlap: 0, sourceId: url.AbsoluteUri);
         if (chunks.Count > MaxChunksPerPage)
-            chunks = chunks.Take(MaxChunksPerPage).ToList();
+            chunks = [.. chunks.Take(MaxChunksPerPage)];
 
         for (var i = 0; i < chunks.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var (chunkText, _) = chunks[i];
+            var chunkText = chunks[i].Content;
             var embedding = await _embeddingService.GetEmbeddingAsync(chunkText, cancellationToken).ConfigureAwait(false);
 
             var customProps = new Dictionary<string, string>(StringComparer.Ordinal)

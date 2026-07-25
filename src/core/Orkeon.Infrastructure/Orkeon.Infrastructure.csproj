@@ -28,7 +28,9 @@
     <ProjectReference Include="..\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
-    <!-- ADR-006: composition wiring only (DI + default embedding resolution — AnalysisEmbeddingProviderAdapter moved to Orkeon.Rag in RAG-02/C3) -->
+    <!-- ADR-006: composition wiring + transitional C3→C5 couplings (DI, default embedding
+         resolution, Knowledge chunkers delegating to the canonical strategies) -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
     <PackageReference Include="StackExchange.Redis" />
 

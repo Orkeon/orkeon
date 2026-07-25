@@ -1,9 +1,9 @@
-using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.Attributes;
+using Orkeon.Rag.Chunking;
 
 namespace Orkeon.Tools.Data.Search;
 
@@ -61,97 +61,16 @@ public partial class MdxSearchTool : FileSearchToolBase<MdxSearchRequest>
     }
 
     /// <summary>
-    /// Splits Markdown content into heading-delimited sections. Each section consists of the
-    /// heading line followed by its body text. A leading block before any heading is also
-    /// captured. Long sections are further split into paragraph-level sub-chunks.
+    /// Splits Markdown content into heading-delimited sections via the canonical
+    /// <see cref="StructuralChunkingStrategy"/> (RAG-02/C3 consolidation), mapping chunk
+    /// offsets back to 1-based approximate source lines. Long sections are sub-split
+    /// recursively by the strategy itself.
     /// </summary>
     internal static List<(string Text, int ApproximateLine)> ChunkByHeadings(
         string content, int maxChunkSize)
     {
-        var lines = content.Split('\n');
-        var sections = new List<(StringBuilder Text, int StartLine)>();
-
-        StringBuilder? currentSection = null;
-        var currentStartLine = 1;
-
-        for (var i = 0; i < lines.Length; i++)
-        {
-            var line = lines[i];
-            var lineNumber = i + 1;
-
-            if (IsHeadingLine(line))
-            {
-                // Flush the previous section
-                if (currentSection is not null && currentSection.Length > 0)
-                {
-                    sections.Add((currentSection, currentStartLine));
-                }
-
-                currentSection = new StringBuilder();
-                currentSection.AppendLine(line);
-                currentStartLine = lineNumber;
-            }
-            else
-            {
-                currentSection ??= new StringBuilder();
-                currentSection.AppendLine(line);
-            }
-        }
-
-        // Flush the last section
-        if (currentSection is not null && currentSection.Length > 0)
-        {
-            sections.Add((currentSection, currentStartLine));
-        }
-
-        // Post-process: sub-split sections that exceed maxChunkSize
-        var chunks = new List<(string Text, int ApproximateLine)>();
-
-        foreach (var (sectionText, startLine) in sections)
-        {
-            var text = sectionText.ToString().Trim();
-            if (string.IsNullOrWhiteSpace(text))
-                continue;
-
-            if (text.Length <= maxChunkSize)
-            {
-                chunks.Add((text, startLine));
-            }
-            else
-            {
-                // Fall back to paragraph-level splitting within the section
-                var subChunks = ChunkContent(text, maxChunkSize);
-                foreach (var (subText, subApproxLine) in subChunks)
-                {
-                    // Offset the approximate line relative to the section start
-                    chunks.Add((subText, startLine + subApproxLine - 1));
-                }
-            }
-        }
-
-        return chunks;
-    }
-
-    /// <summary>
-    /// Returns <c>true</c> when the line is a Markdown heading (# through ######).
-    /// </summary>
-    private static bool IsHeadingLine(string line)
-    {
-        var trimmed = line.TrimStart();
-        if (trimmed.Length == 0 || trimmed[0] != '#')
-            return false;
-
-        // Count leading '#' characters (1-6)
-        var hashCount = 0;
-        foreach (var c in trimmed)
-        {
-            if (c == '#') hashCount++;
-            else break;
-        }
-
-        // Must have 1-6 hashes followed by a space or end of line
-        return hashCount >= 1 && hashCount <= 6 &&
-               (trimmed.Length == hashCount || trimmed[hashCount] == ' ');
+        var chunks = new StructuralChunkingStrategy().ChunkText(content, maxChunkSize);
+        return [.. chunks.Select(c => (c.Content, PlainTextChunking.LineNumberAt(content, c.StartOffset)))];
     }
 
     [GeneratedRegex(@"^---\s*\n[\s\S]*?\n---\s*\n?", RegexOptions.Multiline)]
