@@ -40,11 +40,16 @@ public sealed class OrkeonPluginsOptions
     /// <see cref="System.Runtime.Loader.AssemblyLoadContext"/>; resolution defers to the
     /// host (default) context instead, so contract types (e.g. <see cref="IOrkeonPlugin"/>,
     /// <c>IBaseTool</c>, <c>IServiceCollection</c>) keep a single identity shared between
-    /// the host and the plugin. Defaults: <c>Orkeon.</c> and <c>Microsoft.Extensions.</c>.
+    /// the host and the plugin. Defaults: <c>Orkeon.</c>, <c>Orkeon.Rag.Abstractions</c>
+    /// and <c>Microsoft.Extensions.</c>.
     /// </summary>
     public IList<string> SharedAssemblyPrefixes { get; } = new List<string>
     {
         "Orkeon.",
+        // Redundant under the broad "Orkeon." prefix above, but listed explicitly so the
+        // RAG contract types (IReranker, IChunkingStrategy, IDocumentLoader…) keep a single
+        // inter-ALC identity even for hosts that narrow the defaults (ADR-006).
+        "Orkeon.Rag.Abstractions",
         "Microsoft.Extensions.",
     };
 }

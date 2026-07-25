@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Rag.Abstractions</PackageId>
+    <Description>Abstractions for the Orkeon RAG subsystem: retrieval, chunking, reranking, ingestion and pipeline contracts, DTOs, and options.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;RAG;Retrieval;Abstractions</PackageTags>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Rag" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Rag" />
+    <InternalsVisibleTo Include="Orkeon.Rag.Abstractions.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Rag.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Rag.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

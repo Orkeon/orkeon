@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Tools.Rag</PackageId>
+    <Description>Agent tools for the Orkeon RAG subsystem (rag_search, rag_ingest, rag_eval). Skeleton project — the tools migrate here in a later batch (see README.md).</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Tools;RAG;Retrieval</PackageTags>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Tools.Rag.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
+    <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
+    <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
