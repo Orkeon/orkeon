@@ -23,6 +23,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Orkeon.Domain\Orkeon.Domain.csproj" />
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
+    <!-- RAG contracts (ADR-006 shared kernel, Domain-only dependency): lets the
+         execution path optionally resolve IKnowledgeContextAugmenter (RAG-03/C4). -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
   </ItemGroup>
 
   <!-- R4.5: typed-dictionary wrapper source generator (compile-time only). -->

@@ -87,6 +87,15 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public int MaxOutputRetries { get; set; } = Constants.Orchestration.ValidationDefaults.DefaultMaxOutputRetries;
 
     /// <summary>
+    /// Optional knowledge-context augmenter (RAG-03/C4). When set AND the executing
+    /// agent has <see cref="Domain.Knowledge.KnowledgeAttachment"/>s, the attached
+    /// collections are queried with the task input and the retrieved excerpts are
+    /// injected into the user prompt with numbered citations. Null (the default —
+    /// hosts without the RAG subsystem) leaves prompt composition strictly unchanged.
+    /// </summary>
+    public Orkeon.Rag.Abstractions.Interfaces.IKnowledgeContextAugmenter? KnowledgeAugmenter { get; set; }
+
+    /// <summary>
     /// Maximum number of iterations for the agent execution loop.
     /// </summary>
     public int MaxIterations { get; set; } = AgentDefaults.MaxIterations;
@@ -224,7 +233,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             {
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
                     agent, task, _toolCallingStrategy?.SupportsNativeToolCalling == true);
-                var userPrompt = AgentPromptComposer.BuildUserPrompt(task, context);
+                var knowledgeContext = await ResolveKnowledgeContextAsync(
+                    agent, task, context, cancellationToken).ConfigureAwait(false);
+                var userPrompt = AgentPromptComposer.BuildUserPrompt(task, context, knowledgeContext);
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
 
                 var loopResult = await ExecuteWithProviderAsync(
@@ -289,6 +300,29 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     Error: ex.Message);
             }
         }
+    }
+
+    /// <summary>
+    /// Resolves the retrieved-knowledge context block for the executing agent (RAG-03/C4).
+    /// Returns null — leaving the user prompt byte-identical to the pre-RAG output — when
+    /// no <see cref="KnowledgeAugmenter"/> is wired, the agent has no knowledge attachment,
+    /// or retrieval keeps no excerpt. Retrieval failures propagate to the task fault barrier
+    /// (a failed <see cref="TaskResult"/>) rather than silently degrading to an ungrounded prompt.
+    /// </summary>
+    private async System.Threading.Tasks.Task<string?> ResolveKnowledgeContextAsync(
+        DomainAgent agent,
+        CrewTask task,
+        SimpleExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        if (KnowledgeAugmenter is null || agent.KnowledgeAttachments.Count == 0)
+            return null;
+
+        var queryText = AgentPromptComposer.BuildKnowledgeQueryText(task, context);
+        var block = await KnowledgeAugmenter.BuildContextAsync(
+            agent.KnowledgeAttachments, queryText, cancellationToken).ConfigureAwait(false);
+
+        return string.IsNullOrWhiteSpace(block?.Text) ? null : block.Text;
     }
 
     /// <summary>

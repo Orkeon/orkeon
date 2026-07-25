@@ -124,7 +124,7 @@ internal static class AgentPromptComposer
         prompt.AppendLine(agent.ResponseTemplate);
     }
 
-    internal static string BuildUserPrompt(CrewTask task, SimpleExecutionContext context)
+    internal static string BuildUserPrompt(CrewTask task, SimpleExecutionContext context, string? knowledgeContext = null)
     {
         var (description, expectedOutput) = InterpolateTaskFields(task, context);
 
@@ -136,8 +136,49 @@ internal static class AgentPromptComposer
 
         AppendContextVariables(prompt, context);
         AppendPreviousOutputs(prompt, context);
+        AppendKnowledgeContext(prompt, knowledgeContext);
 
         return prompt.ToString();
+    }
+
+    /// <summary>
+    /// Appends the retrieved-knowledge context block (RAG-03/C4) after the task
+    /// context sections. No-op when <paramref name="knowledgeContext"/> is null or
+    /// blank — the prompt is then byte-identical to the pre-RAG output.
+    /// </summary>
+    private static void AppendKnowledgeContext(StringBuilder prompt, string? knowledgeContext)
+    {
+        if (string.IsNullOrWhiteSpace(knowledgeContext))
+            return;
+
+        prompt.AppendLine();
+        prompt.AppendLine(knowledgeContext.TrimEnd());
+    }
+
+    /// <summary>
+    /// Builds the retrieval query text for knowledge augmentation (RAG-03/C4):
+    /// the interpolated task description and expected output, plus the context
+    /// variables. Previous task outputs are deliberately excluded — they can be
+    /// arbitrarily large and would drown the embedding signal.
+    /// </summary>
+    internal static string BuildKnowledgeQueryText(CrewTask task, SimpleExecutionContext? context)
+    {
+        var (description, expectedOutput) = InterpolateTaskFields(task, context);
+
+        var query = new StringBuilder();
+        query.AppendLine(description);
+        query.Append(PromptDefaults.ExpectedOutputPrefix).Append(expectedOutput);
+
+        if (context?.Variables?.Count > 0)
+        {
+            foreach (var kvp in context.Variables)
+            {
+                query.AppendLine();
+                query.Append(FormattableString.Invariant($"- {kvp.Key}: {kvp.Value}"));
+            }
+        }
+
+        return query.ToString();
     }
 
     /// <summary>

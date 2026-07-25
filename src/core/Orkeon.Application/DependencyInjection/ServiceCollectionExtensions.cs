@@ -160,18 +160,29 @@ public static class ServiceCollectionExtensions
             var deliverableFactory = sp.GetService<Crew.DeliverableResolvers.IDeliverableResolverFactory>();
             var fileSystem = sp.GetRequiredService<Domain.FileSystem.IFileSystemService>();
 
+            ExecutionOrchestrator orchestrator;
             if (chatClient != null)
             {
                 var tools = sp.GetServices<Domain.Tools.IBaseTool>();
                 var validationPipeline = sp.GetService<IOutputValidationPipeline>();
                 var parserFactory = sp.GetService<IOutputParserFactory>();
                 if (validationPipeline != null && parserFactory != null && rateLimiter != null)
-                    return new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, rateLimiter, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem);
-                if (validationPipeline != null && parserFactory != null)
-                    return new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, fileSystem);
-                return new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, fileSystem);
+                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, rateLimiter, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem);
+                else if (validationPipeline != null && parserFactory != null)
+                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, fileSystem);
+                else
+                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, fileSystem);
             }
-            return new ExecutionOrchestrator(logger, llmProvider, planner);
+            else
+            {
+                orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner);
+            }
+
+            // RAG-03/C4 — optional knowledge augmentation: hosts without the RAG
+            // subsystem resolve null here and prompt composition stays unchanged.
+            orchestrator.KnowledgeAugmenter =
+                sp.GetService<Orkeon.Rag.Abstractions.Interfaces.IKnowledgeContextAugmenter>();
+            return orchestrator;
         });
         return services;
     }
