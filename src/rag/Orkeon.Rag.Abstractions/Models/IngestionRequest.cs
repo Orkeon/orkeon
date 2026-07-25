@@ -24,4 +24,14 @@ public sealed record IngestionRequest
 
     /// <summary>Chunking parameters passed to the selected strategy.</summary>
     public ChunkingOptions Chunking { get; init; } = new();
+
+    /// <summary>
+    /// Forces a full reindex of the collection: every source previously recorded
+    /// in the collection manifest is purged from the store, all requested sources
+    /// are re-ingested, and the manifest is rewritten. This is the only way to
+    /// re-ingest a collection whose recorded embedding profile (provider, model,
+    /// dimensions) no longer matches the active provider — without it, such a
+    /// drift fails the run loudly. Defaults to <c>false</c>.
+    /// </summary>
+    public bool Reindex { get; init; }
 }

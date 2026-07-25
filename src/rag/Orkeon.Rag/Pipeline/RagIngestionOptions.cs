@@ -13,4 +13,12 @@ public sealed record RagIngestionOptions
     /// Defaults to <c>recursive</c> (consolidated strategy names, plan §4.3).
     /// </summary>
     public string DefaultChunkingStrategy { get; init; } = "recursive";
+
+    /// <summary>
+    /// Virtual directory (VFS path) holding the per-collection ingestion
+    /// manifests (<c>{collection}.json</c>). Defaults to
+    /// <c>/output/rag/manifests</c> — under the conventional writable
+    /// <c>/output</c> mount, next to other run artifacts.
+    /// </summary>
+    public string ManifestDirectory { get; init; } = "/output/rag/manifests";
 }

@@ -7,8 +7,10 @@ using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Memory;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Factories;
+using Orkeon.Rag.Ingestion;
 using Orkeon.Rag.Loaders;
 using Orkeon.Rag.Pipeline;
 using Orkeon.Rag.Stores;
@@ -91,6 +93,13 @@ public static class RagServiceCollectionExtensions
         services.TryAddSingleton<IDocumentStore>(sp =>
             new MemoryProviderDocumentStore(sp.GetRequiredService<IMemoryProvider>()));
 
+        // Per-collection ingestion manifests (incremental state, RAG-03/C1):
+        // one JSON file per collection, written through the VFS.
+        services.TryAddSingleton<IIngestionManifestStore>(sp => new FileIngestionManifestStore(
+            sp.GetRequiredService<IFileSystemService>(),
+            sp.GetRequiredService<IOptions<RagIngestionOptions>>().Value,
+            sp.GetService<ILogger<FileIngestionManifestStore>>()));
+
         // Pipelines (façades of the subsystem).
         services.TryAddSingleton<IIngestionPipeline>(sp => new DefaultIngestionPipeline(
             sp.GetRequiredService<DocumentLoaderFactory>(),
@@ -98,6 +107,7 @@ public static class RagServiceCollectionExtensions
             sp.GetRequiredService<IEmbeddingProvider>(),
             sp.GetRequiredService<IDocumentStore>(),
             sp.GetRequiredService<DataValidationPipeline>(),
+            sp.GetRequiredService<IIngestionManifestStore>(),
             sp.GetRequiredService<IOptions<RagIngestionOptions>>().Value,
             sp.GetService<ILogger<DefaultIngestionPipeline>>()));
 

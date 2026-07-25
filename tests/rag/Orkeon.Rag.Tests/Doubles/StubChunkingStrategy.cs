@@ -15,6 +15,10 @@ public sealed class StubChunkingStrategy : IChunkingStrategy
     /// <inheritdoc />
     public string Name => "stub";
 
+    /// <inheritdoc />
+    /// <remarks>Settable so incremental-ingestion tests can simulate an algorithm bump.</remarks>
+    public string Version { get; set; } = "1";
+
     /// <summary>Documents received, in call order.</summary>
     public List<RagDocument> ChunkedDocuments { get; } = [];
 

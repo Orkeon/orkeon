@@ -1,6 +1,7 @@
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Factories;
+using Orkeon.Rag.Ingestion;
 using Orkeon.Rag.Loaders;
 using Orkeon.Rag.Pipeline;
 using Orkeon.Rag.Tests.Doubles;
@@ -18,7 +19,9 @@ public class DefaultIngestionPipelineTests
 {
     private sealed class Harness
     {
-        public FakeFileSystemService Fs { get; } = new FakeFileSystemService().AddMount("/kb");
+        public FakeFileSystemService Fs { get; } = new FakeFileSystemService()
+            .AddMount("/kb")
+            .AddMount("/output");
 
         public ChunkingStrategyFactory ChunkingFactory { get; } = new();
 
@@ -49,13 +52,16 @@ public class DefaultIngestionPipelineTests
                 Quarantine,
                 new ProvenanceTracker());
 
+            var effectiveOptions = options ?? new RagIngestionOptions { DefaultChunkingStrategy = "stub" };
+
             return new DefaultIngestionPipeline(
                 loaders,
                 ChunkingFactory,
                 Embeddings,
                 Store,
                 validation,
-                options ?? new RagIngestionOptions { DefaultChunkingStrategy = "stub" });
+                new FileIngestionManifestStore(Fs, effectiveOptions),
+                effectiveOptions);
         }
 
         public static IngestionRequest Request(params string[] locations) => new()
