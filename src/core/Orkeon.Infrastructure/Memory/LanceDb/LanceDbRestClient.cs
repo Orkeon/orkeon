@@ -31,7 +31,7 @@ internal sealed class LanceDbRestClient
     };
 
     private readonly HttpClient _http;
-    private readonly string _tablePath;
+    private readonly string _defaultTableName;
 
     public LanceDbRestClient(HttpClient httpClient, LanceDbOptions options)
     {
@@ -40,14 +40,25 @@ internal sealed class LanceDbRestClient
         ArgumentException.ThrowIfNullOrWhiteSpace(options.TableName);
 
         _http = httpClient;
-        _tablePath = $"v1/table/{Uri.EscapeDataString(options.TableName)}";
+        _defaultTableName = options.TableName;
         ConfigureHttpClient(options);
     }
 
-    /// <summary>Checks whether the table exists (<c>POST /v1/table/{name}/exists</c>; 404 means absent).</summary>
-    public async Task<bool> TableExistsAsync(CancellationToken cancellationToken)
+    /// <summary>Builds the REST route prefix of a table (<c>v1/table/{name}</c>).</summary>
+    private static string TablePath(string tableName)
     {
-        using var response = await PostJsonAsync($"{_tablePath}/exists", new { }, cancellationToken).ConfigureAwait(false);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
+        return $"v1/table/{Uri.EscapeDataString(tableName)}";
+    }
+
+    /// <summary>Checks whether the default table exists (<c>POST /v1/table/{name}/exists</c>; 404 means absent).</summary>
+    public Task<bool> TableExistsAsync(CancellationToken cancellationToken)
+        => TableExistsAsync(_defaultTableName, cancellationToken);
+
+    /// <summary>Checks whether <paramref name="tableName"/> exists (<c>POST /v1/table/{name}/exists</c>; 404 means absent).</summary>
+    public async Task<bool> TableExistsAsync(string tableName, CancellationToken cancellationToken)
+    {
+        using var response = await PostJsonAsync($"{TablePath(tableName)}/exists", new { }, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
             return false;
 
@@ -55,44 +66,69 @@ internal sealed class LanceDbRestClient
         return true;
     }
 
-    /// <summary>Creates the table from an Arrow IPC stream payload (<c>POST /v1/table/{name}/create</c>).</summary>
-    public async Task CreateTableAsync(byte[] arrowStreamPayload, CancellationToken cancellationToken)
+    /// <summary>Creates the default table from an Arrow IPC stream payload (<c>POST /v1/table/{name}/create</c>).</summary>
+    public Task CreateTableAsync(byte[] arrowStreamPayload, CancellationToken cancellationToken)
+        => CreateTableAsync(_defaultTableName, arrowStreamPayload, cancellationToken);
+
+    /// <summary>Creates <paramref name="tableName"/> from an Arrow IPC stream payload (<c>POST /v1/table/{name}/create</c>).</summary>
+    public async Task CreateTableAsync(string tableName, byte[] arrowStreamPayload, CancellationToken cancellationToken)
     {
-        using var response = await PostArrowAsync($"{_tablePath}/create", arrowStreamPayload, cancellationToken).ConfigureAwait(false);
+        using var response = await PostArrowAsync($"{TablePath(tableName)}/create", arrowStreamPayload, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "CreateTable", cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Creates an index on a column (<c>POST /v1/table/{name}/create_index</c>), e.g. an FTS index.</summary>
+    /// <summary>Drops <paramref name="tableName"/> entirely (<c>POST /v1/table/{name}/drop</c>; 404 means already absent).</summary>
+    public async Task DropTableAsync(string tableName, CancellationToken cancellationToken)
+    {
+        using var response = await PostJsonAsync($"{TablePath(tableName)}/drop", new { }, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return;
+
+        await EnsureSuccessAsync(response, "DropTable", cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Creates an index on a column of the default table (<c>POST /v1/table/{name}/create_index</c>), e.g. an FTS index.</summary>
     public async Task CreateIndexAsync(string column, string indexType, CancellationToken cancellationToken)
     {
         var body = new { column, index_type = indexType };
-        using var response = await PostJsonAsync($"{_tablePath}/create_index", body, cancellationToken).ConfigureAwait(false);
+        using var response = await PostJsonAsync($"{TablePath(_defaultTableName)}/create_index", body, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "CreateIndex", cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Upserts rows keyed on the <c>id</c> column
+    /// Upserts rows into the default table, keyed on the <c>id</c> column
     /// (<c>POST /v1/table/{name}/merge_insert?on=id&amp;when_matched_update_all=true&amp;when_not_matched_insert_all=true</c>).
     /// </summary>
-    public async Task MergeInsertAsync(byte[] arrowStreamPayload, CancellationToken cancellationToken)
+    public Task MergeInsertAsync(byte[] arrowStreamPayload, CancellationToken cancellationToken)
+        => MergeInsertAsync(_defaultTableName, arrowStreamPayload, cancellationToken);
+
+    /// <summary>
+    /// Upserts rows into <paramref name="tableName"/>, keyed on the <c>id</c> column
+    /// (<c>POST /v1/table/{name}/merge_insert?on=id&amp;when_matched_update_all=true&amp;when_not_matched_insert_all=true</c>).
+    /// </summary>
+    public async Task MergeInsertAsync(string tableName, byte[] arrowStreamPayload, CancellationToken cancellationToken)
     {
-        var uri = $"{_tablePath}/merge_insert?on={Uri.EscapeDataString(LanceDbArrowCodec.IdColumn)}" +
+        var uri = $"{TablePath(tableName)}/merge_insert?on={Uri.EscapeDataString(LanceDbArrowCodec.IdColumn)}" +
                   "&when_matched_update_all=true&when_not_matched_insert_all=true";
         using var response = await PostArrowAsync(uri, arrowStreamPayload, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "MergeInsert", cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Deletes the rows matching a SQL predicate (<c>POST /v1/table/{name}/delete</c>).</summary>
-    public async Task DeleteAsync(string predicate, CancellationToken cancellationToken)
+    /// <summary>Deletes the default-table rows matching a SQL predicate (<c>POST /v1/table/{name}/delete</c>).</summary>
+    public Task DeleteAsync(string predicate, CancellationToken cancellationToken)
+        => DeleteRowsAsync(_defaultTableName, predicate, cancellationToken);
+
+    /// <summary>Deletes the rows of <paramref name="tableName"/> matching a SQL predicate (<c>POST /v1/table/{name}/delete</c>).</summary>
+    public async Task DeleteRowsAsync(string tableName, string predicate, CancellationToken cancellationToken)
     {
-        using var response = await PostJsonAsync($"{_tablePath}/delete", new { predicate }, cancellationToken).ConfigureAwait(false);
+        using var response = await PostJsonAsync($"{TablePath(tableName)}/delete", new { predicate }, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "Delete", cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Counts the table rows (<c>POST /v1/table/{name}/count_rows</c>; the body is a plain integer).</summary>
+    /// <summary>Counts the default-table rows (<c>POST /v1/table/{name}/count_rows</c>; the body is a plain integer).</summary>
     public async Task<long> CountRowsAsync(CancellationToken cancellationToken)
     {
-        using var response = await PostJsonAsync($"{_tablePath}/count_rows", new { }, cancellationToken).ConfigureAwait(false);
+        using var response = await PostJsonAsync($"{TablePath(_defaultTableName)}/count_rows", new { }, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "CountRows", cancellationToken).ConfigureAwait(false);
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -100,12 +136,21 @@ internal sealed class LanceDbRestClient
     }
 
     /// <summary>
-    /// Executes a query (<c>POST /v1/table/{name}/query</c>) — vector search, full-text
-    /// search and/or SQL filtering run server-side — and decodes the Arrow response.
+    /// Executes a query against the default table (<c>POST /v1/table/{name}/query</c>) —
+    /// vector search, full-text search and/or SQL filtering run server-side — and decodes
+    /// the Arrow response.
     /// </summary>
-    public async Task<IReadOnlyList<LanceDbQueryRow>> QueryAsync(LanceDbQueryRequest request, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<LanceDbQueryRow>> QueryAsync(LanceDbQueryRequest request, CancellationToken cancellationToken)
+        => QueryAsync(_defaultTableName, request, cancellationToken);
+
+    /// <summary>
+    /// Executes a query against <paramref name="tableName"/> (<c>POST /v1/table/{name}/query</c>) —
+    /// vector search, full-text search and/or SQL filtering run server-side — and decodes
+    /// the Arrow response.
+    /// </summary>
+    public async Task<IReadOnlyList<LanceDbQueryRow>> QueryAsync(string tableName, LanceDbQueryRequest request, CancellationToken cancellationToken)
     {
-        using var response = await PostJsonAsync($"{_tablePath}/query", request, cancellationToken).ConfigureAwait(false);
+        using var response = await PostJsonAsync($"{TablePath(tableName)}/query", request, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "Query", cancellationToken).ConfigureAwait(false);
 
         var payload = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Orkeon.Domain.Memory;
 
 namespace Orkeon.Infrastructure.Memory.LanceDb;
 
@@ -50,6 +51,42 @@ internal static class LanceDbFilterBuilder
                 default:
                     clauses.Add($"{LanceDbArrowCodec.MetadataColumn} LIKE '%{literal}%'");
                     break;
+            }
+        }
+
+        return string.Join(" AND ", clauses);
+    }
+
+    /// <summary>
+    /// Translates a typed <see cref="MemoryFilter"/> into a SQL predicate
+    /// (<c>source</c> equality, tag containment over the JSON-encoded tags column,
+    /// <c>"key":"value"</c> containment over the JSON-encoded metadata column), or
+    /// <see langword="null"/> when the filter is null or empty. Custom-property matching
+    /// relies on the compact JSON encoding of <c>metadata_json</c> and inherits the loose
+    /// <c>LIKE</c> semantics documented on the class.
+    /// </summary>
+    public static string? FromMemoryFilter(MemoryFilter? filter)
+    {
+        if (filter is null || filter.IsEmpty)
+            return null;
+
+        var clauses = new List<string>();
+
+        if (filter.Source is not null)
+            clauses.Add($"{LanceDbArrowCodec.SourceColumn} = '{EscapeLiteral(filter.Source)}'");
+
+        if (filter.Tags is { Count: > 0 })
+        {
+            foreach (var tag in filter.Tags)
+                clauses.Add($"{LanceDbArrowCodec.TagsColumn} LIKE '%{EscapeLiteral(tag)}%'");
+        }
+
+        if (filter.CustomProperties is { Count: > 0 })
+        {
+            foreach (var (key, value) in filter.CustomProperties)
+            {
+                var pair = $"\"{key}\":\"{value}\"";
+                clauses.Add($"{LanceDbArrowCodec.MetadataColumn} LIKE '%{EscapeLiteral(pair)}%'");
             }
         }
 

@@ -153,6 +153,96 @@ public class RagServiceCollectionExtensionsTests
         Assert.Equal(13, pipeline.CandidateK);
     }
 
+    // ---------------------------------------------------------------- Orkeon:Rag:Provider
+
+    [Fact]
+    public void AddOrkeonRag_ProviderOption_ResolvesTheStoreProviderThroughTheFactory()
+    {
+        var factory = new FakeMemoryProviderFactory();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Orkeon:Rag:Provider"] = "ChromaDB",
+                ["Orkeon:Rag:ConnectionString"] = "http://chroma:8000",
+                ["Orkeon:Rag:ProviderOptions:ApiKey"] = "secret",
+            })
+            .Build();
+
+        using var chat = new FakeChatClient();
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService().AddMount("/kb"));
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory>(factory);
+        services.AddSingleton<IEmbeddingProvider>(new FakeEmbeddingProvider());
+        services.AddSingleton<IChatClient>(chat);
+
+        services.AddOrkeonRag(configuration);
+
+        using var provider = services.BuildServiceProvider();
+        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(
+            provider.GetRequiredService<IDocumentStore>());
+
+        Assert.Equal(1, factory.CreateCalls);
+        Assert.NotNull(factory.LastConfig);
+        Assert.Equal("chromadb", factory.LastConfig!.Type);
+        Assert.Equal("http://chroma:8000", factory.LastConfig.ConnectionString);
+        Assert.Equal("secret", Assert.Contains("ApiKey", factory.LastConfig.Options!));
+    }
+
+    [Fact]
+    public void AddOrkeonRag_UnknownProvider_FailsLoudly_WithTheAliasList()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Orkeon:Rag:Provider"] = "mongodb",
+            })
+            .Build();
+
+        using var chat = new FakeChatClient();
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService().AddMount("/kb"));
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory>(
+            new FakeMemoryProviderFactory());
+        services.AddSingleton<IEmbeddingProvider>(new FakeEmbeddingProvider());
+        services.AddSingleton<IChatClient>(chat);
+
+        services.AddOrkeonRag(configuration);
+
+        using var provider = services.BuildServiceProvider();
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => provider.GetRequiredService<IDocumentStore>());
+
+        Assert.Contains("mongodb", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Rag:Provider", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("chromadb", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("pinecone", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("lancedb", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("sqlite", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("inmemory", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddOrkeonRag_NoProviderOption_UsesTheAmbientMemoryProvider()
+    {
+        var factory = new FakeMemoryProviderFactory();
+
+        using var chat = new FakeChatClient();
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService().AddMount("/kb"));
+        services.AddSingleton<Orkeon.Domain.Memory.IMemoryProvider>(
+            new Stores.Doubles.FakeMemoryProvider());
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory>(factory);
+        services.AddSingleton<IEmbeddingProvider>(new FakeEmbeddingProvider());
+        services.AddSingleton<IChatClient>(chat);
+
+        services.AddOrkeonRag(EmptyConfiguration());
+
+        using var provider = services.BuildServiceProvider();
+        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(
+            provider.GetRequiredService<IDocumentStore>());
+        Assert.Equal(0, factory.CreateCalls);
+    }
+
     private sealed class HostRagPipeline : IRagPipeline
     {
         public Task<Orkeon.Rag.Abstractions.Models.RagAnswer> QueryAsync(

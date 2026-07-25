@@ -5,7 +5,7 @@ namespace Orkeon.Domain.Memory;
 /// <summary>
 /// Canonical discovery entry point for the optional memory capabilities
 /// (<see cref="IScoredVectorSearch"/>, <see cref="IBatchUpsert"/>,
-/// <see cref="IHybridSearchCapable"/>).
+/// <see cref="IHybridSearchCapable"/>, <see cref="ICollectionAwareMemory"/>).
 /// </summary>
 public static class MemoryCapabilityExtensions
 {

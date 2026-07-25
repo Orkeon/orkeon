@@ -60,6 +60,33 @@ public class MemoryCapabilityExtensionsTests
             => System.Threading.Tasks.Task.FromResult<IReadOnlyList<ScoredMemoryItem>>([]);
     }
 
+    /// <summary>Hand-written provider genuinely implementing <see cref="ICollectionAwareMemory"/>.</summary>
+    private sealed class StubCollectionAwareProvider : StubMemoryProvider, ICollectionAwareMemory
+    {
+        public System.Threading.Tasks.Task StoreWithEmbeddingAsync(
+            string collection, string key, MemoryItem item, ReadOnlyMemory<float> embedding,
+            CancellationToken cancellationToken = default)
+            => System.Threading.Tasks.Task.CompletedTask;
+
+        public System.Threading.Tasks.Task UpsertBatchAsync(
+            string collection, IReadOnlyList<MemoryUpsertEntry> entries,
+            CancellationToken cancellationToken = default)
+            => System.Threading.Tasks.Task.CompletedTask;
+
+        public System.Threading.Tasks.Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarWithScoresAsync(
+            string collection, ReadOnlyMemory<float> embedding, int topK, float minScore,
+            MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+            => System.Threading.Tasks.Task.FromResult<IReadOnlyList<ScoredMemoryItem>>([]);
+
+        public System.Threading.Tasks.Task DeleteByFilterAsync(
+            string collection, MemoryFilter filter, CancellationToken cancellationToken = default)
+            => System.Threading.Tasks.Task.CompletedTask;
+
+        public System.Threading.Tasks.Task DropCollectionAsync(
+            string collection, CancellationToken cancellationToken = default)
+            => System.Threading.Tasks.Task.CompletedTask;
+    }
+
     [Fact]
     public void TryGetCapability_NullProvider_Throws()
     {
@@ -103,5 +130,16 @@ public class MemoryCapabilityExtensionsTests
 
         Assert.True(provider.TryGetCapability<IScoredVectorSearch>(out var capability));
         Assert.Same(provider, capability);
+    }
+
+    [Fact]
+    public void TryGetCapability_CollectionAwareMemory_DiscoveredLikeAnyCapability()
+    {
+        var bare = new StubMemoryProvider();
+        var collectionAware = new StubCollectionAwareProvider();
+
+        Assert.False(bare.TryGetCapability<ICollectionAwareMemory>(out _));
+        Assert.True(collectionAware.TryGetCapability<ICollectionAwareMemory>(out var capability));
+        Assert.Same(collectionAware, capability);
     }
 }

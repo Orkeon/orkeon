@@ -168,4 +168,182 @@ public class EncryptedMemoryProviderCapabilityTests
         Assert.Equal("y secret", single.Item.Content);
         Assert.Equal("k-y", single.Key);
     }
+
+    // ── ICollectionAwareMemory forwarding (RAG-03/C2) ─────────────────────
+
+    /// <summary>
+    /// Hand-rolled collection-aware inner provider: per-collection dictionaries plus a
+    /// bare <see cref="IMemoryProvider"/> surface, used to prove conditional forwarding
+    /// and encryption-at-rest through the decorator.
+    /// </summary>
+    private sealed class FakeCollectionAwareProvider : IMemoryProvider, ICollectionAwareMemory
+    {
+        public Dictionary<string, Dictionary<string, MemoryItem>> Collections { get; } = new(StringComparer.Ordinal);
+
+        // Bare IMemoryProvider surface (unused by the collection-scoped tests).
+        public Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task<MemoryItem?> GetAsync(string key, CancellationToken cancellationToken = default)
+            => Task.FromResult<MemoryItem?>(null);
+
+        public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+            => Task.FromResult<IEnumerable<MemoryItem>>([]);
+
+        public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
+
+        public Task ClearAsync(CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public MemoryFilter? LastDeleteFilter { get; private set; }
+
+        public List<string> DroppedCollections { get; } = [];
+
+        public Task StoreWithEmbeddingAsync(
+            string collection, string key, MemoryItem item, ReadOnlyMemory<float> embedding,
+            CancellationToken cancellationToken = default)
+        {
+            Bucket(collection)[key] = Copy(item, embedding.ToArray());
+            return Task.CompletedTask;
+        }
+
+        public Task UpsertBatchAsync(
+            string collection, IReadOnlyList<MemoryUpsertEntry> entries,
+            CancellationToken cancellationToken = default)
+        {
+            foreach (var entry in entries)
+                Bucket(collection)[entry.Key] = Copy(entry.Item, entry.Embedding?.ToArray());
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarWithScoresAsync(
+            string collection, ReadOnlyMemory<float> embedding, int topK, float minScore,
+            MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<ScoredMemoryItem> results = Bucket(collection)
+                .Select(pair => new ScoredMemoryItem(pair.Value, 0.9f, pair.Key))
+                .Take(topK)
+                .ToList();
+            return Task.FromResult(results);
+        }
+
+        public Task DeleteByFilterAsync(
+            string collection, MemoryFilter filter, CancellationToken cancellationToken = default)
+        {
+            LastDeleteFilter = filter;
+            var bucket = Bucket(collection);
+            foreach (var key in bucket.Where(p => filter.Matches(p.Value)).Select(p => p.Key).ToList())
+                bucket.Remove(key);
+            return Task.CompletedTask;
+        }
+
+        public Task DropCollectionAsync(string collection, CancellationToken cancellationToken = default)
+        {
+            DroppedCollections.Add(collection);
+            Collections.Remove(collection);
+            return Task.CompletedTask;
+        }
+
+        private Dictionary<string, MemoryItem> Bucket(string collection)
+        {
+            if (!Collections.TryGetValue(collection, out var bucket))
+            {
+                bucket = new Dictionary<string, MemoryItem>(StringComparer.Ordinal);
+                Collections[collection] = bucket;
+            }
+
+            return bucket;
+        }
+
+        private static MemoryItem Copy(MemoryItem item, float[]? embedding) =>
+            MemoryItem.Create(
+                item.Content,
+                embedding ?? item.Embedding,
+                item.Importance,
+                item.Source,
+                item.Tags,
+                customProperties: item.Metadata.CustomProperties is { } custom ? new(custom) : null);
+    }
+
+    [Fact]
+    public void CollectionAwareMemory_InnerWithout_NotAdvertised_AndCallsThrow()
+    {
+        IMemoryProvider decorator = CreateDecorator(new FakeMemoryProvider());
+
+        Assert.True(decorator is ICollectionAwareMemory);
+        Assert.False(decorator.TryGetCapability<ICollectionAwareMemory>(out _));
+    }
+
+    [Fact]
+    public async Task CollectionAwareMemory_InnerWithout_CallsThrowNotSupported()
+    {
+        var decorator = CreateDecorator(new FakeMemoryProvider());
+
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            decorator.UpsertBatchAsync("docs", [new MemoryUpsertEntry("k", MemoryItem.Create("x"))], TestCt));
+
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            decorator.SearchSimilarWithScoresAsync("docs", UnitX, topK: 5, minScore: 0f, cancellationToken: TestCt));
+
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            decorator.DeleteByFilterAsync("docs", new MemoryFilter { Source = "s" }, TestCt));
+
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            decorator.DropCollectionAsync("docs", TestCt));
+    }
+
+    [Fact]
+    public void CollectionAwareMemory_InnerWith_IsAdvertised()
+    {
+        IMemoryProvider decorator = CreateDecorator(new FakeCollectionAwareProvider());
+
+        Assert.True(decorator.TryGetCapability<ICollectionAwareMemory>(out _));
+        // Absent capabilities of the inner are still not invented.
+        Assert.False(decorator.TryGetCapability<IHybridSearchCapable>(out _));
+    }
+
+    [Fact]
+    public async Task CollectionAwareMemory_UpsertBatch_EncryptsAtRest_AndSearchDecrypts()
+    {
+        var inner = new FakeCollectionAwareProvider();
+        var decorator = CreateDecorator(inner);
+
+        await decorator.UpsertBatchAsync("docs",
+        [
+            new MemoryUpsertEntry(
+                "chunk-1",
+                MemoryItem.Create("plain chunk", customProperties: new Dictionary<string, string> { ["rag.kind"] = "chunk" }),
+                UnitX),
+        ], TestCt);
+
+        // At rest: encrypted content, clear embedding, custom properties preserved.
+        var raw = inner.Collections["docs"]["chunk-1"];
+        Assert.NotEqual("plain chunk", raw.Content);
+        Assert.Equal(UnitX, raw.Embedding);
+        Assert.Equal("chunk", raw.Metadata.CustomProperties!["rag.kind"]);
+
+        // Round trip: decrypted content, score/key/custom properties preserved.
+        var results = await decorator.SearchSimilarWithScoresAsync("docs", UnitX, topK: 5, minScore: 0f, cancellationToken: TestCt);
+        var single = Assert.Single(results);
+        Assert.Equal("plain chunk", single.Item.Content);
+        Assert.Equal("chunk-1", single.Key);
+        Assert.Equal("chunk", single.Item.Metadata.CustomProperties!["rag.kind"]);
+    }
+
+    [Fact]
+    public async Task CollectionAwareMemory_DeleteByFilterAndDrop_ForwardUnchanged()
+    {
+        var inner = new FakeCollectionAwareProvider();
+        var decorator = CreateDecorator(inner);
+
+        await decorator.StoreWithEmbeddingAsync("docs", "k-1", MemoryItem.Create("x", source: "drop.md"), UnitX, TestCt);
+        await decorator.DeleteByFilterAsync("docs", new MemoryFilter { Source = "drop.md" }, TestCt);
+
+        Assert.Equal("drop.md", inner.LastDeleteFilter!.Source);
+        Assert.Empty(inner.Collections["docs"]);
+
+        await decorator.DropCollectionAsync("docs", TestCt);
+        Assert.Equal(["docs"], inner.DroppedCollections);
+    }
 }

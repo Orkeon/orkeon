@@ -14,6 +14,14 @@ namespace Orkeon.Rag.Stores;
 /// optional Domain vector capabilities when available (RAG-02/C4, plan §6.2).
 /// </summary>
 /// <remarks>
+/// <para><b>Native collections</b> (RAG-03/C2, plan §6.2): when the provider exposes the
+/// <see cref="ICollectionAwareMemory"/> capability (ChromaDB collections, Pinecone
+/// namespaces, LanceDB tables), the store passes the collection to the provider and uses
+/// short collection-scoped keys <c>{sourceHash}:{chunkIndex}</c> — no <c>rag:</c> prefix,
+/// no manifest, no registry: isolation and enumeration are the store container's job.
+/// Deletion by source compiles to a native <see cref="MemoryFilter.Source"/> filter.
+/// Everything below describes the prefixed-key path used for providers without the
+/// capability (InMemory, Redis, Sqlite), which is unchanged.</para>
 /// <para><b>Key schema</b> (plan §6.2, prefixed keys for key-value providers):</para>
 /// <list type="bullet">
 ///   <item><description>Chunk: <c>rag:{collection}:{sourceHash}:{chunkIndex}</c> where
@@ -108,6 +116,12 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore
         if (chunks.Count == 0)
             return;
 
+        if (_provider.TryGetCapability<ICollectionAwareMemory>(out var collectionAware))
+        {
+            await UpsertNativeAsync(collectionAware, collection, chunks, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         // Last write wins on key collisions within the batch — upsert semantics.
         var entries = new Dictionary<string, (MemoryItem Item, float[] Embedding)>(StringComparer.Ordinal);
         var keysBySource = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
@@ -181,6 +195,19 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore
                 $"RetrievalQuery.TopK must be positive (got {query.TopK}).", nameof(query));
         }
 
+        // 0. Native collections: the collection is passed to the provider (real container),
+        //    so the filter carries no collection property. Provider scores end to end.
+        if (_provider.TryGetCapability<ICollectionAwareMemory>(out var collectionAware))
+        {
+            var nativeHits = await collectionAware
+                .SearchSimilarWithScoresAsync(
+                    collection, embedding.AsMemory(), query.TopK, float.MinValue,
+                    BuildNativeChunkFilter(query.Filters), cancellationToken)
+                .ConfigureAwait(false);
+
+            return nativeHits.Select(hit => ToScoredChunk(hit.Item, hit.Score, VectorScoreOrigin)).ToList();
+        }
+
         var filter = BuildChunkFilter(collection, query.Filters);
 
         // 1. Native capability: provider scores preserved end to end.
@@ -218,6 +245,15 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore
         ValidateCollection(collection);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceId);
 
+        if (_provider.TryGetCapability<ICollectionAwareMemory>(out var collectionAware))
+        {
+            // Native path: no manifest/registry — the source filter selects the chunks.
+            await collectionAware
+                .DeleteByFilterAsync(collection, new MemoryFilter { Source = sourceId }, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
         var sourceHash = SourceHash(sourceId);
         var manifestKey = ManifestKey(collection, sourceHash);
         var manifest = await _provider.GetAsync(manifestKey, cancellationToken).ConfigureAwait(false);
@@ -250,6 +286,65 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore
                 .ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Native-collections upsert: one collection-scoped batch with short keys
+    /// <c>{sourceHash}:{chunkIndex}</c> — no manifest, no registry.
+    /// </summary>
+    private static async Task UpsertNativeAsync(
+        ICollectionAwareMemory collectionAware,
+        string collection,
+        IReadOnlyList<EmbeddedChunk> chunks,
+        CancellationToken cancellationToken)
+    {
+        // Last write wins on key collisions within the batch — upsert semantics.
+        var entries = new Dictionary<string, MemoryUpsertEntry>(StringComparer.Ordinal);
+
+        foreach (var embedded in chunks)
+        {
+            ArgumentNullException.ThrowIfNull(embedded);
+
+            if (embedded.Embedding.IsDefaultOrEmpty)
+            {
+                throw new ArgumentException(
+                    $"Chunk '{embedded.Chunk.Id}' has no embedding — embed chunks before upserting them.",
+                    nameof(chunks));
+            }
+
+            var chunk = embedded.Chunk;
+            var key = NativeChunkKey(chunk.SourceId, chunk.Index);
+            entries[key] = new MemoryUpsertEntry(
+                key,
+                ToMemoryItem(collection, embedded),
+                embedded.Embedding.AsMemory());
+        }
+
+        await collectionAware
+            .UpsertBatchAsync(collection, [.. entries.Values], cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Builds the chunk filter of the native-collections path: the collection itself is
+    /// passed to the provider, so the filter only narrows on the entry kind and the
+    /// caller's metadata criteria.
+    /// </summary>
+    private static MemoryFilter BuildNativeChunkFilter(ImmutableDictionary<string, string> queryFilters)
+    {
+        var properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [KindProperty] = ChunkKind,
+        };
+
+        foreach (var (key, value) in queryFilters)
+            properties[MetadataPrefix + key] = value;
+
+        return new MemoryFilter { CustomProperties = properties };
+    }
+
+    /// <summary>Collection-scoped chunk key of the native path (no <c>rag:</c> prefix).</summary>
+    private static string NativeChunkKey(string sourceId, int chunkIndex) =>
+        $"{SourceHash(sourceId)}:{chunkIndex.ToString(CultureInfo.InvariantCulture)}";
 
     private async Task<IReadOnlyList<ScoredChunk>> SearchByLocalCosineAsync(
         string collection,
