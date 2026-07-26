@@ -11,12 +11,14 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Chunking;
 using Orkeon.Rag.Configuration;
+using Orkeon.Rag.Corrective;
 using Orkeon.Rag.Factories;
 using Orkeon.Rag.Ingestion;
 using Orkeon.Rag.Loaders;
 using Orkeon.Rag.Pipeline;
 using Orkeon.Rag.Stores;
 using Orkeon.Rag.Validation;
+using Orkeon.Rag.WebFallback;
 
 namespace Orkeon.Rag.DependencyInjection;
 
@@ -85,6 +87,13 @@ public static class RagServiceCollectionExtensions
         services.AddOrkeonRagReranking();
         services.AddOrkeonQueryRouting(configuration);
 
+        // Corrective graph services (RAG-06/6D): evaluator, groundedness checker
+        // and the graph pipeline itself — plus the secure web fallback transport
+        // (strict opt-in: the IWebDocumentRetriever adapter only exists when
+        // Orkeon:Rag:WebFallback is enabled AND has an endpoint).
+        services.AddOrkeonCorrectiveRag(configuration);
+        services.AddOrkeonRagWebFallback(configuration);
+
         // Document loaders (VFS-backed) + selection factory.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDocumentLoader, TextFileLoader>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDocumentLoader, CsvDocumentLoader>());
@@ -145,7 +154,8 @@ public static class RagServiceCollectionExtensions
         // Default query pipeline: a StagedRagPipeline composed from the effective
         // RagOptions (profile preset + configuration overrides). Orkeon:Rag:Profile
         // = adaptive resolves the routing pipeline through the profile resolver
-        // (classifier + balanced/quality delegates) instead of a staged pipeline.
+        // (classifier + balanced/corrective delegates), and = corrective resolves
+        // the corrective graph pipeline (RAG-06), instead of a staged pipeline.
         // A host-registered IRagPipeline wins (TryAdd).
         services.TryAddSingleton<IRagPipeline>(sp =>
         {
@@ -153,10 +163,14 @@ public static class RagServiceCollectionExtensions
             if (string.Equals(
                     options.Profile,
                     Abstractions.Options.RagProfilePresets.AdaptiveName,
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    options.Profile,
+                    Abstractions.Options.RagProfilePresets.CorrectiveName,
                     StringComparison.OrdinalIgnoreCase))
             {
                 return sp.GetRequiredService<IRagProfileResolver>()
-                    .Resolve(Abstractions.Options.RagProfilePresets.AdaptiveName);
+                    .Resolve(options.Profile);
             }
 
             return CreateStagedPipeline(sp, options);
@@ -164,14 +178,16 @@ public static class RagServiceCollectionExtensions
 
         // Preset-aware profile resolution (fast/balanced/quality → one memoized
         // pipeline per profile; adaptive → classifier-routed AdaptiveRagPipeline
-        // over balanced/quality (RAG-05/C3); 'default' → the registered
-        // IRagPipeline above).
+        // over balanced/corrective (RAG-05/C3, corrective delegate since RAG-06);
+        // corrective → the memoized CorrectiveRagPipeline graph (RAG-06);
+        // 'default' → the registered IRagPipeline above).
         services.TryAddSingleton<IRagProfileResolver>(sp => new ProfileRagPipelineResolver(
             configuration,
             options => CreateStagedPipeline(sp, options),
             sp.GetRequiredService<IRagPipeline>,
             sp.GetRequiredService<IQueryComplexityClassifier>,
             sp.GetRequiredService<IChatClient>,
+            options => CreateCorrectivePipeline(sp, options),
             sp.GetService<ILoggerFactory>()));
 
         // Knowledge attachments → prompt injection with citations (RAG-03/C4):
@@ -207,6 +223,26 @@ public static class RagServiceCollectionExtensions
             sp.GetRequiredService<RerankerFactory>(),
             sp.GetService<IGroundednessChecker>(),
             sp.GetService<ILogger<StagedRagPipeline>>());
+
+    /// <summary>
+    /// Builds the <see cref="CorrectiveRagPipeline"/> graph (RAG-06) over the
+    /// shared collaborators for the <c>corrective</c> profile options — the
+    /// construction path handed to the profile resolver. The optional
+    /// <see cref="IWebDocumentRetriever"/> is only present when the web fallback
+    /// transport is enabled and configured (<c>AddOrkeonRagWebFallback</c>).
+    /// </summary>
+    private static CorrectiveRagPipeline CreateCorrectivePipeline(
+        IServiceProvider sp,
+        Abstractions.Options.RagOptions options)
+        => new(
+            sp.GetRequiredService<IDocumentStore>(),
+            sp.GetRequiredService<IEmbeddingProvider>(),
+            sp.GetRequiredService<IChatClient>(),
+            sp.GetRequiredService<IRetrievalEvaluator>(),
+            options,
+            sp.GetService<IGroundednessChecker>(),
+            sp.GetService<IWebDocumentRetriever>(),
+            sp.GetService<ILogger<CorrectiveRagPipeline>>());
 
     /// <summary>
     /// Resolves the memory provider backing the default document store: the ambient

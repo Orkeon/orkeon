@@ -21,9 +21,12 @@ public static class RagProfilePresets
     /// <summary>Canonical name of <see cref="RagProfile.Adaptive"/>.</summary>
     public const string AdaptiveName = "adaptive";
 
+    /// <summary>Canonical name of <see cref="RagProfile.Corrective"/>.</summary>
+    public const string CorrectiveName = "corrective";
+
     /// <summary>The known profile names, in preset order.</summary>
     public static IReadOnlyList<string> KnownProfileNames { get; } =
-        [FastName, BalancedName, QualityName, AdaptiveName];
+        [FastName, BalancedName, QualityName, AdaptiveName, CorrectiveName];
 
     /// <summary>
     /// Parses a profile name (trimmed, case-insensitive) into its
@@ -61,6 +64,9 @@ public static class RagProfilePresets
             case "ADAPTIVE":
                 profile = RagProfile.Adaptive;
                 return true;
+            case "CORRECTIVE":
+                profile = RagProfile.Corrective;
+                return true;
             default:
                 profile = default;
                 return false;
@@ -74,6 +80,7 @@ public static class RagProfilePresets
         RagProfile.Balanced => BalancedName,
         RagProfile.Quality => QualityName,
         RagProfile.Adaptive => AdaptiveName,
+        RagProfile.Corrective => CorrectiveName,
         _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown RAG profile."),
     };
 
@@ -144,6 +151,31 @@ public static class RagProfilePresets
         // configuration binding (Orkeon:Rag:Profile = adaptive) keeps working on
         // hosts resolving RagOptions directly.
         RagProfile.Adaptive => CreateAdaptiveDelegateOptions(),
+
+        // Corrective — CRAG graph profile (RAG-06): the pipeline is the corrective
+        // StateGraph composed by the profile resolver (CorrectiveRagPipeline), not
+        // a staged pipeline expanded from these options. The preset feeds the
+        // graph's nodes: hybrid BM25+RRF retrieval (rewritten probes need the
+        // lexical leg to bridge vocabulary gaps), NO linear rerank stage (the
+        // graph corrects through evaluate → rewrite loops instead of reranking —
+        // and therefore needs no opt-in ONNX package), and Groundedness.Enabled
+        // stays false ON PURPOSE: the graph runs its native check_groundedness
+        // node whenever an IGroundednessChecker is registered, so the staged
+        // pipeline's flag would be dead configuration here — and a double check
+        // if these options ever fed a linear pipeline.
+        RagProfile.Corrective => new RagOptions
+        {
+            Profile = CorrectiveName,
+            Retrieval = new RagRetrievalOptions
+            {
+                TopK = RagDefaults.TopK,
+                CandidateK = RagDefaults.CandidateK,
+                Hybrid = new RagHybridOptions { Enabled = true, RrfK = RagDefaults.RrfK },
+            },
+            Rerank = new RagRerankOptions { Enabled = false, Kind = RagDefaults.RerankNone },
+            Groundedness = new RagGroundednessOptions { Enabled = false },
+            Corrective = new RagCorrectiveOptions(),
+        },
 
         _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown RAG profile."),
     };

@@ -18,10 +18,9 @@ namespace Orkeon.Rag.Pipeline;
 /// no retrieval, empty citations (traced).</description></item>
 /// <item><description><see cref="QueryRoute.SingleShot"/> — delegates to the
 /// single-shot pipeline (<c>balanced</c>).</description></item>
-/// <item><description><see cref="QueryRoute.Iterative"/> — <b>documented
-/// fallback</b> to the iterative-fallback pipeline (<c>quality</c>): the real
-/// iterative/corrective engine ships with RAG-06; until then the widest linear
-/// preset is the honest stand-in, and the trace says so explicitly.</description></item>
+/// <item><description><see cref="QueryRoute.Iterative"/> — delegates to the
+/// iterative pipeline: the <c>corrective</c> graph engine since RAG-06 (the
+/// former documented fallback to <c>quality</c> is lifted).</description></item>
 /// </list>
 /// The routing decision is always traced: <see cref="RagTrace.Route"/> carries
 /// the <see cref="QueryRoute"/>, and a <c>route</c> step (first step of the
@@ -37,41 +36,41 @@ public sealed partial class AdaptiveRagPipeline : IRagPipeline
     private readonly IQueryComplexityClassifier _classifier;
     private readonly IChatClient _chatClient;
     private readonly Func<IRagPipeline> _singleShotPipeline;
-    private readonly Func<IRagPipeline> _iterativeFallbackPipeline;
+    private readonly Func<IRagPipeline> _iterativePipeline;
     private readonly string _singleShotProfileName;
-    private readonly string _iterativeFallbackProfileName;
+    private readonly string _iterativeProfileName;
     private readonly ILogger<AdaptiveRagPipeline> _logger;
 
     /// <summary>Initializes the routing pipeline.</summary>
     /// <param name="classifier">Query-complexity classifier deciding the route.</param>
     /// <param name="chatClient">Chat client used for <see cref="QueryRoute.NoRetrieval"/> direct answers.</param>
     /// <param name="singleShotPipeline">Lazily resolves the <see cref="QueryRoute.SingleShot"/> delegate pipeline.</param>
-    /// <param name="iterativeFallbackPipeline">Lazily resolves the <see cref="QueryRoute.Iterative"/> fallback pipeline (RAG-06 pending).</param>
+    /// <param name="iterativePipeline">Lazily resolves the <see cref="QueryRoute.Iterative"/> delegate pipeline (the corrective graph since RAG-06).</param>
     /// <param name="singleShotProfileName">Profile name of the single-shot delegate (tracing only).</param>
-    /// <param name="iterativeFallbackProfileName">Profile name of the iterative fallback (tracing only).</param>
+    /// <param name="iterativeProfileName">Profile name of the iterative delegate (tracing only).</param>
     /// <param name="logger">Optional logger; defaults to a no-op logger.</param>
     public AdaptiveRagPipeline(
         IQueryComplexityClassifier classifier,
         IChatClient chatClient,
         Func<IRagPipeline> singleShotPipeline,
-        Func<IRagPipeline> iterativeFallbackPipeline,
+        Func<IRagPipeline> iterativePipeline,
         string singleShotProfileName = Abstractions.Options.RagProfilePresets.BalancedName,
-        string iterativeFallbackProfileName = Abstractions.Options.RagProfilePresets.QualityName,
+        string iterativeProfileName = Abstractions.Options.RagProfilePresets.CorrectiveName,
         ILogger<AdaptiveRagPipeline>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(classifier);
         ArgumentNullException.ThrowIfNull(chatClient);
         ArgumentNullException.ThrowIfNull(singleShotPipeline);
-        ArgumentNullException.ThrowIfNull(iterativeFallbackPipeline);
+        ArgumentNullException.ThrowIfNull(iterativePipeline);
         ArgumentException.ThrowIfNullOrWhiteSpace(singleShotProfileName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(iterativeFallbackProfileName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(iterativeProfileName);
 
         _classifier = classifier;
         _chatClient = chatClient;
         _singleShotPipeline = singleShotPipeline;
-        _iterativeFallbackPipeline = iterativeFallbackPipeline;
+        _iterativePipeline = iterativePipeline;
         _singleShotProfileName = singleShotProfileName;
-        _iterativeFallbackProfileName = iterativeFallbackProfileName;
+        _iterativeProfileName = iterativeProfileName;
         _logger = logger ?? NullLogger<AdaptiveRagPipeline>.Instance;
     }
 
@@ -101,16 +100,13 @@ public sealed partial class AdaptiveRagPipeline : IRagPipeline
                 RouteStep(route, watch.Elapsed, _singleShotProfileName),
                 cancellationToken).ConfigureAwait(false),
 
-            // RAG-06 pending: the iterative/corrective graph engine is not built
-            // yet — Iterative routes fall back to the widest linear preset
-            // (quality), and the trace documents the fallback explicitly.
+            // Since RAG-06 the Iterative route delegates to the corrective graph
+            // engine — traced like any delegation (route step, delegate profile).
             QueryRoute.Iterative => await DelegateAsync(
-                _iterativeFallbackPipeline(),
+                _iterativePipeline(),
                 query,
                 route,
-                RouteStep(route, watch.Elapsed, _iterativeFallbackProfileName,
-                    detail: $"iterative routing falls back to the '{_iterativeFallbackProfileName}' " +
-                            "profile until the corrective engine ships (RAG-06)"),
+                RouteStep(route, watch.Elapsed, _iterativeProfileName),
                 cancellationToken).ConfigureAwait(false),
 
             _ => throw new InvalidOperationException($"Unknown query route '{route}'."),

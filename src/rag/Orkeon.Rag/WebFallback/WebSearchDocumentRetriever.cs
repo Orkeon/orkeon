@@ -16,7 +16,7 @@ namespace Orkeon.Rag.WebFallback;
 /// <see cref="PromptInjectionVerdict.Rejected"/> documents never leave this class
 /// (traced in logs with their reasons); <see cref="PromptInjectionVerdict.Suspicious"/>
 /// documents are flagged in metadata or discarded per
-/// <see cref="RagWebFallbackOptions.SuspiciousAction"/> — never silently cleaned.
+/// <see cref="WebSearchRetrieverOptions.SuspiciousAction"/> — never silently cleaned.
 /// Strict opt-in: disabled by default; enabled without an endpoint is loudly logged
 /// and returns nothing. Network/timeout failures degrade to an empty list (warning),
 /// caller cancellation always propagates.
@@ -42,14 +42,14 @@ public sealed partial class WebSearchDocumentRetriever
     public const string OriginMetadataKey = "web_fallback";
 
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly RagWebFallbackOptions _options;
+    private readonly WebSearchRetrieverOptions _options;
     private readonly PromptInjectionDocumentValidator _validator;
     private readonly ILogger<WebSearchDocumentRetriever> _logger;
 
     /// <summary>Initializes a new instance of <see cref="WebSearchDocumentRetriever"/>.</summary>
     public WebSearchDocumentRetriever(
         IHttpClientFactory httpClientFactory,
-        IOptions<RagWebFallbackOptions> options,
+        IOptions<WebSearchRetrieverOptions> options,
         PromptInjectionDocumentValidator validator,
         ILogger<WebSearchDocumentRetriever>? logger = null)
     {
@@ -65,7 +65,7 @@ public sealed partial class WebSearchDocumentRetriever
 
     /// <summary>
     /// Searches the web and returns the validated documents.
-    /// <paramref name="maxResults"/> is capped by <see cref="RagWebFallbackOptions.MaxResults"/>;
+    /// <paramref name="maxResults"/> is capped by <see cref="WebSearchRetrieverOptions.MaxResults"/>;
     /// a non-positive value falls back to the configured maximum. Fewer documents than
     /// requested may be returned when pages fail to download or are rejected/discarded
     /// by the injection validator.

@@ -91,6 +91,7 @@ public class ProfileRagPipelineResolverTests
         Assert.Contains("balanced", ex.Message, StringComparison.Ordinal);
         Assert.Contains("quality", ex.Message, StringComparison.Ordinal);
         Assert.Contains("adaptive", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("corrective", ex.Message, StringComparison.Ordinal);
         Assert.Contains("default", ex.Message, StringComparison.Ordinal);
     }
 
@@ -154,6 +155,128 @@ public class ProfileRagPipelineResolverTests
         Assert.Contains("adaptive", ex.Message, StringComparison.Ordinal);
         Assert.Contains("IQueryComplexityClassifier", ex.Message, StringComparison.Ordinal);
         Assert.Contains("AddOrkeonRag", ex.Message, StringComparison.Ordinal);
+    }
+
+    // ── corrective profile (RAG-06) ────────────────────────────────────────
+
+    private static ProfileRagPipelineResolver CreateCorrectiveCapableResolver(
+        List<RagOptions> stagedBuilt,
+        List<RagOptions> correctiveBuilt,
+        FakeRagPipeline? correctivePipeline = null,
+        IConfiguration? configuration = null)
+        => new(
+            configuration ?? EmptyConfig(),
+            options =>
+            {
+                stagedBuilt.Add(options);
+                return new FakeRagPipeline();
+            },
+            () => new FakeRagPipeline(),
+            () => new StubQueryComplexityClassifier(),
+            () => new FakeChatClient(),
+            options =>
+            {
+                correctiveBuilt.Add(options);
+                return correctivePipeline ?? new FakeRagPipeline();
+            });
+
+    [Fact]
+    public void Resolve_Corrective_BuildsThroughTheCorrectiveFactory_FromItsPreset()
+    {
+        var stagedBuilt = new List<RagOptions>();
+        var correctiveBuilt = new List<RagOptions>();
+        var pipeline = new FakeRagPipeline();
+        var resolver = CreateCorrectiveCapableResolver(stagedBuilt, correctiveBuilt, pipeline);
+
+        var resolved = resolver.Resolve("corrective");
+
+        Assert.Same(pipeline, resolved);
+        Assert.Empty(stagedBuilt); // never expanded as a staged pipeline
+        var options = Assert.Single(correctiveBuilt);
+        Assert.Equal("corrective", options.Profile);
+        Assert.True(options.Retrieval.Hybrid.Enabled);
+        Assert.False(options.Rerank.Enabled);
+    }
+
+    [Fact]
+    public void Resolve_Corrective_IsMemoized_CaseInsensitively()
+    {
+        var correctiveBuilt = new List<RagOptions>();
+        var resolver = CreateCorrectiveCapableResolver([], correctiveBuilt);
+
+        var first = resolver.Resolve("corrective");
+        var second = resolver.Resolve("  CORRECTIVE ");
+
+        Assert.Same(first, second);
+        Assert.Single(correctiveBuilt); // the factory ran once
+    }
+
+    [Fact]
+    public void Resolve_Corrective_AppliesConfigurationOverrides_OnTopOfThePreset()
+    {
+        var correctiveBuilt = new List<RagOptions>();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Orkeon:Rag:Corrective:MaxIterations"] = "1",
+            })
+            .Build();
+        var resolver = CreateCorrectiveCapableResolver([], correctiveBuilt, configuration: configuration);
+
+        resolver.Resolve("corrective");
+
+        var options = Assert.Single(correctiveBuilt);
+        Assert.Equal(1, options.Corrective.MaxIterations); // override
+        Assert.True(options.Retrieval.Hybrid.Enabled); // preset
+    }
+
+    [Fact]
+    public void Resolve_Corrective_WithoutTheOptIn_FailsLoudly_NamingAddOrkeonCorrectiveRag()
+    {
+        var resolver = CreateResolver([]); // no corrective factory accessor
+
+        var ex = Assert.Throws<InvalidOperationException>(() => resolver.Resolve("corrective"));
+
+        Assert.Contains("corrective", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("AddOrkeonCorrectiveRag", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("correctivePipelineFactory", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Resolve_Adaptive_DelegatesIterativeToTheMemoizedCorrectivePipeline()
+    {
+        var stagedBuilt = new List<RagOptions>();
+        var correctiveBuilt = new List<RagOptions>();
+        var resolver = new ProfileRagPipelineResolver(
+            EmptyConfig(),
+            options =>
+            {
+                stagedBuilt.Add(options);
+                return new FakeRagPipeline();
+            },
+            () => new FakeRagPipeline(),
+            () => new StubQueryComplexityClassifier
+            {
+                Route = Orkeon.Rag.Abstractions.QueryRoute.Iterative,
+            },
+            () => new FakeChatClient(),
+            options =>
+            {
+                correctiveBuilt.Add(options);
+                return new FakeRagPipeline();
+            });
+
+        var adaptive = resolver.Resolve("adaptive");
+        var answer = await adaptive.QueryAsync(
+            new Orkeon.Rag.Abstractions.Models.RagQuery { Text = "q?", Collection = "kb" },
+            TestContext.Current.CancellationToken);
+
+        // The Iterative route lazily expanded exactly the corrective pipeline —
+        // no staged (quality) fallback anymore (RAG-06 lever lifted).
+        Assert.Empty(stagedBuilt);
+        var options = Assert.Single(correctiveBuilt);
+        Assert.Equal("corrective", options.Profile);
+        Assert.Equal("corrective", answer.Trace.Steps[0].Data["delegate"]);
     }
 
     [Fact]

@@ -34,6 +34,16 @@ public sealed class RagCorrectiveOptions
 /// resort fired only after query rewriting is exhausted, and only when a web
 /// document retriever is registered — otherwise the edge is skipped and traced.
 /// </summary>
+/// <remarks>
+/// Reconciliation (RAG-06/6D): this type is the PIPELINE-side policy — may the
+/// corrective graph route to its <c>web_fallback</c> node, and how many
+/// documents may it ask for. It deliberately carries no transport concern: the
+/// HTTP transport (endpoint, auth, timeout, suspicious-content policy) lives in
+/// <c>Orkeon.Rag.WebFallback.WebSearchRetrieverOptions</c>, bound on the
+/// separate <c>Orkeon:Rag:WebFallback</c> section, because the Abstractions
+/// shared kernel stays Domain+BCL-only (ADR-006) and web egress is its own
+/// explicit opt-in. Both switches must be on for the fallback to fire.
+/// </remarks>
 public sealed class RagWebFallbackOptions
 {
     /// <summary>Default number of web documents requested by the fallback.</summary>

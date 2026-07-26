@@ -9,8 +9,8 @@ namespace Orkeon.Rag.Tests.Pipeline;
 /// Tests for <see cref="AdaptiveRagPipeline"/> (RAG-05/C3): the classifier
 /// routes each query — <c>NoRetrieval</c> answers directly (no retrieval, empty
 /// citations), <c>SingleShot</c> delegates to the balanced pipeline,
-/// <c>Iterative</c> falls back to quality (documented, RAG-06 pending) — and
-/// the decision is always traced (<c>RagTrace.Route</c> + <c>route</c> step).
+/// <c>Iterative</c> delegates to the corrective graph pipeline (since RAG-06) —
+/// and the decision is always traced (<c>RagTrace.Route</c> + <c>route</c> step).
 /// </summary>
 public class AdaptiveRagPipelineTests
 {
@@ -40,7 +40,7 @@ public class AdaptiveRagPipelineTests
                     },
                 },
             };
-            Iterative = new FakeRagPipeline { DefaultAnswer = new RagAnswer { Text = "quality answer [1]" } };
+            Iterative = new FakeRagPipeline { DefaultAnswer = new RagAnswer { Text = "corrective answer [1]" } };
             Pipeline = new AdaptiveRagPipeline(Classifier, Chat, () => SingleShot, () => Iterative);
         }
 
@@ -112,14 +112,14 @@ public class AdaptiveRagPipelineTests
     }
 
     [Fact]
-    public async Task Iterative_FallsBackToTheQualityPipeline_AndDocumentsTheFallbackInTheTrace()
+    public async Task Iterative_DelegatesToTheCorrectivePipeline_AndTracesTheDelegate()
     {
         using var harness = CreateHarness(QueryRoute.Iterative);
 
         var answer = await harness.Pipeline.QueryAsync(
             Query("compare A versus B?"), TestContext.Current.CancellationToken);
 
-        Assert.Equal("quality answer [1]", answer.Text);
+        Assert.Equal("corrective answer [1]", answer.Text);
         Assert.Equal(QueryRoute.Iterative, answer.Trace.Route);
         Assert.Single(harness.Iterative.Queries);
         Assert.Empty(harness.SingleShot.Queries);
@@ -127,9 +127,10 @@ public class AdaptiveRagPipelineTests
         var routeStep = answer.Trace.Steps[0];
         Assert.Equal("route", routeStep.Name);
         Assert.Equal("Iterative", routeStep.Data["route"]);
-        Assert.Equal("quality", routeStep.Data["delegate"]);
-        Assert.Contains("RAG-06", routeStep.Detail, StringComparison.Ordinal);
-        Assert.Contains("quality", routeStep.Detail, StringComparison.Ordinal);
+        // The RAG-06 lever: the iterative delegate IS the corrective graph now —
+        // no more "falls back to quality (RAG-06 pending)" detail in the trace.
+        Assert.Equal("corrective", routeStep.Data["delegate"]);
+        Assert.Null(routeStep.Detail);
     }
 
     [Fact]

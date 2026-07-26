@@ -31,6 +31,8 @@
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
     <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
+    <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag.Onnx\Orkeon.Rag.Onnx.csproj" />
+    <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag.Onnx.Model\Orkeon.Rag.Onnx.Model.csproj" />
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Rag\Orkeon.Tools.Rag.csproj" />
   </ItemGroup>
   <ItemGroup>

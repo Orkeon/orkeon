@@ -80,12 +80,37 @@ public class RagProfilePresetsTests
         Assert.Equal("onnx", options.Rerank.Kind);
     }
 
+    [Fact]
+    public void Corrective_IsHybridNoRerank_GroundednessOffByDesign()
+    {
+        var options = RagProfilePresets.Create(RagProfile.Corrective);
+
+        Assert.Equal("corrective", options.Profile);
+        // Hybrid retrieval: rewritten probes need the lexical leg.
+        Assert.True(options.Retrieval.Hybrid.Enabled);
+        Assert.Equal(RagDefaults.RrfK, options.Retrieval.Hybrid.RrfK);
+        Assert.Equal(RagDefaults.CandidateK, options.Retrieval.CandidateK);
+        // No linear rerank stage: the graph corrects by evaluate → rewrite loops
+        // (and thus needs no opt-in ONNX package).
+        Assert.False(options.Rerank.Enabled);
+        Assert.Equal("none", options.Rerank.Kind);
+        // Groundedness.Enabled stays false ON PURPOSE: the graph runs its native
+        // check_groundedness node whenever a checker is registered — enabling
+        // the staged-pipeline flag here would be dead config / a double check.
+        Assert.False(options.Groundedness.Enabled);
+        // Graph guard rails at their safe defaults.
+        Assert.Equal(3, options.Corrective.MaxIterations);
+        Assert.False(options.Corrective.WebFallback.Enabled);
+    }
+
     [Theory]
     [InlineData("fast", RagProfile.Fast)]
     [InlineData("  Balanced ", RagProfile.Balanced)]
     [InlineData("QUALITY", RagProfile.Quality)]
     [InlineData("adaptive", RagProfile.Adaptive)]
     [InlineData(" Adaptive ", RagProfile.Adaptive)]
+    [InlineData("corrective", RagProfile.Corrective)]
+    [InlineData(" CORRECTIVE ", RagProfile.Corrective)]
     public void Parse_IsTrimmedAndCaseInsensitive(string name, RagProfile expected)
     {
         Assert.Equal(expected, RagProfilePresets.Parse(name));
@@ -96,6 +121,13 @@ public class RagProfilePresetsTests
     {
         Assert.Contains("adaptive", RagProfilePresets.KnownProfileNames);
         Assert.Equal("adaptive", RagProfilePresets.NameOf(RagProfile.Adaptive));
+    }
+
+    [Fact]
+    public void KnownProfileNames_IncludeCorrective_AndNameOfRoundTrips()
+    {
+        Assert.Contains("corrective", RagProfilePresets.KnownProfileNames);
+        Assert.Equal("corrective", RagProfilePresets.NameOf(RagProfile.Corrective));
     }
 
     [Fact]

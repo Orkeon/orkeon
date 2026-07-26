@@ -16,8 +16,9 @@ namespace Orkeon.Rag.Corrective;
 /// (first real implementation of the staged-pipeline hook), and the
 /// <see cref="CorrectiveRagPipeline"/> itself. Safe to call alongside
 /// <c>AddOrkeonRag</c> and idempotent (<c>TryAdd</c> — a host registration wins).
-/// The <c>corrective</c> profile wiring into the profile resolver ships with
-/// RAG-06/C2 (lot 6D); until then the pipeline is resolved by its concrete type.
+/// Since RAG-06/C2 <c>AddOrkeonRag</c> calls this method itself and the
+/// <c>corrective</c> profile resolves through the profile resolver; the
+/// concrete-type registration below remains for hosts wiring the graph alone.
 /// </summary>
 public static partial class CorrectiveRagExtensions
 {
@@ -32,8 +33,9 @@ public static partial class CorrectiveRagExtensions
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
     /// The optional <see cref="IWebDocumentRetriever"/> is NOT registered here:
-    /// the <c>web_fallback</c> node stays skipped (and traced) until the host —
-    /// or the RAG-06/C3 batch — registers one AND enables
+    /// the <c>web_fallback</c> node stays skipped (and traced) until the host
+    /// registers one — <c>AddOrkeonRagWebFallback</c> does when the transport is
+    /// enabled and configured — AND enables
     /// <c>Orkeon:Rag:Corrective:WebFallback:Enabled</c>.
     /// </remarks>
     public static IServiceCollection AddOrkeonCorrectiveRag(

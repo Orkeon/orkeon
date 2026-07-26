@@ -64,12 +64,12 @@ jobs:
           restore-keys: nuget-rag-eval-${{ runner.os }}-
       - name: Build the orkeon CLI
         run: dotnet build src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj -c Release
-      - name: Compare the fast/balanced/quality profiles (offline)
+      - name: Compare the fast/balanced/quality/corrective/adaptive profiles (offline)
         run: >
           dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release --no-build --
           rag eval
           --dataset examples/rag/eval/golden.yaml
-          --compare fast,balanced,quality
+          --compare fast,balanced,quality,corrective,adaptive
           --offline
       - name: Publish the comparison table to the step summary
         if: always()

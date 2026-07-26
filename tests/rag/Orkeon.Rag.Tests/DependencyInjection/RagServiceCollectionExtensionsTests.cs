@@ -156,6 +156,71 @@ public class RagServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddOrkeonRag_ProfileResolver_ResolvesCorrective_ToTheGraphPipeline_Memoized()
+    {
+        using var chat = new FakeChatClient();
+        using var provider = BuildProvider(chat);
+
+        var resolver = provider.GetRequiredService<IRagProfileResolver>();
+
+        var corrective = Assert.IsType<Orkeon.Rag.Corrective.CorrectiveRagPipeline>(
+            resolver.Resolve("corrective"));
+        Assert.Equal("corrective", corrective.Options.Profile);
+        Assert.True(corrective.Options.Retrieval.Hybrid.Enabled);
+        Assert.Same(corrective, resolver.Resolve("CORRECTIVE"));
+    }
+
+    [Fact]
+    public void AddOrkeonRag_ProfileCorrective_MakesTheDefaultPipelineTheGraph()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Orkeon:Rag:Profile"] = "corrective",
+            })
+            .Build();
+
+        using var chat = new FakeChatClient();
+        using var provider = BuildProvider(chat, configuration: configuration);
+
+        Assert.IsType<Orkeon.Rag.Corrective.CorrectiveRagPipeline>(
+            provider.GetRequiredService<IRagPipeline>());
+    }
+
+    [Fact]
+    public void AddOrkeonRag_WiresTheCorrectiveServices_AndKeepsTheWebFallbackOptIn()
+    {
+        using var chat = new FakeChatClient();
+        using var provider = BuildProvider(chat);
+
+        // Corrective graph services registered by the single AddOrkeonCorrectiveRag line.
+        Assert.NotNull(provider.GetService<Orkeon.Rag.Abstractions.Interfaces.IRetrievalEvaluator>());
+        Assert.NotNull(provider.GetService<Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker>());
+        Assert.NotNull(provider.GetService<Orkeon.Rag.WebFallback.WebSearchDocumentRetriever>());
+
+        // Strict opt-in preserved: no transport enabled → no IWebDocumentRetriever.
+        Assert.Null(provider.GetService<Orkeon.Rag.Corrective.IWebDocumentRetriever>());
+    }
+
+    [Fact]
+    public void AddOrkeonRag_EnabledConfiguredWebFallback_RegistersTheAdapter()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Orkeon:Rag:WebFallback:Enabled"] = "true",
+                ["Orkeon:Rag:WebFallback:Endpoint"] = "https://searx.local/search",
+            })
+            .Build();
+
+        using var chat = new FakeChatClient();
+        using var provider = BuildProvider(chat, configuration: configuration);
+
+        Assert.IsType<Orkeon.Rag.WebFallback.WebSearchDocumentRetrieverAdapter>(
+            provider.GetRequiredService<Orkeon.Rag.Corrective.IWebDocumentRetriever>());
+    }
+
+    [Fact]
     public void AddOrkeonRag_IsIdempotent()
     {
         using var chat = new FakeChatClient();

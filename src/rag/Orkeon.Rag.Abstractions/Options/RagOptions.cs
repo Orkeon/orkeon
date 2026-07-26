@@ -17,7 +17,8 @@ namespace Orkeon.Rag.Abstractions.Options;
 public sealed class RagOptions
 {
     /// <summary>
-    /// Profile name (<c>fast</c>, <c>balanced</c>, <c>quality</c>). Defaults to
+    /// Profile name (<c>fast</c>, <c>balanced</c>, <c>quality</c>,
+    /// <c>adaptive</c>, <c>corrective</c>). Defaults to
     /// <see cref="RagDefaults.DefaultProfile"/> (<c>fast</c> — <c>balanced</c>
     /// needs the opt-in ONNX reranker package). Unknown names fail loudly.
     /// </summary>

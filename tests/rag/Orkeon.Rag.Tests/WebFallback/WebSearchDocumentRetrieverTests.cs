@@ -24,14 +24,14 @@ public sealed class WebSearchDocumentRetrieverTests : IDisposable
 
     public void Dispose() => _handler.Dispose();
 
-    private WebSearchDocumentRetriever CreateRetriever(RagWebFallbackOptions options) =>
+    private WebSearchDocumentRetriever CreateRetriever(WebSearchRetrieverOptions options) =>
         new(
             new FakeHttpClientFactory(_handler),
             Microsoft.Extensions.Options.Options.Create(options),
             new PromptInjectionDocumentValidator(),
             _logger);
 
-    private static RagWebFallbackOptions EnabledOptions() => new()
+    private static WebSearchRetrieverOptions EnabledOptions() => new()
     {
         Enabled = true,
         Endpoint = Endpoint,
@@ -52,7 +52,7 @@ public sealed class WebSearchDocumentRetrieverTests : IDisposable
     [Fact]
     public async Task SearchAsync_Disabled_ReturnsEmpty_WithoutAnyHttpCall()
     {
-        var retriever = CreateRetriever(new RagWebFallbackOptions()); // Enabled=false by default
+        var retriever = CreateRetriever(new WebSearchRetrieverOptions()); // Enabled=false by default
 
         var documents = await retriever.SearchAsync("query", 3, TestContext.Current.CancellationToken);
 
@@ -63,7 +63,7 @@ public sealed class WebSearchDocumentRetrieverTests : IDisposable
     [Fact]
     public async Task SearchAsync_EnabledWithoutEndpoint_ReturnsEmpty_AndLogsLoudly()
     {
-        var retriever = CreateRetriever(new RagWebFallbackOptions { Enabled = true, Endpoint = "" });
+        var retriever = CreateRetriever(new WebSearchRetrieverOptions { Enabled = true, Endpoint = "" });
 
         var documents = await retriever.SearchAsync("query", 3, TestContext.Current.CancellationToken);
 
