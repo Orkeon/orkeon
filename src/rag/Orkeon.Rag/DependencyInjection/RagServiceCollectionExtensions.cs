@@ -81,6 +81,7 @@ public static class RagServiceCollectionExtensions
         services.TryAddSingleton(_ => ChunkingStrategyFactoryDefaults.CreateDefault());
         services.TryAddSingleton<QueryTransformerFactory>();
         services.AddOrkeonRagReranking();
+        services.AddOrkeonQueryRouting(configuration);
 
         // Document loaders (VFS-backed) + selection factory.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDocumentLoader, TextFileLoader>());
