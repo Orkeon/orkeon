@@ -42,6 +42,32 @@ public class RagServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddOrkeonRag_ChunkingFactory_ShipsTheFourCanonicalStrategies()
+    {
+        // Regression (RAG-03): a bare factory made every first ingestion fail with
+        // "Unknown chunking strategy 'recursive'".
+        using var chat = new FakeChatClient();
+        using var provider = BuildProvider(chat);
+
+        var factory = provider.GetRequiredService<ChunkingStrategyFactory>();
+
+        Assert.True(factory.IsKnown("recursive"));
+        Assert.True(factory.IsKnown("sentence"));
+        Assert.True(factory.IsKnown("structural"));
+        Assert.True(factory.IsKnown("semantic"));
+        Assert.NotNull(factory.Create("recursive"));
+    }
+
+    [Fact]
+    public void AddOrkeonRag_RegistersTheKnowledgeContextAugmenter()
+    {
+        using var chat = new FakeChatClient();
+        using var provider = BuildProvider(chat);
+
+        Assert.NotNull(provider.GetService<IKnowledgeContextAugmenter>());
+    }
+
+    [Fact]
     public void AddOrkeonRag_RegistersTheFiveLoaders()
     {
         using var chat = new FakeChatClient();

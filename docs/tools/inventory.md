@@ -17,6 +17,7 @@
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `ToolBase<SearchRequest, SearchResponse>` | Embedding-based semantic search across memories | `{ "query": "customer churn patterns", "limit": 5 }` |
 | `rag_search` | `RagSearchTool` | `IBaseTool` (direct) | RAG search in the agent's knowledge bases over `IRagPipeline` (opt-in: `AddOrkeonRag(config)` + `AddOrkeonRagTools()`, project `Orkeon.Tools.Rag`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_ingest` | `RagIngestTool` | `IBaseTool` (direct) | Incremental ingestion into a RAG collection (manifest-driven — unchanged sources cost 0 embeddings; same opt-in as `rag_search`) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
 
 ## Code execution tools (`Orkeon.Infrastructure.Sandbox` / `Orkeon.Tools.Code`)
 
@@ -180,6 +181,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `semantic_search` | `SearchTool` | `Orkeon.Infrastructure` |
 | `code_interpreter` | `SecureCodeInterpreterTool` | `Orkeon.Infrastructure` |
 | `rag_search` | `RagSearchTool` | `Orkeon.Tools.Rag` (opt-in) |
+| `rag_ingest` | `RagIngestTool` | `Orkeon.Tools.Rag` (opt-in) |
 
 ### Registering a custom tool in the registry
 

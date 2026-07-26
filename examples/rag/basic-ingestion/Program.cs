@@ -10,7 +10,6 @@ using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
-using Orkeon.Rag.Chunking;
 using Orkeon.Rag.DependencyInjection;
 using Orkeon.Tools.Embeddings.Local.DependencyInjection;
 using Orkeon.Tools.Rag.DependencyInjection;
@@ -133,14 +132,6 @@ internal static class Program
         // Offline stub first — the TryAdd IChatClient default of
         // AddOrkeonInfrastructure() must not wire a real LLM (see Main).
         services.AddSingleton(offlineChatClient);
-
-        // WORKAROUND (RAG-03): AddOrkeonRag registers a BARE ChunkingStrategyFactory
-        // (TryAddSingleton<ChunkingStrategyFactory>()) without calling
-        // RegisterDefaultStrategies(), so resolving the default 'recursive' strategy
-        // fails with "Unknown chunking strategy 'recursive' ... (none registered)".
-        // Pre-registering a populated factory here (TryAdd semantics: the host wins)
-        // restores the four built-in strategies until the subsystem wires them itself.
-        services.AddSingleton(ChunkingStrategyFactoryDefaults.CreateDefault());
 
         services.AddOrkeonInfrastructure();
         services.AddOrkeonRag(configuration);

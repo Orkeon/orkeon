@@ -28,6 +28,8 @@ public partial class CrewFactory : ICrewFactory
     private readonly IAgentRepository _agentRepository;
     private readonly ITaskRepository _taskRepository;
     private readonly bool _strictTools;
+    private readonly bool _prepareRagCollections;
+    private readonly Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? _ragBootstrapper;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -40,6 +42,12 @@ public partial class CrewFactory : ICrewFactory
     /// Factory options; when omitted, tool resolution is lenient (missing tools are logged and skipped).
     /// See <see cref="CrewFactoryOptions.StrictTools"/>.
     /// </param>
+    /// <param name="ragBootstrapper">
+    /// Optional RAG collections bootstrapper (registered by <c>AddOrkeonRag</c>): when present
+    /// and <see cref="CrewFactoryOptions.PrepareRagCollections"/> is enabled, the collections
+    /// declared by the configuration's <c>rag:</c> block are ingested at crew creation.
+    /// </param>
+#pragma warning disable S107 // DI-composed factory: one optional collaborator per opt-in subsystem
     public CrewFactory(
         ICrewDefinitionLoader loader,
         IToolRegistry toolRegistry,
@@ -47,7 +55,9 @@ public partial class CrewFactory : ICrewFactory
         ICrewRepository crewRepository,
         IAgentRepository agentRepository,
         ITaskRepository taskRepository,
-        IOptions<CrewFactoryOptions>? options = null)
+        IOptions<CrewFactoryOptions>? options = null,
+        Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null)
+#pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(loader);
         _loader = loader;
@@ -62,6 +72,8 @@ public partial class CrewFactory : ICrewFactory
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
         _strictTools = options?.Value.StrictTools ?? false;
+        _prepareRagCollections = options?.Value.PrepareRagCollections ?? true;
+        _ragBootstrapper = ragBootstrapper;
     }
 
     /// <inheritdoc />
@@ -78,6 +90,8 @@ public partial class CrewFactory : ICrewFactory
         CancellationToken ct)
     {
         ValidateConfiguration(config);
+
+        await PrepareRagCollectionsAsync(config, ct).ConfigureAwait(false);
 
         LogCreatingCrewWithAgentsAnd(config.Name, config.Agents.Count, config.Tasks.Count);
 
@@ -100,6 +114,29 @@ public partial class CrewFactory : ICrewFactory
 
         return crew;
     }
+
+    /// <summary>
+    /// Ingests the collections declared by the configuration's <c>rag:</c> block (RAG-03/C3).
+    /// No-op when the block is absent/empty or <see cref="CrewFactoryOptions.PrepareRagCollections"/>
+    /// is disabled; a declared block without the RAG subsystem registered logs a warning
+    /// instead of failing (the agents' attachments will then search an empty index).
+    /// </summary>
+    private async System.Threading.Tasks.Task PrepareRagCollectionsAsync(CrewConfiguration config, CancellationToken ct)
+    {
+        if (!_prepareRagCollections || config.Rag is not { Collections.Count: > 0 } ragConfig)
+            return;
+
+        if (_ragBootstrapper is null)
+        {
+            LogRagDeclaredButSubsystemMissing(config.Name);
+            return;
+        }
+
+        await _ragBootstrapper.PrepareAsync(ragConfig, ct).ConfigureAwait(false);
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}' declares a rag: block but the RAG subsystem is not registered — call AddOrkeonRag(configuration); declared collections were not ingested.")]
+    private partial void LogRagDeclaredButSubsystemMissing(string crewName);
 
     private void ValidateConfiguration(CrewConfiguration config)
     {

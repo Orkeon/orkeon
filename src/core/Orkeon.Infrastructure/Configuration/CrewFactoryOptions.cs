@@ -17,4 +17,13 @@ public sealed class CrewFactoryOptions
     /// instead of degrading the agent silently.
     /// </summary>
     public bool StrictTools { get; set; }
+
+    /// <summary>
+    /// When <c>true</c> (the default), a crew configuration carrying a <c>rag:</c> block
+    /// with declared collections has them ingested at crew creation through the optional
+    /// <see cref="Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper"/>
+    /// (incremental — a fresh manifest is a no-op). Validation-only hosts
+    /// (e.g. <c>--validate</c>) disable it so loading a crew never touches the index.
+    /// </summary>
+    public bool PrepareRagCollections { get; set; } = true;
 }

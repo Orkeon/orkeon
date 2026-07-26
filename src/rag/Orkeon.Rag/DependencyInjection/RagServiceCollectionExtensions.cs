@@ -9,6 +9,7 @@ using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Rag.Abstractions.Interfaces;
+using Orkeon.Rag.Chunking;
 using Orkeon.Rag.Factories;
 using Orkeon.Rag.Ingestion;
 using Orkeon.Rag.Loaders;
@@ -73,7 +74,10 @@ public static class RagServiceCollectionExtensions
         services.Configure<LinearRagPipelineOptions>(configuration.GetSection(PipelineSectionKey));
 
         // Named-component factories (chunkers/transformers/rerankers register by name).
-        services.TryAddSingleton<ChunkingStrategyFactory>();
+        // The chunking factory ships pre-populated with the four canonical strategies
+        // (recursive/sentence/structural/semantic) — an empty factory made every first
+        // ingestion fail with "Unknown chunking strategy 'recursive'" (RAG-03 bug).
+        services.TryAddSingleton(_ => ChunkingStrategyFactoryDefaults.CreateDefault());
         services.TryAddSingleton<QueryTransformerFactory>();
         services.TryAddSingleton<RerankerFactory>();
 
@@ -134,6 +138,16 @@ public static class RagServiceCollectionExtensions
             sp.GetRequiredService<IChatClient>(),
             sp.GetRequiredService<IOptions<LinearRagPipelineOptions>>().Value,
             sp.GetService<ILogger<LinearRagPipeline>>()));
+
+        // Knowledge attachments → prompt injection with citations (RAG-03/C4):
+        // the execution orchestrator picks the augmenter up when present.
+        services.AddOrkeonKnowledgeAugmentation();
+
+        // YAML `rag:` crew block → collections ingested at crew load (RAG-03/C3);
+        // the incremental manifest makes a fresh collection a no-op.
+        services.TryAddSingleton<IRagCollectionsBootstrapper>(sp => new RagCollectionsBootstrapper(
+            sp.GetRequiredService<IIngestionPipeline>(),
+            sp.GetService<ILogger<RagCollectionsBootstrapper>>()));
 
         return services;
     }

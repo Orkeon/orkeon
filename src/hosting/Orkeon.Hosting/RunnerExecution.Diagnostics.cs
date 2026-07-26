@@ -38,7 +38,16 @@ public static partial class RunnerExecution
 
         async Task<int> RunValidateCoreAsync()
         {
-            if (!TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out var errorCode))
+            // Validation must never touch the RAG index: loading the crew skips the
+            // ingestion of rag:-declared collections (CrewFactoryOptions).
+            void ConfigureValidationServices(HostBuilderContext context, IServiceCollection services)
+            {
+                configureServices?.Invoke(context, services);
+                services.Configure<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>(
+                    o => o.PrepareRagCollections = false);
+            }
+
+            if (!TryBuildHost(opts, loggerCategory, ConfigureValidationServices, out var bootstrap, out var errorCode))
                 return errorCode;
 
             using var host = bootstrap!.Host;
