@@ -63,3 +63,22 @@ cases:
     expected_substrings: ["eco mode"]
     reference_answer: "Switch the node to eco mode (30-second polling), dim the status LED, and disable hourly telemetry uploads — runtime stretches from six to about eighteen months."
     tags: [correctif, difficile]
+
+  # q-008 / q-009: exact-identifier lookups (RAG-04/C4). The relevant documents are
+  # terse reference tables with almost no semantic prose — plain vector retrieval
+  # tends to prefer the semantically rich decoys (battery/charging FAQs, shipping),
+  # while the exact token (E-7734, BRK-115) is a guaranteed lexical hit: this is the
+  # structural headroom hybrid BM25+RRF (balanced) has over vector-only (fast).
+  - id: q-008
+    question: "My dock stopped charging and the battery icon is stuck; the display shows code E-7734 — what does it mean?"
+    relevant: ["corpus/notes-error-codes.md"]
+    expected_substrings: ["Thermal cutoff"]
+    reference_answer: "E-7734 is the thermal cutoff: the dock suspended its output; let it cool for 20 minutes and reseat the device."
+    tags: [moyen, technique, lexical]
+
+  - id: q-009
+    question: "I want to order a replacement wall bracket for my Sense — which part number is it, BRK-115 or ADP-220?"
+    relevant: ["corpus/notes-spare-parts.md"]
+    expected_substrings: ["BRK-115"]
+    reference_answer: "The wall bracket for the Nimbus Sense is part number BRK-115 (ADP-220 is the ceiling adapter)."
+    tags: [moyen, technique, lexical]

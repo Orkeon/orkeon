@@ -46,14 +46,14 @@ ms-marco-MiniLM-L-6-v2 int8 cross-encoder, extractive generation, heuristic judg
 
 | profile | recall@5 | MRR | groundedness | answer-relevance | judge | ms/case |
 |---|---|---|---|---|---|---|
-| fast | 0.86 | 0.86 | 0.86 | 0.86 | heuristic | 4 |
-| balanced | 0.86 | 0.86 | 0.86 | 0.86 | heuristic | 122 |
-| quality | 0.86 | 0.86 | 0.86 | 0.86 | heuristic | 77 |
+| fast | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 3 |
+| balanced | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 139 |
+| quality | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 105 |
 
 Honest reading — the three rows are identical on THIS dataset, by construction:
 
 - the six regular cases are already saturated by plain vector retrieval
-  (recall@5 = RR = 1.00 each, even for `fast`) — a 10-document corpus leaves the
+  (recall@5 = RR = 1.00 each, even for `fast`) — a 12-document corpus leaves the
   hybrid and rerank stages no headroom to show a gain;
 - the only unsaturated case is the seeded `correctif` one (q-007, below), and it
   defeats the cross-encoder too: the measured cross-encoder score of the truly
@@ -65,7 +65,7 @@ Honest reading — the three rows are identical on THIS dataset, by construction
   and corrective (RAG-06) levers, as plan §9.1 predicted (`correctif` = "doit
   échouer en Quality, réussir en Corrective").
 
-The 0.86 aggregate = 6/7 (q-007 at 0 by design). The gated aggregates
+The 0.89 aggregate = 8/9 (q-007 at 0 by design; q-008/q-009 are exact-identifier lookups — see below). The gated aggregates
 (`correctif` excluded) are 1.00 / 1.00 for all three profiles. The comparison
 gains real spread as soon as the corpus grows or RAG-05/06 land; the harness and
 CI publication are in place precisely so that spread gets **measured, not
@@ -126,3 +126,16 @@ corrective retrieval engine (RAG-06) must flip. That is why every gate
 If a future embedding/hybrid stage starts recovering it, do not delete the
 assertion — strengthen the decoys or seed a harder case, so RAG-06 keeps a
 measurable target.
+
+### `q-008` / `q-009` — exact-identifier lookups (tag `lexical`)
+
+Added at RAG-04 integration to give hybrid BM25+RRF its structural terrain:
+terse reference tables (`notes-error-codes.md`, `notes-spare-parts.md`) with
+almost no prose, queried by exact tokens (`E-7734`, `BRK-115`) wrapped in
+decoy-flavoured phrasing. **Measured outcome (2026-07-26)**: at this corpus
+scale (12 documents, top-5) plain vector retrieval with local BGE also ranks
+the tables first — subword tokenization makes rare identifiers strong vector
+signals in a small corpus — so `fast` and `balanced` tie at 0.89. The cases
+stay: they are legitimate coverage, they gate in CI, and they become the
+hybrid discriminator the day the corpus grows past what top-5 vector recall
+can saturate.

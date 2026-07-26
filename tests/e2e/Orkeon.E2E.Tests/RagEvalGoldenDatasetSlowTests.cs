@@ -89,9 +89,9 @@ public sealed class RagEvalGoldenDatasetSlowTests
                 },
                 ct);
 
-            // Corpus really ingested (10 markdown documents).
+            // Corpus really ingested (12 markdown documents).
             Assert.NotNull(result.Ingestion);
-            Assert.Equal(10, result.Ingestion!.DocumentsLoaded);
+            Assert.Equal(12, result.Ingestion!.DocumentsLoaded);
             Assert.Empty(result.Ingestion.Errors);
 
             var report = Assert.Single(result.Reports);

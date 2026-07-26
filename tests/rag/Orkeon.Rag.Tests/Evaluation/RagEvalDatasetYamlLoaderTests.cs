@@ -24,7 +24,7 @@ public sealed class RagEvalDatasetYamlLoaderTests
         Assert.Equal("golden", dataset.Name);
         Assert.Equal("./corpus", dataset.CorpusPath);
         Assert.Equal("rag-eval-golden", dataset.DefaultCollection);
-        Assert.Equal(7, dataset.Cases.Count);
+        Assert.Equal(9, dataset.Cases.Count);
 
         // Every case is fully specified for the deterministic heuristic judge.
         Assert.All(dataset.Cases, c =>
