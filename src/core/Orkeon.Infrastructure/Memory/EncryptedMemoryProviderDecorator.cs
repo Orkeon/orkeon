@@ -241,6 +241,27 @@ public sealed partial class EncryptedMemoryProviderDecorator
 
     /// <inheritdoc />
     /// <remarks>
+    /// Collection-scoped hybrid search (RAG-04/C2): forwarded so the interface's default
+    /// body (<see cref="NotSupportedException"/>) never masks an inner provider that does
+    /// implement it (e.g. LanceDB per-collection tables). Results are decrypted on the
+    /// way out, preserving fused scores and keys.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">The wrapped provider does not implement <see cref="IHybridSearchCapable"/> (or not its collection-scoped member).</exception>
+    public async Task<IReadOnlyList<ScoredMemoryItem>> HybridSearchAsync(
+        string collection,
+        string query,
+        ReadOnlyMemory<float> embedding,
+        int topK,
+        MemoryFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var hybrid = RequireCapability<IHybridSearchCapable>();
+        var results = await hybrid.HybridSearchAsync(collection, query, embedding, topK, filter, cancellationToken).ConfigureAwait(false);
+        return await DecryptScoredResultsAsync(results, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
     /// When encryption is enabled, each entry's content is encrypted before delegation;
     /// embeddings (both the explicit entry embedding and the one carried by the item)
     /// stay clear so the inner store can index them.

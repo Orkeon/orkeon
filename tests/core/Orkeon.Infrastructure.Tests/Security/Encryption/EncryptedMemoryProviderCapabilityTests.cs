@@ -331,6 +331,72 @@ public class EncryptedMemoryProviderCapabilityTests
         Assert.Equal("chunk", single.Item.Metadata.CustomProperties!["rag.kind"]);
     }
 
+    // ── Collection-scoped hybrid forwarding (RAG-04/C2) ───────────────────
+
+    /// <summary>
+    /// Hand-rolled inner provider implementing the collection-scoped
+    /// <see cref="IHybridSearchCapable"/> overload, to prove the decorator forwards it
+    /// instead of inheriting the interface's default NotSupported body.
+    /// </summary>
+    private sealed class FakeScopedHybridProvider : IMemoryProvider, IHybridSearchCapable
+    {
+        public string? LastCollection { get; private set; }
+
+        public Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task<MemoryItem?> GetAsync(string key, CancellationToken cancellationToken = default)
+            => Task.FromResult<MemoryItem?>(null);
+
+        public Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = 10, CancellationToken cancellationToken = default)
+            => Task.FromResult<IEnumerable<MemoryItem>>([]);
+
+        public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
+
+        public Task ClearAsync(CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task<IReadOnlyList<ScoredMemoryItem>> HybridSearchAsync(
+            string query, ReadOnlyMemory<float> embedding, int topK,
+            MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<ScoredMemoryItem>>([]);
+
+        public Task<IReadOnlyList<ScoredMemoryItem>> HybridSearchAsync(
+            string collection, string query, ReadOnlyMemory<float> embedding, int topK,
+            MemoryFilter? filter = null, CancellationToken cancellationToken = default)
+        {
+            LastCollection = collection;
+            return Task.FromResult<IReadOnlyList<ScoredMemoryItem>>(
+                [new ScoredMemoryItem(MemoryItem.Create("scoped hybrid hit"), 0.77f, "k-h")]);
+        }
+    }
+
+    [Fact]
+    public async Task CollectionScopedHybrid_ForwardsToTheInnerOverload_PreservingScoreAndKey()
+    {
+        var inner = new FakeScopedHybridProvider();
+        var decorator = CreateDecorator(inner, enabled: false); // pass-through content
+
+        var results = await decorator.HybridSearchAsync(
+            "docs", "query text", UnitX, topK: 5, cancellationToken: TestCt);
+
+        Assert.Equal("docs", inner.LastCollection);
+        var single = Assert.Single(results);
+        Assert.Equal("scoped hybrid hit", single.Item.Content);
+        Assert.Equal(0.77f, single.Score, precision: 4);
+        Assert.Equal("k-h", single.Key);
+    }
+
+    [Fact]
+    public async Task CollectionScopedHybrid_InnerWithoutCapability_ThrowsNotSupported()
+    {
+        var decorator = CreateDecorator(new FakeMemoryProvider());
+
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            decorator.HybridSearchAsync("docs", "query", UnitX, topK: 5, cancellationToken: TestCt));
+    }
+
     [Fact]
     public async Task CollectionAwareMemory_DeleteByFilterAndDrop_ForwardUnchanged()
     {

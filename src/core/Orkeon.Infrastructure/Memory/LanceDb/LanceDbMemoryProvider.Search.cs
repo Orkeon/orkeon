@@ -171,12 +171,13 @@ public partial class LanceDbMemoryProvider
         };
     }
 
-    private static LanceDbQueryRequest BuildFullTextRequest(string query, int k)
+    private static LanceDbQueryRequest BuildFullTextRequest(string query, int k, string? predicate = null)
     {
         return new LanceDbQueryRequest
         {
             Vector = null,
             K = k,
+            Filter = predicate,
             FullTextQuery = new LanceDbFullTextQuery
             {
                 StringQuery = new LanceDbStringFtsQuery
@@ -242,7 +243,7 @@ public partial class LanceDbMemoryProvider
             .Where(c => c.Composite >= minScore && (c.VectorScore > 0f || c.TextScore > 0f))
             .OrderByDescending(c => c.Composite)
             .Take(topK)
-            .Select(c => new ScoredMemoryItem(c.Record.ToMemoryItem(), c.Composite))
+            .Select(c => new ScoredMemoryItem(c.Record.ToMemoryItem(), c.Composite, c.Record.Id))
             .ToList();
     }
 }

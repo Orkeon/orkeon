@@ -114,6 +114,10 @@ public static class RagServiceCollectionExtensions
         services.TryAddSingleton<IDocumentStore>(sp =>
             new MemoryProviderDocumentStore(ResolveDocumentStoreProvider(sp)));
 
+        // Hybrid retrieval (RAG-04/C2, opt-in): wraps the store in a BM25+RRF decorator
+        // when Orkeon:Rag:Retrieval:Hybrid enables it — see HybridRetrievalExtensions.
+        services.AddOrkeonHybridRetrieval(configuration, ResolveDocumentStoreProvider);
+
         // Per-collection ingestion manifests (incremental state, RAG-03/C1):
         // one JSON file per collection, written through the VFS.
         services.TryAddSingleton<IIngestionManifestStore>(sp => new FileIngestionManifestStore(

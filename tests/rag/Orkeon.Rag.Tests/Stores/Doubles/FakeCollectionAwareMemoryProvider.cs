@@ -10,7 +10,7 @@ namespace Orkeon.Rag.Tests.Stores.Doubles;
 /// keys). The base <see cref="IMemoryProvider"/> members (inherited from
 /// <see cref="FakeMemoryProvider"/>) must never be touched on the native path.
 /// </summary>
-public sealed class FakeCollectionAwareMemoryProvider : FakeMemoryProvider, ICollectionAwareMemory
+public class FakeCollectionAwareMemoryProvider : FakeMemoryProvider, ICollectionAwareMemory
 {
     /// <summary>Per-collection backing storage, exposed for direct inspection.</summary>
     public Dictionary<string, Dictionary<string, MemoryItem>> Collections { get; } = new(StringComparer.Ordinal);

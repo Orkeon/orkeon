@@ -88,10 +88,14 @@ internal sealed class LanceDbRestClient
     }
 
     /// <summary>Creates an index on a column of the default table (<c>POST /v1/table/{name}/create_index</c>), e.g. an FTS index.</summary>
-    public async Task CreateIndexAsync(string column, string indexType, CancellationToken cancellationToken)
+    public Task CreateIndexAsync(string column, string indexType, CancellationToken cancellationToken)
+        => CreateIndexAsync(_defaultTableName, column, indexType, cancellationToken);
+
+    /// <summary>Creates an index on a column of <paramref name="tableName"/> (<c>POST /v1/table/{name}/create_index</c>), e.g. an FTS index.</summary>
+    public async Task CreateIndexAsync(string tableName, string column, string indexType, CancellationToken cancellationToken)
     {
         var body = new { column, index_type = indexType };
-        using var response = await PostJsonAsync($"{TablePath(_defaultTableName)}/create_index", body, cancellationToken).ConfigureAwait(false);
+        using var response = await PostJsonAsync($"{TablePath(tableName)}/create_index", body, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "CreateIndex", cancellationToken).ConfigureAwait(false);
     }
 
