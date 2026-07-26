@@ -49,7 +49,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Contenu multi-modal (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Bêta (réel depuis R3.9) |
 | Hooks de kickoff | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Expérimental |
 | Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Bêta |
-| Sous-système RAG (RAG-02) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) | Orkeon.Rag / Orkeon.Tools.Rag | `IRagPipeline`, `IIngestionPipeline`, `IDocumentStore`, `rag_search` (`IBaseTool`) | Bêta |
+| Sous-système RAG (RAG-02…04) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) ; profils `fast`/`balanced`/`quality` via `Orkeon:Rag:Profile` (défaut `fast`) ; `balanced`/`quality` exigent le cross-encoder ONNX — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, poids embarqués, hors-ligne) | Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx | `IRagPipeline` (à étages), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Bêta |
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
 
 **Maturité** — *Bêta* : implémentation complète et testée, API susceptible d'évoluer

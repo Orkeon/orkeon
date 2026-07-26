@@ -9,9 +9,13 @@ namespace Orkeon.Rag.Retrieval;
 public sealed class HybridRetrievalOptions
 {
     /// <summary>
-    /// Gets or sets a value indicating whether hybrid retrieval is enabled (opt-in,
-    /// default <see langword="false"/>). When enabled, <c>AddOrkeonRag</c> wraps the
-    /// registered <c>IDocumentStore</c> in a <see cref="HybridSearchDocumentStore"/>.
+    /// Gets or sets the <b>default</b> search mode of the
+    /// <see cref="HybridSearchDocumentStore"/> decorator (which <c>AddOrkeonRag</c>
+    /// always installs since RAG-04/C4 so ingestion feeds the BM25 index): when
+    /// <see langword="false"/> (the default) searches pass through to the inner
+    /// store verbatim unless the query sets
+    /// <c>RetrievalQuery.Hybrid = true</c> (as the <c>balanced</c>/<c>quality</c>
+    /// profiles do); when <see langword="true"/> searches fuse by default.
     /// </summary>
     public bool Enabled { get; set; }
 

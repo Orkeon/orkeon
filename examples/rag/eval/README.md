@@ -13,9 +13,7 @@ extractive generation (`--offline`), deterministic heuristic judge.
 # reports to ./.orkeon/rag/eval/ (markdown + JSON):
 orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline
 
-# Multi-profile comparison table (one row per profile). Until the RAG-04/C4
-# profile presets land, every profile name resolves to the same pipeline
-# (documented default of IRagProfileResolver), so the rows are identical:
+# Multi-profile comparison table (one row per profile preset — see "Profiles"):
 orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline --compare fast,balanced,quality
 
 # CI anti-regression gate (exit 1 below the floors; `correctif` cases excluded):
@@ -32,6 +30,46 @@ programmatic one is `IRagEvaluator` / `IRagEvalHarness` (`Orkeon.Rag.Evaluation`
 > persists across CLI runs while the in-memory document store does not. If a
 > second run reports `0 added, N unchanged` and zero recall, re-run with
 > `--reindex` (or delete `./.orkeon/rag/manifests`).
+
+## Profiles (RAG-04/C4)
+
+`--profile` / `--compare` resolve the preset pipelines (`RagProfilePresets`):
+
+| Profile | Retrieve | Rerank | Groundedness |
+|---|---|---|---|
+| `fast` | vector only, TopN direct | none | no |
+| `balanced` | hybrid BM25 + RRF, CandidateK 50 | ONNX cross-encoder 50 → 5 | no |
+| `quality` | hybrid BM25 + RRF, CandidateK 100 | ONNX cross-encoder 100 → 5 | enabled (checker ships with RAG-06 — traced as skipped until then) |
+
+Measured table (2026-07-26, offline: local BGE embeddings, embedded
+ms-marco-MiniLM-L-6-v2 int8 cross-encoder, extractive generation, heuristic judge):
+
+| profile | recall@5 | MRR | groundedness | answer-relevance | judge | ms/case |
+|---|---|---|---|---|---|---|
+| fast | 0.86 | 0.86 | 0.86 | 0.86 | heuristic | 4 |
+| balanced | 0.86 | 0.86 | 0.86 | 0.86 | heuristic | 122 |
+| quality | 0.86 | 0.86 | 0.86 | 0.86 | heuristic | 77 |
+
+Honest reading — the three rows are identical on THIS dataset, by construction:
+
+- the six regular cases are already saturated by plain vector retrieval
+  (recall@5 = RR = 1.00 each, even for `fast`) — a 10-document corpus leaves the
+  hybrid and rerank stages no headroom to show a gain;
+- the only unsaturated case is the seeded `correctif` one (q-007, below), and it
+  defeats the cross-encoder too: the measured cross-encoder score of the truly
+  relevant `notes-power.md` is **0.0000** (dead last) while the decoy
+  `faq-battery.md` — which literally contains "make the battery last longer" —
+  scores **0.9997**. A lexically aligned reformulation ("extend the runtime of an
+  S-series node") scores `notes-power.md` at 0.9995, proving the reranker works
+  and the gap is pure vocabulary bridging: exactly the query-transform (RAG-05)
+  and corrective (RAG-06) levers, as plan §9.1 predicted (`correctif` = "doit
+  échouer en Quality, réussir en Corrective").
+
+The 0.86 aggregate = 6/7 (q-007 at 0 by design). The gated aggregates
+(`correctif` excluded) are 1.00 / 1.00 for all three profiles. The comparison
+gains real spread as soon as the corpus grows or RAG-05/06 land; the harness and
+CI publication are in place precisely so that spread gets **measured, not
+proclaimed**.
 
 ## Schema
 

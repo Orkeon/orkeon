@@ -1,12 +1,18 @@
-# RAG evaluation gate (RAG-04/C1, plan §9.3) — runs the golden dataset through
+# RAG evaluation gate (RAG-04/C1+C4, plan §9.3) — runs the golden dataset through
 # `orkeon rag eval` on every change touching the RAG subsystem, 100 % offline:
 #   - embeddings: local BGE-micro-v2 (SmartComponents ONNX, embedded model, no key),
+#   - reranker: ms-marco-MiniLM-L-6-v2 cross-encoder (Orkeon.Rag.Onnx.Model,
+#     int8 weights embedded — zero download),
 #   - generation: --offline deterministic extractive stub (no LLM call),
 #   - judge: deterministic heuristic (labelled in the report).
 #
-# Anti-regression thresholds (env below): the run FAILS (exit 1) when the
-# aggregate recall@5 or MRR — computed WITHOUT the cases tagged `correctif`,
-# which are seeded to fail plain retrieval until RAG-06 — drops below the floor.
+# Two steps:
+#   1. profile comparison fast/balanced/quality → table published in the step
+#      summary and as an artifact (the plan's "published, not proclaimed" proof);
+#   2. anti-regression gate on the BALANCED profile (env floors below): the run
+#      FAILS (exit 1) when the aggregate recall@5 or MRR — computed WITHOUT the
+#      cases tagged `correctif`, which are seeded to fail single-shot retrieval
+#      until RAG-06 — drops below the floor.
 # Keep the floors in sync with tests/e2e/.../RagEvalGoldenDatasetSlowTests.cs.
 name: RAG Eval
 on:
@@ -58,12 +64,29 @@ jobs:
           restore-keys: nuget-rag-eval-${{ runner.os }}-
       - name: Build the orkeon CLI
         run: dotnet build src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj -c Release
-      - name: Evaluate the golden dataset (offline, anti-regression gate)
+      - name: Compare the fast/balanced/quality profiles (offline)
         run: >
           dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release --no-build --
           rag eval
           --dataset examples/rag/eval/golden.yaml
+          --compare fast,balanced,quality
           --offline
+      - name: Publish the comparison table to the step summary
+        if: always()
+        run: |
+          if [ -f .orkeon/rag/eval/golden-compare.md ]; then
+            cat .orkeon/rag/eval/golden-compare.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No comparison table produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Gate on the balanced profile (offline, anti-regression)
+        run: >
+          dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release --no-build --
+          rag eval
+          --dataset examples/rag/eval/golden.yaml
+          --profile balanced
+          --offline
+          --reindex
           --min-recall "$RAG_EVAL_MIN_RECALL"
           --min-mrr "$RAG_EVAL_MIN_MRR"
       - name: Upload evaluation reports

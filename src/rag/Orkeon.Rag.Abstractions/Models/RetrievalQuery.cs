@@ -25,4 +25,13 @@ public sealed record RetrievalQuery
     /// <summary>Optional metadata filters (key must equal value).</summary>
     public ImmutableDictionary<string, string> Filters { get; init; } =
         ImmutableDictionary<string, string>.Empty;
+
+    /// <summary>
+    /// Per-query hybrid toggle honoured by hybrid-capable stores:
+    /// <see langword="true"/> fuses lexical (BM25 / native full-text) and vector
+    /// rankings, <see langword="false"/> forces plain vector search,
+    /// <see langword="null"/> (default) uses the store's configured default.
+    /// Stores without hybrid capability ignore the flag.
+    /// </summary>
+    public bool? Hybrid { get; init; }
 }

@@ -14,10 +14,11 @@ using Orkeon.Tests.Shared.FileSystem;
 namespace Orkeon.Rag.Tests.DependencyInjection;
 
 /// <summary>
-/// Tests of the hybrid-retrieval opt-in (RAG-04/C2): disabled configuration leaves the
-/// document store untouched; <c>Orkeon:Rag:Retrieval:Hybrid</c> (section or flat
-/// shorthand) wraps the registered <see cref="IDocumentStore"/> — including a
-/// host-registered one — in the <see cref="HybridSearchDocumentStore"/> decorator.
+/// Tests of the hybrid-retrieval registration (RAG-04/C2, per-profile since C4):
+/// the registered <see cref="IDocumentStore"/> — including a host-registered one —
+/// is ALWAYS wrapped in the <see cref="HybridSearchDocumentStore"/> decorator so
+/// ingestion feeds the BM25 index; <c>Orkeon:Rag:Retrieval:Hybrid</c> only sets
+/// the default search mode (disabled = strict behavioural passthrough).
 /// </summary>
 public class HybridRetrievalExtensionsTests
 {
@@ -38,26 +39,31 @@ public class HybridRetrievalExtensionsTests
     }
 
     [Fact]
-    public void AddOrkeonRag_HybridDisabledByDefault_StoreIsNotDecorated()
+    public void AddOrkeonRag_AlwaysDecoratesTheStore_DisabledDefaultsToPassthroughMode()
     {
         using var chat = new FakeChatClient();
         using var provider = BuildRagProvider(chat, Config());
 
-        Assert.IsType<FakeDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+        var store = Assert.IsType<HybridSearchDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+        Assert.IsType<FakeDocumentStore>(store.Inner);
+
+        var options = provider.GetRequiredService<IOptions<HybridRetrievalOptions>>().Value;
+        Assert.False(options.Enabled); // default search mode: passthrough
     }
 
     [Fact]
-    public void AddOrkeonRag_HybridEnabled_SectionForm_DecoratesTheStore()
+    public void AddOrkeonRag_HybridEnabled_SectionForm_SetsTheDefaultFuseMode()
     {
         using var chat = new FakeChatClient();
         using var provider = BuildRagProvider(
             chat, Config(("Orkeon:Rag:Retrieval:Hybrid:Enabled", "true")));
 
         Assert.IsType<HybridSearchDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+        Assert.True(provider.GetRequiredService<IOptions<HybridRetrievalOptions>>().Value.Enabled);
     }
 
     [Fact]
-    public void AddOrkeonRag_HybridEnabled_FlatShorthand_DecoratesTheStore()
+    public void AddOrkeonRag_HybridEnabled_FlatShorthand_SetsTheDefaultFuseMode()
     {
         using var chat = new FakeChatClient();
         using var provider = BuildRagProvider(
@@ -71,13 +77,14 @@ public class HybridRetrievalExtensionsTests
     }
 
     [Fact]
-    public void AddOrkeonRag_FlatShorthandFalse_StoreIsNotDecorated()
+    public void AddOrkeonRag_FlatShorthandFalse_KeepsThePassthroughMode()
     {
         using var chat = new FakeChatClient();
         using var provider = BuildRagProvider(
             chat, Config(("Orkeon:Rag:Retrieval:Hybrid", "false")));
 
-        Assert.IsType<FakeDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+        Assert.IsType<HybridSearchDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+        Assert.False(provider.GetRequiredService<IOptions<HybridRetrievalOptions>>().Value.Enabled);
     }
 
     [Fact]
@@ -93,27 +100,28 @@ public class HybridRetrievalExtensionsTests
     }
 
     [Fact]
-    public void AddOrkeonHybridRetrieval_Enabled_WithoutDocumentStore_FailsLoudly()
+    public void AddOrkeonHybridRetrieval_WithoutDocumentStore_FailsLoudly()
     {
         var services = new ServiceCollection();
 
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            services.AddOrkeonHybridRetrieval(Config(("Orkeon:Rag:Retrieval:Hybrid", "true"))));
+            services.AddOrkeonHybridRetrieval(Config()));
 
-        Assert.Contains("Orkeon:Rag:Retrieval:Hybrid", ex.Message, StringComparison.Ordinal);
         Assert.Contains(nameof(IDocumentStore), ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void AddOrkeonHybridRetrieval_Disabled_IsAStrictNoOp_OnTheStore()
+    public void AddOrkeonHybridRetrieval_CalledTwice_DecoratesOnlyOnce()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IDocumentStore>(new FakeDocumentStore());
 
         services.AddOrkeonHybridRetrieval(Config());
+        services.AddOrkeonHybridRetrieval(Config());
 
         using var provider = services.BuildServiceProvider();
-        Assert.IsType<FakeDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+        var store = Assert.IsType<HybridSearchDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+        Assert.IsType<FakeDocumentStore>(store.Inner); // not a nested decorator
     }
 
     [Fact]

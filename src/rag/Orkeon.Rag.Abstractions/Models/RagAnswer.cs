@@ -17,4 +17,11 @@ public sealed record RagAnswer
 
     /// <summary>Execution trace of the pipeline run.</summary>
     public RagTrace Trace { get; init; } = new();
+
+    /// <summary>
+    /// Groundedness verdict of the optional verification stage;
+    /// <c>null</c> when the stage did not run (disabled, or no checker
+    /// registered — the trace says which).
+    /// </summary>
+    public GroundednessResult? Groundedness { get; init; }
 }

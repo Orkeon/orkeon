@@ -266,6 +266,59 @@ public class HybridSearchDocumentStoreTests
         Assert.Equal(ReciprocalRankFusion.RrfScoreOrigin, Assert.Single(results).ScoreOrigin);
     }
 
+    // --- Per-query hybrid toggle (RAG-04/C4: profiles share one decorator) ---
+
+    [Fact]
+    public async Task Search_QueryHybridFalse_IsAStrictPassthrough_EvenWhenEnabled()
+    {
+        var chunkA = MakeChunk("A", "apple pie");
+        var chunkC = MakeChunk("C", "apple tart");
+        var inner = new SpyDocumentStore { SearchResults = [MakeScored(chunkA, 0.9, "vector")] };
+        var store = new HybridSearchDocumentStore(inner, DefaultOptions()); // Enabled = true
+        await store.UpsertAsync(Collection, [MakeEmbedded(chunkA), MakeEmbedded(chunkC)], TestCt);
+
+        var results = await store.SearchAsync(
+            Collection, Query("apple") with { Hybrid = false }, TestCt);
+
+        // No fusion: the inner hits pass through with their original scores.
+        var single = Assert.Single(results);
+        Assert.Equal("A", single.Chunk.Id);
+        Assert.Equal("vector", single.ScoreOrigin);
+        Assert.Equal(0.9, single.Score, precision: 10);
+    }
+
+    [Fact]
+    public async Task Search_QueryHybridTrue_Fuses_EvenWhenTheDefaultModeIsDisabled()
+    {
+        var chunkA = MakeChunk("A", "apple pie");
+        var chunkC = MakeChunk("C", "apple apple tart");
+        var inner = new SpyDocumentStore { SearchResults = [MakeScored(chunkA, 0.9)] };
+        var store = new HybridSearchDocumentStore(inner, new HybridRetrievalOptions()); // Enabled = false
+        await store.UpsertAsync(Collection, [MakeEmbedded(chunkA), MakeEmbedded(chunkC)], TestCt);
+
+        var results = await store.SearchAsync(
+            Collection, Query("apple") with { Hybrid = true }, TestCt);
+
+        Assert.Equal(2, results.Count); // C surfaced by BM25 despite the disabled default
+        Assert.All(results, r => Assert.Equal(ReciprocalRankFusion.RrfScoreOrigin, r.ScoreOrigin));
+    }
+
+    [Fact]
+    public async Task Search_NoQueryToggle_FollowsTheConfiguredDefault()
+    {
+        var chunkA = MakeChunk("A", "apple pie");
+        var chunkC = MakeChunk("C", "apple apple tart");
+        var inner = new SpyDocumentStore { SearchResults = [MakeScored(chunkA, 0.9, "vector")] };
+        var store = new HybridSearchDocumentStore(inner, new HybridRetrievalOptions()); // Enabled = false
+        await store.UpsertAsync(Collection, [MakeEmbedded(chunkA), MakeEmbedded(chunkC)], TestCt);
+
+        var results = await store.SearchAsync(Collection, Query("apple"), TestCt);
+
+        // Default mode disabled → passthrough (upserts still fed the index for later).
+        var single = Assert.Single(results);
+        Assert.Equal("vector", single.ScoreOrigin);
+    }
+
     // --- Guards ---
 
     [Fact]

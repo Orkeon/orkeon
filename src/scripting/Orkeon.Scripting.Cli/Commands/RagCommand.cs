@@ -10,6 +10,7 @@ using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.DependencyInjection;
 using Orkeon.Rag.Evaluation;
+using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Tools.Rag;
 using Orkeon.Tools.Rag.DependencyInjection;
 
@@ -111,7 +112,7 @@ internal sealed class RagEvalCommandOptions : RagCommandOptionsBase
 
     /// <summary>Single profile to evaluate.</summary>
     [Option("profile", Required = false,
-        HelpText = "Profile to evaluate (default: 'default'). Until the RAG-04/C4 presets land, every name resolves to the same pipeline.")]
+        HelpText = "Profile to evaluate: fast, balanced, quality, or default (the configured Orkeon:Rag:Profile). Default: 'default'.")]
     public string? Profile { get; set; }
 
     /// <summary>Comma-separated list of profiles to compare.</summary>
@@ -479,6 +480,10 @@ internal static class RagCommand
                 // IIngestionPipeline/IRagPipeline wins over the real pipelines.
                 options.ConfigureTestServices?.Invoke(ctx, services);
                 services.AddOrkeonRag(ctx.Configuration);
+                // ONNX cross-encoder (embedded weights via Orkeon.Rag.Onnx.Model):
+                // required by the balanced/quality profiles, loaded lazily at
+                // first use — profiles that never rerank pay nothing.
+                services.AddOrkeonOnnxReranker();
                 services.AddOrkeonRagTools();
             });
     }

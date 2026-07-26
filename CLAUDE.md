@@ -46,7 +46,11 @@ dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj
 # Run RAG subsystem tests
 dotnet test tests/rag/Orkeon.Rag.Abstractions.Tests/Orkeon.Rag.Abstractions.Tests.csproj
 dotnet test tests/rag/Orkeon.Rag.Tests/Orkeon.Rag.Tests.csproj
+dotnet test tests/rag/Orkeon.Rag.Onnx.Tests/Orkeon.Rag.Onnx.Tests.csproj   # ONNX cross-encoder (native runtime — run on host/CI, not in a sandbox)
 dotnet test tests/tools/Orkeon.Tools.Rag.Tests/Orkeon.Tools.Rag.Tests.csproj
+
+# RAG offline evaluation (profiles fast/balanced/quality, golden dataset)
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- rag eval --dataset examples/rag/eval/golden.yaml --compare fast,balanced,quality --offline
 
 # Run Analysis (RaggableTree) tests
 dotnet test tests/analysis/Orkeon.Analysis.Tests/Orkeon.Analysis.Tests.csproj
@@ -132,12 +136,25 @@ The project follows Clean Architecture with clear separation of concerns:
   `Orkeon.Rag.Abstractions` (`IRagPipeline`, `IIngestionPipeline`, `IDocumentStore`,
   `IChunkingStrategy`, `IDocumentLoader`, `RagAnswer` with citations + trace),
   implementations in `Orkeon.Rag` (loaders incl. `WebPageLoader`, 4 chunking
-  strategies, ingestion-path validation, `LinearRagPipeline`,
-  `MemoryProviderDocumentStore`), agent tool `rag_search` in `Orkeon.Tools.Rag`
-  (`RagSearchTool`). Opt-in: `AddOrkeonRag(configuration)`
+  strategies, ingestion-path validation, `StagedRagPipeline`,
+  `MemoryProviderDocumentStore`), agent tools `rag_search`/`rag_ingest`/`rag_eval`
+  in `Orkeon.Tools.Rag`. Opt-in: `AddOrkeonRag(configuration)`
   (`Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()`. The legacy
   `Orkeon.Infrastructure.Knowledge` / `Orkeon.Application.{Interfaces.Rag,Rag}`
   namespaces are **removed** (breaking, no shims — migration table in `CHANGELOG.md`).
+- ✅ **NEW**: RAG quality phase (RAG-04) — offline evaluation harness
+  (`IRagEvalHarness`, golden dataset `examples/rag/eval/golden.yaml`, recall@k/MRR,
+  LLM-judge with labelled heuristic fallback, CLI `orkeon rag eval` + CI gate on
+  the `balanced` profile); hybrid retrieval (in-process BM25 + RRF decorator,
+  native LanceDB hybrid via `IHybridSearchCapable`); reranking (opt-in
+  `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` — ms-marco-MiniLM-L-6-v2
+  cross-encoder, int8 weights embedded, offline; `AddOrkeonOnnxReranker()`;
+  `LlmListwiseReranker` fallback); **staged pipeline** (transform hook → retrieve
+  → fuse → rerank → anti-Lost-in-the-Middle `edges` assembly → cited generation →
+  groundedness hook, every stage traced) and **profiles** `fast`/`balanced`/`quality`
+  (`RagProfilePresets` → `RagOptions` v2 bound on `Orkeon:Rag`, per-key overrides;
+  `IRagProfileResolver` memoizing one pipeline per profile; default `fast` —
+  `balanced` requires the ONNX package)
 
 **Infrastructure Layer Components**:
 - ✅ Redis memory provider with vector search (`RedisMemoryProvider`, `EncryptedRedisMemoryProvider`)
@@ -402,13 +419,13 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **27 src projects** and **28 test projects**, plus two solutions:
+The repository contains **29 src projects** and **29 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
 /workspace/
 ├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 27 projects
+├── src/                          # 29 projects
 │   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
 │   ├── core/
 │   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
@@ -435,8 +452,10 @@ The repository contains **27 src projects** and **28 test projects**, plus two s
 │   │   ├── Orkeon.Tools.Rag/           # RAG agent tools (rag_search → RagSearchTool; AddOrkeonRagTools)
 │   │   └── Orkeon.Tools.Web/           # Web/HTTP tools
 │   ├── rag/
-│   │   ├── Orkeon.Rag.Abstractions/    # RAG contracts + DTOs + options (Domain-only dependency, ADR-006)
-│   │   └── Orkeon.Rag/                 # Loaders, chunking, validation, pipelines, stores, factories, AddOrkeonRag DI
+│   │   ├── Orkeon.Rag.Abstractions/    # RAG contracts + DTOs + options incl. RagOptions v2 + RagProfilePresets (Domain-only dependency, ADR-006)
+│   │   ├── Orkeon.Rag/                 # Loaders, chunking, validation, StagedRagPipeline, profiles resolver, hybrid BM25+RRF, eval harness, AddOrkeonRag DI
+│   │   ├── Orkeon.Rag.Onnx/            # Opt-in ONNX cross-encoder reranker (ms-marco-MiniLM-L-6-v2, AddOrkeonOnnxReranker)
+│   │   └── Orkeon.Rag.Onnx.Model/      # Companion package embedding the int8 model weights (guaranteed offline)
 │   ├── analysis/
 │   │   ├── Orkeon.Analysis.Abstractions/ # RaggableTree interfaces + DTOs + models
 │   │   └── Orkeon.Analysis/             # Tree-sitter pipeline, adapters, store, watcher
@@ -448,13 +467,13 @@ The repository contains **27 src projects** and **28 test projects**, plus two s
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
 │   └── apps/
 │       └── Orkeon.ConsoleApp/    # Console application
-├── tests/                        # 28 projects
+├── tests/                        # 29 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
 │   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
 │   ├── analyzers/                # Orkeon.Compliance.Vfs.Tests
 │   ├── tools/                    # Abstractions, Analysis, Code, Data, Embeddings.Local, EventHub, FileSystem, Rag, Web (9 projects)
-│   ├── rag/                      # Orkeon.Rag.Abstractions.Tests (incl. ArchitectureTests), Orkeon.Rag.Tests
+│   ├── rag/                      # Orkeon.Rag.Abstractions.Tests (incl. ArchitectureTests), Orkeon.Rag.Tests, Orkeon.Rag.Onnx.Tests
 │   ├── analysis/                 # Orkeon.Analysis.Tests (RaggableTree)
 │   ├── hosting/                  # Orkeon.Hosting.Tests
 │   ├── plugins/                  # Orkeon.Plugins.Tests

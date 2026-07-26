@@ -10,10 +10,10 @@ namespace Orkeon.Rag.DependencyInjection;
 
 /// <summary>
 /// Registration of the RAG evaluation harness (RAG-04/C1, plan §9): dataset
-/// loader, evaluator, report writer, profile-resolution hook, and the one-call
-/// harness. Called by <c>AddOrkeonRag</c>; every registration is <c>TryAdd*</c>
-/// so a host-provided implementation (e.g. a preset-aware
-/// <see cref="IRagProfileResolver"/> once profiles land) always wins.
+/// loader, evaluator, report writer, and the one-call harness. Called by
+/// <c>AddOrkeonRag</c> (which registers the preset-aware
+/// <see cref="IRagProfileResolver"/> itself); every registration is
+/// <c>TryAdd*</c> so a host-provided implementation always wins.
 /// </summary>
 public static class RagEvaluationExtensions
 {
@@ -21,11 +21,6 @@ public static class RagEvaluationExtensions
     public static IServiceCollection AddOrkeonRagEvaluation(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-
-        // Profile hook (RAG-04/C4 seam): the documented default maps every profile
-        // name to the single registered IRagPipeline.
-        services.TryAddSingleton<IRagProfileResolver>(sp =>
-            new DefaultRagProfileResolver(sp.GetRequiredService<IRagPipeline>()));
 
         services.TryAddSingleton<IRagEvalDatasetLoader>(sp =>
             new RagEvalDatasetYamlLoader(sp.GetRequiredService<IFileSystemService>()));

@@ -1,19 +1,18 @@
 namespace Orkeon.Rag.Abstractions.Interfaces;
 
 /// <summary>
-/// Resolves a profile name (e.g. <c>fast</c>, <c>balanced</c>, <c>quality</c>) to
-/// the <see cref="IRagPipeline"/> the evaluation harness must exercise. This is
-/// the seam the profile presets (RAG-04/C4) will plug into: until they exist, the
-/// default resolver maps EVERY profile name to the single registered pipeline —
-/// a documented, deliberate default so <c>--compare fast,balanced,quality</c>
-/// already runs (producing identical columns) before the profiles land.
+/// Resolves a profile name (<c>fast</c>, <c>balanced</c>, <c>quality</c>, or
+/// <c>default</c>) to the <see cref="IRagPipeline"/> to exercise. The default
+/// implementation (<c>ProfileRagPipelineResolver</c> in <c>Orkeon.Rag</c>,
+/// RAG-04/C4) builds and memoizes one pipeline per profile from the
+/// <c>RagProfilePresets</c> plus configuration overrides; <c>default</c> maps to
+/// the host's registered pipeline.
 /// </summary>
 public interface IRagProfileResolver
 {
     /// <summary>
-    /// Returns the pipeline for <paramref name="profileName"/>. Implementations
-    /// backed by real presets should fail loudly on unknown names; the default
-    /// resolver accepts any name.
+    /// Returns the pipeline for <paramref name="profileName"/>. Unknown names
+    /// fail loudly with the list of known profiles — never a silent fallback.
     /// </summary>
     IRagPipeline Resolve(string profileName);
 }

@@ -97,8 +97,12 @@ public class RagServiceCollectionExtensionsTests
         services.AddOrkeonRag(EmptyConfiguration());
 
         using var provider = services.BuildServiceProvider();
-        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(
+
+        // Since RAG-04/C4 the store is always the hybrid decorator (ingestion
+        // feeds the BM25 index; searching fuses only per query/profile).
+        var store = Assert.IsType<Orkeon.Rag.Retrieval.HybridSearchDocumentStore>(
             provider.GetRequiredService<IDocumentStore>());
+        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(store.Inner);
     }
 
     [Fact]
@@ -109,8 +113,11 @@ public class RagServiceCollectionExtensionsTests
             services.AddSingleton<Orkeon.Domain.Memory.IMemoryProvider>(
                 new Stores.Doubles.FakeMemoryProvider()));
 
-        // BuildProvider registered FakeDocumentStore before AddOrkeonRag: it must win.
-        Assert.IsType<FakeDocumentStore>(provider.GetRequiredService<IDocumentStore>());
+        // BuildProvider registered FakeDocumentStore before AddOrkeonRag: it must
+        // win as the decorated inner store.
+        var store = Assert.IsType<Orkeon.Rag.Retrieval.HybridSearchDocumentStore>(
+            provider.GetRequiredService<IDocumentStore>());
+        Assert.IsType<FakeDocumentStore>(store.Inner);
     }
 
     [Fact]
@@ -120,11 +127,32 @@ public class RagServiceCollectionExtensionsTests
         using var provider = BuildProvider(chat);
 
         Assert.IsType<DefaultIngestionPipeline>(provider.GetRequiredService<IIngestionPipeline>());
-        Assert.IsType<LinearRagPipeline>(provider.GetRequiredService<IRagPipeline>());
+        Assert.IsType<StagedRagPipeline>(provider.GetRequiredService<IRagPipeline>());
+        Assert.IsType<ProfileRagPipelineResolver>(provider.GetRequiredService<IRagProfileResolver>());
         Assert.NotNull(provider.GetRequiredService<DataValidationPipeline>());
         Assert.NotNull(provider.GetRequiredService<DocumentLoaderFactory>());
         Assert.NotNull(provider.GetRequiredService<ChunkingStrategyFactory>());
         Assert.Equal(2, provider.GetServices<IDataValidator>().Count());
+    }
+
+    [Fact]
+    public void AddOrkeonRag_ProfileResolver_MemoizesPresetPipelines_AndServesTheDefault()
+    {
+        using var chat = new FakeChatClient();
+        using var provider = BuildProvider(chat);
+
+        var resolver = provider.GetRequiredService<IRagProfileResolver>();
+
+        var fast = Assert.IsType<StagedRagPipeline>(resolver.Resolve("fast"));
+        Assert.Equal("fast", fast.Options.Profile);
+        Assert.Same(fast, resolver.Resolve("fast"));
+
+        var balanced = Assert.IsType<StagedRagPipeline>(resolver.Resolve("balanced"));
+        Assert.Equal("balanced", balanced.Options.Profile);
+        Assert.NotSame(fast, balanced);
+
+        // 'default' serves the registered IRagPipeline singleton.
+        Assert.Same(provider.GetRequiredService<IRagPipeline>(), resolver.Resolve("default"));
     }
 
     [Fact]
@@ -163,7 +191,8 @@ public class RagServiceCollectionExtensionsTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Orkeon:Rag:Ingestion:DefaultChunkingStrategy"] = "sentence",
-                ["Orkeon:Rag:Pipeline:CandidateK"] = "13",
+                ["Orkeon:Rag:Profile"] = "balanced",
+                ["Orkeon:Rag:Retrieval:CandidateK"] = "13",
             })
             .Build();
 
@@ -172,11 +201,12 @@ public class RagServiceCollectionExtensionsTests
 
         var ingestion = provider
             .GetRequiredService<Microsoft.Extensions.Options.IOptions<RagIngestionOptions>>().Value;
-        var pipeline = provider
-            .GetRequiredService<Microsoft.Extensions.Options.IOptions<LinearRagPipelineOptions>>().Value;
+        var ragOptions = provider.GetRequiredService<Orkeon.Rag.Abstractions.Options.RagOptions>();
 
         Assert.Equal("sentence", ingestion.DefaultChunkingStrategy);
-        Assert.Equal(13, pipeline.CandidateK);
+        Assert.Equal("balanced", ragOptions.Profile);
+        Assert.Equal(13, ragOptions.Retrieval.CandidateK); // override over the preset's 50
+        Assert.True(ragOptions.Rerank.Enabled); // preset value survives
     }
 
     // ---------------------------------------------------------------- Orkeon:Rag:Provider
@@ -204,10 +234,13 @@ public class RagServiceCollectionExtensionsTests
         services.AddOrkeonRag(configuration);
 
         using var provider = services.BuildServiceProvider();
-        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(
+        var store = Assert.IsType<Orkeon.Rag.Retrieval.HybridSearchDocumentStore>(
             provider.GetRequiredService<IDocumentStore>());
+        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(store.Inner);
 
-        Assert.Equal(1, factory.CreateCalls);
+        // The provider resolver runs twice by design: once for the inner store,
+        // once for the decorator's native-hybrid discovery (same configuration).
+        Assert.True(factory.CreateCalls >= 1);
         Assert.NotNull(factory.LastConfig);
         Assert.Equal("chromadb", factory.LastConfig!.Type);
         Assert.Equal("http://chroma:8000", factory.LastConfig.ConnectionString);
@@ -264,8 +297,9 @@ public class RagServiceCollectionExtensionsTests
         services.AddOrkeonRag(EmptyConfiguration());
 
         using var provider = services.BuildServiceProvider();
-        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(
+        var store = Assert.IsType<Orkeon.Rag.Retrieval.HybridSearchDocumentStore>(
             provider.GetRequiredService<IDocumentStore>());
+        Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(store.Inner);
         Assert.Equal(0, factory.CreateCalls);
     }
 

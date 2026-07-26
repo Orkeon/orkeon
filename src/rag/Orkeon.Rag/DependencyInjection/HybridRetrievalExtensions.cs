@@ -8,12 +8,15 @@ using Orkeon.Rag.Retrieval;
 namespace Orkeon.Rag.DependencyInjection;
 
 /// <summary>
-/// Opt-in registration of hybrid retrieval (RAG-04/C2): when
-/// <c>Orkeon:Rag:Retrieval:Hybrid</c> enables it, the registered
-/// <see cref="IDocumentStore"/> — whichever it is, including a host-registered one — is
-/// wrapped in a <see cref="HybridSearchDocumentStore"/> (in-process BM25 + RRF, native
-/// provider hybrid preferred). Called by <c>AddOrkeonRag</c>; disabled configuration is a
-/// strict no-op.
+/// Registration of hybrid retrieval (RAG-04/C2, per-profile since C4): the
+/// registered <see cref="IDocumentStore"/> — whichever it is, including a
+/// host-registered one — is <b>always</b> wrapped in a
+/// <see cref="HybridSearchDocumentStore"/> so ingestion feeds the in-process BM25
+/// index; whether a search actually fuses is decided per query
+/// (<c>RetrievalQuery.Hybrid</c>, set by the profile presets) with
+/// <c>Orkeon:Rag:Retrieval:Hybrid:Enabled</c> as the default mode. A disabled
+/// default is a strict behavioural passthrough (identical results to the
+/// undecorated store). Called by <c>AddOrkeonRag</c>.
 /// </summary>
 public static class HybridRetrievalExtensions
 {
@@ -21,13 +24,13 @@ public static class HybridRetrievalExtensions
     public const string HybridSectionKey = "Orkeon:Rag:Retrieval:Hybrid";
 
     /// <summary>
-    /// Binds <see cref="HybridRetrievalOptions"/> and, when enabled, decorates the last
-    /// registered <see cref="IDocumentStore"/> descriptor.
+    /// Binds <see cref="HybridRetrievalOptions"/> and decorates the last registered
+    /// <see cref="IDocumentStore"/> descriptor with the hybrid decorator.
     /// </summary>
-    /// <param name="services">The service collection (an <see cref="IDocumentStore"/> must already be registered when enabled).</param>
+    /// <param name="services">The service collection (an <see cref="IDocumentStore"/> must already be registered).</param>
     /// <param name="configuration">Configuration root; both the section form
     /// (<c>Orkeon:Rag:Retrieval:Hybrid:Enabled</c>) and the flat shorthand
-    /// (<c>Orkeon:Rag:Retrieval:Hybrid = true</c>) are accepted.</param>
+    /// (<c>Orkeon:Rag:Retrieval:Hybrid = true</c>) are accepted for the default mode.</param>
     /// <param name="providerResolver">
     /// Optional resolver of the memory provider backing the document store, used by the
     /// decorator to discover native hybrid search. <c>AddOrkeonRag</c> passes its own
@@ -38,7 +41,7 @@ public static class HybridRetrievalExtensions
     /// </param>
     /// <returns>The service collection for chaining.</returns>
     /// <exception cref="InvalidOperationException">
-    /// Hybrid is enabled but no <see cref="IDocumentStore"/> is registered.
+    /// No <see cref="IDocumentStore"/> is registered.
     /// </exception>
     public static IServiceCollection AddOrkeonHybridRetrieval(
         this IServiceCollection services,
@@ -55,20 +58,18 @@ public static class HybridRetrievalExtensions
 
         // Flat shorthand: `Orkeon:Rag:Retrieval:Hybrid = true` (the section itself
         // carries a scalar value instead of children).
-        var flatValue = bool.TryParse(section.Value, out var flat) ? flat : (bool?)null;
-        if (flatValue is { } enabledFlat)
-            services.Configure<HybridRetrievalOptions>(options => options.Enabled = enabledFlat);
+        if (bool.TryParse(section.Value, out var flat))
+            services.Configure<HybridRetrievalOptions>(options => options.Enabled = flat);
 
-        var enabled = flatValue
-            ?? (bool.TryParse(section[nameof(HybridRetrievalOptions.Enabled)], out var enabledKey) && enabledKey);
-
-        if (!enabled)
+        // Idempotence: decorating twice would nest two BM25 indexes.
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(HybridDecorationMarker)))
             return services;
+        services.AddSingleton(HybridDecorationMarker.Instance);
 
         var storeIndex = LastDocumentStoreIndex(services)
             ?? throw new InvalidOperationException(
-                $"'{HybridSectionKey}' enables hybrid retrieval but no {nameof(IDocumentStore)} is registered. " +
-                "Call AddOrkeonHybridRetrieval after the document store registration (AddOrkeonRag does).");
+                $"AddOrkeonHybridRetrieval requires a registered {nameof(IDocumentStore)}. " +
+                "Call it after the document store registration (AddOrkeonRag does).");
 
         var original = services[storeIndex];
         services[storeIndex] = ServiceDescriptor.Describe(
@@ -102,6 +103,13 @@ public static class HybridRetrievalExtensions
             return factory(serviceProvider);
 
         return ActivatorUtilities.CreateInstance(serviceProvider, original.ImplementationType!);
+    }
+
+    /// <summary>Marker registration preventing double decoration.</summary>
+    internal sealed class HybridDecorationMarker
+    {
+        /// <summary>Shared instance (the registration is a pure marker).</summary>
+        public static HybridDecorationMarker Instance { get; } = new();
     }
 
     /// <summary>

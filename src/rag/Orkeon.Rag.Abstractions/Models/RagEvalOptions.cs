@@ -7,9 +7,9 @@ namespace Orkeon.Rag.Abstractions.Models;
 public sealed record RagEvalOptions
 {
     /// <summary>
-    /// Profile evaluated when the caller names none. Until <c>RagProfilePresets</c>
-    /// land (RAG-04/C4), the default <c>IRagProfileResolver</c> maps every profile
-    /// name — including this one — to the single registered pipeline.
+    /// Profile evaluated when the caller names none: <c>default</c> resolves to
+    /// the host's registered pipeline (the configured <c>Orkeon:Rag:Profile</c>
+    /// preset plus overrides) through <c>IRagProfileResolver</c>.
     /// </summary>
     public const string DefaultProfile = "default";
 

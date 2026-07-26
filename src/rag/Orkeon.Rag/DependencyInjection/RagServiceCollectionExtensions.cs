@@ -10,6 +10,7 @@ using Orkeon.Domain.Memory;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Chunking;
+using Orkeon.Rag.Configuration;
 using Orkeon.Rag.Factories;
 using Orkeon.Rag.Ingestion;
 using Orkeon.Rag.Loaders;
@@ -45,9 +46,6 @@ public static class RagServiceCollectionExtensions
     /// <summary>Configuration section bound to <see cref="RagIngestionOptions"/>.</summary>
     public const string IngestionSectionKey = "Orkeon:Rag:Ingestion";
 
-    /// <summary>Configuration section bound to <see cref="LinearRagPipelineOptions"/>.</summary>
-    public const string PipelineSectionKey = "Orkeon:Rag:Pipeline";
-
     /// <summary>
     /// Provider aliases accepted by <c>Orkeon:Rag:Provider</c>, mirroring the switch of
     /// the Infrastructure <c>MemoryProviderFactory</c>.
@@ -59,7 +57,7 @@ public static class RagServiceCollectionExtensions
     /// Registers the RAG subsystem pipelines and their collaborators.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">Configuration root; sections <c>Orkeon:Rag:Ingestion</c> and <c>Orkeon:Rag:Pipeline</c> are bound when present.</param>
+    /// <param name="configuration">Configuration root; the <c>Orkeon:Rag</c> tree (profile + per-key overrides, plan §8.1) and <c>Orkeon:Rag:Ingestion</c> are bound when present.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddOrkeonRag(
         this IServiceCollection services,
@@ -71,7 +69,10 @@ public static class RagServiceCollectionExtensions
         services.AddOptions();
         services.Configure<RagStoreOptions>(configuration.GetSection(RagSectionKey));
         services.Configure<RagIngestionOptions>(configuration.GetSection(IngestionSectionKey));
-        services.Configure<LinearRagPipelineOptions>(configuration.GetSection(PipelineSectionKey));
+
+        // Effective query-pipeline options (RagOptions v2, plan §8.1): the
+        // Orkeon:Rag:Profile preset overridden key by key from Orkeon:Rag.
+        services.TryAddSingleton(_ => RagOptionsFactory.Build(configuration));
 
         // Named-component factories (chunkers/transformers/rerankers register by name).
         // The chunking factory ships pre-populated with the four canonical strategies
@@ -114,8 +115,10 @@ public static class RagServiceCollectionExtensions
         services.TryAddSingleton<IDocumentStore>(sp =>
             new MemoryProviderDocumentStore(ResolveDocumentStoreProvider(sp)));
 
-        // Hybrid retrieval (RAG-04/C2, opt-in): wraps the store in a BM25+RRF decorator
-        // when Orkeon:Rag:Retrieval:Hybrid enables it — see HybridRetrievalExtensions.
+        // Hybrid retrieval (RAG-04/C2, per-profile since C4): the store is always
+        // wrapped in the BM25+RRF decorator so ingestion feeds the lexical index;
+        // whether a search fuses is decided per query (profile presets), with
+        // Orkeon:Rag:Retrieval:Hybrid:Enabled as the default mode.
         services.AddOrkeonHybridRetrieval(configuration, ResolveDocumentStoreProvider);
 
         // Per-collection ingestion manifests (incremental state, RAG-03/C1):
@@ -136,12 +139,18 @@ public static class RagServiceCollectionExtensions
             sp.GetRequiredService<IOptions<RagIngestionOptions>>().Value,
             sp.GetService<ILogger<DefaultIngestionPipeline>>()));
 
-        services.TryAddSingleton<IRagPipeline>(sp => new LinearRagPipeline(
-            sp.GetRequiredService<IDocumentStore>(),
-            sp.GetRequiredService<IEmbeddingProvider>(),
-            sp.GetRequiredService<IChatClient>(),
-            sp.GetRequiredService<IOptions<LinearRagPipelineOptions>>().Value,
-            sp.GetService<ILogger<LinearRagPipeline>>()));
+        // Default query pipeline: a StagedRagPipeline composed from the effective
+        // RagOptions (profile preset + configuration overrides). A host-registered
+        // IRagPipeline wins (TryAdd).
+        services.TryAddSingleton<IRagPipeline>(sp =>
+            CreateStagedPipeline(sp, sp.GetRequiredService<Abstractions.Options.RagOptions>()));
+
+        // Preset-aware profile resolution (fast/balanced/quality → one memoized
+        // pipeline per profile; 'default' → the registered IRagPipeline above).
+        services.TryAddSingleton<IRagProfileResolver>(sp => new ProfileRagPipelineResolver(
+            configuration,
+            options => CreateStagedPipeline(sp, options),
+            sp.GetRequiredService<IRagPipeline>));
 
         // Knowledge attachments → prompt injection with citations (RAG-03/C4):
         // the execution orchestrator picks the augmenter up when present.
@@ -158,6 +167,24 @@ public static class RagServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Builds a <see cref="StagedRagPipeline"/> over the shared collaborators for
+    /// <paramref name="options"/> — the single construction path used by both the
+    /// default <see cref="IRagPipeline"/> registration and the profile resolver.
+    /// </summary>
+    private static StagedRagPipeline CreateStagedPipeline(
+        IServiceProvider sp,
+        Abstractions.Options.RagOptions options)
+        => new(
+            sp.GetRequiredService<IDocumentStore>(),
+            sp.GetRequiredService<IEmbeddingProvider>(),
+            sp.GetRequiredService<IChatClient>(),
+            options,
+            sp.GetRequiredService<QueryTransformerFactory>(),
+            sp.GetRequiredService<RerankerFactory>(),
+            sp.GetService<IGroundednessChecker>(),
+            sp.GetService<ILogger<StagedRagPipeline>>());
 
     /// <summary>
     /// Resolves the memory provider backing the default document store: the ambient

@@ -58,7 +58,7 @@ internal static class Program
             new FileSystemMount(outputDir, "/output", FileAccessRights.ReadWrite),
         ]);
 
-        // Offline generation: LinearRagPipeline requires an IChatClient, and the
+        // Offline generation: StagedRagPipeline requires an IChatClient, and the
         // TryAdd default of AddOrkeonInfrastructure() would wire a real LLM
         // provider (API key required at call time). Registering this stub first
         // keeps the example key-free: retrieval and citations are fully real,

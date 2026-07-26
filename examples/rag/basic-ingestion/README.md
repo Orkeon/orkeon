@@ -25,7 +25,7 @@
 
 ## Offline generation
 
-`LinearRagPipeline` requires an `IChatClient` for the generation step, and the
+`StagedRagPipeline` requires an `IChatClient` for the generation step, and the
 default of `AddOrkeonInfrastructure()` wires a real LLM provider (API key
 required at call time). This example registers a deterministic offline
 `IChatClient` stub **before** the infrastructure defaults, so the answer text

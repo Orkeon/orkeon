@@ -85,13 +85,27 @@ public sealed class HybridSearchDocumentStore : IDocumentStore
             Index(collection).UpsertRange(chunks.Select(embedded => embedded.Chunk));
     }
 
+    /// <summary>The decorated inner store (diagnostics: the vector-only path).</summary>
+    public IDocumentStore Inner => _inner;
+
     /// <inheritdoc />
+    /// <remarks>
+    /// The effective search mode is <see cref="RetrievalQuery.Hybrid"/> when set,
+    /// otherwise <see cref="HybridRetrievalOptions.Enabled"/> (the decorator's
+    /// configured default). Non-hybrid searches pass through to the inner store
+    /// verbatim — profiles toggle hybrid per query over one shared BM25 index.
+    /// </remarks>
     public async Task<IReadOnlyList<ScoredChunk>> SearchAsync(
         string collection,
         RetrievalQuery query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
+
+        // Per-query toggle first, configured default otherwise: disabled hybrid is
+        // a strict passthrough (identical results to the undecorated store).
+        if (!(query.Hybrid ?? _options.Enabled))
+            return await _inner.SearchAsync(collection, query, cancellationToken).ConfigureAwait(false);
 
         // Native path: the provider fuses text + vector itself (server-side BM25/FTS).
         if (_provider is not null
