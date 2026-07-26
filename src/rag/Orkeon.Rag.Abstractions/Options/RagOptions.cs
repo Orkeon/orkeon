@@ -66,6 +66,9 @@ public sealed class RagRetrievalOptions
 
     /// <summary>Hybrid (BM25 + vector) retrieval options.</summary>
     public RagHybridOptions Hybrid { get; set; } = new();
+
+    /// <summary>Maximal Marginal Relevance diversification at the fusion/dedup stage (opt-in, RAG-05/C2).</summary>
+    public MmrOptions Mmr { get; set; } = new();
 }
 
 /// <summary>Hybrid retrieval node of <see cref="RagRetrievalOptions"/>.</summary>
