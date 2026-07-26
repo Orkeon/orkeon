@@ -11,6 +11,16 @@ public sealed class FakeChatClient : IChatClient
     /// <summary>Text of the assistant response returned by <see cref="GetResponseAsync"/>.</summary>
     public string ResponseText { get; set; } = "fake answer";
 
+    /// <summary>
+    /// Scripted responses consumed first-in-first-out before falling back to
+    /// <see cref="ResponseText"/> — enables multi-call scenarios (e.g. the
+    /// corrective loop: rewrite, then generate).
+    /// </summary>
+    public Queue<string> ScriptedResponses { get; } = new();
+
+    /// <summary>Messages received by every call, in order.</summary>
+    public List<IReadOnlyList<ChatMessage>> Calls { get; } = [];
+
     /// <summary>Optional model id stamped on the response.</summary>
     public string? ResponseModelId { get; set; }
 
@@ -30,9 +40,11 @@ public sealed class FakeChatClient : IChatClient
     {
         CallCount++;
         LastMessages = messages.ToList();
+        Calls.Add(LastMessages);
         LastOptions = options;
 
-        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, ResponseText))
+        var text = ScriptedResponses.Count > 0 ? ScriptedResponses.Dequeue() : ResponseText;
+        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, text))
         {
             ModelId = ResponseModelId,
         };

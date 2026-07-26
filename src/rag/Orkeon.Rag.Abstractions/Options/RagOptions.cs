@@ -43,6 +43,9 @@ public sealed class RagOptions
 
     /// <summary>Grounded-generation options (system prompt, sampling).</summary>
     public RagGenerationOptions Generation { get; set; } = new();
+
+    /// <summary>Corrective-RAG (CRAG) graph options (RAG-06).</summary>
+    public RagCorrectiveOptions Corrective { get; set; } = new();
 }
 
 /// <summary>Retrieval stage of <see cref="RagOptions"/>.</summary>
