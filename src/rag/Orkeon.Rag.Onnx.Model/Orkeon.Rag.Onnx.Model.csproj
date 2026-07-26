@@ -1,0 +1,45 @@
+<!--
+  Orkeon.Rag.Onnx.Model — companion weights package for Orkeon.Rag.Onnx.
+
+  LICENSE: the embedded model is cross-encoder/ms-marco-MiniLM-L-6-v2
+  (Apache-2.0, sentence-transformers / UKP Lab), int8-quantized ONNX export
+  published by Xenova/ms-marco-MiniLM-L-6-v2 on Hugging Face. Full provenance
+  and license text pointers: THIRD-PARTY-NOTICES.md next to this file.
+
+  OFFLINE STORY: the weights (~22 MB) and the WordPiece vocab are committed to
+  the repository and embedded as resources — referencing this package gives the
+  ONNX cross-encoder reranker a guaranteed zero-network, CI-safe model source.
+  Without this package, hosts must set OnnxRerankerOptions.ModelPath/VocabPath
+  (VFS paths) and provision the files themselves — e.g. with the audited
+  download script src/rag/Orkeon.Rag.Onnx/tools/download-reranker-model.sh.
+  The runtime NEVER downloads anything by itself (supply-chain decision).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Rag.Onnx.Model</PackageId>
+    <Description>Embedded ms-marco-MiniLM-L-6-v2 cross-encoder weights (int8 ONNX, Apache-2.0) for the Orkeon.Rag.Onnx reranker. Reference this package for a guaranteed offline, zero-download model source.</Description>
+    <PackageTags>AI;Orkeon;RAG;Reranking;CrossEncoder;ONNX;MSMARCO;Offline</PackageTags>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Logical names are a public contract: Orkeon.Rag.Onnx resolves these
+         resources by name via Assembly.Load("Orkeon.Rag.Onnx.Model") — keep in
+         sync with MsMarcoMiniLmModel and OnnxRerankerModelSource. -->
+    <EmbeddedResource Include="assets/msmarco-minilm-l6-v2.quant.onnx"
+                      LogicalName="Orkeon.Rag.Onnx.Model.msmarco-minilm-l6-v2.quant.onnx" />
+    <EmbeddedResource Include="assets/msmarco-minilm-l6-v2.vocab.txt"
+                      LogicalName="Orkeon.Rag.Onnx.Model.msmarco-minilm-l6-v2.vocab.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,53 @@
+<!--
+  Orkeon.Rag.Onnx — opt-in ONNX cross-encoder reranker for the Orkeon RAG
+  subsystem (ms-marco-MiniLM-L-6-v2, guide §7).
+
+  LICENSE: the model this runtime executes is cross-encoder/ms-marco-MiniLM-L-6-v2
+  (Apache-2.0, sentence-transformers / UKP Lab); this package itself ships no
+  weights. ONNX Runtime and Microsoft.ML.Tokenizers are MIT.
+
+  OFFLINE STORY: weights are resolved in this order — ① the companion package
+  Orkeon.Rag.Onnx.Model when referenced (embedded resources, guaranteed offline,
+  the CI path); ② OnnxRerankerOptions.ModelPath/VocabPath, VFS virtual paths
+  read through IFileSystemService; ③ otherwise a loud, actionable error. This
+  runtime NEVER downloads weights (supply-chain decision) — hosts that opt for
+  ② can provision the files with tools/download-reranker-model.sh (SHA-256
+  verified).
+
+  Isolation: native onnxruntime dependency confined to this package, same
+  approach as Orkeon.Tools.Embeddings.Local (plan RAG §7).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Rag.Onnx</PackageId>
+    <Description>Opt-in ONNX cross-encoder reranker (ms-marco-MiniLM-L-6-v2, Apache-2.0 model) for the Orkeon RAG subsystem. Reference Orkeon.Rag.Onnx.Model for guaranteed-offline embedded weights.</Description>
+    <PackageTags>AI;Orkeon;RAG;Reranking;CrossEncoder;ONNX;MSMARCO</PackageTags>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Rag.Onnx.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orkeon.Rag\Orkeon.Rag.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

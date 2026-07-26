@@ -116,6 +116,12 @@
   <ItemGroup Label="Embeddings">
     <PackageVersion Include="SmartComponents.LocalEmbeddings" Version="0.1.0-preview10148" />
   </ItemGroup>
+  <ItemGroup Label="Reranking">
+    <!-- ONNX cross-encoder reranker (Orkeon.Rag.Onnx, RAG-04/C3). Native runtime
+         confined to that opt-in package — same isolation as SmartComponents above. -->
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
+    <PackageVersion Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+  </ItemGroup>
   <ItemGroup Label="TUI">
     <!-- 2026-06: the former 2.0.1 freeze (TUI-18, anti-2.1.0) is lifted — the codebase
          now targets the redesigned 2.1+ API (Terminal.Gui.App/Views/ViewBase). -->

@@ -79,7 +79,7 @@ public static class RagServiceCollectionExtensions
         // ingestion fail with "Unknown chunking strategy 'recursive'" (RAG-03 bug).
         services.TryAddSingleton(_ => ChunkingStrategyFactoryDefaults.CreateDefault());
         services.TryAddSingleton<QueryTransformerFactory>();
-        services.TryAddSingleton<RerankerFactory>();
+        services.AddOrkeonRagReranking();
 
         // Document loaders (VFS-backed) + selection factory.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDocumentLoader, TextFileLoader>());

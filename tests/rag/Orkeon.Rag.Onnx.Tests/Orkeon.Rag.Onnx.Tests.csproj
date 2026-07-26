@@ -1,0 +1,42 @@
+<!--
+  Tests of the ONNX cross-encoder reranker. Referencing Orkeon.Rag.Onnx.Model
+  gives the suite the embedded weights (offline). Real inference tests are
+  [Trait("Category","Slow")] — the native onnxruntime can crash sandboxed test
+  hosts (RAG-04 fiche / SONAR-14 T3): run them on a host machine or CI with
+  `dotnet test - -filter "Category=Slow"`.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag.Onnx\Orkeon.Rag.Onnx.csproj" />
+    <!-- Embedded weights: makes the suite offline and the Slow inference test runnable. -->
+    <ProjectReference Include="..\..\..\src\rag\Orkeon.Rag.Onnx.Model\Orkeon.Rag.Onnx.Model.csproj" />
+    <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
+  </ItemGroup>
+
+</Project>
