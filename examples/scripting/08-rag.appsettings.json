@@ -1,0 +1,3 @@
+{
+  "_comment": "Offline settings for 08-rag.ork.ts: no 'Llm' section on purpose — the RAG demo runs without any LLM (ingestion + retrieval + citations are fully local; the generated answer text stays empty and the script prints an explicit notice instead). Pass a settings file WITH an 'Llm' section (e.g. examples/appsettings/appsettings.json with a local model server running) to get a real grounded answer."
+}

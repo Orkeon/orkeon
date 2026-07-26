@@ -1,0 +1,33 @@
+# Crew declared entirely in YAML (RAG-03/C3+C4):
+#   - the crew-level `rag:` block declares the knowledge collections; they are
+#     ingested when the crew is created (kickoff) through the incremental
+#     ingestion pipeline — an unchanged corpus re-ingests nothing;
+#   - the agent-level `knowledge:` attachment binds an agent to one or more
+#     collections; at task execution the knowledge-context augmenter retrieves
+#     from them and injects a cited [n] block into the agent's prompt.
+name: support-crew
+goal: Answer customer questions from the Volta One knowledge base
+
+rag:
+  collections:
+    product-kb:
+      sources:
+        - /kb/faq.md
+        - /kb/battery-care.md
+        - /kb/service-intervals.md
+      chunking:
+        strategy: recursive
+        max_tokens: 256
+        overlap: 32
+
+agents:
+  support:
+    role: Support agent
+    goal: Answer customer questions from the knowledge base, always citing sources
+    knowledge: [product-kb]
+
+tasks:
+  answer:
+    description: Answer the customer question using the attached knowledge
+    expected_output: A grounded answer with [n] citations
+    agent: support
