@@ -8,8 +8,8 @@ namespace Orkeon.Rag.Retrieval;
 /// candidates are picked greedily, each pick maximising
 /// <c>λ·relevance − (1 − λ)·max-similarity-to-already-picked</c>. <c>λ = 1</c>
 /// keeps the pure relevance order; <c>λ = 0</c> maximises diversity (near-duplicates
-/// are pushed back). Standalone component — the fusion/dedup wiring is the
-/// integration batch (RAG-05/C2).
+/// are pushed back). Standalone component — wired at the fusion/dedup stage of
+/// the staged pipeline (RAG-05/C2).
 /// </summary>
 /// <remarks>
 /// <para>

@@ -524,13 +524,25 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     /// <summary>
     /// Reads the optional <see cref="LlmResponseFormat"/> stashed by
     /// <c>ExecutionOrchestrator.ApplyAgentLlmOverrides</c> / <c>ApplyTaskLlmOverrides</c>
-    /// under <see cref="LlmChatOptionsKeys.ResponseFormat"/>.
+    /// under <see cref="LlmChatOptionsKeys.ResponseFormat"/>. When the key is absent, falls
+    /// back to the standard <see cref="ChatOptions.ResponseFormat"/> property so callers
+    /// using plain Microsoft.Extensions.AI options (e.g. the RAG retrieval evaluator,
+    /// groundedness checker and query complexity classifier setting
+    /// <c>ChatResponseFormat.Json</c>) reach providers wiring <c>response_format</c>.
+    /// The explicit AdditionalProperties key keeps priority.
     /// </summary>
     private static LlmResponseFormat? ExtractResponseFormatFromOptions(ChatOptions options)
     {
-        if (options.AdditionalProperties == null) return null;
-        if (!options.AdditionalProperties.TryGetValue(LlmChatOptionsKeys.ResponseFormat, out var raw)) return null;
-        return raw as LlmResponseFormat;
+        if (options.AdditionalProperties != null
+            && options.AdditionalProperties.TryGetValue(LlmChatOptionsKeys.ResponseFormat, out var raw)
+            && raw is LlmResponseFormat stashed)
+        {
+            return stashed;
+        }
+
+        return options.ResponseFormat is ChatResponseFormatJson
+            ? LlmResponseFormat.JsonObject()
+            : null;
     }
 
     // ─────────────────────────────────────────────────────────────

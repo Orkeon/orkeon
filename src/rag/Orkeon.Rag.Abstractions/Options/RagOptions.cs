@@ -30,7 +30,7 @@ public sealed class RagOptions
     /// <summary>Retrieval stage options.</summary>
     public RagRetrievalOptions Retrieval { get; set; } = new();
 
-    /// <summary>Query-transform stage options (hook — RAG-05 ships the transformers).</summary>
+    /// <summary>Query-transform stage options (transformers shipped with RAG-05).</summary>
     public RagQueryTransformOptions QueryTransform { get; set; } = new();
 
     /// <summary>Rerank stage options.</summary>
@@ -92,9 +92,9 @@ public sealed class RagHybridOptions
 public sealed class RagQueryTransformOptions
 {
     /// <summary>
-    /// Transformer name resolved through the query-transformer factory
-    /// (<c>none</c> today; <c>multi-query</c> / <c>rag-fusion</c> / <c>hyde</c>
-    /// land with RAG-05). <c>none</c> skips the stage; unknown names fail loudly.
+    /// Transformer name resolved through the query-transformer factory:
+    /// <c>none</c> (default), <c>multi-query</c>, <c>rag-fusion</c> or <c>hyde</c>.
+    /// <c>none</c> skips the stage; unknown names fail loudly.
     /// </summary>
     public string Mode { get; set; } = RagDefaults.QueryTransformNone;
 

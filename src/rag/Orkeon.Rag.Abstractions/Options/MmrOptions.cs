@@ -3,7 +3,7 @@ namespace Orkeon.Rag.Abstractions.Options;
 /// <summary>
 /// Maximal Marginal Relevance (MMR) diversification options (RAG-05/C2, opt-in).
 /// Bound from <c>Orkeon:Rag:Retrieval:Mmr</c>; consumed at the fusion/dedup stage
-/// of the pipeline by the integration batch.
+/// of the staged pipeline.
 /// </summary>
 /// <remarks>
 /// MMR re-orders the fused candidates by trading relevance against redundancy:

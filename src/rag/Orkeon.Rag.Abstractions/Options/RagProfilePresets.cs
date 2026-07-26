@@ -125,7 +125,8 @@ public static class RagProfilePresets
         },
 
         // Quality — Balanced + wider candidate pool + groundedness verification.
-        // Query transform stays "none" until RAG-05 ships the transformers.
+        // Query transform stays "none" by default: the RAG-05 transformers are
+        // LLM-backed and remain a per-key opt-in on every profile.
         RagProfile.Quality => new RagOptions
         {
             Profile = QualityName,

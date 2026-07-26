@@ -7,9 +7,8 @@ namespace Orkeon.Rag.Factories;
 /// with the list of known names — never a silent fallback.
 /// </summary>
 /// <remarks>
-/// Concrete component implementations land in later batches (RAG-02 C3+);
-/// until then, components are registered as delegates at composition time
-/// via <see cref="Register"/>. Registration is not thread-safe: register during
+/// Components are registered as delegates at composition time via
+/// <see cref="Register"/>. Registration is not thread-safe: register during
 /// composition, resolve afterwards.
 /// </remarks>
 /// <typeparam name="TComponent">The component contract produced by this factory.</typeparam>

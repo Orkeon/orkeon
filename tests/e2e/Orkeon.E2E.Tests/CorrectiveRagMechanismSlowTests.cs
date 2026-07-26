@@ -138,9 +138,12 @@ public sealed class CorrectiveRagMechanismSlowTests
             Assert.Contains(correctiveAnswer.Trace.Verdicts, v => v.Grade == RetrievalGrade.Incorrect);
 
             // THE flip: the citations now surface the truly relevant document
-            // that the quality pipeline (same environment) missed.
+            // that the quality pipeline (same environment) missed — at rank 1,
+            // as the bridge query is lexically aligned with notes-power.md.
             Assert.Contains(correctiveAnswer.Citations,
                 c => c.SourceId.Contains(TrulyRelevantSource, StringComparison.Ordinal));
+            Assert.NotEmpty(correctiveAnswer.Citations);
+            Assert.Contains(TrulyRelevantSource, correctiveAnswer.Citations[0].SourceId, StringComparison.Ordinal);
         }
         finally
         {
