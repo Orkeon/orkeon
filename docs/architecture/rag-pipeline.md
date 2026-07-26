@@ -5,8 +5,9 @@
 Retrieval-Augmented Generation subsystem (`src/rag/`): incremental ingestion with
 security validation, a staged query pipeline (transform → retrieve → fuse → rerank →
 assemble → generate → groundedness) whose every stage is traced, hybrid BM25 + vector
-retrieval, pluggable rerankers, quality profiles (`fast` / `balanced` / `quality` /
-`adaptive`), YAML crew integration with cited knowledge injection, and an offline
+retrieval, pluggable rerankers, a corrective CRAG graph built on the in-house Graph
+orchestration mode, quality profiles (`fast` / `balanced` / `quality` / `adaptive` /
+`corrective`), YAML crew integration with cited knowledge injection, and an offline
 evaluation harness gated in CI.
 
 ## Overview
@@ -224,12 +225,12 @@ irrelevant (this is how the ONNX package plugs in; see
 `RagProfilePresets` expands a profile name into a complete `RagOptions`; the
 `Orkeon:Rag` configuration section then overrides any value individually.
 
-| | `fast` (default) | `balanced` | `quality` | `adaptive` |
-|---|---|---|---|---|
-| Retrieval | vector only, `CandidateK = TopK` | hybrid BM25 + RRF, `CandidateK = 50` | hybrid, `CandidateK = 100` | routed (see below) |
-| Rerank | off | ONNX cross-encoder 50 → 5 | ONNX cross-encoder | routed |
-| Groundedness | off | off | on | routed |
-| Needs | nothing | `Orkeon.Rag.Onnx` | `Orkeon.Rag.Onnx` | classifier + chat client |
+| | `fast` (default) | `balanced` | `quality` | `adaptive` | `corrective` |
+|---|---|---|---|---|---|
+| Retrieval | vector only, `CandidateK = TopK` | hybrid BM25 + RRF, `CandidateK = 50` | hybrid, `CandidateK = 100` | routed (see below) | hybrid, graph `retrieve` node (see [CRAG](#corrective-rag-crag)) |
+| Rerank | off | ONNX cross-encoder 50 → 5 | ONNX cross-encoder | routed | none — the graph corrects by looping, not reranking |
+| Groundedness | off | off | on | routed | native `check_groundedness` graph node |
+| Needs | nothing | `Orkeon.Rag.Onnx` | `Orkeon.Rag.Onnx` | classifier + chat client | chat client (grader/rewrite; heuristic fallbacks without one) |
 
 `fast` is the out-of-the-box default because `balanced` requires the opt-in ONNX
 package — defaulting to it would make every bare `AddOrkeonRag()` host fail
@@ -251,7 +252,7 @@ flowchart LR
     Q[query] --> C{classifier}
     C -- NoRetrieval --> D[direct LLM answer<br/>no citations]
     C -- SingleShot --> B[balanced pipeline]
-    C -- Iterative --> QU[quality pipeline<br/>documented fallback]
+    C -- Iterative --> CO[corrective graph pipeline]
 ```
 
 Classifiers (`Orkeon:Rag:QueryRouting:Classifier`): `heuristic` (default —
@@ -259,11 +260,10 @@ deterministic rules, zero LLM call) or `llm` (one constrained lightweight chat
 call; when selected without an `IChatClient` the heuristic is the documented
 fallback, with a warning).
 
-**Current limitation**: `Iterative` routes fall back to the widest linear preset
-(`quality`) until the corrective engine ships — the trace says so explicitly
-(`iterative routing falls back to the 'quality' profile until the corrective
-engine ships (RAG-06)`). The `corrective` profile lifts this fallback (see
-[Corrective RAG](#corrective-rag-crag)).
+Since RAG-06 the `Iterative` route delegates to the memoized **`corrective`**
+graph pipeline (see [Corrective RAG](#corrective-rag-crag)) — the RAG-05
+documented fallback to `quality` is lifted. The `route` trace step carries
+`delegate=corrective` and `RagTrace.Route` records the decision.
 
 ## Configuration reference (`Orkeon:Rag`)
 
@@ -271,7 +271,7 @@ Bound over the selected preset — every key is an individual override.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `Orkeon:Rag:Profile` | `fast` | Preset: `fast` / `balanced` / `quality` / `adaptive` (unknown fails loudly) |
+| `Orkeon:Rag:Profile` | `fast` | Preset: `fast` / `balanced` / `quality` / `adaptive` / `corrective` (unknown fails loudly) |
 | `Orkeon:Rag:Collection` | — | Default collection when the call site names none |
 | `Orkeon:Rag:Provider` | ambient | Document-store provider alias (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`…); unset = ambient `IMemoryProvider` |
 | `Orkeon:Rag:ConnectionString` / `ProviderOptions:*` | — | Passed to the memory-provider factory when `Provider` is set |
@@ -293,6 +293,10 @@ Bound over the selected preset — every key is an individual override.
 | `Orkeon:Rag:Generation:SystemPrompt` | built-in | Grounded system prompt override |
 | `Orkeon:Rag:Generation:Temperature` / `MaxOutputTokens` | — | Sampling passed to the chat client |
 | `Orkeon:Rag:QueryRouting:Classifier` | `heuristic` | `heuristic` or `llm` (adaptive profile) |
+| `Orkeon:Rag:Corrective:MaxIterations` | 3 | Corrective iteration budget — query rewrites, whether triggered by an `Incorrect` verdict or an ungrounded answer |
+| `Orkeon:Rag:Corrective:WebFallback:Enabled` | false | Pipeline-side policy: may the corrective graph route to its `web_fallback` node |
+| `Orkeon:Rag:Corrective:WebFallback:MaxResults` | 3 | Web documents the graph asks the retriever for |
+| `Orkeon:Rag:WebFallback:*` | disabled | **Separate section** — transport of the web retriever (`Enabled`, `Endpoint`, `ApiKeyEnvVar`, `MaxResults`, `Timeout`, `SuspiciousAction`); see [Web fallback](#web-fallback--opt-in-injection-validated) |
 | `Orkeon:Rag:Ingestion:DefaultChunkingStrategy` | `recursive` | Strategy when a request names none |
 | `Orkeon:Rag:Ingestion:ManifestDirectory` | `/output/rag/manifests` | VFS directory of the per-collection manifests |
 
@@ -372,8 +376,9 @@ published number instead of a claim:
   an LLM judge when available, with a deterministic heuristic fallback — the
   report always labels which judge ran.
 - **Profiles compared** in one run: `orkeon rag eval --dataset … --compare
-  fast,balanced,quality --offline` (`--offline` swaps generation for a
-  deterministic extractive stub — zero network).
+  fast,balanced,quality,corrective,adaptive --offline` (`--offline` swaps
+  generation for a deterministic extractive stub — zero network; the measured
+  table and its honest reading live in `examples/rag/eval/README.md`).
 - **CI gate** (`.github/workflows/rag-eval.yml`): the comparison table is
   published to the step summary, and an anti-regression gate fails the build
   when the `balanced` profile's aggregate recall@5 or MRR drops below the
@@ -382,24 +387,150 @@ published number instead of a claim:
 
 ## Corrective RAG (CRAG)
 
-> **Livré avec RAG-06 (profil `corrective`) — section complétée à l'intégration.**
->
-> Shipping scope (fiche RAG-06): a corrective retrieval graph built on the
-> in-house `Graph` orchestration (`StateGraph<RagGraphState>`) — nodes
-> `retrieve` → `evaluate` (`IRetrievalEvaluator`, verdict
-> `Correct | Incorrect | Ambiguous`) → `refine` / `rewrite_query` (bounded
-> loop) / `web_fallback` (opt-in, injection-validated) → `generate` →
-> `check_groundedness` (`IGroundednessChecker`); `Corrective.MaxIterations`
-> bounded by the Graph circuit breaker; same `IRagPipeline` façade (the
-> profile selects the executor); the `adaptive` profile's `Iterative` route
-> then targets `corrective` instead of the current `quality` fallback; the
-> seeded `correctif` golden cases become the acceptance proof
-> (`--compare fast,balanced,quality,corrective,adaptive`).
->
-> Until that lot lands, the hooks already exist and are traced: the
-> `groundedness` stage runs when a checker is registered, `RagTrace` carries
-> `Verdicts` and `Iterations`, and `Iterative` routing falls back to
-> `quality` with an explicit trace detail.
+The `corrective` profile resolves to `CorrectiveRagPipeline`
+(`Orkeon.Rag.Corrective`) — **CRAG built on Orkeon's Graph orchestration
+mode**: the pipeline's execution *is* a `StateGraph<RagGraphState>` — the same
+Domain `StateGraph<TState>` engine behind `ProcessType.Graph` — with conditional
+edges, controlled cycles and the graph's native circuit breaker. The corrective
+engine is not a bespoke loop bolted onto RAG; RAG demonstrates the `Graph`
+orchestration mode and vice versa. Same `IRagPipeline` façade as every other
+profile: the profile selects the executor, callers only ever see a `RagAnswer`.
+
+### Graph topology
+
+```mermaid
+flowchart LR
+    S((start)) --> R[retrieve]
+    R --> E{evaluate}
+    E -- Correct --> G[generate]
+    E -- Ambiguous --> RF[refine]
+    E -- "Incorrect · budget left" --> RW[rewrite_query]
+    RW --> R
+    E -- "Incorrect · budget exhausted, opt-in" --> W[web_fallback]
+    RF --> G
+    W --> G
+    G --> CG{check_groundedness}
+    CG -- "ungrounded · budget left" --> RW
+    CG -- "grounded / exhausted" --> X((end))
+```
+
+Every node run appends a `corrective:<node>` step (with the iteration ordinal)
+to `RagAnswer.Trace`; verdicts accumulate in `RagTrace.Verdicts`, rewritten
+probes in `RagTrace.QueryVariants`, the loop count in `RagTrace.Iterations`.
+
+| Node | What it does |
+|---|---|
+| `retrieve` | Embeds the current probe (original question, or the latest rewrite) and searches `CandidateK` candidates — hybrid BM25 + RRF per the preset — keeping `TopN` |
+| `evaluate` | `IRetrievalEvaluator` grades the chunks against the **original** question (the probe may have been rewritten, the information need has not) → `RetrievalVerdict` |
+| `rewrite_query` | One constrained LLM call (temperature 0) rewrites the retrieval probe across the vocabulary gap, fed with the evaluator's rationale and any unsupported claims; loops back to `retrieve`. An unusable rewrite retries the previous probe but still consumes the budget — never an exception |
+| `refine` | Decompose-then-recompose on `Ambiguous`: filters by the evaluator's per-chunk relevances (threshold 0.5), re-splits chunks into sentences and keeps the segments sharing vocabulary with the question — never empties the working set |
+| `web_fallback` | Opt-in last resort after rewriting is exhausted (see below); skipped and traced otherwise |
+| `generate` | Grounded generation answering the **original** user question — never the rewritten probe — with the same rank-based `[n]` markers, token budget and anti-Lost-in-the-Middle `edges` layout as the staged pipeline |
+| `check_groundedness` | `IGroundednessChecker` verifies the answer against the context; ungrounded → re-loop through `rewrite_query`; without a registered checker the node is traced as skipped and the graph ends |
+
+The two decision points are conditional edges: after `evaluate` →
+`[generate | rewrite_query | refine | web_fallback]`, after
+`check_groundedness` → `[rewrite_query | end]`.
+
+### Verdicts (`Correct | Incorrect | Ambiguous`)
+
+- `Correct` → straight to `generate`.
+- `Ambiguous` → `refine`, then `generate`.
+- `Incorrect` → `rewrite_query` while the iteration budget lasts; at exhaustion
+  the opt-in web fallback fires (only when enabled **and** a retriever is
+  registered **and** it has not been attempted yet), else best-effort
+  generation with the best available chunks — every skip is traced with its
+  reason (`disabled`, `no IWebDocumentRetriever registered`, `already
+  attempted`).
+
+Default evaluator and checker (registered by `AddOrkeonCorrectiveRag`, itself
+called by `AddOrkeonRag`): LLM-backed when an `IChatClient` is registered —
+`LlmRetrievalEvaluator` and `LlmGroundednessChecker`, constrained via
+`LlmResponseFormat` (`json_object` where the provider wires it, e.g. DeepSeek;
+tolerant JSON parsing elsewhere) — otherwise the deterministic
+`HeuristicRetrievalEvaluator` / `HeuristicGroundednessChecker` with a warning.
+
+### Double bound — the loop can never run away
+
+1. **`Corrective.MaxIterations`** (default 3): the routing never re-enters
+   `rewrite_query` past the budget — this bounds both the `Incorrect` rewrite
+   cycle and the groundedness re-loop.
+2. **Graph circuit breaker**: the `StateGraph` engine's own
+   `CircuitBreakerPolicy`, explicitly derived from the budget
+   (`MaxTransitions = (n+2)×7`, `MaxStateVisits = n+2`, per-state timeout
+   2 min, total 10 min) — a second, independent layer that only trips if the
+   routing invariants are ever violated. A tripped breaker is caught, traced
+   (`corrective:circuit_breaker`) and degraded to a best-effort answer
+   (generation runs outside the graph if it had not run yet). The pipeline
+   never throws for a loop condition.
+
+### Groundedness is native to the graph
+
+The `corrective` preset deliberately keeps `Groundedness.Enabled = false`: that
+flag toggles the *staged* pipeline's optional stage 7, whereas the graph runs
+its own `check_groundedness` node whenever an `IGroundednessChecker` is
+registered. Honouring the flag here would be dead configuration at best and a
+double check if the preset ever fed a linear pipeline.
+
+### Web fallback — opt-in, injection-validated
+
+Two deliberately separate configuration sections; **both** `Enabled` switches
+are off by default and both must be on for a web document to ever reach the
+graph:
+
+| Section | Type | Concern |
+|---|---|---|
+| `Orkeon:Rag:Corrective:WebFallback` (`Enabled`, `MaxResults`) | `RagWebFallbackOptions` (Abstractions) | Pipeline-side policy: may the graph route to `web_fallback`, and for how many documents |
+| `Orkeon:Rag:WebFallback` (`Enabled`, `Endpoint`, `ApiKeyEnvVar`, `MaxResults`, `Timeout`, `SuspiciousAction`) | `WebSearchRetrieverOptions` (`Orkeon.Rag.WebFallback`) | HTTP transport: SearxNG-compatible JSON search + page download + suspicious-content policy |
+
+The split is architectural, not accidental: the Abstractions shared kernel is
+Domain+BCL-only (ADR-006), and web egress is its own explicit opt-in.
+`AddOrkeonRagWebFallback(configuration)` registers the `IWebDocumentRetriever`
+(`WebSearchDocumentRetriever`) — enabled-but-unconfigured stays inert with a
+warning, and the API key only ever comes from the `ApiKeyEnvVar` environment
+variable. Every downloaded page passes `PromptInjectionDocumentValidator`:
+`Rejected` content never leaves the retriever, `Suspicious` content is flagged
+in metadata or discarded per `SuspiciousAction`, and content is never
+rewritten. Threat model, detected signals and honest limits:
+[security.md](./security.md#rag-web-fallback--prompt-injection). Web chunks
+carry `ScoreOrigin = "web"` and open the working set; the locally retrieved
+chunks — just graded `Incorrect` — close it.
+
+### Profiles `corrective` and `adaptive`
+
+The `corrective` preset feeds the graph's nodes: hybrid BM25 + RRF retrieval
+(rewritten probes need the lexical leg to bridge vocabulary gaps) and **no
+linear rerank stage** — the graph corrects through evaluate → rewrite loops
+instead of reranking, so the profile needs no opt-in ONNX package. Since
+RAG-06 the `adaptive` profile's `Iterative` route delegates to the memoized
+`corrective` pipeline (fallback to `quality` lifted, `route` step traces
+`delegate=corrective`).
+
+### Measured honesty
+
+The end-to-end mechanism — grader verdict `Incorrect` → LLM rewrite →
+re-retrieve → `notes-power.md` cited on the seeded q-007 case where `quality`
+misses it — is proven by
+`tests/e2e/Orkeon.E2E.Tests/CorrectiveRagMechanismSlowTests.cs` (real BGE
+embeddings, real hybrid store; the LLM is scripted for the two roles CI cannot
+provide, and labelled as such). In the fully offline eval table `corrective`
+scores **0.78 recall@5 / 0.64 MRR — below `quality`**: the extractive stub
+degrades the graph's LLM nodes (pseudo-random verdicts, degenerate rewrite
+probe). That artifact is analysed line by line in
+`examples/rag/eval/README.md` — published as measured, not smoothed over.
+
+## Architecture decisions
+
+The RAG subsystem's decision record is
+[ADR-006](../adr/ADR-006-rag-subsystem.md) (shared-kernel status of
+`Orkeon.Rag.Abstractions`, allowed couplings, legacy namespaces removed without
+shims). The phase decisions layered on top of it: the double ONNX package
+(`Orkeon.Rag.Onnx` runtime + `Orkeon.Rag.Onnx.Model` embedded int8 weights —
+guaranteed offline, RAG-04), profile presets + per-key overrides with `fast` as
+the safe default (RAG-04), query transformers with per-kind fusion semantics
+(RAG-05), CRAG built on the Domain `StateGraph` rather than a bespoke loop
+(RAG-06), and the strictly opt-in, injection-validated web fallback with its
+policy/transport section split (RAG-06, this page and ADR-006).
 
 ## V1 limitations
 
@@ -409,5 +540,10 @@ published number instead of a claim:
   re-computed at the fuse stage).
 - `balanced` / `quality` require the opt-in ONNX packages; without them use
   `Rerank:Kind = llm` or stay on `fast`.
-- The corrective engine is not shipped yet (see the CRAG section above);
-  `Iterative` routes degrade to `quality`, explicitly traced.
+- Without a real `IChatClient` the corrective graph's LLM nodes (grader,
+  rewrite, groundedness) degrade — offline evaluation measures the loop's guard
+  rails, not rewrite quality (honest analysis in `examples/rag/eval/README.md`
+  and [limitations](../reference/limitations.md)).
+- The web fallback's anti-injection heuristics are pattern-based and evadable
+  ([security.md](./security.md)); the fallback is opt-in and not exercised
+  against a real network in CI.

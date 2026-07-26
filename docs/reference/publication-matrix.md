@@ -28,7 +28,8 @@ pushed by any workflow yet.
 
 | PackageId | Note |
 |---|---|
-| `Orkeon.Tools.Abstractions`, `Orkeon.Tools.Analysis`, `Orkeon.Tools.Code`, `Orkeon.Tools.Data`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Tools.EventHub`, `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Web` | Tools family — publish as a set once core is stable. |
+| `Orkeon.Tools.Abstractions`, `Orkeon.Tools.Analysis`, `Orkeon.Tools.Code`, `Orkeon.Tools.Data`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Tools.EventHub`, `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Rag`, `Orkeon.Tools.Web` | Tools family — publish as a set once core is stable. |
+| `Orkeon.Rag.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | RAG subsystem (RAG-02…06, ADR-006). `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` are the opt-in cross-encoder pair (runtime + embedded int8 weights) — publish the two together. |
 | `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions` | RaggableTree. |
 | `Orkeon.Cli`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui` | CLI libraries. |
 | `Orkeon.Cli.Scripting` | **Gated on D3** — twin-name rename window closes at first publish. |

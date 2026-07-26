@@ -29,7 +29,8 @@ local) mais n'est **pas** poussée par un workflow pour l'instant.
 
 | PackageId | Note |
 |---|---|
-| `Orkeon.Tools.Abstractions`, `Orkeon.Tools.Analysis`, `Orkeon.Tools.Code`, `Orkeon.Tools.Data`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Tools.EventHub`, `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Web` | Famille d'outils — publier en lot une fois le cœur stabilisé. |
+| `Orkeon.Tools.Abstractions`, `Orkeon.Tools.Analysis`, `Orkeon.Tools.Code`, `Orkeon.Tools.Data`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Tools.EventHub`, `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Rag`, `Orkeon.Tools.Web` | Famille d'outils — publier en lot une fois le cœur stabilisé. |
+| `Orkeon.Rag.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Sous-système RAG (RAG-02…06, ADR-006). `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` forment la paire cross-encoder opt-in (runtime + poids int8 embarqués) — publier les deux ensemble. |
 | `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions` | RaggableTree. |
 | `Orkeon.Cli`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui` | Bibliothèques CLI. |
 | `Orkeon.Cli.Scripting` | **Conditionné à D3** — la fenêtre de renommage des jumeaux se ferme à la première publication. |

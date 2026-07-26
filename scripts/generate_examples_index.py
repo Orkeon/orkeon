@@ -306,10 +306,10 @@ def render(cats: list[Category]) -> str:
     a("| Folder | Kind | Notes |")
     a("|--------|------|-------|")
     a("| [`raggable-tree/`](raggable-tree/) | C# programs | RaggableTree indexing: `basic-indexing`, `crew-yaml`, `custom-adapter`. |")
-    a("| [`scripting/`](scripting/) | `.ork.ts` scripts | TypeScript-syntax scripting DSL samples (hello-world → FSM/graph). |")
+    a("| [`scripting/`](scripting/) | `.ork.ts` scripts | TypeScript-syntax scripting DSL samples (hello-world → FSM/graph, `08-rag.ork.ts` for `rag.ingest`/`rag.query`). |")
     a("| [`cli-ts-commands/`](cli-ts-commands/) | `.cmd.ts` / `.ork.ts` | TypeScript CLI command examples. |")
     a("| [`local-embeddings/`](local-embeddings/) | C# program | On-device BGE-micro-v2 ONNX embeddings. |")
-    a("| [`rag/`](rag/) | C# program | RAG subsystem: `basic-ingestion` — incremental ingestion + cited offline queries (local BGE, no API key). |")
+    a("| [`rag/`](rag/) | C# programs | RAG subsystem (fully offline, local BGE, no API key): `basic-ingestion` (incremental ingestion + cited queries), `hybrid-retrieval` (BM25 + RRF vs vector-only), `custom-reranker` (host-provided `IReranker` via `IRerankerRegistrar`), `crew-yaml` (crew `rag:`/`knowledge:` blocks); plus the `eval/` golden dataset. |")
     a("| [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |")
     a("")
 

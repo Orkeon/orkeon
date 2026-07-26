@@ -49,8 +49,8 @@ dotnet test tests/rag/Orkeon.Rag.Tests/Orkeon.Rag.Tests.csproj
 dotnet test tests/rag/Orkeon.Rag.Onnx.Tests/Orkeon.Rag.Onnx.Tests.csproj   # ONNX cross-encoder (native runtime — run on host/CI, not in a sandbox)
 dotnet test tests/tools/Orkeon.Tools.Rag.Tests/Orkeon.Tools.Rag.Tests.csproj
 
-# RAG offline evaluation (profiles fast/balanced/quality, golden dataset)
-dotnet run --project src/scripting/Orkeon.Scripting.Cli -- rag eval --dataset examples/rag/eval/golden.yaml --compare fast,balanced,quality --offline
+# RAG offline evaluation (profiles fast/balanced/quality/corrective/adaptive, golden dataset)
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- rag eval --dataset examples/rag/eval/golden.yaml --compare fast,balanced,quality,corrective,adaptive --offline
 
 # Run Analysis (RaggableTree) tests
 dotnet test tests/analysis/Orkeon.Analysis.Tests/Orkeon.Analysis.Tests.csproj
@@ -155,6 +155,20 @@ The project follows Clean Architecture with clear separation of concerns:
   (`RagProfilePresets` → `RagOptions` v2 bound on `Orkeon:Rag`, per-key overrides;
   `IRagProfileResolver` memoizing one pipeline per profile; default `fast` —
   `balanced` requires the ONNX package)
+- ✅ **NEW**: RAG corrective phase (RAG-05/06) — query transformers
+  (`multi-query`/`rag-fusion`/`hyde`), opt-in MMR, Adaptive-RAG routing
+  (`IQueryComplexityClassifier`); **CRAG corrective graph**
+  (`CorrectiveRagPipeline` on `StateGraph<RagGraphState>` — the Domain Graph
+  orchestration mode — verdicts `Correct|Incorrect|Ambiguous` via
+  `IRetrievalEvaluator`, `IGroundednessChecker` re-loop, double bound
+  `Corrective:MaxIterations` + graph circuit breaker); profiles
+  `fast`/`balanced`/`quality`/`adaptive`/`corrective` (Adaptive `Iterative`
+  route delegates to `corrective`); **opt-in web fallback** — two off-by-default
+  switches `Orkeon:Rag:Corrective:WebFallback` (policy) +
+  `Orkeon:Rag:WebFallback` (transport, `AddOrkeonRagWebFallback`), every page
+  validated by `PromptInjectionDocumentValidator`; offline eval compares all
+  five profiles (honest numbers + analysis in `examples/rag/eval/README.md`);
+  see `docs/architecture/rag-pipeline.md`
 
 **Infrastructure Layer Components**:
 - ✅ Redis memory provider with vector search (`RedisMemoryProvider`, `EncryptedRedisMemoryProvider`)
@@ -453,7 +467,7 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 │   │   └── Orkeon.Tools.Web/           # Web/HTTP tools
 │   ├── rag/
 │   │   ├── Orkeon.Rag.Abstractions/    # RAG contracts + DTOs + options incl. RagOptions v2 + RagProfilePresets (Domain-only dependency, ADR-006)
-│   │   ├── Orkeon.Rag/                 # Loaders, chunking, validation, StagedRagPipeline, profiles resolver, hybrid BM25+RRF, eval harness, AddOrkeonRag DI
+│   │   ├── Orkeon.Rag/                 # Loaders, chunking, validation, StagedRagPipeline, corrective CRAG graph, web fallback, profiles resolver, hybrid BM25+RRF, eval harness, AddOrkeonRag DI
 │   │   ├── Orkeon.Rag.Onnx/            # Opt-in ONNX cross-encoder reranker (ms-marco-MiniLM-L-6-v2, AddOrkeonOnnxReranker)
 │   │   └── Orkeon.Rag.Onnx.Model/      # Companion package embedding the int8 model weights (guaranteed offline)
 │   ├── analysis/
@@ -484,6 +498,7 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 ├── examples/                     # Orkeon.Examples.sln (separate solution)
 │   ├── 01-enterprise/ … 09-experimental/  # 9 thematic example categories
 │   ├── raggable-tree/            # RaggableTree: basic-indexing, crew-yaml, custom-adapter
+│   ├── rag/                      # RAG: basic-ingestion, hybrid-retrieval, custom-reranker, crew-yaml + eval/ (golden dataset)
 │   ├── scripting/                # .ork.ts scripting examples
 │   ├── cli-ts-commands/          # TypeScript CLI command examples
 │   ├── local-embeddings/         # Local embedding example

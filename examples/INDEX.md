@@ -208,9 +208,9 @@ These live under `examples/` but are code- or script-driven rather than pure `co
 | Folder | Kind | Notes |
 |--------|------|-------|
 | [`raggable-tree/`](raggable-tree/) | C# programs | RaggableTree indexing: `basic-indexing`, `crew-yaml`, `custom-adapter`. |
-| [`scripting/`](scripting/) | `.ork.ts` scripts | TypeScript-syntax scripting DSL samples (hello-world → FSM/graph). |
+| [`scripting/`](scripting/) | `.ork.ts` scripts | TypeScript-syntax scripting DSL samples (hello-world → FSM/graph, `08-rag.ork.ts` for `rag.ingest`/`rag.query`). |
 | [`cli-ts-commands/`](cli-ts-commands/) | `.cmd.ts` / `.ork.ts` | TypeScript CLI command examples. |
 | [`local-embeddings/`](local-embeddings/) | C# program | On-device BGE-micro-v2 ONNX embeddings. |
-| [`rag/`](rag/) | C# program | RAG subsystem: `basic-ingestion` — incremental ingestion + cited offline queries (local BGE, no API key). |
+| [`rag/`](rag/) | C# programs | RAG subsystem (fully offline, local BGE, no API key): `basic-ingestion` (incremental ingestion + cited queries), `hybrid-retrieval` (BM25 + RRF vs vector-only), `custom-reranker` (host-provided `IReranker` via `IRerankerRegistrar`), `crew-yaml` (crew `rag:`/`knowledge:` blocks); plus the `eval/` golden dataset. |
 | [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |
 
