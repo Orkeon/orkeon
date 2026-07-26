@@ -68,17 +68,19 @@ public class ArchitectureTests
     }
 
     [Fact]
-    public void DirectorySearchTool_CanBeCreated_WithDomainEmbeddingService()
+    public void DirectorySearchTool_CanBeCreated_WithEphemeralCollectionSearch()
     {
-        // Arrange — the tool constructor should accept the Domain IEmbeddingService,
-        // not requiring any Application type
+        // Arrange — since RAG-03/C5 the façade takes the shared ephemeral-collection
+        // search contract (Orkeon.Rag.Abstractions, itself Domain-only per ADR-006),
+        // still not requiring any Application type.
         var constructors = typeof(DirectorySearchTool).GetConstructors(BindingFlags.Public | BindingFlags.Instance);
 
         // Act
         var ctor = constructors.FirstOrDefault(c =>
         {
             var parameters = c.GetParameters();
-            return parameters.Any(p => p.ParameterType == typeof(Orkeon.Domain.Memory.IEmbeddingService));
+            return parameters.Any(p =>
+                p.ParameterType == typeof(Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch));
         });
 
         // Assert

@@ -18,7 +18,9 @@ public sealed class TXTSearchToolTests : IDisposable
         Directory.CreateDirectory(_tempDir);
 
         _mockEmbeddingService = new MockEmbeddingService();
-        _tool = new TxtSearchTool(_mockEmbeddingService, new PassThroughFileSystemService());
+        _tool = new TxtSearchTool(
+            EphemeralSearchHarness.Create(_mockEmbeddingService),
+            new PassThroughFileSystemService());
     }
 
     [Fact]

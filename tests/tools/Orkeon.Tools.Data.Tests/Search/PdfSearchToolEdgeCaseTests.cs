@@ -23,7 +23,9 @@ public sealed class PdfSearchToolEdgeCaseTests : IDisposable
     {
         var mock = new MockEmbeddingService();
         mock.SetEmbeddingFactory(_ => [1f, 0f, 0f, 0f]);
-        _tool = new PdfSearchTool(mock, new PassThroughFileSystemService());
+        _tool = new PdfSearchTool(
+            EphemeralSearchHarness.Create(mock),
+            new PassThroughFileSystemService());
         _tempDir = Path.Combine(Path.GetTempPath(), $"PdfSearchEdge_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
     }

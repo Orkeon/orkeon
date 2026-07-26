@@ -19,7 +19,9 @@ public sealed class DirectorySearchToolTests : IDisposable
         Directory.CreateDirectory(_testDir);
 
         _embeddingService = new MockEmbeddingService();
-        _tool = new DirectorySearchTool(new RelativePathFileSystem(_testDir), _embeddingService);
+        _tool = new DirectorySearchTool(
+            new RelativePathFileSystem(_testDir),
+            EphemeralSearchHarness.Create(_embeddingService));
     }
 
     /// <summary>

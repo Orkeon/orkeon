@@ -1,12 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Tools.Abstractions.Data;
 using Orkeon.Domain.Tools;
+using Orkeon.Rag.DependencyInjection;
 using Orkeon.Tools.Data.Relational;
 using Orkeon.Tools.Data.MongoDB;
 using Orkeon.Tools.Data.Graph;
 using Orkeon.Tools.Data.Search;
-using DomainEmbeddingService = Orkeon.Domain.Memory.IEmbeddingService;
 
 namespace Orkeon.Tools.Data.DependencyInjection;
 
@@ -17,13 +16,16 @@ public static class DataToolExtensions
 {
     /// <summary>
     /// Adds data tools (JSON, CSV, PDF, XML, Database, MongoDB, Graph) to the service collection.
-    /// RAG search tools (TXT, MDX, PDF) require an IEmbeddingService registration;
-    /// a no-op fallback is added automatically when none is provided.
+    /// The search façades (txt_search, mdx_search, pdf_search) ride on the shared
+    /// ephemeral-collection RAG search (RAG-03/C5): the host must register the RAG
+    /// subsystem (<c>AddOrkeonRag</c> + an embedding provider) for them to run —
+    /// without it, registration and construction still succeed and searches fail
+    /// loudly at call time with an actionable message.
     /// </summary>
     public static IServiceCollection AddOrkeonDataTools(this IServiceCollection services)
     {
-        // Fallback embedding service for RAG tools — real providers override via TryAdd
-        services.TryAddSingleton<DomainEmbeddingService, NullDomainEmbeddingService>();
+        // Shared ephemeral-collection search engine of the search façades (TryAdd, idempotent).
+        services.AddOrkeonEphemeralSearch();
 
         services.AddTransient<IBaseTool, JsonTool>();
         services.AddTransient<IBaseTool, CsvReaderTool>();
@@ -77,13 +79,5 @@ public static class DataToolExtensions
         services.AddTransient<IBaseTool, JanusGraphTool>();
         services.AddTransient<IBaseTool, GraphSchemaTool>();
         return services;
-    }
-
-    /// <summary>No-op fallback for Domain IEmbeddingService when no real provider is configured.</summary>
-    private sealed class NullDomainEmbeddingService : DomainEmbeddingService
-    {
-        public Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
-            => throw new InvalidOperationException(
-                "No IEmbeddingService configured. Register a real embedding provider to use RAG search tools.");
     }
 }

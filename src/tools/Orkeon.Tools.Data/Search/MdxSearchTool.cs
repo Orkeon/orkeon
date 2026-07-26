@@ -1,16 +1,18 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
-using Orkeon.Domain.Memory;
 using Orkeon.Domain.Attributes;
+using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Chunking;
 
 namespace Orkeon.Tools.Data.Search;
 
 /// <summary>
-/// Tool for performing semantic search within Markdown (.md, .mdx) files using RAG embeddings.
-/// Strips YAML frontmatter and JSX imports/exports before chunking, then uses heading-aware
-/// chunking that splits content at ## boundaries so each section stays self-contained.
+/// Tool for performing semantic search within Markdown (.md, .mdx) files.
+/// Strips YAML frontmatter and JSX imports/exports before ingestion, then
+/// delegates to the shared ephemeral-collection RAG search (RAG-03/C5) with the
+/// canonical <c>structural</c> (heading-aware) chunking strategy, so each
+/// section stays self-contained and an unchanged corpus is never re-embedded.
 /// </summary>
 [ToolContract("mdx_search",
     Name = "mdx_search",
@@ -24,12 +26,15 @@ public partial class MdxSearchTool : FileSearchToolBase<MdxSearchRequest>
     /// <inheritdoc />
     protected override string ToolCategory => "Markdown";
 
+    /// <inheritdoc />
+    protected override string ChunkingStrategyName => "structural";
+
     /// <summary>Initializes a new instance of <see cref="MdxSearchTool"/> with VFS support.</summary>
-    /// <param name="embeddingService">The embedding service used to vectorize text.</param>
+    /// <param name="searchService">Shared ephemeral-collection RAG search engine.</param>
     /// <param name="fileSystemService">Virtual file system service.</param>
     /// <param name="logger">Optional logger.</param>
-    public MdxSearchTool(IEmbeddingService embeddingService, IFileSystemService fileSystemService, ILogger<MdxSearchTool>? logger = null)
-        : base(embeddingService, fileSystemService, logger) { }
+    public MdxSearchTool(IEphemeralCollectionSearch searchService, IFileSystemService fileSystemService, ILogger<MdxSearchTool>? logger = null)
+        : base(searchService, fileSystemService, logger) { }
 
     /// <summary>
     /// Strips YAML frontmatter, JSX imports, and JSX exports from Markdown/MDX content.
@@ -49,22 +54,11 @@ public partial class MdxSearchTool : FileSearchToolBase<MdxSearchRequest>
     }
 
     /// <summary>
-    /// Heading-aware chunking: splits Markdown content at heading boundaries (lines starting
-    /// with # through ######). Each heading and its body become a separate chunk.  When a
-    /// section exceeds <paramref name="maxChunkSize"/> it is further split by paragraphs.
-    /// </summary>
-    protected override IReadOnlyList<(string Text, int ApproximateLine)> ChunkContentVirtual(
-        string content, int maxChunkSize)
-    {
-        ArgumentNullException.ThrowIfNull(content);
-        return ChunkByHeadings(content, maxChunkSize);
-    }
-
-    /// <summary>
     /// Splits Markdown content into heading-delimited sections via the canonical
     /// <see cref="StructuralChunkingStrategy"/> (RAG-02/C3 consolidation), mapping chunk
     /// offsets back to 1-based approximate source lines. Long sections are sub-split
-    /// recursively by the strategy itself.
+    /// recursively by the strategy itself. Kept as the reference implementation of the
+    /// tool's chunking behavior (the runtime path delegates to the same strategy by name).
     /// </summary>
     internal static List<(string Text, int ApproximateLine)> ChunkByHeadings(
         string content, int maxChunkSize)

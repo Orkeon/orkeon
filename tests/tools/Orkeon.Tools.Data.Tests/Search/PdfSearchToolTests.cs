@@ -44,7 +44,9 @@ public sealed class PdfSearchToolTests : IDisposable
             return embedding;
         });
         _embeddingService = mock;
-        _tool = new PdfSearchTool(_embeddingService, new PassThroughFileSystemService());
+        _tool = new PdfSearchTool(
+            EphemeralSearchHarness.Create(mock),
+            new PassThroughFileSystemService());
         _tempDir = Path.Combine(Path.GetTempPath(), $"PdfSearchTests_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
     }

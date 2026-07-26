@@ -1,17 +1,23 @@
+using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
-using Orkeon.Domain.Memory;
 using Orkeon.Domain.Tools;
+using Orkeon.Rag.Abstractions.Interfaces;
+using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Chunking;
+using Orkeon.Rag.Loaders;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.FileSystem;
 
 /// <summary>
-/// Tool for semantic search across all files in a directory using RAG embeddings.
-/// Reads files, chunks them into paragraphs, generates embeddings, and performs
-/// cosine similarity search to find the most relevant content.
+/// Tool for semantic search across all files in a directory. Thin façade over
+/// the shared ephemeral-collection RAG search (RAG-03/C5): candidate files are
+/// resolved through the VFS (patterns, size and binary filters), ingested
+/// incrementally as inline sources (unchanged corpus = zero embeddings), and
+/// queried through the document store.
 /// </summary>
 [ToolContract("directory_search",
     Name = "directory_search",
@@ -22,22 +28,30 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
-    private readonly IEmbeddingService _embeddingService;
+    private readonly IEphemeralCollectionSearch _search;
     private readonly IFileSystemService _fileSystemService;
 
     private const int MaxFiles = 200;
-    private const int MaxChunks = 500;
     private const int BinaryDetectionBufferSize = 8192;
 
+    /// <summary>
+    /// Minimum number of scored candidates requested from the store before the
+    /// tool applies its own threshold + top-K cut.
+    /// </summary>
+    private const int MinCandidateCount = 50;
+
     /// <summary>Initializes a new instance of <see cref="DirectorySearchTool"/>.</summary>
+    /// <param name="fileSystemService">Virtual file system service.</param>
+    /// <param name="searchService">Shared ephemeral-collection RAG search engine.</param>
+    /// <param name="logger">Optional logger.</param>
     public DirectorySearchTool(
         IFileSystemService fileSystemService,
-        IEmbeddingService embeddingService,
+        IEphemeralCollectionSearch searchService,
         ILogger<DirectorySearchTool>? logger = null)
         : base(logger)
     {
         _fileSystemService = fileSystemService ?? throw new ArgumentNullException(nameof(fileSystemService));
-        _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
+        _search = searchService ?? throw new ArgumentNullException(nameof(searchService));
     }
 
     /// <inheritdoc />
@@ -89,34 +103,65 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
             if (allEntries.Count > MaxFiles)
                 allEntries = allEntries.Take(MaxFiles).ToList();
 
-            // 2. Read and chunk files
-            var chunked = await BuildChunksAsync(request, allEntries, cancellationToken).ConfigureAwait(false);
+            // 2. Read the eligible files (size/binary/read filters)
+            var (contents, filesProcessed, filesSkipped) =
+                await ReadContentsAsync(request, allEntries, cancellationToken).ConfigureAwait(false);
 
-            if (chunked.Chunks.Count == 0)
+            if (contents.Count == 0)
             {
                 return new DirectorySearchResponse
                 {
                     Results = [],
                     ResultCount = 0,
                     TotalChunks = 0,
-                    FilesProcessed = chunked.FilesProcessed,
-                    FilesSkipped = chunked.FilesSkipped,
+                    FilesProcessed = filesProcessed,
+                    FilesSkipped = filesSkipped,
                     Query = request.Query
                 };
             }
 
-            // 3. Score chunks against the query and take top K
-            var topResults = await ScoreAndRankAsync(request, chunked.Chunks, cancellationToken).ConfigureAwait(false);
+            // 3. Ephemeral-collection search: incremental ingestion (unchanged
+            //    corpus = zero embeddings) + vector search over the collection.
+            var outcome = await _search.SearchAsync(
+                new EphemeralSearchRequest
+                {
+                    Sources = BuildInlineSources(contents),
+                    Query = request.Query,
+                    TopK = Math.Max(request.TopK, MinCandidateCount),
+                    ChunkingStrategy = "recursive",
+                    Chunking = new ChunkingOptions { MaxChunkSize = request.ChunkSize, Overlap = 0 },
+                    CollectionPrefix = Name,
+                },
+                cancellationToken).ConfigureAwait(false);
 
-            LogSearchCompleted(request.Query, topResults.Count, chunked.Chunks.Count, chunked.FilesProcessed);
+            // 4. Apply the tool's threshold and top-K on the scored candidates.
+            var threshold = Math.Clamp(request.Threshold, 0.0, 1.0);
+            var topResults = outcome.Results
+                .Where(s => s.Score >= threshold)
+                .OrderByDescending(s => s.Score)
+                .Take(request.TopK)
+                .Select(s => new DirectorySearchResult
+                {
+                    Content = s.Chunk.Content,
+                    Score = (float)s.Score,
+                    SourceFile = s.Chunk.SourceId,
+                    ApproximateLine = contents.TryGetValue(s.Chunk.SourceId, out var content)
+                        ? PlainTextChunking.LineNumberAt(content, s.Chunk.StartOffset)
+                        : 1,
+                    ChunkIndex = s.Chunk.Index,
+                    FileExtension = Path.GetExtension(s.Chunk.SourceId)
+                })
+                .ToList();
+
+            LogSearchCompleted(request.Query, topResults.Count, outcome.Ingestion.ChunksCreated, filesProcessed);
 
             return new DirectorySearchResponse
             {
                 Results = topResults,
                 ResultCount = topResults.Count,
-                TotalChunks = chunked.Chunks.Count,
-                FilesProcessed = chunked.FilesProcessed,
-                FilesSkipped = chunked.FilesSkipped,
+                TotalChunks = outcome.Ingestion.ChunksCreated,
+                FilesProcessed = filesProcessed,
+                FilesSkipped = filesSkipped,
                 Query = request.Query
             };
         }
@@ -133,10 +178,10 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
             .ConfigureAwait(false);
     }
 
-    private async Task<ChunkedFiles> BuildChunksAsync(
+    private async Task<(Dictionary<string, string> Contents, int FilesProcessed, int FilesSkipped)> ReadContentsAsync(
         DirectorySearchRequest request, List<VirtualFileEntry> allEntries, CancellationToken cancellationToken)
     {
-        var chunks = new List<ChunkInfo>();
+        var contents = new Dictionary<string, string>(StringComparer.Ordinal);
         int filesProcessed = 0;
         int filesSkipped = 0;
 
@@ -151,19 +196,27 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
                 continue;
             }
 
-            var fileExtension = Path.GetExtension(entry.VirtualPath);
-            chunks.AddRange(ChunkText(content, request.ChunkSize, entry.VirtualPath, fileExtension));
+            contents[entry.VirtualPath] = content;
             filesProcessed++;
-
-            // Cap total chunks
-            if (chunks.Count >= MaxChunks)
-            {
-                chunks = chunks.Take(MaxChunks).ToList();
-                break;
-            }
         }
 
-        return new ChunkedFiles(chunks, filesProcessed, filesSkipped);
+        return (contents, filesProcessed, filesSkipped);
+    }
+
+    private static ImmutableList<SourceDescriptor> BuildInlineSources(Dictionary<string, string> contents)
+    {
+        return
+        [
+            .. contents
+                .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => new SourceDescriptor
+                {
+                    Location = pair.Key,
+                    Kind = InlineTextLoader.TextKind,
+                    Options = ImmutableDictionary<string, string>.Empty
+                        .Add(InlineTextLoader.ContentOptionKey, pair.Value),
+                })
+        ];
     }
 
     /// <summary>
@@ -191,45 +244,6 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
 
         return string.IsNullOrWhiteSpace(content) ? null : content;
     }
-
-    private async Task<List<DirectorySearchResult>> ScoreAndRankAsync(
-        DirectorySearchRequest request, List<ChunkInfo> chunks, CancellationToken cancellationToken)
-    {
-        var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query, cancellationToken).ConfigureAwait(false);
-        var queryVector = new EmbeddingVector(queryEmbedding);
-
-        var scoredResults = new List<(ChunkInfo Chunk, float Score)>();
-
-        foreach (var chunk in chunks)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var chunkEmbedding = await _embeddingService.GetEmbeddingAsync(chunk.Content, cancellationToken).ConfigureAwait(false);
-            var chunkVector = new EmbeddingVector(chunkEmbedding);
-
-            var similarity = chunkVector.CosineSimilarity(queryVector);
-
-            if (similarity >= (float)request.Threshold)
-                scoredResults.Add((chunk, similarity));
-        }
-
-        return scoredResults
-            .OrderByDescending(r => r.Score)
-            .Take(request.TopK)
-            .Select(r => new DirectorySearchResult
-            {
-                Content = r.Chunk.Content,
-                Score = r.Score,
-                SourceFile = r.Chunk.SourceFile,
-                ApproximateLine = r.Chunk.ApproximateLine,
-                ChunkIndex = r.Chunk.ChunkIndex,
-                FileExtension = r.Chunk.FileExtension
-            })
-            .ToList();
-    }
-
-    /// <summary>Aggregates the chunking pass result over a set of candidate files.</summary>
-    private sealed record ChunkedFiles(List<ChunkInfo> Chunks, int FilesProcessed, int FilesSkipped);
 
     // -- File resolution ──────────────────────────────────────────────────
 
@@ -289,34 +303,7 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
     private async Task<Stream> OpenReadStreamAsync(string virtualPath, CancellationToken ct)
         => await _fileSystemService.OpenReadStreamAsync(virtualPath, ct).ConfigureAwait(false);
 
-    // -- Text chunking ────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Chunks file content with the canonical RAG recursive strategy (RAG-02/C3
-    /// consolidation), mapping chunk offsets back to 1-based approximate source lines.
-    /// </summary>
-    internal static List<ChunkInfo> ChunkText(
-        string content, int maxChunkSize, string sourceFile, string fileExtension)
-    {
-        var chunks = new RecursiveChunkingStrategy().ChunkText(content, maxChunkSize, overlap: 0, sourceId: sourceFile);
-
-        return [.. chunks.Select((c, i) => new ChunkInfo(
-            c.Content,
-            sourceFile,
-            PlainTextChunking.LineNumberAt(content, c.StartOffset),
-            i,
-            fileExtension))];
-    }
-
     [LoggerMessage(Level = LogLevel.Information,
-        Message = "Directory search for '{Query}' returned {ResultCount} results from {TotalChunks} chunks across {FilesProcessed} files")]
-    private partial void LogSearchCompleted(string query, int resultCount, int totalChunks, int filesProcessed);
-
-    /// <summary>Internal record for tracking chunk metadata during processing.</summary>
-    internal sealed record ChunkInfo(
-        string Content,
-        string SourceFile,
-        int ApproximateLine,
-        int ChunkIndex,
-        string FileExtension);
+        Message = "Directory search for '{Query}' returned {ResultCount} results ({ChunksIndexed} chunks (re)indexed) across {FilesProcessed} files")]
+    private partial void LogSearchCompleted(string query, int resultCount, int chunksIndexed, int filesProcessed);
 }

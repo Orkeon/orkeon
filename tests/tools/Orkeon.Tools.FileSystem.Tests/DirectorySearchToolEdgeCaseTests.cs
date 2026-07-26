@@ -19,7 +19,9 @@ public sealed class DirectorySearchToolEdgeCaseTests : IDisposable
     {
         _testDir = Path.Combine(Path.GetTempPath(), $"dirsearch_edge_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_testDir);
-        _tool = new DirectorySearchTool(new PassThroughFileSystemService(), _embeddingService);
+        _tool = new DirectorySearchTool(
+            new PassThroughFileSystemService(),
+            EphemeralSearchHarness.Create(_embeddingService));
     }
 
     private void CreateFile(string relativePath, string content)

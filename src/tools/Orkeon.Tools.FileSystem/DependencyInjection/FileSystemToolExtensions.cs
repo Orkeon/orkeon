@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Domain.Tools;
-using DomainEmbeddingService = Orkeon.Domain.Memory.IEmbeddingService;
+using Orkeon.Rag.DependencyInjection;
 
 namespace Orkeon.Tools.FileSystem.DependencyInjection;
 
@@ -12,11 +11,15 @@ public static class FileSystemToolExtensions
 {
     /// <summary>
     /// Adds file system tools (FileRead, FileWrite, DirectoryRead, EmailParser, DirectorySearch) to the service collection.
-    /// DirectorySearchTool requires an IEmbeddingService; a no-op fallback is added when none is provided.
+    /// The directory_search façade rides on the shared ephemeral-collection RAG search
+    /// (RAG-03/C5): the host must register the RAG subsystem (<c>AddOrkeonRag</c> + an
+    /// embedding provider) for it to run — without it, registration and construction
+    /// still succeed and searches fail loudly at call time with an actionable message.
     /// </summary>
     public static IServiceCollection AddOrkeonFileSystemTools(this IServiceCollection services)
     {
-        services.TryAddSingleton<DomainEmbeddingService, NullDomainEmbeddingService>();
+        // Shared ephemeral-collection search engine of directory_search (TryAdd, idempotent).
+        services.AddOrkeonEphemeralSearch();
 
         services.AddTransient<IBaseTool, FileReadTool>();
         services.AddTransient<IBaseTool, FileWriteTool>();
@@ -25,13 +28,5 @@ public static class FileSystemToolExtensions
         services.AddTransient<IBaseTool, DirectorySearchTool>();
         services.AddTransient<IBaseTool, CountPatternTool>();
         return services;
-    }
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812", Justification = "Instantiated via DI container (TryAddSingleton<DomainEmbeddingService, NullDomainEmbeddingService>).")]
-    private sealed class NullDomainEmbeddingService : DomainEmbeddingService
-    {
-        public Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
-            => throw new InvalidOperationException(
-                "No IEmbeddingService configured. Register a real embedding provider to use DirectorySearchTool.");
     }
 }

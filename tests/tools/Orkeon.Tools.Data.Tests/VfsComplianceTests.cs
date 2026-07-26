@@ -224,7 +224,8 @@ public sealed class VfsComplianceTests
         var fs = NewVfs();
         fs.AddFile("/work/doc.pdf", BuildPdf("Le chat dort sur le tapis. Orkeon teste la recherche."));
 
-        using var tool = new PdfSearchTool(new ConstantEmbeddingService(), fs);
+        using var tool = new PdfSearchTool(
+            Doubles.EphemeralSearchHarness.Create(new ConstantEmbeddingService()), fs);
         var result = await tool.CallAsync(new ToolCallRequest("pdf_search",
             new Dictionary<string, object?> { ["path"] = "/work/doc.pdf", ["query"] = "chat" }), Ct);
 

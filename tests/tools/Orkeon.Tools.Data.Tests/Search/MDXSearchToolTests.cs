@@ -18,7 +18,9 @@ public sealed class MDXSearchToolTests : IDisposable
         Directory.CreateDirectory(_tempDir);
 
         _mockEmbeddingService = new MockEmbeddingService();
-        _tool = new MdxSearchTool(_mockEmbeddingService, new PassThroughFileSystemService());
+        _tool = new MdxSearchTool(
+            EphemeralSearchHarness.Create(_mockEmbeddingService),
+            new PassThroughFileSystemService());
     }
 
     [Fact]

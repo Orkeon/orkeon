@@ -1,19 +1,26 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
+using Orkeon.Rag.Abstractions.Interfaces;
+using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Chunking;
+using Orkeon.Rag.Loaders;
 using Orkeon.Tools.Abstractions.Base;
 using UglyToad.PdfPig;
 
 namespace Orkeon.Tools.Data.Search;
 
 /// <summary>
-/// Performs semantic search within PDF documents using RAG embeddings.
-/// Supports single PDF files and directories of PDFs, with optional page range filtering.
-/// Uses PdfPig for text extraction and cosine similarity for ranking.
+/// Performs semantic search within PDF documents. Thin façade over the shared
+/// ephemeral-collection RAG search (RAG-03/C5): pages are extracted with PdfPig
+/// and ingested incrementally as per-page inline sources (unchanged corpus =
+/// zero embeddings), then queried through the document store. Supports single
+/// PDF files and directories of PDFs, with optional page range filtering.
 /// </summary>
 [ToolContract("pdf_search",
     Name = "pdf_search",
@@ -21,19 +28,31 @@ namespace Orkeon.Tools.Data.Search;
     Category = "Search")]
 public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchResponse>
 {
-    private readonly IEmbeddingService _embeddingService;
+    private readonly IEphemeralCollectionSearch _search;
     private readonly IFileSystemService _fs;
+
+    /// <summary>Chunk metadata key carrying the 1-based page number of a chunk.</summary>
+    private const string PageNumberMetadataKey = "page_number";
+
+    /// <summary>Chunk metadata key carrying the originating PDF file path.</summary>
+    private const string SourceFileMetadataKey = "source_file";
+
+    /// <summary>
+    /// Minimum number of scored candidates requested from the store before the
+    /// tool applies its own threshold + top-K cut.
+    /// </summary>
+    private const int MinCandidateCount = 50;
 
     /// <summary>
     /// Initializes a new instance of <see cref="PdfSearchTool"/> with VFS support.
     /// </summary>
-    /// <param name="embeddingService">Embedding service for generating vector representations.</param>
+    /// <param name="searchService">Shared ephemeral-collection RAG search engine.</param>
     /// <param name="fileSystemService">Virtual file system service.</param>
     /// <param name="logger">Optional logger instance.</param>
-    public PdfSearchTool(IEmbeddingService embeddingService, IFileSystemService fileSystemService, ILogger<PdfSearchTool>? logger = null)
+    public PdfSearchTool(IEphemeralCollectionSearch searchService, IFileSystemService fileSystemService, ILogger<PdfSearchTool>? logger = null)
         : base(logger)
     {
-        _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
+        _search = searchService ?? throw new ArgumentNullException(nameof(searchService));
         _fs = fileSystemService ?? throw new ArgumentNullException(nameof(fileSystemService));
     }
 
@@ -76,35 +95,53 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
             if (pdfFiles.Count == 0)
                 return EmptyResponse(request.Query, totalPages: 0, filesProcessed: 0);
 
-            // Step 2: Extract and chunk text from all PDFs
-            var (allChunks, totalPages) = await ExtractAllChunksAsync(pdfFiles, request, cancellationToken).ConfigureAwait(false);
-            if (allChunks.Count == 0)
+            // Step 2: Extract the selected pages as per-page inline sources
+            var (sources, totalPages) = await ExtractPageSourcesAsync(pdfFiles, request, cancellationToken).ConfigureAwait(false);
+            if (sources.Count == 0)
                 return EmptyResponse(request.Query, totalPages, pdfFiles.Count);
 
-            // Steps 3 & 4: Embed query + chunks, then compute cosine similarity and rank
-            var scoredResults = await ScoreChunksAsync(allChunks, request, cancellationToken).ConfigureAwait(false);
-
-            // Step 5: Sort by score descending, take top-K
-            var topResults = scoredResults
-                .OrderByDescending(r => r.Score)
-                .Take(request.TopK)
-                .Select(r => new PdfSearchResult
+            // Step 3: Ephemeral-collection search — incremental ingestion
+            // (unchanged pages cost zero embeddings) + vector search.
+            var outcome = await _search.SearchAsync(
+                new EphemeralSearchRequest
                 {
-                    Content = r.Chunk.Text,
-                    Score = r.Score,
-                    SourceFile = r.Chunk.SourceFile,
-                    PageNumber = r.Chunk.PageNumber,
-                    ChunkIndex = r.Chunk.ChunkIndex
+                    Sources = [.. sources],
+                    Query = request.Query,
+                    TopK = Math.Max(request.TopK, MinCandidateCount),
+                    ChunkingStrategy = "recursive",
+                    Chunking = new ChunkingOptions { MaxChunkSize = request.ChunkSize, Overlap = 0 },
+                    CollectionPrefix = Name,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            // Step 4: Apply the tool's threshold and top-K on the scored candidates.
+            var threshold = Math.Clamp(request.Threshold, 0.0, 1.0);
+            var topResults = outcome.Results
+                .Where(s => s.Score >= threshold)
+                .OrderByDescending(s => s.Score)
+                .Take(request.TopK)
+                .Select(s => new PdfSearchResult
+                {
+                    Content = s.Chunk.Content,
+                    Score = (float)s.Score,
+                    SourceFile = s.Chunk.Metadata.TryGetValue(SourceFileMetadataKey, out var file)
+                        ? file
+                        : s.Chunk.SourceId,
+                    PageNumber = s.Chunk.Metadata.TryGetValue(PageNumberMetadataKey, out var page)
+                        && int.TryParse(page, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pageNumber)
+                            ? pageNumber
+                            : 0,
+                    ChunkIndex = s.Chunk.Index
                 })
                 .ToList();
 
-            LogSearchCompleted(request.Query, topResults.Count, allChunks.Count, pdfFiles.Count);
+            LogSearchCompleted(request.Query, topResults.Count, outcome.Ingestion.ChunksCreated, pdfFiles.Count);
 
             return new PdfSearchResponse
             {
                 Results = topResults,
                 ResultCount = topResults.Count,
-                TotalChunks = allChunks.Count,
+                TotalChunks = outcome.Ingestion.ChunksCreated,
                 TotalPages = totalPages,
                 FilesProcessed = pdfFiles.Count,
                 Query = request.Query
@@ -125,10 +162,15 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
             FilesProcessed = filesProcessed
         };
 
-    private async Task<(List<PdfChunk> Chunks, int TotalPages)> ExtractAllChunksAsync(
+    /// <summary>
+    /// Extracts the requested pages of every PDF as one inline source per page
+    /// (<c>{file}#page={n}</c>), carrying the page number and file path as
+    /// metadata so they survive the store round-trip.
+    /// </summary>
+    private async Task<(List<SourceDescriptor> Sources, int TotalPages)> ExtractPageSourcesAsync(
         List<string> pdfFiles, PdfSearchRequest request, CancellationToken cancellationToken)
     {
-        var allChunks = new List<PdfChunk>();
+        var sources = new List<SourceDescriptor>();
         var totalPages = 0;
 
         foreach (var pdfFile in pdfFiles)
@@ -140,40 +182,31 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
             // path (e.g. /data/x.pdf) to its physical mount location, then parse from memory.
             var bytes = await _fs.TryReadAllBytesAsync(pdfFile, cancellationToken).ConfigureAwait(false)
                 ?? throw new FileNotFoundException($"File not found: {pdfFile}");
-            var (chunks, pageCount) = ExtractChunks(bytes, pdfFile, request.PageRange, request.ChunkSize);
-            allChunks.AddRange(chunks);
-            totalPages += pageCount;
-        }
 
-        return (allChunks, totalPages);
-    }
+            using var document = PdfDocument.Open(bytes);
+            var pageIndices = ParsePageRange(request.PageRange, document.NumberOfPages);
+            totalPages += pageIndices.Count;
 
-    private async Task<List<(PdfChunk Chunk, float Score)>> ScoreChunksAsync(
-        List<PdfChunk> allChunks, PdfSearchRequest request, CancellationToken cancellationToken)
-    {
-        // Step 3: Generate embeddings for query and all chunks
-        var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query, cancellationToken).ConfigureAwait(false);
-
-        var chunkEmbeddings = new float[allChunks.Count][];
-        for (var i = 0; i < allChunks.Count; i++)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                break;
-            chunkEmbeddings[i] = await _embeddingService.GetEmbeddingAsync(allChunks[i].Text, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Step 4: Compute cosine similarity and rank
-        var scoredResults = new List<(PdfChunk Chunk, float Score)>();
-        for (var i = 0; i < allChunks.Count; i++)
-        {
-            var score = CosineSimilarity(queryEmbedding, chunkEmbeddings[i]);
-            if (score >= request.Threshold)
+            foreach (var pageIndex in pageIndices)
             {
-                scoredResults.Add((allChunks[i], score));
+                var pageText = document.GetPage(pageIndex).Text ?? "";
+                if (string.IsNullOrWhiteSpace(pageText))
+                    continue;
+
+                var pageLabel = pageIndex.ToString(CultureInfo.InvariantCulture);
+                sources.Add(new SourceDescriptor
+                {
+                    Location = $"{pdfFile}#page={pageLabel}",
+                    Kind = InlineTextLoader.TextKind,
+                    Options = ImmutableDictionary<string, string>.Empty
+                        .Add(InlineTextLoader.ContentOptionKey, pageText)
+                        .Add(InlineTextLoader.MetadataOptionPrefix + PageNumberMetadataKey, pageLabel)
+                        .Add(InlineTextLoader.MetadataOptionPrefix + SourceFileMetadataKey, pdfFile),
+                });
             }
         }
 
-        return scoredResults;
+        return (sources, totalPages);
     }
 
     private static async Task<List<string>> ResolvePdfFilesVfsAsync(
@@ -197,49 +230,12 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
         return result;
     }
 
-    private static (List<PdfChunk> Chunks, int PageCount) ExtractChunks(
-        byte[] bytes, string sourceLabel, string? pageRange, int chunkSize)
-    {
-        using var document = PdfDocument.Open(bytes);
-        return ExtractChunksFromDocument(document, sourceLabel, pageRange, chunkSize);
-    }
-
-    private static (List<PdfChunk> Chunks, int PageCount) ExtractChunksFromDocument(
-        PdfDocument document, string sourceLabel, string? pageRange, int chunkSize)
-    {
-        var chunks = new List<PdfChunk>();
-
-        var totalPages = document.NumberOfPages;
-        var pageIndices = ParsePageRange(pageRange, totalPages);
-
-        foreach (var pageIndex in pageIndices)
-        {
-            var page = document.GetPage(pageIndex);
-            var pageText = page.Text ?? "";
-
-            if (string.IsNullOrWhiteSpace(pageText))
-                continue;
-
-            var pageChunks = ChunkText(pageText, chunkSize);
-            for (var i = 0; i < pageChunks.Count; i++)
-            {
-                chunks.Add(new PdfChunk
-                {
-                    Text = pageChunks[i],
-                    SourceFile = sourceLabel,
-                    PageNumber = pageIndex,
-                    ChunkIndex = i
-                });
-            }
-        }
-
-        return (chunks, pageIndices.Count);
-    }
-
     /// <summary>
     /// Splits text into chunks of approximately the given size using the canonical RAG
     /// recursive strategy (RAG-02/C3 consolidation): paragraph boundaries first, then
-    /// sentences, words, and characters as needed.
+    /// sentences, words, and characters as needed. Kept as the reference implementation
+    /// of the tool's chunking behavior (the runtime path delegates to the same strategy
+    /// by name).
     /// </summary>
     internal static List<string> ChunkText(string text, int chunkSize)
     {
@@ -304,16 +300,6 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
         => new EmbeddingVector(a).CosineSimilarity(new EmbeddingVector(b));
 
     [LoggerMessage(Level = LogLevel.Information,
-        Message = "PDF search completed: query='{Query}', results={ResultCount}, chunks={ChunkCount}, files={FileCount}")]
+        Message = "PDF search completed: query='{Query}', results={ResultCount}, chunksIndexed={ChunkCount}, files={FileCount}")]
     private partial void LogSearchCompleted(string query, int resultCount, int chunkCount, int fileCount);
-
-    // ── Internal chunk model ─────────────────────────────────────────
-
-    private sealed class PdfChunk
-    {
-        public string Text { get; init; } = "";
-        public string SourceFile { get; init; } = "";
-        public int PageNumber { get; init; }
-        public int ChunkIndex { get; init; }
-    }
 }
