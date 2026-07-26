@@ -13,8 +13,24 @@ public interface IQueryTransformer
     string Name { get; }
 
     /// <summary>
-    /// Returns query variants for <paramref name="query"/> (the original query is
-    /// not included; an empty list means "retrieve with the original only").
+    /// How the retrieve stage must combine the result lists retrieved for the
+    /// returned queries: <see cref="QueryTransformKind.Union"/> (merge + dedup,
+    /// the default), <see cref="QueryTransformKind.Fusion"/> (Reciprocal Rank
+    /// Fusion across the per-query rankings), or
+    /// <see cref="QueryTransformKind.Replacement"/> (the returned text is
+    /// embedded instead of the original question — HyDE).
+    /// </summary>
+    QueryTransformKind Kind => QueryTransformKind.Union;
+
+    /// <summary>
+    /// Returns the ordered list of retrieval texts for <paramref name="query"/>.
+    /// <see cref="QueryTransformKind.Union"/>/<see cref="QueryTransformKind.Fusion"/>
+    /// transformers include the original query as the FIRST element, followed by
+    /// the variants; <see cref="QueryTransformKind.Replacement"/> transformers
+    /// return substitute text(s) only (the original query is deliberately absent).
+    /// An empty list means "retrieve with the original only". Implementations
+    /// never throw on an unusable LLM response — they fall back to
+    /// <c>[query]</c> with a logged warning.
     /// </summary>
     Task<IReadOnlyList<string>> TransformAsync(
         string query,

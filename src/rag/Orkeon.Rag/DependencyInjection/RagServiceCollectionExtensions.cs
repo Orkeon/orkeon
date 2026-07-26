@@ -78,8 +78,10 @@ public static class RagServiceCollectionExtensions
         // The chunking factory ships pre-populated with the four canonical strategies
         // (recursive/sentence/structural/semantic) — an empty factory made every first
         // ingestion fail with "Unknown chunking strategy 'recursive'" (RAG-03 bug).
+        // Same motif for the transformer factory (RAG-05/C1): pre-populated with
+        // none/multi-query/rag-fusion/hyde.
         services.TryAddSingleton(_ => ChunkingStrategyFactoryDefaults.CreateDefault());
-        services.TryAddSingleton<QueryTransformerFactory>();
+        services.AddOrkeonQueryTransforms();
         services.AddOrkeonRagReranking();
         services.AddOrkeonQueryRouting(configuration);
 
