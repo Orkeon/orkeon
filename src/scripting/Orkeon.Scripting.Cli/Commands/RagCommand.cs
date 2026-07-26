@@ -112,7 +112,7 @@ internal sealed class RagEvalCommandOptions : RagCommandOptionsBase
 
     /// <summary>Single profile to evaluate.</summary>
     [Option("profile", Required = false,
-        HelpText = "Profile to evaluate: fast, balanced, quality, or default (the configured Orkeon:Rag:Profile). Default: 'default'.")]
+        HelpText = "Profile to evaluate: fast, balanced, quality, adaptive, or default (the configured Orkeon:Rag:Profile). Default: 'default'.")]
     public string? Profile { get; set; }
 
     /// <summary>Comma-separated list of profiles to compare.</summary>

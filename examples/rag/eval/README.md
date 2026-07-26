@@ -14,7 +14,7 @@ extractive generation (`--offline`), deterministic heuristic judge.
 orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline
 
 # Multi-profile comparison table (one row per profile preset — see "Profiles"):
-orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline --compare fast,balanced,quality
+orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline --compare fast,balanced,quality,adaptive
 
 # CI anti-regression gate (exit 1 below the floors; `correctif` cases excluded):
 orkeon rag eval --dataset examples/rag/eval/golden.yaml --offline --min-recall 0.80 --min-mrr 0.70
@@ -31,7 +31,7 @@ programmatic one is `IRagEvaluator` / `IRagEvalHarness` (`Orkeon.Rag.Evaluation`
 > second run reports `0 added, N unchanged` and zero recall, re-run with
 > `--reindex` (or delete `./.orkeon/rag/manifests`).
 
-## Profiles (RAG-04/C4)
+## Profiles (RAG-04/C4, `adaptive` since RAG-05)
 
 `--profile` / `--compare` resolve the preset pipelines (`RagProfilePresets`):
 
@@ -40,17 +40,32 @@ programmatic one is `IRagEvaluator` / `IRagEvalHarness` (`Orkeon.Rag.Evaluation`
 | `fast` | vector only, TopN direct | none | no |
 | `balanced` | hybrid BM25 + RRF, CandidateK 50 | ONNX cross-encoder 50 → 5 | no |
 | `quality` | hybrid BM25 + RRF, CandidateK 100 | ONNX cross-encoder 100 → 5 | enabled (checker ships with RAG-06 — traced as skipped until then) |
+| `adaptive` | classifier-routed (RAG-05): `NoRetrieval` → direct LLM answer, `SingleShot` → `balanced`, `Iterative` → `quality` (documented fallback until RAG-06) | per delegate | per delegate |
 
 Measured table (2026-07-26, offline: local BGE embeddings, embedded
 ms-marco-MiniLM-L-6-v2 int8 cross-encoder, extractive generation, heuristic judge):
 
 | profile | recall@5 | MRR | groundedness | answer-relevance | judge | ms/case |
 |---|---|---|---|---|---|---|
-| fast | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 3 |
-| balanced | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 139 |
-| quality | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 105 |
+| fast | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 4 |
+| balanced | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 217 |
+| quality | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 166 |
+| adaptive | 0.89 | 0.89 | 0.89 | 0.89 | heuristic | 141 |
 
-Honest reading — the three rows are identical on THIS dataset, by construction:
+`adaptive` equals `balanced` on THIS dataset **by construction**: the heuristic
+classifier routes all 9 golden questions to `SingleShot` → `balanced` (each has
+exactly one interrogative word, a single `?`, and fewer than 25 words — no
+`NoRetrieval` or `Iterative` trigger fires). The ms/case delta vs `balanced` is
+a warm-ONNX-session artifact of the run order, not a quality gain. What offline
+mode can and cannot measure here: `--offline` swaps in a deterministic
+extractive chat client, so the LLM-backed query transformers (`multi-query` /
+`rag-fusion` / `hyde`) and the `llm` classifier have no real LLM to call — the
+measured path is `QueryTransform.Mode=none` + heuristic routing. The
+transformer and MMR levers are wired and unit-tested; their quality delta gets
+measured the day a real `IChatClient` drives the run (or the corpus grows past
+vector-only saturation).
+
+Honest reading — the first three rows are identical on THIS dataset, by construction:
 
 - the six regular cases are already saturated by plain vector retrieval
   (recall@5 = RR = 1.00 each, even for `fast`) — a 12-document corpus leaves the
@@ -66,7 +81,7 @@ Honest reading — the three rows are identical on THIS dataset, by construction
   échouer en Quality, réussir en Corrective").
 
 The 0.89 aggregate = 8/9 (q-007 at 0 by design; q-008/q-009 are exact-identifier lookups — see below). The gated aggregates
-(`correctif` excluded) are 1.00 / 1.00 for all three profiles. The comparison
+(`correctif` excluded) are 1.00 / 1.00 for all four profiles. The comparison
 gains real spread as soon as the corpus grows or RAG-05/06 land; the harness and
 CI publication are in place precisely so that spread gets **measured, not
 proclaimed**.

@@ -143,17 +143,36 @@ public static class RagServiceCollectionExtensions
             sp.GetService<ILogger<DefaultIngestionPipeline>>()));
 
         // Default query pipeline: a StagedRagPipeline composed from the effective
-        // RagOptions (profile preset + configuration overrides). A host-registered
-        // IRagPipeline wins (TryAdd).
+        // RagOptions (profile preset + configuration overrides). Orkeon:Rag:Profile
+        // = adaptive resolves the routing pipeline through the profile resolver
+        // (classifier + balanced/quality delegates) instead of a staged pipeline.
+        // A host-registered IRagPipeline wins (TryAdd).
         services.TryAddSingleton<IRagPipeline>(sp =>
-            CreateStagedPipeline(sp, sp.GetRequiredService<Abstractions.Options.RagOptions>()));
+        {
+            var options = sp.GetRequiredService<Abstractions.Options.RagOptions>();
+            if (string.Equals(
+                    options.Profile,
+                    Abstractions.Options.RagProfilePresets.AdaptiveName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return sp.GetRequiredService<IRagProfileResolver>()
+                    .Resolve(Abstractions.Options.RagProfilePresets.AdaptiveName);
+            }
+
+            return CreateStagedPipeline(sp, options);
+        });
 
         // Preset-aware profile resolution (fast/balanced/quality → one memoized
-        // pipeline per profile; 'default' → the registered IRagPipeline above).
+        // pipeline per profile; adaptive → classifier-routed AdaptiveRagPipeline
+        // over balanced/quality (RAG-05/C3); 'default' → the registered
+        // IRagPipeline above).
         services.TryAddSingleton<IRagProfileResolver>(sp => new ProfileRagPipelineResolver(
             configuration,
             options => CreateStagedPipeline(sp, options),
-            sp.GetRequiredService<IRagPipeline>));
+            sp.GetRequiredService<IRagPipeline>,
+            sp.GetRequiredService<IQueryComplexityClassifier>,
+            sp.GetRequiredService<IChatClient>,
+            sp.GetService<ILoggerFactory>()));
 
         // Knowledge attachments → prompt injection with citations (RAG-03/C4):
         // the execution orchestrator picks the augmenter up when present.

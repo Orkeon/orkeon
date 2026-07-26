@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.Rag;
+using Orkeon.Rag.Abstractions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Abstractions.Options;
@@ -18,15 +19,25 @@ namespace Orkeon.Rag.Pipeline;
 /// <summary>
 /// Staged linear <see cref="IRagPipeline"/> (RAG-04/C4, plan §5.1) — a fixed
 /// sequence of togglable stages driven by <see cref="RagOptions"/>:
-/// <c>transform</c> (hook, <c>none</c> today — RAG-05) → <c>retrieve</c>
-/// (CandidateK candidates, hybrid when the store supports it) → <c>fuse</c>
-/// (RRF across variants + dedup) → <c>rerank</c> (named reranker, cascade
+/// <c>transform</c> (named transformer — <c>none</c>, <c>multi-query</c>,
+/// <c>rag-fusion</c>, <c>hyde</c> since RAG-05) → <c>retrieve</c>
+/// (CandidateK candidates per retrieval text, hybrid when the store supports it)
+/// → <c>fuse</c> (per-<see cref="QueryTransformKind"/> combination + dedup +
+/// opt-in MMR diversification) → <c>rerank</c> (named reranker, cascade
 /// CandidateK → TopN) → <c>assemble</c> (token budget, anti-Lost-in-the-Middle
 /// <c>edges</c> ordering) → <c>generate</c> (grounded, <c>[n]</c> citations) →
 /// <c>groundedness</c> (optional hook — checker ships with RAG-06).
 /// Every stage is traced in <see cref="RagAnswer"/>.<see cref="RagAnswer.Trace"/>.
 /// </summary>
 /// <remarks>
+/// <para><b>Transform semantics by <see cref="QueryTransformKind"/></b> (RAG-05/C1
+/// integration): <see cref="QueryTransformKind.Union"/> retrieves once per query
+/// text and merges the rankings by chunk-id union (original scores kept — the
+/// maximum wins on duplicates); <see cref="QueryTransformKind.Fusion"/> retrieves
+/// once per query text and fuses the rankings by Reciprocal Rank Fusion (same
+/// RRF k as the hybrid stage); <see cref="QueryTransformKind.Replacement"/>
+/// (HyDE) embeds/retrieves with the substitute text(s) INSTEAD of the question —
+/// generation and citations always use the ORIGINAL user question.</para>
 /// <para><b>Anti-Lost-in-the-Middle ordering</b> (<c>Context.Ordering: edges</c>,
 /// the default): ranked chunks r1 (best) … rm are laid out in the context block
 /// as <c>r1, r3, r5, …</c> from the head, then <c>…, r6, r4, r2</c> closing the
@@ -140,14 +151,16 @@ public sealed partial class StagedRagPipeline : IRagPipeline
         var steps = ImmutableList.CreateBuilder<RagTraceStep>();
         var topN = Math.Max(1, query.TopN);
 
-        // 1 — transform: 0..n retrieval-friendly variants (none = passthrough hook, RAG-05).
-        var variants = await TransformAsync(query.Text, steps, cancellationToken).ConfigureAwait(false);
+        // 1 — transform: named transformer → retrieval texts + combination kind (RAG-05).
+        var transform = await TransformAsync(query.Text, steps, cancellationToken).ConfigureAwait(false);
 
-        // 2 — retrieve: CandidateK candidates per variant (hybrid honoured by capable stores).
-        var rankings = await RetrieveAsync(query, variants, topN, steps, cancellationToken).ConfigureAwait(false);
+        // 2 — retrieve: CandidateK candidates per retrieval text (hybrid honoured by
+        // capable stores). Replacement (HyDE) probes with the substitute text(s) only.
+        var rankings = await RetrieveAsync(query, transform, topN, steps, cancellationToken).ConfigureAwait(false);
 
-        // 3 — fuse: RRF across variant rankings + dedup by chunk id.
-        var candidates = Fuse(rankings, topN, steps);
+        // 3 — fuse: per-kind combination (union max-score / RRF) + dedup by chunk id,
+        // then opt-in MMR diversification.
+        var candidates = Fuse(rankings, transform.Kind, topN, steps);
 
         // 4 — rerank: named reranker, cascade CandidateK → TopN.
         var ranked = await RerankAsync(query.Text, candidates, topN, steps, cancellationToken).ConfigureAwait(false);
@@ -165,7 +178,7 @@ public sealed partial class StagedRagPipeline : IRagPipeline
             {
                 Text = NoContextAnswer,
                 Citations = ImmutableList<Citation>.Empty,
-                Trace = BuildTrace(steps, variants),
+                Trace = BuildTrace(steps, transform.Variants),
             };
         }
 
@@ -183,14 +196,29 @@ public sealed partial class StagedRagPipeline : IRagPipeline
         {
             Text = text,
             Citations = BuildCitations(kept),
-            Trace = BuildTrace(steps, variants),
+            Trace = BuildTrace(steps, transform.Variants),
             Groundedness = groundedness,
         };
     }
 
     // ── stages ─────────────────────────────────────────────────────────────
 
-    private async Task<IReadOnlyList<string>> TransformAsync(
+    /// <summary>
+    /// Outcome of the transform stage: the transformer identity, its retrieval
+    /// semantics, and the produced variants (the original query excluded — for
+    /// <see cref="QueryTransformKind.Replacement"/> these are the substitute
+    /// probe texts).
+    /// </summary>
+    private sealed record TransformOutcome(
+        string TransformerName,
+        QueryTransformKind Kind,
+        IReadOnlyList<string> Variants)
+    {
+        public static TransformOutcome None { get; } =
+            new(RagDefaults.QueryTransformNone, QueryTransformKind.Union, []);
+    }
+
+    private async Task<TransformOutcome> TransformAsync(
         string queryText,
         ImmutableList<RagTraceStep>.Builder steps,
         CancellationToken cancellationToken)
@@ -204,42 +232,67 @@ public sealed partial class StagedRagPipeline : IRagPipeline
                 Detail = "none — passthrough",
                 Data = ImmutableDictionary<string, string>.Empty.Add("mode", RagDefaults.QueryTransformNone),
             });
-            return [];
+            return TransformOutcome.None;
         }
 
         var watch = Stopwatch.StartNew();
         var transformer = _queryTransformers!.Create(mode); // unknown name fails loudly
-        var variants = await transformer.TransformAsync(
+        var texts = await transformer.TransformAsync(
                 queryText,
                 new QueryTransformContext { MaxVariants = _options.QueryTransform.VariantCount },
                 cancellationToken)
             .ConfigureAwait(false);
         watch.Stop();
 
+        // The produced variants exclude the original query (Union/Fusion
+        // transformers return it as the first element by contract).
+        var variants = texts
+            .Where(text => !string.IsNullOrWhiteSpace(text)
+                && !string.Equals(text, queryText, StringComparison.Ordinal))
+            .ToList();
+
+        var data = ImmutableDictionary<string, string>.Empty
+            .Add("mode", transformer.Name)
+            .Add("transformer", transformer.Name)
+            .Add("kind", KindLabel(transformer.Kind))
+            .Add("variants", variants.Count.ToString(CultureInfo.InvariantCulture));
+        for (var i = 0; i < variants.Count; i++)
+            data = data.Add($"variant_{i + 1}", Truncate(variants[i]));
+
         steps.Add(new RagTraceStep
         {
             Name = "transform",
             Duration = watch.Elapsed,
-            Data = ImmutableDictionary<string, string>.Empty
-                .Add("mode", transformer.Name)
-                .Add("variants", variants.Count.ToString(CultureInfo.InvariantCulture)),
+            Data = data,
         });
 
-        return variants;
+        return new TransformOutcome(transformer.Name, transformer.Kind, variants);
     }
 
     private async Task<List<IReadOnlyList<ScoredChunk>>> RetrieveAsync(
         RagQuery query,
-        IReadOnlyList<string> variants,
+        TransformOutcome transform,
         int topN,
         ImmutableList<RagTraceStep>.Builder steps,
         CancellationToken cancellationToken)
     {
         var width = Math.Max(_options.Retrieval.CandidateK, topN);
         var hybrid = _options.Retrieval.Hybrid.Enabled;
-        var texts = new List<string>(1 + variants.Count) { query.Text };
-        texts.AddRange(variants.Where(v => !string.IsNullOrWhiteSpace(v)
-            && !string.Equals(v, query.Text, StringComparison.Ordinal)));
+
+        // Replacement (HyDE): the substitute text(s) are the retrieval probes —
+        // the original question is deliberately NOT retrieved with (generation
+        // and citations still use it). Union/Fusion: original first, then the
+        // variants. An empty transform output degrades to the original query.
+        List<string> texts;
+        if (transform.Kind == QueryTransformKind.Replacement && transform.Variants.Count > 0)
+        {
+            texts = [.. transform.Variants];
+        }
+        else
+        {
+            texts = new List<string>(1 + transform.Variants.Count) { query.Text };
+            texts.AddRange(transform.Variants);
+        }
 
         var watch = Stopwatch.StartNew();
         var rankings = new List<IReadOnlyList<ScoredChunk>>(texts.Count);
@@ -290,6 +343,7 @@ public sealed partial class StagedRagPipeline : IRagPipeline
 
     private IReadOnlyList<ScoredChunk> Fuse(
         List<IReadOnlyList<ScoredChunk>> rankings,
+        QueryTransformKind kind,
         int topN,
         ImmutableList<RagTraceStep>.Builder steps)
     {
@@ -297,12 +351,20 @@ public sealed partial class StagedRagPipeline : IRagPipeline
         var input = rankings.Sum(r => r.Count);
         var watch = Stopwatch.StartNew();
 
+        // Per-kind combination of the per-text rankings (RAG-05): Fusion → RRF
+        // (rag-fusion contract, same k as the hybrid stage); Union / Replacement
+        // → chunk-id union keeping the original store scores (max on duplicates).
         IReadOnlyList<ScoredChunk> fused;
         string method;
-        if (rankings.Count > 1)
+        if (rankings.Count > 1 && kind == QueryTransformKind.Fusion)
         {
             fused = ReciprocalRankFusion.Fuse(_options.Retrieval.Hybrid.RrfK, width, [.. rankings]);
             method = "rrf";
+        }
+        else if (rankings.Count > 1)
+        {
+            fused = UnionByChunkId(rankings, width);
+            method = "union";
         }
         else
         {
@@ -310,15 +372,32 @@ public sealed partial class StagedRagPipeline : IRagPipeline
             method = "dedup";
         }
 
+        var data = ImmutableDictionary<string, string>.Empty
+            .Add("in", input.ToString(CultureInfo.InvariantCulture))
+            .Add("method", method);
+
+        // Opt-in MMR diversification (RAG-05/C2): re-orders the fused candidates
+        // (λ·relevance − (1−λ)·redundancy) before the rerank/truncation narrows
+        // them. Embeddings are NOT re-computed for the candidates — the lexical
+        // (Jaccard) fallback path is the honest default here.
+        var mmr = _options.Retrieval.Mmr;
+        if (mmr.Enabled && fused.Count > 1)
+        {
+            var before = fused.Count;
+            fused = MaximalMarginalRelevance.Select(fused, fused.Count, mmr.Lambda);
+            data = data
+                .Add("mmr", "true")
+                .Add("mmr_lambda", mmr.Lambda.ToString("F2", CultureInfo.InvariantCulture))
+                .Add("mmr_in", before.ToString(CultureInfo.InvariantCulture))
+                .Add("mmr_out", fused.Count.ToString(CultureInfo.InvariantCulture));
+        }
+
         watch.Stop();
         steps.Add(new RagTraceStep
         {
             Name = "fuse",
             Duration = watch.Elapsed,
-            Data = ImmutableDictionary<string, string>.Empty
-                .Add("in", input.ToString(CultureInfo.InvariantCulture))
-                .Add("out", fused.Count.ToString(CultureInfo.InvariantCulture))
-                .Add("method", method),
+            Data = data.Add("out", fused.Count.ToString(CultureInfo.InvariantCulture)),
         });
 
         return fused;
@@ -513,6 +592,48 @@ public sealed partial class StagedRagPipeline : IRagPipeline
 
         return order;
     }
+
+    /// <summary>
+    /// Union of per-text rankings deduplicated by chunk id (Union/Replacement
+    /// kinds): the original store scores are kept — the maximum wins when a chunk
+    /// appears in several rankings (all rankings come from the same store, so the
+    /// scores are comparable). Ordered best score first, chunk id breaking ties.
+    /// </summary>
+    private static List<ScoredChunk> UnionByChunkId(
+        List<IReadOnlyList<ScoredChunk>> rankings,
+        int topK)
+    {
+        var best = new Dictionary<string, ScoredChunk>(StringComparer.Ordinal);
+        foreach (var ranking in rankings)
+        {
+            foreach (var scored in ranking)
+            {
+                if (!best.TryGetValue(scored.Chunk.Id, out var existing) || scored.Score > existing.Score)
+                    best[scored.Chunk.Id] = scored;
+            }
+        }
+
+        return best.Values
+            .OrderByDescending(scored => scored.Score)
+            .ThenBy(scored => scored.Chunk.Id, StringComparer.Ordinal)
+            .Take(topK)
+            .ToList();
+    }
+
+    /// <summary>Trace label of a <see cref="QueryTransformKind"/> (<c>union</c> / <c>fusion</c> / <c>replacement</c>).</summary>
+    private static string KindLabel(QueryTransformKind kind) => kind switch
+    {
+        QueryTransformKind.Union => "union",
+        QueryTransformKind.Fusion => "fusion",
+        QueryTransformKind.Replacement => "replacement",
+        _ => kind.ToString(),
+    };
+
+    private const int TraceTextLength = 160;
+
+    /// <summary>Truncates a traced variant text (long HyDE passages must not bloat the trace).</summary>
+    private static string Truncate(string text) =>
+        text.Length <= TraceTextLength ? text : text[..TraceTextLength] + "…";
 
     private static IReadOnlyList<ScoredChunk> DedupByChunkId(IReadOnlyList<ScoredChunk> ranking)
     {

@@ -18,9 +18,12 @@ public static class RagProfilePresets
     /// <summary>Canonical name of <see cref="RagProfile.Quality"/>.</summary>
     public const string QualityName = "quality";
 
+    /// <summary>Canonical name of <see cref="RagProfile.Adaptive"/>.</summary>
+    public const string AdaptiveName = "adaptive";
+
     /// <summary>The known profile names, in preset order.</summary>
     public static IReadOnlyList<string> KnownProfileNames { get; } =
-        [FastName, BalancedName, QualityName];
+        [FastName, BalancedName, QualityName, AdaptiveName];
 
     /// <summary>
     /// Parses a profile name (trimmed, case-insensitive) into its
@@ -55,6 +58,9 @@ public static class RagProfilePresets
             case "QUALITY":
                 profile = RagProfile.Quality;
                 return true;
+            case "ADAPTIVE":
+                profile = RagProfile.Adaptive;
+                return true;
             default:
                 profile = default;
                 return false;
@@ -67,6 +73,7 @@ public static class RagProfilePresets
         RagProfile.Fast => FastName,
         RagProfile.Balanced => BalancedName,
         RagProfile.Quality => QualityName,
+        RagProfile.Adaptive => AdaptiveName,
         _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown RAG profile."),
     };
 
@@ -130,6 +137,21 @@ public static class RagProfilePresets
             Groundedness = new RagGroundednessOptions { Enabled = true },
         },
 
+        // Adaptive — routing profile (RAG-05/C3): the pipeline is composed by the
+        // profile resolver (classifier + delegation to balanced/quality), not built
+        // from a RagOptions preset. The options returned here are those of its
+        // SingleShot delegate (balanced) with the canonical adaptive name, so that
+        // configuration binding (Orkeon:Rag:Profile = adaptive) keeps working on
+        // hosts resolving RagOptions directly.
+        RagProfile.Adaptive => CreateAdaptiveDelegateOptions(),
+
         _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown RAG profile."),
     };
+
+    private static RagOptions CreateAdaptiveDelegateOptions()
+    {
+        var options = Create(RagProfile.Balanced);
+        options.Profile = AdaptiveName;
+        return options;
+    }
 }

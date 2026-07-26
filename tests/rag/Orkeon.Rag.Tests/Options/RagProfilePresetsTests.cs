@@ -65,13 +65,37 @@ public class RagProfilePresetsTests
         Assert.Equal(RagDefaults.RerankTopN, second.Rerank.TopN);
     }
 
+    [Fact]
+    public void Adaptive_ExpandsToTheSingleShotDelegateOptions_UnderItsOwnName()
+    {
+        // The adaptive routing pipeline itself is composed by the profile
+        // resolver; the preset options are those of its SingleShot delegate
+        // (balanced), pinned to the canonical adaptive name.
+        var options = RagProfilePresets.Create(RagProfile.Adaptive);
+        var balanced = RagProfilePresets.Create(RagProfile.Balanced);
+
+        Assert.Equal("adaptive", options.Profile);
+        Assert.Equal(balanced.Retrieval.CandidateK, options.Retrieval.CandidateK);
+        Assert.True(options.Rerank.Enabled);
+        Assert.Equal("onnx", options.Rerank.Kind);
+    }
+
     [Theory]
     [InlineData("fast", RagProfile.Fast)]
     [InlineData("  Balanced ", RagProfile.Balanced)]
     [InlineData("QUALITY", RagProfile.Quality)]
+    [InlineData("adaptive", RagProfile.Adaptive)]
+    [InlineData(" Adaptive ", RagProfile.Adaptive)]
     public void Parse_IsTrimmedAndCaseInsensitive(string name, RagProfile expected)
     {
         Assert.Equal(expected, RagProfilePresets.Parse(name));
+    }
+
+    [Fact]
+    public void KnownProfileNames_IncludeAdaptive_AndNameOfRoundTrips()
+    {
+        Assert.Contains("adaptive", RagProfilePresets.KnownProfileNames);
+        Assert.Equal("adaptive", RagProfilePresets.NameOf(RagProfile.Adaptive));
     }
 
     [Fact]
