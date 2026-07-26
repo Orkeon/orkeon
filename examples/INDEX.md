@@ -31,7 +31,7 @@ Run any example with `bash examples/run-example.sh <runner> <category>/<example>
 | [06 - Ingenierie & DevOps (66-75)](#06---ingenierie--devops-66-75) | 12 | `standard` |
 | [07 - Creativite & Media (76-85)](#07---creativite--media-76-85) | 10 | `standard` |
 | [08 - IoT, Monde Physique & Smart Systems (86-95)](#08---iot-monde-physique--smart-systems-86-95) | 10 | `standard` |
-| [09 - Avant-Garde & Experimental (96-101)](#09---avant-garde--experimental-96-101) | 7 | `standard` |
+| [09 - Avant-Garde & Experimental (96-102)](#09---avant-garde--experimental-96-102) | 7 | `standard` |
 
 ## 01 - Classiques Entreprise (1-15)
 
@@ -187,7 +187,7 @@ Runner: `standard` · 10 examples · folder [`08-iot-smart-systems/`](08-iot-sma
 | 94 | [94. Smart City Trafic — A2A Inter-Zones](08-iot-smart-systems/94-smart-city-traffic/) | Parallel | 6 | 6 | `http_api`, `json_tool`, `file_write` | ✅ |
 | 95 | [95. Gestion de Crise — Broadcast + Priorite Critique](08-iot-smart-systems/95-crisis-management/) | Hierarchical | 6 | 6 | `http_api`, `json_tool`, `file_write`, `web_scrape` | ✅ |
 
-## 09 - Avant-Garde & Experimental (96-101)
+## 09 - Avant-Garde & Experimental (96-102)
 
 Runner: `standard` · 7 examples · folder [`09-experimental/`](09-experimental/)
 
@@ -213,4 +213,5 @@ These live under `examples/` but are code- or script-driven rather than pure `co
 | [`local-embeddings/`](local-embeddings/) | C# program | On-device BGE-micro-v2 ONNX embeddings. |
 | [`rag/`](rag/) | C# programs | RAG subsystem (fully offline, local BGE, no API key): `basic-ingestion` (incremental ingestion + cited queries), `hybrid-retrieval` (BM25 + RRF vs vector-only), `custom-reranker` (host-provided `IReranker` via `IRerankerRegistrar`), `crew-yaml` (crew `rag:`/`knowledge:` blocks); plus the `eval/` golden dataset. |
 | [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |
+| [`09-experimental/streaming-demo/`](09-experimental/streaming-demo/) | C# program | Real-time streaming of agent execution (`IStreamingAgentExecutionService`). |
 

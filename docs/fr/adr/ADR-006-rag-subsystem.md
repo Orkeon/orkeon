@@ -97,3 +97,38 @@ Point de vigilance : outre le fichier de câblage DI, `Orkeon.Infrastructure` ut
 invoquée par `AddOrkeonInfrastructure`. C'est accepté au titre du rôle de racine de
 composition ; tout usage d'`Orkeon.Rag` depuis du code **runtime** (hors composition) de
 l'Infrastructure exige toujours de rouvrir cet ADR.
+
+## Amendement — 2026-07-26 (RAG-06)
+
+La phase corrective superpose quatre décisions à cet ADR sans toucher à ses règles
+de dépendance (`Orkeon.Rag.Abstractions` reste Domain-only — vérifié par les
+`ArchitectureTests`) :
+
+1. **CRAG sur le `StateGraph` du Domain, pas une boucle maison.**
+   `CorrectiveRagPipeline` (`src/rag/Orkeon.Rag/Corrective/`) est construit sur
+   `StateGraph<RagGraphState>` (`Orkeon.Domain.Graph`) — le même mode
+   d'orchestration Graph que les crews — avec des arêtes conditionnelles sur le
+   verdict de récupération (`Correct|Incorrect|Ambiguous`) et une **double
+   borne** : `Orkeon:Rag:Corrective:MaxIterations` plus le circuit breaker propre
+   au graphe, dérivé de cette borne. L'épuisement dégrade en réponse best-effort ;
+   le graphe ne lève jamais vers l'appelant.
+2. **Split du repli web : politique vs transport.** Deux interrupteurs
+   indépendants, désactivés par défaut : `Orkeon:Rag:Corrective:WebFallback`
+   (la *politique* — le graphe a-t-il le droit de sortir du store local ; vit
+   dans `Orkeon.Rag.Abstractions`, Domain+BCL uniquement) et
+   `Orkeon:Rag:WebFallback` (le *transport* — `WebSearchRetrieverOptions`,
+   endpoint SearxNG ; vit dans `Orkeon.Rag`, car `SuspiciousAction` et les
+   préoccupations HTTP violeraient la règle de dépendance des Abstractions).
+   Les deux doivent être activés pour que le nœud `web_fallback` s'exécute, et
+   chaque page téléchargée passe par `PromptInjectionDocumentValidator` avant
+   d'entrer dans le working set.
+3. **Profil `corrective` sans étage de rerank linéaire.** Le preset désactive à
+   dessein le cross-encoder ONNX et l'étage linéaire de groundedness : le graphe
+   corrige en bouclant (evaluate → rewrite/refine → re-retrieve) et possède son
+   nœud natif `check_groundedness`. La route `Iterative` du profil `adaptive`
+   délègue à `corrective` (le repli provisoire RAG-05 vers `quality` est levé).
+4. **Pas de `rag-adr.md` séparé.** Le lot RAG-06 garde délibérément le registre
+   de décisions ici (un seul ADR, amendé par phase) au lieu d'ajouter la page
+   `docs/architecture/rag-adr.md` esquissée par la fiche — un second document de
+   décisions dupliquerait celui-ci et élargirait la dette de parité FR. Le guide
+   d'architecture narratif est `docs/architecture/rag-pipeline.md`.

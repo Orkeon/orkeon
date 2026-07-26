@@ -49,7 +49,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Contenu multi-modal (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Bêta (réel depuis R3.9) |
 | Hooks de kickoff | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Expérimental |
 | Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Bêta |
-| Sous-système RAG (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) ; profils `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (défaut `fast`) ; `balanced`/`quality` exigent le cross-encoder ONNX — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, poids embarqués, hors-ligne) ; le repli web correctif est un opt-in supplémentaire — `AddOrkeonRagWebFallback(config)` + les deux interrupteurs `Enabled` (`Orkeon:Rag:Corrective:WebFallback` politique, `Orkeon:Rag:WebFallback` transport) | Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx | `IRagPipeline` (à étages / graphe correctif), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Bêta |
+| Sous-système RAG (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) ; profils `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (défaut `fast`) ; `balanced`/`quality`/`adaptive` exigent le cross-encoder ONNX — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, poids embarqués, hors-ligne) ; `corrective` non (le graphe boucle au lieu de reranker) ; le repli web correctif est purement config — `AddOrkeonRag` câble déjà le transport, les deux interrupteurs `Enabled` gouvernent (`Orkeon:Rag:Corrective:WebFallback` politique, `Orkeon:Rag:WebFallback` transport) — voir la section détaillée plus bas | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (à étages / graphe correctif), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Bêta |
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
 
 **Maturité** — *Bêta* : implémentation complète et testée, API susceptible d'évoluer
@@ -278,6 +278,50 @@ partiel (signalé au cas par cas ci-dessous).
 - **Limites connues** : aucun composant du framework ne le consomme automatiquement —
   l'hôte le résout et injecte les résumés là où il le souhaite (prompt système,
   contexte de tâche…).
+
+## Sous-système RAG — `AddOrkeonRag(configuration)` (RAG-02…06)
+
+- **Rôle** : génération augmentée par récupération — ingestion (loaders,
+  chunking, validation, manifeste incrémental), pipeline de récupération à
+  étages (transform → retrieve → fuse (+ MMR opt-in) → rerank → assemble →
+  generate → groundedness), graphe correctif CRAG, presets de profils et
+  harnais d'évaluation hors ligne. Guide complet :
+  [rag-pipeline.md](../architecture/rag-pipeline.md), décisions :
+  [ADR-006](../../adr/ADR-006-rag-subsystem.md).
+- **Activation** :
+  ```csharp
+  services.AddOrkeonRag(configuration);   // Orkeon.Rag.DependencyInjection
+  services.AddOrkeonRagTools();           // Orkeon.Tools.Rag : rag_search / rag_ingest / rag_eval
+  services.AddOrkeonOnnxReranker();       // opt-in — requis par balanced/quality/adaptive
+  ```
+  `AddOrkeonRag` câble déjà les transformers de requête, le routage, l'hybride
+  BM25+RRF, le graphe correctif **et l'enregistrement du transport du repli
+  web** — appeler soi-même `AddOrkeonRagWebFallback(configuration)` est un
+  no-op ; la fonctionnalité est gouvernée par les deux interrupteurs de
+  configuration ci-dessous.
+- **Profils** (`Orkeon:Rag:Profile`, défaut `fast` ; les surcharges clé par clé
+  s'appliquent par-dessus le preset) : `fast` (vectoriel seul) et `corrective`
+  (graphe CRAG — boucle au lieu d'un étage de rerank linéaire) fonctionnent
+  sans les paquets ONNX ; `balanced`/`quality` activent l'étage de rerank
+  cross-encoder et `adaptive` délègue sa route `SingleShot` à `balanced`, donc
+  ces trois-là **échouent explicitement à la première requête** (exception
+  actionnable) tant qu'`AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` +
+  `Orkeon.Rag.Onnx.Model`, poids int8 embarqués, hors-ligne) n'est pas
+  enregistré.
+- **Repli web (double opt-in, désactivé par défaut)** : le nœud `web_fallback`
+  du graphe correctif ne s'exécute que quand **les deux**
+  `Orkeon:Rag:Corrective:WebFallback:Enabled` (politique) et
+  `Orkeon:Rag:WebFallback:Enabled` + un `Endpoint` non vide (transport,
+  SearxNG) sont posés. Chaque page téléchargée est filtrée par
+  `PromptInjectionDocumentValidator` (`Rejected` n'entre jamais dans le working
+  set ; `Suspicious` suit la politique configurée) — voir
+  [security.md](../architecture/security.md).
+- **Projets** : `Orkeon.Rag.Abstractions` (contrats, dépendance Domain seule),
+  `Orkeon.Rag` (implémentations), `Orkeon.Tools.Rag` (outils agents),
+  `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` (reranker opt-in + poids).
+- **Limites connues** : voir [limitations.md](./limitations.md) — dégradation
+  hors ligne des nœuds dépendant d'un LLM (`corrective`/`adaptive`),
+  classifieur heuristique par défaut, BM25 in-process non persisté.
 
 ## Persistance d'état d'exécution — `AddCrewExecutionStatePersistence(...)` (R3.8)
 

@@ -32,6 +32,7 @@ The documentation is organized into 6 thematic sections.
 | [TypeScript coding agent](./architecture/coding-agent-ts.md) | Agentic coding agent built on the scripted stack: `*.cmd.ts` control plane vs `crew.ork.ts` engine, C# `ToolBase` tools |
 | [YAML reference](./architecture/yaml-schema.md) | **Single source** of the complete YAML schema (crew, agents, tasks, circuitBreaker, graphConfig, autonomousBudget) |
 | [RaggableTree — semantic graph](./architecture/raggable-tree.md) | 6-phase pipeline, 15 tools, 5 languages, incremental reindexing, watcher, context injection |
+| [RAG pipeline](./architecture/rag-pipeline.md) | The `src/rag/` subsystem: ingestion, 7-stage pipeline (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), corrective CRAG graph, web fallback, 5 profiles, measured evaluation |
 | [ADR — RaggableTree](./architecture/raggable-tree-adr.md) | Decision for a 6-level stratified graph via Tree-sitter, rejected alternatives, consequences |
 | [Architecture Decision Records (ADR)](./adr/) | ADR-002 (Tools.Abstractions shared kernel), ADR-003 (Analysis shared kernels), ADR-004 (scripting naming twins), ADR-005 (heterogeneous Tools.* family), ADR-006 (RAG subsystem `src/rag/`) |
 
@@ -70,7 +71,7 @@ The documentation is organized into 6 thematic sections.
 | [Catalog of the 104 examples](./reference/examples-catalog.md) | 9 business categories, notable examples detailed |
 | [Limits and constraints](./reference/limitations.md) | Known constraints of the current version |
 | [Example data policy](./reference/example-data-policy.md) | Why examples ship config not datasets, how to mount your own input (`/data:ro`, `/output:rw`), and contributor rules for bundled sample fixtures |
-| [Opt-in subsystems](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, tool rate-limiting, key rotation, benchmarking, multi-modal, kickoff hooks — explicit activation `AddOrkeonXxx()` (outside default DI) |
+| [Opt-in subsystems](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, tool rate-limiting, key rotation, benchmarking, multi-modal, kickoff hooks, RAG subsystem — explicit activation `AddOrkeonXxx()` (outside default DI) |
 | [Hosting & runner bootstrap](./reference/hosting.md) | `Orkeon.Hosting`: `RunnerHost.Build`, `ConfigureRunnerServices` wiring order (LLM-first, tool suites, VFS, `ServiceProviderToolRegistry`), `RunnerExecution` flows, and the web-host consumption pattern |
 | [Example README template](./templates/example-readme.md) | Gabarit for `examples/**/README.md`: What it does / Prerequisites / Required data / Run it (per way) / Expected output / Duration & cost |
 | [LLM provider comparison](./arkeon/llm-providers-comparatif.md) | Capability matrix per provider (SSE streaming, native tool calling, GBNF grammar, `response_format`, thinking, metrics, resilience), derived from the source code |

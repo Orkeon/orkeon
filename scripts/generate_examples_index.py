@@ -311,6 +311,7 @@ def render(cats: list[Category]) -> str:
     a("| [`local-embeddings/`](local-embeddings/) | C# program | On-device BGE-micro-v2 ONNX embeddings. |")
     a("| [`rag/`](rag/) | C# programs | RAG subsystem (fully offline, local BGE, no API key): `basic-ingestion` (incremental ingestion + cited queries), `hybrid-retrieval` (BM25 + RRF vs vector-only), `custom-reranker` (host-provided `IReranker` via `IRerankerRegistrar`), `crew-yaml` (crew `rag:`/`knowledge:` blocks); plus the `eval/` golden dataset. |")
     a("| [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |")
+    a("| [`09-experimental/streaming-demo/`](09-experimental/streaming-demo/) | C# program | Real-time streaming of agent execution (`IStreamingAgentExecutionService`). |")
     a("")
 
     return "\n".join(out) + "\n"

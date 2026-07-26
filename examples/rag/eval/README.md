@@ -1,7 +1,7 @@
 # RAG golden dataset (`golden.yaml`)
 
-Versioned evaluation dataset of the RAG subsystem (RAG-04/C1, plan §9): 7
-questions over a small fictional corpus (`corpus/`, 10 markdown documents —
+Versioned evaluation dataset of the RAG subsystem (RAG-04/C1, plan §9): 9
+questions over a small fictional corpus (`corpus/`, 12 markdown documents —
 product FAQ + tech notes for the imaginary "Nimbus Hub / Nimbus Sense" devices).
 The harness is **100 % CI-runnable offline**: local BGE embeddings, deterministic
 extractive generation (`--offline`), deterministic heuristic judge.

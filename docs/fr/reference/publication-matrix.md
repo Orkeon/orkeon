@@ -2,8 +2,9 @@
 
 # Matrice de publication NuGet
 
-Ce fichier est la source de vérité unique pour **les projets publiés sur NuGet**, afin que
-`ci.yml` (validation) et `release.yml` (push sur tag) ne divergent plus jamais (OSS-011 / R8.3).
+Ce fichier est la source de vérité unique pour **les projets publiés sur NuGet**, afin que les
+workflows (`ci.yml` validation, `publish.yml` pack + push sur tag, `release.yml` installateurs)
+ne divergent plus jamais (OSS-011 / R8.3).
 
 > **Statut — proposition, en attente de confirmation du mainteneur.** Seules les trois
 > bibliothèques cœur sont publiées aujourd'hui. L'extension au reste de l'écosystème est
@@ -24,8 +25,9 @@ Ce fichier est la source de vérité unique pour **les projets publiés sur NuGe
 
 L'écosystème annoncé (la famille d'outils, le tool CLI `orkeon`, hosting, plugins) est censé être
 installable, mais retenu jusqu'à ce que les paquets cœur soient éprouvés sur NuGet **et** que D3
-soit tranchée. Chaque entrée ci-dessous est `IsPackable=true` (elle construit donc un paquet en
-local) mais n'est **pas** poussée par un workflow pour l'instant.
+soit tranchée. Chaque entrée ci-dessous est `IsPackable=true` et atterrit donc déjà sur le **feed
+interne GitHub Packages** via `publish.yml` (voir plus bas), mais n'est **pas** poussée vers
+NuGet.org par un workflow pour l'instant.
 
 | PackageId | Note |
 |---|---|
@@ -84,10 +86,11 @@ framework-dependent.
 
 ## Câblage de la publication
 
-- `ci.yml` et `release.yml` packagent la **même** liste explicite (les trois bibliothèques cœur).
-  Quand la matrice sera confirmée et l'ensemble différé promu, basculer les deux sur un unique
-  `dotnet pack Orkeon.sln -c Release` piloté par `IsPackable`, pour que le périmètre soit
-  identique par construction.
-- `--skip-duplicate` rend les ré-exécutions idempotentes ; les pushes sont conditionnés au tag
-  (`refs/tags/`).
-- La version provient de `src/Directory.Build.props` (`0.9.0-beta`) ; aucun projet ne la surcharge.
+- Tout le packaging et le push NuGet vivent dans **`publish.yml`** (tag `v*`) :
+  `dotnet pack Orkeon.sln` (+ les tools runners) piloté par `IsPackable`, poussé vers
+  **GitHub Packages** avec `--skip-duplicate` (ré-exécutions idempotentes). `ci.yml` valide
+  (build + tests) et ne package rien ; `release.yml` construit les archives d'installation et
+  l'image conteneur, sans packaging NuGet.
+- **Rien n'est poussé vers NuGet.org aujourd'hui** — la matrice ci-dessus est la proposition
+  pour cette promotion, conditionnée à D3 et à la confirmation du mainteneur.
+- La version provient de `src/Directory.Build.props` (actuellement `0.9.2-beta`) ; aucun projet ne la surcharge.

@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Tools.Rag</PackageId>
-    <Description>Agent tools for the Orkeon RAG subsystem (rag_search) over Orkeon.Rag.Abstractions (IRagPipeline).</Description>
+    <Description>Agent tools for the Orkeon RAG subsystem (rag_search, rag_ingest, rag_eval) over Orkeon.Rag.Abstractions (IRagPipeline, IIngestionPipeline, IRagEvalHarness).</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;RAG;Retrieval</PackageTags>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>

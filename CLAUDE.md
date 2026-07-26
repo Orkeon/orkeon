@@ -463,7 +463,7 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 │   │   ├── Orkeon.Tools.Embeddings.Local/ # Local on-device embeddings (SmartComponents BGE-micro-v2 ONNX, 384 dims, CPU, no API key)
 │   │   ├── Orkeon.Tools.EventHub/      # EventHub agent tools (publish_event, post_message, send_request, reply_to, receive_message, wait_for_event, get_last_value)
 │   │   ├── Orkeon.Tools.FileSystem/    # File system tools
-│   │   ├── Orkeon.Tools.Rag/           # RAG agent tools (rag_search → RagSearchTool; AddOrkeonRagTools)
+│   │   ├── Orkeon.Tools.Rag/           # RAG agent tools (rag_search, rag_ingest, rag_eval; AddOrkeonRagTools)
 │   │   └── Orkeon.Tools.Web/           # Web/HTTP tools
 │   ├── rag/
 │   │   ├── Orkeon.Rag.Abstractions/    # RAG contracts + DTOs + options incl. RagOptions v2 + RagProfilePresets (Domain-only dependency, ADR-006)
@@ -538,7 +538,7 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 - `InMemoryUnitOfWork` intentionally has no durable persist step (aggregates live in the in-memory repositories; `SaveChangesAsync` dispatches domain events). The former EF-migration TODO has been removed (R3.8). Durable crew **execution-state** persistence is a separate opt-in: `AddCrewExecutionStatePersistence(...)` + a checkpointing `IStateStore` (see `docs/reference/opt-in-subsystems.md`)
 - ChromaDB, Pinecone, and LanceDB are implemented (REST API-based), not placeholders
 - Infrastructure layer has been redesigned without Akka.NET; all projects target `net10.0`
-- Version is `0.9.0-beta` (see `src/Directory.Build.props:11-12` — `VersionPrefix` `0.9.0` + `VersionSuffix` `beta`)
+- Version is defined in `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix` `beta` — currently `0.9.2-beta`); that file is the single source of truth
 - Focus on V1 iso-functional parity, not advanced features
 - `sonar-project.properties` has been removed (caused scanner conflicts — all params passed via CLI)
 - SonarQube 9.9 LTS: use `sonar.login` (not `sonar.token`) for authentication

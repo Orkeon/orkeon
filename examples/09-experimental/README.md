@@ -1,4 +1,4 @@
-# 09 - Avant-Garde & Experimental (96-101)
+# 09 - Avant-Garde & Experimental (96-102)
 
 Experimental and cutting-edge use cases: self-adaptive crews, multi-party negotiation, legacy codebase archaeology, ethical AI jury, civilization simulation, and crew-of-crews orchestration.
 
@@ -12,6 +12,7 @@ Experimental and cutting-edge use cases: self-adaptive crews, multi-party negoti
 | 99 | Jury Ethique Multi-Perspectives pour Decisions IA | Parallel -> Sequential -> Human | Securite |
 | 100 | Simulateur de Civilisation Emergente | FlowEngine (tours) + A2A | Robustesse |
 | 101 | Crew de Crews -- L'Orchestre des Orchestres | Hierarchical (meta) | Simplicite + Securite + Robustesse + Fiabilite |
+| 102 | Graph-Based Orchestration (LangGraph-Style) | Graph (arêtes conditionnelles, cycles bornés) | Robustesse |
 
 ## streaming-demo
 

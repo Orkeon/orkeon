@@ -134,10 +134,12 @@ La documentation est maintenue en anglais et en français en parallèle. Toute P
 renomme ou supprime un fichier sous `docs/**.md` (hors `docs/fr/`) **doit** appliquer le même
 changement à son miroir français sous `docs/fr/`, et toute modification d'un fichier
 communautaire racine (`README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`)
-**doit** mettre à jour son miroir `*.fr.md`. Une barrière CI (`scripts/check-docs-parity.sh`)
-l'impose : elle échoue dès qu'un miroir manque. La barrière vérifie l'existence des fichiers,
-pas l'équivalence du contenu — la synchronisation reste à votre charge ; si vous ne pouvez pas
-traduire immédiatement, ajoutez un miroir minimal et signalez-le pour traduction.
+**doit** mettre à jour son miroir `*.fr.md`. Le script `scripts/check-docs-parity.sh` le
+vérifie : il échoue dès qu'un miroir manque — exécutez-le localement avant d'ouvrir la PR.
+Il n'est pas encore câblé en CI (le câblage est conditionné à la résorption préalable de la
+dette de miroirs existante). Le script vérifie l'existence des fichiers, pas l'équivalence du
+contenu — la synchronisation reste à votre charge ; si vous ne pouvez pas traduire
+immédiatement, ajoutez un miroir minimal et signalez-le pour traduction.
 
 ### Tests
 

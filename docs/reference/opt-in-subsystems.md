@@ -49,7 +49,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Multi-modal content (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Beta (real since R3.9) |
 | Kickoff hooks | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Experimental |
 | Codebase context (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Beta |
-| RAG subsystem (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`); profiles `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (default `fast`); `balanced`/`quality` need the ONNX cross-encoder — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, embedded weights, offline); corrective web fallback is a further opt-in — `AddOrkeonRagWebFallback(config)` + the two `Enabled` switches (`Orkeon:Rag:Corrective:WebFallback` policy, `Orkeon:Rag:WebFallback` transport) | Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx | `IRagPipeline` (staged / corrective graph), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Beta |
+| RAG subsystem (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`); profiles `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (default `fast`); `balanced`/`quality`/`adaptive` need the ONNX cross-encoder — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, embedded weights, offline); `corrective` does not (the graph loops instead of reranking); the corrective web fallback is config-only — `AddOrkeonRag` already wires the transport, the two `Enabled` switches govern (`Orkeon:Rag:Corrective:WebFallback` policy, `Orkeon:Rag:WebFallback` transport) — see the detailed section below | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (staged / corrective graph), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Beta |
 | Execution state persistence (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Beta |
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
@@ -281,6 +281,46 @@ partial (flagged case by case below).
 - **Known limits**: no framework component consumes it automatically —
   the host resolves it and injects the summaries wherever it wishes (system prompt,
   task context…).
+
+## RAG subsystem — `AddOrkeonRag(configuration)` (RAG-02…06)
+
+- **Role**: retrieval-augmented generation — ingestion (loaders, chunking,
+  validation, incremental manifest), staged retrieval pipeline (transform →
+  retrieve → fuse (+ opt-in MMR) → rerank → assemble → generate → groundedness),
+  the corrective CRAG graph, profile presets and the offline eval harness.
+  Full guide: [rag-pipeline.md](../architecture/rag-pipeline.md), decisions:
+  [ADR-006](../adr/ADR-006-rag-subsystem.md).
+- **Activation**:
+  ```csharp
+  services.AddOrkeonRag(configuration);   // Orkeon.Rag.DependencyInjection
+  services.AddOrkeonRagTools();           // Orkeon.Tools.Rag: rag_search / rag_ingest / rag_eval
+  services.AddOrkeonOnnxReranker();       // opt-in — required by balanced/quality/adaptive
+  ```
+  `AddOrkeonRag` already wires the query transformers, routing, hybrid BM25+RRF,
+  the corrective graph **and the web-fallback transport registration** —
+  calling `AddOrkeonRagWebFallback(configuration)` yourself is a no-op; the
+  feature is governed by the two config switches below.
+- **Profiles** (`Orkeon:Rag:Profile`, default `fast`; per-key overrides apply on
+  top of the preset): `fast` (vector only) and `corrective` (CRAG graph — loops
+  instead of a linear rerank stage) run without the ONNX packages;
+  `balanced`/`quality` enable the cross-encoder rerank stage and `adaptive`
+  delegates its `SingleShot` route to `balanced`, so those three **fail fast at
+  the first query** (actionable exception) unless `AddOrkeonOnnxReranker()`
+  (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, int8 weights embedded, offline)
+  is registered.
+- **Web fallback (double opt-in, off by default)**: the corrective graph's
+  `web_fallback` node runs only when **both** `Orkeon:Rag:Corrective:WebFallback:Enabled`
+  (policy) and `Orkeon:Rag:WebFallback:Enabled` + a non-empty `Endpoint`
+  (transport, SearxNG) are set. Every fetched page is screened by
+  `PromptInjectionDocumentValidator` (`Rejected` never enters the working set;
+  `Suspicious` follows the configured policy) — see
+  [security.md](../architecture/security.md).
+- **Projects**: `Orkeon.Rag.Abstractions` (contracts, Domain-only),
+  `Orkeon.Rag` (implementations), `Orkeon.Tools.Rag` (agent tools),
+  `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` (opt-in reranker + weights).
+- **Known limits**: see [limitations.md](./limitations.md) — offline degradation
+  of the LLM-dependent nodes (`corrective`/`adaptive`), heuristic classifier by
+  default, in-process BM25 unpersisted.
 
 ## Execution state persistence — `AddCrewExecutionStatePersistence(...)` (R3.8)
 

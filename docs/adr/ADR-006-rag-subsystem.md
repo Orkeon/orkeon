@@ -92,3 +92,35 @@ Vigilance note: besides the DI wiring file, `Orkeon.Infrastructure` currently al
 invoked by `AddOrkeonInfrastructure`. It is accepted as part of the composition-root role;
 any use of `Orkeon.Rag` from Infrastructure **runtime** code (non-composition) still requires
 reopening this ADR.
+
+## Amendment — 2026-07-26 (RAG-06)
+
+The corrective phase layers four decisions on top of this ADR without touching its
+dependency rules (`Orkeon.Rag.Abstractions` stays Domain-only — verified by
+`ArchitectureTests`):
+
+1. **CRAG on the Domain `StateGraph`, not a bespoke loop.** `CorrectiveRagPipeline`
+   (`src/rag/Orkeon.Rag/Corrective/`) is built on `StateGraph<RagGraphState>`
+   (`Orkeon.Domain.Graph`) — the same Graph orchestration mode crews use — with
+   conditional edges on the retrieval verdict (`Correct|Incorrect|Ambiguous`) and a
+   **double bound**: `Orkeon:Rag:Corrective:MaxIterations` plus the graph's own
+   circuit breaker derived from it. Exhaustion degrades to a best-effort answer;
+   the graph never throws at the caller.
+2. **Web fallback split: policy vs transport.** Two independent, off-by-default
+   switches: `Orkeon:Rag:Corrective:WebFallback` (the *policy* — may the graph
+   leave the local store; lives in `Orkeon.Rag.Abstractions`, Domain+BCL-only) and
+   `Orkeon:Rag:WebFallback` (the *transport* — `WebSearchRetrieverOptions`,
+   SearxNG endpoint; lives in `Orkeon.Rag`, since `SuspiciousAction` and HTTP
+   concerns would violate the Abstractions dependency rule). Both must be enabled
+   for the `web_fallback` node to run, and every fetched page goes through
+   `PromptInjectionDocumentValidator` before entering the working set.
+3. **`corrective` profile without a linear rerank stage.** The preset disables the
+   ONNX cross-encoder and the linear groundedness stage on purpose: the graph
+   corrects by looping (evaluate → rewrite/refine → re-retrieve) and has a native
+   `check_groundedness` node instead. The `adaptive` profile's `Iterative` route
+   delegates to `corrective` (the RAG-05 interim fallback to `quality` is lifted).
+4. **No separate `rag-adr.md`.** The RAG-06 batch deliberately keeps the decision
+   record here (single ADR, amended per phase) instead of adding the
+   `docs/architecture/rag-adr.md` page the task sheet sketched — a second decision
+   document would duplicate this one and widen the FR-parity debt. The narrative
+   architecture guide is `docs/architecture/rag-pipeline.md`.

@@ -2,8 +2,9 @@
 
 # NuGet publication matrix
 
-This file is the single source of truth for **which projects are published to NuGet**, so
-`ci.yml` (validation) and `release.yml` (push on tag) never drift again (OSS-011 / R8.3).
+This file is the single source of truth for **which projects are published to NuGet**, so the
+workflows (`ci.yml` validation, `publish.yml` pack + push on tag, `release.yml` installers)
+never drift again (OSS-011 / R8.3).
 
 > **Status — proposal, pending maintainer confirmation.** Only the three core libraries are
 > published today. Expanding to the rest of the ecosystem is gated on decision **D3** (the two
@@ -23,8 +24,9 @@ This file is the single source of truth for **which projects are published to Nu
 
 The announced ecosystem (the tools family, the `orkeon` CLI tool, hosting, plugins) is meant to
 be installable, but is held back until the core packages are proven on NuGet **and** D3 is
-resolved. Each entry below is `IsPackable=true` (so it builds a package locally) but is **not**
-pushed by any workflow yet.
+resolved. Each entry below is `IsPackable=true` and therefore already lands on the **internal
+GitHub Packages feed** via `publish.yml` (see below), but is **not** pushed to NuGet.org by any
+workflow yet.
 
 | PackageId | Note |
 |---|---|
@@ -82,9 +84,10 @@ the remaining CLI launchers stay framework-dependent.
 
 ## How publication is wired
 
-- Both `ci.yml` and `release.yml` pack the **same** explicit list (the three core libraries).
-  When the matrix is confirmed and the deferred set is promoted, switch both to a single
-  `dotnet pack Orkeon.sln -c Release` driven by `IsPackable`, so the perimeter is identical by
-  construction.
-- `--skip-duplicate` makes re-runs idempotent; pushes are tag-gated (`refs/tags/`).
-- Version flows from `src/Directory.Build.props` (`0.9.0-beta`); no project overrides it.
+- All NuGet packing and pushing lives in **`publish.yml`** (tag `v*`): `dotnet pack Orkeon.sln`
+  (+ the runner tools) driven by `IsPackable`, pushed to **GitHub Packages** with
+  `--skip-duplicate` (idempotent re-runs). `ci.yml` validates (build + test) and packs nothing;
+  `release.yml` builds the installer archives and the container image, no NuGet packing.
+- **Nothing is pushed to NuGet.org today** — the matrix above is the proposal for that
+  promotion, gated on D3 and maintainer confirmation.
+- Version flows from `src/Directory.Build.props` (currently `0.9.2-beta`); no project overrides it.

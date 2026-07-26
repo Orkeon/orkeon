@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — post-RAG coherence audit (2026-07-26)
+
+- **`LlmProviderToChatClientAdapter` honors the standard `ChatOptions.ResponseFormat`** — the adapter only read the `LlmChatOptionsKeys.ResponseFormat` AdditionalProperties key stashed by the orchestrator, so callers built on plain Microsoft.Extensions.AI options (RAG retrieval evaluator, groundedness checker, query complexity classifier setting `ChatResponseFormat.Json`) never reached providers wiring `response_format` (e.g. DeepSeek `json_object`). The adapter now falls back to `ChatOptions.ResponseFormat` when the key is absent (the explicit key keeps priority) — the JSON constraint was already enforced by strict prompts + tolerant parsing, this makes the API-level guarantee real on the providers that support it.
+- **The corrective mechanism test now locks the rank-1 claim** — `CorrectiveRagMechanismSlowTests` asserted only that `notes-power.md` was cited; it now also asserts it is the **first** citation, matching the wording in the RAG-06 task sheet and the eval README.
+- Documentation drift cleanup: version references aligned on `src/Directory.Build.props` (0.9.2-beta) across `README(.fr).md`, `CLAUDE.md`, `limitations.md`, `publication-matrix.md`; `publication-matrix.md` workflow narrative matched to reality (all NuGet pack/push lives in `publish.yml` → GitHub Packages; nothing on NuGet.org); `CONTRIBUTING(.fr).md` no longer claims a CI parity gate that was never wired; ADR-006 amended with the RAG-06 decisions (CRAG on `StateGraph`, web-fallback policy/transport split, `corrective` preset, no separate `rag-adr.md`); `docs/INDEX.md` links `rag-pipeline.md`; `limitations.md` + `opt-in-subsystems.md` document the ONNX requirement (`balanced`/`quality`/`adaptive`) and the double-opt-in web fallback; French mirror `docs/fr/architecture/rag-pipeline.md` added; eval README header corrected to 9 cases / 12 documents; `Orkeon.Tools.Rag` NuGet description lists its three tools; stale "lands with RAG-0x" comments rewritten in delivered code.
+
 ### Added — Corrective RAG & vitrine (RAG-06): CRAG graph on `StateGraph`, `corrective` profile, opt-in web fallback, examples
 
 The showcase piece of the RAG plan (guide §8): Corrective RAG built on Orkeon's own Graph orchestration mode — the corrective engine *is* a Domain `StateGraph`, RAG demonstrates the `Graph` mode and vice versa — plus the vitrine layer (docs, three runnable examples, final all-profile evaluation).

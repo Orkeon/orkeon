@@ -30,6 +30,7 @@ La documentation est organisée en 6 sections thématiques.
 | [Coding agent TypeScript](./architecture/coding-agent-ts.md) | Agent de codage agentique construit sur la pile scriptée : plan de contrôle `*.cmd.ts` vs moteur `crew.ork.ts`, outils C# `ToolBase` |
 | [Référence YAML](./architecture/yaml-schema.md) | **Source unique** du schéma YAML complet (crew, agents, tasks, circuitBreaker, graphConfig, autonomousBudget) |
 | [RaggableTree — graphe sémantique](./architecture/raggable-tree.md) | Pipeline 6 phases, 15 tools, 5 langages, réindexation incrémentale, watcher, injection de contexte |
+| [Pipeline RAG](./architecture/rag-pipeline.md) | Le sous-système `src/rag/` : ingestion, pipeline à 7 étages (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), graphe correctif CRAG, repli web, 5 profils, évaluation mesurée |
 | [ADR — RaggableTree](./architecture/raggable-tree-adr.md) | Décision graphe stratifié à 6 niveaux via Tree-sitter, alternatives rejetées, conséquences |
 | [Décisions d'architecture (ADR)](./adr/) | ADR-002 (shared kernel Tools.Abstractions), ADR-003 (shared kernels Analysis), ADR-004 (jumeaux de nommage scripting), ADR-005 (famille Tools.* hétérogène), ADR-006 (sous-système RAG `src/rag/`) |
 
@@ -67,7 +68,7 @@ La documentation est organisée en 6 sections thématiques.
 |---------|-------------|
 | [Catalogue des 104 exemples](./reference/examples-catalog.md) | 9 catégories métier, exemples notables détaillés |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante |
-| [Sous-systèmes opt-in](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, rate-limiting d'outils, rotation de clés, benchmarking, multi-modal, hooks de kickoff — activation explicite `AddOrkeonXxx()` (hors DI par défaut) |
+| [Sous-systèmes opt-in](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, rate-limiting d'outils, rotation de clés, benchmarking, multi-modal, hooks de kickoff, sous-système RAG — activation explicite `AddOrkeonXxx()` (hors DI par défaut) |
 | [Comparatif des fournisseurs LLM](./arkeon/llm-providers-comparatif.md) | Matrice de capacités par provider (streaming SSE, tool calling natif, grammaire GBNF, `response_format`, thinking, métriques, résilience), dérivée du code source |
 
 ---

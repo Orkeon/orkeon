@@ -7,12 +7,14 @@
 #   - judge: deterministic heuristic (labelled in the report).
 #
 # Two steps:
-#   1. profile comparison fast/balanced/quality → table published in the step
-#      summary and as an artifact (the plan's "published, not proclaimed" proof);
+#   1. profile comparison fast/balanced/quality/corrective/adaptive → table
+#      published in the step summary and as an artifact (the plan's "published,
+#      not proclaimed" proof);
 #   2. anti-regression gate on the BALANCED profile (env floors below): the run
 #      FAILS (exit 1) when the aggregate recall@5 or MRR — computed WITHOUT the
-#      cases tagged `correctif`, which are seeded to fail single-shot retrieval
-#      until RAG-06 — drops below the floor.
+#      cases tagged `correctif`, which are seeded to defeat single-shot
+#      retrieval (the corrective graph flips them with a real LLM; offline they
+#      stay out of every gate) — drops below the floor.
 # Keep the floors in sync with tests/e2e/.../RagEvalGoldenDatasetSlowTests.cs.
 name: RAG Eval
 on:
