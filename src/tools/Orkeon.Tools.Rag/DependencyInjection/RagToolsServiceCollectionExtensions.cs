@@ -3,6 +3,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Rag.Abstractions.Interfaces;
+using Orkeon.Rag.Evaluation;
 
 namespace Orkeon.Tools.Rag.DependencyInjection;
 
@@ -14,8 +15,9 @@ namespace Orkeon.Tools.Rag.DependencyInjection;
 public static class RagToolsServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <see cref="RagSearchTool"/> (<c>rag_search</c>) and
-    /// <see cref="RagIngestTool"/> (<c>rag_ingest</c>) as <see cref="IBaseTool"/>s
+    /// Registers <see cref="RagSearchTool"/> (<c>rag_search</c>),
+    /// <see cref="RagIngestTool"/> (<c>rag_ingest</c>) and
+    /// <see cref="RagEvalTool"/> (<c>rag_eval</c>) as <see cref="IBaseTool"/>s
     /// so tool registries discover them via <c>GetServices&lt;IBaseTool&gt;()</c>.
     /// Requires the RAG subsystem (<c>AddOrkeonRag(configuration)</c> from
     /// <c>Orkeon.Rag.DependencyInjection</c>) for the <see cref="IRagPipeline"/> /
@@ -36,6 +38,9 @@ public static class RagToolsServiceCollectionExtensions
         services.AddSingleton<IBaseTool>(sp => new RagIngestTool(
             sp.GetRequiredService<IIngestionPipeline>(),
             sp.GetRequiredService<IFileSystemService>()));
+
+        services.AddSingleton<IBaseTool>(sp => new RagEvalTool(
+            sp.GetRequiredService<IRagEvalHarness>()));
 
         return services;
     }

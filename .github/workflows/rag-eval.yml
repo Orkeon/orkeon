@@ -1,0 +1,75 @@
+# RAG evaluation gate (RAG-04/C1, plan §9.3) — runs the golden dataset through
+# `orkeon rag eval` on every change touching the RAG subsystem, 100 % offline:
+#   - embeddings: local BGE-micro-v2 (SmartComponents ONNX, embedded model, no key),
+#   - generation: --offline deterministic extractive stub (no LLM call),
+#   - judge: deterministic heuristic (labelled in the report).
+#
+# Anti-regression thresholds (env below): the run FAILS (exit 1) when the
+# aggregate recall@5 or MRR — computed WITHOUT the cases tagged `correctif`,
+# which are seeded to fail plain retrieval until RAG-06 — drops below the floor.
+# Keep the floors in sync with tests/e2e/.../RagEvalGoldenDatasetSlowTests.cs.
+name: RAG Eval
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/rag/**'
+      - 'src/tools/Orkeon.Tools.Rag/**'
+      - 'src/tools/Orkeon.Tools.Embeddings.Local/**'
+      - 'src/scripting/**'
+      - 'src/hosting/**'
+      - 'examples/rag/eval/**'
+      - '.github/workflows/rag-eval.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/rag/**'
+      - 'src/tools/Orkeon.Tools.Rag/**'
+      - 'src/tools/Orkeon.Tools.Embeddings.Local/**'
+      - 'src/scripting/**'
+      - 'src/hosting/**'
+      - 'examples/rag/eval/**'
+      - '.github/workflows/rag-eval.yml'
+permissions:
+  contents: read
+concurrency:
+  group: rag-eval-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  RAG_EVAL_MIN_RECALL: '0.80'
+  RAG_EVAL_MIN_MRR: '0.70'
+jobs:
+  rag-eval:
+    runs-on: ubuntu-latest
+    steps:
+      # Same rationale as ci.yml: the CLI's dependency chain pulls heavy native
+      # packages (treesitter, onnxruntime); free some hosted-runner disk first.
+      - name: Free up runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          df -h / | tail -1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-rag-eval-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-rag-eval-${{ runner.os }}-
+      - name: Build the orkeon CLI
+        run: dotnet build src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj -c Release
+      - name: Evaluate the golden dataset (offline, anti-regression gate)
+        run: >
+          dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release --no-build --
+          rag eval
+          --dataset examples/rag/eval/golden.yaml
+          --offline
+          --min-recall "$RAG_EVAL_MIN_RECALL"
+          --min-mrr "$RAG_EVAL_MIN_MRR"
+      - name: Upload evaluation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-eval-reports
+          path: .orkeon/rag/eval/
+          if-no-files-found: warn

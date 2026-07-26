@@ -22,8 +22,8 @@ internal static class Program
     public static async Task<int> Main(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        // `orkeon rag ingest|search` — RAG subsystem verbs (RAG-03/C3) get their own
-        // dispatch branch with their own verb parser.
+        // `orkeon rag ingest|search|eval` — RAG subsystem verbs (RAG-03/C3, RAG-04/C1)
+        // get their own dispatch branch with their own verb parser.
         if (args.Length > 0 && string.Equals(args[0], "rag", StringComparison.OrdinalIgnoreCase))
             return await RagCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
 

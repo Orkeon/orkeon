@@ -425,3 +425,6 @@ sonarqube/
 /analysis/
 /.claude/
 /docs/audit/
+
+# Orkeon CLI local state (rag manifests, eval reports)
+.orkeon/

@@ -143,6 +143,9 @@ public static class RagServiceCollectionExtensions
         // the execution orchestrator picks the augmenter up when present.
         services.AddOrkeonKnowledgeAugmentation();
 
+        // Evaluation harness (RAG-04/C1): golden datasets, recall@k/MRR, labelled judge.
+        services.AddOrkeonRagEvaluation();
+
         // YAML `rag:` crew block → collections ingested at crew load (RAG-03/C3);
         // the incremental manifest makes a fresh collection a no-op.
         services.TryAddSingleton<IRagCollectionsBootstrapper>(sp => new RagCollectionsBootstrapper(

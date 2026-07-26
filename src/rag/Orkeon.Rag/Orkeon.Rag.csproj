@@ -39,6 +39,8 @@
     <PackageReference Include="HtmlAgilityPack" />
     <!-- PDF text extraction (PdfDocumentLoader) — same package as the legacy Infrastructure loader -->
     <PackageReference Include="PdfPig" />
+    <!-- Golden evaluation datasets (RagEvalDatasetYamlLoader) — same package as the YAML config surfaces -->
+    <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 
 </Project>

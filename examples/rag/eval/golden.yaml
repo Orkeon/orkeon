@@ -1,0 +1,65 @@
+# Golden evaluation dataset (RAG-04/C1, plan §9.1) — see README.md for the schema.
+#
+# `corpus` is ingested (incrementally) into `collection` before every run.
+# `relevant` refs are matched against retrieved chunk/document/source ids by
+# path suffix — `corpus/faq-returns.md` matches the ingested source id
+# `/workspace/examples/rag/eval/corpus/faq-returns.md`.
+#
+# q-007 is the SEEDED hard-retrieval case (tag `correctif`): its answer lives in
+# corpus/notes-power.md, which deliberately avoids the question's vocabulary
+# ("battery", "last longer", "Nimbus Sense"), while five other documents repeat
+# that vocabulary in unrelated contexts. Plain vector retrieval (local BGE) is
+# EXPECTED to miss it — the corrective engine (RAG-06) must recover it. CI gates
+# exclude `correctif` cases from their aggregates.
+name: golden
+corpus: ./corpus
+collection: rag-eval-golden
+cases:
+  - id: q-001
+    question: "How long do customers have to return a Nimbus Hub for a refund?"
+    relevant: ["corpus/faq-returns.md"]
+    expected_substrings: ["30 days"]
+    reference_answer: "A Nimbus Hub can be returned for a full refund within 30 days of delivery, in its original packaging."
+    tags: [facile, factuel, faq]
+
+  - id: q-002
+    question: "How many requests per minute does the local API of the hub accept?"
+    relevant: ["corpus/notes-api-limits.md"]
+    expected_substrings: ["120 requests"]
+    reference_answer: "The local REST API accepts up to 120 requests per minute per client token, plus a burst allowance of 20."
+    tags: [facile, factuel, technique]
+
+  - id: q-003
+    question: "I lost my account password, how do I reset it?"
+    relevant: ["corpus/faq-account.md"]
+    expected_substrings: ["Forgot password"]
+    reference_answer: "Tap 'Forgot password' on the app sign-in screen; a six-digit verification code valid 15 minutes is emailed to you."
+    tags: [facile, faq]
+
+  - id: q-004
+    question: "How do I put the hub into recovery mode before flashing firmware manually?"
+    relevant: ["corpus/notes-firmware.md"]
+    expected_substrings: ["pairing button", "10 seconds"]
+    reference_answer: "Unplug the hub, hold the pairing button, reconnect power and keep the button pressed for 10 seconds until the status ring blinks amber."
+    tags: [moyen, technique]
+
+  - id: q-005
+    question: "How long does standard shipping take?"
+    relevant: ["corpus/faq-shipping.md"]
+    expected_substrings: ["5 business days"]
+    reference_answer: "Standard shipping delivers within 5 business days in mainland Europe and North America."
+    tags: [facile, factuel, faq]
+
+  - id: q-006
+    question: "What happens if I cancel a yearly Nimbus Plus plan before it ends?"
+    relevant: ["corpus/faq-subscription.md"]
+    expected_substrings: ["prorated"]
+    reference_answer: "Yearly plans cancelled mid-term are refunded on a prorated basis: only full months used are charged."
+    tags: [moyen, faq]
+
+  - id: q-007
+    question: "How can I make the battery of my Nimbus Sense last longer?"
+    relevant: ["corpus/notes-power.md"]
+    expected_substrings: ["eco mode"]
+    reference_answer: "Switch the node to eco mode (30-second polling), dim the status LED, and disable hourly telemetry uploads — runtime stretches from six to about eighteen months."
+    tags: [correctif, difficile]

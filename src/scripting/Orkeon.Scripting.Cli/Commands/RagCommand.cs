@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +9,7 @@ using Orkeon.Rag.Abstractions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.DependencyInjection;
+using Orkeon.Rag.Evaluation;
 using Orkeon.Tools.Rag;
 using Orkeon.Tools.Rag.DependencyInjection;
 
@@ -93,9 +95,74 @@ internal sealed class RagSearchCommandOptions : RagCommandOptionsBase
     public int TopN { get; set; } = 5;
 }
 
+/// <summary>Parsed CLI options for <c>orkeon rag eval</c>.</summary>
+[Verb("eval", HelpText = "Evaluate a RAG collection against a golden dataset (recall@k, MRR, groundedness; judge mode labelled); writes markdown/JSON reports.")]
+internal sealed class RagEvalCommandOptions : RagCommandOptionsBase
+{
+    /// <summary>Path to the golden dataset YAML file.</summary>
+    [Option('d', "dataset", Required = true,
+        HelpText = "Golden dataset YAML (e.g. examples/rag/eval/golden.yaml). Its 'corpus' directory is ingested first (incremental).")]
+    public string Dataset { get; set; } = string.Empty;
+
+    /// <summary>Collection override.</summary>
+    [Option('c', "collection", Required = false,
+        HelpText = "Collection to evaluate (default: the dataset's collection, else 'rag-eval-{dataset name}').")]
+    public string? Collection { get; set; }
+
+    /// <summary>Single profile to evaluate.</summary>
+    [Option("profile", Required = false,
+        HelpText = "Profile to evaluate (default: 'default'). Until the RAG-04/C4 presets land, every name resolves to the same pipeline.")]
+    public string? Profile { get; set; }
+
+    /// <summary>Comma-separated list of profiles to compare.</summary>
+    [Option("compare", Required = false,
+        HelpText = "Comma-separated profiles to compare (e.g. fast,balanced,quality) — one report per profile plus a comparison table. Overrides --profile.")]
+    public string? Compare { get; set; }
+
+    /// <summary>Metric cutoff.</summary>
+    [Option('k', Required = false, Default = 5,
+        HelpText = "Cutoff of recall@k / precision@k (default 5).")]
+    public int K { get; set; } = 5;
+
+    /// <summary>Requests the LLM judge for generation metrics.</summary>
+    [Option("llm-judge", Required = false, Default = false,
+        HelpText = "Judge generation with the configured LLM; falls back to the deterministic heuristic (mode always labelled in the report).")]
+    public bool LlmJudge { get; set; }
+
+    /// <summary>Replaces generation with the deterministic extractive stub (CI/offline).</summary>
+    [Option("offline", Required = false, Default = false,
+        HelpText = "Zero-network run: generation is replaced by a deterministic extractive stub (retrieved passages verbatim), so no LLM key is needed.")]
+    public bool Offline { get; set; }
+
+    /// <summary>Skips the corpus ingestion pre-pass.</summary>
+    [Option("no-ingest", Required = false, Default = false,
+        HelpText = "Skip the corpus ingestion pre-pass (the collection must already be ingested).")]
+    public bool NoIngest { get; set; }
+
+    /// <summary>Forces a full corpus reindex before evaluating.</summary>
+    [Option("reindex", Required = false, Default = false,
+        HelpText = "Force a full corpus reindex. Required with the default in-memory store when ./.orkeon manifests survived a previous process, and after an embedding model change.")]
+    public bool Reindex { get; set; }
+
+    /// <summary>Anti-regression gate on recall@k.</summary>
+    [Option("min-recall", Required = false,
+        HelpText = "Anti-regression gate: exit 1 when the aggregate recall@k (cases tagged 'correctif' excluded) drops below this threshold.")]
+    public double? MinRecall { get; set; }
+
+    /// <summary>Anti-regression gate on MRR.</summary>
+    [Option("min-mrr", Required = false,
+        HelpText = "Anti-regression gate: exit 1 when the aggregate MRR (cases tagged 'correctif' excluded) drops below this threshold.")]
+    public double? MinMrr { get; set; }
+
+    /// <summary>Virtual output directory of the reports.</summary>
+    [Option("output", Required = false, Default = "/output/rag/eval",
+        HelpText = "Virtual directory receiving the markdown/JSON reports (default /output/rag/eval → ./.orkeon/rag/eval).")]
+    public string Output { get; set; } = "/output/rag/eval";
+}
+
 /// <summary>
-/// <c>orkeon rag ingest | search</c> — ingestion and retrieval surfaces of the RAG
-/// subsystem (RAG-03/C3; <c>orkeon rag eval</c> arrives with RAG-04). Builds the same
+/// <c>orkeon rag ingest | search | eval</c> — ingestion, retrieval and evaluation
+/// surfaces of the RAG subsystem (RAG-03/C3, RAG-04/C1). Builds the same
 /// shared host as the <c>run</c> verb (<see cref="RunnerHost.Build"/>: settings, VFS
 /// mounts, LLM/embedding wiring) and additionally registers the RAG subsystem
 /// (<c>AddOrkeonRag</c>) plus its agent tools (<c>AddOrkeonRagTools</c>). Relative
@@ -116,10 +183,11 @@ internal static class RagCommand
             s.CaseInsensitiveEnumValues = true;
         });
 
-        return await parser.ParseArguments<RagIngestCommandOptions, RagSearchCommandOptions>(args)
+        return await parser.ParseArguments<RagIngestCommandOptions, RagSearchCommandOptions, RagEvalCommandOptions>(args)
             .MapResult(
                 (RagIngestCommandOptions o) => ExecuteIngestAsync(o),
                 (RagSearchCommandOptions o) => ExecuteSearchAsync(o),
+                (RagEvalCommandOptions o) => ExecuteEvalAsync(o),
                 _ => Task.FromResult(Program.ExitScriptError))
             .ConfigureAwait(false);
     }
@@ -208,6 +276,111 @@ internal static class RagCommand
 
             return Program.ExitOk;
         });
+    }
+
+    /// <summary>
+    /// Runs the evaluation described by <paramref name="options"/>; returns the CLI
+    /// exit code. The harness ingests the dataset's corpus first (incremental),
+    /// evaluates each requested profile, prints the same summary as the
+    /// <c>rag_eval</c> agent tool, then applies the optional anti-regression gates
+    /// (<c>--min-recall</c>/<c>--min-mrr</c>, cases tagged
+    /// '<see cref="Orkeon.Rag.Abstractions.Models.RagEvalCase.CorrectiveTag"/>' excluded).
+    /// </summary>
+    public static Task<int> ExecuteEvalAsync(RagEvalCommandOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return GuardedAsync("eval", async ct =>
+        {
+            if (string.IsNullOrWhiteSpace(options.Dataset))
+            {
+                await Console.Error.WriteLineAsync("orkeon rag eval: --dataset is required.").ConfigureAwait(false);
+                return Program.ExitScriptError;
+            }
+
+            // Offline mode: a deterministic extractive IChatClient wins over the
+            // TryAdd/last-wins defaults so the whole run needs zero network. It is
+            // registered before the caller's test seam so hand-written doubles keep
+            // the last word.
+            if (options.Offline)
+            {
+                var userSeam = options.ConfigureTestServices;
+                options.ConfigureTestServices = (ctx, services) =>
+                {
+                    services.AddSingleton<Microsoft.Extensions.AI.IChatClient>(
+                        new Orkeon.Rag.Evaluation.ExtractiveOfflineChatClient());
+                    userSeam?.Invoke(ctx, services);
+                };
+            }
+
+            var cwd = ResolveCwd(options);
+            using var host = BuildHost(options, cwd);
+
+            var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+            var datasetPath = ToVirtualSource(options.Dataset, cwd, fileSystem.GetAvailableMounts());
+
+            var profiles = !string.IsNullOrWhiteSpace(options.Compare)
+                ? options.Compare!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToImmutableList()
+                : string.IsNullOrWhiteSpace(options.Profile)
+                    ? ImmutableList<string>.Empty
+                    : ImmutableList.Create(options.Profile!);
+
+            var harness = host.Services.GetRequiredService<IRagEvalHarness>();
+            var result = await harness.RunAsync(new RagEvalRunRequest
+            {
+                DatasetPath = datasetPath,
+                Profiles = profiles,
+                Collection = string.IsNullOrWhiteSpace(options.Collection) ? null : options.Collection,
+                K = options.K,
+                UseLlmJudge = options.LlmJudge,
+                IngestCorpus = !options.NoIngest,
+                ReindexCorpus = options.Reindex,
+                OutputDirectory = options.Output,
+            }, ct).ConfigureAwait(false);
+
+            // Same summary text as the rag_eval agent tool — one format for both surfaces.
+            Console.WriteLine(RagEvalTool.FormatResult(result));
+
+            return await ApplyGatesAsync(options, result).ConfigureAwait(false);
+        });
+    }
+
+    /// <summary>
+    /// Applies the anti-regression gates to every evaluated profile: aggregate
+    /// recall@k / MRR computed WITHOUT the cases tagged
+    /// '<see cref="Orkeon.Rag.Abstractions.Models.RagEvalCase.CorrectiveTag"/>'
+    /// (those are seeded to fail plain retrieval — RAG-06 material). Any profile
+    /// below a threshold fails the run with exit code 1.
+    /// </summary>
+    private static async Task<int> ApplyGatesAsync(RagEvalCommandOptions options, RagEvalRunResult result)
+    {
+        if (options.MinRecall is null && options.MinMrr is null)
+            return Program.ExitOk;
+
+        var failed = false;
+        foreach (var report in result.Reports)
+        {
+            var gatedRecall = RagEvalGate.MeanRecallExcluding(report, RagEvalCase.CorrectiveTag);
+            var gatedMrr = RagEvalGate.MeanReciprocalRankExcluding(report, RagEvalCase.CorrectiveTag);
+
+            if (options.MinRecall is { } minRecall && (gatedRecall is null || gatedRecall < minRecall))
+            {
+                failed = true;
+                await Console.Error.WriteLineAsync(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"orkeon rag eval: REGRESSION — profile '{report.Profile}' recall@{report.K} = {gatedRecall ?? 0:F3} < threshold {minRecall:F3} (cases tagged '{RagEvalCase.CorrectiveTag}' excluded).")).ConfigureAwait(false);
+            }
+
+            if (options.MinMrr is { } minMrr && (gatedMrr is null || gatedMrr < minMrr))
+            {
+                failed = true;
+                await Console.Error.WriteLineAsync(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"orkeon rag eval: REGRESSION — profile '{report.Profile}' MRR = {gatedMrr ?? 0:F3} < threshold {minMrr:F3} (cases tagged '{RagEvalCase.CorrectiveTag}' excluded).")).ConfigureAwait(false);
+            }
+        }
+
+        return failed ? Program.ExitScriptError : Program.ExitOk;
     }
 
     /// <summary>
