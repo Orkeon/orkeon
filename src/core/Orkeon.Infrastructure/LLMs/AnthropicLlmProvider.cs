@@ -592,14 +592,15 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         if (thinking is null)
             return;
 
-        if (thinking.Enabled == false)
+        if (thinking.Enabled.HasValue)
         {
-            // Omitting the block is how thinking is turned off; there is no "disabled" type.
-            payload.Remove("thinking");
-        }
-        else if (thinking.Enabled == true)
-        {
-            payload["thinking"] = new Dictionary<string, object?> { ["type"] = "adaptive" };
+            // "adaptive" lets the model decide per request; "disabled" turns it off outright.
+            // Note that some models reject "disabled" at the highest effort levels with a 400 —
+            // that is the vendor's rule to report, not ours to second-guess.
+            payload["thinking"] = new Dictionary<string, object?>
+            {
+                ["type"] = thinking.Enabled.Value ? "adaptive" : "disabled",
+            };
         }
 
         if (!string.IsNullOrWhiteSpace(thinking.Effort))
@@ -616,7 +617,14 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// Translates <see cref="LlmResponseFormat"/> into <c>output_config.format</c>, Anthropic's
     /// equivalent of <c>response_format</c>.
     /// </summary>
-    private static void ApplyResponseFormat(Dictionary<string, object> payload, LlmResponseFormat? responseFormat)
+    /// <remarks>
+    /// The object takes exactly two keys — <c>type</c>, which must be <c>"json_schema"</c>, and
+    /// <c>schema</c>. There is **no schema-less JSON mode**: unlike the OpenAI dialect, Anthropic
+    /// has no equivalent of <c>json_object</c>, so a bare "give me JSON" request cannot be
+    /// expressed at the API level and is reported instead of being sent in a shape the API
+    /// would reject. (<c>strict</c> exists on Anthropic, but on individual tools, not here.)
+    /// </remarks>
+    private void ApplyResponseFormat(Dictionary<string, object> payload, LlmResponseFormat? responseFormat)
     {
         if (responseFormat is null
             || string.IsNullOrWhiteSpace(responseFormat.Type)
@@ -625,14 +633,18 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             return;
         }
 
-        var format = new Dictionary<string, object?> { ["type"] = responseFormat.Type };
-        if (responseFormat.Schema is { } schema)
+        if (responseFormat.Schema is not { } schema)
         {
-            format["name"] = schema.Name;
-            format["schema"] = JsonSerializer.Deserialize<JsonElement>(schema.Schema);
+            LogUnsupportedOption("response_format without a schema",
+                "Anthropic constrains output only through a JSON Schema — supply one, or state the shape in the prompt");
+            return;
         }
 
-        MergeOutputConfig(payload, "format", format);
+        MergeOutputConfig(payload, "format", new Dictionary<string, object?>
+        {
+            ["type"] = "json_schema",
+            ["schema"] = JsonSerializer.Deserialize<JsonElement>(schema.Schema),
+        });
     }
 
     /// <summary>

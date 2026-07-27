@@ -236,7 +236,15 @@ internal sealed class LlmProbeRunner
         if (_provider.Capabilities.ResponseFormat == ResponseFormatSupport.None)
             return (true, "not applicable: the provider declares no response-format capability");
 
-        var constrained = config with { ResponseFormat = LlmResponseFormat.JsonObject() };
+        // Some APIs (Anthropic) have no schema-less JSON mode at all, so asking for a bare
+        // json_object there constrains nothing and the mode would fail for the wrong reason.
+        var format = _provider.Capabilities.ResponseFormat >= ResponseFormatSupport.JsonSchema
+            ? LlmResponseFormat.JsonSchema(
+                "probe_ok",
+                """{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"],"additionalProperties":false}""")
+            : LlmResponseFormat.JsonObject();
+
+        var constrained = config with { ResponseFormat = format };
         var response = await _provider.GenerateAsync(JsonPrompt, constrained, cancellationToken).ConfigureAwait(false);
 
         if (HasError(response))

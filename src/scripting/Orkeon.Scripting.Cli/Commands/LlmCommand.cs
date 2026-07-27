@@ -212,18 +212,23 @@ internal static class LlmCommand
     /// </summary>
     private sealed class ProbeHttpClientFactory : IHttpClientFactory, IDisposable
     {
-        private readonly List<HttpClient> _clients = [];
+        private readonly Dictionary<string, HttpClient> _clients = [];
 
+        // Providers call CreateClient once per request; reusing the instance per name mirrors
+        // what the real factory does and keeps a long campaign from opening a socket per mode.
         public HttpClient CreateClient(string name)
         {
+            if (_clients.TryGetValue(name, out var existing))
+                return existing;
+
             var client = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
-            _clients.Add(client);
+            _clients[name] = client;
             return client;
         }
 
         public void Dispose()
         {
-            foreach (var client in _clients)
+            foreach (var client in _clients.Values)
                 client.Dispose();
             _clients.Clear();
         }

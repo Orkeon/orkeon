@@ -181,6 +181,48 @@ public class OllamaChatEndpointTests
         Assert.Equal("Paris", arguments.GetProperty("city").GetString());
     }
 
+    // ── System message across the endpoint switch ───────────────────────────
+
+    /// <summary>
+    /// The prompt-completion path prepends <c>config.SystemMessage</c> to the prompt. Without
+    /// this, switching to <c>/api/chat</c> for tools would silently drop the system prompt —
+    /// exactly when an agent needs it most.
+    /// </summary>
+    [Fact]
+    public async Task ShouldCarryTheConfiguredSystemMessage_OntoTheChatEndpoint()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        var config = WithTools(BaseConfig()) with { SystemMessage = "You are terse." };
+        using var provider = CreateProvider(config, handler);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("hi")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var messages = (await ReadRequestAsync(handler.CapturedRequests.Single())).GetProperty("messages");
+        Assert.Equal("system", messages[0].GetProperty("role").GetString());
+        Assert.Equal("You are terse.", messages[0].GetProperty("content").GetString());
+        Assert.Equal("hi", messages[1].GetProperty("content").GetString());
+    }
+
+    /// <summary>A conversation that already carries a system turn must not get a second one.</summary>
+    [Fact]
+    public async Task ShouldNotDuplicateTheSystemMessage_WhenTheConversationAlreadyHasOne()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        var config = WithTools(BaseConfig()) with { SystemMessage = "From config." };
+        using var provider = CreateProvider(config, handler);
+
+        await provider.ChatAsync(
+            [LlmMessage.System("From the conversation."), LlmMessage.User("hi")],
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var messages = (await ReadRequestAsync(handler.CapturedRequests.Single())).GetProperty("messages");
+        Assert.Equal(2, messages.GetArrayLength());
+        Assert.Equal("From the conversation.", messages[0].GetProperty("content").GetString());
+    }
+
     // ── Vision ──────────────────────────────────────────────────────────────
 
     /// <summary>

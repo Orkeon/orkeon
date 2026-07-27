@@ -30,7 +30,8 @@ their own dialect.
 
 - **`response_format`** — `object` means the API guarantees well-formed JSON; `schema` means it
   validates against a JSON Schema server-side. A schema sent to an `object`-only provider is
-  **downgraded with a warning**, never in silence.
+  **downgraded with a warning**, never in silence. **Anthropic is schema-only**: it has no
+  equivalent of `json_object`, so a schema-less JSON request there is reported rather than sent.
 - **`thinking`** — `effort` accepts a level hint only; `toggle` can also switch reasoning on and
   off; `budget` additionally accepts an explicit token budget (Qwen only — Anthropic rejects
   `budget_tokens` with a 400 on the current generation).

@@ -67,21 +67,17 @@ public class ProviderCapabilityPayloadTests
     // ── Structured outputs, in each dialect (G-15) ──────────────────────────
 
     [Theory]
-    // OpenAI-compatible family: response_format.type
-    [InlineData(nameof(OpenAIProvider), "response_format", "type")]
-    [InlineData(nameof(AzureOpenAILlmProvider), "response_format", "type")]
-    [InlineData(nameof(GroqLlmProvider), "response_format", "type")]
-    [InlineData(nameof(TogetherAiLlmProvider), "response_format", "type")]
-    [InlineData(nameof(MistralLlmProvider), "response_format", "type")]
-    [InlineData(nameof(KimiLlmProvider), "response_format", "type")]
-    [InlineData(nameof(QwenLlmProvider), "response_format", "type")]
-    [InlineData(nameof(HuggingFaceLlmProvider), "response_format", "type")]
-    [InlineData(nameof(ZaiLlmProvider), "response_format", "type")]
-    [InlineData(nameof(DeepSeekLlmProvider), "response_format", "type")]
-    // Anthropic speaks output_config.format
-    [InlineData(nameof(AnthropicLlmProvider), "output_config", "format")]
-    public async Task ShouldSendJsonObjectConstraint_InTheProviderDialect(
-        string providerTypeName, string field, string nested)
+    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(AzureOpenAILlmProvider))]
+    [InlineData(nameof(GroqLlmProvider))]
+    [InlineData(nameof(TogetherAiLlmProvider))]
+    [InlineData(nameof(MistralLlmProvider))]
+    [InlineData(nameof(KimiLlmProvider))]
+    [InlineData(nameof(QwenLlmProvider))]
+    [InlineData(nameof(HuggingFaceLlmProvider))]
+    [InlineData(nameof(ZaiLlmProvider))]
+    [InlineData(nameof(DeepSeekLlmProvider))]
+    public async Task ShouldSendJsonObjectConstraint_OnTheOpenAiCompatibleFamily(string providerTypeName)
     {
         var body = await ProviderProbe.CapturePayloadAsync(providerTypeName, config => config with
         {
@@ -90,9 +86,41 @@ public class ProviderCapabilityPayloadTests
             ResponseFormat = LlmResponseFormat.JsonObject(),
         });
 
-        Assert.True(body.TryGetProperty(field, out var value), $"expected `{field}` on the wire");
-        var type = nested == "type" ? value.GetProperty("type") : value.GetProperty(nested).GetProperty("type");
-        Assert.Equal("json_object", type.GetString());
+        Assert.True(body.TryGetProperty("response_format", out var value), "expected `response_format` on the wire");
+        Assert.Equal("json_object", value.GetProperty("type").GetString());
+    }
+
+    /// <summary>
+    /// Anthropic has **no schema-less JSON mode**: <c>output_config.format</c> takes exactly
+    /// <c>type</c> (always <c>"json_schema"</c>) and <c>schema</c>. A bare <c>json_object</c>
+    /// request cannot be expressed at the API level, so it is reported rather than sent in a
+    /// shape the API would reject.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReportAJsonObjectRequest_OnAnthropicWhichHasNoSchemaLessMode()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(AnthropicLlmProvider), config => config with
+        {
+            ResponseFormat = LlmResponseFormat.JsonObject(),
+        });
+
+        Assert.False(probe.Body.TryGetProperty("output_config", out _));
+        Assert.Contains(probe.Warnings, w => w.Contains("response_format without a schema", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ShouldSendTheSchema_AsAnthropicOutputConfigFormat()
+    {
+        var body = await ProviderProbe.CapturePayloadAsync(nameof(AnthropicLlmProvider), config => config with
+        {
+            ResponseFormat = LlmResponseFormat.JsonSchema("answer_shape", SampleSchema),
+        });
+
+        var format = body.GetProperty("output_config").GetProperty("format");
+        Assert.Equal("json_schema", format.GetProperty("type").GetString());
+        Assert.Equal(JsonValueKind.Object, format.GetProperty("schema").ValueKind);
+        // The object takes exactly two keys — no name, no strict (strict lives on tools).
+        Assert.Equal(2, format.EnumerateObject().Count());
     }
 
     /// <summary>Ollama's dialect is a bare <c>format</c> field, not a nested object.</summary>

@@ -109,6 +109,9 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
     private void RegisterDefaultPricings()
     {
         // OpenAI models
+        // The bare "gpt-5.6" alias points at Sol; register it so the alias is priced too.
+        // Prefix matching takes the longest key, so the three explicit variants still win.
+        Register("gpt-5.6", 5.00m, 30.00m);
         Register("gpt-5.6-sol", 5.00m, 30.00m);
         Register("gpt-5.6-terra", 2.50m, 15.00m);
         Register("gpt-5.6-luna", 1.00m, 6.00m);

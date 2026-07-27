@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.LLM;
+using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
@@ -264,7 +265,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         var payload = new Dictionary<string, object>
         {
             ["model"] = config.Model ?? ProviderDefaults.OllamaDefaults.DefaultModel,
-            ["messages"] = messages.Select(BuildChatMessage).ToList(),
+            ["messages"] = BuildChatMessages(messages, config),
             ["stream"] = false,
             ["options"] = options.ToDictionary(),
         };
@@ -274,6 +275,47 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         ApplyChatTools(payload, config);
 
         return payload;
+    }
+
+    /// <summary>
+    /// Builds the message list, prepending the configured system message when the conversation
+    /// does not already carry one.
+    /// </summary>
+    /// <remarks>
+    /// The prompt-completion path prepends <see cref="LlmConfig.SystemMessage"/> to the prompt.
+    /// Without this, switching to <c>/api/chat</c> for tools or images would silently drop the
+    /// system prompt — precisely in the case where an agent needs it most.
+    /// </remarks>
+    private static List<Dictionary<string, object?>> BuildChatMessages(LlmMessage[] messages, LlmConfig config)
+    {
+        var list = new List<Dictionary<string, object?>>(messages.Length + 1);
+
+        var systemMessage = ResolveSystemMessage(config);
+        if (!string.IsNullOrWhiteSpace(systemMessage)
+            && !messages.Any(m => LlmRoles.IsSystem(m.Role)))
+        {
+            list.Add(new Dictionary<string, object?>
+            {
+                ["role"] = LlmRoles.System,
+                ["content"] = systemMessage,
+            });
+        }
+
+        list.AddRange(messages.Select(BuildChatMessage));
+        return list;
+    }
+
+    /// <summary>Reads the system message from the typed property, then from the parameter bag.</summary>
+    private static string? ResolveSystemMessage(LlmConfig config)
+    {
+        if (!string.IsNullOrWhiteSpace(config.SystemMessage))
+            return config.SystemMessage;
+
+        return config.CustomParameters is not null
+            && config.CustomParameters.TryGetValue("system_message", out var raw)
+            && raw is string text
+                ? text
+                : null;
     }
 
     private static Dictionary<string, object?> BuildChatMessage(LlmMessage message)
