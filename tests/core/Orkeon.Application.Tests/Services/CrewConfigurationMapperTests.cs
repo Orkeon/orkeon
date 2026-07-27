@@ -502,7 +502,7 @@ public class CrewConfigurationMapperTests
         var agent1 = CreateTestAgentConfiguration(agentId1, RoleDeveloper, GoalWriteCode) with
         {
             Tools = [.. s_agentTools],
-            LlmConfig = LlmConfig.Gpt4("test-key")
+            LlmConfig = LlmConfig.WithDefaultModel("test-key")
         };
 
         var agent2 = CreateTestAgentConfiguration(agentId2, "Reviewer", "Review code") with

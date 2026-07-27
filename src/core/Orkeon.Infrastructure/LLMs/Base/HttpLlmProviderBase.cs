@@ -52,6 +52,13 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// </summary>
     public abstract string Name { get; }
 
+    /// <summary>
+    /// What this provider's API supports. Overridden by each concrete provider; a provider
+    /// that declares nothing is assumed to support nothing, so no cross-cutting option is
+    /// written to the wire on its behalf.
+    /// </summary>
+    public virtual LlmProviderCapabilities Capabilities => LlmProviderCapabilities.Unknown;
+
     /// <summary>Initializes a new instance of <see cref="HttpLlmProviderBase"/>.</summary>
     /// <param name="config">The LLM configuration.</param>
     /// <param name="httpClientFactory">The HTTP client factory.</param>

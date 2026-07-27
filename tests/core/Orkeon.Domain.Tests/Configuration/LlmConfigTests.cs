@@ -25,7 +25,7 @@ public class LlmConfigTests
         var config = LlmConfig.Default();
 
         // Assert
-        Assert.Equal(ModelGpt4, config.Model);
+        Assert.Equal(ModelDefault, config.Model);
         Assert.Null(config.ApiKey);
         Assert.Null(config.BaseUrl);
         Assert.Equal(0.7, config.Temperature, precision: 1);
@@ -348,7 +348,7 @@ public class LlmConfigTests
 
         // Assert
         Assert.NotNull(config);
-        Assert.Equal(ModelGpt4, config.Model);
+        Assert.Equal(ModelDefault, config.Model);
         Assert.Null(config.ApiKey);
         Assert.Equal(0.7, config.Temperature, precision: 1);
         Assert.Equal(4096, config.MaxTokens);
@@ -360,11 +360,11 @@ public class LlmConfigTests
     public void ShouldReturnGpt4Configuration_WhenUsingLlmConfigUsingGpt4()
     {
         // Act
-        var config = LlmConfig.Gpt4();
+        var config = LlmConfig.WithDefaultModel();
 
         // Assert
         Assert.NotNull(config);
-        Assert.Equal(ModelGpt4, config.Model);
+        Assert.Equal(ModelDefault, config.Model);
         Assert.Null(config.ApiKey);
     }
 
@@ -372,11 +372,11 @@ public class LlmConfigTests
     public void ShouldSetApiKey_WhenUsingLlmConfigUsingGpt4WithApiKey()
     {
         // Act
-        var config = LlmConfig.Gpt4("test-gpt4-key");
+        var config = LlmConfig.WithDefaultModel("test-gpt4-key");
 
         // Assert
         Assert.NotNull(config);
-        Assert.Equal(ModelGpt4, config.Model);
+        Assert.Equal(ModelDefault, config.Model);
         Assert.Equal("test-gpt4-key", config.ApiKey);
     }
 
@@ -462,8 +462,8 @@ public class LlmConfigTests
         // Act
         var default1 = LlmConfig.Default();
         var default2 = LlmConfig.Default();
-        var gpt4_1 = LlmConfig.Gpt4();
-        var gpt4_2 = LlmConfig.Gpt4();
+        var gpt4_1 = LlmConfig.WithDefaultModel();
+        var gpt4_2 = LlmConfig.WithDefaultModel();
 
         // Assert
         Assert.NotSame(default1, default2);
@@ -478,11 +478,11 @@ public class LlmConfigTests
     public void ShouldHaveCorrectModels_WhenUsingLlmConfigOpeningAIProviders()
     {
         // Act
-        var gpt4 = LlmConfig.Gpt4("key");
+        var gpt4 = LlmConfig.WithDefaultModel("key");
         var gpt35 = LlmConfig.Gpt35Turbo("key");
 
         // Assert
-        Assert.Equal(ModelGpt4, gpt4.Model);
+        Assert.Equal(ModelDefault, gpt4.Model);
         Assert.Equal(ModelGpt35Turbo, gpt35.Model);
         Assert.Equal("key", gpt4.ApiKey);
         Assert.Equal("key", gpt35.ApiKey);
@@ -518,7 +518,7 @@ public class LlmConfigTests
     public void ShouldHaveDistinctConfigurations_WhenUsingLlmConfigWithDifferentProviders()
     {
         // Act
-        var openai = LlmConfig.Gpt4("openai-key");
+        var openai = LlmConfig.WithDefaultModel("openai-key");
         var anthropic = LlmConfig.Claude("anthropic-key");
         var ollama = LlmConfig.Ollama(ModelLlama2);
 
@@ -583,7 +583,7 @@ public class LlmConfigTests
     public void ShouldConfigureForConversation_WhenUsingLlmConfigUsingChatCompletionSettings()
     {
         // Act
-        var config = LlmConfig.Gpt4("chat-key") with
+        var config = LlmConfig.WithDefaultModel("chat-key") with
         {
             Temperature = 0.7,
             MaxTokens = 1500,
@@ -594,7 +594,7 @@ public class LlmConfigTests
         };
 
         // Assert
-        Assert.Equal(ModelGpt4, config.Model);
+        Assert.Equal(ModelDefault, config.Model);
         Assert.Equal(0.7, config.Temperature, precision: 1);
         Assert.Equal(1500, config.MaxTokens);
         Assert.Equal(0.6, config.PresencePenalty, precision: 1);
@@ -606,7 +606,7 @@ public class LlmConfigTests
     public void ShouldConfigureForCoding_WhenUsingLlmConfigUsingCodeGenerationSettings()
     {
         // Act
-        var config = LlmConfig.Gpt4("code-key") with
+        var config = LlmConfig.WithDefaultModel("code-key") with
         {
             Temperature = 0.2,
             MaxTokens = 4096,
@@ -652,7 +652,7 @@ public class LlmConfigTests
     public void ShouldConfigureForCreativeWork_WhenUsingLlmConfigUsingHighCreativitySettings()
     {
         // Act
-        var config = LlmConfig.Gpt4("creative-key") with
+        var config = LlmConfig.WithDefaultModel("creative-key") with
         {
             Temperature = 1.0,
             TopP = 0.9,

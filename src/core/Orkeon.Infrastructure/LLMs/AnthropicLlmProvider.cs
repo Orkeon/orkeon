@@ -30,6 +30,19 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// <inheritdoc />
     public override string Name => "anthropic";
 
+    /// <summary>
+    /// Claude constrains output through <c>output_config.format</c> (schema included), takes
+    /// an adaptive thinking block with an effort level, sees images, and is the one provider
+    /// whose prompt cache must be requested explicitly with <c>cache_control</c> breakpoints.
+    /// </summary>
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonSchema,
+        Thinking = ThinkingSupport.Toggle,
+        Vision = true,
+        ExplicitPromptCaching = true,
+    };
+
     /// <summary>Initializes a new instance of <see cref="AnthropicLlmProvider"/>.</summary>
     /// <param name="config">The LLM configuration.</param>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
@@ -485,7 +498,84 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 payload[kvp.Key] = kvp.Value;
         }
 
+        ApplyThinking(payload, config.Thinking);
+        ApplyResponseFormat(payload, config.ResponseFormat);
+
         return payload;
+    }
+
+    /// <summary>
+    /// Translates <see cref="LlmThinkingConfig"/> into the Messages API dialect: a
+    /// <c>thinking</c> block plus the effort level carried by <c>output_config</c>.
+    /// </summary>
+    /// <remarks>
+    /// The <c>budget_tokens</c> shape found in many older sources is <em>rejected with an
+    /// HTTP 400</em> by the current Claude generation, which decides its own budget from
+    /// <c>type: "adaptive"</c> and the effort level. <see cref="LlmThinkingConfig.BudgetTokens"/>
+    /// is therefore deliberately not mapped here, and is reported instead.
+    /// </remarks>
+    private void ApplyThinking(Dictionary<string, object> payload, LlmThinkingConfig? thinking)
+    {
+        if (thinking is null)
+            return;
+
+        if (thinking.Enabled == false)
+        {
+            // Omitting the block is how thinking is turned off; there is no "disabled" type.
+            payload.Remove("thinking");
+        }
+        else if (thinking.Enabled == true)
+        {
+            payload["thinking"] = new Dictionary<string, object?> { ["type"] = "adaptive" };
+        }
+
+        if (!string.IsNullOrWhiteSpace(thinking.Effort))
+            MergeOutputConfig(payload, "effort", thinking.Effort);
+
+        if (thinking.BudgetTokens.HasValue)
+        {
+            LogUnsupportedOption("thinking.budgetTokens",
+                "the current Claude generation rejects budget_tokens with a 400 — set the effort level instead");
+        }
+    }
+
+    /// <summary>
+    /// Translates <see cref="LlmResponseFormat"/> into <c>output_config.format</c>, Anthropic's
+    /// equivalent of <c>response_format</c>.
+    /// </summary>
+    private static void ApplyResponseFormat(Dictionary<string, object> payload, LlmResponseFormat? responseFormat)
+    {
+        if (responseFormat is null
+            || string.IsNullOrWhiteSpace(responseFormat.Type)
+            || string.Equals(responseFormat.Type, "text", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var format = new Dictionary<string, object?> { ["type"] = responseFormat.Type };
+        if (responseFormat.Schema is { } schema)
+        {
+            format["name"] = schema.Name;
+            format["schema"] = JsonSerializer.Deserialize<JsonElement>(schema.Schema);
+        }
+
+        MergeOutputConfig(payload, "format", format);
+    }
+
+    /// <summary>
+    /// Adds one key to the shared <c>output_config</c> object without clobbering the keys the
+    /// other translators put there.
+    /// </summary>
+    private static void MergeOutputConfig(Dictionary<string, object> payload, string key, object? value)
+    {
+        if (payload.TryGetValue("output_config", out var existing)
+            && existing is Dictionary<string, object?> outputConfig)
+        {
+            outputConfig[key] = value;
+            return;
+        }
+
+        payload["output_config"] = new Dictionary<string, object?> { [key] = value };
     }
 
     /// <inheritdoc />
@@ -607,4 +697,8 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Anthropic streaming error: {StatusCode}")]
     private partial void LogStreamingError(System.Net.HttpStatusCode statusCode);
+
+    [LoggerMessage(EventId = 110, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "Option '{Option}' was declared but Anthropic does not support it — it was not sent. {Remedy}.")]
+    private partial void LogUnsupportedOption(string option, string remedy);
 }

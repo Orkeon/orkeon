@@ -8,7 +8,7 @@ const extractor = agentBuilder()
     .role("Invoice extractor")
     .goal("Read a pasted invoice and emit one JSON object with the fields.")
     .backstory("Tireless accountant who never adds prose.")
-    .llm({ provider: "deepseek", model: "deepseek-chat" })
+    .llm({ provider: "deepseek", model: "deepseek-v4-flash" })
     .withResponseFormat("json_object")
     .build();
 

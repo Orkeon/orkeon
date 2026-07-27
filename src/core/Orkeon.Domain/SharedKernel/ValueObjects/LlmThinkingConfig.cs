@@ -18,4 +18,17 @@ public sealed record LlmThinkingConfig
     /// Typical values: <c>"low"</c>, <c>"medium"</c>, <c>"high"</c>, <c>"max"</c>.
     /// </summary>
     public string? Effort { get; init; }
+
+    /// <summary>
+    /// Hard token budget for the reasoning pass, for the providers whose API accepts one
+    /// (Qwen's <c>thinking_budget</c>).
+    /// </summary>
+    /// <remarks>
+    /// Deliberately <em>not</em> mapped to Anthropic: the <c>budget_tokens</c> shape found in
+    /// many older sources is rejected with an HTTP 400 by the current Claude generation, which
+    /// takes <c>thinking: {type: "adaptive"}</c> and an effort level instead. Providers that
+    /// declare less than <see cref="ThinkingSupport.Budget"/> report the option rather than
+    /// dropping it.
+    /// </remarks>
+    public int? BudgetTokens { get; init; }
 }

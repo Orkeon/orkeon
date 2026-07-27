@@ -25,6 +25,9 @@ public sealed class JsTaskBuilder
     private JsValue? _taskTool;
     private JsValue? _deliverableSpec;
     private string? _responseFormat;
+    private string? _responseSchemaName;
+    private JsValue? _responseSchema;
+    private bool _responseSchemaStrict = true;
 
     public JsTaskBuilder name(string value) { _name = value; return this; }
     public JsTaskBuilder description(string value) { _description = value; return this; }
@@ -81,6 +84,26 @@ public sealed class JsTaskBuilder
     internal string? ResponseFormatValue => _responseFormat;
 
     /// <summary>
+    /// Constrains this task's output to a JSON Schema, on the providers whose API validates
+    /// one server-side. Implies <c>response_format: json_schema</c>.
+    /// </summary>
+    /// <param name="name">Schema name, required by the OpenAI dialect.</param>
+    /// <param name="schema">The JSON Schema, as an object literal or a JSON string.</param>
+    /// <param name="strict">Whether the provider must reject any deviation. Defaults to true.</param>
+    public JsTaskBuilder withResponseSchema(string name, JsValue schema, JsValue? strict = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidScriptException(".withResponseSchema(name, schema) requires a non-empty name.");
+        if (schema is null || schema.IsUndefined() || schema.IsNull())
+            throw new InvalidScriptException(".withResponseSchema(name, schema) requires a schema object or JSON string.");
+
+        _responseSchemaName = name;
+        _responseSchema = schema;
+        _responseSchemaStrict = strict is null || strict.IsUndefined() || strict.IsNull() || strict.AsBoolean();
+        return this;
+    }
+
+    /// <summary>
     /// First-class deliverable contract — mirrors YAML's <c>deliverable: { ... }</c>
     /// block. Expected shape:
     /// <code>{ path: string, source: 'final_message' | 'structured_output' | 'tool_call' | 'none',
@@ -121,6 +144,9 @@ public sealed class JsTaskBuilder
             TaskTool = _taskTool,
             DeliverableSpec = _deliverableSpec,
             ResponseFormat = _responseFormat,
+            ResponseSchemaName = _responseSchemaName,
+            ResponseSchema = _responseSchema,
+            ResponseSchemaStrict = _responseSchemaStrict,
         });
     }
 }

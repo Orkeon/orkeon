@@ -4,7 +4,7 @@ process: sequential
 
 # Crew-default LLM — every agent below inherits this unless overridden.
 llm:
-  model: deepseek-chat
+  model: deepseek-v4-flash
   response_format: json_object   # provider-side JSON guarantee
   temperature: 0.2
 

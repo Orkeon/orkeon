@@ -36,12 +36,15 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// <summary>
     /// Whether this provider composes OpenAI vision content parts (<c>text</c> +
     /// <c>image_url</c>) for messages carrying <see cref="LlmMessage.MultiModalContent"/>
-    /// with non-text parts (R3.9). Default is <see langword="false"/>: providers that do
-    /// not opt in keep their historical text-only payloads (multi-modal messages degrade
-    /// to their <see cref="LlmMessage.Content"/> text fallback). <c>OpenAIProvider</c>
-    /// overrides this to <see langword="true"/>.
+    /// with non-text parts (R3.9). Providers that do not declare the capability keep their
+    /// text-only payloads (multi-modal messages degrade to their
+    /// <see cref="LlmMessage.Content"/> text fallback).
     /// </summary>
-    protected virtual bool SupportsVisionContent => false;
+    /// <remarks>
+    /// Reads the declared <see cref="LlmProviderCapabilities.Vision"/> rather than being
+    /// overridden provider by provider (LLM-02).
+    /// </remarks>
+    protected virtual bool SupportsVisionContent => Capabilities.Vision;
 
     private readonly IToolCallingStrategy? _toolCallingStrategy;
 
@@ -655,16 +658,26 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             : msg.Content;
 
     /// <summary>
-    /// Hook for provider-specific enrichment of an outgoing assistant message dictionary.
-    /// Override in subclasses to attach provider-specific fields (e.g. DeepSeek's
-    /// <c>reasoning_content</c>) that must be replayed in multi-turn conversations.
-    /// Default implementation is a no-op.
+    /// Enriches an outgoing assistant message with fields the provider requires to be replayed
+    /// in multi-turn conversations.
     /// </summary>
+    /// <remarks>
+    /// Replaying <c>reasoning_content</c> is <em>not</em> a general property of thinking
+    /// models — DeepSeek rejects a request without it
+    /// (<c>HTTP 400: "The reasoning_content in the thinking mode must be passed back to the
+    /// API."</c>) while Z.AI documents the opposite. It is therefore driven by the declared
+    /// <see cref="LlmProviderCapabilities.ReplaysReasoningContent"/> rather than applied to
+    /// every reasoning provider.
+    /// </remarks>
     /// <param name="messageDict">The assistant message dictionary about to be serialized.</param>
     /// <param name="source">The source <see cref="LlmMessage"/>.</param>
     protected virtual void EnrichAssistantMessage(Dictionary<string, object?> messageDict, LlmMessage source)
     {
-        // No enrichment by default.
+        ArgumentNullException.ThrowIfNull(messageDict);
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (Capabilities.ReplaysReasoningContent && !string.IsNullOrEmpty(source.ReasoningContent))
+            messageDict["reasoning_content"] = source.ReasoningContent;
     }
 
     /// <summary>
@@ -681,16 +694,180 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     }
 
     /// <summary>
-    /// Hook for provider-specific request fields (e.g. DeepSeek's <c>thinking</c> block and
-    /// <c>reasoning_effort</c>). Default implementation is a no-op so subclasses opt in.
-    /// Runs after the standard sampling/stop parameters so it can also override them.
+    /// Writes the cross-cutting options (<c>thinking</c> / <c>reasoning_effort</c>,
+    /// <c>response_format</c>) into the payload, in the OpenAI dialect, according to what
+    /// this provider's <see cref="LlmProviderCapabilities"/> declare. Runs after the standard
+    /// sampling/stop parameters so it can also override them.
     /// </summary>
+    /// <remarks>
+    /// The dialect is written <em>once</em>, here (LLM-02) — before, each provider that wanted
+    /// one of these options copied the same block. Providers whose API speaks a different
+    /// dialect (Anthropic, Ollama, Qwen's DashScope thinking fields) override this method;
+    /// everyone else declares capabilities and gets the translation for free. An option the
+    /// caller declared but the provider cannot honour is reported rather than dropped in
+    /// silence.
+    /// </remarks>
     /// <param name="payload">The payload dictionary about to be serialized.</param>
     /// <param name="effectiveConfig">The effective LLM configuration for this call.</param>
     protected virtual void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
     {
-        // No-op by default.
+        ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(effectiveConfig);
+
+        ApplyThinkingOptions(payload, effectiveConfig.Thinking);
+        ApplyResponseFormatOption(payload, effectiveConfig.ResponseFormat);
     }
+
+    /// <summary>
+    /// Translates <see cref="LlmThinkingConfig"/> into the OpenAI dialect, bounded by the
+    /// declared <see cref="LlmProviderCapabilities.Thinking"/> level.
+    /// </summary>
+    private void ApplyThinkingOptions(Dictionary<string, object> payload, LlmThinkingConfig? thinking)
+    {
+        if (thinking is null)
+            return;
+
+        var support = Capabilities.Thinking;
+        if (support == ThinkingSupport.None)
+        {
+            LogUnsupportedOption("thinking", ProviderDisplayName,
+                "this API exposes no reasoning pass; remove the option or pick a provider that does");
+            return;
+        }
+
+        // An explicit on/off switch needs more than an effort hint.
+        if (thinking.Enabled.HasValue)
+        {
+            if (support >= ThinkingSupport.Toggle)
+            {
+                payload["thinking"] = new Dictionary<string, object?>
+                {
+                    ["type"] = thinking.Enabled.Value ? "enabled" : "disabled",
+                };
+            }
+            else
+            {
+                LogUnsupportedOption("thinking.enabled", ProviderDisplayName,
+                    "this API always decides on its own whether to reason; only the effort hint is honoured");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(thinking.Effort))
+            payload["reasoning_effort"] = thinking.Effort;
+
+        // No OpenAI-dialect field carries a reasoning budget; only DashScope does, and Qwen
+        // overrides this method to emit it.
+        if (thinking.BudgetTokens.HasValue && support < ThinkingSupport.Budget)
+        {
+            LogUnsupportedOption("thinking.budgetTokens", ProviderDisplayName,
+                "this API takes no reasoning token budget; use the effort hint instead");
+        }
+    }
+
+    /// <summary>
+    /// Translates <see cref="LlmResponseFormat"/> into the OpenAI <c>response_format</c>
+    /// field, bounded by the declared <see cref="LlmProviderCapabilities.ResponseFormat"/>.
+    /// </summary>
+    private void ApplyResponseFormatOption(Dictionary<string, object> payload, LlmResponseFormat? responseFormat)
+    {
+        // "text" is the vendor default: writing nothing and writing text are equivalent, so
+        // the historical payload is preserved.
+        if (responseFormat is null
+            || string.IsNullOrWhiteSpace(responseFormat.Type)
+            || string.Equals(responseFormat.Type, "text", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (Capabilities.ResponseFormat == ResponseFormatSupport.None)
+        {
+            LogUnsupportedOption("response_format", ProviderDisplayName,
+                "this API has no response-format field; constrain the output in the prompt instead");
+            return;
+        }
+
+        payload["response_format"] = BuildResponseFormatValue(responseFormat);
+
+        if (Capabilities.RequiresJsonKeywordInPrompt)
+            WarnIfPromptDoesNotMentionJson(payload);
+    }
+
+    /// <summary>
+    /// Builds the <c>response_format</c> value, degrading a schema to a plain JSON guarantee
+    /// — loudly — on providers that only offer <c>json_object</c>.
+    /// </summary>
+    private Dictionary<string, object?> BuildResponseFormatValue(LlmResponseFormat responseFormat)
+    {
+        if (responseFormat.Schema is not { } schema)
+            return new Dictionary<string, object?> { ["type"] = responseFormat.Type };
+
+        if (Capabilities.ResponseFormat < ResponseFormatSupport.JsonSchema)
+        {
+            LogUnsupportedOption("response_format.schema", ProviderDisplayName,
+                "this API only guarantees well-formed JSON — the request was downgraded to json_object, so describe the shape in the prompt");
+            return new Dictionary<string, object?> { ["type"] = "json_object" };
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["type"] = "json_schema",
+            ["json_schema"] = new Dictionary<string, object?>
+            {
+                ["name"] = schema.Name,
+                ["strict"] = schema.Strict,
+                // The schema travels as an authored JSON document; parsing it here keeps the
+                // serializer from emitting it as an escaped string.
+                ["schema"] = JsonSerializer.Deserialize<JsonElement>(schema.Schema),
+            },
+        };
+    }
+
+    /// <summary>
+    /// Providers whose <c>json_object</c> mode requires the word "json" somewhere in the
+    /// prompt (DeepSeek) can otherwise emit an unbounded whitespace stream until
+    /// <c>max_tokens</c>. The prompt is never mutated — the contract is the caller's to fix,
+    /// so a structured warning is surfaced instead.
+    /// </summary>
+    private void WarnIfPromptDoesNotMentionJson(Dictionary<string, object> payload)
+    {
+        if (!payload.TryGetValue("messages", out var messagesObj) || messagesObj is null)
+            return;
+
+        if (MessagesMentionJson(messagesObj))
+            return;
+
+        LogMissingJsonKeyword(ProviderDisplayName);
+    }
+
+    private static bool MessagesMentionJson(object messagesObj) =>
+        messagesObj is System.Collections.IEnumerable messages
+        && messages.Cast<object?>().Any(MessageMentionsJson);
+
+    private static bool MessageMentionsJson(object? msg)
+    {
+        if (msg is null)
+            return false;
+
+        // Chat path: Dictionary<string, object?> with "role" / "content" keys.
+        if (msg is IDictionary<string, object?> dict)
+        {
+            return dict.TryGetValue("role", out var roleObj) && roleObj is string role
+                && IsSystemOrUser(role)
+                && dict.TryGetValue("content", out var contentObj) && contentObj is string content
+                && content.Contains("json", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Generate path: anonymous type { role, content } read via reflection.
+        var type = msg.GetType();
+        return type.GetProperty("role")?.GetValue(msg) is string anonRole
+            && IsSystemOrUser(anonRole)
+            && type.GetProperty("content")?.GetValue(msg) is string anonContent
+            && anonContent.Contains("json", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSystemOrUser(string role) =>
+        role.Equals(LlmRoles.System, StringComparison.OrdinalIgnoreCase)
+        || role.Equals(LlmRoles.User, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Injects the <c>tools</c>/<c>tool_choice</c> keys produced by the configured strategy
@@ -895,14 +1072,59 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         => promptTokens is { } prompt && prompt >= cacheHit ? prompt - cacheHit : null;
 
     /// <summary>
-    /// Extracts provider-specific metadata from the API response.
-    /// Override in derived classes to add timing data, token breakdowns, etc.
+    /// Extracts provider-specific metadata from the API response. The default implementation
+    /// pulls the reasoning trace out of providers that declare a thinking capability — that
+    /// extraction was duplicated verbatim in DeepSeek and Z.AI before LLM-02. Override to add
+    /// timing data or vendor-specific token breakdowns, calling <c>base</c> to keep the
+    /// reasoning trace.
     /// </summary>
     /// <param name="doc">The parsed JSON document.</param>
     /// <param name="metadata">The metadata builder to populate.</param>
     protected virtual void ExtractResponseMetadata(JsonDocument doc, LlmResponseMetadata.Builder metadata)
     {
-        // Default: no extra metadata beyond provider name
+        ArgumentNullException.ThrowIfNull(doc);
+        if (Capabilities.Thinking != ThinkingSupport.None)
+            ExtractReasoningContent(doc.RootElement, metadata);
+    }
+
+    /// <summary>
+    /// Reads <c>choices[0].message.reasoning_content</c> — the visible thinking trace of
+    /// reasoning models — into the metadata bag when present.
+    /// </summary>
+    protected static void ExtractReasoningContent(JsonElement root, LlmResponseMetadata.Builder metadata)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        if (!root.TryGetProperty("choices", out var choices))
+            return;
+
+        var firstChoice = choices.EnumerateArray().FirstOrDefault();
+        if (firstChoice.ValueKind == JsonValueKind.Undefined)
+            return;
+
+        if (!firstChoice.TryGetProperty("message", out var message))
+            return;
+
+        if (message.TryGetProperty("reasoning_content", out var reasoning)
+            && reasoning.GetString() is { Length: > 0 } reasoningText)
+        {
+            metadata.Add("reasoning_content", reasoningText);
+        }
+    }
+
+    /// <summary>
+    /// Reads the two usage counters every OpenAI-compatible API reports. Shared so providers
+    /// stop re-implementing it (LLM-02).
+    /// </summary>
+    protected static void ExtractStandardUsageMetadata(JsonElement root, LlmResponseMetadata.Builder metadata)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        if (!root.TryGetProperty("usage", out var usage))
+            return;
+
+        if (usage.TryGetProperty("prompt_tokens", out var promptTokens))
+            metadata.Add("prompt_tokens", promptTokens.GetInt32());
+        if (usage.TryGetProperty("completion_tokens", out var completionTokens))
+            metadata.Add("completion_tokens", completionTokens.GetInt32());
     }
 
     private LlmResponse CreateMissingApiKeyResponse(string message)
@@ -961,4 +1183,16 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{ProviderName} streaming error: {StatusCode}")]
     private partial void LogStreamingError(HttpStatusCode statusCode, string providerName);
+
+    /// <summary>
+    /// The end of the silence (LLM-02): an option the caller declared that this provider
+    /// cannot honour is reported, with what to do about it, instead of being dropped.
+    /// </summary>
+    [LoggerMessage(EventId = 110, Level = LogLevel.Warning,
+        Message = "Option '{Option}' was declared but {ProviderName} does not support it — it was not sent. {Remedy}.")]
+    private partial void LogUnsupportedOption(string option, string providerName, string remedy);
+
+    [LoggerMessage(EventId = 100, Level = LogLevel.Warning,
+        Message = "{ProviderName} was asked for a JSON response format but no system/user message contains the word 'json'. This API may then emit an unbounded whitespace stream until max_tokens. Add 'json' to the prompt to be safe.")]
+    private partial void LogMissingJsonKeyword(string providerName);
 }

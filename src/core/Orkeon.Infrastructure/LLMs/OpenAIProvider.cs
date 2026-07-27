@@ -4,7 +4,6 @@ using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
-using Orkeon.Domain.Constants.Llm;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -20,18 +19,25 @@ public class OpenAIProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.OpenAI);
 
     /// <inheritdoc />
-    protected override string DefaultModel => LlmDefaults.DefaultModelName;
+    protected override string DefaultModel => ProviderDefaults.OpenAIDefaults.DefaultModel;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "OpenAI";
 
     /// <summary>
-    /// OpenAI Chat Completions supports vision (R3.9): messages carrying
-    /// <see cref="Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.MultiModalContent"/> with image
-    /// parts are sent as structured <c>text</c> + <c>image_url</c> content parts
+    /// OpenAI offers Structured Outputs (server-validated JSON Schema), a reasoning effort
+    /// hint that cannot be switched off, automatic prompt caching (nothing to declare on the
+    /// wire), and vision: messages carrying
+    /// <see cref="Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.MultiModalContent"/> with
+    /// image parts are sent as structured <c>text</c> + <c>image_url</c> content parts
     /// (http(s) URL or base64 <c>data:</c> URL).
     /// </summary>
-    protected override bool SupportsVisionContent => true;
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonSchema,
+        Thinking = ThinkingSupport.EffortOnly,
+        Vision = true,
+    };
 
     /// <summary>Initializes a new instance of <see cref="OpenAIProvider"/>.</summary>
     /// <param name="config">The LLM configuration.</param>

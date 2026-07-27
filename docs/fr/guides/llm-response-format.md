@@ -32,7 +32,7 @@ La fusion est faite **une seule fois** dans `LlmConfigResolver.Resolve(baseConfi
 
 ```yaml
 llm:
-  model: deepseek-chat
+  model: deepseek-v4-flash
   response_format: json_object   # every agent of this crew now replies in JSON
 ```
 
@@ -43,7 +43,7 @@ agents:
   extractor:
     role: "Invoice extractor"
     llm:
-      model: deepseek-chat
+      model: deepseek-v4-flash
       response_format: json_object   # only this agent forces JSON
 ```
 
@@ -68,7 +68,7 @@ Le bloc `llm_override:` accepte les mêmes champs que le `llm:` au niveau agent,
 const extractor = agentBuilder()
     .name("extractor")
     .role("Invoice extractor")
-    .llm({ provider: "deepseek", model: "deepseek-chat" })
+    .llm({ provider: "deepseek", model: "deepseek-v4-flash" })
     .withResponseFormat("json_object")
     .build();
 
@@ -120,7 +120,7 @@ Nous ne mutons **pas** le prompt à votre place — l'appelant garde le contrôl
 
 | Provider | Supporté en V1 | Notes |
 |---|---|---|
-| **DeepSeek** (`deepseek-chat`, `deepseek-v4-flash`, `deepseek-v4-pro`) | ✅ | Câblé via `DeepSeekLlmProvider.ApplyProviderSpecificOptions`. |
+| **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`) | ✅ | Câblé via `DeepSeekLlmProvider.ApplyProviderSpecificOptions`. |
 | `deepseek-reasoner` (R1) | ⚠️ | Peut refuser `response_format` avec un HTTP 400. Tester avant production. L'erreur remonte comme une `APIError` typée via le pipeline existant — pas de crash. |
 | OpenAI, Groq, Kimi, Qwen, HuggingFace, TogetherAi, AzureOpenAI | 🔜 V2 | Opt-in trivial — surcharger `ApplyProviderSpecificOptions` symétriquement. **Pas** actif par défaut. |
 | **Anthropic** | ❌ | Utilise un autre mécanisme de mise en forme de sortie (tool use). Non concerné. |

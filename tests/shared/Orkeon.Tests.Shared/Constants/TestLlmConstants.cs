@@ -4,6 +4,13 @@ namespace Orkeon.Tests.Shared.Constants;
 public static class TestLlmConstants
 {
     // --- Noms de modèles ---
+    /// <summary>
+    /// Le modèle par défaut de la plateforme (<c>LlmDefaults.DefaultModelName</c>).
+    /// À utiliser quand l'assertion porte sur « la valeur par défaut », pas sur un
+    /// identifiant précis — les deux étaient confondus avant LLM-01, où le défaut est
+    /// passé de <c>gpt-4</c> à <c>gpt-5.6-sol</c>.
+    /// </summary>
+    public const string ModelDefault = "gpt-5.6-sol";
     public const string ModelGpt4 = "gpt-4";
     public const string ModelGpt4o = "gpt-4o";
     public const string ModelGpt35Turbo = "gpt-3.5-turbo";

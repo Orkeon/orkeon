@@ -41,6 +41,18 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     public override string Name => "ollama";
 
     /// <summary>
+    /// Ollama's <c>format</c> field accepts a full JSON Schema, and <c>think</c> takes a
+    /// boolean or an effort level — both on <c>/api/generate</c>, the endpoint this provider
+    /// targets. Vision is not declared: local vision models take a base64 <c>images</c> array
+    /// rather than OpenAI-style content parts, a translation this provider does not do yet.
+    /// </summary>
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonSchema,
+        Thinking = ThinkingSupport.Toggle,
+    };
+
+    /// <summary>
     /// Initializes a new instance of the OllamaLlmProvider class.
     /// </summary>
     public OllamaLlmProvider(
@@ -214,7 +226,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     /// Creates the request payload for Ollama API.
     /// Pure data transformation.
     /// </summary>
-    private static Dictionary<string, object> CreateRequestPayload(string prompt, LlmConfig config)
+    private Dictionary<string, object> CreateRequestPayload(string prompt, LlmConfig config)
     {
         var options = OllamaRequestOptions.CreateBuilder()
             .AddTemperature(config.Temperature)
@@ -245,7 +257,59 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         if (!string.IsNullOrWhiteSpace(config.GrammarGbnf))
             builder.AddGrammar(config.GrammarGbnf);
 
+        ApplyResponseFormat(builder, config.ResponseFormat);
+        ApplyThinking(builder, config.Thinking);
+
         return builder.Build().ToDictionary();
+    }
+
+    /// <summary>
+    /// Translates <see cref="LlmResponseFormat"/> into Ollama's <c>format</c> field, which
+    /// accepts the literal <c>"json"</c> or a complete JSON Schema document.
+    /// </summary>
+    /// <remarks>
+    /// Available on <c>/api/generate</c>, the endpoint this provider targets — no dependency
+    /// on the <c>/api/chat</c> migration.
+    /// </remarks>
+    private static void ApplyResponseFormat(
+        OllamaRequestPayload.Builder builder, LlmResponseFormat? responseFormat)
+    {
+        if (responseFormat is null
+            || string.IsNullOrWhiteSpace(responseFormat.Type)
+            || string.Equals(responseFormat.Type, "text", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (responseFormat.Schema is { } schema)
+        {
+            builder.AddFormat(JsonSerializer.Deserialize<JsonElement>(schema.Schema));
+            return;
+        }
+
+        builder.AddFormat("json");
+    }
+
+    /// <summary>
+    /// Translates <see cref="LlmThinkingConfig"/> into Ollama's <c>think</c> field, which
+    /// takes either a boolean or one of <c>"low"</c>/<c>"medium"</c>/<c>"high"</c>. The effort
+    /// level wins when both are set, since it is the more specific instruction.
+    /// </summary>
+    private void ApplyThinking(OllamaRequestPayload.Builder builder, LlmThinkingConfig? thinking)
+    {
+        if (thinking is null)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(thinking.Effort))
+            builder.AddThink(thinking.Effort);
+        else if (thinking.Enabled.HasValue)
+            builder.AddThink(thinking.Enabled.Value);
+
+        if (thinking.BudgetTokens.HasValue)
+        {
+            LogUnsupportedOption("thinking.budgetTokens",
+                "Ollama's think field takes a boolean or an effort level, not a token budget");
+        }
     }
 
     /// <summary>
@@ -419,4 +483,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "LLM HTTP error: {StatusCode} - {Error}")]
     private partial void LogLlmHttpError(System.Net.HttpStatusCode statusCode, string error);
+
+    [LoggerMessage(EventId = 110, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "Option '{Option}' was declared but Ollama does not support it — it was not sent. {Remedy}.")]
+    private partial void LogUnsupportedOption(string option, string remedy);
 }

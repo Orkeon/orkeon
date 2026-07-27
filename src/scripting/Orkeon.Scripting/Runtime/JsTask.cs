@@ -30,6 +30,15 @@ public sealed class JsTask
     /// <summary>Captured value from <c>taskBuilder().withResponseFormat("json_object")</c>; <c>null</c> when unset.</summary>
     internal string? ResponseFormatValue { get; }
 
+    /// <summary>Schema name captured by <c>taskBuilder().withResponseSchema(...)</c>; <c>null</c> when unset.</summary>
+    internal string? ResponseSchemaName { get; }
+
+    /// <summary>Schema document captured by <c>withResponseSchema</c>; <c>null</c> when unset.</summary>
+    internal JsValue? ResponseSchema { get; }
+
+    /// <summary>Whether the captured schema is strict.</summary>
+    internal bool ResponseSchemaStrict { get; }
+
     internal JsTask(
         string name,
         DomainCrewTask domain,
@@ -49,6 +58,9 @@ public sealed class JsTask
         TaskTool = metadata.TaskTool;
         DeliverableSpec = metadata.DeliverableSpec;
         ResponseFormatValue = metadata.ResponseFormat;
+        ResponseSchemaName = metadata.ResponseSchemaName;
+        ResponseSchema = metadata.ResponseSchema;
+        ResponseSchemaStrict = metadata.ResponseSchemaStrict;
     }
 }
 #pragma warning restore CS1591

@@ -3,6 +3,7 @@ using Polly;
 using System.Text.Json;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
 
 namespace Orkeon.Infrastructure.LLMs;
@@ -17,16 +18,26 @@ public partial class HuggingFaceLlmProvider : OpenAICompatibleProviderBase
     /// <inheritdoc />
     public override string Name => "huggingface";
 
-#pragma warning disable S1075
     /// <inheritdoc />
-    protected override Uri DefaultBaseUrl => new("https://api-inference.huggingface.co/v1");
-#pragma warning restore S1075
+    protected override Uri DefaultBaseUrl => new(LlmEndpoints.HuggingFace);
 
     /// <inheritdoc />
-    protected override string DefaultModel => "meta-llama/Llama-3.1-8B-Instruct";
+    protected override string DefaultModel => ProviderDefaults.HuggingFaceDefaults.DefaultModel;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "HuggingFace";
+
+    /// <summary>
+    /// Inference Providers proxies many back-ends behind one OpenAI-compatible surface, so
+    /// the declaration is the intersection that holds across partners: JSON mode and, on the
+    /// VLM models most partners serve, image input. Reasoning control is model- and
+    /// partner-specific and is therefore not declared.
+    /// </summary>
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonObject,
+        Vision = true,
+    };
 
     /// <summary>Initializes a new instance of <see cref="HuggingFaceLlmProvider"/>.</summary>
     public HuggingFaceLlmProvider(

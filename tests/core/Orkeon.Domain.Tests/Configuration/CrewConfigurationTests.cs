@@ -318,14 +318,14 @@ public class CrewConfigurationTests
     public void ShouldIntegrateCorrectly_WhenUsingAgentConfigurationWithLlmConfig()
     {
         // Arrange
-        var llmConfig = LlmConfig.Gpt4(TestApiKey);
+        var llmConfig = LlmConfig.WithDefaultModel(TestApiKey);
 
         // Act
         var config = new AgentConfiguration { LlmConfig = llmConfig };
 
         // Assert
         Assert.NotNull(config.LlmConfig);
-        Assert.Equal(ModelGpt4, config.LlmConfig.Model);
+        Assert.Equal(ModelDefault, config.LlmConfig.Model);
         Assert.Equal(TestApiKey, config.LlmConfig.ApiKey);
     }
 
@@ -491,7 +491,7 @@ public class CrewConfigurationTests
             Role = "Full Stack Developer",
             Goal = "Develop web applications",
             Tools = ["IDE", "Database", "WebFramework"],
-            LlmConfig = LlmConfig.Gpt4("dev-key")
+            LlmConfig = LlmConfig.WithDefaultModel("dev-key")
         };
 
         var agent2 = new AgentConfiguration

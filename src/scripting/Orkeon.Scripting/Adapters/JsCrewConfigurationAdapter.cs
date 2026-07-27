@@ -78,17 +78,19 @@ public static class JsCrewConfigurationAdapter
         var builder = jsAgent.Builder;
         var llmConfig = ExtractLlmConfig(builder.LlmConfig);
 
-        // Merge agentBuilder().withResponseFormat("json_object") onto the LlmConfig.
-        // Seed an empty LlmConfig if the script didn't call .llm({...}) — otherwise the
-        // response_format hint gets dropped silently.
-        if (!string.IsNullOrWhiteSpace(builder.ResponseFormatValue))
+        // Merge agentBuilder().withResponseFormat("json_object") / .withResponseSchema(...)
+        // onto the LlmConfig. Seed an empty LlmConfig if the script didn't call .llm({...})
+        // — otherwise the constraint gets dropped silently.
+        if (!string.IsNullOrWhiteSpace(builder.ResponseFormatValue) || builder.ResponseSchemaValue is not null)
         {
             llmConfig ??= LlmConfig.Default();
             llmConfig = llmConfig with
             {
-                ResponseFormat = string.Equals(builder.ResponseFormatValue, "text", StringComparison.OrdinalIgnoreCase)
-                    ? null
-                    : new LlmResponseFormat { Type = builder.ResponseFormatValue! },
+                ResponseFormat = BuildResponseFormat(
+                    builder.ResponseFormatValue,
+                    builder.ResponseSchemaName,
+                    builder.ResponseSchemaValue,
+                    builder.ResponseSchemaStrict),
             };
         }
 
@@ -149,16 +151,39 @@ public static class JsCrewConfigurationAdapter
     }
 
     /// <summary>
-    /// Materialises <c>taskBuilder().withResponseFormat(...)</c> into a
-    /// <see cref="LlmConfigOverride"/>. Returns <c>null</c> for the no-op cases
+    /// Materialises <c>taskBuilder().withResponseFormat(...)</c> / <c>.withResponseSchema(...)</c>
+    /// into a <see cref="LlmConfigOverride"/>. Returns <c>null</c> for the no-op cases
     /// (unset, or <c>"text"</c> which is the provider default).
     /// </summary>
     private static LlmConfigOverride? BuildTaskLlmOverride(JsTask jsTask)
     {
-        var rf = jsTask.ResponseFormatValue;
-        if (string.IsNullOrWhiteSpace(rf)) return null;
-        if (string.Equals(rf, "text", StringComparison.OrdinalIgnoreCase)) return null;
-        return LlmConfigOverride.ForResponseFormat(new LlmResponseFormat { Type = rf! });
+        var format = BuildResponseFormat(
+            jsTask.ResponseFormatValue,
+            jsTask.ResponseSchemaName,
+            jsTask.ResponseSchema,
+            jsTask.ResponseSchemaStrict);
+
+        return format is null ? null : LlmConfigOverride.ForResponseFormat(format);
+    }
+
+    /// <summary>
+    /// Builds the domain response-format constraint from the two DSL entry points. A schema
+    /// implies <c>json_schema</c>, so a script only needs <c>withResponseSchema</c>; an
+    /// explicit <c>"text"</c> clears the constraint back to the provider default.
+    /// </summary>
+    private static LlmResponseFormat? BuildResponseFormat(
+        string? type, string? schemaName, JsValue? schema, bool strict)
+    {
+        var schemaJson = schema is null ? null : SerializeJsValueToJson(schema);
+        if (!string.IsNullOrWhiteSpace(schemaJson))
+        {
+            return LlmResponseFormat.JsonSchema(
+                string.IsNullOrWhiteSpace(schemaName) ? "response" : schemaName!, schemaJson!, strict);
+        }
+
+        if (string.IsNullOrWhiteSpace(type)) return null;
+        if (string.Equals(type, "text", StringComparison.OrdinalIgnoreCase)) return null;
+        return new LlmResponseFormat { Type = type! };
     }
 
     private static Dictionary<string, object> ExtractTaskContext(JsTask jsTask)

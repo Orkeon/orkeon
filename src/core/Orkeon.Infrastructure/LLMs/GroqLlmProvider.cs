@@ -21,10 +21,22 @@ public partial class GroqLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.Groq);
 
     /// <inheritdoc />
-    protected override string DefaultModel => "llama-3.3-70b-versatile";
+    protected override string DefaultModel => ProviderDefaults.GroqDefaults.DefaultModel;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Groq";
+
+    /// <summary>
+    /// Groq serves open-weight models behind the OpenAI dialect: structured outputs with a
+    /// schema, <c>reasoning_effort</c> on the reasoning models (GPT-OSS, Qwen), and vision on
+    /// its VLM models.
+    /// </summary>
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonSchema,
+        Thinking = ThinkingSupport.EffortOnly,
+        Vision = true,
+    };
 
     /// <summary>Initializes a new instance of <see cref="GroqLlmProvider"/>.</summary>
     public GroqLlmProvider(

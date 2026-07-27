@@ -34,6 +34,15 @@ public sealed class JsAgentBuilder
     internal JsValue? LlmConfig { get; private set; }
     /// <summary>Captured <c>response_format</c> hint (e.g. <c>"json_object"</c>); merged onto LlmConfig by the adapter.</summary>
     internal string? ResponseFormatValue { get; private set; }
+
+    /// <summary>Schema name captured by <c>withResponseSchema</c>; <c>null</c> when unset.</summary>
+    internal string? ResponseSchemaName { get; private set; }
+
+    /// <summary>Schema document captured by <c>withResponseSchema</c>, serialized by the adapter.</summary>
+    internal JsValue? ResponseSchemaValue { get; private set; }
+
+    /// <summary>Whether the captured schema is strict. Defaults to true.</summary>
+    internal bool ResponseSchemaStrict { get; private set; } = true;
     internal bool AllowDelegationFlag { get; private set; }
     internal int MaxIterationsValue { get; private set; } = 20;
     internal bool VerboseFlag { get; private set; }
@@ -123,6 +132,27 @@ public sealed class JsAgentBuilder
         if (string.IsNullOrWhiteSpace(type))
             throw new InvalidScriptException(".withResponseFormat(type) requires a non-empty string.");
         ResponseFormatValue = type;
+        return this;
+    }
+
+    /// <summary>
+    /// Constrains this agent's output to a JSON Schema, on the providers whose API validates
+    /// one server-side. Implies <c>response_format: json_schema</c>, so calling
+    /// <c>withResponseFormat</c> as well is unnecessary.
+    /// </summary>
+    /// <param name="name">Schema name, required by the OpenAI dialect.</param>
+    /// <param name="schema">The JSON Schema, as an object literal or a JSON string.</param>
+    /// <param name="strict">Whether the provider must reject any deviation. Defaults to true.</param>
+    public JsAgentBuilder withResponseSchema(string name, JsValue schema, JsValue? strict = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidScriptException(".withResponseSchema(name, schema) requires a non-empty name.");
+        if (schema is null || schema.IsUndefined() || schema.IsNull())
+            throw new InvalidScriptException(".withResponseSchema(name, schema) requires a schema object or JSON string.");
+
+        ResponseSchemaName = name;
+        ResponseSchemaValue = schema;
+        ResponseSchemaStrict = strict is null || strict.IsUndefined() || strict.IsNull() || strict.AsBoolean();
         return this;
     }
     public JsAgentBuilder allowDelegation(bool value) { AllowDelegationFlag = value; return this; }

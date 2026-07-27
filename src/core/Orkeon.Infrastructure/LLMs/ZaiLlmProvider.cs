@@ -30,6 +30,18 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Z.AI";
 
+    /// <summary>
+    /// GLM exposes an explicit thinking toggle plus <c>reasoning_effort</c> (honoured by
+    /// GLM-5.2+, ignored by older models) and caches prompt prefixes implicitly — nothing to
+    /// declare on the wire, unlike Anthropic's explicit breakpoints.
+    /// </summary>
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonObject,
+        Thinking = ThinkingSupport.Toggle,
+        Vision = true,
+    };
+
     /// <summary>Initializes a new instance of <see cref="ZaiLlmProvider"/>.</summary>
     public ZaiLlmProvider(
         LlmConfig config,
@@ -60,76 +72,24 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
-    /// Attaches the Z.AI <c>thinking</c> block and <c>reasoning_effort</c> hint when the
-    /// effective config declares them. Same wire shape as DeepSeek-V4: most GLM models
-    /// auto-decide thinking; <c>reasoning_effort</c> (max/xhigh/high/medium/low/minimal/none)
-    /// is honored by GLM-5.2+ only and ignored by older models.
-    /// </summary>
-    protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
-    {
-        ArgumentNullException.ThrowIfNull(payload);
-        ArgumentNullException.ThrowIfNull(effectiveConfig);
-
-        var thinking = effectiveConfig.Thinking;
-        if (thinking is null) return;
-
-        if (thinking.Enabled.HasValue)
-        {
-            payload["thinking"] = new Dictionary<string, object?>
-            {
-                ["type"] = thinking.Enabled.Value ? "enabled" : "disabled",
-            };
-        }
-
-        if (!string.IsNullOrWhiteSpace(thinking.Effort))
-        {
-            payload["reasoning_effort"] = thinking.Effort;
-        }
-    }
-
-    /// <summary>
-    /// Extracts Z.AI-specific metadata: the <c>reasoning_content</c> thinking trace and the
-    /// usage breakdown (<c>prompt_tokens_details.cached_tokens</c> for the implicit context
-    /// cache, <c>completion_tokens_details.reasoning_tokens</c> for the thinking spend).
-    /// The typed <see cref="LlmResponse.CacheHitTokens"/>/<see cref="LlmResponse.CacheMissTokens"/>
+    /// Adds the Z.AI usage breakdown on top of the base reasoning trace:
+    /// <c>prompt_tokens_details.cached_tokens</c> for the implicit context cache and
+    /// <c>completion_tokens_details.reasoning_tokens</c> for the thinking spend. The typed
+    /// <see cref="LlmResponse.CacheHitTokens"/>/<see cref="LlmResponse.CacheMissTokens"/>
     /// fields are populated generically by the base parser from the same usage keys.
     /// </summary>
     protected override void ExtractResponseMetadata(JsonDocument doc, LlmResponseMetadata.Builder metadata)
     {
         ArgumentNullException.ThrowIfNull(doc);
-        ArgumentNullException.ThrowIfNull(metadata);
-        ExtractReasoningContent(doc.RootElement, metadata);
-        ExtractUsageMetadata(doc.RootElement, metadata);
+        base.ExtractResponseMetadata(doc, metadata);
+        ExtractStandardUsageMetadata(doc.RootElement, metadata);
+        ExtractUsageDetails(doc.RootElement, metadata);
     }
 
-    private static void ExtractReasoningContent(JsonElement root, LlmResponseMetadata.Builder metadata)
-    {
-        if (!root.TryGetProperty("choices", out var choices))
-            return;
-
-        var firstChoice = choices.EnumerateArray().FirstOrDefault();
-        if (firstChoice.ValueKind == JsonValueKind.Undefined)
-            return;
-
-        if (!firstChoice.TryGetProperty("message", out var message))
-            return;
-
-        if (message.TryGetProperty("reasoning_content", out var reasoning)
-            && reasoning.GetString() is { Length: > 0 } reasoningText)
-        {
-            metadata.Add("reasoning_content", reasoningText);
-        }
-    }
-
-    private static void ExtractUsageMetadata(JsonElement root, LlmResponseMetadata.Builder metadata)
+    private static void ExtractUsageDetails(JsonElement root, LlmResponseMetadata.Builder metadata)
     {
         if (!root.TryGetProperty("usage", out var usage))
             return;
-
-        if (usage.TryGetProperty("prompt_tokens", out var promptTokens))
-            metadata.Add("prompt_tokens", promptTokens.GetInt32());
-        if (usage.TryGetProperty("completion_tokens", out var completionTokens))
-            metadata.Add("completion_tokens", completionTokens.GetInt32());
 
         // Implicit context cache reads — billed at a fraction of the standard input price.
         if (usage.TryGetProperty("prompt_tokens_details", out var promptDetails)

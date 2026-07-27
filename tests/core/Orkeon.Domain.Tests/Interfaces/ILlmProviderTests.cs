@@ -337,7 +337,7 @@ public class ILlmProviderTests
     {
         // Arrange
         var provider = new TestLlmProvider();
-        var gpt4Config = LlmConfig.Gpt4("api-key-1");
+        var gpt4Config = LlmConfig.WithDefaultModel("api-key-1");
         var gpt35Config = LlmConfig.Gpt35Turbo("api-key-2");
         var claudeConfig = LlmConfig.Claude("api-key-3");
         var ollamaConfig = LlmConfig.Ollama(ModelMistral);
@@ -349,7 +349,7 @@ public class ILlmProviderTests
         var response4 = await provider.GenerateAsync("Test 4", ollamaConfig, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(ModelGpt4, response1.Model);
+        Assert.Equal(ModelDefault, response1.Model);
         Assert.Equal(ModelGpt35Turbo, response2.Model);
         Assert.Equal(ModelClaude3Opus, response3.Model);
         Assert.Equal(ModelMistral, response4.Model);
@@ -530,16 +530,16 @@ public class ILlmProviderTests
     {
         // Arrange & Act
         var defaultConfig = LlmConfig.Default();
-        var gpt4Config = LlmConfig.Gpt4("key1");
+        var gpt4Config = LlmConfig.WithDefaultModel("key1");
         var gpt35Config = LlmConfig.Gpt35Turbo("key2");
         var claudeConfig = LlmConfig.Claude("key3");
         var ollamaConfig = LlmConfig.Ollama(ModelMistral);
 
         // Assert
-        Assert.Equal(ModelGpt4, defaultConfig.Model);
+        Assert.Equal(ModelDefault, defaultConfig.Model);
         Assert.Null(defaultConfig.ApiKey);
 
-        Assert.Equal(ModelGpt4, gpt4Config.Model);
+        Assert.Equal(ModelDefault, gpt4Config.Model);
         Assert.Equal("key1", gpt4Config.ApiKey);
 
         Assert.Equal(ModelGpt35Turbo, gpt35Config.Model);

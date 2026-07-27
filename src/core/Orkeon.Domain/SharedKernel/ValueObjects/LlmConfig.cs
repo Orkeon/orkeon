@@ -176,13 +176,22 @@ public sealed record LlmConfig
         return new LlmConfig();
     }
 
-    /// <summary>Creates a GPT-4 configuration.</summary>
+    /// <summary>
+    /// Creates a configuration on the platform's default OpenAI model
+    /// (<see cref="LlmDefaults.DefaultModelName"/>).
+    /// </summary>
     /// <param name="apiKey">Optional API key.</param>
-    /// <returns>A GPT-4 <see cref="LlmConfig"/>.</returns>
-    public static LlmConfig Gpt4(string? apiKey = null)
+    /// <returns>A <see cref="LlmConfig"/> on the default model.</returns>
+    public static LlmConfig WithDefaultModel(string? apiKey = null)
     {
         return new LlmConfig(LlmDefaults.DefaultModelName, apiKey);
     }
+
+    /// <summary>Creates a configuration on the platform's default OpenAI model.</summary>
+    /// <param name="apiKey">Optional API key.</param>
+    /// <returns>A <see cref="LlmConfig"/> on the default model.</returns>
+    [Obsolete("Renamed to WithDefaultModel: this factory has always returned the platform default model, which is no longer gpt-4 (LLM-01). Pass \"gpt-4\" to Create if you really want that model.")]
+    public static LlmConfig Gpt4(string? apiKey = null) => WithDefaultModel(apiKey);
 
     /// <summary>Creates a GPT-3.5-Turbo configuration.</summary>
     /// <param name="apiKey">Optional API key.</param>
@@ -214,13 +223,23 @@ public sealed record LlmConfig
         };
     }
 
-    /// <summary>Creates a GPT-4 config that resolves the API key from ISecretProvider at runtime.</summary>
+    /// <summary>
+    /// Creates a config on the platform's default OpenAI model that resolves the API key from
+    /// ISecretProvider at runtime.
+    /// </summary>
     /// <param name="apiKeySecretName">The secret name to resolve.</param>
-    /// <returns>A GPT-4 <see cref="LlmConfig"/> using secret-based API key resolution.</returns>
-    public static LlmConfig Gpt4WithSecret(string apiKeySecretName = "OPENAI_API_KEY")
+    /// <returns>A <see cref="LlmConfig"/> using secret-based API key resolution.</returns>
+    public static LlmConfig WithDefaultModelSecret(string apiKeySecretName = "OPENAI_API_KEY")
     {
         return new LlmConfig(LlmDefaults.DefaultModelName) { ApiKeySecretName = apiKeySecretName };
     }
+
+    /// <summary>Creates a default-model config that resolves the API key from ISecretProvider at runtime.</summary>
+    /// <param name="apiKeySecretName">The secret name to resolve.</param>
+    /// <returns>A <see cref="LlmConfig"/> using secret-based API key resolution.</returns>
+    [Obsolete("Renamed to WithDefaultModelSecret: this factory has always returned the platform default model, which is no longer gpt-4 (LLM-01).")]
+    public static LlmConfig Gpt4WithSecret(string apiKeySecretName = "OPENAI_API_KEY")
+        => WithDefaultModelSecret(apiKeySecretName);
 
     /// <summary>Creates a GPT-3.5-Turbo config that resolves the API key from ISecretProvider at runtime.</summary>
     /// <param name="apiKeySecretName">The secret name to resolve.</param>

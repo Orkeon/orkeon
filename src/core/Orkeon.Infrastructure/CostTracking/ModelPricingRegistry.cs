@@ -109,16 +109,23 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
     private void RegisterDefaultPricings()
     {
         // OpenAI models
+        Register("gpt-5.6-sol", 5.00m, 30.00m);
+        Register("gpt-5.6-terra", 2.50m, 15.00m);
+        Register("gpt-5.6-luna", 1.00m, 6.00m);
         Register("gpt-4o", 2.50m, 10.00m);
         Register("gpt-4o-mini", 0.15m, 0.60m);
         Register("gpt-4-turbo", 10.00m, 30.00m);
-        Register(LlmDefaults.DefaultModelName, 30.00m, 60.00m);
+        // LLM-01: "gpt-4" is no longer the platform default but stays priced —
+        // existing configurations that pin it must keep producing a real cost.
+        Register("gpt-4", 30.00m, 60.00m);
         Register(LlmDefaults.LegacyModelName, 0.50m, 1.50m);
         Register("o1", 15.00m, 60.00m);
         Register("o1-mini", 3.00m, 12.00m);
         Register("o3-mini", 1.10m, 4.40m);
 
         // Anthropic models
+        Register("claude-opus-5", 5.00m, 25.00m);
+        Register("claude-sonnet-5", 3.00m, 15.00m);
         Register("claude-opus-4", 15.00m, 75.00m);
         Register("claude-sonnet-4", 3.00m, 15.00m);
         Register("claude-3-opus", 15.00m, 75.00m);

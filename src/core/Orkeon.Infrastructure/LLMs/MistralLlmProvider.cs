@@ -25,6 +25,18 @@ public class MistralLlmProvider : OpenAICompatibleProviderBase
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Mistral AI";
 
+    /// <summary>
+    /// Mistral's cloud API follows the OpenAI dialect: JSON mode with a custom structured
+    /// output schema, <c>reasoning_effort</c> on the reasoning models, and vision on the
+    /// multimodal ones.
+    /// </summary>
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonSchema,
+        Thinking = ThinkingSupport.EffortOnly,
+        Vision = true,
+    };
+
     /// <summary>Initializes a new instance of <see cref="MistralLlmProvider"/>.</summary>
     public MistralLlmProvider(
         LlmConfig config,

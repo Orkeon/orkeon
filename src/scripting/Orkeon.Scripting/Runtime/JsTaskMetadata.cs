@@ -18,4 +18,13 @@ internal sealed record JsTaskMetadata
     public JsValue? TaskTool { get; init; }
     public JsValue? DeliverableSpec { get; init; }
     public string? ResponseFormat { get; init; }
+
+    /// <summary>Schema name captured by <c>taskBuilder().withResponseSchema(...)</c>.</summary>
+    public string? ResponseSchemaName { get; init; }
+
+    /// <summary>Schema document captured by <c>withResponseSchema</c>, serialized by the adapter.</summary>
+    public JsValue? ResponseSchema { get; init; }
+
+    /// <summary>Whether the captured schema is strict. Defaults to true.</summary>
+    public bool ResponseSchemaStrict { get; init; } = true;
 }

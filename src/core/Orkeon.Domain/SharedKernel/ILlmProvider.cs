@@ -22,6 +22,18 @@ public interface ILlmProvider
     LlmConfig? BaseConfig => null;
 
     /// <summary>
+    /// What this provider's API actually supports. Drives the translation of cross-cutting
+    /// options (<c>response_format</c>, <c>thinking</c>, vision content) into the provider's
+    /// own dialect, and lets an unsupported option be reported instead of silently dropped.
+    /// </summary>
+    /// <remarks>
+    /// A default implementation, like <see cref="BaseConfig"/> above: third-party providers
+    /// and test doubles keep compiling, and a provider that declares nothing is assumed to
+    /// support nothing — nothing is written to the wire on its behalf.
+    /// </remarks>
+    LlmProviderCapabilities Capabilities => LlmProviderCapabilities.Unknown;
+
+    /// <summary>
     /// Generates a response from the language model.
     /// </summary>
     Task<LlmResponse> GenerateAsync(

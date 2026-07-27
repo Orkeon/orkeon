@@ -188,6 +188,33 @@ public sealed partial class OllamaRequestPayload
         /// <returns>This builder.</returns>
         [DictionaryEntry("grammar")]
         public partial Builder AddGrammar(string grammarGbnf);
+
+        /// <summary>
+        /// Sets Ollama's output-format constraint. Accepts the literal <c>"json"</c> or a
+        /// complete JSON Schema document — hence the untyped parameter, which the typed
+        /// <c>[DictionaryEntry]</c> generator cannot express.
+        /// </summary>
+        /// <param name="format">The format value: <c>"json"</c> or a schema object.</param>
+        /// <returns>This builder.</returns>
+        public Builder AddFormat(object format)
+        {
+            ArgumentNullException.ThrowIfNull(format);
+            _items["format"] = LlmMetadataValue.From(format);
+            return this;
+        }
+
+        /// <summary>
+        /// Sets Ollama's thinking switch. Accepts a boolean or one of
+        /// <c>"low"</c>/<c>"medium"</c>/<c>"high"</c>, so the parameter is untyped.
+        /// </summary>
+        /// <param name="think">The thinking value: a boolean or an effort level.</param>
+        /// <returns>This builder.</returns>
+        public Builder AddThink(object think)
+        {
+            ArgumentNullException.ThrowIfNull(think);
+            _items["think"] = LlmMetadataValue.From(think);
+            return this;
+        }
     }
 }
 

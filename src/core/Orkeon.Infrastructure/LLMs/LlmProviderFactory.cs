@@ -136,11 +136,19 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return "groq";
         if (url.Contains("together.xyz", StringComparison.Ordinal))
             return "together";
-        if (url.Contains("dashscope.aliyuncs.com", StringComparison.Ordinal))
+        // Qwen / Alibaba Model Studio: the mainland host (dashscope.aliyuncs.com), the
+        // international host (dashscope-intl.aliyuncs.com — note it does NOT contain the
+        // mainland string), and the per-workspace regional hosts
+        // ({workspace}.{region}.maas.aliyuncs.com).
+        if (url.Contains("dashscope.aliyuncs.com", StringComparison.Ordinal)
+            || url.Contains("dashscope-intl.aliyuncs.com", StringComparison.Ordinal)
+            || url.Contains("maas.aliyuncs.com", StringComparison.Ordinal))
             return "qwen";
         if (url.Contains("deepseek.com", StringComparison.Ordinal))
             return "deepseek";
-        if (url.Contains("moonshot.cn", StringComparison.Ordinal))
+        // Kimi: mainland (moonshot.cn) and international (moonshot.ai) hosts.
+        if (url.Contains("moonshot.cn", StringComparison.Ordinal)
+            || url.Contains("moonshot.ai", StringComparison.Ordinal))
             return "kimi";
         if (url.Contains("mistral.ai", StringComparison.Ordinal))
             return "mistral";
@@ -180,8 +188,12 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return "openai";
         if (m.StartsWith("claude", StringComparison.Ordinal))
             return "anthropic";
-        if (m.StartsWith("llama", StringComparison.Ordinal) || m.StartsWith("mistral", StringComparison.Ordinal) || m.StartsWith("codellama", StringComparison.Ordinal))
+        if (m.StartsWith("llama", StringComparison.Ordinal) || m.StartsWith("codellama", StringComparison.Ordinal))
             return "ollama";
+        if (IsOllamaMistralTag(m))
+            return "ollama";
+        if (m.StartsWith("mistral", StringComparison.Ordinal) || m.StartsWith("ministral", StringComparison.Ordinal))
+            return "mistral";
         if (m.Contains("mixtral", StringComparison.Ordinal) || m.Contains("groq", StringComparison.Ordinal))
             return "groq";
         if (m.StartsWith("qwen", StringComparison.Ordinal))
@@ -195,6 +207,23 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
 
         return null;
     }
+
+    /// <summary>
+    /// True for the two model-name shapes that unambiguously designate the <em>local</em>
+    /// Mistral pulled by Ollama: the bare name <c>mistral</c> and a tagged
+    /// <c>mistral:&lt;tag&gt;</c> (e.g. <c>mistral:7b</c>).
+    /// </summary>
+    /// <remarks>
+    /// LLM-01 / G-14: the previous rule routed <em>every</em> <c>mistral*</c> model to Ollama,
+    /// so a cloud identifier such as <c>mistral-medium-3-5-26-04</c> was sent to
+    /// <c>localhost:11434</c>. Versioned identifiers now reach the Mistral cloud instead. The
+    /// arbitration of MISTRAL-PROVIDER-PLAN §0 is preserved for the bare name. Ollama users who
+    /// run a hyphenated local tag (<c>mistral-nemo</c>, <c>mistral-small3.2</c>) set
+    /// <see cref="LlmConfig.BaseUrl"/> to their server — base-URL inference runs first and wins.
+    /// </remarks>
+    private static bool IsOllamaMistralTag(string normalizedModel) =>
+        string.Equals(normalizedModel, "mistral", StringComparison.Ordinal)
+        || normalizedModel.StartsWith("mistral:", StringComparison.Ordinal);
 
     /// <summary>
     /// Infers the provider type from the API key prefix.

@@ -102,8 +102,10 @@ public class TaskYamlConfig
 /// </summary>
 public class LlmOverrideYamlConfig
 {
-    /// <summary>Output-format constraint forwarded to providers that implement it (<c>"text"</c> | <c>"json_object"</c>).</summary>
+    /// <summary>Output-format constraint override (<c>"text"</c> | <c>"json_object"</c> | <c>"json_schema"</c>).</summary>
     public string? ResponseFormat { get; set; }
+    /// <summary>JSON Schema override, accompanying <c>response_format: json_schema</c>.</summary>
+    public ResponseSchemaYamlConfig? ResponseSchema { get; set; }
     /// <summary>Sampling temperature override.</summary>
     public double? Temperature { get; set; }
     /// <summary>Maximum output tokens override.</summary>
@@ -198,11 +200,19 @@ public class LlmYamlConfig
     /// <summary>Gets or sets the optional thinking-mode toggle and reasoning-effort hint (DeepSeek V4, …).</summary>
     public ThinkingYamlConfig? Thinking { get; set; }
     /// <summary>
-    /// Gets or sets the output-format constraint forwarded to providers that implement
-    /// <c>response_format</c> (e.g. DeepSeek). Accepted: <c>"text"</c>, <c>"json_object"</c>
-    /// (case-insensitive). Unknown values are downgraded to <c>null</c> with a warning.
+    /// Gets or sets the output-format constraint forwarded to providers that implement it
+    /// (<c>response_format</c>, <c>output_config.format</c>, <c>format</c>). Known values:
+    /// <c>"text"</c>, <c>"json_object"</c>, <c>"json_schema"</c> (case-insensitive). Any other
+    /// value is forwarded as-is with a warning, so a new provider value works without a
+    /// framework release.
     /// </summary>
     public string? ResponseFormat { get; set; }
+    /// <summary>
+    /// Gets or sets the JSON Schema to validate the response against. Only meaningful with
+    /// <c>response_format: json_schema</c>. Kept a sibling block rather than a nested mapping
+    /// under <see cref="ResponseFormat"/> so the historical scalar form stays valid YAML.
+    /// </summary>
+    public ResponseSchemaYamlConfig? ResponseSchema { get; set; }
 }
 
 /// <summary>
@@ -215,6 +225,28 @@ public class ThinkingYamlConfig
     public bool? Enabled { get; set; }
     /// <summary>Gets or sets the reasoning effort hint ("low" | "medium" | "high" | "max").</summary>
     public string? Effort { get; set; }
+    /// <summary>
+    /// Gets or sets a hard token budget for the reasoning pass. Only Qwen's DashScope API
+    /// accepts one; other providers report the option rather than dropping it.
+    /// </summary>
+    public int? BudgetTokens { get; set; }
+}
+
+/// <summary>
+/// YAML model for the <c>response_schema:</c> block that accompanies
+/// <c>response_format: json_schema</c>.
+/// </summary>
+public class ResponseSchemaYamlConfig
+{
+    /// <summary>Gets or sets the schema name (required by the OpenAI dialect).</summary>
+    public string? Name { get; set; }
+    /// <summary>Gets or sets the inline JSON Schema document, as a JSON string.</summary>
+    public string? Schema { get; set; }
+    /// <summary>
+    /// Gets or sets whether the provider must reject any deviation from the schema.
+    /// Defaults to <see langword="true"/>; ignored by providers with no strict mode.
+    /// </summary>
+    public bool? Strict { get; set; }
 }
 
 /// <summary>

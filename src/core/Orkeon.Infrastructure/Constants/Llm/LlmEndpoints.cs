@@ -27,8 +27,19 @@ public static class LlmEndpoints
     /// <summary>Qwen (Alibaba DashScope) OpenAI-compatible endpoint.</summary>
     public const string Qwen = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
-    /// <summary>Kimi (Moonshot AI) API base URL (OpenAI-compatible).</summary>
-    public const string Kimi = "https://api.moonshot.cn/v1";
+    /// <summary>
+    /// Kimi (Moonshot AI) international API base URL (OpenAI-compatible).
+    /// The mainland-China twin is <c>https://api.moonshot.cn/v1</c>; set it explicitly
+    /// via <see cref="Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.BaseUrl"/> when
+    /// the account is provisioned there.
+    /// </summary>
+    public const string Kimi = "https://api.moonshot.ai/v1";
+
+    /// <summary>
+    /// HuggingFace Inference Providers router (OpenAI-compatible chat completions).
+    /// Replaces the retired <c>api-inference.huggingface.co</c> host.
+    /// </summary>
+    public const string HuggingFace = "https://router.huggingface.co/v1";
 
     /// <summary>Mistral AI API base URL (OpenAI-compatible).</summary>
     public const string Mistral = "https://api.mistral.ai/v1";

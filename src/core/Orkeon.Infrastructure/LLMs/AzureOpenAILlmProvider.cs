@@ -43,6 +43,17 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Azure OpenAI";
 
+    /// <summary>
+    /// Azure serves the OpenAI models through the OpenAI dialect, so it offers the same
+    /// surface: Structured Outputs, a reasoning effort hint, and vision.
+    /// </summary>
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonSchema,
+        Thinking = ThinkingSupport.EffortOnly,
+        Vision = true,
+    };
+
     /// <summary>Initializes a new instance of <see cref="AzureOpenAILlmProvider"/>.</summary>
     /// <param name="config">The LLM configuration.</param>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
@@ -129,6 +140,40 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         return await base.ChatAsync(messages, effectiveConfig, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Streams a multi-message chat completion, guarding the Azure-specific configuration
+    /// first (D-01).
+    /// </summary>
+    /// <remarks>
+    /// Without this override the inherited implementation checks only the API key and then
+    /// calls <see cref="BuildEndpoint"/>, which dereferences <c>config.BaseUrl!</c> — an
+    /// <see cref="NullReferenceException"/> where the three other entry points return a typed
+    /// error response. An event stream <em>can</em> carry the error, so the invalid-config case
+    /// delegates to the base class's buffered fallback: it emits the standard
+    /// <see cref="LlmStreamEventKind.Completed"/> event whose response holds the same
+    /// configuration error the non-streaming paths produce.
+    /// </remarks>
+    public override async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
+        LlmMessage[] messages,
+        LlmConfig? config = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var effectiveConfig = config ?? Config;
+
+        var configError = ValidateRequiredConfig(effectiveConfig);
+        if (configError is not null)
+        {
+            yield return LlmStreamEvent.Complete(configError);
+            yield break;
+        }
+
+        await foreach (var ev in base.ChatStreamingAsync(messages, effectiveConfig, cancellationToken)
+            .ConfigureAwait(false))
+        {
+            yield return ev;
+        }
+    }
+
     /// <inheritdoc />
     public override async IAsyncEnumerable<string> GenerateStreamingAsync(
         string prompt,
@@ -137,10 +182,15 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
     {
         var effectiveConfig = config ?? Config;
 
-#pragma warning disable CS0618 // Type or member is obsolete
-        if (string.IsNullOrEmpty(effectiveConfig.ApiKey) || effectiveConfig.BaseUrl is null)
+        // D-01: this path returns IAsyncEnumerable<string> and has no channel to carry an
+        // error, so an invalid configuration still ends in an empty stream — but it is now
+        // logged instead of failing silently.
+        var configError = ValidateRequiredConfig(effectiveConfig);
+        if (configError is not null)
+        {
+            LogAzureStreamingConfigError();
             yield break;
-#pragma warning restore CS0618
+        }
 
         // Do NOT use 'using' — factory-managed clients must not be disposed.
         var client = CreateHttpClient(effectiveConfig);
@@ -253,4 +303,8 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Azure OpenAI streaming error: {StatusCode}")]
     private partial void LogAzureStreamingError(System.Net.HttpStatusCode statusCode);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error,
+        Message = "Azure OpenAI text streaming aborted: the API key and the resource endpoint (BaseUrl) are both required. The stream completed empty.")]
+    private partial void LogAzureStreamingConfigError();
 }

@@ -94,7 +94,7 @@ public sealed partial class YamlCrewMapper
                         MaxTokens = effectiveLlm.MaxTokens ?? 4096,
                         TopP = effectiveLlm.TopP ?? 1.0,
                         Thinking = MapThinking(effectiveLlm.Thinking),
-                        ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat),
+                        ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat, effectiveLlm.ResponseSchema),
                     }
                     : null,
                 Guardrails = MapGuardrails(kvp.Value.Guardrails),
@@ -214,6 +214,7 @@ public sealed partial class YamlCrewMapper
             TopP = agentLevel.TopP ?? crewLevel.TopP,
             Thinking = MergeThinkingYamlConfig(crewLevel.Thinking, agentLevel.Thinking),
             ResponseFormat = string.IsNullOrWhiteSpace(agentLevel.ResponseFormat) ? crewLevel.ResponseFormat : agentLevel.ResponseFormat,
+            ResponseSchema = agentLevel.ResponseSchema ?? crewLevel.ResponseSchema,
         };
     }
 
@@ -228,6 +229,7 @@ public sealed partial class YamlCrewMapper
         {
             Enabled = agentLevel.Enabled ?? crewLevel.Enabled,
             Effort = string.IsNullOrWhiteSpace(agentLevel.Effort) ? crewLevel.Effort : agentLevel.Effort,
+            BudgetTokens = agentLevel.BudgetTokens ?? crewLevel.BudgetTokens,
         };
     }
 
@@ -238,28 +240,65 @@ public sealed partial class YamlCrewMapper
     private static LlmThinkingConfig? MapThinking(ThinkingYamlConfig? yaml)
     {
         if (yaml is null) return null;
-        if (yaml.Enabled is null && string.IsNullOrWhiteSpace(yaml.Effort)) return null;
-        return new LlmThinkingConfig { Enabled = yaml.Enabled, Effort = yaml.Effort };
+        if (yaml.Enabled is null && string.IsNullOrWhiteSpace(yaml.Effort) && yaml.BudgetTokens is null) return null;
+        return new LlmThinkingConfig
+        {
+            Enabled = yaml.Enabled,
+            Effort = yaml.Effort,
+            BudgetTokens = yaml.BudgetTokens,
+        };
     }
 
     /// <summary>
-    /// Maps a YAML <c>response_format:</c> string to its domain value object.
-    /// Accepts <c>"text"</c> (no-op = provider default) and <c>"json_object"</c>
-    /// (case-insensitive, normalised to lowercase). Any other value is downgraded
-    /// to <c>null</c> with a structured warning — a slightly malformed crew.yaml
-    /// must not crash the app.
+    /// Maps the YAML <c>response_format:</c> string, and its optional
+    /// <c>response_schema:</c> companion, to the domain value object.
     /// </summary>
-    private LlmResponseFormat? MapResponseFormat(string? yaml)
+    /// <remarks>
+    /// <c>"text"</c> means "provider default" and maps to <see langword="null"/> — writing
+    /// nothing and writing <c>text</c> are equivalent on the wire. Any other value is
+    /// forwarded as-is: the mapper used to allow-list two values and downgrade everything
+    /// else to <see langword="null"/>, which silently discarded <c>json_schema</c> before it
+    /// could reach a provider. An unrecognised value now travels with a warning, so a new
+    /// vendor value works without a framework release and a typo surfaces as a provider error
+    /// rather than as nothing at all.
+    /// </remarks>
+    private LlmResponseFormat? MapResponseFormat(string? yaml, ResponseSchemaYamlConfig? schema)
     {
-        if (string.IsNullOrWhiteSpace(yaml)) return null;
+        var trimmed = yaml?.Trim();
+        var hasSchema = !string.IsNullOrWhiteSpace(schema?.Schema);
 
-        var trimmed = yaml.Trim();
-        if (string.Equals(trimmed, "text", StringComparison.OrdinalIgnoreCase)) return null; // provider default, no need to emit
-        if (string.Equals(trimmed, "json_object", StringComparison.OrdinalIgnoreCase)) return LlmResponseFormat.JsonObject();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            // A schema on its own is unambiguous: it can only mean json_schema.
+            return hasSchema ? BuildJsonSchemaFormat(schema!) : null;
+        }
 
-        LogUnknownResponseFormat(yaml);
-        return null;
+        if (string.Equals(trimmed, "text", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        if (string.Equals(trimmed, "json_schema", StringComparison.OrdinalIgnoreCase))
+        {
+            if (hasSchema)
+                return BuildJsonSchemaFormat(schema!);
+
+            LogJsonSchemaWithoutSchema();
+            return LlmResponseFormat.JsonObject();
+        }
+
+        // Known values are normalised to their canonical lowercase wire form; anything else
+        // travels verbatim, since only the provider can judge it.
+        if (string.Equals(trimmed, "json_object", StringComparison.OrdinalIgnoreCase))
+            return LlmResponseFormat.JsonObject();
+
+        LogUnknownResponseFormat(trimmed);
+        return new LlmResponseFormat { Type = trimmed };
     }
+
+    private static LlmResponseFormat BuildJsonSchemaFormat(ResponseSchemaYamlConfig schema) =>
+        LlmResponseFormat.JsonSchema(
+            string.IsNullOrWhiteSpace(schema.Name) ? "response" : schema.Name.Trim(),
+            schema.Schema!,
+            schema.Strict ?? true);
 
     /// <summary>
     /// Maps the YAML <c>llm_override:</c> block to a <see cref="LlmConfigOverride"/>.
@@ -269,6 +308,7 @@ public sealed partial class YamlCrewMapper
     {
         if (yaml is null) return null;
         if (string.IsNullOrWhiteSpace(yaml.ResponseFormat)
+            && yaml.ResponseSchema is null
             && yaml.Temperature is null
             && yaml.MaxTokens is null
             && yaml.TopP is null
@@ -279,7 +319,7 @@ public sealed partial class YamlCrewMapper
 
         return new LlmConfigOverride
         {
-            ResponseFormat = MapResponseFormat(yaml.ResponseFormat),
+            ResponseFormat = MapResponseFormat(yaml.ResponseFormat, yaml.ResponseSchema),
             Temperature = yaml.Temperature,
             MaxTokens = yaml.MaxTokens,
             TopP = yaml.TopP,
@@ -288,8 +328,12 @@ public sealed partial class YamlCrewMapper
     }
 
     [LoggerMessage(EventId = 101, Level = LogLevel.Warning,
-        Message = "Unknown response_format value '{RawValue}' in crew YAML — accepted: 'text' | 'json_object'. Downgrading to null (provider default).")]
+        Message = "response_format value '{RawValue}' in crew YAML is not one of the values Orkeon knows ('text' | 'json_object' | 'json_schema'). It is forwarded to the provider as-is; check your provider's documentation if the call fails.")]
     private partial void LogUnknownResponseFormat(string rawValue);
+
+    [LoggerMessage(EventId = 102, Level = LogLevel.Warning,
+        Message = "response_format is 'json_schema' but no response_schema block was provided — falling back to 'json_object' (well-formed JSON, no validation).")]
+    private partial void LogJsonSchemaWithoutSchema();
 
     /// <summary>
     /// Normalizes the agent-level <c>knowledge:</c> block into validated

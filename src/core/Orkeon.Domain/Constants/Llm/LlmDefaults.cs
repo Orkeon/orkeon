@@ -35,8 +35,10 @@ public static class LlmDefaults
 
     /// <summary>
     /// Default LLM model name used when no specific model is configured.
+    /// GPT-5.6 Sol — the previous default, <c>gpt-4</c>, reaches end of life 2026-10-23
+    /// and caps the context window at 8 192 tokens.
     /// </summary>
-    public const string DefaultModelName = "gpt-4";
+    public const string DefaultModelName = "gpt-5.6-sol";
 
     /// <summary>
     /// Legacy LLM model name (GPT-3.5 Turbo) kept for backward compatibility.

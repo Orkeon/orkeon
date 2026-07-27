@@ -204,8 +204,15 @@ tasks:
         Assert.Null(task.LlmOverride);
     }
 
+    /// <summary>
+    /// The mapper used to allow-list two values and downgrade everything else to
+    /// <see langword="null"/> — which silently discarded <c>json_schema</c> before it could
+    /// reach a provider (LLM-03). An unrecognised value now travels to the provider with a
+    /// warning: a new vendor value works without a framework release, and a typo surfaces as
+    /// a provider error rather than as nothing at all.
+    /// </summary>
     [Fact]
-    public async Task ResponseFormat_UnknownValue_DowngradesToNullWithWarning()
+    public async Task ResponseFormat_UnknownValue_IsForwardedWithWarning()
     {
         var loader = BuildLoader(out var logger);
         var yaml = """
@@ -216,16 +223,159 @@ agents:
     role: r
     goal: g
     llm:
-      model: deepseek-chat
+      model: deepseek-v4-flash
       response_format: xml
 """;
 
         var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         var agent = Assert.Single(config.Agents);
-        Assert.Null(agent.LlmConfig!.ResponseFormat);
+        Assert.Equal("xml", agent.LlmConfig!.ResponseFormat!.Type);
         Assert.True(logger.HasLoggedWarning("response_format"),
             "Expected a structured warning when response_format has an unknown value.");
+    }
+
+    // ── JSON Schema (LLM-03) ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ResponseSchema_MapsToTheDomainValueObject()
+    {
+        var loader = BuildLoader();
+        var yaml = """
+name: c
+goal: g
+agents:
+  a:
+    role: r
+    goal: g
+    llm:
+      model: gpt-5.6-sol
+      response_format: json_schema
+      response_schema:
+        name: report
+        strict: false
+        schema: '{"type":"object","properties":{"title":{"type":"string"}}}'
+""";
+
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        var agent = Assert.Single(config.Agents);
+        var format = agent.LlmConfig!.ResponseFormat!;
+        Assert.Equal("json_schema", format.Type);
+        Assert.NotNull(format.Schema);
+        Assert.Equal("report", format.Schema!.Name);
+        Assert.False(format.Schema.Strict);
+        Assert.Contains("\"title\"", format.Schema.Schema, StringComparison.Ordinal);
+    }
+
+    /// <summary>A schema on its own is unambiguous — it can only mean <c>json_schema</c>.</summary>
+    [Fact]
+    public async Task ResponseSchema_WithoutExplicitFormat_ImpliesJsonSchema()
+    {
+        var loader = BuildLoader();
+        var yaml = """
+name: c
+goal: g
+agents:
+  a:
+    role: r
+    goal: g
+    llm:
+      model: gpt-5.6-sol
+      response_schema:
+        name: report
+        schema: '{"type":"object"}'
+""";
+
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        var agent = Assert.Single(config.Agents);
+        Assert.Equal("json_schema", agent.LlmConfig!.ResponseFormat!.Type);
+        Assert.True(agent.LlmConfig.ResponseFormat.Schema!.Strict);
+    }
+
+    [Fact]
+    public async Task ResponseFormat_JsonSchemaWithoutSchemaBlock_FallsBackToJsonObjectWithWarning()
+    {
+        var loader = BuildLoader(out var logger);
+        var yaml = """
+name: c
+goal: g
+agents:
+  a:
+    role: r
+    goal: g
+    llm:
+      model: gpt-5.6-sol
+      response_format: json_schema
+""";
+
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        var agent = Assert.Single(config.Agents);
+        Assert.Equal("json_object", agent.LlmConfig!.ResponseFormat!.Type);
+        Assert.Null(agent.LlmConfig.ResponseFormat.Schema);
+        Assert.True(logger.HasLoggedWarning("response_schema"));
+    }
+
+    [Fact]
+    public async Task TaskLlmOverride_ResponseSchema_MapsToTaskConfiguration()
+    {
+        var loader = BuildLoader();
+        var yaml = """
+name: c
+goal: g
+agents:
+  worker:
+    role: worker
+    goal: g
+tasks:
+  extract:
+    description: Extract structured data
+    expected_output: json
+    agent: worker
+    llm_override:
+      response_format: json_schema
+      response_schema:
+        name: extraction
+        schema: '{"type":"object"}'
+""";
+
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        var task = Assert.Single(config.Tasks);
+        Assert.Equal("json_schema", task.LlmOverride!.ResponseFormat!.Type);
+        Assert.Equal("extraction", task.LlmOverride.ResponseFormat.Schema!.Name);
+    }
+
+    // ── Thinking budget (LLM-04) ────────────────────────────────────────────
+
+    [Fact]
+    public async Task ThinkingBudgetTokens_MapsThroughTheCascade()
+    {
+        var loader = BuildLoader();
+        var yaml = """
+name: c
+goal: g
+llm:
+  model: qwen3.7-plus
+  thinking:
+    budget_tokens: 2048
+agents:
+  a:
+    role: r
+    goal: g
+    llm:
+      thinking:
+        enabled: true
+""";
+
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        var agent = Assert.Single(config.Agents);
+        // The agent switched thinking on; the crew-level budget is inherited, not lost.
+        Assert.True(agent.LlmConfig!.Thinking!.Enabled);
+        Assert.Equal(2048, agent.LlmConfig.Thinking.BudgetTokens);
     }
 
     [Fact]

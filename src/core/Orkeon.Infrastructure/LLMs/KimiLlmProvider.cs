@@ -26,6 +26,18 @@ public class KimiLlmProvider : OpenAICompatibleProviderBase
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Kimi";
 
+    /// <summary>
+    /// Moonshot's API is OpenAI-compatible. Thinking is switchable on K2.6 (and always on for
+    /// K3), and the K2.6/K3 generation accepts image input. JSON mode guarantees well-formed
+    /// output without validating a schema.
+    /// </summary>
+    public override LlmProviderCapabilities Capabilities { get; } = new()
+    {
+        ResponseFormat = ResponseFormatSupport.JsonObject,
+        Thinking = ThinkingSupport.Toggle,
+        Vision = true,
+    };
+
     /// <summary>Initializes a new instance of <see cref="KimiLlmProvider"/>.</summary>
     public KimiLlmProvider(
         LlmConfig config,

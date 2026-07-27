@@ -61,7 +61,9 @@ public class HuggingFaceLlmProviderTests
     [Fact]
     public async Task ShouldBuildCorrectEndpoint_ForServerlessApi()
     {
-        // Arrange — no BaseUrl set, should use default: https://api-inference.huggingface.co/v1/chat/completions
+        // Arrange — no BaseUrl set, should use default: https://router.huggingface.co/v1/chat/completions
+        // (LLM-01 / G-01: api-inference.huggingface.co was retired; Inference Providers now
+        // serves the OpenAI-compatible surface from the router host.)
         var configNoBaseUrl = LlmConfig.Create("mistralai/Mistral-7B-Instruct-v0.3", "hf_test-key");
 
         var responseContent = JsonSerializer.Serialize(new
@@ -88,7 +90,7 @@ public class HuggingFaceLlmProviderTests
         // Verify the captured request URL uses the default OpenAI-compatible base URL
         Assert.Single(handler.CapturedRequests);
         var requestUrl = handler.CapturedRequests[0].RequestUri!.ToString();
-        Assert.StartsWith("https://api-inference.huggingface.co/v1/chat/completions", requestUrl);
+        Assert.StartsWith("https://router.huggingface.co/v1/chat/completions", requestUrl);
     }
 
     [Fact]
