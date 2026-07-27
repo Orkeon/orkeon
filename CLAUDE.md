@@ -194,6 +194,8 @@ The project follows Clean Architecture with clear separation of concerns:
 
 **LLM Integration**: 12 providers implemented (OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI), all extending `HttpLlmProviderBase`. Simple HTTP-based providers. Full HTTP exchange logging via `LlmLoggingDelegatingHandler` (headers + payload, sanitized).
 
+Each provider declares an `LlmProviderCapabilities` (Domain value object, exposed on `ILlmProvider`) stating what its API really supports: `ResponseFormat` (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`. `OpenAICompatibleProviderBase` writes the OpenAI dialect once from that declaration; Anthropic (`output_config`, `thinking: adaptive`, `cache_control`), Ollama (`format`, `think`, `images`) and Qwen (`enable_thinking`, `thinking_budget`) override the hook for their own. **An option declared on a provider that cannot honour it produces a structured warning — never a silent drop.** Add a capability to the record and every provider that declares it inherits the translation.
+
 **Tool System**: Extensible architecture with IBaseTool interface, validation, batch execution, and 76 built-in tool classes.
 
 **Memory System**: Provider-based architecture supporting Redis, In-Memory, ChromaDB, Pinecone, LanceDB, and SQLite.

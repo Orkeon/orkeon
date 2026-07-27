@@ -283,15 +283,16 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     }
 
     /// <summary>
-    /// Creates Ollama provider instance.
-    /// R10.7: intentionally built WITHOUT a native tool calling strategy. The provider targets
-    /// Ollama's prompt-completion API (/api/generate); Ollama's native tools live on /api/chat
-    /// with a response shape (message.tool_calls, arguments as JSON object) that the OpenAI
-    /// parser does not read. Tool calling goes through the text fallback — see
-    /// docs/reference/limitations.md.
+    /// Creates Ollama provider instance, wired for native tool calling (LLM-07 / G-10).
     /// </summary>
+    /// <remarks>
+    /// The provider now reaches <c>/api/chat</c> whenever tools or images are in play, and
+    /// reshapes its response into the OpenAI body the parser reads — so the OpenAI strategy
+    /// applies. It keeps the prompt-completion path (and therefore the text fallback) for
+    /// plain conversations and for models without tool support.
+    /// </remarks>
     private LlmProviderAdapter CreateOllamaProvider(LlmConfig config)
-        => Adapt<OllamaLlmProvider>(logger => new OllamaLlmProvider(config, _httpClientFactory, logger));
+        => Adapt<OllamaLlmProvider>(logger => new OllamaLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates OpenAI provider instance.</summary>
     private LlmProviderAdapter CreateOpenAIProvider(LlmConfig config)

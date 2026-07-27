@@ -70,6 +70,33 @@ public static class ContentConverter
     }
 
     /// <summary>
+    /// Splits a <see cref="MultiModalContent"/> into Ollama's two separate fields: the
+    /// message text and a parallel array of raw base64 image payloads.
+    /// </summary>
+    /// <remarks>
+    /// Ollama does not use content parts. Its <c>/api/chat</c> message carries a plain
+    /// <c>content</c> string plus an <c>images</c> array of bare base64 strings — no
+    /// <c>data:</c> prefix, no media type. Remote image URLs therefore cannot be forwarded:
+    /// the server never fetches them, so an image the caller only referenced by URL is
+    /// reported as skipped rather than silently dropped.
+    /// </remarks>
+    /// <param name="content">The multi-modal content to split.</param>
+    /// <returns>The concatenated text and the base64 images, in order.</returns>
+    public static (string Text, IReadOnlyList<string> Images) ToOllamaMessage(MultiModalContent content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+
+        var images = new List<string>();
+        foreach (var part in content.Parts)
+        {
+            if (part is ImageContentPart { Data.Count: > 0 } image)
+                images.Add(Convert.ToBase64String([.. image.Data]));
+        }
+
+        return (content.ToTextOnly(), images);
+    }
+
+    /// <summary>
     /// Converts a <see cref="MultiModalContent"/> into OpenAI Chat Completions content parts.
     /// Text parts map to <c>text</c> parts; image parts map to <c>image_url</c> parts carrying
     /// either the original http(s)/data URL or a base64 <c>data:</c> URL built from raw bytes.

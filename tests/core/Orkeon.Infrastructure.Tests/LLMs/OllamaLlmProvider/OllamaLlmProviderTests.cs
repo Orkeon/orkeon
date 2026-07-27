@@ -600,7 +600,9 @@ public class OllamaLlmProviderTests
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => provider.ChatAsync(null!, cancellationToken: TestContext.Current.CancellationToken));
+        // ArgumentNullException (a subtype of ArgumentException) since LLM-07: the ChatAsync
+        // override guards the message array before deciding which endpoint to target.
+        await Assert.ThrowsAsync<ArgumentNullException>(() => provider.ChatAsync(null!, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]

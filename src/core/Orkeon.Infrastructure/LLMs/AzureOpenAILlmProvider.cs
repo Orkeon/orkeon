@@ -241,29 +241,57 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
-    /// Builds the Azure deployment-based endpoint URL:
-    /// <c>{baseUrl}/openai/deployments/{deployment}/chat/completions?api-version={apiVersion}</c>.
+    /// The <c>api_version</c> value that selects the v1 GA API instead of a dated version.
     /// </summary>
+    private const string V1ApiMode = "v1";
+
+    /// <summary>
+    /// Builds the endpoint URL in whichever of Azure's two API shapes is configured.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The historical shape is deployment-based and dated:
+    /// <c>{baseUrl}/openai/deployments/{deployment}/chat/completions?api-version={apiVersion}</c>.
+    /// Since August 2025 Azure also serves a **v1 GA** surface,
+    /// <c>{baseUrl}/openai/v1/chat/completions</c>, with no <c>api-version</c> at all — it is
+    /// the path to the Responses API and to the non-OpenAI models Azure resells (DeepSeek,
+    /// Grok), none of which the dated shape can reach (audit gaps G-06, G-25).
+    /// </para>
+    /// <para>
+    /// Selected with <c>api_version: v1</c> (typed property or custom parameter). The dated
+    /// shape stays the default on purpose: switching it would silently change the URL of
+    /// every existing deployment-based configuration.
+    /// </para>
+    /// </remarks>
     /// <param name="config">The effective LLM configuration (BaseUrl is validated by callers).</param>
     protected override Uri BuildEndpoint(LlmConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
         var baseUrl = config.BaseUrl!.ToString().TrimEnd('/');
-        var deployment = config.Model ?? LlmDefaults.DefaultModelName;
+        var apiVersion = ResolveApiVersion(config);
 
-        // Prefer typed ApiVersion property, fall back to CustomParameters
-        var apiVersion = config.ApiVersion;
-        if (string.IsNullOrWhiteSpace(apiVersion) &&
-            config.CustomParameters != null &&
+        if (string.Equals(apiVersion, V1ApiMode, StringComparison.OrdinalIgnoreCase))
+            return new Uri($"{baseUrl}/openai/v1{ApiEndpointPath}");
+
+        var deployment = config.Model ?? LlmDefaults.DefaultModelName;
+        return new Uri($"{baseUrl}/openai/deployments/{deployment}{ApiEndpointPath}?api-version={apiVersion}");
+    }
+
+    /// <summary>Prefers the typed property, falls back to the custom-parameter bag, then to the dated default.</summary>
+    private static string ResolveApiVersion(LlmConfig config)
+    {
+        if (!string.IsNullOrWhiteSpace(config.ApiVersion))
+            return config.ApiVersion;
+
+        if (config.CustomParameters != null &&
             config.CustomParameters.TryGetValue("api_version", out var versionObj) &&
             versionObj is string version &&
             !string.IsNullOrWhiteSpace(version))
         {
-            apiVersion = version;
+            return version;
         }
-        apiVersion ??= DefaultApiVersion;
 
-        return new Uri($"{baseUrl}/openai/deployments/{deployment}/chat/completions?api-version={apiVersion}");
+        return DefaultApiVersion;
     }
 
     /// <summary>

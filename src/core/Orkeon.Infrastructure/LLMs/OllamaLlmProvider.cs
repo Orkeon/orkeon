@@ -4,9 +4,11 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Converters;
 using Orkeon.Infrastructure.Security;
 
 namespace Orkeon.Infrastructure.LLMs;
@@ -41,16 +43,19 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     public override string Name => "ollama";
 
     /// <summary>
-    /// Ollama's <c>format</c> field accepts a full JSON Schema, and <c>think</c> takes a
-    /// boolean or an effort level — both on <c>/api/generate</c>, the endpoint this provider
-    /// targets. Vision is not declared: local vision models take a base64 <c>images</c> array
-    /// rather than OpenAI-style content parts, a translation this provider does not do yet.
+    /// Ollama's <c>format</c> field accepts a full JSON Schema and <c>think</c> takes a boolean
+    /// or an effort level, both on <c>/api/generate</c>. Vision goes through
+    /// <c>/api/chat</c>, which takes a base64 <c>images</c> array rather than OpenAI-style
+    /// content parts.
     /// </summary>
     public override LlmProviderCapabilities Capabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.Toggle,
+        Vision = true,
     };
+
+    private readonly IToolCallingStrategy? _toolCallingStrategy;
 
     /// <summary>
     /// Initializes a new instance of the OllamaLlmProvider class.
@@ -76,6 +81,22 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         : base(config, httpClientFactory, resiliencePolicy, logger)
     {
         _baseUrl = ResolveBaseUrl(config);
+    }
+
+    /// <summary>
+    /// Constructor overload that accepts a tool calling strategy, enabling the native
+    /// <c>/api/chat</c> tool protocol (LLM-07).
+    /// </summary>
+    public OllamaLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<OllamaLlmProvider>? logger = null)
+        : base(config, httpClientFactory, logger)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        _baseUrl = ResolveBaseUrl(config);
+        _toolCallingStrategy = toolCallingStrategy;
     }
 
     /// <summary>
@@ -158,6 +179,319 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             return CreateExceptionResponse(ex, effectiveConfig);
         }
     }
+
+    /// <summary>
+    /// Runs a multi-message conversation on Ollama's <c>/api/chat</c> endpoint, which is the
+    /// only one that accepts <c>tools</c> and returns <c>message.tool_calls</c> (G-10).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The provider's other paths target <c>/api/generate</c>, which has no tool support —
+    /// hence the historical text-fallback protocol documented in
+    /// <c>docs/reference/limitations.md</c>. This override takes <c>/api/chat</c> only when it
+    /// is actually needed (the message list carries tool metadata, the config declares tools,
+    /// or a message carries an image); everything else keeps the previous path, so no existing
+    /// behaviour moves.
+    /// </para>
+    /// <para>
+    /// The response shape differs from OpenAI's in two ways — no <c>choices</c> array, and
+    /// <c>arguments</c> as a JSON object rather than a string — which is exactly why the
+    /// OpenAI parser could not read it. <see cref="SynthesizeOpenAiBody"/> reshapes it once,
+    /// so the rest of the framework consumes Ollama tool calls like anyone else's.
+    /// </para>
+    /// </remarks>
+    public override async Task<LlmResponse> ChatAsync(
+        LlmMessage[] messages,
+        LlmConfig? config = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(messages);
+        var effectiveConfig = config ?? Config;
+
+        if (!RequiresChatEndpoint(messages, effectiveConfig))
+            return await base.ChatAsync(messages, effectiveConfig, cancellationToken).ConfigureAwait(false);
+
+        var payload = BuildChatPayload(messages, effectiveConfig);
+        using var requestContent = new StringContent(
+            SerializeToJson(payload), Encoding.UTF8, HttpDefaults.JsonContentType);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/chat")
+        {
+            Content = requestContent,
+        };
+
+        try
+        {
+            using var httpResponse = await ExecuteHttpRequestAsync(request, effectiveConfig, cancellationToken).ConfigureAwait(false);
+
+            if (!httpResponse.IsSuccessStatusCode)
+                return await CreateErrorResponseAsync(httpResponse, cancellationToken).ConfigureAwait(false);
+
+            var responseContent = await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return ParseChatResponse(responseContent, effectiveConfig);
+        }
+        catch (HttpRequestException ex)
+        {
+            LogHttpRequestFailed(LogSanitizer.CreateSanitizedException(ex));
+            return CreateExceptionResponse(ex, effectiveConfig);
+        }
+        catch (OperationCanceledException ex)
+        {
+            LogRequestTimeout(LogSanitizer.CreateSanitizedException(ex));
+            return CreateExceptionResponse(ex, effectiveConfig);
+        }
+    }
+
+    /// <summary>
+    /// True when the conversation needs a capability only <c>/api/chat</c> offers. Anything
+    /// else stays on the historical prompt-completion path.
+    /// </summary>
+    private static bool RequiresChatEndpoint(LlmMessage[] messages, LlmConfig config) =>
+        config.Tools is { Count: > 0 }
+        || messages.Any(m => m.ToolCallId != null || m.RawToolCalls != null)
+        || messages.Any(HasImages);
+
+    private static bool HasImages(LlmMessage message) =>
+        message.MultiModalContent is { } content && content.HasImages;
+
+    private Dictionary<string, object> BuildChatPayload(LlmMessage[] messages, LlmConfig config)
+    {
+        var options = OllamaRequestOptions.CreateBuilder()
+            .AddTemperature(config.Temperature)
+            .AddNumPredict(config.MaxTokens)
+            .Build();
+
+        var payload = new Dictionary<string, object>
+        {
+            ["model"] = config.Model ?? ProviderDefaults.OllamaDefaults.DefaultModel,
+            ["messages"] = messages.Select(BuildChatMessage).ToList(),
+            ["stream"] = false,
+            ["options"] = options.ToDictionary(),
+        };
+
+        ApplyChatResponseFormat(payload, config.ResponseFormat);
+        ApplyChatThinking(payload, config.Thinking);
+        ApplyChatTools(payload, config);
+
+        return payload;
+    }
+
+    private static Dictionary<string, object?> BuildChatMessage(LlmMessage message)
+    {
+        var (text, images) = message.MultiModalContent is { } content && content.Parts.Count > 0
+            ? ContentConverter.ToOllamaMessage(content)
+            : (message.Content, []);
+
+        var dict = new Dictionary<string, object?>
+        {
+            ["role"] = message.Role,
+            ["content"] = text,
+        };
+
+        if (images.Count > 0)
+            dict["images"] = images;
+
+        // Ollama expects arguments as a JSON object; the framework stores the OpenAI shape,
+        // where they are a string. Convert back so a multi-turn conversation replays cleanly.
+        if (message.RawToolCalls is { Length: > 0 } rawToolCalls)
+            dict["tool_calls"] = ToOllamaToolCalls(rawToolCalls);
+
+        return dict;
+    }
+
+    private static List<object> ToOllamaToolCalls(string openAiToolCallsJson)
+    {
+        var calls = new List<object>();
+        using var doc = JsonDocument.Parse(openAiToolCallsJson);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            return calls;
+
+        foreach (var call in doc.RootElement.EnumerateArray())
+        {
+            if (!call.TryGetProperty("function", out var fn))
+                continue;
+
+            var name = fn.TryGetProperty("name", out var n) ? n.GetString() : null;
+            var arguments = fn.TryGetProperty("arguments", out var a) && a.ValueKind == JsonValueKind.String
+                ? JsonSerializer.Deserialize<JsonElement>(a.GetString() ?? "{}")
+                : a;
+
+            calls.Add(new Dictionary<string, object?>
+            {
+                ["function"] = new Dictionary<string, object?>
+                {
+                    ["name"] = name,
+                    ["arguments"] = arguments,
+                },
+            });
+        }
+
+        return calls;
+    }
+
+    private static void ApplyChatResponseFormat(
+        Dictionary<string, object> payload, LlmResponseFormat? responseFormat)
+    {
+        if (responseFormat is null
+            || string.IsNullOrWhiteSpace(responseFormat.Type)
+            || string.Equals(responseFormat.Type, "text", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        payload["format"] = responseFormat.Schema is { } schema
+            ? JsonSerializer.Deserialize<JsonElement>(schema.Schema)
+            : "json";
+    }
+
+    private void ApplyChatThinking(Dictionary<string, object> payload, LlmThinkingConfig? thinking)
+    {
+        if (thinking is null)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(thinking.Effort))
+            payload["think"] = thinking.Effort;
+        else if (thinking.Enabled.HasValue)
+            payload["think"] = thinking.Enabled.Value;
+
+        if (thinking.BudgetTokens.HasValue)
+        {
+            LogUnsupportedOption("thinking.budgetTokens",
+                "Ollama's think field takes a boolean or an effort level, not a token budget");
+        }
+    }
+
+    private void ApplyChatTools(Dictionary<string, object> payload, LlmConfig config)
+    {
+        if (config.Tools is not { Count: > 0 } || _toolCallingStrategy?.SupportsNativeToolCalling != true)
+            return;
+
+        foreach (var kvp in _toolCallingStrategy.Formatter.FormatToolsForPayload(config.Tools, config.ToolMode))
+            payload[kvp.Key] = kvp.Value;
+    }
+
+    /// <summary>
+    /// Parses an <c>/api/chat</c> response, reshaping any tool calls into the OpenAI body the
+    /// rest of the framework already knows how to read.
+    /// </summary>
+    private LlmResponse ParseChatResponse(string responseContent, LlmConfig config)
+    {
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(responseContent);
+        }
+        catch (JsonException ex)
+        {
+            LogDeserializationFailed(
+                LogSanitizer.CreateSanitizedException(ex), LogSanitizer.SanitizeString(responseContent));
+            return CreateEmptyResponse(config, "JSON deserialization failed");
+        }
+
+        using (doc)
+        {
+            var root = doc.RootElement;
+            var message = root.TryGetProperty("message", out var m) ? m : default;
+
+            var content = message.ValueKind == JsonValueKind.Object
+                && message.TryGetProperty("content", out var c)
+                && c.ValueKind == JsonValueKind.String
+                    ? c.GetString() ?? string.Empty
+                    : string.Empty;
+
+            var promptTokens = ReadInt(root, "prompt_eval_count");
+            var completionTokens = ReadInt(root, "eval_count");
+
+            var metadata = LlmResponseMetadata.CreateBuilder().AddProvider(Name);
+            if (message.ValueKind == JsonValueKind.Object
+                && message.TryGetProperty("thinking", out var thinking)
+                && thinking.GetString() is { Length: > 0 } thinkingText)
+            {
+                metadata.Add("reasoning_content", thinkingText);
+            }
+
+            return new LlmResponse
+            {
+                Content = content,
+                TokensUsed = (promptTokens ?? 0) + (completionTokens ?? 0),
+                PromptTokens = promptTokens,
+                CompletionTokens = completionTokens,
+                Model = config.Model ?? ProviderDefaults.OllamaDefaults.DefaultModel,
+                Metadata = metadata.Build().ToDictionary(),
+                RawResponseBody = SynthesizeOpenAiBody(message, content),
+            };
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the OpenAI chat response shape (<c>choices[0].message.tool_calls[]</c>, with
+    /// <c>arguments</c> as a JSON <em>string</em>) from Ollama's own.
+    /// </summary>
+    /// <remarks>
+    /// This single translation is what makes native Ollama tool calling usable: the framework
+    /// has one tool-call parser, and it reads the OpenAI shape. Returns <see langword="null"/>
+    /// when the model called no tool, so the text-fallback path stays in charge for models
+    /// without tool support.
+    /// </remarks>
+    private static string? SynthesizeOpenAiBody(JsonElement message, string content)
+    {
+        if (message.ValueKind != JsonValueKind.Object
+            || !message.TryGetProperty("tool_calls", out var toolCalls)
+            || toolCalls.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var calls = new List<object?>();
+        var index = 0;
+        foreach (var call in toolCalls.EnumerateArray())
+        {
+            if (!call.TryGetProperty("function", out var fn))
+                continue;
+
+            var name = fn.TryGetProperty("name", out var n) ? n.GetString() : null;
+            var arguments = fn.TryGetProperty("arguments", out var a) ? a.GetRawText() : "{}";
+
+            calls.Add(new Dictionary<string, object?>
+            {
+                // Ollama does not issue call ids; a stable positional id keeps the
+                // tool-result correlation the OpenAI protocol relies on.
+                ["id"] = $"ollama_call_{index++}",
+                ["type"] = "function",
+                ["function"] = new Dictionary<string, object?>
+                {
+                    ["name"] = name,
+                    ["arguments"] = arguments,
+                },
+            });
+        }
+
+        if (calls.Count == 0)
+            return null;
+
+        return JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["choices"] = new List<object?>
+            {
+                new Dictionary<string, object?>
+                {
+                    ["message"] = new Dictionary<string, object?>
+                    {
+                        ["role"] = "assistant",
+                        ["content"] = content,
+                        ["tool_calls"] = calls,
+                    },
+                },
+            },
+        });
+    }
+
+    private static int? ReadInt(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var prop)
+        && prop.ValueKind == JsonValueKind.Number
+        && prop.TryGetInt32(out var value)
+            ? value
+            : null;
 
     /// <inheritdoc />
     public override async IAsyncEnumerable<string> GenerateStreamingAsync(

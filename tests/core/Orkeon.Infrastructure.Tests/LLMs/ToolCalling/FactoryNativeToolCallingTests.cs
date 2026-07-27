@@ -211,15 +211,20 @@ public class FactoryNativeToolCallingTests
 
     #endregion
 
-    #region Ollama — documented statu quo: text fallback (R10.7 decision)
+    #region Ollama — native tools on /api/chat, text fallback elsewhere (LLM-07)
 
+    /// <summary>
+    /// Since LLM-07 the factory wires Ollama with the native OpenAI strategy: with tool
+    /// schemas declared, the provider switches to <c>/api/chat</c> — the only endpoint that
+    /// accepts <c>tools</c> — and injects them.
+    /// </summary>
     [Fact]
-    public async Task OllamaProviderFromFactory_KeepsTextFallback_NoNativeToolInjection()
+    public async Task OllamaProviderFromFactory_UsesChatEndpoint_WhenToolsAreDeclared()
     {
-        // Arrange — even with tool schemas configured, the Ollama provider goes through
-        // /api/generate (prompt completion) and must not pretend to support native tools.
+        // Arrange
         var httpClientFactory = new TestHttpClientFactory();
-        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, OllamaGenerateResponse);
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"pong"},"done":true}""");
         using var httpClient = new HttpClient(handler);
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
@@ -231,7 +236,40 @@ public class FactoryNativeToolCallingTests
         var response = await provider.ChatAsync(
             new[] { LlmMessage.User("ping") }, config, TestContext.Current.CancellationToken);
 
-        // Assert — text pipeline untouched: completion endpoint, no tools key, no raw body
+        // Assert
+        Assert.Equal("pong", response.Content);
+
+        var (uri, body) = await ReadSingleCapturedRequestAsync(handler);
+        Assert.EndsWith("/api/chat", uri.AbsolutePath, StringComparison.Ordinal);
+
+        using var doc = JsonDocument.Parse(body);
+        Assert.True(doc.RootElement.TryGetProperty("tools", out _),
+            "with a native strategy wired, Ollama must inject 'tools' into the /api/chat payload");
+    }
+
+    /// <summary>
+    /// The migration is scoped: a conversation with no tools keeps the prompt-completion path
+    /// it has always used, so the text-fallback protocol still covers models without tool
+    /// support.
+    /// </summary>
+    [Fact]
+    public async Task OllamaProviderFromFactory_StaysOnGenerate_WhenNoToolsAreDeclared()
+    {
+        // Arrange
+        var httpClientFactory = new TestHttpClientFactory();
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, OllamaGenerateResponse);
+        using var httpClient = new HttpClient(handler);
+        httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
+
+        var config = CreateOllamaConfig(tools: null);
+        var adapter = Assert.IsType<LlmProviderAdapter>(CreateFactory(httpClientFactory).Create("ollama", config));
+        using var provider = Assert.IsType<OllamaLlmProvider>(adapter.UnderlyingProvider);
+
+        // Act
+        var response = await provider.ChatAsync(
+            new[] { LlmMessage.User("ping") }, config, TestContext.Current.CancellationToken);
+
+        // Assert
         Assert.Equal("pong", response.Content);
         Assert.Null(response.RawResponseBody);
 
@@ -239,8 +277,7 @@ public class FactoryNativeToolCallingTests
         Assert.EndsWith("/api/generate", uri.AbsolutePath, StringComparison.Ordinal);
 
         using var doc = JsonDocument.Parse(body);
-        Assert.False(doc.RootElement.TryGetProperty("tools", out _),
-            "Ollama provider must not inject 'tools' into the /api/generate payload (text fallback by design)");
+        Assert.False(doc.RootElement.TryGetProperty("tools", out _));
     }
 
     #endregion
