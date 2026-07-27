@@ -95,6 +95,7 @@ public sealed partial class YamlCrewMapper
                         TopP = effectiveLlm.TopP ?? 1.0,
                         Thinking = MapThinking(effectiveLlm.Thinking),
                         ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat, effectiveLlm.ResponseSchema),
+                        Cache = MapCache(effectiveLlm.Cache),
                     }
                     : null,
                 Guardrails = MapGuardrails(kvp.Value.Guardrails),
@@ -215,6 +216,7 @@ public sealed partial class YamlCrewMapper
             Thinking = MergeThinkingYamlConfig(crewLevel.Thinking, agentLevel.Thinking),
             ResponseFormat = string.IsNullOrWhiteSpace(agentLevel.ResponseFormat) ? crewLevel.ResponseFormat : agentLevel.ResponseFormat,
             ResponseSchema = agentLevel.ResponseSchema ?? crewLevel.ResponseSchema,
+            Cache = agentLevel.Cache ?? crewLevel.Cache,
         };
     }
 
@@ -292,6 +294,24 @@ public sealed partial class YamlCrewMapper
 
         LogUnknownResponseFormat(trimmed);
         return new LlmResponseFormat { Type = trimmed };
+    }
+
+    /// <summary>
+    /// Maps the YAML <c>cache:</c> block to its domain value object. Returns null when the
+    /// block asks for no breakpoint, so caching stays off unless it was actually requested.
+    /// </summary>
+    private static LlmCacheConfig? MapCache(CacheYamlConfig? yaml)
+    {
+        if (yaml is null) return null;
+
+        var config = new LlmCacheConfig
+        {
+            CacheSystemPrompt = yaml.System ?? false,
+            CacheTools = yaml.Tools ?? false,
+            Ttl = yaml.Ttl,
+        };
+
+        return config.RequestsAnyBreakpoint ? config : null;
     }
 
     private static LlmResponseFormat BuildJsonSchemaFormat(ResponseSchemaYamlConfig schema) =>

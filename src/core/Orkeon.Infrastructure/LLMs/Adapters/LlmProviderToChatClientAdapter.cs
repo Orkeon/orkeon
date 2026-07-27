@@ -505,8 +505,20 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             ToolMode = toolMode,
             GrammarGbnf = ExtractGrammarFromOptions(options) ?? baseConfig.GrammarGbnf,
             Thinking = ExtractThinkingFromOptions(options) ?? baseConfig.Thinking,
-            ResponseFormat = ExtractResponseFormatFromOptions(options) ?? baseConfig.ResponseFormat
+            ResponseFormat = ExtractResponseFormatFromOptions(options) ?? baseConfig.ResponseFormat,
+            Cache = ExtractCacheFromOptions(options) ?? baseConfig.Cache
         };
+    }
+
+    /// <summary>
+    /// Reads the optional <see cref="LlmCacheConfig"/> stashed by the orchestrator under
+    /// <see cref="LlmChatOptionsKeys.Cache"/>.
+    /// </summary>
+    private static LlmCacheConfig? ExtractCacheFromOptions(ChatOptions options)
+    {
+        if (options.AdditionalProperties == null) return null;
+        if (!options.AdditionalProperties.TryGetValue(LlmChatOptionsKeys.Cache, out var raw)) return null;
+        return raw as LlmCacheConfig;
     }
 
     /// <summary>

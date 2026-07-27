@@ -16,4 +16,7 @@ public static class LlmChatOptionsKeys
 
     /// <summary>Carries an <c>Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat</c>.</summary>
     public const string ResponseFormat = "orkeon:response_format";
+
+    /// <summary>Carries an <c>Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig</c>.</summary>
+    public const string Cache = "orkeon:cache";
 }

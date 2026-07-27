@@ -90,6 +90,13 @@ public sealed record LlmConfig
     public LlmThinkingConfig? Thinking { get; init; }
 
     /// <summary>
+    /// Optional prompt-cache request, for the providers whose cache must be marked explicitly
+    /// (Anthropic). <c>null</c> = no breakpoint, which on those providers means no caching at
+    /// all. Providers that cache implicitly ignore it.
+    /// </summary>
+    public LlmCacheConfig? Cache { get; init; }
+
+    /// <summary>
     /// Optional output-format constraint forwarded to OpenAI-compatible providers that
     /// implement the <c>response_format</c> field (DeepSeek today; OpenAI/Groq can opt in
     /// later). <c>null</c> = provider default (free text).

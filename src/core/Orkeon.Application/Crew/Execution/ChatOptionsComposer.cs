@@ -141,6 +141,12 @@ internal sealed class ChatOptionsComposer
             options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
             options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.ResponseFormat] = llm.ResponseFormat;
         }
+
+        if (llm.Cache is not null)
+        {
+            options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
+            options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.Cache] = llm.Cache;
+        }
     }
 
     /// <summary>
@@ -172,6 +178,12 @@ internal sealed class ChatOptionsComposer
         {
             options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
             options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.ResponseFormat] = ov.ResponseFormat;
+        }
+
+        if (ov.Cache is not null)
+        {
+            options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
+            options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.Cache] = ov.Cache;
         }
     }
 

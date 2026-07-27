@@ -34,6 +34,9 @@ public static class LlmConfigResolver
             Thinking = callOverride?.Thinking
                           ?? taskOverride?.Thinking
                           ?? baseConfig.Thinking,
+            Cache = callOverride?.Cache
+                          ?? taskOverride?.Cache
+                          ?? baseConfig.Cache,
         };
     }
 }

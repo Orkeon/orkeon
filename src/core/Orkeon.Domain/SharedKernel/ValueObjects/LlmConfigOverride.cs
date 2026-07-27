@@ -23,6 +23,9 @@ public sealed record LlmConfigOverride
     /// <summary>Thinking-mode toggle and reasoning-effort hint override. <c>null</c> = keep inherited.</summary>
     public LlmThinkingConfig? Thinking { get; init; }
 
+    /// <summary>Prompt-cache breakpoint request override. <c>null</c> = keep inherited.</summary>
+    public LlmCacheConfig? Cache { get; init; }
+
     /// <summary>Sugar for the most common case: force a specific output format.</summary>
     public static LlmConfigOverride ForResponseFormat(LlmResponseFormat fmt)
         => new() { ResponseFormat = fmt };

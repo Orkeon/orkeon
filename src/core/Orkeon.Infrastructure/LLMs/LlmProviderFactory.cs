@@ -145,7 +145,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             || url.Contains("maas.aliyuncs.com", StringComparison.Ordinal))
             return "qwen";
         if (url.Contains("deepseek.com", StringComparison.Ordinal))
+        {
+            GuardAgainstDeepSeekAnthropicEndpoint(url);
             return "deepseek";
+        }
         // Kimi: mainland (moonshot.cn) and international (moonshot.ai) hosts.
         if (url.Contains("moonshot.cn", StringComparison.Ordinal)
             || url.Contains("moonshot.ai", StringComparison.Ordinal))
@@ -206,6 +209,27 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return "zai";
 
         return null;
+    }
+
+    /// <summary>
+    /// Rejects <c>api.deepseek.com/anthropic</c>, which speaks the Anthropic Messages API and
+    /// not the OpenAI dialect the DeepSeek provider builds (G-22).
+    /// </summary>
+    /// <remarks>
+    /// Host-based inference matches <c>deepseek.com</c> and would happily route this endpoint
+    /// to the OpenAI-compatible provider, producing malformed requests whose error surfaces
+    /// far from its cause. Failing here names the cause instead. Orkeon has no reason to use
+    /// this alternate path — the standard DeepSeek endpoint exposes the same models.
+    /// </remarks>
+    private static void GuardAgainstDeepSeekAnthropicEndpoint(string normalizedUrl)
+    {
+        if (!normalizedUrl.Contains("/anthropic", StringComparison.Ordinal))
+            return;
+
+        throw new NotSupportedException(
+            "The DeepSeek base URL points at the /anthropic path, which speaks the Anthropic " +
+            "Messages API dialect, not the OpenAI dialect this provider builds. Use the " +
+            "standard endpoint (https://api.deepseek.com) — it serves the same models.");
     }
 
     /// <summary>

@@ -500,8 +500,81 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         ApplyThinking(payload, config.Thinking);
         ApplyResponseFormat(payload, config.ResponseFormat);
+        ApplyCacheBreakpoints(payload, config.Cache);
 
         return payload;
+    }
+
+    /// <summary>
+    /// Places <c>cache_control</c> breakpoints on the stable prefix of the request.
+    /// </summary>
+    /// <remarks>
+    /// Anthropic's prompt cache is explicit: without a breakpoint nothing is cached and a long
+    /// system prompt is re-billed at full price on every turn (audit gap G-17). Marking is
+    /// opt-in — a breakpoint changes what the vendor stores and how the call is billed.
+    /// The API caps a request at <see cref="LlmCacheConfig.MaxBreakpoints"/> breakpoints and
+    /// rejects the call beyond that, so the two this method can place are inherently within
+    /// budget; the guard below states the invariant rather than defending against it.
+    /// </remarks>
+    private void ApplyCacheBreakpoints(Dictionary<string, object> payload, LlmCacheConfig? cache)
+    {
+        if (cache is null || !cache.RequestsAnyBreakpoint)
+            return;
+
+        var placed = 0;
+
+        if (cache.CacheSystemPrompt && payload.TryGetValue("system", out var system) && system is string systemText)
+        {
+            // A breakpoint can only be attached to a content block, so the plain string form
+            // is promoted to the single-block array form the API also accepts.
+            payload["system"] = new List<object?>
+            {
+                new Dictionary<string, object?>
+                {
+                    ["type"] = "text",
+                    ["text"] = systemText,
+                    ["cache_control"] = BuildCacheControl(cache),
+                },
+            };
+            placed++;
+        }
+
+        if (cache.CacheTools && placed < LlmCacheConfig.MaxBreakpoints)
+            placed += MarkLastToolAsCacheable(payload, cache) ? 1 : 0;
+
+        if (placed == 0)
+            LogCacheRequestedButNothingToMark();
+    }
+
+    /// <summary>
+    /// Attaches the breakpoint to the <em>last</em> tool: the marker caches everything up to
+    /// and including the block it sits on, so one breakpoint covers the whole catalogue.
+    /// </summary>
+    private static bool MarkLastToolAsCacheable(Dictionary<string, object> payload, LlmCacheConfig cache)
+    {
+        if (!payload.TryGetValue("tools", out var toolsObj) || toolsObj is not IEnumerable<object> tools)
+            return false;
+
+        var toolList = tools.ToList();
+        if (toolList.Count == 0)
+            return false;
+
+        // The formatter emits plain dictionaries; anything else is left untouched rather than
+        // reshaped blindly.
+        if (toolList[^1] is not IDictionary<string, object?> lastTool)
+            return false;
+
+        lastTool["cache_control"] = BuildCacheControl(cache);
+        payload["tools"] = toolList;
+        return true;
+    }
+
+    private static Dictionary<string, object?> BuildCacheControl(LlmCacheConfig cache)
+    {
+        var control = new Dictionary<string, object?> { ["type"] = "ephemeral" };
+        if (!string.IsNullOrWhiteSpace(cache.Ttl))
+            control["ttl"] = cache.Ttl;
+        return control;
     }
 
     /// <summary>
@@ -642,6 +715,184 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         }
     }
 
+    /// <summary>
+    /// Streams a multi-message chat completion over the Messages API's native SSE feed
+    /// (G-20): visible text as <see cref="LlmStreamEventKind.ContentDelta"/>, the extended
+    /// thinking trace as <see cref="LlmStreamEventKind.ReasoningDelta"/>, and a terminal
+    /// <see cref="LlmStreamEventKind.Completed"/> whose response carries the assembled content
+    /// and the final usage — cache counters included.
+    /// </summary>
+    /// <remarks>
+    /// Anthropic previously fell back to the buffered emulation in
+    /// <c>HttpLlmProviderBase.ChatStreamingAsync</c>, which waits for the whole answer before
+    /// emitting anything: no token ever arrived early. The SSE parsing already existed for the
+    /// text-only path; this extends it to typed events.
+    /// </remarks>
+    public override async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
+        LlmMessage[] messages,
+        LlmConfig? config = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(messages);
+        var effectiveConfig = config ?? Config;
+
+#pragma warning disable CS0618 // Type or member is obsolete
+        if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
+#pragma warning restore CS0618
+        {
+            yield return LlmStreamEvent.Complete(BuildApiKeyMissingResponse());
+            yield break;
+        }
+
+        // Do NOT use 'using' — factory-managed clients must not be disposed.
+        var client = CreateHttpClient(effectiveConfig);
+        var baseUrl = (effectiveConfig.BaseUrl is null
+                ? DefaultBaseUrl
+                : effectiveConfig.BaseUrl.ToString()).TrimEnd('/');
+        var endpoint = new Uri($"{baseUrl}/v1/messages");
+
+        var (conversationMessages, systemMessage) = SeparateSystemMessages(messages, effectiveConfig);
+        var payload = BuildRequestPayload(effectiveConfig, conversationMessages, systemMessage);
+        payload["stream"] = true;
+        var json = JsonSerializer.Serialize(payload, JsonOptions);
+
+        var state = new AnthropicStreamState();
+        HttpResponseMessage? response = null;
+        try
+        {
+            response = await SendStreamingRequestAsync(client, endpoint, json, cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                LogStreamingError(response.StatusCode);
+                yield return LlmStreamEvent.Complete(
+                    BuildErrorResponse($"Anthropic API error: {response.StatusCode} - {error}", "APIError"));
+                yield break;
+            }
+
+            await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
+            {
+                foreach (var ev in ParseStreamEvent(data, state))
+                    yield return ev;
+            }
+        }
+        finally
+        {
+            response?.Dispose();
+        }
+
+        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig));
+    }
+
+    /// <summary>Accumulation state of one streamed Messages API response.</summary>
+    private sealed class AnthropicStreamState
+    {
+        public StringBuilder Content { get; } = new();
+        public StringBuilder Reasoning { get; } = new();
+        public AnthropicUsage Usage { get; set; }
+    }
+
+    /// <summary>
+    /// Parses one SSE frame into the delta events to emit, mutating <paramref name="state"/>.
+    /// A malformed frame is skipped: one bad frame must not kill the stream.
+    /// </summary>
+    private static List<LlmStreamEvent> ParseStreamEvent(string data, AnthropicStreamState state)
+    {
+        var events = new List<LlmStreamEvent>(1);
+
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(data);
+        }
+        catch (JsonException)
+        {
+            return events;
+        }
+
+        using (doc)
+        {
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("type", out var typeEl))
+                return events;
+
+            switch (typeEl.GetString())
+            {
+                // Input usage (and the cache counters) arrive up front, output usage at the end.
+                case "message_start" when root.TryGetProperty("message", out var message):
+                    state.Usage = ReadUsage(message);
+                    break;
+
+                case "message_delta":
+                    var delta = ReadUsage(root);
+                    state.Usage = state.Usage with
+                    {
+                        OutputTokens = delta.OutputTokens != 0 ? delta.OutputTokens : state.Usage.OutputTokens,
+                    };
+                    break;
+
+                case "content_block_delta" when root.TryGetProperty("delta", out var blockDelta):
+                    AccumulateBlockDelta(blockDelta, state, events);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        return events;
+    }
+
+    private static void AccumulateBlockDelta(
+        JsonElement delta, AnthropicStreamState state, List<LlmStreamEvent> events)
+    {
+        if (delta.TryGetProperty("text", out var textEl)
+            && textEl.GetString() is { Length: > 0 } text)
+        {
+            state.Content.Append(text);
+            events.Add(LlmStreamEvent.Content(text));
+        }
+
+        if (delta.TryGetProperty("thinking", out var thinkingEl)
+            && thinkingEl.GetString() is { Length: > 0 } thinking)
+        {
+            state.Reasoning.Append(thinking);
+            events.Add(LlmStreamEvent.Reasoning(thinking));
+        }
+    }
+
+    /// <summary>
+    /// Builds the terminal response of a streamed completion — same shape as the buffered
+    /// <see cref="ParseResponse"/> result, so callers cannot tell the two paths apart.
+    /// </summary>
+    private LlmResponse BuildStreamedResponse(AnthropicStreamState state, LlmConfig config)
+    {
+        var metadata = LlmResponseMetadata.CreateBuilder()
+            .AddProvider(Name)
+            .Add("input_tokens", state.Usage.InputTokens)
+            .Add("output_tokens", state.Usage.OutputTokens);
+
+        if (state.Reasoning.Length > 0)
+            metadata.Add("reasoning_content", state.Reasoning.ToString());
+        if (state.Usage.CacheCreationTokens is { } created)
+            metadata.Add("cache_creation_input_tokens", created);
+        if (state.Usage.CacheReadTokens is { } read)
+            metadata.Add("cache_read_input_tokens", read);
+
+        return new LlmResponse
+        {
+            Content = state.Content.ToString(),
+            TokensUsed = state.Usage.TotalTokens,
+            PromptTokens = state.Usage.PromptTokens,
+            CompletionTokens = state.Usage.OutputTokens,
+            CacheHitTokens = state.Usage.CacheReadTokens,
+            CacheMissTokens = state.Usage.CacheMissTokens,
+            Model = config.Model,
+            Metadata = metadata.Build().ToDictionary(),
+        };
+    }
+
     private LlmResponse ParseResponse(string responseJson, LlmConfig config)
     {
         using var doc = JsonDocument.Parse(responseJson);
@@ -661,33 +912,74 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             }
         }
 
-        // Extract token usage
-        var inputTokens = 0;
-        var outputTokens = 0;
-        if (doc.RootElement.TryGetProperty("usage", out var usage))
-        {
-            if (usage.TryGetProperty("input_tokens", out var inputEl))
-                inputTokens = inputEl.GetInt32();
-            if (usage.TryGetProperty("output_tokens", out var outputEl))
-                outputTokens = outputEl.GetInt32();
-        }
+        var usage = ReadUsage(doc.RootElement);
+
+        var metadata = LlmResponseMetadata.CreateBuilder()
+            .AddProvider(Name)
+            .Add("input_tokens", usage.InputTokens)
+            .Add("output_tokens", usage.OutputTokens);
+
+        if (usage.CacheCreationTokens is { } created)
+            metadata.Add("cache_creation_input_tokens", created);
+        if (usage.CacheReadTokens is { } read)
+            metadata.Add("cache_read_input_tokens", read);
 
         return new LlmResponse
         {
             Content = textContent,
-            TokensUsed = inputTokens + outputTokens,
+            TokensUsed = usage.TotalTokens,
+            PromptTokens = usage.PromptTokens,
+            CompletionTokens = usage.OutputTokens,
+            CacheHitTokens = usage.CacheReadTokens,
+            CacheMissTokens = usage.CacheMissTokens,
             Model = config.Model,
-            Metadata = LlmResponseMetadata.CreateBuilder()
-                .AddProvider(Name)
-                .Add("input_tokens", inputTokens)
-                .Add("output_tokens", outputTokens)
-                .Build()
-                .ToDictionary(),
+            Metadata = metadata.Build().ToDictionary(),
             RawResponseBody = _toolCallingStrategy?.SupportsNativeToolCalling == true
                 ? responseJson
                 : null
         };
     }
+
+    /// <summary>The Messages API usage block, including the two cache counters (G-21).</summary>
+    /// <remarks>
+    /// Anthropic reports three input figures that do not overlap: <c>input_tokens</c> counts
+    /// only what was processed fresh and uncached, <c>cache_creation_input_tokens</c> what was
+    /// written to the cache, and <c>cache_read_input_tokens</c> what was served from it. The
+    /// prompt total is therefore their sum, and the "miss" side of Orkeon's typed ratio is
+    /// everything that was not a read.
+    /// </remarks>
+    private readonly record struct AnthropicUsage(
+        int InputTokens, int OutputTokens, int? CacheCreationTokens, int? CacheReadTokens)
+    {
+        public int PromptTokens => InputTokens + (CacheCreationTokens ?? 0) + (CacheReadTokens ?? 0);
+
+        public int TotalTokens => PromptTokens + OutputTokens;
+
+        /// <summary>Null when the response carried no cache counters at all — unmeasured, not zero.</summary>
+        public int? CacheMissTokens =>
+            CacheCreationTokens is null && CacheReadTokens is null
+                ? null
+                : InputTokens + (CacheCreationTokens ?? 0);
+    }
+
+    private static AnthropicUsage ReadUsage(JsonElement root)
+    {
+        if (!root.TryGetProperty("usage", out var usage))
+            return default;
+
+        return new AnthropicUsage(
+            InputTokens: ReadInt(usage, "input_tokens") ?? 0,
+            OutputTokens: ReadInt(usage, "output_tokens") ?? 0,
+            CacheCreationTokens: ReadInt(usage, "cache_creation_input_tokens"),
+            CacheReadTokens: ReadInt(usage, "cache_read_input_tokens"));
+    }
+
+    private static int? ReadInt(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var prop)
+        && prop.ValueKind == JsonValueKind.Number
+        && prop.TryGetInt32(out var value)
+            ? value
+            : null;
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Anthropic API Error ({StatusCode}): {Error}")]
     private partial void LogApiError(System.Net.HttpStatusCode statusCode, string error);
@@ -701,4 +993,8 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     [LoggerMessage(EventId = 110, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
         Message = "Option '{Option}' was declared but Anthropic does not support it — it was not sent. {Remedy}.")]
     private partial void LogUnsupportedOption(string option, string remedy);
+
+    [LoggerMessage(EventId = 111, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "Prompt caching was requested but there was nothing to mark: the request carries no system prompt and no tools. No cache_control breakpoint was placed, so nothing will be cached.")]
+    private partial void LogCacheRequestedButNothingToMark();
 }

@@ -213,6 +213,25 @@ public class LlmYamlConfig
     /// under <see cref="ResponseFormat"/> so the historical scalar form stays valid YAML.
     /// </summary>
     public ResponseSchemaYamlConfig? ResponseSchema { get; set; }
+    /// <summary>
+    /// Gets or sets the opt-in prompt-cache block. Only meaningful on providers whose cache
+    /// must be marked explicitly (Anthropic); ignored by those that cache implicitly.
+    /// </summary>
+    public CacheYamlConfig? Cache { get; set; }
+}
+
+/// <summary>
+/// YAML model for the optional <c>cache:</c> block. Off by default: a cache breakpoint
+/// changes what the vendor stores and how the call is billed.
+/// </summary>
+public class CacheYamlConfig
+{
+    /// <summary>Gets or sets whether the system prompt is marked cacheable.</summary>
+    public bool? System { get; set; }
+    /// <summary>Gets or sets whether the tool definitions are marked cacheable.</summary>
+    public bool? Tools { get; set; }
+    /// <summary>Gets or sets the cache lifetime (e.g. <c>"1h"</c>). Null = vendor default.</summary>
+    public string? Ttl { get; set; }
 }
 
 /// <summary>
