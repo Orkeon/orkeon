@@ -103,9 +103,11 @@ public class RagEvalTool : IBaseTool
             var useLlmJudge = request.Parameters.TryGetValue("use_llm_judge", out var j) && ToBool(j);
             var reindex = request.Parameters.TryGetValue("reindex", out var r) && ToBool(r);
 
-            var profiles = compare.Count > 0
-                ? compare
-                : string.IsNullOrWhiteSpace(profile) ? [] : ImmutableList.Create(profile!);
+            // `compare` wins over `profile`; neither given means "the default pipeline".
+            ImmutableList<string> singleProfile =
+                string.IsNullOrWhiteSpace(profile) ? [] : ImmutableList.Create(profile!);
+
+            var profiles = compare.Count > 0 ? compare : singleProfile;
 
             var result = await _harness.RunAsync(
                 new RagEvalRunRequest
@@ -125,7 +127,7 @@ public class RagEvalTool : IBaseTool
 
     /// <inheritdoc />
     public Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
-        // The legacy single-string entrypoint carries no dataset/profile structure;
+        // The legacy single-string entrypoint carries no dataset/profile structure  —
         // rag_eval is only meaningful through the structured protocol.
         => Task.FromResult(new ToolResult
         {

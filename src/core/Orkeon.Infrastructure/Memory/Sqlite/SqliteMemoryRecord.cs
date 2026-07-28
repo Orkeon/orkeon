@@ -161,7 +161,9 @@ internal sealed class SqliteMemoryRecord
     public static byte[]? EmbeddingToBytes(float[]? embedding)
     {
         if (embedding == null || embedding.Length == 0)
+#pragma warning disable S1168 // null persists SQL NULL, distinct from a zero-length embedding BLOB
             return null;
+#pragma warning restore S1168
 
         var bytes = new byte[embedding.Length * sizeof(float)];
         Buffer.BlockCopy(embedding, 0, bytes, 0, bytes.Length);
@@ -174,7 +176,9 @@ internal sealed class SqliteMemoryRecord
     public static float[]? BytesToEmbedding(byte[]? bytes)
     {
         if (bytes == null || bytes.Length == 0 || bytes.Length % sizeof(float) != 0)
+#pragma warning disable S1168 // null means no embedding stored, distinct from a zero-length vector
             return null;
+#pragma warning restore S1168
 
         var floats = new float[bytes.Length / sizeof(float)];
         Buffer.BlockCopy(bytes, 0, floats, 0, bytes.Length);

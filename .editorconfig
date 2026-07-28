@@ -226,6 +226,20 @@ dotnet_diagnostic.CA5359.severity = error
 # its residual tail is public API surface / Jint-exposed members — see the B5 note
 # above; deferred to the API-shape review wave.
 [{src,tests,examples}/**.cs]
+
+# S4457 / S4456 — "split the parameter check from the asynchronous body".
+# Disabled deliberately (arbitrated 2026-07-28, remediation plan §6 Lot 3d).
+# The rule fired 45 times, and 44 of those are PUBLIC methods — there is no
+# "internal surface" to exempt, so the mixed option collapses into refactoring
+# every one of them. That would split 44 methods into a sync wrapper plus a
+# private async core, doubling the method count across the RAG hot paths, in
+# exchange for a deferred-throw nuance no current caller can observe: every
+# call site awaits immediately, so ArgumentException surfaces at the same point
+# either way. Revisit if a caller ever stores the Task before awaiting it, or
+# adopt the split locally when touching a given method for other reasons.
+dotnet_diagnostic.S4457.severity = none
+dotnet_diagnostic.S4456.severity = none
+
 dotnet_diagnostic.CA1860.severity = error
 dotnet_diagnostic.CA1861.severity = error
 dotnet_diagnostic.CA1854.severity = error

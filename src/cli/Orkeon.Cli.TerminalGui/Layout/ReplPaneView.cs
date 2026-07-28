@@ -489,7 +489,7 @@ public sealed class ReplPaneView : FrameView
     }
 
     /// <summary>Test-only accessor for the history text.</summary>
-    // Terminal.Gui's TextView normalizes line endings to "\r\n" on the Text round-trip;
+    // Terminal.Gui's TextView normalizes line endings to "\r\n" on the Text round-trip  —
     // tests assert on the logical content we appended ("\n"), so strip the inserted CRs.
     internal string CurrentHistory => _history.Text.Replace("\r\n", "\n", StringComparison.Ordinal);
 

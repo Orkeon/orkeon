@@ -189,11 +189,13 @@ public static class MaximalMarginalRelevance
     {
         var min = double.PositiveInfinity;
         var max = double.NegativeInfinity;
+#pragma warning disable S3267 // single-pass min+max on the MMR hot path; Min()+Max() would walk the candidates twice
         foreach (var candidate in candidates)
         {
             min = Math.Min(min, candidate.Score);
             max = Math.Max(max, candidate.Score);
         }
+#pragma warning restore S3267
 
         var relevance = new double[candidates.Count];
         var range = max - min;
@@ -221,12 +223,7 @@ public static class MaximalMarginalRelevance
             return 0.0;
 
         var (small, large) = left.Count <= right.Count ? (left, right) : (right, left);
-        var intersection = 0;
-        foreach (var token in small)
-        {
-            if (large.Contains(token))
-                intersection++;
-        }
+        var intersection = small.Count(large.Contains);
 
         return (double)intersection / (left.Count + right.Count - intersection);
     }

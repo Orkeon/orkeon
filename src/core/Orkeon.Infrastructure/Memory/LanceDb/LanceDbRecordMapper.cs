@@ -31,7 +31,9 @@ internal static class LanceDbRecordMapper
     public static string[]? DeserializeTags(string? json)
     {
         if (string.IsNullOrEmpty(json))
+#pragma warning disable S1168 // null means the tags column is absent, distinct from an empty tag set
             return null;
+#pragma warning restore S1168
 
         try
         {

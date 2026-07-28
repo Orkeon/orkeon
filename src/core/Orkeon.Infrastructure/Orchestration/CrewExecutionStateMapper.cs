@@ -200,7 +200,7 @@ public static class CrewExecutionStateMapper
             return [];
 
         // Metadata values are persisted as invariant strings. Primitive values still
-        // round-trip through ExecutionMetadataValue.GetValue<T> (Convert.ChangeType);
+        // round-trip through ExecutionMetadataValue.GetValue<T> (Convert.ChangeType)  —
         // complex values degrade to their string representation (documented v1 limit).
         return raw.ToDictionary(
             kvp => kvp.Key,

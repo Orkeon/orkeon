@@ -101,7 +101,9 @@ public sealed class SlackReadMessagesResponse
     Category = "Communication")]
 public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, SlackReadMessagesResponse>
 {
+#pragma warning disable S1075 // Canonical vendor API root used as a documented fallback default; configuration overrides it. Not a filesystem path — the VFS policy does not apply.
     private const string SlackApiBaseUrl = "https://slack.com/api";
+#pragma warning restore S1075
     private const string ConversationsHistoryEndpoint = "/conversations.history";
     private readonly string _botToken;
 

@@ -98,7 +98,7 @@ public static class ToolSchemaGenerator
             return "string";
         // Guid → string
         if (underlying == typeof(Guid)) return "string";
-        // Uri → string (the LLM fills URL parameters as plain strings on the wire;
+        // Uri → string (the LLM fills URL parameters as plain strings on the wire, and
         // System.Text.Json round-trips Uri↔string natively on deserialize/serialize)
         if (underlying == typeof(Uri)) return "string";
         // Enum → string

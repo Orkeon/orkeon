@@ -54,8 +54,10 @@ public static partial class DefaultEmbeddingProviderResolver
     /// <summary>Named <see cref="HttpClient"/> used when building the Ollama provider directly.</summary>
     internal const string OllamaHttpClientName = "Orkeon.Embeddings.Ollama";
 
+#pragma warning disable S1075 // Canonical vendor API root used as a documented fallback default; configuration overrides it. Not a filesystem path — the VFS policy does not apply.
     /// <summary>Default Ollama base URL when the host configured none.</summary>
     private const string DefaultOllamaBaseUrl = "http://localhost:11434/";
+#pragma warning restore S1075
 
     /// <summary>
     /// Resolves the default <see cref="IEmbeddingProvider"/> for the given container.

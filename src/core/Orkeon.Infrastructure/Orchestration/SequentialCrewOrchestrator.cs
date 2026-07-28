@@ -143,7 +143,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             stopwatch.Stop();
 
             // Simple orchestration: convert domain result to application result.
-            // Real token telemetry is propagated from the strategy via domain metadata;
+            // Real token telemetry is propagated from the strategy via domain metadata  —
             // when the strategy collected no token data, TokensUsed stays null so that
             // consumers can distinguish "not measured" from a genuine zero-cost run
             // (R10.8 / MAT-004 — no fabricated TokenUsage(0,0,0)).

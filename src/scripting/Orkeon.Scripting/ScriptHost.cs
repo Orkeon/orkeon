@@ -199,7 +199,7 @@ public sealed partial class ScriptHost
         var engine = _engineFactory.Create();
 
         // Pre-execution globals hook: expose a structured `inputs` global before the script
-        // runs (SPEC §6 option (a); generalises the --inputs TODO in RunCommand.cs). The
+        // runs (SPEC §6 option (a); generalises the pending --inputs work in RunCommand.cs). The
         // caller hands us a JSON string; we parse it inside the engine so `inputs.foo` is a
         // native JS object with proper property access, not a CLR interop wrapper.
         if (!string.IsNullOrWhiteSpace(inputsJson))

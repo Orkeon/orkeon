@@ -263,8 +263,8 @@ public static class InfrastructureExtensions
 
         // IEmbeddingProvider (Application) — semantic-first default resolution (RAG-01/C4):
         //   1. Analysis-side provider in the container (AddOrkeonLocalEmbeddings → BGE local,
-        //      RaggableTree providers) → wrapped in AnalysisEmbeddingProviderAdapter;
-        //   2. Orkeon:Embeddings configuration → remote provider (Ollama / OpenAI-compatible);
+        //      RaggableTree providers) → wrapped in AnalysisEmbeddingProviderAdapter,
+        //   2. Orkeon:Embeddings configuration → remote provider (Ollama / OpenAI-compatible),
         //   3. otherwise fail-fast at FIRST USE (UnconfiguredEmbeddingProvider — actionable
         //      InvalidOperationException, never at container build time).
         // The hash stub (Stubs.HashBasedEmbeddingProvider) is no longer resolved implicitly

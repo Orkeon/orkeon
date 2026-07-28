@@ -213,7 +213,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         {
             foreach (var attachment in options.KnowledgeAttachments)
             {
-                ArgumentNullException.ThrowIfNull(attachment, nameof(options));
+                ArgumentNullException.ThrowIfNull(attachment);
                 attachment.Validate();
                 agent._knowledgeAttachments.Add(attachment);
             }

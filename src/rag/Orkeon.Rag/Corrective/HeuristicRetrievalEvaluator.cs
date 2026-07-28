@@ -73,6 +73,7 @@ public sealed class HeuristicRetrievalEvaluator : IRetrievalEvaluator
 
         var relevances = ImmutableList.CreateBuilder<ChunkRelevance>();
         var best = 0.0;
+#pragma warning disable S3267 // single pass accumulating two results (running max + relevance list); Select would need two
         foreach (var scored in chunks)
         {
             var chunkTokens = Bm25Index.Tokenize(scored.Chunk.Content).ToHashSet(StringComparer.Ordinal);
@@ -85,10 +86,14 @@ public sealed class HeuristicRetrievalEvaluator : IRetrievalEvaluator
                 Relevance = coverage,
             });
         }
+#pragma warning restore S3267
 
-        var grade = best >= _correctThreshold ? RetrievalGrade.Correct
-            : best < _incorrectThreshold ? RetrievalGrade.Incorrect
-            : RetrievalGrade.Ambiguous;
+        var grade = best switch
+        {
+            _ when best >= _correctThreshold => RetrievalGrade.Correct,
+            _ when best < _incorrectThreshold => RetrievalGrade.Incorrect,
+            _ => RetrievalGrade.Ambiguous,
+        };
 
         return Task.FromResult(new RetrievalVerdict
         {

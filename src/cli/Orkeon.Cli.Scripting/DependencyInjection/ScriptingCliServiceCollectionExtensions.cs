@@ -114,7 +114,7 @@ public static class ScriptingCliServiceCollectionExtensions
         // re-invokes this very factory → infinite self-recursion that hangs host boot (the DI
         // StackGuard spawns fresh stacks forever). The "prefer a host-registered transpiler"
         // intent is already covered by TryAddSingleton: a host that registers its own
-        // IScriptTranspiler before AddScriptCommands wins outright (this factory is never added);
+        // IScriptTranspiler before AddScriptCommands wins outright (this factory is never added)  —
         // one that registers after wins as the last single-service registration. Either way this
         // factory only ever runs as the sole registration, so the lookup could only return itself.
         services.TryAddSingleton<IScriptTranspiler>(sp =>

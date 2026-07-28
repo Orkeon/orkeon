@@ -115,7 +115,9 @@ public sealed partial class LlmListwiseReranker : IReranker
         var ranked = TryParseJsonArray(responseText) ?? TryParseBareIntegers(responseText);
         if (ranked is null)
         {
+#pragma warning disable S1168 // null signals "no usable index" (documented contract), distinct from an empty ranking
             return null;
+#pragma warning restore S1168
         }
 
         var seen = new bool[candidateCount];
@@ -155,7 +157,9 @@ public sealed partial class LlmListwiseReranker : IReranker
             var end = text.IndexOf(']', start + 1);
             if (end < 0)
             {
+#pragma warning disable S1168 // null signals a parse failure — returning [] would short-circuit the `??` fallback chain
                 return null;
+#pragma warning restore S1168
             }
 
             try
@@ -182,7 +186,9 @@ public sealed partial class LlmListwiseReranker : IReranker
         var matches = BareIntegerRegex().Matches(text);
         if (matches.Count == 0)
         {
+#pragma warning disable S1168 // null signals a parse failure — returning [] would short-circuit the `??` fallback chain
             return null;
+#pragma warning restore S1168
         }
 
         var result = new List<int>(matches.Count);

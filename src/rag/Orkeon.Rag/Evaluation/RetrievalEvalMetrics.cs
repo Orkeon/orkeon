@@ -52,12 +52,8 @@ public static class RetrievalEvalMetrics
         ArgumentNullException.ThrowIfNull(relevant);
         GuardArguments(relevant, rankedRetrievedKeys, k);
 
-        var found = 0;
-        foreach (var reference in relevant)
-        {
-            if (TopK(rankedRetrievedKeys, k).Any(keys => keys.Any(key => Matches(key, reference))))
-                found++;
-        }
+        var found = relevant.Count(reference =>
+            TopK(rankedRetrievedKeys, k).Any(keys => keys.Any(key => Matches(key, reference))));
 
         return (double)found / relevant.Count;
     }

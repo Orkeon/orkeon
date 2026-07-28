@@ -39,7 +39,9 @@ internal static partial class QueryVariantParser
             var end = text.IndexOf(']', start + 1);
             if (end < 0)
             {
+#pragma warning disable S1168 // null signals a parse failure so the caller can fall back
                 return null;
+#pragma warning restore S1168
             }
 
             try

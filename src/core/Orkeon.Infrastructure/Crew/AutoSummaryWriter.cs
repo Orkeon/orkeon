@@ -50,7 +50,7 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
     /// <inheritdoc />
     public System.Threading.Tasks.Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
     {
-        // Individual task snapshots are accumulated by SequentialProcessStrategy;
+        // Individual task snapshots are accumulated by SequentialProcessStrategy  —
         // this hook does not need to react to individual tasks.
         return System.Threading.Tasks.Task.CompletedTask;
     }

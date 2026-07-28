@@ -104,6 +104,7 @@ public abstract partial class LlmQueryVariantTransformerBase : IQueryTransformer
         var result = new List<string>(1 + requested) { query };
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { query.Trim() };
 
+#pragma warning disable S3267 // pre-seeded dedupe set plus an early break on a count cap; not expressible without a side-effecting predicate
         foreach (var variant in variants)
         {
             if (seen.Add(variant))
@@ -115,6 +116,7 @@ public abstract partial class LlmQueryVariantTransformerBase : IQueryTransformer
                 }
             }
         }
+#pragma warning restore S3267
 
         return result;
     }

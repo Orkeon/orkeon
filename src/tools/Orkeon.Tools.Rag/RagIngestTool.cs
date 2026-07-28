@@ -118,7 +118,7 @@ public class RagIngestTool : IBaseTool
 
     /// <inheritdoc />
     public Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
-        // The legacy single-string entrypoint carries no collection/sources structure;
+        // The legacy single-string entrypoint carries no collection/sources structure  —
         // rag_ingest is only meaningful through the structured protocol.
         => Task.FromResult(new ToolResult
         {

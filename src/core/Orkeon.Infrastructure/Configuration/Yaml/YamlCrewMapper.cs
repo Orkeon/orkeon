@@ -512,7 +512,7 @@ public sealed partial class YamlCrewMapper
         };
     }
 
-    [LoggerMessage(EventId = 102, Level = LogLevel.Warning,
+    [LoggerMessage(EventId = 106, Level = LogLevel.Warning,
         Message = "Agent '{AgentKey}': knowledge entry (long form) has no 'collection' key — entry skipped.")]
     private partial void LogKnowledgeEntryMissingCollection(string agentKey);
 

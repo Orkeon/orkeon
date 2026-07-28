@@ -167,12 +167,18 @@ public sealed partial class FileSystemService
             // exit (incl. exceptions) while staying CA2007-compliant — the repo's standard idiom
             // (see PostgresStateStore/SqliteStateStore). SonarQube 9.9's S2930 cannot track any
             // async disposal (neither this idiom nor an explicit DisposeAsync in a finally) and
-            // flags srcStream as leaked — marked false-positive server-side.
+            // flags srcStream as leaked.
+            //
+            // Suppressed locally rather than marked false-positive server-side: the server-side
+            // marking was silently lost once (server reset), leaving a BLOCKER pinning
+            // reliability_rating to E. A pragma survives any server reinitialisation.
+#pragma warning disable S2930 // Disposed by `await using` below — S2930 cannot see async disposal
             var srcStream = new FileStream(srcPhysical, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync: true);
             await using var __srcStream = srcStream.ConfigureAwait(false);
 
             var dstStream = new FileStream(dstPhysical, overwrite ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize, useAsync: true);
             await using var __dstStream = dstStream.ConfigureAwait(false);
+#pragma warning restore S2930
 
             await srcStream.CopyToAsync(dstStream, bufferSize, ct).ConfigureAwait(false);
         }

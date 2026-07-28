@@ -640,15 +640,8 @@ public sealed partial class StagedRagPipeline : IRagPipeline
         if (ranking.Count <= 1)
             return ranking;
 
-        var seen = new HashSet<string>(ranking.Count, StringComparer.Ordinal);
-        var result = new List<ScoredChunk>(ranking.Count);
-        foreach (var scored in ranking)
-        {
-            if (seen.Add(scored.Chunk.Id))
-                result.Add(scored);
-        }
-
-        return result;
+        // DistinctBy keeps the first occurrence, i.e. the best-ranked chunk per id.
+        return ranking.DistinctBy(scored => scored.Chunk.Id, StringComparer.Ordinal).ToList();
     }
 
     private static ImmutableList<Citation> BuildCitations(List<ScoredChunk> kept)
@@ -704,12 +697,12 @@ public sealed partial class StagedRagPipeline : IRagPipeline
 
     private static void ValidateOptions(RagOptions options)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Retrieval.TopK, nameof(options));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Retrieval.CandidateK, nameof(options));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Retrieval.Hybrid.RrfK, nameof(options));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Rerank.TopN, nameof(options));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Context.MaxTokens, nameof(options));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.QueryTransform.VariantCount, nameof(options));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Retrieval.TopK);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Retrieval.CandidateK);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Retrieval.Hybrid.RrfK);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Rerank.TopN);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.Context.MaxTokens);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.QueryTransform.VariantCount);
     }
 
     [LoggerMessage(Level = LogLevel.Information,

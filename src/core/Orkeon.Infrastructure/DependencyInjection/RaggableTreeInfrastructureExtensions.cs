@@ -19,11 +19,13 @@ namespace Orkeon.Infrastructure.DependencyInjection;
 /// </summary>
 public static class RaggableTreeInfrastructureExtensions
 {
+#pragma warning disable S1075 // Canonical vendor API root used as a documented fallback default; configuration overrides it. Not a filesystem path — the VFS policy does not apply.
     /// <summary>Default base URI for the OpenAI embeddings API when none is configured.</summary>
     private const string DefaultOpenAIEmbeddingBaseUrl = "https://api.openai.com/";
 
     /// <summary>Default base URI for a local Ollama server when none is configured.</summary>
     private const string DefaultOllamaEmbeddingBaseUrl = "http://localhost:11434/";
+#pragma warning restore S1075
 
     /// <summary>
     /// Registers the RaggableTree services and, when an embedding provider is configured,

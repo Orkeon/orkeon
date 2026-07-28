@@ -194,7 +194,7 @@ internal static class LlmCommand
     private static async Task ArchiveAsync(
         string directory, string provider, string model, string report, CancellationToken cancellationToken)
     {
-        // EXCEPTION-BOOTSTRAP: the probe runs outside a host, so no IFileSystemService exists;
+        // EXCEPTION-BOOTSTRAP. The probe runs outside a host, so no IFileSystemService exists  —
         // the destination is a path the operator passed explicitly.
         Directory.CreateDirectory(directory);
 

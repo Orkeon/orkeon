@@ -67,12 +67,7 @@ public sealed class MemoryItem : Entity<MemoryItemId>
         : base(MemoryItemId.Create())
     {
         Content = content;
-        _embedding = embedding switch
-        {
-            null => null,
-            float[] array => array,
-            _ => [.. embedding],
-        };
+        _embedding = Materialize(embedding);
         Importance = importance;
 
         Metadata = MemoryMetadata.Create(
@@ -96,15 +91,21 @@ public sealed class MemoryItem : Entity<MemoryItemId>
         : base(id)
     {
         Content = content;
-        _embedding = embedding switch
-        {
-            null => null,
-            float[] array => array,
-            _ => [.. embedding],
-        };
+        _embedding = Materialize(embedding);
         Importance = importance;
         Metadata = metadata;
     }
+
+    /// <summary>
+    /// Adopts a <c>float[]</c> as-is and copies any other shape; <c>null</c> stays <c>null</c>.
+    /// Shared by both constructors so the storage contract is defined once.
+    /// </summary>
+    private static float[]? Materialize(IReadOnlyList<float>? embedding) => embedding switch
+    {
+        float[] array => array,
+        { } other => [.. other],
+        _ => null,
+    };
 
     /// <summary>
     /// Creates a new <see cref="MemoryItem"/> with validated parameters.

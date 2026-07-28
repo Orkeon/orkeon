@@ -257,7 +257,9 @@ internal static class LanceDbArrowCodec
     private static float[]? ReadVector(FixedSizeListArray? array, int index)
     {
         if (array is null || array.IsNull(index))
+#pragma warning disable S1168 // null means the Arrow cell is NULL, distinct from a zero-length vector
             return null;
+#pragma warning restore S1168
 
         var listSize = ((FixedSizeListType)array.Data.DataType).ListSize;
         var start = (array.Offset + index) * listSize;

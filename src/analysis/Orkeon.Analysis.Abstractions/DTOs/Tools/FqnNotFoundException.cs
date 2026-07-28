@@ -2,7 +2,9 @@ using System.Collections.Immutable;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
 
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
 public sealed class FqnNotFoundException : Exception
+#pragma warning restore S3925
 {
     public string Fqn { get; }
     public string Reason { get; }

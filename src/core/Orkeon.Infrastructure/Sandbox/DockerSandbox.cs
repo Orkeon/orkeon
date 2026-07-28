@@ -84,7 +84,7 @@ public partial class DockerSandbox : ICodeSandbox
             }
             catch (OperationCanceledException)
             {
-                // R10.3 (ORG-012): WaitForExitAsync only stops *waiting* on cancellation;
+                // R10.3 (ORG-012). WaitForExitAsync only stops *waiting* on cancellation  —
                 // the probe child process would otherwise linger. Kill it (entire tree,
                 // best effort — TryKillProcess tolerates an already-exited process).
                 TryKillProcess(process);

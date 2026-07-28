@@ -54,13 +54,12 @@ internal static class TolerantJsonReader
         if (element.ValueKind != JsonValueKind.Object)
             return null;
 
-        foreach (var property in element.EnumerateObject())
-        {
-            if (property.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
-                return property.Value;
-        }
+        var match = element.EnumerateObject()
+            .FirstOrDefault(property => property.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
-        return null;
+        // JsonProperty is a struct: "not found" surfaces as default(JsonProperty), whose Value
+        // is the only JsonElement that can carry ValueKind.Undefined (a parsed document never does).
+        return match.Value.ValueKind == JsonValueKind.Undefined ? null : match.Value;
     }
 
     /// <summary>Reads a string property (case-insensitive name); <c>null</c> when absent or not a string.</summary>
@@ -135,8 +134,14 @@ internal static class TolerantJsonReader
             var c = text[i];
             if (inString)
             {
+                // S2583 false positive: `escaped` IS set to true below and read on the
+                // next iteration — SonarQube 9.9's symbolic flow analysis does not carry
+                // a mutated local across loop iterations. Reachability is proven by
+                // TolerantJsonReaderTests.ExtractFirstObject_EscapedQuoteInsideString_*.
+#pragma warning disable S2583 // Condition is reachable across loop iterations
                 if (escaped)
                     escaped = false;
+#pragma warning restore S2583
                 else if (c == '\\')
                     escaped = true;
                 else if (c == '"')

@@ -86,7 +86,7 @@ public sealed class LogsPaneView : FrameView
     }
 
     /// <summary>Test-only accessor for the rendered TextView text.</summary>
-    // Terminal.Gui's TextView normalizes line endings to "\r\n" on the Text round-trip;
+    // Terminal.Gui's TextView normalizes line endings to "\r\n" on the Text round-trip  —
     // tests assert on the logical content ("\n"), so strip the inserted CRs.
     internal string CurrentText => _textView.Text.Replace("\r\n", "\n", StringComparison.Ordinal);
 

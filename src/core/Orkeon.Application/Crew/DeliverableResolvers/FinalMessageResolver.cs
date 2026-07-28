@@ -236,7 +236,9 @@ public sealed partial class FinalMessageResolver : IDeliverableResolver
     private ImmutableDictionary<string, string>? LogAndMapRewrittenFqns(
         CrewTask task, TaskDeliverable deliv, InlineFqnValidationResult fqnResult)
     {
+#pragma warning disable S1168 // null means "no rewrites", distinct from an empty rewrite map
         if (fqnResult.Rewrites.Count == 0) return null;
+#pragma warning restore S1168
 
         if (_log.IsEnabled(LogLevel.Information))
         {

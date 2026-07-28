@@ -204,6 +204,7 @@ public sealed partial class LlmRetrievalEvaluator : IRetrievalEvaluator
     {
         var builder = new StringBuilder();
         builder.Append("Question: ").AppendLine(query).AppendLine().AppendLine("Retrieved passages:");
+#pragma warning disable S3267 // StringBuilder append loop — the allocation-free idiom; LINQ+Join would change prompt bytes
         foreach (var scored in chunks)
         {
             var content = scored.Chunk.Content;
@@ -211,6 +212,7 @@ public sealed partial class LlmRetrievalEvaluator : IRetrievalEvaluator
                 .Append("- id: ").AppendLine(scored.Chunk.Id)
                 .Append("  text: ").AppendLine(Truncate(content, MaxChunkExcerptLength));
         }
+#pragma warning restore S3267
 
         return builder.ToString();
     }

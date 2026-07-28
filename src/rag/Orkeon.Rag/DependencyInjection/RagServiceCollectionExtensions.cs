@@ -128,7 +128,7 @@ public static class RagServiceCollectionExtensions
             new MemoryProviderDocumentStore(ResolveDocumentStoreProvider(sp)));
 
         // Hybrid retrieval (RAG-04/C2, per-profile since C4): the store is always
-        // wrapped in the BM25+RRF decorator so ingestion feeds the lexical index;
+        // wrapped in the BM25+RRF decorator so ingestion feeds the lexical index  —
         // whether a search fuses is decided per query (profile presets), with
         // Orkeon:Rag:Retrieval:Hybrid:Enabled as the default mode.
         services.AddOrkeonHybridRetrieval(configuration, ResolveDocumentStoreProvider);
@@ -178,8 +178,8 @@ public static class RagServiceCollectionExtensions
 
         // Preset-aware profile resolution (fast/balanced/quality → one memoized
         // pipeline per profile; adaptive → classifier-routed AdaptiveRagPipeline
-        // over balanced/corrective (RAG-05/C3, corrective delegate since RAG-06);
-        // corrective → the memoized CorrectiveRagPipeline graph (RAG-06);
+        // over balanced/corrective (RAG-05/C3, corrective delegate since RAG-06),
+        // corrective → the memoized CorrectiveRagPipeline graph (RAG-06),
         // 'default' → the registered IRagPipeline above).
         services.TryAddSingleton<IRagProfileResolver>(sp => new ProfileRagPipelineResolver(
             configuration,
@@ -197,7 +197,7 @@ public static class RagServiceCollectionExtensions
         // Evaluation harness (RAG-04/C1): golden datasets, recall@k/MRR, labelled judge.
         services.AddOrkeonRagEvaluation();
 
-        // YAML `rag:` crew block → collections ingested at crew load (RAG-03/C3);
+        // YAML `rag:` crew block → collections ingested at crew load (RAG-03/C3)  —
         // the incremental manifest makes a fresh collection a no-op.
         services.TryAddSingleton<IRagCollectionsBootstrapper>(sp => new RagCollectionsBootstrapper(
             sp.GetRequiredService<IIngestionPipeline>(),

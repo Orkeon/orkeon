@@ -131,6 +131,12 @@ public sealed class RagEvalDatasetYamlLoader : IRagEvalDatasetLoader
             ? ImmutableList<string>.Empty
             : [.. values.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v.Trim())];
 
+    // These two types are YAML binding shapes: YamlDotNet populates every property by
+    // reflection, so the analyzer sees no assignment and reports the properties as
+    // unassigned (S3459) and their setters as unused (S1144). Both are false positives.
+    // `init` is not an option here — YamlDotNet requires accessible setters.
+#pragma warning disable S3459, S1144 // Populated by YamlDotNet reflection, not by code
+
     /// <summary>Mutable YAML binding shape of a dataset file.</summary>
     private sealed class DatasetDocument
     {
@@ -150,4 +156,6 @@ public sealed class RagEvalDatasetYamlLoader : IRagEvalDatasetLoader
         public string? ReferenceAnswer { get; set; }
         public List<string>? Tags { get; set; }
     }
+
+#pragma warning restore S3459, S1144
 }

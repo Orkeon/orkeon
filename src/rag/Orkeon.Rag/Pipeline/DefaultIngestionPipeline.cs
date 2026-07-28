@@ -129,140 +129,28 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
         var previousSources = manifest?.Sources
             ?? new Dictionary<string, ManifestSourceEntry>(StringComparer.Ordinal);
 
-        var manifestDirty = manifest is null || request.Reindex;
-
         if (request.Reindex && manifest is not null)
+            await PurgeCollectionAsync(request, manifest, cancellationToken).ConfigureAwait(false);
+
+        var tally = new IngestionTally
         {
-            // Explicitly consented full rebuild: purge every source the manifest
-            // knows about, then re-ingest the requested sources from scratch.
-            foreach (var sourceId in manifest.Sources.Keys)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await _store.DeleteBySourceAsync(request.Collection, sourceId, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-
-            LogCollectionPurged(manifest.Sources.Count, request.Collection);
-        }
-
-        // Reindex rebuilds the manifest from this run only; otherwise entries of
-        // sources absent from the request are preserved (no implicit purge).
-        var entries = request.Reindex
-            ? new Dictionary<string, ManifestSourceEntry>(StringComparer.Ordinal)
-            : new Dictionary<string, ManifestSourceEntry>(previousSources, StringComparer.Ordinal);
-
-        var documentsLoaded = 0;
-        var chunksCreated = 0;
-        var chunksEmbedded = 0;
-        var chunksSkipped = 0;
-        var sourcesAdded = 0;
-        var sourcesUnchanged = 0;
-        var sourcesReingested = 0;
-        var errors = ImmutableList.CreateBuilder<string>();
+            // Reindex rebuilds the manifest from this run only; otherwise entries of
+            // sources absent from the request are preserved (no implicit purge).
+            Entries = request.Reindex
+                ? new Dictionary<string, ManifestSourceEntry>(StringComparer.Ordinal)
+                : new Dictionary<string, ManifestSourceEntry>(previousSources, StringComparer.Ordinal),
+            ManifestDirty = manifest is null || request.Reindex,
+        };
 
         foreach (var source in request.Sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (!_loaderFactory.TryGetLoader(source, out var loader))
-            {
-                // Surfaced, never swallowed: the report carries the failure.
-                LogNoLoaderForSource(source.Location);
-                errors.Add($"No document loader can handle source '{source.Location}' (kind: '{source.Kind ?? "none"}').");
-                continue;
-            }
-
-            try
-            {
-                // Materialize the documents: hashing them is what detects change,
-                // and loading is cheap compared to embedding.
-                var documents = new List<RagDocument>();
-                await foreach (var document in loader.LoadAsync(source, cancellationToken).ConfigureAwait(false))
-                {
-                    documents.Add(document);
-                }
-
-                documentsLoaded += documents.Count;
-
-                // A descriptor may fan out to several logical sources (e.g. a
-                // directory): diff each one independently, keyed by SourceId —
-                // the same identity DeleteBySourceAsync operates on.
-                foreach (var group in documents
-                    .GroupBy(d => d.SourceId, StringComparer.Ordinal)
-                    .OrderBy(g => g.Key, StringComparer.Ordinal))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var sourceId = group.Key;
-                    var contentHash = ComputeContentHash(group);
-                    var known = previousSources.TryGetValue(sourceId, out var previousEntry);
-
-                    if (!request.Reindex
-                        && known
-                        && string.Equals(previousEntry!.ContentHash, contentHash, StringComparison.Ordinal)
-                        && previousEntry.Chunker.Matches(chunkerProfile))
-                    {
-                        // Unchanged source: zero validation, chunking, or embedding.
-                        sourcesUnchanged++;
-                        LogSourceUnchanged(sourceId, request.Collection);
-                        continue;
-                    }
-
-                    // From here on the source will be (re)written: drop its entry
-                    // first so a mid-flight failure leaves no stale "up to date"
-                    // record masking partially deleted chunks.
-                    entries.Remove(sourceId);
-                    manifestDirty = true;
-
-                    if (known && !request.Reindex)
-                    {
-                        await _store.DeleteBySourceAsync(request.Collection, sourceId, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-
-                    var sourceClean = true;
-                    foreach (var document in group)
-                    {
-                        var outcome = await IngestDocumentAsync(request, strategy, document, cancellationToken)
-                            .ConfigureAwait(false);
-                        chunksCreated += outcome.ChunksCreated;
-                        chunksEmbedded += outcome.ChunksEmbedded;
-                        chunksSkipped += outcome.ChunksSkipped;
-                        if (outcome.Error is not null)
-                        {
-                            errors.Add(outcome.Error);
-                            sourceClean = false;
-                        }
-                    }
-
-                    if (known)
-                        sourcesReingested++;
-                    else
-                        sourcesAdded++;
-
-                    if (sourceClean)
-                    {
-                        entries[sourceId] = new ManifestSourceEntry
-                        {
-                            ContentHash = contentHash,
-                            IngestedAt = DateTimeOffset.UtcNow,
-                            Chunker = chunkerProfile,
-                        };
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex) when (ex is IOException or FileNotFoundException or InvalidOperationException or ArgumentException)
-            {
-                LogSourceFailed(source.Location, ex.Message);
-                errors.Add($"Source '{source.Location}' failed: {ex.Message}");
-            }
+            await IngestSourceAsync(
+                request, strategy, chunkerProfile, previousSources, source, tally, cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        if (manifestDirty)
+        if (tally.ManifestDirty)
         {
             await _manifestStore.SaveAsync(
                 new IngestionManifest
@@ -270,7 +158,7 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
                     Collection = request.Collection,
                     UpdatedAt = DateTimeOffset.UtcNow,
                     Embedding = embeddingProfile,
-                    Sources = entries,
+                    Sources = tally.Entries,
                 },
                 cancellationToken).ConfigureAwait(false);
         }
@@ -279,16 +167,186 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
         return new IngestionReport
         {
             Collection = request.Collection,
-            DocumentsLoaded = documentsLoaded,
-            ChunksCreated = chunksCreated,
-            ChunksEmbedded = chunksEmbedded,
-            ChunksSkipped = chunksSkipped,
-            SourcesAdded = sourcesAdded,
-            SourcesUnchanged = sourcesUnchanged,
-            SourcesReingested = sourcesReingested,
+            DocumentsLoaded = tally.DocumentsLoaded,
+            ChunksCreated = tally.ChunksCreated,
+            ChunksEmbedded = tally.ChunksEmbedded,
+            ChunksSkipped = tally.ChunksSkipped,
+            SourcesAdded = tally.SourcesAdded,
+            SourcesUnchanged = tally.SourcesUnchanged,
+            SourcesReingested = tally.SourcesReingested,
             Duration = stopwatch.Elapsed,
-            Errors = errors.ToImmutable(),
+            Errors = tally.Errors.ToImmutable(),
         };
+    }
+
+    /// <summary>
+    /// Explicitly consented full rebuild: purges every source the manifest knows
+    /// about so the requested sources are re-ingested from scratch.
+    /// </summary>
+    private async Task PurgeCollectionAsync(
+        IngestionRequest request,
+        IngestionManifest manifest,
+        CancellationToken cancellationToken)
+    {
+        foreach (var sourceId in manifest.Sources.Keys)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await _store.DeleteBySourceAsync(request.Collection, sourceId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        LogCollectionPurged(manifest.Sources.Count, request.Collection);
+    }
+
+    /// <summary>
+    /// Loads one descriptor and ingests every logical source it fans out to.
+    /// Loader-resolution and source-level failures are recorded on
+    /// <paramref name="tally"/> and never thrown — the report carries them.
+    /// </summary>
+    private async Task IngestSourceAsync(
+        IngestionRequest request,
+        IChunkingStrategy strategy,
+        ManifestChunkerProfile chunkerProfile,
+        IReadOnlyDictionary<string, ManifestSourceEntry> previousSources,
+        SourceDescriptor source,
+        IngestionTally tally,
+        CancellationToken cancellationToken)
+    {
+        if (!_loaderFactory.TryGetLoader(source, out var loader))
+        {
+            // Surfaced, never swallowed: the report carries the failure.
+            LogNoLoaderForSource(source.Location);
+            tally.Errors.Add($"No document loader can handle source '{source.Location}' (kind: '{source.Kind ?? "none"}').");
+            return;
+        }
+
+        try
+        {
+            // Materialize the documents: hashing them is what detects change,
+            // and loading is cheap compared to embedding.
+            var documents = new List<RagDocument>();
+            await foreach (var document in loader.LoadAsync(source, cancellationToken).ConfigureAwait(false))
+            {
+                documents.Add(document);
+            }
+
+            tally.DocumentsLoaded += documents.Count;
+
+            // A descriptor may fan out to several logical sources (e.g. a
+            // directory): diff each one independently, keyed by SourceId —
+            // the same identity DeleteBySourceAsync operates on.
+            foreach (var group in documents
+                .GroupBy(d => d.SourceId, StringComparer.Ordinal)
+                .OrderBy(g => g.Key, StringComparer.Ordinal))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await IngestSourceGroupAsync(
+                    request, strategy, chunkerProfile, previousSources, group, tally, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is IOException or FileNotFoundException or InvalidOperationException or ArgumentException)
+        {
+            LogSourceFailed(source.Location, ex.Message);
+            tally.Errors.Add($"Source '{source.Location}' failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Diffs one logical source against the manifest; when it changed, re-ingests
+    /// its documents and refreshes its manifest entry. An unchanged source costs
+    /// no validation, chunking or embedding.
+    /// </summary>
+    private async Task IngestSourceGroupAsync(
+        IngestionRequest request,
+        IChunkingStrategy strategy,
+        ManifestChunkerProfile chunkerProfile,
+        IReadOnlyDictionary<string, ManifestSourceEntry> previousSources,
+        IGrouping<string, RagDocument> group,
+        IngestionTally tally,
+        CancellationToken cancellationToken)
+    {
+        var sourceId = group.Key;
+        var contentHash = ComputeContentHash(group);
+        var known = previousSources.TryGetValue(sourceId, out var previousEntry);
+
+        if (!request.Reindex
+            && known
+            && string.Equals(previousEntry!.ContentHash, contentHash, StringComparison.Ordinal)
+            && previousEntry.Chunker.Matches(chunkerProfile))
+        {
+            tally.SourcesUnchanged++;
+            LogSourceUnchanged(sourceId, request.Collection);
+            return;
+        }
+
+        // From here on the source will be (re)written: drop its entry first so a
+        // mid-flight failure leaves no stale "up to date" record masking partially
+        // deleted chunks.
+        tally.Entries.Remove(sourceId);
+        tally.ManifestDirty = true;
+
+        if (known && !request.Reindex)
+        {
+            await _store.DeleteBySourceAsync(request.Collection, sourceId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var sourceClean = true;
+        foreach (var document in group)
+        {
+            var outcome = await IngestDocumentAsync(request, strategy, document, cancellationToken)
+                .ConfigureAwait(false);
+            tally.ChunksCreated += outcome.ChunksCreated;
+            tally.ChunksEmbedded += outcome.ChunksEmbedded;
+            tally.ChunksSkipped += outcome.ChunksSkipped;
+            if (outcome.Error is not null)
+            {
+                tally.Errors.Add(outcome.Error);
+                sourceClean = false;
+            }
+        }
+
+        if (known)
+            tally.SourcesReingested++;
+        else
+            tally.SourcesAdded++;
+
+        if (sourceClean)
+        {
+            tally.Entries[sourceId] = new ManifestSourceEntry
+            {
+                ContentHash = contentHash,
+                IngestedAt = DateTimeOffset.UtcNow,
+                Chunker = chunkerProfile,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Mutable accumulator threaded through the per-source ingestion steps: the
+    /// counters the report is built from, plus the manifest entries being rebuilt.
+    /// </summary>
+    private sealed class IngestionTally
+    {
+        public required Dictionary<string, ManifestSourceEntry> Entries { get; init; }
+
+        /// <summary>Whether the manifest must be persisted at the end of the run.</summary>
+        public required bool ManifestDirty { get; set; }
+
+        public ImmutableList<string>.Builder Errors { get; } = ImmutableList.CreateBuilder<string>();
+
+        public int DocumentsLoaded { get; set; }
+        public int ChunksCreated { get; set; }
+        public int ChunksEmbedded { get; set; }
+        public int ChunksSkipped { get; set; }
+        public int SourcesAdded { get; set; }
+        public int SourcesUnchanged { get; set; }
+        public int SourcesReingested { get; set; }
     }
 
     /// <summary>

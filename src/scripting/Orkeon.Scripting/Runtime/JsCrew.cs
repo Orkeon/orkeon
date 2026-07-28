@@ -224,7 +224,7 @@ public sealed class JsCrew
         crewActivity?.SetTag("crew.name", name);
         crewActivity?.SetTag("crew.process", Process);
 
-        // One typed budget instance per crew run, shared by every agent of the run;
+        // One typed budget instance per crew run, shared by every agent of the run  —
         // created here (not at build time) so the wall-time clock starts with the run.
         _currentRunBudget = JsBudgetBridge.FromSpec(Budget);
 

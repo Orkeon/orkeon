@@ -154,7 +154,7 @@ public sealed partial class ScriptHostFacade
             return CrewRunOutput.Failure($"crew '{safeName}' not found under: {dirs}");
         }
 
-        // Resolve a physical path so esbuild can bundle relative imports (application/prompts.ts);
+        // Resolve a physical path so esbuild can bundle relative imports (application/prompts.ts)  —
         // fall back to the in-memory transpile path when the mount denies Read.
         var validation = _fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read);
         var physicalPath = validation.IsAllowed ? validation.ResolvedPath : null;

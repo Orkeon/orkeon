@@ -120,6 +120,12 @@ public partial class BraveSearchTool : HttpToolBase<WebSearchRequest, WebSearchR
     private partial void LogSearchCompleted(string query, int count);
 
     // ── Brave API response models (internal) ──────────────────────────────
+    //
+    // System.Text.Json populates these by reflection, so the analyzer sees no assignment
+    // and reports the properties as unassigned (S3459) and their accessors as unused
+    // (S1144). Both are false positives — note they are already `init`, which does not
+    // silence either rule (Sonar treats `init` as an unused private setter).
+#pragma warning disable S3459, S1144 // Populated by System.Text.Json reflection, not by code
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812", Justification = "Instantiated via System.Text.Json deserialization of the Brave API response.")]
     private sealed class BraveApiResponse
@@ -140,4 +146,6 @@ public partial class BraveSearchTool : HttpToolBase<WebSearchRequest, WebSearchR
         public string? Url { get; init; }
         public string? Description { get; init; }
     }
+
+#pragma warning restore S3459, S1144
 }

@@ -440,7 +440,9 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
     private static Dictionary<string, object>? BuildEqualityFilter(Dictionary<string, object>? filter)
     {
         if (filter == null || filter.Count == 0)
+#pragma warning disable S1168 // null omits the filter from the payload; {} would send an empty filter
             return null;
+#pragma warning restore S1168
 
         var pineconeFilter = new Dictionary<string, object>(filter.Count);
         foreach (var (key, value) in filter)

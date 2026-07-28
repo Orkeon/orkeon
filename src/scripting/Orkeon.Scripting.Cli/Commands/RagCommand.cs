@@ -319,12 +319,15 @@ internal static class RagCommand
             var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
             var datasetPath = ToVirtualSource(options.Dataset, cwd, fileSystem.GetAvailableMounts());
 
-            var profiles = !string.IsNullOrWhiteSpace(options.Compare)
-                ? options.Compare!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .ToImmutableList()
-                : string.IsNullOrWhiteSpace(options.Profile)
-                    ? ImmutableList<string>.Empty
-                    : ImmutableList.Create(options.Profile!);
+            // --compare wins over --profile; neither given means "the default pipeline".
+            var singleProfile = string.IsNullOrWhiteSpace(options.Profile)
+                ? ImmutableList<string>.Empty
+                : ImmutableList.Create(options.Profile!);
+
+            var profiles = string.IsNullOrWhiteSpace(options.Compare)
+                ? singleProfile
+                : options.Compare!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToImmutableList();
 
             var harness = host.Services.GetRequiredService<IRagEvalHarness>();
             var result = await harness.RunAsync(new RagEvalRunRequest

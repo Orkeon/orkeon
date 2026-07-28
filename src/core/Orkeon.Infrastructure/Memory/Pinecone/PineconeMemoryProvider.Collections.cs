@@ -336,7 +336,9 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
     private static Dictionary<string, object>? BuildScopedFilter(MemoryFilter? filter)
     {
         if (filter is null || filter.IsEmpty)
+#pragma warning disable S1168 // null omits the filter from the payload; {} would send an empty filter
             return null;
+#pragma warning restore S1168
 
         if (filter.Tags is { Count: > 0 })
         {

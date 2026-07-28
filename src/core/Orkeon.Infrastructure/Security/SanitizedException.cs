@@ -11,7 +11,9 @@ namespace Orkeon.Infrastructure.Security;
 /// exception preserves the original type and stack trace.
 /// </para>
 /// </summary>
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
 public sealed class SanitizedException : Exception
+#pragma warning restore S3925
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SanitizedException"/> class

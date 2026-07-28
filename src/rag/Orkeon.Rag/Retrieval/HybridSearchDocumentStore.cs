@@ -65,7 +65,7 @@ public sealed class HybridSearchDocumentStore : IDocumentStore
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.RrfK, nameof(options));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.RrfK);
         _inner = inner;
         _options = options;
         _provider = provider;

@@ -147,7 +147,7 @@ public sealed partial class CorrectiveRagPipeline : IRagPipeline
         _logger = logger ?? NullLogger<CorrectiveRagPipeline>.Instance;
 
         _maxIterations = _options.Corrective.MaxIterations;
-        ArgumentOutOfRangeException.ThrowIfNegative(_maxIterations, nameof(options));
+        ArgumentOutOfRangeException.ThrowIfNegative(_maxIterations);
         _circuitPolicy = circuitPolicy ?? BuildCircuitPolicy(_maxIterations);
         _edgesOrdering = IsEdgesOrdering(_options.Context.Ordering);
     }
@@ -358,7 +358,7 @@ public sealed partial class CorrectiveRagPipeline : IRagPipeline
             case RetrievalGrade.Ambiguous:
                 return (RefineNode, false, "ambiguous retrieval — refining (decompose-then-recompose)");
 
-            case RetrievalGrade.Incorrect:
+            // RetrievalGrade.Incorrect lands here too — it is the default corrective path.
             default:
                 if (state.Iteration < _maxIterations)
                     return (RewriteQueryNode, false, "incorrect retrieval — rewriting the query (vocabulary gap)");
@@ -544,7 +544,7 @@ public sealed partial class CorrectiveRagPipeline : IRagPipeline
             })
             .ToList();
 
-        // Web results open the working set (they are the corrective addition);
+        // Web results open the working set (they are the corrective addition)  —
         // the locally retrieved chunks — graded Incorrect — close it.
         var merged = webChunks.Concat(state.Chunks).Take(topN).ToImmutableList();
 

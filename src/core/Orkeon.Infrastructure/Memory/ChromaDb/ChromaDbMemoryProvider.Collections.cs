@@ -368,7 +368,9 @@ public partial class ChromaDbMemoryProvider : ICollectionAwareMemory
     private static Dictionary<string, object>? BuildScopedWhereClause(MemoryFilter? filter)
     {
         if (filter is null || filter.IsEmpty)
+#pragma warning disable S1168 // null omits the `where` key from the payload; {} would send an empty clause
             return null;
+#pragma warning restore S1168
 
         if (filter.Tags is { Count: > 0 })
         {

@@ -227,14 +227,19 @@ public sealed partial class WebSearchDocumentRetriever
 
         try
         {
-            await foreach (var document in loader.LoadAsync(
-                new SourceDescriptor { Location = url, Kind = WebPageLoader.UrlKind },
-                timeoutCts.Token).ConfigureAwait(false))
-            {
-                return document;
-            }
+            // Only the first page is retained. An explicit enumerator states that
+            // intent directly — an `await foreach` that returns on its first item
+            // reads as a loop but never iterates twice (S1751).
+            var enumerator = loader
+                .LoadAsync(
+                    new SourceDescriptor { Location = url, Kind = WebPageLoader.UrlKind },
+                    timeoutCts.Token)
+                .GetAsyncEnumerator(timeoutCts.Token);
+            await using var __enumerator = enumerator.ConfigureAwait(false);
 
-            return null;
+            return await enumerator.MoveNextAsync().ConfigureAwait(false)
+                ? enumerator.Current
+                : null;
         }
         catch (HttpRequestException exception)
         {

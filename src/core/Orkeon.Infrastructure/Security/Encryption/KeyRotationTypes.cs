@@ -113,7 +113,9 @@ public sealed record KeyRotationState
 /// was rolled back to the old key (staging failure) or requires a re-run to resume the
 /// switch (roll-forward). No success is ever logged when this exception is thrown.
 /// </summary>
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
 public sealed class KeyRotationException : Exception
+#pragma warning restore S3925
 {
     /// <summary>Initializes a new instance of the <see cref="KeyRotationException"/> class.</summary>
     public KeyRotationException()

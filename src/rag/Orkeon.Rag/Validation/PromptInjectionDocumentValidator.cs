@@ -240,11 +240,12 @@ public sealed partial class PromptInjectionDocumentValidator : IDataValidator
         totalScore += ScoreMassiveHtmlComments(content, reasons, spans);
 
         var riskScore = Math.Min(totalScore, 1.0);
-        var verdict = riskScore > Policy.RejectThreshold
-            ? PromptInjectionVerdict.Rejected
-            : riskScore >= Policy.SuspiciousThreshold
-                ? PromptInjectionVerdict.Suspicious
-                : PromptInjectionVerdict.Clean;
+        var verdict = riskScore switch
+        {
+            _ when riskScore > Policy.RejectThreshold => PromptInjectionVerdict.Rejected,
+            _ when riskScore >= Policy.SuspiciousThreshold => PromptInjectionVerdict.Suspicious,
+            _ => PromptInjectionVerdict.Clean,
+        };
 
         if (verdict == PromptInjectionVerdict.Clean && reasons.Count == 0)
         {

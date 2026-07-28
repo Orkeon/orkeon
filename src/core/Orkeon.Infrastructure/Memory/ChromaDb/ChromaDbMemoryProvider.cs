@@ -474,7 +474,9 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
     private static Dictionary<string, object>? BuildWhereClause(Dictionary<string, object>? filter)
     {
         if (filter == null || filter.Count == 0)
+#pragma warning disable S1168 // null omits the `where` key from the payload; {} would send an empty clause
             return null;
+#pragma warning restore S1168
 
         var where = new Dictionary<string, object>(filter.Count);
         foreach (var (key, value) in filter)

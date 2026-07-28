@@ -146,7 +146,8 @@ public sealed partial class OpenAIEmbeddingProvider : IEmbeddingProvider, IDispo
                 var halved = chunk[0][..(originalLength / 2)];
                 LogTextBisection(originalLength, halved.Length);
                 chunk = [halved];
-                // No attempt++ here: this is a corrective re-shape, not a transient retry.
+                // The attempt counter is deliberately not advanced: this is a corrective
+                // re-shape, not a transient retry.
                 continue;
             }
             catch (HttpRequestException) when (attempt < _options.MaxRetries)
@@ -281,7 +282,9 @@ public sealed record OpenAIEmbeddingOptions
 /// <see cref="HttpRequestException"/> because retrying the same payload is futile —
 /// the caller must re-shape (split or truncate) before retrying.
 /// </summary>
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
 public sealed class EmbeddingPayloadTooLargeException : Exception
+#pragma warning restore S3925
 {
     /// <summary>Initializes a new instance with no message. Present for framework compatibility.</summary>
     public EmbeddingPayloadTooLargeException()

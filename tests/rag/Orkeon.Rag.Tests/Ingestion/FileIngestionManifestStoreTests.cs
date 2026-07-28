@@ -109,7 +109,10 @@ public class FileIngestionManifestStoreTests
         var fs = new FakeFileSystemService().AddMount("/kb"); // no /output mount
         var store = new FileIngestionManifestStore(fs);
 
-        await store.SaveAsync(NewManifest(), Ct); // degraded, surfaced by logs only
+        // Degrades gracefully: the write is skipped and surfaced by logs only.
+        var exception = await Record.ExceptionAsync(() => store.SaveAsync(NewManifest(), Ct));
+
+        Assert.Null(exception);
     }
 
     [Fact]

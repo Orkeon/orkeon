@@ -174,12 +174,14 @@ public sealed partial class LlmGroundednessChecker : IGroundednessChecker
             .Append("Question: ").AppendLine(question).AppendLine()
             .Append("Answer to verify: ").AppendLine(answer).AppendLine()
             .AppendLine("Source passages:");
+#pragma warning disable S3267 // StringBuilder append loop — the allocation-free idiom; LINQ+Join would change prompt bytes
         foreach (var scored in context)
         {
             builder
                 .Append("- id: ").AppendLine(scored.Chunk.Id)
                 .Append("  text: ").AppendLine(Truncate(scored.Chunk.Content, MaxChunkExcerptLength));
         }
+#pragma warning restore S3267
 
         return builder.ToString();
     }

@@ -54,11 +54,13 @@ public static class SourceGlobExpander
                 continue;
             }
 
+#pragma warning disable S3267 // async enumeration with a side-effecting dedupe; Where(seen.Add) would hide the mutation
             foreach (var match in await ExpandPatternAsync(fileSystem, location, cancellationToken).ConfigureAwait(false))
             {
                 if (seen.Add(match))
                     descriptors.Add(new SourceDescriptor { Location = match });
             }
+#pragma warning restore S3267
         }
 
         return descriptors;

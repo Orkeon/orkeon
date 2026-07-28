@@ -100,7 +100,9 @@ public sealed record GitHubItem
     Category = "Web Operations")]
 public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 {
+#pragma warning disable S1075 // Canonical vendor API root used as a documented fallback default; configuration overrides it. Not a filesystem path — the VFS policy does not apply.
     private const string BaseUrl = "https://api.github.com";
+#pragma warning restore S1075
 
     private static readonly HashSet<string> ValidActions = new(StringComparer.OrdinalIgnoreCase)
     {

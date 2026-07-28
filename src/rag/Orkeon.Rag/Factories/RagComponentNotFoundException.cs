@@ -5,7 +5,9 @@ namespace Orkeon.Rag.Factories;
 /// <see cref="NamedRagComponentFactory{TComponent}"/>. The message always lists
 /// the known names and aliases — resolution failures are never silent.
 /// </summary>
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
 public sealed class RagComponentNotFoundException : InvalidOperationException
+#pragma warning restore S3925
 {
     /// <summary>Initializes the exception with the failed lookup details.</summary>
     /// <param name="componentKind">Human-readable component kind (e.g. "chunking strategy").</param>

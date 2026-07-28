@@ -66,7 +66,7 @@ public partial class AgentDelegationToolsProvider
         }
 
         // Create delegation tools. Ownership of both disposable tools is transferred to the
-        // agent via AddTool (they live in the agent's tool list for the agent's lifetime);
+        // agent via AddTool (they live in the agent's tool list for the agent's lifetime)  —
         // disposing them here would tear down tools the agent still holds.
         var delegateWorkTool = new DelegateWorkTool(
             _communicationService,

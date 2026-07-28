@@ -7,11 +7,13 @@ namespace Orkeon.Domain.SharedKernel.ValueObjects;
 /// <summary>Configuration for Language Model settings.</summary>
 public sealed record LlmConfig
 {
+#pragma warning disable S1075 // Canonical vendor API root used as a documented fallback default; configuration overrides it. Not a filesystem path — the VFS policy does not apply.
     /// <summary>Default base URL for the Anthropic (Claude) API.</summary>
     private const string AnthropicBaseUrl = "https://api.anthropic.com";
 
     /// <summary>Default base URL for a locally running Ollama server.</summary>
     private const string OllamaBaseUrl = "http://localhost:11434";
+#pragma warning restore S1075
 
     /// <summary>Gets the model identifier (e.g., "gpt-4").</summary>
     public string Model { get; init; } = LlmDefaults.DefaultModelName;

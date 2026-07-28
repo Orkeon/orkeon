@@ -29,6 +29,11 @@ public enum NodeLevel
     L4_Statement
 }
 
+// S2342 asks for a plural name (`EdgeKinds`) because this is a [Flags] enum. Not renamed:
+// `EdgeKind` is public API of Orkeon.Analysis.Abstractions, referenced across 47 files and
+// serialized into persisted RaggableTree graphs — a rename is a breaking change with no
+// behavioural benefit. Revisit only alongside a deliberate major-version break.
+#pragma warning disable S2342 // Public API; rename is breaking and out of proportion
 [Flags]
 public enum EdgeKind
 {
@@ -39,6 +44,7 @@ public enum EdgeKind
     Implements = 1 << 3,
     Contains = 1 << 4
 }
+#pragma warning restore S2342
 
 public enum StatementKind
 {

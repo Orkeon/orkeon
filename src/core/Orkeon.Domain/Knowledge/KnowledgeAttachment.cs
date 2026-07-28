@@ -67,6 +67,12 @@ public sealed record KnowledgeAttachment
     /// <see cref="MinScore"/> within [0, 1], positive <see cref="MaxContextTokens"/> when set.
     /// </summary>
     /// <exception cref="ArgumentException">When any value violates an invariant.</exception>
+    // S3928 reports that these `nameof` values name no parameter of Validate() — correct,
+    // they name the record properties being validated, which is precisely the information
+    // a caller needs to locate the offending value. Dropping paramName would degrade the
+    // diagnostic; switching to InvalidOperationException would break the documented
+    // contract and any caller already catching ArgumentException.
+#pragma warning disable S3928 // paramName intentionally names the invalid property
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(Collection))
@@ -81,4 +87,5 @@ public sealed record KnowledgeAttachment
         if (MaxContextTokens is <= 0)
             throw new ArgumentException($"Knowledge attachment MaxContextTokens must be positive (got {MaxContextTokens}).", nameof(MaxContextTokens));
     }
+#pragma warning restore S3928
 }
