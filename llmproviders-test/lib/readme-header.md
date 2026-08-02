@@ -102,6 +102,23 @@ Les rapports générés sont versionnés : c'est la « sortie archivée » que L
 comme niveau de preuve. Ils sont construits à partir du comportement observé, ne portent
 que l'**hôte** de l'endpoint, et jamais un secret.
 
+Sans `--api-key-env` ni configuration, le kit lit la variable conventionnelle du SDK du
+fournisseur, déclarée dans `lib/catalog.json` :
+
+| Provider | Variable | Provider | Variable |
+|---|---|---|---|
+| `openai` | `OPENAI_API_KEY` | `deepseek` | `DEEPSEEK_API_KEY` |
+| `anthropic` | `ANTHROPIC_API_KEY` | `kimi` · `moonshot` | `MOONSHOT_API_KEY` |
+| `azure` · `azure-openai` | `AZURE_OPENAI_API_KEY` | `qwen` | `DASHSCOPE_API_KEY` |
+| `groq` | `GROQ_API_KEY` | `mistral` | `MISTRAL_API_KEY` |
+| `together` · `togetherai` | `TOGETHER_API_KEY` | `huggingface` · `hf` | `HF_TOKEN` |
+| `ollama` | *aucune* | `zai` · `glm` · `zhipu` | `ZAI_API_KEY` |
+
+`--api-key-env` l'emporte, puis le champ `apiKeyEnv` de la configuration, puis cette
+table, et enfin `ORKEON_LLM_API_KEY`. Le défaut était auparavant `ORKEON_LLM_API_KEY`
+pour les douze : toute campagne lancée sans `--config` cherchait une variable que
+personne n'exporte.
+
 ## Le wildcard
 
 Un `--model` contenant `*` ou `?` déclenche

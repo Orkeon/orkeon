@@ -19,6 +19,7 @@ set -euo pipefail
 KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$KIT_DIR/.." && pwd)"
 CLI_PROJECT="$REPO_ROOT/src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj"
+CATALOG="$KIT_DIR/lib/catalog.json"
 
 PROVIDER=""
 ALL=0
@@ -152,6 +153,22 @@ cfg() {
   printf '%s' "${value:-$fallback}"
 }
 
+# The variable each vendor's own SDK reads, resolved through the catalogue's alias table.
+#
+# The built-in default used to be ORKEON_LLM_API_KEY for every provider, so any run without
+# a --config looked for a variable nobody exports. The probe refused and said so — on a
+# stderr the kit discarded — and the campaign was archived as an empty report
+# (deepseek-v4-pro, 2026-08-02). A default that is wrong for all twelve providers is not a
+# default. These are guesses in the sense that any convention is one, and `-k` or the
+# configuration still wins; what matters is that the guess is right often enough that the
+# common case needs no flag.
+catalog_key_env() {
+  local provider="$1" canonical
+  [[ -f "$CATALOG" ]] || return 0
+  canonical=$(jq -r --arg p "$provider" '.providers[$p].aliasOf // $p' "$CATALOG")
+  jq -r --arg p "$canonical" '.providers[$p].apiKeyEnv // empty' "$CATALOG"
+}
+
 # ── The orkeon CLI ───────────────────────────────────────────────────────────
 
 # Resolved on first use, not up front: a dry run that only expands literal model names never
@@ -232,7 +249,7 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 run_one() {
   local provider="$1" model="$2" modes="$3" key_env="$4" base_url="$5" api_version="$6"
-  local slug stamp target raw args status
+  local slug stamp target raw err args status
 
   slug=$(printf '%s' "$model" | tr -c 'A-Za-z0-9._-' '_')
   stamp=$(date -u +%Y-%m-%d-%H%M%S)
@@ -253,21 +270,29 @@ run_one() {
   [[ -n "$TEMPERATURE" ]] && args+=(--temperature "$TEMPERATURE")
 
   raw="$TMP_DIR/$provider-$slug.json"
+  err="$TMP_DIR/$provider-$slug.stderr"
   log "▶ $provider / $model  [$modes]"
 
   # The probe exits non-zero when a mode fails. That is a result, not a crash: capture the
   # output either way, and let the report say what broke.
   set +e
-  "${ORKEON[@]}" "${args[@]}" > "$raw" 2>"$TMP_DIR/stderr.txt"
+  "${ORKEON[@]}" "${args[@]}" > "$raw" 2>"$err"
   status=$?
   set -e
 
   # Always returns 0: a broken campaign is recorded in FAILURES, not raised. Under `set -e`
   # a non-zero return here would abort the whole run, so one unreachable provider would cost
   # us every provider after it in a --all sweep.
-  if ! jq -e . "$raw" >/dev/null 2>&1; then
+  #
+  # The emptiness check is not redundant with the parse: on jq 1.6 an empty file is zero
+  # inputs, so `jq -e .` prints nothing and exits 0 — the guard waved through a probe that
+  # had written nothing at all, and the campaign was archived as a report with every field
+  # blank and a ✅ in its journal fragment (deepseek-v4-pro, 2026-08-02). jq 1.7 returns 4
+  # for the same file, so the hole was version-dependent on top of being silent. Asserting
+  # on the fields the report actually reads is what closes it for good.
+  if [[ ! -s "$raw" ]] || ! jq -e 'has("modes") and has("passed")' "$raw" >/dev/null 2>&1; then
     warn "$provider / $model: the probe produced no usable JSON (exit $status)."
-    sed 's/^/    /' "$TMP_DIR/stderr.txt" >&2 || true
+    if [[ -s "$err" ]]; then sed 's/^/    /' "$err" >&2; fi
     FAILURES=$((FAILURES + 1))
     return 0
   fi
@@ -289,7 +314,8 @@ run_provider() {
   # Command line wins over the configuration, which wins over the built-in default — the
   # usual precedence, so an operator can override one provider without editing the file.
   modes="${MODES:-$(cfg "$provider" "modes" "$ALL_MODES")}"
-  key_env="${API_KEY_ENV:-$(cfg "$provider" "apiKeyEnv" "ORKEON_LLM_API_KEY")}"
+  key_env="${API_KEY_ENV:-$(cfg "$provider" "apiKeyEnv" "$(catalog_key_env "$provider")")}"
+  key_env="${key_env:-ORKEON_LLM_API_KEY}"
   base_url="${BASE_URL:-$(cfg "$provider" "baseUrl")}"
   api_version="${API_VERSION:-$(cfg "$provider" "apiVersion")}"
   cap="${MAX_MODELS:-$(cfg "$provider" "maxModels" "$DEFAULT_MAX_MODELS")}"

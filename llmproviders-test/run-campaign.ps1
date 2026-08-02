@@ -146,6 +146,33 @@ function Get-Setting {
     return "$Fallback"
 }
 
+# The variable each vendor's own SDK reads, resolved through the catalogue's alias table.
+#
+# The built-in default used to be ORKEON_LLM_API_KEY for every provider, so any run without
+# a -Config looked for a variable nobody exports. The probe refused and said so — on a
+# stderr the kit discarded — and the campaign was archived as an empty report
+# (deepseek-v4-pro, 2026-08-02). A default that is wrong for all twelve providers is not a
+# default. -ApiKeyEnv and the configuration still win; the point is that the common case
+# should need neither.
+$script:Catalog = $null
+function Get-CatalogKeyEnv {
+    param([string]$ProviderKey)
+
+    $path = Join-Path $KitDir 'lib/catalog.json'
+    if (-not (Test-Path -LiteralPath $path)) { return '' }
+    if (-not $script:Catalog) {
+        $script:Catalog = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+    }
+
+    $entry = $script:Catalog.providers.PSObject.Properties[$ProviderKey]
+    if (-not $entry) { return '' }
+    if ($entry.Value.aliasOf) {
+        $entry = $script:Catalog.providers.PSObject.Properties[$entry.Value.aliasOf]
+        if (-not $entry) { return '' }
+    }
+    return "$($entry.Value.apiKeyEnv)"
+}
+
 # ── The orkeon CLI ───────────────────────────────────────────────────────────
 
 # Resolved on first use, not up front: a dry run that only expands literal model names never
@@ -258,17 +285,25 @@ function Invoke-Campaign {
     if ($null -ne $Temperature) { $arguments += @('--temperature', $Temperature.ToString([cultureinfo]::InvariantCulture)) }
 
     $raw = Join-Path $TmpDir "$ProviderKey-$slug.json"
+    $err = Join-Path $TmpDir "$ProviderKey-$slug.stderr"
     Write-Log "▶ $ProviderKey / $ModelId  [$ModeList]"
 
     # The probe exits non-zero when a mode fails. That is a result, not a crash: capture the
-    # output either way, and let the report say what broke.
-    $output = & { Invoke-Orkeon $arguments } 2>$null
+    # output either way, and let the report say what broke. Its diagnostics go to a file
+    # rather than to $null — a probe that dies has already said why, and discarding that
+    # left the operator with a bare "no usable JSON" and nothing to act on.
+    $output = & { Invoke-Orkeon $arguments } 2>$err
     [System.IO.File]::WriteAllText($raw, ($output -join "`n"), [System.Text.UTF8Encoding]::new($false))
 
+    # Assert on the fields the report actually reads, not merely that the payload parses:
+    # the bash twin archived a hollow report because its guard stopped at "is this JSON".
     $campaign = $null
     try { $campaign = Get-Content -Raw -LiteralPath $raw | ConvertFrom-Json } catch { }
-    if (-not $campaign) {
+    if ((-not $campaign) -or ($null -eq $campaign.passed) -or ($null -eq $campaign.modes)) {
         Write-Warn "$ProviderKey / $ModelId : the probe produced no usable JSON."
+        if (Test-Path -LiteralPath $err) {
+            Get-Content -LiteralPath $err | ForEach-Object { Write-Warn "    $_" }
+        }
         $script:Failures++
         return
     }
@@ -287,7 +322,8 @@ function Invoke-Provider {
     # Command line wins over the configuration, which wins over the built-in default — the
     # usual precedence, so an operator can override one provider without editing the file.
     $modeList = if ($Modes)     { $Modes }     else { Get-Setting $ProviderKey 'modes' $AllModes }
-    $keyEnv   = if ($ApiKeyEnv) { $ApiKeyEnv } else { Get-Setting $ProviderKey 'apiKeyEnv' 'ORKEON_LLM_API_KEY' }
+    $keyEnv   = if ($ApiKeyEnv) { $ApiKeyEnv } else { Get-Setting $ProviderKey 'apiKeyEnv' (Get-CatalogKeyEnv $ProviderKey) }
+    if (-not $keyEnv) { $keyEnv = 'ORKEON_LLM_API_KEY' }
     $base     = if ($BaseUrl)   { $BaseUrl }   else { Get-Setting $ProviderKey 'baseUrl' }
     $version  = if ($ApiVersion){ $ApiVersion} else { Get-Setting $ProviderKey 'apiVersion' }
     $cap      = if ($MaxModels -gt 0) { $MaxModels } else { [int](Get-Setting $ProviderKey 'maxModels' $DefaultMaxModels) }
