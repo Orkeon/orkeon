@@ -21,8 +21,18 @@ public sealed partial class TextFallbackToolCallParser : IToolCallParser
 
     // ── Regex patterns (source-generated, ReDoS-protected via matchTimeoutMilliseconds) ──
 
+    /// <remarks>
+    /// The opening tag is deliberately not pinned to the literal <c>[TOOL_CALL]</c>. Smaller
+    /// models routinely substitute the tool's own name into it — <c>llama3.2</c> emitted
+    /// <c>[ORKEON_PROBE_LOOKUP]{tool =&gt; …}[/TOOL_CALL]</c> in the campaign of 2026-08-01 —
+    /// and rejecting that costs a tool call over a label nobody reads. What actually identifies
+    /// the block is the <c>{tool =&gt; "…", args =&gt; {…}}</c> body and the <c>[/TOOL_CALL]</c>
+    /// terminator, both of which stay required; an uppercase token alone would match far too
+    /// much. This path exists for models that follow formats poorly, so tolerating a plausible
+    /// deviation is the whole job.
+    /// </remarks>
     [GeneratedRegex(
-        @"\[TOOL_CALL\]\s*\{tool\s*=>\s*""(?<toolName>[^""]+)""\s*,\s*args\s*=>\s*\{(?<args>[^}]*)\}\s*\}\s*\[/TOOL_CALL\]",
+        @"\[[A-Z][A-Z0-9_]*\]\s*\{tool\s*=>\s*""(?<toolName>[^""]+)""\s*,\s*args\s*=>\s*\{(?<args>[^}]*)\}\s*\}\s*\[/TOOL_CALL\]",
         RegexOptions.Singleline,
         matchTimeoutMilliseconds: 2000)]
     private static partial Regex ToolCallBlockRegex();
@@ -32,6 +42,17 @@ public sealed partial class TextFallbackToolCallParser : IToolCallParser
         RegexOptions.None,
         matchTimeoutMilliseconds: 2000)]
     private static partial Regex ArgPairRegex();
+
+    /// <remarks>
+    /// The documented argument syntax is <c>--key "value"</c>, which is unusual enough that
+    /// models fall back on the JSON they were trained on: <c>{"city" : "Lyon"}</c>. Read as a
+    /// second dialect rather than treated as malformed.
+    /// </remarks>
+    [GeneratedRegex(
+        @"""(?<key>[^""]+)""\s*:\s*(?:""(?<value>[^""]*)""|(?<value2>[^,}\s][^,}]*))",
+        RegexOptions.None,
+        matchTimeoutMilliseconds: 2000)]
+    private static partial Regex JsonArgPairRegex();
 
     [GeneratedRegex(
         @"<invoke\s+name=""(?<toolName>[^""]+)""(?<attrs>[^>]*)(?:/>|>(?<body>[\s\S]*?)</invoke>)",
@@ -196,16 +217,42 @@ public sealed partial class TextFallbackToolCallParser : IToolCallParser
         var argsText = match.Groups["args"].Value;
         var parameters = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var (key, value) in ArgPairRegex()
-            .Matches(argsText)
-            .Cast<Match>()
-            .Select(ExtractArgPair))
+        foreach (var (key, value) in ExtractArgPairs(argsText))
         {
             var normalizedKey = NormalizeParameterName(key);
             parameters[normalizedKey] = SanitizeParameterValue(normalizedKey, value);
         }
 
         return new TextParsedToolCall(toolName, parameters, match.Value);
+    }
+
+    /// <summary>
+    /// Reads the argument list in either dialect: the documented <c>--key "value"</c> form, or
+    /// the JSON object models reach for when they forget it.
+    /// </summary>
+    /// <remarks>
+    /// The documented form is tried first and wins outright when it matches, so no existing
+    /// behaviour shifts. JSON is only consulted for a block that would otherwise have yielded
+    /// no arguments at all — which is to say, one that used to be silently discarded.
+    /// </remarks>
+    private static List<(string Key, string Value)> ExtractArgPairs(string argsText)
+    {
+        var documented = ArgPairRegex()
+            .Matches(argsText)
+            .Cast<Match>()
+            .Select(ExtractArgPair)
+            .ToList();
+
+        if (documented.Count > 0)
+            return documented;
+
+        return JsonArgPairRegex()
+            .Matches(argsText)
+            .Cast<Match>()
+            .Select(m => (
+                Key: m.Groups["key"].Value,
+                Value: (m.Groups["value"].Success ? m.Groups["value"].Value : m.Groups["value2"].Value).Trim()))
+            .ToList();
     }
 
     /// <summary>Extracts a (key, value) pair from an ArgPairRegex match, handling both quoted and unquoted variants.</summary>

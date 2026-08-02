@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Orkeon.Application.Interfaces.LLM;
+using Orkeon.Domain.SharedKernel.ValueObjects.Content;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools.Protocol;
@@ -482,6 +483,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     {
         var effectiveConfig = config ?? Config;
 
+        WarnOnUnsendableAttachments(messages);
+
         // Use the full chat completions path when:
         // - messages already carry tool-call metadata (subsequent iterations), OR
         // - the config defines tools to send (first iteration with tools), OR
@@ -513,6 +516,40 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         {
             return HandleApiException(ex);
         }
+    }
+
+    /// <summary>
+    /// Reports non-text attachments this provider cannot put on the wire, instead of letting
+    /// them vanish.
+    /// </summary>
+    /// <remarks>
+    /// A provider that declares no vision never takes the structured content path, so its
+    /// messages are flattened to <c>"{role}: {Content}"</c> — and <c>Content</c> holds only
+    /// the text. The image was therefore dropped without a trace: the model answered a
+    /// question about a picture it never received, which reads as a bad answer rather than as
+    /// a configuration mistake. Surfaced by the Z.AI campaign of 2026-08-01 (D-03).
+    /// </remarks>
+    private void WarnOnUnsendableAttachments(LlmMessage[] messages)
+    {
+        if (SupportsVisionContent)
+            return;
+
+        var attachments = messages
+            .Where(m => m.MultiModalContent is { } c && c.Parts.Count > 0 && !c.IsTextOnly)
+            .SelectMany(m => m.MultiModalContent!.Parts)
+            .Where(p => p is not TextContentPart)
+            .Select(p => p.Type.Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        if (attachments.Count == 0)
+            return;
+
+        LogUnsupportedOption(
+            $"message attachments ({string.Join(", ", attachments)})",
+            ProviderDisplayName,
+            "only the text parts were sent; pick a provider and a model that accept this content type");
     }
 
     private static bool HasToolMetadata(LlmMessage[] messages) =>
@@ -560,7 +597,16 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         using var response = await ExecuteHttpRequestAsync(request, effectiveConfig, cancellationToken).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
-            return await CreateApiErrorResponseAsync(response, cancellationToken).ConfigureAwait(false);
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            // The request-aware hint is the sharper of the two; fall back on reading the
+            // vendor's own wording, which also covers capabilities other than vision.
+            var hint = VisionHintFor(messages, effectiveConfig) is { Length: > 0 } visionHint
+                ? visionHint
+                : CapabilityHintFor(body, effectiveConfig);
+
+            return CreateApiErrorResponse(response.StatusCode, body, hint);
+        }
 
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return ParseSuccessResponse(responseJson, effectiveConfig);
@@ -573,6 +619,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     private Dictionary<string, object> BuildChatRequestBody(LlmMessage[] messages, LlmConfig effectiveConfig)
     {
         var messagesList = BuildChatMessagesList(messages);
+        PrependConfiguredSystemMessage(messagesList, effectiveConfig);
 
         var payload = new Dictionary<string, object>
         {
@@ -586,6 +633,46 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         ApplyTools(payload, effectiveConfig);
 
         return payload;
+    }
+
+    /// <summary>
+    /// Prepends <see cref="LlmConfig.SystemMessage"/> when the conversation does not already
+    /// carry one of its own.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The chat path used to build its messages array from the passed messages alone, so a
+    /// <c>SystemMessage</c> set on the configuration was silently dropped on all ten
+    /// OpenAI-compatible providers — while Anthropic and Ollama honoured it. The same crew
+    /// configuration therefore behaved differently depending on the provider, which is the
+    /// silent-drop failure mode the capability model exists to prevent. Found by the M2 probe
+    /// of the first real DeepSeek campaign (2026-08-01); the mocked tests could not see it
+    /// because none of them asserted on it.
+    /// </para>
+    /// <para>
+    /// Precedence matches <c>AnthropicLlmProvider.SeparateSystemMessages</c>: a system message
+    /// present in the conversation wins, and the configuration is only a fallback. Anything
+    /// else would let a call-site override be overwritten by ambient configuration.
+    /// </para>
+    /// </remarks>
+    private static void PrependConfiguredSystemMessage(
+        List<Dictionary<string, object?>> messagesList, LlmConfig effectiveConfig)
+    {
+        if (messagesList.Exists(m =>
+                m.TryGetValue("role", out var role) && LlmRoles.IsSystem(role as string)))
+        {
+            return;
+        }
+
+        var systemMessage = ExtractSystemMessage(effectiveConfig);
+        if (string.IsNullOrWhiteSpace(systemMessage))
+            return;
+
+        messagesList.Insert(0, new Dictionary<string, object?>
+        {
+            ["role"] = LlmRoles.System,
+            ["content"] = systemMessage,
+        });
     }
 
     /// <summary>
@@ -1140,23 +1227,65 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         };
     }
 
+    /// <param name="response">The failed HTTP response.</param>
+    /// <param name="cancellationToken">Cancels reading the error body.</param>
+    /// <param name="hint">
+    /// Optional sentence appended to the error, naming a likely cause the raw vendor message
+    /// does not. Empty when the request offers no such clue.
+    /// </param>
     private async Task<LlmResponse> CreateApiErrorResponseAsync(
-        HttpResponseMessage response, CancellationToken cancellationToken)
+        HttpResponseMessage response, CancellationToken cancellationToken, string hint = "")
     {
         var rawError = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        return CreateApiErrorResponse(response.StatusCode, rawError, hint);
+    }
+
+    /// <summary>Builds the typed error, for callers that have already read the body.</summary>
+    /// <param name="statusCode">The HTTP status the vendor returned.</param>
+    /// <param name="rawError">The raw response body.</param>
+    /// <param name="hint">Optional sentence naming a likely cause. Empty when there is none.</param>
+    private LlmResponse CreateApiErrorResponse(HttpStatusCode statusCode, string rawError, string hint = "")
+    {
         var error = LogSanitizer.SanitizeString(rawError);
-        LogApiError(response.StatusCode, error);
+        LogApiError(statusCode, error);
         return new LlmResponse
         {
             Content = "",
             Metadata = LlmResponseMetadata.CreateBuilder()
                 .AddProvider(Name)
-                .AddError($"{ProviderDisplayName} API error: {response.StatusCode} - {error}")
+                .AddError($"{ProviderDisplayName} API error: {statusCode} - {error}{hint}")
                 .AddErrorType("APIError")
                 .Build()
                 .ToDictionary()
         };
     }
+
+    /// <summary>
+    /// Names the per-model vision trap when a request carrying an image is rejected.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="LlmProviderCapabilities.Vision"/> is declared per provider while support is
+    /// really per model: <c>glm-5.2</c> answers a perfectly well-formed image part with
+    /// <c>messages.content.type is invalid, allowed values: ['text']</c>. The vendor message
+    /// is accurate but says nothing about *why* Orkeon sent an image in the first place, so a
+    /// reader blames the framework. This sentence closes that gap without pretending Orkeon
+    /// knows which models see (D-03).
+    /// </remarks>
+    private string VisionHintFor(LlmMessage[] messages, LlmConfig effectiveConfig) =>
+        HasVisionPayload(messages)
+            ? $" — the request carried an image and {ProviderDisplayName} declares vision support, " +
+              $"but that is declared per provider while models differ: '{effectiveConfig.Model ?? DefaultModel}' " +
+              "may be text-only. Try a vision model, or send text only."
+            : "";
+
+    /// <summary>
+    /// Reads the same mismatch out of the vendor's own words, for the paths that no longer hold
+    /// the request. Complements <see cref="VisionHintFor"/>, which is more precise where the
+    /// messages are still in hand, and covers capabilities beyond vision.
+    /// </summary>
+    private string CapabilityHintFor(string vendorError, LlmConfig effectiveConfig) =>
+        CapabilityMismatchHint.ForVendorError(
+            vendorError, ProviderDisplayName, effectiveConfig.Model ?? DefaultModel);
 
     private LlmResponse CreateExceptionResponse(Exception ex)
     {
