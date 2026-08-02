@@ -4,6 +4,7 @@
 # Usage:
 #   run-campaign.sh --provider openai --model gpt-5.6-sol
 #   run-campaign.sh --provider openai --model 'gpt-5.6-*' --max-models 3
+#   run-campaign.sh --provider deepseek,zai,ollama --parallel
 #   run-campaign.sh --all --config providers.local.json
 #   run-campaign.sh --all --config providers.local.json --dry-run
 #
@@ -32,6 +33,7 @@ API_KEY_ENV=""
 MAX_MODELS=""
 DRY_RUN=0
 NO_RECAP=0
+PARALLEL=0
 OUT="$KIT_DIR"
 CONFIGURATION="Debug"
 # Empty means "let the harness decide": the probe already defaults to 180 s and temperature 0,
@@ -54,13 +56,20 @@ Runs the LLM provider test protocol against real APIs and archives the proof.
 Usage:
   run-campaign.sh --provider openai --model gpt-5.6-sol
   run-campaign.sh --provider openai --model 'gpt-5.6-*' --max-models 3
+  run-campaign.sh --provider deepseek,zai,ollama --parallel
   run-campaign.sh --all --config providers.local.json
   run-campaign.sh --all --config providers.local.json --dry-run
 
 Options:
-  -p, --provider <key>   openai | anthropic | ollama | azure | groq | together | qwen
+  -p, --provider <keys>  one key, or several separated by commas
+                         openai | anthropic | ollama | azure | groq | together | qwen
                          | deepseek | kimi | mistral | huggingface | zai
       --all              every provider declared in the configuration (needs --config)
+      --parallel         run the selected providers concurrently. Each provider's own models
+                         still run one after another: they share its rate limit, and racing
+                         them would measure the throttle rather than the protocol. Output is
+                         buffered per provider and printed in the order you named them, so a
+                         parallel run reads exactly like a sequential one.
   -m, --model <id|glob>  a model identifier, or a pattern such as 'gpt-5.6-*'
       --modes M1,M8      default: every mode the harness supports
   -c, --config <file>    campaign configuration — see providers.schema.json
@@ -101,6 +110,7 @@ while [[ $# -gt 0 ]]; do
     --max-models)     MAX_MODELS="$2"; shift 2 ;;
     --dry-run)        DRY_RUN=1; shift ;;
     --no-recap)       NO_RECAP=1; shift ;;
+    --parallel)       PARALLEL=1; shift ;;
     --timeout)        TIMEOUT="$2"; shift 2 ;;
     --temperature)    TEMPERATURE="$2"; shift 2 ;;
     -o|--out)         OUT="$2"; shift 2 ;;
@@ -162,12 +172,14 @@ cfg() {
 # default. These are guesses in the sense that any convention is one, and `-k` or the
 # configuration still wins; what matters is that the guess is right often enough that the
 # common case needs no flag.
-catalog_key_env() {
-  local provider="$1" canonical
+catalog_field() {
+  local provider="$1" field="$2" canonical
   [[ -f "$CATALOG" ]] || return 0
   canonical=$(jq -r --arg p "$provider" '.providers[$p].aliasOf // $p' "$CATALOG")
-  jq -r --arg p "$canonical" '.providers[$p].apiKeyEnv // empty' "$CATALOG"
+  jq -r --arg p "$canonical" --arg f "$field" '.providers[$p][$f] // empty' "$CATALOG"
 }
+
+catalog_key_env() { catalog_field "$1" "apiKeyEnv"; }
 
 # ── The orkeon CLI ───────────────────────────────────────────────────────────
 
@@ -203,7 +215,19 @@ resolve_models() {
   declared=$(cfg "$provider" "models" | tr ',' '\n' | grep -v '^$' || true)
 
   if [[ -z "$pattern" ]]; then
-    if [[ -n "$declared" ]]; then printf '%s\n' "$declared"; fi
+    if [[ -n "$declared" ]]; then
+      printf '%s\n' "$declared"
+    else
+      # Neither --model nor a configuration entry: fall back to the catalogue's own default
+      # for this provider. Without it, `--provider a,b,c` resolved nothing and the whole
+      # point of naming several providers at once was lost to a per-provider -m.
+      #
+      # These identifiers come from the matrix sections 6.x, not from the providers'
+      # compiled-in defaults — six of those are flagged retired or wrong (G-01..G-04, G-07,
+      # G-08), so inheriting them would hand every second campaign a model its own API no
+      # longer serves. Azure declares none on purpose: deployments are account-specific.
+      catalog_field "$provider" "defaultModel"
+    fi
     return
   fi
 
@@ -349,6 +373,28 @@ run_provider() {
     run_one "$provider" "$model" "$modes" "$key_env" "$base_url" "$api_version"
   done
 
+  # A vision companion run, when the provider's default model cannot see and it declares one
+  # that can. This is the practical half of D-03: capabilities are declared per provider,
+  # reality is per model, so a single default model can never answer M9 for a provider whose
+  # sight lives in a different identifier. Measured twice on 2026-08-02 — `glm-5.2` returns
+  # code 1210 while `glm-4.6v-flash` reads the image, and `llama3.2` refuses multimodal while
+  # `llava` reads it.
+  #
+  # The default model still runs M9 and still scores its red: that red *is* the D-03 evidence
+  # and deleting it would hide the mismatch the matrix exists to track. The companion adds the
+  # complementary fact — that Orkeon's own multimodal path works — which no single run gives.
+  #
+  # Only on the automatic path. An explicit --model is a choice, and second-guessing it would
+  # spend credits the caller did not ask to spend.
+  if [[ -z "$MODEL" && ",$modes," == *",M9,"* ]]; then
+    local vision
+    vision=$(catalog_field "$provider" "visionModel")
+    if [[ -n "$vision" ]] && ! printf '%s\n' "${models[@]}" | grep -qxF "$vision"; then
+      log "  ↳ $provider declares a vision model — running M9 on $vision as well"
+      run_one "$provider" "$vision" "M9" "$key_env" "$base_url" "$api_version"
+    fi
+  fi
+
   [[ -z "$key_value" ]] || unset "$key_env"
 }
 
@@ -362,12 +408,65 @@ fi
 if [[ "$ALL" -eq 1 ]]; then
   mapfile -t providers < <(jq -r '.providers | keys[]' "$CONFIG")
 else
-  providers=("$PROVIDER")
+  # `--provider a,b,c`. Splitting here rather than asking the caller for one run per provider
+  # keeps the campaign a single unit of work: one index rebuild, one exit status, one place
+  # that knows what was attempted.
+  IFS=',' read -r -a providers <<< "$PROVIDER"
+  for i in "${!providers[@]}"; do
+    providers[i]="${providers[i]#"${providers[i]%%[![:space:]]*}"}"
+    providers[i]="${providers[i]%"${providers[i]##*[![:space:]]}"}"
+  done
 fi
 
 for provider in "${providers[@]}"; do
-  run_provider "$provider"
+  [[ -n "$provider" ]] || die "--provider has an empty entry: check for a stray comma"
 done
+
+# A dry run resolves catalogues and prints a plan; running that concurrently would only
+# scramble the plan's order for no gain, since nothing is being waited on.
+if [[ "$PARALLEL" -eq 1 && "$DRY_RUN" -eq 0 && ${#providers[@]} -gt 1 ]]; then
+  # Build the CLI here, before forking. Left to the children, three of them would race to
+  # produce the same assembly and collide in obj/ — and that failure would surface as a
+  # provider error, sending the reader after the wrong thing entirely.
+  resolve_orkeon
+
+  pids=()
+  for i in "${!providers[@]}"; do
+    provider="${providers[i]}"
+    # Indexed, not named: the same provider may legitimately appear twice with different
+    # models, and two children writing one buffer would interleave into nonsense.
+    (
+      set +e
+      run_provider "$provider" >"$TMP_DIR/par-$i.out" 2>&1
+      printf '%s %s\n' "$RAN" "$FAILURES" >"$TMP_DIR/par-$i.tally"
+    ) &
+    pids+=("$!")
+    log "▶ $provider — started"
+  done
+
+  log ""
+  wait "${pids[@]}" 2>/dev/null || true
+
+  # Replayed in the order the caller named them, so a parallel run reads like a sequential
+  # one. Interleaving live would be honest about the timing and useless as a report.
+  for i in "${!providers[@]}"; do
+    [[ ! -s "$TMP_DIR/par-$i.out" ]] || cat "$TMP_DIR/par-$i.out" >&2
+    if [[ -s "$TMP_DIR/par-$i.tally" ]]; then
+      read -r ran failed < "$TMP_DIR/par-$i.tally"
+      RAN=$((RAN + ran))
+      FAILURES=$((FAILURES + failed))
+    else
+      # No tally means the child died before it could write one — a crash, not a failed mode.
+      # Counting it as a failure is what keeps the exit status honest.
+      warn "${providers[i]}: the campaign process ended without reporting a result."
+      FAILURES=$((FAILURES + 1))
+    fi
+  done
+else
+  for provider in "${providers[@]}"; do
+    run_provider "$provider"
+  done
+fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   log ""

@@ -11,10 +11,18 @@
   `apiKey` field of a configuration file this script refuses to read unless it is named
   *.local.json or *.secrets.json (both gitignored).
 .PARAMETER Provider
-  Provider key: openai, anthropic, ollama, azure, groq, together, qwen, deepseek, kimi,
-  mistral, huggingface, zai.
+  Provider key, or several separated by commas: openai, anthropic, ollama, azure, groq,
+  together, qwen, deepseek, kimi, mistral, huggingface, zai.
 .PARAMETER All
   Run every provider declared in the configuration. Requires -Config.
+.PARAMETER Parallel
+  Run the selected providers concurrently. Each provider's own models still run one after
+  another: they share its rate limit, and racing them would measure the throttle rather than
+  the protocol. Output is buffered per provider and printed in the order you named them, so a
+  parallel run reads exactly like a sequential one.
+.PARAMETER TallyFile
+  Internal. Where a child process writes its "<archived> <failed>" counts so the parent can
+  add them up. Set by -Parallel; never pass it by hand.
 .PARAMETER Model
   A model identifier, or a glob such as 'gpt-5.6-*'.
 .PARAMETER Modes
@@ -43,6 +51,8 @@
 .EXAMPLE
   .\run-campaign.ps1 -Provider ollama -Model llama3.2
 .EXAMPLE
+  .\run-campaign.ps1 -Provider deepseek,zai,ollama -Parallel
+.EXAMPLE
   .\run-campaign.ps1 -All -Config providers.local.json -DryRun
 #>
 [CmdletBinding()]
@@ -58,6 +68,8 @@ param(
     [int]$MaxModels = 0,
     [switch]$DryRun,
     [switch]$NoRecap,
+    [switch]$Parallel,
+    [string]$TallyFile = '',
     # Null means "let the harness decide". A plain 0 default could not express that for
     # -Temperature, where 0 is itself the value we want to pin.
     [Nullable[int]]$Timeout = $null,
@@ -155,8 +167,8 @@ function Get-Setting {
 # default. -ApiKeyEnv and the configuration still win; the point is that the common case
 # should need neither.
 $script:Catalog = $null
-function Get-CatalogKeyEnv {
-    param([string]$ProviderKey)
+function Get-CatalogField {
+    param([string]$ProviderKey, [string]$Field)
 
     $path = Join-Path $KitDir 'lib/catalog.json'
     if (-not (Test-Path -LiteralPath $path)) { return '' }
@@ -170,8 +182,10 @@ function Get-CatalogKeyEnv {
         $entry = $script:Catalog.providers.PSObject.Properties[$entry.Value.aliasOf]
         if (-not $entry) { return '' }
     }
-    return "$($entry.Value.apiKeyEnv)"
+    return "$($entry.Value.$Field)"
 }
+
+function Get-CatalogKeyEnv { param([string]$ProviderKey) Get-CatalogField $ProviderKey 'apiKeyEnv' }
 
 # ── The orkeon CLI ───────────────────────────────────────────────────────────
 
@@ -228,7 +242,21 @@ function Resolve-Models {
     $declared = @(Get-Setting $ProviderKey 'models' | Where-Object { $_ } |
         ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 
-    if (-not $Pattern) { return $declared }
+    if (-not $Pattern) {
+        if ($declared) { return $declared }
+
+        # Neither -Model nor a configuration entry: fall back to the catalogue's own default
+        # for this provider. Without it, `-Provider a,b,c` resolved nothing and the whole
+        # point of naming several providers at once was lost to a per-provider -Model.
+        #
+        # These identifiers come from the matrix sections 6.x, not from the providers'
+        # compiled-in defaults — six of those are flagged retired or wrong (G-01..G-04, G-07,
+        # G-08), so inheriting them would hand every second campaign a model its own API no
+        # longer serves. Azure declares none on purpose: deployments are account-specific.
+        $fallback = Get-CatalogField $ProviderKey 'defaultModel'
+        if ($fallback) { return @($fallback) }
+        return @()
+    }
     if (-not (Test-Glob $Pattern)) { return @($Pattern) }
 
     $arguments = @('llm', 'models', '-p', $ProviderKey, '--filter', $Pattern, '-k', $KeyEnv)
@@ -356,6 +384,27 @@ function Invoke-Provider {
         }
 
         foreach ($m in $models) { Invoke-Campaign $ProviderKey $m $modeList $keyEnv $base $version }
+
+        # A vision companion run, when the provider's default model cannot see and it declares
+        # one that can. This is the practical half of D-03: capabilities are declared per
+        # provider, reality is per model, so a single default model can never answer M9 for a
+        # provider whose sight lives in a different identifier. Measured twice on 2026-08-02 —
+        # `glm-5.2` returns code 1210 while `glm-4.6v-flash` reads the image, and `llama3.2`
+        # refuses multimodal while `llava` reads it.
+        #
+        # The default model still runs M9 and still scores its red: that red *is* the D-03
+        # evidence and deleting it would hide the mismatch the matrix exists to track. The
+        # companion adds the complementary fact — that Orkeon's multimodal path works.
+        #
+        # Only on the automatic path. An explicit -Model is a choice, and second-guessing it
+        # would spend credits the caller did not ask to spend.
+        if ((-not $Model) -and (",$modeList," -like '*,M9,*')) {
+            $vision = Get-CatalogField $ProviderKey 'visionModel'
+            if ($vision -and ($models -notcontains $vision)) {
+                Write-Log "  ↳ $ProviderKey declares a vision model — running M9 on $vision as well"
+                Invoke-Campaign $ProviderKey $vision 'M9' $keyEnv $base $version
+            }
+        }
     }
     finally {
         if ($literalKey) { Remove-Item -Path "env:$keyEnv" -ErrorAction SilentlyContinue }
@@ -371,16 +420,106 @@ try {
     }
 
     $providers = if ($All) {
-        $campaignConfig.providers.PSObject.Properties.Name | Sort-Object
+        @($campaignConfig.providers.PSObject.Properties.Name | Sort-Object)
     } else {
-        @($Provider)
+        # `-Provider a,b,c`. Splitting here rather than asking the caller for one run per
+        # provider keeps the campaign a single unit of work: one index rebuild, one exit
+        # status, one place that knows what was attempted.
+        @($Provider -split ',' | ForEach-Object { $_.Trim() })
     }
 
-    foreach ($p in $providers) { Invoke-Provider $p }
+    foreach ($p in $providers) {
+        if (-not $p) { Stop-Run '-Provider has an empty entry: check for a stray comma' }
+    }
+
+    # A dry run resolves catalogues and prints a plan; running that concurrently would only
+    # scramble the plan's order for no gain, since nothing is being waited on.
+    if ($Parallel -and (-not $DryRun) -and $providers.Count -gt 1) {
+        # Build the CLI here, before forking. Left to the children, three of them would race
+        # to produce the same assembly and collide in obj/ — and that failure would surface
+        # as a provider error, sending the reader after the wrong thing entirely.
+        Resolve-Orkeon
+
+        # Children rather than runspaces: Invoke-Provider leans on a dozen script-scope
+        # functions and variables that ForEach-Object -Parallel would not carry across, and
+        # rehydrating them by hand would be a second implementation to keep in step. A child
+        # is the same script on the same arguments, which is exactly what we want to run.
+        $forwarded = @()
+        if ($Model)         { $forwarded += @('-Model', $Model) }
+        if ($Modes)         { $forwarded += @('-Modes', $Modes) }
+        if ($Config)        { $forwarded += @('-Config', $Config) }
+        if ($BaseUrl)       { $forwarded += @('-BaseUrl', $BaseUrl) }
+        if ($ApiVersion)    { $forwarded += @('-ApiVersion', $ApiVersion) }
+        if ($ApiKeyEnv)     { $forwarded += @('-ApiKeyEnv', $ApiKeyEnv) }
+        if ($MaxModels)     { $forwarded += @('-MaxModels', "$MaxModels") }
+        if ($null -ne $Timeout)     { $forwarded += @('-Timeout', "$Timeout") }
+        if ($null -ne $Temperature) { $forwarded += @('-Temperature', "$Temperature") }
+        $forwarded += @('-Out', $Out, '-Configuration', $Configuration, '-NoRecap')
+
+        $children = @()
+        for ($i = 0; $i -lt $providers.Count; $i++) {
+            # Indexed, not named: the same provider may legitimately appear twice with
+            # different models, and two children writing one buffer would interleave.
+            $child = [pscustomobject]@{
+                Provider = $providers[$i]
+                Out      = Join-Path $TmpDir "par-$i.out"
+                Err      = Join-Path $TmpDir "par-$i.err"
+                Tally    = Join-Path $TmpDir "par-$i.tally"
+                Process  = $null
+            }
+            $child.Process = Start-Process -FilePath (Get-Process -Id $PID).Path `
+                -ArgumentList (@('-NoProfile', '-File', $PSCommandPath,
+                                 '-Provider', $child.Provider,
+                                 '-TallyFile', $child.Tally) + $forwarded) `
+                -NoNewWindow -PassThru `
+                -RedirectStandardOutput $child.Out -RedirectStandardError $child.Err
+            $children += $child
+            Write-Log "▶ $($child.Provider) — started"
+        }
+
+        Write-Log ''
+        $children | ForEach-Object { $_.Process.WaitForExit() }
+
+        # Replayed in the order the caller named them, so a parallel run reads like a
+        # sequential one. Interleaving live would be honest about the timing and useless
+        # as a report.
+        foreach ($child in $children) {
+            foreach ($stream in @($child.Out, $child.Err)) {
+                if ((Test-Path -LiteralPath $stream) -and (Get-Item -LiteralPath $stream).Length -gt 0) {
+                    Get-Content -LiteralPath $stream | ForEach-Object { Write-Log $_ }
+                }
+            }
+
+            if (Test-Path -LiteralPath $child.Tally) {
+                $counts = (Get-Content -Raw -LiteralPath $child.Tally).Trim() -split '\s+'
+                $script:Ran      += [int]$counts[0]
+                $script:Failures += [int]$counts[1]
+            }
+            else {
+                # No tally means the child died before it could write one — a crash, not a
+                # failed mode. Counting it is what keeps the exit status honest.
+                Write-Warn "$($child.Provider): the campaign process ended without reporting a result."
+                $script:Failures++
+            }
+        }
+    }
+    else {
+        foreach ($p in $providers) { Invoke-Provider $p }
+    }
 
     if ($DryRun) {
         Write-Log ''
         Write-Log 'Nothing was called and nothing was written.'
+        exit 0
+    }
+
+    # A child of -Parallel reports its counts and stops here. Letting it print the closing
+    # summary too would have the parent replay "index NOT rebuilt" once per provider, which
+    # the bash twin never does — there the unit of parallelism is a subshell around one
+    # function, not a whole run.
+    if ($TallyFile) {
+        Set-Content -LiteralPath $TallyFile -Value "$script:Ran $script:Failures" -NoNewline
+        if ($script:Failures -gt 0) { exit 1 }
         exit 0
     }
 

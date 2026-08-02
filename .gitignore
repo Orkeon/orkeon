@@ -428,3 +428,4 @@ sonarqube/
 
 # Orkeon CLI local state (rag manifests, eval reports)
 .orkeon/
+/.github/copilot-instructions.md

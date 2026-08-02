@@ -28,6 +28,7 @@
       "label": "OpenAI",
       "matrix": "§6.1",
       "apiKeyEnv": "OPENAI_API_KEY",
+      "defaultModel": "gpt-5.6-sol",
       "notes": [
         "Cible générique du fallback de `LlmProviderFactory` : une campagne verte ici valide indirectement Docker Model Runner, vLLM et LM Studio.",
         "G-05 fermé (LLM-01) : le défaut est passé de `gpt-4` (8 K de contexte, extinction 2026-10-23) à `gpt-5.6-sol`."
@@ -37,6 +38,7 @@
       "label": "Anthropic",
       "matrix": "§6.2",
       "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "defaultModel": "claude-sonnet-5",
       "notes": [
         "Dialecte propre (Messages API) : c'est le provider qui porte le plus de code spécifique.",
         "M8 est **schéma obligatoire** — `output_config.format` n'a pas d'équivalent de `json_object`.",
@@ -59,6 +61,7 @@
       "label": "Groq",
       "matrix": "§6.4",
       "apiKeyEnv": "GROQ_API_KEY",
+      "defaultModel": "llama-3.3-70b-versatile",
       "notes": [
         "Endpoint et modèle par défaut à jour. Un passage M1–M5 suffit : le code est mutualisé.",
         "Contexte servi ≠ contexte natif : Groq plafonne la sortie de `gpt-oss-120b` à 65 536 contre 131 072 en natif."
@@ -67,6 +70,8 @@
     "ollama": {
       "label": "Ollama",
       "matrix": "§6.5",
+      "defaultModel": "llama3.2",
+      "visionModel": "llava",
       "notes": [
         "Coût nul : c'est la campagne qui sert de rodage au kit avant toute dépense.",
         "Seul chemin **M6** (protocole texte) du parc.",
@@ -78,6 +83,7 @@
       "label": "Together AI",
       "matrix": "§6.6",
       "apiKeyEnv": "TOGETHER_API_KEY",
+      "defaultModel": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
       "notes": [
         "Endpoint et modèle par défaut à jour. Un passage M1–M5 suffit.",
         "Together sert DeepSeek-V4-Pro à 512 K là où DeepSeek le sert à 1 M — écart de service à vérifier en M11."
@@ -88,6 +94,7 @@
       "label": "DeepSeek",
       "matrix": "§6.7",
       "apiKeyEnv": "DEEPSEEK_API_KEY",
+      "defaultModel": "deepseek-v4-flash",
       "notes": [
         "À **revalider** malgré son ancienneté de preuve : LLM-01 a changé son modèle par défaut et LLM-02 l'a refactoré sur le socle de capacités.",
         "M7 doit confirmer le round-trip de `reasoning_content` — sans lui l'API renvoie un 400.",
@@ -99,6 +106,7 @@
       "label": "Kimi (Moonshot AI)",
       "matrix": "§6.8",
       "apiKeyEnv": "MOONSHOT_API_KEY",
+      "defaultModel": "kimi-k2.6",
       "notes": [
         "Deux endpoints régionaux à **comptes séparés** : `api.moonshot.ai` (international, défaut) et `api.moonshot.cn` (Chine continentale).",
         "G-11 fermé : vérifier que l'hôte résolu dans l'en-tête du rapport est bien celui attendu.",
@@ -110,6 +118,7 @@
       "label": "Qwen (Alibaba DashScope)",
       "matrix": "§6.9",
       "apiKeyEnv": "DASHSCOPE_API_KEY",
+      "defaultModel": "qwen3.7-plus",
       "notes": [
         "Endpoint international distinct : `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (G-12 fermé).",
         "Seul provider où le budget de réflexion est câblé (`thinking_budget`) : M7 y est plus riche qu'ailleurs."
@@ -119,6 +128,7 @@
       "label": "Mistral AI",
       "matrix": "§6.10",
       "apiKeyEnv": "MISTRAL_API_KEY",
+      "defaultModel": "mistral-large-latest",
       "notes": [
         "Lancer **sans `--base-url`** : c'est ainsi, et seulement ainsi, qu'on vérifie en réel que G-14 est fermé — un modèle `mistral-*` nu ne doit plus partir vers `localhost:11434`.",
         "L'hôte affiché dans l'en-tête du rapport est la preuve : `api.mistral.ai`, pas `localhost`.",
@@ -129,6 +139,7 @@
       "label": "HuggingFace",
       "matrix": "§6.11",
       "apiKeyEnv": "HF_TOKEN",
+      "defaultModel": "openai/gpt-oss-120b",
       "notes": [
         "G-01 fermé : l'ancien `api-inference.huggingface.co` est supprimé, le défaut est `router.huggingface.co/v1`.",
         "Exercer en plus un suffixe de routage (`:cheapest`, `:fastest`, `:<provider>`) — G-23.",
@@ -140,6 +151,8 @@
       "label": "Z.AI (Zhipu GLM)",
       "matrix": "§6.12",
       "apiKeyEnv": "ZAI_API_KEY",
+      "defaultModel": "glm-5.2",
+      "visionModel": "glm-4.6v-flash",
       "notes": [
         "Dette de traçabilité propre : la seule preuve existante est un commentaire de configuration daté. Cette campagne doit lui produire une **sortie archivée**.",
         "À revalider après LLM-02, qui l'a refactoré sur le socle de capacités."

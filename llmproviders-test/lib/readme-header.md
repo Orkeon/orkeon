@@ -54,8 +54,9 @@ Sous Windows, `run-campaign.ps1` expose exactement les mêmes options.
 
 | Option | Rôle |
 |---|---|
-| `--provider <clé>` | `openai`, `anthropic`, `ollama`, `azure`, `groq`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai` |
+| `--provider <clés>` | Une clé, ou plusieurs séparées par des virgules — `openai`, `anthropic`, `ollama`, `azure`, `groq`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai` |
 | `--all` | Tous les providers déclarés dans le JSON |
+| `--parallel` | Lance les providers sélectionnés simultanément (voir plus bas) |
 | `--model <id\|glob>` | Un identifiant, ou un motif (`gpt-5.6-*`, `*flash*`) |
 | `--modes M1,M8` | Défaut : tous les modes du harnais |
 | `--config <fichier>` | Configuration de campagne (voir `providers.schema.json`) |
@@ -71,24 +72,45 @@ Sous Windows, `run-campaign.ps1` expose exactement les mêmes options.
 
 ## Lancer plusieurs providers en parallèle
 
-Les campagnes sont longues et indépendantes : rien n'empêche de les lancer côte à côte.
-Une seule précaution — **différer l'index**. Deux campagnes qui se terminent ensemble
-reconstruisent chacune le récapitulatif à partir d'un instantané pris avant que l'autre
-n'ait déposé son rapport : la dernière à écrire produit un index complet mais périmé.
-`--no-recap` le diffère, et on le reconstruit une fois à la fin.
+Les campagnes sont longues et indépendantes. `--provider` accepte une liste et `--parallel`
+les lance ensemble :
 
 ```bash
 export DEEPSEEK_API_KEY=…  ZAI_API_KEY=…
 
-llmproviders-test/run-campaign.sh --provider deepseek -k DEEPSEEK_API_KEY --no-recap &
-llmproviders-test/run-campaign.sh --provider zai      -k ZAI_API_KEY      --no-recap &
-wait
+llmproviders-test/run-campaign.sh --provider deepseek,zai,ollama --parallel
+```
 
+Une seule campagne, un seul index reconstruit à la fin, un seul code de sortie. Les variables
+de clé sont résolues par provider depuis le catalogue, donc une liste hétérogène n'a besoin
+d'aucun `-k`.
+
+**Ce qui est parallélisé, et ce qui ne l'est pas.** Les providers tournent côte à côte ; les
+modèles d'un *même* provider restent en série. Ils partagent son quota, et les faire courir
+ensemble mesurerait l'étranglement plutôt que le protocole.
+
+**La sortie reste lisible.** Chaque provider écrit dans son propre tampon, restitué à la fin
+dans l'ordre où vous l'avez nommé — un run parallèle se lit exactement comme un run séquentiel.
+Le prix est qu'il n'y a pas de progression fine en direct : seules les lignes `▶ … — started`
+arrivent immédiatement.
+
+**Si un processus meurt** sans rendre son compte, il est compté comme un échec. Un plantage
+qui passerait pour un succès serait pire qu'un rouge.
+
+Pour lancer plusieurs *processus* séparés — plusieurs terminaux, un ordonnanceur — la
+précaution reste de **différer l'index** avec `--no-recap`, puis de le reconstruire une fois :
+
+```bash
+llmproviders-test/run-campaign.sh --provider deepseek --no-recap &
+llmproviders-test/run-campaign.sh --provider zai      --no-recap &
+wait
 llmproviders-test/lib/recap.sh llmproviders-test
 ```
 
-L'écriture de l'index est de toute façon atomique (fichier temporaire puis renommage), donc
-un oubli de `--no-recap` ne corrompt rien : il peut seulement laisser une ligne de retard,
+Sans ça, deux campagnes qui se terminent ensemble reconstruisent chacune le récapitulatif à
+partir d'un instantané pris avant que l'autre n'ait déposé son rapport, et la dernière à
+écrire produit un index complet mais périmé. L'écriture est atomique (fichier temporaire puis
+renommage), donc un oubli ne corrompt rien : il peut seulement laisser une ligne de retard,
 que la reconstruction suivante rattrape.
 
 ## Les clés API
@@ -118,6 +140,53 @@ fournisseur, déclarée dans `lib/catalog.json` :
 table, et enfin `ORKEON_LLM_API_KEY`. Le défaut était auparavant `ORKEON_LLM_API_KEY`
 pour les douze : toute campagne lancée sans `--config` cherchait une variable que
 personne n'exporte.
+
+## Le modèle choisi pour vous
+
+Sans `--model`, chaque fournisseur reçoit **son** modèle, pas un modèle générique. La
+résolution va du plus explicite au plus général : `--model` > la liste `models` du JSON de
+campagne > le `defaultModel` du catalogue.
+
+| Fournisseur | Défaut | Modèle vision |
+|---|---|---|
+| `openai` | `gpt-5.6-sol` | |
+| `anthropic` | `claude-sonnet-5` | |
+| `azure` | *(aucun — voir plus bas)* | |
+| `groq` | `llama-3.3-70b-versatile` | |
+| `ollama` | `llama3.2` | `llava` |
+| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | |
+| `deepseek` | `deepseek-v4-flash` | |
+| `kimi` | `kimi-k2.6` | |
+| `qwen` | `qwen3.7-plus` | |
+| `mistral` | `mistral-large-latest` | |
+| `huggingface` | `openai/gpt-oss-120b` | |
+| `zai` | `glm-5.2` | `glm-4.6v-flash` |
+
+Ces identifiants viennent des sections §6.x de la matrice, **pas des défauts compilés dans
+les providers** : six d'entre eux y sont signalés retirés ou faux (G-01 à G-04, G-07, G-08).
+En hériter aurait envoyé une campagne sur deux vers un modèle que l'API ne sert plus.
+
+**Azure n'en déclare aucun, volontairement.** Les déploiements sont propres à un compte, il
+n'existe pas de catalogue portable, et en inventer un enverrait chaque campagne vers un
+déploiement que personne n'a créé. Azure exige donc `--model <déploiement>` ou une entrée
+dans le JSON — et le dit plutôt que d'échouer plus loin.
+
+### La campagne vision compagnon
+
+Quand le modèle par défaut d'un fournisseur ne voit pas mais que le fournisseur déclare un
+modèle qui voit, **M9 est rejoué sur celui-ci**, en plus. C'est la moitié pratique de D-03 :
+les capacités sont déclarées par fournisseur, la réalité est par modèle, donc un seul modèle
+par défaut ne peut jamais répondre pour M9 chez un fournisseur dont la vue habite un autre
+identifiant. Mesuré deux fois le 2026-08-02 — `glm-5.2` renvoie `1210` là où
+`glm-4.6v-flash` lit l'image, `llama3.2` refuse le multimodal là où `llava` la lit.
+
+Le modèle par défaut **garde son M9 et garde son rouge** : ce rouge *est* la preuve de D-03,
+et le supprimer masquerait précisément l'écart que la matrice existe pour suivre. Le
+compagnon ajoute le fait complémentaire — que le chemin multimodal d'Orkéon fonctionne — que
+ni l'un ni l'autre ne donne seul.
+
+Uniquement sur le chemin automatique : un `--model` explicite est un choix, et le
+contredire dépenserait des crédits que vous n'avez pas demandé à dépenser.
 
 ## Le wildcard
 
