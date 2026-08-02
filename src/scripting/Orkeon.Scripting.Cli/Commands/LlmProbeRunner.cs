@@ -1,9 +1,15 @@
 using System.Diagnostics;
-using System.Globalization;
 using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.SharedKernel.ValueObjects.Content;
+using Orkeon.Domain.Tools.Protocol;
+using Orkeon.Infrastructure.LLMs.ToolCalling;
 
 namespace Orkeon.Scripting.Cli.Commands;
 
@@ -29,11 +35,23 @@ internal enum LlmProbeMode
     /// <summary>M4 — chat streaming yields typed events and a terminal Completed.</summary>
     M4,
 
+    /// <summary>M5 — a native tool call is emitted, parsed, and its result accepted back.</summary>
+    M5,
+
+    /// <summary>M6 — the text tool-call protocol is emitted and read by the fallback parser.</summary>
+    M6,
+
     /// <summary>M7 — a thinking configuration is accepted and, where applicable, traced.</summary>
     M7,
 
     /// <summary>M8 — a response-format constraint yields parseable JSON.</summary>
     M8,
+
+    /// <summary>M9 — an image part is accepted and actually looked at.</summary>
+    M9,
+
+    /// <summary>M10 — a repeated prompt prefix is served from the provider's cache.</summary>
+    M10,
 
     /// <summary>M12 — an invalid model produces a typed error, not an exception.</summary>
     M12,
@@ -42,12 +60,30 @@ internal enum LlmProbeMode
     M13,
 }
 
+/// <summary>How one mode ended.</summary>
+/// <remarks>
+/// A mode a provider cannot possibly satisfy is not a failure, and calling it one would make
+/// every campaign report read red for reasons nobody can act on. It gets its own outcome so a
+/// reader can tell "this provider has no vision API" from "this provider's vision API broke".
+/// </remarks>
+internal enum LlmProbeOutcome
+{
+    /// <summary>The provider behaved as the mode requires.</summary>
+    Passed,
+
+    /// <summary>The provider did not behave as the mode requires — actionable.</summary>
+    Failed,
+
+    /// <summary>The mode does not apply to this provider or model; nothing was exercised.</summary>
+    NotApplicable,
+}
+
 /// <summary>Outcome of one probe mode.</summary>
 /// <param name="Mode">The protocol mode exercised.</param>
-/// <param name="Passed">Whether the provider behaved as the mode requires.</param>
-/// <param name="Detail">What was observed — recorded whether it passed or not.</param>
+/// <param name="Outcome">Whether the provider satisfied the mode, failed it, or could not be asked.</param>
+/// <param name="Detail">What was observed — recorded whatever the outcome.</param>
 /// <param name="ElapsedMs">Wall-clock duration, useful when comparing providers.</param>
-internal sealed record LlmProbeResult(LlmProbeMode Mode, bool Passed, string Detail, long ElapsedMs);
+internal sealed record LlmProbeResult(LlmProbeMode Mode, LlmProbeOutcome Outcome, string Detail, long ElapsedMs);
 
 /// <summary>
 /// Runs the protocol modes against a live provider.
@@ -68,21 +104,64 @@ internal sealed class LlmProbeRunner
 {
     private const string JsonPrompt = "Reply with a json object containing a single key \"ok\" set to true.";
 
+    /// <summary>
+    /// The value the tool hands back in M5. Deliberately unguessable: if it appears in the
+    /// final answer, the round-trip really happened.
+    /// </summary>
+    private const string ToolProbeCode = "ORKEON-4711";
+
+    private const string ToolProbePrompt =
+        "What is the sealed probe code for the city of Lyon? Use the tool — the code cannot be guessed.";
+
+    /// <summary>
+    /// A 64×64 pure-red PNG, 132 bytes. A solid colour makes M9 a yes/no question with one
+    /// right answer, where "describe this photo" would need a human to grade it.
+    /// </summary>
+    private const string RedSquarePng =
+        "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAS0lEQVR42u3PQQkAAAgAsetfWiP4Fg" +
+        "YrsKZeS0BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEDgsqnc8OJg" +
+        "6Ln3AAAAAElFTkSuQmCC";
+
+    private static readonly ToolSchema ToolProbeSchema = new(
+        "orkeon_probe_lookup",
+        "Looks up the sealed probe code for a city. The code is not public and cannot be inferred.",
+        new Dictionary<string, ParameterSchema>
+        {
+            ["city"] = new("string", "The city to look the probe code up for.", Required: true, Example: "Lyon"),
+        });
+
     private readonly ILlmProvider _provider;
+    private readonly IToolCallParser? _nativeToolCallParser;
+    private readonly TextFallbackToolCallParser _textToolCallParser;
 
     /// <summary>Initializes a new runner over an already-configured provider.</summary>
     /// <param name="provider">The provider under test.</param>
-    public LlmProbeRunner(ILlmProvider provider)
+    /// <param name="nativeToolCallParser">
+    /// The parser matching the provider's wire dialect, used by M5. Supplied by the caller
+    /// because the dialect is a property of the provider it built, not of this runner. When
+    /// omitted, M5 reports itself as not exercised rather than guessing a dialect.
+    /// </param>
+    public LlmProbeRunner(ILlmProvider provider, IToolCallParser? nativeToolCallParser = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
         _provider = provider;
+        _nativeToolCallParser = nativeToolCallParser;
+        // The text protocol has no dialect: one parser serves every provider.
+        _textToolCallParser = new TextFallbackToolCallParser(
+            NullLogger<TextFallbackToolCallParser>.Instance);
     }
 
     /// <summary>Modes this harness can exercise without extra assets or a paid long-context call.</summary>
+    /// <remarks>
+    /// M11 (long context) and M14 (end-to-end crew) are deliberately absent: the first bills a
+    /// request close to the model's advertised window, the second needs a real crew with
+    /// delegation. Both are documented as manual procedures in the campaign kit.
+    /// </remarks>
     public static IReadOnlyList<LlmProbeMode> SupportedModes { get; } =
     [
         LlmProbeMode.M1, LlmProbeMode.M2, LlmProbeMode.M3, LlmProbeMode.M4,
-        LlmProbeMode.M7, LlmProbeMode.M8, LlmProbeMode.M12, LlmProbeMode.M13,
+        LlmProbeMode.M5, LlmProbeMode.M6, LlmProbeMode.M7, LlmProbeMode.M8,
+        LlmProbeMode.M9, LlmProbeMode.M10, LlmProbeMode.M12, LlmProbeMode.M13,
     ];
 
     /// <summary>Runs the requested modes in order and returns one result per mode.</summary>
@@ -112,20 +191,8 @@ internal sealed class LlmProbeRunner
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            var (passed, detail) = mode switch
-            {
-                LlmProbeMode.M1 => await ProbeSinglePromptAsync(config, cancellationToken).ConfigureAwait(false),
-                LlmProbeMode.M2 => await ProbeMultiTurnAsync(config, cancellationToken).ConfigureAwait(false),
-                LlmProbeMode.M3 => await ProbeTextStreamingAsync(config, cancellationToken).ConfigureAwait(false),
-                LlmProbeMode.M4 => await ProbeChatStreamingAsync(config, cancellationToken).ConfigureAwait(false),
-                LlmProbeMode.M7 => await ProbeThinkingAsync(config, cancellationToken).ConfigureAwait(false),
-                LlmProbeMode.M8 => await ProbeResponseFormatAsync(config, cancellationToken).ConfigureAwait(false),
-                LlmProbeMode.M12 => await ProbeErrorHandlingAsync(config, cancellationToken).ConfigureAwait(false),
-                LlmProbeMode.M13 => await ProbeCancellationAsync(config, cancellationToken).ConfigureAwait(false),
-                _ => (false, $"mode {mode} is not implemented by this harness"),
-            };
-
-            return new LlmProbeResult(mode, passed, detail, stopwatch.ElapsedMilliseconds);
+            var (outcome, detail) = await DispatchAsync(mode, config, cancellationToken).ConfigureAwait(false);
+            return new LlmProbeResult(mode, outcome, detail, stopwatch.ElapsedMilliseconds);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -138,11 +205,30 @@ internal sealed class LlmProbeRunner
             // An exception is itself a finding: the framework's contract is to return typed
             // error responses, not to throw.
             return new LlmProbeResult(
-                mode, false, $"threw {ex.GetType().Name}: {ex.Message}", stopwatch.ElapsedMilliseconds);
+                mode, LlmProbeOutcome.Failed, $"threw {ex.GetType().Name}: {ex.Message}",
+                stopwatch.ElapsedMilliseconds);
         }
     }
 
-    private async Task<(bool Passed, string Detail)> ProbeSinglePromptAsync(
+    private Task<(LlmProbeOutcome Outcome, string Detail)> DispatchAsync(
+        LlmProbeMode mode, LlmConfig config, CancellationToken cancellationToken) => mode switch
+        {
+            LlmProbeMode.M1 => ProbeSinglePromptAsync(config, cancellationToken),
+            LlmProbeMode.M2 => ProbeMultiTurnAsync(config, cancellationToken),
+            LlmProbeMode.M3 => ProbeTextStreamingAsync(config, cancellationToken),
+            LlmProbeMode.M4 => ProbeChatStreamingAsync(config, cancellationToken),
+            LlmProbeMode.M5 => ProbeNativeToolCallAsync(config, cancellationToken),
+            LlmProbeMode.M6 => ProbeTextToolCallAsync(config, cancellationToken),
+            LlmProbeMode.M7 => ProbeThinkingAsync(config, cancellationToken),
+            LlmProbeMode.M8 => ProbeResponseFormatAsync(config, cancellationToken),
+            LlmProbeMode.M9 => ProbeVisionAsync(config, cancellationToken),
+            LlmProbeMode.M10 => ProbeContextCacheAsync(config, cancellationToken),
+            LlmProbeMode.M12 => ProbeErrorHandlingAsync(config, cancellationToken),
+            LlmProbeMode.M13 => ProbeCancellationAsync(config, cancellationToken),
+            _ => Task.FromResult((LlmProbeOutcome.Failed, $"mode {mode} is not implemented by this harness")),
+        };
+
+    private async Task<(LlmProbeOutcome, string)> ProbeSinglePromptAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
         var response = await _provider.GenerateAsync("Say hello in one short sentence.", config, cancellationToken)
@@ -151,7 +237,29 @@ internal sealed class LlmProbeRunner
         return Describe(response, r => !string.IsNullOrWhiteSpace(r.Content));
     }
 
-    private async Task<(bool Passed, string Detail)> ProbeMultiTurnAsync(
+    /// <summary>
+    /// M2 — a system message must be honoured on <em>both</em> shapes the framework can send a
+    /// conversation in.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The OpenAI-compatible providers have two chat paths, and which one is taken depends on
+    /// something the caller never thinks about: declare a tool and the conversation goes out as
+    /// a real <c>messages</c> array; declare none and it is flattened into a single user turn
+    /// reading <c>"user: …\nassistant: …"</c>. Exercising only one of them left a real defect
+    /// invisible — D-02, where the configured system message was dropped on the native path
+    /// alone. It took reading the code to find it, which is precisely what a probe should
+    /// spare us.
+    /// </para>
+    /// <para>
+    /// Running both also settles a question one shape cannot answer. When a provider fails the
+    /// flattened shape and passes the structured one, the pseudo-transcript is what confused it
+    /// — a framework problem. When it fails both, the model simply does not follow the
+    /// instruction. That distinction decides whether anyone has anything to fix, and it is not
+    /// reachable from a single call.
+    /// </para>
+    /// </remarks>
+    private async Task<(LlmProbeOutcome, string)> ProbeMultiTurnAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
         // The system message asks for a marker so the answer proves the turn was honoured
@@ -164,20 +272,70 @@ internal sealed class LlmProbeRunner
             LlmMessage.User("And multiplied by 3?"),
         ];
 
-        var response = await _provider.ChatAsync(messages, withSystem, cancellationToken).ConfigureAwait(false);
+        var flattened = await RunMultiTurnShapeAsync(messages, withSystem, cancellationToken)
+            .ConfigureAwait(false);
+        if (flattened.Error is { } flatError)
+            return (LlmProbeOutcome.Failed, $"conversation shape: {flatError}");
 
-        var honoured = response.Content.Contains("ORKEON_OK", StringComparison.Ordinal);
-        return Describe(
-            response,
-            _ => honoured,
-            honoured ? "system message honoured" : "system message absent from the reply");
+        // Declaring a tool is what selects the structured path — the same trigger a real agent
+        // hits the moment it is given one. `None` emits tool_choice: "none": the schema still
+        // travels (it has to, it is the trigger) but the model is forbidden from answering with
+        // a call. Under `Auto` a model that reached for the tool would return no prose at all,
+        // and the probe would read that as an ignored instruction — measuring the wrong thing.
+        var structuredConfig = withSystem with { Tools = [ToolProbeSchema], ToolMode = ToolCallMode.None };
+        var structured = await RunMultiTurnShapeAsync(messages, structuredConfig, cancellationToken)
+            .ConfigureAwait(false);
+        if (structured.Error is { } structError)
+            return (LlmProbeOutcome.Failed, $"messages-array shape: {structError}");
+
+        var detail =
+            $"conversation shape: {Verdict(flattened.Honoured)}, " +
+            $"messages-array shape: {Verdict(structured.Honoured)}";
+
+        return (flattened.Honoured, structured.Honoured) switch
+        {
+            (true, true) => (LlmProbeOutcome.Passed, $"system message honoured on both shapes ({detail})"),
+
+            // The framework is at fault here, not the model: the same instruction lands when the
+            // conversation keeps its structure, so flattening it is what lost the model.
+            (false, true) => (LlmProbeOutcome.Failed,
+                $"system message honoured only when the conversation keeps its structure — the flattened "
+                + $"pseudo-transcript is what the model failed to follow ({detail})"),
+
+            // Deliberately hedged. The structured path cannot be reached without putting a tool
+            // schema in the request, so this outcome has two readings that the probe cannot
+            // separate: a defect in the payload, or a model whose instruction-following degrades
+            // once a tool catalogue shares its context. Naming only the first would send readers
+            // hunting through code for something that may not be there.
+            (true, false) => (LlmProbeOutcome.Failed,
+                $"system message honoured on the flattened shape but lost on the messages array — inspect "
+                + $"the structured payload, and bear in mind that reaching it requires sending a tool "
+                + $"schema, which alone can cost a model some instruction-following ({detail})"),
+
+            _ => (LlmProbeOutcome.Failed,
+                $"system message ignored on both shapes — the instruction reaches the API either way, so "
+                + $"this is the model not following it ({detail})"),
+        };
+
+        static string Verdict(bool honoured) => honoured ? "honoured" : "ignored";
     }
 
-    private async Task<(bool Passed, string Detail)> ProbeTextStreamingAsync(
+    /// <summary>Runs one multi-turn call and says whether the marker came back.</summary>
+    private async Task<(bool Honoured, string? Error)> RunMultiTurnShapeAsync(
+        LlmMessage[] messages, LlmConfig config, CancellationToken cancellationToken)
+    {
+        var response = await _provider.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);
+
+        return HasError(response)
+            ? (false, ErrorOf(response))
+            : (response.Content.Contains("ORKEON_OK", StringComparison.Ordinal), null);
+    }
+
+    private async Task<(LlmProbeOutcome, string)> ProbeTextStreamingAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
         if (_provider is not IStreamingLlmProvider streaming)
-            return (false, "provider does not implement IStreamingLlmProvider");
+            return (LlmProbeOutcome.NotApplicable, "provider does not implement IStreamingLlmProvider");
 
         var chunks = 0;
         var text = new StringBuilder();
@@ -189,14 +347,14 @@ internal sealed class LlmProbeRunner
             text.Append(token);
         }
 
-        return (chunks > 1, $"{chunks} chunk(s), {text.Length} char(s)");
+        return (Verdict(chunks > 1), $"{chunks} chunk(s), {text.Length} char(s)");
     }
 
-    private async Task<(bool Passed, string Detail)> ProbeChatStreamingAsync(
+    private async Task<(LlmProbeOutcome, string)> ProbeChatStreamingAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
         if (_provider is not IStreamingLlmProvider streaming)
-            return (false, "provider does not implement IStreamingLlmProvider");
+            return (LlmProbeOutcome.NotApplicable, "provider does not implement IStreamingLlmProvider");
 
         var deltas = 0;
         LlmResponse? final = null;
@@ -209,15 +367,113 @@ internal sealed class LlmProbeRunner
                 final = ev.FinalResponse;
         }
 
-        var passed = final is not null && !string.IsNullOrWhiteSpace(final.Content);
-        return (passed, $"{deltas} content delta(s), completed={final is not null}, tokens={final?.TokensUsed}");
+        var completed = final is not null && !string.IsNullOrWhiteSpace(final.Content);
+        var detail = $"{deltas} content delta(s), completed={final is not null}, tokens={final?.TokensUsed}";
+
+        if (!completed)
+            return (LlmProbeOutcome.Failed, detail);
+
+        // A single delta carrying the whole answer is a buffered fallback wearing a stream's
+        // clothes. M3 has always demanded more than one chunk; M4 accepting one made it pass
+        // for providers that never streamed — Ollama is exactly that case, and nine untested
+        // providers would have gone green the same way without anyone learning anything.
+        return deltas > 1
+            ? (LlmProbeOutcome.Passed, detail)
+            : (LlmProbeOutcome.Failed,
+               $"{detail} — the whole answer arrived in one event, which is a buffered fallback, not a stream");
     }
 
-    private async Task<(bool Passed, string Detail)> ProbeThinkingAsync(
+    /// <summary>
+    /// M5 — the provider must emit a native tool call, and must then accept the tool's result
+    /// back as a conversation turn. Half of that is easy; the round-trip is where dialects break.
+    /// </summary>
+    private async Task<(LlmProbeOutcome, string)> ProbeNativeToolCallAsync(
+        LlmConfig config, CancellationToken cancellationToken)
+    {
+        if (_nativeToolCallParser is null)
+            return (LlmProbeOutcome.NotApplicable, "no native tool-call parser was supplied to the harness");
+
+        var withTools = config with { Tools = [ToolProbeSchema], ToolMode = ToolCallMode.Auto };
+        var first = await _provider
+            .ChatAsync([LlmMessage.User(ToolProbePrompt)], withTools, cancellationToken).ConfigureAwait(false);
+
+        if (HasError(first))
+            return (LlmProbeOutcome.Failed, ErrorOf(first));
+        if (string.IsNullOrEmpty(first.RawResponseBody))
+            return (LlmProbeOutcome.Failed, "no raw body returned: the native tool-calling path was not taken");
+
+        using var body = JsonDocument.Parse(first.RawResponseBody);
+        var calls = _nativeToolCallParser.ParseToolCalls(body.RootElement);
+        if (calls.Count == 0)
+            return (LlmProbeOutcome.Failed, $"no tool call in the reply: {Truncate(first.Content)}");
+
+        var call = calls[0];
+        if (!string.Equals(call.ToolName, ToolProbeSchema.Name, StringComparison.Ordinal))
+            return (LlmProbeOutcome.Failed, $"called '{call.ToolName}' instead of '{ToolProbeSchema.Name}'");
+
+        return await CompleteToolRoundTripAsync(withTools, calls, call, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<(LlmProbeOutcome, string)> CompleteToolRoundTripAsync(
+        LlmConfig withTools, IReadOnlyList<ParsedToolCall> calls, ParsedToolCall call,
+        CancellationToken cancellationToken)
+    {
+        // RawToolCalls is Orkeon's canonical shape — the OpenAI array — and both the
+        // OpenAI-compatible base and the Anthropic provider read it back from there. Rebuilding
+        // it from the parsed calls therefore keeps this probe free of any dialect knowledge.
+        LlmMessage[] conversation =
+        [
+            LlmMessage.User(ToolProbePrompt),
+            LlmMessage.Assistant("") with { RawToolCalls = CanonicalToolCalls(calls) },
+            new LlmMessage
+            {
+                Role = LlmRoles.Tool,
+                Name = call.ToolName,
+                ToolCallId = call.Id,
+                Content = ToolProbeCode,
+            },
+        ];
+
+        var second = await _provider.ChatAsync(conversation, withTools, cancellationToken).ConfigureAwait(false);
+        if (HasError(second))
+            return (LlmProbeOutcome.Failed, $"tool call parsed, but the result turn failed: {ErrorOf(second)}");
+
+        var used = second.Content.Contains(ToolProbeCode, StringComparison.OrdinalIgnoreCase);
+        return (Verdict(used), used
+            ? $"{call.ToolName}({FormatArguments(call.Arguments)}) called, result accepted"
+            : $"{call.ToolName} called, but the result turn ignored the value: {Truncate(second.Content)}");
+    }
+
+    /// <summary>
+    /// M6 — the text protocol, for models with no native tool calling. The wording mirrors
+    /// <c>AgentPromptComposer</c>'s "How to Call Tools" block, so a green M6 means the real
+    /// agent loop would work here too.
+    /// </summary>
+    private async Task<(LlmProbeOutcome, string)> ProbeTextToolCallAsync(
+        LlmConfig config, CancellationToken cancellationToken)
+    {
+        var response = await _provider
+            .GenerateAsync(TextToolProtocolPrompt(), config, cancellationToken).ConfigureAwait(false);
+
+        if (HasError(response))
+            return (LlmProbeOutcome.Failed, ErrorOf(response));
+
+        var calls = _textToolCallParser.ParseToolCalls(AsTextEnvelope(response.Content));
+        if (calls.Count == 0)
+            return (LlmProbeOutcome.Failed, $"no parseable [TOOL_CALL] block: {Truncate(response.Content)}");
+
+        var call = calls[0];
+        var named = string.Equals(call.ToolName, ToolProbeSchema.Name, StringComparison.Ordinal);
+        return (Verdict(named), named
+            ? $"{call.ToolName}({FormatArguments(call.Arguments)}) parsed from text"
+            : $"parsed a block naming '{call.ToolName}' instead of '{ToolProbeSchema.Name}'");
+    }
+
+    private async Task<(LlmProbeOutcome, string)> ProbeThinkingAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
         if (_provider.Capabilities.Thinking == ThinkingSupport.None)
-            return (true, "not applicable: the provider declares no thinking capability");
+            return (LlmProbeOutcome.NotApplicable, "the provider declares no thinking capability");
 
         var withThinking = config with { Thinking = new LlmThinkingConfig { Effort = "low" } };
         var response = await _provider.GenerateAsync(
@@ -230,11 +486,11 @@ internal sealed class LlmProbeRunner
             traced ? "reasoning trace returned" : "accepted, no reasoning trace returned");
     }
 
-    private async Task<(bool Passed, string Detail)> ProbeResponseFormatAsync(
+    private async Task<(LlmProbeOutcome, string)> ProbeResponseFormatAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
         if (_provider.Capabilities.ResponseFormat == ResponseFormatSupport.None)
-            return (true, "not applicable: the provider declares no response-format capability");
+            return (LlmProbeOutcome.NotApplicable, "the provider declares no response-format capability");
 
         // Some APIs (Anthropic) have no schema-less JSON mode at all, so asking for a bare
         // json_object there constrains nothing and the mode would fail for the wrong reason.
@@ -248,13 +504,79 @@ internal sealed class LlmProbeRunner
         var response = await _provider.GenerateAsync(JsonPrompt, constrained, cancellationToken).ConfigureAwait(false);
 
         if (HasError(response))
-            return (false, ErrorOf(response));
+            return (LlmProbeOutcome.Failed, ErrorOf(response));
 
         var isJson = IsParseableJson(response.Content);
-        return (isJson, isJson ? "valid JSON returned" : $"not JSON: {Truncate(response.Content)}");
+        return (Verdict(isJson), isJson ? "valid JSON returned" : $"not JSON: {Truncate(response.Content)}");
     }
 
-    private async Task<(bool Passed, string Detail)> ProbeErrorHandlingAsync(
+    /// <summary>
+    /// M9 — vision. The matrix warns that vision is declared per provider while it is really a
+    /// property of the model, so a red here on a text-only model is expected and informative:
+    /// it is exactly the mismatch the matrix asks M9 to measure.
+    /// </summary>
+    private async Task<(LlmProbeOutcome, string)> ProbeVisionAsync(
+        LlmConfig config, CancellationToken cancellationToken)
+    {
+        if (!_provider.Capabilities.Vision)
+            return (LlmProbeOutcome.NotApplicable, "the provider declares no vision capability");
+
+        var content = MultiModalContent
+            .FromText("What is the dominant colour of this image? Answer with a single word.")
+            .AddImage(ImageContentPart.FromBase64(RedSquarePng, "image/png"));
+
+        var response = await _provider
+            .ChatAsync([LlmMessage.User(content)], config, cancellationToken).ConfigureAwait(false);
+
+        if (HasError(response))
+            return (LlmProbeOutcome.Failed, ErrorOf(response));
+
+        var saw = response.Content.Contains("red", StringComparison.OrdinalIgnoreCase)
+            || response.Content.Contains("rouge", StringComparison.OrdinalIgnoreCase);
+
+        return (Verdict(saw), saw
+            ? "image accepted and correctly described"
+            : $"image accepted but not described: {Truncate(response.Content)}");
+    }
+
+    /// <summary>
+    /// M10 — prompt caching. Two calls sharing one long, stable prefix; the second must be
+    /// billed as a cache hit.
+    /// </summary>
+    /// <remarks>
+    /// The prefix is padded well past the ~1 K-token minimum most vendors impose before they
+    /// cache anything at all — a short prefix would produce a red that says nothing about the
+    /// framework. On Anthropic nothing is cached without an explicit breakpoint (G-17), so the
+    /// probe opts in there and only there.
+    /// </remarks>
+    private async Task<(LlmProbeOutcome, string)> ProbeContextCacheAsync(
+        LlmConfig config, CancellationToken cancellationToken)
+    {
+        var cached = config with { SystemMessage = StableCachePrefix() };
+        if (_provider.Capabilities.ExplicitPromptCaching)
+            cached = cached with { Cache = LlmCacheConfig.SystemPrompt() };
+
+        var first = await _provider
+            .ChatAsync([LlmMessage.User("Reply with the single word: one.")], cached, cancellationToken)
+            .ConfigureAwait(false);
+        if (HasError(first))
+            return (LlmProbeOutcome.Failed, ErrorOf(first));
+
+        var second = await _provider
+            .ChatAsync([LlmMessage.User("Reply with the single word: two.")], cached, cancellationToken)
+            .ConfigureAwait(false);
+        if (HasError(second))
+            return (LlmProbeOutcome.Failed, ErrorOf(second));
+
+        // No breakdown is an absence of vendor data, not a defect: nothing to act on.
+        if (second.CacheHitTokens is not { } hit)
+            return (LlmProbeOutcome.NotApplicable, "the provider reports no cache-token breakdown");
+
+        var ratio = second.CacheHitRatio is { } r ? $", ratio={r:F2}" : "";
+        return (Verdict(hit > 0), $"second call: {hit} cached token(s){ratio}");
+    }
+
+    private async Task<(LlmProbeOutcome, string)> ProbeErrorHandlingAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
         // A model that cannot exist: the contract is a typed error response, never a throw.
@@ -262,10 +584,12 @@ internal sealed class LlmProbeRunner
         var response = await _provider.GenerateAsync("hello", broken, cancellationToken).ConfigureAwait(false);
 
         var reported = HasError(response);
-        return (reported, reported ? $"typed error: {Truncate(ErrorOf(response))}" : "no error reported for an invalid model");
+        return (Verdict(reported), reported
+            ? $"typed error: {Truncate(ErrorOf(response))}"
+            : "no error reported for an invalid model");
     }
 
-    private async Task<(bool Passed, string Detail)> ProbeCancellationAsync(
+    private async Task<(LlmProbeOutcome, string)> ProbeCancellationAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -280,24 +604,28 @@ internal sealed class LlmProbeRunner
 
             // Returning a typed error is an acceptable outcome; returning full content is not.
             return HasError(response)
-                ? (true, $"cancelled into a typed error after {stopwatch.ElapsedMilliseconds} ms")
-                : (false, $"completed despite cancellation after {stopwatch.ElapsedMilliseconds} ms");
+                ? (LlmProbeOutcome.Passed, $"cancelled into a typed error after {stopwatch.ElapsedMilliseconds} ms")
+                : (LlmProbeOutcome.Failed, $"completed despite cancellation after {stopwatch.ElapsedMilliseconds} ms");
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return (true, $"cancelled after {stopwatch.ElapsedMilliseconds} ms");
+            return (LlmProbeOutcome.Passed, $"cancelled after {stopwatch.ElapsedMilliseconds} ms");
         }
     }
 
-    private static (bool Passed, string Detail) Describe(
+    // ── Shared helpers ──────────────────────────────────────────────────────
+
+    private static LlmProbeOutcome Verdict(bool passed) =>
+        passed ? LlmProbeOutcome.Passed : LlmProbeOutcome.Failed;
+
+    private static (LlmProbeOutcome, string) Describe(
         LlmResponse response, Func<LlmResponse, bool> predicate, string? note = null)
     {
         if (HasError(response))
-            return (false, ErrorOf(response));
+            return (LlmProbeOutcome.Failed, ErrorOf(response));
 
-        var passed = predicate(response);
         var detail = note ?? $"{response.Content.Length} char(s)";
-        return (passed, $"{detail}, tokens={response.TokensUsed}");
+        return (Verdict(predicate(response)), $"{detail}, tokens={response.TokensUsed}");
     }
 
     private static bool HasError(LlmResponse response) => response.Metadata.ContainsKey("error");
@@ -312,10 +640,10 @@ internal sealed class LlmProbeRunner
 
         try
         {
-            using var _ = System.Text.Json.JsonDocument.Parse(content);
+            using var _ = JsonDocument.Parse(content);
             return true;
         }
-        catch (System.Text.Json.JsonException)
+        catch (JsonException)
         {
             return false;
         }
@@ -324,40 +652,92 @@ internal sealed class LlmProbeRunner
     private static string Truncate(string value, int max = 160) =>
         value.Length <= max ? value : value[..max] + "…";
 
-    /// <summary>
-    /// Renders the campaign as the Markdown row block the matrix's journal (§7) expects.
-    /// </summary>
-    /// <param name="provider">Provider name as it appears in the matrix.</param>
-    /// <param name="model">The exact model identifier exercised.</param>
-    /// <param name="version">The Orkeon version under test.</param>
-    /// <param name="timestampUtc">Campaign timestamp, supplied by the caller.</param>
-    /// <param name="results">The per-mode results.</param>
-    /// <returns>A Markdown fragment ready to paste into the matrix.</returns>
-    public static string ToMarkdown(
-        string provider, string model, string version, DateTimeOffset timestampUtc,
-        IReadOnlyList<LlmProbeResult> results)
-    {
-        ArgumentNullException.ThrowIfNull(results);
+    private static string FormatArguments(Dictionary<string, object?> arguments) =>
+        string.Join(", ", arguments.Select(a => $"{a.Key}={a.Value}"));
 
-        var sb = new StringBuilder();
-        sb.Append("# Campagne ").Append(provider).Append(" — ").Append(model).AppendLine();
-        sb.AppendLine();
-        sb.Append("- **Horodatage (UTC)** : ")
-          .AppendLine(timestampUtc.ToString("u", CultureInfo.InvariantCulture));
-        sb.Append("- **Version Orkéon** : ").AppendLine(version);
-        sb.Append("- **Qualité de preuve** : sortie archivée").AppendLine();
-        sb.AppendLine();
-        sb.AppendLine("| Mode | Résultat | Détail | Durée |");
-        sb.AppendLine("|---|---|---|---|");
-
-        foreach (var result in results)
+    /// <summary>Rebuilds the canonical <c>tool_calls</c> array Orkeon replays to every dialect.</summary>
+    private static string CanonicalToolCalls(IReadOnlyList<ParsedToolCall> calls) =>
+        JsonSerializer.Serialize(calls.Select(c => new
         {
-            sb.Append("| ").Append(result.Mode)
-              .Append(" | ").Append(result.Passed ? "✅" : "❌")
-              .Append(" | ").Append(result.Detail.Replace('|', '/'))
-              .Append(" | ").Append(result.ElapsedMs.ToString(CultureInfo.InvariantCulture)).AppendLine(" ms |");
-        }
+            id = c.Id,
+            type = "function",
+            function = new { name = c.ToolName, arguments = JsonSerializer.Serialize(c.Arguments) },
+        }));
 
-        return sb.ToString();
+    /// <summary>
+    /// Wraps plain assistant text in the minimal body shape the fallback parser reads. The
+    /// parser's entry point takes a response body because that is what the agent loop holds;
+    /// a probe holds only the text, so it supplies the envelope.
+    /// </summary>
+    private static JsonElement AsTextEnvelope(string text) =>
+        JsonSerializer.SerializeToElement(new
+        {
+            choices = new[] { new { message = new { content = text } } },
+        });
+
+    /// <summary>
+    /// The instruction block, verbatim from <c>AgentPromptComposer.AppendTextToolCallInstructions</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// It stays a plain literal — the braces are the protocol's own syntax, and interpolating
+    /// around them is how a copy silently drifts from the format the parser accepts.
+    /// </para>
+    /// <para>
+    /// It had drifted anyway: the first version dropped two rules and, more consequentially, the
+    /// worked example. M6 was therefore measuring a prompt no agent ever sends, and a red verdict
+    /// said nothing about production. The campaign of 2026-08-01 showed why the example earns its
+    /// place — llama3.2 answered
+    /// <c>[TOOL_CALL]{orkeon_probe_lookup: "orkeon_probe_lookup", args => {…}}</c>, folding the
+    /// <c>name: description</c> shape of the tool listing into the block, which is exactly the
+    /// confusion a filled-in example forecloses.
+    /// </para>
+    /// </remarks>
+    private const string TextToolProtocolBlock = """
+
+        ## How to Call Tools
+
+        When you need to use a tool, you MUST emit a tool call block using this exact format:
+
+        [TOOL_CALL]{tool => "tool_name", args => {--param1 "value1" --param2 "value2"}}[/TOOL_CALL]
+
+        Rules:
+        - Always use the exact tool name from the list above.
+        - Each parameter is prefixed with -- followed by a space and the value in double quotes.
+        - You can call ONE tool per [TOOL_CALL] block. To call multiple tools, emit multiple blocks.
+        - After emitting a [TOOL_CALL] block, STOP and wait for the tool result before continuing.
+        - Do NOT describe what you would do — actually call the tool.
+
+        Example:
+        [TOOL_CALL]{tool => "directory_read", args => {--path "/src"}}[/TOOL_CALL]
+
+        """;
+
+    private static string TextToolProtocolPrompt() =>
+        $"You have one tool available.{Environment.NewLine}{Environment.NewLine}"
+        + $"- {ToolProbeSchema.Name}: {ToolProbeSchema.Description}{Environment.NewLine}"
+        + $"  Required: city{Environment.NewLine}"
+        + TextToolProtocolBlock
+        + Environment.NewLine
+        + ToolProbePrompt;
+
+    /// <summary>
+    /// Builds a long, byte-for-byte stable prefix. Stability is the whole point: a timestamp or
+    /// a GUID anywhere in here would rebuild the prefix on every call and the cache would never
+    /// hit — the very failure mode <see cref="LlmResponse.CacheHitRatio"/> exists to surface.
+    /// </summary>
+    private static string StableCachePrefix()
+    {
+        const string paragraph =
+            "You are a cache-probe assistant. This paragraph exists only to give the request a " +
+            "long, unchanging prefix, because most vendors refuse to cache anything shorter than " +
+            "roughly a thousand tokens. It carries no instruction beyond answering the user " +
+            "exactly as asked, in as few words as possible, with no preamble and no explanation. ";
+
+        var builder = new StringBuilder(paragraph.Length * 32);
+        for (var i = 0; i < 32; i++)
+            builder.Append(paragraph);
+
+        return builder.ToString();
     }
 }

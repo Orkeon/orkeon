@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orkeon.org/schemas/llmproviders-test/providers.schema.json",
+  "title": "Orkeon — configuration de campagne LLM",
+  "description": "Fichier d'entrée de llmproviders-test/run-campaign.sh|.ps1. Un fichier portant des clés API en clair DOIT être nommé *.local.json ou *.secrets.json (gitignorés).",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+    "$schema": { "type": "string" },
+    "_comment": {
+      "description": "Commentaire libre, ignoré par les scripts.",
+      "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
+    },
+
+    "defaults": {
+      "type": "object",
+      "description": "Valeurs appliquées à tout provider qui ne les redéfinit pas.",
+      "additionalProperties": false,
+      "properties": {
+        "modes": { "$ref": "#/$defs/modes" },
+        "maxModels": { "$ref": "#/$defs/maxModels" }
+      }
+    },
+
+    "providers": {
+      "type": "object",
+      "description": "Une entrée par provider, la clé étant celle acceptée par LlmProviderFactory.",
+      "minProperties": 1,
+      "propertyNames": {
+        "enum": [
+          "openai", "anthropic", "ollama", "azure", "azure-openai", "groq",
+          "together", "togetherai", "qwen", "deepseek", "kimi", "moonshot",
+          "mistral", "huggingface", "hf", "zai", "glm", "zhipu"
+        ]
+      },
+      "additionalProperties": { "$ref": "#/$defs/provider" }
+    }
+  },
+
+  "required": ["providers"],
+
+  "$defs": {
+    "modes": {
+      "type": "string",
+      "description": "Modes du protocole, séparés par des virgules. Seuls M1 à M10, M12 et M13 sont automatisés : M11 (contexte long) et M14 (crew de bout en bout) sont manuels et le harnais les refuse — le motif ci-dessous les exclut donc plutôt que de laisser passer une configuration qui échouerait à l'exécution.",
+      "pattern": "^M(10|12|13|[1-9])(,M(10|12|13|[1-9]))*$"
+    },
+
+    "maxModels": {
+      "type": "integer",
+      "description": "Plafond du nombre de modèles exercés quand --model est un wildcard.",
+      "minimum": 1,
+      "maximum": 50
+    },
+
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "_comment": {
+          "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
+        },
+        "apiKeyEnv": {
+          "type": "string",
+          "description": "Nom de la variable d'environnement portant la clé. Forme recommandée.",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "apiKey": {
+          "type": "string",
+          "description": "Clé en clair. Tolérée, mais impose un nom de fichier *.local.json — les scripts refusent de la lire autrement."
+        },
+        "baseUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Surcharge d'endpoint (Azure, miroirs régionaux)."
+        },
+        "apiVersion": {
+          "type": "string",
+          "description": "api-version Azure en mode deployment. Omis en mode v1 GA."
+        },
+        "modes": { "$ref": "#/$defs/modes" },
+        "maxModels": { "$ref": "#/$defs/maxModels" },
+        "models": {
+          "type": "array",
+          "description": "Modèles à exercer. Sert aussi de repli quand la découverte de catalogue échoue.",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

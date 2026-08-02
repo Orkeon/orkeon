@@ -14,6 +14,45 @@ namespace Orkeon.Infrastructure.Constants.Llm;
 /// </remarks>
 public static class ProviderDefaults
 {
+    /// <summary>
+    /// Default model per provider key, using the same keys as
+    /// <c>LlmProviderFactory.Create(string, LlmConfig)</c>.
+    /// </summary>
+    /// <remarks>
+    /// Without this, a caller holding only a provider key — the campaign harness, for one — has
+    /// no way to ask "what would this provider run by default?" and ends up sending OpenAI's
+    /// default model to Groq. Exposing the lookup rather than the constants keeps the nested
+    /// classes internal and keeps this file the single place a default is written down.
+    /// </remarks>
+    private static readonly Dictionary<string, string> ByProviderKey = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["openai"] = OpenAIDefaults.DefaultModel,
+        ["anthropic"] = AnthropicDefaults.DefaultModel,
+        ["ollama"] = OllamaDefaults.DefaultModel,
+        ["groq"] = GroqDefaults.DefaultModel,
+        ["together"] = TogetherDefaults.DefaultModel,
+        ["togetherai"] = TogetherDefaults.DefaultModel,
+        ["deepseek"] = DeepSeekDefaults.DefaultModel,
+        ["kimi"] = KimiDefaults.DefaultModel,
+        ["moonshot"] = KimiDefaults.DefaultModel,
+        ["qwen"] = QwenDefaults.DefaultModel,
+        ["mistral"] = MistralDefaults.DefaultModel,
+        ["huggingface"] = HuggingFaceDefaults.DefaultModel,
+        ["hf"] = HuggingFaceDefaults.DefaultModel,
+        ["zai"] = ZaiDefaults.DefaultModel,
+        ["glm"] = ZaiDefaults.DefaultModel,
+        ["zhipu"] = ZaiDefaults.DefaultModel,
+    };
+
+    /// <summary>Resolves a provider's default model from its factory key.</summary>
+    /// <param name="providerKey">Provider key, e.g. <c>groq</c>.</param>
+    /// <returns>
+    /// The default model, or <see langword="null"/> when the provider has none — Azure OpenAI
+    /// serves deployments an operator named, so there is nothing to default to.
+    /// </returns>
+    public static string? ForProvider(string providerKey) =>
+        ByProviderKey.GetValueOrDefault(providerKey ?? "");
+
     /// <summary>Default model constants for OpenAI.</summary>
     internal static class OpenAIDefaults
     {

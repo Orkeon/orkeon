@@ -18,10 +18,29 @@ Fournisseurs implémentés :
 | HuggingFace | `HuggingFaceLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Kimi | `KimiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Qwen | `QwenLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| Mistral AI | `MistralLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| Z.AI (Zhipu GLM) | `ZaiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
 Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`) sont disponibles dans `Orkeon.Infrastructure.LLMs.Adapters` pour intégrer d'autres fournisseurs compatibles avec l'interface `IChatClient`.
 
 `LlmProviderFactory` (`Orkeon.Infrastructure.LLMs`) résout automatiquement le fournisseur à partir de la `LlmConfig` (détection par URL, nom de modèle, ou clé API).
+
+## Valider un fournisseur contre son API réelle
+
+Tous les tests unitaires de ce domaine parlent à un handler HTTP mocké : ils prouvent
+qu'Orkéon envoie ce qu'on croit, pas que le fournisseur l'accepte. La seconde preuve se
+construit avec le kit de campagne [`llmproviders-test/`](../../../llmproviders-test/README.md) :
+
+```bash
+llmproviders-test/run-campaign.sh --provider ollama --model llama3.2   # premier run, coût nul
+llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
+```
+
+Il pilote `orkeon llm probe` sur les modes M1–M10, M12 et M13 du
+[protocole de test](../../../backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md) §5 et
+archive un rapport Markdown par campagne. `orkeon llm models -p <fournisseur> --filter
+'gpt-5.6-*'` liste ce qu'un fournisseur sert réellement : aucune campagne ne dépend d'une
+liste de modèles maintenue à la main.
 
 ---
 

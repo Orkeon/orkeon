@@ -1,0 +1,18 @@
+# Campaign configurations carrying real API keys never reach the repository.
+# LLM-08 states the constraint as non-negotiable: no key in the repo, in the matrix,
+# or in an archived trace. The generated reports are versioned — they are the evidence
+# the campaigns exist to produce — but they are built from observed behaviour only.
+*.local.json
+*.secrets.json
+*.local.*.json
+
+# Scratch output from a --dry-run or an interrupted run.
+.campaign-tmp/
+
+# Throwaway --out roots, for replaying one mode several times to tell a real regression
+# apart from model sampling. Inside the repo because that is the only path shared between
+# a WSL shell and a container that mounts it elsewhere; ignored because they are not evidence.
+.out-*/
+
+# Staging file the index rebuild renames into place; only ever left behind by a crash.
+.README.md.*

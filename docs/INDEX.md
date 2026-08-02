@@ -20,7 +20,7 @@ The documentation is organized into 6 thematic sections.
 
 | File | Description |
 |------|-------------|
-| [LLM providers](./architecture/llm-providers.md) | 11 providers (OpenAI, Anthropic, Azure, Groq, Ollama, etc.), adapters, factory |
+| [LLM providers](./architecture/llm-providers.md) | 12 providers (OpenAI, Anthropic, Azure, Groq, Ollama, etc.), adapters, factory, real-API campaign kit |
 | [Memory system](./architecture/memory-system.md) | 5 memory types, 6 providers (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), cognitive memory |
 | [Events, CQRS and observability](./architecture/domain-events.md) | 41 domain events, CQRS pipeline, 2-level callbacks |
 | [EventHub and crew lifecycle](./architecture/event-hub-and-crew-lifecycle.md) | Reference specification for inter-agent and inter-crew messaging (EventHub) and crew sleep/wake — Application ports, InMemory + SQLite adapters |

@@ -1,0 +1,140 @@
+{
+  "_comment": [
+    "Données partagées par run-campaign.sh et run-campaign.ps1 : libellés des modes du",
+    "protocole (matrice §5) et points de vigilance par provider (matrice §4 et §6).",
+    "Un seul fichier pour les deux scripts — une prose dupliquée dans deux langages",
+    "diverge à la première correction."
+  ],
+
+  "modes": {
+    "M1":  "Chat simple",
+    "M2":  "Multi-tours + system (2 formes)",
+    "M3":  "Streaming texte",
+    "M4":  "Streaming chat",
+    "M5":  "Tool calling natif",
+    "M6":  "Tool calling fallback texte",
+    "M7":  "Thinking / reasoning",
+    "M8":  "response_format JSON",
+    "M9":  "Vision / multimodal",
+    "M10": "Cache de contexte",
+    "M11": "Contexte long (manuel)",
+    "M12": "Erreurs & résilience",
+    "M13": "Annulation",
+    "M14": "Crew de bout en bout (manuel)"
+  },
+
+  "providers": {
+    "openai": {
+      "label": "OpenAI",
+      "matrix": "§6.1",
+      "notes": [
+        "Cible générique du fallback de `LlmProviderFactory` : une campagne verte ici valide indirectement Docker Model Runner, vLLM et LM Studio.",
+        "G-05 fermé (LLM-01) : le défaut est passé de `gpt-4` (8 K de contexte, extinction 2026-10-23) à `gpt-5.6-sol`."
+      ]
+    },
+    "anthropic": {
+      "label": "Anthropic",
+      "matrix": "§6.2",
+      "notes": [
+        "Dialecte propre (Messages API) : c'est le provider qui porte le plus de code spécifique.",
+        "M8 est **schéma obligatoire** — `output_config.format` n'a pas d'équivalent de `json_object`.",
+        "M10 n'a de sens qu'avec un breakpoint explicite : sans `cache_control`, Anthropic ne cache rien (G-17). Le harnais l'active de lui-même ici.",
+        "M4 doit confirmer le SSE natif livré par LLM-05 (G-20), et non un repli bufferisé."
+      ]
+    },
+    "azure": {
+      "label": "Azure OpenAI",
+      "matrix": "§6.3",
+      "notes": [
+        "Deux modes d'URL à exercer séparément : deployment (`api-version`) et v1 GA (LLM-07, G-06).",
+        "Seul provider où **M4 doit aussi couvrir le cas dégradé** : `BaseUrl` absente ⇒ erreur typée, jamais une `NullReferenceException` (D-01).",
+        "Pas de catalogue public : les déploiements se déclarent dans le JSON de campagne, le wildcard ne s'applique pas."
+      ]
+    },
+    "azure-openai": { "label": "Azure OpenAI", "matrix": "§6.3", "aliasOf": "azure" },
+    "groq": {
+      "label": "Groq",
+      "matrix": "§6.4",
+      "notes": [
+        "Endpoint et modèle par défaut à jour. Un passage M1–M5 suffit : le code est mutualisé.",
+        "Contexte servi ≠ contexte natif : Groq plafonne la sortie de `gpt-oss-120b` à 65 536 contre 131 072 en natif."
+      ]
+    },
+    "ollama": {
+      "label": "Ollama",
+      "matrix": "§6.5",
+      "notes": [
+        "Coût nul : c'est la campagne qui sert de rodage au kit avant toute dépense.",
+        "Seul chemin **M6** (protocole texte) du parc.",
+        "**M5 natif** est désormais possible via `/api/chat` (LLM-07, G-10) — cette campagne est ce qui le confirme en réel.",
+        "Le contexte effectif est plafonné par `num_ctx`, bien en deçà des 128 K annoncés : à mesurer en M11."
+      ]
+    },
+    "together": {
+      "label": "Together AI",
+      "matrix": "§6.6",
+      "notes": [
+        "Endpoint et modèle par défaut à jour. Un passage M1–M5 suffit.",
+        "Together sert DeepSeek-V4-Pro à 512 K là où DeepSeek le sert à 1 M — écart de service à vérifier en M11."
+      ]
+    },
+    "togetherai": { "label": "Together AI", "matrix": "§6.6", "aliasOf": "together" },
+    "deepseek": {
+      "label": "DeepSeek",
+      "matrix": "§6.7",
+      "notes": [
+        "À **revalider** malgré son ancienneté de preuve : LLM-01 a changé son modèle par défaut et LLM-02 l'a refactoré sur le socle de capacités.",
+        "M7 doit confirmer le round-trip de `reasoning_content` — sans lui l'API renvoie un 400.",
+        "M8 doit confirmer la garde « mot *json* absent du prompt ».",
+        "Seul provider du parc sans modèle vision : M9 y est légitimement ➖."
+      ]
+    },
+    "kimi": {
+      "label": "Kimi (Moonshot AI)",
+      "matrix": "§6.8",
+      "notes": [
+        "Deux endpoints régionaux à **comptes séparés** : `api.moonshot.ai` (international, défaut) et `api.moonshot.cn` (Chine continentale).",
+        "G-11 fermé : vérifier que l'hôte résolu dans l'en-tête du rapport est bien celui attendu.",
+        "La série `moonshot-v1-*` compte entrée + sortie dans la même borne — son « 8 K » n'est pas une fenêtre d'entrée de 8 K."
+      ]
+    },
+    "moonshot": { "label": "Kimi (Moonshot AI)", "matrix": "§6.8", "aliasOf": "kimi" },
+    "qwen": {
+      "label": "Qwen (Alibaba DashScope)",
+      "matrix": "§6.9",
+      "notes": [
+        "Endpoint international distinct : `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (G-12 fermé).",
+        "Seul provider où le budget de réflexion est câblé (`thinking_budget`) : M7 y est plus riche qu'ailleurs."
+      ]
+    },
+    "mistral": {
+      "label": "Mistral AI",
+      "matrix": "§6.10",
+      "notes": [
+        "Lancer **sans `--base-url`** : c'est ainsi, et seulement ainsi, qu'on vérifie en réel que G-14 est fermé — un modèle `mistral-*` nu ne doit plus partir vers `localhost:11434`.",
+        "L'hôte affiché dans l'en-tête du rapport est la preuve : `api.mistral.ai`, pas `localhost`.",
+        "Les identifiants mêlent alias et snapshots datés : confirmer l'id sur la fiche modèle officielle avant de le figer."
+      ]
+    },
+    "huggingface": {
+      "label": "HuggingFace",
+      "matrix": "§6.11",
+      "notes": [
+        "G-01 fermé : l'ancien `api-inference.huggingface.co` est supprimé, le défaut est `router.huggingface.co/v1`.",
+        "Exercer en plus un suffixe de routage (`:cheapest`, `:fastest`, `:<provider>`) — G-23.",
+        "Le contexte et la sortie effectifs dépendent du fournisseur routé, pas du modèle : `GET /v1/models` donne les valeurs par fournisseur."
+      ]
+    },
+    "hf": { "label": "HuggingFace", "matrix": "§6.11", "aliasOf": "huggingface" },
+    "zai": {
+      "label": "Z.AI (Zhipu GLM)",
+      "matrix": "§6.12",
+      "notes": [
+        "Dette de traçabilité propre : la seule preuve existante est un commentaire de configuration daté. Cette campagne doit lui produire une **sortie archivée**.",
+        "À revalider après LLM-02, qui l'a refactoré sur le socle de capacités."
+      ]
+    },
+    "glm": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
+    "zhipu": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" }
+  }
+}

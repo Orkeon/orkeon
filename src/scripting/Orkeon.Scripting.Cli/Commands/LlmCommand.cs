@@ -1,8 +1,11 @@
 using System.Globalization;
 using CommandLine;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.ToolCalling;
 
 namespace Orkeon.Scripting.Cli.Commands;
 
@@ -23,6 +26,11 @@ internal sealed class LlmProbeCommandOptions
     [Option('u', "base-url", Required = false, HelpText = "Base URL override. Required for Azure OpenAI.")]
     public string? BaseUrl { get; set; }
 
+    /// <summary>Azure <c>api-version</c>, for the deployment-mode URL. Omitted in v1 GA mode.</summary>
+    [Option("api-version", Required = false,
+        HelpText = "Azure OpenAI api-version (deployment mode). Omit to exercise the v1 GA surface.")]
+    public string? ApiVersion { get; set; }
+
     /// <summary>Environment variable holding the API key. Never the key itself.</summary>
     [Option('k', "api-key-env", Required = false, Default = "ORKEON_LLM_API_KEY",
         HelpText = "Name of the environment variable holding the API key. The key itself is never accepted on the command line.")]
@@ -37,6 +45,56 @@ internal sealed class LlmProbeCommandOptions
     [Option("archive", Required = false,
         HelpText = "Directory to write the campaign report to. Nothing is archived when omitted.")]
     public string? Archive { get; set; }
+
+    /// <summary>Report shape written to standard output.</summary>
+    [Option("format", Required = false, Default = "md",
+        HelpText = "Output format: md (default, human-readable) or json (for the campaign scripts).")]
+    public string Format { get; set; } = "md";
+
+    /// <summary>Short commit of the tree under test, supplied by the caller.</summary>
+    [Option("commit", Required = false,
+        HelpText = "Short commit of the tree under test, recorded in the report. The harness does not shell out to git.")]
+    public string? Commit { get; set; }
+
+    /// <summary>Per-request timeout. Generous by default — a cold local model has to load first.</summary>
+    [Option("timeout", Required = false, Default = 180,
+        HelpText = "Per-request timeout in seconds (default 180). The first call to a local model pays for loading it into memory.")]
+    public int TimeoutSeconds { get; set; } = 180;
+
+    /// <summary>Sampling temperature. Zero by default: a conformance probe measures plumbing, not creativity.</summary>
+    /// <remarks>
+    /// Overridable because a handful of reasoning models reject any value but their own default,
+    /// and refusing the whole campaign over a sampling knob would be absurd.
+    /// </remarks>
+    [Option("temperature", Required = false, Default = 0.0d,
+        HelpText = "Sampling temperature (default 0). Raise it only for a model that rejects a pinned temperature.")]
+    public double Temperature { get; set; }
+}
+
+/// <summary>Options for <c>orkeon llm models</c>.</summary>
+[Verb("models", HelpText = "List the models a provider currently serves, optionally filtered by a glob.")]
+internal sealed class LlmModelsCommandOptions
+{
+    /// <summary>Provider key, as accepted by <c>LlmProviderFactory</c>.</summary>
+    [Option('p', "provider", Required = true, HelpText = "Provider key.")]
+    public string Provider { get; set; } = "";
+
+    /// <summary>Base URL override; defaults to the provider's own endpoint.</summary>
+    [Option('u', "base-url", Required = false, HelpText = "Base URL override.")]
+    public string? BaseUrl { get; set; }
+
+    /// <summary>Environment variable holding the API key. Never the key itself.</summary>
+    [Option('k', "api-key-env", Required = false, Default = "ORKEON_LLM_API_KEY",
+        HelpText = "Name of the environment variable holding the API key.")]
+    public string ApiKeyEnv { get; set; } = "ORKEON_LLM_API_KEY";
+
+    /// <summary>Shell-style glob restricting the listing.</summary>
+    [Option('f', "filter", Required = false, HelpText = "Shell-style glob, e.g. 'gpt-5.6-*'.")]
+    public string? Filter { get; set; }
+
+    /// <summary>Emit a JSON array instead of one identifier per line.</summary>
+    [Option("json", Required = false, HelpText = "Emit a JSON array instead of one identifier per line.")]
+    public bool Json { get; set; }
 }
 
 /// <summary>
@@ -60,12 +118,57 @@ internal static class LlmCommand
             s.CaseInsensitiveEnumValues = true;
         });
 
-        return await parser.ParseArguments<LlmProbeCommandOptions>(args)
+        return await parser.ParseArguments<LlmProbeCommandOptions, LlmModelsCommandOptions>(args)
             .MapResult(
-                ExecuteProbeAsync,
+                (LlmProbeCommandOptions o) => ExecuteProbeAsync(o),
+                (LlmModelsCommandOptions o) => ExecuteModelsAsync(o),
                 _ => Task.FromResult(Program.ExitScriptError))
             .ConfigureAwait(false);
     }
+
+    // ── orkeon llm models ───────────────────────────────────────────────────
+
+    private static async Task<int> ExecuteModelsAsync(LlmModelsCommandOptions options)
+    {
+        var apiKey = Environment.GetEnvironmentVariable(options.ApiKeyEnv);
+
+        using var cts = CreateInterruptibleTokenSource();
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+
+        IReadOnlyList<string> models;
+        try
+        {
+            var baseUrl = LlmCatalogClient.ResolveBaseUrl(options.Provider, options.BaseUrl);
+            var all = await LlmCatalogClient
+                .ListAsync(client, options.Provider, baseUrl, apiKey, cts.Token).ConfigureAwait(false);
+            models = LlmCatalogClient.Filter(all, options.Filter);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            return Program.ExitCancelled;
+        }
+        catch (Exception ex) when (
+            ex is NotSupportedException or HttpRequestException or System.Text.Json.JsonException
+            // An HttpClient timeout surfaces as a TaskCanceledException nobody asked for.
+            // Reporting it as "cancelled" would tell the operator they pressed Ctrl+C.
+            or TaskCanceledException)
+        {
+            // A missing catalogue is a documented, recoverable case: the campaign scripts fall
+            // back to the model list declared in their JSON. Say so instead of just failing.
+            await Console.Error.WriteLineAsync($"orkeon llm models: {ex.Message}").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        if (options.Json)
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(models));
+        else
+            foreach (var model in models)
+                Console.WriteLine(model);
+
+        return models.Count > 0 ? Program.ExitOk : Program.ExitScriptError;
+    }
+
+    // ── orkeon llm probe ────────────────────────────────────────────────────
 
     private static async Task<int> ExecuteProbeAsync(LlmProbeCommandOptions options)
     {
@@ -88,13 +191,15 @@ internal static class LlmCommand
             return Program.ExitScriptError;
         }
 
-        using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+        var wantsJson = string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase);
+        if (!wantsJson && !string.Equals(options.Format, "md", StringComparison.OrdinalIgnoreCase))
         {
-            e.Cancel = true;
-            cts.Cancel();
-        };
+            await Console.Error.WriteLineAsync(
+                $"orkeon llm probe: unknown format '{options.Format}'. Supported: md, json.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
 
+        using var cts = CreateInterruptibleTokenSource();
         var config = BuildConfig(options, apiKey);
 
         using var httpClientFactory = new ProbeHttpClientFactory();
@@ -107,7 +212,7 @@ internal static class LlmCommand
             return Program.ExitRuntimeError;
         }
 
-        var runner = new LlmProbeRunner(typed.UnderlyingProvider);
+        var runner = new LlmProbeRunner(typed.UnderlyingProvider, ResolveToolCallParser(options.Provider));
 
         IReadOnlyList<LlmProbeResult> results;
         try
@@ -124,35 +229,107 @@ internal static class LlmCommand
             return Program.ExitScriptError;
         }
 
-        var report = LlmProbeRunner.ToMarkdown(
-            options.Provider,
-            config.Model,
-            typeof(LlmProbeRunner).Assembly.GetName().Version?.ToString() ?? "unknown",
-            DateTimeOffset.UtcNow,
-            results);
+        var context = BuildContext(options, config);
+        var report = wantsJson
+            ? LlmProbeReport.ToJson(context, results)
+            : LlmProbeReport.ToMarkdown(context, results);
 
         Console.WriteLine(report);
 
         if (!string.IsNullOrWhiteSpace(options.Archive))
-            await ArchiveAsync(options.Archive!, options.Provider, config.Model, report, cts.Token).ConfigureAwait(false);
+        {
+            await ArchiveAsync(options.Archive!, options.Provider, config.Model, report, wantsJson, cts.Token)
+                .ConfigureAwait(false);
+        }
 
         // A campaign that reports a failed mode must fail the command: the point is to learn
-        // what does not work, and a green exit code would bury it.
-        return results.All(r => r.Passed) ? Program.ExitOk : Program.ExitScriptError;
+        // what does not work, and a green exit code would bury it. A not-applicable mode is
+        // not a failure — nothing was exercised, so there is nothing to act on.
+        return results.All(r => r.Outcome != LlmProbeOutcome.Failed) ? Program.ExitOk : Program.ExitScriptError;
+    }
+
+    private static LlmProbeContext BuildContext(LlmProbeCommandOptions options, LlmConfig config) =>
+        new(
+            Provider: options.Provider,
+            Model: config.Model,
+            EndpointHost: ResolveEndpointHost(options, config),
+            OrkeonVersion: LlmProbeReport.ResolveVersion(),
+            Commit: options.Commit ?? "",
+            TimestampUtc: DateTimeOffset.UtcNow,
+            Temperature: config.Temperature);
+
+    /// <summary>
+    /// The host, never the full URL: a base URL can carry a resource name, a workspace or a
+    /// query string, and none of that belongs in an archived, versioned report.
+    /// </summary>
+    private static string ResolveEndpointHost(LlmProbeCommandOptions options, LlmConfig config)
+    {
+        if (config.BaseUrl is { } explicitUrl)
+            return explicitUrl.Host;
+
+        try
+        {
+            return new Uri(LlmCatalogClient.ResolveBaseUrl(options.Provider, options.BaseUrl)).Host;
+        }
+        catch (Exception ex) when (ex is NotSupportedException or UriFormatException)
+        {
+            return "unknown";
+        }
+    }
+
+    /// <summary>
+    /// Picks the parser matching the provider's wire dialect, exactly as the factory picks the
+    /// strategy it hands the provider: Anthropic speaks its own, everything else speaks OpenAI.
+    /// </summary>
+    private static IToolCallParser ResolveToolCallParser(string provider) =>
+        string.Equals(provider, "anthropic", StringComparison.OrdinalIgnoreCase)
+            ? new AnthropicToolCallingStrategy().Parser
+            : new OpenAIToolCallingStrategy(NullLogger<OpenAIToolCallParser>.Instance).Parser;
+
+    private static CancellationTokenSource CreateInterruptibleTokenSource()
+    {
+        var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            cts.Cancel();
+        };
+        return cts;
     }
 
     private static LlmConfig BuildConfig(LlmProbeCommandOptions options, string? apiKey)
     {
-        var config = string.IsNullOrWhiteSpace(options.Model)
+        // Falling back to LlmConfig.Default() would send OpenAI's default model to whichever
+        // provider was named — a campaign against Groq would silently measure "gpt-5.6-sol".
+        var model = string.IsNullOrWhiteSpace(options.Model)
+            ? ProviderDefaults.ForProvider(options.Provider)
+            : options.Model;
+
+        var config = string.IsNullOrWhiteSpace(model)
             ? LlmConfig.Default()
-            : LlmConfig.Create(options.Model!);
+            : LlmConfig.Create(model!);
 
 #pragma warning disable CS0618 // The probe talks to the provider directly, with no secret store.
         config = config with { ApiKey = apiKey };
 #pragma warning restore CS0618
 
+        // LlmConfig defaults to 30 seconds and the provider hands that straight to HttpClient,
+        // overriding whatever the factory set. A cold Ollama model spends longer than that just
+        // loading, so M1 failed on a timeout and reported it as a provider fault (2026-08-01).
+        config = config with { TimeoutSeconds = options.TimeoutSeconds };
+
+        // LlmConfig defaults to 0.7, so the harness was measuring conformance through creative
+        // sampling: three consecutive M2 runs against the same llama3.2 returned ❌ ✅ ❌
+        // (2026-08-01). A flickering verdict is worse than a red one — it invites reading noise
+        // as a defect. LlmConfig.Seed would pin this further, but no HTTP provider puts it on the
+        // wire, and setting a field that goes nowhere is the silent drop this codebase refuses.
+        config = config with { Temperature = options.Temperature };
+
         if (!string.IsNullOrWhiteSpace(options.BaseUrl))
             config = config with { BaseUrl = new Uri(options.BaseUrl!) };
+
+        if (!string.IsNullOrWhiteSpace(options.ApiVersion))
+            config = config with { ApiVersion = options.ApiVersion };
 
         return config;
     }
@@ -192,7 +369,8 @@ internal static class LlmCommand
     /// in the in-memory config.
     /// </summary>
     private static async Task ArchiveAsync(
-        string directory, string provider, string model, string report, CancellationToken cancellationToken)
+        string directory, string provider, string model, string report, bool json,
+        CancellationToken cancellationToken)
     {
         // EXCEPTION-BOOTSTRAP. The probe runs outside a host, so no IFileSystemService exists  —
         // the destination is a path the operator passed explicitly.
@@ -200,7 +378,7 @@ internal static class LlmCommand
 
         var safeModel = string.Concat(model.Select(c => char.IsLetterOrDigit(c) || c is '-' or '.' ? c : '_'));
         var stamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-        var path = Path.Combine(directory, $"probe-{provider}-{safeModel}-{stamp}.md");
+        var path = Path.Combine(directory, $"probe-{provider}-{safeModel}-{stamp}.{(json ? "json" : "md")}");
 
         await File.WriteAllTextAsync(path, report, cancellationToken).ConfigureAwait(false);
         await Console.Error.WriteLineAsync($"Archived: {path}").ConfigureAwait(false);
