@@ -151,6 +151,60 @@ public sealed class LlmProbeRunnerTests
     }
 
     /// <summary>
+    /// The `llava` case of 2026-08-02. A tool schema is the only trigger for the structured path,
+    /// so a model without tool support has its request refused before the system message is ever
+    /// looked at. Calling that an M2 failure asserts something the exchange never tested — and it
+    /// reads as "the system message was lost", which sends the reader after a phantom defect.
+    /// </summary>
+    [Fact]
+    public async Task ShouldPassM2_WhenTheModelHasNoTools_AndTheReachableShapeIsHonoured()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider().Script(
+            new LlmResponse { Content = "12. ORKEON_OK" },
+            ErrorResponse("registry.ollama.ai/library/llava:latest does not support tools")));
+
+        var result = await RunAsync(runner, LlmProbeMode.M2);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Contains("not exercisable", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("no tool support", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Unreachable is not a free pass: the shape that did run still has to honour the instruction.
+    /// </summary>
+    [Fact]
+    public async Task ShouldFailM2_WhenTheModelHasNoTools_AndIgnoresTheOnlyReachableShape()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider().Script(
+            new LlmResponse { Content = "12." },
+            ErrorResponse("registry.ollama.ai/library/llava:latest does not support tools")));
+
+        var result = await RunAsync(runner, LlmProbeMode.M2);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Contains("ignored on the conversation shape", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The exemption is for capability refusals only. Any other error on the structured shape is
+    /// still a failed call — widening it would let real breakage pass as "not exercisable".
+    /// </summary>
+    [Fact]
+    public async Task ShouldFailM2_WhenTheStructuredShapeErrorsForAnyOtherReason()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider().Script(
+            new LlmResponse { Content = "12. ORKEON_OK" },
+            ErrorResponse("500 Internal Server Error")));
+
+        var result = await RunAsync(runner, LlmProbeMode.M2);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Contains("messages-array shape", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("500", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The second call must declare a tool — that is the only thing that selects the structured
     /// path. Without it M2 would send the same shape twice and prove nothing.
     /// </summary>
@@ -428,15 +482,59 @@ public sealed class LlmProbeRunnerTests
     // ── M9: vision ──────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task ShouldPassM9_WhenTheModelNamesTheColourInTheImage()
+    public async Task ShouldPassM9_WhenTheModelReadsTheNumberAndTheColour()
     {
         var runner = new LlmProbeRunner(new ScriptedProvider
         {
-            Content = "Red.",
+            Content = "73 red",
             Capabilities = new LlmProviderCapabilities { Vision = true },
         });
 
-        Assert.Equal(LlmProbeOutcome.Passed, (await RunAsync(runner, LlmProbeMode.M9)).Outcome);
+        var result = await RunAsync(runner, LlmProbeMode.M9);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Contains("both named", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Reading the number is the assertion; the colour is corroboration. A model that answers
+    /// the harder half and skips the easier one has still proved it saw the image.
+    /// </summary>
+    [Fact]
+    public async Task ShouldPassM9_WhenTheModelReadsTheNumberWithoutNamingTheColour()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider
+        {
+            Content = "The number is 73.",
+            Capabilities = new LlmProviderCapabilities { Vision = true },
+        });
+
+        var result = await RunAsync(runner, LlmProbeMode.M9);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Contains("background not named", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The case that forced this probe to be rewritten. The colour alone used to be the whole
+    /// assertion, so this answer scored green while proving nothing: a blind guess over a flat
+    /// colour lands often enough to be worthless as evidence. It now fails, and the detail says
+    /// the image did arrive — a model limit, not the transport defect a bare red would suggest.
+    /// </summary>
+    [Fact]
+    public async Task ShouldFailM9_WhenTheModelNamesTheColourButCannotReadTheNumber()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider
+        {
+            Content = "The background is red.",
+            Capabilities = new LlmProviderCapabilities { Vision = true },
+        });
+
+        var result = await RunAsync(runner, LlmProbeMode.M9);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Contains("image transited", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("73 was not read", result.Detail, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -456,6 +554,30 @@ public sealed class LlmProbeRunnerTests
         var result = await RunAsync(runner, LlmProbeMode.M9);
 
         Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Contains("neither read nor described", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The prompt has to ask for both facts, or the number half of the verdict measures the
+    /// question rather than the model.
+    /// </summary>
+    [Fact]
+    public async Task ShouldAskM9_ForBothTheNumberAndTheColour()
+    {
+        var provider = new ScriptedProvider
+        {
+            Content = "73 red",
+            Capabilities = new LlmProviderCapabilities { Vision = true },
+        };
+
+        await RunAsync(new LlmProbeRunner(provider), LlmProbeMode.M9);
+
+        var prompt = Assert.Single(Assert.Single(provider.Conversations)).MultiModalContent!.ToTextOnly();
+        Assert.Contains("the number", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("colour", prompt, StringComparison.OrdinalIgnoreCase);
+        // Naming the answer in the question would let a blind model score green.
+        Assert.DoesNotContain("73", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("red", prompt, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -468,7 +590,7 @@ public sealed class LlmProbeRunnerTests
     {
         var provider = new ScriptedProvider
         {
-            Content = "Red.",
+            Content = "73 red",
             Capabilities = new LlmProviderCapabilities { Vision = true },
         };
         var runner = new LlmProbeRunner(provider);
@@ -486,9 +608,9 @@ public sealed class LlmProbeRunnerTests
         Assert.NotNull(image.Data);
         var bytes = image.Data.ToArray();
         Assert.Equal<byte[]>([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], bytes[..8]);
-        // IHDR carries the dimensions big-endian at offset 16; 64×64 is what was encoded.
-        Assert.Equal(64u, System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(16, 4)));
-        Assert.Equal(64u, System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(20, 4)));
+        // IHDR carries the dimensions big-endian at offset 16; 160×112 is what was encoded.
+        Assert.Equal(160u, System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(16, 4)));
+        Assert.Equal(112u, System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(20, 4)));
     }
 
     // ── M10: prompt caching ─────────────────────────────────────────────────
@@ -586,6 +708,20 @@ public sealed class LlmProbeRunnerTests
     };
 
     /// <summary>A provider whose behaviour the test dictates, so the harness's judgement is what is measured.</summary>
+    /// <summary>
+    /// A scripted response the runner reads as an API error. <see cref="ScriptedProvider.Error"/>
+    /// fails every call; this fails one, which is what the per-shape cases need.
+    /// </summary>
+    private static LlmResponse ErrorResponse(string error) => new()
+    {
+        Content = "",
+        Metadata = LlmResponseMetadata.CreateBuilder()
+            .AddProvider("scripted")
+            .AddError(error)
+            .Build()
+            .ToDictionary(),
+    };
+
     private sealed class ScriptedProvider : ILlmProvider, IStreamingLlmProvider
     {
         private readonly Queue<LlmResponse> _scripted = new();

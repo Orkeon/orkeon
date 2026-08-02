@@ -113,14 +113,33 @@ internal sealed class LlmProbeRunner
     private const string ToolProbePrompt =
         "What is the sealed probe code for the city of Lyon? Use the tool — the code cannot be guessed.";
 
+    /// <summary>The number painted on <see cref="ProbeImagePng"/>. Not guessable at 1 in 100.</summary>
+    private const string VisionProbeNumber = "73";
+
     /// <summary>
-    /// A 64×64 pure-red PNG, 132 bytes. A solid colour makes M9 a yes/no question with one
-    /// right answer, where "describe this photo" would need a human to grade it.
+    /// A 160×112 PNG, 339 bytes: white "73" on a pure-red field.
     /// </summary>
-    private const string RedSquarePng =
-        "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAS0lEQVR42u3PQQkAAAgAsetfWiP4Fg" +
-        "YrsKZeS0BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEDgsqnc8OJg" +
-        "6Ln3AAAAAElFTkSuQmCC";
+    /// <remarks>
+    /// <para>
+    /// This used to be a plain red square, and that made M9 undecidable. Asked for the dominant
+    /// colour, <c>glm-4.6v-flash</c> answered "orange" (campaign 2026-08-02): nothing in the
+    /// exchange could separate "saw red, named it badly" from "saw nothing, guessed a colour" —
+    /// the answer space of a flat colour is small enough that a blind guess lands often.
+    /// </para>
+    /// <para>
+    /// The number restores the discrimination the colour never had, and keeping the field red
+    /// keeps the old signal as a second, independent channel. The two together say which half
+    /// broke: colour right + number wrong is a model that cannot read, colour wrong too is an
+    /// image that likely never arrived. One assertion could only ever have said "no".
+    /// </para>
+    /// </remarks>
+    private const string ProbeImagePng =
+        "iVBORw0KGgoAAAANSUhEUgAAAKAAAABwCAIAAAAWk+xVAAABGklEQVR42u3awRHAIAhFQfpv2hSRwe" +
+        "TDOq8Ah/Umdao0OCMALMACLMACLMACDFiABViABVgXgBNPx7wC7w8YMGDAgAEDBgwYMGDAgAEDBgwY" +
+        "MGDAMcB/q2NAXz2a5vsABgwYMGDAgAEDBgwYMGDAgAEDBgwYMOCAQYfPATBgwIABAwYMGDBgwIABAw" +
+        "YMGDBgwIDXAW/AW734DhgwYMCAAQMGDBgwYMCAAQMGDBgwYMDNwD4Jhn82AAaMDbAAAwYMGDBgwIAB" +
+        "AwYMWIABAx53f8CAAQMGDBgwYMCAAQMGDBgwYMCAAQMGbKm9+1h8BwwYMGDAgAEDBgwYMGDAgAEDBg" +
+        "wYMGCFZASABViABViABViAAQuwAAuwAOtVD/3hw5DkBmQpAAAAAElFTkSuQmCC";
 
     private static readonly ToolSchema ToolProbeSchema = new(
         "orkeon_probe_lookup",
@@ -285,8 +304,30 @@ internal sealed class LlmProbeRunner
         var structuredConfig = withSystem with { Tools = [ToolProbeSchema], ToolMode = ToolCallMode.None };
         var structured = await RunMultiTurnShapeAsync(messages, structuredConfig, cancellationToken)
             .ConfigureAwait(false);
+
         if (structured.Error is { } structError)
+        {
+            // A model with no tool support cannot be asked this question at all: the schema is
+            // the only trigger for the structured path, so the request is refused before the
+            // system message is ever evaluated. Reporting that as an M2 failure says "the system
+            // message was lost" about an exchange in which it was never tested — `llava`, on
+            // 2026-08-02, scored red on exactly this and sent the reader hunting for a defect
+            // that was not there. Verdict on the shape that did run, and say the other is
+            // unreachable rather than failed.
+            if (IsToolCapabilityRefusal(structError))
+            {
+                // Not `Verdict(...)`: the local helper below shadows the class-level one.
+                return (flattened.Honoured ? LlmProbeOutcome.Passed : LlmProbeOutcome.Failed,
+                    flattened.Honoured
+                    ? "system message honoured on the conversation shape; messages-array shape not "
+                      + "exercisable — this model has no tool support, and a tool schema is the only "
+                      + "trigger for that path"
+                    : "system message ignored on the conversation shape, and the messages-array shape "
+                      + "is not exercisable on a model without tool support");
+            }
+
             return (LlmProbeOutcome.Failed, $"messages-array shape: {structError}");
+        }
 
         var detail =
             $"conversation shape: {Verdict(flattened.Honoured)}, " +
@@ -319,6 +360,21 @@ internal sealed class LlmProbeRunner
 
         static string Verdict(bool honoured) => honoured ? "honoured" : "ignored";
     }
+
+    /// <summary>
+    /// Whether a vendor error is the API refusing tools for this model, rather than anything
+    /// about the request Orkeon built.
+    /// </summary>
+    /// <remarks>
+    /// Matched on the vendor's wording, the same way <c>CapabilityMismatchHint</c> does in the
+    /// Infrastructure layer — that type is <c>internal</c> and this harness sits outside it, so
+    /// the phrasings are restated rather than shared. Both lists are short and both are grounded
+    /// in refusals actually observed, so the duplication is cheap; a shared public helper would
+    /// widen Infrastructure's surface for one caller.
+    /// </remarks>
+    private static bool IsToolCapabilityRefusal(string vendorError) =>
+        vendorError.Contains("does not support tools", StringComparison.OrdinalIgnoreCase)
+        || vendorError.Contains("does not support function calling", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Runs one multi-turn call and says whether the marker came back.</summary>
     private async Task<(bool Honoured, string? Error)> RunMultiTurnShapeAsync(
@@ -515,6 +571,12 @@ internal sealed class LlmProbeRunner
     /// property of the model, so a red here on a text-only model is expected and informative:
     /// it is exactly the mismatch the matrix asks M9 to measure.
     /// </summary>
+    /// <remarks>
+    /// The image carries two independent facts — a number and a background colour — and the
+    /// verdict names which one the model got. Reading the number is what passes: the colour is
+    /// only there to tell a model that cannot read from an image that never arrived, a
+    /// distinction the previous single-colour probe could not make.
+    /// </remarks>
     private async Task<(LlmProbeOutcome, string)> ProbeVisionAsync(
         LlmConfig config, CancellationToken cancellationToken)
     {
@@ -522,8 +584,10 @@ internal sealed class LlmProbeRunner
             return (LlmProbeOutcome.NotApplicable, "the provider declares no vision capability");
 
         var content = MultiModalContent
-            .FromText("What is the dominant colour of this image? Answer with a single word.")
-            .AddImage(ImageContentPart.FromBase64(RedSquarePng, "image/png"));
+            .FromText(
+                "This image shows a number painted on a solid background. "
+                + "Reply with exactly two words: the number, then the background colour in English.")
+            .AddImage(ImageContentPart.FromBase64(ProbeImagePng, "image/png"));
 
         var response = await _provider
             .ChatAsync([LlmMessage.User(content)], config, cancellationToken).ConfigureAwait(false);
@@ -531,12 +595,25 @@ internal sealed class LlmProbeRunner
         if (HasError(response))
             return (LlmProbeOutcome.Failed, ErrorOf(response));
 
-        var saw = response.Content.Contains("red", StringComparison.OrdinalIgnoreCase)
-            || response.Content.Contains("rouge", StringComparison.OrdinalIgnoreCase);
+        var answer = response.Content ?? string.Empty;
+        var readNumber = answer.Contains(VisionProbeNumber, StringComparison.Ordinal);
+        var readColour = answer.Contains("red", StringComparison.OrdinalIgnoreCase)
+            || answer.Contains("rouge", StringComparison.OrdinalIgnoreCase);
 
-        return (Verdict(saw), saw
-            ? "image accepted and correctly described"
-            : $"image accepted but not described: {Truncate(response.Content)}");
+        if (readNumber)
+        {
+            return (LlmProbeOutcome.Passed, readColour
+                ? $"image read: number {VisionProbeNumber} and red background both named"
+                : $"image read: number {VisionProbeNumber} named (background not named)");
+        }
+
+        // Colour without number: the bytes made it through and were decoded — the model simply
+        // cannot resolve the glyphs. Worth separating, because it is a model limit rather than
+        // the transport defect a bare red would have been read as.
+        return (LlmProbeOutcome.Failed, readColour
+            ? "image transited (red background named) but the number "
+              + $"{VisionProbeNumber} was not read: {Truncate(answer)}"
+            : $"image neither read nor described, expected {VisionProbeNumber} on red: {Truncate(answer)}");
     }
 
     /// <summary>
