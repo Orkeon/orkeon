@@ -535,6 +535,193 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             ? value
             : null;
 
+    /// <summary>
+    /// Streams a chat completion over Ollama's NDJSON, on whichever endpoint
+    /// <see cref="ChatAsync"/> would have used for the same conversation.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Without this override Ollama inherited <see cref="HttpLlmProviderBase.ChatStreamingAsync"/>,
+    /// the buffered fallback: one content event carrying the whole answer, then the terminal
+    /// event. The <c>IStreamingLlmProvider</c> contract was formally honoured while a crew
+    /// streaming from Ollama waited for the complete response and then received it in one piece —
+    /// no error, no warning. Every other provider in the fleet had a native path; Ollama was the
+    /// last one on the fallback. Surfaced by the M4 probe of the campaign of 2026-08-01, which
+    /// only caught it once M4 was tightened to demand more than a single delta.
+    /// </para>
+    /// <para>
+    /// Endpoint selection is delegated to <see cref="RequiresChatEndpoint"/> — the same predicate
+    /// the non-streaming path uses. Streaming must not silently move a conversation from
+    /// <c>/api/generate</c> to <c>/api/chat</c>: that would change the system-message handling
+    /// and the tool dialect purely as a side effect of asking for deltas.
+    /// </para>
+    /// </remarks>
+    public override async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
+        LlmMessage[] messages,
+        LlmConfig? config = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(messages);
+        var effectiveConfig = config ?? Config;
+
+        var useChatEndpoint = RequiresChatEndpoint(messages, effectiveConfig);
+        var payload = useChatEndpoint
+            ? BuildChatPayload(messages, effectiveConfig)
+            : CreateRequestPayload(ConvertMessagesToPrompt(messages), effectiveConfig);
+        payload["stream"] = true;
+
+        var endpoint = new Uri($"{_baseUrl}/api/{(useChatEndpoint ? "chat" : "generate")}");
+        var json = SerializeToJson(payload);
+
+        // Do NOT use 'using' — factory-managed clients must not be disposed.
+        var client = CreateHttpClient(effectiveConfig);
+
+        var state = new OllamaStreamState();
+        HttpResponseMessage? response = null;
+        try
+        {
+            response = await SendStreamingRequestAsync(client, endpoint, json, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                LogStreamingError(response.StatusCode);
+                yield return LlmStreamEvent.Complete(
+                    await CreateErrorResponseAsync(response, cancellationToken).ConfigureAwait(false));
+                yield break;
+            }
+
+            await foreach (var line in ReadNdjsonStreamAsync(response, cancellationToken).ConfigureAwait(false))
+            {
+                foreach (var ev in ReadStreamLine(line, state, useChatEndpoint))
+                    yield return ev;
+            }
+        }
+        finally
+        {
+            response?.Dispose();
+        }
+
+        yield return LlmStreamEvent.Complete(BuildStreamedResponse(state, effectiveConfig));
+    }
+
+    /// <summary>Mutable accumulation state of one streamed Ollama completion.</summary>
+    private sealed class OllamaStreamState
+    {
+        public StringBuilder Content { get; } = new();
+        public StringBuilder Thinking { get; } = new();
+        public int? PromptTokens { get; set; }
+        public int? CompletionTokens { get; set; }
+        /// <summary>Raw <c>tool_calls</c> of the frame that carried them, kept for the final response.</summary>
+        public string? ToolCallsJson { get; set; }
+    }
+
+    /// <summary>
+    /// Reads one NDJSON frame, mutating <paramref name="state"/> and returning the events to
+    /// emit. A malformed frame is skipped rather than allowed to kill the stream.
+    /// </summary>
+    /// <remarks>
+    /// The two endpoints differ only in where the text sits: <c>/api/generate</c> puts it in
+    /// <c>response</c>, <c>/api/chat</c> in <c>message.content</c>. The terminal frame carries the
+    /// token counts in both, which is why the loop reads it instead of breaking on <c>done</c>.
+    /// </remarks>
+    private static IEnumerable<LlmStreamEvent> ReadStreamLine(
+        string line, OllamaStreamState state, bool chatEndpoint)
+    {
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(line);
+        }
+        catch (JsonException)
+        {
+            yield break;
+        }
+
+        using (doc)
+        {
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("done", out var done)
+                && done.ValueKind is JsonValueKind.True or JsonValueKind.False
+                && done.GetBoolean())
+            {
+                state.PromptTokens = ReadInt(root, "prompt_eval_count") ?? state.PromptTokens;
+                state.CompletionTokens = ReadInt(root, "eval_count") ?? state.CompletionTokens;
+            }
+
+            var message = chatEndpoint && root.TryGetProperty("message", out var m) ? m : default;
+
+            if (message.ValueKind == JsonValueKind.Object
+                && message.TryGetProperty("thinking", out var thinking)
+                && thinking.ValueKind == JsonValueKind.String
+                && thinking.GetString() is { Length: > 0 } thinkingDelta)
+            {
+                state.Thinking.Append(thinkingDelta);
+                yield return LlmStreamEvent.Reasoning(thinkingDelta);
+            }
+
+            // Ollama emits a tool call whole, in a single frame — there is nothing to accumulate
+            // by index the way the OpenAI dialect requires.
+            if (message.ValueKind == JsonValueKind.Object
+                && message.TryGetProperty("tool_calls", out var toolCalls)
+                && toolCalls.ValueKind == JsonValueKind.Array)
+            {
+                state.ToolCallsJson = toolCalls.GetRawText();
+            }
+
+            var text = chatEndpoint
+                ? ReadStringProperty(message, "content")
+                : ReadStringProperty(root, "response");
+
+            if (!string.IsNullOrEmpty(text))
+            {
+                state.Content.Append(text);
+                yield return LlmStreamEvent.Content(text);
+            }
+        }
+    }
+
+    private static string? ReadStringProperty(JsonElement element, string propertyName) =>
+        element.ValueKind == JsonValueKind.Object
+        && element.TryGetProperty(propertyName, out var property)
+        && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
+
+    /// <summary>
+    /// Assembles the terminal response, equivalent to what <see cref="ChatAsync"/> would have
+    /// returned — including the synthesized OpenAI body, so a streamed tool call is readable by
+    /// the same parser as a buffered one.
+    /// </summary>
+    private LlmResponse BuildStreamedResponse(OllamaStreamState state, LlmConfig config)
+    {
+        var content = state.Content.ToString();
+
+        var metadata = LlmResponseMetadata.CreateBuilder().AddProvider(Name);
+        if (state.Thinking.Length > 0)
+            metadata.Add("reasoning_content", state.Thinking.ToString());
+
+        string? rawBody = null;
+        if (state.ToolCallsJson is { Length: > 0 } toolCallsJson)
+        {
+            using var doc = JsonDocument.Parse(
+                $$"""{"tool_calls":{{toolCallsJson}}}""");
+            rawBody = SynthesizeOpenAiBody(doc.RootElement, content);
+        }
+
+        return new LlmResponse
+        {
+            Content = content,
+            TokensUsed = (state.PromptTokens ?? 0) + (state.CompletionTokens ?? 0),
+            PromptTokens = state.PromptTokens,
+            CompletionTokens = state.CompletionTokens,
+            Model = config.Model ?? ProviderDefaults.OllamaDefaults.DefaultModel,
+            Metadata = metadata.Build().ToDictionary(),
+            RawResponseBody = rawBody,
+        };
+    }
+
     /// <inheritdoc />
     public override async IAsyncEnumerable<string> GenerateStreamingAsync(
         string prompt,
@@ -800,11 +987,18 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 // If parsing fails, use the sanitized error content
             }
 
+            var model = Config.Model ?? "llama2";
+
+            // Ollama declares thinking and vision because some of its models have them; the
+            // one actually loaded may not, and it says so plainly. Name whose assumption was
+            // wrong, or the refusal reads as Orkeon asking for impossible things (D-03).
+            errorMessage += Base.CapabilityMismatchHint.ForVendorError(errorMessage, "Ollama", model);
+
             return new LlmResponse
             {
                 Content = string.Empty,
                 TokensUsed = 0,
-                Model = Config.Model ?? "llama2",
+                Model = model,
                 Metadata = LlmResponseMetadata.CreateBuilder()
                     .AddProvider(Name)
                     .AddError(errorMessage)

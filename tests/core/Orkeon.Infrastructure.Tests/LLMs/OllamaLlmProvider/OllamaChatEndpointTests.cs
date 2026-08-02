@@ -253,4 +253,63 @@ public class OllamaChatEndpointTests
         Assert.Equal(Convert.ToBase64String([0x89, 0x50, 0x4E, 0x47]), image);
         Assert.DoesNotContain("data:", image!, StringComparison.Ordinal);
     }
+
+    // ── System message on the structured path ───────────────────────────────
+
+    /// <summary>
+    /// A configured <see cref="LlmConfig.SystemMessage"/> must reach the messages array once a
+    /// tool schema pushes the conversation onto <c>/api/chat</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the payload half of the M2 probe verdict. Three consecutive campaigns against a
+    /// live llama3.2 at temperature 0 (2026-08-01) reported the system instruction honoured on
+    /// the flattened shape and ignored on the messages array — the shape of a framework defect,
+    /// and exactly what D-02 was on the OpenAI-compatible providers.
+    /// </para>
+    /// <para>
+    /// It is not one here: Ollama builds its own chat payload and prepends the message
+    /// correctly, as pinned below. The instruction reaches the model, and the model does not
+    /// follow it when a tool catalogue shares its context. Without this test that conclusion
+    /// rests on having read the code once; with it, a regression would turn the campaign's ❌
+    /// into a real finding instead of a repeat of the same false alarm.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task ShouldCarryTheConfiguredSystemMessage_OnTheStructuredPath()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        var config = WithTools(BaseConfig()) with { SystemMessage = "Always answer in Latin." };
+        using var provider = CreateProvider(config, handler);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var messages = (await ReadRequestAsync(handler.CapturedRequests.Single())).GetProperty("messages");
+        Assert.Equal(LlmRoles.System, messages[0].GetProperty("role").GetString());
+        Assert.Equal("Always answer in Latin.", messages[0].GetProperty("content").GetString());
+    }
+
+    /// <summary>
+    /// A system message carried by the conversation wins over the configured one, matching the
+    /// precedence the OpenAI-compatible base settled on: ambient configuration is a fallback,
+    /// never an override of what the call site asked for.
+    /// </summary>
+    [Fact]
+    public async Task ShouldNotOverrideAConversationsOwnSystemMessage()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        var config = WithTools(BaseConfig()) with { SystemMessage = "From the configuration." };
+        using var provider = CreateProvider(config, handler);
+
+        await provider.ChatAsync(
+            [LlmMessage.System("From the call site."), LlmMessage.User("hello")],
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var messages = (await ReadRequestAsync(handler.CapturedRequests.Single())).GetProperty("messages");
+        Assert.Equal(2, messages.GetArrayLength());
+        Assert.Equal("From the call site.", messages[0].GetProperty("content").GetString());
+    }
 }
