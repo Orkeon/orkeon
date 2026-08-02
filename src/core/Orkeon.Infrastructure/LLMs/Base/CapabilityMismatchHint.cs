@@ -25,6 +25,14 @@ namespace Orkeon.Infrastructure.LLMs.Base;
 /// would go stale exactly the way the default models did. It removes the misattribution.
 /// Measured on Z.AI and Ollama, campaigns of 2026-08-01 (D-03).
 /// </para>
+/// <para>
+/// <strong>Tool calling</strong> joined the list on 2026-08-02, from the <c>llava</c> campaign:
+/// <c>registry.ollama.ai/library/llava:latest does not support tools</c> reached the report bare
+/// while the thinking refusal, one line above it, was fully attributed. Same provider, same
+/// campaign, same class of mismatch — the table simply had not been asked about tools yet. That
+/// is the shape of this defect: it is not a Z.AI problem or a vision problem, it recurs on every
+/// capability declared per provider, and each new one arrives silently.
+/// </para>
 /// </remarks>
 internal static class CapabilityMismatchHint
 {
@@ -36,6 +44,8 @@ internal static class CapabilityMismatchHint
         ("does not support vision", "image input"),
         ("does not support image", "image input"),
         ("allowed values: ['text']", "image input"),
+        ("does not support tools", "tool calling"),
+        ("does not support function calling", "tool calling"),
     ];
 
     /// <summary>

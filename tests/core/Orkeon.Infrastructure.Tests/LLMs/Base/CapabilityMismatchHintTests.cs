@@ -14,11 +14,18 @@ namespace Orkeon.Infrastructure.Tests.LLMs.Base;
 /// </remarks>
 public class CapabilityMismatchHintTests
 {
-    /// <summary>The exact refusals observed in the campaigns of 2026-08-01.</summary>
+    /// <summary>
+    /// The exact refusals observed in the campaigns of 2026-08-01 and 2026-08-02. Every entry is
+    /// a string a real vendor really sent — inventing plausible wordings here would test nothing.
+    /// </summary>
     [Theory]
     [InlineData("""{"error":"\"llama3.2\" does not support thinking"}""", "thinking")]
     [InlineData("""{"error":{"message":"Multimodal data provided, but model does not support multimodal requests."}}""", "image input")]
     [InlineData("""{"error":{"code":"1210","message":"messages.content.type is invalid, allowed values: ['text']"}}""", "image input")]
+    // llava campaign, 2026-08-02: this one reached the report unattributed while the thinking
+    // refusal beside it was named, because the table had never been asked about tools.
+    [InlineData("""{"error":"registry.ollama.ai/library/llava:latest does not support tools"}""", "tool calling")]
+    [InlineData("""{"error":{"message":"This model does not support function calling."}}""", "tool calling")]
     public void ShouldNameTheCapability_FromTheVendorsOwnWording(string vendorError, string expected)
     {
         var hint = CapabilityMismatchHint.ForVendorError(vendorError, "Ollama", "llama3.2");
