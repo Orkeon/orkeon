@@ -102,6 +102,23 @@ Les rapports générés sont versionnés : c'est la « sortie archivée » que L
 comme niveau de preuve. Ils sont construits à partir du comportement observé, ne portent
 que l'**hôte** de l'endpoint, et jamais un secret.
 
+Sans `--api-key-env` ni configuration, le kit lit la variable conventionnelle du SDK du
+fournisseur, déclarée dans `lib/catalog.json` :
+
+| Provider | Variable | Provider | Variable |
+|---|---|---|---|
+| `openai` | `OPENAI_API_KEY` | `deepseek` | `DEEPSEEK_API_KEY` |
+| `anthropic` | `ANTHROPIC_API_KEY` | `kimi` · `moonshot` | `MOONSHOT_API_KEY` |
+| `azure` · `azure-openai` | `AZURE_OPENAI_API_KEY` | `qwen` | `DASHSCOPE_API_KEY` |
+| `groq` | `GROQ_API_KEY` | `mistral` | `MISTRAL_API_KEY` |
+| `together` · `togetherai` | `TOGETHER_API_KEY` | `huggingface` · `hf` | `HF_TOKEN` |
+| `ollama` | *aucune* | `zai` · `glm` · `zhipu` | `ZAI_API_KEY` |
+
+`--api-key-env` l'emporte, puis le champ `apiKeyEnv` de la configuration, puis cette
+table, et enfin `ORKEON_LLM_API_KEY`. Le défaut était auparavant `ORKEON_LLM_API_KEY`
+pour les douze : toute campagne lancée sans `--config` cherchait une variable que
+personne n'exporte.
+
 ## Le wildcard
 
 Un `--model` contenant `*` ou `?` déclenche
@@ -196,6 +213,12 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-02T10:29:49Z | `ollama` | `llava` | ❌ 7/4/1 | 0.9.2-beta | [rapport](ollama/2026-08-02-102855-llava.md) |
+| 2026-08-02T10:07:37Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 0.9.2-beta | [rapport](zai/2026-08-02-100724-glm-4.6v-flash.md) |
+| 2026-08-02T10:04:05Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 0.9.2-beta | [rapport](zai/2026-08-02-100358-glm-4.6v-flash.md) |
+| 2026-08-02T06:26:58Z | `zai` | `glm-4.6v-flash` | ❌ 1/1/0 | 0.9.2-beta | [rapport](zai/2026-08-02-062637-glm-4.6v-flash.md) |
+| 2026-08-02T06:14:44Z | `deepseek` | `deepseek-v4-pro` | ✅ 1/0/0 | 0.9.2-beta | [rapport](deepseek/2026-08-02-061435-deepseek-v4-pro.md) |
+| 2026-08-01T17:33:23Z | `zai` | `glm-5.2` | ❌ 11/1/0 | 0.9.2-beta | [rapport](zai/2026-08-01-173232-glm-5.2.md) |
 | 2026-08-01T17:33:05Z | `deepseek` | `deepseek-v4-flash` | ❌ 10/1/1 | 0.9.2-beta | [rapport](deepseek/2026-08-01-173246-deepseek-v4-flash.md) |
 | 2026-08-01T17:31:49Z | `ollama` | `llama3.2` | ❌ 7/4/1 | 0.9.2-beta | [rapport](ollama/2026-08-01-173133-llama3.2.md) |
 
@@ -203,10 +226,11 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Provider | Modèle | Date | Statut | Modes exercés |
 |---|---|---|---|---|
-| `deepseek` | `deepseek-v4-flash` | 2026-08-01 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `ollama` | `llama3.2` | 2026-08-01 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `deepseek` | `deepseek-v4-pro` | 2026-08-02 | ✅ | M2 |
+| `ollama` | `llava` | 2026-08-02 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `zai` | `glm-4.6v-flash` | 2026-08-02 | ✅ | M9 |
 
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_2 campagne(s) archivée(s)._
+_8 campagne(s) archivée(s)._
