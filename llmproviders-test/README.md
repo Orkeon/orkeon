@@ -288,6 +288,7 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-03T11:18:13Z | `kimi` | `kimi-k2.6` | ✅ 11/0/1 | 0.9.2-beta | [rapport](kimi/2026-08-03-111707-kimi-k2.6.md) |
 | 2026-08-03T10:42:56Z | `kimi` | `kimi-k2.6` | ❌ 2/10/0 | 0.9.2-beta | [rapport](kimi/2026-08-03-104249-kimi-k2.6.md) |
 | 2026-08-02T12:56:44Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 0.9.2-beta | [rapport](zai/2026-08-02-125641-glm-4.6v-flash.md) |
 | 2026-08-02T12:56:40Z | `zai` | `glm-5.2` | ❌ 11/1/0 | 0.9.2-beta | [rapport](zai/2026-08-02-125548-glm-5.2.md) |
@@ -300,11 +301,11 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 | Provider | Modèle | Date | Statut | Modes exercés |
 |---|---|---|---|---|
 | `deepseek` | `deepseek-v4-flash` | 2026-08-02 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `kimi` | `kimi-k2.6` | 2026-08-03 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `kimi` | `kimi-k2.6` | 2026-08-03 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `ollama` | `llava` | 2026-08-02 | ✅ | M9 |
 | `zai` | `glm-4.6v-flash` | 2026-08-02 | ✅ | M9 |
 
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_6 campagne(s) archivée(s)._
+_7 campagne(s) archivée(s)._

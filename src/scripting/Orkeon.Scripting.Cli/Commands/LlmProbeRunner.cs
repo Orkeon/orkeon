@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -663,9 +664,21 @@ internal sealed class LlmProbeRunner
         if (HasError(second))
             return (LlmProbeOutcome.Failed, ErrorOf(second));
 
-        // No breakdown is an absence of vendor data, not a defect: nothing to act on.
+        // No breakdown is an absence of vendor data, not a defect. But "no breakdown" alone does
+        // not say which absence: a vendor that reports nothing, or a prefix that never got
+        // cached. Kimi (2026-08-03) is exactly that ambiguity — Moonshot documents caching as
+        // automatic and always on, yet the exchange carried no breakdown. Reporting the prompt
+        // token counts lets the next reader tell the two apart without re-running blind: equal
+        // counts with no breakdown point at a silent vendor, a second call that shrank points at
+        // a cache Orkeon is failing to read.
         if (second.CacheHitTokens is not { } hit)
-            return (LlmProbeOutcome.NotApplicable, "the provider reports no cache-token breakdown");
+        {
+            static string Count(int? tokens) => tokens?.ToString(CultureInfo.InvariantCulture) ?? "unreported";
+
+            return (LlmProbeOutcome.NotApplicable,
+                "the provider reports no cache-token breakdown "
+                + $"(prompt tokens: {Count(first.PromptTokens)} then {Count(second.PromptTokens)})");
+        }
 
         var ratio = second.CacheHitRatio is { } r ? $", ratio={r:F2}" : "";
         return (Verdict(hit > 0), $"second call: {hit} cached token(s){ratio}");
