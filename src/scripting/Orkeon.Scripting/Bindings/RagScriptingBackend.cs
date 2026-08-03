@@ -20,6 +20,14 @@ public sealed record RagScriptingBackend
     /// <summary>Query pipeline backing <c>rag.query</c>.</summary>
     public required IRagPipeline RagPipeline { get; init; }
 
+    /// <summary>
+    /// Resolves a per-call retrieval profile (<c>fast</c> | <c>balanced</c> |
+    /// <c>quality</c> | <c>corrective</c> | <c>adaptive</c>). Null when the host
+    /// registered no resolver, in which case <c>rag.query</c> refuses a profile
+    /// request loudly instead of silently ignoring it.
+    /// </summary>
+    public IRagProfileResolver? ProfileResolver { get; init; }
+
     /// <summary>Virtual file system used to expand glob patterns in ingest sources.</summary>
     public required IFileSystemService FileSystem { get; init; }
 }

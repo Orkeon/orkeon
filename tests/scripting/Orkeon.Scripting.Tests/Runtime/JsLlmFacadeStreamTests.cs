@@ -35,7 +35,7 @@ public sealed class JsLlmFacadeStreamTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
         var chunks = new List<string>();
-        await foreach (var c in facade.stream("hi", null))
+        await foreach (var c in facade.StreamChunks("hi", null))
             chunks.Add(c);
 
         Assert.Equal(HelloChunks, chunks);
@@ -50,7 +50,7 @@ public sealed class JsLlmFacadeStreamTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
         var chunks = new List<string>();
-        await foreach (var c in facade.stream("hi", null))
+        await foreach (var c in facade.StreamChunks("hi", null))
             chunks.Add(c);
 
         Assert.Equal(FullTextChunk, chunks);
@@ -338,4 +338,54 @@ public sealed class JsLlmFacadeStreamTests
 
         public bool ValidateInput(string input) => true;
     }
+
+    // The test the C# ones above could not be: it drives `for await` from SCRIPT
+    // code. Measured 2026-08-03, before the async-iterable adapter landed, this
+    // failed with "The value is not iterable" while every C# stream test was
+    // green — `ctx.llm.stream` returned a bare CLR IAsyncEnumerable, which Jint
+    // sees as an interop object carrying neither Symbol.asyncIterator nor
+    // Symbol.iterator, and the ambient typings claimed AsyncIterable<string>.
+    [Fact]
+    public void Stream_is_async_iterable_from_script_code()
+    {
+        using var engine = new Engine();
+        var provider = new FakeStreamingProvider(generateChunks: HelloChunks, turns: NoTurns);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+        engine.SetValue("llm", facade);
+
+        var probe = engine.Evaluate(
+            "(async function () { const it = llm.stream('hi'); "
+            + "if (!it[Symbol.asyncIterator]) return 'NO_SYMBOL'; "
+            + "const acc = []; for await (const c of it) acc.push(c); "
+            + "return acc.join('|'); })");
+        var result = Unwrap(engine, engine.Invoke(probe));
+
+        Assert.Equal(string.Join('|', HelloChunks), result.AsString());
+    }
+
+    // A `break` inside `for await` calls the iterator's `return()`. Without it the
+    // underlying provider read would be abandoned without disposal.
+    [Fact]
+    public void Stream_stops_early_and_releases_the_iterator_on_break()
+    {
+        using var engine = new Engine();
+        var provider = new FakeStreamingProvider(generateChunks: HelloChunks, turns: NoTurns);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+        engine.SetValue("llm", facade);
+
+        var probe = engine.Evaluate(
+            "(async function () { const it = llm.stream('hi'); "
+            + "const acc = []; for await (const c of it) { acc.push(c); break; } "
+            + "const after = await it[Symbol.asyncIterator]().next(); "
+            + "return acc.length + ':' + String(after.done); })");
+        var result = Unwrap(engine, engine.Invoke(probe));
+
+        // One chunk consumed, and a fresh pull on a released sequence reports done.
+        Assert.Equal("1:true", result.AsString());
+    }
+
+    // Drains the promise returned by an async JS function so the assertion sees a
+    // settled value rather than a pending Promise object.
+    private static Jint.Native.JsValue Unwrap(Engine engine, Jint.Native.JsValue value)
+        => value.IsPromise() ? value.UnwrapIfPromise() : value;
 }

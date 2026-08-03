@@ -4,7 +4,9 @@ using Jint.Native;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Rag.Abstractions;
+using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Rag.Abstractions.Options;
 
 namespace Orkeon.Scripting.Bindings;
 
@@ -123,10 +125,41 @@ public static partial class RagNamespaceBinding
             var topNValue = obj.Get("topN");
             var topN = topNValue.IsNumber() ? (int)topNValue.AsNumber() : (int?)null;
 
-            // Accepted for forward-compatibility; retrieval profiles land in RAG-04.
+            // Per-call retrieval profile. This was a documented no-op until the
+            // profiles themselves shipped (RAG-04/05/06); it is now honoured by
+            // resolving a pipeline per request. Without a resolver on the host we
+            // FAIL rather than ignore: a script that asked for `corrective` and
+            // silently got `fast` would produce answers whose provenance it
+            // cannot describe, which is worse than an error.
             var profile = GetOptionalString(obj, "profile");
+            var pipeline = backend.RagPipeline;
             if (profile is not null)
-                LogProfileIgnored(log, profile);
+            {
+                if (backend.ProfileResolver is null)
+                {
+                    throw new InvalidOperationException(
+                        $"rag.query: profile '{profile}' was requested but this host registered no "
+                        + "IRagProfileResolver, so the profile cannot be honoured. Either drop the "
+                        + "option (the host-wide Orkeon:Rag:Profile then applies) or register the RAG "
+                        + "subsystem with AddOrkeonRag(configuration), which provides the resolver.");
+                }
+
+                try
+                {
+                    pipeline = backend.ProfileResolver.Resolve(profile);
+                }
+                catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException
+                                           or InvalidOperationException)
+                {
+                    throw new ArgumentException(
+                        $"rag.query: unknown retrieval profile '{profile}'. Expected one of "
+                        + $"{RagProfilePresets.FastName}, {RagProfilePresets.BalancedName}, "
+                        + $"{RagProfilePresets.QualityName}, {RagProfilePresets.CorrectiveName}, "
+                        + $"{RagProfilePresets.AdaptiveName}.", ex);
+                }
+
+                LogProfileResolved(log, profile);
+            }
 
             var query = new RagQuery
             {
@@ -136,7 +169,7 @@ public static partial class RagNamespaceBinding
             if (topN is int n)
                 query = query with { TopN = n };
 
-            var answer = await backend.RagPipeline.QueryAsync(query).ConfigureAwait(false);
+            var answer = await pipeline.QueryAsync(query).ConfigureAwait(false);
 
             var payload = new Dictionary<string, object?>
             {
@@ -195,6 +228,6 @@ public static partial class RagNamespaceBinding
     // --- source-generated logging ---
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Debug,
-        Message = "rag.query: profile '{Profile}' accepted but ignored — retrieval profiles arrive with RAG-04.")]
-    static partial void LogProfileIgnored(ILogger logger, string profile);
+        Message = "rag.query: resolved retrieval profile '{Profile}' for this call.")]
+    static partial void LogProfileResolved(ILogger logger, string profile);
 }

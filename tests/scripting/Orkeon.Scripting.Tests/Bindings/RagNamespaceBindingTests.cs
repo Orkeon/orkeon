@@ -10,8 +10,8 @@ namespace Orkeon.Scripting.Tests.Bindings;
 /// First-class <c>rag.*</c> scripting namespace (RAG-03/C3, plan §8.4):
 /// <c>rag.ingest</c> / <c>rag.query</c> route to the RAG subsystem pipelines,
 /// options map onto the typed requests, globs expand through the VFS, the
-/// <c>profile</c> option is a documented no-op, and calls without a wired
-/// subsystem fail loudly with an actionable message.
+/// <c>profile</c> option resolves a pipeline for that call, and calls without a
+/// wired subsystem fail loudly with an actionable message.
 /// </summary>
 public sealed class RagNamespaceBindingTests
 {
@@ -21,7 +21,8 @@ public sealed class RagNamespaceBindingTests
     private static Engine CreateEngine(
         FakeIngestionPipeline? ingest = null,
         FakeRagPipeline? query = null,
-        Orkeon.Domain.FileSystem.IFileSystemService? fileSystem = null)
+        Orkeon.Domain.FileSystem.IFileSystemService? fileSystem = null,
+        Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver? profileResolver = null)
     {
         // The backend is all-or-nothing (AddOrkeonRag registers both pipelines
         // together); tests exercising a single surface still supply both fakes.
@@ -32,6 +33,7 @@ public sealed class RagNamespaceBindingTests
                 IngestionPipeline = ingest ?? new FakeIngestionPipeline(),
                 RagPipeline = query ?? new FakeRagPipeline(),
                 FileSystem = fileSystem ?? new FakeFileSystemService(),
+                ProfileResolver = profileResolver,
             };
         return new JsEngineFactory(ragBackend: backend).Create();
     }
@@ -134,18 +136,93 @@ public sealed class RagNamespaceBindingTests
         Assert.Equal(7, pipeline.LastQuery?.TopN);
     }
 
+    // The per-call `profile` option used to be a documented no-op: it logged
+    // "profile ignored" and served the host-wide pipeline. That predated the
+    // profiles themselves (RAG-04/05/06); a script asking for `corrective` and
+    // silently getting `fast` produced answers whose provenance it could not
+    // describe. These three tests pin the replacement behaviour.
     [Fact]
-    public async Task Query_Profile_IsAccepted_ButIsANoOp_UntilRag04()
+    public async Task Query_Profile_ResolvesAPipelineForThatCall()
     {
-        var pipeline = new FakeRagPipeline();
-        using var engine = CreateEngine(query: pipeline);
+        var hostWide = new FakeRagPipeline();
+        var profiled = new FakeRagPipeline();
+        var resolver = new RecordingProfileResolver(profiled);
+        using var engine = CreateEngine(query: hostWide, profileResolver: resolver);
 
         var result = await Task.Run(() => engine.Evaluate(
             "rag.query('q?', { collection: 'docs', profile: 'quality' }).then(r => r.text)").UnwrapIfPromise());
 
         Assert.Equal("fake answer", result.AsString());
-        // Default TopN untouched — profile carried no retrieval tuning yet.
-        Assert.Equal(5, pipeline.LastQuery?.TopN);
+        Assert.Equal("quality", Assert.Single(resolver.ResolvedProfiles));
+        // The profiled pipeline answered; the host-wide one was never asked.
+        Assert.NotNull(profiled.LastQuery);
+        Assert.Null(hostWide.LastQuery);
+    }
+
+    [Fact]
+    public async Task Query_WithoutAProfile_UsesTheHostWidePipeline_AndNeverResolves()
+    {
+        var hostWide = new FakeRagPipeline();
+        var resolver = new RecordingProfileResolver(new FakeRagPipeline());
+        using var engine = CreateEngine(query: hostWide, profileResolver: resolver);
+
+        await Task.Run(() => engine.Evaluate(
+            "rag.query('q?', { collection: 'docs' }).then(r => r.text)").UnwrapIfPromise());
+
+        Assert.NotNull(hostWide.LastQuery);
+        Assert.Empty(resolver.ResolvedProfiles);
+    }
+
+    [Fact]
+    public async Task Query_Profile_OnAHostWithoutAResolver_FailsRatherThanSilentlyServingTheDefault()
+    {
+        var hostWide = new FakeRagPipeline();
+        using var engine = CreateEngine(query: hostWide, profileResolver: null);
+
+        var ex = await Record.ExceptionAsync(() => Task.Run(() => engine.Evaluate(
+            "rag.query('q?', { collection: 'docs', profile: 'corrective' })").UnwrapIfPromise()));
+
+        Assert.NotNull(ex);
+        var message = FlattenMessage(ex!);
+        Assert.Contains("corrective", message, StringComparison.Ordinal);
+        Assert.Contains("IRagProfileResolver", message, StringComparison.Ordinal);
+        // Nothing was answered from the default pipeline behind the caller's back.
+        Assert.Null(hostWide.LastQuery);
+    }
+
+    [Fact]
+    public async Task Query_UnknownProfile_ListsTheValidNames()
+    {
+        var resolver = new ThrowingProfileResolver();
+        using var engine = CreateEngine(query: new FakeRagPipeline(), profileResolver: resolver);
+
+        var ex = await Record.ExceptionAsync(() => Task.Run(() => engine.Evaluate(
+            "rag.query('q?', { collection: 'docs', profile: 'nope' })").UnwrapIfPromise()));
+
+        Assert.NotNull(ex);
+        var message = FlattenMessage(ex!);
+        foreach (var name in new[] { "fast", "balanced", "quality", "corrective", "adaptive" })
+            Assert.Contains(name, message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Records what was asked for and always returns the same pipeline.</summary>
+    private sealed class RecordingProfileResolver(Orkeon.Rag.Abstractions.Interfaces.IRagPipeline pipeline)
+        : Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver
+    {
+        public List<string> ResolvedProfiles { get; } = [];
+
+        public Orkeon.Rag.Abstractions.Interfaces.IRagPipeline Resolve(string profileName)
+        {
+            ResolvedProfiles.Add(profileName);
+            return pipeline;
+        }
+    }
+
+    /// <summary>Stands in for a resolver that does not know the requested name.</summary>
+    private sealed class ThrowingProfileResolver : Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver
+    {
+        public Orkeon.Rag.Abstractions.Interfaces.IRagPipeline Resolve(string profileName)
+            => throw new ArgumentException($"unknown profile '{profileName}'", nameof(profileName));
     }
 
     [Fact]

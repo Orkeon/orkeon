@@ -62,8 +62,12 @@ declare global {
         function query(question: string, options: {
             collection: string;
             /**
-             * Retrieval profile (fast | balanced | quality | corrective | adaptive).
-             * Accepted but currently a NO-OP: retrieval profiles land with RAG-04.
+             * Retrieval profile: fast | balanced | quality | corrective | adaptive.
+             * Honoured per call — a pipeline is resolved for this request only,
+             * overriding the host-wide `Orkeon:Rag:Profile`. An unknown name is an
+             * error, and so is asking for a profile on a host that registered no
+             * `IRagProfileResolver`: silently serving the default would produce an
+             * answer whose provenance the caller cannot describe.
              */
             profile?: string;
             /** Number of chunks kept for context assembly (default 5). */

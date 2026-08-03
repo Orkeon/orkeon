@@ -19,7 +19,16 @@ declare global {
     interface LlmFacade {
         complete(prompt: string, opts?: LlmCallOptions): Promise<string>;
         chat(messages: readonly Message[], opts?: LlmCallOptions): Promise<ChatResponse>;
-        stream(messages: readonly Message[], opts?: LlmCallOptions): AsyncIterable<string>;
+        /**
+         * Streams the completion chunk by chunk: `for await (const c of
+         * ctx.llm.stream(prompt))`. Takes a PROMPT, not a message array — the
+         * message-array form is `chat(...)`. (This signature said
+         * `readonly Message[]` while the runtime has always taken a string.)
+         *
+         * Per-token when the provider exposes a real SSE path; otherwise a single
+         * full-text chunk. A `break` releases the underlying read.
+         */
+        stream(prompt: string, opts?: LlmCallOptions): AsyncIterable<string>;
         extract<T>(prompt: string, schema: JsonSchema, opts?: LlmCallOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
         embed(text: string | readonly string[], opts?: LlmCallOptions): Promise<readonly number[][]>;

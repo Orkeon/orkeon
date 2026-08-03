@@ -8,6 +8,7 @@ using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools;
 using Orkeon.Hosting;
 using Orkeon.Rag.DependencyInjection;
+using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Scripting.Configuration;
 using Orkeon.Tools.Rag.DependencyInjection;
 using Orkeon.Scripting.Internal;
@@ -381,6 +382,14 @@ internal static partial class RunCommand
                 // TryAdd-based and lazy — hosts without an embedding/chat setup only
                 // fail if a script actually touches the RAG surface.
                 services.AddOrkeonRag(ctx.Configuration);
+                // Same registration as `orkeon rag` (RagCommand): the ONNX
+                // cross-encoder is what the balanced/quality profiles rerank with.
+                // Without it a script asking for either got "Unknown reranker
+                // 'onnx'" — two of the five profiles were unreachable from
+                // `orkeon run` while being reachable from `orkeon rag`. Weights are
+                // embedded (Orkeon.Rag.Onnx.Model) and loaded lazily at first use,
+                // so a profile that never reranks pays nothing.
+                services.AddOrkeonOnnxReranker();
                 services.AddOrkeonRagTools();
             });
 
@@ -434,6 +443,13 @@ internal static partial class RunCommand
                 IngestionPipeline = ingestionPipeline,
                 RagPipeline = ragPipeline,
                 FileSystem = fileSystem,
+                // Lets `rag.query({ profile: "corrective" })` select a pipeline per
+                // call instead of being stuck with the host-wide
+                // Orkeon:Rag:Profile. Best-effort like the two above: absent
+                // resolver ⇒ the binding refuses a profile request loudly rather
+                // than silently serving the default.
+                ProfileResolver = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver>(
+                    host.Services, logger),
             }
             : null;
 

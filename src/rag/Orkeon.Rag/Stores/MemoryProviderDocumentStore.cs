@@ -67,7 +67,7 @@ namespace Orkeon.Rag.Stores;
 /// best-effort under concurrent writers to the same (collection, source) — same guarantees as
 /// the underlying provider, no cross-call locking.</para>
 /// </remarks>
-public sealed class MemoryProviderDocumentStore : IDocumentStore
+public sealed class MemoryProviderDocumentStore : IDocumentStore, IDocumentStoreCollectionProbe
 {
     /// <summary><see cref="ScoredChunk.ScoreOrigin"/> for provider-computed similarity scores.</summary>
     public const string VectorScoreOrigin = "vector";
@@ -102,6 +102,40 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore
     {
         ArgumentNullException.ThrowIfNull(provider);
         _provider = provider;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Reads the per-collection source registry — the same key
+    /// <see cref="DeleteBySourceAsync"/> maintains — so the probe costs one
+    /// provider read and never touches an embedding. A registry that is absent
+    /// or empty means the collection holds nothing, which is exactly the state
+    /// a stale ingestion manifest cannot see on its own.
+    /// </remarks>
+    public async Task<bool> HasContentAsync(
+        string collection,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateCollection(collection);
+        if (_provider.TryGetCapability<ICollectionAwareMemory>(out _))
+        {
+            // Collection-aware providers (ChromaDB, Pinecone, LanceDB) expose no
+            // cheap membership check — only a similarity search, which would need
+            // a dimension-correct embedding and a network round-trip just to
+            // answer "is it empty?". They are also DURABLE, so the lifetime
+            // mismatch this probe exists to catch cannot arise there: report
+            // content and let the manifest do its job. Reporting `false` would be
+            // worse than useless, forcing a full re-embed on every run.
+            return true;
+        }
+
+        var registry = await _provider.GetAsync(RegistryKey(collection), cancellationToken)
+            .ConfigureAwait(false);
+        if (registry is null)
+            return false;
+        foreach (var _ in ParseLines(registry.Content))
+            return true;
+        return false;
     }
 
     /// <inheritdoc />

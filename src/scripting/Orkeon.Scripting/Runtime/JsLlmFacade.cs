@@ -98,8 +98,85 @@ public sealed class JsLlmFacade
     /// real SSE path (<see cref="Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider"/>,
     /// exp07 F5); otherwise falls back to a single full-text chunk.
     /// </summary>
-    public Func<string, JsValue?, IAsyncEnumerable<string>> stream => (prompt, options)
+    public Func<string, JsValue?, JsValue> stream => (prompt, options)
+        => AsAsyncIterable(StreamChunks(prompt, options));
+
+    /// <summary>
+    /// CLR-facing sibling of <c>stream</c>: the raw chunk sequence, without the JS
+    /// async-iterable wrapper. Exists so C# callers and tests can consume the
+    /// sequence directly — but note that asserting on THIS proves nothing about the
+    /// script surface. A C# test over this method passed for months while
+    /// <c>for await</c> in a script threw "The value is not iterable"; the JS
+    /// protocol needs its own test.
+    /// </summary>
+    internal IAsyncEnumerable<string> StreamChunks(string prompt, JsValue? options)
         => StreamCore(prompt, options);
+
+    /// <summary>
+    /// Wraps an <see cref="IAsyncEnumerable{T}"/> into a JS async-iterable object so
+    /// scripts can write <c>for await (const chunk of ctx.llm.stream(p))</c>.
+    /// </summary>
+    /// <remarks>
+    /// Returning the CLR <see cref="IAsyncEnumerable{T}"/> directly does NOT work:
+    /// Jint sees a plain interop object with neither <c>Symbol.asyncIterator</c> nor
+    /// <c>Symbol.iterator</c>, and <c>for await</c> fails with "The value is not
+    /// iterable" — measured 2026-08-03, while the ambient typings advertised
+    /// <c>AsyncIterable&lt;string&gt;</c>. The protocol is therefore built here: an
+    /// object whose <c>Symbol.asyncIterator</c> returns an iterator whose
+    /// <c>next()</c> resolves to <c>{ value, done }</c>. The enumerator is created
+    /// once per call and disposed when the sequence completes or the consumer
+    /// breaks out early (<c>return()</c>).
+    /// </remarks>
+    private JsValue AsAsyncIterable(IAsyncEnumerable<string> source)
+    {
+        var enumerator = source.GetAsyncEnumerator(_ct);
+        var disposed = false;
+
+        async Task<JsValue> DisposeOnceAsync()
+        {
+            if (!disposed)
+            {
+                disposed = true;
+                await enumerator.DisposeAsync().ConfigureAwait(false);
+            }
+            return Result(JsValue.Undefined, done: true);
+        }
+
+        // `next` pulls one chunk. Disposal happens as soon as the sequence ends so a
+        // fully-consumed stream does not depend on the consumer calling `return()`.
+        var next = new Func<Task<JsValue>>(async () =>
+        {
+            if (disposed)
+                return Result(JsValue.Undefined, done: true);
+            try
+            {
+                if (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                    return Result(enumerator.Current ?? string.Empty, done: false);
+            }
+            catch
+            {
+                await DisposeOnceAsync().ConfigureAwait(false);
+                throw;
+            }
+            return await DisposeOnceAsync().ConfigureAwait(false);
+        });
+
+        // `return` is what a `break` inside `for await` calls: it must release the
+        // enumerator, otherwise an abandoned stream leaks the underlying HTTP read.
+        var ret = new Func<Task<JsValue>>(DisposeOnceAsync);
+
+        var factory = _engine.Evaluate(
+            "(function (next, ret) { return { [Symbol.asyncIterator]() { "
+            + "return { next: next, return: ret }; } }; })");
+        return _engine.Invoke(factory, next, ret);
+    }
+
+    private JsValue Result(JsValue value, bool done)
+        => JsValue.FromObject(_engine, new Dictionary<string, object?>
+        {
+            ["value"] = value.IsUndefined() ? null : value.ToObject(),
+            ["done"] = done,
+        });
 
     private async IAsyncEnumerable<string> StreamCore(string prompt, JsValue? options)
     {

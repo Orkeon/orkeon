@@ -40,7 +40,7 @@ namespace Orkeon.Rag.Retrieval;
 /// through the vector list. At scale, prefer a provider with native hybrid search
 /// (LanceDB) — the decorator switches to it automatically.</para>
 /// </remarks>
-public sealed class HybridSearchDocumentStore : IDocumentStore
+public sealed class HybridSearchDocumentStore : IDocumentStore, IDocumentStoreCollectionProbe
 {
     /// <summary><see cref="ScoredChunk.ScoreOrigin"/> of provider-fused hybrid scores.</summary>
     public const string HybridNativeScoreOrigin = "hybrid-native";
@@ -70,6 +70,22 @@ public sealed class HybridSearchDocumentStore : IDocumentStore
         _options = options;
         _provider = provider;
     }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Capability FORWARDING, not an implementation. A decorator that swallows an
+    /// optional capability silently disables it: the ingestion pipeline type-tests
+    /// the store it was given, and since this decorator always wraps the real store
+    /// (ingestion has to feed the lexical index), failing to forward would make
+    /// <see cref="IDocumentStoreCollectionProbe"/> unreachable in every default
+    /// host — which is exactly what happened when the probe was first added.
+    /// A wrapped store that does not implement the probe reports content, matching
+    /// the no-probe behaviour of the pipeline.
+    /// </remarks>
+    public Task<bool> HasContentAsync(string collection, CancellationToken cancellationToken = default)
+        => _inner is IDocumentStoreCollectionProbe probe
+            ? probe.HasContentAsync(collection, cancellationToken)
+            : Task.FromResult(true);
 
     /// <inheritdoc />
     /// <remarks>Delegates first (inner validation wins — a rejected batch is never indexed),

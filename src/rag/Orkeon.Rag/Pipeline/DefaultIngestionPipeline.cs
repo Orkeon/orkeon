@@ -124,6 +124,27 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
         var manifest = await _manifestStore.LoadAsync(request.Collection, cancellationToken)
             .ConfigureAwait(false);
 
+        // A manifest can OUTLIVE the data it describes. The manifest is persisted
+        // through the virtual file system while the document store may be
+        // in-memory (the CLI default), so a second process finds a manifest
+        // claiming every source is unchanged, embeds nothing, and reports success
+        // against an empty store — every later query then returns zero citations,
+        // with no error anywhere. Measured 2026-08-03: two `orkeon run` processes
+        // over the same collection gave 3 citations then 0.
+        //
+        // When the store can be probed and says the collection is empty while the
+        // manifest claims sources, the manifest is stale: drop it and ingest in
+        // full. Stores that cannot be probed keep the previous behaviour.
+        if (manifest is not null
+            && manifest.Sources.Count > 0
+            && !request.Reindex
+            && _store is IDocumentStoreCollectionProbe probe
+            && !await probe.HasContentAsync(request.Collection, cancellationToken).ConfigureAwait(false))
+        {
+            LogStaleManifestDiscarded(manifest.Sources.Count, request.Collection);
+            manifest = null;
+        }
+
         EnsureNoEmbeddingDrift(request, manifest, embeddingProfile);
 
         var previousSources = manifest?.Sources
@@ -498,4 +519,11 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Reindex: purged {SourceCount} sources from collection '{Collection}'.")]
     private partial void LogCollectionPurged(int sourceCount, string collection);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "Ingestion manifest for collection '{Collection}' claimed {SourceCount} unchanged source(s) "
+            + "but the document store is empty — the manifest outlived its data (persisted manifest vs "
+            + "non-durable store). Discarding it and ingesting in full.")]
+    private partial void LogStaleManifestDiscarded(int sourceCount, string collection);
 }
