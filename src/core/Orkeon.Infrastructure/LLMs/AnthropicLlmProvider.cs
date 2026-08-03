@@ -700,7 +700,8 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             if (!response.IsSuccessStatusCode)
             {
                 LogStreamingError(response.StatusCode);
-                yield break;
+                throw await StreamingRejectionAsync(response, "Anthropic", cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             // Anthropic SSE uses event types: content_block_delta with delta.text

@@ -372,6 +372,49 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     }
 
     /// <summary>
+    /// Builds the exception that a rejected streaming request must fail with.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="GenerateStreamingAsync"/> returns <c>IAsyncEnumerable&lt;string&gt;</c>: there is
+    /// no metadata dictionary to put an error in, the way <see cref="ILlmProvider.GenerateAsync"/>
+    /// has. Every native override used to log the status code and <c>yield break</c>, so a caller
+    /// received an empty sequence that ended normally — indistinguishable from a model with
+    /// nothing to say. The Kimi campaign of 2026-08-03 measured the cost: M3 reported
+    /// <c>0 chunk(s), 0 char(s)</c> while the API had answered
+    /// <c>invalid temperature: only 1 is allowed for this model</c>, and that sentence existed
+    /// nowhere in the archived evidence.
+    /// </para>
+    /// <para>
+    /// Throwing rather than returning is not a new obligation on callers: a malformed SSE chunk
+    /// already reaches them as a <c>JsonException</c> from the parse inside the read loop. This
+    /// only means a request the vendor refused now fails as loudly as one it mangled.
+    /// <see cref="HttpRequestException"/> carries the status in
+    /// <see cref="HttpRequestException.StatusCode"/>, so no new exception type is needed.
+    /// </para>
+    /// </remarks>
+    /// <param name="response">The non-success response, still holding its body.</param>
+    /// <param name="providerDisplayName">Provider name, as the reader sees it.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The exception to throw, carrying the vendor's own words.</returns>
+    protected static async Task<HttpRequestException> StreamingRejectionAsync(
+        HttpResponseMessage response,
+        string providerDisplayName,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+        // Same phrasing as the buffered path's error metadata, so a reader comparing M1 and M3
+        // sees one wording and not two.
+        return new HttpRequestException(
+            $"{providerDisplayName} API error: {response.StatusCode} - {Security.LogSanitizer.SanitizeString(body)}",
+            inner: null,
+            statusCode: response.StatusCode);
+    }
+
+    /// <summary>
     /// Reads an SSE (Server-Sent Events) stream and yields data payloads.
     /// Handles "data: {json}" format with "data: [DONE]" terminator.
     /// </summary>

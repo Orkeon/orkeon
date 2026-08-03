@@ -12,10 +12,18 @@ public interface IStreamingLlmProvider
     /// Generates a streaming response from the LLM model.
     /// Returns tokens as they are generated for real-time display.
     /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="Orkeon.Domain.SharedKernel.ILlmProvider.GenerateAsync"/>, this signature
+    /// has no metadata channel, so a failure <strong>throws</strong>: a request the API refused
+    /// surfaces as an <see cref="HttpRequestException"/> carrying the vendor's own words and the
+    /// status code, not as an empty sequence. An empty sequence therefore means one thing only —
+    /// the model produced no tokens. Callers that would rather degrade than fail should catch it.
+    /// </remarks>
     /// <param name="prompt">The input prompt</param>
     /// <param name="config">Optional LLM configuration override</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Async enumerable of response tokens/chunks</returns>
+    /// <exception cref="HttpRequestException">The provider refused the request.</exception>
     IAsyncEnumerable<string> GenerateStreamingAsync(
         string prompt,
         LlmConfig? config = null,

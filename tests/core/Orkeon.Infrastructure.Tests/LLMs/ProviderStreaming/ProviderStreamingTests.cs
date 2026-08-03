@@ -45,12 +45,44 @@ public sealed class ProviderStreamingTests : IDisposable
         Assert.Empty(tokens);
     }
 
+    /// <summary>
+    /// A refused request must fail, not come back as an empty stream.
+    /// </summary>
+    /// <remarks>
+    /// This test used to assert the opposite — <c>Assert.Empty(tokens)</c> — which is how the
+    /// silence survived review: it read as a deliberate degradation. The Kimi campaign of
+    /// 2026-08-03 priced it. M3 archived <c>0 chunk(s), 0 char(s)</c> for a request the API had
+    /// rejected with <c>invalid temperature: only 1 is allowed for this model</c>, and because
+    /// <c>IAsyncEnumerable&lt;string&gt;</c> carries no metadata, that sentence was never written
+    /// down anywhere. An empty sequence now means one thing: the model had nothing to say.
+    /// </remarks>
     [Fact]
-    public async Task ShouldYieldNothing_WhenOpenAIGenerateStreamingAsyncServerError()
+    public async Task ShouldThrowWithTheVendorsWords_WhenOpenAITokenStreamIsRefused()
     {
-        using var provider = CreateOpenAIProvider("", HttpStatusCode.InternalServerError);
-        var tokens = await CollectTokens(provider, "test");
-        Assert.Empty(tokens);
+        using var provider = CreateOpenAIProvider(
+            """{"error":{"message":"invalid temperature: only 1 is allowed for this model"}}""",
+            HttpStatusCode.BadRequest);
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => CollectTokens(provider, "test"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, ex.StatusCode);
+        Assert.Contains("invalid temperature", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Anthropic has its own streaming path, so it needs its own proof.</summary>
+    [Fact]
+    public async Task ShouldThrowWithTheVendorsWords_WhenAnthropicTokenStreamIsRefused()
+    {
+        using var provider = CreateAnthropicProvider(
+            """{"type":"error","error":{"message":"overloaded"}}""",
+            HttpStatusCode.ServiceUnavailable);
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => CollectTokens(provider, "test"));
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, ex.StatusCode);
+        Assert.Contains("overloaded", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -110,12 +142,18 @@ public sealed class ProviderStreamingTests : IDisposable
         Assert.Equal(" Ollama", tokens[1]);
     }
 
+    /// <summary>Ollama has its own NDJSON streaming path, so it needs its own proof.</summary>
     [Fact]
-    public async Task ShouldYieldNothing_WhenOllamaGenerateStreamingAsyncServerError()
+    public async Task ShouldThrowWithTheVendorsWords_WhenOllamaTokenStreamIsRefused()
     {
-        using var provider = CreateOllamaProvider("", HttpStatusCode.InternalServerError);
-        var tokens = await CollectTokens(provider, "test");
-        Assert.Empty(tokens);
+        using var provider = CreateOllamaProvider(
+            """{"error":"model 'absent' not found"}""", HttpStatusCode.NotFound);
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => CollectTokens(provider, "test"));
+
+        Assert.Equal(HttpStatusCode.NotFound, ex.StatusCode);
+        Assert.Contains("not found", ex.Message, StringComparison.Ordinal);
     }
 
     #endregion

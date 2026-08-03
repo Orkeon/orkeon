@@ -760,7 +760,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             if (!response.IsSuccessStatusCode)
             {
                 LogStreamingError(response.StatusCode);
-                yield break;
+                throw await StreamingRejectionAsync(response, "Ollama", cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             // Ollama uses NDJSON format: {"response":"token","done":false}

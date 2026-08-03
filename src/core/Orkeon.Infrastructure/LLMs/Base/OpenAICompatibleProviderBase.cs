@@ -190,7 +190,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             if (!response.IsSuccessStatusCode)
             {
                 LogStreamingError(response.StatusCode, ProviderDisplayName);
-                yield break;
+                throw await StreamingRejectionAsync(response, ProviderDisplayName, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
@@ -601,7 +602,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             // The request-aware hint is the sharper of the two; fall back on reading the
             // vendor's own wording, which also covers capabilities other than vision.
-            var hint = VisionHintFor(messages, effectiveConfig) is { Length: > 0 } visionHint
+            var hint = VisionHintFor(messages, effectiveConfig, body) is { Length: > 0 } visionHint
                 ? visionHint
                 : CapabilityHintFor(body, effectiveConfig);
 
@@ -1271,12 +1272,52 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// reader blames the framework. This sentence closes that gap without pretending Orkeon
     /// knows which models see (D-03).
     /// </remarks>
-    private string VisionHintFor(LlmMessage[] messages, LlmConfig effectiveConfig) =>
-        HasVisionPayload(messages)
+    /// <param name="messages">The conversation as it was sent.</param>
+    /// <param name="effectiveConfig">The config the request used.</param>
+    /// <param name="vendorError">
+    /// The raw refusal. Read only to stay silent when the vendor already blamed something else —
+    /// see <see cref="UnrelatedParameterMarkers"/>.
+    /// </param>
+    private string VisionHintFor(LlmMessage[] messages, LlmConfig effectiveConfig, string vendorError) =>
+        HasVisionPayload(messages) && !BlamesAnotherParameter(vendorError)
             ? $" — the request carried an image and {ProviderDisplayName} declares vision support, " +
               $"but that is declared per provider while models differ: '{effectiveConfig.Model ?? DefaultModel}' " +
               "may be text-only. Try a vision model, or send text only."
             : "";
+
+    /// <summary>
+    /// Request parameters that are not the message content, in the vendors' own words.
+    /// </summary>
+    /// <remarks>
+    /// Keying the vision hint on "the request carried an image" alone made it fire on every
+    /// rejection of every multimodal request, whatever the cause. The Kimi campaign of
+    /// 2026-08-03 is the proof: <c>kimi-k2.6</c> answered M9 with
+    /// <c>invalid temperature: only 1 is allowed for this model</c> and Orkeon appended
+    /// "may be text-only. Try a vision model" — sending the reader after a vision problem that
+    /// did not exist, while the one-word real cause sat in the same sentence. That is the very
+    /// misattribution <see cref="CapabilityMismatchHint"/> was written to remove, reintroduced
+    /// from the other side.
+    /// </remarks>
+    private static readonly string[] UnrelatedParameterMarkers =
+    [
+        "temperature", "top_p", "top_k", "max_tokens", "frequency_penalty",
+        "presence_penalty", "response_format", "stream", "seed",
+    ];
+
+    /// <summary>
+    /// Whether the vendor pinned the rejection on a parameter other than the message content.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately asymmetric. A vendor that echoes the whole request back in its error body
+    /// will suppress a hint that would have been right — a hint missing is a reader who reads
+    /// the vendor's words unaided, whereas a hint that is wrong is a reader sent to the wrong
+    /// file. The vendor-wording path (<see cref="CapabilityHintFor"/>) still covers the refusals
+    /// that name a capability outright.
+    /// </remarks>
+    private static bool BlamesAnotherParameter(string vendorError) =>
+        Array.Exists(
+            UnrelatedParameterMarkers,
+            marker => vendorError.Contains(marker, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Reads the same mismatch out of the vendor's own words, for the paths that no longer hold

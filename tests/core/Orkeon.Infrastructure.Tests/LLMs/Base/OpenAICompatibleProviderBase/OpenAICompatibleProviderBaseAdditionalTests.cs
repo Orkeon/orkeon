@@ -47,8 +47,18 @@ public class OpenAICompatibleProviderBaseAdditionalTests
         Assert.Empty(tokens);
     }
 
+    /// <summary>
+    /// A rejected streaming request fails with the vendor's own words (D-05).
+    /// </summary>
+    /// <remarks>
+    /// Was <c>ShouldYieldNoTokens_WhenStreamingReturnsHttpError</c>, asserting
+    /// <c>Assert.Empty(tokens)</c> — one of four tests that pinned the silence and thereby made
+    /// it look intended. The Kimi campaign of 2026-08-03 showed the cost: M3 archived
+    /// <c>0 chunk(s), 0 char(s)</c> for a request the API had refused outright, and the refusal
+    /// was written down nowhere.
+    /// </remarks>
     [Fact]
-    public async Task ShouldYieldNoTokens_WhenStreamingReturnsHttpError()
+    public async Task ShouldThrowWithTheVendorsWords_WhenStreamingIsRejected()
     {
         // Arrange
         using var handler = TestDoubles.TestHttpMessageHandler.CreateWithResponse(
@@ -59,14 +69,19 @@ public class OpenAICompatibleProviderBaseAdditionalTests
         using var provider = new TestableOpenAICompatibleProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
-        var tokens = new List<string>();
-        await foreach (var token in provider.GenerateStreamingAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken))
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(async () =>
         {
-            tokens.Add(token);
-        }
+            await foreach (var token in provider.GenerateStreamingAsync(
+                TestPrompt, cancellationToken: TestContext.Current.CancellationToken))
+            {
+                // The stream must fail before yielding anything.
+                Assert.Fail($"unexpected token: {token}");
+            }
+        });
 
         // Assert
-        Assert.Empty(tokens);
+        Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
+        Assert.Contains("Server Error", ex.Message, StringComparison.Ordinal);
     }
 
     #endregion

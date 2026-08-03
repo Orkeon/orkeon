@@ -198,4 +198,31 @@ public class OpenAICompatibleProviderBaseVisionGuardTests
         Assert.DoesNotContain("declared per provider while models differ", error, StringComparison.Ordinal);
         Assert.DoesNotContain("may be text-only", error, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The Kimi campaign of 2026-08-03. An image was sent, the vendor refused for a reason that
+    /// has nothing to do with images, and the hint fired anyway — because it keyed on what the
+    /// request contained and never read the answer. The reader was pointed at a vision problem
+    /// while the real cause sat in the same sentence.
+    /// </summary>
+    [Fact]
+    public async Task ShouldNotBlameVision_WhenTheVendorBlamedAnotherParameter()
+    {
+        using var handler = TestDoubles.TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.BadRequest,
+            """{"error":{"message":"invalid temperature: only 1 is allowed for this model","type":"invalid_request_error"}}""");
+        using var httpClient = new HttpClient(handler);
+        _httpClientFactory.RegisterClient("VisionClaimingProvider", httpClient);
+
+        var config = LlmConfig.Create("kimi-k2.6", TestApiKey);
+        using var provider = new VisionClaimingProvider(config, _httpClientFactory, _noOpPolicy);
+
+        var result = await provider.ChatAsync(
+            [ImageMessage()], cancellationToken: TestContext.Current.CancellationToken);
+
+        var error = result.Metadata["error"].ToString() ?? "";
+        Assert.Contains("invalid temperature", error, StringComparison.Ordinal);
+        Assert.DoesNotContain("may be text-only", error, StringComparison.Ordinal);
+        Assert.DoesNotContain("declared per provider while models differ", error, StringComparison.Ordinal);
+    }
 }
