@@ -249,9 +249,15 @@ Deux limites à connaître, plutôt que de les découvrir en campagne :
   met sur le fil** — seuls les adaptateurs Microsoft.Extensions.AI le lisent. La sonde ne le
   renseigne donc pas : poser un champ qui ne part nulle part serait exactement le *silent drop*
   que ce projet combat. À `temperature: 0` la variance devient faible, pas nulle.
-- **Quelques modèles de raisonnement refusent toute température imposée** et n'acceptent que leur
-  propre défaut. Pour ceux-là, `--temperature 1` — le refus est explicite côté fournisseur, pas
-  silencieux.
+- **Quelques modèles refusent toute température imposée** et n'acceptent que leur propre défaut.
+  Le refus est explicite côté fournisseur, pas silencieux — mais il porte sur *chaque* appel, donc
+  il ne colore pas un mode, il en abat douze. La campagne Kimi du 2026-08-03 l'a payé plein
+  tarif : `kimi-k2.6` répond `invalid temperature: only 1 is allowed for this model`, dix modes sur
+  douze au rouge, une seule cause. Cette page le documentait déjà — sans que rien ne l'applique.
+  Depuis, **un fournisseur qui ne supporte pas `0` déclare sa température au catalogue**
+  (`lib/catalog.json`, champ `temperature`), `--temperature` reste prioritaire, et l'en-tête du
+  rapport porte la valeur réellement employée : un verdict Kimi n'est pas reproductible au même
+  titre qu'un verdict à température nulle, et cela se lit.
 
 Un mode qui reste instable à température nulle traduit un modèle assis sur une frontière de
 décision. Le relancer trois fois et rapporter la tendance vaut mieux qu'archiver une passe.
@@ -282,6 +288,7 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-03T10:42:56Z | `kimi` | `kimi-k2.6` | ❌ 2/10/0 | 0.9.2-beta | [rapport](kimi/2026-08-03-104249-kimi-k2.6.md) |
 | 2026-08-02T12:56:44Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 0.9.2-beta | [rapport](zai/2026-08-02-125641-glm-4.6v-flash.md) |
 | 2026-08-02T12:56:40Z | `zai` | `glm-5.2` | ❌ 11/1/0 | 0.9.2-beta | [rapport](zai/2026-08-02-125548-glm-5.2.md) |
 | 2026-08-02T12:56:24Z | `ollama` | `llava` | ✅ 1/0/0 | 0.9.2-beta | [rapport](ollama/2026-08-02-125613-llava.md) |
@@ -293,10 +300,11 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 | Provider | Modèle | Date | Statut | Modes exercés |
 |---|---|---|---|---|
 | `deepseek` | `deepseek-v4-flash` | 2026-08-02 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `kimi` | `kimi-k2.6` | 2026-08-03 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `ollama` | `llava` | 2026-08-02 | ✅ | M9 |
 | `zai` | `glm-4.6v-flash` | 2026-08-02 | ✅ | M9 |
 
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_5 campagne(s) archivée(s)._
+_6 campagne(s) archivée(s)._

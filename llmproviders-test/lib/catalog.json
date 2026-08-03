@@ -107,7 +107,9 @@
       "matrix": "§6.8",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "defaultModel": "kimi-k2.6",
+      "temperature": 1,
       "notes": [
+        "`kimi-k2.6` **refuse toute température autre que 1** (`invalid temperature: only 1 is allowed for this model`) — le catalogue épingle donc 1 pour ce fournisseur, et l'en-tête du rapport porte la valeur réellement utilisée. Un verdict Kimi n'est pas reproductible au même titre qu'un verdict à température 0.",
         "Deux endpoints régionaux à **comptes séparés** : `api.moonshot.ai` (international, défaut) et `api.moonshot.cn` (Chine continentale).",
         "G-11 fermé : vérifier que l'hôte résolu dans l'en-tête du rapport est bien celui attendu.",
         "La série `moonshot-v1-*` compte entrée + sortie dans la même borne — son « 8 K » n'est pas une fenêtre d'entrée de 8 K."

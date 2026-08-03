@@ -309,8 +309,21 @@ function Invoke-Campaign {
     if ($Version) { $arguments += @('--api-version', $Version) }
     if ($Commit)  { $arguments += @('--commit', $Commit) }
     if ($null -ne $Timeout)     { $arguments += @('--timeout', $Timeout.ToString([cultureinfo]::InvariantCulture)) }
+
+    # Temperature 0 is the default because a pinned temperature makes a verdict reproducible.
+    # Some models refuse it outright — `kimi-k2.6` answers every call with
+    # `invalid temperature: only 1 is allowed for this model`, which cost a whole campaign
+    # (2026-08-03: ten of twelve modes red, one cause). A provider that cannot take 0 declares
+    # what it can take in the catalogue, and the report prints the value actually used.
+    $effectiveTemperature = $Temperature
+    if ($null -eq $effectiveTemperature) {
+        $catalogTemperature = Get-CatalogField -ProviderKey $ProviderKey -Field 'temperature'
+        if ($catalogTemperature) { $effectiveTemperature = [double]$catalogTemperature }
+    }
     # InvariantCulture matters: a French locale renders 0.5 as "0,5", which the parser rejects.
-    if ($null -ne $Temperature) { $arguments += @('--temperature', $Temperature.ToString([cultureinfo]::InvariantCulture)) }
+    if ($null -ne $effectiveTemperature) {
+        $arguments += @('--temperature', $effectiveTemperature.ToString([cultureinfo]::InvariantCulture))
+    }
 
     $raw = Join-Path $TmpDir "$ProviderKey-$slug.json"
     $err = Join-Path $TmpDir "$ProviderKey-$slug.stderr"

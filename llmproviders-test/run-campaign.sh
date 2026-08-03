@@ -291,7 +291,16 @@ run_one() {
   [[ -n "$api_version" ]] && args+=(--api-version "$api_version")
   [[ -n "$COMMIT" ]] && args+=(--commit "$COMMIT")
   [[ -n "$TIMEOUT" ]] && args+=(--timeout "$TIMEOUT")
-  [[ -n "$TEMPERATURE" ]] && args+=(--temperature "$TEMPERATURE")
+
+  # Temperature 0 is the default because a pinned temperature makes a verdict reproducible.
+  # Some models refuse it outright — `kimi-k2.6` answers every call with
+  # `invalid temperature: only 1 is allowed for this model`, which cost a whole campaign
+  # (2026-08-03: ten of twelve modes red, one cause). A provider that cannot take 0 declares
+  # what it can take in the catalogue, and the report prints the value it actually used, so a
+  # verdict is never silently less reproducible than it looks.
+  local temperature="$TEMPERATURE"
+  [[ -z "$temperature" ]] && temperature=$(catalog_field "$provider" "temperature")
+  [[ -n "$temperature" ]] && args+=(--temperature "$temperature")
 
   raw="$TMP_DIR/$provider-$slug.json"
   err="$TMP_DIR/$provider-$slug.stderr"
