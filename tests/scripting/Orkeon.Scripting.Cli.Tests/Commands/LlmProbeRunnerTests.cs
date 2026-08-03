@@ -244,6 +244,66 @@ public sealed class LlmProbeRunnerTests
         Assert.Contains("InvalidOperationException", results[0].Detail, StringComparison.Ordinal);
     }
 
+    // ── M3 / M4: a refused stream must say it was refused ───────────────────
+
+    /// <summary>
+    /// The Kimi finding of 2026-08-03. Both streaming modes reported an empty stream for a
+    /// request the API had rejected, and the rejection — a pinned temperature the model does not
+    /// accept — appeared nowhere in the archived report. An empty stream and a refused request
+    /// are different facts and must not read alike.
+    /// </summary>
+    [Fact]
+    public async Task ShouldFailM3_NamingTheRefusal_WhenTheTokenStreamThrows()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider
+        {
+            StreamThrow = new HttpRequestException(
+                "Kimi API error: BadRequest - invalid temperature: only 1 is allowed for this model"),
+        });
+
+        var result = await RunAsync(runner, LlmProbeMode.M3);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Contains("stream refused", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("invalid temperature", result.Detail, StringComparison.Ordinal);
+        // The old wording is what made the report undiagnosable — it must be gone, not merely
+        // supplemented.
+        Assert.DoesNotContain("0 chunk(s)", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// M4's refusal arrives inside the Completed event rather than as an exception, because that
+    /// signature does have a channel for it. Reading only the delta counters threw the message away.
+    /// </summary>
+    [Fact]
+    public async Task ShouldFailM4_NamingTheRefusal_WhenTheCompletedEventCarriesAnError()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider
+        {
+            Error = "Kimi API error: BadRequest - invalid temperature: only 1 is allowed for this model",
+        });
+
+        var result = await RunAsync(runner, LlmProbeMode.M4);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Contains("stream refused", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("invalid temperature", result.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("content delta(s)", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>A stream that simply produced nothing still reports the counters, not a refusal.</summary>
+    [Fact]
+    public async Task ShouldFailM3_WithTheCounters_WhenTheStreamIsMerelyEmpty()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider { Content = "" });
+
+        var result = await RunAsync(runner, LlmProbeMode.M3);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Contains("0 chunk(s)", result.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("refused", result.Detail, StringComparison.Ordinal);
+    }
+
     // ── M4: a stream must actually stream ───────────────────────────────────
 
     /// <summary>
@@ -788,11 +848,22 @@ public sealed class LlmProbeRunnerTests
             return GenerateAsync("", config, cancellationToken);
         }
 
+        /// <summary>
+        /// Thrown from the token stream instead of yielding. Models a refused request: that
+        /// signature has no metadata to carry an error, so the providers throw
+        /// <see cref="HttpRequestException"/> rather than end an empty sequence normally.
+        /// </summary>
+        public Exception? StreamThrow { get; init; }
+
         public async IAsyncEnumerable<string> GenerateStreamingAsync(
             string prompt, LlmConfig? config = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask.ConfigureAwait(false);
+
+            if (StreamThrow is not null)
+                throw StreamThrow;
+
             foreach (var chunk in Content.Split(' ', StringSplitOptions.RemoveEmptyEntries))
                 yield return chunk;
         }
@@ -808,6 +879,19 @@ public sealed class LlmProbeRunnerTests
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask.ConfigureAwait(false);
+
+            // A refused chat stream yields no delta and a Completed event whose response carries
+            // the error — exactly what OpenAICompatibleProviderBase does on a non-2xx.
+            if (Error is not null)
+            {
+                yield return LlmStreamEvent.Complete(new LlmResponse
+                {
+                    Content = "",
+                    Metadata = LlmResponseMetadata.CreateBuilder()
+                        .AddProvider(Name).AddError(Error).Build().ToDictionary(),
+                });
+                yield break;
+            }
 
             if (StreamInChunks)
             {

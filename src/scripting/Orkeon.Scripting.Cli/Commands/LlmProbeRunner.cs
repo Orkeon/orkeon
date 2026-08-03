@@ -395,12 +395,22 @@ internal sealed class LlmProbeRunner
 
         var chunks = 0;
         var text = new StringBuilder();
-        await foreach (var token in streaming
-            .GenerateStreamingAsync("Count from one to five.", config, cancellationToken)
-            .ConfigureAwait(false))
+        try
         {
-            chunks++;
-            text.Append(token);
+            await foreach (var token in streaming
+                .GenerateStreamingAsync("Count from one to five.", config, cancellationToken)
+                .ConfigureAwait(false))
+            {
+                chunks++;
+                text.Append(token);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            // The token stream carries no metadata, so a refusal arrives as an exception. Report
+            // it verbatim: "0 chunk(s)" is what this probe used to archive for a request the API
+            // had rejected outright, and it named neither the cause nor even the fact of refusal.
+            return (LlmProbeOutcome.Failed, $"stream refused: {ex.Message}");
         }
 
         return (Verdict(chunks > 1), $"{chunks} chunk(s), {text.Length} char(s)");
@@ -422,6 +432,14 @@ internal sealed class LlmProbeRunner
             if (ev.Kind == LlmStreamEventKind.Completed)
                 final = ev.FinalResponse;
         }
+
+        // The Completed event's response is the same shape ChatAsync returns, errors included.
+        // Reading only the counters made a rejected request read as "the stream produced nothing":
+        // on Kimi (2026-08-03) M4 archived `0 content delta(s), completed=True, tokens=0` while
+        // the refusal — a pinned temperature the model does not accept — sat unread in the very
+        // response the probe was holding.
+        if (final is not null && HasError(final))
+            return (LlmProbeOutcome.Failed, $"stream refused: {ErrorOf(final)}");
 
         var completed = final is not null && !string.IsNullOrWhiteSpace(final.Content);
         var detail = $"{deltas} content delta(s), completed={final is not null}, tokens={final?.TokensUsed}";
