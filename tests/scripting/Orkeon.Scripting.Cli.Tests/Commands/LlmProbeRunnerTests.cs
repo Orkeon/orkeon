@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.LLM;
@@ -258,7 +259,9 @@ public sealed class LlmProbeRunnerTests
         var runner = new LlmProbeRunner(new ScriptedProvider
         {
             StreamThrow = new HttpRequestException(
-                "Kimi API error: BadRequest - invalid temperature: only 1 is allowed for this model"),
+                "Kimi API error: BadRequest - invalid temperature: only 1 is allowed for this model",
+                inner: null,
+                statusCode: HttpStatusCode.BadRequest),
         });
 
         var result = await RunAsync(runner, LlmProbeMode.M3);
@@ -269,6 +272,35 @@ public sealed class LlmProbeRunnerTests
         // The old wording is what made the report undiagnosable — it must be gone, not merely
         // supplemented.
         Assert.DoesNotContain("0 chunk(s)", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A connection that never reached the API is not a refusal.
+    /// </summary>
+    /// <remarks>
+    /// Both arrive as <see cref="HttpRequestException"/>, and the first version of this probe
+    /// called them both "stream refused" — so Kimi was recorded as having rejected a request it
+    /// never received (2026-08-03, 11:41: `An error occurred while sending the request.`). Same
+    /// mistake as D-04, different costume: blaming a named party for an unattributed failure.
+    /// <see cref="HttpRequestException.StatusCode"/> is set only when a response came back.
+    /// </remarks>
+    [Fact]
+    public async Task ShouldFailM3_WithoutBlamingTheProvider_WhenTheRequestNeverReachedIt()
+    {
+        var runner = new LlmProbeRunner(new ScriptedProvider
+        {
+            StreamThrow = new HttpRequestException(
+                "An error occurred while sending the request.",
+                new IOException("connection reset by peer")),
+        });
+
+        var result = await RunAsync(runner, LlmProbeMode.M3);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Contains("never reached the API", result.Detail, StringComparison.Ordinal);
+        // The useful half is the inner cause; the outer message says nothing.
+        Assert.Contains("connection reset by peer", result.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("refused", result.Detail, StringComparison.Ordinal);
     }
 
     /// <summary>

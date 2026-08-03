@@ -408,9 +408,18 @@ internal sealed class LlmProbeRunner
         }
         catch (HttpRequestException ex)
         {
-            // The token stream carries no metadata, so a refusal arrives as an exception. Report
-            // it verbatim: "0 chunk(s)" is what this probe used to archive for a request the API
-            // had rejected outright, and it named neither the cause nor even the fact of refusal.
+            // The token stream carries no metadata, so both a vendor refusal and a transport
+            // failure arrive as the same exception type — and they are not the same finding.
+            // `StatusCode` separates them: it is set only when a response came back. Calling a
+            // connection failure "refused" blames the provider for something it never saw, which
+            // is the D-04 mistake in another costume. Measured on Kimi at 11:41 on 2026-08-03,
+            // where `An error occurred while sending the request.` was archived as a refusal.
+            if (ex.StatusCode is null)
+            {
+                var cause = ex.InnerException is { } inner ? $"{inner.GetType().Name}: {inner.Message}" : ex.Message;
+                return (LlmProbeOutcome.Failed, $"stream never reached the API: {cause}");
+            }
+
             return (LlmProbeOutcome.Failed, $"stream refused: {ex.Message}");
         }
 
