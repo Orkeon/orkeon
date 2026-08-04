@@ -236,7 +236,147 @@ public sealed class JsLlmFacadeStreamTests
 
     private static Jint.Native.JsValue BuildOptions(Engine engine, string js) => engine.Evaluate(js);
 
-    private sealed record StreamedTurn(string[] Deltas, LlmResponse Final);
+    // ── The streaming surface `ctx.llm.stream` actually takes (2026-08-04) ──
+    //
+    // It used to take `GenerateStreamingAsync`, which reads the same SSE stream but
+    // asks for less and keeps less: no `stream_options.include_usage` (so most
+    // providers report NO usage for a streamed call) and `delta.content` only (so a
+    // thinking model's reasoning is dropped, and the stream is silent for as long as
+    // it thinks). Both surfaces yield the same visible text, which is why the
+    // difference needs its own tests.
+
+    [Fact]
+    public async Task Stream_takes_the_chat_streaming_surface_not_the_plain_one()
+    {
+        using var engine = new Engine();
+        var provider = new FakeStreamingProvider(generateChunks: HelloChunks, turns: NoTurns);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+
+        await foreach (var _ in facade.StreamChunks("hi", null)) { }
+
+        Assert.Equal(1, provider.ChatStreamingCalls);
+        Assert.Equal(0, provider.GenerateStreamingCalls);
+    }
+
+    [Fact]
+    public void Stream_reports_the_terminal_usage_to_onComplete()
+    {
+        using var engine = new Engine();
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            turns:
+            [
+                new StreamedTurn(
+                    Deltas: ["ans", "wer"],
+                    Final: new LlmResponse
+                    {
+                        Content = "answer",
+                        TokensUsed = 90,
+                        PromptTokens = 30,
+                        CompletionTokens = 60,
+                        Model = "fake-model",
+                    }),
+            ]);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+        engine.SetValue("llm", facade);
+
+        var script = engine.Evaluate("""
+            (async function () {
+                let seen = null;
+                let text = '';
+                for await (const c of llm.stream('hi', { onComplete: u => { seen = u; } })) text += c;
+                return text + '|' + seen.promptTokens + '|' + seen.completionTokens
+                     + '|' + seen.tokensUsed + '|' + seen.model;
+            })()
+            """);
+        var result = Unwrap(engine, script).AsString();
+
+        Assert.Equal("answer|30|60|90|fake-model", result);
+    }
+
+    [Fact]
+    public void Stream_routes_reasoning_to_onReasoning_and_never_into_the_chunks()
+    {
+        // A reasoning delta is not part of the answer. A caller writing chunks to a
+        // file must not find the model's scratchpad in it.
+        using var engine = new Engine();
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            turns:
+            [
+                new StreamedTurn(
+                    Deltas: ["visible"],
+                    Final: new LlmResponse { Content = "visible" },
+                    ReasoningDeltas: ["think", "ing"]),
+            ]);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+        engine.SetValue("llm", facade);
+
+        var script = engine.Evaluate("""
+            (async function () {
+                const reasoning = [];
+                let text = '';
+                for await (const c of llm.stream('hi', { onReasoning: d => reasoning.push(d) })) text += c;
+                return text + '|' + reasoning.join('');
+            })()
+            """);
+        var result = Unwrap(engine, script).AsString();
+
+        Assert.Equal("visible|thinking", result);
+    }
+
+    [Fact]
+    public async Task Stream_without_callbacks_still_yields_only_the_visible_content()
+    {
+        // No onReasoning supplied: the reasoning deltas must be dropped, not
+        // appended to the text as a fallback.
+        using var engine = new Engine();
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            turns:
+            [
+                new StreamedTurn(
+                    Deltas: ["visible"],
+                    Final: new LlmResponse { Content = "visible" },
+                    ReasoningDeltas: ["scratch"]),
+            ]);
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+
+        var chunks = new List<string>();
+        await foreach (var c in facade.StreamChunks("hi", null))
+            chunks.Add(c);
+
+        Assert.Equal(["visible"], chunks);
+    }
+
+    [Fact]
+    public void Stream_fires_onComplete_on_the_non_streaming_fallback_too()
+    {
+        // Otherwise "this provider does not stream" and "this provider reported no
+        // usage" would be the same observation from the script's side.
+        using var engine = new Engine();
+        var provider = new PlainProvider("full text");
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+        engine.SetValue("llm", facade);
+
+        var script = engine.Evaluate("""
+            (async function () {
+                let fired = 0;
+                let text = '';
+                for await (const c of llm.stream('hi', { onComplete: () => { fired++; } })) text += c;
+                return text + '|' + fired;
+            })()
+            """);
+        var result = Unwrap(engine, script).AsString();
+
+        Assert.Equal("full text|1", result);
+    }
+
+    private sealed record StreamedTurn(string[] Deltas, LlmResponse Final, string[]? ReasoningDeltas = null)
+    {
+        /// <summary>Reasoning deltas emitted BEFORE the content deltas, as a thinking model does.</summary>
+        public string[] Reasoning => ReasoningDeltas ?? [];
+    }
 
     private sealed class FakeStreamingProvider : ILlmProvider, IStreamingLlmProvider
     {
@@ -246,6 +386,14 @@ public sealed class JsLlmFacadeStreamTests
 
         public int ChatCalls { get; private set; }
         public int ChatStreamingCalls { get; private set; }
+
+        /// <summary>
+        /// Counted so a test can pin WHICH streaming surface <c>ctx.llm.stream</c>
+        /// takes. It used to take this one, which asks for no usage and drops
+        /// reasoning deltas; a regression would be invisible otherwise, since both
+        /// surfaces yield the same visible text.
+        /// </summary>
+        public int GenerateStreamingCalls { get; private set; }
         public LlmResponse BufferedResponse { get; set; } = new() { Content = "buffered" };
 
         public FakeStreamingProvider(string[] generateChunks, StreamedTurn[] turns)
@@ -270,6 +418,7 @@ public sealed class JsLlmFacadeStreamTests
         public async IAsyncEnumerable<string> GenerateStreamingAsync(
             string prompt, LlmConfig? config = null, [EnumeratorCancellation] CancellationToken ct = default)
         {
+            GenerateStreamingCalls++;
             foreach (var chunk in _generateChunks)
                 yield return chunk;
             await Task.CompletedTask;
@@ -279,7 +428,19 @@ public sealed class JsLlmFacadeStreamTests
             LlmMessage[] messages, LlmConfig? config = null, [EnumeratorCancellation] CancellationToken ct = default)
         {
             ChatStreamingCalls++;
+            if (_turns.Length == 0)
+            {
+                // No scripted turn: replay the generate chunks so a test that only
+                // cares about the visible text does not have to script a turn.
+                foreach (var chunk in _generateChunks)
+                    yield return LlmStreamEvent.Content(chunk);
+                yield return LlmStreamEvent.Complete(new LlmResponse { Content = string.Concat(_generateChunks) });
+                await Task.CompletedTask;
+                yield break;
+            }
             var turn = _turns[Math.Min(_turn++, _turns.Length - 1)];
+            foreach (var reasoning in turn.Reasoning)
+                yield return LlmStreamEvent.Reasoning(reasoning);
             foreach (var delta in turn.Deltas)
                 yield return LlmStreamEvent.Content(delta);
             yield return LlmStreamEvent.Complete(turn.Final);

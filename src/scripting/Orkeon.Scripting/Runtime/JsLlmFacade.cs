@@ -178,6 +178,34 @@ public sealed class JsLlmFacade
             ["done"] = done,
         });
 
+    /// <summary>
+    /// The chunk sequence behind <c>stream</c>: visible content deltas, in order.
+    /// </summary>
+    /// <remarks>
+    /// <para>Goes through <see cref="Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider.ChatStreamingAsync"/>
+    /// rather than <c>GenerateStreamingAsync</c>. The two read the same SSE stream and
+    /// differ in what they ask for and what they keep:</para>
+    /// <list type="bullet">
+    /// <item><description><b>Usage.</b> The chat path sends
+    /// <c>stream_options: { include_usage: true }</c>; the plain path does not. Without it
+    /// most providers emit no usage chunk at all, so a streamed call had NO token
+    /// accounting — measured on exp02 round-41, whose two streamed calls carried usage only
+    /// because Moonshot volunteers it. On OpenAI the same round would have reported nothing,
+    /// and the calls that stream are the long, expensive ones.</description></item>
+    /// <item><description><b>Reasoning.</b> The plain path yields
+    /// <c>delta.content</c> only. A thinking model emits its reasoning as
+    /// <c>delta.reasoning_content</c>, so the stream is SILENT for as long as the model
+    /// thinks — round-41's deliverable 13 spent 22 673 of its 32 627 completion tokens
+    /// there, i.e. most of a nine-minute call during which nothing arrived. A consumer had
+    /// no way to tell that from a dead stream. Reasoning deltas now reach the optional
+    /// <c>onReasoning</c> callback and are deliberately NOT yielded as chunks: they are not
+    /// part of the answer, and a caller writing chunks to a file must not find them
+    /// there.</description></item>
+    /// </list>
+    /// <para>A provider without a real SSE path still yields a single full-text chunk, and
+    /// <c>onComplete</c> still fires with the buffered response's usage — the callbacks do
+    /// not silently stop working on a non-streaming provider.</para>
+    /// </remarks>
     private async IAsyncEnumerable<string> StreamCore(string prompt, JsValue? options)
     {
         if (_provider is null)
@@ -185,14 +213,72 @@ public sealed class JsLlmFacade
             yield return $"<undefined-llm:{prompt}>";
             yield break;
         }
+
+        var onReasoning = ResolveCallback(options, "onReasoning");
+        var onComplete = ResolveCallback(options, "onComplete");
+        var config = ConfigFrom(options);
+
         if (_provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider sp && sp.SupportsStreaming)
         {
-            await foreach (var chunk in sp.GenerateStreamingAsync(prompt, ConfigFrom(options), _ct).ConfigureAwait(false))
-                yield return chunk;
+            LlmResponse? final = null;
+            await foreach (var ev in sp.ChatStreamingAsync([LlmMessage.User(prompt)], config, _ct)
+                               .ConfigureAwait(false))
+            {
+                switch (ev.Kind)
+                {
+                    case LlmStreamEventKind.ContentDelta when !string.IsNullOrEmpty(ev.Delta):
+                        yield return ev.Delta;
+                        break;
+                    case LlmStreamEventKind.ReasoningDelta when onReasoning is not null
+                                                               && !string.IsNullOrEmpty(ev.Delta):
+                        // Sequential on this single enumeration — the Jint engine is
+                        // never entered concurrently (same rule as act's onDelta).
+                        _engine.Invoke(onReasoning, ev.Delta);
+                        break;
+                    case LlmStreamEventKind.Completed:
+                        final = ev.FinalResponse;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            InvokeStreamComplete(onComplete, final);
             yield break;
         }
-        var resp = await _provider.GenerateAsync(prompt, ConfigFrom(options), _ct).ConfigureAwait(false);
+
+        var resp = await _provider.GenerateAsync(prompt, config, _ct).ConfigureAwait(false);
         yield return resp.Content;
+        InvokeStreamComplete(onComplete, resp);
+    }
+
+    /// <summary>
+    /// Fires the optional <c>onComplete</c> callback with the terminal usage. Called on both
+    /// paths so a caller cannot tell "no callback support" from "no usage reported".
+    /// </summary>
+    private void InvokeStreamComplete(JsValue? onComplete, LlmResponse? final)
+    {
+        if (onComplete is null)
+            return;
+        _engine.Invoke(onComplete, JsValue.FromObject(_engine, new Dictionary<string, object?>
+        {
+            ["tokensUsed"] = final?.TokensUsed ?? 0,
+            // Null rather than 0 when the provider said nothing: a streamed call with no
+            // usage chunk and a call that genuinely used 0 prompt tokens must not read
+            // the same way. Same reasoning as the cache report in exp02's run-round.sh.
+            ["promptTokens"] = final?.PromptTokens,
+            ["completionTokens"] = final?.CompletionTokens,
+            ["cacheHitTokens"] = final?.CacheHitTokens,
+            ["model"] = final?.Model ?? string.Empty,
+        }));
+    }
+
+    /// <summary>Reads an optional JS function option; null when absent or not callable.</summary>
+    private static JsValue? ResolveCallback(JsValue? options, string name)
+    {
+        if (options is null || options.IsUndefined() || options.IsNull() || !options.IsObject())
+            return null;
+        var fn = options.Get(name);
+        return fn is Jint.Native.Function.Function ? fn : null;
     }
 
     public Func<string, JsValue, JsValue?, Task<JsValue>> extract => async (prompt, schema, options) =>

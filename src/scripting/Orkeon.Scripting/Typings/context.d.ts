@@ -27,8 +27,13 @@ declare global {
          *
          * Per-token when the provider exposes a real SSE path; otherwise a single
          * full-text chunk. A `break` releases the underlying read.
+         *
+         * Chunks are the model's VISIBLE content only. A thinking model's
+         * reasoning reaches `opts.onReasoning` instead of the chunk sequence —
+         * it is not part of the answer, and a caller writing chunks to a file
+         * must not find it there.
          */
-        stream(prompt: string, opts?: LlmCallOptions): AsyncIterable<string>;
+        stream(prompt: string, opts?: LlmStreamOptions): AsyncIterable<string>;
         extract<T>(prompt: string, schema: JsonSchema, opts?: LlmCallOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
         embed(text: string | readonly string[], opts?: LlmCallOptions): Promise<readonly number[][]>;
@@ -45,6 +50,41 @@ declare global {
         temperature?: number;
         maxTokens?: number;
         signal?: AbortSignal;
+    }
+
+    /** Terminal usage of one streamed call, passed to `LlmStreamOptions.onComplete`. */
+    interface LlmStreamUsage {
+        readonly tokensUsed: number;
+        /**
+         * `null` when the provider reported no usage for the stream — which is not
+         * the same as zero. Orkéon asks for it (`stream_options.include_usage`),
+         * but a provider may ignore the request.
+         */
+        readonly promptTokens: number | null;
+        readonly completionTokens: number | null;
+        readonly cacheHitTokens: number | null;
+        readonly model: string;
+    }
+
+    interface LlmStreamOptions extends LlmCallOptions {
+        /**
+         * Called with each reasoning delta of a thinking model, in order.
+         *
+         * Worth wiring on any long call: while the model reasons, the CONTENT
+         * stream emits nothing, so a stream that is working looks exactly like a
+         * stream that has died. Measured on a 9-minute call whose reasoning was
+         * 22 673 of its 32 627 completion tokens — most of the call.
+         *
+         * Keep it cheap (rendering/logging): it runs sequentially on the same
+         * enumeration as the chunks.
+         */
+        onReasoning?: (delta: string) => void;
+        /**
+         * Called once when the stream ends, with the terminal usage. Fires on the
+         * non-streaming fallback too, so "no callback" and "no usage" stay
+         * distinguishable.
+         */
+        onComplete?: (usage: LlmStreamUsage) => void;
     }
 
     interface ActOptions extends LlmCallOptions {
