@@ -18,8 +18,8 @@ namespace Orkeon.Rag.Abstractions.Interfaces;
 /// <para><b>Why it exists.</b> A caller that wants the evidence rather than prose
 /// was still charged for a full grounded generation. Measured on exp02's gap
 /// round (2026-08-04, round-41): seven <c>rag.query</c> calls whose generated
-/// answers were discarded by design cost 13 748 completion tokens — 74 % of them
-/// reasoning tokens — and 393 s of wall time, on top of retrieval that had
+/// answers were discarded by design cost 14 748 completion tokens — 68 % of them
+/// reasoning tokens — and 394 s of wall time, on top of retrieval that had
 /// already produced every citation the caller used. The generation stage is the
 /// expensive half of a RAG call and it is optional far more often than the API
 /// shape suggested.</para>

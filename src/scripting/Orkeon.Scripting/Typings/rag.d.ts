@@ -82,7 +82,7 @@ declare global {
          * Use this whenever the caller quotes the passages rather than the
          * pipeline's prose. Measured on exp02's round-41 (2026-08-04): seven
          * `query` calls whose generated answers were discarded by design cost
-         * 13 748 completion tokens and 393 s of wall time for citations that
+         * 14 748 completion tokens and 394 s of wall time for citations that
          * retrieval had already produced.
          *
          * Fails with a `NotSupportedException` when the resolved profile's
