@@ -13,8 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The plain path also dropped `delta.reasoning_content`, so a thinking model's stream is silent for as long as it thinks — round-41's deliverable 13 spent 22 673 of its 32 627 completion tokens reasoning, most of a nine-minute call in which "no chunk yet" and "the stream died" were the same observation.
 
-- `stream(prompt, opts)` keeps yielding strings — no contract change. Two optional callbacks: **`onReasoning(delta)`** receives the reasoning deltas (deliberately NOT yielded as chunks: they are not part of the answer, and a caller writing chunks to a file must not find the model's scratchpad in it), and **`onComplete(usage)`** receives the terminal `{ promptTokens, completionTokens, tokensUsed, model }` with `null` fields when the provider reported nothing.
-- `onComplete` fires on the non-streaming fallback too, so "this provider does not stream" and "this provider reported no usage" stay distinguishable.
+- `stream(prompt)` keeps yielding strings — no contract change. What the chunks cannot carry is exposed on the returned object: **`usage`** (`{ promptTokens, completionTokens, tokensUsed, cacheHitTokens, model }`, `null` while the stream runs and `null` for good when the provider reported nothing) and **`reasoningChunks`**. Read them after the loop.
+- Deliberately NOT callbacks. A callback has to be invoked from the stream's own thread, and Jint's `Engine` is single-threaded: the first cut of this did exactly that, and exp02's round-42 — seven area writers streaming concurrently — died of a `NullReferenceException` inside `ScriptFunction.Call`, with all seven writers falling back to a placeholder and the script stopping silently after assembling its document. CLR state read through interop runs on the engine's own thread.
+- Reasoning progress is logged by the facade through the host logger every 200 deltas: a script cannot log it for itself, because while the model reasons its loop body never runs.
+- `usage` is populated on the non-streaming fallback too, so "this provider does not stream" and "this provider reported no usage" stay distinguishable.
 
 ### Added — `rag.retrieve` / `IRagRetrievalCapable`: retrieval without the generation nobody asked for (SCR-24)
 

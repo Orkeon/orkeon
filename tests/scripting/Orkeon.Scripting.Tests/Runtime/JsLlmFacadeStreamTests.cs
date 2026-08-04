@@ -244,6 +244,11 @@ public sealed class JsLlmFacadeStreamTests
     // thinking model's reasoning is dropped, and the stream is silent for as long as
     // it thinks). Both surfaces yield the same visible text, which is why the
     // difference needs its own tests.
+    //
+    // Usage and reasoning reach the caller through CLR state exposed on the object
+    // `stream()` returns, NOT through JS callbacks. See
+    // JsLlmFacadeConcurrentStreamTests for what callbacks cost: they re-enter the
+    // single-threaded Jint engine from the stream loop, which killed a real round.
 
     [Fact]
     public async Task Stream_takes_the_chat_streaming_surface_not_the_plain_one()
@@ -259,7 +264,7 @@ public sealed class JsLlmFacadeStreamTests
     }
 
     [Fact]
-    public void Stream_reports_the_terminal_usage_to_onComplete()
+    public void Stream_exposes_the_terminal_usage_on_the_returned_object()
     {
         using var engine = new Engine();
         var provider = new FakeStreamingProvider(
@@ -282,11 +287,11 @@ public sealed class JsLlmFacadeStreamTests
 
         var script = engine.Evaluate("""
             (async function () {
-                let seen = null;
                 let text = '';
-                for await (const c of llm.stream('hi', { onComplete: u => { seen = u; } })) text += c;
-                return text + '|' + seen.promptTokens + '|' + seen.completionTokens
-                     + '|' + seen.tokensUsed + '|' + seen.model;
+                const s = llm.stream('hi');
+                for await (const c of s) text += c;
+                return text + '|' + s.usage.promptTokens + '|' + s.usage.completionTokens
+                     + '|' + s.usage.tokensUsed + '|' + s.usage.model;
             })()
             """);
         var result = Unwrap(engine, script).AsString();
@@ -295,7 +300,7 @@ public sealed class JsLlmFacadeStreamTests
     }
 
     [Fact]
-    public void Stream_routes_reasoning_to_onReasoning_and_never_into_the_chunks()
+    public void Stream_counts_reasoning_deltas_and_never_yields_them_as_chunks()
     {
         // A reasoning delta is not part of the answer. A caller writing chunks to a
         // file must not find the model's scratchpad in it.
@@ -314,22 +319,22 @@ public sealed class JsLlmFacadeStreamTests
 
         var script = engine.Evaluate("""
             (async function () {
-                const reasoning = [];
                 let text = '';
-                for await (const c of llm.stream('hi', { onReasoning: d => reasoning.push(d) })) text += c;
-                return text + '|' + reasoning.join('');
+                const s = llm.stream('hi');
+                for await (const c of s) text += c;
+                return text + '|' + s.reasoningChunks;
             })()
             """);
         var result = Unwrap(engine, script).AsString();
 
-        Assert.Equal("visible|thinking", result);
+        Assert.Equal("visible|2", result);
     }
 
     [Fact]
-    public async Task Stream_without_callbacks_still_yields_only_the_visible_content()
+    public async Task Stream_yields_only_the_visible_content()
     {
-        // No onReasoning supplied: the reasoning deltas must be dropped, not
-        // appended to the text as a fallback.
+        // The reasoning deltas must be dropped from the chunk sequence, not appended
+        // to the text as a fallback.
         using var engine = new Engine();
         var provider = new FakeStreamingProvider(
             generateChunks: NoChunks,
@@ -350,10 +355,10 @@ public sealed class JsLlmFacadeStreamTests
     }
 
     [Fact]
-    public void Stream_fires_onComplete_on_the_non_streaming_fallback_too()
+    public void Stream_reports_no_usage_rather_than_zeros_when_the_provider_reported_none()
     {
-        // Otherwise "this provider does not stream" and "this provider reported no
-        // usage" would be the same observation from the script's side.
+        // "this provider reported no usage" and "this call used 0 tokens" must not be
+        // the same observation — the same rule as exp02's cache report.
         using var engine = new Engine();
         var provider = new PlainProvider("full text");
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -361,15 +366,39 @@ public sealed class JsLlmFacadeStreamTests
 
         var script = engine.Evaluate("""
             (async function () {
-                let fired = 0;
                 let text = '';
-                for await (const c of llm.stream('hi', { onComplete: () => { fired++; } })) text += c;
-                return text + '|' + fired;
+                const s = llm.stream('hi');
+                for await (const c of s) text += c;
+                return text + '|' + (s.usage === null ? 'null' : 'set') + '|' + s.reasoningChunks;
             })()
             """);
         var result = Unwrap(engine, script).AsString();
 
-        Assert.Equal("full text|1", result);
+        Assert.Equal("full text|null|0", result);
+    }
+
+    [Fact]
+    public void Stream_carries_usage_on_the_non_streaming_fallback_when_the_provider_reports_it()
+    {
+        // The side-channel must not quietly stop working on a provider without SSE.
+        using var engine = new Engine();
+        var provider = new PlainProvider("full text") { Usage = new LlmResponse
+        {
+            Content = "full text", TokensUsed = 12, PromptTokens = 4, CompletionTokens = 8,
+        } };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+        engine.SetValue("llm", facade);
+
+        var script = engine.Evaluate("""
+            (async function () {
+                const s = llm.stream('hi');
+                for await (const c of s) { }
+                return s.usage.promptTokens + '|' + s.usage.completionTokens;
+            })()
+            """);
+        var result = Unwrap(engine, script).AsString();
+
+        Assert.Equal("4|8", result);
     }
 
     private sealed record StreamedTurn(string[] Deltas, LlmResponse Final, string[]? ReasoningDeltas = null)
@@ -461,10 +490,14 @@ public sealed class JsLlmFacadeStreamTests
         private readonly string _content;
         public PlainProvider(string content) => _content = content;
         public string Name => "plain";
+
+        /// <summary>Optional response with counts, for the non-streaming usage path.</summary>
+        public LlmResponse? Usage { get; init; }
+
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
-            => Task.FromResult(new LlmResponse { Content = _content });
+            => Task.FromResult(Usage ?? new LlmResponse { Content = _content });
         public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
-            => Task.FromResult(new LlmResponse { Content = _content });
+            => Task.FromResult(Usage ?? new LlmResponse { Content = _content });
     }
 
     private sealed class AllowAllGate : IPermissionGate

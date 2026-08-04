@@ -29,11 +29,11 @@ declare global {
          * full-text chunk. A `break` releases the underlying read.
          *
          * Chunks are the model's VISIBLE content only. A thinking model's
-         * reasoning reaches `opts.onReasoning` instead of the chunk sequence —
-         * it is not part of the answer, and a caller writing chunks to a file
-         * must not find it there.
+         * reasoning is COUNTED on the returned object, not yielded — it is not
+         * part of the answer, and a caller writing chunks to a file must not
+         * find it there.
          */
-        stream(prompt: string, opts?: LlmStreamOptions): AsyncIterable<string>;
+        stream(prompt: string, opts?: LlmCallOptions): LlmStream;
         extract<T>(prompt: string, schema: JsonSchema, opts?: LlmCallOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
         embed(text: string | readonly string[], opts?: LlmCallOptions): Promise<readonly number[][]>;
@@ -52,7 +52,34 @@ declare global {
         signal?: AbortSignal;
     }
 
-    /** Terminal usage of one streamed call, passed to `LlmStreamOptions.onComplete`. */
+    /**
+     * What `ctx.llm.stream` returns: the chunk sequence, plus a side-channel for
+     * what the chunks cannot carry.
+     *
+     * Read `usage` and `reasoningChunks` AFTER the loop. They are deliberately
+     * properties rather than callbacks: a callback would have to be invoked from
+     * the stream's own thread, and the script engine is single-threaded — doing
+     * that with several streams in flight corrupts it.
+     */
+    interface LlmStream extends AsyncIterable<string> {
+        /**
+         * Terminal token counts, or `null` when the provider reported none —
+         * which is NOT the same as a call that used nothing. Orkéon asks for
+         * usage (`stream_options.include_usage`); a provider may ignore it.
+         * `null` until the stream ends.
+         */
+        readonly usage: LlmStreamUsage | null;
+        /**
+         * Reasoning deltas seen so far. Worth reading on a thinking model: while
+         * it reasons, the CONTENT stream emits nothing, so a working stream and a
+         * dead one look identical. Measured on a nine-minute call whose reasoning
+         * was 22 673 of its 32 627 completion tokens — most of the call. The host
+         * also logs progress every 200 deltas.
+         */
+        readonly reasoningChunks: number;
+    }
+
+    /** Terminal usage of one streamed call, on `LlmStream.usage`. */
     interface LlmStreamUsage {
         readonly tokensUsed: number;
         /**
@@ -64,27 +91,6 @@ declare global {
         readonly completionTokens: number | null;
         readonly cacheHitTokens: number | null;
         readonly model: string;
-    }
-
-    interface LlmStreamOptions extends LlmCallOptions {
-        /**
-         * Called with each reasoning delta of a thinking model, in order.
-         *
-         * Worth wiring on any long call: while the model reasons, the CONTENT
-         * stream emits nothing, so a stream that is working looks exactly like a
-         * stream that has died. Measured on a 9-minute call whose reasoning was
-         * 22 673 of its 32 627 completion tokens — most of the call.
-         *
-         * Keep it cheap (rendering/logging): it runs sequentially on the same
-         * enumeration as the chunks.
-         */
-        onReasoning?: (delta: string) => void;
-        /**
-         * Called once when the stream ends, with the terminal usage. Fires on the
-         * non-streaming fallback too, so "no callback" and "no usage" stay
-         * distinguishable.
-         */
-        onComplete?: (usage: LlmStreamUsage) => void;
     }
 
     interface ActOptions extends LlmCallOptions {

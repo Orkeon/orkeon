@@ -17,7 +17,7 @@ namespace Orkeon.Scripting.Runtime;
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591
-public sealed class JsLlmFacade
+public sealed partial class JsLlmFacade
 {
     private const int DefaultActMaxIterations = 10;
 
@@ -30,6 +30,7 @@ public sealed class JsLlmFacade
     private readonly Orkeon.Domain.Autonomous.AgentExecutionBudget? _budget;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
+    private readonly Microsoft.Extensions.Logging.ILogger? _logger;
 
     internal JsLlmFacade(
         Engine engine,
@@ -38,7 +39,8 @@ public sealed class JsLlmFacade
         IReadOnlyList<IBaseTool>? tools = null,
         Orkeon.Domain.Autonomous.AgentExecutionBudget? budget = null,
         Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null)
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
+        Microsoft.Extensions.Logging.ILogger? logger = null)
     {
         _engine = engine;
         _provider = provider;
@@ -52,6 +54,7 @@ public sealed class JsLlmFacade
         _budget = budget;
         _permissionGate = permissionGate;
         _deltaSink = deltaSink;
+        _logger = logger;
         embed = EmbedAsync;
         act = ActAsync;
     }
@@ -98,8 +101,11 @@ public sealed class JsLlmFacade
     /// real SSE path (<see cref="Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider"/>,
     /// exp07 F5); otherwise falls back to a single full-text chunk.
     /// </summary>
-    public Func<string, JsValue?, JsValue> stream => (prompt, options)
-        => AsAsyncIterable(StreamChunks(prompt, options));
+    public Func<string, JsValue?, JsValue> stream => (prompt, options) =>
+    {
+        var observations = new StreamObservations();
+        return AsAsyncIterable(StreamCore(prompt, options, observations), observations);
+    };
 
     /// <summary>
     /// CLR-facing sibling of <c>stream</c>: the raw chunk sequence, without the JS
@@ -110,7 +116,7 @@ public sealed class JsLlmFacade
     /// protocol needs its own test.
     /// </summary>
     internal IAsyncEnumerable<string> StreamChunks(string prompt, JsValue? options)
-        => StreamCore(prompt, options);
+        => StreamCore(prompt, options, new StreamObservations());
 
     /// <summary>
     /// Wraps an <see cref="IAsyncEnumerable{T}"/> into a JS async-iterable object so
@@ -127,7 +133,7 @@ public sealed class JsLlmFacade
     /// once per call and disposed when the sequence completes or the consumer
     /// breaks out early (<c>return()</c>).
     /// </remarks>
-    private JsValue AsAsyncIterable(IAsyncEnumerable<string> source)
+    private JsValue AsAsyncIterable(IAsyncEnumerable<string> source, StreamObservations observations)
     {
         var enumerator = source.GetAsyncEnumerator(_ct);
         var disposed = false;
@@ -165,10 +171,15 @@ public sealed class JsLlmFacade
         // enumerator, otherwise an abandoned stream leaks the underlying HTTP read.
         var ret = new Func<Task<JsValue>>(DisposeOnceAsync);
 
+        // `usage` / `reasoningChunks` are getters onto the CLR observations object,
+        // so the script reads them when IT is executing (after the loop) instead of
+        // the stream calling into the engine from another thread.
         var factory = _engine.Evaluate(
-            "(function (next, ret) { return { [Symbol.asyncIterator]() { "
-            + "return { next: next, return: ret }; } }; })");
-        return _engine.Invoke(factory, next, ret);
+            "(function (next, ret, obs) { return { [Symbol.asyncIterator]() { "
+            + "return { next: next, return: ret }; }, "
+            + "get usage() { return obs.usage; }, "
+            + "get reasoningChunks() { return obs.reasoningChunks; } }; })");
+        return _engine.Invoke(factory, next, ret, observations);
     }
 
     private JsValue Result(JsValue value, bool done)
@@ -180,6 +191,7 @@ public sealed class JsLlmFacade
 
     /// <summary>
     /// The chunk sequence behind <c>stream</c>: visible content deltas, in order.
+    /// Reasoning and usage go to <paramref name="observations"/>, never into the chunks.
     /// </summary>
     /// <remarks>
     /// <para>Goes through <see cref="Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider.ChatStreamingAsync"/>
@@ -197,16 +209,19 @@ public sealed class JsLlmFacade
     /// <c>delta.reasoning_content</c>, so the stream is SILENT for as long as the model
     /// thinks — round-41's deliverable 13 spent 22 673 of its 32 627 completion tokens
     /// there, i.e. most of a nine-minute call during which nothing arrived. A consumer had
-    /// no way to tell that from a dead stream. Reasoning deltas now reach the optional
-    /// <c>onReasoning</c> callback and are deliberately NOT yielded as chunks: they are not
-    /// part of the answer, and a caller writing chunks to a file must not find them
-    /// there.</description></item>
+    /// no way to tell that from a dead stream. Reasoning deltas are counted, logged through
+    /// the HOST logger every <see cref="ReasoningLogEvery"/>, and deliberately NOT yielded
+    /// as chunks: they are not part of the answer, and a caller writing chunks to a file
+    /// must not find them there.</description></item>
     /// </list>
+    /// <para>Nothing here calls back into JS. See
+    /// <see cref="StreamObservations"/> for why that constraint is not negotiable.</para>
     /// <para>A provider without a real SSE path still yields a single full-text chunk, and
-    /// <c>onComplete</c> still fires with the buffered response's usage — the callbacks do
-    /// not silently stop working on a non-streaming provider.</para>
+    /// the observations still carry that response's usage — the side-channel does not
+    /// silently stop working on a non-streaming provider.</para>
     /// </remarks>
-    private async IAsyncEnumerable<string> StreamCore(string prompt, JsValue? options)
+    private async IAsyncEnumerable<string> StreamCore(
+        string prompt, JsValue? options, StreamObservations observations)
     {
         if (_provider is null)
         {
@@ -214,13 +229,10 @@ public sealed class JsLlmFacade
             yield break;
         }
 
-        var onReasoning = ResolveCallback(options, "onReasoning");
-        var onComplete = ResolveCallback(options, "onComplete");
         var config = ConfigFrom(options);
 
         if (_provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider sp && sp.SupportsStreaming)
         {
-            LlmResponse? final = null;
             await foreach (var ev in sp.ChatStreamingAsync([LlmMessage.User(prompt)], config, _ct)
                                .ConfigureAwait(false))
             {
@@ -229,56 +241,61 @@ public sealed class JsLlmFacade
                     case LlmStreamEventKind.ContentDelta when !string.IsNullOrEmpty(ev.Delta):
                         yield return ev.Delta;
                         break;
-                    case LlmStreamEventKind.ReasoningDelta when onReasoning is not null
-                                                               && !string.IsNullOrEmpty(ev.Delta):
-                        // Sequential on this single enumeration — the Jint engine is
-                        // never entered concurrently (same rule as act's onDelta).
-                        _engine.Invoke(onReasoning, ev.Delta);
+                    case LlmStreamEventKind.ReasoningDelta:
+                        observations.reasoningChunks++;
+                        if (observations.reasoningChunks % ReasoningLogEvery == 0)
+                            LogReasoningProgress(observations.reasoningChunks);
                         break;
                     case LlmStreamEventKind.Completed:
-                        final = ev.FinalResponse;
+                        observations.usage = ToStreamUsage(ev.FinalResponse);
                         break;
                     default:
                         break;
                 }
             }
-            InvokeStreamComplete(onComplete, final);
             yield break;
         }
 
         var resp = await _provider.GenerateAsync(prompt, config, _ct).ConfigureAwait(false);
         yield return resp.Content;
-        InvokeStreamComplete(onComplete, resp);
+        observations.usage = ToStreamUsage(resp);
     }
 
     /// <summary>
-    /// Fires the optional <c>onComplete</c> callback with the terminal usage. Called on both
-    /// paths so a caller cannot tell "no callback support" from "no usage reported".
+    /// Reasoning deltas are numerous and arrive during the phase where nothing else does,
+    /// so they get a coarse interval: enough to show life, not enough to flood a log.
     /// </summary>
-    private void InvokeStreamComplete(JsValue? onComplete, LlmResponse? final)
+    private const int ReasoningLogEvery = 200;
+
+    private void LogReasoningProgress(int count)
     {
-        if (onComplete is null)
-            return;
-        _engine.Invoke(onComplete, JsValue.FromObject(_engine, new Dictionary<string, object?>
-        {
-            ["tokensUsed"] = final?.TokensUsed ?? 0,
-            // Null rather than 0 when the provider said nothing: a streamed call with no
-            // usage chunk and a call that genuinely used 0 prompt tokens must not read
-            // the same way. Same reasoning as the cache report in exp02's run-round.sh.
-            ["promptTokens"] = final?.PromptTokens,
-            ["completionTokens"] = final?.CompletionTokens,
-            ["cacheHitTokens"] = final?.CacheHitTokens,
-            ["model"] = final?.Model ?? string.Empty,
-        }));
+        if (_logger is not null)
+            LogReasoningProgressCore(_logger, count);
     }
 
-    /// <summary>Reads an optional JS function option; null when absent or not callable.</summary>
-    private static JsValue? ResolveCallback(JsValue? options, string name)
+    [Microsoft.Extensions.Logging.LoggerMessage(
+        EventId = 1, Level = Microsoft.Extensions.Logging.LogLevel.Information,
+        Message = "llm.stream: {Count} reasoning delta(s) so far, no visible output yet")]
+    static partial void LogReasoningProgressCore(Microsoft.Extensions.Logging.ILogger logger, int count);
+
+    /// <summary>
+    /// Maps a response's counts onto the JS-facing shape. Returns null when the provider
+    /// reported nothing at all: "no usage" and "zero tokens" must not read the same way.
+    /// </summary>
+    private static StreamUsage? ToStreamUsage(LlmResponse? response)
     {
-        if (options is null || options.IsUndefined() || options.IsNull() || !options.IsObject())
+        if (response is null)
             return null;
-        var fn = options.Get(name);
-        return fn is Jint.Native.Function.Function ? fn : null;
+        if (response.TokensUsed == 0 && response.PromptTokens is null && response.CompletionTokens is null)
+            return null;
+        return new StreamUsage
+        {
+            tokensUsed = response.TokensUsed,
+            promptTokens = response.PromptTokens,
+            completionTokens = response.CompletionTokens,
+            cacheHitTokens = response.CacheHitTokens,
+            model = response.Model ?? string.Empty,
+        };
     }
 
     public Func<string, JsValue, JsValue?, Task<JsValue>> extract => async (prompt, schema, options) =>
