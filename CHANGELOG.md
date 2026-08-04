@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `rag.retrieve` / `IRagRetrievalCapable`: retrieval without the generation nobody asked for (SCR-24)
+
+A caller that wants the retrieved passages rather than prose was still charged for a full grounded generation, because `IRagPipeline` exposed only `QueryAsync`. Measured on exp02's gap round (2026-08-04): seven `rag.query` calls whose generated answers were discarded **by design** cost 13 748 completion tokens — 74 % of them reasoning tokens — and 393 s of wall time, on top of retrieval that had already produced every citation the caller used. The generation stage is the expensive half of a RAG call and it is optional far more often than the API shape suggested.
+
+- **`IRagRetrievalCapable` (`Orkeon.Rag.Abstractions`)** — opt-in capability, same shape as `IHybridSearchCapable`: `RetrieveAsync` runs `transform → retrieve → fuse → rerank → assemble` and stops. Declared as a separate interface rather than added to `IRagPipeline` because not every executor can honour it — the corrective graph interleaves evaluation with generation, so "retrieval only" is not a prefix of its run — and a caller must be able to ask instead of discovering the answer through an exception.
+- **`StagedRagPipeline`** implements it; `QueryAsync` and `RetrieveAsync` now share one `RetrieveCoreAsync`, so the two cannot drift. The returned `RagAnswer` keeps the same shape (empty `Text`, populated `Citations`) and the trace carries a `generate` step saying the stage was skipped on purpose — an absent step would read as a trace from an older pipeline.
+- **`rag.retrieve(question, options)`** in the scripting DSL, same signature as `rag.query`. On a pipeline that is not retrieval-capable it throws rather than falling back to `QueryAsync`: a silent fallback would charge exactly what the caller asked to avoid, with no way to tell.
+
+### Fixed — the `system` role was flattened into the user message on every OpenAI-compatible provider (SCR-24)
+
+`HttpLlmProviderBase.ChatAsync` flattens messages into one prompt shaped `"{role}: {content}"` per line, and `OpenAICompatibleProviderBase` took the structured chat path only when tools, tool-call metadata or a vision payload were present. A plain `system` + `user` conversation — the shape of the entire RAG generation stage, and of every LLM judge, retrieval evaluator and groundedness checker in this repository, none of which declares a tool — therefore reached the provider as a single `user` message whose text began with `system: `. A multi-turn history was concatenated the same way, so an assistant turn arrived as something the user claimed the assistant had said. Evidence: exp02 round-41's exchange log, all seven RAG generations sent as `messages: [{ role: "user", content: "system: You are a retrieval-augmented assistant…" }]`.
+
+- Every `ChatAsync` call with at least one message now takes the structured path. A lone user message was affected too (it went out as `"user: Hello."`), so no case is left on the flattening path; an empty or null array still delegates to the base, which turns it into an empty single prompt.
+- `grammar` (GBNF) was emitted only by the single-prompt builder and is now written by both, so an option cannot appear or vanish with the number of messages sent.
+- Around 400 mocked provider tests missed this: they assert on the response, and a mocked handler answers whatever it is sent. The new `OpenAICompatibleProviderBaseRoleFidelityTests` read the outgoing payload on the cases with no tool and no image, which was the remaining blind spot.
+
 ### Added — Declared provider capabilities, structured outputs and thinking on all 12 providers (LLM-02, LLM-03, LLM-04)
 
 The audit's central finding was not that the wiring was missing but that its absence was **invisible**: `LlmResponseFormat` and `LlmThinkingConfig` cascaded correctly from crew → agent → task → script → call-site, yet only DeepSeek wrote `response_format` and only DeepSeek and Z.AI wrote `thinking`. On the ten other providers a YAML declaration was silently dropped. Closes G-15, G-16 and G-19.

@@ -20,7 +20,7 @@ public sealed class RagNamespaceBindingTests
 
     private static Engine CreateEngine(
         FakeIngestionPipeline? ingest = null,
-        FakeRagPipeline? query = null,
+        Orkeon.Rag.Abstractions.Interfaces.IRagPipeline? query = null,
         Orkeon.Domain.FileSystem.IFileSystemService? fileSystem = null,
         Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver? profileResolver = null)
     {
@@ -247,6 +247,101 @@ public sealed class RagNamespaceBindingTests
 
         Assert.NotNull(ex);
         Assert.Contains("AddOrkeonRag", FlattenMessage(ex!), StringComparison.Ordinal);
+    }
+
+    // ── rag.retrieve — retrieval without the generation stage ──────────────
+
+    [Fact]
+    public async Task Retrieve_TakesTheRetrievalSurface_AndNeverGenerates()
+    {
+        // The whole point of the surface. A `retrieve` that quietly called
+        // QueryAsync would charge the caller for the stage it asked to skip —
+        // exp02's round-41 paid 13 748 completion tokens that way.
+        var pipeline = new FakeRetrievalCapableRagPipeline
+        {
+            Retrieved = new RagAnswer
+            {
+                Text = "",
+                Citations = [new Citation { Marker = 1, ChunkId = "c1", SourceId = "/kb/a.md", Snippet = "PASSAGE", Score = 0.9 }],
+            },
+        };
+        using var engine = CreateEngine(query: pipeline);
+
+        var result = await Task.Run(() => engine.Evaluate("""
+            rag.retrieve('q?', { collection: 'docs', topN: 4 })
+                .then(r => r.text.length + ':' + r.citations.length + ':' + r.citations[0].snippet)
+            """).UnwrapIfPromise());
+
+        Assert.Equal("0:1:PASSAGE", result.AsString());
+        Assert.Equal(1, pipeline.RetrieveCallCount);
+        Assert.Equal(0, pipeline.QueryCallCount);
+        Assert.Equal(4, pipeline.LastQuery?.TopN);
+    }
+
+    [Fact]
+    public async Task Query_StillGenerates_WhenThePipelineAlsoSupportsRetrieval()
+    {
+        // The two surfaces must stay distinct on the same pipeline instance.
+        var pipeline = new FakeRetrievalCapableRagPipeline { Answer = new RagAnswer { Text = "generated" } };
+        using var engine = CreateEngine(query: pipeline);
+
+        var result = await Task.Run(() => engine.Evaluate(
+            "rag.query('q?', { collection: 'docs' }).then(r => r.text)").UnwrapIfPromise());
+
+        Assert.Equal("generated", result.AsString());
+        Assert.Equal(1, pipeline.QueryCallCount);
+        Assert.Equal(0, pipeline.RetrieveCallCount);
+    }
+
+    [Fact]
+    public async Task Retrieve_OnAPipelineThatCannot_FailsLoudly_RatherThanGeneratingAnyway()
+    {
+        // FakeRagPipeline implements IRagPipeline only — the shape of the
+        // corrective graph, which interleaves evaluation with generation.
+        var pipeline = new FakeRagPipeline();
+        using var engine = CreateEngine(query: pipeline);
+
+        var ex = await Record.ExceptionAsync(() => Task.Run(() => engine.Evaluate(
+            "rag.retrieve('q?', { collection: 'docs' })").UnwrapIfPromise()));
+
+        Assert.NotNull(ex);
+        var message = FlattenMessage(ex!);
+        Assert.Contains("IRagRetrievalCapable", message, StringComparison.Ordinal);
+        Assert.Contains("rag.query", message, StringComparison.Ordinal);
+        // The refusal must cost nothing: no fallback generation behind it.
+        Assert.Equal(0, pipeline.CallCount);
+    }
+
+    [Fact]
+    public async Task Retrieve_HonoursThePerCallProfile()
+    {
+        var hostWide = new FakeRetrievalCapableRagPipeline();
+        var profiled = new FakeRetrievalCapableRagPipeline();
+        var resolver = new RecordingProfileResolver(profiled);
+        using var engine = CreateEngine(query: hostWide, profileResolver: resolver);
+
+        await Task.Run(() => engine.Evaluate(
+            "rag.retrieve('q?', { collection: 'docs', profile: 'balanced' })").UnwrapIfPromise());
+
+        Assert.Equal(["balanced"], resolver.ResolvedProfiles);
+        Assert.Equal(1, profiled.RetrieveCallCount);
+        Assert.Equal(0, hostWide.RetrieveCallCount);
+    }
+
+    [Fact]
+    public async Task Retrieve_WithoutASubsystem_FailsLoudly_WithAnActionableMessage()
+    {
+        using var engine = CreateEngine();
+
+        var ex = await Record.ExceptionAsync(() => Task.Run(() => engine.Evaluate(
+            "rag.retrieve('q?', { collection: 'docs' })").UnwrapIfPromise()));
+
+        Assert.NotNull(ex);
+        var message = FlattenMessage(ex!);
+        Assert.Contains("AddOrkeonRag", message, StringComparison.Ordinal);
+        // The surface name must be its own, not query's — the message is what a
+        // script author reads to find the call site.
+        Assert.Contains("rag.retrieve", message, StringComparison.Ordinal);
     }
 
     [Fact]

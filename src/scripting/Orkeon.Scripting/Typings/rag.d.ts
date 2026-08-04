@@ -32,9 +32,9 @@ declare global {
         readonly score: number;
     }
 
-    /** Grounded answer returned by `rag.query`. */
+    /** Grounded answer returned by `rag.query` / passages returned by `rag.retrieve`. */
     interface RagAnswer {
-        /** Generated answer text, with `[n]` citation markers. */
+        /** Generated answer text with `[n]` markers; ALWAYS empty from `rag.retrieve`. */
         readonly text: string;
         readonly citations: readonly RagCitation[];
     }
@@ -69,6 +69,30 @@ declare global {
              * `IRagProfileResolver`: silently serving the default would produce an
              * answer whose provenance the caller cannot describe.
              */
+            profile?: string;
+            /** Number of chunks kept for context assembly (default 5). */
+            topN?: number;
+        }): Promise<RagAnswer>;
+
+        /**
+         * Same stages as `query` MINUS the generation: transform → retrieve →
+         * fuse → rerank → assemble, then the assembled passages come back as
+         * `citations` with an empty `text`. No LLM call, so no token cost.
+         *
+         * Use this whenever the caller quotes the passages rather than the
+         * pipeline's prose. Measured on exp02's round-41 (2026-08-04): seven
+         * `query` calls whose generated answers were discarded by design cost
+         * 13 748 completion tokens and 393 s of wall time for citations that
+         * retrieval had already produced.
+         *
+         * Fails with a `NotSupportedException` when the resolved profile's
+         * executor cannot retrieve without generating (the `corrective` graph
+         * interleaves the two) — it does not silently fall back to `query`,
+         * which would charge exactly what the caller asked to avoid.
+         */
+        function retrieve(question: string, options: {
+            collection: string;
+            /** Retrieval profile — same semantics as `query`. */
             profile?: string;
             /** Number of chunks kept for context assembly (default 5). */
             topN?: number;

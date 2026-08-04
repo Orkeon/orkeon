@@ -486,14 +486,29 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
         WarnOnUnsendableAttachments(messages);
 
-        // Use the full chat completions path when:
-        // - messages already carry tool-call metadata (subsequent iterations), OR
-        // - the config defines tools to send (first iteration with tools), OR
-        // - a message carries multi-modal content and this provider supports vision (R3.9).
-        // Otherwise, delegate to base (simple prompt concatenation).
-        if (!HasToolMetadata(messages) && !HasToolSchemas(effectiveConfig) && !HasVisionPayload(messages))
+        // EVERY chat with at least one message now takes the structured chat
+        // completions path. It used to be reserved for tool metadata, declared
+        // tool schemas, or a vision payload; anything else fell through to
+        // `base.ChatAsync`, which FLATTENS the messages into one user message
+        // shaped "{role}: {content}" per line.
+        //
+        // Measured on 2026-08-04, exp02 round-41's exchange log: all seven RAG
+        // generations went out as `messages: [{role: "user", content: "system:
+        // You are a retrieval-augmented assistant…"}]`. No system role, no
+        // conversation history — the model answered a prompt about a prompt. That
+        // is the shape of the whole RAG generation stage and of every LLM judge,
+        // retrieval evaluator and groundedness checker here, none of which
+        // declares a tool.
+        //
+        // A single user message was affected too, which is what settled the
+        // question of how far to take this: it went out as `"user: Hello."`, the
+        // role prefix glued onto the user's own words. There is no case where the
+        // flattening is the better payload, so there is no case left where it is
+        // used. An EMPTY (or null) message array still delegates to the base,
+        // which turns it into an empty single prompt.
+        if (messages is null || messages.Length == 0)
         {
-            return await base.ChatAsync(messages, effectiveConfig, cancellationToken).ConfigureAwait(false);
+            return await base.ChatAsync(messages!, effectiveConfig, cancellationToken).ConfigureAwait(false);
         }
 
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -778,6 +793,12 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             payload["top_p"] = effectiveConfig.TopP;
         if (effectiveConfig.StopSequences is { Count: > 0 })
             payload["stop"] = effectiveConfig.StopSequences;
+        // Also emitted by the single-prompt builder. Kept in sync deliberately:
+        // the two builders now serve overlapping cases (see ChatAsync's routing),
+        // so an option present in one and absent from the other would appear or
+        // vanish depending on how many messages the caller happened to send.
+        if (!string.IsNullOrWhiteSpace(effectiveConfig.GrammarGbnf))
+            payload["grammar"] = effectiveConfig.GrammarGbnf;
         ApplyProviderSpecificOptions(payload, effectiveConfig);
     }
 

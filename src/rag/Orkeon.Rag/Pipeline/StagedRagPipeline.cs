@@ -48,7 +48,7 @@ namespace Orkeon.Rag.Pipeline;
 /// <see cref="NoContextAnswer"/> is returned with an explanatory trace — the
 /// pipeline never lets the model answer ungrounded.</para>
 /// </remarks>
-public sealed partial class StagedRagPipeline : IRagPipeline
+public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapable
 {
     /// <summary>Default grounded system prompt (anti-hallucination, <c>[n]</c> citation markers).</summary>
     public const string DefaultSystemPrompt =
@@ -144,6 +144,75 @@ public sealed partial class StagedRagPipeline : IRagPipeline
         RagQuery query,
         CancellationToken cancellationToken = default)
     {
+        var retrieval = await RetrieveCoreAsync(query, cancellationToken).ConfigureAwait(false);
+        if (retrieval.Empty is { } noContext)
+            return noContext;
+
+        // 6 — generate: grounded answer with [n] citation markers.
+        var text = await GenerateAsync(query.Text, retrieval.ContextBlock, retrieval.Steps, cancellationToken)
+            .ConfigureAwait(false);
+
+        // 7 — groundedness: optional verification hook (checker ships with RAG-06).
+        var groundedness = await CheckGroundednessAsync(query.Text, text, retrieval.Kept, retrieval.Steps, cancellationToken)
+            .ConfigureAwait(false);
+
+        return new RagAnswer
+        {
+            Text = text,
+            Citations = BuildCitations(retrieval.Kept),
+            Trace = BuildTrace(retrieval.Steps, retrieval.Variants),
+            Groundedness = groundedness,
+        };
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Stages 1-5 of <see cref="QueryAsync"/> verbatim — the generation and
+    /// groundedness stages are the only difference, and the trace says so rather
+    /// than leaving their absence to be inferred.
+    /// </remarks>
+    public async Task<RagAnswer> RetrieveAsync(
+        RagQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var retrieval = await RetrieveCoreAsync(query, cancellationToken).ConfigureAwait(false);
+        if (retrieval.Empty is { } noContext)
+        {
+            // Same no-context branch as a full query, minus the answer sentence:
+            // a retrieve-only caller reads Citations, and a prose apology there
+            // would be indistinguishable from a passage.
+            return noContext with { Text = string.Empty };
+        }
+
+        retrieval.Steps.Add(new RagTraceStep
+        {
+            Name = "generate",
+            Detail = "skipped — retrieval-only request (IRagRetrievalCapable.RetrieveAsync)",
+        });
+
+        return new RagAnswer
+        {
+            Text = string.Empty,
+            Citations = BuildCitations(retrieval.Kept),
+            Trace = BuildTrace(retrieval.Steps, retrieval.Variants),
+        };
+    }
+
+    /// <summary>
+    /// Outcome of stages 1-5. <see cref="Empty"/> is set when retrieval yielded no
+    /// candidate, and is then the whole answer — the caller must not generate.
+    /// </summary>
+    private sealed record RetrievalOutcome(
+        ImmutableList<RagTraceStep>.Builder Steps,
+        IReadOnlyList<string> Variants,
+        string ContextBlock,
+        List<ScoredChunk> Kept,
+        RagAnswer? Empty);
+
+    private async Task<RetrievalOutcome> RetrieveCoreAsync(
+        RagQuery query,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentException.ThrowIfNullOrWhiteSpace(query.Text);
         ArgumentException.ThrowIfNullOrWhiteSpace(query.Collection);
@@ -174,31 +243,17 @@ public sealed partial class StagedRagPipeline : IRagPipeline
                 Detail = "skipped — no retrieved context",
             });
 
-            return new RagAnswer
+            return new RetrievalOutcome(steps, transform.Variants, string.Empty, [], new RagAnswer
             {
                 Text = NoContextAnswer,
                 Citations = ImmutableList<Citation>.Empty,
                 Trace = BuildTrace(steps, transform.Variants),
-            };
+            });
         }
 
         // 5 — assemble: token budget + anti-Lost-in-the-Middle edges ordering.
         var (contextBlock, kept) = Assemble(ranked, steps);
-
-        // 6 — generate: grounded answer with [n] citation markers.
-        var text = await GenerateAsync(query.Text, contextBlock, steps, cancellationToken).ConfigureAwait(false);
-
-        // 7 — groundedness: optional verification hook (checker ships with RAG-06).
-        var groundedness = await CheckGroundednessAsync(query.Text, text, kept, steps, cancellationToken)
-            .ConfigureAwait(false);
-
-        return new RagAnswer
-        {
-            Text = text,
-            Citations = BuildCitations(kept),
-            Trace = BuildTrace(steps, transform.Variants),
-            Groundedness = groundedness,
-        };
+        return new RetrievalOutcome(steps, transform.Variants, contextBlock, kept, null);
     }
 
     // ── stages ─────────────────────────────────────────────────────────────

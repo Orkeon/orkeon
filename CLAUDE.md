@@ -134,7 +134,9 @@ The project follows Clean Architecture with clear separation of concerns:
   `response_format: json_object`.
 - ✅ **NEW**: RAG subsystem `src/rag/` (RAG-02, ADR-006) — contracts in
   `Orkeon.Rag.Abstractions` (`IRagPipeline`, `IIngestionPipeline`, `IDocumentStore`,
-  `IChunkingStrategy`, `IDocumentLoader`, `RagAnswer` with citations + trace),
+  `IChunkingStrategy`, `IDocumentLoader`, `RagAnswer` with citations + trace,
+  opt-in `IRagRetrievalCapable` — retrieval alone, no generation stage, no LLM
+  call; `rag.retrieve` in the scripting DSL),
   implementations in `Orkeon.Rag` (loaders incl. `WebPageLoader`, 4 chunking
   strategies, ingestion-path validation, `StagedRagPipeline`,
   `MemoryProviderDocumentStore`), agent tools `rag_search`/`rag_ingest`/`rag_eval`

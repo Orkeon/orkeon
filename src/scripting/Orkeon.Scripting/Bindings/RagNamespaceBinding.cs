@@ -12,12 +12,16 @@ namespace Orkeon.Scripting.Bindings;
 
 /// <summary>
 /// Registers the global <c>rag</c> namespace on a Jint engine (RAG-03/C3, plan §8.4):
-/// first-class <c>rag.ingest({ collection, sources, chunkingStrategy?, reindex? })</c>
-/// and <c>rag.query(question, { collection, profile?, topN? })</c> over the RAG
-/// subsystem pipelines. The namespace is always registered — calls fail loudly with
-/// an actionable message when the host did not wire the RAG subsystem
-/// (<c>AddOrkeonRag(configuration)</c>). The <c>profile</c> option is accepted but
-/// is a documented no-op until retrieval profiles land (RAG-04).
+/// first-class <c>rag.ingest({ collection, sources, chunkingStrategy?, reindex? })</c>,
+/// <c>rag.query(question, { collection, profile?, topN? })</c> and
+/// <c>rag.retrieve(question, { … })</c> over the RAG subsystem pipelines. The
+/// namespace is always registered — calls fail loudly with an actionable message
+/// when the host did not wire the RAG subsystem (<c>AddOrkeonRag(configuration)</c>).
+/// <para><c>query</c> and <c>retrieve</c> return the SAME payload shape; only
+/// <c>query</c> runs the generation stage, so <c>retrieve</c> comes back with an
+/// empty <c>text</c> and costs no LLM call. A script that reads only
+/// <c>citations</c> — the common case when the evidence itself must be quoted —
+/// should call <c>retrieve</c>.</para>
 /// </summary>
 public static partial class RagNamespaceBinding
 {
@@ -40,7 +44,8 @@ public static partial class RagNamespaceBinding
 
         IDictionary<string, object?> ns = new ExpandoObject();
         ns["ingest"] = BuildIngest(engine, backend);
-        ns["query"] = BuildQuery(engine, backend, log);
+        ns["query"] = BuildQuery(engine, backend, log, generate: true);
+        ns["retrieve"] = BuildQuery(engine, backend, log, generate: false);
         engine.SetValue(GlobalName, ns);
     }
 
@@ -101,26 +106,33 @@ public static partial class RagNamespaceBinding
         };
     }
 
+    /// <summary>
+    /// Builds <c>rag.query</c> (<paramref name="generate"/> true) or
+    /// <c>rag.retrieve</c> (false). The two surfaces share every stage but the
+    /// last: retrieval, fusion, reranking and assembly are identical, and only
+    /// <c>query</c> pays for a grounded generation on top.
+    /// </summary>
     private static Func<JsValue?, JsValue?, Task<JsValue>> BuildQuery(
-        Engine engine, RagScriptingBackend? backend, ILogger log)
+        Engine engine, RagScriptingBackend? backend, ILogger log, bool generate)
     {
+        var surface = generate ? "rag.query" : "rag.retrieve";
         return async (question, options) =>
         {
             if (backend is null)
             {
                 throw new InvalidOperationException(
-                    "rag.query: the RAG subsystem is not configured on this host. " +
+                    $"{surface}: the RAG subsystem is not configured on this host. " +
                     "Register it with AddOrkeonRag(configuration) (Orkeon.Rag.DependencyInjection).");
             }
 
             if (question is null || !question.IsString() || string.IsNullOrWhiteSpace(question.AsString()))
-                throw new ArgumentException("rag.query expects a non-empty question string as its first argument.");
+                throw new ArgumentException($"{surface} expects a non-empty question string as its first argument.");
 
             if (options is null || !options.IsObject())
-                throw new ArgumentException("rag.query expects an options object: { collection[, profile, topN] }.");
+                throw new ArgumentException($"{surface} expects an options object: {{ collection[, profile, topN] }}.");
 
             var obj = options.AsObject();
-            var collection = GetRequiredString(obj, "collection", "rag.query");
+            var collection = GetRequiredString(obj, "collection", surface);
 
             var topNValue = obj.Get("topN");
             var topN = topNValue.IsNumber() ? (int)topNValue.AsNumber() : (int?)null;
@@ -138,7 +150,7 @@ public static partial class RagNamespaceBinding
                 if (backend.ProfileResolver is null)
                 {
                     throw new InvalidOperationException(
-                        $"rag.query: profile '{profile}' was requested but this host registered no "
+                        $"{surface}: profile '{profile}' was requested but this host registered no "
                         + "IRagProfileResolver, so the profile cannot be honoured. Either drop the "
                         + "option (the host-wide Orkeon:Rag:Profile then applies) or register the RAG "
                         + "subsystem with AddOrkeonRag(configuration), which provides the resolver.");
@@ -152,7 +164,7 @@ public static partial class RagNamespaceBinding
                                            or InvalidOperationException)
                 {
                     throw new ArgumentException(
-                        $"rag.query: unknown retrieval profile '{profile}'. Expected one of "
+                        $"{surface}: unknown retrieval profile '{profile}'. Expected one of "
                         + $"{RagProfilePresets.FastName}, {RagProfilePresets.BalancedName}, "
                         + $"{RagProfilePresets.QualityName}, {RagProfilePresets.CorrectiveName}, "
                         + $"{RagProfilePresets.AdaptiveName}.", ex);
@@ -169,7 +181,26 @@ public static partial class RagNamespaceBinding
             if (topN is int n)
                 query = query with { TopN = n };
 
-            var answer = await pipeline.QueryAsync(query).ConfigureAwait(false);
+            RagAnswer answer;
+            if (generate)
+            {
+                answer = await pipeline.QueryAsync(query).ConfigureAwait(false);
+            }
+            else if (pipeline is IRagRetrievalCapable retriever)
+            {
+                answer = await retriever.RetrieveAsync(query).ConfigureAwait(false);
+            }
+            else
+            {
+                // Deliberately NOT a silent fallback to QueryAsync. A caller reaches
+                // for rag.retrieve to avoid paying for a generation it will discard;
+                // quietly generating anyway would charge it exactly what it asked to
+                // avoid, and it would have no way to tell.
+                throw new NotSupportedException(
+                    $"rag.retrieve: the resolved pipeline ({pipeline.GetType().Name}) does not implement "
+                    + "IRagRetrievalCapable, so retrieval cannot be run without generation. Use rag.query, "
+                    + "or select a profile served by the staged pipeline (fast/balanced/quality).");
+            }
 
             var payload = new Dictionary<string, object?>
             {
