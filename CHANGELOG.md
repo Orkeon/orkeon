@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `ctx.llm.stream` now asks for usage and carries the reasoning channel (SCR-24)
+
+`stream` went through `GenerateStreamingAsync`; it now goes through `ChatStreamingAsync`. Both read the same SSE stream, and the difference is what they ask for: the chat path sends `stream_options: { include_usage: true }`, without which most providers emit no usage chunk at all — so a streamed call had **no token accounting**. Measured on exp02 round-41, whose two streamed requests were `{"model":…,"stream":true}` with no `stream_options`; they carried usage only because Moonshot volunteers it, and the same round on OpenAI would have reported nothing. The calls that stream are the long, expensive ones.
+
+The plain path also dropped `delta.reasoning_content`, so a thinking model's stream is silent for as long as it thinks — round-41's deliverable 13 spent 22 673 of its 32 627 completion tokens reasoning, most of a nine-minute call in which "no chunk yet" and "the stream died" were the same observation.
+
+- `stream(prompt, opts)` keeps yielding strings — no contract change. Two optional callbacks: **`onReasoning(delta)`** receives the reasoning deltas (deliberately NOT yielded as chunks: they are not part of the answer, and a caller writing chunks to a file must not find the model's scratchpad in it), and **`onComplete(usage)`** receives the terminal `{ promptTokens, completionTokens, tokensUsed, model }` with `null` fields when the provider reported nothing.
+- `onComplete` fires on the non-streaming fallback too, so "this provider does not stream" and "this provider reported no usage" stay distinguishable.
+
 ### Added — `rag.retrieve` / `IRagRetrievalCapable`: retrieval without the generation nobody asked for (SCR-24)
 
 A caller that wants the retrieved passages rather than prose was still charged for a full grounded generation, because `IRagPipeline` exposed only `QueryAsync`. Measured on exp02's gap round (2026-08-04): seven `rag.query` calls whose generated answers were discarded **by design** cost 13 748 completion tokens — 74 % of them reasoning tokens — and 393 s of wall time, on top of retrieval that had already produced every citation the caller used. The generation stage is the expensive half of a RAG call and it is optional far more often than the API shape suggested.
