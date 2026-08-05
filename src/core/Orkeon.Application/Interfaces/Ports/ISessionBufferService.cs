@@ -77,6 +77,19 @@ public sealed record SessionMetadata
     /// <summary>Active model name (informational).</summary>
     public string? Model { get; init; }
 
+    /// <summary>
+    /// Models the configured provider is DECLARED to serve (<c>Llm:AvailableModels</c>), so a
+    /// scripted agent can offer a choice and flag an unserved name before spending a turn on it.
+    /// Empty when the host declares none — which means "unknown", never "none available".
+    /// </summary>
+    /// <remarks>
+    /// Declarative on purpose: it costs no request and works offline. It is therefore a HINT and
+    /// may be stale, so consumers should warn on a name outside it rather than refuse — a list
+    /// that has not caught up with the provider's catalogue must not block a model that works.
+    /// Live discovery (<c>GET /models</c>) is a separate, network-bound concern.
+    /// </remarks>
+    public IReadOnlyList<string> AvailableModels { get; init; } = [];
+
     /// <summary>Number of messages in the buffer.</summary>
     public int MessageCount { get; init; }
 

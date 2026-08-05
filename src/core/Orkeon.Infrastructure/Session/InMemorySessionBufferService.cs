@@ -15,11 +15,25 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
     private readonly string _sessionId = Guid.NewGuid().ToString("N");
     private string? _title;
     private readonly string? _model;
+    private readonly IReadOnlyList<string> _availableModels;
 
     /// <summary>Creates a buffer, optionally tagging it with the active model name (informational).</summary>
-    public InMemorySessionBufferService(string? model = null)
+    /// <param name="model">Active model name, surfaced by <see cref="GetMetadata"/>.</param>
+    /// <param name="availableModels">
+    /// Models the configured provider is declared to serve (<c>Llm:AvailableModels</c>). Blank
+    /// entries are dropped and duplicates collapsed, since the source is a hand-edited settings
+    /// file; the declared order is kept, because it is the order an operator chose to read.
+    /// </param>
+    public InMemorySessionBufferService(string? model = null, IReadOnlyList<string>? availableModels = null)
     {
         _model = model;
+        _availableModels = availableModels is null
+            ? []
+            : availableModels
+                .Where(m => !string.IsNullOrWhiteSpace(m))
+                .Select(m => m.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
     }
 
     /// <inheritdoc />
@@ -66,6 +80,7 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
                 SessionId = _sessionId,
                 Title = _title,
                 Model = _model,
+                AvailableModels = _availableModels,
                 MessageCount = _messages.Count,
                 EstimatedTokens = EstimateTokenCountUnlocked(),
             };

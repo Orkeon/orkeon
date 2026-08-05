@@ -179,8 +179,10 @@ static class Program
         services.AddOrkeonWebTools();
         services.AddOrkeonCodeTools();
         services.AddOrkeonAbstractionTools();
-        // exp 07: session buffer + session_store/session_snip/token_budget tools.
-        services.AddOrkeonSessionTools();
+        // exp 07: session buffer + session_store/session_snip/token_budget tools. The
+        // configuration is passed so the session metadata carries `Llm:AvailableModels` —
+        // what a scripted /model can offer as a choice.
+        services.AddOrkeonSessionTools(context.Configuration);
         // exp 07 F2: per-tool-call permission gate — config opt-in
         // (Orkeon:Security:PermissionGate:Enabled = true).
         services.AddOrkeonPermissionGate(context.Configuration);

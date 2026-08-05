@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Application.Interfaces.Ports;
@@ -21,9 +22,20 @@ public static class SessionToolsExtensions
     /// Registers the session buffer, typed memory store, cost-tracking substrate, and the
     /// six session/telemetry/memory tools as <see cref="IBaseTool"/> entries. Idempotent.
     /// </summary>
-    public static IServiceCollection AddOrkeonSessionTools(this IServiceCollection services)
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">
+    /// Optional host configuration. When supplied, <c>Llm:AvailableModels</c> is read into the
+    /// session metadata so a scripted agent can offer the models this provider serves. Passed in
+    /// rather than resolved from the provider: Infrastructure does not go looking for
+    /// configuration it was not handed.
+    /// </param>
+    public static IServiceCollection AddOrkeonSessionTools(
+        this IServiceCollection services,
+        IConfiguration? configuration = null)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        var availableModels = ReadAvailableModels(configuration);
 
         // Backing services.
         //
@@ -40,7 +52,8 @@ public static class SessionToolsExtensions
         // as before). GetService, not GetRequiredService: the provider is optional.
         services.TryAddSingleton<ISessionBufferService>(sp =>
             new InMemorySessionBufferService(
-                sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>()?.BaseConfig?.Model));
+                sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>()?.BaseConfig?.Model,
+                availableModels));
         services.TryAddSingleton<ICategoryMemoryStore, InMemoryCategoryMemoryStore>();
 
         // Cost-tracking substrate (exp 07 Phase 6) — not registered elsewhere. Both the
@@ -57,5 +70,27 @@ public static class SessionToolsExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, SessionCostTool>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, SessionStatsTool>());
         return services;
+    }
+
+    /// <summary>
+    /// Reads <c>Llm:AvailableModels</c> — a string array, or a comma-separated string so the
+    /// value can also arrive as one environment variable
+    /// (<c>Llm__AvailableModels=a,b</c>), which is how a container usually passes it.
+    /// </summary>
+    private static string[]? ReadAvailableModels(IConfiguration? configuration)
+    {
+        var section = configuration?.GetSection("Llm:AvailableModels");
+        if (section is null || !section.Exists()) return null;
+
+        // An array binds to children; a scalar binds to Value. Both shapes are accepted because
+        // a settings file naturally writes the first and an env var can only write the second.
+        var asArray = section.GetChildren()
+            .Select(c => c.Value)
+            .Where(v => v is not null)
+            .Select(v => v!)
+            .ToArray();
+        if (asArray.Length > 0) return asArray;
+
+        return section.Value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }
