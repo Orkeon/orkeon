@@ -26,7 +26,21 @@ public static class SessionToolsExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         // Backing services.
-        services.TryAddSingleton<ISessionBufferService>(_ => new InMemorySessionBufferService());
+        //
+        // The buffer is seeded with the model the runtime will actually call.
+        // `InMemorySessionBufferService(model)` has always accepted one and nobody
+        // ever passed it, so `SessionMetadata.Model` was null in every host — and
+        // `session_store get_metadata`, the only way a script can learn the active
+        // model, reported nothing whatever the configuration said. A coding agent's
+        // `/model` command then had to print "(unknown)" for a perfectly well
+        // configured provider, which reads as "no provider" and is not the same thing.
+        //
+        // Resolved lazily through the factory, so registration order does not matter
+        // and a host with no provider at all still gets a working buffer (null model,
+        // as before). GetService, not GetRequiredService: the provider is optional.
+        services.TryAddSingleton<ISessionBufferService>(sp =>
+            new InMemorySessionBufferService(
+                sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>()?.BaseConfig?.Model));
         services.TryAddSingleton<ICategoryMemoryStore, InMemoryCategoryMemoryStore>();
 
         // Cost-tracking substrate (exp 07 Phase 6) — not registered elsewhere. Both the
