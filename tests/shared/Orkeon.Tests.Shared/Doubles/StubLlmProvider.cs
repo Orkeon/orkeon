@@ -25,6 +25,13 @@ public sealed class StubLlmProvider : ILlmProvider
     /// <summary>The last <see cref="LlmConfig"/> received (Generate or Chat). Null until the first call.</summary>
     public LlmConfig? LastConfig { get; private set; }
 
+    /// <summary>
+    /// The provider's own configuration — what a real HTTP provider was constructed with
+    /// (credentials, endpoint, model). Left null by default so existing tests are unaffected;
+    /// set it to assert that call-time overrides PATCH it instead of replacing it.
+    /// </summary>
+    public LlmConfig? BaseConfig { get; init; }
+
     /// <summary>Configures the response returned by <see cref="GenerateAsync"/>.</summary>
     public StubLlmProvider RespondTo(Func<string, LlmResponse> responder)
     {

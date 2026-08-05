@@ -688,7 +688,20 @@ public sealed partial class JsLlmFacade
         return DefaultActMaxIterations;
     }
 
-    private static LlmConfig? ConfigFrom(JsValue? options)
+    /// <summary>
+    /// Builds the per-call <see cref="LlmConfig"/> from a script options bag, or <c>null</c>
+    /// when the bag carries no LLM setting (the provider then uses its own configuration).
+    /// </summary>
+    /// <remarks>
+    /// Call-time settings PATCH the provider's <see cref="ILlmProvider.BaseConfig"/>; they do not
+    /// start from a blank one. Downstream, a per-call config REPLACES the provider's wholesale
+    /// (<c>HttpLlmProviderBase.CreateHttpClient</c>: <c>requestConfig ?? Config</c>), so building
+    /// on <see cref="LlmConfig.Default"/> would hand the transport an empty API key, base URL and
+    /// timeout — a script asking for `{ responseFormat: 'json_object' }` would lose its
+    /// credentials as a side effect and fail to authenticate. The stub providers used in tests
+    /// ignore those fields, which is exactly why the defect stayed invisible.
+    /// </remarks>
+    private LlmConfig? ConfigFrom(JsValue? options)
     {
         if (options is null || options.IsUndefined() || options.IsNull()) return null;
 
@@ -700,7 +713,7 @@ public sealed partial class JsLlmFacade
         if (topRf.IsString())
         {
             var rfType = topRf.AsString();
-            config = LlmConfig.Default() with
+            config = Inherited() with
             {
                 ResponseFormat = string.Equals(rfType, "text", StringComparison.OrdinalIgnoreCase)
                     ? null
@@ -708,14 +721,15 @@ public sealed partial class JsLlmFacade
             };
         }
 
-        // Nested `{ llm: { model: "..." } }` — V1 minimum kept for compatibility.
+        // Nested `{ llm: { model: "..." } }` — the per-call model override: the agent's boot
+        // provider keeps its credentials and endpoint, only the model name changes.
         var llm = options.Get("llm");
         if (llm.IsObject())
         {
             var model = llm.Get("model");
             if (model.IsString())
             {
-                config = (config ?? LlmConfig.Default()) with
+                config = (config ?? Inherited()) with
                 {
                     Model = model.AsString(),
                 };
@@ -723,6 +737,8 @@ public sealed partial class JsLlmFacade
         }
 
         return config;
+
+        LlmConfig Inherited() => _provider?.BaseConfig ?? LlmConfig.Default();
     }
 
     private static LlmMessage[] ToMessages(JsValue messages)
