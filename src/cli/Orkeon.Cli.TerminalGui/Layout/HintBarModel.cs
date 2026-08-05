@@ -21,11 +21,16 @@ public static class HintBarModel
         bool commandRunning,
         bool agentsPaneAvailable)
     {
+        // agentsPaneAvailable is currently unused: the agents pane is informational
+        // (not focusable — a focusable read-only pane stole the prompt focus on first
+        // live launch), so the bar advertises no "manage" action it cannot honour.
+        // The parameter stays so wiring management later is an implementation, not a
+        // signature change.
+        _ = agentsPaneAvailable;
         var mode = string.IsNullOrWhiteSpace(permissionMode) ? "default" : permissionMode.Trim();
-        var segments = new List<string>(4) { $"{mode} (shift+tab to cycle)" };
+        var segments = new List<string>(3) { $"{mode} (shift+tab to cycle)" };
         if (commandRunning) segments.Add("esc to interrupt");
         segments.Add("ctrl+g logs");
-        if (agentsPaneAvailable) segments.Add("↓ to manage");
         return segments;
     }
 

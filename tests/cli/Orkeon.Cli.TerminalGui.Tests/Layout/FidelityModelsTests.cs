@@ -159,10 +159,16 @@ public class HintBarModelTests
     }
 
     [Fact]
-    public void Manage_entry_needs_an_agents_pane()
+    public void No_manage_entry_is_advertised_yet()
     {
-        var segments = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: false);
-        Assert.DoesNotContain(segments, s => s.Contains("manage", StringComparison.Ordinal));
+        // The agents pane is informational (not focusable — a focusable read-only pane
+        // stole the prompt focus on first live launch), so the bar must not promise a
+        // "manage" action it cannot honour — with or without the pane.
+        foreach (var available in new[] { true, false })
+        {
+            var segments = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: available);
+            Assert.DoesNotContain(segments, s => s.Contains("manage", StringComparison.Ordinal));
+        }
     }
 
     [Theory]

@@ -59,6 +59,16 @@ public class ReplPaneViewTests
     }
 
     [Fact]
+    public void Pane_is_focusable_so_the_input_can_receive_focus()
+    {
+        // A bare View defaults to CanFocus=false; the focus chain then cannot enter the
+        // pane and NOTHING typed lands anywhere — the first live launch shipped exactly
+        // that (capture_orkeon.png). FrameView used to set this implicitly.
+        using var pane = CreatePane();
+        Assert.True(pane.CanFocus);
+    }
+
+    [Fact]
     public void SetPromptPrefix_renders_the_fidelity_marker_not_the_raw_prefix()
     {
         // PLAN §2.1: the runner keeps writing "scripted> " (plain mode stays byte-exact);

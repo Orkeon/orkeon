@@ -64,6 +64,11 @@ public sealed class ReplPaneView : View
         ArgumentNullException.ThrowIfNull(options);
         _dispatcher = dispatcher;
         _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
+        // A bare View defaults to CanFocus=false; the FrameView this pane used to be
+        // set it to true. Without it the focus chain cannot ENTER the pane, the
+        // startup _input.SetFocus() silently no-ops, and nothing typed ever lands —
+        // found live on the first user launch (capture_orkeon.png).
+        CanFocus = true;
         SetScheme(SchemeFactory.Pane());
 
         _history = new MouseClipboardTextView

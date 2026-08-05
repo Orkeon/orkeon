@@ -45,7 +45,11 @@ public sealed class AgentsPaneView : View
             ReadOnly = true,
             Multiline = true,
             WordWrap = false,
-            CanFocus = true, // "↓ to manage" moves focus here; rows are selectable text
+            // NOT focusable: the pane is informational, and a focusable read-only view
+            // that appears mid-session is a focus thief — typed keys would land in it
+            // and silently vanish. Mouse selection still works (MouseClipboardTextView
+            // hooks OnMouseEvent regardless of focus, same as the history pane).
+            CanFocus = false,
             ScrollBars = false,
         };
         _text.SetScheme(SchemeFactory.Dim());
@@ -66,9 +70,6 @@ public sealed class AgentsPaneView : View
         StartTimer();
         Refresh();
     }
-
-    /// <summary>Focuses the row area (the hint bar's "↓ to manage").</summary>
-    public void FocusRows() => _dispatcher.Invoke(() => _text.SetFocus());
 
     /// <summary>Re-polls the rows and repaints. Also used by tests.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing row provider collapses the pane, never crashes the UI timer.")]
