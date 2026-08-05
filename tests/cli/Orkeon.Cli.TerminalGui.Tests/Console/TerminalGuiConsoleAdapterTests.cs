@@ -30,7 +30,10 @@ public class TerminalGuiConsoleAdapterTests
     {
         var (adapter, repl) = Create();
         adapter.Write("[claim-verifier] > ");
-        Assert.Equal("[claim-verifier] > ", repl.CurrentPromptPrefix);
+        // The heuristic contract is unchanged (a "> "-suffixed write IS the prompt);
+        // the RENDERING maps it to the fidelity marker — PLAN §2.1. The runner's own
+        // string never reaches the label, so plain mode stays byte-exact elsewhere.
+        Assert.Equal("❯ ", repl.CurrentPromptPrefix);
         Assert.Equal(string.Empty, repl.CurrentHistory);
     }
 
@@ -39,7 +42,8 @@ public class TerminalGuiConsoleAdapterTests
     {
         var (adapter, repl) = Create();
         adapter.Write("regular output");
-        Assert.Equal(string.Empty, repl.CurrentPromptPrefix);
+        // The prompt label keeps its initial marker; regular output lands in history.
+        Assert.Equal("❯ ", repl.CurrentPromptPrefix);
         Assert.Equal("regular output", repl.CurrentHistory);
     }
 

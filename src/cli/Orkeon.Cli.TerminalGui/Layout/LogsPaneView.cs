@@ -77,7 +77,7 @@ public sealed class LogsPaneView : FrameView
 
     /// <summary>
     /// Updates the frame title to advertise the active visible log level.
-    /// Called by <see cref="StatusBarBuilder"/> after every F2 / Shift+F2 keystroke.
+    /// Called by the global key bindings after every F2 / Shift+F2 keystroke.
     /// Title format: <c>"Logs — Level: Information"</c>.
     /// </summary>
     public void SetVisibleLevel(LogLevel level)

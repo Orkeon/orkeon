@@ -50,7 +50,10 @@ public static class TerminalGuiServiceCollectionExtensions
             return services;
 
         services.AddSingleton(options);
-        services.AddSingleton<TerminalGuiHost>();
+        services.AddSingleton<TuiIntegration>();
+        services.AddSingleton<TerminalGuiHost>(sp => new TerminalGuiHost(
+            sp.GetRequiredService<TerminalGuiOptions>(),
+            sp.GetRequiredService<TuiIntegration>()));
 
         services.RemoveAll<IConsoleAdapter>();
         services.AddSingleton<IConsoleAdapter>(sp =>
@@ -77,12 +80,11 @@ public static class TerminalGuiServiceCollectionExtensions
             var provider = new TerminalGuiLoggerProvider(
                 host.Toplevel.Logs,
                 sp.GetRequiredService<TerminalGuiOptions>());
-            // Build & attach status bar now that both Host and Provider exist.
-            // This breaks the cyclic dep that would arise if TerminalGuiHost took
-            // TerminalGuiLoggerProvider in its constructor.
+            // Install the global key bindings now that both Host and Provider exist
+            // (the fidelity layout replaced the StatusBar widget with HintBarView +
+            // global handlers — PLAN phase 5). Same cycle-breaking spot as before.
             var findDialog = new FindDialog(host.Toplevel.Logs);
-            var statusBar = StatusBarBuilder.Build(host.Toplevel, provider, findDialog);
-            host.AttachStatusBar(statusBar);
+            host.InstallKeyBindings(provider, findDialog);
             // Publish process-wide so inner Hosts (e.g. RunOneShotAsync's child host)
             // can re-route their AddSimpleConsole writes here instead of polluting stdout.
             // See Orkeon.Cli.Abstractions.Logging.AmbientLoggerProvider for the contract.

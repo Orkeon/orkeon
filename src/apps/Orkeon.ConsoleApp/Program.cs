@@ -244,7 +244,15 @@ static class Program
         services.AddSingleton<ScriptedCommandsRunner>();
 
         if (effectiveUi == UiMode.Tui)
-            services.AddOrkeonCliTerminalGui(new TerminalGuiOptions { ReplWordWrap = replWordWrap });
+        {
+            services.AddOrkeonCliTerminalGui(new TerminalGuiOptions
+            {
+                ReplWordWrap = replWordWrap,
+                // Banner content comes from the configuration this host actually loaded —
+                // the TUI layer cannot (and must not) probe the LLM section itself.
+                Banner = Orkeon.ConsoleApp.Services.TuiFidelityWiring.BuildBannerInfo(context.Configuration),
+            });
+        }
     }
 
     static void ConfigureLogging(IServiceCollection services, UiMode effectiveUi)
@@ -314,7 +322,17 @@ static class Program
         if (effectiveUi == UiMode.Tui)
         {
             await using var tuiHost = host.Services.GetRequiredService<TerminalGuiHost>();
-            await tuiHost.RunAsync(entry, CancellationToken.None);
+            // Close the fidelity delegates over the built provider (session state bag,
+            // cost tracker, command registry) — see TuiFidelityWiring.
+            Orkeon.ConsoleApp.Services.TuiFidelityWiring.Wire(host.Services);
+            // Prefer the runner overload: it binds the status line / hint bar / agents
+            // views to the command lifecycle. The Func path never could (it has no
+            // IInteractiveRunner), which is why the old tasks bandeau stayed idle in
+            // exactly the mode that runs commands.
+            if (scriptedOpts.BootIntoScriptedRunner)
+                await tuiHost.RunAsync(host.Services.GetRequiredService<ScriptedCommandsRunner>(), CancellationToken.None);
+            else
+                await tuiHost.RunAsync(entry, CancellationToken.None);
         }
         else
         {

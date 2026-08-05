@@ -14,7 +14,10 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         string.Equals(Environment.GetEnvironmentVariable("TUI_DIAG"), "1", StringComparison.Ordinal);
 
     private readonly TerminalGuiOptions _options;
+    private readonly TuiIntegration _integration;
+    private readonly Orkeon.Cli.TerminalGui.Telemetry.ToolActivityAggregator _toolActivity = new();
     private SplitPaneToplevel? _toplevel;
+    private bool _bannerWritten;
     private bool _initialized;
     private bool _ownsApplicationInit;
     private bool? _previousTreatControlCAsInput;
@@ -25,9 +28,16 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     }
 
     public TerminalGuiHost(TerminalGuiOptions options)
+        : this(options, new TuiIntegration()) { }
+
+    public TerminalGuiHost(TerminalGuiOptions options, TuiIntegration integration)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _integration = integration ?? throw new ArgumentNullException(nameof(integration));
     }
+
+    /// <summary>The host-populated delegate bag the fidelity views pull from.</summary>
+    public TuiIntegration Integration => _integration;
 
     public SplitPaneToplevel Toplevel
         => _toplevel ?? throw new InvalidOperationException("Call Initialize() first.");
@@ -107,14 +117,17 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     }
 
     /// <summary>
-    /// Builds and attaches the status bar with shortcuts to the toplevel.
-    /// Called by the <c>TerminalGuiLoggerProvider</c> DI factory once both Host and Provider exist,
-    /// so the cyclic dependency between Host and LoggerProvider is broken.
+    /// Installs the global key bindings (the fidelity layout has no StatusBar widget —
+    /// the visible bar is <see cref="Layout.HintBarView"/>, and every shortcut is a
+    /// global handler). Called by the <c>TerminalGuiLoggerProvider</c> DI factory once
+    /// both Host and Provider exist, so the cyclic dependency stays broken.
     /// </summary>
-    public void AttachStatusBar(StatusBar bar)
+    public void InstallKeyBindings(
+        Orkeon.Cli.TerminalGui.Logging.TerminalGuiLoggerProvider logProvider,
+        Layout.FindDialog findDialog)
     {
         if (!_initialized) Initialize();
-        _toplevel!.AttachStatusBar(bar);
+        Layout.GlobalKeyBindings.Install(_toplevel!, logProvider, findDialog, _integration);
     }
 
     /// <summary>
@@ -142,7 +155,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     {
         if (!_initialized) Initialize();
         _toplevel!.Runner = runner;
-        _toplevel!.Tasks.Bind(runner);
+        BindFidelityViews(runner);
 
         // Belt-and-suspenders Ctrl+C handler. The status-bar Shortcut(Key.C.WithCtrl)
         // works in unit tests but is swallowed by focused TextField bindings in real
@@ -210,6 +223,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     private async Task RunReplCoreAsync(Func<CancellationToken, Task> repl, CancellationToken ct)
     {
         if (!_initialized) Initialize();
+        WriteBannerOnce();
 
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var replTask = Task.Run(async () =>
@@ -265,6 +279,64 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     }
 
     /// <summary>
+    /// Wires the fidelity views to their sources: status line (runner + tokens + tool
+    /// spans), hint bar (posture + contextual entries), rule/chip and agents rows. The
+    /// turn-completion hook flushes the aggregated tool-activity sentence into the
+    /// transcript — the reference's "Read 1 file, ran 9 shell commands" line.
+    /// </summary>
+    private void BindFidelityViews(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner)
+    {
+        var top = _toplevel!;
+        top.Repl.StatusLine.Bind(runner, _integration, _toolActivity);
+        top.Repl.RuleChip.Bind(_integration);
+        top.HintBar.Bind(
+            runner,
+            _integration,
+            agentsAvailable: _integration.AgentRows is not null,
+            configUsable: !string.IsNullOrWhiteSpace(_options.Banner?.ModelLine));
+        if (_integration.AgentRows is not null)
+            top.Agents.Bind(_integration);
+
+        top.Repl.StatusLine.TurnCompleted += (_, _) =>
+        {
+            var sentence = _toolActivity.DrainSentence();
+            if (sentence.Length > 0)
+            {
+                var glyphs = Layout.GlyphSet.Resolve(_options.Glyphs, OutputEncodingIsUtf8());
+                foreach (var line in Layout.TranscriptModel.Render(glyphs, Layout.TranscriptKind.ToolActivity, sentence))
+                    top.Repl.AppendOutputLine(line);
+            }
+            top.Repl.RuleChip.Refresh();
+        };
+    }
+
+    /// <summary>Writes the startup banner into the transcript, once (PLAN phase 2).</summary>
+    private void WriteBannerOnce()
+    {
+        if (_bannerWritten || !_options.BannerEnabled) return;
+        _bannerWritten = true;
+        var info = _options.Banner ?? new BannerInfo
+        {
+            ProductLine = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name ?? "orkeon",
+        };
+        var glyphs = Layout.GlyphSet.Resolve(_options.Glyphs, OutputEncodingIsUtf8());
+        foreach (var line in Layout.BannerComposer.Compose(info, glyphs))
+            _toplevel!.Repl.AppendOutputLine(line);
+    }
+
+    private static bool OutputEncodingIsUtf8()
+    {
+        try
+        {
+            return System.Console.OutputEncoding.CodePage is 65001;
+        }
+        catch (System.IO.IOException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Maximum time we'll wait for the runner to exit its REPL loop after the user
     /// presses Ctrl+Q. Past this window we abandon the task to keep the UI responsive.
     /// </summary>
@@ -290,6 +362,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // owned Terminal.Gui view tree (and its disposable children) is released.
         _toplevel?.Dispose();
         _toplevel = null;
+        _toolActivity.Dispose();
         return ValueTask.CompletedTask;
     }
 }

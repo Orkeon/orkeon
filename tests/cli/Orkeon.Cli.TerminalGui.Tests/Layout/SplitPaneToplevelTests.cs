@@ -17,37 +17,46 @@ public class SplitPaneToplevelTests
         => new(new TerminalGuiOptions { InitialSplitRatio = initialRatio }, InlineDispatcher.Instance);
 
     [Fact]
-    public void Construction_creates_three_panes()
+    public void Construction_creates_the_fidelity_panes_with_logs_hidden()
     {
         using var top = Create();
         Assert.NotNull(top.Logs);
         Assert.NotNull(top.Repl);
-        Assert.NotNull(top.Tasks);
+        Assert.NotNull(top.HintBar);
+        Assert.NotNull(top.Agents);
         Assert.Equal(0.5, top.CurrentSplitRatio);
-        Assert.True(top.IsLogsVisible);
+        // The logs drawer starts HIDDEN (PLAN phase 1) — it is our addition, not the
+        // reference's — and the REPL is the surface that must always be there.
+        Assert.False(top.IsLogsVisible);
         Assert.True(top.IsReplVisible);
-        Assert.True(top.IsTasksVisible);
     }
 
     [Fact]
-    public void ToggleReplVisible_refused_when_logs_already_hidden()
+    public void Logs_drawer_opens_at_startup_when_the_option_says_so()
+    {
+        using var top = new SplitPaneToplevel(
+            new TerminalGuiOptions { LogsVisibleAtStartup = true }, InlineDispatcher.Instance);
+        Assert.True(top.IsLogsVisible);
+    }
+
+    [Fact]
+    public void ToggleLogsVisible_flips_the_drawer()
     {
         using var top = Create();
         top.ToggleLogsVisible();
+        Assert.True(top.IsLogsVisible);
+        top.ToggleLogsVisible();
         Assert.False(top.IsLogsVisible);
-        top.ToggleReplVisible();
-        // Refused: would leave only the Tasks bandeau visible.
-        Assert.True(top.IsReplVisible);
     }
 
     [Fact]
-    public void ToggleTasksVisible_is_always_allowed()
+    public void ToggleReplVisible_refused_when_logs_hidden()
     {
         using var top = Create();
-        top.ToggleTasksVisible();
-        Assert.False(top.IsTasksVisible);
-        top.ToggleTasksVisible();
-        Assert.True(top.IsTasksVisible);
+        // Logs start hidden: hiding the REPL too would leave only the hint bar.
+        Assert.False(top.IsLogsVisible);
+        top.ToggleReplVisible();
+        Assert.True(top.IsReplVisible);
     }
 
     [Fact]

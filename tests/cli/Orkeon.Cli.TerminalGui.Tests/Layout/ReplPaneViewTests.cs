@@ -59,11 +59,26 @@ public class ReplPaneViewTests
     }
 
     [Fact]
-    public void SetPromptPrefix_updates_label()
+    public void SetPromptPrefix_renders_the_fidelity_marker_not_the_raw_prefix()
     {
+        // PLAN §2.1: the runner keeps writing "scripted> " (plain mode stays byte-exact);
+        // only the TUI rendering maps it to the prompt glyph.
         using var pane = CreatePane();
         pane.SetPromptPrefix("[claim-verifier] > ");
-        Assert.Equal("[claim-verifier] > ", pane.CurrentPromptPrefix);
+        Assert.Equal("❯ ", pane.CurrentPromptPrefix);
+    }
+
+    [Fact]
+    public async Task Placeholder_never_leaks_into_ReadLineAsync()
+    {
+        // The placeholder is a separate overlay label, so the submitted draft cannot
+        // contain it — pinned anyway (PLAN R2): Enter on an empty input must yield "",
+        // not the placeholder text.
+        using var pane = CreatePane();
+        var read = pane.ReadLineAsync(CancellationToken.None);
+        pane.RaiseKeyDown(Terminal.Gui.Input.Key.Enter);
+        var line = await read;
+        Assert.Equal(string.Empty, line);
     }
 
     [Fact]

@@ -13,7 +13,13 @@ public class TerminalGuiOptionsTests
         Assert.Equal(LogLevel.Information, o.DefaultMinimumLogLevel);
         Assert.Equal(5000, o.LogsBufferCapacity);
         Assert.Equal("Logs", o.LogsPaneTitle);
-        Assert.Equal("REPL", o.ReplPaneTitle);
+        // Fidelity defaults (PLAN phase 1): the logs drawer starts hidden — the
+        // reference UI has no log pane, ours is the opt-in addition — and the
+        // banner is on with Auto glyphs.
+        Assert.False(o.LogsVisibleAtStartup);
+        Assert.True(o.BannerEnabled);
+        Assert.Null(o.Banner);
+        Assert.Equal(Orkeon.Cli.TerminalGui.Layout.GlyphMode.Auto, o.Glyphs);
     }
 
     [Fact]

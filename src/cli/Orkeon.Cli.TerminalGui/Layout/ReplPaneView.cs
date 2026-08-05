@@ -9,17 +9,31 @@ using Terminal.Gui.Views;
 namespace Orkeon.Cli.TerminalGui.Layout;
 
 /// <summary>
-/// REPL pane: command history (read-only) on top, prompt prefix label + a soft-wrapping, auto-growing
-/// multi-line input field at the bottom.
+/// REPL pane of the fidelity layout: borderless transcript (read-only) on top, then the
+/// one-row status line, the rule + context chip, and the prompt (marker + soft-wrapping,
+/// auto-growing multi-line input) at the bottom — the vertical order of the reference
+/// captures (PLAN C1/C5/C6/C7).
 /// <see cref="ReadLineAsync"/> bridges the event-driven UI to the synchronous-blocking
 /// <see cref="System.IO.TextReader.ReadLine"/> contract used by <see cref="Orkeon.Cli.Abstractions.Console.IConsoleAdapter"/>.
 /// </summary>
-public sealed class ReplPaneView : FrameView
+/// <remarks>
+/// The prompt PREFIX contract is unchanged: the runner still writes <c>scripted&gt; </c>
+/// and the console adapter still routes it here by heuristic — only the RENDERING maps
+/// it to the prompt glyph, so the plain (non-TUI) mode stays byte-exact (PLAN §2.1).
+/// </remarks>
+public sealed class ReplPaneView : View
 {
     private readonly TextView _history;
     private readonly Label _promptLabel;
+    private readonly Label _placeholder;
     private readonly TextView _input;
+    private readonly StatusLineView _statusLine;
+    private readonly RuleChipView _ruleChip;
     private readonly IUiDispatcher _dispatcher;
+    private readonly GlyphSet _glyphs;
+
+    // Rows reserved between the transcript and the prompt: status line + rule/chip.
+    private const int BandRows = 2;
 
     // Cap on how many rows the multi-line input may grow to before it scrolls internally,
     // so a long paste / many Shift+Enter lines never swallow the whole REPL pane.
@@ -49,7 +63,7 @@ public sealed class ReplPaneView : FrameView
     {
         ArgumentNullException.ThrowIfNull(options);
         _dispatcher = dispatcher;
-        Title = options.ReplPaneTitle;
+        _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
         SetScheme(SchemeFactory.Pane());
 
         _history = new MouseClipboardTextView
@@ -57,7 +71,7 @@ public sealed class ReplPaneView : FrameView
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill(1),
+            Height = Dim.Fill(1 + BandRows),
             ReadOnly = true,
             Multiline = true,
             // Display-only soft-wrap when enabled: Terminal.Gui keeps the original unwrapped model
@@ -72,14 +86,30 @@ public sealed class ReplPaneView : FrameView
             ScrollBars = true,
         };
         _history.SetScheme(SchemeFactory.Pane());
+
+        // The two bands of the interactive cluster, in the captures' order: status
+        // line, then the rule carrying the right-aligned context chip, then the prompt.
+        _statusLine = new StatusLineView(options, dispatcher, TimeProvider.System)
+        {
+            X = 0,
+            Y = Pos.AnchorEnd(1 + BandRows),
+            Width = Dim.Fill(),
+        };
+        _ruleChip = new RuleChipView(options, dispatcher)
+        {
+            X = 0,
+            Y = Pos.AnchorEnd(2),
+            Width = Dim.Fill(),
+        };
+
         _promptLabel = new Label
         {
             X = 0,
             Y = Pos.AnchorEnd(1),
             Height = 1,
-            Text = string.Empty,
+            Text = $"{_glyphs.Prompt} ",
         };
-        _promptLabel.SetScheme(SchemeFactory.Pane());
+        _promptLabel.SetScheme(SchemeFactory.Accent());
         _input = new TextView
         {
             X = Pos.Right(_promptLabel),
@@ -105,9 +135,22 @@ public sealed class ReplPaneView : FrameView
         _input.KeyDown += OnInputKeyDown;
         // Grow / shrink the input box (and the history above it) whenever the line count changes
         // — Shift+Enter, paste, history recall, or a backspace that merges two lines.
-        _input.ContentsChanged += (_, _) => SyncInputHeight();
+        _input.ContentsChanged += (_, _) => { SyncInputHeight(); SyncPlaceholder(); };
 
-        Add(_history, _promptLabel, _input);
+        // Simulated placeholder (Terminal.Gui exposes none on TextView): a dim label
+        // OVER the input, shown only while the draft is empty. It is display chrome —
+        // it can never leak into ReadLineAsync because it lives in a different view.
+        _placeholder = new Label
+        {
+            X = Pos.Right(_promptLabel),
+            Y = Pos.AnchorEnd(1),
+            Height = 1,
+            Text = PlaceholderText,
+            CanFocus = false,
+        };
+        _placeholder.SetScheme(SchemeFactory.Dim());
+
+        Add(_history, _statusLine, _ruleChip, _promptLabel, _input, _placeholder);
 
         // Force initial focus on the input field once the view is laid out, otherwise
         // Terminal.Gui defaults to the first focusable child (which would skip past
@@ -147,10 +190,48 @@ public sealed class ReplPaneView : FrameView
 
     public void AppendOutputLine(string text) => AppendOutput((text ?? string.Empty) + "\n");
 
+    /// <summary>
+    /// Receives the runner's prompt prefix (heuristically routed by the console adapter)
+    /// and renders the fidelity marker instead. The RUNNER's string is untouched — plain
+    /// mode keeps printing <c>scripted&gt; </c> byte-exact; only this pane draws <c>❯</c>.
+    /// </summary>
     public void SetPromptPrefix(string prefix)
     {
         ArgumentNullException.ThrowIfNull(prefix);
-        _dispatcher.Invoke(() => _promptLabel.Text = prefix);
+        _dispatcher.Invoke(() => _promptLabel.Text = $"{_glyphs.Prompt} ");
+    }
+
+    /// <summary>Placeholder shown while the draft is empty (contextual, e.g. a target hint).</summary>
+    public void SetPlaceholder(string text)
+    {
+        _dispatcher.Invoke(() =>
+        {
+            _placeholder.Text = text ?? string.Empty;
+            SyncPlaceholder();
+        });
+    }
+
+    private void SyncPlaceholder()
+        => _placeholder.Visible = string.IsNullOrEmpty(_input.Text);
+
+    private const string PlaceholderText = "Message… (/ for commands, @ for files)";
+
+    /// <summary>The status line band (bound by the host to the runner + integration).</summary>
+    public StatusLineView StatusLine => _statusLine;
+
+    /// <summary>The rule + context chip band (bound by the host to the integration).</summary>
+    public RuleChipView RuleChip => _ruleChip;
+
+    private static bool OutputIsUtf8()
+    {
+        try
+        {
+            return System.Console.OutputEncoding.CodePage is 65001;
+        }
+        catch (System.IO.IOException)
+        {
+            return false;
+        }
     }
 
     public void Clear()
@@ -316,8 +397,11 @@ public sealed class ReplPaneView : FrameView
         if (rows == _inputRows) return;
         _inputRows = rows;
 
-        _history.Height = Dim.Fill(rows);
+        _history.Height = Dim.Fill(rows + BandRows);
+        _statusLine.Y = Pos.AnchorEnd(rows + BandRows);
+        _ruleChip.Y = Pos.AnchorEnd(rows + 1);
         _promptLabel.Y = Pos.AnchorEnd(rows);
+        _placeholder.Y = Pos.AnchorEnd(rows);
         _input.Y = Pos.AnchorEnd(rows);
         _input.Height = rows;
         SetNeedsLayout();
@@ -506,7 +590,10 @@ public sealed class ReplPaneView : FrameView
             // here keeps the owned fields released even if a future refactor stops Add()-ing them.
             _pendingReadCancellation.Dispose();
             _history.Dispose();
+            _statusLine.Dispose();
+            _ruleChip.Dispose();
             _promptLabel.Dispose();
+            _placeholder.Dispose();
             _input.Dispose();
         }
         base.Dispose(disposing);
