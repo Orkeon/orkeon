@@ -14,16 +14,19 @@ public sealed class IncrementalReindexTool : ToolBase<IncrementalReindexRequest,
     private readonly InMemoryRaggableStore _store;
     private readonly Func<RaggableTreeBuilder> _builderFactory;
     private readonly IGitDiffProvider? _gitDiff;
+    private readonly IndexFreshnessService? _freshness;
 
     public IncrementalReindexTool(
         InMemoryRaggableStore store,
         Func<RaggableTreeBuilder> builderFactory,
         IGitDiffProvider? gitDiff = null,
-        ILogger<IncrementalReindexTool>? logger = null) : base(logger)
+        ILogger<IncrementalReindexTool>? logger = null,
+        IndexFreshnessService? freshness = null) : base(logger)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _builderFactory = builderFactory ?? throw new ArgumentNullException(nameof(builderFactory));
         _gitDiff = gitDiff;
+        _freshness = freshness;
     }
 
     public override string Name => "incremental_reindex";
@@ -68,6 +71,30 @@ public sealed class IncrementalReindexTool : ToolBase<IncrementalReindexRequest,
                 })
                 .ToList();
 
+            // Engine path (the fix for a review finding): this tool used to run a FULL
+            // RaggableTreeBuilder.BuildAsync over the root — re-parsing and re-embedding
+            // the whole workspace — and cherry-pick the changed nodes from the result.
+            // O(repo) per call, while IncrementalReindexEngine (written for exactly this
+            // job) had zero production consumers. The freshness service runs the engine:
+            // unchanged nodes are REUSED, only the changed files are re-parsed.
+            if (_freshness is not null)
+            {
+                var engineResult = await _freshness.RefreshPathsAsync(
+                    virtualChanged, request.RootPath, cancellationToken).ConfigureAwait(false);
+                stopwatch.Stop();
+                return new IndexCodebaseResponse
+                {
+                    IndexId = engineResult.IndexId,
+                    NodeCount = engineResult.AddedNodeCount,
+                    EdgeCount = 0,
+                    FileCount = engineResult.ChangedFileCount,
+                    Elapsed = stopwatch.Elapsed,
+                    Errors = ImmutableArray<string>.Empty,
+                };
+            }
+
+            // Legacy fallback (no freshness service wired — standalone/test hosts):
+            // the historical full-build + cherry-pick.
             _store.RemoveFilesAndDescendants(virtualChanged);
 
             var builder = _builderFactory();

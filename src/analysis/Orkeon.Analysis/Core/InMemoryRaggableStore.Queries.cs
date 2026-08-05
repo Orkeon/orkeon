@@ -15,9 +15,12 @@ public sealed partial class InMemoryRaggableStore
     public Task<RaggableNode?> GetAsync(string fqn, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrEmpty(fqn);
-        if (_nodesByFqn.TryGetValue(fqn, out var node)) return Task.FromResult<RaggableNode?>(node);
-        if (_nodesById.TryGetValue(fqn, out var byId)) return Task.FromResult<RaggableNode?>(byId);
-        return Task.FromResult<RaggableNode?>(null);
+        return Task.FromResult(ReadLocked<RaggableNode?>(() =>
+        {
+            if (_nodesByFqn.TryGetValue(fqn, out var node)) return node;
+            if (_nodesById.TryGetValue(fqn, out var byId)) return byId;
+            return null;
+        }));
     }
 
     public Task<IReadOnlyList<RaggableNode>> FindByLocalNameAsync(string localName, CancellationToken ct)
@@ -44,19 +47,27 @@ public sealed partial class InMemoryRaggableStore
     public Task<IReadOnlyList<RaggableNode>> GetManyAsync(IEnumerable<string> fqns, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(fqns);
-        var result = new List<RaggableNode>();
-        foreach (var fqn in fqns)
+        return Task.FromResult(ReadLocked<IReadOnlyList<RaggableNode>>(() =>
         {
-            if (string.IsNullOrEmpty(fqn)) continue;
-            if (_nodesByFqn.TryGetValue(fqn, out var n)) result.Add(n);
-            else if (_nodesById.TryGetValue(fqn, out var byId)) result.Add(byId);
-        }
-        return Task.FromResult<IReadOnlyList<RaggableNode>>(result);
+            var result = new List<RaggableNode>();
+            foreach (var fqn in fqns)
+            {
+                if (string.IsNullOrEmpty(fqn)) continue;
+                if (_nodesByFqn.TryGetValue(fqn, out var n)) result.Add(n);
+                else if (_nodesById.TryGetValue(fqn, out var byId)) result.Add(byId);
+            }
+            return result;
+        }));
     }
 
     public Task<IReadOnlyList<RaggableNode>> QueryAsync(NodeQuery query, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(query);
+        return Task.FromResult(ReadLocked<IReadOnlyList<RaggableNode>>(() => QueryLocked(query)));
+    }
+
+    private List<RaggableNode> QueryLocked(NodeQuery query)
+    {
         IEnumerable<RaggableNode> q = _nodesById.Values;
 
         if (query.Level is { } level) q = q.Where(n => n.Level == level);
@@ -78,86 +89,88 @@ public sealed partial class InMemoryRaggableStore
 
         var skip = Math.Max(0, query.Skip);
         var take = Math.Clamp(query.Take, 1, 1000);
-        var list = q.OrderBy(n => n.Fqn, StringComparer.Ordinal).Skip(skip).Take(take).ToList();
-        return Task.FromResult<IReadOnlyList<RaggableNode>>(list);
+        return q.OrderBy(n => n.Fqn, StringComparer.Ordinal).Skip(skip).Take(take).ToList();
     }
 
     public Task<IReadOnlyList<RaggableNode>> GetChildrenAsync(string parentId, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrEmpty(parentId);
-        var parent = Resolve(parentId);
-        if (parent is null) return Task.FromResult<IReadOnlyList<RaggableNode>>([]);
-        var children = parent.ChildrenIds
-            .Select(id => _nodesById.TryGetValue(id, out var c) ? c : null)
-            .Where(c => c is not null)
-            .Select(c => c!)
-            .ToList();
-        return Task.FromResult<IReadOnlyList<RaggableNode>>(children);
+        return Task.FromResult(ReadLocked<IReadOnlyList<RaggableNode>>(() =>
+        {
+            var parent = Resolve(parentId);
+            if (parent is null) return [];
+            return parent.ChildrenIds
+                .Select(id => _nodesById.TryGetValue(id, out var c) ? c : null)
+                .Where(c => c is not null)
+                .Select(c => c!)
+                .ToList();
+        }));
     }
 
     public Task<IReadOnlyList<StatementNode>> GetStatementsAsync(string parentSymbolId, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrEmpty(parentSymbolId);
-        if (_statementsByParent.TryGetValue(parentSymbolId, out var stmts))
+        return Task.FromResult(ReadLocked<IReadOnlyList<StatementNode>>(() =>
         {
-            return Task.FromResult<IReadOnlyList<StatementNode>>(stmts);
-        }
-        var node = Resolve(parentSymbolId);
-        if (node is not null && node.Statements.Count > 0)
-        {
-            return Task.FromResult<IReadOnlyList<StatementNode>>(Flatten(node.Statements));
-        }
-        return Task.FromResult<IReadOnlyList<StatementNode>>([]);
+            if (_statementsByParent.TryGetValue(parentSymbolId, out var stmts)) return stmts;
+            var node = Resolve(parentSymbolId);
+            if (node is not null && node.Statements.Count > 0) return Flatten(node.Statements);
+            return [];
+        }));
     }
 
     public Task<RaggableNode?> GetModuleByPathAsync(string filePath, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
-        RaggableNode? match = null;
-        foreach (var node in _nodesById.Values)
+        return Task.FromResult(ReadLocked<RaggableNode?>(() =>
         {
-            if (node.Level != NodeLevel.L2_Module) continue;
-            if (!string.Equals(node.VirtualFilePath, filePath, StringComparison.Ordinal)) continue;
-            match = node;
-            break;
-        }
-        return Task.FromResult(match);
+            foreach (var node in _nodesById.Values)
+            {
+                if (node.Level != NodeLevel.L2_Module) continue;
+                if (!string.Equals(node.VirtualFilePath, filePath, StringComparison.Ordinal)) continue;
+                return node;
+            }
+            return null;
+        }));
     }
 
     public Task<int> GetNodeCountAsync(CancellationToken ct)
-        => Task.FromResult(_nodesById.Count);
+        => Task.FromResult(ReadLocked(() => _nodesById.Count));
 
     public Task<IReadOnlyList<RaggableEdge>> GetEdgesAsync(string fqn, EdgeKind kinds, Direction dir, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrEmpty(fqn);
-        var node = Resolve(fqn);
-        if (node is null) return Task.FromResult<IReadOnlyList<RaggableEdge>>([]);
+        return Task.FromResult(ReadLocked<IReadOnlyList<RaggableEdge>>(() =>
+        {
+            var node = Resolve(fqn);
+            if (node is null) return [];
 
-        var edges = new List<RaggableEdge>();
-        if (dir is Direction.Forward or Direction.Both
-            && _edgesBySource.TryGetValue(node.Id, out var outList))
-        {
-            edges.AddRange(outList.Where(e => kinds == EdgeKind.None || kinds.HasFlag(e.Kind)));
-        }
-        if (dir is Direction.Backward or Direction.Both
-            && _edgesByTarget.TryGetValue(node.Id, out var inList))
-        {
-            edges.AddRange(inList.Where(e => kinds == EdgeKind.None || kinds.HasFlag(e.Kind)));
-        }
-        return Task.FromResult<IReadOnlyList<RaggableEdge>>(edges);
+            var edges = new List<RaggableEdge>();
+            if (dir is Direction.Forward or Direction.Both
+                && _edgesBySource.TryGetValue(node.Id, out var outList))
+            {
+                edges.AddRange(outList.Where(e => kinds == EdgeKind.None || kinds.HasFlag(e.Kind)));
+            }
+            if (dir is Direction.Backward or Direction.Both
+                && _edgesByTarget.TryGetValue(node.Id, out var inList))
+            {
+                edges.AddRange(inList.Where(e => kinds == EdgeKind.None || kinds.HasFlag(e.Kind)));
+            }
+            return edges;
+        }));
     }
 
     public Task<SubGraph> ExpandAsync(ExpandQuery query, CancellationToken ct)
-        => Task.FromResult(_graph.Expand(query, ct));
+        => Task.FromResult(ReadLocked(() => _graph.Expand(query, ct)));
 
     public Task<IReadOnlyList<CallPath>> FindAllPathsAsync(PathQuery query, CancellationToken ct)
-        => Task.FromResult(_graph.FindAllPaths(query, ct));
+        => Task.FromResult(ReadLocked(() => _graph.FindAllPaths(query, ct)));
 
     public Task<CallPath?> ShortestPathAsync(ShortestPathQuery query, CancellationToken ct)
-        => Task.FromResult(_graph.ShortestPath(query, ct));
+        => Task.FromResult(ReadLocked(() => _graph.ShortestPath(query, ct)));
 
     public Task<IReadOnlyList<Cycle>> FindCyclesAsync(CycleQuery query, CancellationToken ct)
-        => Task.FromResult(_graph.FindCycles(query, ct));
+        => Task.FromResult(ReadLocked(() => _graph.FindCycles(query, ct)));
 
     public Task<IReadOnlyList<SearchHit>> SemanticSearchAsync(SemanticQuery query, CancellationToken ct)
     {

@@ -96,42 +96,7 @@ public sealed partial class IndexFreshnessService : IDisposable
                 return 0;
             }
 
-            if (changed.Count > LargePassThreshold)
-            {
-                LogLargePass(changed.Count, root);
-            }
-
-            var (nodes, edges) = _store.ExportSnapshot();
-            var index = nodes
-                .Where(n => !string.IsNullOrEmpty(n.Fqn))
-                .GroupBy(n => n.Fqn, StringComparer.Ordinal)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-            var currentTree = new RaggableTree(nodes, edges, index);
-
-            var result = await _engineFactory().ReindexAsync(
-                currentTree,
-                root,
-                [.. changed],
-                new IndexCodebaseRequest { RootPath = root },
-                ct).ConfigureAwait(false);
-
-            // The store keeps no index-id; a content stamp of the node count + first
-            // FQNs is informative enough for subscribers to correlate before/after.
-            var previousId = $"nodes:{nodes.Count}";
-            _store.Replace(result.Tree.Nodes, result.Tree.Edges);
-            _store.ClearDirty(changed);
-
-            // The bus existed with no producer; the freshness pass is its first. A
-            // subscriber (context provider, another agent's cache) can now react to
-            // exactly what moved instead of re-reading everything.
-            _eventBus?.Publish(new RaggableTreeUpdated(
-                previousId,
-                result.IndexId,
-                AddedFqns: [.. result.Tree.Nodes.Where(n => changed.Contains(n.VirtualFilePath)).Select(n => n.Fqn).Where(f => !string.IsNullOrEmpty(f))],
-                RemovedFqns: [],
-                ModifiedFqns: []));
-
-            LogRefreshed(result.ChangedFileCount, result.ReusedFileCount);
+            var result = await RunEnginePassAsync(root, changed, ct).ConfigureAwait(false);
             return result.ChangedFileCount;
         }
         catch (OperationCanceledException)
@@ -147,6 +112,84 @@ public sealed partial class IndexFreshnessService : IDisposable
         {
             _singleFlight.Release();
         }
+    }
+
+    /// <summary>
+    /// Reindexes an EXPLICIT set of paths through the incremental engine — the
+    /// <c>incremental_reindex</c> tool's path. Unlike <see cref="EnsureFreshAsync"/>
+    /// this does NOT swallow failures: an explicit request deserves its error.
+    /// </summary>
+    /// <remarks>
+    /// This made the tool truly incremental. Before it, <c>IncrementalReindexTool</c>
+    /// ran a FULL <c>RaggableTreeBuilder.BuildAsync</c> over the root — re-parsing and
+    /// re-embedding the whole workspace — and cherry-picked the changed nodes from the
+    /// result: O(repo) per call, while <c>IncrementalReindexEngine</c>, written for
+    /// exactly this job, had zero production consumers. Flagged by the design review;
+    /// the engine reuses every unchanged node and re-parses only the changed files.
+    /// </remarks>
+    public async Task<IncrementalReindexResult> RefreshPathsAsync(
+        IReadOnlyList<string> changedVirtualPaths,
+        string virtualRoot,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(changedVirtualPaths);
+        ArgumentException.ThrowIfNullOrEmpty(virtualRoot);
+
+        await _singleFlight.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var changed = new HashSet<string>(changedVirtualPaths, StringComparer.Ordinal);
+            return await RunEnginePassAsync(virtualRoot, changed, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _singleFlight.Release();
+        }
+    }
+
+    /// <summary>One engine pass: snapshot → incremental reindex → atomic swap → notify.</summary>
+    private async Task<IncrementalReindexResult> RunEnginePassAsync(
+        string root,
+        HashSet<string> changed,
+        CancellationToken ct)
+    {
+        if (changed.Count > LargePassThreshold)
+        {
+            LogLargePass(changed.Count, root);
+        }
+
+        var (nodes, edges) = _store.ExportSnapshot();
+        var index = nodes
+            .Where(n => !string.IsNullOrEmpty(n.Fqn))
+            .GroupBy(n => n.Fqn, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        var currentTree = new RaggableTree(nodes, edges, index);
+
+        var result = await _engineFactory().ReindexAsync(
+            currentTree,
+            root,
+            [.. changed],
+            new IndexCodebaseRequest { RootPath = root },
+            ct).ConfigureAwait(false);
+
+        // The store keeps no index-id; a content stamp of the node count is informative
+        // enough for subscribers to correlate before/after.
+        var previousId = $"nodes:{nodes.Count}";
+        _store.Replace(result.Tree.Nodes, result.Tree.Edges);
+        _store.ClearDirty(changed);
+
+        // The bus existed with no producer; the freshness pass is its first. A
+        // subscriber (context provider, another agent's cache) can now react to
+        // exactly what moved instead of re-reading everything.
+        _eventBus?.Publish(new RaggableTreeUpdated(
+            previousId,
+            result.IndexId,
+            AddedFqns: [.. result.Tree.Nodes.Where(n => changed.Contains(n.VirtualFilePath)).Select(n => n.Fqn).Where(f => !string.IsNullOrEmpty(f))],
+            RemovedFqns: [],
+            ModifiedFqns: []));
+
+        LogRefreshed(result.ChangedFileCount, result.ReusedFileCount);
+        return result;
     }
 
     /// <summary>Dirty set ∪ git working-tree changes, normalized to virtual paths under the root.</summary>
