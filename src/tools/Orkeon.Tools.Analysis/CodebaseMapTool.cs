@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Analysis.Core;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
@@ -13,10 +14,15 @@ namespace Orkeon.Tools.Analysis;
 public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapResponse>
 {
     private readonly IRaggableStore _store;
+    private readonly IndexFreshnessService? _freshness;
 
-    public CodebaseMapTool(IRaggableStore store, ILogger<CodebaseMapTool>? logger = null) : base(logger)
+    public CodebaseMapTool(
+        IRaggableStore store,
+        ILogger<CodebaseMapTool>? logger = null,
+        IndexFreshnessService? freshness = null) : base(logger)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _freshness = freshness;
     }
 
     public override string Name => "codebase_map";
@@ -32,6 +38,9 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
 
         async Task<CodebaseMapResponse> ExecuteTypedCoreAsync()
         {
+            // Lazy freshness (PLAN B3): a map drawn over stale files misleads silently.
+            if (_freshness is not null)
+                await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
             var query = new NodeQuery { Level = request.Level, Take = Math.Max(1, request.MaxEntries) };
             var nodes = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
 

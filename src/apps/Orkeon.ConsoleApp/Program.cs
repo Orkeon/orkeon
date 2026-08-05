@@ -25,6 +25,8 @@ using Orkeon.Tools.Abstractions.DependencyInjection;
 using Orkeon.Tools.FileSystem.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
 using Orkeon.Tools.Web.DependencyInjection;
+using Orkeon.Rag.DependencyInjection;
+using Orkeon.Tools.Rag.DependencyInjection;
 using Orkeon.Tools.Code.DependencyInjection;
 using Orkeon.Analysis.DependencyInjection;
 using Orkeon.Tools.Analysis.DependencyInjection;
@@ -198,6 +200,13 @@ static class Program
         // Languages are intentionally left empty: the analysed scope is auto-detected from the
         // codebase and refined per index_codebase call by the crew/agent — never pinned a priori.
         services.AddOrkeonLocalEmbeddings();
+        // RAG subsystem + agent tools (rag_search / rag_ingest / rag_eval). Tolerates a
+        // missing Orkeon:Rag section (profile defaults + in-memory document store); the
+        // ambient IMemoryProvider comes from AddOrkeonInfrastructure above. rag_search's
+        // "raggable-tree" collection routes to the code index and therefore inherits the
+        // hybrid BM25+RRF search and the lazy freshness pass.
+        services.AddOrkeonRag(context.Configuration);
+        services.AddOrkeonRagTools();
         services.AddRaggableTree(new RaggableTreeOptions
         {
             Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.LocalSmartComponents },

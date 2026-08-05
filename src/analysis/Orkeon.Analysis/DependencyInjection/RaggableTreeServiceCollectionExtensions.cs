@@ -6,6 +6,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
 using Orkeon.Analysis.Core.ContextInjection;
+using Orkeon.Analysis.Core.Watcher;
 using Orkeon.Analysis.Fingerprinters;
 using Orkeon.Analysis.Summarizers;
 using Orkeon.Analysis.TreeSitter;
@@ -196,6 +197,40 @@ public static class RaggableTreeServiceCollectionExtensions
                 [], [], sp.GetRequiredService<IFileSystemService>(), queryEmbedder: queryEmbedder);
         });
         services.TryAddSingleton<IRaggableStore>(sp => sp.GetRequiredService<InMemoryRaggableStore>());
+        // Lazy-freshness write hook (PLAN B1/B2): the store IS the dirty-set holder, so
+        // FileWriteTool's optional IIndexInvalidation parameter resolves to the same
+        // singleton the searches read — one process, one store, one truth.
+        services.TryAddSingleton<IIndexInvalidation>(sp => sp.GetRequiredService<InMemoryRaggableStore>());
+        // Neither was registered ANYWHERE before the freshness work — which also means
+        // incremental_reindex's from_commit/to_commit path could never resolve its
+        // IGitDiffProvider and the event bus had no subscribers or producers. Both are
+        // real now: the git provider feeds the working-tree union, the bus carries the
+        // refresh notifications.
+        services.TryAddSingleton<IGitDiffProvider, ProcessGitDiffProvider>();
+        services.TryAddSingleton<IRaggableTreeEventBus, InMemoryRaggableTreeEventBus>();
+        // Lazy-freshness read-side (PLAN B3): the reader tools resolve this optionally
+        // and reindex the dirty paths before answering. Same enrichment wiring as the
+        // builder so refreshed nodes keep their embeddings.
+        services.TryAddSingleton(sp => new IndexFreshnessService(
+            sp.GetRequiredService<InMemoryRaggableStore>(),
+            () => new IncrementalReindexEngine(
+                sp.GetServices<ILanguageAdapter>(),
+                sp.GetRequiredService<IFileSystemDiscoverer>(),
+                sp.GetRequiredService<IFileSystemService>(),
+                sp.GetRequiredService<TreeSitterParserPool>(),
+                sp.GetRequiredService<IReferenceResolver>(),
+                sp.GetRequiredService<IEmbeddingTextComposer>(),
+                new RaggableEnrichmentServices
+                {
+                    Fingerprinters = sp.GetServices<IFrameworkFingerprinter>(),
+                    Summarizer = sp.GetService<INodeSummarizer>(),
+                    Embedder = sp.GetService<IEmbeddingProvider>(),
+                    VectorStore = sp.GetService<IVectorStoreProvider>(),
+                }),
+            sp.GetRequiredService<IFileSystemService>(),
+            sp.GetService<IGitDiffProvider>(),
+            sp.GetService<IRaggableTreeEventBus>(),
+            sp.GetService<Microsoft.Extensions.Logging.ILogger<IndexFreshnessService>>()));
         services.TryAddSingleton<ICodebaseContextProvider>(sp =>
             new CodebaseContextProvider(sp.GetRequiredService<IRaggableStore>()));
     }

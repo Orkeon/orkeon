@@ -101,6 +101,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
     public override ToolAccess Access => ToolAccess.Edit;
 
     private readonly ICitationBlockValidator? _citationValidator;
+    private readonly IIndexInvalidation? _indexInvalidation;
 
     /// <summary>Initializes a new instance of <see cref="FileWriteTool"/>.</summary>
     /// <param name="fileSystemService">VFS abstraction; required.</param>
@@ -112,14 +113,22 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
     /// is validated against the RaggableTree store. On violation the response returns
     /// <c>Success = false</c> with <c>Errors</c> populated.
     /// </param>
+    /// <param name="indexInvalidation">
+    /// Optional code-index invalidation hook (PLAN B2). When provided, every successful
+    /// write marks its path dirty so the next code search reindexes it first — the cheap
+    /// half of the lazy-freshness design. Marking is synchronous and O(1); paths outside
+    /// the indexed roots are a no-op inside the implementation.
+    /// </param>
     public FileWriteTool(
         IFileSystemService fileSystemService,
         IPathValidator pathValidator,
         ILogger<FileWriteTool>? logger = null,
-        ICitationBlockValidator? citationValidator = null)
+        ICitationBlockValidator? citationValidator = null,
+        IIndexInvalidation? indexInvalidation = null)
         : base(fileSystemService, pathValidator, logger)
     {
         _citationValidator = citationValidator;
+        _indexInvalidation = indexInvalidation;
     }
 
     /// <inheritdoc />
@@ -157,6 +166,12 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
             await WriteContentAsync(request, virtualFilePath, encoding, backupVirtualPath, cancellationToken).ConfigureAwait(false);
 
             var successResponse = BuildSuccessResponse(request, resolvedPath, encoding, backupVirtualPath);
+
+            // Lazy-freshness hook (PLAN B2): the write happened, the index is now stale
+            // for this path — say so where the next search will look. Marked even when
+            // the citation validation below fails the RESPONSE: the bytes are on disk
+            // either way, and an unmarked stale path is the silent failure mode.
+            _indexInvalidation?.MarkDirty(virtualFilePath);
 
             // Citation-block validation: only triggered when a validator is injected and the
             // content contains at least one citation block (must have both // FQN  : and // SHA  : headers).

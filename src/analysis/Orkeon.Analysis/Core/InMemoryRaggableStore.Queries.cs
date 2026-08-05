@@ -169,36 +169,96 @@ public sealed partial class InMemoryRaggableStore
     {
         var topK = Math.Clamp(query.TopK, 1, MaxTopK);
 
-        if (_queryEmbedder is null) return [];
-        var queryVec = await _queryEmbedder(query.Text, ct).ConfigureAwait(false);
-        if (queryVec is null || queryVec.Value.Length == 0) return [];
+        // The embedding runs OUTSIDE the read lock (it can be an HTTP/ONNX call); only
+        // the in-memory scoring below takes the lock.
+        ReadOnlyMemory<float>? queryVec = null;
+        var wantVector = query.Mode is SearchMode.Hybrid or SearchMode.Vector;
+        if (wantVector && _queryEmbedder is not null)
+            queryVec = await _queryEmbedder(query.Text, ct).ConfigureAwait(false);
+        var hasVector = queryVec is { Length: > 0 };
 
-        IEnumerable<RaggableNode> candidates = _nodesById.Values.Where(n => n.Embedding is not null);
+        // Vector mode with no embedder used to return [] SILENTLY — a configured-out
+        // embedder made every search look like an empty codebase. Hybrid degrades to
+        // lexical instead; explicit Vector keeps the historical contract.
+        if (query.Mode == SearchMode.Vector && !hasVector) return [];
+
+        HashSet<string>? allowed = null;
         if (query.PreFilter is not null)
         {
             var filtered = await QueryAsync(query.PreFilter, ct).ConfigureAwait(false);
-            var allowed = new HashSet<string>(filtered.Select(n => n.Id), StringComparer.Ordinal);
-            candidates = candidates.Where(n => allowed.Contains(n.Id));
+            allowed = new HashSet<string>(filtered.Select(n => n.Id), StringComparer.Ordinal);
         }
 
-        var scored = new List<(RaggableNode node, double score)>();
-        foreach (var node in candidates)
+        return ReadLocked(() => SearchLocked(query, topK, hasVector ? queryVec!.Value : null, allowed));
+    }
+
+    private IReadOnlyList<SearchHit> SearchLocked(
+        SemanticQuery query,
+        int topK,
+        ReadOnlyMemory<float>? queryVec,
+        HashSet<string>? allowed)
+    {
+        // Both halves over-fetch to the store cap so the fusion has real overlap to work
+        // with; the final Take(topK) trims after fusing.
+        var vectorRanking = queryVec is null
+            ? []
+            : ScoreVector(queryVec.Value, query.MinScore, allowed, MaxTopK);
+        var lexicalRanking = query.Mode == SearchMode.Vector
+            ? (IReadOnlyList<(string Id, double Score)>)[]
+            : FilterAllowed(_bm25.Search(query.Text, MaxTopK), allowed);
+
+        // Single-source modes (or one half empty) skip the fusion — the raw score keeps
+        // its native scale and the origin says which one.
+        if (vectorRanking.Count == 0 || lexicalRanking.Count == 0)
         {
-            var score = Cosine(queryVec.Value.Span, node.Embedding!.Value.Span);
-            if (score < query.MinScore) continue;
-            scored.Add((node, score));
+            var single = vectorRanking.Count > 0 ? vectorRanking : lexicalRanking;
+            var origin = vectorRanking.Count > 0 ? "vector" : "bm25";
+            return [.. single.Take(topK).Select(x => ToHit(x.Id, x.Score, origin))];
         }
 
-        return [.. scored
-            .OrderByDescending(x => x.score)
-            .Take(topK)
-            .Select(x => new SearchHit
-            {
-                Fqn = x.node.Fqn,
-                Score = x.score,
-                SummaryShort = x.node.SemanticSummary,
-                Signature = x.node.Signature,
-            })];
+        var fused = Lexical.RankFusion.Fuse(topK, vectorRanking, lexicalRanking);
+        return [.. fused.Select(x => ToHit(
+            x.Id,
+            x.Score,
+            x.Origins == 0b01 ? "vector" : x.Origins == 0b10 ? "bm25" : "hybrid"))];
+    }
+
+    private IReadOnlyList<(string Id, double Score)> ScoreVector(
+        ReadOnlyMemory<float> queryVec,
+        double minScore,
+        HashSet<string>? allowed,
+        int cap)
+    {
+        var scored = new List<(string Id, double Score)>();
+        foreach (var node in _nodesById.Values)
+        {
+            if (node.Embedding is null) continue;
+            if (allowed is not null && !allowed.Contains(node.Id)) continue;
+            var score = Cosine(queryVec.Span, node.Embedding.Value.Span);
+            if (score < minScore) continue;
+            scored.Add((node.Id, score));
+        }
+        return [.. scored.OrderByDescending(x => x.Score).Take(cap)];
+    }
+
+    private static IReadOnlyList<(string Id, double Score)> FilterAllowed(
+        IReadOnlyList<(string NodeId, double Score)> ranking,
+        HashSet<string>? allowed)
+        => allowed is null
+            ? [.. ranking.Select(x => (x.NodeId, x.Score))]
+            : [.. ranking.Where(x => allowed.Contains(x.NodeId)).Select(x => (x.NodeId, x.Score))];
+
+    private SearchHit ToHit(string nodeId, double score, string origin)
+    {
+        var node = _nodesById[nodeId];
+        return new SearchHit
+        {
+            Fqn = node.Fqn,
+            Score = score,
+            SummaryShort = node.SemanticSummary,
+            Signature = node.Signature,
+            MatchOrigin = origin,
+        };
     }
 
     public async Task<SourceSlice?> GetSourceAsync(string fqn, SourceMode mode, CancellationToken ct)

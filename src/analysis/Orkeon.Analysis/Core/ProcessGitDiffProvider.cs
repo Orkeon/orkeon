@@ -62,4 +62,46 @@ public sealed class ProcessGitDiffProvider : IGitDiffProvider
         }
         return files;
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetWorkingTreeChangesAsync(string rootPath, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(rootPath);
+
+        // Porcelain v1: two status columns + path; `-uall` lists untracked FILES (a new
+        // module the agent just created is exactly what a search must see). Renames
+        // ("R  old -> new") keep the NEW path — the old one has no content to index.
+        var psi = new ProcessStartInfo(_gitPath, "status --porcelain=v1 -uall")
+        {
+            WorkingDirectory = rootPath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        using var process = Process.Start(psi)
+            ?? throw new InvalidOperationException("Failed to start git process.");
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
+        await process.WaitForExitAsync(ct).ConfigureAwait(false);
+        var stdout = await stdoutTask.ConfigureAwait(false);
+
+        // Not a repo (or git absent): nothing to report, never an error — the freshness
+        // pass must degrade to the dirty-set alone, not take the search down.
+        if (process.ExitCode != 0) return [];
+
+        var files = new List<string>();
+        foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.Length < 4) continue;
+            var path = line[3..].Trim();
+            var arrow = path.IndexOf(" -> ", StringComparison.Ordinal);
+            if (arrow >= 0) path = path[(arrow + 4)..];
+            path = path.Trim('"'); // git quotes paths with spaces
+            if (path.Length == 0) continue;
+            files.Add(Path.Combine(rootPath, path.Replace('/', Path.DirectorySeparatorChar)));
+        }
+        return files;
+    }
 }

@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Analysis.Core;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -12,10 +13,15 @@ namespace Orkeon.Tools.Analysis;
 public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse>
 {
     private readonly IRaggableStore _store;
+    private readonly IndexFreshnessService? _freshness;
 
-    public FlowTraceTool(IRaggableStore store, ILogger<FlowTraceTool>? logger = null) : base(logger)
+    public FlowTraceTool(
+        IRaggableStore store,
+        ILogger<FlowTraceTool>? logger = null,
+        IndexFreshnessService? freshness = null) : base(logger)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _freshness = freshness;
     }
 
     public override string Name => "flow_trace";
@@ -31,6 +37,9 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
 
         async Task<FlowTraceResponse> ExecuteTypedCoreAsync()
         {
+            // Lazy freshness (PLAN B3): trace edges of the CURRENT code, not the indexed past.
+            if (_freshness is not null)
+                await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrEmpty(request.From)) return new FlowTraceResponse { Paths = [] };
 
             if (!request.IncludeAllPaths && !string.IsNullOrEmpty(request.To))

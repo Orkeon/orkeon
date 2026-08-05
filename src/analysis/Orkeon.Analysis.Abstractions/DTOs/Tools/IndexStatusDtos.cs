@@ -7,6 +7,12 @@ public sealed record IndexStatusRequest;
 public sealed record IndexStatusResponse
 {
     public ImmutableList<IndexedRootDto> Roots { get; init; } = [];
+
+    /// <summary>How many paths are edited-but-not-reindexed (the lazy-freshness debt).</summary>
+    public int DirtyCount { get; init; }
+
+    /// <summary>A sample of the dirty paths (capped) — the stale state made observable.</summary>
+    public ImmutableList<string> DirtyPaths { get; init; } = [];
 }
 
 public sealed record IndexedRootDto(

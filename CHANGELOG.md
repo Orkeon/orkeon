@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — hybrid code search + edit↔search freshness in the RaggableTree (RAG×Tree)
+
+`codebase_search` (and `IRaggableStore.SemanticSearchAsync`) fuses an embedding cosine
+ranking with a **code-aware BM25** (camelCase/snake_case sub-tokens + whole identifier)
+via Reciprocal Rank Fusion — `SemanticQuery.Mode` (`Hybrid` default / `Vector` /
+`Lexical`), `SearchHit.MatchOrigin`. Pure vector missed `getUserById` when the query
+said "fetch user", and an exact identifier could rank below prose; each half now covers
+the other's blind side. With no embedder wired, `Hybrid` degrades to `Lexical` instead
+of the historical silent empty (explicit `Vector` keeps that contract). The BM25/RRF
+implementations are Analysis-native twins of the RAG's (`Bm25CodeIndex`, `RankFusion`) —
+the dependency must keep pointing Rag → Analysis, never back.
+
+Freshness (an agent that EDITS files invalidates its own index): `FileWriteTool` gains
+an optional `IIndexInvalidation` hook (dirty-marking, O(1), same precedent as the
+citation validator); `IndexFreshnessService` reindexes the dirty set ∪ the git
+working-tree changes (shell edits) BEFORE a read tool answers — grouped, single-flight,
+2 s clean-probe debounce, failure degrades to the stale index and keeps the debt.
+`codebase_search` reports `refreshed_files`; `index_status` reports `dirty_count`/
+`dirty_paths`. `InMemoryRaggableStore` gains a `ReaderWriterLockSlim`: a search running
+DURING an incremental reindex no longer risks `InvalidOperationException` on the mutated
+dictionaries. The freshness pass is the first real producer on `IRaggableTreeEventBus`;
+`IGitDiffProvider` (never registered before — `incremental_reindex`'s commit-range path
+could not resolve it) and the bus are now registered by `AddRaggableTree`, and
+`IGitDiffProvider` gains `GetWorkingTreeChangesAsync`.
+
+Orkeon.ConsoleApp wires `AddOrkeonRag` + `AddOrkeonRagTools`: `rag_search`/`rag_ingest`/
+`rag_eval` are available to the scripted REPL, and `rag_search`'s `raggable-tree`
+collection inherits the hybrid + freshness path. Live-validated end to end (exp07 probe,
+8/8): exact identifier ranks `hybrid`, write→search round-trip reports
+`refreshed_files: 1`, RAG routing serves the code index.
+
 ### Changed — `ctx.llm.stream` now asks for usage and carries the reasoning channel (SCR-24)
 
 `stream` went through `GenerateStreamingAsync`; it now goes through `ChatStreamingAsync`. Both read the same SSE stream, and the difference is what they ask for: the chat path sends `stream_options: { include_usage: true }`, without which most providers emit no usage chunk at all — so a streamed call had **no token accounting**. Measured on exp02 round-41, whose two streamed requests were `{"model":…,"stream":true}` with no `stream_options`; they carried usage only because Moonshot volunteers it, and the same round on OpenAI would have reported nothing. The calls that stream are the long, expensive ones.

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Analysis.Core;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
@@ -11,10 +12,15 @@ namespace Orkeon.Tools.Analysis;
 public sealed class SymbolSourceTool : ToolBase<SymbolSourceRequest, SymbolSourceResponse>
 {
     private readonly IRaggableStore _store;
+    private readonly IndexFreshnessService? _freshness;
 
-    public SymbolSourceTool(IRaggableStore store, ILogger<SymbolSourceTool>? logger = null) : base(logger)
+    public SymbolSourceTool(
+        IRaggableStore store,
+        ILogger<SymbolSourceTool>? logger = null,
+        IndexFreshnessService? freshness = null) : base(logger)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _freshness = freshness;
     }
 
     public override string Name => "symbol_source";
@@ -30,6 +36,9 @@ public sealed class SymbolSourceTool : ToolBase<SymbolSourceRequest, SymbolSourc
 
         async Task<SymbolSourceResponse> ExecuteTypedCoreAsync()
         {
+            // Lazy freshness (PLAN B3): serve the symbol as it IS, not as it was indexed.
+            if (_freshness is not null)
+                await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
             var effectiveMode = !string.IsNullOrEmpty(request.StatementId) ? SourceMode.StatementSpan : request.Mode;
             var slice = await _store.GetSourceAsync(request.Fqn, effectiveMode, cancellationToken).ConfigureAwait(false);
             if (slice is null) throw await FqnSuggestions.BuildAsync(_store, request.Fqn, cancellationToken).ConfigureAwait(false);

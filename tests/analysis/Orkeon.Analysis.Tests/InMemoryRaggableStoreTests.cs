@@ -241,8 +241,11 @@ public class InMemoryRaggableStoreTests
     }
 
     [Fact]
-    public async Task SemanticSearchAsync_returns_empty_without_embedder()
+    public async Task SemanticSearchAsync_without_embedder_degrades_to_lexical_not_empty()
     {
+        // The pre-hybrid pin asserted Empty here — a configured-out embedder made every
+        // search look like an EMPTY CODEBASE, silently. Hybrid (the default) now degrades
+        // to the BM25 half instead, and the hits say so via MatchOrigin.
         var (store, dir, _) = await BuildStoreAsync([
             ("package.json", TestFixtures.PackageJson),
             ("src/a.ts", TestFixtures.SimpleClass),
@@ -251,6 +254,25 @@ public class InMemoryRaggableStoreTests
         {
             var hits = await store.SemanticSearchAsync(
                 new SemanticQuery { Text = "user service", TopK = 5 },
+                CancellationToken.None);
+            Assert.NotEmpty(hits);
+            Assert.All(hits, h => Assert.Equal("bm25", h.MatchOrigin));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public async Task SemanticSearchAsync_explicit_Vector_mode_without_embedder_keeps_the_historical_empty()
+    {
+        // Mode=Vector IS the pre-hybrid contract, preserved for pinning and comparisons.
+        var (store, dir, _) = await BuildStoreAsync([
+            ("package.json", TestFixtures.PackageJson),
+            ("src/a.ts", TestFixtures.SimpleClass),
+        ]);
+        try
+        {
+            var hits = await store.SemanticSearchAsync(
+                new SemanticQuery { Text = "user service", TopK = 5, Mode = SearchMode.Vector },
                 CancellationToken.None);
             Assert.Empty(hits);
         }

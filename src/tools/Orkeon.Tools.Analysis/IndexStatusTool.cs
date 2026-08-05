@@ -10,10 +10,15 @@ namespace Orkeon.Tools.Analysis;
 public sealed class IndexStatusTool : ToolBase<IndexStatusRequest, IndexStatusResponse>
 {
     private readonly IRaggableStore _store;
+    private readonly IIndexInvalidation? _invalidation;
 
-    public IndexStatusTool(IRaggableStore store, ILogger<IndexStatusTool>? logger = null) : base(logger)
+    public IndexStatusTool(
+        IRaggableStore store,
+        ILogger<IndexStatusTool>? logger = null,
+        IIndexInvalidation? invalidation = null) : base(logger)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _invalidation = invalidation;
     }
 
     public override string Name => "index_status";
@@ -27,6 +32,14 @@ public sealed class IndexStatusTool : ToolBase<IndexStatusRequest, IndexStatusRe
         var roots = _store.GetIndexedRoots()
             .Select(r => new IndexedRootDto(r.VirtualRoot, r.IndexedAt, r.NodeCount, r.EdgeCount, r.LanguageSummary))
             .ToImmutableList();
-        return Task.FromResult(new IndexStatusResponse { Roots = roots });
+        // The lazy-freshness debt, made observable (PLAN B3): "stale" used to be a
+        // state nothing could report.
+        var dirty = _invalidation?.DirtyPaths ?? [];
+        return Task.FromResult(new IndexStatusResponse
+        {
+            Roots = roots,
+            DirtyCount = dirty.Count,
+            DirtyPaths = [.. dirty.Take(10)],
+        });
     }
 }

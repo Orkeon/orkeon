@@ -13,7 +13,9 @@ namespace Orkeon.Analysis.Core;
 /// <see cref="StoreAnalytics"/> and <see cref="SourceSliceReader"/>
 /// (R4.2 god-file decomposition).
 /// </summary>
-public sealed partial class InMemoryRaggableStore : IRaggableStore
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "The ReaderWriterLockSlim lives exactly as long as the store, and the store is a process-lifetime singleton in every host (AddRaggableTree). Making the store IDisposable would ripple CA2000 into every construction site (production factories and ~20 tests) to release a lock the OS reclaims at exit anyway.")]
+public sealed partial class InMemoryRaggableStore : IRaggableStore, IIndexInvalidation
 {
     public const int MaxTopK = 50;
     public const int MaxDepth = 6;
@@ -27,11 +29,80 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore
     private readonly Dictionary<string, List<RaggableEdge>> _edgesByTarget;
     private readonly Dictionary<string, List<StatementNode>> _statementsByParent;
     private readonly Dictionary<string, DateTimeOffset> _indexedAtByRoot = new(StringComparer.Ordinal);
+    private readonly Lexical.Bm25CodeIndex _bm25 = new();
+    // Coordination primitives (hybrid-search + freshness work, PLAN A3/B1):
+    //  - the RW lock makes searches safe DURING an incremental reindex — the store used
+    //    to be plain Dictionaries mutated in place by AddNodes while a concurrent search
+    //    enumerated them (InvalidOperationException waiting to happen);
+    //  - the dirty set records edited-but-not-reindexed paths (IIndexInvalidation).
+    // Recursion support: query methods call each other (SemanticSearch → QueryAsync).
+    private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.SupportsRecursion);
+    private readonly HashSet<string> _dirtyPaths = new(StringComparer.Ordinal);
     private Func<string, CancellationToken, Task<ReadOnlyMemory<float>?>>? _queryEmbedder;
     private readonly Func<DateTimeOffset> _clock = () => DateTimeOffset.UtcNow;
     private readonly GraphTraversal _graph;
     private readonly StoreAnalytics _analytics;
     private readonly SourceSliceReader _sourceReader;
+
+    internal T ReadLocked<T>(Func<T> read)
+    {
+        _lock.EnterReadLock();
+        try { return read(); }
+        finally { _lock.ExitReadLock(); }
+    }
+
+    private void WriteLocked(Action write)
+    {
+        _lock.EnterWriteLock();
+        try { write(); }
+        finally { _lock.ExitWriteLock(); }
+    }
+
+    /// <summary>
+    /// Marks a path as edited-but-not-reindexed (<c>IIndexInvalidation</c>). A path
+    /// outside every indexed root is a no-op — nothing stale to report about a file the
+    /// index never covered.
+    /// </summary>
+    public void MarkDirty(string virtualPath)
+    {
+        if (string.IsNullOrEmpty(virtualPath)) return;
+        var target = virtualPath.TrimEnd('/');
+        var covered = ReadLocked(() => _indexedAtByRoot.Keys.Any(root =>
+        {
+            var prefix = root.TrimEnd('/');
+            return prefix.Length > 0
+                && (target.Equals(prefix, StringComparison.Ordinal)
+                    || target.StartsWith(prefix + "/", StringComparison.Ordinal));
+        }));
+        if (!covered) return;
+        WriteLocked(() => _dirtyPaths.Add(target));
+    }
+
+    /// <summary>Paths edited since the last (re)index — what a freshness pass must cover.</summary>
+    public IReadOnlyCollection<string> DirtyPaths
+        => ReadLocked(() => (IReadOnlyCollection<string>)_dirtyPaths.ToArray());
+
+    /// <summary>Clears the given paths from the dirty set (called after they were reindexed).</summary>
+    public void ClearDirty(IEnumerable<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        WriteLocked(() =>
+        {
+            foreach (var p in paths) _dirtyPaths.Remove(p.TrimEnd('/'));
+        });
+    }
+
+    /// <summary>
+    /// Consistent snapshot of the current graph (read-locked) — what the incremental
+    /// reindex engine needs as its "current tree" to reuse unchanged nodes.
+    /// </summary>
+    public (IReadOnlyList<RaggableNode> Nodes, IReadOnlyList<RaggableEdge> Edges) ExportSnapshot()
+        => ReadLocked(() =>
+        {
+            IReadOnlyList<RaggableNode> nodes = [.. _nodesById.Values];
+            IReadOnlyList<RaggableEdge> edges = [.. _edgesBySource.Values.SelectMany(list => list)];
+            return (nodes, edges);
+        });
 
     public void SetQueryEmbedder(Func<string, CancellationToken, Task<ReadOnlyMemory<float>?>>? embedder)
         => _queryEmbedder = embedder;
@@ -72,7 +143,16 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore
     {
         ArgumentNullException.ThrowIfNull(nodes);
         ArgumentNullException.ThrowIfNull(edges);
+        WriteLocked(() => ReplaceLocked(nodes, edges));
+    }
 
+    private void ReplaceLocked(IReadOnlyList<RaggableNode> nodes, IReadOnlyList<RaggableEdge> edges)
+    {
+        // Deliberately does NOT clear the dirty set: a write can race a reindex pass,
+        // and clearing everything here would silently drop a path that changed AFTER
+        // the pass parsed it. The freshness service clears exactly the snapshot it
+        // covered; anything newer stays dirty for the next pass.
+        _bm25.Clear();
         _nodesByFqn.Clear();
         _nodesById.Clear();
         _statementsByParent.Clear();
@@ -95,6 +175,7 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore
 
     private void IndexNode(RaggableNode node, DateTimeOffset now)
     {
+        _bm25.Upsert(node);
         _nodesById[node.Id] = node;
         if (!string.IsNullOrEmpty(node.Fqn)) _nodesByFqn[node.Fqn] = node;
         if (node.Statements.Count > 0)
@@ -132,7 +213,11 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore
     {
         ArgumentNullException.ThrowIfNull(filePaths);
         if (filePaths.Count == 0) return;
+        WriteLocked(() => RemoveFilesAndDescendantsLocked(filePaths));
+    }
 
+    private void RemoveFilesAndDescendantsLocked(IReadOnlyCollection<string> filePaths)
+    {
         var pathSet = new HashSet<string>(filePaths, StringComparer.Ordinal);
         var toRemove = new HashSet<string>(StringComparer.Ordinal);
         toRemove.UnionWith(_nodesById.Values
@@ -152,6 +237,7 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore
 
     private void RemoveNodeById(string id)
     {
+        _bm25.Remove(id);
         if (_nodesById.TryGetValue(id, out var node))
         {
             _nodesById.Remove(id);
@@ -176,20 +262,26 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore
     public void AddNodes(IEnumerable<RaggableNode> nodes)
     {
         ArgumentNullException.ThrowIfNull(nodes);
-        var now = _clock();
-        foreach (var node in nodes)
+        WriteLocked(() =>
         {
-            IndexNode(node, now);
-        }
+            var now = _clock();
+            foreach (var node in nodes)
+            {
+                IndexNode(node, now);
+            }
+        });
     }
 
     public void AddEdges(IEnumerable<RaggableEdge> edges)
     {
         ArgumentNullException.ThrowIfNull(edges);
-        foreach (var edge in edges)
+        WriteLocked(() =>
         {
-            IndexEdge(edge);
-        }
+            foreach (var edge in edges)
+            {
+                IndexEdge(edge);
+            }
+        });
     }
 
     private void RemoveNodeRecursive(string id, HashSet<string> collector)
