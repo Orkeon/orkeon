@@ -101,6 +101,13 @@ public static class ScriptingCliServiceCollectionExtensions
             new InstanceAttributingUsageSink(
                 sp.GetService<Orkeon.Application.Interfaces.Ports.ICostBudgetManager>()));
 
+        // Retry visibility: LLM reconnection backoffs surface on the status line and the
+        // ambient instance (ps/inspect/agents pane) instead of stalling in silence. The
+        // host's provider bootstrap hands this observer to the provider (RetryObserver).
+        // TryAdd so a host with its own ILlmRetryObserver wins.
+        services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.ILlmRetryObserver>(sp =>
+            new LlmRetryProgressObserver(sp.GetRequiredService<ProgressBroker>()));
+
         services.TryAddSingleton(sp =>
         {
             var cliLimits = sp.GetRequiredService<IOptions<ScriptCommandsConfiguration>>().Value.Limits;

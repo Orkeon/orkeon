@@ -128,29 +128,52 @@ public static class ResiliencePolicies
     /// Creates a specialized retry policy for LLM API calls with aggressive backoff and Retry-After header support.
     /// </summary>
     /// <param name="logger">Optional logger for retry diagnostics.</param>
-    /// <param name="maxRetryAttempts">Maximum retry attempts; defaults to 5 for rate-limited APIs.</param>
+    /// <param name="maxRetryAttempts">Maximum retry attempts; defaults to <see cref="Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxRetries"/>.</param>
     /// <param name="baseDelay">Base delay between retries; defaults to 1 second.</param>
+    /// <param name="onRetry">Optional per-retry notification hook: (retry number, effective delay, reason). Must not throw.</param>
     /// <returns>An async retry policy for LLM API HTTP calls.</returns>
-    public static IAsyncPolicy<HttpResponseMessage> GetLlmApiPolicy(ILogger? logger = null, int maxRetryAttempts = 5, TimeSpan? baseDelay = null)
+    public static IAsyncPolicy<HttpResponseMessage> GetLlmApiPolicy(
+        ILogger? logger = null,
+        int maxRetryAttempts = Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxRetries,
+        TimeSpan? baseDelay = null,
+        Action<int, TimeSpan, string>? onRetry = null)
     {
         var delay = baseDelay ?? ResilienceDefaults.DefaultRetryInitialDelay;
         var safeLogger = logger ?? NullLogger.Instance;
         return HandleTransientHttpError()
             .OrResult(msg => msg.StatusCode == HttpStatusCode.TooManyRequests)
             .WaitAndRetryAsync(maxRetryAttempts,
-                retryAttempt => retryAttempt > 2 ? TimeSpan.FromSeconds(delay.TotalSeconds * Math.Pow(3, retryAttempt - 2)) : TimeSpan.FromSeconds(delay.TotalSeconds * retryAttempt),
+                retryAttempt => LlmRetryDelay(retryAttempt, delay),
                 onRetry: async (outcome, timespan, retryCount, context) =>
                 {
+                    var reason = outcome.Result?.StatusCode.ToString() ?? outcome.Exception?.Message ?? "Error";
                     if (outcome.Result?.Headers.RetryAfter?.Delta != null)
                     {
-                        ResiliencePoliciesLog.LogLlmApiRateLimited(safeLogger, outcome.Result.Headers.RetryAfter.Delta.Value.TotalSeconds);
-                        await System.Threading.Tasks.Task.Delay(outcome.Result.Headers.RetryAfter.Delta.Value).ConfigureAwait(false);
+                        var retryAfter = outcome.Result.Headers.RetryAfter.Delta.Value;
+                        ResiliencePoliciesLog.LogLlmApiRateLimited(safeLogger, retryAfter.TotalSeconds);
+                        onRetry?.Invoke(retryCount, timespan + retryAfter, reason);
+                        await System.Threading.Tasks.Task.Delay(retryAfter).ConfigureAwait(false);
                     }
                     else
                     {
-                        ResiliencePoliciesLog.LogLlmApiRetry(safeLogger, retryCount, timespan.TotalMilliseconds, outcome.Result?.StatusCode.ToString() ?? "Error");
+                        ResiliencePoliciesLog.LogLlmApiRetry(safeLogger, retryCount, timespan.TotalMilliseconds, reason);
+                        onRetry?.Invoke(retryCount, timespan, reason);
                     }
                 });
+    }
+
+    /// <summary>
+    /// The LLM retry ladder: linear for the first two retries, then base×3^(n−2), every wait
+    /// capped at <see cref="ResilienceDefaults.DefaultRetryMaxDelay"/> so a 10-retry budget
+    /// (see <see cref="Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxRetries"/>) degrades
+    /// to a bounded ~30 s cadence instead of exploding exponentially.
+    /// </summary>
+    public static TimeSpan LlmRetryDelay(int retryAttempt, TimeSpan baseDelay)
+    {
+        var computed = retryAttempt > 2
+            ? TimeSpan.FromSeconds(baseDelay.TotalSeconds * Math.Pow(3, retryAttempt - 2))
+            : TimeSpan.FromSeconds(baseDelay.TotalSeconds * retryAttempt);
+        return computed <= ResilienceDefaults.DefaultRetryMaxDelay ? computed : ResilienceDefaults.DefaultRetryMaxDelay;
     }
 }
 

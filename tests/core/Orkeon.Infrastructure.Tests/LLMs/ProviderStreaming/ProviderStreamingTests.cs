@@ -259,7 +259,7 @@ public sealed class ProviderStreamingTests : IDisposable
         string responseBody, HttpStatusCode statusCode, string apiKey = "sk-test", bool rawSse = false)
     {
         SetupHttpClient(responseBody, statusCode);
-        var config = LlmConfig.Default() with { ApiKey = apiKey, Model = ModelGpt4 };
+        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = apiKey, Model = ModelGpt4 };
         return new OpenAIProvider(config, _httpClientFactory, _noOpPolicy,
             NullLogger<OpenAIProvider>.Instance);
     }
@@ -268,7 +268,7 @@ public sealed class ProviderStreamingTests : IDisposable
         string responseBody, HttpStatusCode statusCode, string apiKey = "sk-test")
     {
         SetupHttpClient(responseBody, statusCode);
-        var config = LlmConfig.Default() with { ApiKey = apiKey, Model = ModelClaude3Opus };
+        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = apiKey, Model = ModelClaude3Opus };
         return new AnthropicLlmProvider(config, _httpClientFactory, _noOpPolicy,
             NullLogger<AnthropicLlmProvider>.Instance);
     }
@@ -277,7 +277,7 @@ public sealed class ProviderStreamingTests : IDisposable
         string responseBody, HttpStatusCode statusCode)
     {
         SetupHttpClient(responseBody, statusCode);
-        var config = LlmConfig.Default() with { Model = ModelLlama2, BaseUrl = new Uri(EndpointOllamaDefault) };
+        var config = LlmConfig.Default() with { MaxRetries = 0, Model = ModelLlama2, BaseUrl = new Uri(EndpointOllamaDefault) };
         return new OllamaLlmProvider(config, _httpClientFactory, _noOpPolicy,
             NullLogger<OllamaLlmProvider>.Instance);
     }
@@ -286,7 +286,7 @@ public sealed class ProviderStreamingTests : IDisposable
         string responseBody, HttpStatusCode statusCode)
     {
         SetupHttpClient(responseBody, statusCode);
-        var config = LlmConfig.Default() with { ApiKey = "gsk-test", Model = "llama-3.3-70b-versatile" };
+        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = "gsk-test", Model = "llama-3.3-70b-versatile" };
         return new GroqLlmProvider(config, _httpClientFactory, _noOpPolicy,
             NullLogger<GroqLlmProvider>.Instance);
     }
@@ -297,6 +297,7 @@ public sealed class ProviderStreamingTests : IDisposable
         SetupHttpClient(responseBody, statusCode);
         var config = LlmConfig.Default() with
         {
+            MaxRetries = 0,
             ApiKey = "azure-key",
             Model = ModelGpt4,
             BaseUrl = new Uri("https://myendpoint.openai.azure.com")

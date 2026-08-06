@@ -48,6 +48,13 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     private bool _disposed;
 
     /// <summary>
+    /// Optional host-registered observer of retry activity (set post-construction by the host's
+    /// DI wiring), so a UI can show "reconnecting…" during backoff waits instead of a silent
+    /// stall. Null (the default) keeps behaviour unchanged: retries are only logged.
+    /// </summary>
+    public ILlmRetryObserver? RetryObserver { get; set; }
+
+    /// <summary>
     /// Gets the provider name.
     /// </summary>
     public abstract string Name { get; }
@@ -87,7 +94,11 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         HttpClientFactory = httpClientFactory;
         Logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
-        ResiliencePolicy = resiliencePolicy ?? ResiliencePolicies.GetLlmApiPolicy(Logger);
+        // The retry budget comes from Llm:MaxRetries (default 10); the hook reads RetryObserver
+        // at fire time, so a host wiring the observer after construction is still seen.
+        ResiliencePolicy = resiliencePolicy ?? ResiliencePolicies.GetLlmApiPolicy(
+            Logger, config.MaxRetries,
+            onRetry: (attempt, delay, reason) => NotifyRetryScheduled(attempt, delay, reason));
 
         JsonOptions = new JsonSerializerOptions
         {
@@ -226,7 +237,40 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                 LogRequestTimedOut(ex);
                 throw new HttpRequestException("LLM API request timed out. Please try again later.", ex);
             }
+            finally
+            {
+                NotifyCallSettled();
+            }
         }
+    }
+
+    /// <summary>Best-effort retry notification — never allowed to fail the call.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Observer fault barrier: a faulty host observer must degrade to unobserved retries, never to a failed LLM call.")]
+    private void NotifyRetryScheduled(int attempt, TimeSpan delay, string reason, string? host = null)
+    {
+        var observer = RetryObserver;
+        if (observer is null) return;
+        try
+        {
+            observer.OnRetryScheduled(new LlmRetryEvent
+            {
+                Provider = Name,
+                Host = host ?? Config.BaseUrl?.Host ?? string.Empty,
+                Attempt = attempt,
+                MaxRetries = Config.MaxRetries,
+                Delay = delay,
+                Reason = reason,
+            });
+        }
+        catch { /* observer fault barrier */ }
+    }
+
+    /// <summary>Best-effort settle notification — never allowed to fail the call.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Observer fault barrier: a faulty host observer must degrade to unobserved retries, never to a failed LLM call.")]
+    private void NotifyCallSettled()
+    {
+        try { RetryObserver?.OnCallSettled(); }
+        catch { /* observer fault barrier */ }
     }
 
     /// <summary>
@@ -480,13 +524,12 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         }
     }
 
-    // Streaming connect retry: attempts and base delay. Deliberately tighter than the
-    // buffered path's GetLlmApiPolicy (5 retries, multi-second backoff) — streaming calls
-    // sit on an interactive turn, so a transient connect failure gets two quick retries
-    // (0.5 s, 1 s) and then surfaces.
-    private const int StreamingConnectAttempts = 3;
+    // Streaming connect retry: quick first retries (0.5 s doubling), every wait capped at
+    // DefaultRetryMaxDelay so the Llm:MaxRetries budget (default 10) degrades to a bounded
+    // ~30 s cadence. The budget is shared with the buffered path's policy; the visibility
+    // that makes a long budget acceptable on an interactive turn comes from RetryObserver.
     private static readonly TimeSpan StreamingRetryBaseDelay = TimeSpan.FromMilliseconds(500);
-    private static readonly TimeSpan StreamingRetryAfterCap = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan StreamingRetryAfterCap = Orkeon.Domain.Constants.Resilience.ResilienceDefaults.DefaultRetryMaxDelay;
 
     /// <summary>
     /// Sends a streaming HTTP request (without buffering the response).
@@ -510,38 +553,50 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
 
         async Task<HttpResponseMessage> SendStreamingRequestCoreAsync()
         {
-            for (var attempt = 1; ; attempt++)
+            var maxAttempts = Math.Max(1, Config.MaxRetries + 1);
+            try
             {
-                try
+                for (var attempt = 1; ; attempt++)
                 {
-                    // The response escapes (the caller streams its body via ResponseHeadersRead), but the
-                    // request body is fully transmitted once SendAsync returns, so the request — and the
-                    // content it owns — can be disposed here without touching the live response stream
-                    // (ANT-006/R10.2: dispose by real lifetime, not lexically). One request per attempt:
-                    // HttpRequestMessage cannot be resent.
-                    using var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType);
-                    using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
+                    try
+                    {
+                        // The response escapes (the caller streams its body via ResponseHeadersRead), but the
+                        // request body is fully transmitted once SendAsync returns, so the request — and the
+                        // content it owns — can be disposed here without touching the live response stream
+                        // (ANT-006/R10.2: dispose by real lifetime, not lexically). One request per attempt:
+                        // HttpRequestMessage cannot be resent.
+                        using var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType);
+                        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
 
-                    var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    if (attempt >= StreamingConnectAttempts || !IsRetriableStreamingStatus(response.StatusCode))
-                        return response;
+                        var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                        if (attempt >= maxAttempts || !IsRetriableStreamingStatus(response.StatusCode))
+                            return response;
 
-                    var delay = RetryAfterDelay(response) ?? StreamingBackoff(attempt);
-                    LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture));
-                    response.Dispose();
-                    await System.Threading.Tasks.Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                        var reason = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        var delay = RetryAfterDelay(response) ?? StreamingBackoff(attempt);
+                        LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, reason);
+                        NotifyRetryScheduled(attempt, delay, reason, endpoint?.Host);
+                        response.Dispose();
+                        await System.Threading.Tasks.Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (HttpRequestException ex) when (attempt < maxAttempts)
+                    {
+                        LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
+                        NotifyRetryScheduled(attempt, StreamingBackoff(attempt), ex.Message, endpoint?.Host);
+                        await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (TaskCanceledException ex) when (attempt < maxAttempts && !cancellationToken.IsCancellationRequested)
+                    {
+                        // HttpClient.Timeout expired before headers — not a user cancellation.
+                        LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
+                        NotifyRetryScheduled(attempt, StreamingBackoff(attempt), ex.Message, endpoint?.Host);
+                        await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
+                    }
                 }
-                catch (HttpRequestException ex) when (attempt < StreamingConnectAttempts)
-                {
-                    LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
-                    await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
-                }
-                catch (TaskCanceledException ex) when (attempt < StreamingConnectAttempts && !cancellationToken.IsCancellationRequested)
-                {
-                    // HttpClient.Timeout expired before headers — not a user cancellation.
-                    LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
-                    await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
-                }
+            }
+            finally
+            {
+                NotifyCallSettled();
             }
         }
     }
@@ -553,7 +608,10 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
            || status == System.Net.HttpStatusCode.TooManyRequests;
 
     private static TimeSpan StreamingBackoff(int attempt)
-        => TimeSpan.FromMilliseconds(StreamingRetryBaseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
+    {
+        var computed = TimeSpan.FromMilliseconds(StreamingRetryBaseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
+        return computed <= StreamingRetryAfterCap ? computed : StreamingRetryAfterCap;
+    }
 
     /// <summary>Server-provided Retry-After delta when present, capped so an interactive turn never parks for minutes.</summary>
     private static TimeSpan? RetryAfterDelay(HttpResponseMessage response)

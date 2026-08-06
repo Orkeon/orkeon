@@ -25,7 +25,7 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
         _messageHandler = new TestHttpMessageHandler();
         var httpClient = new HttpClient(_messageHandler);
         _httpClientFactory = new TestHttpClientFactory(httpClient);
-        _config = LlmConfig.Create(TestModelName, TestApiKey);
+        _config = LlmConfig.Create(TestModelName, TestApiKey) with { MaxRetries = 0 }; // error tests pin mapping, not retry
         _logger = new TestLogger<TestHttpLlmProvider>();
         _provider = new TestHttpLlmProvider(_config, _httpClientFactory, _logger);
     }

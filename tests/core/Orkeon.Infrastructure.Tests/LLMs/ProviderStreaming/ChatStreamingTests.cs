@@ -105,7 +105,7 @@ public sealed class ChatStreamingTests : IDisposable
     public async Task ChatStreaming_http_error_completes_with_an_error_response()
     {
         SetupHttpClient("boom", HttpStatusCode.InternalServerError);
-        var config = LlmConfig.Default() with { ApiKey = "sk-test", Model = "deepseek-chat" };
+        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = "sk-test", Model = "deepseek-chat" };
         using var provider = new DeepSeekLlmProvider(config, _httpClientFactory, _noOpPolicy,
             NullLogger<DeepSeekLlmProvider>.Instance);
 
@@ -120,7 +120,7 @@ public sealed class ChatStreamingTests : IDisposable
     public async Task ChatStreaming_missing_api_key_falls_back_to_buffered_single_completed()
     {
         SetupHttpClient("", HttpStatusCode.OK);
-        var config = LlmConfig.Default() with { ApiKey = "", Model = "deepseek-chat" };
+        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = "", Model = "deepseek-chat" };
         using var provider = new DeepSeekLlmProvider(config, _httpClientFactory, _noOpPolicy,
             NullLogger<DeepSeekLlmProvider>.Instance);
 
@@ -158,7 +158,7 @@ public sealed class ChatStreamingTests : IDisposable
     private DeepSeekLlmProvider CreateDeepSeekProvider(string sseBody)
     {
         SetupHttpClient(sseBody, HttpStatusCode.OK);
-        var config = LlmConfig.Default() with { ApiKey = "sk-test", Model = "deepseek-chat" };
+        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = "sk-test", Model = "deepseek-chat" };
         return new DeepSeekLlmProvider(config, _httpClientFactory, _noOpPolicy,
             NullLogger<DeepSeekLlmProvider>.Instance);
     }

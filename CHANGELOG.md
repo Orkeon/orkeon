@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — configurable LLM retry budget (default 10) + visible reconnection feedback
+
+`Llm:MaxRetries` (the dormant `LlmConfig.MaxRetries`, never consumed until now) drives
+BOTH HTTP paths: the buffered Polly policy (`GetLlmApiPolicy`, previously hardcoded at
+5) and the streaming connect-phase loop (previously hardcoded at 3 attempts). Default
+raised from 3/5 to **10** (`LlmDefaults.DefaultMaxRetries`) with every wait capped at
+30 s (`ResiliencePolicies.LlmRetryDelay` — linear ×1/×2, then ×3 exponential, capped),
+so the ladder degrades to a bounded cadence instead of 3⁸ seconds.
+
+What makes a 10-retry budget acceptable on an interactive turn is that it is now
+VISIBLE: a new `ILlmRetryObserver` port (Application) receives every scheduled retry
+wait and the final settle; `HttpLlmProviderBase.RetryObserver` fires it from both
+paths (never on mid-stream failures, which are still not retried). The CLI implements
+it with `LlmRetryProgressObserver`: the status line shows
+`✳ Reconnecting to api.moonshot.ai… retry 4/10 in 8s — <reason>` through the existing
+`ProgressBroker`, and the ambient `CommandInstance` gets the same line for
+`ps`/`inspect`/the agents pane. Settling clears only the banner the observer raised
+(label-guarded) — never a crew's own progress. No observer registered = behaviour
+unchanged (retries only logged).
+
 ### Fixed — transcript errors: one actionable line, never a stringified stack
 
 A crew failure travels as

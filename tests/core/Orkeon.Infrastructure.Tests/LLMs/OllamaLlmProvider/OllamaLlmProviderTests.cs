@@ -178,7 +178,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2) with { BaseUrl = new Uri(EndpointOllamaDefault) };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, BaseUrl = new Uri(EndpointOllamaDefault) };
         var logger = new TestLogger();
         using var provider = new OllamaLlmProvider(config, httpClientFactory, logger);
 
@@ -202,7 +202,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act & Assert
@@ -220,7 +220,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act & Assert
@@ -241,7 +241,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create("unknown-model");
+        var config = LlmConfig.Create("unknown-model") with { MaxRetries = 0 };
         var logger = new TestLogger();
         using var provider = new OllamaLlmProvider(config, httpClientFactory, logger);
 
@@ -265,7 +265,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         var logger = new TestLogger();
         using var provider = new OllamaLlmProvider(config, httpClientFactory, logger);
 
@@ -292,7 +292,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2) with { TimeoutSeconds = 1 };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, TimeoutSeconds = 1 };
         var logger = new TestLogger();
         using var provider = new OllamaLlmProvider(config, httpClientFactory, logger);
 
@@ -317,7 +317,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         var logger = new TestLogger();
         using var provider = new OllamaLlmProvider(config, httpClientFactory, logger);
 
@@ -342,10 +342,10 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var defaultConfig = LlmConfig.Create(ModelLlama2);
+        var defaultConfig = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(defaultConfig, httpClientFactory);
 
-        var customConfig = LlmConfig.Create("codellama") with { Temperature = 0.9, MaxTokens = 500 };
+        var customConfig = LlmConfig.Create("codellama") with { MaxRetries = 0, Temperature = 0.9, MaxTokens = 500 };
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, customConfig, TestContext.Current.CancellationToken);
@@ -373,7 +373,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2) with { Temperature = 0.7, MaxTokens = 1000 };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, Temperature = 0.7, MaxTokens = 1000 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act
@@ -408,7 +408,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         var logger = new TestLogger();
         using var provider = new OllamaLlmProvider(config, httpClientFactory, logger);
 
@@ -427,7 +427,7 @@ public class OllamaLlmProviderTests
     {
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act & Assert
@@ -445,7 +445,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2) with { BaseUrl = new Uri("http://custom-ollama:8080/") };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, BaseUrl = new Uri("http://custom-ollama:8080/") };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act
@@ -468,7 +468,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         var messages = new[]
@@ -503,7 +503,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2) with { ApiKey = "should-be-ignored" };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, ApiKey = "should-be-ignored" };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act
@@ -534,7 +534,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act
@@ -556,7 +556,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         var longPrompt = string.Join(" ", Enumerable.Repeat("This is a very long prompt.", 1000));
@@ -578,7 +578,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         var emptyMessages = Array.Empty<LlmMessage>();
@@ -596,7 +596,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act & Assert
@@ -644,7 +644,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         using var cts = new CancellationTokenSource();
@@ -673,7 +673,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(modelName);
+        var config = LlmConfig.Create(modelName) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act
@@ -699,7 +699,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2) with { MaxTokens = 0 };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, MaxTokens = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         // Act
@@ -726,7 +726,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var defaultConfig = LlmConfig.Create(ModelLlama2) with { Temperature = 0.5, MaxTokens = 100 };
+        var defaultConfig = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, Temperature = 0.5, MaxTokens = 100 };
         using var provider = new OllamaLlmProvider(defaultConfig, httpClientFactory);
 
         // Act
@@ -753,7 +753,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         var logger = new TestLogger();
         using var provider = new OllamaLlmProvider(config, httpClientFactory, logger);
 
@@ -778,7 +778,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         var logger = new TestLogger();
         using var provider = new OllamaLlmProvider(config, httpClientFactory, logger);
 
@@ -796,7 +796,7 @@ public class OllamaLlmProviderTests
     public void ShouldThrowArgumentNullException_WhenConstructorWithNullHttpClientFactory()
     {
         // Arrange
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new OllamaLlmProvider(config, null!));
@@ -825,7 +825,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         var messages = new[]
@@ -852,7 +852,7 @@ public class OllamaLlmProviderTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient());
-        var config = LlmConfig.Create(ModelLlama2) with { BaseUrl = new Uri("http://ollama.example.com:11434") };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, BaseUrl = new Uri("http://ollama.example.com:11434") };
 
         // Act
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
@@ -867,7 +867,7 @@ public class OllamaLlmProviderTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient());
-        var config = LlmConfig.Create(ModelLlama2) with { BaseUrl = new Uri("http://ollama.example.com:11434/") };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, BaseUrl = new Uri("http://ollama.example.com:11434/") };
 
         // Act
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
@@ -950,7 +950,7 @@ public class OllamaLlmProviderTests
 
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient());
-        var config = LlmConfig.Create(ModelLlama2) with { BaseUrl = new Uri("http://config-url:11434") };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, BaseUrl = new Uri("http://config-url:11434") };
 
         try
         {
@@ -972,7 +972,7 @@ public class OllamaLlmProviderTests
         // Arrange
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient());
-        var config = LlmConfig.Create(ModelLlama2) with { BaseUrl = new Uri("http://ollama.k8s.local:11434") };
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, BaseUrl = new Uri("http://ollama.k8s.local:11434") };
 
         // Act — use the constructor overload with resilience policy
         using var provider = new OllamaLlmProvider(config, httpClientFactory, resiliencePolicy: null);
@@ -1019,7 +1019,7 @@ public class OllamaLlmProviderTests
         var httpClientFactory = new TestHttpClientFactory();
         httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
 
-        var config = LlmConfig.Create(ModelLlama2);
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
         using var provider = new OllamaLlmProvider(config, httpClientFactory);
 
         var promptWithSpecialChars = "Test with \"quotes\" and \nnewlines and \\backslashes";

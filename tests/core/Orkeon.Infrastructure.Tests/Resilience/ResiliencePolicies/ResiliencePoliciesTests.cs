@@ -263,6 +263,46 @@ public sealed class ResiliencePoliciesTests : IDisposable
     }
 
     [Fact]
+    public void ShouldCapEveryWait_WhenLlmRetryDelayLadderGrows()
+    {
+        // Linear for the first two retries, ×3 after, capped at 30 s — a 10-retry budget
+        // (LlmDefaults.DefaultMaxRetries) degrades to a bounded cadence, never 3^8 seconds.
+        var baseDelay = TimeSpan.FromSeconds(1);
+
+        Assert.Equal(TimeSpan.FromSeconds(1), ResiliencePolicies.LlmRetryDelay(1, baseDelay));
+        Assert.Equal(TimeSpan.FromSeconds(2), ResiliencePolicies.LlmRetryDelay(2, baseDelay));
+        Assert.Equal(TimeSpan.FromSeconds(3), ResiliencePolicies.LlmRetryDelay(3, baseDelay));
+        Assert.Equal(TimeSpan.FromSeconds(9), ResiliencePolicies.LlmRetryDelay(4, baseDelay));
+        Assert.Equal(TimeSpan.FromSeconds(27), ResiliencePolicies.LlmRetryDelay(5, baseDelay));
+        Assert.Equal(TimeSpan.FromSeconds(30), ResiliencePolicies.LlmRetryDelay(6, baseDelay));  // 81 s → capped
+        Assert.Equal(TimeSpan.FromSeconds(30), ResiliencePolicies.LlmRetryDelay(10, baseDelay)); // stays capped
+    }
+
+    [Fact]
+    public async Task ShouldNotifyTheHook_WhenGetLlmApiPolicyRetries()
+    {
+        // The onRetry hook is what feeds ILlmRetryObserver (the "reconnecting…" banner).
+        var notified = new List<(int Attempt, TimeSpan Delay, string Reason)>();
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger,
+            maxRetryAttempts: 2,
+            baseDelay: TimeSpan.FromMilliseconds(10),
+            onRetry: (attempt, delay, reason) => notified.Add((attempt, delay, reason)));
+
+        _httpHandler.SetupResponses(
+            new HttpResponseMessage(HttpStatusCode.ServiceUnavailable),
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var response = await policy.ExecuteAsync(async () =>
+            await _httpClient.GetAsync("http://test.com"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var retry = Assert.Single(notified);
+        Assert.Equal(1, retry.Attempt);
+        Assert.Contains("ServiceUnavailable", retry.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldRespectServerDelay_WhenGetLlmApiPolicyWithRetryAfterHeader()
     {
         // Arrange

@@ -79,7 +79,7 @@ internal static class ConfiguredLlmProviderBootstrapper
         {
             var factory = sp.GetRequiredService<ILlmProviderFactory>();
             var created = factory.Create(config);
-            return created switch
+            var provider = created switch
             {
                 ILlmProvider direct => direct,
                 LlmProviderAdapter adapter => adapter.UnderlyingProvider,
@@ -87,6 +87,11 @@ internal static class ConfiguredLlmProviderBootstrapper
                     $"LlmProviderFactory produced a {created?.GetType().FullName ?? "null"} that is neither " +
                     $"an ILlmProvider nor a LlmProviderAdapter; cannot expose it to the crew runtime."),
             };
+            // Retry visibility: hand the host's observer (status line / ps) to the provider so
+            // reconnection backoffs are shown instead of stalling the turn in silence.
+            if (provider is Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase httpProvider)
+                httpProvider.RetryObserver = sp.GetService<ILlmRetryObserver>();
+            return provider;
         });
 
         services.AddSingleton<IBasicLlmProvider>(sp =>

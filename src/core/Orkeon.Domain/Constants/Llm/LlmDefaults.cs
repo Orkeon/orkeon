@@ -31,6 +31,15 @@ public static class LlmDefaults
     /// </summary>
     public const double DefaultTemperature = 0.7;
 
+    // ── Resilience ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Default maximum number of retries on transient LLM API failures (10).
+    /// Drives the buffered path's Polly retry policy and the streaming path's
+    /// connect-phase retry loop; override per host with <c>Llm:MaxRetries</c>.
+    /// </summary>
+    public const int DefaultMaxRetries = 10;
+
     // ── Model Names ─────────────────────────────────────────────────────
 
     /// <summary>

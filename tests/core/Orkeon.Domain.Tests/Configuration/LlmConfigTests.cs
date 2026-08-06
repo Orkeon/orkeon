@@ -1,3 +1,4 @@
+using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestUrlConstants;
@@ -39,7 +40,7 @@ public class LlmConfigTests
         Assert.NotNull(config.CustomParameters);
         Assert.Empty(config.CustomParameters);
         Assert.Equal(30, config.TimeoutSeconds);
-        Assert.Equal(3, config.MaxRetries);
+        Assert.Equal(LlmDefaults.DefaultMaxRetries, config.MaxRetries); // 10 — drives the HTTP retry budget (Llm:MaxRetries)
     }
 
     [Fact]
@@ -353,7 +354,7 @@ public class LlmConfigTests
         Assert.Equal(0.7, config.Temperature, precision: 1);
         Assert.Equal(4096, config.MaxTokens);
         Assert.Equal(30, config.TimeoutSeconds);
-        Assert.Equal(3, config.MaxRetries);
+        Assert.Equal(LlmDefaults.DefaultMaxRetries, config.MaxRetries); // 10 — drives the HTTP retry budget (Llm:MaxRetries)
     }
 
     [Fact]

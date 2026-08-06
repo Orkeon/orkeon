@@ -1,5 +1,4 @@
 using Orkeon.Domain.Constants.Llm;
-using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Tools.Protocol;
 
 namespace Orkeon.Domain.SharedKernel.ValueObjects;
@@ -68,8 +67,12 @@ public sealed record LlmConfig
     public IReadOnlyDictionary<string, object> CustomParameters { get; init; } = new Dictionary<string, object>();
     /// <summary>Gets the request timeout in seconds.</summary>
     public int TimeoutSeconds { get; init; } = 30;
-    /// <summary>Gets the maximum number of retries on transient failures.</summary>
-    public int MaxRetries { get; init; } = AgentDefaults.MaxRetryLimit;
+    /// <summary>
+    /// Gets the maximum number of retries on transient failures (bound from <c>Llm:MaxRetries</c>).
+    /// Drives the HTTP resilience policy of the buffered path and the connect-phase retry
+    /// budget of the streaming path.
+    /// </summary>
+    public int MaxRetries { get; init; } = LlmDefaults.DefaultMaxRetries;
 
     /// <summary>Gets the tool schemas to include in the LLM request payload.</summary>
     public IReadOnlyList<ToolSchema>? Tools { get; init; }
@@ -143,7 +146,7 @@ public sealed record LlmConfig
         double frequencyPenalty = 0.0,
         double presencePenalty = 0.0,
         int timeoutSeconds = 30,
-        int maxRetries = AgentDefaults.MaxRetryLimit,
+        int maxRetries = LlmDefaults.DefaultMaxRetries,
         string? apiKey = null,
         Uri? baseUrl = null)
 #pragma warning restore S107

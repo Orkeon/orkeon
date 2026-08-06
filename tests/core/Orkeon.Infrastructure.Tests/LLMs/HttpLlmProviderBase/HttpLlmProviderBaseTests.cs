@@ -268,6 +268,7 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
             Temperature = 0.7,
             MaxTokens = 100,
             TimeoutSeconds = 30,
+            MaxRetries = 0, // error tests pin mapping, not retry — the default budget would backoff for minutes
             CustomParameters = new Dictionary<string, object> { ["OrganizationId"] = "test-org" }
         };
     }
