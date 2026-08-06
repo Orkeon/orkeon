@@ -193,7 +193,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             catch (Jint.Runtime.PromiseRejectedException rejected)
             {
                 LogAsyncDispatchRejected(_descriptor.Name, rejected.RejectedValue);
-                return CommandResult.Continue($"Error: {rejected.RejectedValue}");
+                return CommandResult.Continue($"Error: {ConciseErrors.Message(rejected)}");
             }
 
             var captured = scope?.Captured ?? Array.Empty<CommandInstance>();
@@ -297,7 +297,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             catch (Jint.Runtime.PromiseRejectedException rejected)
             {
                 LogCompletedThrew(rejected, item.Instance.Name, item.Instance.Ticket);
-                console.WriteLine($"Error in completed('{item.Instance.Name}'): {rejected.RejectedValue}");
+                console.WriteLine($"Error in completed('{item.Instance.Name}'): {ConciseErrors.Message(rejected)}");
             }
         }
     }

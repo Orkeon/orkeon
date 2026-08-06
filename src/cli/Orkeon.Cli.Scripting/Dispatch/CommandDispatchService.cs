@@ -112,8 +112,9 @@ public sealed partial class CommandDispatchService
         catch (Exception ex)
         {
             LogRequestFailed(ex, instance.Name, agent);
-            instance.Fail(ex.Message);
-            return new CommandResponse(agent, intent, success: false, payload: string.Empty, error: ex.Message);
+            var concise = Runtime.ConciseErrors.Message(ex);
+            instance.Fail(concise);
+            return new CommandResponse(agent, intent, success: false, payload: string.Empty, error: concise);
         }
     }
 
@@ -150,7 +151,7 @@ public sealed partial class CommandDispatchService
             catch (Exception ex)
             {
                 LogAsyncCommandFailed(ex, instance.Name, instance.Ticket, agent);
-                instance.Fail(ex.Message);
+                instance.Fail(Runtime.ConciseErrors.Message(ex));
             }
             finally
             {
@@ -205,7 +206,7 @@ public sealed partial class CommandDispatchService
             catch (Exception ex)
             {
                 LogAsyncHostWorkFailed(ex, label, instance.Ticket);
-                instance.Fail(ex.Message);
+                instance.Fail(Runtime.ConciseErrors.Message(ex));
             }
             finally
             {

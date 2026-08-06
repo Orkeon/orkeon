@@ -246,7 +246,10 @@ public sealed class ProviderStreamingTests : IDisposable
     private void SetupHttpClient(string responseBody, HttpStatusCode statusCode)
     {
         var handler = _httpClientFactory.SetupDefaultHandler();
-        handler.SetResponse(new HttpResponseMessage(statusCode)
+        // Factory, not a fixed instance: the streaming connect retry consumes (and disposes)
+        // one response per attempt, exactly like a real HttpClient produces a fresh response
+        // per SendAsync.
+        handler.SetResponseFactory(_ => new HttpResponseMessage(statusCode)
         {
             Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(responseBody)))
         });

@@ -170,8 +170,11 @@ public sealed partial class ScriptHostFacade
         }
         catch (Exception ex)
         {
+            // Full exception (stack included) goes to the logs; the transcript-facing error
+            // is the concise root cause — a crew failure used to dump the whole stringified
+            // PromiseRejectedException into the REPL.
             LogCrewRunFailed(ex, safeName);
-            return CrewRunOutput.Failure(ex.Message);
+            return CrewRunOutput.Failure(ConciseErrors.Message(ex));
         }
     }
 

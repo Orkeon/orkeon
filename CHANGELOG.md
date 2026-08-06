@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — transcript errors: one actionable line, never a stringified stack
+
+A crew failure travels as
+`PromiseRejectedException(ObjectWrapper(AggregateException(HttpRequestException(SocketException))))`
+and its `Message` embeds the full stringified stack — which the REPL used to dump
+verbatim into the transcript (the live `/analyze` incident: ~40 lines of .NET frames
+for one DNS hiccup). New `ConciseErrors` helper (`Orkeon.Cli.Scripting`) unwraps the
+wrapper layers (JS rejection → carried CLR exception, `AggregateException` flatten,
+`TargetInvocationException`) and keeps the first line of the root cause —
+`✗ analyze failed: Resource temporarily unavailable (api.moonshot.ai:443)`. Applied at
+every transcript-facing site (`ScriptHostFacade` crew failures, `ScriptCommand`
+dispatch/completed rejections, `CommandDispatchService` instance failures); the full
+exception still goes to the logs at each site.
+
+### Added — LLM streaming: connect-phase retry for transient failures
+
+The buffered HTTP path runs under the Polly `GetLlmApiPolicy`, but
+`SendStreamingRequestAsync` was a single bare `SendAsync` — one transient socket
+failure killed the whole turn. It now retries the CONNECT/headers phase itself
+(3 attempts, 0.5 s/1 s backoff, `Retry-After` honoured capped at 30 s) on transport
+errors, client-side connect timeouts, and retriable statuses (408/429/5xx). Once
+headers are handed to the caller, a mid-stream failure is never retried — replaying a
+partially-consumed stream is the caller's decision. Non-transient statuses (401…)
+return immediately, unretried.
+
 ### Fixed — TUI: a line typed before the runner's first read was silently dropped
 
 The split-pane input field is live from the first frame, but the scripted-commands

@@ -480,10 +480,26 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         }
     }
 
+    // Streaming connect retry: attempts and base delay. Deliberately tighter than the
+    // buffered path's GetLlmApiPolicy (5 retries, multi-second backoff) — streaming calls
+    // sit on an interactive turn, so a transient connect failure gets two quick retries
+    // (0.5 s, 1 s) and then surfaces.
+    private const int StreamingConnectAttempts = 3;
+    private static readonly TimeSpan StreamingRetryBaseDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan StreamingRetryAfterCap = TimeSpan.FromSeconds(30);
+
     /// <summary>
     /// Sends a streaming HTTP request (without buffering the response).
     /// </summary>
-    protected static Task<HttpResponseMessage> SendStreamingRequestAsync(
+    /// <remarks>
+    /// The buffered path runs under <see cref="ResiliencePolicy"/>; this one cannot (the
+    /// response body escapes to the caller), so it retries the CONNECT/headers phase itself:
+    /// a transient transport failure (socket/DNS, e.g. "Resource temporarily unavailable"),
+    /// a client-side connect timeout, or a retriable status (408/429/5xx) before any of the
+    /// body was consumed. Once headers are returned to the caller, a mid-stream failure is
+    /// never retried here — replaying a partially-consumed stream is the caller's decision.
+    /// </remarks>
+    protected Task<HttpResponseMessage> SendStreamingRequestAsync(
         HttpClient client,
         Uri endpoint,
         string jsonPayload,
@@ -494,19 +510,61 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
 
         async Task<HttpResponseMessage> SendStreamingRequestCoreAsync()
         {
-            // The response escapes (the caller streams its body via ResponseHeadersRead), but the
-            // request body is fully transmitted once SendAsync returns, so the request — and the
-            // content it owns — can be disposed here without touching the live response stream
-            // (ANT-006/R10.2: dispose by real lifetime, not lexically).
-            using var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType);
-            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            for (var attempt = 1; ; attempt++)
             {
-                Content = content
-            };
+                try
+                {
+                    // The response escapes (the caller streams its body via ResponseHeadersRead), but the
+                    // request body is fully transmitted once SendAsync returns, so the request — and the
+                    // content it owns — can be disposed here without touching the live response stream
+                    // (ANT-006/R10.2: dispose by real lifetime, not lexically). One request per attempt:
+                    // HttpRequestMessage cannot be resent.
+                    using var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType);
+                    using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
 
-            return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    if (attempt >= StreamingConnectAttempts || !IsRetriableStreamingStatus(response.StatusCode))
+                        return response;
+
+                    var delay = RetryAfterDelay(response) ?? StreamingBackoff(attempt);
+                    LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    response.Dispose();
+                    await System.Threading.Tasks.Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                }
+                catch (HttpRequestException ex) when (attempt < StreamingConnectAttempts)
+                {
+                    LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
+                    await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
+                }
+                catch (TaskCanceledException ex) when (attempt < StreamingConnectAttempts && !cancellationToken.IsCancellationRequested)
+                {
+                    // HttpClient.Timeout expired before headers — not a user cancellation.
+                    LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
+                    await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
+                }
+            }
         }
     }
+
+    /// <summary>Same retriable statuses as the buffered path's policies (408, 429, 5xx).</summary>
+    private static bool IsRetriableStreamingStatus(System.Net.HttpStatusCode status)
+        => (int)status >= 500
+           || status == System.Net.HttpStatusCode.RequestTimeout
+           || status == System.Net.HttpStatusCode.TooManyRequests;
+
+    private static TimeSpan StreamingBackoff(int attempt)
+        => TimeSpan.FromMilliseconds(StreamingRetryBaseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
+
+    /// <summary>Server-provided Retry-After delta when present, capped so an interactive turn never parks for minutes.</summary>
+    private static TimeSpan? RetryAfterDelay(HttpResponseMessage response)
+    {
+        var delta = response.Headers.RetryAfter?.Delta;
+        if (delta is null) return null;
+        return delta.Value <= StreamingRetryAfterCap ? delta.Value : StreamingRetryAfterCap;
+    }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "LLM streaming connect retry {Attempt} in {Delay}ms. Reason: {Reason}")]
+    private partial void LogStreamingConnectRetry(int attempt, double delay, string reason);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "LLM API circuit breaker is open. Requests are being rejected.")]
     private partial void LogCircuitBreakerOpen(Exception ex);
