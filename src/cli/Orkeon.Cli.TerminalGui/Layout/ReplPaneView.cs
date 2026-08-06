@@ -43,6 +43,10 @@ public sealed class ReplPaneView : View
     private TaskCompletionSource<string?>? _pendingRead;
     private CancellationTokenRegistration _pendingReadCancellation;
 
+    // Type-ahead: lines submitted while no ReadLineAsync was outstanding (e.g. typed during
+    // the runner's startup script load). Delivered FIFO to subsequent reads — see DeliverOrBuffer.
+    private readonly Queue<string> _typeAhead = new();
+
     // Cap 2 — submitted-line history. Newest at the end. _historyCursor walks it:
     // [0.._lineHistory.Count) selects an entry, == Count means "the in-progress draft".
     private readonly List<string> _lineHistory = new();
@@ -269,7 +273,8 @@ public sealed class ReplPaneView : View
 
     /// <summary>
     /// Returns when the user submits a line (Enter), or null on cancellation.
-    /// Only one outstanding ReadLineAsync at a time.
+    /// Only one outstanding ReadLineAsync at a time. A line submitted while no read was
+    /// outstanding (type-ahead) is delivered first, FIFO.
     /// </summary>
     public Task<string?> ReadLineAsync(CancellationToken ct)
     {
@@ -278,6 +283,8 @@ public sealed class ReplPaneView : View
         {
             if (_pendingRead is not null)
                 throw new InvalidOperationException("A ReadLineAsync is already in progress on this REPL pane.");
+            if (_typeAhead.Count > 0)
+                return Task.FromResult<string?>(_typeAhead.Dequeue());
             _pendingRead = tcs;
             _pendingReadCancellation = ct.Register(static state =>
             {
@@ -477,7 +484,34 @@ public sealed class ReplPaneView : View
         _historyCursor = _lineHistory.Count;
         _draft = string.Empty;
 
-        CompletePendingRead(_pendingRead, text);
+        DeliverOrBuffer(text);
+    }
+
+    /// <summary>
+    /// Hands the submitted line to the outstanding <see cref="ReadLineAsync"/>, or buffers it
+    /// when none is outstanding — e.g. a line typed while the runner is still loading its
+    /// scripts, before its first read. The input field is live from the first frame, so
+    /// dropping here would silently lose input that was already echoed to the transcript;
+    /// buffering gives the TUI the same type-ahead semantics as a plain terminal.
+    /// </summary>
+    private void DeliverOrBuffer(string text)
+    {
+        TaskCompletionSource<string?>? snapshot;
+        CancellationTokenRegistration registration;
+        lock (_gate)
+        {
+            if (_pendingRead is null)
+            {
+                _typeAhead.Enqueue(text);
+                return;
+            }
+            snapshot = _pendingRead;
+            registration = _pendingReadCancellation;
+            _pendingRead = null;
+            _pendingReadCancellation = default;
+        }
+        registration.Dispose();
+        snapshot.TrySetResult(text);
     }
 
     /// <summary>

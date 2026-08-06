@@ -93,6 +93,29 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task Async_dispatch_with_a_pending_promise_still_launches_before_the_prompt_returns()
+    {
+        // The /assistant shape since B-5: `async dispatch` suspends on a Task-backed await
+        // BEFORE posting. Pre-fix, ExecuteAsync returned with the body still pending and the
+        // launch only happened at the NEXT engine pump — a user typing one free-text line
+        // saw nothing happen, ever.
+        var service = NewDispatchService();
+        RegisterEchoAgent(service);
+
+        var registry = LoadFixture("askbg-async.cmd.ts", service, w => w.AddOptional("slow", _ => new SlowService()));
+        var cmd = registry.ScriptCommands.Single(c => c.Name == "askbg-async");
+        var console = new ScriptedTestConsole();
+
+        await cmd.ExecuteAsync(Ctx("askbg-async hello", "hello", console), CancellationToken.None);
+
+        // The launch completed during ExecuteAsync: the instance is already registered.
+        Assert.Single(service.Registry.List());
+
+        // And the completion push-drains without any further command invocation.
+        await WaitUntil(() => console.Output.Contains("done:HELLO", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Async_admission_quota_rejects_a_second_in_flight_instance()
     {
         var service = NewDispatchService();
@@ -182,11 +205,14 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
         _disposables.Add(AgentCommandRegistrar.Register(agent, engine, gate, service.Channel, service.Directory));
     }
 
-    private ScriptCommandRegistry LoadFixture(string fixture, CommandDispatchService service)
+    private ScriptCommandRegistry LoadFixture(
+        string fixture, CommandDispatchService service, Action<ScriptServiceWhitelist>? extraServices = null)
     {
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture), Path.Combine(_tempDir, fixture));
 
-        var whitelist = new ScriptServiceWhitelist().AddOptional("commands", _ => service).Build();
+        var builder = new ScriptServiceWhitelist().AddOptional("commands", _ => service);
+        extraServices?.Invoke(builder);
+        var whitelist = builder.Build();
         var locator = new ScriptServiceLocator(whitelist, EmptyProvider.Instance);
 
         var loader = new ScriptCommandLoader(
@@ -249,5 +275,18 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
     {
         public static readonly EmptyProvider Instance = new();
         public object? GetService(Type serviceType) => null;
+    }
+
+    /// <summary>A service whose method returns a genuinely pending Task (never synchronously complete).</summary>
+    /// <remarks>Instance member on purpose: Jint's interop exposes instance methods on the wrapped object.</remarks>
+    private sealed class SlowService
+    {
+        private readonly TimeSpan _delay = TimeSpan.FromMilliseconds(100);
+
+        public async Task<string> WaitAsync()
+        {
+            await Task.Delay(_delay).ConfigureAwait(false);
+            return "ok";
+        }
     }
 }

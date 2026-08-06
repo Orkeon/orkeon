@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — TUI: a line typed before the runner's first read was silently dropped
+
+The split-pane input field is live from the first frame, but the scripted-commands
+runner only starts reading after its startup script load (57 commands ≈ 30–60 s of
+discovery → esbuild → evaluate). A line submitted in that window was echoed to the
+transcript and then **discarded** — the live "que fait-on ?" incident: the free-text
+request looked accepted and nothing ever happened. `ReplPaneView` now buffers
+type-ahead submissions in a FIFO queue and delivers them to subsequent
+`ReadLineAsync` calls — the same type-ahead semantics a plain terminal gives for
+free. Pinned by three `ReplPaneViewTests` (buffered delivery, FIFO order, live read
+still wins).
+
+### Fixed — scripted commands: `async dispatch` / `async completed` now awaited deterministically
+
+`ScriptCommand` unwrapped an async `dispatch`'s promise with the synchronous
+`UnwrapIfPromise` (blocking the engine-lock thread until settlement) and the
+`completed` drain did the same. Both now await `UnwrapIfPromiseAsync` — same pattern
+as the sync-handler path — and surface a rejected dispatch/completed promise as the
+same `Error: …` console line as a thrown one, instead of relying on Jint's blocking
+unwrap semantics. Pinned by a dispatch-with-pending-promise integration test (the
+`/assistant` shape since B-5: await session state, then post).
+
 ### Added — end-to-end progress channel for long CLI operations
 
 A `ProgressBroker` singleton (`Orkeon.Cli.Scripting.Progress`, registered by

@@ -96,14 +96,14 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         {
             // Pump point: replay any async completions that settled since the last invocation
             // on this engine (design §4.3) — under the lock, on the engine thread.
-            DrainCompletions(context.Console);
+            await DrainCompletionsAsync(context.Console).ConfigureAwait(false);
 
             // Parse args once; both sync handlers and async dispatch receive the same shape.
             if (!TryBuildArgs(context, out var argsObj, out var argsError))
                 return CommandResult.Continue($"Error: {argsError}");
 
             return _descriptor.Kind == CommandKind.Async
-                ? ExecuteAsyncCommand(context, argsObj!, cancellationToken)
+                ? await ExecuteAsyncCommand(context, argsObj!, cancellationToken).ConfigureAwait(false)
                 : await ExecuteSyncCommand(context, argsObj!, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -148,7 +148,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
     // ---- async (defineAsyncCommand) -------------------------------------------------------
 
-    private CommandResult ExecuteAsyncCommand(CommandContext context, JsValue argsObj, CancellationToken ct)
+    private async Task<CommandResult> ExecuteAsyncCommand(CommandContext context, JsValue argsObj, CancellationToken ct)
     {
         // Admission (design §5): non-blocking acquire; refusal rejects immediately and the
         // dispatch never runs.
@@ -174,17 +174,27 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             try
             {
                 result = _engine.Invoke(_descriptor.Dispatch!, new[] { argsObj, ctxObj });
+
+                // An `async dispatch` suspends at its first real await (e.g. a Task-backed
+                // service call) and Invoke returns a PENDING promise: the rest of the body —
+                // the actual launch — would then only run at the NEXT engine pump, i.e. when
+                // the user happens to type another command. Await it here (same pattern as
+                // the sync path above) so the launch always completes before the prompt
+                // returns. The dispatch contract stays "launch fast and detach": the await
+                // covers the launch preamble, never the detached background work.
+                if (result.IsPromise())
+                    result = await result.UnwrapIfPromiseAsync(ct).ConfigureAwait(false);
             }
             catch (Jint.Runtime.JavaScriptException jsEx)
             {
                 LogAsyncDispatchThrew(jsEx, _descriptor.Name);
                 return CommandResult.Continue($"Error: {jsEx.Message}");
             }
-
-            // dispatch must not block — if it returned a promise we don't await it here, but a
-            // synchronous return is the contract. Unwrap a resolved promise opportunistically.
-            if (result.IsPromise())
-                result = result.UnwrapIfPromise(ct);
+            catch (Jint.Runtime.PromiseRejectedException rejected)
+            {
+                LogAsyncDispatchRejected(_descriptor.Name, rejected.RejectedValue);
+                return CommandResult.Continue($"Error: {rejected.RejectedValue}");
+            }
 
             var captured = scope?.Captured ?? Array.Empty<CommandInstance>();
             if (captured.Count > 0)
@@ -237,7 +247,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
     /// <summary>
     /// Push variant of the completion pump (design §4.3): acquires the engine lock off the pool
-    /// thread the moment async work settles and runs <see cref="DrainCompletions"/>, so the
+    /// thread the moment async work settles and runs <see cref="DrainCompletionsAsync"/>, so the
     /// <c>completed(result)</c> callback fires immediately rather than waiting for this command's
     /// next invocation. Serialised with command execution via <see cref="_engineLock"/>; the
     /// pull-path drain in <see cref="ExecuteCoreAsync"/> stays as a safety net (the queue's
@@ -249,7 +259,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         try
         {
             await _engineLock.WaitAsync().ConfigureAwait(false);
-            try { DrainCompletions(console); }
+            try { await DrainCompletionsAsync(console).ConfigureAwait(false); }
             finally { _engineLock.Release(); }
         }
         catch (Exception ex)
@@ -258,7 +268,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
     }
 
-    private void DrainCompletions(IConsoleAdapter console)
+    private async Task DrainCompletionsAsync(IConsoleAdapter console)
     {
         var pending = _drainQueue.DrainAll();
         if (pending.Count == 0) return;
@@ -275,12 +285,19 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             try
             {
                 var r = _engine.Invoke(item.Completed, new[] { resultVal, ctxObj });
-                if (r.IsPromise()) r.UnwrapIfPromise();
+                // Same pending-promise rule as dispatch: an async completed() must finish
+                // its body now, not at some future engine pump.
+                if (r.IsPromise()) await r.UnwrapIfPromiseAsync(CancellationToken.None).ConfigureAwait(false);
             }
             catch (Jint.Runtime.JavaScriptException jsEx)
             {
                 LogCompletedThrew(jsEx, item.Instance.Name, item.Instance.Ticket);
                 console.WriteLine($"Error in completed('{item.Instance.Name}'): {jsEx.Message}");
+            }
+            catch (Jint.Runtime.PromiseRejectedException rejected)
+            {
+                LogCompletedThrew(rejected, item.Instance.Name, item.Instance.Ticket);
+                console.WriteLine($"Error in completed('{item.Instance.Name}'): {rejected.RejectedValue}");
             }
         }
     }
@@ -383,6 +400,10 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     [LoggerMessage(EventId = 3, Level = LogLevel.Error,
         Message = "Async command '{Command}' dispatch threw")]
     partial void LogAsyncDispatchThrew(Exception ex, string command);
+
+    [LoggerMessage(EventId = 6, Level = LogLevel.Error,
+        Message = "Async command '{Command}' dispatch rejected: {Reason}")]
+    partial void LogAsyncDispatchRejected(string command, object? reason);
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Error,
         Message = "Push-drain of completions for '{Command}' failed")]

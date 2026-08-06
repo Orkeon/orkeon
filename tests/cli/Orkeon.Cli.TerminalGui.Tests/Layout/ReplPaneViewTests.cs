@@ -48,6 +48,49 @@ public class ReplPaneViewTests
     }
 
     [Fact]
+    public async Task A_line_submitted_before_any_read_is_delivered_to_the_next_read()
+    {
+        // The input field is live from the first frame, but the runner only starts reading
+        // after its (slow) startup script load. A line typed in that window used to be
+        // echoed to the transcript and then silently DROPPED — the live "que fait-on ?"
+        // incident: nothing ever happened. Type-ahead must buffer it instead.
+        using var pane = CreatePane();
+
+        pane.CurrentInput = "que fait-on ?";
+        pane.RaiseKeyDown(new Key(KeyCode.Enter)); // no ReadLineAsync outstanding
+
+        var result = await pane.ReadLineAsync(CancellationToken.None);
+        Assert.Equal("que fait-on ?", result);
+    }
+
+    [Fact]
+    public async Task Buffered_type_ahead_lines_are_delivered_in_fifo_order()
+    {
+        using var pane = CreatePane();
+
+        pane.CurrentInput = "first";
+        pane.RaiseKeyDown(new Key(KeyCode.Enter));
+        pane.CurrentInput = "second";
+        pane.RaiseKeyDown(new Key(KeyCode.Enter));
+
+        Assert.Equal("first", await pane.ReadLineAsync(CancellationToken.None));
+        Assert.Equal("second", await pane.ReadLineAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task A_live_read_still_wins_over_the_type_ahead_buffer_for_new_lines()
+    {
+        // Once a read is outstanding, a submitted line goes straight to it (no buffering).
+        using var pane = CreatePane();
+        var task = pane.ReadLineAsync(CancellationToken.None);
+
+        pane.CurrentInput = "direct";
+        pane.RaiseKeyDown(new Key(KeyCode.Enter));
+
+        Assert.Equal("direct", await task);
+    }
+
+    [Fact]
     public async Task ReadLineAsync_returns_null_when_canceled()
     {
         using var pane = CreatePane();
