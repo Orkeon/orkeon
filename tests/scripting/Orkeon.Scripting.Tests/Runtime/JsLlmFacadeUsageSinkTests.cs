@@ -133,6 +133,24 @@ public sealed class JsLlmFacadeUsageSinkTests
     }
 
     [Fact]
+    public async Task Extract_reports_the_paid_tokens_even_when_the_parse_throws()
+    {
+        // The emission sits BEFORE the JSON parse (design-review pin): a provider
+        // that answers prose makes extract throw, but the tokens were paid and must
+        // be counted regardless.
+        using var engine = new Engine();
+        var sink = new RecordingUsageSink();
+        var facade = Facade(engine, new ScriptedProvider(WithUsage("this is not JSON", 80, 8)), sink);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => facade.extract("shape this", Jint.Native.JsValue.Undefined, null));
+
+        var e = Assert.Single(sink.Events);
+        Assert.Equal("extract", e.OperationType);
+        Assert.Equal(80, e.PromptTokens);
+    }
+
+    [Fact]
     public async Task A_response_with_no_usage_at_all_reports_nothing()
     {
         // "No usage" and "zero tokens" must not read the same way — same contract as

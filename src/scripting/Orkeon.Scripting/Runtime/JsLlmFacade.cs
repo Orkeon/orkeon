@@ -96,7 +96,11 @@ public sealed partial class JsLlmFacade
                 PromptTokens = prompt,
                 // Providers that report only a grand total leave the split null; the
                 // remainder keeps PromptTokens + CompletionTokens == TokensUsed (the
-                // sum is what ICostBudgetManager aggregates as TotalTokens).
+                // sum is what ICostBudgetManager aggregates as TotalTokens). Known
+                // bias: the pricing registry then charges that whole total at the
+                // OUTPUT rate — a deliberate upper bound (a budget trips too early,
+                // never too late), but an overestimate for cost REPORTING on
+                // split-less providers.
                 CompletionTokens = response.CompletionTokens ?? Math.Max(0, response.TokensUsed - prompt),
                 OperationType = method,
             });

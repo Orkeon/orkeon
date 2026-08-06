@@ -59,8 +59,11 @@ New Application port `ILlmUsageSink` (mirror of `ILlmDeltaSink`, same plumbing c
 `complete`, `chat`, `extract`, `decide`, `stream` (both variants), and each `act`
 iteration (buffered or streamed, counted exactly once) — reports a `CostUsageEvent`
 carrying crew/agent/provider/model and the token split (a total-only response lands on
-`CompletionTokens` so `Prompt + Completion == TokensUsed`; a response with no usage at
-all reports nothing — "no usage" ≠ "zero tokens"). Nothing fed `ICostBudgetManager`
+`CompletionTokens` so `Prompt + Completion == TokensUsed` — the pricing registry then
+prices that total at the output rate, a deliberate upper bound: conservative for
+budgets, an overestimate for cost reporting on split-less providers; a response with
+no usage at all reports nothing — "no usage" ≠ "zero tokens"). `extract` reports
+before its JSON parse, so a prose reply that throws still counts the paid tokens. Nothing fed `ICostBudgetManager`
 before this: the REPL's session token readout summed an event stream no one produced.
 `AddScriptCommands` registers `InstanceAttributingUsageSink`, which forwards to the
 cost manager (fixing that readout and `/cost`) AND credits the `CommandInstance`
