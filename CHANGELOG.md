@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `ActOptions.system`: a real system prompt for scripted `act()` agents
+
+`ctx.llm.act(prompt, { system })` now seeds a `role:"system"` message as the first
+message of the tool-calling conversation (re-sent on every loop iteration). Until now
+`act()` always sent a single user message, so a scripted agent could not have a system
+prompt at all — identity and tool policy travelled inside the user turn with user-level
+authority (the same authority as tool results, which also come back as user turns), and
+the providers' native system handling (Anthropic top-level `system`, `cache_control`;
+`PrependConfiguredSystemMessage` on the OpenAI-compatible providers) never fired. The
+conversation-level message wins over `LlmConfig.SystemMessage` on every provider; the
+option omitted keeps the historical single-user-message shape byte for byte.
+(`JsLlmFacade.ResolveSystem`, `Typings/context.d.ts`.)
+
 ### Added — hybrid code search + edit↔search freshness in the RaggableTree (RAG×Tree)
 
 `codebase_search` (and `IRaggableStore.SemanticSearchAsync`) fuses an embedding cosine

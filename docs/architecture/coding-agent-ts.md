@@ -48,10 +48,17 @@ before evaluation — the `ScriptHost` pre-execution hook). Crews read `globalTh
 
 ## The interactive loop (`main-loop`)
 
-The loop is an agent whose **`.body()` is the loop**: it calls `ctx.llm.act(prompt)`, which
+The loop is an agent whose **`.body()` is the loop**: it calls `ctx.llm.act(prompt, opts)`, which
 runs the LLM ⇄ tool-calling cycle over the agent's tool catalogue. It is launched as a crew
 (`runCrewAsync("main-loop", { prompt, permissionMode })`) — *not* via `onCommand`, which has
 no `ctx`. Conversation continuity across runs comes from the singleton `ISessionBufferService`.
+
+`ActOptions.system` seeds a **real `role:"system"` message** ahead of the user prompt
+(persisting across every iteration of the tool loop). Without it, `act()` sends a single
+user message — which is how scripted agents ran until this option existed: identity and
+tool policy travelled with user-level authority, and the providers' native system handling
+(Anthropic top-level `system`, `cache_control`) never fired. A conversation-level system
+message wins over `LlmConfig.SystemMessage` on every provider.
 
 Permission gate (v1): read tools are always allowed; `file_write` and `shell_command` are
 wrapped (via `withAutonomousTool`) so **`plan` mode refuses them** (read-only). Interactive

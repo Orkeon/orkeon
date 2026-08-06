@@ -97,6 +97,13 @@ declare global {
         /** Maximum number of tool-call iterations. Default: 10. `0` or `Infinity` = unlimited. */
         maxIterations?: number;
         /**
+         * System prompt seeded as the first message of the tool-call conversation.
+         * Wins over any `SystemMessage` set in the provider configuration (the
+         * conversation-level message has precedence on every provider). Omitted:
+         * the conversation starts with the user prompt alone, as before.
+         */
+        system?: string;
+        /**
          * Permission mode gating each autonomous tool call (when the host registered a
          * permission gate). Default: "default" (ask; denied in non-interactive sessions).
          */

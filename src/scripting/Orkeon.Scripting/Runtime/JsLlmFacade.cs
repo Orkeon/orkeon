@@ -444,7 +444,14 @@ public sealed partial class JsLlmFacade
         var baseCfg = ConfigFrom(options) ?? _provider.BaseConfig ?? LlmConfig.Default();
         var toolSchemas = _tools.Count > 0 ? _tools.Select(t => t.Schema).ToList() : null;
 
-        var messages = new List<LlmMessage> { new() { Role = "user", Content = prompt } };
+        // A conversation-level system message wins over any LlmConfig.SystemMessage fallback
+        // (OpenAICompatibleProviderBase.PrependConfiguredSystemMessage / Anthropic
+        // SeparateSystemMessages both give the in-list message precedence).
+        var system = ResolveSystem(options);
+        var messages = new List<LlmMessage>(capacity: 2);
+        if (system is not null)
+            messages.Add(LlmMessage.System(system));
+        messages.Add(new LlmMessage { Role = "user", Content = prompt });
 
         var completedIterations = 0;
         try
@@ -672,6 +679,18 @@ public sealed partial class JsLlmFacade
         if (options is null || options.IsUndefined() || options.IsNull()) return "default";
         var raw = options.Get("permissionMode");
         return raw.IsString() && !string.IsNullOrWhiteSpace(raw.AsString()) ? raw.AsString() : "default";
+    }
+
+    /// <summary>
+    /// Reads the <c>system</c> act option: the system prompt seeded as the first message of
+    /// the tool-call conversation. <c>null</c> (the default) keeps the historical single
+    /// user-message shape byte for byte.
+    /// </summary>
+    private static string? ResolveSystem(JsValue? options)
+    {
+        if (options is null || options.IsUndefined() || options.IsNull()) return null;
+        var raw = options.Get("system");
+        return raw.IsString() && !string.IsNullOrWhiteSpace(raw.AsString()) ? raw.AsString() : null;
     }
 
     private static int ResolveMaxIterations(JsValue? options)
