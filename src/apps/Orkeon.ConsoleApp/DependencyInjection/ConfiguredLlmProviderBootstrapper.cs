@@ -9,7 +9,7 @@ namespace Orkeon.ConsoleApp.DependencyInjection;
 
 /// <summary>
 /// Registers an <see cref="ILlmProvider"/> built from the <c>Llm</c> configuration section
-/// (Model / BaseUrl / ApiKey / Temperature / MaxTokens / TimeoutSeconds).
+/// (Model / BaseUrl / ApiKey / Temperature / MaxTokens / TimeoutSeconds / MaxRetries).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -69,6 +69,7 @@ internal static class ConfiguredLlmProviderBootstrapper
             Temperature = section.GetValue("Temperature", defaults.Temperature),
             MaxTokens = section.GetValue("MaxTokens", defaults.MaxTokens),
             TimeoutSeconds = section.GetValue("TimeoutSeconds", defaults.TimeoutSeconds),
+            MaxRetries = Math.Max(0, section.GetValue("MaxRetries", defaults.MaxRetries)),
             Thinking = ReadThinkingConfig(section),
         };
 #pragma warning restore CS0618

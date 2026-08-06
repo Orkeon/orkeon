@@ -96,8 +96,9 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         Logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
         // The retry budget comes from Llm:MaxRetries (default 10); the hook reads RetryObserver
         // at fire time, so a host wiring the observer after construction is still seen.
+        // Clamped: Polly rejects a negative retry count at construction.
         ResiliencePolicy = resiliencePolicy ?? ResiliencePolicies.GetLlmApiPolicy(
-            Logger, config.MaxRetries,
+            Logger, Math.Max(0, config.MaxRetries),
             onRetry: (attempt, delay, reason) => NotifyRetryScheduled(attempt, delay, reason));
 
         JsonOptions = new JsonSerializerOptions
@@ -609,8 +610,12 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
 
     private static TimeSpan StreamingBackoff(int attempt)
     {
-        var computed = TimeSpan.FromMilliseconds(StreamingRetryBaseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
-        return computed <= StreamingRetryAfterCap ? computed : StreamingRetryAfterCap;
+        // Cap in double space BEFORE converting: 2^(n−1) ms overflows TimeSpan for a large
+        // configured budget.
+        var ms = StreamingRetryBaseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1);
+        return ms >= StreamingRetryAfterCap.TotalMilliseconds
+            ? StreamingRetryAfterCap
+            : TimeSpan.FromMilliseconds(ms);
     }
 
     /// <summary>Server-provided Retry-After delta when present, capped so an interactive turn never parks for minutes.</summary>

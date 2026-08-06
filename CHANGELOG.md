@@ -14,7 +14,12 @@ BOTH HTTP paths: the buffered Polly policy (`GetLlmApiPolicy`, previously hardco
 5) and the streaming connect-phase loop (previously hardcoded at 3 attempts). Default
 raised from 3/5 to **10** (`LlmDefaults.DefaultMaxRetries`) with every wait capped at
 30 s (`ResiliencePolicies.LlmRetryDelay` — linear ×1/×2, then ×3 exponential, capped),
-so the ladder degrades to a bounded cadence instead of 3⁸ seconds.
+so the ladder degrades to a bounded cadence instead of 3⁸ seconds. Both config-binding
+hosts read the key (`ConfiguredLlmProviderBootstrapper` for the ConsoleApp REPL,
+`RunnerHost` for runner hosts), clamped at 0; the cap is applied before the `TimeSpan`
+conversion (an arbitrarily large configured budget never overflows mid-retry) and a
+server `Retry-After` is now capped at the same 30 s on the buffered path, matching the
+streaming path.
 
 What makes a 10-retry budget acceptable on an interactive turn is that it is now
 VISIBLE: a new `ILlmRetryObserver` port (Application) receives every scheduled retry

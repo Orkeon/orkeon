@@ -149,7 +149,11 @@ public static class ResiliencePolicies
                     var reason = outcome.Result?.StatusCode.ToString() ?? outcome.Exception?.Message ?? "Error";
                     if (outcome.Result?.Headers.RetryAfter?.Delta != null)
                     {
+                        // Capped like the streaming path's Retry-After: an interactive turn
+                        // never parks for minutes on a server-suggested wait.
                         var retryAfter = outcome.Result.Headers.RetryAfter.Delta.Value;
+                        if (retryAfter > ResilienceDefaults.DefaultRetryMaxDelay)
+                            retryAfter = ResilienceDefaults.DefaultRetryMaxDelay;
                         ResiliencePoliciesLog.LogLlmApiRateLimited(safeLogger, retryAfter.TotalSeconds);
                         onRetry?.Invoke(retryCount, timespan + retryAfter, reason);
                         await System.Threading.Tasks.Task.Delay(retryAfter).ConfigureAwait(false);
@@ -170,10 +174,14 @@ public static class ResiliencePolicies
     /// </summary>
     public static TimeSpan LlmRetryDelay(int retryAttempt, TimeSpan baseDelay)
     {
-        var computed = retryAttempt > 2
-            ? TimeSpan.FromSeconds(baseDelay.TotalSeconds * Math.Pow(3, retryAttempt - 2))
-            : TimeSpan.FromSeconds(baseDelay.TotalSeconds * retryAttempt);
-        return computed <= ResilienceDefaults.DefaultRetryMaxDelay ? computed : ResilienceDefaults.DefaultRetryMaxDelay;
+        // Cap in double space BEFORE converting: 3^(n−2) seconds overflows TimeSpan around
+        // retry 27, and a caller-configured budget is unbounded.
+        var seconds = retryAttempt > 2
+            ? baseDelay.TotalSeconds * Math.Pow(3, retryAttempt - 2)
+            : baseDelay.TotalSeconds * retryAttempt;
+        return seconds >= ResilienceDefaults.DefaultRetryMaxDelay.TotalSeconds
+            ? ResilienceDefaults.DefaultRetryMaxDelay
+            : TimeSpan.FromSeconds(seconds);
     }
 }
 

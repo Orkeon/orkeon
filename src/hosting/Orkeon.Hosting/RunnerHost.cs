@@ -344,6 +344,8 @@ public static class RunnerHost
             TimeoutSeconds = int.TryParse(llmSection["TimeoutSeconds"], out var ts) ? ts : 30,
             Thinking = ReadThinkingConfig(llmSection),
         };
+        if (int.TryParse(llmSection["MaxRetries"], out var maxRetries))
+            llmConfig = llmConfig with { MaxRetries = Math.Max(0, maxRetries) };
 
         services.AddSingleton<IBasicLlmProvider>(sp =>
         {

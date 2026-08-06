@@ -279,6 +279,18 @@ public sealed class ResiliencePoliciesTests : IDisposable
     }
 
     [Fact]
+    public void ShouldStayCapped_WhenTheLadderWouldOverflowTimeSpan()
+    {
+        // Llm:MaxRetries is user-configured and unbounded: 3^(n−2) seconds exceeds
+        // TimeSpan.MaxValue around retry 27 — the cap must apply BEFORE the TimeSpan
+        // conversion, never throw OverflowException mid-retry.
+        var baseDelay = TimeSpan.FromSeconds(1);
+
+        Assert.Equal(TimeSpan.FromSeconds(30), ResiliencePolicies.LlmRetryDelay(50, baseDelay));
+        Assert.Equal(TimeSpan.FromSeconds(30), ResiliencePolicies.LlmRetryDelay(int.MaxValue, baseDelay));
+    }
+
+    [Fact]
     public async Task ShouldNotifyTheHook_WhenGetLlmApiPolicyRetries()
     {
         // The onRetry hook is what feeds ILlmRetryObserver (the "reconnecting…" banner).
