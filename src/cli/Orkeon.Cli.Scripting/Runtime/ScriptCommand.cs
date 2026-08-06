@@ -38,6 +38,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     private readonly CompletionDrainQueue _drainQueue;
     private readonly ScriptServiceLocator _services;
     private readonly CommandDispatchService? _dispatch;
+    private readonly Progress.ProgressBroker? _progress;
     private readonly ILogger _logger;
 
     // Per-command admission quota (design §5). Non-null only for async commands declaring
@@ -57,6 +58,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         var services = hostServices ?? ScriptCommandServices.Empty;
         _services = services.Services ?? ScriptServiceLocator.Empty;
         _dispatch = services.Dispatch;
+        _progress = services.Progress;
         _logger = services.Logger ?? NullLogger.Instance;
         _admissionGate = _descriptor.MaxConcurrent is { } max ? new SemaphoreSlim(max, max) : null;
     }
@@ -293,7 +295,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             command: new CommandMeta(_descriptor.Name, _descriptor.Name),
             ct: ct,
             logger: _logger,
-            services: _services);
+            services: _services,
+            progressBroker: _progress);
         return ContextBinding.Push(_engine, runtimeCtx);
     }
 
@@ -415,5 +418,6 @@ public sealed record ScriptCommandServices
 
     public ScriptServiceLocator? Services { get; init; }
     public CommandDispatchService? Dispatch { get; init; }
+    public Progress.ProgressBroker? Progress { get; init; }
     public ILogger? Logger { get; init; }
 }

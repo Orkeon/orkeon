@@ -19,6 +19,7 @@ public sealed class StatusLineView : View
     private readonly IUiDispatcher _dispatcher;
     private readonly TimeProvider _clock;
     private readonly GlyphSet _glyphs;
+    private readonly IReadOnlyList<string>? _bootVerbs;
     private object? _timerToken;
     private IInteractiveRunner? _runner;
     private TuiIntegration? _integration;
@@ -39,6 +40,7 @@ public sealed class StatusLineView : View
         ArgumentNullException.ThrowIfNull(options);
         _dispatcher = dispatcher;
         _clock = clock;
+        _bootVerbs = options.SpinnerVerbs;
         _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
         Height = 1;
         Width = Dim.Fill();
@@ -90,11 +92,22 @@ public sealed class StatusLineView : View
         }
         _wasRunning = running;
 
+        // A live progress snapshot wins over the generic turn readout — and also covers
+        // background crews (compaction, indexing), whose work runs detached from the
+        // runner's IsCommandRunning.
+        if (ReadProgress() is { } progress)
+        {
+            var progressElapsed = _clock.GetUtcNow() - progress.StartedAt;
+            return StatusLineFormatter.ComposeProgress(
+                _glyphs, progress.Label, progress.Ratio, progress.Message, progressElapsed,
+                head: StatusLineFormatter.SpinnerFrame(_glyphs, progressElapsed));
+        }
+
         if (!running) return string.Empty;
 
         var started = _turnStartedAt ?? _clock.GetUtcNow().UtcDateTime;
         var elapsed = _clock.GetUtcNow().UtcDateTime - started;
-        var gerund = StatusLineFormatter.GerundFor(started.Ticks);
+        var gerund = StatusLineFormatter.VerbFor(started.Ticks, elapsed, ReadSpinnerVerbs());
 
         long? tokens = ReadSessionTokens() is { } total
             ? Math.Max(0, total - _tokensAtTurnStart)
@@ -105,7 +118,36 @@ public sealed class StatusLineView : View
             : _deltasFlowing ? TurnState.Streaming
             : TurnState.Working;
 
-        return StatusLineFormatter.Compose(_glyphs, gerund, elapsed, tokens, state);
+        return StatusLineFormatter.Compose(_glyphs, gerund, elapsed, tokens, state,
+            head: StatusLineFormatter.SpinnerFrame(_glyphs, elapsed));
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing progress provider degrades to no bar, never crashes the UI timer.")]
+    private ProgressInfo? ReadProgress()
+    {
+        try
+        {
+            return _integration?.Progress?.Invoke();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing verbs provider degrades to the boot list or the built-in gerunds, never crashes the UI timer.")]
+    private IReadOnlyList<string>? ReadSpinnerVerbs()
+    {
+        try
+        {
+            // Live setting first (/config set spinnerVerbs …), boot-time options second;
+            // VerbFor falls back to the built-in gerunds when both are absent.
+            return _integration?.SpinnerVerbs?.Invoke() is { Count: > 0 } live ? live : _bootVerbs;
+        }
+        catch
+        {
+            return _bootVerbs;
+        }
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing token provider degrades the readout to omission, never crashes the UI timer.")]
@@ -126,7 +168,10 @@ public sealed class StatusLineView : View
         if (_timerToken is not null) return;
         try
         {
-            _timerToken = Application.AddTimeout(TimeSpan.FromSeconds(1), () =>
+            // Quarter-second, not 1 Hz: the spinner frames and the progress bar are the
+            // animation — at 1 Hz they read as frozen. The recompute is a few string
+            // concatenations over already-polled state, so the extra ticks stay cheap.
+            _timerToken = Application.AddTimeout(TimeSpan.FromMilliseconds(250), () =>
             {
                 _label.Text = ComposeText();
                 return true;

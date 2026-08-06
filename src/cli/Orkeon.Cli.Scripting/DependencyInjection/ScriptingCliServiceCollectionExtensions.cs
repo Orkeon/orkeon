@@ -8,6 +8,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Cli.Scripting.Configuration;
 using Orkeon.Cli.Scripting.Dispatch;
 using Orkeon.Cli.Scripting.Loading;
+using Orkeon.Cli.Scripting.Progress;
 using Orkeon.Cli.Scripting.Registry;
 using Orkeon.Cli.Scripting.Runtime;
 using Orkeon.Domain.FileSystem;
@@ -125,6 +126,14 @@ public static class ScriptingCliServiceCollectionExtensions
                 : PassThroughTranspiler.Instance;
         });
 
+        // Progress substrate: the broker every reporter publishes to (ctx.progress handles,
+        // the progress_report tool, framework hooks) and every renderer polls (TUI status
+        // line). The tool rides the same IBaseTool enumeration as the built-in tools, so it
+        // reaches command AND crew engines through the JsEngineFactory below.
+        services.TryAddSingleton<ProgressBroker>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<Orkeon.Domain.Tools.IBaseTool, ProgressReportTool>(
+            sp => new ProgressReportTool(sp.GetRequiredService<ProgressBroker>())));
+
         // Command-dispatch substrate (design §8). A singleton so the agent that registers
         // (onCommand) and the command that dispatches share one channel/directory/registry,
         // even across different Jint engines. The substrate owns a dedicated in-memory channel
@@ -137,7 +146,8 @@ public static class ScriptingCliServiceCollectionExtensions
                 channel,
                 new AgentCommandDirectory(),
                 new CommandInstanceRegistry(),
-                lf.CreateLogger<CommandDispatchService>());
+                lf.CreateLogger<CommandDispatchService>(),
+                sp.GetService<ProgressBroker>());
         });
 
         // The loader needs a live service locator (so ctx.services.get("commands") resolves)
@@ -157,6 +167,7 @@ public static class ScriptingCliServiceCollectionExtensions
                     LoggerFactory = sp.GetService<ILoggerFactory>(),
                     Services = locator,
                     Dispatch = sp.GetService<CommandDispatchService>(),
+                    Progress = sp.GetService<ProgressBroker>(),
                 });
         });
 

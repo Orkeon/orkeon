@@ -1,4 +1,5 @@
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Core;
 
@@ -22,6 +23,12 @@ public sealed record RaggableEnrichmentServices
 
     /// <summary>Optional vector store that persists embedded nodes.</summary>
     public IVectorStoreProvider? VectorStore { get; init; }
+
+    /// <summary>
+    /// Optional sink notified as a full build advances (phase + per-file counters).
+    /// Null — the default — costs nothing; a host wires it to drive a progress display.
+    /// </summary>
+    public IProgress<IndexBuildProgress>? BuildProgress { get; init; }
 
     /// <summary>An instance with no enrichment collaborators configured.</summary>
     public static RaggableEnrichmentServices None { get; } = new();

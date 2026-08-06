@@ -20,6 +20,7 @@ public sealed class RaggableTreeBuilder
     private readonly INodeSummarizer _summarizer;
     private readonly IEmbeddingProvider? _embedder;
     private readonly IVectorStoreProvider? _vectorStore;
+    private readonly IProgress<IndexBuildProgress>? _buildProgress;
 
     public RaggableTreeBuilder(ILanguageAdapter adapter, IFileSystemService fileSystem)
         : this(
@@ -58,6 +59,7 @@ public sealed class RaggableTreeBuilder
         _summarizer = enrichment.Summarizer ?? NullNodeSummarizer.Instance;
         _embedder = enrichment.Embedder;
         _vectorStore = enrichment.VectorStore;
+        _buildProgress = enrichment.BuildProgress;
 
         var map = new Dictionary<string, ILanguageAdapter>(StringComparer.OrdinalIgnoreCase);
         foreach (var adapter in adapters)
@@ -85,6 +87,7 @@ public sealed class RaggableTreeBuilder
         CancellationToken ct)
     {
         // Phase 1 — Discover (RootPath is a virtual path, resolved by FileSystemDiscoverer via VFS)
+        _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Discovery, 0, 0));
         var discoveryRequest = new DiscoveryRequest
         {
             RootPath = virtualRoot,
@@ -102,9 +105,11 @@ public sealed class RaggableTreeBuilder
 
         // Phase 2/3 — Parse + Extract per file
         var graphBuildersByLanguage = new Dictionary<string, DependencyGraphBuilder>(StringComparer.OrdinalIgnoreCase);
+        var fileIndex = 0;
         foreach (var file in discovery.Files)
         {
             ct.ThrowIfCancellationRequested();
+            _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Parse, ++fileIndex, discovery.Files.Length));
             if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) continue;
 
             var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
@@ -120,6 +125,7 @@ public sealed class RaggableTreeBuilder
         }
 
         // Phase 3b — Resolve dependencies per language
+        _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Resolve, 0, 0));
         var allEdges = new List<RaggableEdge>();
         foreach (var gb in graphBuildersByLanguage.Values)
         {
@@ -148,6 +154,7 @@ public sealed class RaggableTreeBuilder
 
         if (opts.EnrichWithLlm)
         {
+            _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Enrich, 0, 0));
             await _summarizer.SummarizeAsync(allNodes, index, ct).ConfigureAwait(false);
         }
 
@@ -155,6 +162,8 @@ public sealed class RaggableTreeBuilder
         _composer.ApplyToAll(allNodes, index);
 
         // Phase 5b — Embed (optional)
+        if (_embedder is not null)
+            _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Embed, 0, 0));
         var embeddingStats = await EmbedAndCollectStatsAsync(allNodes, opts, ct).ConfigureAwait(false);
 
         var tree = new RaggableTree(allNodes, allEdges, index);
@@ -162,6 +171,7 @@ public sealed class RaggableTreeBuilder
         // Phase 6 — Persist (optional)
         if (_vectorStore is not null)
         {
+            _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Persist, 0, 0));
             var documents = VectorDocumentFactory.FromTree(tree);
             if (documents.Count > 0)
             {

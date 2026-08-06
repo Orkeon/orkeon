@@ -3,6 +3,7 @@ using Jint.Native;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Cli.Abstractions.Console;
+using Orkeon.Cli.Scripting.Progress;
 
 namespace Orkeon.Cli.Scripting.Runtime;
 
@@ -22,6 +23,7 @@ public sealed class CommandRuntimeContext
     private readonly Engine _engine;
     private readonly IConsoleAdapter _console;
     private readonly CancellationToken _ct;
+    private readonly ProgressBroker? _progressBroker;
 
     public CommandRuntimeContext(
         Engine engine,
@@ -29,7 +31,8 @@ public sealed class CommandRuntimeContext
         CommandMeta command,
         CancellationToken ct,
         ILogger? logger = null,
-        ScriptServiceLocator? services = null)
+        ScriptServiceLocator? services = null,
+        ProgressBroker? progressBroker = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _console = console ?? throw new ArgumentNullException(nameof(console));
@@ -38,6 +41,7 @@ public sealed class CommandRuntimeContext
         _ct = ct;
         log = new JsLogShim(logger ?? NullLogger.Instance);
         this.services = services ?? ScriptServiceLocator.Empty;
+        _progressBroker = progressBroker;
     }
 
     /// <summary>Metadata of the command being invoked (name + raw input line).</summary>
@@ -81,7 +85,7 @@ public sealed class CommandRuntimeContext
             throw new ArgumentException("ctx.progress(spec): 'label' must be a string.");
         var totalVal = obj.Get("total");
         int? total = totalVal.IsNumber() ? (int)totalVal.AsNumber() : null;
-        return new ProgressHandle(_console, labelVal.AsString(), total);
+        return new ProgressHandle(_console, labelVal.AsString(), total, _progressBroker);
     }
 
     /// <summary>

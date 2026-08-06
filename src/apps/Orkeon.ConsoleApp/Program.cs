@@ -212,6 +212,11 @@ static class Program
             Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.LocalSmartComponents },
         });
         services.AddRaggableTreeTools();
+        // Route index-build notifications into the CLI progress broker (status-line bar).
+        // The broker itself is registered by AddScriptCommands below; resolution is lazy.
+        services.AddSingleton<IProgress<Orkeon.Analysis.Abstractions.Models.IndexBuildProgress>>(sp =>
+            new Orkeon.ConsoleApp.Services.IndexProgressBrokerAdapter(
+                sp.GetRequiredService<Orkeon.Cli.Scripting.Progress.ProgressBroker>()));
 
         // Console adapter — replaced by TerminalGuiConsoleAdapter when --ui=tui (see below).
         // In plain mode on a real TTY we use the raw-mode line editor, which adds history,
@@ -260,6 +265,11 @@ static class Program
                 // Banner content comes from the configuration this host actually loaded —
                 // the TUI layer cannot (and must not) probe the LLM section itself.
                 Banner = Orkeon.ConsoleApp.Services.TuiFidelityWiring.BuildBannerInfo(context.Configuration),
+                // Boot-time spinner verbs (appsettings). The live /config layer, read via
+                // TuiIntegration.SpinnerVerbs, wins over this when set.
+                SpinnerVerbs = context.Configuration.GetSection("Orkeon:Cli:Tui:SpinnerVerbs")
+                    .GetChildren().Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v))
+                    .Select(v => v!).ToArray() is { Length: > 0 } verbs ? verbs : null,
             });
         }
     }

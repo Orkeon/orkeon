@@ -4,6 +4,7 @@ using Jint.Native;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Cli.Scripting.Progress;
 using Orkeon.Domain.Common;
 
 namespace Orkeon.Cli.Scripting.Dispatch;
@@ -33,6 +34,7 @@ public sealed partial class CommandDispatchService
     private readonly AgentCommandDirectory _directory;
     private readonly CommandInstanceRegistry _registry;
     private readonly ILogger _logger;
+    private readonly ProgressBroker? _progress;
     private readonly AgentId _cliAgentId = AgentId.Create();
 
     // Per-instance CTS for detached async work, so cancel(ticket) can interrupt an in-flight
@@ -45,12 +47,14 @@ public sealed partial class CommandDispatchService
         IAgentChannel channel,
         AgentCommandDirectory directory,
         CommandInstanceRegistry registry,
-        ILogger<CommandDispatchService>? logger = null)
+        ILogger<CommandDispatchService>? logger = null,
+        ProgressBroker? progress = null)
     {
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
         _directory = directory ?? throw new ArgumentNullException(nameof(directory));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _logger = logger ?? (ILogger)NullLogger.Instance;
+        _progress = progress;
     }
 
     /// <summary>The instance registry (used by built-in ps/inspect/result/cancel commands).</summary>
@@ -130,6 +134,9 @@ public sealed partial class CommandDispatchService
 
         _ = Task.Run(async () =>
         {
+            // Progress attribution: anything reporting inside this flow (a ProgressHandle,
+            // the progress_report tool) finds its owning instance ambiently.
+            ProgressAmbient.CurrentInstance = instance;
             try
             {
                 var response = await SendAsync(agentId, agent, intent, payload, correlationId, scope?.Timeout, cts.Token).ConfigureAwait(false);
@@ -147,6 +154,8 @@ public sealed partial class CommandDispatchService
             }
             finally
             {
+                ProgressAmbient.CurrentInstance = null;
+                _progress?.ClearTicket(instance.Ticket);
                 if (_asyncCts.TryRemove(instance.Ticket, out var owned)) owned.Dispose();
             }
         }, CancellationToken.None);
@@ -180,6 +189,9 @@ public sealed partial class CommandDispatchService
 
         _ = Task.Run(async () =>
         {
+            // Progress attribution: the crew body launched by this work reports through
+            // the progress_report tool, which reads the owning instance ambiently.
+            ProgressAmbient.CurrentInstance = instance;
             try
             {
                 var response = await work(cts.Token).ConfigureAwait(false);
@@ -197,6 +209,8 @@ public sealed partial class CommandDispatchService
             }
             finally
             {
+                ProgressAmbient.CurrentInstance = null;
+                _progress?.ClearTicket(instance.Ticket);
                 if (_asyncCts.TryRemove(instance.Ticket, out var owned)) owned.Dispose();
             }
         }, CancellationToken.None);

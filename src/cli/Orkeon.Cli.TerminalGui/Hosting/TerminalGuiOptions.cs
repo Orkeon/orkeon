@@ -43,4 +43,12 @@ public sealed record TerminalGuiOptions
 
     /// <summary>Unicode-vs-ASCII marker policy. Default <see cref="GlyphMode.Auto"/>.</summary>
     public GlyphMode Glyphs { get; init; } = GlyphMode.Auto;
+
+    /// <summary>
+    /// Boot-time spinner-verb rotation for the status line (the <c>spinnerVerbs</c>
+    /// setting; "thinking verbs" in the tweakcc vocabulary). Null/empty ⇒ the built-in
+    /// gerunds. A live value provided through <c>TuiIntegration.SpinnerVerbs</c>
+    /// (e.g. exp07's <c>/config set spinnerVerbs …</c>) wins over this.
+    /// </summary>
+    public IReadOnlyList<string>? SpinnerVerbs { get; init; }
 }

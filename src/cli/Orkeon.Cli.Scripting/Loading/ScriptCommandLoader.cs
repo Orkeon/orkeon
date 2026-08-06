@@ -40,6 +40,7 @@ public sealed partial class ScriptCommandLoader
     private readonly ILoggerFactory _loggerFactory;
     private readonly ScriptServiceLocator _services;
     private readonly Dispatch.CommandDispatchService? _dispatch;
+    private readonly Progress.ProgressBroker? _progress;
 
     public ScriptCommandLoader(
         IFileSystemService fileSystem,
@@ -58,6 +59,7 @@ public sealed partial class ScriptCommandLoader
         _logger = _loggerFactory.CreateLogger<ScriptCommandLoader>();
         _services = dependencies.Services ?? ScriptServiceLocator.Empty;
         _dispatch = dependencies.Dispatch;
+        _progress = dependencies.Progress;
     }
 
     /// <summary>
@@ -272,6 +274,7 @@ public sealed partial class ScriptCommandLoader
             {
                 Services = _services,
                 Dispatch = _dispatch,
+                Progress = _progress,
                 Logger = _loggerFactory.CreateLogger($"ScriptCommand:{t.Descriptor.Name}"),
             });
 
@@ -413,4 +416,5 @@ public sealed record ScriptCommandLoaderDependencies
     public ILoggerFactory? LoggerFactory { get; init; }
     public ScriptServiceLocator? Services { get; init; }
     public Dispatch.CommandDispatchService? Dispatch { get; init; }
+    public Progress.ProgressBroker? Progress { get; init; }
 }

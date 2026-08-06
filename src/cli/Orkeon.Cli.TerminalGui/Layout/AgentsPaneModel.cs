@@ -16,8 +16,10 @@ public static class AgentsPaneModel
     /// Formats one row into exactly <paramref name="width"/> columns (padded / truncated).
     /// The metric block is computed first so the description gets whatever room remains —
     /// on a narrow terminal it is the prose that gives way, never the numbers.
+    /// <paramref name="selected"/> swaps the leading space for the prompt chevron (the
+    /// pane's F4 selection cursor).
     /// </summary>
-    public static string FormatRow(GlyphSet glyphs, AgentRowInfo row, int width, int nameColumn)
+    public static string FormatRow(GlyphSet glyphs, AgentRowInfo row, int width, int nameColumn, bool selected = false)
     {
         ArgumentNullException.ThrowIfNull(glyphs);
         ArgumentNullException.ThrowIfNull(row);
@@ -27,7 +29,7 @@ public static class AgentsPaneModel
         var metrics = ComposeMetrics(glyphs, row);
 
         var name = row.Name.Length > nameColumn ? Truncate(row.Name, nameColumn) : row.Name.PadRight(nameColumn);
-        var left = $" {bullet} {name}  ";
+        var left = $"{(selected ? glyphs.Prompt : " ")} {bullet} {name}  ";
 
         var room = width - left.Length - metrics.Length - ColumnGap;
         var description = room > 0 ? Truncate(row.Description, room).PadRight(room) : string.Empty;
@@ -36,11 +38,32 @@ public static class AgentsPaneModel
         return line.Length > width ? line[..width] : line.PadRight(width);
     }
 
-    /// <summary>`idle` for a terminal row; `elapsed · ↓ tokens` otherwise, tokens `—` when unattributable.</summary>
+    /// <summary>
+    /// The metric block, by lifecycle: a terminal instance reads as what it became —
+    /// <c>✓ done · 2m 10s</c>, <c>✗ failed</c>, <c>⊘ cancelled</c> — never as <c>idle</c>
+    /// (the pre-status rendering collapsed every finished agent to <c>idle</c>, which is
+    /// what an operator reads as "stuck"). <c>idle</c> is reserved for rows with no
+    /// instance at all (<c>main</c> between turns); a running row keeps the live
+    /// <c>elapsed · ↓ tokens</c> pair, tokens <c>—</c> when unattributable.
+    /// </summary>
     public static string ComposeMetrics(GlyphSet glyphs, AgentRowInfo row)
     {
         ArgumentNullException.ThrowIfNull(glyphs);
         ArgumentNullException.ThrowIfNull(row);
+
+        switch (row.Status)
+        {
+            case "done":
+                var doneElapsed = row.Elapsed is { } de ? $" {glyphs.Dot} {StatusLineFormatter.FormatElapsed(de)}" : "";
+                return $"{glyphs.Check} done{doneElapsed}";
+            case "failed":
+                return $"{glyphs.Cross} failed";
+            case "cancelled":
+                return $"{glyphs.Slashed} cancelled";
+            case "rejected":
+                return $"{glyphs.Cross} rejected";
+        }
+
         if (row.IsIdle) return "idle";
 
         var elapsed = row.Elapsed is { } e ? StatusLineFormatter.FormatElapsed(e) : "";

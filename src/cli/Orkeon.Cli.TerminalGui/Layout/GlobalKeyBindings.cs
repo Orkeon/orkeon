@@ -67,10 +67,23 @@ public static class GlobalKeyBindings
             (k => IsCtrl(k, KeyCode.CursorDown), () => toplevel.SetSplitRatio(toplevel.CurrentSplitRatio - 0.05)),
             (k => k.KeyCode == Key.F2.KeyCode && !k.IsShift, () => ApplyLevel(MoreVerbose(logProvider.CurrentMinimumLevel))),
             (k => k.KeyCode == Key.F2.WithShift.KeyCode || (k.KeyCode == Key.F2.KeyCode && k.IsShift), () => ApplyLevel(LessVerbose(logProvider.CurrentMinimumLevel))),
+            // Agents-pane selection. F4, not Ctrl+A: the panes' select-all already owns
+            // Ctrl+A when focused, and a global handler fires before view dispatch.
+            (k => k.KeyCode == Key.F4.KeyCode, () => ToggleAgentSelection(toplevel)),
             // Fidelity bindings (hint bar contract):
             (k => k.KeyCode == Key.Tab.WithShift.KeyCode, () => CycleMode(toplevel, integration)),
             (k => IsBareEsc(k) && toplevel.Runner?.IsCommandRunning == true, () => Interrupt(toplevel, integration)),
         };
+
+        // Selection plumbing: Enter/double-click prints the instance detail into the
+        // transcript; leaving selection hands focus back to the prompt — the exact
+        // focus-thief scenario the pane's at-rest non-focusability guards against.
+        toplevel.Agents.RowActivated += (_, e) =>
+        {
+            var detail = SafeDescribe(integration, e.Ticket);
+            toplevel.Repl.AppendOutputLine(detail ?? $"[{e.Ticket}] no detail available.");
+        };
+        toplevel.Agents.SelectionExited += (_, _) => toplevel.Repl.Input?.SetFocus();
 
         Application.KeyDown += (_, key) =>
         {
@@ -97,6 +110,25 @@ public static class GlobalKeyBindings
     {
         integration?.CyclePermissionMode?.Invoke();
         toplevel.HintBar.Refresh();
+    }
+
+    private static void ToggleAgentSelection(SplitPaneToplevel toplevel)
+    {
+        if (toplevel.Agents.SelectionActive) toplevel.Agents.ExitSelectionMode();
+        else toplevel.Agents.EnterSelectionMode();
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing describer degrades to the no-detail line, never crashes key dispatch.")]
+    private static string? SafeDescribe(TuiIntegration? integration, string ticket)
+    {
+        try
+        {
+            return integration?.DescribeAgent?.Invoke(ticket);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static void Interrupt(SplitPaneToplevel toplevel, TuiIntegration? integration)

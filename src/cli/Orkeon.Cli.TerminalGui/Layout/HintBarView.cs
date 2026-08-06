@@ -27,6 +27,7 @@ public sealed class HintBarView : View
     private IInteractiveRunner? _runner;
     private TuiIntegration? _integration;
     private bool _agentsAvailable;
+    private Func<bool>? _agentsHasRows;
     private bool _configUsable;
     private object? _timerToken;
 
@@ -57,14 +58,24 @@ public sealed class HintBarView : View
         Add(_posture, _hints, _witness);
     }
 
-    /// <summary>Wires the sources and starts the 1 Hz refresh (contextual entries track the turn).</summary>
-    public void Bind(IInteractiveRunner runner, TuiIntegration integration, bool agentsAvailable, bool configUsable)
+    /// <summary>
+    /// Wires the sources and starts the 1 Hz refresh (contextual entries track the turn).
+    /// <paramref name="agentsHasRows"/> makes the agents hint honest: "f4 agents" only
+    /// shows while the pane actually has rows to select.
+    /// </summary>
+    public void Bind(
+        IInteractiveRunner runner,
+        TuiIntegration integration,
+        bool agentsAvailable,
+        bool configUsable,
+        Func<bool>? agentsHasRows = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
         ArgumentNullException.ThrowIfNull(integration);
         _runner = runner;
         _integration = integration;
         _agentsAvailable = agentsAvailable;
+        _agentsHasRows = agentsHasRows;
         _configUsable = configUsable;
         StartTimer();
         Refresh();
@@ -84,7 +95,8 @@ public sealed class HintBarView : View
             mode = "default";
         }
         var running = _runner?.IsCommandRunning == true;
-        var segments = HintBarModel.LeftSegments(mode, running, _agentsAvailable);
+        var agents = _agentsAvailable && (_agentsHasRows?.Invoke() ?? true);
+        var segments = HintBarModel.LeftSegments(mode, running, agents);
 
         var postureText = $" {_glyphs.Chevrons} {segments[0]}";
         var rest = segments.Count > 1

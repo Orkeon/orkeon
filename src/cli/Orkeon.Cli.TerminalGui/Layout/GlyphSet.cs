@@ -53,6 +53,24 @@ public sealed record GlyphSet
     /// <summary>Interpunct separating hint-bar and metric segments (`·`).</summary>
     public required string Dot { get; init; }
 
+    /// <summary>Filled cell of the status-line progress bar (`▰`).</summary>
+    public required string BarFilled { get; init; }
+
+    /// <summary>Empty cell of the status-line progress bar (`▱`).</summary>
+    public required string BarEmpty { get; init; }
+
+    /// <summary>Spinner animation frames, cycled while a turn or operation runs.</summary>
+    public required IReadOnlyList<string> SpinnerFrames { get; init; }
+
+    /// <summary>Completion check for terminal agent rows (`✓`).</summary>
+    public required string Check { get; init; }
+
+    /// <summary>Failure cross for terminal agent rows (`✗`).</summary>
+    public required string Cross { get; init; }
+
+    /// <summary>Cancellation marker for terminal agent rows (`⊘`).</summary>
+    public required string Slashed { get; init; }
+
     /// <summary>The Unicode variant — what the reference captures show.</summary>
     public static GlyphSet Unicode { get; } = new()
     {
@@ -65,6 +83,12 @@ public sealed record GlyphSet
         RuleCell = "─",
         Down = "↓",
         Dot = "·",
+        BarFilled = "▰",
+        BarEmpty = "▱",
+        SpinnerFrames = ["✢", "✳", "✶", "✻"],
+        Check = "✓",
+        Cross = "✗",
+        Slashed = "⊘",
     };
 
     /// <summary>The ASCII fallback — every marker stays one column wide and 7-bit.</summary>
@@ -79,6 +103,12 @@ public sealed record GlyphSet
         RuleCell = "-",
         Down = "v",
         Dot = "-",
+        BarFilled = "=",
+        BarEmpty = "-",
+        SpinnerFrames = ["|", "/", "-", "\\"],
+        Check = "+",
+        Cross = "x",
+        Slashed = "-",
     };
 
     /// <summary>Resolves the set for a mode and an observed UTF-8 capability.</summary>

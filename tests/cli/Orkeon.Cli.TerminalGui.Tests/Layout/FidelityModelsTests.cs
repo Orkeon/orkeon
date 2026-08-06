@@ -27,12 +27,16 @@ public class GlyphSetTests
     {
         // The whole point of the fallback: a non-UTF-8 console must never receive a
         // multi-byte marker in the pane an operator reads to debug.
-        foreach (var s in new[]
+        var markers = new List<string>
         {
             GlyphSet.Ascii.Prompt, GlyphSet.Ascii.Bullet, GlyphSet.Ascii.BulletHollow,
             GlyphSet.Ascii.Asterisk, GlyphSet.Ascii.Recap, GlyphSet.Ascii.Chevrons,
             GlyphSet.Ascii.RuleCell, GlyphSet.Ascii.Down, GlyphSet.Ascii.Dot,
-        })
+            GlyphSet.Ascii.BarFilled, GlyphSet.Ascii.BarEmpty,
+            GlyphSet.Ascii.Check, GlyphSet.Ascii.Cross, GlyphSet.Ascii.Slashed,
+        };
+        markers.AddRange(GlyphSet.Ascii.SpinnerFrames);
+        foreach (var s in markers)
         {
             Assert.All(s, c => Assert.True(c < 128, $"non-ASCII char in fallback: '{c}'"));
         }
@@ -136,6 +140,78 @@ public class StatusLineFormatterTests
         Assert.Equal(StatusLineFormatter.GerundFor(42), StatusLineFormatter.GerundFor(42));
         Assert.All(StatusLineFormatter.Gerunds, g => Assert.False(string.IsNullOrWhiteSpace(g)));
     }
+
+    [Fact]
+    public void Compose_animated_head_replaces_the_asterisk()
+    {
+        var line = StatusLineFormatter.Compose(
+            GlyphSet.Unicode, "Working", TimeSpan.FromSeconds(8), head: "✶");
+        Assert.Equal("✶ Working… (8s)", line);
+    }
+
+    [Fact]
+    public void ComposeProgress_with_ratio_renders_the_capture_bar()
+    {
+        // ▰▰▰▱▱▱▱▱▱▱ 34% — bar floors (0.349 → 3 cells / 34%): a bar that overstates
+        // progress reads as stalled near the end, understating never does.
+        var line = StatusLineFormatter.ComposeProgress(
+            GlyphSet.Unicode, "Compacting conversation", 0.349, message: null,
+            elapsed: TimeSpan.FromSeconds(12));
+        Assert.Equal("✱ Compacting conversation… ▰▰▰▱▱▱▱▱▱▱ 34% (12s)", line);
+    }
+
+    [Fact]
+    public void ComposeProgress_without_ratio_shows_elapsed_and_message()
+    {
+        var line = StatusLineFormatter.ComposeProgress(
+            GlyphSet.Unicode, "Compacting conversation", ratio: null,
+            message: "extracting memories", elapsed: TimeSpan.FromSeconds(12));
+        Assert.Equal("✱ Compacting conversation… (12s · extracting memories)", line);
+    }
+
+    [Fact]
+    public void ComposeProgress_clamps_the_ratio()
+    {
+        var line = StatusLineFormatter.ComposeProgress(
+            GlyphSet.Unicode, "op", 1.7, null, TimeSpan.Zero);
+        Assert.Contains("▰▰▰▰▰▰▰▰▰▰ 100%", line, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VerbFor_uses_the_custom_rotation_and_advances_over_time()
+    {
+        // The spinnerVerbs setting (tweakcc's "thinking verbs"): stable within a
+        // rotation period, moving to the next verb afterwards so long turns stay alive.
+        string[] verbs = ["Reticulating", "Percolating"];
+        var early = StatusLineFormatter.VerbFor(0, TimeSpan.FromSeconds(1), verbs);
+        var stillEarly = StatusLineFormatter.VerbFor(0, TimeSpan.FromSeconds(14), verbs);
+        var later = StatusLineFormatter.VerbFor(0, TimeSpan.FromSeconds(16), verbs);
+
+        Assert.Equal(early, stillEarly);
+        Assert.NotEqual(early, later);
+        Assert.Contains(early, verbs);
+        Assert.Contains(later, verbs);
+    }
+
+    [Fact]
+    public void VerbFor_falls_back_to_the_gerunds_and_skips_blank_entries()
+    {
+        Assert.Contains(StatusLineFormatter.VerbFor(7, TimeSpan.Zero, null), StatusLineFormatter.Gerunds);
+        Assert.Contains(StatusLineFormatter.VerbFor(7, TimeSpan.Zero, []), StatusLineFormatter.Gerunds);
+        Assert.Equal("Real", StatusLineFormatter.VerbFor(0, TimeSpan.Zero, ["  ", "Real"]));
+    }
+
+    [Fact]
+    public void SpinnerFrame_cycles_a_step_per_quarter_second()
+    {
+        var f0 = StatusLineFormatter.SpinnerFrame(GlyphSet.Unicode, TimeSpan.Zero);
+        var f1 = StatusLineFormatter.SpinnerFrame(GlyphSet.Unicode, TimeSpan.FromMilliseconds(250));
+        var wrapped = StatusLineFormatter.SpinnerFrame(GlyphSet.Unicode, TimeSpan.FromMilliseconds(1000));
+
+        Assert.NotEqual(f0, f1);
+        Assert.Equal(f0, wrapped);
+        Assert.Contains(f0, GlyphSet.Unicode.SpinnerFrames);
+    }
 }
 
 public class HintBarModelTests
@@ -159,16 +235,15 @@ public class HintBarModelTests
     }
 
     [Fact]
-    public void No_manage_entry_is_advertised_yet()
+    public void Agents_entry_appears_only_while_the_pane_has_rows()
     {
-        // The agents pane is informational (not focusable — a focusable read-only pane
-        // stole the prompt focus on first live launch), so the bar must not promise a
-        // "manage" action it cannot honour — with or without the pane.
-        foreach (var available in new[] { true, false })
-        {
-            var segments = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: available);
-            Assert.DoesNotContain(segments, s => s.Contains("manage", StringComparison.Ordinal));
-        }
+        // F4 selection is real now, but the hint stays contextual: advertising it over
+        // an empty pane trains the eye to skip the bar.
+        var with = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: true);
+        Assert.Contains(with, s => s.Contains("f4 agents", StringComparison.Ordinal));
+
+        var without = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: false);
+        Assert.DoesNotContain(without, s => s.Contains("f4", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -313,10 +388,12 @@ public class AgentsPaneModelTests
     [Fact]
     public void Active_row_gets_the_filled_bullet()
     {
+        // The first column is the F4 selection cursor (blank at rest) — rows stay
+        // aligned whether or not one of them carries the chevron.
         var line = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(active: true), 100, 20);
-        Assert.StartsWith(" ● ", line, StringComparison.Ordinal);
+        Assert.StartsWith("  ● ", line, StringComparison.Ordinal);
         var other = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100, 20);
-        Assert.StartsWith(" ○ ", other, StringComparison.Ordinal);
+        Assert.StartsWith("  ○ ", other, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -349,5 +426,46 @@ public class AgentsPaneModelTests
     {
         Assert.Equal(4, AgentsPaneModel.NameColumn([Row(name: "ab")]));
         Assert.Equal(24, AgentsPaneModel.NameColumn([Row(name: new string('x', 60))]));
+    }
+
+    [Fact]
+    public void Terminal_states_read_as_what_they_became_not_idle()
+    {
+        // The old mapping collapsed every finished agent to `idle`, which an operator
+        // reads as "stuck". A terminal row must state its outcome.
+        var done = Row() with { Status = "done", Elapsed = TimeSpan.FromSeconds(130) };
+        Assert.Equal("✓ done · 2m 10s", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, done));
+
+        var failed = Row() with { Status = "failed" };
+        Assert.Equal("✗ failed", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, failed));
+
+        var cancelled = Row() with { Status = "cancelled" };
+        Assert.Equal("⊘ cancelled", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, cancelled));
+
+        var rejected = Row() with { Status = "rejected" };
+        Assert.Equal("✗ rejected", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, rejected));
+    }
+
+    [Fact]
+    public void Done_without_elapsed_omits_the_duration_segment()
+    {
+        var done = Row() with { Status = "done", Elapsed = null };
+        Assert.Equal("✓ done", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, done));
+    }
+
+    [Fact]
+    public void Running_status_keeps_the_live_metric_pair()
+    {
+        var running = Row(active: true) with { Status = "running" };
+        Assert.Equal("3m 44s · ↓ 101.1k tokens", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, running));
+    }
+
+    [Fact]
+    public void Selected_row_leads_with_the_prompt_chevron()
+    {
+        var line = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100, 20, selected: true);
+        Assert.StartsWith("❯ ○ ", line, StringComparison.Ordinal);
+        var unselected = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100, 20);
+        Assert.StartsWith("  ○ ", unselected, StringComparison.Ordinal);
     }
 }

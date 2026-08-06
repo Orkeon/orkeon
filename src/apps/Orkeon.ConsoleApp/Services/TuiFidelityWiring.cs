@@ -1,8 +1,11 @@
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Cli.Scripting.Dispatch;
+using Orkeon.Cli.Scripting.Progress;
 using Orkeon.Cli.TerminalGui.Hosting;
+using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.ConsoleApp.Services;
 
@@ -17,6 +20,18 @@ internal static class TuiFidelityWiring
 {
     /// <summary>Session-state key of the /mode default — the exp07 vocabulary.</summary>
     private const string DefaultModeStateKey = "default_permission_mode";
+
+    /// <summary>Session-state key of exp07's /config override map (B-6 vocabulary).</summary>
+    private const string ConfigMapStateKey = "config_map";
+
+    /// <summary>exp07's persisted /config settings file (VFS path).</summary>
+    private const string ConfigFilePath = "/workspace/.orkeon/config.json";
+
+    /// <summary>The /config key carrying the spinner-verb rotation (CSV).</summary>
+    private const string SpinnerVerbsKey = "spinnerVerbs";
+
+    /// <summary>How long a finished agent row stays in the pane before aging out.</summary>
+    private static readonly TimeSpan TerminalRowRetention = TimeSpan.FromMinutes(2);
 
     /// <summary>
     /// The hint bar's Shift+Tab cycle. Mirrors exp07's E-12 order exactly, `dontAsk`
@@ -87,7 +102,7 @@ internal static class TuiFidelityWiring
 
         if (dispatch is not null)
         {
-            integration.AgentRows = () => BuildAgentRows(dispatch);
+            integration.AgentRows = () => BuildAgentRows(dispatch, TimeProvider.System);
             integration.InterruptCurrent = () =>
             {
                 // Cancel the most recent still-running async instance — the reference's
@@ -98,17 +113,124 @@ internal static class TuiFidelityWiring
                     .FirstOrDefault();
                 if (running is not null) dispatch.cancel(running.ticket);
             };
+            integration.DescribeAgent = ticket => DescribeInstance(dispatch.get(ticket));
         }
+
+        if (services.GetService<ProgressBroker>() is { } broker)
+        {
+            integration.Progress = () => broker.Current is { } s
+                ? new ProgressInfo
+                {
+                    Label = s.Label,
+                    Ratio = s.Ratio,
+                    Message = s.Message,
+                    StartedAt = s.StartedAt,
+                }
+                : null;
+        }
+
+        // The file layer is a closure over the VFS service so the reader itself carries
+        // no (analyzer-forbidden) nullable IFileSystemService dependency.
+        var fs = services.GetService<IFileSystemService>();
+        integration.SpinnerVerbs = BuildSpinnerVerbsReader(
+            buffer,
+            fs is null ? null : ct => fs.TryReadAllTextAsync(ConfigFilePath, ct));
     }
 
     /// <summary>
-    /// The agents rows: <c>main</c> (the REPL itself) first, then one row per async
-    /// command instance, running first then most-recent, capped by the pane.
+    /// Live reader of the <c>spinnerVerbs</c> setting, layered like exp07's /config:
+    /// session override map first, persisted settings file second. The status line polls
+    /// several times a second, so the file layer is cached briefly; the session map is an
+    /// in-memory read and stays live.
     /// </summary>
-    private static List<AgentRowInfo> BuildAgentRows(CommandDispatchService dispatch)
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Config-read fault barrier: a malformed map or unreadable file degrades to the default verbs, never crashes the UI timer.")]
+    private static Func<IReadOnlyList<string>?> BuildSpinnerVerbsReader(
+        ISessionBufferService? buffer,
+        Func<CancellationToken, Task<string?>>? readConfigFile)
     {
-        var instances = dispatch.list();
-        var anyRunning = instances.Any(v => v.state is "running" or "dispatched");
+        string[]? fileVerbs = null;
+        var fileReadAt = DateTimeOffset.MinValue;
+
+        return () =>
+        {
+            try
+            {
+                if (ReadVerbsFromJsonMap(buffer?.GetState(ConfigMapStateKey)) is { Length: > 0 } session)
+                    return session;
+
+                if (readConfigFile is null) return null;
+                var now = DateTimeOffset.UtcNow;
+                if (now - fileReadAt > TimeSpan.FromSeconds(5))
+                {
+                    fileReadAt = now;
+                    var content = readConfigFile(CancellationToken.None).GetAwaiter().GetResult();
+                    fileVerbs = ReadVerbsFromJsonMap(content);
+                }
+                return fileVerbs;
+            }
+            catch
+            {
+                return null;
+            }
+        };
+    }
+
+    /// <summary>Extracts the CSV <c>spinnerVerbs</c> entry from a JSON object map, or null.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Config-parse fault barrier: malformed JSON reads as an unset key.")]
+    private static string[]? ReadVerbsFromJsonMap(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return null;
+            if (!doc.RootElement.TryGetProperty(SpinnerVerbsKey, out var el) || el.ValueKind != JsonValueKind.String)
+                return null;
+            var verbs = (el.GetString() ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return verbs.Length > 0 ? verbs : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Transcript detail for one instance (the agents pane's Enter action).</summary>
+    private static string? DescribeInstance(CommandInstanceView? view)
+    {
+        if (view is null) return null;
+        var lines = new List<string>(6)
+        {
+            $"[{view.ticket}] {view.name}{(string.IsNullOrEmpty(view.targetAgent) ? "" : $" → {view.targetAgent}")}",
+            $"  state   : {view.state}",
+            $"  intent  : {(string.IsNullOrEmpty(view.intent) ? "—" : view.intent)}",
+            $"  elapsed : {TimeSpan.FromMilliseconds(view.elapsedMs):hh\\:mm\\:ss}",
+        };
+        if (view.progress?.message is { Length: > 0 } pm) lines.Add($"  progress: {pm}");
+        if (!string.IsNullOrEmpty(view.error)) lines.Add($"  error   : {Truncate(view.error!, 300)}");
+        else if (view.result?.payload is { Length: > 0 } payload) lines.Add($"  result  : {Truncate(payload, 300)}");
+        return string.Join("\n", lines);
+    }
+
+    private static string Truncate(string s, int max)
+        => s.Length <= max ? s : s[..max] + "…";
+
+    /// <summary>
+    /// The agents rows: <c>main</c> (the REPL itself) first, then one row per async
+    /// command instance, running first then most-recent, capped by the pane. Terminal
+    /// instances keep their REAL lifecycle token (<c>done</c>/<c>failed</c>/…) — the old
+    /// mapping collapsed them all to <c>idle</c>, which read as agents stuck forever —
+    /// and age out of the pane after <see cref="TerminalRowRetention"/> (the registry
+    /// keeps them for <c>ps</c>).
+    /// </summary>
+    internal static List<AgentRowInfo> BuildAgentRows(CommandDispatchService dispatch, TimeProvider clock)
+    {
+        var now = clock.GetUtcNow();
+        var instances = dispatch.list()
+            .Where(v => IsRunning(v) || IsRecentlyCompleted(v, now))
+            .ToList();
+        var anyRunning = instances.Any(IsRunning);
 
         var rows = new List<AgentRowInfo>
         {
@@ -117,24 +239,49 @@ internal static class TuiFidelityWiring
         };
 
         rows.AddRange(instances
-            .OrderByDescending(v => v.state is "running" or "dispatched")
+            .OrderByDescending(IsRunning)
             .ThenByDescending(v => v.startedAt, StringComparer.Ordinal)
             .Select(v =>
             {
-                var running = v.state is "running" or "dispatched";
+                var running = IsRunning(v);
+                // A live progress snapshot replaces the static intent while it runs —
+                // "pass 2/3 · compacting" says more than the launch wording.
+                var description = running && v.progress is { } p
+                    ? ComposeProgressDescription(p)
+                    : v.intent ?? "";
                 return new AgentRowInfo
                 {
                     Name = string.IsNullOrEmpty(v.targetAgent) ? v.name : $"{v.name}@{v.targetAgent}",
-                    Description = v.intent ?? "",
+                    Description = description,
                     Elapsed = v.elapsedMs is > 0 ? TimeSpan.FromMilliseconds(v.elapsedMs) : null,
                     // Per-ticket token attribution needs a correlation tag on CostUsageEvent
                     // (PLAN TUI-G2): rendered as `—` rather than a number that lies.
                     Tokens = null,
                     IsActive = running,
-                    IsIdle = !running,
+                    IsIdle = false,
+                    Status = NormalizeState(v.state),
+                    Ticket = v.ticket,
                 };
             }));
         return rows;
+    }
+
+    private static bool IsRunning(CommandInstanceView v) => v.state is "running" or "dispatched";
+
+    private static bool IsRecentlyCompleted(CommandInstanceView v, DateTimeOffset now)
+        => DateTimeOffset.TryParse(v.completedAt, System.Globalization.CultureInfo.InvariantCulture,
+               System.Globalization.DateTimeStyles.RoundtripKind, out var at)
+           && now - at <= TerminalRowRetention;
+
+    private static string NormalizeState(string state) => state == "dispatched" ? "running" : state;
+
+    private static string ComposeProgressDescription(CommandProgress progress)
+    {
+        var parts = new List<string>(2);
+        if (!string.IsNullOrWhiteSpace(progress.message)) parts.Add(progress.message!.Trim());
+        if (progress.percent is { } pc) parts.Add($"{(int)Math.Floor(Math.Clamp(pc, 0, 100))}%");
+        else if (progress.step is { } st) parts.Add($"step {st}");
+        return string.Join(" · ", parts);
     }
 
     private static string FormatWindow(long tokens) => tokens switch

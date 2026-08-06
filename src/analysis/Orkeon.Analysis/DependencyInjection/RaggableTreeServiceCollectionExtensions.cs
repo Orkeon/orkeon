@@ -270,6 +270,9 @@ public static class RaggableTreeServiceCollectionExtensions
                 Summarizer = sp.GetService<INodeSummarizer>(),
                 Embedder = sp.GetService<IEmbeddingProvider>(),
                 VectorStore = sp.GetService<IVectorStoreProvider>(),
+                // Optional: hosts that want a live progress display register an
+                // IProgress<IndexBuildProgress>; nobody does by default.
+                BuildProgress = sp.GetService<IProgress<Abstractions.Models.IndexBuildProgress>>(),
             }));
 
         services.AddTransient<Func<RaggableTreeBuilder>>(sp =>

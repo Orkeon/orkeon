@@ -5,6 +5,26 @@ namespace Orkeon.Cli.TerminalGui.Hosting;
 /// <param name="IsAgentTarget">True ⇒ agent-target styling (yellow); false ⇒ session (blue).</param>
 public sealed record ContextChipInfo(string Text, bool IsAgentTarget);
 
+/// <summary>
+/// A host-resolved progress readout for the status line: what long operation runs and
+/// how far along it is. <see cref="Ratio"/> null ⇒ indeterminate (spinner + message,
+/// no bar).
+/// </summary>
+public sealed record ProgressInfo
+{
+    /// <summary>Headline, e.g. <c>Compacting conversation</c>.</summary>
+    public required string Label { get; init; }
+
+    /// <summary>Completion in [0, 1], or null when the operation cannot measure one.</summary>
+    public double? Ratio { get; init; }
+
+    /// <summary>Current-phase line, e.g. <c>parsing sources</c>.</summary>
+    public string? Message { get; init; }
+
+    /// <summary>When the operation started — drives the elapsed readout.</summary>
+    public DateTimeOffset StartedAt { get; init; }
+}
+
 /// <summary>One row of the agents pane, already host-resolved.</summary>
 public sealed record AgentRowInfo
 {
@@ -25,6 +45,17 @@ public sealed record AgentRowInfo
 
     /// <summary>True ⇒ the row shows <c>idle</c> instead of metrics.</summary>
     public bool IsIdle { get; init; }
+
+    /// <summary>
+    /// Lifecycle token of the underlying instance — <c>running</c>/<c>done</c>/<c>failed</c>/
+    /// <c>cancelled</c>/<c>rejected</c>, or null for rows with no instance (<c>main</c>).
+    /// Terminal tokens change the metric block: a finished agent must read as finished,
+    /// never as <c>idle</c>.
+    /// </summary>
+    public string? Status { get; init; }
+
+    /// <summary>Instance ticket, for selection → detail lookups. Null for <c>main</c>.</summary>
+    public string? Ticket { get; init; }
 }
 
 /// <summary>
@@ -58,4 +89,20 @@ public sealed class TuiIntegration
 
     /// <summary>Cancel the in-flight async work (hint bar's Esc during a turn).</summary>
     public Action? InterruptCurrent { get; set; }
+
+    /// <summary>The long operation currently reporting progress. Null ⇒ no bar.</summary>
+    public Func<ProgressInfo?>? Progress { get; set; }
+
+    /// <summary>
+    /// Spinner-verb rotation for the status line (the <c>spinnerVerbs</c> setting).
+    /// Null/empty ⇒ the built-in gerunds. Read live so a <c>/config set</c> applies
+    /// without a restart.
+    /// </summary>
+    public Func<IReadOnlyList<string>?>? SpinnerVerbs { get; set; }
+
+    /// <summary>
+    /// Renders the detail of one agents-pane row (by ticket) for the transcript —
+    /// the pane's Enter/double-click action. Null ⇒ selection shows no detail.
+    /// </summary>
+    public Func<string, string?>? DescribeAgent { get; set; }
 }

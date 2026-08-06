@@ -52,4 +52,36 @@ public sealed class ProgressHandleTests
         Assert.Contains("[deploy] done: OK", console.Output);
         Assert.DoesNotContain("ignored", console.Output);
     }
+
+    [Fact]
+    public void Publishes_live_snapshots_to_the_broker_and_clears_on_done()
+    {
+        // The console lines are the deterministic transcript surface; the broker is what
+        // the TUI status line polls for the live bar.
+        var console = new ScriptedTestConsole();
+        var broker = new Orkeon.Cli.Scripting.Progress.ProgressBroker();
+        var sut = new ProgressHandle(console, "deploy", total: 4, broker);
+
+        sut.advance("validate");
+        Assert.Equal(1, broker.Current!.Step);
+        Assert.Equal(4, broker.Current.Total);
+        Assert.Equal("validate", broker.Current.Message);
+
+        sut.set(3);
+        Assert.Equal(3, broker.Current!.Step);
+
+        sut.done();
+        Assert.Null(broker.Current);
+    }
+
+    [Fact]
+    public void Without_a_broker_the_console_lines_are_the_whole_behavior()
+    {
+        var console = new ScriptedTestConsole();
+        var sut = new ProgressHandle(console, "scan", total: null);
+        sut.advance();
+        sut.done();
+        Assert.Contains("[scan] 1", console.Output);
+        Assert.Contains("[scan] done", console.Output);
+    }
 }

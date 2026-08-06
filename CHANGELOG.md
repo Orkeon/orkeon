@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — end-to-end progress channel for long CLI operations
+
+A `ProgressBroker` singleton (`Orkeon.Cli.Scripting.Progress`, registered by
+`AddScriptCommands`) now carries a live `{label, step/total | percent, message}`
+snapshot from whoever is doing long work to whoever renders it. Three publishers:
+`ctx.progress(...)` handles from command scripts (which also stamp the ambient
+`CommandInstance.ReportProgress` — the field `ps`/`inspect` exposed since design §6 but
+nothing ever wrote); a new host tool **`progress_report`** so CREW scripts — which have
+no `ctx.progress` — can report through the `tools` global (`Tools.progressReport`);
+and an optional `IProgress<IndexBuildProgress>` hook on `RaggableEnrichmentServices`
+notified by `RaggableTreeBuilder` per phase and per parsed file (null by default —
+zero cost when unwired; the ConsoleApp routes it to the broker as "Indexing codebase").
+The TUI status line renders the snapshot as
+`✳ Compacting conversation… ▰▰▰▱▱▱▱▱▱▱ 34% (12s)` (indeterminate operations show
+elapsed + message instead of a bar), including for background crews that run detached
+from the REPL's own turn; the agents pane swaps a running row's intent for its live
+progress. `ProgressAmbient` (AsyncLocal) links detached `post`/`postWork` flows to
+their instance; completion clears the broker slot by ticket so one instance can never
+erase a newer operation's bar.
+
+### Added — `spinnerVerbs`: configurable status-line verbs + spinner animation
+
+The status line's verb rotation ("thinking verbs" in the tweakcc vocabulary) is now
+configurable: `TerminalGuiOptions.SpinnerVerbs` seeds a boot-time list (bound from
+`Orkeon:Cli:Tui:SpinnerVerbs` in the ConsoleApp), and the live
+`TuiIntegration.SpinnerVerbs` delegate — wired by the ConsoleApp to exp07's `/config`
+layers (`config_map` session state over `/workspace/.orkeon/config.json`) — wins over
+it without a restart. The verb re-draws every fifteen seconds on long turns
+(`StatusLineFormatter.VerbFor`), the leading glyph animates through spinner frames
+(`✢ ✳ ✶ ✻`, ASCII `| / - \`) at four steps per second (`SpinnerFrame`), and the
+status-line timer tightened from 1 s to 250 ms accordingly. Defaults unchanged: the
+six Orkéon gerunds.
+
+### Fixed — agents pane: terminal instances no longer read as `idle`
+
+`TuiFidelityWiring.BuildAgentRows` collapsed every non-running instance to `idle`, so a
+finished crew was indistinguishable from a stuck one (the exact confusion of the
+2026-08-06 captures). Rows now keep their real lifecycle token and render it —
+`✓ done · 2m 10s`, `✗ failed`, `⊘ cancelled`, `✗ rejected` (`AgentsPaneModel`, with
+7-bit fallbacks) — and terminal rows age out of the pane two minutes after completion
+(the registry keeps them for `ps`). `idle` is again reserved for `main` between turns.
+
+### Added — agents pane: keyboard + mouse selection (F4)
+
+The pane stays non-focusable at rest (its first live launch proved a focusable
+read-only pane steals the prompt focus), but **F4** now enters an explicit selection
+mode: ↑/↓ move a chevron cursor, **Enter** prints the instance's detail into the
+transcript (state, intent, elapsed, progress, result/error — via the new
+`TuiIntegration.DescribeAgent` delegate over `dispatch.get(ticket)`), **Esc** hands
+focus back to the prompt. A mouse click selects a row without stealing focus; a
+double-click opens the same detail. The hint bar advertises `f4 agents` only while the
+pane has rows. (F4, not Ctrl+A: the focused panes' select-all already owns Ctrl+A and
+global bindings fire before view dispatch.)
+
 ### Added — `ActOptions.system`: a real system prompt for scripted `act()` agents
 
 `ctx.llm.act(prompt, { system })` now seeds a `role:"system"` message as the first
