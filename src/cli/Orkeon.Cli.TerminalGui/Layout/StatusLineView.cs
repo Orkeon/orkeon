@@ -94,8 +94,10 @@ public sealed class StatusLineView : View
 
         // A live progress snapshot wins over the generic turn readout — and also covers
         // background crews (compaction, indexing), whose work runs detached from the
-        // runner's IsCommandRunning.
-        if (ReadProgress() is { } progress)
+        // runner's IsCommandRunning. Staleness guard: a snapshot the host could not tie
+        // to a live instance only renders while a foreground command actually runs, so
+        // a reporter that died between report and done cannot park a bar forever.
+        if (ReadProgress() is { } progress && (progress.FromLiveInstance || running))
         {
             var progressElapsed = _clock.GetUtcNow() - progress.StartedAt;
             return StatusLineFormatter.ComposeProgress(

@@ -23,6 +23,13 @@ public sealed record ProgressInfo
 
     /// <summary>When the operation started — drives the elapsed readout.</summary>
     public DateTimeOffset StartedAt { get; init; }
+
+    /// <summary>
+    /// True when the host verified the snapshot belongs to a LIVE background instance.
+    /// A foreground (unticketed) snapshot renders only while the runner executes a
+    /// command — the staleness guard for a reporter that died between report and done.
+    /// </summary>
+    public bool FromLiveInstance { get; init; }
 }
 
 /// <summary>One row of the agents pane, already host-resolved.</summary>

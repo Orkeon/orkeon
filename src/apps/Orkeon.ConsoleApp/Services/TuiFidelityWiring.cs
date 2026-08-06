@@ -118,15 +118,7 @@ internal static class TuiFidelityWiring
 
         if (services.GetService<ProgressBroker>() is { } broker)
         {
-            integration.Progress = () => broker.Current is { } s
-                ? new ProgressInfo
-                {
-                    Label = s.Label,
-                    Ratio = s.Ratio,
-                    Message = s.Message,
-                    StartedAt = s.StartedAt,
-                }
-                : null;
+            integration.Progress = BuildProgressReader(broker, dispatch);
         }
 
         // The file layer is a closure over the VFS service so the reader itself carries
@@ -135,6 +127,45 @@ internal static class TuiFidelityWiring
         integration.SpinnerVerbs = BuildSpinnerVerbsReader(
             buffer,
             fs is null ? null : ct => fs.TryReadAllTextAsync(ConfigFilePath, ct));
+    }
+
+    /// <summary>
+    /// The status line's progress source, with the staleness guard the design review
+    /// called for: a snapshot stamped with a ticket is cross-checked against the
+    /// dispatch registry — if its instance is terminal (or gone), the slot is swept and
+    /// nothing renders, so a crew that died between report and done cannot park a bar
+    /// forever. Unticketed snapshots pass through with <c>FromLiveInstance=false</c>;
+    /// the view then only renders them while a foreground command runs.
+    /// </summary>
+    internal static Func<ProgressInfo?> BuildProgressReader(ProgressBroker broker, CommandDispatchService? dispatch)
+    {
+        return () =>
+        {
+            if (broker.Current is not { } s) return null;
+
+            var fromLiveInstance = false;
+            if (!string.IsNullOrEmpty(s.Ticket))
+            {
+                var instance = dispatch?.get(s.Ticket!);
+                if (instance is null || instance.state is not ("running" or "dispatched"))
+                {
+                    // Defensive sweep on top of postWork's finally-clear: the owner is
+                    // gone, the snapshot is a leftover.
+                    broker.ClearTicket(s.Ticket!);
+                    return null;
+                }
+                fromLiveInstance = true;
+            }
+
+            return new ProgressInfo
+            {
+                Label = s.Label,
+                Ratio = s.Ratio,
+                Message = s.Message,
+                StartedAt = s.StartedAt,
+                FromLiveInstance = fromLiveInstance,
+            };
+        };
     }
 
     /// <summary>
