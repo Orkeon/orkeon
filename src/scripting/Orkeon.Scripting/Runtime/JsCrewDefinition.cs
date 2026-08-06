@@ -32,5 +32,8 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional host-native renderer for streamed <c>ctx.llm.act</c> deltas (F5 L3).</summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
 
+    /// <summary>Optional host-native receiver for per-call LLM usage events.</summary>
+    public Orkeon.Application.Interfaces.Ports.ILlmUsageSink? UsageSink { get; init; }
+
     public string? Goal { get; init; }
 }

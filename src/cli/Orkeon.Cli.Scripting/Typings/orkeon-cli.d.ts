@@ -91,6 +91,8 @@ export interface CommandInstanceView {
   readonly result?: CommandResponse;
   readonly error?: string;
   readonly progress?: { step?: number; percent?: number; message?: string };
+  /** LLM tokens attributed to this instance so far; 0 when none were observed. */
+  readonly tokens: number;
 }
 
 /** Descriptor passed to `defineCommand`. See spec §4.2. */

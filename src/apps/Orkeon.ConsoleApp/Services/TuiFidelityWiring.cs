@@ -30,9 +30,6 @@ internal static class TuiFidelityWiring
     /// <summary>The /config key carrying the spinner-verb rotation (CSV).</summary>
     private const string SpinnerVerbsKey = "spinnerVerbs";
 
-    /// <summary>How long a finished agent row stays in the pane before aging out.</summary>
-    private static readonly TimeSpan TerminalRowRetention = TimeSpan.FromMinutes(2);
-
     /// <summary>
     /// The hint bar's Shift+Tab cycle. Mirrors exp07's E-12 order exactly, `dontAsk`
     /// excluded from the cycle like the original — it is reachable by name, not by tab.
@@ -102,7 +99,7 @@ internal static class TuiFidelityWiring
 
         if (dispatch is not null)
         {
-            integration.AgentRows = () => BuildAgentRows(dispatch, TimeProvider.System);
+            integration.AgentRows = () => BuildAgentRows(dispatch);
             integration.InterruptCurrent = () =>
             {
                 // Cancel the most recent still-running async instance — the reference's
@@ -239,6 +236,7 @@ internal static class TuiFidelityWiring
             $"  elapsed : {TimeSpan.FromMilliseconds(view.elapsedMs):hh\\:mm\\:ss}",
         };
         if (view.progress?.message is { Length: > 0 } pm) lines.Add($"  progress: {pm}");
+        if (view.tokens > 0) lines.Add($"  tokens  : {view.tokens:N0}");
         if (!string.IsNullOrEmpty(view.error)) lines.Add($"  error   : {Truncate(view.error!, 300)}");
         else if (view.result?.payload is { Length: > 0 } payload) lines.Add($"  result  : {Truncate(payload, 300)}");
         return string.Join("\n", lines);
@@ -248,36 +246,31 @@ internal static class TuiFidelityWiring
         => s.Length <= max ? s : s[..max] + "…";
 
     /// <summary>
-    /// The agents rows: <c>main</c> (the REPL itself) first, then one row per async
-    /// command instance, running first then most-recent, capped by the pane. Terminal
-    /// instances keep their REAL lifecycle token (<c>done</c>/<c>failed</c>/…) — the old
-    /// mapping collapsed them all to <c>idle</c>, which read as agents stuck forever —
-    /// and age out of the pane after <see cref="TerminalRowRetention"/> (the registry
-    /// keeps them for <c>ps</c>).
+    /// The agents rows, mirroring the reference's contract: LIVE work only. One row per
+    /// RUNNING async instance (hollow bullet), preceded by <c>● main</c> — which appears
+    /// only while at least one agent runs; with nothing delegated the list is empty and
+    /// the pane collapses. Finished agents leave the pane immediately — <c>idle</c> means
+    /// *waiting*, not *finished* (user ruling 2026-08-06) — and stay auditable via
+    /// <c>ps</c>/<c>inspect</c>.
     /// </summary>
-    internal static List<AgentRowInfo> BuildAgentRows(CommandDispatchService dispatch, TimeProvider clock)
+    internal static List<AgentRowInfo> BuildAgentRows(CommandDispatchService dispatch)
     {
-        var now = clock.GetUtcNow();
-        var instances = dispatch.list()
-            .Where(v => IsRunning(v) || IsRecentlyCompleted(v, now))
-            .ToList();
-        var anyRunning = instances.Any(IsRunning);
+        var instances = dispatch.list().Where(IsRunning).ToList();
+        if (instances.Count == 0) return [];
 
-        var rows = new List<AgentRowInfo>
+        var rows = new List<AgentRowInfo>(instances.Count + 1)
         {
-            // `main` mirrors the reference: the primary loop, active when nothing is delegated.
-            new() { Name = "main", IsActive = !anyRunning, IsIdle = true },
+            // The primary loop: filled bullet, no description, no metrics — `● main` alone.
+            new() { Name = "main", IsActive = true },
         };
 
         rows.AddRange(instances
-            .OrderByDescending(IsRunning)
-            .ThenByDescending(v => v.startedAt, StringComparer.Ordinal)
+            .OrderByDescending(v => v.startedAt, StringComparer.Ordinal)
             .Select(v =>
             {
-                var running = IsRunning(v);
                 // A live progress snapshot replaces the static intent while it runs —
                 // "pass 2/3 · compacting" says more than the launch wording.
-                var description = running && v.progress is { } p
+                var description = v.progress is { } p
                     ? ComposeProgressDescription(p)
                     : v.intent ?? "";
                 return new AgentRowInfo
@@ -285,12 +278,8 @@ internal static class TuiFidelityWiring
                     Name = string.IsNullOrEmpty(v.targetAgent) ? v.name : $"{v.name}@{v.targetAgent}",
                     Description = description,
                     Elapsed = v.elapsedMs is > 0 ? TimeSpan.FromMilliseconds(v.elapsedMs) : null,
-                    // Per-ticket token attribution needs a correlation tag on CostUsageEvent
-                    // (PLAN TUI-G2): rendered as `—` rather than a number that lies.
-                    Tokens = null,
-                    IsActive = running,
-                    IsIdle = false,
-                    Status = NormalizeState(v.state),
+                    Tokens = v.tokens > 0 ? v.tokens : null,
+                    IsActive = false,
                     Ticket = v.ticket,
                 };
             }));
@@ -298,13 +287,6 @@ internal static class TuiFidelityWiring
     }
 
     private static bool IsRunning(CommandInstanceView v) => v.state is "running" or "dispatched";
-
-    private static bool IsRecentlyCompleted(CommandInstanceView v, DateTimeOffset now)
-        => DateTimeOffset.TryParse(v.completedAt, System.Globalization.CultureInfo.InvariantCulture,
-               System.Globalization.DateTimeStyles.RoundtripKind, out var at)
-           && now - at <= TerminalRowRetention;
-
-    private static string NormalizeState(string state) => state == "dispatched" ? "running" : state;
 
     private static string ComposeProgressDescription(CommandProgress progress)
     {

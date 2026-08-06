@@ -31,6 +31,9 @@ public sealed partial class JsLlmFacade
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Microsoft.Extensions.Logging.ILogger? _logger;
+    private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
+    private readonly string _crewName;
+    private readonly string _agentName;
 
     internal JsLlmFacade(
         Engine engine,
@@ -40,7 +43,10 @@ public sealed partial class JsLlmFacade
         Orkeon.Domain.Autonomous.AgentExecutionBudget? budget = null,
         Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
         Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
-        Microsoft.Extensions.Logging.ILogger? logger = null)
+        Microsoft.Extensions.Logging.ILogger? logger = null,
+        Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null,
+        string? crewName = null,
+        string? agentName = null)
     {
         _engine = engine;
         _provider = provider;
@@ -55,8 +61,50 @@ public sealed partial class JsLlmFacade
         _permissionGate = permissionGate;
         _deltaSink = deltaSink;
         _logger = logger;
+        _usageSink = usageSink;
+        _crewName = crewName ?? string.Empty;
+        _agentName = agentName ?? string.Empty;
         embed = EmbedAsync;
         act = ActAsync;
+    }
+
+    /// <summary>
+    /// Reports one completed LLM call to the host's usage sink. One call per response,
+    /// per path — <c>act</c> reports each iteration's response HERE, never inside
+    /// <see cref="ChatViaStreamAsync"/> (which only assembles it), so a streamed
+    /// iteration counts exactly once. Best-effort: a throwing sink degrades to
+    /// unobserved usage, never to a failed LLM call. Skips responses that carried no
+    /// usage at all — "no usage" and "zero tokens" must not read the same way (same
+    /// contract as <see cref="ToStreamUsage"/>).
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-sink fault barrier: usage accounting must never fail the LLM call it observes.")]
+    private void ReportUsage(LlmResponse? response, string method)
+    {
+        if (_usageSink is null || response is null)
+            return;
+        if (response.TokensUsed == 0 && response.PromptTokens is null && response.CompletionTokens is null)
+            return;
+        try
+        {
+            var prompt = response.PromptTokens ?? 0;
+            _usageSink.Record(new Orkeon.Application.Interfaces.Ports.CostUsageEvent
+            {
+                CrewId = _crewName,
+                AgentId = _agentName,
+                Model = response.Model ?? string.Empty,
+                Provider = _provider?.Name ?? string.Empty,
+                PromptTokens = prompt,
+                // Providers that report only a grand total leave the split null; the
+                // remainder keeps PromptTokens + CompletionTokens == TokensUsed (the
+                // sum is what ICostBudgetManager aggregates as TotalTokens).
+                CompletionTokens = response.CompletionTokens ?? Math.Max(0, response.TokensUsed - prompt),
+                OperationType = method,
+            });
+        }
+        catch
+        {
+            // Deliberately swallowed — see the fault-barrier contract above.
+        }
     }
 
     /// <summary>Cancels the in-flight and future llm calls of this context (script-facing).</summary>
@@ -79,6 +127,7 @@ public sealed partial class JsLlmFacade
         if (_provider is null) return $"<undefined-llm:{prompt}>";
         var resp = await _provider.GenerateAsync(prompt, ConfigFrom(options), _ct).ConfigureAwait(false);
         activity?.SetTag("llm.response.tokens", resp.TokensUsed);
+        ReportUsage(resp, "complete");
         return resp.Content;
     };
 
@@ -88,6 +137,7 @@ public sealed partial class JsLlmFacade
         if (_provider is null)
             return JsValue.FromObject(_engine, new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0 });
         var resp = await _provider.ChatAsync(msgs, ConfigFrom(options), _ct).ConfigureAwait(false);
+        ReportUsage(resp, "chat");
         return JsValue.FromObject(_engine, new
         {
             content = resp.Content,
@@ -248,6 +298,7 @@ public sealed partial class JsLlmFacade
                         break;
                     case LlmStreamEventKind.Completed:
                         observations.usage = ToStreamUsage(ev.FinalResponse);
+                        ReportUsage(ev.FinalResponse, "stream");
                         break;
                     default:
                         break;
@@ -259,6 +310,7 @@ public sealed partial class JsLlmFacade
         var resp = await _provider.GenerateAsync(prompt, config, _ct).ConfigureAwait(false);
         yield return resp.Content;
         observations.usage = ToStreamUsage(resp);
+        ReportUsage(resp, "stream");
     }
 
     /// <summary>
@@ -314,6 +366,7 @@ public sealed partial class JsLlmFacade
         // the object anyway. Without these, any prose/markdown reply threw and aborted the whole crew.
         var fullPrompt = AugmentExtractPrompt(prompt, schema);
         var resp = await _provider.GenerateAsync(fullPrompt, ConfigForExtract(options), _ct).ConfigureAwait(false);
+        ReportUsage(resp, "extract");
         var content = StripJsonFences(resp.Content);
         try
         {
@@ -399,6 +452,8 @@ public sealed partial class JsLlmFacade
             : await _provider.GenerateAsync(
                 $"{prompt}\n\nReply with exactly one of: {string.Join(", ", allowed)}",
                 ConfigFrom(options), _ct).ConfigureAwait(false);
+        if (_provider is not null)
+            ReportUsage(resp, "decide");
         var picked = allowed.FirstOrDefault(c =>
             resp.Content.Trim().StartsWith(c, StringComparison.OrdinalIgnoreCase));
         if (picked is null)
@@ -473,6 +528,7 @@ public sealed partial class JsLlmFacade
                     : baseCfg with { Tools = toolSchemas, ToolMode = ToolCallMode.Auto };
                 var resp = await SendChatAsync(messages.ToArray(), cfg, onDelta).ConfigureAwait(false);
                 _budget?.RecordTokens(resp.TokensUsed);
+                ReportUsage(resp, "act");
 
                 var call = TryParseToolCall(resp.RawResponseBody);
                 if (call is null)

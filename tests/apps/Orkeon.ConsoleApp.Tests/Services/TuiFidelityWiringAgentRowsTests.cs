@@ -7,13 +7,6 @@ namespace Orkeon.ConsoleApp.Tests.Services;
 
 public sealed class TuiFidelityWiringAgentRowsTests
 {
-    /// <summary>Hand-rolled clock (repo convention: no mocking framework).</summary>
-    private sealed class FakeClock : TimeProvider
-    {
-        public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
-        public override DateTimeOffset GetUtcNow() => Now;
-    }
-
     private static CommandDispatchService NewDispatch()
         => new(
             new InMemoryAgentChannel(NullLogger<InMemoryAgentChannel>.Instance),
@@ -22,67 +15,59 @@ public sealed class TuiFidelityWiringAgentRowsTests
             NullLogger<CommandDispatchService>.Instance);
 
     [Fact]
-    public void A_completed_instance_reads_done_not_idle()
+    public void With_nothing_delegated_the_pane_is_empty()
     {
-        // The exact bug of the capture: three finished crews all showing `idle`.
+        // capture_3 contract: `main` only appears alongside at least one other agent.
+        // Sequential work by the primary loop shows no pane at all.
+        Assert.Empty(TuiFidelityWiring.BuildAgentRows(NewDispatch()));
+    }
+
+    [Fact]
+    public void A_running_instance_brings_main_in_filled_and_renders_hollow_itself()
+    {
+        var dispatch = NewDispatch();
+        var instance = dispatch.Registry.Register(
+            "assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
+
+        var rows = TuiFidelityWiring.BuildAgentRows(dispatch);
+
+        // `● main` first (the primary loop), then the hollow delegated agent.
+        var main = Assert.Single(rows, r => r.Name == "main");
+        Assert.True(main.IsActive);
+        Assert.Equal("", main.Description);
+        Assert.Null(main.Elapsed);
+        Assert.Null(main.Tokens);
+
+        var row = Assert.Single(rows, r => r.Ticket == instance.Ticket);
+        Assert.False(row.IsActive);
+    }
+
+    [Fact]
+    public void A_finished_instance_disappears_immediately()
+    {
+        // User ruling: `idle` means *waiting*, not *finished* — a finished agent
+        // leaves the pane at once (ps/inspect stay the audit trail).
         var dispatch = NewDispatch();
         var instance = dispatch.Registry.Register(
             "assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
         instance.Complete(new CommandResponse("crew:main-loop", "main-loop", success: true, payload: "ok", error: null));
 
-        var rows = TuiFidelityWiring.BuildAgentRows(dispatch, new FakeClock());
+        var rows = TuiFidelityWiring.BuildAgentRows(dispatch);
 
-        var row = Assert.Single(rows, r => r.Ticket == instance.Ticket);
-        Assert.Equal("done", row.Status);
-        Assert.False(row.IsIdle);
-        Assert.False(row.IsActive);
+        Assert.DoesNotContain(rows, r => r.Ticket == instance.Ticket);
+        // And with it gone, nothing else runs: `main` withdraws too.
+        Assert.Empty(rows);
     }
 
     [Fact]
-    public void A_failed_instance_carries_its_failure()
+    public void A_failed_instance_disappears_like_a_completed_one()
     {
         var dispatch = NewDispatch();
         var instance = dispatch.Registry.Register(
             "review", CommandInstanceKind.Async, "crew:code-review", "review", Guid.NewGuid());
         instance.Fail("boom");
 
-        var rows = TuiFidelityWiring.BuildAgentRows(dispatch, new FakeClock());
-        Assert.Equal("failed", Assert.Single(rows, r => r.Ticket == instance.Ticket).Status);
-    }
-
-    [Fact]
-    public void Terminal_rows_age_out_of_the_pane_after_the_retention_window()
-    {
-        var dispatch = NewDispatch();
-        var clock = new FakeClock();
-        var instance = dispatch.Registry.Register(
-            "assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
-        instance.Complete(new CommandResponse("crew:main-loop", "main-loop", success: true, payload: "", error: null));
-
-        clock.Now = DateTimeOffset.UtcNow.AddMinutes(1);
-        Assert.Contains(TuiFidelityWiring.BuildAgentRows(dispatch, clock), r => r.Ticket == instance.Ticket);
-
-        clock.Now = DateTimeOffset.UtcNow.AddMinutes(5);
-        var rows = TuiFidelityWiring.BuildAgentRows(dispatch, clock);
-        Assert.DoesNotContain(rows, r => r.Ticket == instance.Ticket);
-        // `main` never ages out — the pane still describes the REPL itself.
-        Assert.Contains(rows, r => r.Name == "main");
-    }
-
-    [Fact]
-    public void A_running_instance_is_active_with_the_running_status()
-    {
-        var dispatch = NewDispatch();
-        var instance = dispatch.Registry.Register(
-            "assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
-
-        var rows = TuiFidelityWiring.BuildAgentRows(dispatch, new FakeClock());
-
-        var row = Assert.Single(rows, r => r.Ticket == instance.Ticket);
-        Assert.Equal("running", row.Status);
-        Assert.True(row.IsActive);
-        // And `main` yields the active bullet while something is delegated.
-        Assert.False(Assert.Single(rows, r => r.Name == "main").IsActive);
+        Assert.Empty(TuiFidelityWiring.BuildAgentRows(dispatch));
     }
 
     [Fact]
@@ -93,8 +78,25 @@ public sealed class TuiFidelityWiringAgentRowsTests
             "compact", CommandInstanceKind.Async, "crew:session-compact", "compact the session", Guid.NewGuid());
         instance.ReportProgress(new CommandProgress(step: null, percent: 40.0, message: "synthesis"));
 
-        var rows = TuiFidelityWiring.BuildAgentRows(dispatch, new FakeClock());
+        var rows = TuiFidelityWiring.BuildAgentRows(dispatch);
         Assert.Equal("synthesis · 40%", Assert.Single(rows, r => r.Ticket == instance.Ticket).Description);
+    }
+
+    [Fact]
+    public void Attributed_tokens_reach_the_row_and_zero_stays_unattributed()
+    {
+        var dispatch = NewDispatch();
+        var credited = dispatch.Registry.Register(
+            "assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
+        var untouched = dispatch.Registry.Register(
+            "review", CommandInstanceKind.Async, "crew:code-review", "review", Guid.NewGuid());
+        credited.AddTokens(118_300);
+
+        var rows = TuiFidelityWiring.BuildAgentRows(dispatch);
+
+        Assert.Equal(118_300, Assert.Single(rows, r => r.Ticket == credited.Ticket).Tokens);
+        // No usage observed ⇒ null, which the pane renders as the honest `—`.
+        Assert.Null(Assert.Single(rows, r => r.Ticket == untouched.Ticket).Tokens);
     }
 
     // ── BuildProgressReader (staleness guard) ───────────────────────────────

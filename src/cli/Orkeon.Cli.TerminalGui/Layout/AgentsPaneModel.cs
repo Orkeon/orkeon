@@ -39,32 +39,20 @@ public static class AgentsPaneModel
     }
 
     /// <summary>
-    /// The metric block, by lifecycle: a terminal instance reads as what it became —
-    /// <c>✓ done · 2m 10s</c>, <c>✗ failed</c>, <c>⊘ cancelled</c> — never as <c>idle</c>
-    /// (the pre-status rendering collapsed every finished agent to <c>idle</c>, which is
-    /// what an operator reads as "stuck"). <c>idle</c> is reserved for rows with no
-    /// instance at all (<c>main</c> between turns); a running row keeps the live
-    /// <c>elapsed · ↓ tokens</c> pair, tokens <c>—</c> when unattributable.
+    /// The metric block: <c>elapsed · ↓ tokens</c> for a working row, empty for a row
+    /// with nothing to report (the reference's <c>main</c> line is just <c>● main</c>).
+    /// The pane only ever shows LIVE work — finished agents leave the pane immediately
+    /// (an earlier iteration rendered them as <c>✓ done</c>/<c>idle</c> during a
+    /// retention window; the user ruled that out: <c>idle</c> means *waiting*, not
+    /// *finished*, and a finished agent simply disappears). Tokens render <c>—</c> when
+    /// the host cannot attribute them.
     /// </summary>
     public static string ComposeMetrics(GlyphSet glyphs, AgentRowInfo row)
     {
         ArgumentNullException.ThrowIfNull(glyphs);
         ArgumentNullException.ThrowIfNull(row);
 
-        switch (row.Status)
-        {
-            case "done":
-                var doneElapsed = row.Elapsed is { } de ? $" {glyphs.Dot} {StatusLineFormatter.FormatElapsed(de)}" : "";
-                return $"{glyphs.Check} done{doneElapsed}";
-            case "failed":
-                return $"{glyphs.Cross} failed";
-            case "cancelled":
-                return $"{glyphs.Slashed} cancelled";
-            case "rejected":
-                return $"{glyphs.Cross} rejected";
-        }
-
-        if (row.IsIdle) return "idle";
+        if (row.Elapsed is null && row.Tokens is null) return string.Empty;
 
         var elapsed = row.Elapsed is { } e ? StatusLineFormatter.FormatElapsed(e) : "";
         var tokens = row.Tokens is { } t

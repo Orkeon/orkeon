@@ -102,6 +102,21 @@ public sealed class CommandInstance
         }
     }
 
+    private long _tokens;
+
+    /// <summary>
+    /// Credits LLM tokens to this instance. Accepted even after a terminal transition —
+    /// the usage of the last response legitimately races Complete — so the final count
+    /// stays truthful in <c>ps</c>/<c>inspect</c>.
+    /// </summary>
+    public void AddTokens(long count)
+    {
+        if (count > 0) Interlocked.Add(ref _tokens, count);
+    }
+
+    /// <summary>Total LLM tokens attributed to this instance so far.</summary>
+    public long TokensUsed => Interlocked.Read(ref _tokens);
+
     /// <summary>
     /// Attaches a one-shot callback fired when (or immediately, if already) the instance
     /// reaches a terminal state. Used by the runner to release the admission slot and
@@ -174,7 +189,8 @@ public sealed class CommandInstance
                     ElapsedMs: elapsed,
                     Result: _result,
                     Error: _error,
-                    Progress: _progress));
+                    Progress: _progress,
+                    Tokens: Interlocked.Read(ref _tokens)));
         }
     }
 }

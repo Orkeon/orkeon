@@ -25,7 +25,8 @@ internal readonly record struct CommandInstanceLifecycle(
     long ElapsedMs,
     CommandResponse? Result,
     string? Error,
-    CommandProgress? Progress);
+    CommandProgress? Progress,
+    long Tokens);
 
 #pragma warning disable IDE1006 // camelCase: reflected to JS as the entries returned by commands.list()/get()
 /// <summary>
@@ -50,6 +51,7 @@ public sealed class CommandInstanceView
         this.result = lifecycle.Result;
         this.error = lifecycle.Error;
         this.progress = lifecycle.Progress;
+        this.tokens = lifecycle.Tokens;
     }
 
     /// <summary>Opaque handle identifying this in-flight instance.</summary>
@@ -90,5 +92,8 @@ public sealed class CommandInstanceView
 
     /// <summary>Latest progress snapshot published by the agent, if any.</summary>
     public CommandProgress? progress { get; }
+
+    /// <summary>LLM tokens attributed to this instance so far; 0 when none were observed.</summary>
+    public long tokens { get; }
 }
 #pragma warning restore IDE1006

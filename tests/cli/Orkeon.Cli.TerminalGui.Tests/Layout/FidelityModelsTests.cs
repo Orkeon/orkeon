@@ -373,7 +373,6 @@ public class AgentsPaneModelTests
         string name = "assistant@main-loop",
         string desc = "Tu vérifies l'exactitude d'un document de conception",
         bool active = false,
-        bool idle = false,
         long? tokens = 101_100)
         => new()
         {
@@ -382,7 +381,6 @@ public class AgentsPaneModelTests
             Elapsed = TimeSpan.FromSeconds(224),
             Tokens = tokens,
             IsActive = active,
-            IsIdle = idle,
         };
 
     [Fact]
@@ -407,16 +405,19 @@ public class AgentsPaneModelTests
     }
 
     [Fact]
-    public void Idle_row_shows_idle_instead_of_metrics()
+    public void A_row_with_nothing_to_report_renders_no_metrics()
     {
-        Assert.Equal("idle", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, Row(idle: true)));
+        // The reference's `main` line is just `● main` — no `idle` label, no numbers.
+        // (`idle` means *waiting*, not *finished*; no waiting state exists today.)
+        var main = new AgentRowInfo { Name = "main", IsActive = true };
+        Assert.Equal(string.Empty, AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, main));
     }
 
     [Fact]
     public void Unattributable_tokens_render_a_dash_not_a_number()
     {
-        // Two concurrent runs of the same crew cannot be told apart in the cost report
-        // (PLAN TUI-G2) — a dash is honest, a number would lie.
+        // Usage the host could not attribute to this instance — a dash is honest,
+        // a number would lie.
         var metrics = AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, Row(tokens: null));
         Assert.EndsWith("↓ —", metrics, StringComparison.Ordinal);
     }
@@ -429,35 +430,9 @@ public class AgentsPaneModelTests
     }
 
     [Fact]
-    public void Terminal_states_read_as_what_they_became_not_idle()
+    public void A_working_row_shows_the_live_metric_pair()
     {
-        // The old mapping collapsed every finished agent to `idle`, which an operator
-        // reads as "stuck". A terminal row must state its outcome.
-        var done = Row() with { Status = "done", Elapsed = TimeSpan.FromSeconds(130) };
-        Assert.Equal("✓ done · 2m 10s", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, done));
-
-        var failed = Row() with { Status = "failed" };
-        Assert.Equal("✗ failed", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, failed));
-
-        var cancelled = Row() with { Status = "cancelled" };
-        Assert.Equal("⊘ cancelled", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, cancelled));
-
-        var rejected = Row() with { Status = "rejected" };
-        Assert.Equal("✗ rejected", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, rejected));
-    }
-
-    [Fact]
-    public void Done_without_elapsed_omits_the_duration_segment()
-    {
-        var done = Row() with { Status = "done", Elapsed = null };
-        Assert.Equal("✓ done", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, done));
-    }
-
-    [Fact]
-    public void Running_status_keeps_the_live_metric_pair()
-    {
-        var running = Row(active: true) with { Status = "running" };
-        Assert.Equal("3m 44s · ↓ 101.1k tokens", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, running));
+        Assert.Equal("3m 44s · ↓ 101.1k tokens", AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, Row()));
     }
 
     [Fact]

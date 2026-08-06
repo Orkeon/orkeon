@@ -107,6 +107,7 @@ internal sealed class InspectCommand(CommandInstanceRegistry registry) : IIntera
         c.WriteLine($"state     : {view.state}");
         c.WriteLine($"elapsed   : {view.elapsedMs}ms");
         c.WriteLine($"corrId    : {view.correlationId}");
+        if (view.tokens > 0) c.WriteLine($"tokens    : {view.tokens}");
         if (view.progress?.message is { } pm) c.WriteLine($"progress  : {pm}");
         if (view.result is { } res) c.WriteLine($"result    : {res.payload}");
         if (view.error is { } err) c.WriteLine($"error     : {err}");

@@ -28,10 +28,11 @@ public static class CrewBuilderBinding
         ILlmProvider? llmProvider = null,
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null)
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
+        Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null)
     {
         ArgumentNullException.ThrowIfNull(engine);
         var tools = builtInTools as IReadOnlyList<IBaseTool> ?? builtInTools?.ToArray();
-        engine.SetValue(GlobalName, new Func<JsCrewBuilder>(() => new JsCrewBuilder(engine, logger, llmProvider, tools, permissionGate, deltaSink)));
+        engine.SetValue(GlobalName, new Func<JsCrewBuilder>(() => new JsCrewBuilder(engine, logger, llmProvider, tools, permissionGate, deltaSink, usageSink)));
     }
 }

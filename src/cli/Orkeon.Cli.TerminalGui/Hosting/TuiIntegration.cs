@@ -47,19 +47,11 @@ public sealed record AgentRowInfo
     /// <summary>Cumulated tokens attributed to this row; null ⇒ not attributable (render <c>—</c>).</summary>
     public long? Tokens { get; init; }
 
-    /// <summary>True ⇒ filled bullet + emphasised row (the reference's selected row).</summary>
-    public bool IsActive { get; init; }
-
-    /// <summary>True ⇒ the row shows <c>idle</c> instead of metrics.</summary>
-    public bool IsIdle { get; init; }
-
     /// <summary>
-    /// Lifecycle token of the underlying instance — <c>running</c>/<c>done</c>/<c>failed</c>/
-    /// <c>cancelled</c>/<c>rejected</c>, or null for rows with no instance (<c>main</c>).
-    /// Terminal tokens change the metric block: a finished agent must read as finished,
-    /// never as <c>idle</c>.
+    /// True ⇒ filled bullet (<c>●</c>). The reference reserves it for the primary loop's
+    /// <c>main</c> row; delegated agents render hollow (<c>○</c>) even while running.
     /// </summary>
-    public string? Status { get; init; }
+    public bool IsActive { get; init; }
 
     /// <summary>Instance ticket, for selection → detail lookups. Null for <c>main</c>.</summary>
     public string? Ticket { get; init; }

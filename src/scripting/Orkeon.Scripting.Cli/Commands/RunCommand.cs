@@ -432,6 +432,10 @@ internal static partial class RunCommand
         // loop keeps its buffered behaviour unless the script passes onDelta.
         var deltaSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>();
 
+        // Optional usage receiver: opt-in via DI — without a sink, per-call LLM usage
+        // is simply not observed (no accounting side effects).
+        var usageSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>();
+
         // RAG pipelines back the first-class `rag.*` scripting namespace. Resolution is
         // best-effort: a host without embedding/chat defaults must not break scripts
         // that never touch rag.* (the binding itself fails loudly on use when null).
@@ -461,7 +465,8 @@ internal static partial class RunCommand
             llmProvider: llmProvider,
             permissionGate: permissionGate,
             deltaSink: deltaSink,
-            ragBackend: ragBackend);
+            ragBackend: ragBackend,
+            usageSink: usageSink);
 
         // ScriptHost stores but does not own/dispose the transpiler, so we keep ownership
         // here and dispose it when this method returns (after RunFromFileAsync completes).

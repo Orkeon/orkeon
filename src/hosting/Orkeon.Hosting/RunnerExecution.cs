@@ -768,7 +768,8 @@ public static partial class RunnerExecution
             builtInTools: tools,
             llmProvider: llmProvider,
             permissionGate: sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
-            deltaSink: sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>());
+            deltaSink: sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+            usageSink: sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>());
 
         // Always bundle through esbuild so relative imports + TS-only syntax in the
         // script resolve consistently across .ork.ts authors. EsbuildNotFoundException

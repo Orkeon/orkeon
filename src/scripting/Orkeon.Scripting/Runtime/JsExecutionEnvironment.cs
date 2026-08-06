@@ -43,4 +43,10 @@ internal sealed record JsExecutionEnvironment
     /// Null = buffered behaviour unless the script passes <c>onDelta</c>.
     /// </summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
+
+    /// <summary>
+    /// Optional host-native receiver for per-call LLM usage events. Null = usage not
+    /// observed (behaviour byte-identical to before the sink existed).
+    /// </summary>
+    public Orkeon.Application.Interfaces.Ports.ILlmUsageSink? UsageSink { get; init; }
 }

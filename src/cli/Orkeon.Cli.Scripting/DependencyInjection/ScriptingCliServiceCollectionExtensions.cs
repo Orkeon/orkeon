@@ -95,6 +95,12 @@ public static class ScriptingCliServiceCollectionExtensions
         // global is populated — both in command engines (so `.cmd.ts` handlers can call
         // tools directly) and in crew engines launched via ScriptHost/script-host (so `.body()`
         // + ctx.llm + tools work). Without this the namespace exists but is empty.
+        // Usage sink: session cost accounting + per-instance token attribution (agents pane).
+        // TryAdd so a host with its own ILlmUsageSink wins.
+        services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>(sp =>
+            new InstanceAttributingUsageSink(
+                sp.GetService<Orkeon.Application.Interfaces.Ports.ICostBudgetManager>()));
+
         services.TryAddSingleton(sp =>
         {
             var cliLimits = sp.GetRequiredService<IOptions<ScriptCommandsConfiguration>>().Value.Limits;
@@ -105,7 +111,8 @@ public static class ScriptingCliServiceCollectionExtensions
                 sp.GetServices<Orkeon.Domain.Tools.IBaseTool>().ToArray(),
                 sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>(),
                 sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
-                sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>());
+                sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                usageSink: sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>());
         });
 
         // Transpiler: fall back to PassThrough when esbuild isn't configured.

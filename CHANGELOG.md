@@ -40,14 +40,35 @@ it without a restart. The verb re-draws every fifteen seconds on long turns
 status-line timer tightened from 1 s to 250 ms accordingly. Defaults unchanged: the
 six Orkéon gerunds.
 
-### Fixed — agents pane: terminal instances no longer read as `idle`
+### Fixed — agents pane: live work only, finished agents leave immediately
 
 `TuiFidelityWiring.BuildAgentRows` collapsed every non-running instance to `idle`, so a
 finished crew was indistinguishable from a stuck one (the exact confusion of the
-2026-08-06 captures). Rows now keep their real lifecycle token and render it —
-`✓ done · 2m 10s`, `✗ failed`, `⊘ cancelled`, `✗ rejected` (`AgentsPaneModel`, with
-7-bit fallbacks) — and terminal rows age out of the pane two minutes after completion
-(the registry keeps them for `ps`). `idle` is again reserved for `main` between turns.
+2026-08-06 captures). Per the user ruling that followed — `idle` means *waiting*, not
+*finished* — the pane now shows LIVE work only: a finished agent's row disappears at
+once (no retention window, no terminal badges; `ps`/`inspect` stay the audit trail),
+and `idle` never renders at all. `● main` (filled bullet, no metrics) appears only
+while at least one delegated agent runs — with nothing delegated the pane collapses,
+matching the reference. Delegated rows render hollow (`○`) with the live
+`elapsed · ↓ tokens` pair.
+
+### Added — `ILlmUsageSink`: per-call LLM usage events, per-agent token attribution
+
+New Application port `ILlmUsageSink` (mirror of `ILlmDeltaSink`, same plumbing chain
+`JsEngineFactory → crewBuilder → JsCrew → JsLlmFacade`): every `ctx.llm.*` path —
+`complete`, `chat`, `extract`, `decide`, `stream` (both variants), and each `act`
+iteration (buffered or streamed, counted exactly once) — reports a `CostUsageEvent`
+carrying crew/agent/provider/model and the token split (a total-only response lands on
+`CompletionTokens` so `Prompt + Completion == TokensUsed`; a response with no usage at
+all reports nothing — "no usage" ≠ "zero tokens"). Nothing fed `ICostBudgetManager`
+before this: the REPL's session token readout summed an event stream no one produced.
+`AddScriptCommands` registers `InstanceAttributingUsageSink`, which forwards to the
+cost manager (fixing that readout and `/cost`) AND credits the `CommandInstance`
+ambient at call time (`ProgressAmbient`, the progress channel's AsyncLocal) — so the
+agents pane's `↓ NN.Nk tokens` is now that agent's real usage (`—` only when truly
+unattributable). `CommandInstanceView` gains `tokens` (visible to `ps`/`inspect` and
+the F4 detail; typed in `orkeon-cli.d.ts`). A sink that throws degrades to unobserved
+usage, never to a failed LLM call.
 
 ### Added — agents pane: keyboard + mouse selection (F4)
 
