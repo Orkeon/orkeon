@@ -53,6 +53,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Execution state persistence (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Beta |
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
+| Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
 | Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
 
 **Maturity** — *Beta*: complete and tested implementation, API likely to evolve
@@ -390,6 +391,22 @@ partial (flagged case by case below).
   reference consumer; `/commit` cannot work without it).
 - **Backward-compatible default**: flag absent → strict read-only allowlist,
   historical behavior unchanged.
+- **Allowlist customization** (two string-array keys, both read by
+  `AddOrkeonCodeTools()`):
+  - `Orkeon:Tools:Shell:ExtraAllowedCommands` — **additive** on top of the default
+    allowlist (or of a replacement list); the recommended way to allow
+    `make`/`cargo`/etc. for a trusted host. Composes with `AllowInterpreters`.
+  - `Orkeon:Tools:Shell:AllowedCommands` — full verbatim **replacement**; per the
+    `ShellCommandTool` ctor contract it cancels `AllowInterpreters` and re-enables
+    the read-only git subcommand restriction.
+  - An absent or empty section binds to `null` (defaults) — never to an empty
+    array, which would block every command.
+- **VFS path rewriting** (always on, no flag): arguments naming a mount-prefixed
+  virtual path (incl. `--out=/workspace/dist`) are resolved virtual→physical before
+  the process starts — a denied path fails the call with the redacted reason — and
+  stdout/stderr are rewritten physical→virtual, so the model only ever sees virtual
+  paths. `AgentFacing` mounts, ordinal matching; without mounts both passes are
+  no-ops.
 
 ## Native LLM console streaming — `AddLlmConsoleStreaming(configuration)` (exp07 F5 L3)
 

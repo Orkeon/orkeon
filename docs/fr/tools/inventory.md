@@ -24,7 +24,7 @@
 | Outil | Classe | Base | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
 | `code_interpreter` | `SecureCodeInterpreterTool` | `ToolBase` (non-generic) | Exécuter du code C# dans un sandbox isolé avec analyse statique de sécurité | `{ "code": "return 2 + 2;", "timeout_seconds": 10 }` |
-| `shell_command` | `ShellCommandTool` | `ToolBase<ShellCommandRequest, ShellCommandResponse>` | Exécuter des commandes shell avec allowlist/blocklist et timeout | `{ "command": "ls -la /data", "timeout_seconds": 30 }` |
+| `shell_command` | `ShellCommandTool` | `ToolBase<ShellCommandRequest, ShellCommandResponse>` | Exécuter des commandes shell avec allowlist/blocklist et timeout ; les arguments en chemins virtuels (préfixe de mount) sont résolus pour le processus et les chemins physiques de la sortie reviennent virtualisés | `{ "command": "cat /workspace/README.md", "timeout_seconds": 30 }` |
 
 ## Outils fichiers (`Orkeon.Tools.FileSystem`)
 

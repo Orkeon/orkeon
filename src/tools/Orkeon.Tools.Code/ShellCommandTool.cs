@@ -66,6 +66,16 @@ public sealed record ShellCommandResponse
 /// with the privileges of the host process.
 /// </para>
 /// <para>
+/// <b>VFS path rewriting.</b> Arguments that name a mount-prefixed virtual path
+/// (e.g. <c>/workspace/App.sln</c>, including the embedded <c>--out=/workspace/dist</c>
+/// form) are resolved to their physical location before the process starts; a path the
+/// file system refuses fails the call with the redacted denial reason. Conversely,
+/// stdout/stderr are rewritten physical→virtual so the model only ever sees virtual
+/// paths. Both directions cover <see cref="Orkeon.Domain.FileSystem.MountVisibility.AgentFacing"/>
+/// mounts only (the contract of <c>IFileSystemService.GetAvailableMounts</c>) and match
+/// ordinally — a Windows tool that re-cases paths defeats the outbound rewrite.
+/// </para>
+/// <para>
 /// <b>Interpreters are RCE-equivalent.</b> The default allowlist contains
 /// read-only commands only. General-purpose interpreters/build tools
 /// (<c>node</c>, <c>dotnet</c>, <c>npm</c>, <c>find</c>) are excluded by default
@@ -193,18 +203,28 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// allowlist. This is RCE-equivalent (no OS confinement) and emits a security
     /// warning. Ignored when a custom <paramref name="allowedCommands"/> is supplied.
     /// </param>
+    /// <param name="extraAllowedCommands">
+    /// Extra executables unioned into the effective allowlist — additive on top of the
+    /// default (or of a custom <paramref name="allowedCommands"/>), unlike the
+    /// replacement semantics of <paramref name="allowedCommands"/>. Does NOT affect
+    /// <paramref name="allowInterpreters"/> nor the git read-only restriction. An empty
+    /// enumerable is harmless (union of nothing).
+    /// </param>
     public ShellCommandTool(
         IFileSystemService fileSystem,
         IEnumerable<string>? allowedCommands = null,
         IEnumerable<string>? blockedPatterns = null,
         ILogger<ShellCommandTool>? logger = null,
-        bool allowInterpreters = false)
+        bool allowInterpreters = false,
+        IEnumerable<string>? extraAllowedCommands = null)
         : base(logger)
     {
         ArgumentNullException.ThrowIfNull(fileSystem);
         _fileSystem = fileSystem;
         _interpretersAllowed = allowInterpreters && allowedCommands is null;
         _allowedCommands = BuildAllowedCommands(allowedCommands, allowInterpreters);
+        if (extraAllowedCommands is not null)
+            _allowedCommands.UnionWith(extraAllowedCommands);
         _blockedPatterns = [.. blockedPatterns ?? s_defaultBlockedPatterns];
 
         if (_interpretersAllowed)
@@ -275,6 +295,12 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (blockedPattern is not null)
             return $"Command contains blocked pattern: '{blockedPattern}'";
 
+        // VFS inbound check: an argument naming a mount-prefixed virtual path the file
+        // system refuses must fail the call (redacted reason) — never reach the process.
+        var (_, argumentDenial) = RewriteInboundArguments(ParseCommand(request.Command).Arguments);
+        if (argumentDenial is not null)
+            return $"Command argument denied by file system: {argumentDenial}";
+
         if (request.TimeoutSeconds <= 0)
             return "Timeout must be greater than 0";
 
@@ -294,6 +320,19 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         ShellCommandRequest request, CancellationToken cancellationToken)
     {
         var (executable, arguments) = ParseCommand(request.Command);
+
+        // Virtual→physical: the child process only understands physical paths. Validation
+        // already vetoed denials; this re-run is belt-and-braces against a scope swap.
+        var (rewrittenArguments, argumentDenial) = RewriteInboundArguments(arguments);
+        if (argumentDenial is not null)
+            return new ShellCommandResponse
+            {
+                ExitCode = -1,
+                Stdout = "",
+                Stderr = $"Argument refusé: {argumentDenial}",
+                Completed = false
+            };
+        arguments = rewrittenArguments;
 
         var wdValidation = _fileSystem.ResolveAndValidate(request.WorkingDirectory, FileAccessRights.Read);
         if (!wdValidation.IsAllowed)
@@ -340,6 +379,10 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             startInfo.ArgumentList.Add(arg);
         }
 
+        // Physical→virtual table for the output, built per call: mounts can be swapped
+        // per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
+        var outboundReplacements = BuildOutboundReplacements();
+
         using var process = new Process { StartInfo = startInfo };
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(request.TimeoutSeconds));
@@ -362,8 +405,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return new ShellCommandResponse
             {
                 ExitCode = process.ExitCode,
-                Stdout = Truncate(stdout),
-                Stderr = Truncate(stderr),
+                Stdout = Truncate(RewriteOutboundPaths(stdout, outboundReplacements)),
+                Stderr = Truncate(RewriteOutboundPaths(stderr, outboundReplacements)),
                 Completed = true
             };
         }
@@ -391,8 +434,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return new ShellCommandResponse
             {
                 ExitCode = -1,
-                Stdout = Truncate(stdout),
-                Stderr = Truncate(stderr + "\n[Command timed out]"),
+                Stdout = Truncate(RewriteOutboundPaths(stdout, outboundReplacements)),
+                Stderr = Truncate(RewriteOutboundPaths(stderr, outboundReplacements) + "\n[Command timed out]"),
                 Completed = false
             };
         }
@@ -495,6 +538,183 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         return s_forbiddenOperators.FirstOrDefault(op => command.Contains(op, StringComparison.Ordinal));
     }
+
+    // ── VFS path rewriting ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Rewrites mount-prefixed virtual arguments to their physical paths. Returns the
+    /// original array untouched together with the (already redacted) denial reason when
+    /// the file system refuses one of them. No mounts ⇒ exact no-op.
+    /// </summary>
+    private (string[] Arguments, string? DenialReason) RewriteInboundArguments(string[] arguments)
+    {
+        var mounts = _fileSystem.GetAvailableMounts();
+        if (mounts.Count == 0 || arguments.Length == 0)
+            return (arguments, null);
+
+        var rewritten = new string[arguments.Length];
+        for (var i = 0; i < arguments.Length; i++)
+        {
+            var (token, denial) = TryRewriteToken(arguments[i], mounts);
+            if (denial is not null)
+                return (arguments, denial);
+            rewritten[i] = token;
+        }
+
+        return (rewritten, null);
+    }
+
+    /// <summary>
+    /// Rewrites one token: a whole-token mount match wins; otherwise the embedded
+    /// <c>key=/mount/…</c> form splits at the FIRST <c>=</c> and resolves the entire
+    /// right side (even if it contains further <c>=</c>). Anything else stays verbatim.
+    /// </summary>
+    private (string Token, string? DenialReason) TryRewriteToken(string token, IReadOnlyList<MountInfo> mounts)
+    {
+        if (mounts.Any(m => MatchesMountPrefix(token, m.VirtualPath)))
+        {
+            var result = _fileSystem.ResolveAndValidate(token, FileAccessRights.Read);
+            return result.IsAllowed
+                ? (result.ResolvedPath!, null)
+                : (token, result.DenialReason ?? "access denied");
+        }
+
+        var eq = token.IndexOf('=', StringComparison.Ordinal);
+        if (eq > 0 && eq < token.Length - 1)
+        {
+            var right = token[(eq + 1)..];
+            if (mounts.Any(m => MatchesMountPrefix(right, m.VirtualPath)))
+            {
+                var result = _fileSystem.ResolveAndValidate(right, FileAccessRights.Read);
+                return result.IsAllowed
+                    ? (string.Concat(token.AsSpan(0, eq + 1), result.ResolvedPath), null)
+                    : (token, result.DenialReason ?? "access denied");
+            }
+        }
+
+        return (token, null);
+    }
+
+    /// <summary>
+    /// Path-boundary prefix check: <c>/workspace</c> matches <c>/workspace</c> and
+    /// <c>/workspace/x</c> but never <c>/workspaces</c>. Ordinal, like the registry.
+    /// </summary>
+    public static bool MatchesMountPrefix(string path, string mountVirtualPath)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(mountVirtualPath);
+        var prefix = mountVirtualPath.TrimEnd('/');
+        if (prefix.Length == 0)
+            return false;
+
+        return string.Equals(path, prefix, StringComparison.Ordinal)
+            || path.StartsWith(prefix + "/", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Builds the physical→virtual replacement table by resolving each mount ROOT
+    /// (a pure mapping — no existence requirement). Mounts whose root resolution fails
+    /// and identity mounts (physical == virtual, e.g. in-memory fakes) are skipped.
+    /// Longest physical base first, so nested bases resolve to the deepest mount.
+    /// </summary>
+    private List<(string PhysicalBase, string VirtualPrefix)> BuildOutboundReplacements()
+    {
+        var mounts = _fileSystem.GetAvailableMounts();
+        if (mounts.Count == 0)
+            return [];
+
+        var replacements = new List<(string PhysicalBase, string VirtualPrefix)>(mounts.Count);
+        foreach (var mount in mounts)
+        {
+            var root = _fileSystem.ResolveAndValidate(mount.VirtualPath, FileAccessRights.Read);
+            if (!root.IsAllowed || string.IsNullOrEmpty(root.ResolvedPath))
+                continue;
+
+            var virtualPrefix = mount.VirtualPath.TrimEnd('/');
+            if (virtualPrefix.Length == 0)
+                continue;
+
+            if (string.Equals(root.ResolvedPath, virtualPrefix, StringComparison.Ordinal)
+                || string.Equals(root.ResolvedPath, mount.VirtualPath, StringComparison.Ordinal))
+                continue;
+
+            replacements.Add((root.ResolvedPath, virtualPrefix));
+        }
+
+        replacements.Sort((a, b) => b.PhysicalBase.Length.CompareTo(a.PhysicalBase.Length));
+        return replacements;
+    }
+
+    /// <summary>
+    /// Rewrites physical mount bases back to their virtual prefixes in process output.
+    /// A base only matches on a path boundary (next char is a separator, a delimiter,
+    /// or end of text — <c>/data</c> never rewrites <c>/data2/x</c>); after a
+    /// replacement, backslashes in the remainder of the path token are normalized to
+    /// <c>/</c> up to the next delimiter, so <c>C:\ws\Foo.cs(12,3): error</c> becomes
+    /// <c>/workspace/Foo.cs(12,3): error</c>. Pure string scan — no <c>Path</c> APIs.
+    /// </summary>
+    public static string RewriteOutboundPaths(
+        string output,
+        IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> replacements)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        ArgumentNullException.ThrowIfNull(replacements);
+        if (output.Length == 0 || replacements.Count == 0)
+            return output;
+
+        var sb = new System.Text.StringBuilder(output.Length);
+        var i = 0;
+        while (i < output.Length)
+        {
+            var matched = false;
+            foreach (var (physicalBase, virtualPrefix) in replacements)
+            {
+                if (!MatchesAt(output, i, physicalBase))
+                    continue;
+
+                var end = i + physicalBase.Length;
+                if (end < output.Length)
+                {
+                    var next = output[end];
+                    if (next != '/' && next != '\\' && !IsPathDelimiter(next))
+                        continue;
+                }
+
+                sb.Append(virtualPrefix);
+                i = end;
+                while (i < output.Length && !IsPathDelimiter(output[i]))
+                {
+                    sb.Append(output[i] == '\\' ? '/' : output[i]);
+                    i++;
+                }
+
+                matched = true;
+                break;
+            }
+
+            if (!matched)
+            {
+                sb.Append(output[i]);
+                i++;
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private static bool MatchesAt(string text, int index, string value)
+        => index + value.Length <= text.Length
+           && string.CompareOrdinal(text, index, value, 0, value.Length) == 0;
+
+    /// <summary>
+    /// Characters that end a path token in process output. Includes the list
+    /// separators <c>:</c> <c>;</c> <c>,</c> so every entry of a PATH-style dump
+    /// (<c>/a:/b</c>, <c>C:\a;C:\b</c>) is matched — without them the scan would
+    /// swallow the second base and leak it unrewritten. A drive-letter colon is
+    /// unaffected: it sits INSIDE the matched physical base, never after it.
+    /// </summary>
+    private static bool IsPathDelimiter(char c)
+        => char.IsWhiteSpace(c) || c is '"' or '\'' or '(' or ')' or ':' or ';' or ',';
 
     /// <summary>
     /// Validates that a <c>git</c> command uses a read-only subcommand

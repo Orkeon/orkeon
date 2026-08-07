@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — shell_command: bidirectional VFS path rewriting
+
+`shell_command` now speaks virtual paths in both directions, so a coding agent can run
+`dotnet build /workspace/App.sln` instead of failing on a path that only exists in the
+VFS. Inbound, every argument that names a mount-prefixed virtual path — including the
+embedded `--out=/workspace/dist` form (split at the first `=`) — is resolved
+virtual→physical through `IFileSystemService.ResolveAndValidate` before the process
+starts, with a path-boundary check (`/workspaces` never matches mount `/workspace`); a
+denied path fails the call with the redacted denial reason instead of reaching the
+process verbatim. Outbound, stdout/stderr are rewritten physical→virtual before
+truncation (success and timeout paths alike) using a per-call table built by resolving
+each mount root — longest physical base first, backslashes normalized to `/` inside the
+rewritten path token — so the model only ever sees virtual paths and stops leaking
+physical host paths into its own follow-up `file_read` calls. Scope: `AgentFacing`
+mounts, ordinal matching (re-cased Windows output is a documented limitation); with no
+mounts configured both passes are exact no-ops.
+
+### Added — shell_command: configurable allowlist
+
+Two new config keys shape the executable allowlist without code changes:
+`Orkeon:Tools:Shell:ExtraAllowedCommands` (string array) is ADDITIVE on top of the
+default allowlist — the recommended way to allow `make`/`cargo`/etc. for a trusted
+coding-agent host; it composes with `AllowInterpreters` (new `extraAllowedCommands`
+ctor parameter, unioned after the base list is built). `Orkeon:Tools:Shell:AllowedCommands`
+(string array) is a full verbatim REPLACEMENT mapping to the existing `allowedCommands`
+ctor parameter — per that contract it cancels `AllowInterpreters` and re-enables the git
+read-only subcommand restriction. An absent or empty section binds to `null`, never to
+an empty array (which would block every command), so defaults are unreachable by
+accident.
+
 ### Added — configurable LLM retry budget (default 10) + visible reconnection feedback
 
 `Llm:MaxRetries` (the dormant `LlmConfig.MaxRetries`, never consumed until now) drives

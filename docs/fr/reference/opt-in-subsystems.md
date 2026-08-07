@@ -51,6 +51,8 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Bêta |
 | Sous-système RAG (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) ; profils `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (défaut `fast`) ; `balanced`/`quality`/`adaptive` exigent le cross-encoder ONNX — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, poids embarqués, hors-ligne) ; `corrective` non (le graphe boucle au lieu de reranker) ; le repli web correctif est purement config — `AddOrkeonRag` câble déjà le transport, les deux interrupteurs `Enabled` gouvernent (`Orkeon:Rag:Corrective:WebFallback` politique, `Orkeon:Rag:WebFallback` transport) — voir la section détaillée plus bas | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (à étages / graphe correctif), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Bêta |
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
+| Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Bêta |
+| Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
 
 **Maturité** — *Bêta* : implémentation complète et testée, API susceptible d'évoluer
 avant la v1. *Expérimental* : implémentation fonctionnelle mais non câblée dans le
@@ -356,6 +358,34 @@ partiel (signalé au cas par cas ci-dessous).
 - **Limites connues** : les métadonnées d'exécution sont persistées en chaînes
   invariantes (les lectures primitives restent converties via `GetValue<T>`) ; la
   télémétrie `ToolsUsed` des sorties de tâches n'est pas persistée (v1).
+
+---
+
+## Shell : interpréteurs, allowlist & réécriture VFS — `Orkeon:Tools:Shell:*`
+
+- **`AllowInterpreters = true`** (config seule, lue par `AddOrkeonCodeTools()`) :
+  réactive `node`/`dotnet`/`npm`/`find` ET lève la restriction git lecture-seule
+  (`git add`/`commit`/`branch` fonctionnent). Équivalent RCE sur l'hôte — à réserver
+  aux hôtes coding-agent de confiance (le REPL exp07 est le consommateur de
+  référence ; `/commit` ne marche pas sans). Avertissement de sécurité loggé.
+- **Allowlist personnalisée** (deux clés tableau de chaînes) :
+  - `ExtraAllowedCommands` — **additive** sur l'allowlist par défaut (ou de
+    remplacement) ; la voie recommandée pour autoriser `make`/`cargo`/etc. Compose
+    avec `AllowInterpreters`.
+  - `AllowedCommands` — **remplacement** intégral verbatim ; par contrat du ctor de
+    `ShellCommandTool`, il annule `AllowInterpreters` et réactive la restriction git
+    lecture-seule.
+  - Une section absente ou vide se lie à `null` (défauts) — jamais à un tableau
+    vide, qui bloquerait toute commande.
+- **Réécriture de chemins VFS** (toujours active, sans flag) : les arguments qui
+  nomment un chemin virtuel préfixé par un mount (y compris la forme
+  `--out=/workspace/dist`) sont résolus virtuel→physique avant le démarrage du
+  processus — un chemin refusé fait échouer l'appel avec la raison expurgée — et
+  stdout/stderr sont réécrits physique→virtuel : le modèle ne voit jamais que des
+  chemins virtuels. Mounts `AgentFacing`, matching ordinal ; sans mount, les deux
+  passes sont des no-ops.
+- **Défaut rétro-compatible** : aucune clé → allowlist stricte lecture-seule,
+  comportement historique inchangé.
 
 ---
 

@@ -31,16 +31,43 @@ public static class CodeToolExtensions
         // builds and tests) is the appsettings flag `Orkeon:Tools:Shell:AllowInterpreters`,
         // set to true; the tool emits its security warning when active. Hosts without
         // IConfiguration (or without the flag) keep the strict read-only default.
+        //
+        // Allowlist keys (both string arrays, absent/empty section ⇒ null, see the trap
+        // above — an empty-but-non-null list would block everything):
+        //  - `Orkeon:Tools:Shell:ExtraAllowedCommands` — ADDITIVE on top of the default
+        //    (or replacement) allowlist; the recommended way to allow make/cargo/etc.
+        //    Composes with AllowInterpreters.
+        //  - `Orkeon:Tools:Shell:AllowedCommands` — full REPLACEMENT, verbatim. Per the
+        //    ctor contract it cancels AllowInterpreters and re-enables the git read-only
+        //    subcommand restriction. Extras still union on top of it.
         services.AddTransient<IBaseTool>(sp =>
         {
             var fs = sp.GetRequiredService<IFileSystemService>();
             var logger = sp.GetService<ILogger<ShellCommandTool>>();
-            var allowInterpreters = sp.GetService<IConfiguration>()
+            var configuration = sp.GetService<IConfiguration>();
+            var allowInterpreters = configuration
                 ?.GetValue("Orkeon:Tools:Shell:AllowInterpreters", false) ?? false;
-            return new ShellCommandTool(fs, allowedCommands: null, blockedPatterns: null, logger,
-                allowInterpreters: allowInterpreters);
+            var replacement = ReadCommandList(configuration, "Orkeon:Tools:Shell:AllowedCommands");
+            var extras = ReadCommandList(configuration, "Orkeon:Tools:Shell:ExtraAllowedCommands");
+            return new ShellCommandTool(fs, allowedCommands: replacement, blockedPatterns: null, logger,
+                allowInterpreters: allowInterpreters, extraAllowedCommands: extras);
         });
         // SecureCodeInterpreterTool is registered via AddOrkeonCodeSandbox() in InfrastructureExtensions
         return services;
+    }
+
+    /// <summary>
+    /// Reads a string-array config section into an allowlist, mapping an absent or empty
+    /// section to <c>null</c> — never an empty array, which the ShellCommandTool ctor
+    /// would take as "custom allowlist with zero entries" and block every command.
+    /// </summary>
+    private static string[]? ReadCommandList(IConfiguration? configuration, string key)
+    {
+        var values = configuration?.GetSection(key).GetChildren()
+            .Select(c => c.Value)
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v!)
+            .ToArray();
+        return values is { Length: > 0 } ? values : null;
     }
 }
