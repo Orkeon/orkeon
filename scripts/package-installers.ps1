@@ -55,9 +55,11 @@ if (-not $Version) { throw 'Could not resolve a version; pass -Version.' }
 $EsbuildVersion = '0.24.0'
 $lock = Join-Path $RepoRoot 'tools\scripting-esbuild\package-lock.json'
 if (Test-Path $lock) {
-    $lockJson = Get-Content $lock -Raw | ConvertFrom-Json
-    $pkg = $lockJson.packages.'node_modules/esbuild'
-    if ($pkg -and $pkg.version) { $EsbuildVersion = $pkg.version }
+    # npm lockfiles key the root package on "" — ConvertFrom-Json only accepts
+    # empty property names with -AsHashtable (PowerShell 7.3+ throws otherwise).
+    $lockJson = Get-Content $lock -Raw | ConvertFrom-Json -AsHashtable
+    $pkg = $lockJson['packages']['node_modules/esbuild']
+    if ($pkg -and $pkg['version']) { $EsbuildVersion = $pkg['version'] }
 }
 
 # --- App table -----------------------------------------------------------------
