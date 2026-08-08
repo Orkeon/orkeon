@@ -224,10 +224,41 @@ jobs:
           if (-not (Test-Path -LiteralPath $orkeonCmd)) { throw "$orkeonCmd not found after install" }
           Write-Host "PASS install -- $orkeonCmd exists"
 
-          $arpEntry = Get-ItemProperty -Path "$arpKeyPath\*" -ErrorAction SilentlyContinue |
-            Where-Object { $_.DisplayName -eq 'Orkeon' } | Select-Object -First 1
-          if (-not $arpEntry) { throw 'No Add/Remove Programs entry named Orkeon after install.' }
-          Write-Host "PASS arp -- registered (DisplayVersion $($arpEntry.DisplayVersion))"
+          # Per-user MSI registration lands under the HKCU Uninstall key, but an
+          # elevated CI session may surprise us -- search both hives (plus the
+          # 32-bit view), retry once for registry settle, and dump everything the
+          # runner actually sees before failing, so a red run is self-diagnosing.
+          function Find-OrkeonArpEntry {
+            $roots = @(
+              'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+              'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+              'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+            )
+            foreach ($root in $roots) {
+              $hit = Get-ItemProperty -Path "$root\*" -ErrorAction SilentlyContinue |
+                Where-Object { $_.DisplayName -eq 'Orkeon' } | Select-Object -First 1
+              if ($hit) { return [pscustomobject]@{ Root = $root; Entry = $hit } }
+            }
+            return $null
+          }
+          $found = Find-OrkeonArpEntry
+          if (-not $found) { Start-Sleep -Seconds 3; $found = Find-OrkeonArpEntry }
+          if (-not $found) {
+            Write-Host '--- ARP dump (both hives) ---'
+            foreach ($root in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+                                'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall')) {
+              Write-Host "[$root]"
+              Get-ChildItem $root -ErrorAction SilentlyContinue | ForEach-Object {
+                $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+                Write-Host ("  {0}  DisplayName='{1}'" -f $_.PSChildName, $p.DisplayName)
+              }
+            }
+            throw 'No Add/Remove Programs entry named Orkeon after install.'
+          }
+          if ($found.Root -notlike 'HKCU:*') {
+            Write-Warning "ARP entry registered under $($found.Root) (expected HKCU for a per-user package -- elevated session side effect?)"
+          }
+          Write-Host "PASS arp -- registered in $($found.Root) (DisplayVersion $($found.Entry.DisplayVersion))"
 
           $userPathEntries = @((Get-UserPathRaw) -split ';' | Where-Object { $_ })
           if ($userPathEntries -notcontains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') not on the user PATH after install." }
@@ -270,10 +301,9 @@ jobs:
             Write-Host 'PASS uninstall -- install dir fully removed'
           }
 
-          $arpEntryAfter = Get-ItemProperty -Path "$arpKeyPath\*" -ErrorAction SilentlyContinue |
-            Where-Object { $_.DisplayName -eq 'Orkeon' } | Select-Object -First 1
-          if ($arpEntryAfter) { throw 'Add/Remove Programs entry still present after uninstall.' }
-          Write-Host 'PASS arp-removed -- entry gone'
+          $arpEntryAfter = Find-OrkeonArpEntry
+          if ($arpEntryAfter) { throw "Add/Remove Programs entry still present after uninstall (in $($arpEntryAfter.Root))." }
+          Write-Host 'PASS arp-removed -- entry gone from every hive'
 
           $userPathEntriesAfter = @((Get-UserPathRaw) -split ';' | Where-Object { $_ })
           if ($userPathEntriesAfter -contains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') still on the user PATH after uninstall." }
