@@ -29,10 +29,12 @@ public static class RunnerSettings
     /// <summary>
     /// The global per-user configuration path written by <c>orkeon init</c>:
     /// <c>%APPDATA%\Orkeon\appsettings.json</c> on Windows,
-    /// <c>~/.config/Orkeon/appsettings.json</c> on Linux/macOS
-    /// (<see cref="Environment.SpecialFolder.ApplicationData"/>). Never the install
-    /// directory — that is what keeps upgrades safe. The returned path is always
-    /// absolute.
+    /// <c>$XDG_CONFIG_HOME/Orkeon/appsettings.json</c> (else
+    /// <c>~/.config/Orkeon/appsettings.json</c>) on Linux <b>and</b> macOS — macOS does
+    /// not use <c>~/Library/Application Support</c>, which is where
+    /// <see cref="Environment.SpecialFolder.ApplicationData"/> points since .NET 8.
+    /// Never the install directory — that is what keeps upgrades safe. The returned
+    /// path is always absolute.
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// No per-user configuration directory can be determined (no ApplicationData folder
@@ -48,6 +50,18 @@ public static class RunnerSettings
         // RELATIVE path that init would write into the cwd and resolution would never find
         // again. SpecialFolderOption.Create creates the folder and keeps the path absolute.
         var appData = GetSpecialFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        // Since .NET 8, ApplicationData maps to ~/Library/Application Support on macOS —
+        // but Orkeon documents (and the release smokes assert) the XDG convention on every
+        // Unix: $XDG_CONFIG_HOME, else ~/.config, exactly like Linux. Caught by the first
+        // macos-latest smoke run: init wrote where neither the docs nor resolution looked.
+        if (OperatingSystem.IsMacOS())
+        {
+            var xdg = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+            appData = !string.IsNullOrEmpty(xdg) && Path.IsPathRooted(xdg)
+                ? xdg
+                : ""; // falls through to the home-derived ~/.config below
+        }
 
         if (string.IsNullOrEmpty(appData))
         {

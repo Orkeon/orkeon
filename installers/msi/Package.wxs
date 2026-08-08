@@ -145,7 +145,10 @@
       WIN-00-PLAN.md §5 draws.
     -->
     <ComponentGroup Id="PayloadComponents" Directory="INSTALLFOLDER">
-      <Files Include="$(var.PublishDir)\**" Exclude="$(var.PublishDir)\install.ps1" />
+      <!-- WIX0004: Exclude is a child element in WiX v5, not an attribute. -->
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\install.ps1" />
+      </Files>
     </ComponentGroup>
 
     <!--
