@@ -26,4 +26,13 @@ internal static class LanguageRegistry
     public static bool IsSupported(string language) => Map.ContainsKey(language);
 
     public static IEnumerable<string> Supported => Map.Keys.Where(k => k != "c-sharp");
+
+    /// <summary>
+    /// Native tree-sitter libraries this registry can load, deduplicated (several
+    /// languages share one library — <c>tsx</c> rides on <c>tree-sitter-typescript</c>).
+    /// Consumed by the publish-time prune guard-rail so the MSBuild whitelist in
+    /// <c>src/Directory.Build.targets</c> can never drift away from the registry.
+    /// </summary>
+    public static IEnumerable<string> Libraries =>
+        Map.Values.Select(v => v.Library).Distinct(StringComparer.Ordinal);
 }
