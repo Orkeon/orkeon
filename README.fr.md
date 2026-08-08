@@ -99,7 +99,7 @@ var crew = new CrewBuilder()
 **Pas de clé API ?** Tout tourne sur un modèle installé sur votre machine
 (Docker Model Runner, Ollama, ou un modèle embarqué dans l'image conteneur) —
 voir le [guide des modèles locaux](docs/fr/guides/local-models.md). Guides
-complets : [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) ·
+complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) ·
 [Run your first example](docs/getting-started/run-your-first-example.md).
 
 ---
@@ -108,10 +108,45 @@ complets : [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-ork
 
 | Vous voulez… | Faites | Détails |
 |---|---|---|
-| **Exécuter des crews sans rien installer** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — shell interactif, 105 exemples embarqués (`orkeon-example run 1`), prêt pour les modèles locaux | [Guide conteneur](docs/getting-started/three-ways-to-run-orkeon.md#3-container) |
-| **Installer la CLI `orkeon`** | Prenez l'archive de votre plateforme dans les [releases](https://github.com/Orkeon/orkeon/releases) (`linux-x64/arm64`, `osx-x64/arm64`, `win-x64`), puis `./install.sh` / `.\install.ps1`. Contient `orkeon`, `orkeon-repl` et les runners d'exemples. Prérequis : [runtime .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) | [Binaires de release](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
+| **Exécuter des crews sans rien installer** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — shell interactif, 105 exemples embarqués (`orkeon-example run 1`), prêt pour les modèles locaux | [Guide conteneur](docs/fr/getting-started/three-ways-to-run-orkeon.md#3-conteneur) |
+| **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu : les démarrages rapides ci-dessous. Autres plateformes : prenez l'archive dans les [releases](https://github.com/Orkeon/orkeon/releases) (`linux-arm64`, `osx-x64/arm64`), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
 | **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon.Domain` (+ `Orkeon.Application`, `Orkeon.Infrastructure`, et les packs opt-in au besoin) | [Bootstrap et exécution](docs/getting-started/bootstrap.md) |
-| **Contribuer au framework** | `git clone` + `dotnet build Orkeon.sln` | [Depuis les sources](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contribuer](#contribuer) |
+| **Contribuer au framework** | `git clone` + `dotnet build Orkeon.sln` | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
+
+**Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis :
+
+```powershell
+Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cli-<version>-win-x64
+.\install.ps1        # ou : msiexec /i orkeon-<version>-win-x64.msi -- un seul canal, pas les deux
+orkeon init          # dans un NOUVEAU terminal : choisissez le fournisseur LLM et le modèle
+orkeon run crew.yaml
+```
+
+**Debian / Ubuntu** — téléchargez `orkeon_<version>_amd64.deb` ; self-contained lui aussi, aucun paquet `dotnet-runtime` tiré :
+
+```bash
+sudo apt install ./orkeon_<version>_amd64.deb
+orkeon init          # écrit ~/.config/Orkeon/appsettings.json
+orkeon run crew.yaml
+```
+
+**macOS** — Homebrew deviendra la voie recommandée dès que le dépôt `Orkeon/homebrew-tap` sera publié, à la première release taguée :
+
+```bash
+brew tap orkeon/tap && brew install orkeon    # une fois le tap publié
+orkeon init
+orkeon run crew.yaml
+```
+
+En attendant (et sur n'importe quelle machine), l'archive self-contained — `osx-arm64` pour Apple Silicon, `osx-x64` pour Intel. `install.sh` retire pour vous l'attribut de quarantaine Gatekeeper :
+
+```bash
+curl -fsSL -O https://github.com/Orkeon/orkeon/releases/latest/download/orkeon-cli-<version>-osx-arm64.tar.gz
+tar -xzf orkeon-cli-<version>-osx-arm64.tar.gz && cd orkeon-cli-<version>-osx-arm64 && ./install.sh
+orkeon init
+```
+
+`orkeon doctor` diagnostique l'installation (runtime, config, joignabilité du LLM, esbuild, grammaires) dès que quelque chose cloche.
 
 ---
 
@@ -175,7 +210,7 @@ Autour du cœur, des paquets dédiés couvrent l'hébergement (`Orkeon.Hosting`)
 | Vous cherchez… | Allez à |
 |---|---|
 | **Le premier run, pas à pas** | [Vue d'ensemble getting-started](docs/getting-started/overview.md) · [Run your first example](docs/getting-started/run-your-first-example.md) |
-| **Les trois façons d'exécuter Orkeon** (source / binaire / conteneur) | [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) |
+| **Les trois façons d'exécuter Orkeon** (source / binaire / conteneur) | [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) |
 | **Les modèles locaux** (Docker Model Runner, Ollama, embarqué, contextes 128K) | [Guide des modèles locaux](docs/fr/guides/local-models.md) |
 | **Les 105 exemples exécutables** (9 catégories thématiques + `orkeon-example`) | [Examples](examples/README.md) · [Catalogue](docs/reference/examples-catalog.md) |
 | **Écrire des crews** : YAML vs builders, câblage de l'hôte, exécution | [YAML & builders](docs/getting-started/yaml-and-builders.md) · [Bootstrap et exécution](docs/getting-started/bootstrap.md) |

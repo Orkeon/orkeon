@@ -7,6 +7,118 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — macOS channel: osx CLI tarballs, Gatekeeper handling, Homebrew formula
+
+macOS joins Windows and Debian as a first-class install target. The release now carries
+`orkeon-cli-<version>-osx-arm64.tar.gz` and `-osx-x64.tar.gz` — the `orkeon` CLI alone,
+self-contained and tree-sitter-pruned like every other CLI package, cross-published from the
+Linux runner (the apphosts ship in the SDK packs, the natives come from NuGet, and esbuild is
+fetched per-RID as `@esbuild/darwin-{arm64,x64}`). No .NET install is required on the Mac.
+
+`install.sh` gained a Darwin-only block that removes the two ways an unsigned binary fails on
+macOS. It clears `com.apple.quarantine` from the installed tree — a browser download tags
+every extracted file with it, which is what produces *"cannot be opened because the developer
+cannot be verified"*, and running the installer is the user's own act of trust. It then runs
+`codesign -v` over the bundled Mach-O files and ad-hoc re-signs **only** those that fail,
+because Apple Silicon refuses to load an unsigned Mach-O while a valid publisher signature
+(onnxruntime's, for instance) must never be replaced by an ad-hoc one. Both halves degrade
+quietly when `xattr` or `codesign` is unavailable, no individual failure aborts the install,
+and the block is skipped outright off Darwin — Linux behaviour is unchanged. A new blocking
+`smoke-macos` job (`macos-latest`, Apple silicon) installs the `osx-arm64` tarball on a real
+Mac and walks init → doctor → run → rag → uninstall on it, which is what actually proves the
+signing story: a native library killed at load time fails there instead of in a user's
+terminal.
+
+A Homebrew formula ships in the repository at `installers/homebrew/orkeon.rb`: a binary
+formula that fetches the tarball for the machine's architecture (`on_arm` / `on_intel`),
+installs the payload under the Cellar's `libexec`, and writes a `bin/orkeon` wrapper pointing
+`ORKEON_ESBUILD_PATH` at the bundled esbuild. Its `test do` runs `orkeon doctor`, not
+`orkeon --version` (which exits `1`). `scripts/update-homebrew-formula.sh` regenerates the
+version and both url/sha256 pairs from a release's `SHA256SUMS` — idempotent, and it refuses
+to write when the formula's structure no longer matches what it knows how to rewrite. The
+`Orkeon/homebrew-tap` repository is **not published yet**, so `brew install orkeon` does not
+resolve; until it is, the two `sha256` values are explicit placeholders that fail verification
+rather than fetch anything unverified.
+
+### Added — `orkeon init` and `orkeon doctor`
+
+Two new verbs make the first ten minutes on a fresh machine self-service. `orkeon init` is
+a wizard over five providers — `ollama`, `docker-model-runner`, `openai`, `custom`, `none` —
+that writes an `appsettings.json` at the global per-user path (below), then probes the endpoint
+to confirm it answers. Every prompt has a flag, so it scripts end to end:
+`--provider`, `--base-url`, `--model`, `--api-key-env` (the recommended way to carry a key),
+`--api-key` (inline, discouraged), `--path`, `--force`, `--no-probe`. With a non-interactive
+stdin and no `--provider`, it refuses rather than hanging. `orkeon doctor` runs nine checks —
+`dotnet-runtime`, `appsettings`, `llm-config`, `llm-reachability`, `esbuild`,
+`local-embeddings`, `onnx-reranker`, `tree-sitter`, `workspace-write` — prints them as a
+✅/⚠️/❌ table, exits `1` as soon as one fails (warnings stay green), and emits a
+`[{check, status, detail}]` array under `--json` for CI.
+
+### Added — global per-user configuration path in the settings resolution
+
+Settings resolution gains a fourth step: after the local `appsettings.json` and the walk up
+the parent directories, and before the env-vars-only fallback, the CLI now reads
+`%APPDATA%\Orkeon\appsettings.json` on Windows and `~/.config/Orkeon/appsettings.json` on
+Linux/macOS — the file `orkeon init` writes. An installed `orkeon` therefore works from any
+working directory, and configuration never lives in the install directory, which every
+(re)install deletes outright.
+
+### Changed — an unconfigured LLM warns instead of silently echoing
+
+Building a runner host with no `Llm` section still falls back to the echo provider, but it now
+says so once on stderr — *"No `Llm` section configured — falling back to the echo provider
+(`<undefined-llm>`). Run `orkeon init` to create a configuration, or set
+`ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`."* The fallback itself is unchanged (it is what
+makes the scripting demos runnable with no key and no server); what changes is that a crew
+replaying its own prompts can no longer be mistaken for a crew talking to a model.
+
+### Changed — every publish prunes the unused tree-sitter grammars
+
+**Behaviour change.** `TreeSitter.DotNet` ships one native library per supported grammar (31,
+~69 MB on win-x64) while Orkeon only loads the seven declared in `LanguageRegistry`. A
+`PruneUnusedTreeSitterGrammars` target in `src/Directory.Build.targets` — imported wholesale by
+`examples/Directory.Build.targets` — now drops the rest from `ResolvedFileToPublish`, so **every
+`dotnet publish` under `src/` and `examples/` emits 7 grammars instead of 31**, not just the
+release archives. `dotnet build` is untouched. Opt out with
+`-p:OrkeonPruneTreeSitterGrammars=false` (useful when diagnosing a grammar-loading problem).
+Safe by construction — `LanguageRegistry.Create` throws for any language outside the registry —
+and the whitelist ↔ registry agreement is pinned by `TreeSitterGrammarPruningTests`.
+
+### Added — Windows and Debian install channels; hardened `install.ps1`; runtime detection in `install.sh`
+
+Three new release artifacts sit next to the existing multi-app archives, all self-contained:
+`orkeon-cli-<version>-win-x64.zip` (the `orkeon` CLI alone, with `install.ps1`),
+`orkeon_<version>_amd64.deb` (installable with `sudo apt install ./orkeon_*.deb`; depends on
+system libraries only, through libicu/libssl alternations covering Debian 12/13 and Ubuntu
+22.04→26.04, never on `dotnet-runtime-*`), and `orkeon-<version>-win-x64.msi` (WiX, per-user,
+no administrator rights — one Windows channel at a time, the MSI refuses to install over a zip
+install). `release.yml` is restructured into `installers → {smoke-windows, smoke-deb, msi} →
+release`, so nothing reaches the Release until it has been installed and exercised on a real
+Windows runner and a stock Ubuntu image — the `msi` job carries its own
+`msiexec /i /qn` → `orkeon doctor --json` → `msiexec /x /qn` smoke — and it now also runs on
+`workflow_dispatch` (everything except the publication).
+
+`install.ps1` gained an "Apps & features" entry (with a working `UninstallString`), rescues an
+`appsettings.json` left in a previous install directory into `%APPDATA%\Orkeon` before the
+delete-and-replace, preserves the `RegistryValueKind` of the user `PATH` instead of flattening
+`REG_EXPAND_SZ` to `REG_SZ`, and only checks for a .NET runtime when the payload actually needs
+one (keyed on `hostfxr.dll`). `install.sh` gained the POSIX mirror of that check: it looks for
+a framework-dependent app under `libexec/` (no `libhostfxr.so`/`.dylib`), then for a
+`Microsoft.NETCore.App 10.x` runtime on the `PATH` or under `DOTNET_ROOT`, and when it finds
+none prints the exact commands per distribution — `sudo apt install dotnet-runtime-10.0` on
+Ubuntu 25.10+, the `packages.microsoft.com` repository registration on Debian and Ubuntu LTS,
+`dotnet-install.sh --runtime dotnet --channel 10.0` under `$HOME` without sudo — and repeats
+the reminder at the end. It never installs a runtime, adds a repository or calls sudo on the
+user's behalf, and the warning never blocks the install.
+
+### Fixed — `package-installers.sh` aborted at the checksum step with a single `--rids`
+
+The final `ls *.tar.gz *.zip *.deb | xargs sha256sum` left one glob unmatched whenever the run
+targeted a single RID; under `set -o pipefail` the failing `ls` took the whole pipeline down
+and `set -e` aborted the script — after every archive had already been built. The `ls` is now
+wrapped in `{ …; || true; }`, and `*.deb` is part of the glob so `SHA256SUMS` stays complete
+when `package-deb.sh` has dropped its package in the same output directory.
+
 ### Added — shell_command: bidirectional VFS path rewriting
 
 `shell_command` now speaks virtual paths in both directions, so a coding agent can run
