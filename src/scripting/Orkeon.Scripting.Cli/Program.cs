@@ -31,6 +31,14 @@ internal static class Program
         if (args.Length > 0 && string.Equals(args[0], "llm", StringComparison.OrdinalIgnoreCase))
             return await LlmCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
 
+        // `orkeon init` — configuration assistant (WIN-02).
+        if (args.Length > 0 && string.Equals(args[0], "init", StringComparison.OrdinalIgnoreCase))
+            return await InitCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
+
+        // `orkeon doctor` — installation diagnostic (WIN-03).
+        if (args.Length > 0 && string.Equals(args[0], "doctor", StringComparison.OrdinalIgnoreCase))
+            return await DoctorCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
+
         // Strip a leading "run" verb so users can write `orkeon run script.ork.ts`.
         // Future verbs (e.g. `test`) will get their own dispatch branch here.
         var effective = args;

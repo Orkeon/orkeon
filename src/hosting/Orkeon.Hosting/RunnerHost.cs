@@ -32,8 +32,16 @@ namespace Orkeon.Hosting;
 /// Configures LLM, Orkeon services, tools, file system, and tool registry.
 /// </summary>
 [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: resolves user-supplied settings paths and provisions VFS mounts before the DI container (and thus IFileSystemService) exists.")]
-public static class RunnerHost
+public static partial class RunnerHost
 {
+    /// <summary>
+    /// WIN-01: the actionable warning emitted once per host build when no <c>Llm</c>
+    /// section is configured and the runtime will fall back to the echo provider.
+    /// </summary>
+    private const string LlmNotConfiguredMessage =
+        "No `Llm` section configured — falling back to the echo provider (`<undefined-llm>`). " +
+        "Run `orkeon init` to create a configuration, or set `ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`.";
+
     /// <summary>
     /// Builds a fully-configured host with all Orkeon services.
     /// </summary>
@@ -58,13 +66,40 @@ public static class RunnerHost
         Action<HostBuilderContext, ILoggingBuilder>? configureLogging = null,
         Action<HostBuilderContext, IServiceCollection>? configureServices = null)
     {
-        return Host.CreateDefaultBuilder()
+        var host = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((_, builder) =>
                 ConfigureAppConfiguration(builder, settingsPath, cliMounts, allowExternalMounts))
             .ConfigureServices((context, services) =>
                 ConfigureRunnerServices(context, services, llmLogPath, configureLogging, configureServices))
             .Build();
+
+        WarnIfLlmNotConfigured(host);
+        return host;
     }
+
+    /// <summary>
+    /// WIN-01: when <see cref="RegisterLlmProvider"/> found no <c>Llm</c> section, the
+    /// runtime silently degrades to the <c>&lt;undefined-llm&gt;</c> echo provider — the
+    /// number one onboarding trap on a fresh install. Emit one actionable warning per host
+    /// build: on the host logger AND on stderr (the host may reconfigure the logger below
+    /// Warning, so the stderr line is the guarantee). Runs after <c>Build()</c> because no
+    /// logger exists yet at service-registration time.
+    /// </summary>
+    private static void WarnIfLlmNotConfigured(IHost host)
+    {
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+        if (configuration.GetSection("Llm").Exists())
+            return;
+
+        Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
+        var logger = host.Services
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Orkeon.Hosting.RunnerHost");
+        LogLlmNotConfigured(logger);
+    }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = LlmNotConfiguredMessage)]
+    private static partial void LogLlmNotConfigured(ILogger logger);
 
     private static void ConfigureAppConfiguration(
         IConfigurationBuilder builder,
@@ -330,6 +365,8 @@ public static class RunnerHost
     private static void RegisterLlmProvider(HostBuilderContext context, IServiceCollection services)
     {
         var llmSection = context.Configuration.GetSection("Llm");
+        // No section → no provider registration; the echo fallback is announced once per
+        // host build by WarnIfLlmNotConfigured (no logger exists yet at this point).
         if (!llmSection.Exists()) return;
 
         var llmConfig = LlmConfig.Create(
