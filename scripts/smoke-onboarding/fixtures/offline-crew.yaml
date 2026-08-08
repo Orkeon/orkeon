@@ -1,0 +1,36 @@
+# Offline crew fixture for the released-artifact smokes (WIN-06 / LIN-02).
+#
+# Deliberately minimal and dependency-free: one agent, one task, no tools, no
+# mounts, no network. With no `Llm` section configured (what `orkeon init
+# --provider none` leaves behind) the runtime falls back to the <undefined-llm>
+# echo provider, so the run is deterministic — it exits 0 and prints the WIN-01
+# warning on stderr. That warning, not the crew's output, is what the smokes
+# assert on.
+#
+# Keep it out of examples/: the smokes copy it into a scratch working directory
+# so the settings resolution chain walks up to the per-user global config
+# instead of finding examples/appsettings/appsettings.json.
+
+name: "smoke-offline"
+goal: "Verify an installed Orkeon can load and run a crew with no LLM configured"
+process: "sequential"
+verbose: false
+memory: false
+planning: false
+
+agents:
+  scribe:
+    role: "Scribe"
+    goal: "Restate the given text"
+    backstory: |
+      You restate short inputs verbatim. You never need external data,
+      tools or network access.
+    allowDelegation: false
+    maxIter: 1
+
+tasks:
+  restate:
+    description: "Restate the following sentence: Orkeon installed correctly."
+    expectedOutput: "The sentence, restated."
+    agent: "scribe"
+    dependencies: []
