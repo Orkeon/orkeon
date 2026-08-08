@@ -87,7 +87,7 @@
     <Property Id="ARPCOMMENTS" Value="Orkeon $(var.OrkeonVersionFull)" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/Orkeon/orkeon" />
     <Property Id="ARPHELPLINK" Value="https://github.com/Orkeon/orkeon#readme" />
-    <Property Id="ARPNOMODIFY" Value="1" />
+    <!-- ARPNOMODIFY is already set by WixUI_Minimal (WIX0091 if declared twice). -->
     <Property Id="ARPNOREPAIR" Value="1" />
 
     <!-- ==================================================================
