@@ -55,9 +55,11 @@ if (-not $StageDir) {
     Write-Host '==> No -StageDir given: building one via package-installers.ps1 -AppSet cli'
     $buildOut = Join-Path $OutDir '_msi-stage'
     if (Test-Path $buildOut) { Remove-Item -Recurse -Force $buildOut }
-    $psArgs = @('-AppSet', 'cli', '-Rids', 'win-x64', '-Out', $buildOut)
-    if ($Version) { $psArgs += @('-Version', $Version) }
-    & (Join-Path $RepoRoot 'scripts\package-installers.ps1') @psArgs
+    # Hashtable splat, not an array: splatting an array binds POSITIONALLY,
+    # which shoved '-Out' into -AppSet on the first real Windows run.
+    $psSplat = @{ AppSet = 'cli'; Rids = @('win-x64'); Out = $buildOut }
+    if ($Version) { $psSplat.Version = $Version }
+    & (Join-Path $RepoRoot 'scripts\package-installers.ps1') @psSplat
     if ($LASTEXITCODE -ne 0) { throw 'package-installers.ps1 failed' }
     $inner = Get-ChildItem (Join-Path $buildOut '_stage') -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $inner) { throw "No staging tree produced under $buildOut\_stage" }
