@@ -12,6 +12,10 @@
   Linux/WSL/CI with package-installers.sh instead.
 .PARAMETER Out
   Output directory. Default: artifacts\installers.
+.PARAMETER AppSet
+  Which apps go in the archive. 'full' (default) keeps the historical every-app
+  archive; 'cli' ships the `orkeon` onboarding binary alone as
+  orkeon-cli-<ver>-<rid>.zip.
 #>
 [CmdletBinding()]
 param(
@@ -19,6 +23,8 @@ param(
     [string[]]$Rids = @('win-x64'),
     [string]$Out = '',
     [string]$Configuration = 'Release',
+    [ValidateSet('full', 'cli')]
+    [string]$AppSet = 'full',
     [switch]$Force
 )
 $ErrorActionPreference = 'Stop'
@@ -70,6 +76,17 @@ $Apps = @(
     @{ Name = 'orkeon-spec-forge';   Csproj = 'examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj'; Apphost = 'Orkeon.Examples.Interactive.InterviewSpecForge'; SelfContained = $false }
 )
 
+# -AppSet cli narrows the table to the single onboarding binary. Same staging
+# layout, same wrapper, same installer — only the app list and the archive name
+# differ, so the two sets stay structurally interchangeable for install.ps1.
+if ($AppSet -eq 'cli') {
+    $Apps = @($Apps | Where-Object { $_.Name -eq 'orkeon' })
+    if ($Apps.Count -ne 1) { throw "Expected exactly one 'orkeon' entry in the app table, found $($Apps.Count)." }
+    $PkgPrefix = 'orkeon-cli'
+} else {
+    $PkgPrefix = 'orkeon'
+}
+
 $EsbuildNpmRid = @{
     'linux-x64' = 'linux-x64'; 'linux-arm64' = 'linux-arm64'
     'win-x64' = 'win32-x64'; 'osx-x64' = 'darwin-x64'; 'osx-arm64' = 'darwin-arm64'
@@ -79,10 +96,10 @@ $Stage = Join-Path $Out '_stage'
 $Cache = Join-Path $Out '_esbuild-cache'
 New-Item -ItemType Directory -Force -Path $Out, $Stage, $Cache | Out-Null
 
-Write-Host "==> Packaging Orkeon $Version (esbuild $EsbuildVersion) for: $($Rids -join ' ')"
+Write-Host "==> Packaging Orkeon $Version ($AppSet set, esbuild $EsbuildVersion) for: $($Rids -join ' ')"
 
 foreach ($rid in $Rids) {
-    $pkgName = "orkeon-$Version-$rid"
+    $pkgName = "$PkgPrefix-$Version-$rid"
     $root = Join-Path $Stage $pkgName
     if (Test-Path $root) { Remove-Item -Recurse -Force $root }
     New-Item -ItemType Directory -Force -Path (Join-Path $root 'bin'), (Join-Path $root 'libexec') | Out-Null
@@ -134,6 +151,13 @@ foreach ($rid in $Rids) {
         Replace('{{VERSION}}', $Version).Replace('{{RID}}', $rid) |
         Set-Content (Join-Path $root 'README.md')
     Copy-Item (Join-Path $RepoRoot 'LICENSE.md') (Join-Path $root 'LICENSE.md')
+    # Plain-text version marker: install.ps1 reads it for the Add/Remove Programs
+    # entry, and it lets a user identify an already-extracted tree. LF-terminated
+    # to stay byte-identical with the archive package-installers.sh produces.
+    [IO.File]::WriteAllText((Join-Path $root 'VERSION'), "$Version`n")
+    # Reference config only. The live one lives in %APPDATA%\Orkeon; this copy is
+    # here to be read, not loaded.
+    Copy-Item (Join-Path $RepoRoot 'examples/appsettings/appsettings.json') (Join-Path $root 'appsettings.sample.json')
     if ($rid -like 'win-*') {
         Copy-Item (Join-Path $Assets 'install.ps1') (Join-Path $root 'install.ps1')
     } else {
@@ -155,7 +179,7 @@ foreach ($rid in $Rids) {
 }
 
 # Checksums
-$artifacts = Get-ChildItem $Out -File | Where-Object { $_.Extension -in '.zip', '.gz' }
+$artifacts = Get-ChildItem $Out -File | Where-Object { $_.Extension -in '.zip', '.gz', '.deb' }
 $lines = foreach ($f in $artifacts) { "{0}  {1}" -f (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower(), $f.Name }
 Set-Content -Path (Join-Path $Out 'SHA256SUMS') -Value $lines
 Write-Host "==> Done. Artifacts in $Out"

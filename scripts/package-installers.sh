@@ -6,7 +6,11 @@
 # Usage:
 #   scripts/package-installers.sh [--version X.Y.Z[-suffix]] [--rids "linux-x64 ..."]
 #                                 [--out artifacts/installers] [-c Release]
+#                                 [--app-set full|cli]
 #
+# --app-set cli ships the `orkeon` CLI alone (the Windows/Linux onboarding
+# channel) as orkeon-cli-<ver>-<rid>.{zip,tar.gz}; full (the default) keeps the
+# historical every-app archive.
 # Version resolution: --version > git describe (v-stripped) > src/Directory.Build.props.
 # esbuild is fetched per-RID straight from the npm registry (no npm/node needed);
 # the version comes from tools/scripting-esbuild/package-lock.json.
@@ -19,17 +23,24 @@ VERSION=""
 RIDS="linux-x64 linux-arm64 win-x64 osx-x64 osx-arm64"
 OUT="$REPO_ROOT/artifacts/installers"
 CONFIG="Release"
+APP_SET="full"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version) VERSION="$2"; shift 2 ;;
     --rids)    RIDS="$2"; shift 2 ;;
     --out)     OUT="$2"; shift 2 ;;
+    --app-set) APP_SET="$2"; shift 2 ;;
     -c|--configuration) CONFIG="$2"; shift 2 ;;
-    -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
+
+case "$APP_SET" in
+  full|cli) ;;
+  *) echo "Unknown --app-set '$APP_SET' (expected: full, cli)" >&2; exit 2 ;;
+esac
 
 # --- Version -----------------------------------------------------------------
 if [[ -z "$VERSION" ]]; then
@@ -67,6 +78,21 @@ APPS=(
   "orkeon-spec-forge|examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj|Orkeon.Examples.Interactive.InterviewSpecForge|false"
 )
 
+# --app-set cli narrows the table to the single onboarding binary. Same staging
+# layout, same wrappers, same installer — only the app list and the archive name
+# differ, so the two sets stay structurally interchangeable for install.sh/ps1.
+if [[ "$APP_SET" == "cli" ]]; then
+  CLI_APPS=()
+  for entry in "${APPS[@]}"; do
+    [[ "${entry%%|*}" == "orkeon" ]] && CLI_APPS+=("$entry")
+  done
+  [[ ${#CLI_APPS[@]} -eq 1 ]] || { echo "Expected exactly one 'orkeon' entry in APPS, found ${#CLI_APPS[@]}" >&2; exit 1; }
+  APPS=("${CLI_APPS[@]}")
+  PKG_PREFIX="orkeon-cli"
+else
+  PKG_PREFIX="orkeon"
+fi
+
 # RID -> npm platform package for @esbuild/*
 esbuild_npm_rid() {
   case "$1" in
@@ -88,7 +114,7 @@ STAGE="$OUT/_stage"
 CACHE="$OUT/_esbuild-cache"
 mkdir -p "$STAGE" "$CACHE"
 
-echo "==> Packaging Orkeon $VERSION (esbuild $ESBUILD_VERSION) for: $RIDS"
+echo "==> Packaging Orkeon $VERSION ($APP_SET set, esbuild $ESBUILD_VERSION) for: $RIDS"
 
 fetch_esbuild() { # $1=rid $2=dest-dir
   local npmrid dest tgz pkgdir bin
@@ -125,7 +151,7 @@ shutil.make_archive(sys.argv[1].removesuffix('.zip'), 'zip', '.', sys.argv[2])
 }
 
 for RID in $RIDS; do
-  PKG="orkeon-$VERSION-$RID"
+  PKG="$PKG_PREFIX-$VERSION-$RID"
   ROOT="$STAGE/$PKG"
   rm -rf "$ROOT"
   mkdir -p "$ROOT/bin" "$ROOT/libexec"
@@ -158,6 +184,12 @@ for RID in $RIDS; do
   sed -e "s/{{VERSION}}/$VERSION/g" -e "s/{{RID}}/$RID/g" \
     "$ASSETS/README.archive.md.tmpl" > "$ROOT/README.md"
   cp "$REPO_ROOT/LICENSE.md" "$ROOT/LICENSE.md"
+  # Plain-text version marker: install.ps1 reads it for the Add/Remove Programs
+  # entry, and it lets a user identify an already-extracted tree.
+  printf '%s\n' "$VERSION" > "$ROOT/VERSION"
+  # Reference config only. The live one lives in %APPDATA%\Orkeon (or
+  # $XDG_CONFIG_HOME/orkeon); this copy is here to be read, not loaded.
+  cp "$REPO_ROOT/examples/appsettings/appsettings.json" "$ROOT/appsettings.sample.json"
   if [[ "$RID" == win-* ]]; then
     cp "$ASSETS/install.ps1" "$ROOT/install.ps1"
   else
@@ -176,6 +208,10 @@ for RID in $RIDS; do
   fi
 done
 
-(cd "$OUT" && { ls *.tar.gz *.zip 2>/dev/null | xargs -r sha256sum > SHA256SUMS; })
+# `|| true`: with a single --rids one of the globs matches nothing, and under
+# `set -o pipefail` a failing ls would abort the script after all the work is
+# already done. *.deb keeps the checksums complete when package-deb.sh has
+# dropped its package in the same output directory.
+(cd "$OUT" && { ls *.tar.gz *.zip *.deb 2>/dev/null || true; } | xargs -r sha256sum > SHA256SUMS)
 echo "==> Done. Artifacts in $OUT:"
-(cd "$OUT" && ls -lh *.tar.gz *.zip SHA256SUMS 2>/dev/null)
+(cd "$OUT" && ls -lh *.tar.gz *.zip *.deb SHA256SUMS 2>/dev/null || true)
