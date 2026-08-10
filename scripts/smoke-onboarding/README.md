@@ -1,4 +1,18 @@
-# Onboarding smoke test (P3-4)
+# Onboarding smoke tests
+
+This directory holds four smokes. They answer two different questions, so read
+the one that matches yours:
+
+| Script | Question it answers | Runs where |
+|--------|--------------------|------------|
+| `run-smoke.sh` | Can a newcomer reach a successful crew run in ≤ 20 min, **from a clean checkout**? | Linux/macOS, locally |
+| `run-smoke.ps1` | Does the **published Windows archive** install, run and uninstall on a real Windows box? (WIN-06) | `windows-latest`, in `release.yml` |
+| `run-smoke-deb.sh` | Does the **published `.deb`** install through apt, run and remove cleanly? (LIN-02) | `ubuntu-latest`, in `release.yml` |
+| `run-smoke-tarball.sh` | Does the **published `.tar.gz`** install through `install.sh`, run and uninstall cleanly? (MAC-02) | `macos-latest`, in `release.yml`; also locally on Linux |
+
+The rest of this page documents `run-smoke.sh`; the three released-artefact
+smokes are covered in [their own section](#released-artefact-smokes-win-06--lin-02--mac-02)
+at the bottom.
 
 `run-smoke.sh` is the **executable, measurable** implementation of the onboarding
 acceptance criterion from
@@ -106,7 +120,100 @@ The script exits `0` when no non-skipped scenario failed, `1` otherwise.
 
 ## Scope / non-goals
 
-- **Windows is out of scope** for this lot (declared in the remediation plan §9);
-  the script targets Linux/macOS (`bash`, `docker`, coreutils).
+- **Windows is out of scope** for `run-smoke.sh` (declared in the remediation
+  plan §9); it targets Linux/macOS (`bash`, `docker`, coreutils). Windows is
+  covered by `run-smoke.ps1` below.
 - The smoke does not measure wall-clock download time (SDK, NuGet, image pulls) —
   only active run time, matching the acceptance criterion.
+
+---
+
+## Released-artefact smokes (WIN-06 / LIN-02 / MAC-02)
+
+`run-smoke.ps1`, `run-smoke-deb.sh` and `run-smoke-tarball.sh` are siblings. They
+take the artefact `release.yml` just built, **install it the way a user would**,
+walk the whole onboarding chain on the installed binary, and uninstall. All three
+are wired as jobs that gate publication: the Release is attached only after they
+pass, and each installs from the *job* artefact rather than the Release, so a
+broken payload never reaches a user.
+
+They share everything but the install and uninstall phases. For the two shell
+ones that sharing is literal — the behavioural steps, the payload whitelist and
+the doctor verdict live in **`lib/smoke-common.sh`**, which both source, so they
+cannot drift. `run-smoke.ps1` mirrors the same logic in PowerShell. All three use
+the same fixtures in `fixtures/`:
+
+| Fixture | Why it exists |
+|---------|---------------|
+| `offline-crew.yaml` | One agent, one task, no tools, no network. With no `Llm` section configured the runtime falls back to the `<undefined-llm>` echo provider, which makes the run deterministic (exit 0 + the WIN-01 warning). It is copied into a scratch directory so the settings resolution chain reaches the per-user global config instead of `examples/appsettings/appsettings.json`. |
+| `rag-corpus/*.md` | Two short documents to ingest and query. |
+| `rag-settings.json` | Points the RAG document store at SQLite. The default in-memory store dies with the `rag ingest` process, so a two-process ingest-then-search would always answer "no relevant context". No `Llm` section, on purpose. |
+
+### The steps
+
+1. **Install** — `Expand-Archive` + `install.ps1` (Windows) / `apt-get install ./orkeon_*.deb` (Debian) / `tar -xzf` + `./install.sh --prefix ~/.local` (tar.gz). The apt step doubles as the check that the package's `Depends` resolve on a stock image, with no dotnet repository.
+2. **Payload** — `esbuild(.exe)`, `LocalEmbeddingsModel/default/{model.onnx,vocab.txt}` and the **7 whitelisted tree-sitter grammars** (WIN-04 pruning) must all be present. The grammar suffix follows the platform: `.dll`, `.so` or `.dylib`.
+3. **Fresh session** — Windows: the user `PATH` is re-read from the registry and `orkeon` must resolve from it alone, plus the Add/Remove Programs entry must be registered (WIN-05). tar.gz: `<prefix>/bin/orkeon` must be a symlink into `<prefix>/lib/orkeon`, and `command -v orkeon` must find it once `<prefix>/bin` is on the `PATH`.
+4. **`orkeon init --provider none --force`** — writes `%APPDATA%\Orkeon` / `~/.config/Orkeon` (WIN-02).
+5. **`orkeon doctor --json`** — no check may report `fail`, **and** `esbuild`, `local-embeddings` and `tree-sitter` must be `ok`. That second half is what gives the smoke teeth: doctor only *warns* when those are missing, so "no fail" alone would happily pass a stripped archive (WIN-03).
+6. **`orkeon run offline-crew.yaml`** — exit 0 and the `orkeon init` warning on stderr (WIN-01).
+7. **`orkeon rag ingest` + `orkeon rag search`** — exit 0 and at least one citation with a score. The *answer* is empty without an LLM; the citations are the retrieval evidence, and that is all that is asserted.
+8. **Uninstall** — `install.ps1 -Uninstall` (install dir, ARP key and PATH entry all gone) / `apt-get remove -y orkeon` (`/usr/bin/orkeon` and the payload gone) / `install.sh --uninstall` (`<prefix>/lib/orkeon` and the launcher symlinks gone). In all three the user configuration must survive.
+
+Each script leaves the machine as it found it: a pre-existing user config is
+backed up and restored, one the smoke created is removed.
+
+> `orkeon --version` and `orkeon --help` exit **1** (a pre-existing
+> CommandLineParser behaviour), so `orkeon doctor` is the liveness probe in all
+> three scripts. Do not add a `--version` smoke without accounting for that.
+
+### macOS: what only this job can prove
+
+`smoke-macos` is the only place the **Gatekeeper / code-signing** story gets
+exercised. A native library that is unsigned, quarantined or malformed —
+`libtree-sitter*.dylib`, the ONNX runtime, the bundled `esbuild` — is killed by
+the OS at load time, not at packaging time. The failure therefore surfaces in
+`doctor`, `run` or `rag`, and nowhere earlier in the pipeline.
+
+### bash 3.2
+
+`macos-latest` still ships bash 3.2 as `/bin/bash`. `lib/smoke-common.sh` and
+`run-smoke-tarball.sh` stay inside that dialect: no `mapfile`/`readarray`, no
+associative arrays, and never a bare `${#arr[@]}` on a possibly-empty array
+(an "unbound variable" error under `set -u` before bash 4.4 — accumulators that
+can legitimately stay empty are plain strings for that reason). Keep any new
+assertion inside the same constraints.
+
+### Usage
+
+```powershell
+# Windows — PowerShell 5.1 or 7.
+.\scripts\smoke-onboarding\run-smoke.ps1 -ArchivePath .\artifacts\installers\orkeon-cli-0.9.2-beta-win-x64.zip
+```
+
+```bash
+# Debian/Ubuntu — installs and removes the package (needs sudo).
+./scripts/smoke-onboarding/run-smoke-deb.sh --deb artifacts/installers/orkeon_0.9.2~beta_amd64.deb
+
+# Degraded local mode: no apt, smoke a binary you already have. The install,
+# launcher and removal steps report SKIP; everything else runs for real.
+./scripts/smoke-onboarding/run-smoke-deb.sh --orkeon /usr/lib/orkeon/orkeon
+
+# tar.gz — macOS in CI, but it runs identically on Linux against the linux-x64
+# CLI archive, which is the supported local-development mode.
+./scripts/smoke-onboarding/run-smoke-tarball.sh \
+  --tarball artifacts/installers/orkeon-cli-0.9.2-beta-linux-x64.tar.gz
+
+# ...installing somewhere other than ~/.local (the default):
+./scripts/smoke-onboarding/run-smoke-tarball.sh --tarball <archive> --prefix /tmp/orkeon-smoke-prefix
+```
+
+`run-smoke-tarball.sh` **refuses to start** when `<prefix>/lib/orkeon` already
+exists: it installs and then uninstalls, which would destroy an install it did
+not create. Use `--prefix` for a scratch location, or `--force` if you really
+mean it.
+
+Both exit `0` when every non-skipped step passed, `1` otherwise, and print a
+per-step summary. A failed Windows run keeps its scratch directory: the
+per-step `.out`/`.err` captures under `logs\` are the only forensics left once
+the runner is gone.

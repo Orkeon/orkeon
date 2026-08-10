@@ -1,0 +1,64 @@
+<Project>
+  <!-- Tree-sitter grammar pruning (WIN-04).
+
+       TreeSitter.DotNet ships one native library per supported grammar (31 for
+       win-x64, ~69 MB) but Orkeon only ever loads the handful declared in
+       src/analysis/Orkeon.Analysis/TreeSitter/LanguageRegistry.cs. The unused
+       ones are dead weight in every self-contained publish.
+
+       They arrive as `ResolvedFileToPublish` items straight from the NuGet
+       package, so the cheapest place to drop them is right after the publish
+       list is computed: one implementation serves the ZIP/tar archives, the MSI
+       harvest, release.yml and every RID. `dotnet build` is untouched — this
+       only runs on publish.
+
+       Safe by construction: LanguageRegistry.Create throws for any language
+       outside the registry, so no app can load a pruned grammar. The
+       whitelist ↔ registry agreement is pinned by
+       tests/analysis/Orkeon.Analysis.Tests/TreeSitterGrammarPruningTests.cs,
+       which parses OrkeonTreeSitterKeptGrammars out of this very file.
+
+       Opt out with -p:OrkeonPruneTreeSitterGrammars=false to restore the full
+       set (useful when diagnosing a grammar-loading problem).
+
+       NOTE: examples/Directory.Build.targets imports this file wholesale so the
+       example runners bundled in the installer archives get the same treatment.
+       Anything added here therefore applies to examples/ too — if you need a
+       src-only rule, guard it or move the shared part to its own .targets. -->
+  <PropertyGroup>
+    <!-- File names WITHOUT extension and WITHOUT the Unix `lib` prefix. Both the
+         Windows form (tree-sitter-go.dll) and the Unix/macOS one
+         (libtree-sitter-go.so / .dylib) are matched against this list.
+         `tree-sitter` itself is the shared runtime — never prune it.
+         `tree-sitter-tsx` is a distinct native library in the package even
+         though LanguageRegistry maps the `tsx` language onto the
+         tree-sitter-typescript library; keep it, TreeSitter.DotNet probes for
+         it by name. -->
+    <OrkeonTreeSitterKeptGrammars Condition="'$(OrkeonTreeSitterKeptGrammars)' == ''">tree-sitter;tree-sitter-typescript;tree-sitter-tsx;tree-sitter-python;tree-sitter-c-sharp;tree-sitter-go;tree-sitter-rust</OrkeonTreeSitterKeptGrammars>
+  </PropertyGroup>
+
+  <Target Name="PruneUnusedTreeSitterGrammars"
+          AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(OrkeonPruneTreeSitterGrammars)' != 'false'">
+
+    <ItemGroup>
+      <!-- Accept both the bare and the `lib`-prefixed spelling of every kept name. -->
+      <_OrkeonTsKeptName Include="$(OrkeonTreeSitterKeptGrammars)" />
+      <_OrkeonTsKeptName Include="@(_OrkeonTsKeptName->'lib%(Identity)')" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <_OrkeonTsKeptList>;@(_OrkeonTsKeptName);</_OrkeonTsKeptList>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_OrkeonTsPruned Include="@(ResolvedFileToPublish)"
+                       Condition="($([System.String]::new('%(Filename)').StartsWith('tree-sitter')) Or $([System.String]::new('%(Filename)').StartsWith('libtree-sitter'))) And !$(_OrkeonTsKeptList.Contains(';%(Filename);'))" />
+      <ResolvedFileToPublish Remove="@(_OrkeonTsPruned)" />
+    </ItemGroup>
+
+    <Message Importance="normal"
+             Condition="'@(_OrkeonTsPruned)' != ''"
+             Text="PruneUnusedTreeSitterGrammars: dropped @(_OrkeonTsPruned->Count()) unused tree-sitter native libraries from the publish output." />
+  </Target>
+</Project>

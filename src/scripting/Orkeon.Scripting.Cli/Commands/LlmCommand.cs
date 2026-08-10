@@ -202,7 +202,7 @@ internal static class LlmCommand
         using var cts = CreateInterruptibleTokenSource();
         var config = BuildConfig(options, apiKey);
 
-        using var httpClientFactory = new ProbeHttpClientFactory();
+        using var httpClientFactory = new CliHttpClientFactory();
         var factory = new LlmProviderFactory(httpClientFactory, NullLoggerFactory.Instance);
         var adapter = factory.Create(options.Provider, config);
         if (adapter is not LlmProviderAdapter typed)
@@ -382,33 +382,5 @@ internal static class LlmCommand
 
         await File.WriteAllTextAsync(path, report, cancellationToken).ConfigureAwait(false);
         await Console.Error.WriteLineAsync($"Archived: {path}").ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Minimal factory: the probe wants the provider's real HTTP behaviour, including its
-    /// timeouts, so it hands out plain clients rather than the host's configured pipeline.
-    /// </summary>
-    private sealed class ProbeHttpClientFactory : IHttpClientFactory, IDisposable
-    {
-        private readonly Dictionary<string, HttpClient> _clients = [];
-
-        // Providers call CreateClient once per request; reusing the instance per name mirrors
-        // what the real factory does and keeps a long campaign from opening a socket per mode.
-        public HttpClient CreateClient(string name)
-        {
-            if (_clients.TryGetValue(name, out var existing))
-                return existing;
-
-            var client = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
-            _clients[name] = client;
-            return client;
-        }
-
-        public void Dispose()
-        {
-            foreach (var client in _clients.Values)
-                client.Dispose();
-            _clients.Clear();
-        }
     }
 }

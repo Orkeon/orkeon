@@ -1,0 +1,20 @@
+<Project>
+  <!-- Example runners ship inside the installer archives alongside the src/ apps
+       (see the APPS table in scripts/package-installers.sh), so they must be
+       pruned by the same rule — otherwise the `full` app set carries the
+       complete 31-grammar set for every examples/ binary while the src/ ones
+       carry 7.
+
+       MSBuild only auto-imports the NEAREST Directory.Build.targets walking up
+       from the project, and examples/ is a sibling of src/ — it would never see
+       src/Directory.Build.targets on its own. Import it explicitly rather than
+       duplicating the whitelist: the guard-rail test
+       (tests/analysis/Orkeon.Analysis.Tests/TreeSitterGrammarPruningTests.cs)
+       parses the src/ file, so a second copy here would drift unpinned.
+
+       The Exists guard keeps a partial checkout (examples/ without src/) building
+       instead of failing on a missing import. Mirrors how
+       examples/Directory.Build.props reaches the repo-root props. -->
+  <Import Project="$(MSBuildThisFileDirectory)../src/Directory.Build.targets"
+          Condition="Exists('$(MSBuildThisFileDirectory)../src/Directory.Build.targets')" />
+</Project>

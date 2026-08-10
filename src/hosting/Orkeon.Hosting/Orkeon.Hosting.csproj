@@ -39,5 +39,10 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Hosting.Tests" />
+    <!-- The `orkeon` CLI (Orkeon.Scripting.Cli ships as assembly `orkeon`): doctor reuses
+         the internal LLM endpoint TCP probe instead of duplicating it; its tests pin the
+         global settings path through the internal RunnerSettings test seam. -->
+    <InternalsVisibleTo Include="orkeon" />
+    <InternalsVisibleTo Include="Orkeon.Scripting.Cli.Tests" />
   </ItemGroup>
 </Project>

@@ -1,11 +1,22 @@
-# Builds per-OS installer archives on a v* tag and attaches them to the GitHub
-# Release. Coexists with publish.yml (NuGet push) on the same trigger.
+# Builds the release artefacts on a v* tag, smokes them on a real Windows and a
+# real Ubuntu runner, and only then attaches them to the GitHub Release.
+# Coexists with publish.yml (NuGet push) on the same trigger.
+#
+# Pipeline: installers -> {smoke-windows, smoke-deb, smoke-macos, msi} -> release.
+# The smokes (and the msi job's own install/uninstall smoke) install from the
+# *job* artefacts, never from the Release, so a broken payload is caught before
+# anything is published. workflow_dispatch runs everything except the
+# publication (no tag, no Release to attach to).
 #
 # A single ubuntu runner cross-publishes every RID: framework-dependent publish
 # compiles nothing native (apphosts ship in the SDK packs, natives come from
-# NuGet runtimes/), and esbuild is fetched per-RID from the npm registry.
+# NuGet runtimes/), and esbuild is fetched per-RID from the npm registry. The
+# tree-sitter pruning is an MSBuild target, so it applies to the cross-published
+# win-x64 payload exactly as it does to linux-x64.
 name: Release installers
-on: { push: { tags: [ 'v*' ] } }
+on:
+  push: { tags: [ 'v*' ] }
+  workflow_dispatch:
 permissions: { contents: write }
 jobs:
   installers:
@@ -26,20 +37,403 @@ jobs:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
-      - name: Package installers
-        run: ./scripts/package-installers.sh --version "${GITHUB_REF_NAME#v}" --out artifacts/installers
+
+      # On a tag the version is the tag minus its leading v. On workflow_dispatch
+      # there is no tag to read, so --version is omitted and the packaging scripts
+      # fall back to their own resolution (git describe, then Directory.Build.props).
+      - name: Resolve the packaging arguments
+        id: pkg
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "version_arg=--version ${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version_arg=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package installers (every app, every RID)
+        run: ./scripts/package-installers.sh ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers
+
+      # The desktop onboarding channels: the `orkeon` CLI alone, as
+      # orkeon-cli-<ver>-win-x64.zip and orkeon-cli-<ver>-osx-{arm64,x64}.tar.gz.
+      # Same --out, so the SHA256SUMS regenerated at the end of this call covers
+      # the multi-app archives too. The osx payloads are cross-published from this
+      # ubuntu runner like every other RID.
+      - name: Package the CLI archives (win-x64, osx-arm64, osx-x64)
+        run: ./scripts/package-installers.sh --app-set cli --rids "win-x64 osx-arm64 osx-x64" ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers
+
+      # package-deb.sh only lifts libexec/orkeon + libexec/esbuild-bin out of a
+      # staging tree, and the multi-app linux-x64 staging already holds both from
+      # the same self-contained, pruned publish. Reusing it saves a second publish
+      # (~3 min and a couple of GB) for a byte-identical payload.
+      - name: Package the Debian package (amd64)
+        run: |
+          mapfile -t stages < <(find artifacts/installers/_stage -mindepth 1 -maxdepth 1 -type d \
+            -name 'orkeon-*-linux-x64' ! -name 'orkeon-cli-*')
+          if [[ ${#stages[@]} -ne 1 ]]; then
+            echo "Expected exactly one linux-x64 staging tree, found ${#stages[@]}: ${stages[*]}" >&2
+            exit 1
+          fi
+          ./scripts/package-deb.sh --stage "${stages[0]}" --out artifacts/installers
+
+      - name: List the artefacts
+        run: ls -lh artifacts/installers/*.tar.gz artifacts/installers/*.zip artifacts/installers/*.deb artifacts/installers/SHA256SUMS
+
+      # One artefact per smoke plus one for the release: each smoke pulls only what
+      # it needs (a few hundred MB), the release job pulls everything.
+      # compression-level 0 everywhere — .zip/.tar.gz/.deb are already compressed,
+      # so the default level 6 only burns CPU on both ends. They exist to carry
+      # payloads between jobs of this one run, hence the one-day retention.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orkeon-cli-win-x64
+          path: artifacts/installers/orkeon-cli-*-win-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orkeon-cli-osx
+          path: artifacts/installers/orkeon-cli-*-osx-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orkeon-deb
+          path: artifacts/installers/*.deb
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: |
+            artifacts/installers/*.tar.gz
+            artifacts/installers/*.zip
+            artifacts/installers/*.deb
+            artifacts/installers/SHA256SUMS
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  # Installs the published Windows archive on a real Windows runner and walks the
+  # onboarding chain on it (WIN-06). Exercises WIN-01 through WIN-05 end to end.
+  smoke-windows:
+    runs-on: windows-latest
+    needs: installers
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: orkeon-cli-win-x64
+          path: artifacts
+      # -WorkDir pins the scratch directory to a known, uploadable path (the
+      # runner itself is torn down at the end of the job, so anything left
+      # only under the default temp folder's auto-generated name is
+      # unreachable afterwards) and -Keep keeps its logs\ subfolder around on
+      # a pass too, not just on failure (run-smoke.ps1's own default), so the
+      # upload-artifact step below always has something to attach.
+      - name: Smoke the installed CLI
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem artifacts -Filter 'orkeon-cli-*-win-x64.zip' | Select-Object -First 1
+          if (-not $zip) { throw 'No orkeon-cli-*-win-x64.zip in the downloaded artefact.' }
+          ./scripts/smoke-onboarding/run-smoke.ps1 -ArchivePath $zip.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke" -Keep
+          exit $LASTEXITCODE
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: orkeon-smoke-windows-logs
+          path: ${{ runner.temp }}/orkeon-smoke/logs
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # Builds the per-user MSI (WIN-07) from the same CLI zip artefact
+  # smoke-windows uses, then runs its own install / orkeon doctor / uninstall
+  # smoke. A separate job rather than folding into smoke-windows: it needs the
+  # zip *as a wix harvest source* (extracted, not just installed) plus the wix
+  # toolchain, and a wix authoring regression should not be indistinguishable
+  # from a ZIP-channel regression in the job list.
+  msi:
+    runs-on: windows-latest
+    needs: installers
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/download-artifact@v4
+        with:
+          name: orkeon-cli-win-x64
+          path: artifacts
+
+      # build-msi.ps1 harvests a tree whose root directly contains bin\ and
+      # libexec\ (see its -StageDir doc) -- the zip's own top-level folder, not
+      # the raw Expand-Archive destination. Same unwrap run-smoke.ps1 does.
+      - name: Extract the CLI zip as the wix harvest source
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem artifacts -Filter 'orkeon-cli-*-win-x64.zip' | Select-Object -First 1
+          if (-not $zip) { throw 'No orkeon-cli-*-win-x64.zip in the downloaded artefact.' }
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath artifacts\_extract -Force
+          $roots = @(Get-ChildItem artifacts\_extract -Directory)
+          if ($roots.Count -ne 1) { throw "Expected exactly one top-level folder in the archive, found $($roots.Count)." }
+          "STAGE_DIR=$($roots[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build the MSI
+        shell: pwsh
+        run: ./scripts/build-msi.ps1 -StageDir "$env:STAGE_DIR" -OutDir artifacts\installers
+
+      - name: List the MSI
+        shell: pwsh
+        run: Get-ChildItem artifacts\installers\*.msi, artifacts\installers\SHA256SUMS.msi | Format-Table -AutoSize
+
+      # Install -> orkeon doctor (liveness + no failing check) -> uninstall,
+      # with the same msiexec exit-code tolerance (0 or 3010 = pending reboot,
+      # both are a successful install/uninstall) run-smoke.ps1 documents for
+      # the ZIP channel's own quirks. PATH is not reloaded in this session, so
+      # the installed orkeon.cmd is called by its full path throughout.
+      - name: Smoke — install, orkeon doctor, uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msi = (Get-ChildItem artifacts\installers -Filter 'orkeon-*-win-x64.msi' | Select-Object -First 1).FullName
+          if (-not $msi) { throw 'No orkeon-*-win-x64.msi produced.' }
+          $installDir = Join-Path $env:LOCALAPPDATA 'Programs\Orkeon'
+          $orkeonCmd = Join-Path $installDir 'bin\orkeon.cmd'
+          $arpKeyPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+          $logsDir = 'artifacts\msi-logs'
+          New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
+
+          function Get-UserPathRaw {
+            $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $false)
+            if (-not $key) { return '' }
+            try {
+              $raw = $key.GetValue('Path', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+              if ($null -eq $raw) { return '' }
+              return [string]$raw
+            } finally { $key.Close() }
+          }
+
+          Write-Host "==> msiexec /i $msi /qn"
+          $p = Start-Process msiexec.exe -ArgumentList @('/i', "`"$msi`"", '/qn', '/l*v', "$logsDir\install.log") -Wait -PassThru
+          if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { Get-Content "$logsDir\install.log" -Tail 60; throw "msiexec /i exited $($p.ExitCode)" }
+
+          if (-not (Test-Path -LiteralPath $orkeonCmd)) { throw "$orkeonCmd not found after install" }
+          Write-Host "PASS install -- $orkeonCmd exists"
+
+          # Per-user MSI registration lands under the HKCU Uninstall key, but an
+          # elevated CI session may surprise us -- search both hives (plus the
+          # 32-bit view), retry once for registry settle, and dump everything the
+          # runner actually sees before failing, so a red run is self-diagnosing.
+          function Find-OrkeonArpEntry {
+            $roots = @(
+              'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+              'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+              'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+            )
+            foreach ($root in $roots) {
+              $hit = Get-ItemProperty -Path "$root\*" -ErrorAction SilentlyContinue |
+                Where-Object { $_.DisplayName -eq 'Orkeon' } | Select-Object -First 1
+              if ($hit) { return [pscustomobject]@{ Root = $root; Entry = $hit } }
+            }
+            return $null
+          }
+          $found = Find-OrkeonArpEntry
+          if (-not $found) { Start-Sleep -Seconds 3; $found = Find-OrkeonArpEntry }
+          if (-not $found) {
+            Write-Host '--- ARP dump (both hives) ---'
+            foreach ($root in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall',
+                                'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall')) {
+              Write-Host "[$root]"
+              Get-ChildItem $root -ErrorAction SilentlyContinue | ForEach-Object {
+                $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+                Write-Host ("  {0}  DisplayName='{1}'" -f $_.PSChildName, $p.DisplayName)
+              }
+            }
+            throw 'No Add/Remove Programs entry named Orkeon after install.'
+          }
+          if ($found.Root -notlike 'HKCU:*') {
+            Write-Warning "ARP entry registered under $($found.Root) (expected HKCU for a per-user package -- elevated session side effect?)"
+          }
+          Write-Host "PASS arp -- registered in $($found.Root) (DisplayVersion $($found.Entry.DisplayVersion))"
+
+          $userPathEntries = @((Get-UserPathRaw) -split ';' | Where-Object { $_ })
+          if ($userPathEntries -notcontains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') not on the user PATH after install." }
+          Write-Host 'PASS path -- bin\ added to the user PATH'
+
+          # Windows PowerShell 5.1 raises NativeCommandError on any stderr output
+          # under a `2>` redirection while $ErrorActionPreference is 'Stop' --
+          # same caveat run-smoke.ps1's Invoke-Orkeon documents. Relax it only
+          # around this one native call.
+          $previousEap = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          $doctorOut = & $orkeonCmd doctor --json 2>"$logsDir\doctor.err.txt"
+          $doctorExit = $LASTEXITCODE
+          $ErrorActionPreference = $previousEap
+          if ($doctorExit -gt 1) { Get-Content "$logsDir\doctor.err.txt"; throw "orkeon doctor exited $doctorExit (expected 0 or 1)" }
+          $results = @($doctorOut | ConvertFrom-Json)
+          $fails = @($results | Where-Object { $_.status -eq 'fail' })
+          if ($fails.Count -gt 0) { $doctorOut; throw "orkeon doctor reported $($fails.Count) failing check(s)" }
+          Write-Host "PASS doctor -- $($results.Count) checks, no failure"
+
+          Write-Host "==> msiexec /x $msi /qn"
+          $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$msi`"", '/qn', '/l*v', "$logsDir\uninstall.log") -Wait -PassThru
+          if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { Get-Content "$logsDir\uninstall.log" -Tail 60; throw "msiexec /x exited $($p.ExitCode)" }
+
+          # Only the payload itself is asserted strictly: RemoveFolder in
+          # Package.wxs is wired to INSTALLFOLDER alone, and each <Files>
+          # -harvested subfolder (bin\, libexec\, libexec\orkeon\,
+          # libexec\esbuild-bin\) otherwise relies on Windows Installer's own
+          # per-component directory cleanup -- not guaranteed for an
+          # intermediate folder holding only subfolders and no file of its
+          # own (libexec\ is exactly that case). A leftover empty shell under
+          # $installDir is cosmetic, not a broken uninstall.
+          if ((Test-Path -LiteralPath $orkeonCmd) -or (Test-Path -LiteralPath (Join-Path $installDir 'libexec\orkeon'))) {
+            throw "Uninstall left payload behind under $installDir (orkeon.cmd and/or libexec\orkeon still present)"
+          }
+          Write-Host 'PASS uninstall -- orkeon.cmd and libexec\orkeon removed'
+          if (Test-Path -LiteralPath $installDir) {
+            Write-Warning "$installDir still exists after uninstall (payload is gone -- see above; an empty leftover directory tree is not asserted as a failure)."
+          } else {
+            Write-Host 'PASS uninstall -- install dir fully removed'
+          }
+
+          $arpEntryAfter = Find-OrkeonArpEntry
+          if ($arpEntryAfter) { throw "Add/Remove Programs entry still present after uninstall (in $($arpEntryAfter.Root))." }
+          Write-Host 'PASS arp-removed -- entry gone from every hive'
+
+          $userPathEntriesAfter = @((Get-UserPathRaw) -split ';' | Where-Object { $_ })
+          if ($userPathEntriesAfter -contains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') still on the user PATH after uninstall." }
+          Write-Host 'PASS path-removed -- bin\ entry gone'
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: orkeon-msi-logs
+          path: artifacts/msi-logs
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orkeon-msi
+          path: |
+            artifacts/installers/*.msi
+            artifacts/installers/SHA256SUMS.msi
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  # Installs the published .deb through apt on a stock ubuntu image and walks the
+  # same chain, then removes the package (LIN-02).
+  smoke-deb:
+    runs-on: ubuntu-latest
+    needs: installers
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: orkeon-deb
+          path: artifacts
+      - name: Smoke the installed package
+        run: |
+          deb="$(find artifacts -maxdepth 1 -name 'orkeon_*_amd64.deb' | head -n1)"
+          if [[ -z "$deb" ]]; then
+            echo "No orkeon_*_amd64.deb in the downloaded artefact." >&2
+            exit 1
+          fi
+          ./scripts/smoke-onboarding/run-smoke-deb.sh --deb "$deb"
+
+  # Installs the published osx-arm64 tarball on a real Apple-silicon runner and
+  # walks the same chain, then uninstalls (MAC-02). This is also the only place
+  # the Gatekeeper / code-signing story gets exercised: an unsigned, quarantined
+  # or malformed native library (libtree-sitter*.dylib, onnxruntime, the esbuild
+  # binary) kills the process at load time, so doctor / run / rag fail here
+  # rather than in a user's terminal.
+  smoke-macos:
+    runs-on: macos-latest
+    needs: installers
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: orkeon-cli-osx
+          path: artifacts
+      # --work-dir pins the scratch tree to a known, uploadable path and --keep
+      # holds it on a pass too (the script's own default only keeps it on
+      # failure), so the upload step below always has something to attach.
+      - name: Smoke the installed CLI
+        run: |
+          tarball="$(find artifacts -maxdepth 1 -name 'orkeon-cli-*-osx-arm64.tar.gz' | head -n1)"
+          if [[ -z "$tarball" ]]; then
+            echo "No orkeon-cli-*-osx-arm64.tar.gz in the downloaded artefact." >&2
+            exit 1
+          fi
+          ./scripts/smoke-onboarding/run-smoke-tarball.sh \
+            --tarball "$tarball" \
+            --work-dir "$RUNNER_TEMP/orkeon-smoke" \
+            --keep
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: orkeon-smoke-macos-logs
+          path: ${{ runner.temp }}/orkeon-smoke/logs
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # Publication is gated on every smoke (incl. the msi job's own install/
+  # uninstall smoke): nothing reaches the Release until it has been installed
+  # and run on the target OS. Tag-only — a workflow_dispatch run has no
+  # Release to attach to, and skipping this job is the expected outcome.
+  #
+  # Two checksum files rather than one merged SHA256SUMS: the ubuntu
+  # `installers` job generates SHA256SUMS before the MSI exists (it's built
+  # later, on windows-latest, in the `msi` job) — recomputing a single file
+  # would mean either a second ubuntu pass after the fact or a
+  # download-modify-reupload dance here. A separate SHA256SUMS.msi asset,
+  # uploaded by `msi` itself, is the simpler, more robust option: each
+  # checksum file is generated by the job that actually produced the
+  # artefact it covers.
+  release:
+    runs-on: ubuntu-latest
+    needs: [ installers, smoke-windows, smoke-deb, smoke-macos, msi ]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/installers
+      - uses: actions/download-artifact@v4
+        with:
+          name: orkeon-msi
+          path: artifacts/installers
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/installers/*.tar.gz
             artifacts/installers/*.zip
+            artifacts/installers/*.deb
+            artifacts/installers/*.msi
             artifacts/installers/SHA256SUMS
+            artifacts/installers/SHA256SUMS.msi
           generate_release_notes: true
 
   # Builds and pushes the example-runners container image to GHCR. Same v* trigger
   # as the installers; runs independently (own job, package-scoped permissions).
+  # Tag-only: a workflow_dispatch run would otherwise push a `latest` tag built
+  # from a branch, with a version resolved from a ref that is not a version.
   runners-image:
     runs-on: ubuntu-latest
+    # Gated on the smokes like the release job: a red smoke must not move the
+    # :latest tag on GHCR either.
+    needs: [smoke-windows, smoke-deb, smoke-macos, msi]
+    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       packages: write

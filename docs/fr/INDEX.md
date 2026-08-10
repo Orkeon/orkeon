@@ -10,6 +10,7 @@ La documentation est organisée en 6 sections thématiques.
 
 | Fichier | Description |
 |---------|-------------|
+| [Trois façons d'exécuter Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Page centrale : depuis les sources vs binaire de release vs conteneur — prérequis, commandes, canaux d'installation par OS et tableau comparatif |
 | [Vue d'ensemble](./getting-started/overview.md) | Architecture, concepts fondamentaux (Agent, Task, Tool, Crew), YAML vs Fluent Builder |
 | [Bootstrap et exécution](./getting-started/bootstrap.md) | Injection de dépendances, exécution d'une Crew, modes batch/streaming/fire-and-forget |
 | [YAML, Builders et CrewFactory](./getting-started/yaml-and-builders.md) | Fluent Builders, schéma YAML, pipeline CrewFactory, modes de chargement |

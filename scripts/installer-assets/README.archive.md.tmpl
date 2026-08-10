@@ -4,14 +4,18 @@ Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI a
 
 ## Prerequisite
 
-Most binaries here are **framework-dependent**: they require the **.NET 10 runtime**
-(`Microsoft.NETCore.App 10.x`). Install it from
-<https://dotnet.microsoft.com/download/dotnet/10.0>, then verify with
-`dotnet --list-runtimes`.
+**If `bin/` holds `orkeon` alone** (the CLI archive): none. It is self-contained —
+the .NET runtime ships inside it.
 
-The exceptions are **self-contained** (the .NET runtime is bundled, so no install
-is needed): `orkeon` — the onboarding entry point — and `orkeon-trading`. Devs who
-already have .NET 10 can use the smaller framework-dependent `orkeon-slim` instead.
+**If `bin/` holds every launcher** (the multi-app archive): `orkeon` and
+`orkeon-trading` are self-contained, the rest are **framework-dependent** and
+require the **.NET 10 runtime** (`Microsoft.NETCore.App 10.x`). Install it from
+<https://dotnet.microsoft.com/download/dotnet/10.0>, then verify with
+`dotnet --list-runtimes`. The installers below check for it: `install.sh` prints
+the install commands for your platform if it is missing, `install.ps1` prints a
+warning with the download link above — neither installs the runtime for you.
+Devs who already have .NET 10 can use the smaller `orkeon-slim` instead of
+`orkeon`.
 
 ## Install
 
@@ -30,7 +34,26 @@ Windows (PowerShell):
 .\install.ps1 -Uninstall
 ```
 
+## First run
+
+In a **new** terminal (so the PATH change is picked up):
+
+```sh
+orkeon init      # pick an LLM provider and model; writes the global per-user config
+orkeon doctor    # nine checks: runtime, config, LLM reachability, esbuild, grammars, ...
+orkeon run crew.yaml
+```
+
+Configuration lives at `%APPDATA%\Orkeon\appsettings.json` (Windows) or
+`~/.config/Orkeon/appsettings.json` (Linux/macOS) — never in this install
+directory, which every (re)install deletes. Run with no `Llm` section configured
+and Orkeon warns on stderr, then falls back to an echo provider that replays your
+prompt instead of answering it: that warning means `orkeon init` has not run yet.
+
 ## Contents
+
+The CLI archive (`orkeon-cli-{{VERSION}}-{{RID}}`) ships `bin/orkeon` alone — the
+first row below. The multi-app archive ships all eight commands in this table.
 
 | Command | Description |
 |---|---|
@@ -46,9 +69,11 @@ Windows (PowerShell):
 ## Layout & esbuild
 
 ```
-bin/       thin launchers (the only directory that goes on your PATH)
-libexec/   one self-contained publish per application
+bin/                     thin launchers (the only directory that goes on your PATH)
+libexec/                 one self-contained publish per application
 libexec/esbuild-bin/esbuild   shared esbuild binary used to transpile .ork.ts scripts
+VERSION                  plain-text version string (drives the Add/Remove Programs entry)
+appsettings.sample.json  reference-only config sample, see "First run" above
 ```
 
 The `bin/` launchers set `ORKEON_ESBUILD_PATH` to the bundled esbuild

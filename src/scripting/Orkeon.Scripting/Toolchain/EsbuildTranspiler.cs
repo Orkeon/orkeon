@@ -177,8 +177,15 @@ public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
         }
     }
 
+    /// <summary>
+    /// Locates the esbuild binary (config → env → bundled → repo-local → PATH). Exposed
+    /// <see langword="internal"/> so <c>orkeon doctor</c> reports the exact same resolution
+    /// the transpiler would use instead of duplicating the chain (WIN-03; the CLI assembly
+    /// is covered by <c>InternalsVisibleTo("orkeon")</c>).
+    /// </summary>
+    /// <exception cref="EsbuildNotFoundException">If the esbuild binary cannot be located.</exception>
     [SuppressVfsCompliance("OUT-OF-SCOPE: probes external toolchain (esbuild) binary location, not a VFS mount.")]
-    private string ResolveBinary()
+    internal string ResolveBinary()
     {
         var binaryName = OperatingSystem.IsWindows() ? "esbuild.exe" : "esbuild";
 

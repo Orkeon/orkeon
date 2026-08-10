@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Orkeon CLI — per-user MSI (WIN-07).
+
+  Second, coexisting install channel next to the ZIP (install.ps1 /
+  scripts/package-installers.ps1 -AppSet cli). Same target directory
+  (%LOCALAPPDATA%\Programs\Orkeon), same payload (the pruned self-contained
+  `orkeon` publish, WIN-04), same PATH contract — only the delivery mechanism
+  differs: double-click, no UAC, native "Apps installed" entry, in-place
+  MajorUpgrade. See backstage/tasks/WIN-07-msi-wix.md for the full spec and
+  backstage/tasks/WIN-00-PLAN.md §5 for the "one channel at a time" decision.
+
+  Built by scripts/build-msi.ps1, which supplies two preprocessor variables:
+    OrkeonVersion      x.y.z only (MSI ProductVersion accepts no suffix)
+    OrkeonVersionFull  the full version string (e.g. 0.9.2-beta), kept in
+                        ARPCOMMENTS and the .msi filename so the suffix is
+                        never silently dropped, only reformatted.
+    PublishDir         the staging tree to harvest — bin\, libexec\,
+                        README.md, LICENSE.md, VERSION, appsettings.sample.json.
+                        Same tree package-installers.ps1 -AppSet cli zips up;
+                        harvested wholesale via <Files>, no separate file list
+                        to keep in sync.
+
+  Built and validated against WiX v5.0.2 specifically (schema namespace stays
+  "v4" regardless — that is not a typo, the wxs schema itself simply hasn't
+  revved since v4). v5, not v6/v7: the toolchain version is pinned in
+  .config/dotnet-tools.json, and v6/v7 gate every command behind accepting
+  the Open Source Maintenance Fee EULA (WIX7015) — a fresh CI runner has
+  never accepted it, so that gate would kill the `msi` job outright. See
+  backstage/tasks/WIN-07-msi-wix.md ("Version WiX épinglée") and
+  scripts/build-msi.ps1 for the full reasoning. Every construct used below
+  (<StandardDirectory>, <Files Include=.. Exclude=..> inside a
+  <ComponentGroup Directory=..>, <Launch Condition=..>, <ui:WixUI>,
+  <WixVariable Id="WixUILicenseRtf">) shipped in WiX 5.0.0 — none of it is
+  v6/v7-only. Requires the WixToolset.UI.wixext extension (WixUI_Minimal +
+  the license page), same major.minor.patch as wix itself. No heat: heat.exe
+  is deprecated since WiX v4, and <Files> harvests PublishDir recursively on
+  its own.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <!--
+    UpgradeCode — GENERATED ONCE (python3 -c "import uuid; print(uuid.uuid4())"
+    on 2026-08-07, WIN-07 authoring). NEVER REGENERATE: this is the single GUID
+    MajorUpgrade uses to recognize "an earlier Orkeon" across versions. Changing
+    it turns every future release into a second, parallel-installable product.
+    Mirrored in backstage/tasks/WIN-07-msi-wix.md ("UpgradeCode" section).
+  -->
+  <?define OrkeonUpgradeCode = "15C4ADB4-6586-4F71-9B0B-40FEA3BAE641" ?>
+
+  <Package Name="Orkeon"
+           Manufacturer="Orkeon"
+           Version="$(var.OrkeonVersion)"
+           UpgradeCode="$(var.OrkeonUpgradeCode)"
+           Scope="perUser"
+           Language="1033"
+           InstallerVersion="500">
+
+    <SummaryInformation Keywords="Installer" Description="Orkeon CLI $(var.OrkeonVersionFull) — per-user setup" />
+
+    <!--
+      Unsigned MSI is an accepted-for-now tradeoff (see WIN-00-PLAN.md §8):
+      SmartScreen will warn on first run until Authenticode/Azure Trusted
+      Signing is purchased. Not this fiche's scope.
+    -->
+
+    <!--
+      AllowSameVersionUpgrades: two pre-release builds can legitimately share
+      the same x.y.z ProductVersion (MSI drops the -beta/-rc suffix, see
+      OrkeonVersion above), so "same version" is a routine case here, not an
+      error — without this, installing one over the other fails with
+      msiexec error 1638 ("this product is already installed") instead of
+      upgrading.
+    -->
+    <MajorUpgrade
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="A newer version of Orkeon is already installed. Uninstall it first if you need to downgrade." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!--
+      "Apps installed" metadata beyond what Package@Name/@Manufacturer/@Version
+      already populate. ARPNOMODIFY/ARPNOREPAIR mirror install.ps1's ARP entry
+      (NoModify/NoRepair, WIN-05) — this MSI has no repair/modify UI either.
+    -->
+    <Property Id="ARPCOMMENTS" Value="Orkeon $(var.OrkeonVersionFull)" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Orkeon/orkeon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/Orkeon/orkeon#readme" />
+    <!-- ARPNOMODIFY is already set by WixUI_Minimal (WIX0091 if declared twice). -->
+    <Property Id="ARPNOREPAIR" Value="1" />
+
+    <!-- ==================================================================
+         Channel coexistence (WIN-00-PLAN.md §5 decision n°5): refuse to
+         install over a live ZIP-channel install. install.ps1 (WIN-05) writes
+         its ARP entry at HKCU\...\Uninstall\Orkeon (a literal key name, not a
+         ProductCode GUID — this MSI's own ARP entry lives under a GUID key,
+         so the two can never collide with each other, only the earlier one
+         with the later one). "Installed OR NOT ZIPCHANNELPRESENT" lets this
+         MSI's own upgrade/repair/uninstall sequences through (Installed is
+         set once this product itself is already on the machine) while
+         blocking a first install next to a live ZIP install.
+         ================================================================== -->
+    <Property Id="ZIPCHANNELPRESENT" Secure="yes">
+      <RegistrySearch Id="ZipChannelArpSearch"
+                       Root="HKCU"
+                       Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\Orkeon"
+                       Name="DisplayName"
+                       Type="raw" />
+    </Property>
+    <Launch Condition="Installed OR NOT ZIPCHANNELPRESENT"
+            Message="Orkeon is already installed via the ZIP channel (see 'Orkeon' in Add/Remove Programs). Uninstall it first, then run this installer again — only one Orkeon channel can be active at a time." />
+
+    <!-- ==================================================================
+         Layout — %LOCALAPPDATA%\Programs\Orkeon, matching install.ps1
+         exactly. Built explicitly under LocalAppDataFolder rather than
+         relying on Package@Scope="perUser" to redirect ProgramFilesFolder:
+         that redirection is known to produce an unexpected INSTALLFOLDER in
+         some WiX v5 releases, so the target is spelled out instead of
+         inferred.
+         ================================================================== -->
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Orkeon" />
+      </Directory>
+    </StandardDirectory>
+
+    <!--
+      Payload — the package-installers.ps1 -AppSet cli staging tree, harvested
+      wholesale: bin\orkeon.cmd, libexec\orkeon\** (pruned self-contained
+      publish, WIN-04), libexec\esbuild-bin\esbuild.exe, README.md,
+      LICENSE.md, VERSION, appsettings.sample.json. <Files> auto-generates one
+      Component per file and mirrors the subfolders (bin\, libexec\,
+      libexec\orkeon\, libexec\esbuild-bin\) as child Directory elements of
+      INSTALLFOLDER, with per-path stable GUIDs — see the "Risques" note in
+      WIN-07-msi-wix.md: those GUIDs stay stable only as long as the staging
+      tree's shape does, so the WIN-04 pruning has to already be in place (it
+      is).
+
+      Excluded: install.ps1 — that file belongs to the ZIP channel's own
+      uninstaller (its ARP UninstallString points at the copy it makes of
+      itself, see install.ps1's header). Shipping it inside the MSI would let
+      a user run the ZIP channel's uninstall logic against an MSI-managed
+      install, which is exactly the "one channel at a time" boundary
+      WIN-00-PLAN.md §5 draws.
+    -->
+    <ComponentGroup Id="PayloadComponents" Directory="INSTALLFOLDER">
+      <!-- WIX0004: Exclude is a child element in WiX v5, not an attribute. -->
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\install.ps1" />
+      </Files>
+    </ComponentGroup>
+
+    <!--
+      User PATH — install.ps1's Add-UserPathEntry equivalent. HKCU registry
+      value as KeyPath: this component installs no file of its own, and a
+      per-user Environment table entry needs a KeyPath to know when to run
+      (install) / roll back (uninstall). RemoveFolder on INSTALLFOLDER is the
+      explicit uninstall-time directory cleanup a LocalAppDataFolder subtree
+      needs (unlike ProgramFilesFolder, Windows Installer does not always
+      infer it for these).
+    -->
+    <Component Id="PathEnvComponent" Directory="INSTALLFOLDER" Guid="72ADD333-3DE3-4B80-90CD-11FD80E6A0C3">
+      <RegistryValue Root="HKCU" Key="Software\Orkeon\Msi" Name="PathAdded" Type="integer" Value="1" KeyPath="yes" />
+      <Environment Id="OrkeonPath" Name="PATH" Value="[INSTALLFOLDER]bin" Part="last" Action="set" System="no" Permanent="no" />
+      <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+    </Component>
+
+    <Feature Id="MainFeature" Title="Orkeon CLI" Level="1">
+      <ComponentGroupRef Id="PayloadComponents" />
+      <ComponentRef Id="PathEnvComponent" />
+    </Feature>
+
+    <!-- ==================================================================
+         UI — WixUI_Minimal (license + progress + exit only, no directory
+         picker: the install path is fixed, matching install.ps1). Exit
+         dialog points at `orkeon init` since there is no Start Menu shortcut
+         to double-click — this is a CLI.
+         ================================================================== -->
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
+              Value="Open a new terminal, then run: orkeon init" />
+
+  </Package>
+</Wix>

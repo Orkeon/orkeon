@@ -109,9 +109,44 @@ Runner, Ollama, or a model embedded in the container image) — see the
 | You want to… | Do this | Details |
 |---|---|---|
 | **Run crews with zero install** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — interactive shell, 105 bundled examples (`orkeon-example run 1`), local-model ready | [Container guide](docs/getting-started/three-ways-to-run-orkeon.md#3-container) |
-| **Install the `orkeon` CLI** | Grab the archive for your platform from the [releases](https://github.com/Orkeon/orkeon/releases) (`linux-x64/arm64`, `osx-x64/arm64`, `win-x64`), then `./install.sh` / `.\install.ps1`. Ships `orkeon`, `orkeon-repl`, and the example runners. Needs the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0) | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
+| **Install the `orkeon` CLI** | Windows and Debian/Ubuntu: the quickstarts below. Other platforms: grab the archive from the [releases](https://github.com/Orkeon/orkeon/releases) (`linux-arm64`, `osx-x64/arm64`), then `./install.sh` | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
 | **Embed Orkeon in your app** | `dotnet add package Orkeon.Domain` (+ `Orkeon.Application`, `Orkeon.Infrastructure`, and opt-in packs as needed) | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
 | **Hack on the framework** | `git clone` + `dotnet build Orkeon.sln` | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
+
+**Windows** — download `orkeon-cli-<version>-win-x64.zip` (or the `.msi`) from the [releases](https://github.com/Orkeon/orkeon/releases); it is self-contained, no .NET needed:
+
+```powershell
+Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cli-<version>-win-x64
+.\install.ps1        # or: msiexec /i orkeon-<version>-win-x64.msi -- pick one channel, not both
+orkeon init          # in a NEW terminal: pick your LLM provider and model
+orkeon run crew.yaml
+```
+
+**Debian / Ubuntu** — download `orkeon_<version>_amd64.deb`; self-contained too, no `dotnet-runtime` package pulled in:
+
+```bash
+sudo apt install ./orkeon_<version>_amd64.deb
+orkeon init          # writes ~/.config/Orkeon/appsettings.json
+orkeon run crew.yaml
+```
+
+**macOS** — Homebrew becomes the recommended route once the `Orkeon/homebrew-tap` repository ships with the first tagged release:
+
+```bash
+brew tap orkeon/tap && brew install orkeon    # once the tap is published
+orkeon init
+orkeon run crew.yaml
+```
+
+Until then (and on any machine), the self-contained tarball — `osx-arm64` for Apple Silicon, `osx-x64` for Intel. `install.sh` clears the Gatekeeper quarantine attribute for you:
+
+```bash
+curl -fsSL -O https://github.com/Orkeon/orkeon/releases/latest/download/orkeon-cli-<version>-osx-arm64.tar.gz
+tar -xzf orkeon-cli-<version>-osx-arm64.tar.gz && cd orkeon-cli-<version>-osx-arm64 && ./install.sh
+orkeon init
+```
+
+`orkeon doctor` checks the install (runtime, config, LLM reachability, esbuild, grammars) whenever something looks off.
 
 ---
 
