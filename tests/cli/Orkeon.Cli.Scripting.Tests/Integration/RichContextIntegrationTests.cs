@@ -89,11 +89,16 @@ public sealed class RichContextIntegrationTests : IDisposable
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var runTask = Task.Run(() => runner.RunAsync(cts.Token), TestContext.Current.CancellationToken);
 
-        // Wait until the runner has marked a command running, then ask it to cancel.
+        // Wait until the handler is actually executing inside the engine before cancelling.
+        // IsCommandRunning is NOT enough: it flips true before ExecuteAsync's preamble
+        // (engine-lock WaitAsync on the per-command token), so cancelling on that signal
+        // can abort the command host-side ("Command 'wait' cancelled.") before the script
+        // ever observes ctx.signal — the fixture prints "wait-started" as its first
+        // statement precisely so we cancel only once the graceful path is guaranteed.
         var waitStart = DateTime.UtcNow;
-        while (!runner.IsCommandRunning && DateTime.UtcNow - waitStart < TimeSpan.FromSeconds(10))
+        while (!console.Output.Contains("wait-started") && DateTime.UtcNow - waitStart < TimeSpan.FromSeconds(10))
             await Task.Delay(25, TestContext.Current.CancellationToken);
-        Assert.True(runner.IsCommandRunning, "Runner never marked the command as running.");
+        Assert.Contains("wait-started", console.Output);
 
         runner.RequestCommandCancellation();
 
