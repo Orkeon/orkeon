@@ -345,8 +345,9 @@ internal static partial class RunCommand
             : $"{ex.GetType().Name} → {root.GetType().FullName}";
         Console.Error.WriteLine($"orkeon run: unexpected error [{outerTypeHint}]: {root.Message}");
         // Opt-in diagnostics: ORKEON_DEBUG=1 prints the full wrapper chain + stacks
-        // (root.Message alone is useless for NullReferenceException-class bugs).
-        if (Environment.GetEnvironmentVariable("ORKEON_DEBUG") == "1")
+        // (root.Message alone is useless for NullReferenceException-class bugs). The
+        // switch is shared with the runner's own diagnostics, hence RunnerEnvironment.
+        if (RunnerEnvironment.DebugDiagnostics)
             Console.Error.WriteLine(ex.ToString());
         return Program.ExitRuntimeError;
     }

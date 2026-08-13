@@ -120,6 +120,12 @@
             <TextBlock Style="{StaticResource FieldLabel}" Text="Timeout (seconds)" />
             <TextBox Text="{Binding Llm.TimeoutSeconds, UpdateSourceTrigger=LostFocus}" Margin="{StaticResource FieldMargin}" />
 
+            <!-- §4.2: optional connectivity probe. It reports, it never gates the save. -->
+            <Button Content="Test connection" Command="{Binding Llm.TestConnectionCommand}"
+                    Width="140" HorizontalAlignment="Left" Margin="0,6,0,0" />
+            <TextBlock Text="{Binding Llm.ConnectionTestResult}" Style="{StaticResource HintText}"
+                       Visibility="{Binding Llm.ConnectionTestResult, Converter={StaticResource StringPresentToVisibility}}" />
+
             <TextBlock Style="{StaticResource SectionHeader}" Text="RateLimiting" Margin="0,18,0,6" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Max concurrent requests" />
             <TextBox Text="{Binding RateLimiting.MaxConcurrentRequests, UpdateSourceTrigger=LostFocus}" Margin="{StaticResource FieldMargin}" />

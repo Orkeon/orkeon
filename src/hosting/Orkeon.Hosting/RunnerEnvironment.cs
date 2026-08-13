@@ -12,6 +12,17 @@ public static class RunnerEnvironment
     /// <summary>Environment variable read by <see cref="AllowExternalMounts"/>.</summary>
     public const string AllowExternalMountsVariable = "ORKEON_ALLOW_EXTERNAL_MOUNTS";
 
+    /// <summary>Environment variable read by <see cref="DebugDiagnostics"/>.</summary>
+    public const string DebugVariable = "ORKEON_DEBUG";
+
+    /// <summary>
+    /// True when <c>ORKEON_DEBUG</c> is set to <c>1</c>, <c>true</c> or <c>yes</c>
+    /// (case-insensitive) — the opt-in that turns the runner's user-facing one-line
+    /// diagnostics back into full exception dumps (type chain + stack).
+    /// </summary>
+    public static bool DebugDiagnostics
+        => IsTruthy(Environment.GetEnvironmentVariable(DebugVariable));
+
     /// <summary>
     /// True when <c>ORKEON_ALLOW_EXTERNAL_MOUNTS</c> is set to <c>1</c>, <c>true</c> or
     /// <c>yes</c> (case-insensitive) — the environment-level equivalent of passing

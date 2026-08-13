@@ -15,7 +15,7 @@ public class StudioConfigWindowTests
             new FakeProcessLauncher(),
             new OrkeonBinaryLocator(new FakeExecutableProbe(), ["orkeon"]));
 
-        return new ConfigEditorModel(new FakeDirectoryProbe("/data/in"), runner);
+        return new ConfigEditorModel(new FakeDirectoryProbe("/data/in"), runner, new FakeLlmEndpointProbe());
     }
 
     [Fact]

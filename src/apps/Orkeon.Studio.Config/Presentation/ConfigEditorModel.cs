@@ -1,6 +1,7 @@
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Storage;
@@ -38,15 +39,22 @@ internal sealed class ConfigEditorModel
     private readonly AppSettingsValidator _validator;
     private readonly IDirectoryProbe _directories;
     private readonly OrkeonProcessRunner _runner;
+    private readonly ILlmEndpointProbe _llmProbe;
 
     /// <summary>Creates a session on an empty document.</summary>
     /// <param name="directories">Directory access used to check mount physical paths.</param>
     /// <param name="runner">CLI runner used by the diagnostic button.</param>
-    public ConfigEditorModel(IDirectoryProbe? directories = null, OrkeonProcessRunner? runner = null)
+    /// <param name="llmProbe">Connectivity probe used by the "Test connection" button.</param>
+    public ConfigEditorModel(
+        IDirectoryProbe? directories = null,
+        OrkeonProcessRunner? runner = null,
+        ILlmEndpointProbe? llmProbe = null)
     {
         _directories = directories ?? PhysicalDirectoryProbe.Instance;
         _validator = new AppSettingsValidator(_directories);
         _runner = runner ?? OrkeonProcessRunner.ForCurrentMachine();
+        // Lives as long as the editor session, which lives as long as the process.
+        _llmProbe = llmProbe ?? HttpLlmEndpointProbe.ForCurrentMachine();
 
         Mounts = new MountEditorModel(_directories);
         Document = AppSettingsDocument.CreateEmpty();
@@ -79,6 +87,9 @@ internal sealed class ConfigEditorModel
 
     /// <summary>Directory access shared with the mount forms the screens open.</summary>
     public IDirectoryProbe Directories => _directories;
+
+    /// <summary>Connectivity probe shared with the LLM screen's "Test connection" button.</summary>
+    public ILlmEndpointProbe LlmProbe => _llmProbe;
 
     /// <summary>The section forms, in navigation order.</summary>
     public IReadOnlyList<ISettingsForm> Forms => [Llm, RateLimiting, Rag, Logging, LlmLogging];

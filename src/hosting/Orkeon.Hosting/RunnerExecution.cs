@@ -235,7 +235,23 @@ public static partial class RunnerExecution
             LogLoadingCrew(logger, configPath);
 
             var factory = host.Services.GetRequiredService<ICrewFactory>();
-            var crew = await LoadCrewAsync(host, factory, configPath, logger, cts.Token).ConfigureAwait(false);
+
+            Domain.Crew.Crew crew;
+            try
+            {
+                crew = await LoadCrewAsync(host, factory, configPath, logger, cts.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException && !IsConnectionRefused(ex))
+            {
+                // A crew that does not load is a configuration mistake — report it the way
+                // --validate does (one actionable line, stack behind -v / ORKEON_DEBUG=1)
+                // rather than letting the generic fault barrier below dump the raw exception.
+                // A scripted crew can reach the LLM while loading, though: that failure is not
+                // a configuration mistake, so it is left to the unreachable-endpoint handler.
+                await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
+                await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose).ConfigureAwait(false);
+                return 2;
+            }
 
             var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 

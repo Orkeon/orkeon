@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
 
 namespace Orkeon.Studio.Config.Presentation;
@@ -38,6 +39,22 @@ internal sealed class LlmForm : ISettingsForm
 
     /// <summary>Provider inferred from <see cref="BaseUrl"/>; never written to the file.</summary>
     public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
+
+    /// <summary>
+    /// The connectivity probe for what the fields currently hold (SPEC §4.2). The key follows
+    /// <see cref="LlmApiKeyResolver"/>: a user who took the standing advice and left the key in
+    /// <c>ORKEON_Llm__ApiKey</c> must still be able to test the connection.
+    /// </summary>
+    /// <param name="environment">
+    /// Reads an environment variable by name; defaults to the process environment.
+    /// </param>
+    public LlmProbeRequest ToProbeRequest(Func<string, string?>? environment = null) => new()
+    {
+        BaseUrl = FieldText.ToStringOrNull(BaseUrl),
+        ApiKey = environment is null
+            ? LlmApiKeyResolver.Resolve(ApiKey)
+            : LlmApiKeyResolver.Resolve(ApiKey, environment),
+    };
 
     /// <summary>The label shown under the API key field.</summary>
     public static string ApiKeyRecommendation { get; } = string.Create(

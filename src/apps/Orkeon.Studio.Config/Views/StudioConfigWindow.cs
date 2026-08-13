@@ -56,7 +56,7 @@ internal sealed class StudioConfigWindow : Window
             Height = Dim.Fill(4),
         };
 
-        _sectionViews.Add(new LlmSectionView(_model.Llm));
+        _sectionViews.Add(new LlmSectionView(_model.Llm, _model.LlmProbe));
         _sectionViews.Add(new RateLimitingSectionView(_model.RateLimiting));
         _sectionViews.Add(new RagSectionView(_model.Rag));
         _sectionViews.Add(new MountsSectionView(_model.Mounts, _model.Directories, lister));

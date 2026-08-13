@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -36,7 +37,8 @@ public sealed class ConfigTabViewModel : ObservableObject
         IPathPicker? picker = null,
         OrkeonProcessRunner? processRunner = null,
         IUiDispatcher? dispatcher = null,
-        string? globalPathOverride = null)
+        string? globalPathOverride = null,
+        ILlmEndpointProbe? llmProbe = null)
     {
         _store = store ?? PhysicalAppSettingsStore.Instance;
         _validator = new AppSettingsValidator(directories);
@@ -44,7 +46,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         Picker = picker ?? NullPathPicker.Instance;
 
-        Llm = new LlmSectionViewModel(() => _document, MarkDirty);
+        Llm = new LlmSectionViewModel(() => _document, MarkDirty, llmProbe, dispatcher);
         RateLimiting = new RateLimitingSectionViewModel(() => _document, MarkDirty);
         Rag = new RagSectionViewModel(() => _document, MarkDirty);
         Logging = new LoggingSectionViewModel(() => _document, MarkDirty);

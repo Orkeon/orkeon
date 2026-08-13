@@ -218,14 +218,78 @@ public class LoggingFormTests
         form.LoadFrom(document);
 
         Assert.Equal("Information", form.DefaultLevel);
-        Assert.Contains("Microsoft = Warning", form.OtherCategories);
+        Assert.True(form.SectionExisted);
+        Assert.Equal("Microsoft = Warning", Assert.Single(form.Categories).Display);
 
         form.SelectLevel(LoggingForm.LevelChoices.Count - 1);
         Assert.Empty(form.ApplyTo(document));
         Assert.Equal("None", document.Logging.DefaultLevel);
 
-        // The category the editor has no field for is untouched.
+        // The category the user did not touch is written back exactly as it was read.
         Assert.Equal("Warning", document.Logging.GetLevel("Microsoft"));
+    }
+
+    [Fact]
+    public void A_category_is_added_edited_and_removed()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        var form = new LoggingForm();
+        form.LoadFrom(document);
+
+        Assert.True(form.TryAddCategory("Microsoft.AspNetCore", "Debug", out _));
+        Assert.Empty(form.ApplyTo(document));
+        Assert.Equal("Debug", document.Logging.GetLevel("Microsoft.AspNetCore"));
+
+        // Only the level changes.
+        Assert.True(form.TryReplaceCategory(0, "Microsoft.AspNetCore", "Error", out _));
+        Assert.Empty(form.ApplyTo(document));
+        Assert.Equal("Error", document.Logging.GetLevel("Microsoft.AspNetCore"));
+
+        Assert.True(form.TryReplaceCategory(0, "System.Net.Http", "Error", out _));
+        Assert.Empty(form.ApplyTo(document));
+        Assert.Equal("Error", document.Logging.GetLevel("System.Net.Http"));
+
+        // A rename leaves no orphan behind.
+        Assert.False(document.ContainsPath("Logging:LogLevel:Microsoft.AspNetCore"));
+
+        form.RemoveCategoryAt(0);
+        Assert.Empty(form.ApplyTo(document));
+        Assert.False(document.ContainsPath("Logging:LogLevel:System.Net.Http"));
+    }
+
+    [Fact]
+    public void An_absent_section_stays_absent_when_no_category_was_added()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        var form = new LoggingForm();
+        form.LoadFrom(document);
+
+        Assert.False(form.SectionExisted);
+        Assert.Empty(form.ApplyTo(document));
+
+        Assert.False(document.ContainsPath("Logging"));
+        Assert.Empty(document.Root);
+    }
+
+    [Fact]
+    public void A_level_the_user_never_chose_leaves_the_rest_of_the_file_alone()
+    {
+        var document = AppSettingsDocument.Parse("""
+            {
+              "Logging": { "LogLevel": { "Microsoft": "Warning" }, "Console": { "IncludeScopes": true } }
+            }
+            """);
+
+        var form = new LoggingForm();
+        form.LoadFrom(document);
+
+        Assert.True(form.TryAddCategory("System", "Critical", out _));
+        Assert.Empty(form.ApplyTo(document));
+
+        Assert.Equal("Warning", document.Logging.GetLevel("Microsoft"));
+        Assert.Equal("Critical", document.Logging.GetLevel("System"));
+        Assert.Equal(true, document.GetBoolean("Logging:Console:IncludeScopes"));
+        Assert.Null(document.Logging.DefaultLevel);
     }
 
     [Fact]
@@ -234,6 +298,44 @@ public class LoggingFormTests
         var form = new LoggingForm { DefaultLevel = "Chatty" };
 
         Assert.Single(form.ApplyTo(AppSettingsDocument.CreateEmpty()));
+    }
+
+    [Fact]
+    public void A_category_row_is_refused_before_it_can_reach_the_document()
+    {
+        var form = new LoggingForm();
+        Assert.True(form.TryAddCategory("Microsoft", "Warning", out _));
+
+        Refused(form.TryAddCategory("   ", "Warning", out var blank), blank, "name");
+        Refused(form.TryAddCategory("microsoft", "Warning", out var duplicate), duplicate, "already listed");
+        Refused(form.TryAddCategory("Default", "Warning", out var reserved), reserved, "chooser");
+        Refused(form.TryAddCategory("Logging:LogLevel", "Warning", out var path), path, "':'");
+        Refused(form.TryAddCategory("System", "Chatty", out var level), level, "Trace, Debug");
+        Refused(form.TryReplaceCategory(7, "System", "Warning", out var missing), missing, "no longer listed");
+
+        // Nothing but the first, valid row was kept.
+        Assert.Equal("Microsoft = Warning", Assert.Single(form.Categories).Display);
+
+        static void Refused(bool accepted, string? error, string expected)
+        {
+            Assert.False(accepted);
+            Assert.NotNull(error);
+            Assert.Contains(expected, error, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void A_category_level_is_normalized_to_the_spelling_of_the_closed_list()
+    {
+        var form = new LoggingForm();
+
+        Assert.True(form.TryAddCategory(" System.Net ", "warning", out _));
+        var row = Assert.Single(form.Categories);
+
+        Assert.Equal("System.Net", row.Category);
+        Assert.Equal("Warning", row.Level);
+        Assert.Equal(3, LoggingForm.CategoryLevelIndex("warning"));
+        Assert.Equal(2, LoggingForm.CategoryLevelIndex("nonsense"));
     }
 }
 

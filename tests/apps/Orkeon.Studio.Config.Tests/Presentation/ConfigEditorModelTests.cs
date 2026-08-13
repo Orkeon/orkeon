@@ -25,7 +25,10 @@ public sealed class ConfigEditorModelTests : IDisposable
             launcher ?? new FakeProcessLauncher(),
             new OrkeonBinaryLocator(probe, ["orkeon"]));
 
-        return new ConfigEditorModel(directories ?? new FakeDirectoryProbe("/data/in", "/data/out"), runner);
+        return new ConfigEditorModel(
+            directories ?? new FakeDirectoryProbe("/data/in", "/data/out"),
+            runner,
+            new FakeLlmEndpointProbe());
     }
 
     [Fact]

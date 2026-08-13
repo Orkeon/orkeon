@@ -16,7 +16,7 @@ public class SectionViewsTests
     public void The_llm_screen_carries_the_form_values_both_ways()
     {
         var form = new LlmForm();
-        using var view = new LlmSectionView(form);
+        using var view = new LlmSectionView(form, new FakeLlmEndpointProbe());
 
         form.Model = "llama3";
         form.BaseUrl = "http://localhost:11434";
@@ -71,9 +71,11 @@ public class SectionViewsTests
     }
 
     [Fact]
-    public void The_logging_screen_keeps_the_default_level()
+    public void The_logging_screen_keeps_the_default_level_and_lists_the_categories()
     {
         var form = new LoggingForm();
+        Assert.True(form.TryAddCategory("Microsoft", "Warning", out _));
+
         using var view = new LoggingSectionView(form);
 
         form.DefaultLevel = "Warning";
@@ -83,6 +85,17 @@ public class SectionViewsTests
         view.Apply();
 
         Assert.Equal("Warning", form.DefaultLevel);
+
+        // The rows are edited through the dialog, so Apply must leave them alone.
+        Assert.Equal("Microsoft = Warning", Assert.Single(form.Categories).Display);
+    }
+
+    [Fact]
+    public void A_log_category_dialog_opens_on_an_existing_category_without_a_terminal()
+    {
+        using var dialog = new LogCategoryDialog("Microsoft", "Warning");
+
+        Assert.Null(dialog.AcceptedCategory);
     }
 
     [Fact]

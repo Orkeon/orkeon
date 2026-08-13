@@ -87,7 +87,7 @@ public static partial class RunnerExecution
             {
                 await Console.Error.WriteLineAsync($"VALIDATION FAILED: {configPath}").ConfigureAwait(false);
                 await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
-                LogValidationFailed(logger, ex);
+                await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose).ConfigureAwait(false);
                 return 1;
             }
         }
@@ -188,9 +188,26 @@ public static partial class RunnerExecution
         b.SetMinimumLevel(LogLevel.Warning);
     }
 
+    /// <summary>
+    /// Reports a crew-load failure — a mixed directory layout, malformed YAML, an unknown tool —
+    /// as the single actionable line the caller already wrote to stderr. Such a failure is a
+    /// configuration mistake, not a runner bug: logging the exception itself renders its type and
+    /// stack, which buries the sentence that says what to fix. The failure still reaches the log
+    /// stream as a message, and the full dump stays one opt-in away — <c>-v</c> or
+    /// <c>ORKEON_DEBUG=1</c>, the same switch the scripting CLI's own fault barrier uses.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    private static async Task ReportCrewConfigurationErrorAsync(ILogger logger, Exception ex, int verbose)
+    {
+        LogCrewConfigurationError(logger, ex.Message);
+
+        if (verbose > 0 || RunnerEnvironment.DebugDiagnostics)
+            await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+    }
+
     [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Validating crew from {ConfigPath} (dry-run — no LLM probe, no kickoff)...")]
     private static partial void LogValidatingCrew(ILogger logger, string configPath);
 
-    [LoggerMessage(EventId = 14, Level = LogLevel.Error, Message = "Crew validation failed")]
-    private static partial void LogValidationFailed(ILogger logger, Exception ex);
+    [LoggerMessage(EventId = 14, Level = LogLevel.Error, Message = "Crew configuration error: {Reason}")]
+    private static partial void LogCrewConfigurationError(ILogger logger, string reason);
 }

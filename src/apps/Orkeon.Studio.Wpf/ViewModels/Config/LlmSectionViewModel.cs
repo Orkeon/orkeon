@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
@@ -8,13 +10,33 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// The <c>Llm</c> form (spec §4.1). There is deliberately no provider field: the provider is derived
 /// from the host of <see cref="BaseUrl"/> and shown read-only, and the API key carries the
 /// recommendation to use the <c>ORKEON_Llm__ApiKey</c> environment variable instead of clear text.
+/// <para>
+/// <see cref="TestConnectionCommand"/> is the optional connectivity probe of spec §4.2: it reports
+/// what the endpoint answered and gates nothing — a failed test never stops a save.
+/// </para>
 /// </summary>
 public sealed class LlmSectionViewModel : DocumentSectionViewModel
 {
+    private readonly ILlmEndpointProbe _probe;
+    private readonly IUiDispatcher _dispatcher;
+    private string? _connectionTestResult;
+
     /// <summary>Binds the form to the <c>Llm</c> section of the document.</summary>
-    public LlmSectionViewModel(Func<AppSettingsDocument> document, Action onChanged)
+    /// <param name="document">Supplies the document currently being edited.</param>
+    /// <param name="onChanged">Called whenever a field writes into the document.</param>
+    /// <param name="probe">Runs the connectivity test; defaults to a real HTTP probe.</param>
+    /// <param name="dispatcher">Marshals the probe's answer back to the UI thread.</param>
+    public LlmSectionViewModel(
+        Func<AppSettingsDocument> document,
+        Action onChanged,
+        ILlmEndpointProbe? probe = null,
+        IUiDispatcher? dispatcher = null)
         : base(document, onChanged)
     {
+        // Lives as long as the tab, which lives as long as the window.
+        _probe = probe ?? HttpLlmEndpointProbe.ForCurrentMachine();
+        _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
+        TestConnectionCommand = new AsyncRelayCommand(() => TestConnectionAsync());
     }
 
     private LlmSection Section => Document.Llm;
@@ -92,6 +114,58 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
 
     /// <summary>Whether a key is currently stored in the file, which the validator reports.</summary>
     public bool HasInlineApiKey => ApiKey is { Length: > 0 };
+
+    /// <summary>Runs the optional connectivity test against the configured endpoint.</summary>
+    public AsyncRelayCommand TestConnectionCommand { get; }
+
+    /// <summary>
+    /// What the last connectivity test reported, or <see langword="null"/> when none has run.
+    /// Purely informational — nothing in the tab reads it back.
+    /// </summary>
+    public string? ConnectionTestResult
+    {
+        get => _connectionTestResult;
+        private set => SetProperty(ref _connectionTestResult, value);
+    }
+
+    /// <summary>True while a test is in flight, so the view can show it is working.</summary>
+    public bool IsTestingConnection => TestConnectionCommand.IsRunning;
+
+    /// <summary>
+    /// Probes the configured endpoint and publishes the verdict on
+    /// <see cref="ConnectionTestResult"/>. The key follows <see cref="LlmApiKeyResolver"/>, so a
+    /// user who took the advice above and kept the key in the environment can still test.
+    /// </summary>
+    /// <param name="cancellationToken">Abandons the test.</param>
+    /// <returns>The probe's verdict, so callers can assert on it.</returns>
+    [SuppressMessage("Design", "CA1031",
+        Justification = "The test is a convenience that must never fault the command: any unexpected " +
+                        "failure is reported in the result line like every other unreachable endpoint.")]
+    public async Task<LlmProbeResult> TestConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        ConnectionTestResult = "Testing the connection…";
+        OnPropertyChanged(nameof(IsTestingConnection));
+
+        LlmProbeResult result;
+        try
+        {
+            result = await _probe.ProbeAsync(
+                new LlmProbeRequest { BaseUrl = BaseUrl, ApiKey = LlmApiKeyResolver.Resolve(ApiKey) },
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            result = LlmProbeResult.Unreachable(ex.Message);
+        }
+
+        _dispatcher.Post(() =>
+        {
+            ConnectionTestResult = result.Message;
+            OnPropertyChanged(nameof(IsTestingConnection));
+        });
+
+        return result;
+    }
 
     /// <summary>Removes the whole section, which is how the "None / offline" preset is expressed.</summary>
     public void RemoveSection()

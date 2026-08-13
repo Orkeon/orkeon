@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 
 namespace Orkeon.Studio.Wpf.Tests;
@@ -11,7 +12,7 @@ public sealed class LlmSectionViewModelTests
     {
         var document = AppSettingsDocument.Parse(json);
         var changes = 0;
-        var section = new LlmSectionViewModel(() => document, () => changes++);
+        var section = new LlmSectionViewModel(() => document, () => changes++, new FakeLlmEndpointProbe());
         return (section, document, () => changes);
     }
 
@@ -83,7 +84,7 @@ public sealed class LlmSectionViewModelTests
         // The forms reach the document through a delegate, which is what lets "open another file"
         // keep the bindings the view already holds.
         var document = AppSettingsDocument.Parse("""{"Llm":{"Model":"first"}}""");
-        var section = new LlmSectionViewModel(() => document, () => { });
+        var section = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
 
         document = AppSettingsDocument.Parse("""{"Llm":{"Model":"second"}}""");
 

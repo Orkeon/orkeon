@@ -132,6 +132,85 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         Assert.Contains("definitely_not_a_real_tool", stderr, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Builds a crew directory that declares the agents twice — once flat (<c>agents.yaml</c>)
+    /// and once per-entity (<c>agents/</c>) — which the loader rejects as a mixed layout.
+    /// </summary>
+    private string WriteMixedLayoutCrewDirectory()
+    {
+        var root = Path.Combine(_tempDir, "mixed-crew");
+        Directory.CreateDirectory(Path.Combine(root, "agents"));
+        Directory.CreateDirectory(Path.Combine(root, "tasks"));
+
+        File.WriteAllText(Path.Combine(root, "config.yaml"), """
+            name: "mixed-layout"
+            goal: "Crew declaring its agents both flat and per-entity"
+            process: "sequential"
+            """);
+        File.WriteAllText(Path.Combine(root, "agents.yaml"), """
+            reader:
+              role: "Reader"
+              goal: "Read a file"
+              backstory: "A minimal test agent."
+              maxIter: 1
+            """);
+        File.WriteAllText(Path.Combine(root, "agents", "reader.yaml"), """
+            role: "Reader"
+            goal: "Read a file"
+            backstory: "A minimal test agent."
+            maxIter: 1
+            """);
+        File.WriteAllText(Path.Combine(root, "tasks", "do_read.yaml"), """
+            description: "Read a file and report its contents."
+            expectedOutput: "The file contents."
+            agent: "reader"
+            """);
+
+        return root;
+    }
+
+    [Fact]
+    public async Task Validate_reports_a_crew_configuration_error_without_a_stack_trace()
+    {
+        var opts = new TestOptions
+        {
+            ConfigPath = WriteMixedLayoutCrewDirectory(),
+            SettingsPath = Path.Combine(_tempDir, "appsettings.json"),
+            AllowExternalMounts = true,
+        };
+
+        var (exit, _, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(1, exit);
+        Assert.Contains("VALIDATION FAILED:", stderr, StringComparison.Ordinal);
+        Assert.Contains("Mixed crew layout", stderr, StringComparison.Ordinal);
+        // The message tells the user what to fix; the exception type and its stack are
+        // debugging noise that used to bury it at the default verbosity.
+        Assert.DoesNotContain("System.InvalidOperationException", stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at Orkeon.", stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Validate_keeps_the_stack_trace_when_verbose()
+    {
+        var opts = new TestOptions
+        {
+            ConfigPath = WriteMixedLayoutCrewDirectory(),
+            SettingsPath = Path.Combine(_tempDir, "appsettings.json"),
+            AllowExternalMounts = true,
+            Verbose = 1,
+        };
+
+        var (exit, _, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(1, exit);
+        Assert.Contains("Mixed crew layout", stderr, StringComparison.Ordinal);
+        Assert.Contains("System.InvalidOperationException", stderr, StringComparison.Ordinal);
+        Assert.Contains("   at Orkeon.", stderr, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Validate_returns_error_when_config_missing()
     {
