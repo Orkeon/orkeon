@@ -16,6 +16,10 @@
 #   2. the payload survived packaging (esbuild, embedding model, the 7
 #      whitelisted tree-sitter grammars — WIN-04 pruning);
 #   3. the launcher resolves through its symlink and finds its bundled esbuild;
+#  3b. the Orkeon Studio TUIs are exactly where the RID filter says they should
+#      be: installed and answering `--version` headless on a linux archive,
+#      *absent altogether* from an osx CLI archive (STUDIO-08, spec §8.4) — see
+#      --studio below;
 #   4. `orkeon init --provider none --force` writes the per-user config (WIN-02);
 #   5. `orkeon doctor --json` reports no failure, and the three payload-backed
 #      checks are green rather than merely non-failing (WIN-03);
@@ -40,6 +44,18 @@
 #   --tarball PATH  the archive to install (required).
 #   --prefix DIR    install prefix handed to install.sh (default: $HOME/.local,
 #                   what a real user gets).
+#   --studio MODE   present | absent | auto (default). What the archive is
+#                   supposed to carry of Orkeon Studio, i.e. which side of the
+#                   RID filter this archive is on:
+#                     present — the two TUI launchers must be installed and must
+#                               answer --version headless (every linux archive,
+#                               and the full app-set on osx: the TUIs have no RID
+#                               filter, only the WPF app does);
+#                     absent  — nothing named orkeon-studio* may exist anywhere
+#                               (the osx *cli* archives — V1 ships no Studio on
+#                               macOS). CI passes this explicitly for macOS so
+#                               the guard cannot quietly turn into a no-op.
+#                     auto    — deduced from the archive name.
 #   --work-dir DIR  scratch directory (default: a mktemp -d, removed on success).
 #   --keep          keep the scratch directory even on success.
 #   --force         proceed even if <prefix>/lib/orkeon already exists. Without
@@ -61,18 +77,25 @@ PREFIX="$HOME/.local"
 WORK_DIR=""
 KEEP=false
 FORCE=false
+STUDIO_MODE="auto"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tarball)  TARBALL="$2"; shift 2 ;;
     --prefix)   PREFIX="$2"; shift 2 ;;
     --work-dir) WORK_DIR="$2"; shift 2 ;;
+    --studio)   STUDIO_MODE="$2"; shift 2 ;;
     --keep)     KEEP=true; shift ;;
     --force)    FORCE=true; shift ;;
-    -h|--help)  sed -n '2,48p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)  sed -n '2,65p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
+
+case "$STUDIO_MODE" in
+  present|absent|auto) ;;
+  *) echo "--studio must be present, absent or auto (got: $STUDIO_MODE)" >&2; exit 2 ;;
+esac
 
 if [[ -z "$TARBALL" ]]; then
   echo "--tarball is required." >&2
@@ -204,6 +227,31 @@ fi
 # Exercise the symlink even when resolution disagreed, so the later steps still
 # produce signal rather than cascading on a PATH detail.
 ORKEON_BIN="$LINK"
+
+# --------------------------------------------------------------------------- #
+# 3b. Orkeon Studio — present or absent, per the RID filter (STUDIO-08)
+# --------------------------------------------------------------------------- #
+# `auto` reads the archive's own name, which encodes both the app set and the
+# RID: only the *cli* set on osx ships without Studio, because the WPF app is the
+# single entry with a RID filter (win-x64) while the two TUIs have none and
+# therefore ride along in the full app-set everywhere. CI passes --studio
+# explicitly, so a rename of the archives can never silently downgrade the macOS
+# guard into "nothing to check".
+if [[ "$STUDIO_MODE" == auto ]]; then
+  case "$(basename "$ARCHIVE_ROOT")" in
+    orkeon-cli-*-osx-*) STUDIO_MODE=absent ;;
+    *)                  STUDIO_MODE=present ;;
+  esac
+  smoke_info "--studio auto -> $STUDIO_MODE (from $(basename "$ARCHIVE_ROOT"))"
+fi
+
+if [[ "$STUDIO_MODE" == present ]]; then
+  smoke_step_studio_present "$BIN_DIR"
+else
+  # Both the archive as published and the tree install.sh laid down: a Studio
+  # binary that reached either one is the RID-filter regression this guards.
+  smoke_step_studio_absent "$ARCHIVE_ROOT" "$LIB_DIR" "$BIN_DIR"
+fi
 
 # --------------------------------------------------------------------------- #
 # 4-7. init / doctor / run / rag — shared with the deb smoke

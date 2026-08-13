@@ -36,6 +36,13 @@ SMOKE_KEPT_GRAMMARS=(
 # green for the payload to count as intact.
 SMOKE_STRICT_CHECKS="esbuild local-embeddings tree-sitter"
 
+# The Orkeon Studio apps a POSIX channel can carry (STUDIO-07): the two
+# Terminal.Gui TUIs. The WPF `orkeon-studio` is win-x64-only and is asserted by
+# run-smoke.ps1 / lib/studio-windows.ps1 instead — but the "no Studio at all"
+# guard below matches orkeon-studio* rather than this list, so a WPF binary
+# leaking into a POSIX archive is caught too.
+SMOKE_STUDIO_APPS="orkeon-studio-config orkeon-studio-run"
+
 smoke_init_bookkeeping() {
   SMOKE_FAILURES=0
   SMOKE_STEPS=()
@@ -95,6 +102,77 @@ smoke_assert_payload() {
   fi
   smoke_pass "payload" "esbuild + BGE-micro-v2 model + ${#SMOKE_KEPT_GRAMMARS[@]} tree-sitter libraries present"
   return 0
+}
+
+# --------------------------------------------------------------------------- #
+# Orkeon Studio (STUDIO-08, spec §8.4) — present or absent by channel.
+# --------------------------------------------------------------------------- #
+
+# smoke_step_studio_present <bin-dir> — the channel is one that carries the two
+# Studio TUIs (the .deb, and every linux archive). Both launchers must be there,
+# and both must answer `--version` with **no terminal at all**: stdin from
+# /dev/null, both streams redirected to a file. That is the headless contract —
+# a Terminal.Gui app that initialised a console driver before handling --version
+# would die here rather than in a user's ssh session or in a Dockerfile.
+smoke_step_studio_present() {
+  local bin_dir="$1" app path ec missing="" found=""
+  smoke_log "Orkeon Studio launchers ($bin_dir)"
+
+  for app in $SMOKE_STUDIO_APPS; do
+    path="$bin_dir/$app"
+    if [[ -x "$path" ]]; then
+      found="$found $app"
+    else
+      missing="$missing $path"
+    fi
+  done
+
+  if [[ -n "$missing" ]]; then
+    smoke_fail "studio-launchers" "missing:$missing"
+  else
+    smoke_pass "studio-launchers" "${found# } present and executable"
+  fi
+
+  for app in $SMOKE_STUDIO_APPS; do
+    path="$bin_dir/$app"
+    if [[ ! -x "$path" ]]; then
+      smoke_fail "studio-version" "$app: no launcher to run"
+      continue
+    fi
+    ( cd "$RUN_DIR" && "$path" --version ) </dev/null \
+      >"$LOG_DIR/$app.version.out" 2>"$LOG_DIR/$app.version.err"
+    ec=$?
+    if [[ $ec -ne 0 ]]; then
+      tail -n 10 "$LOG_DIR/$app.version.err" | sed 's/^/    | /'
+      smoke_fail "studio-version" "$app --version exited $ec (expected 0, headless)"
+    elif grep -q "^$app " "$LOG_DIR/$app.version.out"; then
+      smoke_pass "studio-version" "$(head -n1 "$LOG_DIR/$app.version.out") (no TTY)"
+    else
+      head -n 5 "$LOG_DIR/$app.version.out" | sed 's/^/    | /'
+      smoke_fail "studio-version" "$app --version exited 0 but printed no '$app <version>' line"
+    fi
+  done
+}
+
+# smoke_step_studio_absent <root...> — the mirror guard, for a channel the RID
+# filter says carries no Studio at all (the osx CLI archives in V1). It exists to
+# fail *loudly* the day that filter regresses: a Studio binary silently riding
+# along in a macOS download would otherwise be found by a user, not by CI. Any
+# path named orkeon-studio* anywhere under the given roots is the regression.
+smoke_step_studio_absent() {
+  local root hits all=""
+  smoke_log "Orkeon Studio must be absent from this channel"
+  for root in "$@"; do
+    [[ -e "$root" ]] || continue
+    hits="$(find "$root" -maxdepth 4 -name 'orkeon-studio*' 2>/dev/null | head -n 10 | tr '\n' ' ')"
+    [[ -n "$hits" ]] && all="$all $hits"
+  done
+
+  if [[ -n "$all" ]]; then
+    smoke_fail "studio-absent" "Studio artefacts where the RID filter forbids them:$all"
+  else
+    smoke_pass "studio-absent" "no orkeon-studio* launcher or payload in $*"
+  fi
 }
 
 # --------------------------------------------------------------------------- #

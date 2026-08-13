@@ -116,6 +116,47 @@ var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 // Charge automatiquement : crew.yaml, agents.yaml, tasks.yaml
 ```
 
+**Mode répertoire par entité** : les réglages de la crew dans `config.yaml` (ou
+`crew.yaml`), un agent par fichier sous `agents/`, une task par fichier sous
+`tasks/`. Le **nom du fichier (sans extension) est l'identifiant de l'entité** —
+c'est-à-dire la clé de dictionnaire utilisée dans les formats plats.
+`LoadFromDirectoryAsync` sélectionne ce mode automatiquement dès qu'un
+sous-répertoire `agents/` ou `tasks/` est présent.
+
+```
+crews/research/
+├── config.yaml          # réglages de la crew (name, goal, process, llm, …) — ou crew.yaml
+├── agents/
+│   ├── researcher.yaml  # → agent "researcher"
+│   └── writer.yaml      # → agent "writer"
+└── tasks/
+    ├── collect.yaml     # → task "collect"
+    └── report.yaml      # → task "report"
+```
+
+```csharp
+// Même appel : la disposition est détectée automatiquement.
+var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
+var crew = await crewFactory.CreateFromConfigAsync(config, ct);
+```
+
+Notes :
+
+- `config.yaml` est préféré à `crew.yaml` quand les deux sont présents ; un fichier
+  de réglages absent lève `FileNotFoundException` (parité avec le mode plat).
+- Un dossier `agents/`/`tasks/` vide ou absent ne produit simplement aucun agent ni
+  aucune task — l'erreur de validation « au moins un agent/une task » remonte alors
+  via `loader.Validate(config)`.
+- Mélanger les deux dispositions (par exemple `agents.yaml` **et** un répertoire
+  `agents/`) lève `InvalidOperationException` au lieu d'appliquer une précédence
+  silencieuse.
+- **Limite** : les ancres YAML ne peuvent pas traverser les fichiers — chaque fichier
+  est prétraité indépendamment (c'était déjà le cas entre les trois fichiers plats).
+
+Côté CLI, `orkeon run <dossier>` accepte directement ces répertoires
+(Orkeon >= 0.9.2-beta) — voir
+[Trois façons d'exécuter Orkeon](./three-ways-to-run-orkeon.md#exécuter).
+
 ## CrewFactory — Du YAML aux objets domaine
 
 La pipeline de création transforme la configuration YAML en objets domaine opérationnels via `CrewFactory` (`Orkeon.Infrastructure.Configuration`), qui implémente `ICrewFactory` (`Orkeon.Application.Interfaces`).

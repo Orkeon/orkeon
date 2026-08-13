@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Library only: no UI, no entry point. The three Studio front-ends
+         (WPF + two Terminal.Gui apps) are the only consumers. -->
+    <IsPackable>false</IsPackable>
+
+    <!-- Package Metadata -->
+    <Authors>Orkeon Contributors</Authors>
+    <Description>UI-agnostic core of Orkeon Studio: lossless appsettings.json editing model, LLM presets, VFS mount editing, validation and settings locations.</Description>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- FileSystemMount (mount round-trip) + [SuppressVfsCompliance]. -->
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <!-- LlmEndpoints / ProviderDefaults — the same constants `orkeon init` writes. -->
+    <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <!-- RagProfilePresets — the closed list of RAG profile names offered by the UIs. -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
+    <!-- RunnerSettings only (global settings path + resolution chain), per SPEC §7. -->
+    <ProjectReference Include="..\..\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
+  </ItemGroup>
+
+</Project>

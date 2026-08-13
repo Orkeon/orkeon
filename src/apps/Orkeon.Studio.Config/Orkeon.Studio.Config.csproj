@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Orkeon.Studio.Config</RootNamespace>
+    <AssemblyName>Orkeon.Studio.Config</AssemblyName>
+
+    <!-- Shipped by the installers as the `orkeon-studio-config` launcher, never as a package. -->
+    <IsPackable>false</IsPackable>
+
+    <!-- Package Metadata -->
+    <Authors>Orkeon Contributors</Authors>
+    <Description>Terminal.Gui v2 appsettings editor for Orkeon (launcher `orkeon-studio-config`): typed section forms, VFS mount editor, presets, validation and `orkeon doctor`.</Description>
+
+    <!-- CS0618: Terminal.Gui 2.x marked the static Application.{Init,Run,Shutdown,…} APIs
+         obsolete in favour of the instance-based IApplication model. Same stance as
+         Orkeon.Cli.TerminalGui: the static API still works and the migration is a single
+         follow-up across both TUI surfaces. Confined to StudioConfigApp and the dialogs. -->
+    <NoWarn>$(NoWarn);CS1591;CS0618</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- CA1515: the types of an executable are internal; the test project reaches them
+         through a ProjectReference, as Orkeon.ConsoleApp does. -->
+    <InternalsVisibleTo Include="Orkeon.Studio.Config.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Every behaviour the screens render lives here: document model, mounts, presets,
+         locations, validation, `orkeon doctor`. This app adds rendering only. -->
+    <ProjectReference Include="..\Orkeon.Studio.Core\Orkeon.Studio.Core.csproj" />
+    <!-- TTY detection and driver selection shared with the interactive runner console. -->
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.TerminalGui\Orkeon.Cli.TerminalGui.csproj" />
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Terminal.Gui" />
+  </ItemGroup>
+
+</Project>

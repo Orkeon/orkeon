@@ -1,0 +1,7 @@
+# File stem "collect" is the task id referenced by tasks/report.yaml dependencies.
+description: "List three factual points about the topic given in the initial context."
+expectedOutput: "Three bullet points, one fact each."
+agent: "researcher"
+dependencies: []
+asyncExecution: false
+humanInput: false

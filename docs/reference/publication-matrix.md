@@ -67,11 +67,11 @@ scripting DSL).
 
 | Artifact | Built by | Contents | Runtime |
 |---|---|---|---|
-| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every CLI launcher + one shared esbuild | mixed: `orkeon` and `orkeon-trading` self-contained, the rest framework-dependent |
-| `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI alone + `install.ps1` | self-contained |
-| `orkeon_<version>_amd64.deb` | `package-deb.sh` (reuses the `linux-x64` staging tree — one publish, two packages) | the `orkeon` CLI alone at `/usr/bin/orkeon` | self-contained; `Depends` on system libraries only (libicu / libssl alternations), never on `dotnet-runtime-*` |
-| `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI alone, same pruned publish as the zip | self-contained |
-| `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | `package-installers.sh --app-set cli --rids osx-arm64 osx-x64` (cross-published from the ubuntu runner) | the `orkeon` CLI alone + `install.sh` | self-contained |
+| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every CLI launcher + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild | mixed: `orkeon`, `orkeon-trading` and the Studio apps self-contained, the rest framework-dependent |
+| `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `orkeon-studio` (WPF Orkeon Studio) + `install.ps1` | self-contained |
+| `orkeon_<version>_amd64.deb` | `package-deb.sh` (reuses the `linux-x64` staging tree — one publish, two packages) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (libicu / libssl alternations), never on `dotnet-runtime-*` |
+| `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI + `orkeon-studio` (WPF, with an "Orkeon Studio" Start-menu shortcut), same pruned publish as the zip | self-contained |
+| `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | `package-installers.sh --app-set cli --rids osx-arm64 osx-x64` (cross-published from the ubuntu runner) | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS channel stays CLI-only) | self-contained |
 | `SHA256SUMS` | the `installers` job's packaging scripts (`package-deb.sh` refreshes its own line) | one line per artifact above **except the MSI** | — |
 | `SHA256SUMS.msi` | `build-msi.ps1`, in the `msi` job | the MSI alone | — |
 
@@ -107,9 +107,9 @@ The `orkeon` CLI is distributed through **seven channels**:
 | Channel | Artifact | Runtime | Audience |
 |---|---|---|---|
 | NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. **Still gated on D3** — unchanged by this release, nothing is pushed to NuGet.org |
-| Windows zip + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel |
-| Windows MSI (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, double-click install and an "Installed apps" entry. One channel at a time: the MSI refuses to install over a zip install |
-| Debian package | `orkeon_<version>_amd64.deb` | self-contained | Debian / Ubuntu onboarding — the recommended channel |
+| Windows zip + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel. Ships `orkeon-studio` (WPF Orkeon Studio) next to the CLI |
+| Windows MSI (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, double-click install and an "Installed apps" entry. Ships `orkeon-studio` with a Start-menu shortcut. One channel at a time: the MSI refuses to install over a zip install |
+| Debian package | `orkeon_<version>_amd64.deb` | self-contained | Debian / Ubuntu onboarding — the recommended channel. Ships the `orkeon-studio-config` / `orkeon-studio-run` TUIs next to the CLI |
 | macOS tarball + `install.sh` | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | self-contained | macOS onboarding today; `install.sh` clears the Gatekeeper quarantine attribute and ad-hoc re-signs the Mach-O files `codesign -v` rejects |
 | Homebrew | the same osx tarballs, via `installers/homebrew/orkeon.rb` | self-contained | macOS, once the tap exists — **not published yet**, see below |
 | Multi-app installer archive | `orkeon` / `orkeon-slim` launchers | `orkeon` self-contained, `orkeon-slim` framework-dependent | devs who also want the REPL, the TUI runners or the trading showcase |

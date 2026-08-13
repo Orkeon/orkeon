@@ -1,0 +1,7 @@
+description: "Rewrite the collected facts as a single short paragraph."
+expectedOutput: "One paragraph of at most four sentences."
+agent: "writer"
+dependencies:
+  - "collect"
+asyncExecution: false
+humanInput: false

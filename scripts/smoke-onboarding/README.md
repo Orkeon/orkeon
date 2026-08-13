@@ -140,8 +140,10 @@ broken payload never reaches a user.
 They share everything but the install and uninstall phases. For the two shell
 ones that sharing is literal — the behavioural steps, the payload whitelist and
 the doctor verdict live in **`lib/smoke-common.sh`**, which both source, so they
-cannot drift. `run-smoke.ps1` mirrors the same logic in PowerShell. All three use
-the same fixtures in `fixtures/`:
+cannot drift. `run-smoke.ps1` mirrors the same logic in PowerShell, and shares
+its **Orkeon Studio** assertions with the `msi` job through
+**`lib/studio-windows.ps1`** (dot-sourced by both). All three use the same
+fixtures in `fixtures/`:
 
 | Fixture | Why it exists |
 |---------|---------------|
@@ -154,11 +156,15 @@ the same fixtures in `fixtures/`:
 1. **Install** — `Expand-Archive` + `install.ps1` (Windows) / `apt-get install ./orkeon_*.deb` (Debian) / `tar -xzf` + `./install.sh --prefix ~/.local` (tar.gz). The apt step doubles as the check that the package's `Depends` resolve on a stock image, with no dotnet repository.
 2. **Payload** — `esbuild(.exe)`, `LocalEmbeddingsModel/default/{model.onnx,vocab.txt}` and the **7 whitelisted tree-sitter grammars** (WIN-04 pruning) must all be present. The grammar suffix follows the platform: `.dll`, `.so` or `.dylib`.
 3. **Fresh session** — Windows: the user `PATH` is re-read from the registry and `orkeon` must resolve from it alone, plus the Add/Remove Programs entry must be registered (WIN-05). tar.gz: `<prefix>/bin/orkeon` must be a symlink into `<prefix>/lib/orkeon`, and `command -v orkeon` must find it once `<prefix>/bin` is on the `PATH`.
-4. **`orkeon init --provider none --force`** — writes `%APPDATA%\Orkeon` / `~/.config/Orkeon` (WIN-02).
-5. **`orkeon doctor --json`** — no check may report `fail`, **and** `esbuild`, `local-embeddings` and `tree-sitter` must be `ok`. That second half is what gives the smoke teeth: doctor only *warns* when those are missing, so "no fail" alone would happily pass a stripped archive (WIN-03).
-6. **`orkeon run offline-crew.yaml`** — exit 0 and the `orkeon init` warning on stderr (WIN-01).
-7. **`orkeon rag ingest` + `orkeon rag search`** — exit 0 and at least one citation with a score. The *answer* is empty without an LLM; the citations are the retrieval evidence, and that is all that is asserted.
-8. **Uninstall** — `install.ps1 -Uninstall` (install dir, ARP key and PATH entry all gone) / `apt-get remove -y orkeon` (`/usr/bin/orkeon` and the payload gone) / `install.sh --uninstall` (`<prefix>/lib/orkeon` and the launcher symlinks gone). In all three the user configuration must survive.
+4. **Orkeon Studio** — the graphical channel has to survive packaging too, and what it ships is per-platform (STUDIO-07's RID filter), so the assertion is per-platform as well:
+   - **Windows** (zip *and* MSI): `bin\orkeon-studio.cmd` + `libexec\orkeon-studio\Orkeon.Studio.exe` installed, then `orkeon-studio --smoke-exit` — which opens the WPF window, lets it render and shuts down with code 0 — must exit 0. This is the only place a real window is ever opened; a Studio that cannot resolve its XAML, its runtime or its ViewModels fails nowhere else. The MSI channel additionally requires the "Orkeon Studio" Start-menu shortcut. A hung window is capped by a timeout so it reports as a named failure rather than as a workflow timeout.
+   - **Linux** (`.deb` and every linux tarball): both TUI launchers present (`/usr/bin/orkeon-studio-{config,run}` or `<prefix>/bin/…`) and each answering `--version` **with no terminal at all** — stdin from `/dev/null`, both streams to a file. A Terminal.Gui app that initialised a console driver before handling `--version` dies here rather than in a user's ssh session.
+   - **macOS** (`orkeon-cli-*-osx-*`): the mirror image — *nothing* named `orkeon-studio*` may exist in the archive or in the installed tree. V1 ships no Studio on macOS, and this is the guard that fails loudly the day the RID filter regresses (`--studio absent`, passed explicitly by CI).
+5. **`orkeon init --provider none --force`** — writes `%APPDATA%\Orkeon` / `~/.config/Orkeon` (WIN-02).
+6. **`orkeon doctor --json`** — no check may report `fail`, **and** `esbuild`, `local-embeddings` and `tree-sitter` must be `ok`. That second half is what gives the smoke teeth: doctor only *warns* when those are missing, so "no fail" alone would happily pass a stripped archive (WIN-03).
+7. **`orkeon run offline-crew.yaml`** — exit 0 and the `orkeon init` warning on stderr (WIN-01).
+8. **`orkeon rag ingest` + `orkeon rag search`** — exit 0 and at least one citation with a score. The *answer* is empty without an LLM; the citations are the retrieval evidence, and that is all that is asserted.
+9. **Uninstall** — `install.ps1 -Uninstall` (install dir, ARP key and PATH entry all gone) / `apt-get remove -y orkeon` (`/usr/bin/orkeon`, the Studio launchers and every payload gone) / `install.sh --uninstall` (`<prefix>/lib/orkeon` and the launcher symlinks gone). In all three the user configuration must survive.
 
 Each script leaves the machine as it found it: a pre-existing user config is
 backed up and restored, one the smoke created is removed.
@@ -206,6 +212,13 @@ assertion inside the same constraints.
 
 # ...installing somewhere other than ~/.local (the default):
 ./scripts/smoke-onboarding/run-smoke-tarball.sh --tarball <archive> --prefix /tmp/orkeon-smoke-prefix
+
+# ...stating which side of the Studio RID filter the archive is on. `auto` (the
+# default) reads it from the archive name — only the *cli* set on osx ships
+# without Studio, since the WPF app is the one entry with a RID filter and the
+# two TUIs have none. CI spells it out for macOS so the guard cannot become a
+# no-op if the archives are renamed:
+./scripts/smoke-onboarding/run-smoke-tarball.sh --tarball <osx cli archive> --studio absent
 ```
 
 `run-smoke-tarball.sh` **refuses to start** when `<prefix>/lib/orkeon` already

@@ -11,8 +11,10 @@
 # remaps its staging tree onto the Debian layout. Pass --stage to reuse a
 # staging tree already built by that script (CI publishes once, packages twice).
 #
-# Layout: payload in /usr/lib/orkeon, launcher /usr/bin/orkeon. Self-contained,
-# so the package depends on system libraries only — never on dotnet-runtime-*.
+# Layout: payload in /usr/lib/orkeon, launcher /usr/bin/orkeon; the Orkeon
+# Studio TUIs land in /usr/lib/orkeon-studio-{config,run} with launchers
+# /usr/bin/orkeon-studio-{config,run}. Everything is self-contained, so the
+# package depends on system libraries only — never on dotnet-runtime-*.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -89,6 +91,24 @@ cp -R "$SRC_STAGE/libexec/orkeon/." "$PKG_DIR/usr/lib/orkeon/"
 mkdir -p "$PKG_DIR/usr/lib/orkeon/esbuild-bin"
 cp "$SRC_STAGE/libexec/esbuild-bin/esbuild" "$PKG_DIR/usr/lib/orkeon/esbuild-bin/esbuild"
 
+# --- 1b. Orkeon Studio TUI payloads (STUDIO-07) --------------------------------
+# The linux cli staging tree ships the two Terminal.Gui Studio apps next to the
+# CLI (see cli_set_includes in package-installers.sh). Both are self-contained,
+# so Depends stays free of dotnet-runtime-* — the package invariant holds.
+STUDIO_APPS="orkeon-studio-config orkeon-studio-run"
+studio_apphost() { # $1=app-name -> apphost file name (AssemblyName)
+  case "$1" in
+    orkeon-studio-config) echo "Orkeon.Studio.Config" ;;
+    orkeon-studio-run)    echo "Orkeon.Studio.Run" ;;
+  esac
+}
+for app in $STUDIO_APPS; do
+  apphost="$(studio_apphost "$app")"
+  [[ -x "$SRC_STAGE/libexec/$app/$apphost" ]] || { echo "Missing apphost $SRC_STAGE/libexec/$app/$apphost (staging tree predates STUDIO-07?)" >&2; exit 1; }
+  mkdir -p "$PKG_DIR/usr/lib/$app"
+  cp -R "$SRC_STAGE/libexec/$app/." "$PKG_DIR/usr/lib/$app/"
+done
+
 # --- 2. Launcher --------------------------------------------------------------
 # Same contract as scripts/installer-assets/wrapper.sh.tmpl (bundled esbuild,
 # then exec the apphost) minus the symlink walk: an installed package always
@@ -104,6 +124,17 @@ if [ -z "${ORKEON_ESBUILD_PATH:-}" ] && [ -x "$ORKEON_HOME/esbuild-bin/esbuild" 
 fi
 exec "$ORKEON_HOME/orkeon" "$@"
 EOF
+
+# Studio TUI launchers — no esbuild indirection needed (the TUIs never invoke
+# the scripting toolchain themselves; they spawn /usr/bin/orkeon, which does).
+for app in $STUDIO_APPS; do
+  apphost="$(studio_apphost "$app")"
+  cat > "$PKG_DIR/usr/bin/$app" <<EOF
+#!/bin/sh
+# $app launcher — installed by the orkeon Debian package.
+exec /usr/lib/$app/$apphost "\$@"
+EOF
+done
 
 # --- 3. Documentation ---------------------------------------------------------
 cat > "$PKG_DIR/usr/share/doc/orkeon/copyright" <<EOF
@@ -163,6 +194,14 @@ find "$PKG_DIR/usr/lib/orkeon" -type f -name '*.so' -exec chmod 755 {} +
 if [[ -f "$PKG_DIR/usr/lib/orkeon/createdump" ]]; then
   chmod 755 "$PKG_DIR/usr/lib/orkeon/createdump"
 fi
+for app in $STUDIO_APPS; do
+  apphost="$(studio_apphost "$app")"
+  chmod 755 "$PKG_DIR/usr/bin/$app" "$PKG_DIR/usr/lib/$app/$apphost"
+  find "$PKG_DIR/usr/lib/$app" -type f -name '*.so' -exec chmod 755 {} +
+  if [[ -f "$PKG_DIR/usr/lib/$app/createdump" ]]; then
+    chmod 755 "$PKG_DIR/usr/lib/$app/createdump"
+  fi
+done
 
 # --- 5. Control ---------------------------------------------------------------
 # Policy 5.6.20: installed size is an estimate in KiB, excluding DEBIAN/.
@@ -186,6 +225,10 @@ Description: multi-agent AI orchestration framework and CLI
  ingest, search and evaluate a RAG corpus (orkeon rag ingest / rag search /
  rag eval), scaffold a new workspace (orkeon init) and diagnose an install
  (orkeon doctor).
+ .
+ The package also ships the Orkeon Studio console apps: orkeon-studio-config
+ (guided appsettings editor) and orkeon-studio-run (crew launcher with live
+ logs), both built on Terminal.Gui.
  .
  This package is self-contained: the .NET runtime and the esbuild toolchain
  ship inside it, so no .NET installation or third-party repository is needed.

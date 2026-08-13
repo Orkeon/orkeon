@@ -12,12 +12,14 @@ namespace Orkeon.Hosting;
 public abstract class RunnerOptionsBase
 {
     /// <summary>
-    /// Path to the crew definition (.yaml or .ork.ts). Required for every mode except
-    /// <c>--list-tools</c>, which dumps the runtime tool registry without loading a crew.
+    /// Path to the crew definition (.yaml, .ork.ts, or a multi-file crew directory). Required
+    /// for every mode except <c>--list-tools</c>, which dumps the runtime tool registry without
+    /// loading a crew.
     /// </summary>
     [Option('c', "config", Required = false,
-        HelpText = "Path to the crew definition. Accepts .yaml (YAML loader) or .ork.ts " +
-                   "(Orkéon Scripting DSL, loaded via Jint + esbuild). " +
+        HelpText = "Path to the crew definition. Accepts .yaml (YAML loader), .ork.ts " +
+                   "(Orkéon Scripting DSL, loaded via Jint + esbuild), or a directory holding a " +
+                   "multi-file YAML crew (config.yaml + agents/ + tasks/). " +
                    "Required unless --list-tools is used.")]
     public string ConfigPath { get; set; } = "";
 

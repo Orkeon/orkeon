@@ -117,7 +117,10 @@ jobs:
           retention-days: 1
 
   # Installs the published Windows archive on a real Windows runner and walks the
-  # onboarding chain on it (WIN-06). Exercises WIN-01 through WIN-05 end to end.
+  # onboarding chain on it (WIN-06). Exercises WIN-01 through WIN-05 end to end,
+  # plus the Orkeon Studio payload and its `--smoke-exit` start/close smoke
+  # (STUDIO-08) — this job is the only place a WPF window is ever opened, so a
+  # Studio that fails to resolve its XAML or its runtime surfaces here.
   smoke-windows:
     runs-on: windows-latest
     needs: installers
@@ -195,7 +198,7 @@ jobs:
       # both are a successful install/uninstall) run-smoke.ps1 documents for
       # the ZIP channel's own quirks. PATH is not reloaded in this session, so
       # the installed orkeon.cmd is called by its full path throughout.
-      - name: Smoke — install, orkeon doctor, uninstall
+      - name: Smoke — install, orkeon doctor, Orkeon Studio, uninstall
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -264,6 +267,17 @@ jobs:
           if ($userPathEntries -notcontains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') not on the user PATH after install." }
           Write-Host 'PASS path -- bin\ added to the user PATH'
 
+          # Orkeon Studio (STUDIO-08, spec §8.4). Same assertions the ZIP channel
+          # runs in run-smoke.ps1 -- shared from lib\studio-windows.ps1 so the two
+          # channels cannot drift -- plus the Start-menu shortcut, which is the
+          # MSI's own addition (Package.wxs StudioShortcutComponent) and exists in
+          # no other channel.
+          . ./scripts/smoke-onboarding/lib/studio-windows.ps1
+          $studio = Invoke-OrkeonStudioWindowsSmoke -InstallRoot $installDir -LogDir $logsDir -ExpectStartMenuShortcut
+          foreach ($note in $studio.Notes) { Write-Host "     $note" }
+          if ($studio.Problems.Count -gt 0) { throw ("Orkeon Studio: " + ($studio.Problems -join '; ')) }
+          Write-Host 'PASS studio -- launcher + WPF apphost installed, Start-menu shortcut present, --smoke-exit returned 0'
+
           # Windows PowerShell 5.1 raises NativeCommandError on any stderr output
           # under a `2>` redirection while $ErrorActionPreference is 'Stop' --
           # same caveat run-smoke.ps1's Invoke-Orkeon documents. Relax it only
@@ -328,7 +342,10 @@ jobs:
           retention-days: 1
 
   # Installs the published .deb through apt on a stock ubuntu image and walks the
-  # same chain, then removes the package (LIN-02).
+  # same chain, then removes the package (LIN-02). Also asserts the two Orkeon
+  # Studio TUIs the package now carries — /usr/bin/orkeon-studio-{config,run}
+  # present, and both answering `--version` with stdin and stdout redirected,
+  # which is the headless contract of STUDIO-08.
   smoke-deb:
     runs-on: ubuntu-latest
     needs: installers
@@ -367,6 +384,13 @@ jobs:
       # --work-dir pins the scratch tree to a known, uploadable path and --keep
       # holds it on a pass too (the script's own default only keeps it on
       # failure), so the upload step below always has something to attach.
+      #
+      # --studio absent is the anti-regression guard of STUDIO-07's RID filter:
+      # V1 ships no Orkeon Studio on macOS, so anything named orkeon-studio* in
+      # this archive — or in the tree install.sh lays down from it — fails the
+      # job. Spelled out rather than left to the script's `auto` deduction: this
+      # is the assertion the macOS channel exists to make, and it must not be
+      # able to degrade into "nothing to check" if the archives are ever renamed.
       - name: Smoke the installed CLI
         run: |
           tarball="$(find artifacts -maxdepth 1 -name 'orkeon-cli-*-osx-arm64.tar.gz' | head -n1)"
@@ -376,6 +400,7 @@ jobs:
           fi
           ./scripts/smoke-onboarding/run-smoke-tarball.sh \
             --tarball "$tarball" \
+            --studio absent \
             --work-dir "$RUNNER_TEMP/orkeon-smoke" \
             --keep
 

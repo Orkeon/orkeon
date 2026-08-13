@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net10.0, NOT net10.0-windows: the ViewModels are plain C# with no WPF type in sight, so the
+         suite runs on the Linux CI runner like every other test project. The XAML views are covered
+         by the Windows smoke (Orkeon.Studio with the smoke-exit switch) instead. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <RootNamespace>Orkeon.Studio.Wpf.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\apps\Orkeon.Studio.Core\Orkeon.Studio.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The ViewModels are compiled into this assembly by link rather than referenced: a
+         ProjectReference to the WPF project would drag net10.0-windows in and pin the suite to a
+         Windows runner. Nothing under ViewModels/ may reference a WPF type, and this link is what
+         enforces that — a stray `using System.Windows.Controls` breaks this build. -->
+    <Compile Include="../../../src/apps/Orkeon.Studio.Wpf/ViewModels/**/*.cs" LinkBase="ViewModels" />
+  </ItemGroup>
+
+</Project>

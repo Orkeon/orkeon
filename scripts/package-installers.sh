@@ -8,9 +8,10 @@
 #                                 [--out artifacts/installers] [-c Release]
 #                                 [--app-set full|cli]
 #
-# --app-set cli ships the `orkeon` CLI alone (the Windows/Linux onboarding
-# channel) as orkeon-cli-<ver>-<rid>.{zip,tar.gz}; full (the default) keeps the
-# historical every-app archive.
+# --app-set cli ships the `orkeon` CLI plus the Orkeon Studio apps for the
+# platform (win-x64: `orkeon-studio`; linux-*: `orkeon-studio-config` +
+# `orkeon-studio-run`; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.{zip,tar.gz};
+# full (the default) keeps the historical every-app archive.
 # Version resolution: --version > git describe (v-stripped) > src/Directory.Build.props.
 # esbuild is fetched per-RID straight from the npm registry (no npm/node needed);
 # the version comes from tools/scripting-esbuild/package-lock.json.
@@ -59,7 +60,7 @@ ESBUILD_VERSION="$(grep -A1 '"node_modules/esbuild"' "$REPO_ROOT/tools/scripting
   | sed -n 's/.*"version": "\([^"]*\)".*/\1/p' | head -1)"
 ESBUILD_VERSION="${ESBUILD_VERSION:-0.24.0}"
 
-# --- App table: name | csproj (repo-relative) | apphost assembly name | self-contained
+# --- App table: name | csproj (repo-relative) | apphost assembly name | self-contained | rids
 # self-contained=true bundles the .NET runtime so end users need no SDK/runtime
 # install. The `orkeon` CLI ships in two flavours from the *same* csproj:
 #   - `orkeon`      self-contained — the onboarding channel, no .NET runtime needed;
@@ -67,6 +68,10 @@ ESBUILD_VERSION="${ESBUILD_VERSION:-0.24.0}"
 # `orkeon-trading` opts into self-contained too; the remaining CLI tools stay
 # framework-dependent. Both `orkeon` flavours share the one bundled esbuild
 # (see fetch_esbuild below — fetched once per RID into libexec/esbuild-bin).
+# The optional 5th column is a space-separated RID filter: empty = publish for
+# every RID (the historical behaviour); non-empty = publish only for the listed
+# RIDs. The WPF `orkeon-studio` is the motivating case — WPF cannot target
+# non-Windows RIDs, so publishing it for linux/osx would fail the whole run.
 APPS=(
   "orkeon|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|true"
   "orkeon-slim|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|false"
@@ -76,18 +81,37 @@ APPS=(
   "orkeon-tui-keytest|examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj|Orkeon.Examples.TuiKeyTest|false"
   "orkeon-claim-verify|examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj|Orkeon.Examples.Interactive.ClaimVerification|false"
   "orkeon-spec-forge|examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj|Orkeon.Examples.Interactive.InterviewSpecForge|false"
+  "orkeon-studio|src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj|Orkeon.Studio|true|win-x64"
+  "orkeon-studio-config|src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj|Orkeon.Studio.Config|true|"
+  "orkeon-studio-run|src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj|Orkeon.Studio.Run|true|"
 )
 
-# --app-set cli narrows the table to the single onboarding binary. Same staging
-# layout, same wrappers, same installer — only the app list and the archive name
-# differ, so the two sets stay structurally interchangeable for install.sh/ps1.
+# True when the app's RID filter (5th column) admits $2; empty filter = all RIDs.
+rid_allowed() { # $1=rids-filter $2=rid
+  [[ -z "$1" || " $1 " == *" $2 "* ]]
+}
+
+# --app-set cli ships the onboarding binary plus the Orkeon Studio apps for the
+# platform: win-* adds the WPF `orkeon-studio`, linux-* adds the two TUIs
+# (`orkeon-studio-config` / `orkeon-studio-run`), osx-* stays CLI-only (V1 —
+# the Homebrew channel does not ship Studio yet). Same staging layout, same
+# wrappers, same installer — the sets stay structurally interchangeable for
+# install.sh/ps1, which iterate over whatever bin/ contains.
+cli_set_includes() { # $1=app-name $2=rid
+  case "$1" in
+    orkeon) return 0 ;;
+    orkeon-studio) [[ "$2" == win-* ]] ;;
+    orkeon-studio-config|orkeon-studio-run) [[ "$2" == linux-* ]] ;;
+    *) return 1 ;;
+  esac
+}
+
 if [[ "$APP_SET" == "cli" ]]; then
-  CLI_APPS=()
+  ORKEON_ENTRIES=0
   for entry in "${APPS[@]}"; do
-    [[ "${entry%%|*}" == "orkeon" ]] && CLI_APPS+=("$entry")
+    [[ "${entry%%|*}" == "orkeon" ]] && ORKEON_ENTRIES=$((ORKEON_ENTRIES + 1))
   done
-  [[ ${#CLI_APPS[@]} -eq 1 ]] || { echo "Expected exactly one 'orkeon' entry in APPS, found ${#CLI_APPS[@]}" >&2; exit 1; }
-  APPS=("${CLI_APPS[@]}")
+  [[ "$ORKEON_ENTRIES" -eq 1 ]] || { echo "Expected exactly one 'orkeon' entry in APPS, found $ORKEON_ENTRIES" >&2; exit 1; }
   PKG_PREFIX="orkeon-cli"
 else
   PKG_PREFIX="orkeon"
@@ -158,8 +182,15 @@ for RID in $RIDS; do
   echo "==> $RID"
 
   for entry in "${APPS[@]}"; do
-    IFS='|' read -r name csproj apphost selfcontained <<<"$entry"
+    IFS='|' read -r name csproj apphost selfcontained rids <<<"$entry"
     selfcontained="${selfcontained:-false}"
+    if ! rid_allowed "${rids:-}" "$RID"; then
+      echo "    skip $name (RID filter: ${rids})"
+      continue
+    fi
+    if [[ "$APP_SET" == "cli" ]] && ! cli_set_includes "$name" "$RID"; then
+      continue
+    fi
     echo "    publish $name (self-contained=$selfcontained)"
     dotnet publish "$REPO_ROOT/$csproj" -c "$CONFIG" -r "$RID" \
       --self-contained "$selfcontained" -p:PublishTrimmed=false \

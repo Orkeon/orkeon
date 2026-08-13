@@ -95,6 +95,14 @@ foreach ($example in $exampleDirs) {
     $index++
     $configPath = Join-Path $ScriptDir "$example\config.yaml"
 
+    # A multi-file crew keeps its agents/tasks in sibling folders, so its config.yaml
+    # is only the crew settings: the runner must be given the DIRECTORY, not the file.
+    $exampleDir = Join-Path $ScriptDir $example
+    if ((Test-Path (Join-Path $exampleDir "agents") -PathType Container) -or
+        (Test-Path (Join-Path $exampleDir "tasks") -PathType Container)) {
+        $configPath = $exampleDir
+    }
+
     # Determine runner
     $cat = ($example -split "[/\\]")[0]
     if ($cat -eq "03-finance-trading") {

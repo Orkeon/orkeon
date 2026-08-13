@@ -127,8 +127,10 @@
 
     <!--
       Payload — the package-installers.ps1 -AppSet cli staging tree, harvested
-      wholesale: bin\orkeon.cmd, libexec\orkeon\** (pruned self-contained
-      publish, WIN-04), libexec\esbuild-bin\esbuild.exe, README.md,
+      wholesale: bin\orkeon.cmd, bin\orkeon-studio.cmd, libexec\orkeon\**
+      (pruned self-contained publish, WIN-04),
+      libexec\orkeon-studio\** (WPF Orkeon Studio, STUDIO-07),
+      libexec\esbuild-bin\esbuild.exe, README.md,
       LICENSE.md, VERSION, appsettings.sample.json. <Files> auto-generates one
       Component per file and mirrors the subfolders (bin\, libexec\,
       libexec\orkeon\, libexec\esbuild-bin\) as child Directory elements of
@@ -166,16 +168,36 @@
       <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
     </Component>
 
+    <!--
+      Start-menu shortcut for Orkeon Studio (STUDIO-07): the WPF app ships in
+      the win-x64 cli staging tree (libexec\orkeon-studio\Orkeon.Studio.exe)
+      and is harvested by <Files> like everything else — the shortcut is the
+      only MSI-specific addition. Per-user non-advertised shortcut in the
+      ProgramMenuFolder root: like PathEnvComponent above it needs an HKCU
+      RegistryValue KeyPath (the shortcut itself cannot be one). GUID generated
+      once (2026-08-13, STUDIO-07 authoring) — stable across releases.
+    -->
+    <Component Id="StudioShortcutComponent" Directory="ProgramMenuFolder" Guid="6BADF5D1-CA1C-492C-BDF2-C12119D9E5A7">
+      <RegistryValue Root="HKCU" Key="Software\Orkeon\Msi" Name="StudioShortcut" Type="integer" Value="1" KeyPath="yes" />
+      <Shortcut Id="OrkeonStudioShortcut"
+                Name="Orkeon Studio"
+                Description="Orkeon Studio — appsettings editor and crew launcher"
+                Target="[INSTALLFOLDER]libexec\orkeon-studio\Orkeon.Studio.exe"
+                WorkingDirectory="INSTALLFOLDER" />
+    </Component>
+
     <Feature Id="MainFeature" Title="Orkeon CLI" Level="1">
       <ComponentGroupRef Id="PayloadComponents" />
       <ComponentRef Id="PathEnvComponent" />
+      <ComponentRef Id="StudioShortcutComponent" />
     </Feature>
 
     <!-- ==================================================================
          UI — WixUI_Minimal (license + progress + exit only, no directory
          picker: the install path is fixed, matching install.ps1). Exit
-         dialog points at `orkeon init` since there is no Start Menu shortcut
-         to double-click — this is a CLI.
+         dialog still points at `orkeon init` — the CLI is the primary
+         product; the "Orkeon Studio" Start-menu shortcut above is the
+         graphical entry point for those who prefer it.
          ================================================================== -->
     <ui:WixUI Id="WixUI_Minimal" />
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />

@@ -17,6 +17,11 @@
     3. install.ps1 installs, registers an Add/Remove Programs entry and adds its
        bin\ folder to the user PATH (WIN-05);
     4. a fresh session resolves `orkeon` from that PATH entry alone;
+   4b. Orkeon Studio shipped and starts: bin\orkeon-studio.cmd and
+       libexec\orkeon-studio\Orkeon.Studio.exe are installed, and
+       `orkeon-studio --smoke-exit` opens the WPF window, lets it render and
+       exits 0 (STUDIO-08, spec §8.4) -- the assertions live in
+       lib\studio-windows.ps1, shared with the MSI job;
     5. `orkeon init --provider none --force` writes %APPDATA%\Orkeon (WIN-02);
     6. `orkeon doctor --json` reports no fail, and the three payload-backed checks
        are green rather than merely non-failing — doctor only *warns* on a missing
@@ -58,6 +63,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $fixtures = Join-Path $PSScriptRoot 'fixtures'
+
+# Orkeon Studio assertions, shared with the msi job (see the file's header).
+. (Join-Path $PSScriptRoot 'lib\studio-windows.ps1')
 
 # The grammars WIN-04's MSBuild pruning keeps (src\Directory.Build.targets,
 # OrkeonTreeSitterKeptGrammars). Losing one must fail the smoke.
@@ -250,6 +258,10 @@ $expected = New-Object System.Collections.ArrayList
 [void]$expected.Add((Join-Path $archiveRoot 'install.ps1'))
 [void]$expected.Add((Join-Path $archiveRoot 'VERSION'))
 [void]$expected.Add((Join-Path $appDir 'orkeon.exe'))
+# Orkeon Studio rides in the same win-x64 cli staging tree (STUDIO-07): its
+# launcher and its self-contained WPF apphost are part of the archive contract.
+[void]$expected.Add((Join-Path (Join-Path $archiveRoot 'bin') 'orkeon-studio.cmd'))
+[void]$expected.Add((Join-Path (Join-Path (Join-Path $archiveRoot 'libexec') 'orkeon-studio') 'Orkeon.Studio.exe'))
 [void]$expected.Add((Join-Path $esbuildDir 'esbuild.exe'))
 [void]$expected.Add((Join-Path $modelDir 'model.onnx'))
 [void]$expected.Add((Join-Path $modelDir 'vocab.txt'))
@@ -332,6 +344,20 @@ if ($resolved -and $resolved.Source -and $resolved.Source.StartsWith($installDir
     Step-Fail 'resolve' "orkeon did not resolve to the install directory (got: $where)"
     # Fall back to the known path so the remaining steps still produce signal.
     $script:OrkeonCmd = Join-Path $binDir 'orkeon.cmd'
+}
+
+# ---------------------------------------------------------------------------- #
+# 4b. Orkeon Studio -- installed, and it actually starts (STUDIO-08)
+# ---------------------------------------------------------------------------- #
+# The ZIP channel has no Start-menu shortcut (that is the MSI's own addition), so
+# only the payload and the start/exit smoke are asserted here.
+Write-Section 'orkeon-studio --smoke-exit'
+$studio = Invoke-OrkeonStudioWindowsSmoke -InstallRoot $installDir -LogDir $script:LogDir
+foreach ($note in $studio.Notes) { Write-Info $note }
+if ($studio.Problems.Count -gt 0) {
+    Step-Fail 'studio' ($studio.Problems -join '; ')
+} else {
+    Step-Pass 'studio' 'orkeon-studio.cmd + Orkeon.Studio.exe installed; window opened and closed, exit 0'
 }
 
 # ---------------------------------------------------------------------------- #

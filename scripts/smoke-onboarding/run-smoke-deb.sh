@@ -13,6 +13,9 @@
 #   1. apt resolves the package's Depends on a stock image (no dotnet repo);
 #   2. the payload survived packaging (esbuild, embedding model, the 7 whitelisted
 #      tree-sitter grammars — WIN-04 pruning);
+#  2b. the two Orkeon Studio TUIs shipped too — /usr/bin/orkeon-studio-config and
+#      /usr/bin/orkeon-studio-run are installed and answer `--version` with no
+#      terminal at all (STUDIO-08, spec §8.4);
 #   3. `orkeon init --provider none --force` writes the per-user config (WIN-02);
 #   4. `orkeon doctor --json` reports no ❌, and the three payload-backed checks
 #      are green, not merely non-failing (that is what makes a missing esbuild /
@@ -58,7 +61,7 @@ while [[ $# -gt 0 ]]; do
     --orkeon)   ORKEON_BIN="$2"; shift 2 ;;
     --work-dir) WORK_DIR="$2"; shift 2 ;;
     --keep)     KEEP=true; shift ;;
-    -h|--help)  sed -n '2,38p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)  sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -130,9 +133,11 @@ if [[ -n "$DEB_PATH" ]]; then
   fi
   ORKEON_BIN="$INSTALLED_BIN"
   PAYLOAD_ROOT="$INSTALLED_PREFIX"
+  STUDIO_INSTALLED=true
 else
   smoke_skip "apt-install" "--orkeon given: smoking an already-available binary"
   smoke_skip "launcher" "--orkeon given"
+  STUDIO_INSTALLED=false
   if [[ ! -x "$ORKEON_BIN" ]]; then
     smoke_fail "launcher" "not executable: $ORKEON_BIN"
     smoke_summary "DEB SMOKE"
@@ -149,6 +154,20 @@ fi
 # sibling subdirectory, where the tar.gz keeps the archive's libexec/ tree.
 smoke_log "Package payload"
 smoke_assert_payload "$PAYLOAD_ROOT" "$PAYLOAD_ROOT/esbuild-bin/esbuild"
+
+# --------------------------------------------------------------------------- #
+# 2b. Orkeon Studio TUIs (STUDIO-08)
+# --------------------------------------------------------------------------- #
+# The package installs /usr/bin/orkeon-studio-{config,run} next to /usr/bin/orkeon,
+# each execing its own self-contained payload under /usr/lib/<app> (package-deb.sh
+# §1b/§2). Nothing else in this smoke would notice their absence, so they get
+# their own step — presence plus the headless `--version` contract.
+if [[ "$STUDIO_INSTALLED" == true ]]; then
+  smoke_step_studio_present "$(dirname "$INSTALLED_BIN")"
+else
+  smoke_skip "studio-launchers" "--orkeon given: nothing was installed"
+  smoke_skip "studio-version" "--orkeon given"
+fi
 
 # --------------------------------------------------------------------------- #
 # 3-6. init / doctor / run / rag — shared with the tarball smoke
@@ -169,6 +188,12 @@ if [[ -n "$DEB_PATH" ]]; then
     # /usr/lib/orkeon may survive as an empty directory (dpkg keeps directories it
     # did not create alone); a leftover *payload* is the regression to catch.
     [[ -e "$INSTALLED_PREFIX/orkeon" ]] && leftovers="$leftovers $INSTALLED_PREFIX/orkeon still present;"
+    # Same rule for the Studio TUIs the package brought along.
+    for studio_app in $SMOKE_STUDIO_APPS; do
+      [[ -e "/usr/bin/$studio_app" ]] && leftovers="$leftovers /usr/bin/$studio_app still present;"
+      [[ -n "$(find "/usr/lib/$studio_app" -maxdepth 1 -type f 2>/dev/null | head -n1)" ]] \
+        && leftovers="$leftovers /usr/lib/$studio_app payload still present;"
+    done
     if [[ -z "$leftovers" ]]; then
       smoke_pass "apt-remove" "$INSTALLED_BIN and the payload are gone"
     else

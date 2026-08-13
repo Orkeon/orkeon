@@ -124,6 +124,12 @@ for example in "${EXAMPLES[@]}"; do
     INDEX=$((INDEX + 1))
     config_path="$SCRIPT_DIR/$example/config.yaml"
 
+    # A multi-file crew keeps its agents/tasks in sibling folders, so its config.yaml
+    # is only the crew settings: the runner must be given the DIRECTORY, not the file.
+    if [ -d "$SCRIPT_DIR/$example/agents" ] || [ -d "$SCRIPT_DIR/$example/tasks" ]; then
+        config_path="$SCRIPT_DIR/$example"
+    fi
+
     # Build the run command: trading crews use the dedicated trading runner
     # (`--config <yaml>`); everything else runs on the `orkeon` CLI
     # (`orkeon run <yaml>`, config passed positionally after the `run` verb).

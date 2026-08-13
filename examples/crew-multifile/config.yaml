@@ -1,0 +1,11 @@
+# Multi-file crew layout — crew settings only.
+# Agents live in agents/*.yaml and tasks in tasks/*.yaml; each file stem is the
+# entity id (agents/researcher.yaml -> "researcher", referenced by tasks' `agent:`).
+# Run it with:  orkeon run examples/crew-multifile --validate
+
+name: "multifile-demo"
+goal: "Demonstrate the multi-file crew directory layout end to end"
+process: "sequential"
+verbose: false
+memory: false
+planning: false

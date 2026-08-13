@@ -1,0 +1,20 @@
+# Orkeon Studio (WPF) — local relaxations of the src/** analyzer ratchet.
+#
+# Scoped to this project only: the rules below are kept as errors everywhere else
+# in src/. Each one is neutralised for a reason that is specific to a WPF front-end.
+
+[*.cs]
+
+# CA1515 (make application types internal): WPF data binding resolves bound types
+# and their members by reflection from PresentationFramework, so the Application
+# subclass, the windows and every bound ViewModel must be public. The generated
+# App.g.cs partial is itself emitted as public, so an internal App does not even
+# compile (CS0262).
+dotnet_diagnostic.CA1515.severity = none
+
+# CA2007 (call ConfigureAwait): this is a UI application, not a library. Every
+# await in a ViewModel must resume on the WPF dispatcher thread, because the
+# continuation writes to bound properties and ObservableCollection instances that
+# only the UI thread may touch. Same arbitrage already recorded for
+# src/apps/Orkeon.ConsoleApp in the root .editorconfig.
+dotnet_diagnostic.CA2007.severity = none

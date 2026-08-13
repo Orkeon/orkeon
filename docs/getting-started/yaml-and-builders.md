@@ -160,6 +160,10 @@ Notes:
 - **Limitation:** YAML anchors cannot span files — each file is preprocessed independently
   (this was already true across the three flat files).
 
+On the CLI side, `orkeon run <directory>` accepts these directories directly
+(Orkeon >= 0.9.2-beta) — see
+[Three ways to run Orkeon](./three-ways-to-run-orkeon.md#run).
+
 ## CrewFactory — From YAML to domain objects
 
 The creation pipeline transforms the YAML configuration into operational domain objects via `CrewFactory` (`Orkeon.Infrastructure.Configuration`), which implements `ICrewFactory` (`Orkeon.Application.Interfaces`).

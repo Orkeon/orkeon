@@ -1,0 +1,96 @@
+using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.History;
+using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Launch;
+using Orkeon.Studio.Wpf.ViewModels.Mvvm;
+using Orkeon.Studio.Wpf.ViewModels.Services;
+
+namespace Orkeon.Studio.Wpf.ViewModels.Shell;
+
+/// <summary>
+/// The window: the two tabs of spec §3, and nothing else. Everything either tab does is a rendering
+/// of <c>Orkeon.Studio.Core</c>, which is what keeps the WPF front-end and the two TUIs from drifting
+/// apart — a feature that is not in Core exists in no UI.
+/// </summary>
+public sealed class MainWindowViewModel : ObservableObject
+{
+    private int _selectedTabIndex;
+
+    /// <summary>Builds the window over its seams; the tests construct it entirely in memory.</summary>
+    public MainWindowViewModel(
+        IAppSettingsStore? settingsStore = null,
+        IDirectoryProbe? directories = null,
+        ITargetProbe? targetProbe = null,
+        IPathPicker? picker = null,
+        OrkeonProcessRunner? processRunner = null,
+        ILaunchHistoryStore? historyStore = null,
+        IUiDispatcher? dispatcher = null,
+        string? globalPathOverride = null)
+    {
+        var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
+
+        Config = new ConfigTabViewModel(
+            settingsStore,
+            directories,
+            picker,
+            runner,
+            dispatcher,
+            globalPathOverride);
+
+        Launch = new LaunchTabViewModel(
+            runner,
+            targetProbe,
+            directories,
+            picker,
+            historyStore,
+            settingsStore,
+            dispatcher);
+    }
+
+    /// <summary>The appsettings editor (spec §4).</summary>
+    public ConfigTabViewModel Config { get; }
+
+    /// <summary>The crew launcher (spec §5).</summary>
+    public LaunchTabViewModel Launch { get; }
+
+    /// <summary>Which tab is showing.</summary>
+    public int SelectedTabIndex
+    {
+        get => _selectedTabIndex;
+        set => SetProperty(ref _selectedTabIndex, value);
+    }
+
+    /// <summary>The window title.</summary>
+    public static string Title => "Orkeon Studio";
+
+    /// <summary>
+    /// Builds a window wired to the real machine: the physical disk, the co-installed CLI and the
+    /// per-user history file. The history store degrades to in-memory when the platform gives us no
+    /// configuration directory, rather than refusing to open the window over it.
+    /// </summary>
+    public static MainWindowViewModel CreateForCurrentMachine(IPathPicker picker, IUiDispatcher dispatcher)
+    {
+        ArgumentNullException.ThrowIfNull(picker);
+        ArgumentNullException.ThrowIfNull(dispatcher);
+
+        ILaunchHistoryStore? historyStore =
+            LaunchHistoryFileStore.TryGetDefaultPath(out var historyPath, out _) && historyPath is { Length: > 0 }
+                ? new LaunchHistoryFileStore(historyPath)
+                : null;
+
+        return new MainWindowViewModel(
+            PhysicalAppSettingsStore.Instance,
+            PhysicalDirectoryProbe.Instance,
+            PhysicalTargetProbe.Instance,
+            picker,
+            OrkeonProcessRunner.ForCurrentMachine(),
+            historyStore,
+            dispatcher);
+    }
+
+    /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history.</summary>
+    public Task InitializeAsync(CancellationToken cancellationToken = default) =>
+        Launch.InitializeAsync(cancellationToken);
+}

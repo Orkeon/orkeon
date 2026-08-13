@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Orkeon.Studio.Run</AssemblyName>
+    <RootNamespace>Orkeon.Studio.Run</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Shipped by the installers, never as a NuGet package. -->
+    <IsPackable>false</IsPackable>
+
+    <Authors>Orkeon Contributors</Authors>
+    <Description>Orkeon Studio crew launcher (orkeon-studio-run): Terminal.Gui v2 front-end that points the co-installed `orkeon` CLI at a crew and streams its output.</Description>
+
+    <!-- CS0618: Terminal.Gui 2.1.0 marked the static Application.{Init,Run,Invoke,Shutdown}
+         APIs obsolete in favour of an instance-based IApplication model, the same debt
+         Orkeon.Cli.TerminalGui carries; migrating both at once is a follow-up. -->
+    <NoWarn>$(NoWarn);CS1591;CS0618</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Studio.Run.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Every launcher behaviour lives in Core; this project is rendering only. -->
+    <ProjectReference Include="..\Orkeon.Studio.Core\Orkeon.Studio.Core.csproj" />
+    <!-- LogsPaneView + TerminalGuiOptions: the streamed-log pane is the CLI console's. -->
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.TerminalGui\Orkeon.Cli.TerminalGui.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Terminal.Gui" />
+  </ItemGroup>
+
+</Project>

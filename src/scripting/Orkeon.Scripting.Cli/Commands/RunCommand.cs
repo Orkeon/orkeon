@@ -19,9 +19,14 @@ namespace Orkeon.Scripting.Cli.Commands;
 /// <summary>Parsed CLI options for the <c>run</c> verb.</summary>
 internal sealed class RunCommandOptions
 {
-    /// <summary>Path to the crew definition: a script (.ork.ts/.js) or a YAML crew (.yaml/.yml).</summary>
+    /// <summary>
+    /// Path to the crew definition: a script (.ork.ts/.js), a YAML crew (.yaml/.yml), or a
+    /// directory holding a multi-file YAML crew (config.yaml + agents/ + tasks/).
+    /// </summary>
     [Value(0, Required = false,
-        HelpText = "Path to the crew definition: .ork.ts/.js (Scripting DSL) or .yaml/.yml (YAML crew). Required unless --list-tools.")]
+        HelpText = "Path to the crew definition: .ork.ts/.js (Scripting DSL), .yaml/.yml (YAML crew), " +
+                   "or a directory holding a multi-file YAML crew (config.yaml + agents/ + tasks/). " +
+                   "Required unless --list-tools.")]
     public string ScriptPath { get; set; } = string.Empty;
 
         /// <summary>Path to appsettings.json (provides Llm section + RaggableTree).</summary>
@@ -128,9 +133,13 @@ internal sealed class RunCommandOptions
 }
 
 /// <summary>
-/// <c>orkeon run &lt;crew.ork.ts | crew.yaml&gt;</c> — runs a crew definition and emits its
-/// result on stdout. The dispatch is by file extension:
+/// <c>orkeon run &lt;crew.ork.ts | crew.yaml | crew-dir/&gt;</c> — runs a crew definition and emits
+/// its result on stdout. A directory target is classified by its layout
+/// (<see cref="CrewDirectoryLayout"/>); everything else dispatches by file extension:
 /// <list type="bullet">
+///   <item><description>a directory holding a multi-file YAML crew (<c>config.yaml</c> +
+///   <c>agents/</c> + <c>tasks/</c>, or the flat <c>crew.yaml</c>/<c>agents.yaml</c>/<c>tasks.yaml</c>
+///   triplet) → the shared one-shot YAML runner, same as a single YAML file.</description></item>
 ///   <item><description><c>.yaml</c>/<c>.yml</c> → the shared one-shot YAML runner
 ///   (<see cref="RunnerExecution.RunOneShotAsync"/>), identical to the standalone
 ///   standard runner — loads the crew, kicks it off, prints the crew output.</description></item>
@@ -183,6 +192,26 @@ internal static partial class RunCommand
             await Console.Error.WriteLineAsync(
                 "orkeon run: a crew definition path is required (unless --list-tools).").ConfigureAwait(false);
             return Program.ExitScriptError;
+        }
+
+        // A crew can also be a DIRECTORY holding a multi-file YAML definition (config.yaml +
+        // agents/ + tasks/, or the flat legacy triplet). Classify it before every other branch —
+        // including --validate — so an ambiguous or layout-less directory reports the layout
+        // diagnostic here instead of falling through to an extension test that cannot describe it.
+        // OUT-OF-SCOPE: probing the user-supplied crew path; CLI entry runs outside the VFS
+        // abstraction (crews live wherever the user invokes us from).
+        if (Directory.Exists(options.ScriptPath))
+        {
+            var inspection = CrewDirectoryLayout.Inspect(options.ScriptPath);
+            if (!inspection.IsCrewDirectory)
+            {
+                await Console.Error.WriteLineAsync($"orkeon run: {inspection.Error}").ConfigureAwait(false);
+                return Program.ExitScriptError;
+            }
+
+            // Same shared one-shot runner as a .yaml crew — it owns --validate, the mounts and
+            // the exit codes, so every option behaves identically on a directory and on a file.
+            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
         }
 
         // --validate is a crew-load concern (YAML or .ork.ts crew definition): the shared runner

@@ -1,0 +1,237 @@
+<UserControl x:Class="Orkeon.Studio.Wpf.Views.LaunchTabView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views"
+             xmlns:launch="clr-namespace:Orkeon.Studio.Wpf.ViewModels.Launch">
+
+  <Grid Margin="{StaticResource PanelPadding}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- §5.1 target selection. -->
+    <StackPanel Grid.Row="0" Margin="{StaticResource SectionMargin}">
+      <TextBlock Style="{StaticResource SectionHeader}" Text="Crew to run" />
+      <DockPanel Margin="{StaticResource FieldMargin}">
+        <Button DockPanel.Dock="Right" Content="Folder…" Width="90" Margin="6,0,0,0" Command="{Binding Target.BrowseFolderCommand}" />
+        <Button DockPanel.Dock="Right" Content="File…" Width="90" Margin="6,0,0,0" Command="{Binding Target.BrowseFileCommand}" />
+        <Button DockPanel.Dock="Right" Content="Detect" Width="90" Margin="6,0,0,0" Command="{Binding Target.DetectCommand}" />
+        <TextBox Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}" />
+      </DockPanel>
+      <TextBlock Text="{Binding Target.StatusDisplay}" Style="{StaticResource HintText}" />
+
+      <!-- The ambiguity of §5.1: both shapes matched, so the user picks — no silent precedence. -->
+      <StackPanel Visibility="{Binding Target.IsAmbiguous, Converter={StaticResource BooleanToVisibility}}">
+        <TextBlock Text="{Binding Target.ErrorMessage}" Style="{StaticResource HintText}" />
+        <ComboBox ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
+                  SelectedItem="{Binding Target.PreferredDirectoryKind}"
+                  Width="280"
+                  HorizontalAlignment="Left"
+                  Margin="{StaticResource FieldMargin}" />
+      </StackPanel>
+
+      <!-- Several *.ork.ts in the folder: the user picks the entry point. -->
+      <StackPanel Visibility="{Binding Target.NeedsSelection, Converter={StaticResource BooleanToVisibility}}">
+        <ListBox ItemsSource="{Binding Target.Candidates}" SelectedItem="{Binding Target.SelectedCandidate}" MaxHeight="120" />
+        <Button Content="Use this file" Command="{Binding Target.UseCandidateCommand}" Width="120" HorizontalAlignment="Left" Margin="0,6,0,0" />
+      </StackPanel>
+
+      <!-- §6: a multi-file crew directory needs a CLI that accepts a directory. -->
+      <TextBlock Text="{Binding Target.DirectoryRunNotice}" Style="{StaticResource HintText}"
+                 Visibility="{Binding Target.DirectoryRunNotice, Converter={StaticResource StringPresentToVisibility}}" />
+    </StackPanel>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="420" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- §5.2 options, gated on the detected shape. -->
+      <TabControl Grid.Column="0" Margin="0,0,8,0">
+
+        <TabItem Header="Options">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="{StaticResource PanelPadding}">
+            <StackPanel>
+
+              <TextBlock Style="{StaticResource SectionHeader}" Text="appsettings.json" />
+              <RadioButton Content="Automatic (let the runtime resolve it)" IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}" />
+              <RadioButton Content="Explicit path" IsChecked="{Binding Options.IsSettingsExplicit, Mode=OneWay}" Margin="0,4,0,0" />
+              <DockPanel Margin="{StaticResource FieldMargin}">
+                <Button DockPanel.Dock="Right" Content="Browse…" Width="90" Margin="6,0,0,0" Command="{Binding Options.BrowseSettingsCommand}" />
+                <TextBox Text="{Binding Options.SettingsPath, UpdateSourceTrigger=PropertyChanged}" />
+              </DockPanel>
+
+              <!-- YAML-only options: hidden, not greyed, for a scripting target. -->
+              <StackPanel Visibility="{Binding Options.AreVariablesAvailable, Converter={StaticResource BooleanToVisibility}}">
+                <TextBlock Style="{StaticResource SectionHeader}" Text="Variables (-V KEY=VALUE)" Margin="0,18,0,6" />
+                <ItemsControl ItemsSource="{Binding Options.Variables}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <DockPanel Margin="{StaticResource FieldMargin}">
+                        <TextBox DockPanel.Dock="Right" Width="180" Margin="6,0,0,0" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" />
+                      </DockPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                  <Button Content="Add" Command="{Binding Options.AddVariableCommand}" Width="70" Margin="0,0,6,0" />
+                  <Button Content="Remove" Command="{Binding Options.RemoveVariableCommand}" Width="70" />
+                </StackPanel>
+
+                <TextBlock Style="{StaticResource FieldLabel}" Text="Initial context" />
+                <TextBox Text="{Binding Options.InitialContext, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True" MinHeight="60" Margin="{StaticResource FieldMargin}" />
+              </StackPanel>
+
+              <!-- Script-only options. -->
+              <StackPanel Visibility="{Binding Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
+                <TextBlock Style="{StaticResource SectionHeader}" Text="Inputs" Margin="0,18,0,6" />
+                <TextBlock Style="{StaticResource FieldLabel}" Text="Inline JSON (--inputs)" />
+                <TextBox Text="{Binding Options.InputsJson, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True" MinHeight="60" Margin="{StaticResource FieldMargin}" />
+                <TextBlock Style="{StaticResource FieldLabel}" Text="File (--inputs-file)" />
+                <DockPanel Margin="{StaticResource FieldMargin}">
+                  <Button DockPanel.Dock="Right" Content="Browse…" Width="90" Margin="6,0,0,0" Command="{Binding Options.BrowseInputsFileCommand}" />
+                  <TextBox Text="{Binding Options.InputsFilePath, UpdateSourceTrigger=PropertyChanged}" />
+                </DockPanel>
+              </StackPanel>
+
+              <TextBlock Style="{StaticResource SectionHeader}" Text="Diagnostics" Margin="0,18,0,6" />
+              <TextBlock Style="{StaticResource FieldLabel}" Text="Verbosity (--verbose)" />
+              <ComboBox ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
+                        SelectedItem="{Binding Options.Verbosity}"
+                        Margin="{StaticResource FieldMargin}" />
+              <CheckBox Content="Log LLM exchanges (--llm-log)" IsChecked="{Binding Options.LlmLogEnabled}" Margin="{StaticResource FieldMargin}" />
+              <DockPanel Margin="{StaticResource FieldMargin}">
+                <Button DockPanel.Dock="Right" Content="Browse…" Width="90" Margin="6,0,0,0" Command="{Binding Options.BrowseLlmLogPathCommand}" />
+                <TextBox Text="{Binding Options.LlmLogPath, UpdateSourceTrigger=PropertyChanged}" />
+              </DockPanel>
+
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- §5.2 launch mounts and the index-override semantics. -->
+        <TabItem Header="Mounts">
+          <DockPanel Margin="{StaticResource PanelPadding}">
+
+            <StackPanel DockPanel.Dock="Top">
+              <TextBlock Style="{StaticResource SectionHeader}" Text="Mounts already in the selected appsettings" />
+              <ListBox ItemsSource="{Binding Mounts.SettingsMounts}" MaxHeight="90" IsEnabled="False" />
+
+              <CheckBox Content="Allow mounts outside the working directory (--allow-external-mounts)"
+                        IsChecked="{Binding Mounts.AllowExternalMounts}"
+                        Margin="0,10,0,0" />
+              <TextBlock Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}" Style="{StaticResource HintText}" />
+
+              <TextBlock Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}" Style="{StaticResource HintText}" />
+              <TextBlock Text="{Binding Mounts.Summary}" Style="{StaticResource HintText}" />
+              <DataGrid ItemsSource="{Binding Mounts.EffectiveMounts}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="140">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Key" Binding="{Binding ConfigurationKey}" Width="230" />
+                  <DataGridTextColumn Header="Effective mount" Binding="{Binding Value}" Width="*" />
+                  <DataGridTextColumn Header="Origin" Binding="{Binding OriginDisplay}" Width="220" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </StackPanel>
+
+            <views:MountsEditorView DataContext="{Binding Mounts.LaunchMounts}" Margin="0,10,0,0" />
+          </DockPanel>
+        </TabItem>
+
+        <!-- §5.3 replayable history. -->
+        <TabItem Header="History">
+          <DockPanel Margin="{StaticResource PanelPadding}">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+              <Button Content="Prepare replay" Command="{Binding History.ReplayCommand}" Width="130" Margin="0,0,6,0" />
+              <Button Content="Reload" Command="{Binding History.ReloadCommand}" Width="90" />
+            </StackPanel>
+            <ListBox ItemsSource="{Binding History.Entries}"
+                     SelectedItem="{Binding History.SelectedEntry}"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel>
+                    <TextBlock Text="{Binding Display}" />
+                    <TextBlock Text="{Binding CommandLine}" Style="{StaticResource HintText}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </TabItem>
+
+      </TabControl>
+
+      <!-- §5.3 execution: command line, controls, streamed log, exit code. -->
+      <DockPanel Grid.Column="1">
+
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock Text="{Binding BinaryStatus}" Style="{StaticResource HintText}" />
+          <TextBox Text="{Binding CommandLinePreview, Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas"
+                   TextWrapping="Wrap" Margin="{StaticResource FieldMargin}" />
+
+          <StackPanel Orientation="Horizontal" Margin="0,6,0,6">
+            <Button Content="Validate (dry-run)" Command="{Binding ValidateCommand}" Width="140" Margin="0,0,6,0" />
+            <Button Content="Run" Command="{Binding RunCommand}" Width="90" Margin="0,0,6,0" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="90" Margin="0,0,6,0" />
+            <Button Content="Clear log" Command="{Binding ClearLogCommand}" Width="90" />
+          </StackPanel>
+
+          <TextBlock Text="{Binding ValidationSummary}" Style="{StaticResource HintText}" />
+          <ListBox ItemsSource="{Binding ValidationMessages}" MaxHeight="110">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Display}" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+          <TextBlock Text="{Binding Log.Summary}" Style="{StaticResource HintText}" />
+          <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding ExitDescription}" TextWrapping="Wrap" FontWeight="SemiBold"
+                     Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibility}}" />
+        </StackPanel>
+
+        <!-- Virtualized: a long run streams tens of thousands of lines, and only the visible ones
+             may ever be realized as controls. -->
+        <ListBox ItemsSource="{Binding Log.Lines}"
+                 FontFamily="Consolas"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.CanContentScroll="True"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling"
+                 VirtualizingPanel.ScrollUnit="Item">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <VirtualizingStackPanel />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Text}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsError}" Value="True">
+                        <Setter Property="Foreground" Value="#B00020" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+      </DockPanel>
+    </Grid>
+  </Grid>
+
+</UserControl>

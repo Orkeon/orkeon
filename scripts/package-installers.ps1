@@ -14,8 +14,9 @@
   Output directory. Default: artifacts\installers.
 .PARAMETER AppSet
   Which apps go in the archive. 'full' (default) keeps the historical every-app
-  archive; 'cli' ships the `orkeon` onboarding binary alone as
-  orkeon-cli-<ver>-<rid>.zip.
+  archive; 'cli' ships the `orkeon` onboarding binary plus the Orkeon Studio
+  apps for the platform (win-x64: orkeon-studio; linux-*: orkeon-studio-config +
+  orkeon-studio-run; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.zip.
 #>
 [CmdletBinding()]
 param(
@@ -76,14 +77,29 @@ $Apps = @(
     @{ Name = 'orkeon-tui-keytest';  Csproj = 'examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj';                                    Apphost = 'Orkeon.Examples.TuiKeyTest';                   SelfContained = $false }
     @{ Name = 'orkeon-claim-verify'; Csproj = 'examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj'; Apphost = 'Orkeon.Examples.Interactive.ClaimVerification'; SelfContained = $false }
     @{ Name = 'orkeon-spec-forge';   Csproj = 'examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj'; Apphost = 'Orkeon.Examples.Interactive.InterviewSpecForge'; SelfContained = $false }
+    # Rids (optional) is a RID filter: absent/empty = publish for every RID; the
+    # WPF orkeon-studio can only target Windows RIDs, hence the filter.
+    @{ Name = 'orkeon-studio';        Csproj = 'src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj';       Apphost = 'Orkeon.Studio';        SelfContained = $true; Rids = @('win-x64') }
+    @{ Name = 'orkeon-studio-config'; Csproj = 'src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj'; Apphost = 'Orkeon.Studio.Config'; SelfContained = $true }
+    @{ Name = 'orkeon-studio-run';    Csproj = 'src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj';       Apphost = 'Orkeon.Studio.Run';    SelfContained = $true }
 )
 
-# -AppSet cli narrows the table to the single onboarding binary. Same staging
-# layout, same wrapper, same installer — only the app list and the archive name
-# differ, so the two sets stay structurally interchangeable for install.ps1.
+# -AppSet cli ships the onboarding binary plus the Orkeon Studio apps for the
+# platform: win-* adds the WPF orkeon-studio, linux-* adds the two TUIs,
+# osx-* stays CLI-only (V1). Mirrors cli_set_includes in package-installers.sh.
+function Test-CliSetIncludes([string]$AppName, [string]$Rid) {
+    switch ($AppName) {
+        'orkeon'              { return $true }
+        'orkeon-studio'       { return $Rid -like 'win-*' }
+        'orkeon-studio-config' { return $Rid -like 'linux-*' }
+        'orkeon-studio-run'   { return $Rid -like 'linux-*' }
+        default               { return $false }
+    }
+}
+
 if ($AppSet -eq 'cli') {
-    $Apps = @($Apps | Where-Object { $_.Name -eq 'orkeon' })
-    if ($Apps.Count -ne 1) { throw "Expected exactly one 'orkeon' entry in the app table, found $($Apps.Count)." }
+    $orkeonEntries = @($Apps | Where-Object { $_.Name -eq 'orkeon' })
+    if ($orkeonEntries.Count -ne 1) { throw "Expected exactly one 'orkeon' entry in the app table, found $($orkeonEntries.Count)." }
     $PkgPrefix = 'orkeon-cli'
 } else {
     $PkgPrefix = 'orkeon'
@@ -108,6 +124,11 @@ foreach ($rid in $Rids) {
     Write-Host "==> $rid"
 
     foreach ($app in $Apps) {
+        if ($app.Rids -and $app.Rids -notcontains $rid) {
+            Write-Host "    skip $($app.Name) (RID filter: $($app.Rids -join ' '))"
+            continue
+        }
+        if ($AppSet -eq 'cli' -and -not (Test-CliSetIncludes $app.Name $rid)) { continue }
         $selfContained = if ($app.SelfContained) { 'true' } else { 'false' }
         Write-Host "    publish $($app.Name) (self-contained=$selfContained)"
         dotnet publish (Join-Path $RepoRoot $app.Csproj) -c $Configuration -r $rid --self-contained $selfContained `

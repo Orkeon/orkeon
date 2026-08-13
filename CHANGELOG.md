@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Orkeon Studio: a graphical way in, on Windows and Linux
+
+Configuring Orkeon and launching a crew no longer requires a terminal. **Orkeon Studio**
+ships as three applications over one shared core (`Orkeon.Studio.Core`, which holds the
+appsettings model, the target detection and the `orkeon run` argument building — a feature
+absent from the core exists in no UI):
+
+- **`orkeon-studio`** — a WPF desktop app for Windows, two tabs (settings editor, crew
+  launcher);
+- **`orkeon-studio-config`** — a full-screen Terminal.Gui editor for the settings file:
+  provider presets, model and endpoint, and the VFS mount table, saved in the exact form
+  `FileSystemMount.Parse` reads back;
+- **`orkeon-studio-run`** — the crew launcher in the terminal: pick a `config.yaml`, a crew
+  directory or a `.ork.ts` script, set the options (`--validate` included), follow the output
+  live, and cancel a run — the process is terminated and the exit code (130 on cancellation)
+  is reported, with the UI still alive.
+
+None of them is a second product: they edit the same `appsettings.json` `orkeon init`
+writes, and they launch crews by executing the co-installed `orkeon` binary, so the CLI and
+Studio are interchangeable on the same machine at any point.
+
+**Distribution follows the platform, not the wish list.** The `win-x64` zip and the MSI carry
+`orkeon-studio` (the MSI adds an "Orkeon Studio" **Start-menu shortcut**, its only
+MSI-specific authoring); the Debian package and the Linux archives carry
+`orkeon-studio-config` and `orkeon-studio-run` (`/usr/bin/orkeon-studio-{config,run}` on the
+`.deb`, launcher symlinks in `<prefix>/bin` from a tarball); macOS stays **CLI-only in V1**.
+Every Studio app is published self-contained like the CLI itself, which keeps the `.deb`'s
+`Depends` free of any `dotnet-runtime-*` — the onboarding channel's invariant. The app table
+in `package-installers.sh` / `.ps1` gained a RID-filter column for this (WPF cannot target
+non-Windows RIDs), and `SHA256SUMS` is unchanged in shape: same archive names, richer
+contents.
+
+The release smokes assert all of that on real runners rather than at packaging time:
+`orkeon-studio --smoke-exit` opens the WPF window, lets it render and exits 0 on
+`windows-latest` (both channels — zip and MSI — through one shared assertion file); the
+`.deb` and linux tarball smokes require both TUI launchers and run `--version` on each with
+**no terminal at all** (stdin from `/dev/null`, both streams redirected), which is the
+contract that keeps them scriptable; and the macOS smoke asserts the **absence** of anything
+named `orkeon-studio*`, so the day the RID filter regresses, CI fails instead of a Mac user.
+
+### Added — `orkeon run <directory>`: multi-file crews are a first-class target
+
+A crew no longer has to be a single file. `orkeon run` (and every runner's `-c/--config`)
+now accepts a **directory**: `config.yaml` for the crew settings, one agent per file under
+`agents/`, one task per file under `tasks/`, each file-name stem being the entity id — the
+layout `YamlCrewDefinitionLoader.LoadFromDirectoryAsync` already understood, which until now
+no CLI could reach because the dispatch was by file extension only. The legacy flat triplet
+(`crew.yaml` + `agents.yaml` + `tasks.yaml`) is accepted from a directory too, and every
+option behaves identically on a directory and on a file (`--settings`, `-V/--var`,
+`--initial-context`, `--mount`, `--validate`, `--verbose`, `--llm-log`). A `.yaml` path
+passed directly follows exactly the path it always did.
+
+The classification is explicit rather than convenient: a directory holding both a YAML
+layout and a `crew.ork.ts` is refused with both candidates named, and a directory with no
+recognized layout is refused with the list of what was searched — no silent precedence, and
+a lone script is never executed just because it was the only thing in the folder. The
+directory is mounted read-only in the VFS as itself, not as its parent, so a crew directory
+opens no wider a surface than a crew file. `examples/crew-multifile/` is the runnable
+reference (`orkeon run examples/crew-multifile --validate`).
+
 ### Added — macOS channel: osx CLI tarballs, Gatekeeper handling, Homebrew formula
 
 macOS joins Windows and Debian as a first-class install target. The release now carries

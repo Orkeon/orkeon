@@ -66,14 +66,32 @@ public static partial class RunnerExecution
         }
 
         var configPath = Path.GetFullPath(opts.ConfigPath);
-        if (!File.Exists(configPath))
+
+        // A crew target is either a single file (.yaml / .ork.ts) or a directory holding a
+        // multi-file crew (config.yaml + agents/ + tasks/, or the flat legacy triplet). The
+        // directory form is classified here so an ambiguous or empty directory reports its own
+        // diagnostic instead of the generic "config file not found".
+        var inspection = CrewDirectoryLayout.Inspect(configPath);
+        if (inspection.Error is not null)
+        {
+            Console.Error.WriteLine($"ERROR: {inspection.Error}");
+            errorCode = 1;
+            return false;
+        }
+
+        if (!inspection.IsCrewDirectory && !File.Exists(configPath))
         {
             Console.Error.WriteLine($"ERROR: config file not found: {configPath}");
             errorCode = 1;
             return false;
         }
 
-        var configDir = Path.GetDirectoryName(configPath)!;
+        // For a crew directory the config dir IS the target: mounting it (rather than its
+        // parent) keeps the VFS surface as narrow as it is for a single-file crew, and anchors
+        // appsettings resolution inside the crew.
+        if (inspection.IsCrewDirectory)
+            configPath = Path.TrimEndingDirectorySeparator(configPath);
+        var configDir = inspection.IsCrewDirectory ? configPath : Path.GetDirectoryName(configPath)!;
         var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, configDir);
         if (settingsPath != null)
             Console.Error.WriteLine($"Using settings: {settingsPath}");

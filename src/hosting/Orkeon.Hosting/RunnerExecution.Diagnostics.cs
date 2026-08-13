@@ -149,9 +149,11 @@ public static partial class RunnerExecution
     }
 
     /// <summary>
-    /// Loads a crew from either a YAML definition or an Orkéon Scripting (.ork.ts) source,
-    /// dispatching on <see cref="IsScriptedCrewDefinition"/>. Shared by the one-shot and
-    /// validate flows so both accept the same <c>-c/--config</c> formats identically.
+    /// Loads a crew from an Orkéon Scripting (.ork.ts) source, a multi-file crew directory, or a
+    /// single YAML definition — dispatching on <see cref="IsScriptedCrewDefinition"/> then on the
+    /// directory form (already validated by <see cref="TryBuildHost"/> via
+    /// <see cref="CrewDirectoryLayout"/>). Shared by the one-shot and validate flows so both
+    /// accept the same <c>-c/--config</c> targets identically.
     /// </summary>
     private static Task<Domain.Crew.Crew> LoadCrewAsync(
         IHost host,
@@ -159,9 +161,14 @@ public static partial class RunnerExecution
         string configPath,
         ILogger logger,
         CancellationToken ct)
-        => IsScriptedCrewDefinition(configPath)
-            ? LoadCrewFromScriptAsync(host, factory, configPath, logger, ct)
+    {
+        if (IsScriptedCrewDefinition(configPath))
+            return LoadCrewFromScriptAsync(host, factory, configPath, logger, ct);
+
+        return Directory.Exists(configPath)
+            ? factory.CreateFromDirectoryAsync(configPath, ct)
             : factory.CreateFromFileAsync(configPath, ct);
+    }
 
     /// <summary>
     /// Console logging preset that routes every level to stderr. Used by <c>--list-tools</c> so
