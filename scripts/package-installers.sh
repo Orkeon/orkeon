@@ -6,12 +6,22 @@
 # Usage:
 #   scripts/package-installers.sh [--version X.Y.Z[-suffix]] [--rids "linux-x64 ..."]
 #                                 [--out artifacts/installers] [-c Release]
-#                                 [--app-set full|cli]
+#                                 [--app-set full|cli] [--keep-stage all|none|"RIDS"]
 #
 # --app-set cli ships the `orkeon` CLI plus the Orkeon Studio apps for the
 # platform (win-x64: `orkeon-studio`; linux-*: `orkeon-studio-config` +
 # `orkeon-studio-run`; osx-*: CLI only) as orkeon-cli-<ver>-<rid>.{zip,tar.gz};
 # full (the default) keeps the historical every-app archive.
+#
+# --keep-stage decides what becomes of the per-RID staging trees under
+# $OUT/_stage once their archive has been written: `all` (the default) keeps
+# every one of them, `none` deletes each tree as soon as its archive exists, and
+# a space-separated RID list keeps only the trees named. The trees are
+# by-products — the archive is the artifact — but package-deb.sh --stage reuses
+# one instead of publishing it a second time, so pruning is opt-in and the
+# caller states which trees still have a consumer. The full set alone leaves
+# ~2.6 GB of them behind, which the release runner does not have to spare.
+#
 # Version resolution: --version > git describe (v-stripped) > src/Directory.Build.props.
 # esbuild is fetched per-RID straight from the npm registry (no npm/node needed);
 # the version comes from tools/scripting-esbuild/package-lock.json.
@@ -25,6 +35,7 @@ RIDS="linux-x64 linux-arm64 win-x64 osx-x64 osx-arm64"
 OUT="$REPO_ROOT/artifacts/installers"
 CONFIG="Release"
 APP_SET="full"
+KEEP_STAGE="all"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -32,8 +43,9 @@ while [[ $# -gt 0 ]]; do
     --rids)    RIDS="$2"; shift 2 ;;
     --out)     OUT="$2"; shift 2 ;;
     --app-set) APP_SET="$2"; shift 2 ;;
+    --keep-stage) KEEP_STAGE="$2"; shift 2 ;;
     -c|--configuration) CONFIG="$2"; shift 2 ;;
-    -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -42,6 +54,26 @@ case "$APP_SET" in
   full|cli) ;;
   *) echo "Unknown --app-set '$APP_SET' (expected: full, cli)" >&2; exit 2 ;;
 esac
+
+# A RID kept by name but never built is a typo, and a typo here silently prunes
+# the tree a downstream consumer was counting on. Fail on it instead.
+case "$KEEP_STAGE" in
+  all|none) ;;
+  *)
+    for keep_rid in $KEEP_STAGE; do
+      [[ " $RIDS " == *" $keep_rid "* ]] \
+        || { echo "--keep-stage names '$keep_rid', which is not among --rids ($RIDS)" >&2; exit 2; }
+    done ;;
+esac
+
+# True when the staging tree of RID $1 must survive its archive (see --keep-stage).
+stage_kept() { # $1=rid
+  case "$KEEP_STAGE" in
+    all)  return 0 ;;
+    none) return 1 ;;
+    *)    [[ " $KEEP_STAGE " == *" $1 "* ]] ;;
+  esac
+}
 
 # --- Version -----------------------------------------------------------------
 if [[ -z "$VERSION" ]]; then
@@ -236,6 +268,15 @@ for RID in $RIDS; do
   else
     tar -czf "$OUT/$PKG.tar.gz" -C "$STAGE" "$PKG"
     echo "    -> $OUT/$PKG.tar.gz"
+  fi
+
+  # Drop the staging tree now that its archive exists, unless the caller kept
+  # this RID (--keep-stage). Freeing it here rather than after the loop is what
+  # makes it useful: the disk peak becomes the kept trees plus the one being
+  # built, instead of one tree per RID.
+  if ! stage_kept "$RID"; then
+    rm -rf "$ROOT"
+    echo "    pruned staging tree $ROOT"
   fi
 done
 

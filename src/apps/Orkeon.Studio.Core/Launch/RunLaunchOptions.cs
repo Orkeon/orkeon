@@ -36,8 +36,9 @@ public sealed record RunLaunchOptions
     public string? InputsFilePath { get; init; }
 
     /// <summary>
-    /// <c>--mount</c>, repeatable, in the Docker-style mount format. These override the
-    /// appsettings entries of the same index — see <see cref="MountOverrideSemantics"/>.
+    /// <c>--mount</c>, repeatable, in the Docker-style mount format. These land <em>after</em>
+    /// the mounts the runner injects on its own, and replace the appsettings entries they end
+    /// up indexed on — see <see cref="MountOverrideSemantics"/>.
     /// </summary>
     public IReadOnlyList<string> Mounts { get; init; } = [];
 

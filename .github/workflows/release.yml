@@ -50,14 +50,24 @@ jobs:
             echo "version_arg=" >> "$GITHUB_OUTPUT"
           fi
 
+      # --keep-stage linux-x64: the per-RID staging trees are by-products (the
+      # archives above them are the artifacts) and the five of the full set weigh
+      # ~2.6 GB on a runner that already has to free disk before it can start.
+      # Exactly one of them has a second consumer — the Debian step below reads
+      # the linux-x64 tree through package-deb.sh --stage rather than publishing
+      # it again — so that one is named and the other four go as soon as their
+      # archive is written.
       - name: Package installers (every app, every RID)
-        run: ./scripts/package-installers.sh ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers
+        run: ./scripts/package-installers.sh ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers --keep-stage linux-x64
 
       # The desktop onboarding channels: the `orkeon` CLI alone, as
       # orkeon-cli-<ver>-win-x64.zip and orkeon-cli-<ver>-osx-{arm64,x64}.tar.gz.
       # Same --out, so the SHA256SUMS regenerated at the end of this call covers
       # the multi-app archives too. The osx payloads are cross-published from this
       # ubuntu runner like every other RID.
+      # No --keep-stage here: these three trees are kept (the default), and no
+      # later step in this job reads them — the msi job harvests the *zip*, not a
+      # staging tree. They are the next lever if the runner ever runs short again.
       - name: Package the CLI archives (win-x64, osx-arm64, osx-x64)
         run: ./scripts/package-installers.sh --app-set cli --rids "win-x64 osx-arm64 osx-x64" ${{ steps.pkg.outputs.version_arg }} --out artifacts/installers
 
@@ -97,10 +107,17 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
+      # Both linux payloads the smoke-deb job installs: the .deb, and the
+      # multi-app linux-x64 tarball. The tarball rides along because it is the
+      # only published archive that carries the two Studio TUIs on a runner we
+      # actually have — smoke-macos exercises run-smoke-tarball.sh with
+      # `--studio absent`, and nothing exercised the `present` side.
       - uses: actions/upload-artifact@v4
         with:
-          name: orkeon-deb
-          path: artifacts/installers/*.deb
+          name: orkeon-linux
+          path: |
+            artifacts/installers/*.deb
+            artifacts/installers/orkeon-*-linux-x64.tar.gz
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
@@ -341,20 +358,27 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-  # Installs the published .deb through apt on a stock ubuntu image and walks the
-  # same chain, then removes the package (LIN-02). Also asserts the two Orkeon
-  # Studio TUIs the package now carries — /usr/bin/orkeon-studio-{config,run}
-  # present, and both answering `--version` with stdin and stdout redirected,
-  # which is the headless contract of STUDIO-08.
+  # The two Linux channels, on one stock ubuntu image.
+  #
+  # First the .deb: installed through apt, walked along the same onboarding chain
+  # as every other channel, then removed (LIN-02). It asserts the two Orkeon
+  # Studio TUIs the package carries — /usr/bin/orkeon-studio-{config,run} present,
+  # and both answering `--version` with stdin and stdout redirected, the headless
+  # contract of STUDIO-08.
+  #
+  # Then the tar.gz channel, which is where `--studio present` gets its only run:
+  # smoke-macos is the sole other caller of run-smoke-tarball.sh and it passes
+  # `--studio absent`, so until this step the "installed from an archive, and
+  # working headless" half of STUDIO-08 was asserted nowhere.
   smoke-deb:
     runs-on: ubuntu-latest
     needs: installers
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: orkeon-deb
+          name: orkeon-linux
           path: artifacts
       - name: Smoke the installed package
         run: |
@@ -364,6 +388,36 @@ jobs:
             exit 1
           fi
           ./scripts/smoke-onboarding/run-smoke-deb.sh --deb "$deb"
+
+      # --prefix keeps this install off /usr entirely, so it cannot collide with
+      # the .deb the step above installed and removed — the two channels stay
+      # independent even if that removal ever regresses. --studio present is
+      # spelled out rather than left to the script's `auto` deduction, for the
+      # same reason smoke-macos spells out `absent`: the assertion this step
+      # exists to make must not be able to degrade into "nothing to check".
+      # --work-dir / --keep pin the scratch tree to an uploadable path and hold
+      # its logs/ on a pass too, not just on failure.
+      - name: Smoke the linux tarball (Studio TUIs present)
+        run: |
+          tarball="$(find artifacts -maxdepth 1 -name 'orkeon-*-linux-x64.tar.gz' | head -n1)"
+          if [[ -z "$tarball" ]]; then
+            echo "No orkeon-*-linux-x64.tar.gz in the downloaded artefact." >&2
+            exit 1
+          fi
+          ./scripts/smoke-onboarding/run-smoke-tarball.sh \
+            --tarball "$tarball" \
+            --studio present \
+            --prefix "$RUNNER_TEMP/orkeon-tarball" \
+            --work-dir "$RUNNER_TEMP/orkeon-smoke-tarball" \
+            --keep
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: orkeon-smoke-linux-tarball-logs
+          path: ${{ runner.temp }}/orkeon-smoke-tarball/logs
+          if-no-files-found: ignore
+          retention-days: 1
 
   # Installs the published osx-arm64 tarball on a real Apple-silicon runner and
   # walks the same chain, then uninstalls (MAC-02). This is also the only place

@@ -1,5 +1,4 @@
-using System.Globalization;
-using System.Reflection;
+using Orkeon.Studio.Core;
 
 namespace Orkeon.Studio.Run.Cli;
 
@@ -13,11 +12,11 @@ internal static class StudioRunInfo
     public const string ToolName = "orkeon-studio-run";
 
     /// <summary>Version of the running assembly, without its build metadata.</summary>
-    public static string Version { get; } = ReadVersion();
+    public static string Version { get; } = StudioAssemblyInfo.VersionOf(typeof(StudioRunInfo).Assembly);
 
     /// <summary>The single line <c>--version</c> writes.</summary>
     public static string VersionLine { get; } =
-        string.Create(CultureInfo.InvariantCulture, $"{ToolName} {Version}");
+        StudioAssemblyInfo.VersionLine(ToolName, typeof(StudioRunInfo).Assembly);
 
     /// <summary>The text <c>--help</c> writes.</summary>
     public static string HelpText { get; } = string.Join(
@@ -42,17 +41,4 @@ internal static class StudioRunInfo
         "  Validate      a dry run (--validate): the crew is loaded strictly, nothing is kicked off.",
         "  Run / Esc     start the run, or ask the running process to stop (exit code 130).",
         string.Empty);
-
-    private static string ReadVersion()
-    {
-        var assembly = typeof(StudioRunInfo).Assembly;
-        var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-
-        if (string.IsNullOrWhiteSpace(informational))
-            return assembly.GetName().Version?.ToString() ?? "0.0.0";
-
-        // SourceLink appends '+<commit sha>' to the informational version; users want the release.
-        var metadata = informational.IndexOf('+', StringComparison.Ordinal);
-        return metadata < 0 ? informational : informational[..metadata];
-    }
 }

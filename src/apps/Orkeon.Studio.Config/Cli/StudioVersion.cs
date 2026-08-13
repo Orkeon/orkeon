@@ -1,12 +1,12 @@
-using System.Globalization;
-using System.Reflection;
+using Orkeon.Studio.Core;
 
 namespace Orkeon.Studio.Config.Cli;
 
 /// <summary>
 /// The version this build reports. It comes from the assembly attributes, which
 /// <c>src/Directory.Build.props</c> fills in — the repository's single source of truth —
-/// so the launcher can never drift from the packages it ships in.
+/// so the editor can never drift from the packages it ships in. The reading itself is
+/// <see cref="StudioAssemblyInfo"/>'s, shared with the launcher.
 /// </summary>
 internal static class StudioVersion
 {
@@ -14,27 +14,9 @@ internal static class StudioVersion
     public const string ProductName = "orkeon-studio-config";
 
     /// <summary>The version alone, e.g. <c>0.9.2-beta</c>.</summary>
-    public static string Value { get; } = Resolve();
+    public static string Value { get; } = StudioAssemblyInfo.VersionOf(typeof(StudioVersion).Assembly);
 
     /// <summary>The single line <c>--version</c> prints.</summary>
     public static string Line { get; } =
-        string.Create(CultureInfo.InvariantCulture, $"{ProductName} {Value}");
-
-    private static string Resolve()
-    {
-        var assembly = typeof(StudioVersion).Assembly;
-
-        var informational = assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-            .InformationalVersion;
-
-        if (!string.IsNullOrWhiteSpace(informational))
-        {
-            // Strip the "+<commit sha>" SourceLink suffix: the smokes compare a plain version.
-            var plus = informational.IndexOf('+', StringComparison.Ordinal);
-            return plus < 0 ? informational : informational[..plus];
-        }
-
-        return assembly.GetName().Version?.ToString() ?? "0.0.0";
-    }
+        StudioAssemblyInfo.VersionLine(ProductName, typeof(StudioVersion).Assembly);
 }

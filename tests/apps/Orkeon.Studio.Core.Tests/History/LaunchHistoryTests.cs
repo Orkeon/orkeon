@@ -66,7 +66,8 @@ public sealed class LaunchHistoryTests
         var original = LaunchHistory.Empty
             .Add(Entry("first.yaml", minutesAgo: 10).WithResult(ProcessRunResult.FromExitCode(0, TimeSpan.FromSeconds(1))))
             .Add(Entry("second crew.yaml").WithResult(
-                ProcessRunResult.FromCancellation(137, ProcessTerminationMode.Killed, TimeSpan.FromSeconds(4))));
+                ProcessRunResult.FromCancellation(
+                    137, ProcessTerminationOutcome.Of(ProcessTerminationMode.Killed), TimeSpan.FromSeconds(4))));
 
         Assert.True(LaunchHistory.TryParse(original.ToJson(), out var reloaded, out var error));
 

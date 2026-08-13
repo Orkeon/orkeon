@@ -82,7 +82,7 @@ public sealed class SystemProcessLauncher : IProcessLauncher
         process.BeginErrorReadLine();
 
         var handle = new SystemProcessHandle(process);
-        var termination = ProcessTerminationMode.Exited;
+        var termination = new ProcessTerminationOutcome { Mode = ProcessTerminationMode.Exited };
         var cancelled = false;
 
         try

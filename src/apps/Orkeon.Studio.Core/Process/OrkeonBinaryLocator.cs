@@ -60,6 +60,7 @@ public sealed class OrkeonBinaryLocator
     private readonly IReadOnlyList<string> _fileNames;
 
     /// <summary>Creates a locator over <paramref name="probe"/>.</summary>
+    /// <param name="probe">File-system and <c>PATH</c> access used for the lookup.</param>
     /// <param name="fileNames">
     /// Candidate file names, most specific first; defaults to the platform's
     /// (<c>orkeon.exe</c> then <c>orkeon</c> on Windows, <c>orkeon</c> elsewhere).

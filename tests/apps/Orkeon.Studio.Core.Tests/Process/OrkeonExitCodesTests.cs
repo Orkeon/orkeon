@@ -69,7 +69,8 @@ public sealed class OrkeonExitCodesTests
     {
         // The OS reports a signal death (137 for SIGKILL); the user is shown the CLI's own
         // interrupted code, because "I cancelled it" is what actually happened.
-        var result = ProcessRunResult.FromCancellation(137, ProcessTerminationMode.Killed, TimeSpan.FromSeconds(1));
+        var result = ProcessRunResult.FromCancellation(
+            137, ProcessTerminationOutcome.Of(ProcessTerminationMode.Killed), TimeSpan.FromSeconds(1));
 
         Assert.Equal(OrkeonExitCodes.Cancelled, result.ExitCode);
         Assert.Equal(137, result.RawExitCode);

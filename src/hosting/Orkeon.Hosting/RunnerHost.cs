@@ -36,9 +36,12 @@ public static partial class RunnerHost
 {
     /// <summary>
     /// WIN-01: the actionable warning emitted once per host build when no <c>Llm</c>
-    /// section is configured and the runtime will fall back to the echo provider.
+    /// section is configured and the runtime will fall back to the echo provider. Public
+    /// because Orkeon Studio reproduces this wording in its own pre-save validation and pins
+    /// the two texts together — a UI that warns differently from the runtime is worse than
+    /// one that does not warn at all.
     /// </summary>
-    private const string LlmNotConfiguredMessage =
+    public const string LlmNotConfiguredMessage =
         "No `Llm` section configured — falling back to the echo provider (`<undefined-llm>`). " +
         "Run `orkeon init` to create a configuration, or set `ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`.";
 

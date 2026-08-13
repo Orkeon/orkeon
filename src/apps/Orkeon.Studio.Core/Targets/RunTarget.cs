@@ -62,10 +62,10 @@ public sealed record RunTarget
         : RunTargetDialect.Script;
 
     /// <summary>
-    /// True when running this target needs a CLI that dispatches on a directory. The
-    /// current <c>RunCommand</c> dispatches on file extension only, so a UI must warn
-    /// (see <see cref="RunTargetRequirements.DirectoryRunNotice"/>) instead of pretending
-    /// the launch will work.
+    /// True when the run path is a directory, so the launch needs a CLI that dispatches
+    /// <c>orkeon run</c> on a directory rather than on a file extension. That dispatch ships
+    /// since <see cref="RunTargetRequirements.MinimumCliVersion"/>; the notice a UI shows is
+    /// <see cref="RunTargetRequirements.DirectoryRunNotice"/>.
     /// </summary>
     public bool RequiresDirectoryRunSupport => Kind == RunTargetKind.MultiFileCrewDirectory;
 }
@@ -74,12 +74,18 @@ public sealed record RunTarget
 public static class RunTargetRequirements
 {
     /// <summary>
-    /// Shown for a multi-file crew directory: the CLI dispatches <c>orkeon run</c> on the
-    /// file extension, so a directory target only works once directory dispatch ships.
-    /// The UI prefixes it with the minimum version once that release is known.
+    /// Oldest Orkeon release whose <c>orkeon run</c> dispatches on a crew directory. The CLI
+    /// shipped alongside Studio is built from this repository, so it always satisfies it; the
+    /// version matters only for a separately installed, older CLI found on <c>PATH</c>.
+    /// </summary>
+    public const string MinimumCliVersion = "0.9.2-beta";
+
+    /// <summary>
+    /// Shown for a multi-file crew directory, as advice rather than a warning: directory
+    /// dispatch is a released capability, not a pending one.
     /// </summary>
     public const string DirectoryRunNotice =
-        "This is a multi-file crew directory: running it requires 'orkeon run <directory>', " +
-        "which the installed CLI may not support yet — it currently dispatches on the file " +
-        "extension only. Requires a newer Orkeon CLI.";
+        "This is a multi-file crew directory: running it uses 'orkeon run <directory>', which " +
+        "requires Orkeon >= " + MinimumCliVersion + ". The CLI installed alongside Studio " +
+        "supports this.";
 }

@@ -21,8 +21,10 @@
       </DockPanel>
       <TextBlock Text="{Binding Target.StatusDisplay}" Style="{StaticResource HintText}" />
 
-      <!-- The ambiguity of §5.1: both shapes matched, so the user picks — no silent precedence. -->
-      <StackPanel Visibility="{Binding Target.IsAmbiguous, Converter={StaticResource BooleanToVisibility}}">
+      <!-- The ambiguity of §5.1: both shapes matched, so the user picks — no silent precedence.
+           The chooser stays up while the answer is still open, which includes the case where the
+           YAML layout was preferred and the CLI would refuse it. -->
+      <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
         <TextBlock Text="{Binding Target.ErrorMessage}" Style="{StaticResource HintText}" />
         <ComboBox ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
                   SelectedItem="{Binding Target.PreferredDirectoryKind}"

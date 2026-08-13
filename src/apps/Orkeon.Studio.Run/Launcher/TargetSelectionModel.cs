@@ -59,17 +59,23 @@ internal sealed class TargetSelectionModel
     /// <summary>Stable code of the failure, for keying the remediation the screen offers.</summary>
     public string? ErrorCode => Detection?.ErrorCode;
 
-    /// <summary>True when the failure is one the user resolves by choosing a shape.</summary>
-    public bool NeedsShapeChoice => ErrorCode == RunTargetCodes.AmbiguousDirectory;
+    /// <summary>
+    /// True when the failure is one the user resolves by choosing a shape. Preferring the YAML
+    /// layout of a contested directory counts: the CLI rejects it, so that answer leaves the
+    /// choice open rather than closing it.
+    /// </summary>
+    public bool NeedsShapeChoice =>
+        ErrorCode is RunTargetCodes.AmbiguousDirectory or RunTargetCodes.YamlLayoutBlockedByScript;
 
     /// <summary>A launch can be prepared.</summary>
     public bool IsResolved => Target is not null;
 
     /// <summary>
     /// The framework prerequisite of the resolved target, or null. Set for a multi-file crew
-    /// directory, which needs a CLI newer than the one this Studio may be shipped with.
+    /// directory, whose launch relies on <c>orkeon run &lt;directory&gt;</c>.
     /// </summary>
-    public string? FrameworkRequirement => DirectoryRunSupport.NoticeFor(Target);
+    public string? FrameworkRequirement =>
+        Target is { RequiresDirectoryRunSupport: true } ? RunTargetRequirements.DirectoryRunNotice : null;
 
     /// <summary>The one-line description of the recognised shape shown next to the field.</summary>
     public string ShapeDescription => Target is null

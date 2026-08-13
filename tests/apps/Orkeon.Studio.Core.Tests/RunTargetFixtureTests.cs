@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.Validation;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -99,7 +100,7 @@ public sealed class RunTargetFixtureTests : IDisposable
     }
 
     [Fact]
-    public void A_real_multi_file_tree_is_detected_and_flagged_as_needing_directory_dispatch()
+    public void A_real_multi_file_tree_is_detected_and_carries_the_minimum_version_notice()
     {
         var directory = CreateTree("agents", "tasks");
         File.WriteAllText(Path.Combine(directory, "config.yaml"), "name: fixture\n");
@@ -112,8 +113,25 @@ public sealed class RunTargetFixtureTests : IDisposable
         Assert.Equal(directory, target.RunPath);
         Assert.True(target.RequiresDirectoryRunSupport);
 
-        var warning = Assert.Single(RunArgumentsBuilder.Validate(target));
-        Assert.Equal(LaunchCodes.DirectoryRunUnsupported, warning.Code);
+        // Advice, not a warning: directory dispatch is released, so nothing here blocks a run.
+        var notice = Assert.Single(RunArgumentsBuilder.Validate(target));
+        Assert.Equal(LaunchCodes.DirectoryRunNotice, notice.Code);
+        Assert.Equal(ValidationSeverity.Information, notice.Severity);
+        Assert.Contains(RunTargetRequirements.MinimumCliVersion, notice.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_real_flat_legacy_triplet_is_detected_the_way_the_cli_reads_it()
+    {
+        var directory = CreateTree();
+        foreach (var name in RunTargetDetector.FlatLayoutFileNames)
+            File.WriteAllText(Path.Combine(directory, name), "# fixture\n");
+
+        var target = _detector.Detect(directory).Target;
+
+        Assert.NotNull(target);
+        Assert.Equal(RunTargetKind.MultiFileCrewDirectory, target.Kind);
+        Assert.Equal(directory, target.RunPath);
     }
 
     [Fact]

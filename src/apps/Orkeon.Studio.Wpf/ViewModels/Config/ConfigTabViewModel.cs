@@ -229,7 +229,11 @@ public sealed class ConfigTabViewModel : ObservableObject
     public async Task<bool> SaveAsync(CancellationToken cancellationToken = default)
     {
         FlushMountsToDocument();
-        Validate();
+
+        // Validated as a save, not as an edit: a settings file with no mount cannot start a run
+        // on its own, so writing one is blocked even though the editor tolerates the empty list
+        // while the user is still working.
+        Validate(ValidationScope.Saving);
 
         if (HasBlockingErrors)
         {
@@ -258,11 +262,15 @@ public sealed class ConfigTabViewModel : ObservableObject
     }
 
     /// <summary>Re-runs the whole validation, mounts included, and republishes the message list.</summary>
-    public IReadOnlyList<ValidationMessage> Validate()
+    /// <param name="scope">
+    /// Why the document is being validated. <see cref="ValidationScope.Saving"/> — what
+    /// <see cref="SaveAsync"/> passes — turns findings the editor tolerates into blocking errors.
+    /// </param>
+    public IReadOnlyList<ValidationMessage> Validate(ValidationScope scope = ValidationScope.Editing)
     {
         FlushMountsToDocument();
 
-        var messages = _validator.Validate(_document);
+        var messages = _validator.Validate(_document, scope);
 
         ValidationMessages.Clear();
         foreach (var message in messages)

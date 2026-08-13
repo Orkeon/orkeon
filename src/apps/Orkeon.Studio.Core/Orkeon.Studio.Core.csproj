@@ -15,15 +15,20 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
+  <!--
+    SPEC §7: Core is referenced by three self-contained front-ends, so every transitive
+    dependency is paid three times on disk. Orkeon.Infrastructure (constants only) and
+    Orkeon.Hosting (one path helper) together dragged in ONNX, tree-sitter and the local
+    embedding model — ~230 MB per published app. Both were dropped; the handful of constants
+    and the ~40 lines of RunnerSettings path logic are duplicated in Core and pinned against
+    the originals by ConstantDriftTests in Orkeon.Studio.Core.Tests, which references them.
+    Keep this list slim: Domain and Rag.Abstractions have no heavy transitive dependency.
+  -->
   <ItemGroup>
-    <!-- FileSystemMount (mount round-trip) + [SuppressVfsCompliance]. -->
+    <!-- FileSystemMount (mount round-trip), LlmDefaults, [SuppressVfsCompliance]. -->
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
-    <!-- LlmEndpoints / ProviderDefaults — the same constants `orkeon init` writes. -->
-    <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
     <!-- RagProfilePresets — the closed list of RAG profile names offered by the UIs. -->
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />
-    <!-- RunnerSettings only (global settings path + resolution chain), per SPEC §7. -->
-    <ProjectReference Include="..\..\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
+using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Process;
-using Orkeon.Studio.Run.Launcher;
 
-namespace Orkeon.Studio.Run.Tests.Launcher;
+namespace Orkeon.Studio.Core.Tests;
 
 /// <summary>
 /// The status line: the CLI's four exit codes read back as sentences, and the dry-run
@@ -30,7 +30,7 @@ public class LaunchOutcomeFormatterTests
     {
         var cancelled = ProcessRunResult.FromCancellation(
             OrkeonExitCodes.Cancelled,
-            ProcessTerminationMode.StoppedBySignal,
+            ProcessTerminationOutcome.Of(ProcessTerminationMode.StoppedBySignal),
             TimeSpan.FromSeconds(1));
 
         Assert.Contains("Exit code 130", LaunchOutcomeFormatter.DescribeRun(cancelled), StringComparison.Ordinal);

@@ -135,11 +135,19 @@ internal sealed class ConfigEditorModel
         return null;
     }
 
-    /// <summary>Applies the forms and validates the resulting document, without writing anything.</summary>
-    public SavePreflight Preflight()
+    /// <summary>
+    /// Applies the forms and validates the resulting document, without writing anything.
+    /// </summary>
+    /// <param name="scope">
+    /// Why the document is being validated. The Save button must pass
+    /// <see cref="ValidationScope.Saving"/>: a settings file with no mount cannot start a run
+    /// on its own, and writing one is the mistake worth blocking, whereas an empty list is an
+    /// ordinary intermediate state while editing.
+    /// </param>
+    public SavePreflight Preflight(ValidationScope scope = ValidationScope.Editing)
     {
         var fieldErrors = ApplyForms();
-        return new SavePreflight(fieldErrors, _validator.Validate(Document));
+        return new SavePreflight(fieldErrors, _validator.Validate(Document, scope));
     }
 
     /// <summary>

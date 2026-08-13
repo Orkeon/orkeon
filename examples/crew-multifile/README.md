@@ -40,7 +40,8 @@ Every `orkeon run` option behaves the same on a directory as on a single file
 - YAML anchors cannot span files — each file is preprocessed on its own (they could
   not span the flat `crew.yaml`/`agents.yaml`/`tasks.yaml` triplet either).
 - A directory mixing layouts (`agents.yaml` **and** `agents/`) is rejected rather than
-  resolved by a silent precedence, as is a directory that also holds a `.ork.ts`
-  scripting entry point.
+  resolved by a silent precedence, as is a directory that also holds a scripting entry
+  point — any `*.ork.ts` or `*.ork.js` sitting directly in it, whatever the file is
+  called.
 - The flat legacy triplet (`crew.yaml` + `agents.yaml` + `tasks.yaml`) still loads
   from a directory too.

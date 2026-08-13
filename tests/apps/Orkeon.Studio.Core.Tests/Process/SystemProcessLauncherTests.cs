@@ -17,6 +17,12 @@ public sealed class SystemProcessLauncherTests
 
     private static bool ShellAvailable => !OperatingSystem.IsWindows() && File.Exists(Shell);
 
+    /// <summary>
+    /// Reported by <see cref="Assert.SkipUnless"/> so a Windows run shows these as skipped —
+    /// an early `return` would have reported them as passing without asserting anything.
+    /// </summary>
+    private const string ShellRequired = "Requires a POSIX shell at " + Shell + " (not available on this platform).";
+
     private static ProcessLaunchRequest Script(string script, TimeSpan? gracePeriod = null) => new()
     {
         FileName = Shell,
@@ -27,7 +33,7 @@ public sealed class SystemProcessLauncherTests
     [Fact]
     public async Task Output_arrives_line_by_line_while_the_process_runs()
     {
-        if (!ShellAvailable) return;
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
 
         var firstLine = new TaskCompletionSource<ProcessOutputLine>(TaskCreationOptions.RunContinuationsAsynchronously);
         var lines = new List<string>();
@@ -60,7 +66,7 @@ public sealed class SystemProcessLauncherTests
     [Fact]
     public async Task Standard_error_is_reported_on_its_own_channel()
     {
-        if (!ShellAvailable) return;
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
 
         var lines = new List<ProcessOutputLine>();
 
@@ -76,7 +82,7 @@ public sealed class SystemProcessLauncherTests
     [Fact]
     public async Task Arguments_are_passed_as_a_list_so_spaces_and_quotes_survive()
     {
-        if (!ShellAvailable) return;
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
 
         var lines = new List<string>();
         var request = new ProcessLaunchRequest
@@ -96,7 +102,7 @@ public sealed class SystemProcessLauncherTests
     [Fact]
     public async Task The_exit_code_of_the_child_is_reported()
     {
-        if (!ShellAvailable) return;
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
 
         var result = await SystemProcessLauncher.Instance.RunAsync(Script("exit 2"), cancellationToken: TestContext.Current.CancellationToken).WaitAsync(TestTimeout, TestContext.Current.CancellationToken);
 
@@ -108,7 +114,7 @@ public sealed class SystemProcessLauncherTests
     [Fact]
     public async Task A_cancelled_process_is_signalled_first_and_gets_to_exit_by_itself()
     {
-        if (!ShellAvailable) return;
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
 
         // The shell installs a SIGINT handler that exits 130 — exactly what the CLI does.
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -141,7 +147,7 @@ public sealed class SystemProcessLauncherTests
     [Fact]
     public async Task A_process_that_ignores_the_signal_is_killed_after_the_grace_period()
     {
-        if (!ShellAvailable) return;
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
 
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var cts = new CancellationTokenSource();

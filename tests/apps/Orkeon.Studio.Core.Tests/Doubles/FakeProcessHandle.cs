@@ -29,6 +29,12 @@ public sealed class FakeProcessHandle : IProcessHandle
     /// <summary>When true the modelled process honours the signal and exits.</summary>
     public bool ExitsOnGracefulStop { get; set; }
 
+    /// <summary>
+    /// When true the modelled process ends on its own right after a signal that could NOT be
+    /// delivered — the race that must not be reported as "stopped by signal".
+    /// </summary>
+    public bool ExitsAfterFailedSignal { get; set; }
+
     /// <summary>Number of graceful stop requests received.</summary>
     public int GracefulStopRequests { get; private set; }
 
@@ -43,6 +49,9 @@ public sealed class FakeProcessHandle : IProcessHandle
 
         if (!GracefulStopSucceeds)
         {
+            if (ExitsAfterFailedSignal)
+                HasExited = true;
+
             failureReason = GracefulStopFailure;
             return false;
         }

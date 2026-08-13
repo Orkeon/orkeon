@@ -60,6 +60,9 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         ValidateCommand = new AsyncRelayCommand(() => ValidateAsync(), CanLaunch);
         RunCommand = new AsyncRelayCommand(() => RunAsync(), CanLaunch);
+        ReplayCommand = new AsyncRelayCommand(
+            parameter => parameter is LaunchHistoryEntry entry ? ReplayAsync(entry) : Task.CompletedTask,
+            _ => !IsRunning);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         ClearLogCommand = new RelayCommand(() => Log.Clear());
         CheckOptionsCommand = new RelayCommand(() => CheckOptions());
@@ -88,6 +91,12 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>Runs the crew for real.</summary>
     public AsyncRelayCommand RunCommand { get; }
 
+    /// <summary>
+    /// Re-runs a <see cref="LaunchHistoryEntry"/> exactly as it was recorded. It takes the entry
+    /// as its command parameter, which is what the history panel supplies.
+    /// </summary>
+    public AsyncRelayCommand ReplayCommand { get; }
+
     /// <summary>Stops the child process: graceful signal first, kill after the grace period.</summary>
     public RelayCommand CancelCommand { get; }
 
@@ -111,6 +120,7 @@ public sealed class LaunchTabViewModel : ObservableObject
 
             RunCommand.RaiseCanExecuteChanged();
             ValidateCommand.RaiseCanExecuteChanged();
+            ReplayCommand.RaiseCanExecuteChanged();
             CancelCommand.RaiseCanExecuteChanged();
         }
     }
@@ -299,18 +309,69 @@ public sealed class LaunchTabViewModel : ObservableObject
         var arguments = RunArgumentsBuilder.Build(target, BuildOptions(validate));
         var workingDirectory = GetWorkingDirectory(target);
 
-        var entry = LaunchHistoryEntry.Starting(
-            target.SelectedPath,
+        return await ExecuteAsync(
             arguments,
-            Options.EffectiveSettingsPath,
-            workingDirectory);
+            workingDirectory,
+            LaunchHistoryEntry.Starting(
+                target.SelectedPath,
+                arguments,
+                Options.EffectiveSettingsPath,
+                workingDirectory),
+            // A dry run is not a launch: recording it would fill the replayable history with
+            // entries that never ran a crew. The terminal launcher makes the same exclusion.
+            recordInHistory: !validate,
+            validate,
+            cancellationToken);
+    }
 
+    /// <summary>
+    /// Re-runs a past launch exactly as it was: the recorded argument list is replayed verbatim,
+    /// so a replay cannot drift from what actually ran because the form has since been edited.
+    /// The form is still refreshed from the entry, so the user sees what is running.
+    /// </summary>
+    public async Task<ProcessRunResult?> ReplayAsync(
+        LaunchHistoryEntry entry,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        if (entry.Arguments.Count == 0)
+        {
+            StatusMessage = string.Create(
+                CultureInfo.InvariantCulture,
+                $"Nothing to replay: the entry for '{entry.Target}' recorded no arguments.");
+            return null;
+        }
+
+        LoadIntoForm(entry);
+
+        return await ExecuteAsync(
+            entry.Arguments,
+            entry.WorkingDirectory,
+            LaunchHistoryEntry.Starting(
+                entry.Target,
+                entry.Arguments,
+                entry.SettingsPath,
+                entry.WorkingDirectory),
+            recordInHistory: true,
+            dryRun: false,
+            cancellationToken);
+    }
+
+    private async Task<ProcessRunResult> ExecuteAsync(
+        IReadOnlyList<string> arguments,
+        string? workingDirectory,
+        LaunchHistoryEntry entry,
+        bool recordInHistory,
+        bool dryRun,
+        CancellationToken cancellationToken)
+    {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _cancellation = cancellation;
         IsRunning = true;
 
         Log.AppendNotice(CommandLineDisplay.Format(arguments));
-        StatusMessage = validate ? "Validating…" : "Running…";
+        StatusMessage = dryRun ? "Validating…" : "Running…";
 
         try
         {
@@ -322,10 +383,16 @@ public sealed class LaunchTabViewModel : ObservableObject
                 cancellation.Token);
 
             LastResult = result;
-            StatusMessage = result.Description;
-            Log.AppendNotice(result.Description);
 
-            await History.RecordAsync(entry.WithResult(result), CancellationToken.None);
+            // A dry run's outcome is a verdict, not just an exit code: the launcher says whether
+            // the crew validated, as the terminal launcher does.
+            var outcome = LaunchOutcomeFormatter.Describe(result, dryRun);
+            StatusMessage = outcome;
+            Log.AppendNotice(outcome);
+
+            if (recordInHistory)
+                await History.RecordAsync(entry.WithResult(result), CancellationToken.None);
+
             return result;
         }
         finally
@@ -350,12 +417,20 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     private void OnInputsChanged(object? sender, EventArgs e) => RefreshPreview();
 
-    private void OnReplayRequested(object? sender, LaunchReplayEventArgs e)
-    {
-        var entry = e.Entry;
+    /// <summary>
+    /// One click replays: the history panel's button runs the recorded command line, it does not
+    /// merely fill the form in and wait for a second click on Run.
+    /// </summary>
+    private void OnReplayRequested(object? sender, LaunchReplayEventArgs e) =>
+        ReplayCommand.Execute(e.Entry);
 
-        // Replaying re-detects the target rather than trusting the stored path blindly: the crew may
-        // have moved or changed shape since the run was recorded.
+    /// <summary>
+    /// Shows a past launch in the form, so the user can see and then adjust what was replayed.
+    /// The target is re-detected rather than trusted blindly — the crew may have moved — but the
+    /// replay itself runs the recorded arguments whatever this finds.
+    /// </summary>
+    private void LoadIntoForm(LaunchHistoryEntry entry)
+    {
         Target.Select(entry.Target);
 
         if (entry.SettingsPath is { Length: > 0 } settingsPath)
@@ -363,14 +438,16 @@ public sealed class LaunchTabViewModel : ObservableObject
             Options.SettingsPath = settingsPath;
             Options.SettingsMode = SettingsSelectionMode.ExplicitPath;
         }
-
-        StatusMessage = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Replay prepared from the run of {entry.StartedAt.ToLocalTime():yyyy-MM-dd HH:mm}.");
     }
 
     private void RefreshPreview()
     {
+        // The mount table's indices depend on the mounts the runner injects ahead of the --mount
+        // arguments, which depend on the target and on whether LLM logging is on.
+        Mounts.AutoInjection = Target.Target is { } target
+            ? MountAutoInjection.For(target, BuildOptions())
+            : null;
+
         // The builder throws on an option the target's shape cannot carry, so the preview is built
         // from the arguments only once the same validation has passed; otherwise the message list is
         // what tells the user why there is nothing to show.

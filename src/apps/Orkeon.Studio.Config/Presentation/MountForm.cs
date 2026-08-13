@@ -58,18 +58,9 @@ internal sealed class MountForm
     /// <summary>Index of <see cref="Rights"/> in <see cref="RightsChoices"/>.</summary>
     public int RightsChoiceIndex
     {
-        get
-        {
-            for (var i = 0; i < MountRightsTokens.Choices.Count; i++)
-            {
-                if (MountRightsTokens.Choices[i].Rights == Rights)
-                    return i;
-            }
-
-            return 0;
-        }
+        get => MountRightsTokens.IndexOf(Rights);
         set => Rights = value >= 0 && value < MountRightsTokens.Choices.Count
-            ? MountRightsTokens.Choices[value].Rights
+            ? MountRightsTokens.At(value)
             : MountRights.ReadOnly;
     }
 
@@ -125,33 +116,8 @@ internal sealed class MountForm
     }
 
     /// <summary>Creates the physical directory the user picked but has not created yet.</summary>
-    public bool TryCreatePhysicalDirectory([NotNullWhen(false)] out string? error)
-    {
-        error = null;
-
-        var path = FieldText.ToStringOrNull(PhysicalPath);
-        if (path is null)
-        {
-            error = "Pick a physical path first.";
-            return false;
-        }
-
-        try
-        {
-            _directories.Create(path);
-            return true;
-        }
-        catch (IOException ex)
-        {
-            error = ex.Message;
-            return false;
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            error = ex.Message;
-            return false;
-        }
-    }
+    public bool TryCreatePhysicalDirectory([NotNullWhen(false)] out string? error) =>
+        _directories.TryCreate(PhysicalPath, out error);
 
     /// <summary>
     /// Builds the mount the form describes. The result is what will be written verbatim

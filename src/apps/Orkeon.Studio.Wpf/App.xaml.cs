@@ -21,10 +21,22 @@ public partial class App : System.Windows.Application
 
         base.OnStartup(e);
 
-        // The startup switch is handled before anything else is built, so a smoke run never depends
-        // on the disk probes or on the co-installed CLI being present.
         var arguments = StartupArguments.Parse(e.Args);
 
+        if (arguments.Unrecognized.Count > 0)
+        {
+            // Refused before anything is built: an unknown switch is a mistake to report, not one
+            // to open a window over. Reported on stderr rather than in a message box — this path
+            // has to stay non-blocking for a script or a CI runner that mistyped a flag.
+            Console.Error.WriteLine(StartupArguments.DescribeUnrecognized(arguments.Unrecognized));
+            Shutdown(StartupArguments.UnrecognizedArgumentExitCode);
+            return;
+        }
+
+        // The ViewModel is built here, before the smoke switch is honoured — but building it only
+        // wires the seams together. Everything that touches the machine (locating the co-installed
+        // CLI, reading the history file) is deferred to InitializeAsync below, which a smoke run
+        // never reaches; that is what makes the smoke independent of the environment.
         _viewModel = MainWindowViewModel.CreateForCurrentMachine(
             new WindowPathPicker(),
             new WpfDispatcher(Dispatcher));

@@ -12,6 +12,13 @@ public sealed record StartupArguments
     public const string SmokeExitSwitch = "--smoke-exit";
 
     /// <summary>
+    /// Exit code for an argument Studio does not accept — the same contract as the two terminal
+    /// front-ends, so a typo in a shortcut or a script fails loudly instead of silently opening
+    /// the window as if nothing had been asked for.
+    /// </summary>
+    public const int UnrecognizedArgumentExitCode = 2;
+
+    /// <summary>
     /// Whether Studio should open its window, close it immediately and exit with code 0. This is the
     /// smoke test: it proves the app starts, resolves its XAML and builds its ViewModels on a real
     /// Windows runner, without needing anyone to click anything.
@@ -39,5 +46,14 @@ public sealed record StartupArguments
         }
 
         return new StartupArguments { SmokeExit = smokeExit, Unrecognized = unrecognized };
+    }
+
+    /// <summary>The message written to standard error before exiting on an unknown argument.</summary>
+    public static string DescribeUnrecognized(IReadOnlyList<string> unrecognized)
+    {
+        ArgumentNullException.ThrowIfNull(unrecognized);
+
+        return $"Unrecognized argument(s): {string.Join(", ", unrecognized)}. "
+            + $"Orkeon Studio accepts only {SmokeExitSwitch}.";
     }
 }

@@ -28,6 +28,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\apps\Orkeon.Studio.Core\Orkeon.Studio.Core.csproj" />
+    <!--
+      Core deliberately does NOT reference these (see its csproj): they would bloat every
+      self-contained Studio publish. The test project does, so ConstantDriftTests and
+      DirectoryLayoutEquivalenceTests can check Core's copies against the real thing.
+    -->
+    <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
   </ItemGroup>
 
 </Project>

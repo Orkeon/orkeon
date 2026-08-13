@@ -117,8 +117,24 @@ public sealed class TargetSelectionViewModel : ObservableObject
     public bool IsAmbiguous => Detection?.ErrorCode == RunTargetCodes.AmbiguousDirectory;
 
     /// <summary>
-    /// The "requires a newer Orkeon CLI" notice, shown for a multi-file crew directory because
-    /// <c>orkeon run &lt;directory&gt;</c> is a dependency Studio may ship ahead of (spec §6).
+    /// Whether the shape chooser must stay on screen. Preferring the YAML layout of a contested
+    /// directory counts: the CLI rejects such a directory outright, so that answer leaves the
+    /// user with an unrunnable target and the other shape still to pick. Hiding the chooser then
+    /// would strand them on a failure with no way back.
+    /// </summary>
+    public bool NeedsShapeChoice =>
+        Detection?.ErrorCode is RunTargetCodes.AmbiguousDirectory or RunTargetCodes.YamlLayoutBlockedByScript;
+
+    /// <summary>
+    /// Set when the chosen YAML layout cannot be run because the directory also holds a script:
+    /// the detector's own remediation, shown as-is since it names the scripts to move.
+    /// </summary>
+    public string? YamlLayoutBlockedMessage =>
+        Detection?.ErrorCode == RunTargetCodes.YamlLayoutBlockedByScript ? Detection.Error : null;
+
+    /// <summary>
+    /// The notice shown for a multi-file crew directory, whose launch relies on
+    /// <c>orkeon run &lt;directory&gt;</c> (spec §6).
     /// </summary>
     public string? DirectoryRunNotice =>
         Target?.RequiresDirectoryRunSupport == true ? RunTargetRequirements.DirectoryRunNotice : null;
@@ -161,6 +177,8 @@ public sealed class TargetSelectionViewModel : ObservableObject
             nameof(ErrorCode),
             nameof(NeedsSelection),
             nameof(IsAmbiguous),
+            nameof(NeedsShapeChoice),
+            nameof(YamlLayoutBlockedMessage),
             nameof(DirectoryRunNotice),
             nameof(RunPath),
             nameof(StatusDisplay));

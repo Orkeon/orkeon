@@ -109,8 +109,9 @@ public static class RunArgumentsBuilder
 
     /// <summary>
     /// Reports what a UI should show before launching: options set on the wrong dialect and
-    /// malformed values as errors, the directory-dispatch prerequisite and a double
-    /// <c>--inputs</c> as warnings. An empty list means <see cref="Build"/> will succeed.
+    /// malformed values as errors, a double <c>--inputs</c> as a warning, and the
+    /// directory-dispatch prerequisite as advice. An empty list means <see cref="Build"/>
+    /// will succeed.
     /// </summary>
     public static IReadOnlyList<ValidationMessage> Validate(RunTarget target, RunLaunchOptions? options = null)
     {
@@ -143,6 +144,9 @@ public static class RunArgumentsBuilder
         if (target.Dialect == RunTargetDialect.Yaml)
             messages.AddRange(ValidateVariables(effective.Variables));
 
+        // The configuration key is NOT Mounts:{i}: the runner injects its own mounts first, so
+        // the user's i-th --mount lands that many slots further down the array.
+        var autoInjected = MountAutoInjection.For(target, effective).Count;
         for (var i = 0; i < effective.Mounts.Count; i++)
         {
             if (string.IsNullOrWhiteSpace(effective.Mounts[i]))
@@ -150,7 +154,7 @@ public static class RunArgumentsBuilder
                 messages.Add(ValidationMessage.Error(
                     LaunchCodes.EmptyMount,
                     string.Create(CultureInfo.InvariantCulture, $"The --mount entry at index {i} is empty."),
-                    MountOverrideSemantics.ConfigurationKey(i)));
+                    MountOverrideSemantics.ConfigurationKey(autoInjected + i)));
             }
         }
 
@@ -166,8 +170,10 @@ public static class RunArgumentsBuilder
 
         if (target.RequiresDirectoryRunSupport)
         {
-            messages.Add(ValidationMessage.Warning(
-                LaunchCodes.DirectoryRunUnsupported,
+            // Advice, not a warning: directory dispatch shipped in
+            // RunTargetRequirements.MinimumCliVersion and the co-installed CLI has it.
+            messages.Add(ValidationMessage.Information(
+                LaunchCodes.DirectoryRunNotice,
                 RunTargetRequirements.DirectoryRunNotice,
                 target.RunPath));
         }

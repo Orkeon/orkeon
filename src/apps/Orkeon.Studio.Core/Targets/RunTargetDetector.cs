@@ -5,17 +5,19 @@ namespace Orkeon.Studio.Core.Targets;
 /// <summary>
 /// Recognises what a picked path is, using the rules the CLI and the loaders already use:
 /// <list type="bullet">
-///   <item><description>a file, by extension — the same test as
-///   <c>RunCommand.IsYamlConfig</c> (<c>src/scripting/Orkeon.Scripting.Cli/Commands/RunCommand.cs:243-247</c>)
-///   for YAML, the scripting extensions otherwise;</description></item>
-///   <item><description>a directory holding an <c>agents/</c> or <c>tasks/</c> sub-folder —
-///   the multi-file crew layout (<c>features/crew-multifile-directory-layout.md</c>);</description></item>
+///   <item><description>a file, by extension — the same test as <c>RunCommand.IsYamlConfig</c>
+///   for YAML, the scripting suffixes otherwise;</description></item>
+///   <item><description>a directory holding a multi-file YAML crew — an <c>agents/</c> or
+///   <c>tasks/</c> sub-folder, or the flat legacy triplet <c>crew.yaml</c> + <c>agents.yaml</c>
+///   + <c>tasks.yaml</c>. Both forms are what <c>CrewDirectoryLayout.Inspect</c> accepts, and
+///   they are what the CLI will run when handed the directory;</description></item>
 ///   <item><description>a directory holding <c>crew.ork.ts</c> — the scripting convention
-///   (<c>ScriptHostFacadeOptions.CrewFileName</c>), or else its <c>*.ork.ts</c> files offered
-///   as candidates.</description></item>
+///   (<c>ScriptHostFacadeOptions.CrewFileName</c>), or else its <c>*.ork.ts</c>/<c>*.ork.js</c>
+///   files offered as candidates.</description></item>
 /// </list>
-/// A directory that matches two shapes at once is an error naming both: the layout loader
-/// applies no precedence there and neither does Studio.
+/// A directory holding a YAML layout <em>and</em> any scripting entry point is refused as
+/// ambiguous, exactly as <c>CrewDirectoryLayout.Inspect</c> refuses it: the CLI applies no
+/// precedence there, and offers no flag to force one shape over the other.
 /// </summary>
 public sealed class RunTargetDetector
 {
@@ -31,8 +33,27 @@ public sealed class RunTargetDetector
     /// <summary>Suffix of a scripting-DSL crew file.</summary>
     public const string ScriptSuffix = ".ork.ts";
 
-    /// <summary>Glob used to list the scripts of a directory.</summary>
-    private const string ScriptSearchPattern = "*" + ScriptSuffix;
+    /// <summary>Suffix of an already-transpiled scripting-DSL crew file.</summary>
+    public const string CompiledScriptSuffix = ".ork.js";
+
+    /// <summary>
+    /// The flat legacy YAML layout: all three files must be present for the directory to be
+    /// one (mirrors <c>CrewDirectoryLayout.FlatFiles</c>).
+    /// </summary>
+    public static IReadOnlyList<string> FlatLayoutFileNames { get; } =
+        ["crew.yaml", "agents.yaml", "tasks.yaml"];
+
+    /// <summary>Per-entity sub-folders that select the multi-file layout.</summary>
+    private static readonly string[] EntityDirectoryNames = [AgentsDirectoryName, TasksDirectoryName];
+
+    /// <summary>
+    /// Scripting suffixes that make a YAML directory ambiguous — the same pair as
+    /// <c>CrewDirectoryLayout.ScriptSuffixes</c>, not just the conventional entry point.
+    /// </summary>
+    private static readonly string[] ScriptSuffixes = [ScriptSuffix, CompiledScriptSuffix];
+
+    /// <summary>Globs used to list the scripts of a directory.</summary>
+    private static readonly string[] ScriptSearchPatterns = [.. ScriptSuffixes.Select(suffix => "*" + suffix)];
 
     private static readonly string[] YamlExtensions = [".yaml", ".yml"];
 
@@ -50,10 +71,11 @@ public sealed class RunTargetDetector
     /// <param name="path">A file or directory the user picked.</param>
     /// <param name="preferredDirectoryKind">
     /// How to read a directory that matches both directory shapes. Left null, such a
-    /// directory is an error naming both candidates; set to
-    /// <see cref="RunTargetKind.MultiFileCrewDirectory"/> or
-    /// <see cref="RunTargetKind.ScriptDirectory"/>, it is the user's explicit answer to
-    /// that error and resolves the target.
+    /// directory is an error naming both candidates. Set to
+    /// <see cref="RunTargetKind.ScriptDirectory"/>, it resolves the script the CLI will
+    /// accept as a file. Set to <see cref="RunTargetKind.MultiFileCrewDirectory"/>, it is
+    /// still an error — no CLI flag forces the YAML layout, so the launch would fail — but a
+    /// dedicated one saying how to unblock it.
     /// </param>
     public RunTargetDetection Detect(string? path, RunTargetKind? preferredDirectoryKind = null)
     {
@@ -111,27 +133,19 @@ public sealed class RunTargetDetector
 
     private RunTargetDetection DetectDirectory(string directory, RunTargetKind? preferredKind)
     {
-        var markers = FindMultiFileMarkers(directory);
-        var crewScript = Path.Combine(directory, CrewScriptFileName);
-        var hasCrewScript = _probe.FileExists(crewScript);
+        var markers = FindYamlLayoutMarkers(directory);
+        var scripts = ListScripts(directory);
+        var crewScript = scripts.Find(IsConventionalCrewScript);
 
-        if (markers.Count > 0 && hasCrewScript)
-        {
-            return preferredKind switch
-            {
-                RunTargetKind.MultiFileCrewDirectory => ResolveMultiFile(directory, markers),
-                RunTargetKind.ScriptDirectory => ResolveScriptDirectory(directory, crewScript),
-                _ => AmbiguousDirectory(directory, markers, crewScript),
-            };
-        }
+        if (markers.Count > 0 && scripts.Count > 0)
+            return ResolveContested(directory, markers, scripts, crewScript, preferredKind);
 
         if (markers.Count > 0)
             return ResolveMultiFile(directory, markers);
 
-        if (hasCrewScript)
+        if (crewScript is not null)
             return ResolveScriptDirectory(directory, crewScript);
 
-        var scripts = ListScripts(directory);
         if (scripts.Count > 0)
             return RunTargetDetection.NeedsSelection(directory, scripts);
 
@@ -139,8 +153,44 @@ public sealed class RunTargetDetector
             directory,
             RunTargetCodes.NoCandidate,
             $"'{directory}' holds no crew definition: no '{AgentsDirectoryName}/' or '{TasksDirectoryName}/' "
-            + $"sub-folder, no '{CrewScriptFileName}', no '{ScriptSearchPattern}' file. "
+            + $"sub-folder, no '{string.Join(" + ", FlatLayoutFileNames)}' triplet, no '{CrewScriptFileName}', "
+            + $"no {DescribeScriptPatterns()} file. "
             + "Pick a .yaml or .ork.ts file inside it instead.");
+    }
+
+    /// <summary>
+    /// Resolves a directory holding a YAML layout <em>and</em> at least one script. Only the
+    /// script preference can resolve it: the CLI runs a script file happily, but rejects the
+    /// directory itself whatever the user meant, so preferring the YAML layout can only be
+    /// reported — never turned into a command line.
+    /// </summary>
+    private static RunTargetDetection ResolveContested(
+        string directory,
+        List<string> markers,
+        List<string> scripts,
+        string? crewScript,
+        RunTargetKind? preferredKind)
+    {
+        if (preferredKind == RunTargetKind.ScriptDirectory)
+        {
+            return crewScript is not null
+                ? ResolveScriptDirectory(directory, crewScript)
+                : RunTargetDetection.NeedsSelection(directory, scripts);
+        }
+
+        if (preferredKind == RunTargetKind.MultiFileCrewDirectory)
+        {
+            return RunTargetDetection.Failed(
+                directory,
+                RunTargetCodes.YamlLayoutBlockedByScript,
+                $"'{directory}' cannot be run as a multi-file YAML crew while it also holds a "
+                + $"scripting entry point ({string.Join(", ", scripts)}): the CLI rejects such a "
+                + "directory and has no flag that forces the YAML layout. Move or remove the "
+                + "script(s) to run the YAML layout, or run the script instead.",
+                [.. markers, .. scripts]);
+        }
+
+        return AmbiguousDirectory(directory, markers, scripts);
     }
 
     private static RunTargetDetection ResolveMultiFile(string directory, List<string> markers) =>
@@ -163,43 +213,59 @@ public sealed class RunTargetDetector
     private static RunTargetDetection AmbiguousDirectory(
         string directory,
         List<string> markers,
-        string crewScript)
-    {
-        var candidates = new List<string>(markers.Count + 1);
-        candidates.AddRange(markers);
-        candidates.Add(crewScript);
-
-        return RunTargetDetection.Failed(
+        List<string> scripts) =>
+        RunTargetDetection.Failed(
             directory,
             RunTargetCodes.AmbiguousDirectory,
-            $"'{directory}' matches two run shapes at once: the multi-file crew layout "
-            + $"({string.Join(", ", markers)}) and the script entry point ({crewScript}). "
+            $"'{directory}' matches two run shapes at once: the multi-file YAML crew layout "
+            + $"({string.Join(", ", markers)}) and a scripting entry point "
+            + $"({string.Join(", ", scripts)}). "
             + "Choose which one to run — no precedence is applied.",
-            candidates);
-    }
+            [.. markers, .. scripts]);
 
-    private List<string> FindMultiFileMarkers(string directory)
+    /// <summary>
+    /// The paths identifying a multi-file YAML crew: the per-entity sub-folders when there
+    /// are any, else the flat legacy triplet when all three files are present. Empty when the
+    /// directory carries no YAML layout at all.
+    /// </summary>
+    private List<string> FindYamlLayoutMarkers(string directory)
     {
-        var markers = new List<string>(2);
+        var entityFolders = new List<string>(EntityDirectoryNames.Length);
 
-        foreach (var name in new[] { AgentsDirectoryName, TasksDirectoryName })
+        foreach (var name in EntityDirectoryNames)
         {
             var candidate = Path.Combine(directory, name);
             if (_probe.DirectoryExists(candidate))
-                markers.Add(candidate);
+                entityFolders.Add(candidate);
         }
 
-        return markers;
+        if (entityFolders.Count > 0)
+            return entityFolders;
+
+        var flat = FlatLayoutFileNames.Select(name => Path.Combine(directory, name)).ToList();
+        return flat.TrueForAll(_probe.FileExists) ? flat : entityFolders;
     }
 
     /// <summary>
     /// Scripts of the directory, filtered on the real suffix: the glob is only a hint to
-    /// the file system, whose pattern matching differs between platforms.
+    /// the file system, whose pattern matching differs between platforms. Both globs can
+    /// return the same file, so duplicates are dropped.
     /// </summary>
     private List<string> ListScripts(string directory) =>
-        [.. _probe.EnumerateFiles(directory, ScriptSearchPattern)
-            .Where(file => file.EndsWith(ScriptSuffix, StringComparison.OrdinalIgnoreCase))
+        [.. ScriptSearchPatterns
+            .SelectMany(pattern => _probe.EnumerateFiles(directory, pattern))
+            .Where(HasScriptSuffix)
+            .Distinct(StringComparer.Ordinal)
             .OrderBy(file => file, StringComparer.Ordinal)];
+
+    private static bool IsConventionalCrewScript(string path) =>
+        string.Equals(Path.GetFileName(path), CrewScriptFileName, StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasScriptSuffix(string path) =>
+        ScriptSuffixes.Any(suffix => path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+
+    private static string DescribeScriptPatterns() =>
+        string.Join(" / ", ScriptSearchPatterns.Select(pattern => $"'{pattern}'"));
 
     /// <summary>True for a YAML crew file — the same rule as <c>RunCommand.IsYamlConfig</c>.</summary>
     public static bool IsYamlFile(string path)

@@ -123,4 +123,24 @@ public static class MountRightsTokens
     [SuppressMessage("Design", "CA1024", Justification = "Lookup over the Choices table, not a property-backed value.")]
     public static string GetLabel(MountRights rights) =>
         Choices.First(c => c.Rights == rights).Label;
+
+    /// <summary>
+    /// Position of <paramref name="rights"/> in <see cref="Choices"/> — the index a
+    /// drop-down or a choice list has to be set to. Unknown values fall back to the first
+    /// entry, which is the safest of the three.
+    /// </summary>
+    public static int IndexOf(MountRights rights)
+    {
+        for (var i = 0; i < Choices.Count; i++)
+        {
+            if (Choices[i].Rights == rights)
+                return i;
+        }
+
+        return 0;
+    }
+
+    /// <summary>The rights at <paramref name="index"/> of <see cref="Choices"/>, clamped to the list.</summary>
+    public static MountRights At(int index) =>
+        Choices[Math.Clamp(index, 0, Choices.Count - 1)].Rights;
 }

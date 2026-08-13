@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.Launch;
+using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Run.Launcher;
 using Orkeon.Studio.Run.Views;
 
@@ -78,7 +79,7 @@ public class RunLauncherWindowTests
         window.SelectTargetForTest("/crews/multi");
 
         Assert.Contains(
-            $"Requires Orkeon >= {DirectoryRunSupport.MinimumCliVersion}",
+            RunTargetRequirements.MinimumCliVersion,
             window.TargetStatusText,
             StringComparison.Ordinal);
     }

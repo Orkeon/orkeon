@@ -47,4 +47,24 @@ public sealed class StartupArgumentsTests
     {
         Assert.Equal("--smoke-exit", StartupArguments.SmokeExitSwitch);
     }
+
+    [Fact]
+    public void Should_NameEveryUnknownArgument_In_TheMessageTheAppReports()
+    {
+        // The two terminal front-ends exit 2 on an argument they do not know; the WPF one now
+        // does the same, and this is the text it writes to standard error before it does.
+        var arguments = StartupArguments.Parse(["--typo", "extra"]);
+
+        var message = StartupArguments.DescribeUnrecognized(arguments.Unrecognized);
+
+        Assert.Contains("--typo", message, StringComparison.Ordinal);
+        Assert.Contains("extra", message, StringComparison.Ordinal);
+        Assert.Contains(StartupArguments.SmokeExitSwitch, message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_UseTheSameRefusalCode_As_TheTerminalFrontEnds()
+    {
+        Assert.Equal(2, StartupArguments.UnrecognizedArgumentExitCode);
+    }
 }

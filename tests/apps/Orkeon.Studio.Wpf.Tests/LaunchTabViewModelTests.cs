@@ -55,8 +55,11 @@ public sealed class TargetSelectionViewModelTests
 
         selection.Select("/crews/team");
 
-        Assert.NotNull(selection.DirectoryRunNotice);
-        Assert.Contains("newer Orkeon CLI", selection.DirectoryRunNotice!, StringComparison.Ordinal);
+        Assert.Equal(RunTargetRequirements.DirectoryRunNotice, selection.DirectoryRunNotice);
+        Assert.Contains(
+            RunTargetRequirements.MinimumCliVersion,
+            selection.DirectoryRunNotice!,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -238,30 +241,44 @@ public sealed class LaunchOptionsViewModelTests
 
 public sealed class LaunchMountsViewModelTests
 {
-    [Fact]
-    public void Should_ShowTheSettingsMounts_When_NoLaunchMountIsAdded()
+    private static LaunchMountsViewModel Panel(params string[] existingDirectories)
     {
+        var mounts = new LaunchMountsViewModel(new FakeDirectoryProbe(existingDirectories))
+        {
+            // What the tab publishes once a crew is resolved: the runner's own mount for the
+            // crew's directory, which occupies index 0 before any --mount is appended.
+            AutoInjection = new MountAutoInjection { Mounts = ["/crews:/crews:ro"] },
+        };
+
+        return mounts;
+    }
+
+    [Fact]
+    public void Should_ShowNoEffectiveMount_When_NoCrewIsSelected()
+    {
+        // Without a target the runner's own mounts are unknown, and so is the index every
+        // --mount would occupy; showing a table anyway would be off by one or two rows.
         var mounts = new LaunchMountsViewModel(new FakeDirectoryProbe("/a"));
 
         mounts.SetSettingsMounts(["/a:/workspace:ro"]);
 
-        var effective = Assert.Single(mounts.EffectiveMounts);
-        Assert.Equal(MountOrigin.Settings, effective.Origin);
-        Assert.Equal(0, mounts.OverriddenCount);
+        Assert.False(mounts.HasAutoInjection);
+        Assert.Empty(mounts.EffectiveMounts);
+        Assert.Equal(LaunchMountsViewModel.AutoInjectionUnknownNotice, mounts.Summary);
     }
 
     [Fact]
-    public void Should_ReplaceBySameIndex_When_ALaunchMountIsAdded()
+    public void Should_ShowTheAutoInjectedMountMaskingTheFirstSettingsEntry()
     {
-        // The override is positional, not a merge — this is the semantic the panel has to display.
-        var mounts = new LaunchMountsViewModel(new FakeDirectoryProbe("/a", "/b"));
+        // The runner writes its own mount at index 0, so the first appsettings entry is masked
+        // whatever the user does — a launcher that hid that would be showing a mount list the
+        // runtime never sees.
+        var mounts = Panel("/a");
+
         mounts.SetSettingsMounts(["/a:/workspace:ro", "/a:/output:rw"]);
 
-        var added = mounts.LaunchMounts.AddMount();
-        added.PhysicalPath = "/b";
-
         Assert.Equal(2, mounts.EffectiveMounts.Count);
-        Assert.Equal(MountOrigin.CommandLine, mounts.EffectiveMounts[0].Origin);
+        Assert.Equal(MountOrigin.AutoInjected, mounts.EffectiveMounts[0].Origin);
         Assert.True(mounts.EffectiveMounts[0].OverridesSettings);
         Assert.Equal("/a:/workspace:ro", mounts.EffectiveMounts[0].ReplacedSettingsMount);
         Assert.Equal(MountOrigin.Settings, mounts.EffectiveMounts[1].Origin);
@@ -269,12 +286,42 @@ public sealed class LaunchMountsViewModelTests
     }
 
     [Fact]
+    public void Should_ReplaceBySameIndex_When_ALaunchMountIsAdded()
+    {
+        // The override is positional, not a merge — this is the semantic the panel has to
+        // display, and the position starts after the mounts the runner injects itself.
+        var mounts = Panel("/a", "/b");
+        mounts.SetSettingsMounts(["/a:/workspace:ro", "/a:/output:rw", "/a:/extra:ro"]);
+
+        var added = mounts.LaunchMounts.AddMount();
+        added.PhysicalPath = "/b";
+
+        Assert.Equal(3, mounts.EffectiveMounts.Count);
+        Assert.Equal(MountOrigin.AutoInjected, mounts.EffectiveMounts[0].Origin);
+        Assert.Equal(MountOrigin.CommandLine, mounts.EffectiveMounts[1].Origin);
+        Assert.True(mounts.EffectiveMounts[1].OverridesSettings);
+        Assert.Equal("/a:/output:rw", mounts.EffectiveMounts[1].ReplacedSettingsMount);
+        Assert.Equal(MountOrigin.Settings, mounts.EffectiveMounts[2].Origin);
+        Assert.Equal(2, mounts.OverriddenCount);
+    }
+
+    [Fact]
+    public void Should_NameTheAutoInjectedOrigin_So_ItIsNotReadAsTheUsersOwn()
+    {
+        var mounts = Panel("/a");
+        mounts.SetSettingsMounts([]);
+
+        Assert.Contains("auto", mounts.EffectiveMounts[0].OriginDisplay, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_NameTheConfigurationKey_So_TheIndexRuleIsVisible()
     {
-        var mounts = new LaunchMountsViewModel(new FakeDirectoryProbe("/a"));
-        mounts.SetSettingsMounts(["/a:/workspace:ro"]);
+        var mounts = Panel("/a");
+        mounts.SetSettingsMounts(["/a:/workspace:ro", "/a:/output:rw"]);
 
         Assert.Equal("Orkeon:FileSystem:Mounts:0", mounts.EffectiveMounts[0].ConfigurationKey);
+        Assert.Equal("Orkeon:FileSystem:Mounts:1", mounts.EffectiveMounts[1].ConfigurationKey);
     }
 
     [Fact]
@@ -504,14 +551,16 @@ public sealed class LaunchTabViewModelTests
     }
 
     [Fact]
-    public void Should_WarnAboutTheCliVersion_When_TheTargetIsAMultiFileCrew()
+    public void Should_StateTheCliRequirement_When_TheTargetIsAMultiFileCrew()
     {
         var probe = new FakeTargetProbe().WithDirectory("/crews/team").WithDirectory("/crews/team/agents");
         var (tab, _, _) = Build(probe);
 
         tab.Target.Select("/crews/team");
 
-        Assert.Contains(tab.ValidationMessages, m => m.Code == LaunchCodes.DirectoryRunUnsupported);
+        Assert.Contains(
+            tab.ValidationMessages,
+            m => m.Code == LaunchCodes.DirectoryRunNotice && m.Severity == ValidationSeverity.Information);
         Assert.False(tab.HasBlockingErrors);
     }
 
@@ -635,7 +684,10 @@ public sealed class ValidationMessageViewModelTests
         var message = new Orkeon.Studio.Wpf.ViewModels.Common.ValidationMessageViewModel(
             ValidationMessage.Error("WIN-01", "no Llm section", "Llm"));
 
-        Assert.Contains("[WIN-01]", message.Display, StringComparison.Ordinal);
+        // The severity is on the line, not only in the glyph: the terminal editor prints
+        // [ERROR]/[WARN] and the three front-ends must read the same.
+        Assert.Contains("ERROR", message.Display, StringComparison.Ordinal);
+        Assert.Contains("WIN-01", message.Display, StringComparison.Ordinal);
         Assert.Contains("Llm", message.Display, StringComparison.Ordinal);
         Assert.True(message.IsError);
     }
@@ -646,7 +698,7 @@ public sealed class ValidationMessageViewModelTests
         var message = new Orkeon.Studio.Wpf.ViewModels.Common.ValidationMessageViewModel(
             ValidationMessage.Warning("CODE", "text"));
 
-        Assert.Equal("[CODE] text", message.Display);
+        Assert.Equal("[WARN ] CODE — text", message.Display);
         Assert.False(message.IsError);
     }
 }

@@ -16,9 +16,11 @@ public sealed class ProcessTerminatorTests
     {
         var handle = new FakeProcessHandle { ExitsOnGracefulStop = true };
 
-        var mode = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
+        var outcome = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
 
-        Assert.Equal(ProcessTerminationMode.StoppedBySignal, mode);
+        Assert.Equal(ProcessTerminationMode.StoppedBySignal, outcome.Mode);
+        Assert.True(outcome.GracefulStopRequested);
+        Assert.Null(outcome.GracefulStopFailureReason);
         Assert.Equal(1, handle.GracefulStopRequests);
         Assert.False(handle.WasKilled);
     }
@@ -28,9 +30,9 @@ public sealed class ProcessTerminatorTests
     {
         var handle = new FakeProcessHandle { ExitsOnGracefulStop = false };
 
-        var mode = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
+        var outcome = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
 
-        Assert.Equal(ProcessTerminationMode.Killed, mode);
+        Assert.Equal(ProcessTerminationMode.Killed, outcome.Mode);
         Assert.True(handle.WasKilled);
 
         // The order is the contract: signal, wait out the grace, then kill.
@@ -45,9 +47,11 @@ public sealed class ProcessTerminatorTests
         // unavailable rather than skipped silently, then the kill happens immediately.
         var handle = new FakeProcessHandle { GracefulStopSucceeds = false };
 
-        var mode = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
+        var outcome = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
 
-        Assert.Equal(ProcessTerminationMode.Killed, mode);
+        Assert.Equal(ProcessTerminationMode.Killed, outcome.Mode);
+        Assert.False(outcome.GracefulStopRequested);
+        Assert.Equal(handle.GracefulStopFailure, outcome.GracefulStopFailureReason);
         Assert.Equal(1, handle.GracefulStopRequests);
         Assert.Equal(["graceful-stop", "kill", "wait"], handle.Calls);
     }
@@ -57,9 +61,9 @@ public sealed class ProcessTerminatorTests
     {
         var handle = new FakeProcessHandle();
 
-        var mode = await ProcessTerminator.TerminateAsync(handle, TimeSpan.Zero, TestContext.Current.CancellationToken);
+        var outcome = await ProcessTerminator.TerminateAsync(handle, TimeSpan.Zero, TestContext.Current.CancellationToken);
 
-        Assert.Equal(ProcessTerminationMode.Killed, mode);
+        Assert.Equal(ProcessTerminationMode.Killed, outcome.Mode);
         Assert.Equal(["graceful-stop", "kill", "wait"], handle.Calls);
     }
 
@@ -68,9 +72,9 @@ public sealed class ProcessTerminatorTests
     {
         var handle = new FakeProcessHandle { HasExited = true };
 
-        var mode = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
+        var outcome = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
 
-        Assert.Equal(ProcessTerminationMode.Exited, mode);
+        Assert.Equal(ProcessTerminationMode.Exited, outcome.Mode);
         Assert.Empty(handle.Calls);
     }
 
@@ -80,10 +84,43 @@ public sealed class ProcessTerminatorTests
         // The race is normal: a slow SIGINT handler can finish just after the grace expired.
         var handle = new LateExitingHandle();
 
-        var mode = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
+        var outcome = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
 
-        Assert.Equal(ProcessTerminationMode.StoppedBySignal, mode);
+        Assert.Equal(ProcessTerminationMode.StoppedBySignal, outcome.Mode);
+        Assert.True(outcome.GracefulStopRequested);
         Assert.False(handle.WasKilled);
+    }
+
+    [Fact]
+    public async Task A_process_that_ends_by_itself_without_a_signal_is_not_credited_to_the_signal()
+    {
+        // Windows again: no signal could be delivered, and the child happened to finish on its
+        // own before the kill. Reporting StoppedBySignal here would claim the CLI was given the
+        // chance to flush its crew output, which it never was.
+        var handle = new FakeProcessHandle { GracefulStopSucceeds = false, ExitsAfterFailedSignal = true };
+
+        var outcome = await ProcessTerminator.TerminateAsync(handle, Grace, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ProcessTerminationMode.ExitedWithoutSignal, outcome.Mode);
+        Assert.False(outcome.GracefulStopRequested);
+        Assert.Equal(handle.GracefulStopFailure, outcome.GracefulStopFailureReason);
+        Assert.False(handle.WasKilled);
+    }
+
+    [Fact]
+    public void The_reported_description_keeps_the_reason_the_signal_could_not_be_sent()
+    {
+        var outcome = new ProcessTerminationOutcome
+        {
+            Mode = ProcessTerminationMode.ExitedWithoutSignal,
+            GracefulStopFailureReason = "no per-child Ctrl+C on this platform",
+        };
+
+        var result = ProcessRunResult.FromCancellation(0, outcome, TimeSpan.FromSeconds(1));
+
+        Assert.Equal(ProcessTerminationMode.ExitedWithoutSignal, result.Termination);
+        Assert.Equal("no per-child Ctrl+C on this platform", result.GracefulStopFailureReason);
+        Assert.Contains("no per-child Ctrl+C on this platform", result.Description, StringComparison.Ordinal);
     }
 
     /// <summary>Reports "still running" during the grace wait, then exits just after it.</summary>

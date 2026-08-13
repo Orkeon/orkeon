@@ -32,7 +32,9 @@ Studio are interchangeable on the same machine at any point.
 `orkeon-studio` (the MSI adds an "Orkeon Studio" **Start-menu shortcut**, its only
 MSI-specific authoring); the Debian package and the Linux archives carry
 `orkeon-studio-config` and `orkeon-studio-run` (`/usr/bin/orkeon-studio-{config,run}` on the
-`.deb`, launcher symlinks in `<prefix>/bin` from a tarball); macOS stays **CLI-only in V1**.
+`.deb`, launcher symlinks in `<prefix>/bin` from a tarball); the macOS **onboarding** channel
+— the `orkeon-cli-*-osx-*` tarballs and Homebrew — stays **CLI-only in V1** (the multi-app
+`orkeon-*-osx-*` archives carry the two TUIs like every other RID, untested there).
 Every Studio app is published self-contained like the CLI itself, which keeps the `.deb`'s
 `Depends` free of any `dotnet-runtime-*` — the onboarding channel's invariant. The app table
 in `package-installers.sh` / `.ps1` gained a RID-filter column for this (WPF cannot target
@@ -60,7 +62,8 @@ option behaves identically on a directory and on a file (`--settings`, `-V/--var
 passed directly follows exactly the path it always did.
 
 The classification is explicit rather than convenient: a directory holding both a YAML
-layout and a `crew.ork.ts` is refused with both candidates named, and a directory with no
+layout and a scripting entry point — any `*.ork.ts` or `*.ork.js` sitting directly in it,
+whatever the file is called — is refused with both candidates named, and a directory with no
 recognized layout is refused with the list of what was searched — no silent precedence, and
 a lone script is never executed just because it was the only thing in the folder. The
 directory is mounted read-only in the VFS as itself, not as its parent, so a crew directory

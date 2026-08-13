@@ -2,6 +2,9 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Orkeon.Studio.Config.Presentation;
+using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Validation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 // Aliased under a distinct name: the bare name `Application` binds to the enclosing
@@ -18,6 +21,7 @@ namespace Orkeon.Studio.Config.Views;
 internal sealed class StudioConfigWindow : Window
 {
     private readonly ConfigEditorModel _model;
+    private readonly IDirectoryLister? _lister;
     private readonly List<SectionView> _sectionViews = [];
     private readonly FrameView _navigationFrame;
     private readonly ListView _navigation;
@@ -29,6 +33,7 @@ internal sealed class StudioConfigWindow : Window
     public StudioConfigWindow(ConfigEditorModel model, IDirectoryLister? lister = null)
     {
         _model = model ?? throw new ArgumentNullException(nameof(model));
+        _lister = lister;
 
         Title = "Orkeon Studio — appsettings editor";
 
@@ -103,12 +108,17 @@ internal sealed class StudioConfigWindow : Window
     }
 
     /// <summary>Reads every screen back into the document and validates it, without writing.</summary>
-    public SavePreflight Validate()
+    /// <param name="scope">
+    /// Why the document is being validated. The Save button passes
+    /// <see cref="ValidationScope.Saving"/>, which turns findings the editor tolerates —
+    /// an empty mount list — into blocking errors.
+    /// </param>
+    public SavePreflight Validate(ValidationScope scope = ValidationScope.Editing)
     {
         foreach (var view in _sectionViews)
             view.Apply();
 
-        return _model.Preflight();
+        return _model.Preflight(scope);
     }
 
     /// <summary>Reloads every screen from the document (after a preset, or after opening a file).</summary>
@@ -139,14 +149,23 @@ internal sealed class StudioConfigWindow : Window
 
     private void OpenFile()
     {
-        using var picker = new DirectoryPickerDialog(_model.CurrentPath is { Length: > 0 } current
-            ? Path.GetDirectoryName(current)
-            : null);
+        // Files are offered alongside the folders: a settings file is often named for its
+        // environment (appsettings.Development.json, crew.json), and a picker that could only
+        // return a directory made those unopenable.
+        using var picker = new DirectoryPickerDialog(
+            _model.CurrentPath is { Length: > 0 } current ? Path.GetDirectoryName(current) : null,
+            _lister,
+            SettingsFileSearchPattern);
 
-        if (picker.Show() is not { Length: > 0 } directory)
+        if (picker.Show() is not { Length: > 0 } picked)
             return;
 
-        var path = Path.Combine(directory, Orkeon.Studio.Core.Configuration.AppSettingsDocument.FileName);
+        // Standing in a folder rather than highlighting a file still means "the conventional
+        // file here", which is what the action used to do unconditionally.
+        var path = picked.EndsWith(SettingsFileExtension, StringComparison.OrdinalIgnoreCase)
+            ? picked
+            : Path.Combine(picked, AppSettingsDocument.FileName);
+
         var error = _model.OpenAsync(path).GetAwaiter().GetResult();
 
         if (error is not null)
@@ -159,9 +178,15 @@ internal sealed class StudioConfigWindow : Window
         RefreshStatus("Opened.");
     }
 
+    /// <summary>Extension of the files the "Open…" picker offers.</summary>
+    private const string SettingsFileExtension = ".json";
+
+    /// <summary>Glob handed to the picker so any settings file can be opened, not just the conventional name.</summary>
+    private const string SettingsFileSearchPattern = "*" + SettingsFileExtension;
+
     private void SaveFile()
     {
-        var preflight = Validate();
+        var preflight = Validate(ValidationScope.Saving);
 
         if (preflight.HasBlockingErrors)
         {

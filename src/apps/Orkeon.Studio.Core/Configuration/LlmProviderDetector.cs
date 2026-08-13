@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Studio.Core.Presets;
 
 namespace Orkeon.Studio.Core.Configuration;
 
@@ -31,8 +31,8 @@ public static class LlmProviderDetector
     private const string AzureOpenAIHostSuffix = ".openai.azure.com";
 
     /// <summary>
-    /// Known cloud hosts, derived from the endpoint constants the providers themselves
-    /// use so a base URL that changes there changes here too.
+    /// Known cloud hosts, derived from <see cref="OrkeonCliDefaults"/> — the pinned copy of
+    /// the endpoint constants the providers themselves use.
     /// </summary>
     private static readonly Dictionary<string, string> KnownHosts = BuildKnownHosts();
 
@@ -78,19 +78,19 @@ public static class LlmProviderDetector
     {
         var hosts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        Add(LlmEndpoints.OpenAI, "openai");
-        Add(LlmEndpoints.Anthropic, "anthropic");
-        Add(LlmEndpoints.Groq, "groq");
-        Add(LlmEndpoints.DeepSeek, "deepseek");
-        Add(LlmEndpoints.Together, "together");
-        Add(LlmEndpoints.Qwen, "qwen");
-        Add(LlmEndpoints.Kimi, "kimi");
-        Add(LlmEndpoints.HuggingFace, "huggingface");
-        Add(LlmEndpoints.Mistral, "mistral");
-        Add(LlmEndpoints.Zai, "zai");
+        Add(OrkeonCliDefaults.OpenAI, "openai");
+        Add(OrkeonCliDefaults.Anthropic, "anthropic");
+        Add(OrkeonCliDefaults.Groq, "groq");
+        Add(OrkeonCliDefaults.DeepSeek, "deepseek");
+        Add(OrkeonCliDefaults.Together, "together");
+        Add(OrkeonCliDefaults.Qwen, "qwen");
+        Add(OrkeonCliDefaults.Kimi, "kimi");
+        Add(OrkeonCliDefaults.HuggingFace, "huggingface");
+        Add(OrkeonCliDefaults.Mistral, "mistral");
+        Add(OrkeonCliDefaults.Zai, "zai");
 
         // The mainland-China Moonshot twin, documented on LlmEndpoints.Kimi.
-        hosts["api.moonshot.cn"] = "kimi";
+        hosts[OrkeonCliDefaults.KimiChinaHost] = "kimi";
 
         return hosts;
 

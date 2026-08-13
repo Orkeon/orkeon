@@ -105,4 +105,36 @@ public class StudioConfigWindowTests
 
         Assert.Single(model.Mounts.Rows);
     }
+
+    [Fact]
+    public void The_save_scope_blocks_an_empty_mount_list_that_the_edit_scope_only_warns_about()
+    {
+        using var window = new StudioConfigWindow(CreateModel());
+
+        var editing = window.Validate();
+        var saving = window.Validate(ValidationScope.Saving);
+
+        Assert.False(editing.HasBlockingErrors);
+        Assert.True(saving.HasBlockingErrors);
+        Assert.Contains(
+            saving.Messages,
+            message => message.Code == ValidationCodes.MountsEmpty
+                && message.Severity == ValidationSeverity.Error);
+    }
+
+    [Fact]
+    public void The_open_picker_offers_the_json_files_of_the_folder_it_is_standing_in()
+    {
+        // The action used to return a folder and assume the conventional file name, which made
+        // an appsettings.Development.json — or any settings file named for its crew — unopenable.
+        var tree = new FakeDirectoryLister()
+            .WithDirectory("/data/in")
+            .WithFile("/data/in/appsettings.Development.json")
+            .WithFile("/data/in/notes.txt");
+
+        using var picker = new DirectoryPickerDialog("/data/in", tree, "*.json");
+
+        Assert.Contains("appsettings.Development.json", picker.EntriesForTest);
+        Assert.DoesNotContain("notes.txt", picker.EntriesForTest);
+    }
 }

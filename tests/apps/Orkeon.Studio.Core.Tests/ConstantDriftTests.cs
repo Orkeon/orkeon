@@ -1,0 +1,148 @@
+using System.Reflection;
+using System.Text.Json;
+using Orkeon.Hosting;
+using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Core.Storage;
+using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.Validation;
+
+namespace Orkeon.Studio.Core.Tests;
+
+/// <summary>
+/// Studio Core deliberately copies a handful of runtime constants and ~40 lines of settings
+/// path logic instead of referencing <c>Orkeon.Infrastructure</c> and <c>Orkeon.Hosting</c>:
+/// those two references dragged ONNX, tree-sitter and the local embedding model into every
+/// self-contained Studio publish (STUDIO-01 §7). This test project keeps both references so
+/// the copies can be checked against the originals — that check is the whole price of the
+/// duplication, so it must stay exhaustive.
+/// </summary>
+public sealed class ConstantDriftTests
+{
+    [Fact]
+    public void Every_copied_endpoint_matches_the_runtime_constant()
+    {
+        Assert.Equal(LlmEndpoints.OpenAI, OrkeonCliDefaults.OpenAI);
+        Assert.Equal(LlmEndpoints.Anthropic, OrkeonCliDefaults.Anthropic);
+        Assert.Equal(LlmEndpoints.Groq, OrkeonCliDefaults.Groq);
+        Assert.Equal(LlmEndpoints.DeepSeek, OrkeonCliDefaults.DeepSeek);
+        Assert.Equal(LlmEndpoints.Together, OrkeonCliDefaults.Together);
+        Assert.Equal(LlmEndpoints.Qwen, OrkeonCliDefaults.Qwen);
+        Assert.Equal(LlmEndpoints.Kimi, OrkeonCliDefaults.Kimi);
+        Assert.Equal(LlmEndpoints.HuggingFace, OrkeonCliDefaults.HuggingFace);
+        Assert.Equal(LlmEndpoints.Mistral, OrkeonCliDefaults.Mistral);
+        Assert.Equal(LlmEndpoints.Zai, OrkeonCliDefaults.Zai);
+        Assert.Equal(LlmEndpoints.OllamaDefault, OrkeonCliDefaults.OllamaDefault);
+    }
+
+    [Fact]
+    public void No_public_endpoint_constant_is_missing_from_the_copy()
+    {
+        // A provider added to LlmEndpoints without a copy here would silently be detected as
+        // 'custom' by LlmProviderDetector. Vector-store endpoints are out of scope: Studio's
+        // detector reads Llm:BaseUrl only.
+        string[] vectorStores = [LlmEndpoints.ChromaDbDefault, LlmEndpoints.RedisDefault];
+
+        var runtime = ConstantValuesOf(typeof(LlmEndpoints)).Except(vectorStores, StringComparer.Ordinal);
+        var copied = ConstantValuesOf(typeof(OrkeonCliDefaults)).ToHashSet(StringComparer.Ordinal);
+
+        Assert.All(runtime, endpoint =>
+            Assert.True(copied.Contains(endpoint), $"LlmEndpoints value '{endpoint}' has no OrkeonCliDefaults copy."));
+    }
+
+    [Fact]
+    public void Every_copied_default_model_matches_the_runtime_lookup()
+    {
+        Assert.Equal(OrkeonCliDefaults.OllamaDefaultModel, ProviderDefaults.ForProvider("ollama"));
+        Assert.Equal(OrkeonCliDefaults.OpenAIDefaultModel, ProviderDefaults.ForProvider("openai"));
+    }
+
+    [Fact]
+    public void The_docker_model_runner_defaults_are_the_shared_ones()
+    {
+        Assert.Equal(DockerModelRunnerDefaults.BaseUrl, OrkeonCliDefaults.DockerModelRunner);
+        Assert.Equal(DockerModelRunnerDefaults.DefaultModel, OrkeonCliDefaults.DockerModelRunnerDefaultModel);
+        Assert.Equal(DockerModelRunnerDefaults.ApiKeyPlaceholder, OrkeonCliDefaults.DockerModelRunnerApiKeyPlaceholder);
+
+        // The preset surface the UIs bind to must resolve to the same strings.
+        Assert.Equal(DockerModelRunnerDefaults.BaseUrl, LlmPresets.DockerModelRunnerBaseUrl);
+        Assert.Equal(DockerModelRunnerDefaults.DefaultModel, LlmPresets.DockerModelRunnerDefaultModel);
+        Assert.Equal(DockerModelRunnerDefaults.ApiKeyPlaceholder, LlmPresets.DockerModelRunnerApiKeyPlaceholder);
+    }
+
+    [Fact]
+    public void The_docker_model_runner_defaults_are_what_the_committed_template_ships()
+    {
+        // "parity with examples/appsettings/appsettings.json" is claimed by three doc comments;
+        // this is the only thing that makes it true.
+        using var document = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(RepositoryRoot(), "examples", "appsettings", "appsettings.json")));
+        var llm = document.RootElement.GetProperty("Llm");
+
+        Assert.Equal(DockerModelRunnerDefaults.BaseUrl, llm.GetProperty("BaseUrl").GetString());
+        Assert.Equal(DockerModelRunnerDefaults.DefaultModel, llm.GetProperty("Model").GetString());
+        Assert.Equal(DockerModelRunnerDefaults.ApiKeyPlaceholder, llm.GetProperty("ApiKey").GetString());
+    }
+
+    [Fact]
+    public void The_global_settings_path_is_the_one_the_cli_writes()
+    {
+        // Both read the same environment; if the copied resolution ever diverges, Studio would
+        // edit a file `orkeon run` never loads.
+        Assert.Equal(RunnerSettings.GetGlobalSettingsPath(), SettingsLocations.GetGlobalSettingsPath());
+    }
+
+    [Fact]
+    public void The_win01_wording_is_the_runtime_wording()
+    {
+        Assert.Equal(RunnerHost.LlmNotConfiguredMessage, AppSettingsValidator.LlmNotConfiguredMessage);
+
+        // Studio adds a note of its own, and only appends it.
+        Assert.StartsWith(
+            AppSettingsValidator.LlmNotConfiguredMessage,
+            AppSettingsValidator.LlmNotConfiguredWarning,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_declared_minimum_cli_version_is_one_this_repository_has_reached()
+    {
+        // The notice tells users directory crews need >= MinimumCliVersion and that the
+        // co-installed CLI has it. That is only honest while the repository's own version is
+        // at least the declared minimum.
+        var declared = NumericVersion(RunTargetRequirements.MinimumCliVersion);
+        var built = NumericVersion(BuiltVersion());
+
+        Assert.True(
+            declared <= built,
+            $"MinimumCliVersion {RunTargetRequirements.MinimumCliVersion} is ahead of the built version {built}.");
+    }
+
+    private static string BuiltVersion() =>
+        typeof(RunTargetRequirements).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? typeof(RunTargetRequirements).Assembly.GetName().Version?.ToString()
+        ?? "0.0.0";
+
+    /// <summary>The <c>major.minor.patch</c> head of a version string, ignoring any suffix.</summary>
+    private static Version NumericVersion(string version)
+    {
+        var head = new string([.. version.TakeWhile(c => char.IsDigit(c) || c == '.')]).TrimEnd('.');
+        return Version.TryParse(head, out var parsed) ? parsed : new Version(0, 0, 0);
+    }
+
+    private static IEnumerable<string> ConstantValuesOf(Type type) =>
+        type.GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(field => field is { IsLiteral: true, IsInitOnly: false } && field.FieldType == typeof(string))
+            .Select(field => (string)field.GetRawConstantValue()!);
+
+    private static string RepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Orkeon.sln")))
+            directory = directory.Parent;
+
+        Assert.True(directory is not null, $"Could not locate the repo root above {AppContext.BaseDirectory}.");
+        return directory!.FullName;
+    }
+}

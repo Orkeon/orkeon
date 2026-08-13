@@ -21,6 +21,9 @@ public static class LaunchCodes
     /// <summary>Both <c>--inputs</c> and <c>--inputs-file</c> are set.</summary>
     public const string ConflictingInputs = "STUDIO-LAUNCH-INPUTS";
 
-    /// <summary>The target is a directory the installed CLI may not be able to run.</summary>
-    public const string DirectoryRunUnsupported = "STUDIO-LAUNCH-DIRECTORY";
+    /// <summary>
+    /// The target is a directory, so the launch relies on directory dispatch — released, and
+    /// stated as advice (see <c>RunTargetRequirements.DirectoryRunNotice</c>), never a warning.
+    /// </summary>
+    public const string DirectoryRunNotice = "STUDIO-LAUNCH-DIRECTORY";
 }

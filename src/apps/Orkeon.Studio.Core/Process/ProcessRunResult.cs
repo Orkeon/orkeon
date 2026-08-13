@@ -9,6 +9,13 @@ public enum ProcessTerminationMode
     /// <summary>It was asked to stop gracefully (SIGINT) and did so within the grace period.</summary>
     StoppedBySignal,
 
+    /// <summary>
+    /// It ended on its own during the stop attempt, without ever being signalled — the
+    /// graceful stop could not be delivered (see
+    /// <see cref="ProcessRunResult.GracefulStopFailureReason"/>) and the kill was never needed.
+    /// </summary>
+    ExitedWithoutSignal,
+
     /// <summary>It was killed with its whole process tree — either after the grace period or
     /// because no graceful stop is available on this platform.</summary>
     Killed,
@@ -41,6 +48,12 @@ public sealed record ProcessRunResult
     /// <summary>True when the run ended because its cancellation token fired.</summary>
     public bool WasCancelled { get; init; }
 
+    /// <summary>
+    /// Why the child could not be asked to stop gracefully, when that step was unavailable;
+    /// <see langword="null"/> when a signal was delivered or none was needed.
+    /// </summary>
+    public string? GracefulStopFailureReason { get; init; }
+
     /// <summary>Wall time between the spawn and the child's exit.</summary>
     public TimeSpan Duration { get; init; }
 
@@ -61,21 +74,45 @@ public sealed record ProcessRunResult
     /// <summary>
     /// The run was cancelled: whatever the OS reported, the user sees the CLI's interrupted code.
     /// </summary>
+    /// <param name="rawExitCode">Exit code as reported by the operating system.</param>
+    /// <param name="termination">How the stop attempt ended, and why the signal step failed if it did.</param>
+    /// <param name="duration">Wall time of the run.</param>
     public static ProcessRunResult FromCancellation(
         int rawExitCode,
-        ProcessTerminationMode termination,
-        TimeSpan duration) => new()
+        ProcessTerminationOutcome termination,
+        TimeSpan duration)
+    {
+        ArgumentNullException.ThrowIfNull(termination);
+
+        return new ProcessRunResult
         {
             ExitCode = OrkeonExitCodes.Cancelled,
             RawExitCode = rawExitCode,
             Outcome = RunOutcome.Cancelled,
-            Termination = termination,
+            Termination = termination.Mode,
             WasCancelled = true,
             Duration = duration,
-            Description = termination == ProcessTerminationMode.Killed
-                ? "Interrupted (exit code 130) — the process did not stop within the grace period and was killed."
-                : "Interrupted (exit code 130).",
+            GracefulStopFailureReason = termination.GracefulStopFailureReason,
+            Description = DescribeCancellation(termination),
         };
+    }
+
+    private static string DescribeCancellation(ProcessTerminationOutcome termination)
+    {
+        const string Interrupted = "Interrupted (exit code 130)";
+        var reason = termination.GracefulStopFailureReason is { Length: > 0 } text
+            ? $" No stop signal could be sent: {text}."
+            : "";
+
+        return termination.Mode switch
+        {
+            ProcessTerminationMode.Killed =>
+                Interrupted + " — the process did not stop within the grace period and was killed." + reason,
+            ProcessTerminationMode.ExitedWithoutSignal =>
+                Interrupted + " — the process ended on its own before it could be killed." + reason,
+            _ => Interrupted + ".",
+        };
+    }
 
     /// <summary>Nothing ran: <paramref name="reason"/> is the actionable message for the user.</summary>
     public static ProcessRunResult NotStarted(string reason)

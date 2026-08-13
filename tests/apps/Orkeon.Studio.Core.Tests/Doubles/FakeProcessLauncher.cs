@@ -75,7 +75,7 @@ public sealed class FakeProcessLauncher : IProcessLauncher
         {
             return ProcessRunResult.FromCancellation(
                 CancellationRawExitCode,
-                CancellationTermination,
+                ProcessTerminationOutcome.Of(CancellationTermination),
                 TimeSpan.FromMilliseconds(1));
         }
 

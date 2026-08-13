@@ -214,15 +214,16 @@ public sealed class RunArgumentsBuilderTests
     }
 
     [Fact]
-    public void A_multi_file_directory_warns_that_the_cli_must_support_directory_dispatch()
+    public void A_multi_file_directory_states_the_cli_version_directory_dispatch_needs()
     {
-        var warning = Assert.Single(RunArgumentsBuilder.Validate(MultiFileTarget()));
+        var notice = Assert.Single(RunArgumentsBuilder.Validate(MultiFileTarget()));
 
-        Assert.Equal(LaunchCodes.DirectoryRunUnsupported, warning.Code);
-        Assert.Equal(ValidationSeverity.Warning, warning.Severity);
-        Assert.Equal(RunTargetRequirements.DirectoryRunNotice, warning.Text);
+        Assert.Equal(LaunchCodes.DirectoryRunNotice, notice.Code);
+        Assert.Equal(ValidationSeverity.Information, notice.Severity);
+        Assert.Equal(RunTargetRequirements.DirectoryRunNotice, notice.Text);
+        Assert.Contains(RunTargetRequirements.MinimumCliVersion, notice.Text, StringComparison.Ordinal);
 
-        // A warning never blocks the launch.
+        // The capability shipped, so nothing about a directory target blocks the launch.
         Assert.Equal(MultiFileArguments, RunArgumentsBuilder.Build(MultiFileTarget()));
     }
 
@@ -268,7 +269,9 @@ public sealed class RunArgumentsBuilderTests
         var message = Assert.Single(RunArgumentsBuilder.Validate(YamlTarget(), options));
 
         Assert.Equal(LaunchCodes.EmptyMount, message.Code);
-        Assert.Equal("Orkeon:FileSystem:Mounts:1", message.Path);
+        // The second --mount, but the THIRD configuration key: the runner writes its own
+        // auto-injected mount at index 0 before appending the user's.
+        Assert.Equal("Orkeon:FileSystem:Mounts:2", message.Path);
     }
 
     [Fact]

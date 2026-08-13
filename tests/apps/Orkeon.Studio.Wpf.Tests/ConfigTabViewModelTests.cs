@@ -53,13 +53,34 @@ public sealed class ConfigTabViewModelTests
     public async Task Should_SaveDespiteWin01_Because_TheWarningIsNotBlocking()
     {
         var store = new FakeAppSettingsStore();
-        var tab = Build(store);
+        var tab = Build(store, new FakeDirectoryProbe("/data"));
+        DeclareAMount(tab);
 
         Assert.True(await tab.SaveAsync(TestContext.Current.CancellationToken));
 
         Assert.Equal([GlobalPath], store.SavedPaths);
         Assert.True(tab.HasLlmWarning);
         Assert.Contains("WIN-01", tab.StatusMessage!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_RefuseToSave_When_NoMountIsDeclared()
+    {
+        // Tolerated while editing — a launcher can still pass --mount — but a settings file is
+        // expected to stand on its own, so writing one that cannot start a run is blocked.
+        var store = new FakeAppSettingsStore();
+        var tab = Build(store);
+
+        Assert.Contains(
+            tab.Validate(),
+            m => m.Code == ValidationCodes.MountsEmpty && m.Severity == ValidationSeverity.Warning);
+
+        Assert.False(await tab.SaveAsync(TestContext.Current.CancellationToken));
+
+        Assert.Empty(store.SavedPaths);
+        Assert.Contains(
+            tab.ValidationMessages,
+            m => m.Code == ValidationCodes.MountsEmpty && m.Severity == ValidationSeverity.Error);
     }
 
     [Fact]
@@ -165,13 +186,18 @@ public sealed class ConfigTabViewModelTests
     [Fact]
     public async Task Should_ClearTheDirtyFlag_When_TheFileIsSaved()
     {
-        var tab = Build();
+        var tab = Build(directories: new FakeDirectoryProbe("/data"));
+        DeclareAMount(tab);
         tab.Llm.Model = "m";
 
         await tab.SaveAsync(TestContext.Current.CancellationToken);
 
         Assert.False(tab.IsDirty);
     }
+
+    /// <summary>The one mount a saveable settings file needs; the probe must know its path.</summary>
+    private static void DeclareAMount(ConfigTabViewModel tab) =>
+        tab.Mounts.AddMount().PhysicalPath = "/data";
 
     [Fact]
     public void Should_ApplyThePresetToTheDocument_When_TheCommandRuns()

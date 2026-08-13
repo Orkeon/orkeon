@@ -159,21 +159,77 @@ public sealed class RunTargetDetectorTests
     }
 
     [Theory]
-    [InlineData(RunTargetKind.MultiFileCrewDirectory, "/crews/mixed")]
-    [InlineData(RunTargetKind.ScriptDirectory, "/crews/mixed/crew.ork.ts")]
-    public void An_ambiguous_directory_resolves_once_the_user_states_which_shape(
-        RunTargetKind preferred,
-        string expectedRunPath)
+    [InlineData("pipeline.ork.ts")]
+    [InlineData("pipeline.ork.js")]
+    public void Any_script_makes_a_yaml_directory_ambiguous_not_just_the_conventional_one(string scriptName)
+    {
+        // CrewDirectoryLayout.Inspect rejects on '*.ork.ts'/'*.ork.js', not on 'crew.ork.ts':
+        // resolving this directory to a multi-file crew would build a command the CLI refuses.
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/mixed", "/crews/mixed/agents")
+            .WithFiles("/crews/mixed/" + scriptName);
+
+        var detection = Detector(probe).Detect("/crews/mixed");
+
+        Assert.Equal(RunTargetCodes.AmbiguousDirectory, detection.ErrorCode);
+        Assert.Contains("/crews/mixed/" + scriptName, Norm(detection.Error!), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_flat_triplet_next_to_a_script_is_ambiguous_too()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/flat")
+            .WithFiles(
+                "/crews/flat/crew.yaml", "/crews/flat/agents.yaml", "/crews/flat/tasks.yaml",
+                "/crews/flat/crew.ork.ts");
+
+        Assert.Equal(
+            RunTargetCodes.AmbiguousDirectory,
+            Detector(probe).Detect("/crews/flat").ErrorCode);
+    }
+
+    [Fact]
+    public void Preferring_the_script_shape_resolves_the_conventional_entry_point()
     {
         var probe = new FakeTargetProbe()
             .WithDirectories("/crews/mixed", "/crews/mixed/agents")
             .WithFiles("/crews/mixed/crew.ork.ts");
 
-        var detection = Detector(probe).Detect("/crews/mixed", preferred);
+        var detection = Detector(probe).Detect("/crews/mixed", RunTargetKind.ScriptDirectory);
 
         Assert.True(detection.IsResolved);
-        Assert.Equal(preferred, detection.Target!.Kind);
-        Assert.Equal(expectedRunPath, Norm(detection.Target.RunPath));
+        Assert.Equal(RunTargetKind.ScriptDirectory, detection.Target!.Kind);
+        Assert.Equal("/crews/mixed/crew.ork.ts", Norm(detection.Target.RunPath));
+    }
+
+    [Fact]
+    public void Preferring_the_script_shape_without_a_conventional_entry_point_asks_which_script()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/mixed", "/crews/mixed/agents")
+            .WithFiles("/crews/mixed/a.ork.ts", "/crews/mixed/b.ork.ts");
+
+        var detection = Detector(probe).Detect("/crews/mixed", RunTargetKind.ScriptDirectory);
+
+        Assert.Equal(RunTargetDetectionStatus.NeedsSelection, detection.Status);
+        Assert.Equal(["/crews/mixed/a.ork.ts", "/crews/mixed/b.ork.ts"], detection.Candidates.Select(Norm));
+    }
+
+    [Fact]
+    public void Preferring_the_yaml_shape_is_refused_because_no_cli_flag_can_force_it()
+    {
+        // The CLI rejects the directory outright whatever the user meant, so answering
+        // "the YAML one" must produce an explanation, not a command line doomed to fail.
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/mixed", "/crews/mixed/agents")
+            .WithFiles("/crews/mixed/crew.ork.ts");
+
+        var detection = Detector(probe).Detect("/crews/mixed", RunTargetKind.MultiFileCrewDirectory);
+
+        Assert.Equal(RunTargetDetectionStatus.Failed, detection.Status);
+        Assert.Equal(RunTargetCodes.YamlLayoutBlockedByScript, detection.ErrorCode);
+        Assert.Contains("Move or remove the script", detection.Error!, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -188,7 +244,7 @@ public sealed class RunTargetDetectorTests
     }
 
     [Fact]
-    public void A_directory_holding_only_yaml_files_names_no_candidate()
+    public void The_flat_legacy_triplet_is_a_multi_file_crew_the_cli_runs()
     {
         var probe = new FakeTargetProbe()
             .WithDirectories("/crews/flat")
@@ -196,8 +252,28 @@ public sealed class RunTargetDetectorTests
 
         var detection = Detector(probe).Detect("/crews/flat");
 
-        Assert.Equal(RunTargetCodes.NoCandidate, detection.ErrorCode);
-        Assert.Empty(detection.Candidates);
+        Assert.True(detection.IsResolved);
+        Assert.Equal(RunTargetKind.MultiFileCrewDirectory, detection.Target!.Kind);
+        Assert.Equal("/crews/flat", detection.Target.RunPath);
+        Assert.Equal(
+            ["/crews/flat/crew.yaml", "/crews/flat/agents.yaml", "/crews/flat/tasks.yaml"],
+            detection.Target.Markers.Select(Norm));
+    }
+
+    [Theory]
+    [InlineData("crew.yaml", "agents.yaml")]
+    [InlineData("crew.yaml", "tasks.yaml")]
+    [InlineData("agents.yaml", "tasks.yaml")]
+    public void An_incomplete_flat_triplet_is_no_layout_at_all(string first, string second)
+    {
+        // CrewDirectoryLayout requires all three; two of them is a folder of loose YAML.
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/partial")
+            .WithFiles("/crews/partial/" + first, "/crews/partial/" + second);
+
+        Assert.Equal(
+            RunTargetCodes.NoCandidate,
+            Detector(probe).Detect("/crews/partial").ErrorCode);
     }
 
     [Fact]

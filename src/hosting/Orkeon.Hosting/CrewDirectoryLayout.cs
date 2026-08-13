@@ -40,8 +40,11 @@ public static class CrewDirectoryLayout
     /// <summary>File names that make up the flat legacy layout (all three required).</summary>
     private static readonly string[] FlatFiles = ["crew.yaml", "agents.yaml", "tasks.yaml"];
 
-    /// <summary>Glob patterns for the scripting entry points that would make a directory ambiguous.</summary>
-    private static readonly string[] ScriptPatterns = ["*.ork.ts", "*.ork.js"];
+    /// <summary>Suffixes of the scripting entry points that would make a directory ambiguous.</summary>
+    private static readonly string[] ScriptSuffixes = [".ork.ts", ".ork.js"];
+
+    /// <summary>Glob patterns matching <see cref="ScriptSuffixes"/>.</summary>
+    private static readonly string[] ScriptPatterns = [.. ScriptSuffixes.Select(suffix => "*" + suffix)];
 
     /// <summary>
     /// Classifies <paramref name="path"/> as a crew directory, a rejected directory (with a
@@ -77,15 +80,25 @@ public static class CrewDirectoryLayout
         return new CrewDirectoryInspection(true, null);
     }
 
-    /// <summary>Scripting entry points sitting directly in the directory, ordinally sorted.</summary>
+    /// <summary>
+    /// Scripting entry points sitting directly in the directory, ordinally sorted. The glob is
+    /// only a hint to the file system — Windows still matches short 8.3 names, so
+    /// <c>*.ork.ts</c> can return a file whose real name is not one — hence the suffix re-check
+    /// on the results. Both patterns can return the same file, so duplicates are dropped.
+    /// </summary>
     private static List<string> FindScripts(string root)
     {
         var scripts = ScriptPatterns
             .SelectMany(pattern => Directory.EnumerateFiles(root, pattern, SearchOption.TopDirectoryOnly))
+            .Where(HasScriptSuffix)
+            .Distinct(StringComparer.Ordinal)
             .ToList();
         scripts.Sort(StringComparer.Ordinal);
         return scripts;
     }
+
+    private static bool HasScriptSuffix(string path) =>
+        ScriptSuffixes.Any(suffix => path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
 
     private static string DescribeAmbiguous(string root, IEnumerable<string> yamlMarkers, IEnumerable<string> scripts)
         => $"Ambiguous crew directory '{root}': it holds a multi-file YAML crew "

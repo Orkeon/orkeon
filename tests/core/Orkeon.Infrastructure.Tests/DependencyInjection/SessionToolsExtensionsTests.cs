@@ -132,7 +132,7 @@ public sealed class SessionToolsExtensionsTests
         services.AddOrkeonSessionTools();
 
         using var sp = services.BuildServiceProvider();
-        Assert.Single(services.Where(d => d.ServiceType == typeof(ISessionBufferService)));
+        Assert.Single(services, d => d.ServiceType == typeof(ISessionBufferService));
         Assert.Same(
             sp.GetRequiredService<ISessionBufferService>(),
             sp.GetRequiredService<ISessionBufferService>());

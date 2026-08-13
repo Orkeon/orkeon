@@ -142,6 +142,12 @@ internal sealed class MountsDialog : Window
         if (_launcher.SettingsMountsNotice is { } notice)
             yield return notice;
 
+        if (!_launcher.Target.IsResolved)
+        {
+            yield return RunLauncherViewModel.EffectiveMountsUnknownNotice;
+            yield break;
+        }
+
         var effective = _launcher.EffectiveMounts;
         if (effective.Count == 0)
         {
@@ -151,7 +157,7 @@ internal sealed class MountsDialog : Window
 
         foreach (var mount in effective)
         {
-            var origin = mount.Origin == MountOrigin.CommandLine ? "--mount" : "appsettings";
+            var origin = DescribeOrigin(mount.Origin);
             var replaced = mount.OverridesSettings
                 ? $"  (replaces '{mount.ReplacedSettingsMount}')"
                 : string.Empty;
@@ -161,6 +167,17 @@ internal sealed class MountsDialog : Window
                 $"{mount.ConfigurationKey} = {mount.Value}   [{origin}]{replaced}");
         }
     }
+
+    /// <summary>
+    /// Names the source of an entry. The auto-injected one is called out rather than folded
+    /// into "appsettings": the user never wrote it, and it is what shifts every --mount index.
+    /// </summary>
+    private static string DescribeOrigin(MountOrigin origin) => origin switch
+    {
+        MountOrigin.AutoInjected => "auto",
+        MountOrigin.CommandLine => "--mount",
+        _ => "appsettings",
+    };
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {

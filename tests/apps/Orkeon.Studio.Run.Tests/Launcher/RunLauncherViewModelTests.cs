@@ -2,6 +2,7 @@ using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Run.Launcher;
 
@@ -82,7 +83,7 @@ public class RunLauncherViewModelTests
     }
 
     [Fact]
-    public void A_multi_file_directory_validates_with_the_prerequisite_as_a_warning()
+    public void A_multi_file_directory_validates_with_the_prerequisite_as_advice()
     {
         var fixture = new LauncherFixture().WithInstalledCli();
         fixture.Targets.WithDirectories("/crews/multi", "/crews/multi/agents");
@@ -93,8 +94,9 @@ public class RunLauncherViewModelTests
 
         Assert.False(launcher.HasBlockingErrors());
         Assert.Contains(messages, message =>
-            message.Code == LaunchCodes.DirectoryRunUnsupported && message.Severity == ValidationSeverity.Warning);
-        Assert.Contains(DirectoryRunSupport.MinimumCliVersion, launcher.Target.FrameworkRequirement!, StringComparison.Ordinal);
+            message.Code == LaunchCodes.DirectoryRunNotice
+            && message.Severity == ValidationSeverity.Information);
+        Assert.Equal(RunTargetRequirements.DirectoryRunNotice, launcher.Target.FrameworkRequirement);
     }
 
     [Fact]
@@ -235,10 +237,12 @@ public class RunLauncherViewModelTests
         fixture.Directories.Create("/data");
         fixture.Settings.WithFile("/etc/orkeon/appsettings.json", """
         {
-          "Orkeon": { "FileSystem": { "Mounts": [ "/old:/workspace:ro", "/out:/output:rw" ] } }
+          "Orkeon": { "FileSystem": { "Mounts": [ "/old:/config:ro", "/out:/output:rw" ] } }
         }
         """);
+        var crew = fixture.WithYamlCrew();
         var launcher = fixture.Build();
+        launcher.Target.Select(crew);
         launcher.Options.UseAutomaticSettings = false;
         launcher.Options.ExplicitSettingsPath = "/etc/orkeon/appsettings.json";
         launcher.Options.AddMount(new MountDefinition { PhysicalPath = "/data", VirtualPath = "/workspace" });
@@ -246,9 +250,30 @@ public class RunLauncherViewModelTests
 
         var effective = launcher.EffectiveMounts;
 
+        // Index 0 belongs to the mount the runner injects for the crew directory; the user's
+        // first --mount therefore lands on index 1 and masks the settings entry there.
         Assert.Equal("Orkeon:FileSystem:Mounts:0", effective[0].ConfigurationKey);
-        Assert.True(effective[0].OverridesSettings);
-        Assert.Equal("/out:/output:rw", effective[1].Value);
+        Assert.Equal(MountOrigin.AutoInjected, effective[0].Origin);
+        Assert.Equal("/old:/config:ro", effective[0].ReplacedSettingsMount);
+
+        Assert.Equal("Orkeon:FileSystem:Mounts:1", effective[1].ConfigurationKey);
+        Assert.Equal(MountOrigin.CommandLine, effective[1].Origin);
+        Assert.True(effective[1].OverridesSettings);
+        Assert.Equal("/out:/output:rw", effective[1].ReplacedSettingsMount);
+    }
+
+    [Fact]
+    public void The_effective_mount_table_stays_empty_until_a_crew_is_selected()
+    {
+        // The runner's own mounts — and so every index — depend on the crew, so guessing here
+        // would show the user a layout that is wrong by one or two entries.
+        var fixture = new LauncherFixture().WithInstalledCli();
+        fixture.Directories.Create("/data");
+        var launcher = fixture.Build();
+        launcher.Options.AddMount(new MountDefinition { PhysicalPath = "/data", VirtualPath = "/workspace" });
+
+        Assert.Empty(launcher.EffectiveMounts);
+        Assert.Contains("Select a crew first", RunLauncherViewModel.EffectiveMountsUnknownNotice, StringComparison.Ordinal);
     }
 
     [Fact]

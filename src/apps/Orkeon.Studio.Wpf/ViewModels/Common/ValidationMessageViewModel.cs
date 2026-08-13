@@ -1,4 +1,3 @@
-using System.Globalization;
 using Orkeon.Studio.Core.Validation;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Common;
@@ -43,10 +42,13 @@ public sealed class ValidationMessageViewModel
         _ => "ℹ",                              // information source
     };
 
-    /// <summary>The one-line form shown in the message list.</summary>
-    public string Display => Path is { Length: > 0 } path
-        ? string.Create(CultureInfo.InvariantCulture, $"[{Code}] {path} — {Text}")
-        : string.Create(CultureInfo.InvariantCulture, $"[{Code}] {Text}");
+    /// <summary>
+    /// The one-line form shown in the message list, rendered by the shared Core formatter.
+    /// The severity is part of the line rather than left to <see cref="Glyph"/> alone: a list
+    /// that showed only the code and the text read the same for advice and for a blocking
+    /// error, which is the one distinction the reader needs.
+    /// </summary>
+    public string Display => ValidationMessageFormatter.Format(Message);
 
     /// <inheritdoc />
     public override string ToString() => Display;

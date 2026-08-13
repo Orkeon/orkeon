@@ -25,8 +25,14 @@ public sealed class AppSettingsValidatorTests
 
         Assert.NotNull(message);
         Assert.Equal(ValidationSeverity.Warning, message.Severity);
-        Assert.Equal(AppSettingsValidator.LlmNotConfiguredMessage, message.Text);
+        Assert.Equal(AppSettingsValidator.LlmNotConfiguredWarning, message.Text);
+        Assert.StartsWith(AppSettingsValidator.LlmNotConfiguredMessage, message.Text, StringComparison.Ordinal);
         Assert.Contains("<undefined-llm>", message.Text, StringComparison.Ordinal);
+
+        // Studio only sees the file: it must say the environment can already have answered
+        // this, or it sends users hunting for a problem ORKEON_Llm__* already solved.
+        Assert.Contains("ORKEON_Llm__BaseUrl", message.Text, StringComparison.Ordinal);
+        Assert.Contains("emits no warning", message.Text, StringComparison.Ordinal);
         Assert.Equal("Llm", message.Path);
     }
 
@@ -134,6 +140,40 @@ public sealed class AppSettingsValidatorTests
 
         Assert.NotNull(message);
         Assert.Equal(ValidationSeverity.Warning, message.Severity);
+    }
+
+    [Fact]
+    public void Saving_a_document_without_mounts_is_blocked_rather_than_merely_flagged()
+    {
+        // Spec §4.5 requires at least one mount. While editing that is a warning (a launcher
+        // can still pass --mount); writing the file is where it has to stop being advisory.
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "m" } }""");
+
+        var message = Find(Validator().Validate(document, ValidationScope.Saving), ValidationCodes.MountsEmpty);
+
+        Assert.NotNull(message);
+        Assert.Equal(ValidationSeverity.Error, message.Severity);
+        Assert.Equal(MountsSection.SectionPath, message.Path);
+    }
+
+    [Fact]
+    public void The_save_scope_reaches_the_json_entry_point_too()
+    {
+        var messages = Validator().ValidateJson("""{ "Llm": { "Model": "m" } }""", ValidationScope.Saving);
+
+        Assert.Equal(ValidationSeverity.Error, Assert.Single(messages, m => m.Code == ValidationCodes.MountsEmpty).Severity);
+    }
+
+    [Fact]
+    public void A_document_with_mounts_is_saveable()
+    {
+        var document = AppSettingsDocument.Parse("""{ "Llm": { "Model": "m" } }""");
+        document.Mounts.SetRaw(["/srv/data:/workspace:ro"]);
+
+        var messages = Validator("/srv/data").Validate(document, ValidationScope.Saving);
+
+        Assert.Null(Find(messages, ValidationCodes.MountsEmpty));
+        Assert.DoesNotContain(messages, m => m.Severity == ValidationSeverity.Error);
     }
 
     [Fact]

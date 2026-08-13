@@ -32,7 +32,7 @@ public sealed class FakeProcessLauncher : IProcessLauncher
         {
             return Task.FromResult(ProcessRunResult.FromCancellation(
                 rawExitCode: -1,
-                ProcessTerminationMode.StoppedBySignal,
+                ProcessTerminationOutcome.Of(ProcessTerminationMode.StoppedBySignal),
                 TimeSpan.Zero));
         }
 

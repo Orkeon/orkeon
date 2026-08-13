@@ -41,10 +41,21 @@ public sealed class EffectiveMountViewModel
     /// <summary>The appsettings entry that is being shadowed, when there is one.</summary>
     public string? ReplacedSettingsMount => Mount.ReplacedSettingsMount;
 
-    /// <summary>The origin column, phrased for the table.</summary>
+    /// <summary>
+    /// The origin column, phrased for the table. The runner's own entries are named as such
+    /// rather than folded into "appsettings": the user never wrote them, and they are what
+    /// shifts the index of every <c>--mount</c>.
+    /// </summary>
     public string OriginDisplay => OverridesSettings
-        ? string.Create(CultureInfo.InvariantCulture, $"--mount (replaces «{ReplacedSettingsMount}»)")
-        : Origin == MountOrigin.CommandLine ? "--mount" : "appsettings";
+        ? string.Create(CultureInfo.InvariantCulture, $"{OriginName} (replaces «{ReplacedSettingsMount}»)")
+        : OriginName;
+
+    private string OriginName => Origin switch
+    {
+        MountOrigin.AutoInjected => "auto (injected by the runner)",
+        MountOrigin.CommandLine => "--mount",
+        _ => "appsettings",
+    };
 }
 
 /// <summary>
@@ -59,7 +70,13 @@ public sealed class EffectiveMountViewModel
 /// </summary>
 public sealed class LaunchMountsViewModel : ObservableObject
 {
+    /// <summary>Why the effective table is empty while no crew is selected.</summary>
+    public const string AutoInjectionUnknownNotice =
+        "Select a crew first: the runner injects its own mounts ahead of every --mount, so which "
+        + "configuration key each mount occupies depends on the crew being launched.";
+
     private bool _allowExternalMounts;
+    private MountAutoInjection? _autoInjection;
 
     /// <summary>Builds the panel over a directory probe and the browse dialogs.</summary>
     public LaunchMountsViewModel(IDirectoryProbe? directories = null, IPathPicker? picker = null)
@@ -119,16 +136,52 @@ public sealed class LaunchMountsViewModel : ObservableObject
         RecomputeEffectiveMounts();
     }
 
+    /// <summary>
+    /// The mounts the runner will inject ahead of the <c>--mount</c> arguments, published by
+    /// the tab whenever the target or the options change. Null until a target is resolved.
+    /// </summary>
+    public MountAutoInjection? AutoInjection
+    {
+        get => _autoInjection;
+        set
+        {
+            // Compared by content, not by reference: the tab republishes a freshly built value on
+            // every form change, and recomputing on an unchanged one would re-raise Changed, which
+            // is what the tab reacts to — an endless round trip.
+            if (SameMounts(_autoInjection, value))
+                return;
+
+            _autoInjection = value;
+            RecomputeEffectiveMounts();
+        }
+    }
+
+    /// <summary>Whether the effective table can be computed at all.</summary>
+    public bool HasAutoInjection => _autoInjection is not null;
+
+    private static bool SameMounts(MountAutoInjection? left, MountAutoInjection? right)
+    {
+        if (left is null || right is null)
+            return left is null && right is null;
+
+        return left.Mounts.SequenceEqual(right.Mounts, StringComparer.Ordinal);
+    }
+
     /// <summary>Recomputes the effective table from the two lists.</summary>
     public void RecomputeEffectiveMounts()
     {
-        var effective = MountOverrideSemantics.ComputeEffectiveMounts(ToMountArguments(), [.. SettingsMounts]);
-
         EffectiveMounts.Clear();
-        foreach (var mount in effective)
-            EffectiveMounts.Add(new EffectiveMountViewModel(mount));
 
-        OnPropertiesChanged(nameof(OverriddenCount), nameof(Summary));
+        if (_autoInjection is { } autoInjection)
+        {
+            var effective = MountOverrideSemantics.ComputeEffectiveMounts(
+                ToMountArguments(), [.. SettingsMounts], autoInjection);
+
+            foreach (var mount in effective)
+                EffectiveMounts.Add(new EffectiveMountViewModel(mount));
+        }
+
+        OnPropertiesChanged(nameof(OverriddenCount), nameof(Summary), nameof(HasAutoInjection));
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -136,7 +189,9 @@ public sealed class LaunchMountsViewModel : ObservableObject
     public int OverriddenCount => EffectiveMounts.Count(m => m.OverridesSettings);
 
     /// <summary>The one-line verdict above the effective table.</summary>
-    public string Summary => OverriddenCount == 0
+    public string Summary => !HasAutoInjection
+        ? AutoInjectionUnknownNotice
+        : OverriddenCount == 0
         ? string.Create(
             CultureInfo.InvariantCulture,
             $"{EffectiveMounts.Count} effective mount(s); no appsettings entry is replaced.")

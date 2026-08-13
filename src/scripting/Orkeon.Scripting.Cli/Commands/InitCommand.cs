@@ -64,11 +64,18 @@ internal static class InitCommand
     /// <summary>The env var the runtime configuration reads natively (AddEnvironmentVariables("ORKEON_")).</summary>
     private const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
 
-    /// <summary>Docker Model Runner llama.cpp OpenAI-compatible endpoint (committed template default).</summary>
-    private const string DockerModelRunnerBaseUrl = "http://localhost:12434/engines/llama.cpp/v1";
+    /// <summary>
+    /// Docker Model Runner defaults. Shared with the committed appsettings template and with
+    /// Orkeon Studio's preset catalogue, hence <see cref="DockerModelRunnerDefaults"/> rather
+    /// than a private copy here.
+    /// </summary>
+    private const string DockerModelRunnerBaseUrl = DockerModelRunnerDefaults.BaseUrl;
 
-    /// <summary>Docker Model Runner default model (parity with examples/appsettings/appsettings.json).</summary>
-    private const string DockerModelRunnerDefaultModel = "ai/granite-4.0-h-tiny";
+    /// <inheritdoc cref="DockerModelRunnerDefaults.DefaultModel" />
+    private const string DockerModelRunnerDefaultModel = DockerModelRunnerDefaults.DefaultModel;
+
+    /// <inheritdoc cref="DockerModelRunnerDefaults.ApiKeyPlaceholder" />
+    private const string DockerModelRunnerApiKeyPlaceholder = DockerModelRunnerDefaults.ApiKeyPlaceholder;
 
     /// <summary>Everything needed to write and probe one configuration.</summary>
     private sealed record InitPlan
@@ -215,7 +222,7 @@ internal static class InitCommand
                     BaseUrl = options.BaseUrl ?? DockerModelRunnerBaseUrl,
                     Model = options.Model ?? DockerModelRunnerDefaultModel,
                     // The endpoint requires no auth; the template ships the same placeholder.
-                    InlineApiKey = options.ApiKey ?? "not-needed",
+                    InlineApiKey = options.ApiKey ?? DockerModelRunnerApiKeyPlaceholder,
                 };
                 return true;
 
@@ -280,7 +287,7 @@ internal static class InitCommand
                 Provider = "docker-model-runner",
                 BaseUrl = DockerModelRunnerBaseUrl,
                 Model = AskWithDefault(input, "Model", DockerModelRunnerDefaultModel),
-                InlineApiKey = "not-needed",
+                InlineApiKey = DockerModelRunnerApiKeyPlaceholder,
             },
             "3" => WizardPreset(input, "openai", LlmEndpoints.OpenAI,
                 ProviderDefaults.ForProvider("openai"), needsKey: true, hint: null),
@@ -412,7 +419,7 @@ internal static class InitCommand
                     $"`{envName}` is only used by `orkeon init`/`orkeon llm` probes.");
             }
         }
-        else if (plan.InlineApiKey is not null && plan.InlineApiKey != "not-needed")
+        else if (plan.InlineApiKey is not null && plan.InlineApiKey != DockerModelRunnerApiKeyPlaceholder)
         {
             Console.Error.WriteLine(
                 "WARNING: the API key is stored in plain text in the generated file. " +

@@ -120,10 +120,20 @@ internal sealed class LaunchOptionsModel
 
     /// <summary>
     /// The mount list the runtime will really see, given the mounts already declared in the
-    /// selected appsettings file.
+    /// selected appsettings file. The target is required because the runner injects its own
+    /// mounts ahead of every <c>--mount</c>, which is what decides the index each one occupies.
     /// </summary>
-    public IReadOnlyList<EffectiveMount> ComputeEffectiveMounts(IReadOnlyList<string> settingsMounts) =>
-        MountOverrideSemantics.ComputeEffectiveMounts(MountStrings, settingsMounts);
+    public IReadOnlyList<EffectiveMount> ComputeEffectiveMounts(
+        RunTarget target,
+        IReadOnlyList<string> settingsMounts)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        return MountOverrideSemantics.ComputeEffectiveMounts(
+            MountStrings,
+            settingsMounts,
+            MountAutoInjection.For(target, ToLaunchOptions(target)));
+    }
 
     /// <summary>Appends one <c>-V</c> variable.</summary>
     public void AddVariable(string key, string value) => _variables.Add(new RunVariable(key, value));

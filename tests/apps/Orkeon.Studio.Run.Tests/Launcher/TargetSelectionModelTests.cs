@@ -118,9 +118,48 @@ public class TargetSelectionModelTests
         Assert.Null(model.Error);
         Assert.NotNull(model.FrameworkRequirement);
         Assert.Contains(
-            $"Requires Orkeon >= {DirectoryRunSupport.MinimumCliVersion}",
+            RunTargetRequirements.MinimumCliVersion,
             model.FrameworkRequirement!,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Preferring_the_yaml_layout_of_a_contested_directory_reports_how_to_unblock_it()
+    {
+        // The CLI rejects a directory holding both shapes whatever the user meant, and offers no
+        // flag to force the YAML one — so the preference is answered with the remediation, never
+        // with a command line that would fail.
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/both", "/crews/both/agents")
+            .WithFiles("/crews/both/crew.ork.ts");
+        var model = CreateModel(probe);
+        model.Select("/crews/both");
+
+        model.ResolveShape(RunTargetKind.MultiFileCrewDirectory);
+
+        Assert.Equal(TargetSelectionState.Failed, model.State);
+        Assert.False(model.IsResolved);
+        Assert.Equal(RunTargetCodes.YamlLayoutBlockedByScript, model.ErrorCode);
+        Assert.Contains("Move or remove the script(s)", model.Error!, StringComparison.Ordinal);
+
+        // The chooser stays available: the other shape is still a valid answer.
+        Assert.True(model.NeedsShapeChoice);
+    }
+
+    [Fact]
+    public void Preferring_the_script_shape_of_a_contested_directory_resolves_it()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/both", "/crews/both/agents")
+            .WithFiles("/crews/both/crew.ork.ts");
+        var model = CreateModel(probe);
+        model.Select("/crews/both");
+
+        model.ResolveShape(RunTargetKind.ScriptDirectory);
+
+        Assert.Equal(TargetSelectionState.Resolved, model.State);
+        Assert.Equal(RunTargetKind.ScriptDirectory, model.Target!.Kind);
+        Assert.False(model.NeedsShapeChoice);
     }
 
     [Fact]

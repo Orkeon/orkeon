@@ -88,6 +88,12 @@ public static class RunTargetCodes
     /// <summary>The directory looks like two shapes at once.</summary>
     public const string AmbiguousDirectory = "STUDIO-TARGET-AMBIGUOUS";
 
+    /// <summary>
+    /// The YAML layout was preferred on a directory that also holds a script: the CLI rejects
+    /// such a directory outright, so the preference cannot produce a runnable command.
+    /// </summary>
+    public const string YamlLayoutBlockedByScript = "STUDIO-TARGET-YAML-BLOCKED";
+
     /// <summary>The directory holds nothing runnable.</summary>
     public const string NoCandidate = "STUDIO-TARGET-NO-CANDIDATE";
 }

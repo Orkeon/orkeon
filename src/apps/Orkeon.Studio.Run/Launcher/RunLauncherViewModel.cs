@@ -127,8 +127,18 @@ internal sealed class RunLauncherViewModel
     public bool HasBlockingErrors(bool dryRun = false) =>
         Validate(dryRun).Any(message => message.Severity == ValidationSeverity.Error);
 
-    /// <summary>The mount list the runtime will see: launch mounts at their index, settings mounts elsewhere.</summary>
-    public IReadOnlyList<EffectiveMount> EffectiveMounts => Options.ComputeEffectiveMounts(SettingsMounts);
+    /// <summary>
+    /// The mount list the runtime will see: the runner's auto-injected mounts, then the launch
+    /// mounts, then whatever settings mounts the two did not reach. Empty until a target is
+    /// resolved — the auto-injected mounts, and therefore every index, depend on it.
+    /// </summary>
+    public IReadOnlyList<EffectiveMount> EffectiveMounts =>
+        Target.Target is { } target ? Options.ComputeEffectiveMounts(target, SettingsMounts) : [];
+
+    /// <summary>Why <see cref="EffectiveMounts"/> is empty while no crew is selected.</summary>
+    public const string EffectiveMountsUnknownNotice =
+        "Select a crew first: the runner injects its own mounts ahead of every --mount, so which " +
+        "configuration key each mount occupies depends on the crew being launched.";
 
     /// <summary>
     /// Re-reads the pinned appsettings file's mounts. In automatic mode nothing is read:

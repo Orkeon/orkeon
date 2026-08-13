@@ -524,10 +524,11 @@ internal sealed class RunLauncherWindow : Window
     /// <summary>Test-only: the status line.</summary>
     internal string StatusText => _statusLabel.Text;
 
-    private static string Describe(ValidationMessage message) =>
-        message.Path is null
-            ? $"[{message.Code}] {message.Text}"
-            : $"[{message.Code}] {message.Text} ({message.Path})";
+    /// <summary>
+    /// One finding, rendered by the shared Core formatter so its severity is spelled out here
+    /// exactly as it is in the appsettings editor and in the WPF lists.
+    /// </summary>
+    private static string Describe(ValidationMessage message) => ValidationMessageFormatter.Format(message);
 
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
     /// <inheritdoc />

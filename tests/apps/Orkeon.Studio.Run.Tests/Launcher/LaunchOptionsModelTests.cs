@@ -190,25 +190,50 @@ public class LaunchOptionsModelTests
     }
 
     [Fact]
-    public void Launch_mounts_replace_the_settings_mounts_of_the_same_index()
+    public void Launch_mounts_land_after_the_mount_the_runner_injects_itself()
     {
+        // The runner mounts the crew's own directory before every --mount, so index 0 is never
+        // the user's: their first mount replaces the appsettings entry at index 1.
         var model = new LaunchOptionsModel(new MountValidator(new FakeDirectoryProbe("/data")));
         model.AddMount(new MountDefinition { PhysicalPath = "/data", VirtualPath = "/workspace" });
 
-        var effective = model.ComputeEffectiveMounts(["/old:/workspace:ro", "/out:/output:rw"]);
+        var effective = model.ComputeEffectiveMounts(
+            YamlTarget(),
+            ["/old:/config:ro", "/out:/workspace:rw"]);
 
         Assert.Equal(2, effective.Count);
-        Assert.Equal(MountOrigin.CommandLine, effective[0].Origin);
+
+        Assert.Equal(MountOrigin.AutoInjected, effective[0].Origin);
         Assert.True(effective[0].OverridesSettings);
-        Assert.Equal("/old:/workspace:ro", effective[0].ReplacedSettingsMount);
-        Assert.Equal(MountOrigin.Settings, effective[1].Origin);
+        Assert.Equal("/old:/config:ro", effective[0].ReplacedSettingsMount);
+
+        Assert.Equal(MountOrigin.CommandLine, effective[1].Origin);
+        Assert.True(effective[1].OverridesSettings);
+        Assert.Equal("/out:/workspace:rw", effective[1].ReplacedSettingsMount);
+    }
+
+    [Fact]
+    public void Turning_on_llm_logging_shifts_the_launch_mounts_by_one_more_index()
+    {
+        var model = new LaunchOptionsModel(new MountValidator(new FakeDirectoryProbe("/data")))
+        {
+            LlmLogEnabled = true,
+        };
+        model.AddMount(new MountDefinition { PhysicalPath = "/data", VirtualPath = "/workspace" });
+
+        var effective = model.ComputeEffectiveMounts(YamlTarget(), []);
+
+        Assert.Equal(3, effective.Count);
+        Assert.Equal(MountOrigin.AutoInjected, effective[0].Origin);
+        Assert.Equal(MountOrigin.AutoInjected, effective[1].Origin);
+        Assert.Equal(MountOrigin.CommandLine, effective[2].Origin);
     }
 
     [Fact]
     public void The_override_rule_is_stated_for_the_ui()
     {
         Assert.Contains("replaces", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
-        Assert.Contains("not merged", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
+        Assert.Contains("never merged", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
         Assert.Contains("--allow-external-mounts", LaunchOptionsModel.ExternalMountsExplanation, StringComparison.Ordinal);
     }
 

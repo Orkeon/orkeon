@@ -29,6 +29,28 @@ public sealed class ConfigEditorModelTests : IDisposable
     }
 
     [Fact]
+    public void An_empty_mount_list_is_advice_while_editing_and_an_error_when_saving()
+    {
+        // A settings file is meant to stand on its own (spec §4.5): a launcher can still add
+        // --mount arguments, so the editor tolerates the empty list — writing one is blocked.
+        var model = CreateModel();
+
+        var editing = model.Preflight().Messages;
+        var saving = model.Preflight(ValidationScope.Saving).Messages;
+
+        Assert.Contains(
+            editing,
+            message => message.Code == ValidationCodes.MountsEmpty
+                && message.Severity == ValidationSeverity.Warning);
+        Assert.Contains(
+            saving,
+            message => message.Code == ValidationCodes.MountsEmpty
+                && message.Severity == ValidationSeverity.Error);
+        Assert.False(model.Preflight().HasBlockingErrors);
+        Assert.True(model.Preflight(ValidationScope.Saving).HasBlockingErrors);
+    }
+
+    [Fact]
     public async Task Keys_studio_does_not_model_survive_an_edit_and_a_save()
     {
         var path = PathIn("appsettings.json");
@@ -84,7 +106,7 @@ public sealed class ConfigEditorModelTests : IDisposable
 
         Assert.Equal(LlmPresets.OpenAI, reopened.Llm.DetectedProvider);
         Assert.Equal("", reopened.Llm.ApiKey);
-        Assert.Empty(reopened.Preflight().Messages.Where(message => message.Severity == ValidationSeverity.Error));
+        Assert.DoesNotContain(reopened.Preflight().Messages, message => message.Severity == ValidationSeverity.Error);
     }
 
     [Fact]

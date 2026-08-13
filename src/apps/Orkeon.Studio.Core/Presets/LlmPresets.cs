@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
 
 namespace Orkeon.Studio.Core.Presets;
@@ -93,13 +92,13 @@ public static class LlmPresets
     public const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
 
     /// <summary>Docker Model Runner llama.cpp OpenAI-compatible endpoint.</summary>
-    public const string DockerModelRunnerBaseUrl = "http://localhost:12434/engines/llama.cpp/v1";
+    public const string DockerModelRunnerBaseUrl = OrkeonCliDefaults.DockerModelRunner;
 
     /// <summary>Docker Model Runner default model (parity with <c>examples/appsettings/appsettings.json</c>).</summary>
-    public const string DockerModelRunnerDefaultModel = "ai/granite-4.0-h-tiny";
+    public const string DockerModelRunnerDefaultModel = OrkeonCliDefaults.DockerModelRunnerDefaultModel;
 
     /// <summary>The endpoint needs no auth; the committed template ships this same placeholder.</summary>
-    public const string DockerModelRunnerApiKeyPlaceholder = "not-needed";
+    public const string DockerModelRunnerApiKeyPlaceholder = OrkeonCliDefaults.DockerModelRunnerApiKeyPlaceholder;
 
     /// <summary>
     /// Note written under <c>_comment</c> by the <c>none</c> preset. JSON has no comment
@@ -120,11 +119,11 @@ public static class LlmPresets
     public static IReadOnlyList<LlmPresetInfo> Catalog { get; } =
     [
         new(Ollama, "Ollama", "Local Ollama server.",
-            LlmEndpoints.OllamaDefault, ProviderDefaults.ForProvider("ollama"), RequiresApiKey: false),
+            OrkeonCliDefaults.OllamaDefault, OrkeonCliDefaults.OllamaDefaultModel, RequiresApiKey: false),
         new(DockerModelRunner, "Docker Model Runner", "Local llama.cpp engine served by Docker Desktop.",
             DockerModelRunnerBaseUrl, DockerModelRunnerDefaultModel, RequiresApiKey: false),
         new(OpenAI, "OpenAI", "OpenAI cloud API.",
-            LlmEndpoints.OpenAI, ProviderDefaults.ForProvider("openai"), RequiresApiKey: true),
+            OrkeonCliDefaults.OpenAI, OrkeonCliDefaults.OpenAIDefaultModel, RequiresApiKey: true),
         new(Custom, "Other OpenAI-compatible", "DeepSeek, GLM, Mistral, … — base URL and model required.",
             null, null, RequiresApiKey: true),
         new(None, "None / offline", "No LLM: runs use the <undefined-llm> echo provider.",
@@ -161,8 +160,8 @@ public static class LlmPresets
                 plan = new LlmPresetPlan
                 {
                     Preset = name,
-                    BaseUrl = baseUrl ?? LlmEndpoints.OllamaDefault,
-                    Model = model ?? ProviderDefaults.ForProvider("ollama"),
+                    BaseUrl = baseUrl ?? OrkeonCliDefaults.OllamaDefault,
+                    Model = model ?? OrkeonCliDefaults.OllamaDefaultModel,
                 };
                 return true;
 
@@ -180,8 +179,8 @@ public static class LlmPresets
                 plan = new LlmPresetPlan
                 {
                     Preset = name,
-                    BaseUrl = baseUrl ?? LlmEndpoints.OpenAI,
-                    Model = model ?? ProviderDefaults.ForProvider("openai"),
+                    BaseUrl = baseUrl ?? OrkeonCliDefaults.OpenAI,
+                    Model = model ?? OrkeonCliDefaults.OpenAIDefaultModel,
                     InlineApiKey = apiKey,
                     ApiKeyEnvName = apiKey is null ? apiKeyEnv ?? DefaultApiKeyEnv : null,
                 };

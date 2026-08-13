@@ -60,7 +60,7 @@ Chaque [GitHub Release](https://github.com/Orkeon/orkeon/releases) attache un
 | **`orkeon-cli-<version>-win-x64.zip`** | le CLI `orkeon` + **Orkeon Studio** (`orkeon-studio`, l'application de bureau) + `install.ps1` | aucun — self-contained | **Windows : le téléchargement recommandé** |
 | **`orkeon-<version>-win-x64.msi`** | les deux mêmes, MSI per-user, avec un raccourci menu Démarrer « Orkeon Studio » | aucun — self-contained | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
 | **`orkeon_<version>_amd64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + les deux applications terminal **Orkeon Studio** | aucun — self-contained | **Debian / Ubuntu : le téléchargement recommandé** |
-| **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (pas de Studio sur macOS en V1) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
+| **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (pas de Studio en V1 — le canal d'onboarding macOS reste CLI seul) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
 | **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-trading`, les runners TUI…) + les applications Studio que la plateforme supporte + `install.sh` / `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL, les runners TUI, la vitrine trading |
 | **`dotnet tool install --global Orkeon.Scripting.Cli`** | le seul CLI `orkeon` | **SDK** .NET 10 | Obtenir uniquement le CLI sur un poste qui compile déjà du .NET |
 
@@ -239,7 +239,7 @@ est lu par le CLI — vous pouvez passer de l'une à l'autre à tout moment.
 | **Windows** | `orkeon-studio` | le zip `win-x64` et le MSI | Une fenêtre de bureau à deux onglets : l'éditeur de settings et le lanceur de crew. Le MSI enregistre en plus un **raccourci menu Démarrer « Orkeon Studio »**, donc aucun terminal n'est nécessaire pour la lancer |
 | **Linux** | `orkeon-studio-config` | le `.deb` et les archives linux | Un éditeur plein écran dans le terminal pour le fichier de settings : presets de fournisseur, modèle et endpoint, et la table des points de montage VFS |
 | **Linux** | `orkeon-studio-run` | le `.deb` et les archives linux | Choisir une cible (un `config.yaml`, un dossier de crew, ou un script `.ork.ts`), régler les options d'exécution — dont `--validate` pour un essai à blanc — puis suivre la sortie en direct et annuler au besoin |
-| **macOS** | — | — | Pas en V1 : les paquets macOS n'embarquent que le CLI |
+| **macOS** | — | — | Pas en V1 sur le canal d'onboarding : les tarballs `orkeon-cli-*-osx-*` et Homebrew n'embarquent que le CLI. Les archives multi-apps `orkeon-<version>-osx-*` contiennent bien les deux applications terminal (seule l'application WPF a un filtre RID), non testées sur macOS en V1 |
 
 ```bash
 orkeon-studio-config    # écrire ~/.config/Orkeon/appsettings.json sans l'assistant
@@ -284,9 +284,10 @@ orkeon run examples/crew-multifile --validate
 # VALIDATION OK: …/examples/crew-multifile (agents=2, tasks=2, tools resolved=0)
 ```
 
-Un dossier contenant à la fois une disposition YAML et un `crew.ork.ts` est
-refusé, en nommant les deux candidats, tout comme un dossier sans disposition
-reconnue : Orkeon ne devine jamais lequel vous vouliez. Voir
+Un dossier contenant à la fois une disposition YAML et un point d'entrée de
+scripting — n'importe quel `*.ork.ts` ou `*.ork.js` posé directement dedans, quel
+que soit son nom — est refusé, en nommant les deux candidats, tout comme un dossier
+sans disposition reconnue : Orkeon ne devine jamais lequel vous vouliez. Voir
 [YAML et builders](./yaml-and-builders.md) pour la disposition elle-même.
 
 Pour une vitrine finance/trading, prenez le runner spécialisé :

@@ -11,53 +11,15 @@ namespace Orkeon.Studio.Config.Presentation;
 internal static class MessageFormatter
 {
     /// <summary>Renders one validation finding as <c>[severity] CODE path — text</c>.</summary>
-    public static string Format(ValidationMessage message)
-    {
-        ArgumentNullException.ThrowIfNull(message);
-
-        var severity = message.Severity switch
-        {
-            ValidationSeverity.Error => "ERROR",
-            ValidationSeverity.Warning => "WARN ",
-            _ => "INFO ",
-        };
-
-        var path = message.Path is { Length: > 0 } value
-            ? string.Create(CultureInfo.InvariantCulture, $" {value}")
-            : "";
-
-        return string.Create(
-            CultureInfo.InvariantCulture,
-            $"[{severity}] {message.Code}{path} — {message.Text}");
-    }
+    public static string Format(ValidationMessage message) => ValidationMessageFormatter.Format(message);
 
     /// <summary>Renders a list of findings, most severe first.</summary>
-    public static IReadOnlyList<string> Format(IReadOnlyList<ValidationMessage> messages)
-    {
-        ArgumentNullException.ThrowIfNull(messages);
-
-        return messages
-            .OrderByDescending(message => message.Severity)
-            .Select(Format)
-            .ToList();
-    }
+    public static IReadOnlyList<string> Format(IReadOnlyList<ValidationMessage> messages) =>
+        ValidationMessageFormatter.FormatAll(messages);
 
     /// <summary>A one-line summary of a validation pass, for the status bar.</summary>
-    public static string Summarize(IReadOnlyList<ValidationMessage> messages)
-    {
-        ArgumentNullException.ThrowIfNull(messages);
-
-        if (messages.Count == 0)
-            return "Validation: no findings.";
-
-        var errors = messages.Count(message => message.Severity == ValidationSeverity.Error);
-        var warnings = messages.Count(message => message.Severity == ValidationSeverity.Warning);
-        var infos = messages.Count - errors - warnings;
-
-        return string.Create(
-            CultureInfo.InvariantCulture,
-            $"Validation: {errors} error(s), {warnings} warning(s), {infos} note(s).");
-    }
+    public static string Summarize(IReadOnlyList<ValidationMessage> messages) =>
+        ValidationMessageFormatter.Summarize(messages);
 
     /// <summary>Renders a diagnostic run: the checks, then how the child process ended.</summary>
     public static IReadOnlyList<string> Format(DoctorReport report)
