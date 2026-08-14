@@ -191,16 +191,11 @@
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavRaw, Converter={StaticResource B2V}}">
-          <Border Style="{StaticResource Card}" MaxWidth="880" Padding="0">
-            <TextBox Text="{Binding Config.RawJson, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
-                     Background="{DynamicResource PaperSunkBrush}" Foreground="{DynamicResource InkMutedBrush}"
-                     FontFamily="{StaticResource MonoFont}" FontSize="12" Padding="22,18"
-                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
-          </Border>
+          <views:RawJsonView MaxWidth="880" DataContext="{Binding Config}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource B2V}}">
-          <ContentControl x:Name="DiagPanel" MaxWidth="880"/><!-- Diagnostic checks list (ConfigTabView "Diagnostic" tab) -->
+          <views:DiagnosticView x:Name="DiagPanel" MaxWidth="880" DataContext="{Binding Config.Diagnostic}"/>
         </ScrollViewer>
         <Grid Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource B2V}}">
           <views:LaunchTabView x:Name="RunPanel" DataContext="{Binding Launch}" Margin="30,24,30,20"/>

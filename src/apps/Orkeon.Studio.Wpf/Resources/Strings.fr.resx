@@ -116,4 +116,14 @@
   <data name="Mounts_Overrides_Title" xml:space="preserve"><value>Droits par sous-chemin</value></data>
   <data name="Mounts_AddOverride" xml:space="preserve"><value>Ajouter une exception</value></data>
   <data name="Mounts_Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
+
+  <data name="Scr_Raw_Title" xml:space="preserve"><value>JSON brut</value></data>
+  <data name="Scr_Raw_Sub" xml:space="preserve"><value>Le contenu exact du fichier — lecture seule : aucune modification ne contourne les formulaires ni la validation.</value></data>
+  <data name="Raw_ReadOnly" xml:space="preserve"><value>LECTURE SEULE</value></data>
+  <data name="Raw_Copy" xml:space="preserve"><value>Copier</value></data>
+
+  <data name="Scr_Diag_Title" xml:space="preserve"><value>Diagnostic</value></data>
+  <data name="Scr_Diag_Sub" xml:space="preserve"><value>Exécute orkeon doctor : binaire, fichier de settings, joignabilité LLM, montages.</value></data>
+  <data name="Diag_Run" xml:space="preserve"><value>Lancer le diagnostic</value></data>
+  <data name="Diag_Checks_Title" xml:space="preserve"><value>Vérifications</value></data>
 </root>

@@ -116,4 +116,14 @@
   <data name="Mounts_Overrides_Title" xml:space="preserve"><value>Sub-path rights overrides</value></data>
   <data name="Mounts_AddOverride" xml:space="preserve"><value>Add override</value></data>
   <data name="Mounts_Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
+
+  <data name="Scr_Raw_Title" xml:space="preserve"><value>Raw JSON</value></data>
+  <data name="Scr_Raw_Sub" xml:space="preserve"><value>The exact file content — read-only, so an edit can never bypass the forms and validation.</value></data>
+  <data name="Raw_ReadOnly" xml:space="preserve"><value>READ-ONLY</value></data>
+  <data name="Raw_Copy" xml:space="preserve"><value>Copy</value></data>
+
+  <data name="Scr_Diag_Title" xml:space="preserve"><value>Diagnostic</value></data>
+  <data name="Scr_Diag_Sub" xml:space="preserve"><value>Runs orkeon doctor: binary, settings file, LLM reachability, mounts.</value></data>
+  <data name="Diag_Run" xml:space="preserve"><value>Run diagnostic</value></data>
+  <data name="Diag_Checks_Title" xml:space="preserve"><value>Checks</value></data>
 </root>
