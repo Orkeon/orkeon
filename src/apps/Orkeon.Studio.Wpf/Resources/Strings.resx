@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+
+  <data name="Grp_Config" xml:space="preserve"><value>CONFIGURATION</value></data>
+  <data name="Grp_Launch" xml:space="preserve"><value>LAUNCH</value></data>
+  <data name="Nav_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Nav_Sections" xml:space="preserve"><value>Sections</value></data>
+  <data name="Nav_Mounts" xml:space="preserve"><value>Mounts</value></data>
+  <data name="Nav_Raw" xml:space="preserve"><value>Raw JSON</value></data>
+  <data name="Nav_Diag" xml:space="preserve"><value>Diagnostic</value></data>
+  <data name="Nav_Run" xml:space="preserve"><value>Run a crew</value></data>
+  <data name="Nav_History" xml:space="preserve"><value>History</value></data>
+
+  <data name="SettingsFile_Title" xml:space="preserve"><value>SETTINGS FILE</value></data>
+  <data name="SettingsFile_Global" xml:space="preserve"><value>Global per-user file</value></data>
+  <data name="Badge_Valid" xml:space="preserve"><value>valid</value></data>
+
+  <data name="Scr_Start_Title" xml:space="preserve"><value>Start</value></data>
+  <data name="Scr_Start_Sub" xml:space="preserve"><value>Apply a preset and choose where appsettings.json lives — nothing is written until you save.</value></data>
+
+  <data name="Act_New" xml:space="preserve"><value>New</value></data>
+  <data name="Act_Open" xml:space="preserve"><value>Open…</value></data>
+  <data name="Act_Reload" xml:space="preserve"><value>Reload</value></data>
+  <data name="Act_Validate" xml:space="preserve"><value>Validate</value></data>
+  <data name="Act_Save" xml:space="preserve"><value>Save</value></data>
+
+  <data name="Preset_Title" xml:space="preserve"><value>Preset</value></data>
+  <data name="Preset_Hint" xml:space="preserve"><value>The same catalogue as orkeon init — applying pre-fills the Llm section, nothing is written until you save.</value></data>
+  <data name="Preset_Apply" xml:space="preserve"><value>Apply preset</value></data>
+  <data name="Lbl_BaseUrl" xml:space="preserve"><value>Base URL</value></data>
+  <data name="Lbl_Model" xml:space="preserve"><value>Model</value></data>
+  <data name="Lbl_ApiKey" xml:space="preserve"><value>API key</value></data>
+  <data name="ApiKey_Hint" xml:space="preserve"><value>Empty is the recommended path — the key stays out of the file and is read from ORKEON_Llm__ApiKey.</value></data>
+
+  <data name="Loc_Title" xml:space="preserve"><value>Where the file is saved</value></data>
+  <data name="Loc_Global" xml:space="preserve"><value>Global per-user file</value></data>
+  <data name="Loc_Default" xml:space="preserve"><value>DEFAULT</value></data>
+  <data name="Loc_Custom" xml:space="preserve"><value>A path I choose</value></data>
+  <data name="Btn_Browse" xml:space="preserve"><value>Browse…</value></data>
+
+  <data name="Chain_Title" xml:space="preserve"><value>Which file the runtime will actually load</value></data>
+  <data name="Chain_Hint" xml:space="preserve"><value>The first step that matches wins — a file next to the crew silently wins over the global one.</value></data>
+  <data name="Chain_SaveTarget" xml:space="preserve"><value>your save target</value></data>
+
+  <data name="Theme_ToDark" xml:space="preserve"><value>Switch to the dark theme</value></data>
+  <data name="Theme_ToLight" xml:space="preserve"><value>Switch to the light theme</value></data>
+
+  <data name="Tour_Tip" xml:space="preserve"><value>Guided tour — learn the interface</value></data>
+  <data name="Tour_Label" xml:space="preserve"><value>GUIDED TOUR</value></data>
+  <data name="Tour_Skip" xml:space="preserve"><value>Skip</value></data>
+  <data name="Tour_Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Tour_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Tour_Finish" xml:space="preserve"><value>Finish</value></data>
+
+  <data name="Tour1_Title" xml:space="preserve"><value>Welcome to Orkeon Studio</value></data>
+  <data name="Tour1_Body" xml:space="preserve"><value>Studio is the desktop companion of the orkeon CLI: edit appsettings.json through validated forms, then launch crews and watch the streamed log. This short tour walks through each part.</value></data>
+  <data name="Tour2_Title" xml:space="preserve"><value>Two workspaces</value></data>
+  <data name="Tour2_Body" xml:space="preserve"><value>Configuration covers the settings file — presets, typed sections, mounts, the raw JSON and a doctor diagnostic. Launch is where you run crews and browse the launch history.</value></data>
+  <data name="Tour3_Title" xml:space="preserve"><value>The settings file, always in sight</value></data>
+  <data name="Tour3_Body" xml:space="preserve"><value>This card shows which appsettings.json you are editing and whether it validates. It stays visible on every screen, so you always know what a save will touch.</value></data>
+  <data name="Tour4_Title" xml:space="preserve"><value>File actions</value></data>
+  <data name="Tour4_Body" xml:space="preserve"><value>New, open, reload, validate, save — the file-level actions live here on every configuration screen. Validation runs the same checks the runtime applies at load.</value></data>
+  <data name="Tour5_Title" xml:space="preserve"><value>Start from a preset</value></data>
+  <data name="Tour5_Body" xml:space="preserve"><value>The same catalogue as orkeon init: Ollama, Docker Model Runner, OpenAI, any OpenAI-compatible endpoint, or none. Applying only pre-fills the Llm form — you review, then save.</value></data>
+  <data name="Tour6_Title" xml:space="preserve"><value>Know which file wins</value></data>
+  <data name="Tour6_Body" xml:space="preserve"><value>The runtime walks four steps to find its settings. This card shows the whole chain and marks where your save target sits — no more silent surprises from a file next to the crew.</value></data>
+  <data name="Tour7_Title" xml:space="preserve"><value>Sandboxed file access</value></data>
+  <data name="Tour7_Body" xml:space="preserve"><value>Mounts are the only folders agents can see. Pick the physical folder, the virtual path agents get, and the rights — read-only by default, with per-sub-path overrides.</value></data>
+  <data name="Tour8_Title" xml:space="preserve"><value>Launch and watch</value></data>
+  <data name="Tour8_Body" xml:space="preserve"><value>The exact command line is built live from your options. Dry-run validates without side effects; Run streams the log here, line by line, and ends with the exit code.</value></data>
+  <data name="Tour9_Title" xml:space="preserve"><value>When something is off</value></data>
+  <data name="Tour9_Body" xml:space="preserve"><value>The diagnostic runs orkeon doctor: binary, settings file, LLM reachability, mounts. Green means go; warnings tell you what to fix before a run fails.</value></data>
+</root>

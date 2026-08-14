@@ -1,0 +1,49 @@
+<!-- Orkeon Studio — light theme tokens (mirror of the Crew Console ".ork" palette).
+     Swapped at runtime with Tokens.Dark.xaml — every style must reference these via DynamicResource. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- surfaces -->
+  <SolidColorBrush x:Key="PaperBrush"       Color="#F4F6F5"/>
+  <SolidColorBrush x:Key="PaperSunkBrush"   Color="#E9EEED"/>
+  <SolidColorBrush x:Key="SurfaceBrush"     Color="#FFFFFF"/>
+  <SolidColorBrush x:Key="Surface2Brush"    Color="#F8FAF9"/>
+  <SolidColorBrush x:Key="SkyBrush"         Color="#E6F1F2"/>
+
+  <!-- text -->
+  <SolidColorBrush x:Key="InkBrush"         Color="#16293B"/>
+  <SolidColorBrush x:Key="InkMutedBrush"    Color="#46586A"/>
+  <SolidColorBrush x:Key="InkFaintBrush"    Color="#7A8A98"/>
+  <SolidColorBrush x:Key="InkDisabledBrush" Color="#A9B5BF"/>
+
+  <!-- lines -->
+  <SolidColorBrush x:Key="LineBrush"        Color="#DCE4E3"/>
+  <SolidColorBrush x:Key="LineStrongBrush"  Color="#C6D2D1"/>
+  <SolidColorBrush x:Key="LineFaintBrush"   Color="#E8EDEC"/>
+
+  <!-- accent: ocean blue (deep family), NOT the marketing teal -->
+  <SolidColorBrush x:Key="AccentBrush"       Color="#245A7C"/>
+  <SolidColorBrush x:Key="AccentHoverBrush"  Color="#1C4763"/>
+  <SolidColorBrush x:Key="AccentActiveBrush" Color="#163A52"/>
+  <SolidColorBrush x:Key="AccentWeakBrush"   Color="#E7F0F7"/>
+  <SolidColorBrush x:Key="AccentFgBrush"     Color="#F2FAFA"/>
+  <SolidColorBrush x:Key="MarkBrush"         Color="#1E7A82"/>
+
+  <!-- status -->
+  <SolidColorBrush x:Key="SuccessBrush"     Color="#2E8A6F"/>
+  <SolidColorBrush x:Key="SuccessWeakBrush" Color="#E2F0EB"/>
+  <SolidColorBrush x:Key="WarningBrush"     Color="#C68A2A"/>
+  <SolidColorBrush x:Key="WarningWeakBrush" Color="#F8EED5"/>
+  <SolidColorBrush x:Key="DangerBrush"      Color="#C0473B"/>
+  <SolidColorBrush x:Key="DangerWeakBrush"  Color="#F7E3E0"/>
+  <SolidColorBrush x:Key="SandBrush"        Color="#BB8628"/>
+  <SolidColorBrush x:Key="SandWeakBrush"    Color="#FBF3E2"/>
+
+  <!-- log console (same in both themes — it is always "deep ocean night") -->
+  <SolidColorBrush x:Key="ConsoleBgBrush"    Color="#0B1822"/>
+  <SolidColorBrush x:Key="ConsoleFgBrush"    Color="#9FB2C0"/>
+  <SolidColorBrush x:Key="ConsoleCmdBrush"   Color="#7FBCDF"/>
+  <SolidColorBrush x:Key="ConsoleOkBrush"    Color="#7FC9AE"/>
+  <SolidColorBrush x:Key="ConsoleErrBrush"   Color="#E0837A"/>
+
+</ResourceDictionary>

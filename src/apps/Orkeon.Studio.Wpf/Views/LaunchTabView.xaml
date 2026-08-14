@@ -12,20 +12,20 @@
 
     <!-- §5.1 target selection. -->
     <StackPanel Grid.Row="0" Margin="{StaticResource SectionMargin}">
-      <TextBlock Style="{StaticResource SectionHeader}" Text="Crew to run" />
+      <TextBlock Style="{StaticResource CardTitle}" Text="Crew to run" />
       <DockPanel Margin="{StaticResource FieldMargin}">
         <Button DockPanel.Dock="Right" Content="Folder…" Width="90" Margin="6,0,0,0" Command="{Binding Target.BrowseFolderCommand}" />
         <Button DockPanel.Dock="Right" Content="File…" Width="90" Margin="6,0,0,0" Command="{Binding Target.BrowseFileCommand}" />
         <Button DockPanel.Dock="Right" Content="Detect" Width="90" Margin="6,0,0,0" Command="{Binding Target.DetectCommand}" />
         <TextBox Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}" />
       </DockPanel>
-      <TextBlock Text="{Binding Target.StatusDisplay}" Style="{StaticResource HintText}" />
+      <TextBlock Text="{Binding Target.StatusDisplay}" Style="{StaticResource Hint}" />
 
       <!-- The ambiguity of §5.1: both shapes matched, so the user picks — no silent precedence.
            The chooser stays up while the answer is still open, which includes the case where the
            YAML layout was preferred and the CLI would refuse it. -->
       <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
-        <TextBlock Text="{Binding Target.ErrorMessage}" Style="{StaticResource HintText}" />
+        <TextBlock Text="{Binding Target.ErrorMessage}" Style="{StaticResource Hint}" />
         <ComboBox ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
                   SelectedItem="{Binding Target.PreferredDirectoryKind}"
                   Width="280"
@@ -40,7 +40,7 @@
       </StackPanel>
 
       <!-- §6: a multi-file crew directory needs a CLI that accepts a directory. -->
-      <TextBlock Text="{Binding Target.DirectoryRunNotice}" Style="{StaticResource HintText}"
+      <TextBlock Text="{Binding Target.DirectoryRunNotice}" Style="{StaticResource Hint}"
                  Visibility="{Binding Target.DirectoryRunNotice, Converter={StaticResource StringPresentToVisibility}}" />
     </StackPanel>
 
@@ -57,7 +57,7 @@
           <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="{StaticResource PanelPadding}">
             <StackPanel>
 
-              <TextBlock Style="{StaticResource SectionHeader}" Text="appsettings.json" />
+              <TextBlock Style="{StaticResource CardTitle}" Text="appsettings.json" />
               <RadioButton Content="Automatic (let the runtime resolve it)" IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}" />
               <RadioButton Content="Explicit path" IsChecked="{Binding Options.IsSettingsExplicit, Mode=OneWay}" Margin="0,4,0,0" />
               <DockPanel Margin="{StaticResource FieldMargin}">
@@ -67,7 +67,7 @@
 
               <!-- YAML-only options: hidden, not greyed, for a scripting target. -->
               <StackPanel Visibility="{Binding Options.AreVariablesAvailable, Converter={StaticResource BooleanToVisibility}}">
-                <TextBlock Style="{StaticResource SectionHeader}" Text="Variables (-V KEY=VALUE)" Margin="0,18,0,6" />
+                <TextBlock Style="{StaticResource CardTitle}" Text="Variables (-V KEY=VALUE)" Margin="0,18,0,6" />
                 <ItemsControl ItemsSource="{Binding Options.Variables}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -90,7 +90,7 @@
 
               <!-- Script-only options. -->
               <StackPanel Visibility="{Binding Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
-                <TextBlock Style="{StaticResource SectionHeader}" Text="Inputs" Margin="0,18,0,6" />
+                <TextBlock Style="{StaticResource CardTitle}" Text="Inputs" Margin="0,18,0,6" />
                 <TextBlock Style="{StaticResource FieldLabel}" Text="Inline JSON (--inputs)" />
                 <TextBox Text="{Binding Options.InputsJson, UpdateSourceTrigger=PropertyChanged}"
                          AcceptsReturn="True" MinHeight="60" Margin="{StaticResource FieldMargin}" />
@@ -101,7 +101,7 @@
                 </DockPanel>
               </StackPanel>
 
-              <TextBlock Style="{StaticResource SectionHeader}" Text="Diagnostics" Margin="0,18,0,6" />
+              <TextBlock Style="{StaticResource CardTitle}" Text="Diagnostics" Margin="0,18,0,6" />
               <TextBlock Style="{StaticResource FieldLabel}" Text="Verbosity (--verbose)" />
               <ComboBox ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
                         SelectedItem="{Binding Options.Verbosity}"
@@ -121,16 +121,16 @@
           <DockPanel Margin="{StaticResource PanelPadding}">
 
             <StackPanel DockPanel.Dock="Top">
-              <TextBlock Style="{StaticResource SectionHeader}" Text="Mounts already in the selected appsettings" />
+              <TextBlock Style="{StaticResource CardTitle}" Text="Mounts already in the selected appsettings" />
               <ListBox ItemsSource="{Binding Mounts.SettingsMounts}" MaxHeight="90" IsEnabled="False" />
 
               <CheckBox Content="Allow mounts outside the working directory (--allow-external-mounts)"
                         IsChecked="{Binding Mounts.AllowExternalMounts}"
                         Margin="0,10,0,0" />
-              <TextBlock Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}" Style="{StaticResource HintText}" />
+              <TextBlock Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}" Style="{StaticResource Hint}" />
 
-              <TextBlock Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}" Style="{StaticResource HintText}" />
-              <TextBlock Text="{Binding Mounts.Summary}" Style="{StaticResource HintText}" />
+              <TextBlock Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}" Style="{StaticResource Hint}" />
+              <TextBlock Text="{Binding Mounts.Summary}" Style="{StaticResource Hint}" />
               <DataGrid ItemsSource="{Binding Mounts.EffectiveMounts}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="140">
                 <DataGrid.Columns>
                   <DataGridTextColumn Header="Key" Binding="{Binding ConfigurationKey}" Width="230" />
@@ -159,7 +159,7 @@
                 <DataTemplate>
                   <StackPanel>
                     <TextBlock Text="{Binding Display}" />
-                    <TextBlock Text="{Binding CommandLine}" Style="{StaticResource HintText}" />
+                    <TextBlock Text="{Binding CommandLine}" Style="{StaticResource Hint}" />
                   </StackPanel>
                 </DataTemplate>
               </ListBox.ItemTemplate>
@@ -173,7 +173,7 @@
       <DockPanel Grid.Column="1">
 
         <StackPanel DockPanel.Dock="Top">
-          <TextBlock Text="{Binding BinaryStatus}" Style="{StaticResource HintText}" />
+          <TextBlock Text="{Binding BinaryStatus}" Style="{StaticResource Hint}" />
           <TextBox Text="{Binding CommandLinePreview, Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas"
                    TextWrapping="Wrap" Margin="{StaticResource FieldMargin}" />
 
@@ -184,7 +184,7 @@
             <Button Content="Clear log" Command="{Binding ClearLogCommand}" Width="90" />
           </StackPanel>
 
-          <TextBlock Text="{Binding ValidationSummary}" Style="{StaticResource HintText}" />
+          <TextBlock Text="{Binding ValidationSummary}" Style="{StaticResource Hint}" />
           <ListBox ItemsSource="{Binding ValidationMessages}" MaxHeight="110">
             <ListBox.ItemTemplate>
               <DataTemplate>
@@ -195,7 +195,7 @@
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
-          <TextBlock Text="{Binding Log.Summary}" Style="{StaticResource HintText}" />
+          <TextBlock Text="{Binding Log.Summary}" Style="{StaticResource Hint}" />
           <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
           <TextBlock Text="{Binding ExitDescription}" TextWrapping="Wrap" FontWeight="SemiBold"
                      Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibility}}" />

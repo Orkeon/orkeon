@@ -12,7 +12,7 @@
     </Grid.ColumnDefinitions>
 
     <DockPanel Grid.Column="0" Margin="0,0,8,0">
-      <TextBlock DockPanel.Dock="Top" Style="{StaticResource SectionHeader}" Text="{Binding Summary}" />
+      <TextBlock DockPanel.Dock="Top" Style="{StaticResource CardTitle}" Text="{Binding Summary}" />
 
       <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
         <Button Content="Add" Command="{Binding AddMountCommand}" Width="70" Margin="0,0,6,0" />
@@ -29,7 +29,7 @@
     <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
       <StackPanel DataContext="{Binding SelectedMount}">
 
-        <TextBlock Style="{StaticResource HintText}"
+        <TextBlock Style="{StaticResource Hint}"
                    Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"
                    Text="This entry could not be parsed. It is kept exactly as written so nothing is lost, and reported below." />
 
@@ -59,7 +59,7 @@
                     IsEditable="True"
                     ItemsSource="{x:Static mounts:MountEditorViewModel.SuggestedVirtualPaths}"
                     Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBlock Style="{StaticResource HintText}"
+          <TextBlock Style="{StaticResource Hint}"
                      Text="Must start with '/' or be a Windows drive path."
                      Visibility="{Binding IsVirtualPathValid, Converter={StaticResource InverseBooleanToVisibility}}" />
 
@@ -70,7 +70,7 @@
                     SelectedValuePath="Rights"
                     DisplayMemberPath="Label" />
 
-          <TextBlock Style="{StaticResource SectionHeader}" Text="Sub-path rights overrides" Margin="0,12,0,6" />
+          <TextBlock Style="{StaticResource CardTitle}" Text="Sub-path rights overrides" Margin="0,12,0,6" />
           <ItemsControl ItemsSource="{Binding Overrides}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>

@@ -19,7 +19,7 @@
     <!-- Status strip: what was loaded or saved, and the validation verdict. -->
     <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
       <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
-      <TextBlock Text="{Binding ValidationSummary}" Style="{StaticResource HintText}" />
+      <TextBlock Text="{Binding ValidationSummary}" Style="{StaticResource Hint}" />
       <ListBox ItemsSource="{Binding ValidationMessages}"
                MaxHeight="120"
                VirtualizingPanel.IsVirtualizing="True"
@@ -39,12 +39,12 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="{StaticResource PanelPadding}">
           <StackPanel>
 
-            <TextBlock Style="{StaticResource SectionHeader}" Text="Preset" />
+            <TextBlock Style="{StaticResource CardTitle}" Text="Preset" />
             <ComboBox ItemsSource="{x:Static config:PresetSelectionViewModel.Catalog}"
                       SelectedItem="{Binding Presets.SelectedPreset}"
                       DisplayMemberPath="Title"
                       Margin="{StaticResource FieldMargin}" />
-            <TextBlock Text="{Binding Presets.Description}" Style="{StaticResource HintText}" />
+            <TextBlock Text="{Binding Presets.Description}" Style="{StaticResource Hint}" />
 
             <TextBlock Style="{StaticResource FieldLabel}" Text="Base URL" />
             <TextBox Text="{Binding Presets.BaseUrl, UpdateSourceTrigger=PropertyChanged}" Margin="{StaticResource FieldMargin}" />
@@ -54,21 +54,21 @@
             <TextBox Text="{Binding Presets.ApiKey, UpdateSourceTrigger=PropertyChanged}" Margin="{StaticResource FieldMargin}" />
 
             <Button Content="Apply preset" Command="{Binding Presets.ApplyCommand}" Width="140" HorizontalAlignment="Left" Margin="0,6,0,0" />
-            <TextBlock Text="{Binding Presets.ErrorMessage}" Style="{StaticResource HintText}"
+            <TextBlock Text="{Binding Presets.ErrorMessage}" Style="{StaticResource Hint}"
                        Visibility="{Binding Presets.ErrorMessage, Converter={StaticResource StringPresentToVisibility}}" />
             <ItemsControl ItemsSource="{Binding Presets.Guidance}" Margin="0,4,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock Text="{Binding}" Style="{StaticResource HintText}" />
+                  <TextBlock Text="{Binding}" Style="{StaticResource Hint}" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Style="{StaticResource SectionHeader}" Text="Where the file is saved" Margin="0,18,0,6" />
+            <TextBlock Style="{StaticResource CardTitle}" Text="Where the file is saved" Margin="0,18,0,6" />
             <RadioButton Content="Global per-user file" IsChecked="{Binding Location.IsGlobal, Mode=OneWay}"
                          Command="{Binding Location.UseGlobalCommand}" />
-            <TextBlock Text="{Binding Location.GlobalPath}" Style="{StaticResource HintText}" />
-            <TextBlock Text="{Binding Location.GlobalPathError}" Style="{StaticResource HintText}"
+            <TextBlock Text="{Binding Location.GlobalPath}" Style="{StaticResource Hint}" />
+            <TextBlock Text="{Binding Location.GlobalPathError}" Style="{StaticResource Hint}"
                        Visibility="{Binding Location.GlobalPathError, Converter={StaticResource StringPresentToVisibility}}" />
 
             <RadioButton Content="A path I choose" IsChecked="{Binding Location.IsCustom, Mode=OneWay}" Margin="0,6,0,0" />
@@ -77,11 +77,11 @@
               <TextBox Text="{Binding Location.CustomPath, UpdateSourceTrigger=PropertyChanged}" />
             </DockPanel>
 
-            <TextBlock Style="{StaticResource SectionHeader}" Text="Which file the runtime will actually load" Margin="0,12,0,6" />
+            <TextBlock Style="{StaticResource CardTitle}" Text="Which file the runtime will actually load" Margin="0,12,0,6" />
             <ItemsControl ItemsSource="{Binding Location.ResolutionChain}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock Style="{StaticResource HintText}">
+                  <TextBlock Style="{StaticResource Hint}">
                     <Run Text="{Binding Order, Mode=OneWay}" />
                     <Run Text=". " />
                     <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" />
@@ -101,18 +101,18 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="{StaticResource PanelPadding}">
           <StackPanel>
 
-            <TextBlock Style="{StaticResource SectionHeader}" Text="Llm" />
+            <TextBlock Style="{StaticResource CardTitle}" Text="Llm" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Model" />
             <TextBox Text="{Binding Llm.Model, UpdateSourceTrigger=PropertyChanged}" Margin="{StaticResource FieldMargin}" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Base URL" />
             <TextBox Text="{Binding Llm.BaseUrl, UpdateSourceTrigger=PropertyChanged}" Margin="{StaticResource FieldMargin}" />
-            <TextBlock Style="{StaticResource HintText}">
+            <TextBlock Style="{StaticResource Hint}">
               <Run Text="Detected provider (read-only, inferred from the host): " />
               <Run Text="{Binding Llm.DetectedProviderDisplay, Mode=OneWay}" FontWeight="SemiBold" />
             </TextBlock>
             <TextBlock Style="{StaticResource FieldLabel}" Text="API key" />
             <TextBox Text="{Binding Llm.ApiKey, UpdateSourceTrigger=PropertyChanged}" Margin="{StaticResource FieldMargin}" />
-            <TextBlock Text="{Binding Llm.ApiKeyRecommendation, Mode=OneWay}" Style="{StaticResource HintText}" />
+            <TextBlock Text="{Binding Llm.ApiKeyRecommendation, Mode=OneWay}" Style="{StaticResource Hint}" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Temperature" />
             <TextBox Text="{Binding Llm.Temperature, UpdateSourceTrigger=LostFocus}" Margin="{StaticResource FieldMargin}" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Max tokens" />
@@ -123,10 +123,10 @@
             <!-- §4.2: optional connectivity probe. It reports, it never gates the save. -->
             <Button Content="Test connection" Command="{Binding Llm.TestConnectionCommand}"
                     Width="140" HorizontalAlignment="Left" Margin="0,6,0,0" />
-            <TextBlock Text="{Binding Llm.ConnectionTestResult}" Style="{StaticResource HintText}"
+            <TextBlock Text="{Binding Llm.ConnectionTestResult}" Style="{StaticResource Hint}"
                        Visibility="{Binding Llm.ConnectionTestResult, Converter={StaticResource StringPresentToVisibility}}" />
 
-            <TextBlock Style="{StaticResource SectionHeader}" Text="RateLimiting" Margin="0,18,0,6" />
+            <TextBlock Style="{StaticResource CardTitle}" Text="RateLimiting" Margin="0,18,0,6" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Max concurrent requests" />
             <TextBox Text="{Binding RateLimiting.MaxConcurrentRequests, UpdateSourceTrigger=LostFocus}" Margin="{StaticResource FieldMargin}" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Global requests / minute" />
@@ -138,7 +138,7 @@
             <TextBlock Style="{StaticResource FieldLabel}" Text="Queue limit" />
             <TextBox Text="{Binding RateLimiting.QueueLimit, UpdateSourceTrigger=LostFocus}" Margin="{StaticResource FieldMargin}" />
 
-            <TextBlock Style="{StaticResource SectionHeader}" Text="Orkeon:Rag" Margin="0,18,0,6" />
+            <TextBlock Style="{StaticResource CardTitle}" Text="Orkeon:Rag" Margin="0,18,0,6" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Profile" />
             <ComboBox ItemsSource="{x:Static config:RagSectionViewModel.KnownProfiles}"
                       SelectedItem="{Binding Rag.Profile}"
@@ -150,11 +150,11 @@
             <CheckBox Content="Hybrid retrieval (BM25 + RRF)" IsChecked="{Binding Rag.HybridRetrievalEnabled}" Margin="{StaticResource FieldMargin}" />
             <CheckBox Content="Corrective web fallback — policy" IsChecked="{Binding Rag.CorrectiveWebFallbackEnabled}" Margin="{StaticResource FieldMargin}" />
             <CheckBox Content="Web fallback — transport" IsChecked="{Binding Rag.WebFallbackEnabled}" Margin="{StaticResource FieldMargin}" />
-            <TextBlock Text="{Binding Rag.WebFallbackStatus}" Style="{StaticResource HintText}" />
+            <TextBlock Text="{Binding Rag.WebFallbackStatus}" Style="{StaticResource Hint}" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Corrective max iterations" />
             <TextBox Text="{Binding Rag.CorrectiveMaxIterations, UpdateSourceTrigger=LostFocus}" Margin="{StaticResource FieldMargin}" />
 
-            <TextBlock Style="{StaticResource SectionHeader}" Text="Logging:LogLevel" Margin="0,18,0,6" />
+            <TextBlock Style="{StaticResource CardTitle}" Text="Logging:LogLevel" Margin="0,18,0,6" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Default level" />
             <ComboBox ItemsSource="{x:Static config:LoggingSectionViewModel.KnownLevels}"
                       SelectedItem="{Binding Logging.DefaultLevel}"
@@ -178,7 +178,7 @@
               <Button Content="Remove" Command="{Binding Logging.RemoveCategoryCommand}" Width="80" />
             </StackPanel>
 
-            <TextBlock Style="{StaticResource SectionHeader}" Text="LlmLogging" Margin="0,18,0,6" />
+            <TextBlock Style="{StaticResource CardTitle}" Text="LlmLogging" Margin="0,18,0,6" />
             <CheckBox Content="Log full embedding payloads" IsChecked="{Binding LlmLogging.FullEmbeddingLog}" Margin="{StaticResource FieldMargin}" />
             <CheckBox Content="Log streaming exchanges" IsChecked="{Binding LlmLogging.LogStreamingExchanges}" Margin="{StaticResource FieldMargin}" />
             <TextBlock Style="{StaticResource FieldLabel}" Text="Max body length (chars)" />
@@ -206,8 +206,8 @@
       <!-- §4.4 diagnostic. -->
       <TabItem Header="Diagnostic">
         <DockPanel Margin="{StaticResource PanelPadding}">
-          <TextBlock DockPanel.Dock="Top" Text="{Binding Diagnostic.Summary}" Style="{StaticResource SectionHeader}" />
-          <TextBlock DockPanel.Dock="Top" Text="{Binding Diagnostic.ErrorMessage}" Style="{StaticResource HintText}"
+          <TextBlock DockPanel.Dock="Top" Text="{Binding Diagnostic.Summary}" Style="{StaticResource CardTitle}" />
+          <TextBlock DockPanel.Dock="Top" Text="{Binding Diagnostic.ErrorMessage}" Style="{StaticResource Hint}"
                      Visibility="{Binding Diagnostic.ErrorMessage, Converter={StaticResource StringPresentToVisibility}}" />
           <ListBox ItemsSource="{Binding Diagnostic.Checks}"
                    VirtualizingPanel.IsVirtualizing="True"

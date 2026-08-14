@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+
+  <data name="Grp_Config" xml:space="preserve"><value>CONFIGURATION</value></data>
+  <data name="Grp_Launch" xml:space="preserve"><value>LANCEMENT</value></data>
+  <data name="Nav_Start" xml:space="preserve"><value>Démarrer</value></data>
+  <data name="Nav_Sections" xml:space="preserve"><value>Sections</value></data>
+  <data name="Nav_Mounts" xml:space="preserve"><value>Montages</value></data>
+  <data name="Nav_Raw" xml:space="preserve"><value>JSON brut</value></data>
+  <data name="Nav_Diag" xml:space="preserve"><value>Diagnostic</value></data>
+  <data name="Nav_Run" xml:space="preserve"><value>Lancer un crew</value></data>
+  <data name="Nav_History" xml:space="preserve"><value>Historique</value></data>
+
+  <data name="SettingsFile_Title" xml:space="preserve"><value>FICHIER DE RÉGLAGES</value></data>
+  <data name="SettingsFile_Global" xml:space="preserve"><value>Fichier global par utilisateur</value></data>
+  <data name="Badge_Valid" xml:space="preserve"><value>valide</value></data>
+
+  <data name="Scr_Start_Title" xml:space="preserve"><value>Démarrer</value></data>
+  <data name="Scr_Start_Sub" xml:space="preserve"><value>Appliquez un preset et choisissez où vit appsettings.json — rien n'est écrit avant l'enregistrement.</value></data>
+
+  <data name="Act_New" xml:space="preserve"><value>Nouveau</value></data>
+  <data name="Act_Open" xml:space="preserve"><value>Ouvrir…</value></data>
+  <data name="Act_Reload" xml:space="preserve"><value>Recharger</value></data>
+  <data name="Act_Validate" xml:space="preserve"><value>Valider</value></data>
+  <data name="Act_Save" xml:space="preserve"><value>Enregistrer</value></data>
+
+  <data name="Preset_Title" xml:space="preserve"><value>Preset</value></data>
+  <data name="Preset_Hint" xml:space="preserve"><value>Le même catalogue qu'orkeon init — appliquer pré-remplit la section Llm, rien n'est écrit avant l'enregistrement.</value></data>
+  <data name="Preset_Apply" xml:space="preserve"><value>Appliquer le preset</value></data>
+  <data name="Lbl_BaseUrl" xml:space="preserve"><value>URL de base</value></data>
+  <data name="Lbl_Model" xml:space="preserve"><value>Modèle</value></data>
+  <data name="Lbl_ApiKey" xml:space="preserve"><value>Clé API</value></data>
+  <data name="ApiKey_Hint" xml:space="preserve"><value>Vide est la voie recommandée — la clé reste hors du fichier et est lue depuis ORKEON_Llm__ApiKey.</value></data>
+
+  <data name="Loc_Title" xml:space="preserve"><value>Où le fichier est enregistré</value></data>
+  <data name="Loc_Global" xml:space="preserve"><value>Fichier global par utilisateur</value></data>
+  <data name="Loc_Default" xml:space="preserve"><value>DÉFAUT</value></data>
+  <data name="Loc_Custom" xml:space="preserve"><value>Un chemin que je choisis</value></data>
+  <data name="Btn_Browse" xml:space="preserve"><value>Parcourir…</value></data>
+
+  <data name="Chain_Title" xml:space="preserve"><value>Quel fichier le runtime chargera réellement</value></data>
+  <data name="Chain_Hint" xml:space="preserve"><value>La première étape qui correspond gagne — un fichier à côté du crew l'emporte silencieusement sur le global.</value></data>
+  <data name="Chain_SaveTarget" xml:space="preserve"><value>votre cible d'enregistrement</value></data>
+
+  <data name="Theme_ToDark" xml:space="preserve"><value>Passer au thème sombre</value></data>
+  <data name="Theme_ToLight" xml:space="preserve"><value>Passer au thème clair</value></data>
+
+  <data name="Tour_Tip" xml:space="preserve"><value>Visite guidée — découvrir l'interface</value></data>
+  <data name="Tour_Label" xml:space="preserve"><value>VISITE GUIDÉE</value></data>
+  <data name="Tour_Skip" xml:space="preserve"><value>Passer</value></data>
+  <data name="Tour_Back" xml:space="preserve"><value>Retour</value></data>
+  <data name="Tour_Next" xml:space="preserve"><value>Suivant</value></data>
+  <data name="Tour_Finish" xml:space="preserve"><value>Terminer</value></data>
+
+  <data name="Tour1_Title" xml:space="preserve"><value>Bienvenue dans Orkeon Studio</value></data>
+  <data name="Tour1_Body" xml:space="preserve"><value>Studio est le compagnon bureau du CLI orkeon : éditez appsettings.json via des formulaires validés, puis lancez des crews et suivez le log streamé. Cette courte visite parcourt chaque partie.</value></data>
+  <data name="Tour2_Title" xml:space="preserve"><value>Deux espaces de travail</value></data>
+  <data name="Tour2_Body" xml:space="preserve"><value>Configuration couvre le fichier de réglages — presets, sections typées, montages, JSON brut et diagnostic doctor. Lancement sert à exécuter les crews et consulter l'historique.</value></data>
+  <data name="Tour3_Title" xml:space="preserve"><value>Le fichier de réglages, toujours visible</value></data>
+  <data name="Tour3_Body" xml:space="preserve"><value>Cette carte montre quel appsettings.json vous éditez et s'il est valide. Elle reste affichée sur chaque écran : vous savez toujours ce qu'un enregistrement touchera.</value></data>
+  <data name="Tour4_Title" xml:space="preserve"><value>Actions sur le fichier</value></data>
+  <data name="Tour4_Body" xml:space="preserve"><value>Nouveau, ouvrir, recharger, valider, enregistrer — les actions au niveau du fichier vivent ici sur chaque écran de configuration. La validation applique les mêmes contrôles que le runtime au chargement.</value></data>
+  <data name="Tour5_Title" xml:space="preserve"><value>Partir d'un preset</value></data>
+  <data name="Tour5_Body" xml:space="preserve"><value>Le même catalogue qu'orkeon init : Ollama, Docker Model Runner, OpenAI, tout endpoint compatible OpenAI, ou aucun. Appliquer ne fait que pré-remplir le formulaire Llm — vous relisez, puis enregistrez.</value></data>
+  <data name="Tour6_Title" xml:space="preserve"><value>Savoir quel fichier gagne</value></data>
+  <data name="Tour6_Body" xml:space="preserve"><value>Le runtime suit quatre étapes pour trouver ses réglages. Cette carte montre toute la chaîne et marque où se situe votre cible — plus de surprise silencieuse d'un fichier à côté du crew.</value></data>
+  <data name="Tour7_Title" xml:space="preserve"><value>Accès fichiers sandboxé</value></data>
+  <data name="Tour7_Body" xml:space="preserve"><value>Les montages sont les seuls dossiers que les agents voient. Choisissez le dossier physique, le chemin virtuel exposé aux agents, et les droits — lecture seule par défaut, avec overrides par sous-chemin.</value></data>
+  <data name="Tour8_Title" xml:space="preserve"><value>Lancer et observer</value></data>
+  <data name="Tour8_Body" xml:space="preserve"><value>La ligne de commande exacte se construit en direct depuis vos options. Le dry-run valide sans effet de bord ; Lancer streame le log ici, ligne à ligne, et se conclut par le code de sortie.</value></data>
+  <data name="Tour9_Title" xml:space="preserve"><value>Quand quelque chose cloche</value></data>
+  <data name="Tour9_Body" xml:space="preserve"><value>Le diagnostic exécute orkeon doctor : binaire, fichier de réglages, joignabilité du LLM, montages. Vert = tout va bien ; les alertes disent quoi corriger avant qu'un run n'échoue.</value></data>
+</root>

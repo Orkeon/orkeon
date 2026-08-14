@@ -1,0 +1,48 @@
+<!-- Orkeon Studio — dark theme tokens ("deep ocean night", Crew Console dark override). -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- surfaces -->
+  <SolidColorBrush x:Key="PaperBrush"       Color="#0F1E2A"/>
+  <SolidColorBrush x:Key="PaperSunkBrush"   Color="#0A1620"/>
+  <SolidColorBrush x:Key="SurfaceBrush"     Color="#16293B"/>
+  <SolidColorBrush x:Key="Surface2Brush"    Color="#1D3445"/>
+  <SolidColorBrush x:Key="SkyBrush"         Color="#142C38"/>
+
+  <!-- text -->
+  <SolidColorBrush x:Key="InkBrush"         Color="#EAF1F3"/>
+  <SolidColorBrush x:Key="InkMutedBrush"    Color="#A9BCC6"/>
+  <SolidColorBrush x:Key="InkFaintBrush"    Color="#748996"/>
+  <SolidColorBrush x:Key="InkDisabledBrush" Color="#50626F"/>
+
+  <!-- lines -->
+  <SolidColorBrush x:Key="LineBrush"        Color="#243A4C"/>
+  <SolidColorBrush x:Key="LineStrongBrush"  Color="#324D60"/>
+  <SolidColorBrush x:Key="LineFaintBrush"   Color="#1B303F"/>
+
+  <!-- accent: brightened ocean blue for dark (Crew Console dark) -->
+  <SolidColorBrush x:Key="AccentBrush"       Color="#5FA9D4"/>
+  <SolidColorBrush x:Key="AccentHoverBrush"  Color="#7FBCDF"/>
+  <SolidColorBrush x:Key="AccentActiveBrush" Color="#3E86B4"/>
+  <SolidColorBrush x:Key="AccentWeakBrush"   Color="#122B3C"/>
+  <SolidColorBrush x:Key="AccentFgBrush"     Color="#07171C"/>
+  <SolidColorBrush x:Key="MarkBrush"         Color="#3DA0AC"/>
+
+  <!-- status -->
+  <SolidColorBrush x:Key="SuccessBrush"     Color="#54B496"/>
+  <SolidColorBrush x:Key="SuccessWeakBrush" Color="#14271F"/>
+  <SolidColorBrush x:Key="WarningBrush"     Color="#DCA646"/>
+  <SolidColorBrush x:Key="WarningWeakBrush" Color="#2A2212"/>
+  <SolidColorBrush x:Key="DangerBrush"      Color="#DD6B5C"/>
+  <SolidColorBrush x:Key="DangerWeakBrush"  Color="#2C1815"/>
+  <SolidColorBrush x:Key="SandBrush"        Color="#E6C079"/>
+  <SolidColorBrush x:Key="SandWeakBrush"    Color="#2A2415"/>
+
+  <!-- log console (unchanged) -->
+  <SolidColorBrush x:Key="ConsoleBgBrush"    Color="#0B1822"/>
+  <SolidColorBrush x:Key="ConsoleFgBrush"    Color="#9FB2C0"/>
+  <SolidColorBrush x:Key="ConsoleCmdBrush"   Color="#7FBCDF"/>
+  <SolidColorBrush x:Key="ConsoleOkBrush"    Color="#7FC9AE"/>
+  <SolidColorBrush x:Key="ConsoleErrBrush"   Color="#E0837A"/>
+
+</ResourceDictionary>
