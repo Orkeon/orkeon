@@ -9,14 +9,16 @@ WPF ne lit pas le WOFF2 : téléchargez les **TTF** et déposez-les dans ce doss
 | Texte / UI | **Hanken Grotesk** | https://fonts.google.com/specimen/Hanken+Grotesk |
 | Mono (code, labels) | **IBM Plex Mono** | https://fonts.google.com/specimen/IBM+Plex+Mono |
 
-Fichiers attendus (les variables-fonts TTF suffisent) :
+Les TTF **statiques** sont commis dans ce dossier (les variable fonts sont évitées :
+WPF ne rend fiablement que leur instance par défaut, les graisses SemiBold/Bold
+seraient synthétisées) :
 
 ```
 Fonts/
-  BricolageGrotesque[opsz,wdth,wght].ttf
-  HankenGrotesk[wght].ttf
-  IBMPlexMono-Regular.ttf
-  IBMPlexMono-Medium.ttf
+  BricolageGrotesque-{Regular,SemiBold,Bold}.ttf     (upstream ateliertriay/bricolage)
+  HankenGrotesk-{Regular,Medium,SemiBold,Bold}.ttf   (Google Fonts, sous-ensemble latin)
+  IBMPlexMono-{Regular,Medium}.ttf                   (upstream IBM/plex 2.5.0)
+  OFL-*.txt                                          (licences par famille)
 ```
 
 ## Intégration
