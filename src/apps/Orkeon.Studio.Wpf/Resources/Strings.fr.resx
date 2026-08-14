@@ -102,4 +102,18 @@
   <data name="Sec_LlmLog_FullEmbedding" xml:space="preserve"><value>Journaliser les payloads d'embedding complets</value></data>
   <data name="Sec_LlmLog_Streaming" xml:space="preserve"><value>Journaliser les échanges en streaming</value></data>
   <data name="Sec_Lbl_MaxBodyLength" xml:space="preserve"><value>Longueur max du corps (caractères)</value></data>
+
+  <data name="Scr_Mounts_Title" xml:space="preserve"><value>Montages</value></data>
+  <data name="Scr_Mounts_Sub" xml:space="preserve"><value>Les seuls dossiers que voient les agents — chemin physique, chemin virtuel, droits.</value></data>
+  <data name="Mounts_Add" xml:space="preserve"><value>Ajouter</value></data>
+  <data name="Mounts_Remove" xml:space="preserve"><value>Retirer</value></data>
+  <data name="Mounts_Unparsed" xml:space="preserve"><value>Cette entrée n'a pas pu être analysée. Elle est conservée telle quelle, rien n'est perdu.</value></data>
+  <data name="Mounts_Lbl_Physical" xml:space="preserve"><value>Chemin physique (sur cette machine)</value></data>
+  <data name="Mounts_CreateFolder" xml:space="preserve"><value>Créer le dossier</value></data>
+  <data name="Mounts_Lbl_Virtual" xml:space="preserve"><value>Chemin virtuel (ce que voient les agents)</value></data>
+  <data name="Mounts_VirtualInvalid" xml:space="preserve"><value>Doit commencer par « / » ou être un chemin de lecteur Windows.</value></data>
+  <data name="Mounts_Lbl_Rights" xml:space="preserve"><value>Droits</value></data>
+  <data name="Mounts_Overrides_Title" xml:space="preserve"><value>Droits par sous-chemin</value></data>
+  <data name="Mounts_AddOverride" xml:space="preserve"><value>Ajouter une exception</value></data>
+  <data name="Mounts_Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
 </root>

@@ -102,4 +102,18 @@
   <data name="Sec_LlmLog_FullEmbedding" xml:space="preserve"><value>Log full embedding payloads</value></data>
   <data name="Sec_LlmLog_Streaming" xml:space="preserve"><value>Log streaming exchanges</value></data>
   <data name="Sec_Lbl_MaxBodyLength" xml:space="preserve"><value>Max body length (chars)</value></data>
+
+  <data name="Scr_Mounts_Title" xml:space="preserve"><value>Mounts</value></data>
+  <data name="Scr_Mounts_Sub" xml:space="preserve"><value>The only folders agents can see — physical path, virtual path, rights.</value></data>
+  <data name="Mounts_Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Mounts_Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Mounts_Unparsed" xml:space="preserve"><value>This entry could not be parsed. It is kept exactly as written so nothing is lost.</value></data>
+  <data name="Mounts_Lbl_Physical" xml:space="preserve"><value>Physical path (on this machine)</value></data>
+  <data name="Mounts_CreateFolder" xml:space="preserve"><value>Create folder</value></data>
+  <data name="Mounts_Lbl_Virtual" xml:space="preserve"><value>Virtual path (what the agents see)</value></data>
+  <data name="Mounts_VirtualInvalid" xml:space="preserve"><value>Must start with '/' or be a Windows drive path.</value></data>
+  <data name="Mounts_Lbl_Rights" xml:space="preserve"><value>Rights</value></data>
+  <data name="Mounts_Overrides_Title" xml:space="preserve"><value>Sub-path rights overrides</value></data>
+  <data name="Mounts_AddOverride" xml:space="preserve"><value>Add override</value></data>
+  <data name="Mounts_Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
 </root>

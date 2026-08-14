@@ -1,108 +1,167 @@
+<!-- The §4.5 mount form, restyled as a two-pane card. The same control serves the appsettings
+     editor and the launcher; only the destination of ToRawEntries() differs, so nothing here
+     knows which screen it is in (and it carries no H1 — the host provides the screen header). -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.MountsEditorView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mounts="clr-namespace:Orkeon.Studio.Wpf.ViewModels.Mounts">
+             xmlns:mounts="clr-namespace:Orkeon.Studio.Wpf.ViewModels.Mounts"
+             xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
+             xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
 
-  <!-- The §4.5 mount form. The same control serves the appsettings editor and the launcher; only the
-       destination of ToRawEntries() differs, so nothing here knows which tab it is in. -->
-  <Grid>
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="260" />
-      <ColumnDefinition Width="*" />
-    </Grid.ColumnDefinitions>
+  <Border Style="{StaticResource Card}">
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="252"/>
+        <ColumnDefinition Width="20"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
 
-    <DockPanel Grid.Column="0" Margin="0,0,8,0">
-      <TextBlock DockPanel.Dock="Top" Style="{StaticResource CardTitle}" Text="{Binding Summary}" />
-
-      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
-        <Button Content="Add" Command="{Binding AddMountCommand}" Width="70" Margin="0,0,6,0" />
-        <Button Content="Remove" Command="{Binding RemoveMountCommand}" Width="70" />
-      </StackPanel>
-
-      <ListBox ItemsSource="{Binding Mounts}"
-               SelectedItem="{Binding SelectedMount}"
-               DisplayMemberPath="Display"
-               VirtualizingPanel.IsVirtualizing="True"
-               VirtualizingPanel.VirtualizationMode="Recycling" />
-    </DockPanel>
-
-    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-      <StackPanel DataContext="{Binding SelectedMount}">
-
-        <TextBlock Style="{StaticResource Hint}"
-                   Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"
-                   Text="This entry could not be parsed. It is kept exactly as written so nothing is lost, and reported below." />
-
-        <TextBox Text="{Binding RawText, Mode=OneWay}"
-                 IsReadOnly="True"
-                 Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}" />
-
-        <StackPanel Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-
-          <TextBlock Style="{StaticResource FieldLabel}" Text="Physical path (on this machine)" />
-          <DockPanel Margin="{StaticResource FieldMargin}">
-            <Button DockPanel.Dock="Right"
-                    Content="Browse…"
-                    Width="90"
-                    Margin="6,0,0,0"
-                    Command="{Binding DataContext.BrowsePhysicalPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-            <Button DockPanel.Dock="Right"
-                    Content="Create folder"
-                    Width="110"
-                    Margin="6,0,0,0"
-                    Command="{Binding DataContext.CreatePhysicalFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-            <TextBox Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged}" />
-          </DockPanel>
-
-          <TextBlock Style="{StaticResource FieldLabel}" Text="Virtual path (what the agents see)" />
-          <ComboBox Margin="{StaticResource FieldMargin}"
-                    IsEditable="True"
-                    ItemsSource="{x:Static mounts:MountEditorViewModel.SuggestedVirtualPaths}"
-                    Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBlock Style="{StaticResource Hint}"
-                     Text="Must start with '/' or be a Windows drive path."
-                     Visibility="{Binding IsVirtualPathValid, Converter={StaticResource InverseBooleanToVisibility}}" />
-
-          <TextBlock Style="{StaticResource FieldLabel}" Text="Rights" />
-          <ComboBox Margin="{StaticResource FieldMargin}"
-                    ItemsSource="{x:Static mounts:MountEditorViewModel.RightsChoices}"
-                    SelectedValue="{Binding Rights}"
-                    SelectedValuePath="Rights"
-                    DisplayMemberPath="Label" />
-
-          <TextBlock Style="{StaticResource CardTitle}" Text="Sub-path rights overrides" Margin="0,12,0,6" />
-          <ItemsControl ItemsSource="{Binding Overrides}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <DockPanel Margin="{StaticResource FieldMargin}">
-                  <Button DockPanel.Dock="Right"
-                          Content="Remove"
-                          Width="70"
-                          Margin="6,0,0,0"
-                          Command="{Binding DataContext.RemoveOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                          CommandParameter="{Binding}" />
-                  <ComboBox DockPanel.Dock="Right"
-                            Width="220"
-                            Margin="6,0,0,0"
-                            ItemsSource="{x:Static mounts:SubPathOverrideViewModel.RightsChoices}"
-                            SelectedValue="{Binding Rights}"
-                            SelectedValuePath="Rights"
-                            DisplayMemberPath="Label" />
-                  <TextBox Text="{Binding RelativePath, UpdateSourceTrigger=PropertyChanged}" />
-                </DockPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <Button Content="Add override"
-                  Width="120"
-                  HorizontalAlignment="Left"
-                  Margin="0,6,0,0"
-                  Command="{Binding DataContext.AddOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-
+      <!-- left pane: mount list + add/remove -->
+      <DockPanel Grid.Column="0">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+          <Button Style="{StaticResource BtnGhost}" Command="{Binding AddMountCommand}" Margin="0,0,8,0">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Mounts_Add], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource BtnGhost}" Command="{Binding RemoveMountCommand}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Mounts_Remove], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
         </StackPanel>
-      </StackPanel>
-    </ScrollViewer>
-  </Grid>
+
+        <ListBox ItemsSource="{Binding Mounts}" SelectedItem="{Binding SelectedMount}"
+                 Background="Transparent" BorderThickness="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling">
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Row" CornerRadius="9" Padding="10,8" Margin="0,0,0,4"
+                            BorderThickness="1" BorderBrush="Transparent" Background="Transparent">
+                      <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                      </Trigger>
+                      <Trigger Property="IsSelected" Value="True">
+                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                        <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </Style>
+          </ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <DockPanel LastChildFill="True">
+                <Border DockPanel.Dock="Right" Style="{StaticResource BadgeOk}" Margin="6,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Style="{StaticResource BadgeText}" FontSize="9.5" Text="{Binding RightsLabel, Mode=OneWay}"/>
+                </Border>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="11" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" Text="{Binding VirtualPath, Mode=OneWay}"/>
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+
+      <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource LineFaintBrush}" HorizontalAlignment="Center"/>
+
+      <!-- right pane: editor for the selected mount -->
+      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+        <StackPanel DataContext="{Binding SelectedMount}">
+
+          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,0,0,7"
+                     Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"
+                     Text="{Binding [Mounts_Unparsed], Source={x:Static services:I18n.Instance}}"/>
+          <TextBox Style="{StaticResource InputMono}" Text="{Binding RawText, Mode=OneWay}" IsReadOnly="True"
+                   Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"/>
+
+          <StackPanel Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
+
+            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Mounts_Lbl_Physical], Source={x:Static services:I18n.Instance}}"/>
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
+                      Command="{Binding DataContext.BrowsePhysicalPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      Content="{Binding [Btn_Browse], Source={x:Static services:I18n.Instance}}"/>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
+                      Command="{Binding DataContext.CreatePhysicalFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      Content="{Binding [Mounts_CreateFolder], Source={x:Static services:I18n.Instance}}"/>
+              <TextBox Style="{StaticResource InputMono}" Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged}"/>
+            </DockPanel>
+
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Mounts_Lbl_Virtual], Source={x:Static services:I18n.Instance}}"/>
+            <TextBox Style="{StaticResource InputMono}" Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
+            <ItemsControl ItemsSource="{x:Static mounts:MountEditorViewModel.SuggestedVirtualPaths}" Margin="0,6,0,0">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Style="{StaticResource BtnGhost}" FontSize="11" Padding="9,4" Margin="0,0,6,0"
+                          FontFamily="{StaticResource MonoFont}" Tag="{Binding}" Click="OnSuggestVirtualPath"
+                          Content="{Binding}"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,5,0,0"
+                       Text="{Binding [Mounts_VirtualInvalid], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding IsVirtualPathValid, Converter={StaticResource InverseBooleanToVisibility}}"/>
+
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Mounts_Lbl_Rights], Source={x:Static services:I18n.Instance}}"/>
+            <ComboBox HorizontalAlignment="Left" MinWidth="220"
+                      ItemsSource="{x:Static mounts:MountEditorViewModel.RightsChoices}"
+                      SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
+
+            <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
+                       Text="{Binding [Mounts_Overrides_Title], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding Overrides}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel Margin="0,0,0,7">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Margin="8,0,0,0"
+                            Command="{Binding DataContext.RemoveOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}">
+                      <controls:LucideIcon Kind="trash-2" Size="13"/>
+                    </Button>
+                    <ComboBox DockPanel.Dock="Right" Width="200" Margin="8,0,0,0"
+                              ItemsSource="{x:Static mounts:SubPathOverrideViewModel.RightsChoices}"
+                              SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
+                    <TextBox Style="{StaticResource InputMono}" Text="{Binding RelativePath, UpdateSourceTrigger=PropertyChanged}"/>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left"
+                    Command="{Binding DataContext.AddOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [Mounts_AddOverride], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
+
+            <!-- mount-string preview: exactly what lands in appsettings / on the command line -->
+            <TextBlock Style="{StaticResource Eyebrow}" Margin="0,16,0,6"
+                       Text="{Binding [Mounts_Preview], Source={x:Static services:I18n.Instance}}"/>
+            <Border Style="{StaticResource Well}">
+              <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" TextWrapping="Wrap"
+                         Text="{Binding MountString, Mode=OneWay}"/>
+            </Border>
+
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Border>
 
 </UserControl>
