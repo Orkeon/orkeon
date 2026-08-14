@@ -298,7 +298,8 @@
           </StackPanel>
 
           <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" Text="{Binding ValidationSummary}"/>
-          <ItemsControl ItemsSource="{Binding ValidationMessages}" MaxHeight="110">
+          <ScrollViewer MaxHeight="110" VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding ValidationMessages}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,1" Text="{Binding Display}">
@@ -316,6 +317,7 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          </ScrollViewer>
         </StackPanel>
 
         <!-- footer: run verdict -->

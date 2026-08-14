@@ -15,7 +15,16 @@ public partial class RawJsonView : UserControl
     {
         if (DataContext is ConfigTabViewModel { RawJson: { Length: > 0 } json })
         {
-            Clipboard.SetText(json);
+            try
+            {
+                // SetDataObject(copy: false) skips the flush that makes SetText throw when another
+                // process (RDP, clipboard managers, VM tools) is holding the Win32 clipboard open.
+                Clipboard.SetDataObject(json, copy: false);
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                // The clipboard stayed locked through the retries — losing one copy beats crashing.
+            }
         }
     }
 }

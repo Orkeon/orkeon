@@ -9,6 +9,31 @@
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
 
   <Border Style="{StaticResource Card}">
+    <DockPanel>
+      <!-- live verdict: the ViewModel revalidates on every edit -->
+      <TextBlock DockPanel.Dock="Top" Style="{StaticResource Hint}" Margin="0,0,0,10" Text="{Binding Summary}"/>
+      <ScrollViewer DockPanel.Dock="Bottom" MaxHeight="80" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0"
+                    Visibility="{Binding ValidationMessages.Count, Converter={StaticResource CountToVisibility}}">
+        <ItemsControl ItemsSource="{Binding ValidationMessages}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,1" Text="{Binding Display}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsError}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="252"/>
@@ -64,11 +89,25 @@
           <ListBox.ItemTemplate>
             <DataTemplate>
               <DockPanel LastChildFill="True">
-                <Border DockPanel.Dock="Right" Style="{StaticResource BadgeOk}" Margin="6,0,0,0" VerticalAlignment="Center">
+                <Border DockPanel.Dock="Right" Style="{StaticResource BadgeOk}" Margin="6,0,0,0" VerticalAlignment="Center"
+                        Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource BadgeText}" FontSize="9.5" Text="{Binding RightsLabel, Mode=OneWay}"/>
                 </Border>
-                <TextBlock Style="{StaticResource MonoText}" FontSize="11" TextTrimming="CharacterEllipsis"
-                           VerticalAlignment="Center" Text="{Binding VirtualPath, Mode=OneWay}"/>
+                <!-- an unparseable entry keeps its raw text visible instead of a blank, healthy-looking row -->
+                <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+                      <Setter Property="FontSize" Value="11"/>
+                      <Setter Property="Text" Value="{Binding VirtualPath, Mode=OneWay}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsParsed}" Value="False">
+                          <Setter Property="Text" Value="{Binding RawText, Mode=OneWay}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
               </DockPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
@@ -162,6 +201,7 @@
         </StackPanel>
       </ScrollViewer>
     </Grid>
+    </DockPanel>
   </Border>
 
 </UserControl>

@@ -17,7 +17,24 @@
     <shell:WindowChrome CaptionHeight="52" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
   </shell:WindowChrome.WindowChrome>
 
+  <!-- the settings file can be saved from any screen, not only from Start -->
+  <Window.InputBindings>
+    <KeyBinding Modifiers="Control" Key="S" Command="{Binding Config.SaveCommand}"/>
+  </Window.InputBindings>
+
   <Grid>
+    <Grid.Style>
+      <!-- A maximized WindowChrome window is positioned ~7px offscreen on every side (the OS
+           reserves the resize frame); without this compensation the custom title bar and the
+           content edges are clipped whenever the window is maximized. -->
+      <Style TargetType="Grid">
+        <Style.Triggers>
+          <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+            <Setter Property="Margin" Value="7"/>
+          </DataTrigger>
+        </Style.Triggers>
+      </Style>
+    </Grid.Style>
     <Grid.RowDefinitions>
       <RowDefinition Height="52"/>
       <RowDefinition Height="*"/>
@@ -175,41 +192,56 @@
 
       <!-- CONTENT: one panel per nav item, visibility driven by the RadioButtons -->
       <Grid Grid.Column="1">
-        <Grid.Resources>
-          <BooleanToVisibilityConverter x:Key="B2V"/>
-        </Grid.Resources>
-
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavStart, Converter={StaticResource B2V}}">
+                      Visibility="{Binding IsChecked, ElementName=NavStart, Converter={StaticResource BooleanToVisibility}}">
           <views:StartView x:Name="StartPanel" MaxWidth="880" DataContext="{Binding Config}"/>
         </ScrollViewer>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavSections, Converter={StaticResource B2V}}">
+                      Visibility="{Binding IsChecked, ElementName=NavSections, Converter={StaticResource BooleanToVisibility}}">
           <views:SectionsView MaxWidth="1080" DataContext="{Binding Config}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavMounts, Converter={StaticResource B2V}}">
+                      Visibility="{Binding IsChecked, ElementName=NavMounts, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel MaxWidth="880">
-            <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Mounts_Title], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-                       Text="{Binding [Scr_Mounts_Sub], Source={x:Static services:I18n.Instance}}"/>
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                <Button Style="{StaticResource BtnGhost}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Act_Validate], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                    <TextBlock Text="{Binding [Act_Save], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Mounts_Title], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
+                           Text="{Binding [Scr_Mounts_Sub], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </DockPanel>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,22" Text="{Binding Config.StatusMessage}"/>
             <views:MountsEditorView x:Name="MountsPanel" DataContext="{Binding Config.Mounts}"/>
           </StackPanel>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavRaw, Converter={StaticResource B2V}}">
+                      Visibility="{Binding IsChecked, ElementName=NavRaw, Converter={StaticResource BooleanToVisibility}}">
           <views:RawJsonView MaxWidth="880" DataContext="{Binding Config}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource B2V}}">
+                      Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource BooleanToVisibility}}">
           <views:DiagnosticView x:Name="DiagPanel" MaxWidth="880" DataContext="{Binding Config.Diagnostic}"/>
         </ScrollViewer>
-        <Grid Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource B2V}}">
+        <Grid Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource BooleanToVisibility}}">
           <views:LaunchTabView x:Name="RunPanel" DataContext="{Binding Launch}" Margin="30,24,30,20"/>
         </Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource B2V}}">
+                      Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource BooleanToVisibility}}">
           <views:HistoryView MaxWidth="880" DataContext="{Binding Launch.History}"/>
         </ScrollViewer>
       </Grid>

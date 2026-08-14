@@ -4,10 +4,12 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls">
 
-  <!-- ══ Fonts (see Fonts/FONTS.md — pack URIs once the TTFs are embedded) ══ -->
-  <FontFamily x:Key="DisplayFont">./Fonts/#Bricolage Grotesque, Segoe UI</FontFamily>
-  <FontFamily x:Key="TextFont">./Fonts/#Hanken Grotesk, Segoe UI</FontFamily>
-  <FontFamily x:Key="MonoFont">./Fonts/#IBM Plex Mono, Consolas</FontFamily>
+  <!-- ══ Fonts (see Fonts/FONTS.md). Absolute pack URIs: a './Fonts/' relative form would
+       resolve against THIS dictionary's base (/Themes/), where no font exists, and silently
+       fall back to the system faces. ══ -->
+  <FontFamily x:Key="DisplayFont">pack://application:,,,/Fonts/#Bricolage Grotesque, Segoe UI</FontFamily>
+  <FontFamily x:Key="TextFont">pack://application:,,,/Fonts/#Hanken Grotesk, Segoe UI</FontFamily>
+  <FontFamily x:Key="MonoFont">pack://application:,,,/Fonts/#IBM Plex Mono, Consolas</FontFamily>
 
   <!-- ══ Typography ══ -->
   <Style x:Key="H1" TargetType="TextBlock">

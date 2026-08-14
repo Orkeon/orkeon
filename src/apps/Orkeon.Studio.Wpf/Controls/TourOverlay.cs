@@ -129,8 +129,7 @@ public sealed class TourOverlay : Grid
 
         Rect? r = null;
         if (step.TargetName is not null
-            && Window.GetWindow(this)?.FindName(step.TargetName) is FrameworkElement el
-            && el.IsVisible)
+            && ResolveTarget(step.TargetName) is { IsVisible: true } el)
         {
             var origin = el.TransformToVisual(this).Transform(new Point(0, 0));
             r = new Rect(origin.X - Pad, origin.Y - Pad, el.ActualWidth + 2 * Pad, el.ActualHeight + 2 * Pad);
@@ -187,4 +186,36 @@ public sealed class TourOverlay : Grid
     }
 
     private static double Clamp(double v, double min, double max) => Math.Max(min, Math.Min(v, max));
+
+    /// <summary>
+    /// Finds a step target by name. Window.FindName alone cannot see names registered in a
+    /// UserControl's own namescope (StartView declares StartActions/PresetCard/ChainCard), so a
+    /// visual-tree walk is the fallback that keeps every spotlight working.
+    /// </summary>
+    private FrameworkElement? ResolveTarget(string name)
+    {
+        var window = Window.GetWindow(this);
+        if (window is null)
+            return null;
+
+        if (window.FindName(name) is FrameworkElement direct)
+            return direct;
+
+        return FindByName(window, name);
+    }
+
+    private static FrameworkElement? FindByName(DependencyObject root, string name)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is FrameworkElement fe && fe.Name == name)
+                return fe;
+
+            if (FindByName(child, name) is { } nested)
+                return nested;
+        }
+
+        return null;
+    }
 }

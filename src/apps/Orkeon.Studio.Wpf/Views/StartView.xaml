@@ -204,7 +204,8 @@
           </StackPanel>
         </RadioButton>
 
-        <RadioButton Style="{StaticResource PickRow}" GroupName="Loc" IsChecked="{Binding Location.IsCustom, Mode=OneWay}">
+        <RadioButton Style="{StaticResource PickRow}" GroupName="Loc" IsChecked="{Binding Location.IsCustom, Mode=OneWay}"
+                     Checked="OnCustomLocationChecked">
           <StackPanel>
             <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,7"
                        Text="{Binding [Loc_Custom], Source={x:Static services:I18n.Instance}}"/>
