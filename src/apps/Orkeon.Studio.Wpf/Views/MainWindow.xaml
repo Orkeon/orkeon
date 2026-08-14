@@ -176,12 +176,9 @@
           <views:StartView x:Name="StartPanel" MaxWidth="880" DataContext="{Binding Config}"/>
         </ScrollViewer>
 
-        <!-- TODO(kit): restyle these hosts the same way StartView.xaml demonstrates
-             (Card containers + FieldLabel/Input/Btn* styles). They are wired to the
-             existing view models so the app stays functional during the migration. -->
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavSections, Converter={StaticResource B2V}}">
-          <ContentControl MaxWidth="1080"/><!-- Sections forms (from ConfigTabView "Sections" tab) -->
+          <views:SectionsView MaxWidth="1080" DataContext="{Binding Config}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavMounts, Converter={StaticResource B2V}}">

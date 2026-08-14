@@ -74,4 +74,32 @@
   <data name="Tour8_Body" xml:space="preserve"><value>La ligne de commande exacte se construit en direct depuis vos options. Le dry-run valide sans effet de bord ; Lancer streame le log ici, ligne à ligne, et se conclut par le code de sortie.</value></data>
   <data name="Tour9_Title" xml:space="preserve"><value>Quand quelque chose cloche</value></data>
   <data name="Tour9_Body" xml:space="preserve"><value>Le diagnostic exécute orkeon doctor : binaire, fichier de réglages, joignabilité du LLM, montages. Vert = tout va bien ; les alertes disent quoi corriger avant qu'un run n'échoue.</value></data>
+
+  <data name="Val_Title" xml:space="preserve"><value>Validation</value></data>
+
+  <data name="Scr_Sections_Title" xml:space="preserve"><value>Sections</value></data>
+  <data name="Scr_Sections_Sub" xml:space="preserve"><value>Formulaires typés pour chaque section du appsettings — le JSON brut reste synchronisé.</value></data>
+  <data name="Sec_DetectedProvider" xml:space="preserve"><value>FOURNISSEUR DÉTECTÉ</value></data>
+  <data name="Sec_Lbl_Temperature" xml:space="preserve"><value>Température</value></data>
+  <data name="Sec_Lbl_MaxTokens" xml:space="preserve"><value>Tokens max</value></data>
+  <data name="Sec_Lbl_TimeoutSeconds" xml:space="preserve"><value>Timeout (secondes)</value></data>
+  <data name="Sec_TestConnection" xml:space="preserve"><value>Tester la connexion</value></data>
+  <data name="Sec_Lbl_MaxConcurrent" xml:space="preserve"><value>Requêtes concurrentes max</value></data>
+  <data name="Sec_Lbl_GlobalRpm" xml:space="preserve"><value>Requêtes globales / minute</value></data>
+  <data name="Sec_Lbl_ProviderRpm" xml:space="preserve"><value>Requêtes fournisseur / minute</value></data>
+  <data name="Sec_Lbl_AgentRpm" xml:space="preserve"><value>Requêtes agent / minute</value></data>
+  <data name="Sec_Lbl_QueueLimit" xml:space="preserve"><value>Limite de file</value></data>
+  <data name="Sec_Lbl_RagProfile" xml:space="preserve"><value>Profil</value></data>
+  <data name="Sec_Lbl_RagProvider" xml:space="preserve"><value>Fournisseur</value></data>
+  <data name="Sec_Lbl_RagConnection" xml:space="preserve"><value>Chaîne de connexion</value></data>
+  <data name="Sec_Rag_Hybrid" xml:space="preserve"><value>Récupération hybride (BM25 + RRF)</value></data>
+  <data name="Sec_Rag_CorrectiveWebFallback" xml:space="preserve"><value>Repli web correctif — politique</value></data>
+  <data name="Sec_Rag_WebFallback" xml:space="preserve"><value>Repli web — transport</value></data>
+  <data name="Sec_Lbl_CorrectiveMaxIterations" xml:space="preserve"><value>Itérations correctives max</value></data>
+  <data name="Sec_Lbl_DefaultLevel" xml:space="preserve"><value>Niveau par défaut</value></data>
+  <data name="Sec_AddCategory" xml:space="preserve"><value>Ajouter une catégorie</value></data>
+  <data name="Sec_Remove" xml:space="preserve"><value>Retirer</value></data>
+  <data name="Sec_LlmLog_FullEmbedding" xml:space="preserve"><value>Journaliser les payloads d'embedding complets</value></data>
+  <data name="Sec_LlmLog_Streaming" xml:space="preserve"><value>Journaliser les échanges en streaming</value></data>
+  <data name="Sec_Lbl_MaxBodyLength" xml:space="preserve"><value>Longueur max du corps (caractères)</value></data>
 </root>
