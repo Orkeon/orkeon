@@ -91,10 +91,15 @@ jobs:
           --reindex
           --min-recall "$RAG_EVAL_MIN_RECALL"
           --min-mrr "$RAG_EVAL_MIN_MRR"
+      # The reports are a convenience copy (the comparison table is already in
+      # the step summary): short retention, and a storage-quota failure on the
+      # upload must not fail the gate itself.
       - name: Upload evaluation reports
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: rag-eval-reports
           path: .orkeon/rag/eval/
           if-no-files-found: warn
+          retention-days: 3
