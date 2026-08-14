@@ -158,4 +158,9 @@
   <data name="Run_Run" xml:space="preserve"><value>Lancer</value></data>
   <data name="Run_Cancel" xml:space="preserve"><value>Annuler</value></data>
   <data name="Run_ClearLog" xml:space="preserve"><value>Vider le journal</value></data>
+
+  <data name="Scr_Hist_Title" xml:space="preserve"><value>Historique</value></data>
+  <data name="Scr_Hist_Sub" xml:space="preserve"><value>Chaque lancement est enregistré localement et rejouable avec exactement les mêmes arguments.</value></data>
+  <data name="Hist_Replay" xml:space="preserve"><value>Préparer le rejeu</value></data>
+  <data name="Hist_Reload" xml:space="preserve"><value>Recharger</value></data>
 </root>
