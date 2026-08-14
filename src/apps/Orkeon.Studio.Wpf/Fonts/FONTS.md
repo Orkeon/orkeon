@@ -21,6 +21,12 @@ Fonts/
   OFL-*.txt                                          (licences par famille)
 ```
 
+⚠️ **Rendu** : les instances Hanken Grotesk sont **non hintées** (pas de tables
+`fpgm`/`cvt`). La fenêtre doit donc rester en `TextOptions.TextFormattingMode="Ideal"`
+(le défaut WPF, qui ignore le hinting) — le mode `Display` s'appuie sur le hinting
+TrueType et rend ces polices crénelées. `Ideal` gère aussi mieux les tailles
+fractionnaires du design (10.5, 11.5…).
+
 ## Intégration
 
 1. Dans `Orkeon.Studio.Wpf.csproj` :

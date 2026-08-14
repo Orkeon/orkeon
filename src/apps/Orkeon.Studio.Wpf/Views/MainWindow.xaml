@@ -10,7 +10,8 @@
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PaperBrush}"
         FontFamily="{StaticResource TextFont}"
-        TextOptions.TextFormattingMode="Display">
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto">
 
   <!-- Custom title bar: the 52px strip is the caption; buttons opt out via IsHitTestVisibleInChrome. -->
   <shell:WindowChrome.WindowChrome>
