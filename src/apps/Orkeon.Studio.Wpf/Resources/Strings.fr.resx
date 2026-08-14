@@ -126,4 +126,36 @@
   <data name="Scr_Diag_Sub" xml:space="preserve"><value>Exécute orkeon doctor : binaire, fichier de settings, joignabilité LLM, montages.</value></data>
   <data name="Diag_Run" xml:space="preserve"><value>Lancer le diagnostic</value></data>
   <data name="Diag_Checks_Title" xml:space="preserve"><value>Vérifications</value></data>
+
+  <data name="Scr_Run_Title" xml:space="preserve"><value>Lancer un crew</value></data>
+  <data name="Scr_Run_Sub" xml:space="preserve"><value>Choisissez une cible, réglez les options, suivez le journal en direct.</value></data>
+  <data name="Run_Target_Title" xml:space="preserve"><value>Crew à lancer</value></data>
+  <data name="Run_Detect" xml:space="preserve"><value>Détecter</value></data>
+  <data name="Run_File" xml:space="preserve"><value>Fichier…</value></data>
+  <data name="Run_Folder" xml:space="preserve"><value>Dossier…</value></data>
+  <data name="Run_UseCandidate" xml:space="preserve"><value>Utiliser ce fichier</value></data>
+  <data name="Run_Tab_Options" xml:space="preserve"><value>Options</value></data>
+  <data name="Run_Tab_Mounts" xml:space="preserve"><value>Montages</value></data>
+  <data name="Run_Settings_Auto" xml:space="preserve"><value>Automatique (résolu par le runtime)</value></data>
+  <data name="Run_Settings_Explicit" xml:space="preserve"><value>Chemin explicite</value></data>
+  <data name="Run_Vars_Title" xml:space="preserve"><value>Variables (-V KEY=VALUE)</value></data>
+  <data name="Run_Add" xml:space="preserve"><value>Ajouter</value></data>
+  <data name="Run_Remove" xml:space="preserve"><value>Retirer</value></data>
+  <data name="Run_Lbl_InitialContext" xml:space="preserve"><value>Contexte initial</value></data>
+  <data name="Run_Inputs_Title" xml:space="preserve"><value>Entrées</value></data>
+  <data name="Run_Lbl_InputsJson" xml:space="preserve"><value>JSON en ligne (--inputs)</value></data>
+  <data name="Run_Lbl_InputsFile" xml:space="preserve"><value>Fichier (--inputs-file)</value></data>
+  <data name="Run_Diag_Title" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="Run_Lbl_Verbosity" xml:space="preserve"><value>Verbosité (--verbose)</value></data>
+  <data name="Run_LlmLog" xml:space="preserve"><value>Journaliser les échanges LLM (--llm-log)</value></data>
+  <data name="Run_SettingsMounts_Title" xml:space="preserve"><value>Montages déjà présents dans le appsettings sélectionné</value></data>
+  <data name="Run_AllowExternal" xml:space="preserve"><value>Autoriser les montages hors du répertoire de travail (--allow-external-mounts)</value></data>
+  <data name="Run_Col_Key" xml:space="preserve"><value>Clé</value></data>
+  <data name="Run_Col_Effective" xml:space="preserve"><value>Montage effectif</value></data>
+  <data name="Run_Col_Origin" xml:space="preserve"><value>Origine</value></data>
+  <data name="Run_Cmd_Title" xml:space="preserve"><value>COMMANDE</value></data>
+  <data name="Run_Validate" xml:space="preserve"><value>Valider (dry-run)</value></data>
+  <data name="Run_Run" xml:space="preserve"><value>Lancer</value></data>
+  <data name="Run_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Run_ClearLog" xml:space="preserve"><value>Vider le journal</value></data>
 </root>
