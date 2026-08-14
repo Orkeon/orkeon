@@ -19,11 +19,6 @@
       <views:StringPresentToVisibilityConverter x:Key="StringPresentToVisibility" />
       <views:CountToVisibilityConverter x:Key="CountToVisibility" />
 
-      <!-- Shared spacing so every form in both tabs lines up without repeating margins. -->
-      <Thickness x:Key="FieldMargin">0,3,0,3</Thickness>
-      <Thickness x:Key="SectionMargin">0,0,0,12</Thickness>
-      <Thickness x:Key="PanelPadding">10</Thickness>
-
     </ResourceDictionary>
   </Application.Resources>
 </Application>
