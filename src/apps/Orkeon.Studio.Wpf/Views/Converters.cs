@@ -20,6 +20,22 @@ public sealed class InverseBooleanToVisibilityConverter : IValueConverter
         value is Visibility.Collapsed or Visibility.Hidden;
 }
 
+/// <summary>
+/// Checks a preset PickRow when its item is the ViewModel's current selection. The catalogue rows
+/// live in an ItemsControl (no selector), so each RadioButton compares its own item against
+/// Presets.SelectedPreset; the write direction goes through the Checked handler instead.
+/// </summary>
+public sealed class IsEqualConverter : IMultiValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture) =>
+        values is { Length: 2 } && Equals(values[0], values[1]);
+
+    /// <inheritdoc />
+    public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException("This converter is one-way: equality cannot be inverted.");
+}
+
 /// <summary>Shows an element when the bound string has content.</summary>
 public sealed class StringPresentToVisibilityConverter : IValueConverter
 {
