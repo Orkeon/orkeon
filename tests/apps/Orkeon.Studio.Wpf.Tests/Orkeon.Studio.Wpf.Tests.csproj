@@ -42,4 +42,11 @@
     <Compile Include="../../../src/apps/Orkeon.Studio.Wpf/ViewModels/**/*.cs" LinkBase="ViewModels" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The localization resx are linked as plain files (not compiled resources) so the parity
+         test can diff the EN and FR key sets as XML, without referencing the WPF project. -->
+    <None Include="../../../src/apps/Orkeon.Studio.Wpf/Resources/Strings.resx" Link="Resources\Strings.resx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../src/apps/Orkeon.Studio.Wpf/Resources/Strings.fr.resx" Link="Resources\Strings.fr.resx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
