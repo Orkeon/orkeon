@@ -106,10 +106,18 @@
                          Text="{Binding [SettingsFile_Global], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource MonoText}" FontSize="9.5" Margin="0,4,0,7"
                          Text="{Binding Config.Location.GlobalPath}"/>
-              <Border Style="{StaticResource BadgeOk}" HorizontalAlignment="Left">
-                <TextBlock Style="{StaticResource BadgeText}" FontSize="10"
-                           Text="{Binding [Badge_Valid], Source={x:Static services:I18n.Instance}}"/>
-              </Border>
+              <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource BadgeOk}" HorizontalAlignment="Left"
+                        Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource InverseBooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource BadgeText}" FontSize="10"
+                             Text="{Binding [Badge_Valid], Source={x:Static services:I18n.Instance}}"/>
+                </Border>
+                <Border Style="{StaticResource BadgeFail}" HorizontalAlignment="Left"
+                        Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource BadgeText}" FontSize="10"
+                             Text="{Binding [Badge_Invalid], Source={x:Static services:I18n.Instance}}"/>
+                </Border>
+              </StackPanel>
             </StackPanel>
           </Border>
 

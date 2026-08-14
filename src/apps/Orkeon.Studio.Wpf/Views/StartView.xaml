@@ -247,6 +247,22 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- where a Save will actually land, so the chain above has a visible anchor -->
+        <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                CornerRadius="10" Padding="13,9" Margin="0,4,0,0">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="save" Size="13" Foreground="{DynamicResource AccentBrush}" Margin="0,1,8,0" VerticalAlignment="Center"/>
+            <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
+                       Text="{Binding [Chain_SaveTarget], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="8,0,0,0" VerticalAlignment="Center"
+                       Text="{Binding Location.GlobalPath}"
+                       Visibility="{Binding Location.IsGlobal, Converter={StaticResource BooleanToVisibility}}"/>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="8,0,0,0" VerticalAlignment="Center"
+                       Text="{Binding Location.CustomPath}"
+                       Visibility="{Binding Location.IsCustom, Converter={StaticResource BooleanToVisibility}}"/>
+          </StackPanel>
+        </Border>
       </StackPanel>
     </Border>
 

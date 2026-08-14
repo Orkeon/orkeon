@@ -7,12 +7,11 @@ namespace Orkeon.Studio.Wpf.Views;
 
 public partial class MainWindow : Window
 {
-    private bool _dark;
-
     public MainWindow()
     {
         InitializeComponent();
         UpdateLangButtons();
+        UpdateThemeButton();
     }
 
     // ── window chrome ──
@@ -27,21 +26,28 @@ public partial class MainWindow : Window
     // ── theme ──
     private void OnToggleTheme(object sender, RoutedEventArgs e)
     {
-        _dark = !_dark;
-        var dictionaries = Application.Current.Resources.MergedDictionaries;
-        var tokens = new ResourceDictionary
-        {
-            Source = new Uri($"/Themes/Tokens.{(_dark ? "Dark" : "Light")}.xaml", UriKind.Relative),
-        };
-        // Tokens.*.xaml is merged FIRST in App.xaml — replace slot 0.
-        dictionaries[0] = tokens;
-        ThemeIcon.Kind = _dark ? "sun" : "moon";
-        ThemeBtn.ToolTip = I18n.T(_dark ? "Theme_ToLight" : "Theme_ToDark");
+        ThemeManager.Apply(!ThemeManager.IsDark);
+        UpdateThemeButton();
+        UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language);
+    }
+
+    private void UpdateThemeButton()
+    {
+        ThemeIcon.Kind = ThemeManager.IsDark ? "sun" : "moon";
+        ThemeBtn.ToolTip = I18n.T(ThemeManager.IsDark ? "Theme_ToLight" : "Theme_ToDark");
     }
 
     // ── language ──
-    private void OnLangEn(object sender, RoutedEventArgs e) { I18n.Instance.SetLanguage("en"); UpdateLangButtons(); }
-    private void OnLangFr(object sender, RoutedEventArgs e) { I18n.Instance.SetLanguage("fr"); UpdateLangButtons(); }
+    private void OnLangEn(object sender, RoutedEventArgs e) => SetLanguage("en");
+    private void OnLangFr(object sender, RoutedEventArgs e) => SetLanguage("fr");
+
+    private void SetLanguage(string language)
+    {
+        I18n.Instance.SetLanguage(language);
+        UpdateLangButtons();
+        UpdateThemeButton();
+        UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language);
+    }
 
     private void UpdateLangButtons()
     {

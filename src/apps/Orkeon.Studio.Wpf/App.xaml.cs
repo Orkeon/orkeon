@@ -33,6 +33,20 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        // Presentation preferences are applied before the window exists so the first render is
+        // already in the right theme and language. Reading is tolerant (defaults on any failure)
+        // and a smoke run only ever reads — writes happen on user toggles, which a smoke never does.
+        var preferences = UiPreferences.Load();
+        if (preferences.IsDark)
+        {
+            ThemeManager.Apply(dark: true);
+        }
+
+        if (preferences.Language is "fr" or "en")
+        {
+            I18n.Instance.SetLanguage(preferences.Language);
+        }
+
         // The ViewModel is built here, before the smoke switch is honoured — but building it only
         // wires the seams together. Everything that touches the machine (locating the co-installed
         // CLI, reading the history file) is deferred to InitializeAsync below, which a smoke run

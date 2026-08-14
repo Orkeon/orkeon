@@ -18,6 +18,7 @@
   <data name="SettingsFile_Title" xml:space="preserve"><value>SETTINGS FILE</value></data>
   <data name="SettingsFile_Global" xml:space="preserve"><value>Global per-user file</value></data>
   <data name="Badge_Valid" xml:space="preserve"><value>valid</value></data>
+<data name="Badge_Invalid" xml:space="preserve"><value>invalid</value></data>
 
   <data name="Scr_Start_Title" xml:space="preserve"><value>Start</value></data>
   <data name="Scr_Start_Sub" xml:space="preserve"><value>Apply a preset and choose where appsettings.json lives — nothing is written until you save.</value></data>
