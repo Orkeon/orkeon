@@ -203,6 +203,14 @@ for app in $STUDIO_APPS; do
   fi
 done
 
+# --- 4b. Payload dedup --------------------------------------------------------
+# dpkg preserves hard links, so the byte-identical files the three
+# self-contained payloads share (.NET runtime, common Orkeon assemblies) are
+# stored and unpacked once. Runs after the permission reset so the shared
+# inodes keep the settled modes, and before Installed-Size so the estimate
+# reflects what dpkg actually lays down.
+"$REPO_ROOT/scripts/hardlink-dedup.sh" "$PKG_DIR/usr/lib"
+
 # --- 5. Control ---------------------------------------------------------------
 # Policy 5.6.20: installed size is an estimate in KiB, excluding DEBIAN/.
 INSTALLED_SIZE="$(du -sk --exclude=DEBIAN "$PKG_DIR" | cut -f1)"

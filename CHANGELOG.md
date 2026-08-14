@@ -35,6 +35,12 @@ MSI-specific authoring); the Debian package and the Linux archives carry
 `.deb`, launcher symlinks in `<prefix>/bin` from a tarball); the macOS **onboarding** channel
 — the `orkeon-cli-*-osx-*` tarballs and Homebrew — stays **CLI-only in V1** (the multi-app
 `orkeon-*-osx-*` archives carry the two TUIs like every other RID, untested there).
+Linux archives and the `.deb` hardlink-deduplicate their payload at staging
+time (`scripts/hardlink-dedup.sh` — tar and dpkg both preserve hard links, and
+gzip alone cannot deduplicate across files): the byte-identical .NET runtime
+and shared Orkeon assemblies of the self-contained apps are stored once
+instead of once per app, cutting the cli linux tarball from 176 MB to 104 MB
+with strictly identical extracted content.
 Every Studio app is published self-contained like the CLI itself, which keeps the `.deb`'s
 `Depends` free of any `dotnet-runtime-*` — the onboarding channel's invariant. The app table
 in `package-installers.sh` / `.ps1` gained a RID-filter column for this (WPF cannot target

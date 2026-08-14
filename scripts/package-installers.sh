@@ -260,6 +260,18 @@ for RID in $RIDS; do
     chmod +x "$ROOT/install.sh"
   fi
 
+  # Cross-publish dedup (non-Windows archives only — zip has no hard-link
+  # concept): GNU tar preserves hard links, so the byte-identical files the
+  # staged apps share (the .NET runtime of every self-contained app, the
+  # common Orkeon assemblies) are stored ONCE in the tarball instead of once
+  # per app. Fully transparent at extraction — every path still reads the
+  # exact same bytes. gzip alone cannot do this (32 KB window, no cross-file
+  # deduplication), which is why three self-contained apps used to triple the
+  # archive.
+  if [[ "$RID" != win-* ]]; then
+    "$REPO_ROOT/scripts/hardlink-dedup.sh" "$ROOT/libexec"
+  fi
+
   # Archive
   if [[ "$RID" == win-* ]]; then
     rm -f "$OUT/$PKG.zip"
