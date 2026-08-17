@@ -24,6 +24,7 @@
     <PackageId>Orkeon.Rag.Onnx.Model</PackageId>
     <Description>Embedded ms-marco-MiniLM-L-6-v2 cross-encoder weights (int8 ONNX, Apache-2.0) for the Orkeon.Rag.Onnx reranker. Reference this package for a guaranteed offline, zero-download model source.</Description>
     <PackageTags>AI;Orkeon;RAG;Reranking;CrossEncoder;ONNX;MSMARCO;Offline</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -37,9 +38,14 @@
                       LogicalName="Orkeon.Rag.Onnx.Model.msmarco-minilm-l6-v2.vocab.txt" />
   </ItemGroup>
 
+
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

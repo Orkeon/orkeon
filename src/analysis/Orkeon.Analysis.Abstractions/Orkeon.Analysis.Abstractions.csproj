@@ -8,6 +8,7 @@
     <PackageId>Orkeon.Analysis.Abstractions</PackageId>
     <Description>Abstractions for Orkeon RaggableTree: interfaces, DTOs, and domain models used for multi-language code analysis.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Analysis;RaggableTree;Abstractions</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -24,6 +25,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

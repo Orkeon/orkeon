@@ -27,6 +27,7 @@
     <PackageId>Orkeon.Rag.Onnx</PackageId>
     <Description>Opt-in ONNX cross-encoder reranker (ms-marco-MiniLM-L-6-v2, Apache-2.0 model) for the Orkeon RAG subsystem. Reference Orkeon.Rag.Onnx.Model for guaranteed-offline embedded weights.</Description>
     <PackageTags>AI;Orkeon;RAG;Reranking;CrossEncoder;ONNX;MSMARCO</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -46,8 +47,13 @@
     <PackageReference Include="Microsoft.ML.Tokenizers" />
   </ItemGroup>
 
+
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

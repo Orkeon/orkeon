@@ -9,6 +9,7 @@
     <Authors>Orkeon Contributors</Authors>
     <Description>Local on-device embedding provider for Orkeon, based on SmartComponents.LocalEmbeddings (BGE-micro-v2 ONNX, 384 dims, CPU). No network, no API key.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Embeddings;Local;ONNX;BGE</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
@@ -25,6 +26,11 @@
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
     <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

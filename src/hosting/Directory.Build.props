@@ -1,0 +1,7 @@
+<Project>
+  <!-- Chain to src/Directory.Build.props, then declare this zone's NuGet icon family. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Build.props, $(MSBuildThisFileDirectory)..))" />
+  <PropertyGroup>
+    <OrkeonIconFamily>hosting</OrkeonIconFamily>
+  </PropertyGroup>
+</Project>

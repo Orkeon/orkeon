@@ -8,6 +8,7 @@
     <PackageId>Orkeon.Rag.Abstractions</PackageId>
     <Description>Abstractions for the Orkeon RAG subsystem: retrieval, chunking, reranking, ingestion and pipeline contracts, DTOs, and options.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;RAG;Retrieval;Abstractions</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -21,6 +22,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

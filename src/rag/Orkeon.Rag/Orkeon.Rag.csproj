@@ -8,6 +8,7 @@
     <PackageId>Orkeon.Rag</PackageId>
     <Description>Implementations for the Orkeon RAG subsystem: chunking, loaders, retrieval, reranking, ingestion, evaluation, and named-component factories.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;RAG;Retrieval</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -41,6 +42,11 @@
     <PackageReference Include="PdfPig" />
     <!-- Golden evaluation datasets (RagEvalDatasetYamlLoader) — same package as the YAML config surfaces -->
     <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

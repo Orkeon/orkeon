@@ -42,6 +42,21 @@
     <WarningsAsErrors>$(WarningsAsErrors);CS1998;CS1574</WarningsAsErrors>
   </PropertyGroup>
 
+  <!-- NuGet package icon, one per src/ zone (PUB-04). Each zone's
+       Directory.Build.props imports this file first, then overrides
+       OrkeonIconFamily — so the 'core' default below only survives for zones
+       without their own props (core, apps). The family PNG is packed under the
+       fixed name icon.png, so <PackageIcon> is identical everywhere. -->
+  <PropertyGroup>
+    <OrkeonIconFamily Condition="'$(OrkeonIconFamily)' == ''">core</OrkeonIconFamily>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>Release notes: https://github.com/Orkeon/orkeon/blob/main/CHANGELOG.md</PackageReleaseNotes>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../assets/nuget/icon-$(OrkeonIconFamily).png"
+          Pack="true" PackagePath="icon.png" Visible="false" />
+  </ItemGroup>
+
   <!-- VFS compliance analyzer: forbids direct System.IO usage in framework code.
        Path-based exemptions live in SystemIoUsageAnalyzer.IsExemptByPath.
        Opt out per symbol with [SuppressVfsCompliance("reason")]. -->

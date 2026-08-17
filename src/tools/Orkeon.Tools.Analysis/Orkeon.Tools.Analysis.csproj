@@ -8,6 +8,7 @@
     <PackageId>Orkeon.Tools.Analysis</PackageId>
     <Description>Agent tools wrapping the Orkeon RaggableTree analysis pipeline (map, detail, search, graph, flow, impact, complexity, statement, admin).</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Analysis;RaggableTree</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -23,6 +24,11 @@
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
     <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

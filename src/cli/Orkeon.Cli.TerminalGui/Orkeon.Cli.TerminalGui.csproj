@@ -7,6 +7,7 @@
     <PackageId>Orkeon.Cli.TerminalGui</PackageId>
     <Description>Terminal.Gui v2-based split-pane console (REPL + dedicated logs pane) for Orkeon interactive runners.</Description>
     <PackageTags>AI;Agents;Orkeon;Cli;TerminalGui;TUI</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- CS0618: Terminal.Gui v2.1.0 marked the static Application.{Invoke,Run,Shutdown,Driver,...}
          APIs obsolete in favour of an instance-based IApplication model. Migrating to the new
          API is a deliberate v1.1 follow-up; the static API still works. Encapsulated in
@@ -27,4 +28,9 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

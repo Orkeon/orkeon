@@ -7,6 +7,7 @@
     <PackageId>Orkeon.Cli.Abstractions</PackageId>
     <Description>Pure contracts for Orkeon interactive runners and command registries.</Description>
     <PackageTags>AI;Agents;Orkeon;Cli;Abstractions</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -20,4 +21,9 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

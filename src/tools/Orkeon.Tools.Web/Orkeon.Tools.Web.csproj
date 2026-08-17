@@ -9,6 +9,7 @@
     <Authors>Orkeon Contributors</Authors>
     <Description>Web tools for Orkeon agents (HTTP API, Web Scraping)</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Web;HTTP;Scraping</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
@@ -22,4 +23,9 @@
     <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="AngleSharp" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

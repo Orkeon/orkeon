@@ -16,6 +16,7 @@
     <PackageId>Orkeon.Compliance.Vfs</PackageId>
     <Description>Roslyn analyzer that forbids direct System.IO usage in Orkeon framework code. Routes all filesystem access through IFileSystemService.</Description>
     <PackageTags>Orkeon;Roslyn;Analyzer;VFS;Compliance</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,4 +37,9 @@
   <ItemGroup>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

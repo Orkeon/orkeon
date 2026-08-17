@@ -12,8 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Shared package README (same file the core Orkeon.* packages ship). -->
-    <None Include="..\..\..\nuget\README.md" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

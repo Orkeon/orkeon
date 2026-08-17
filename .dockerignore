@@ -14,4 +14,4 @@ _site
 sonarqube
 *.md
 !README.md
-!nuget/README.md
+!src/*/*/README.md

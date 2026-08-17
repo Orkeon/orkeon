@@ -7,6 +7,7 @@
     <PackageId>Orkeon.Cli.Commands.Scripting</PackageId>
     <Description>TypeScript-scripted interactive commands for Orkeon CLI runners. Adapter between Orkeon.Cli.Abstractions and Orkeon.Scripting (Jint + esbuild).</Description>
     <PackageTags>AI;Agents;Orkeon;Cli;Scripting;TypeScript;Jint</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -34,4 +35,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Typings\orkeon-cli.d.ts" Condition="Exists('Typings\orkeon-cli.d.ts')" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

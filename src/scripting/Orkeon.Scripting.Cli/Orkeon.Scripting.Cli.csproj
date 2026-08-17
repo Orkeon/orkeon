@@ -10,6 +10,7 @@
     <PackageId>Orkeon.Scripting.Cli</PackageId>
     <Description>Command-line entrypoint for Orkeon crews: `orkeon run &lt;crew.ork.ts | crew.yaml&gt;` — runs both the Scripting DSL (.ork.ts, Jint + esbuild) and YAML crew definitions from a single pre-compiled tool.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Scripting;CLI</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>orkeon</ToolCommandName>
   </PropertyGroup>
@@ -41,6 +42,11 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

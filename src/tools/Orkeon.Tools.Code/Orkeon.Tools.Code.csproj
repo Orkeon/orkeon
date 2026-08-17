@@ -9,6 +9,7 @@
     <Authors>Orkeon Contributors</Authors>
     <Description>Code interpreter tool for Orkeon agents (Roslyn scripting)</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Code;Roslyn;Scripting</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
@@ -18,4 +19,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

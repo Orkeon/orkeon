@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\..\nuget\README.md" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!-- SCR-21: bundle the rolled-up `orkeon.d.ts` produced by `GenerateRollupDts` into the package. -->

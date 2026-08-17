@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Complete NuGet package metadata (PUB-04)
+
+Every one of the 28 packable projects now ships presentation-grade metadata:
+
+- **Package icon per family** — `assets/nuget/` holds one 128 px icon per `src/` zone
+  (core, cli, scripting, analyzers, tools, rag, analysis, generators, hosting, plugins);
+  a per-zone `Directory.Build.props` declares the family and the central props pack it
+  as `icon.png`, so every `.nupkg` carries its zone's icon with a single `<PackageIcon>`.
+- **A dedicated README per package** — each project directory now has a short `README.md`
+  (role, install, doc links) packed via `PackageReadmeFile`; the five projects that
+  already had a rich developer README ship that one. The shared generic `nuget/README.md`
+  that seven packages used to duplicate is removed.
+- **`PackageReleaseNotes`** — centralized in `src/Directory.Build.props`, pointing at
+  this CHANGELOG.
+- **`LICENSE.md`** — copyright aligned with the build props (`2024-2026`).
+
 ### Changed — NuGet.org publication wired for real (PUB-03)
 
 `publish.yml` now pushes the three core packages (`Orkeon.Domain`, `Orkeon.Application`,

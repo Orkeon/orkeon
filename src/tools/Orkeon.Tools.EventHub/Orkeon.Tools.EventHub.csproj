@@ -8,6 +8,7 @@
     <Authors>Orkeon Contributors</Authors>
     <Description>EventHub agent tools for Orkeon: publish_event, post_message, send_request, reply_to, receive_message, wait_for_event, get_last_value.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;EventHub;Messaging</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
@@ -19,4 +20,9 @@
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

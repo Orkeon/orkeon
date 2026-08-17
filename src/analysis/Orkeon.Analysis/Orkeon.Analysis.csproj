@@ -8,6 +8,7 @@
     <PackageId>Orkeon.Analysis</PackageId>
     <Description>Infrastructure implementations for Orkeon RaggableTree: Tree-sitter parsers, language adapters, dependency graph, and pipeline orchestration.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Analysis;RaggableTree;TreeSitter</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
@@ -24,6 +25,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Orkeon.Analysis.Abstractions\Orkeon.Analysis.Abstractions.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
