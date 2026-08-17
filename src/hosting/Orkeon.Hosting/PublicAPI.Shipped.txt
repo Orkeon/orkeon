@@ -1,0 +1,80 @@
+#nullable enable
+Orkeon.Hosting.CrewDirectoryInspection
+Orkeon.Hosting.CrewDirectoryInspection.<Clone>$() -> Orkeon.Hosting.CrewDirectoryInspection!
+Orkeon.Hosting.CrewDirectoryInspection.CrewDirectoryInspection(bool IsCrewDirectory, string? Error) -> void
+Orkeon.Hosting.CrewDirectoryInspection.Deconstruct(out bool IsCrewDirectory, out string? Error) -> void
+Orkeon.Hosting.CrewDirectoryInspection.Equals(Orkeon.Hosting.CrewDirectoryInspection? other) -> bool
+Orkeon.Hosting.CrewDirectoryInspection.Error.get -> string?
+Orkeon.Hosting.CrewDirectoryInspection.Error.init -> void
+Orkeon.Hosting.CrewDirectoryInspection.IsCrewDirectory.get -> bool
+Orkeon.Hosting.CrewDirectoryInspection.IsCrewDirectory.init -> void
+Orkeon.Hosting.CrewDirectoryLayout
+Orkeon.Hosting.RunnerEnvironment
+Orkeon.Hosting.RunnerExecution
+Orkeon.Hosting.RunnerHost
+Orkeon.Hosting.RunnerLogging
+Orkeon.Hosting.RunnerOptionsBase
+Orkeon.Hosting.RunnerOptionsBase.AllowExternalMounts.get -> bool
+Orkeon.Hosting.RunnerOptionsBase.AllowExternalMounts.set -> void
+Orkeon.Hosting.RunnerOptionsBase.ConfigPath.get -> string!
+Orkeon.Hosting.RunnerOptionsBase.ConfigPath.set -> void
+Orkeon.Hosting.RunnerOptionsBase.EffectiveAllowExternalMounts.get -> bool
+Orkeon.Hosting.RunnerOptionsBase.InitialContext.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.InitialContext.set -> void
+Orkeon.Hosting.RunnerOptionsBase.ListTools.get -> bool
+Orkeon.Hosting.RunnerOptionsBase.ListTools.set -> void
+Orkeon.Hosting.RunnerOptionsBase.LlmLogEnabled.get -> bool
+Orkeon.Hosting.RunnerOptionsBase.LlmLogEnabled.set -> void
+Orkeon.Hosting.RunnerOptionsBase.LlmLogPath.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.LlmLogPath.set -> void
+Orkeon.Hosting.RunnerOptionsBase.Mounts.get -> System.Collections.Generic.IEnumerable<string!>!
+Orkeon.Hosting.RunnerOptionsBase.Mounts.set -> void
+Orkeon.Hosting.RunnerOptionsBase.ParseVariables() -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Hosting.RunnerOptionsBase.ResolvedLlmLogPath.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.RunnerOptionsBase() -> void
+Orkeon.Hosting.RunnerOptionsBase.SettingsPath.get -> string?
+Orkeon.Hosting.RunnerOptionsBase.SettingsPath.set -> void
+Orkeon.Hosting.RunnerOptionsBase.Validate.get -> bool
+Orkeon.Hosting.RunnerOptionsBase.Validate.set -> void
+Orkeon.Hosting.RunnerOptionsBase.Variables.get -> System.Collections.Generic.IEnumerable<string!>!
+Orkeon.Hosting.RunnerOptionsBase.Variables.set -> void
+Orkeon.Hosting.RunnerOptionsBase.Verbose.get -> int
+Orkeon.Hosting.RunnerOptionsBase.Verbose.set -> void
+Orkeon.Hosting.RunnerSettings
+Orkeon.Hosting.SemanticSearchToolExtensions
+Orkeon.Hosting.ServiceProviderToolRegistry
+Orkeon.Hosting.ServiceProviderToolRegistry.ClearAsync() -> System.Threading.Tasks.Task!
+Orkeon.Hosting.ServiceProviderToolRegistry.GetAllToolsAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+Orkeon.Hosting.ServiceProviderToolRegistry.GetToolAsync(string! toolId) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Hosting.ServiceProviderToolRegistry.GetToolByNameAsync(string! name) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Hosting.ServiceProviderToolRegistry.GetToolsAsync(System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>! tools) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+Orkeon.Hosting.ServiceProviderToolRegistry.GetToolsByCapabilityAsync(string! capability) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+Orkeon.Hosting.ServiceProviderToolRegistry.GetToolsByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+Orkeon.Hosting.ServiceProviderToolRegistry.IsRegisteredAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Hosting.ServiceProviderToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Hosting.ServiceProviderToolRegistry.ServiceProviderToolRegistry(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> void
+Orkeon.Hosting.ServiceProviderToolRegistry.UnregisterToolAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+const Orkeon.Hosting.RunnerEnvironment.AllowExternalMountsVariable = "ORKEON_ALLOW_EXTERNAL_MOUNTS" -> string!
+const Orkeon.Hosting.RunnerEnvironment.DebugVariable = "ORKEON_DEBUG" -> string!
+const Orkeon.Hosting.RunnerHost.LlmNotConfiguredMessage = "No `Llm` section configured — falling back to the echo provider (`<undefined-llm>`). Run `orkeon init` to create a configuration, or set `ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`." -> string!
+override Orkeon.Hosting.CrewDirectoryInspection.Equals(object? obj) -> bool
+override Orkeon.Hosting.CrewDirectoryInspection.GetHashCode() -> int
+override Orkeon.Hosting.CrewDirectoryInspection.ToString() -> string!
+static Orkeon.Hosting.CrewDirectoryInspection.operator !=(Orkeon.Hosting.CrewDirectoryInspection? left, Orkeon.Hosting.CrewDirectoryInspection? right) -> bool
+static Orkeon.Hosting.CrewDirectoryInspection.operator ==(Orkeon.Hosting.CrewDirectoryInspection? left, Orkeon.Hosting.CrewDirectoryInspection? right) -> bool
+static Orkeon.Hosting.CrewDirectoryLayout.Inspect(string! path) -> Orkeon.Hosting.CrewDirectoryInspection!
+static Orkeon.Hosting.RunnerEnvironment.AllowExternalMounts.get -> bool
+static Orkeon.Hosting.RunnerEnvironment.DebugDiagnostics.get -> bool
+static Orkeon.Hosting.RunnerExecution.ConfigureVerboseLogging(Microsoft.Extensions.Logging.ILoggingBuilder! b, int verbosity) -> void
+static Orkeon.Hosting.RunnerExecution.DetectOutputMountPath(System.Collections.Generic.IEnumerable<string!>! cliMounts) -> string?
+static Orkeon.Hosting.RunnerExecution.IsScriptedCrewDefinition(string! configPath) -> bool
+static Orkeon.Hosting.RunnerExecution.RegisterGracefulShutdown(System.Threading.CancellationTokenSource! cts, Microsoft.Extensions.Logging.ILogger! logger) -> System.IDisposable!
+static Orkeon.Hosting.RunnerExecution.RunInteractiveLoopAsync(Orkeon.Hosting.RunnerOptionsBase! opts, string! loggerCategory, System.Collections.Generic.IReadOnlySet<string!>! stopWords, System.Func<System.IServiceProvider!, string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!>! kickoffPerInputAsync, System.Action<int>! onSessionStart, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null) -> System.Threading.Tasks.Task<int>!
+static Orkeon.Hosting.RunnerExecution.RunListToolsAsync(Orkeon.Hosting.RunnerOptionsBase! opts, string! loggerCategory, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null) -> System.Threading.Tasks.Task<int>!
+static Orkeon.Hosting.RunnerExecution.RunOneShotAsync(Orkeon.Hosting.RunnerOptionsBase! opts, string! loggerCategory, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Threading.CancellationToken externalCt = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+static Orkeon.Hosting.RunnerExecution.RunValidateAsync(Orkeon.Hosting.RunnerOptionsBase! opts, string! loggerCategory, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Threading.CancellationToken externalCt = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, System.Collections.Generic.IReadOnlyList<string!>! cliMounts, bool allowExternalMounts = false, string? llmLogPath = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>? configureLogging = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null) -> Microsoft.Extensions.Hosting.IHost!
+static Orkeon.Hosting.RunnerLogging.LogMounts(System.Collections.Generic.IReadOnlyList<string!>! cliMounts, Microsoft.Extensions.Logging.ILogger! logger) -> void
+static Orkeon.Hosting.RunnerSettings.GetGlobalSettingsPath() -> string!
+static Orkeon.Hosting.RunnerSettings.ResolveSettingsPath(string? explicitPath, string! configDir, bool quiet = false) -> string?
+static Orkeon.Hosting.SemanticSearchToolExtensions.AddSemanticSearchTool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

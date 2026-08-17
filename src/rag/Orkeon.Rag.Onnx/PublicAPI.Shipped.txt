@@ -1,0 +1,49 @@
+#nullable enable
+Orkeon.Rag.Onnx.DependencyInjection.RagOnnxRerankingExtensions
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.<Clone>$() -> Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch!
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.AttentionMask.get -> System.ReadOnlyMemory<long>
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.AttentionMask.init -> void
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.Count.get -> int
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.Count.init -> void
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.CrossEncoderBatch() -> void
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.Equals(Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch? other) -> bool
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.InputIds.get -> System.ReadOnlyMemory<long>
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.InputIds.init -> void
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.SequenceLength.get -> int
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.SequenceLength.init -> void
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.TokenTypeIds.get -> System.ReadOnlyMemory<long>
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.TokenTypeIds.init -> void
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatchEncoder
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatchEncoder.CrossEncoderBatchEncoder(Microsoft.ML.Tokenizers.BertTokenizer! tokenizer, int maxSequenceLength = 512) -> void
+Orkeon.Rag.Onnx.Reranking.CrossEncoderBatchEncoder.Encode(string! query, System.Collections.Generic.IReadOnlyList<string!>! passages) -> Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch!
+Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker
+Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker.Dispose() -> void
+Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker.Name.get -> string!
+Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker.OnnxCrossEncoderReranker(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions? options = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker!>? logger = null) -> void
+Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker.RerankAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! candidates, int topN, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.<Clone>$() -> Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions!
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.BatchSize.get -> int
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.BatchSize.init -> void
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.Equals(Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions? other) -> bool
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.MaxSequenceLength.get -> int
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.MaxSequenceLength.init -> void
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.ModelPath.get -> string?
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.ModelPath.init -> void
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.OnnxRerankerOptions() -> void
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.VocabPath.get -> string?
+Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.VocabPath.init -> void
+const Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker.RerankerName = "onnx" -> string!
+const Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker.ScoreOrigin = "cross-encoder" -> string!
+override Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.Equals(object? obj) -> bool
+override Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.GetHashCode() -> int
+override Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.ToString() -> string!
+override Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.Equals(object? obj) -> bool
+override Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.GetHashCode() -> int
+override Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.ToString() -> string!
+static Orkeon.Rag.Onnx.DependencyInjection.RagOnnxRerankingExtensions.AddOrkeonOnnxReranker(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.operator !=(Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch? left, Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch? right) -> bool
+static Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.operator ==(Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch? left, Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch? right) -> bool
+static Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.operator !=(Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions? left, Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions? right) -> bool
+static Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions.operator ==(Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions? left, Orkeon.Rag.Onnx.Reranking.OnnxRerankerOptions? right) -> bool

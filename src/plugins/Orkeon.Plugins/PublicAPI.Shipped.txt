@@ -1,0 +1,80 @@
+#nullable enable
+Orkeon.Plugins.IOrkeonPlugin
+Orkeon.Plugins.IOrkeonPlugin.ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> void
+Orkeon.Plugins.IOrkeonPlugin.Name.get -> string!
+Orkeon.Plugins.IOrkeonPlugin.Version.get -> string!
+Orkeon.Plugins.IPluginAssemblyDiscovery
+Orkeon.Plugins.IPluginAssemblyDiscovery.DiscoverAsync(Orkeon.Plugins.OrkeonPluginsOptions! options, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.PluginAssemblyCandidate!>!>!
+Orkeon.Plugins.IPluginLoader
+Orkeon.Plugins.IPluginLoader.Load(Orkeon.Plugins.PluginAssemblyCandidate! candidate) -> Orkeon.Plugins.LoadedPluginAssembly!
+Orkeon.Plugins.IPluginRegistry
+Orkeon.Plugins.IPluginRegistry.Assemblies.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.LoadedPluginAssembly!>!
+Orkeon.Plugins.IPluginRegistry.Failures.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.PluginLoadFailure!>!
+Orkeon.Plugins.IPluginRegistry.Plugins.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.IOrkeonPlugin!>!
+Orkeon.Plugins.LoadedPluginAssembly
+Orkeon.Plugins.LoadedPluginAssembly.Assembly.get -> System.Reflection.Assembly!
+Orkeon.Plugins.LoadedPluginAssembly.IsUnloadRequested.get -> bool
+Orkeon.Plugins.LoadedPluginAssembly.Plugins.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.IOrkeonPlugin!>!
+Orkeon.Plugins.LoadedPluginAssembly.Unload() -> void
+Orkeon.Plugins.LoadedPluginAssembly.VirtualPath.get -> string!
+Orkeon.Plugins.OrkeonPluginsOptions
+Orkeon.Plugins.OrkeonPluginsOptions.ContinueOnError.get -> bool
+Orkeon.Plugins.OrkeonPluginsOptions.ContinueOnError.set -> void
+Orkeon.Plugins.OrkeonPluginsOptions.Directory.get -> string!
+Orkeon.Plugins.OrkeonPluginsOptions.Directory.set -> void
+Orkeon.Plugins.OrkeonPluginsOptions.OrkeonPluginsOptions() -> void
+Orkeon.Plugins.OrkeonPluginsOptions.SearchPattern.get -> string!
+Orkeon.Plugins.OrkeonPluginsOptions.SearchPattern.set -> void
+Orkeon.Plugins.OrkeonPluginsOptions.SharedAssemblyPrefixes.get -> System.Collections.Generic.IList<string!>!
+Orkeon.Plugins.OrkeonPluginsServiceCollectionExtensions
+Orkeon.Plugins.PluginAssemblyCandidate
+Orkeon.Plugins.PluginAssemblyCandidate.<Clone>$() -> Orkeon.Plugins.PluginAssemblyCandidate!
+Orkeon.Plugins.PluginAssemblyCandidate.Equals(Orkeon.Plugins.PluginAssemblyCandidate? other) -> bool
+Orkeon.Plugins.PluginAssemblyCandidate.PhysicalPath.get -> string!
+Orkeon.Plugins.PluginAssemblyCandidate.PhysicalPath.init -> void
+Orkeon.Plugins.PluginAssemblyCandidate.PluginAssemblyCandidate() -> void
+Orkeon.Plugins.PluginAssemblyCandidate.VirtualPath.get -> string!
+Orkeon.Plugins.PluginAssemblyCandidate.VirtualPath.init -> void
+Orkeon.Plugins.PluginAssemblyDiscovery
+Orkeon.Plugins.PluginAssemblyDiscovery.DiscoverAsync(Orkeon.Plugins.OrkeonPluginsOptions! options, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.PluginAssemblyCandidate!>!>!
+Orkeon.Plugins.PluginAssemblyDiscovery.PluginAssemblyDiscovery(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Plugins.PluginLoadContext
+Orkeon.Plugins.PluginLoadContext.PluginLoadContext(string! pluginAssemblyPhysicalPath, System.Collections.Generic.IEnumerable<string!>! sharedAssemblyPrefixes) -> void
+Orkeon.Plugins.PluginLoadException
+Orkeon.Plugins.PluginLoadException.PluginLoadException() -> void
+Orkeon.Plugins.PluginLoadException.PluginLoadException(string! message) -> void
+Orkeon.Plugins.PluginLoadException.PluginLoadException(string! message, System.Exception! innerException) -> void
+Orkeon.Plugins.PluginLoadException.PluginLoadException(string! message, string! virtualPath) -> void
+Orkeon.Plugins.PluginLoadException.PluginLoadException(string! message, string! virtualPath, System.Exception! innerException) -> void
+Orkeon.Plugins.PluginLoadException.VirtualPath.get -> string?
+Orkeon.Plugins.PluginLoadFailure
+Orkeon.Plugins.PluginLoadFailure.<Clone>$() -> Orkeon.Plugins.PluginLoadFailure!
+Orkeon.Plugins.PluginLoadFailure.Equals(Orkeon.Plugins.PluginLoadFailure? other) -> bool
+Orkeon.Plugins.PluginLoadFailure.PluginLoadFailure() -> void
+Orkeon.Plugins.PluginLoadFailure.Reason.get -> string!
+Orkeon.Plugins.PluginLoadFailure.Reason.init -> void
+Orkeon.Plugins.PluginLoadFailure.VirtualPath.get -> string!
+Orkeon.Plugins.PluginLoadFailure.VirtualPath.init -> void
+Orkeon.Plugins.PluginLoader
+Orkeon.Plugins.PluginLoader.Load(Orkeon.Plugins.PluginAssemblyCandidate! candidate) -> Orkeon.Plugins.LoadedPluginAssembly!
+Orkeon.Plugins.PluginLoader.PluginLoader(System.Collections.Generic.IEnumerable<string!>! sharedAssemblyPrefixes) -> void
+Orkeon.Plugins.PluginRegistry
+Orkeon.Plugins.PluginRegistry.Assemblies.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.LoadedPluginAssembly!>!
+Orkeon.Plugins.PluginRegistry.Dispose() -> void
+Orkeon.Plugins.PluginRegistry.Failures.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.PluginLoadFailure!>!
+Orkeon.Plugins.PluginRegistry.PluginRegistry() -> void
+Orkeon.Plugins.PluginRegistry.Plugins.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Plugins.IOrkeonPlugin!>!
+Orkeon.Plugins.PluginRegistry.UnloadAll() -> void
+const Orkeon.Plugins.OrkeonPluginsServiceCollectionExtensions.ConfigurationSection = "Plugins" -> string!
+override Orkeon.Plugins.PluginAssemblyCandidate.Equals(object? obj) -> bool
+override Orkeon.Plugins.PluginAssemblyCandidate.GetHashCode() -> int
+override Orkeon.Plugins.PluginAssemblyCandidate.ToString() -> string!
+override Orkeon.Plugins.PluginLoadFailure.Equals(object? obj) -> bool
+override Orkeon.Plugins.PluginLoadFailure.GetHashCode() -> int
+override Orkeon.Plugins.PluginLoadFailure.ToString() -> string!
+static Orkeon.Plugins.OrkeonPluginsServiceCollectionExtensions.AddOrkeonPlugins(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Plugins.OrkeonPluginsServiceCollectionExtensions.AddOrkeonPlugins(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Action<Orkeon.Plugins.OrkeonPluginsOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Plugins.PluginAssemblyCandidate.operator !=(Orkeon.Plugins.PluginAssemblyCandidate? left, Orkeon.Plugins.PluginAssemblyCandidate? right) -> bool
+static Orkeon.Plugins.PluginAssemblyCandidate.operator ==(Orkeon.Plugins.PluginAssemblyCandidate? left, Orkeon.Plugins.PluginAssemblyCandidate? right) -> bool
+static Orkeon.Plugins.PluginLoadFailure.operator !=(Orkeon.Plugins.PluginLoadFailure? left, Orkeon.Plugins.PluginLoadFailure? right) -> bool
+static Orkeon.Plugins.PluginLoadFailure.operator ==(Orkeon.Plugins.PluginLoadFailure? left, Orkeon.Plugins.PluginLoadFailure? right) -> bool

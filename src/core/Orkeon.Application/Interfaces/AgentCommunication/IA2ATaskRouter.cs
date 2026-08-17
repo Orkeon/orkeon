@@ -1,8 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Orkeon.Application.Interfaces.AgentCommunication;
 
 /// <summary>
 /// Routes incoming A2A task requests to the appropriate local agent based on the requested skill.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public interface IA2ATaskRouter
 {
     /// <summary>

@@ -1,0 +1,711 @@
+#nullable enable
+Orkeon.Rag.Abstractions.Interfaces.IChunkingStrategy
+Orkeon.Rag.Abstractions.Interfaces.IChunkingStrategy.Chunk(Orkeon.Rag.Abstractions.Models.RagDocument! document, Orkeon.Rag.Abstractions.Options.ChunkingOptions! options) -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.Chunk!>!
+Orkeon.Rag.Abstractions.Interfaces.IChunkingStrategy.Name.get -> string!
+Orkeon.Rag.Abstractions.Interfaces.IChunkingStrategy.Version.get -> string!
+Orkeon.Rag.Abstractions.Interfaces.IDocumentLoader
+Orkeon.Rag.Abstractions.Interfaces.IDocumentLoader.CanLoad(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source) -> bool
+Orkeon.Rag.Abstractions.Interfaces.IDocumentLoader.LoadAsync(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Rag.Abstractions.Models.RagDocument!>!
+Orkeon.Rag.Abstractions.Interfaces.IDocumentStore
+Orkeon.Rag.Abstractions.Interfaces.IDocumentStore.DeleteBySourceAsync(string! collection, string! sourceId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Abstractions.Interfaces.IDocumentStore.SearchAsync(string! collection, Orkeon.Rag.Abstractions.Models.RetrievalQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
+Orkeon.Rag.Abstractions.Interfaces.IDocumentStore.UpsertAsync(string! collection, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.EmbeddedChunk!>! chunks, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Abstractions.Interfaces.IDocumentStoreCollectionProbe
+Orkeon.Rag.Abstractions.Interfaces.IDocumentStoreCollectionProbe.HasContentAsync(string! collection, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch
+Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch.SearchAsync(Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.EphemeralSearchResult!>!
+Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline
+Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline.IngestAsync(Orkeon.Rag.Abstractions.Models.IngestionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.IngestionReport!>!
+Orkeon.Rag.Abstractions.Interfaces.IKnowledgeContextAugmenter
+Orkeon.Rag.Abstractions.Interfaces.IKnowledgeContextAugmenter.BuildContextAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Knowledge.KnowledgeAttachment!>! attachments, string! taskInput, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock?>!
+Orkeon.Rag.Abstractions.Interfaces.IQueryComplexityClassifier
+Orkeon.Rag.Abstractions.Interfaces.IQueryComplexityClassifier.ClassifyAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.QueryRoute>!
+Orkeon.Rag.Abstractions.Interfaces.IQueryTransformer
+Orkeon.Rag.Abstractions.Interfaces.IQueryTransformer.Kind.get -> Orkeon.Rag.Abstractions.QueryTransformKind
+Orkeon.Rag.Abstractions.Interfaces.IQueryTransformer.Name.get -> string!
+Orkeon.Rag.Abstractions.Interfaces.IQueryTransformer.TransformAsync(string! query, Orkeon.Rag.Abstractions.Models.QueryTransformContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper
+Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper.PrepareAsync(Orkeon.Domain.Configuration.RagCrewConfig! config, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Abstractions.Interfaces.IRagEvaluator
+Orkeon.Rag.Abstractions.Interfaces.IRagEvaluator.RunAsync(Orkeon.Rag.Abstractions.Models.RagEvalDataset! dataset, Orkeon.Rag.Abstractions.Models.RagEvalOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagEvalReport!>!
+Orkeon.Rag.Abstractions.Interfaces.IRagPipeline
+Orkeon.Rag.Abstractions.Interfaces.IRagPipeline.QueryAsync(Orkeon.Rag.Abstractions.Models.RagQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagAnswer!>!
+Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver
+Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver.Resolve(string! profileName) -> Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!
+Orkeon.Rag.Abstractions.Interfaces.IRagRetrievalCapable
+Orkeon.Rag.Abstractions.Interfaces.IRagRetrievalCapable.RetrieveAsync(Orkeon.Rag.Abstractions.Models.RagQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagAnswer!>!
+Orkeon.Rag.Abstractions.Interfaces.IReranker
+Orkeon.Rag.Abstractions.Interfaces.IReranker.Name.get -> string!
+Orkeon.Rag.Abstractions.Interfaces.IReranker.RerankAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! candidates, int topN, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
+Orkeon.Rag.Abstractions.Models.Chunk
+Orkeon.Rag.Abstractions.Models.Chunk.<Clone>$() -> Orkeon.Rag.Abstractions.Models.Chunk!
+Orkeon.Rag.Abstractions.Models.Chunk.Chunk() -> void
+Orkeon.Rag.Abstractions.Models.Chunk.Content.get -> string!
+Orkeon.Rag.Abstractions.Models.Chunk.Content.init -> void
+Orkeon.Rag.Abstractions.Models.Chunk.DocumentId.get -> string!
+Orkeon.Rag.Abstractions.Models.Chunk.DocumentId.init -> void
+Orkeon.Rag.Abstractions.Models.Chunk.EndOffset.get -> int
+Orkeon.Rag.Abstractions.Models.Chunk.EndOffset.init -> void
+Orkeon.Rag.Abstractions.Models.Chunk.Equals(Orkeon.Rag.Abstractions.Models.Chunk? other) -> bool
+Orkeon.Rag.Abstractions.Models.Chunk.Id.get -> string!
+Orkeon.Rag.Abstractions.Models.Chunk.Id.init -> void
+Orkeon.Rag.Abstractions.Models.Chunk.Index.get -> int
+Orkeon.Rag.Abstractions.Models.Chunk.Index.init -> void
+Orkeon.Rag.Abstractions.Models.Chunk.Metadata.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Rag.Abstractions.Models.Chunk.Metadata.init -> void
+Orkeon.Rag.Abstractions.Models.Chunk.SourceId.get -> string!
+Orkeon.Rag.Abstractions.Models.Chunk.SourceId.init -> void
+Orkeon.Rag.Abstractions.Models.Chunk.StartOffset.get -> int
+Orkeon.Rag.Abstractions.Models.Chunk.StartOffset.init -> void
+Orkeon.Rag.Abstractions.Models.ChunkRelevance
+Orkeon.Rag.Abstractions.Models.ChunkRelevance.<Clone>$() -> Orkeon.Rag.Abstractions.Models.ChunkRelevance!
+Orkeon.Rag.Abstractions.Models.ChunkRelevance.ChunkId.get -> string!
+Orkeon.Rag.Abstractions.Models.ChunkRelevance.ChunkId.init -> void
+Orkeon.Rag.Abstractions.Models.ChunkRelevance.ChunkRelevance() -> void
+Orkeon.Rag.Abstractions.Models.ChunkRelevance.Equals(Orkeon.Rag.Abstractions.Models.ChunkRelevance? other) -> bool
+Orkeon.Rag.Abstractions.Models.ChunkRelevance.Relevance.get -> double
+Orkeon.Rag.Abstractions.Models.ChunkRelevance.Relevance.init -> void
+Orkeon.Rag.Abstractions.Models.Citation
+Orkeon.Rag.Abstractions.Models.Citation.<Clone>$() -> Orkeon.Rag.Abstractions.Models.Citation!
+Orkeon.Rag.Abstractions.Models.Citation.ChunkId.get -> string!
+Orkeon.Rag.Abstractions.Models.Citation.ChunkId.init -> void
+Orkeon.Rag.Abstractions.Models.Citation.Citation() -> void
+Orkeon.Rag.Abstractions.Models.Citation.DocumentId.get -> string?
+Orkeon.Rag.Abstractions.Models.Citation.DocumentId.init -> void
+Orkeon.Rag.Abstractions.Models.Citation.EndOffset.get -> int
+Orkeon.Rag.Abstractions.Models.Citation.EndOffset.init -> void
+Orkeon.Rag.Abstractions.Models.Citation.Equals(Orkeon.Rag.Abstractions.Models.Citation? other) -> bool
+Orkeon.Rag.Abstractions.Models.Citation.Marker.get -> int
+Orkeon.Rag.Abstractions.Models.Citation.Marker.init -> void
+Orkeon.Rag.Abstractions.Models.Citation.Score.get -> double
+Orkeon.Rag.Abstractions.Models.Citation.Score.init -> void
+Orkeon.Rag.Abstractions.Models.Citation.Snippet.get -> string?
+Orkeon.Rag.Abstractions.Models.Citation.Snippet.init -> void
+Orkeon.Rag.Abstractions.Models.Citation.SourceId.get -> string!
+Orkeon.Rag.Abstractions.Models.Citation.SourceId.init -> void
+Orkeon.Rag.Abstractions.Models.Citation.StartOffset.get -> int
+Orkeon.Rag.Abstractions.Models.Citation.StartOffset.init -> void
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.<Clone>$() -> Orkeon.Rag.Abstractions.Models.EmbeddedChunk!
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.Chunk.get -> Orkeon.Rag.Abstractions.Models.Chunk!
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.Chunk.init -> void
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.EmbeddedChunk() -> void
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.Embedding.get -> System.Collections.Immutable.ImmutableArray<float>
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.Embedding.init -> void
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.EmbeddingModel.get -> string?
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.EmbeddingModel.init -> void
+Orkeon.Rag.Abstractions.Models.EmbeddedChunk.Equals(Orkeon.Rag.Abstractions.Models.EmbeddedChunk? other) -> bool
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.<Clone>$() -> Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest!
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.Chunking.get -> Orkeon.Rag.Abstractions.Options.ChunkingOptions!
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.Chunking.init -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.ChunkingStrategy.get -> string?
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.ChunkingStrategy.init -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.CollectionPrefix.get -> string?
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.CollectionPrefix.init -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.EphemeralSearchRequest() -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.Equals(Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest? other) -> bool
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.Query.get -> string!
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.Query.init -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.Sources.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.SourceDescriptor!>!
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.Sources.init -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.TopK.get -> int
+Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.TopK.init -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.<Clone>$() -> Orkeon.Rag.Abstractions.Models.EphemeralSearchResult!
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.Collection.get -> string!
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.Collection.init -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.EphemeralSearchResult() -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.Equals(Orkeon.Rag.Abstractions.Models.EphemeralSearchResult? other) -> bool
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.Ingestion.get -> Orkeon.Rag.Abstractions.Models.IngestionReport!
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.Ingestion.init -> void
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.Results.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!
+Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.Results.init -> void
+Orkeon.Rag.Abstractions.Models.GroundednessResult
+Orkeon.Rag.Abstractions.Models.GroundednessResult.<Clone>$() -> Orkeon.Rag.Abstractions.Models.GroundednessResult!
+Orkeon.Rag.Abstractions.Models.GroundednessResult.Equals(Orkeon.Rag.Abstractions.Models.GroundednessResult? other) -> bool
+Orkeon.Rag.Abstractions.Models.GroundednessResult.GroundednessResult() -> void
+Orkeon.Rag.Abstractions.Models.GroundednessResult.IsGrounded.get -> bool
+Orkeon.Rag.Abstractions.Models.GroundednessResult.IsGrounded.init -> void
+Orkeon.Rag.Abstractions.Models.GroundednessResult.Rationale.get -> string?
+Orkeon.Rag.Abstractions.Models.GroundednessResult.Rationale.init -> void
+Orkeon.Rag.Abstractions.Models.GroundednessResult.Score.get -> double
+Orkeon.Rag.Abstractions.Models.GroundednessResult.Score.init -> void
+Orkeon.Rag.Abstractions.Models.GroundednessResult.UnsupportedClaims.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Abstractions.Models.GroundednessResult.UnsupportedClaims.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport
+Orkeon.Rag.Abstractions.Models.IngestionReport.<Clone>$() -> Orkeon.Rag.Abstractions.Models.IngestionReport!
+Orkeon.Rag.Abstractions.Models.IngestionReport.ChunksCreated.get -> int
+Orkeon.Rag.Abstractions.Models.IngestionReport.ChunksCreated.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.ChunksEmbedded.get -> int
+Orkeon.Rag.Abstractions.Models.IngestionReport.ChunksEmbedded.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.ChunksSkipped.get -> int
+Orkeon.Rag.Abstractions.Models.IngestionReport.ChunksSkipped.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.Collection.get -> string!
+Orkeon.Rag.Abstractions.Models.IngestionReport.Collection.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.DocumentsLoaded.get -> int
+Orkeon.Rag.Abstractions.Models.IngestionReport.DocumentsLoaded.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.Duration.get -> System.TimeSpan
+Orkeon.Rag.Abstractions.Models.IngestionReport.Duration.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.Equals(Orkeon.Rag.Abstractions.Models.IngestionReport? other) -> bool
+Orkeon.Rag.Abstractions.Models.IngestionReport.Errors.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Abstractions.Models.IngestionReport.Errors.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.IngestionReport() -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesAdded.get -> int
+Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesAdded.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesReingested.get -> int
+Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesReingested.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesUnchanged.get -> int
+Orkeon.Rag.Abstractions.Models.IngestionReport.SourcesUnchanged.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionRequest
+Orkeon.Rag.Abstractions.Models.IngestionRequest.<Clone>$() -> Orkeon.Rag.Abstractions.Models.IngestionRequest!
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Chunking.get -> Orkeon.Rag.Abstractions.Options.ChunkingOptions!
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Chunking.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionRequest.ChunkingStrategy.get -> string?
+Orkeon.Rag.Abstractions.Models.IngestionRequest.ChunkingStrategy.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Collection.get -> string!
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Collection.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Equals(Orkeon.Rag.Abstractions.Models.IngestionRequest? other) -> bool
+Orkeon.Rag.Abstractions.Models.IngestionRequest.IngestionRequest() -> void
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Reindex.get -> bool
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Reindex.init -> void
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Sources.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.SourceDescriptor!>!
+Orkeon.Rag.Abstractions.Models.IngestionRequest.Sources.init -> void
+Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock
+Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.<Clone>$() -> Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock!
+Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.Citations.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.Citation!>!
+Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.Citations.init -> void
+Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.Equals(Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock? other) -> bool
+Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.KnowledgeContextBlock() -> void
+Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.Text.get -> string!
+Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.Text.init -> void
+Orkeon.Rag.Abstractions.Models.QueryTransformContext
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.<Clone>$() -> Orkeon.Rag.Abstractions.Models.QueryTransformContext!
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.Collection.get -> string?
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.Collection.init -> void
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.Equals(Orkeon.Rag.Abstractions.Models.QueryTransformContext? other) -> bool
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.Extensions.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.Extensions.init -> void
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.MaxVariants.get -> int
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.MaxVariants.init -> void
+Orkeon.Rag.Abstractions.Models.QueryTransformContext.QueryTransformContext() -> void
+Orkeon.Rag.Abstractions.Models.RagAnswer
+Orkeon.Rag.Abstractions.Models.RagAnswer.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagAnswer!
+Orkeon.Rag.Abstractions.Models.RagAnswer.Citations.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.Citation!>!
+Orkeon.Rag.Abstractions.Models.RagAnswer.Citations.init -> void
+Orkeon.Rag.Abstractions.Models.RagAnswer.Equals(Orkeon.Rag.Abstractions.Models.RagAnswer? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagAnswer.Groundedness.get -> Orkeon.Rag.Abstractions.Models.GroundednessResult?
+Orkeon.Rag.Abstractions.Models.RagAnswer.Groundedness.init -> void
+Orkeon.Rag.Abstractions.Models.RagAnswer.RagAnswer() -> void
+Orkeon.Rag.Abstractions.Models.RagAnswer.Text.get -> string!
+Orkeon.Rag.Abstractions.Models.RagAnswer.Text.init -> void
+Orkeon.Rag.Abstractions.Models.RagAnswer.Trace.get -> Orkeon.Rag.Abstractions.Models.RagTrace!
+Orkeon.Rag.Abstractions.Models.RagAnswer.Trace.init -> void
+Orkeon.Rag.Abstractions.Models.RagDocument
+Orkeon.Rag.Abstractions.Models.RagDocument.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagDocument!
+Orkeon.Rag.Abstractions.Models.RagDocument.Content.get -> string!
+Orkeon.Rag.Abstractions.Models.RagDocument.Content.init -> void
+Orkeon.Rag.Abstractions.Models.RagDocument.Equals(Orkeon.Rag.Abstractions.Models.RagDocument? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagDocument.Id.get -> string!
+Orkeon.Rag.Abstractions.Models.RagDocument.Id.init -> void
+Orkeon.Rag.Abstractions.Models.RagDocument.Location.get -> string?
+Orkeon.Rag.Abstractions.Models.RagDocument.Location.init -> void
+Orkeon.Rag.Abstractions.Models.RagDocument.Metadata.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Rag.Abstractions.Models.RagDocument.Metadata.init -> void
+Orkeon.Rag.Abstractions.Models.RagDocument.RagDocument() -> void
+Orkeon.Rag.Abstractions.Models.RagDocument.SourceId.get -> string!
+Orkeon.Rag.Abstractions.Models.RagDocument.SourceId.init -> void
+Orkeon.Rag.Abstractions.Models.RagDocument.Title.get -> string?
+Orkeon.Rag.Abstractions.Models.RagDocument.Title.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagEvalAggregate!
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.AnswerRelevance.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.AnswerRelevance.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.CaseCount.get -> int
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.CaseCount.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.Equals(Orkeon.Rag.Abstractions.Models.RagEvalAggregate? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.Groundedness.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.Groundedness.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.Mrr.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.Mrr.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.PrecisionAtK.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.PrecisionAtK.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.RagEvalAggregate() -> void
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.RecallAtK.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalAggregate.RecallAtK.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCase
+Orkeon.Rag.Abstractions.Models.RagEvalCase.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagEvalCase!
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Equals(Orkeon.Rag.Abstractions.Models.RagEvalCase? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagEvalCase.ExpectedSubstrings.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Abstractions.Models.RagEvalCase.ExpectedSubstrings.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Id.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Id.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Question.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Question.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCase.RagEvalCase() -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCase.ReferenceAnswer.get -> string?
+Orkeon.Rag.Abstractions.Models.RagEvalCase.ReferenceAnswer.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Relevant.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Relevant.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Tags.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Abstractions.Models.RagEvalCase.Tags.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagEvalCaseResult!
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Answer.get -> string?
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Answer.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.AnswerRelevance.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.AnswerRelevance.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.CaseId.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.CaseId.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Duration.get -> System.TimeSpan
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Duration.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Equals(Orkeon.Rag.Abstractions.Models.RagEvalCaseResult? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Groundedness.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Groundedness.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Judge.get -> Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Judge.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.PrecisionAtK.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.PrecisionAtK.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.RagEvalCaseResult() -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.RecallAtK.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.RecallAtK.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.ReciprocalRank.get -> double?
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.ReciprocalRank.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.RetrievedSources.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.RetrievedSources.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Tags.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Tags.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalDataset
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagEvalDataset!
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.Cases.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.RagEvalCase!>!
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.Cases.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.CorpusPath.get -> string?
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.CorpusPath.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.DefaultCollection.get -> string?
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.DefaultCollection.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.Equals(Orkeon.Rag.Abstractions.Models.RagEvalDataset? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.Name.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.Name.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalDataset.RagEvalDataset() -> void
+Orkeon.Rag.Abstractions.Models.RagEvalOptions
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagEvalOptions!
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.Collection.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.Collection.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.Equals(Orkeon.Rag.Abstractions.Models.RagEvalOptions? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.K.get -> int
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.K.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.Profile.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.Profile.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.RagEvalOptions() -> void
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.TopN.get -> int
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.TopN.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.UseLlmJudge.get -> bool
+Orkeon.Rag.Abstractions.Models.RagEvalOptions.UseLlmJudge.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport
+Orkeon.Rag.Abstractions.Models.RagEvalReport.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagEvalReport!
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Aggregate.get -> Orkeon.Rag.Abstractions.Models.RagEvalAggregate!
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Aggregate.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Cases.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.RagEvalCaseResult!>!
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Cases.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Collection.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Collection.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.DatasetName.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalReport.DatasetName.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Duration.get -> System.TimeSpan
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Duration.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Equals(Orkeon.Rag.Abstractions.Models.RagEvalReport? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Judge.get -> Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Judge.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.JudgeFallbackCount.get -> int
+Orkeon.Rag.Abstractions.Models.RagEvalReport.JudgeFallbackCount.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.K.get -> int
+Orkeon.Rag.Abstractions.Models.RagEvalReport.K.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Profile.get -> string!
+Orkeon.Rag.Abstractions.Models.RagEvalReport.Profile.init -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.RagEvalReport() -> void
+Orkeon.Rag.Abstractions.Models.RagEvalReport.StartedAt.get -> System.DateTimeOffset
+Orkeon.Rag.Abstractions.Models.RagEvalReport.StartedAt.init -> void
+Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Abstractions.Models.RagJudgeMode.Heuristic = 0 -> Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Abstractions.Models.RagJudgeMode.Llm = 1 -> Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Abstractions.Models.RagQuery
+Orkeon.Rag.Abstractions.Models.RagQuery.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagQuery!
+Orkeon.Rag.Abstractions.Models.RagQuery.Collection.get -> string!
+Orkeon.Rag.Abstractions.Models.RagQuery.Collection.init -> void
+Orkeon.Rag.Abstractions.Models.RagQuery.Equals(Orkeon.Rag.Abstractions.Models.RagQuery? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagQuery.Filters.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Rag.Abstractions.Models.RagQuery.Filters.init -> void
+Orkeon.Rag.Abstractions.Models.RagQuery.RagQuery() -> void
+Orkeon.Rag.Abstractions.Models.RagQuery.Text.get -> string!
+Orkeon.Rag.Abstractions.Models.RagQuery.Text.init -> void
+Orkeon.Rag.Abstractions.Models.RagQuery.TopN.get -> int
+Orkeon.Rag.Abstractions.Models.RagQuery.TopN.init -> void
+Orkeon.Rag.Abstractions.Models.RagTrace
+Orkeon.Rag.Abstractions.Models.RagTrace.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagTrace!
+Orkeon.Rag.Abstractions.Models.RagTrace.Equals(Orkeon.Rag.Abstractions.Models.RagTrace? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagTrace.Iterations.get -> int
+Orkeon.Rag.Abstractions.Models.RagTrace.Iterations.init -> void
+Orkeon.Rag.Abstractions.Models.RagTrace.QueryVariants.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Abstractions.Models.RagTrace.QueryVariants.init -> void
+Orkeon.Rag.Abstractions.Models.RagTrace.RagTrace() -> void
+Orkeon.Rag.Abstractions.Models.RagTrace.Route.get -> Orkeon.Rag.Abstractions.QueryRoute?
+Orkeon.Rag.Abstractions.Models.RagTrace.Route.init -> void
+Orkeon.Rag.Abstractions.Models.RagTrace.Steps.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.RagTraceStep!>!
+Orkeon.Rag.Abstractions.Models.RagTrace.Steps.init -> void
+Orkeon.Rag.Abstractions.Models.RagTrace.Verdicts.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.RetrievalVerdict!>!
+Orkeon.Rag.Abstractions.Models.RagTrace.Verdicts.init -> void
+Orkeon.Rag.Abstractions.Models.RagTraceStep
+Orkeon.Rag.Abstractions.Models.RagTraceStep.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RagTraceStep!
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Data.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Data.init -> void
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Detail.get -> string?
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Detail.init -> void
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Duration.get -> System.TimeSpan
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Duration.init -> void
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Equals(Orkeon.Rag.Abstractions.Models.RagTraceStep? other) -> bool
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Name.get -> string!
+Orkeon.Rag.Abstractions.Models.RagTraceStep.Name.init -> void
+Orkeon.Rag.Abstractions.Models.RagTraceStep.RagTraceStep() -> void
+Orkeon.Rag.Abstractions.Models.RetrievalQuery
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RetrievalQuery!
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Embedding.get -> System.Collections.Immutable.ImmutableArray<float>?
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Embedding.init -> void
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Equals(Orkeon.Rag.Abstractions.Models.RetrievalQuery? other) -> bool
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Filters.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Filters.init -> void
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Hybrid.get -> bool?
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Hybrid.init -> void
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.RetrievalQuery() -> void
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Text.get -> string!
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.Text.init -> void
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.TopK.get -> int
+Orkeon.Rag.Abstractions.Models.RetrievalQuery.TopK.init -> void
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.<Clone>$() -> Orkeon.Rag.Abstractions.Models.RetrievalVerdict!
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.ChunkRelevances.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.ChunkRelevance!>!
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.ChunkRelevances.init -> void
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.Equals(Orkeon.Rag.Abstractions.Models.RetrievalVerdict? other) -> bool
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.Grade.get -> Orkeon.Rag.Abstractions.RetrievalGrade
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.Grade.init -> void
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.Rationale.get -> string?
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.Rationale.init -> void
+Orkeon.Rag.Abstractions.Models.RetrievalVerdict.RetrievalVerdict() -> void
+Orkeon.Rag.Abstractions.Models.ScoredChunk
+Orkeon.Rag.Abstractions.Models.ScoredChunk.<Clone>$() -> Orkeon.Rag.Abstractions.Models.ScoredChunk!
+Orkeon.Rag.Abstractions.Models.ScoredChunk.Chunk.get -> Orkeon.Rag.Abstractions.Models.Chunk!
+Orkeon.Rag.Abstractions.Models.ScoredChunk.Chunk.init -> void
+Orkeon.Rag.Abstractions.Models.ScoredChunk.Equals(Orkeon.Rag.Abstractions.Models.ScoredChunk? other) -> bool
+Orkeon.Rag.Abstractions.Models.ScoredChunk.Score.get -> double
+Orkeon.Rag.Abstractions.Models.ScoredChunk.Score.init -> void
+Orkeon.Rag.Abstractions.Models.ScoredChunk.ScoreOrigin.get -> string?
+Orkeon.Rag.Abstractions.Models.ScoredChunk.ScoreOrigin.init -> void
+Orkeon.Rag.Abstractions.Models.ScoredChunk.ScoredChunk() -> void
+Orkeon.Rag.Abstractions.Models.SourceDescriptor
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.<Clone>$() -> Orkeon.Rag.Abstractions.Models.SourceDescriptor!
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.Equals(Orkeon.Rag.Abstractions.Models.SourceDescriptor? other) -> bool
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.Kind.get -> string?
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.Kind.init -> void
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.Location.get -> string!
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.Location.init -> void
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.Options.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.Options.init -> void
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.SourceDescriptor() -> void
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.SourceId.get -> string?
+Orkeon.Rag.Abstractions.Models.SourceDescriptor.SourceId.init -> void
+Orkeon.Rag.Abstractions.Options.ChunkingOptions
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.<Clone>$() -> Orkeon.Rag.Abstractions.Options.ChunkingOptions!
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.ChunkingOptions() -> void
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.Equals(Orkeon.Rag.Abstractions.Options.ChunkingOptions? other) -> bool
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.Extensions.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.Extensions.init -> void
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.MaxChunkSize.get -> int
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.MaxChunkSize.init -> void
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.Overlap.get -> int
+Orkeon.Rag.Abstractions.Options.ChunkingOptions.Overlap.init -> void
+Orkeon.Rag.Abstractions.Options.MmrOptions
+Orkeon.Rag.Abstractions.Options.MmrOptions.Enabled.get -> bool
+Orkeon.Rag.Abstractions.Options.MmrOptions.Enabled.set -> void
+Orkeon.Rag.Abstractions.Options.MmrOptions.Lambda.get -> double
+Orkeon.Rag.Abstractions.Options.MmrOptions.Lambda.set -> void
+Orkeon.Rag.Abstractions.Options.MmrOptions.MmrOptions() -> void
+Orkeon.Rag.Abstractions.Options.QueryRoutingOptions
+Orkeon.Rag.Abstractions.Options.QueryRoutingOptions.Classifier.get -> string!
+Orkeon.Rag.Abstractions.Options.QueryRoutingOptions.Classifier.set -> void
+Orkeon.Rag.Abstractions.Options.QueryRoutingOptions.QueryRoutingOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagContextOptions
+Orkeon.Rag.Abstractions.Options.RagContextOptions.MaxTokens.get -> int
+Orkeon.Rag.Abstractions.Options.RagContextOptions.MaxTokens.set -> void
+Orkeon.Rag.Abstractions.Options.RagContextOptions.Ordering.get -> string!
+Orkeon.Rag.Abstractions.Options.RagContextOptions.Ordering.set -> void
+Orkeon.Rag.Abstractions.Options.RagContextOptions.RagContextOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagCorrectiveOptions
+Orkeon.Rag.Abstractions.Options.RagCorrectiveOptions.MaxIterations.get -> int
+Orkeon.Rag.Abstractions.Options.RagCorrectiveOptions.MaxIterations.set -> void
+Orkeon.Rag.Abstractions.Options.RagCorrectiveOptions.RagCorrectiveOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagCorrectiveOptions.WebFallback.get -> Orkeon.Rag.Abstractions.Options.RagWebFallbackOptions!
+Orkeon.Rag.Abstractions.Options.RagCorrectiveOptions.WebFallback.set -> void
+Orkeon.Rag.Abstractions.Options.RagGenerationOptions
+Orkeon.Rag.Abstractions.Options.RagGenerationOptions.MaxOutputTokens.get -> int?
+Orkeon.Rag.Abstractions.Options.RagGenerationOptions.MaxOutputTokens.set -> void
+Orkeon.Rag.Abstractions.Options.RagGenerationOptions.RagGenerationOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagGenerationOptions.SystemPrompt.get -> string?
+Orkeon.Rag.Abstractions.Options.RagGenerationOptions.SystemPrompt.set -> void
+Orkeon.Rag.Abstractions.Options.RagGenerationOptions.Temperature.get -> float?
+Orkeon.Rag.Abstractions.Options.RagGenerationOptions.Temperature.set -> void
+Orkeon.Rag.Abstractions.Options.RagGroundednessOptions
+Orkeon.Rag.Abstractions.Options.RagGroundednessOptions.Enabled.get -> bool
+Orkeon.Rag.Abstractions.Options.RagGroundednessOptions.Enabled.set -> void
+Orkeon.Rag.Abstractions.Options.RagGroundednessOptions.RagGroundednessOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagHybridOptions
+Orkeon.Rag.Abstractions.Options.RagHybridOptions.Enabled.get -> bool
+Orkeon.Rag.Abstractions.Options.RagHybridOptions.Enabled.set -> void
+Orkeon.Rag.Abstractions.Options.RagHybridOptions.RagHybridOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagHybridOptions.RrfK.get -> int
+Orkeon.Rag.Abstractions.Options.RagHybridOptions.RrfK.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions
+Orkeon.Rag.Abstractions.Options.RagOptions.Collection.get -> string?
+Orkeon.Rag.Abstractions.Options.RagOptions.Collection.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.Context.get -> Orkeon.Rag.Abstractions.Options.RagContextOptions!
+Orkeon.Rag.Abstractions.Options.RagOptions.Context.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.Corrective.get -> Orkeon.Rag.Abstractions.Options.RagCorrectiveOptions!
+Orkeon.Rag.Abstractions.Options.RagOptions.Corrective.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.Generation.get -> Orkeon.Rag.Abstractions.Options.RagGenerationOptions!
+Orkeon.Rag.Abstractions.Options.RagOptions.Generation.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.Groundedness.get -> Orkeon.Rag.Abstractions.Options.RagGroundednessOptions!
+Orkeon.Rag.Abstractions.Options.RagOptions.Groundedness.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.Profile.get -> string!
+Orkeon.Rag.Abstractions.Options.RagOptions.Profile.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.QueryTransform.get -> Orkeon.Rag.Abstractions.Options.RagQueryTransformOptions!
+Orkeon.Rag.Abstractions.Options.RagOptions.QueryTransform.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.RagOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.Rerank.get -> Orkeon.Rag.Abstractions.Options.RagRerankOptions!
+Orkeon.Rag.Abstractions.Options.RagOptions.Rerank.set -> void
+Orkeon.Rag.Abstractions.Options.RagOptions.Retrieval.get -> Orkeon.Rag.Abstractions.Options.RagRetrievalOptions!
+Orkeon.Rag.Abstractions.Options.RagOptions.Retrieval.set -> void
+Orkeon.Rag.Abstractions.Options.RagProfile
+Orkeon.Rag.Abstractions.Options.RagProfile.Adaptive = 3 -> Orkeon.Rag.Abstractions.Options.RagProfile
+Orkeon.Rag.Abstractions.Options.RagProfile.Balanced = 1 -> Orkeon.Rag.Abstractions.Options.RagProfile
+Orkeon.Rag.Abstractions.Options.RagProfile.Corrective = 4 -> Orkeon.Rag.Abstractions.Options.RagProfile
+Orkeon.Rag.Abstractions.Options.RagProfile.Fast = 0 -> Orkeon.Rag.Abstractions.Options.RagProfile
+Orkeon.Rag.Abstractions.Options.RagProfile.Quality = 2 -> Orkeon.Rag.Abstractions.Options.RagProfile
+Orkeon.Rag.Abstractions.Options.RagProfilePresets
+Orkeon.Rag.Abstractions.Options.RagQueryTransformOptions
+Orkeon.Rag.Abstractions.Options.RagQueryTransformOptions.Mode.get -> string!
+Orkeon.Rag.Abstractions.Options.RagQueryTransformOptions.Mode.set -> void
+Orkeon.Rag.Abstractions.Options.RagQueryTransformOptions.RagQueryTransformOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagQueryTransformOptions.VariantCount.get -> int
+Orkeon.Rag.Abstractions.Options.RagQueryTransformOptions.VariantCount.set -> void
+Orkeon.Rag.Abstractions.Options.RagRerankOptions
+Orkeon.Rag.Abstractions.Options.RagRerankOptions.Enabled.get -> bool
+Orkeon.Rag.Abstractions.Options.RagRerankOptions.Enabled.set -> void
+Orkeon.Rag.Abstractions.Options.RagRerankOptions.Kind.get -> string!
+Orkeon.Rag.Abstractions.Options.RagRerankOptions.Kind.set -> void
+Orkeon.Rag.Abstractions.Options.RagRerankOptions.RagRerankOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagRerankOptions.TopN.get -> int
+Orkeon.Rag.Abstractions.Options.RagRerankOptions.TopN.set -> void
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.CandidateK.get -> int
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.CandidateK.set -> void
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.Hybrid.get -> Orkeon.Rag.Abstractions.Options.RagHybridOptions!
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.Hybrid.set -> void
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.MinScore.get -> double?
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.MinScore.set -> void
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.Mmr.get -> Orkeon.Rag.Abstractions.Options.MmrOptions!
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.Mmr.set -> void
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.RagRetrievalOptions() -> void
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.TopK.get -> int
+Orkeon.Rag.Abstractions.Options.RagRetrievalOptions.TopK.set -> void
+Orkeon.Rag.Abstractions.Options.RagWebFallbackOptions
+Orkeon.Rag.Abstractions.Options.RagWebFallbackOptions.Enabled.get -> bool
+Orkeon.Rag.Abstractions.Options.RagWebFallbackOptions.Enabled.set -> void
+Orkeon.Rag.Abstractions.Options.RagWebFallbackOptions.MaxResults.get -> int
+Orkeon.Rag.Abstractions.Options.RagWebFallbackOptions.MaxResults.set -> void
+Orkeon.Rag.Abstractions.Options.RagWebFallbackOptions.RagWebFallbackOptions() -> void
+Orkeon.Rag.Abstractions.Options.RerankingOptions
+Orkeon.Rag.Abstractions.Options.RerankingOptions.<Clone>$() -> Orkeon.Rag.Abstractions.Options.RerankingOptions!
+Orkeon.Rag.Abstractions.Options.RerankingOptions.CandidateK.get -> int
+Orkeon.Rag.Abstractions.Options.RerankingOptions.CandidateK.init -> void
+Orkeon.Rag.Abstractions.Options.RerankingOptions.Equals(Orkeon.Rag.Abstractions.Options.RerankingOptions? other) -> bool
+Orkeon.Rag.Abstractions.Options.RerankingOptions.Reranker.get -> string!
+Orkeon.Rag.Abstractions.Options.RerankingOptions.Reranker.init -> void
+Orkeon.Rag.Abstractions.Options.RerankingOptions.RerankingOptions() -> void
+Orkeon.Rag.Abstractions.Options.RerankingOptions.TopN.get -> int
+Orkeon.Rag.Abstractions.Options.RerankingOptions.TopN.init -> void
+Orkeon.Rag.Abstractions.QueryRoute
+Orkeon.Rag.Abstractions.QueryRoute.Iterative = 2 -> Orkeon.Rag.Abstractions.QueryRoute
+Orkeon.Rag.Abstractions.QueryRoute.NoRetrieval = 0 -> Orkeon.Rag.Abstractions.QueryRoute
+Orkeon.Rag.Abstractions.QueryRoute.SingleShot = 1 -> Orkeon.Rag.Abstractions.QueryRoute
+Orkeon.Rag.Abstractions.QueryTransformKind
+Orkeon.Rag.Abstractions.QueryTransformKind.Fusion = 1 -> Orkeon.Rag.Abstractions.QueryTransformKind
+Orkeon.Rag.Abstractions.QueryTransformKind.Replacement = 2 -> Orkeon.Rag.Abstractions.QueryTransformKind
+Orkeon.Rag.Abstractions.QueryTransformKind.Union = 0 -> Orkeon.Rag.Abstractions.QueryTransformKind
+Orkeon.Rag.Abstractions.RetrievalGrade
+Orkeon.Rag.Abstractions.RetrievalGrade.Ambiguous = 2 -> Orkeon.Rag.Abstractions.RetrievalGrade
+Orkeon.Rag.Abstractions.RetrievalGrade.Correct = 0 -> Orkeon.Rag.Abstractions.RetrievalGrade
+Orkeon.Rag.Abstractions.RetrievalGrade.Incorrect = 1 -> Orkeon.Rag.Abstractions.RetrievalGrade
+Orkeon.Rag.Abstractions.SourceGlobExpander
+[ORKEXP003]Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker
+[ORKEXP003]Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker.CheckAsync(string! question, string! answer, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.GroundednessResult!>!
+[ORKEXP003]Orkeon.Rag.Abstractions.Interfaces.IRetrievalEvaluator
+[ORKEXP003]Orkeon.Rag.Abstractions.Interfaces.IRetrievalEvaluator.EvaluateAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! chunks, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RetrievalVerdict!>!
+const Orkeon.Rag.Abstractions.Models.RagEvalCase.CorrectiveTag = "correctif" -> string!
+const Orkeon.Rag.Abstractions.Models.RagEvalOptions.DefaultProfile = "default" -> string!
+const Orkeon.Rag.Abstractions.Options.MmrOptions.DefaultLambda = 0.7 -> double
+const Orkeon.Rag.Abstractions.Options.QueryRoutingOptions.HeuristicClassifier = "heuristic" -> string!
+const Orkeon.Rag.Abstractions.Options.QueryRoutingOptions.LlmClassifier = "llm" -> string!
+const Orkeon.Rag.Abstractions.Options.RagCorrectiveOptions.DefaultMaxIterations = 3 -> int
+const Orkeon.Rag.Abstractions.Options.RagProfilePresets.AdaptiveName = "adaptive" -> string!
+const Orkeon.Rag.Abstractions.Options.RagProfilePresets.BalancedName = "balanced" -> string!
+const Orkeon.Rag.Abstractions.Options.RagProfilePresets.CorrectiveName = "corrective" -> string!
+const Orkeon.Rag.Abstractions.Options.RagProfilePresets.FastName = "fast" -> string!
+const Orkeon.Rag.Abstractions.Options.RagProfilePresets.QualityName = "quality" -> string!
+const Orkeon.Rag.Abstractions.Options.RagWebFallbackOptions.DefaultMaxResults = 3 -> int
+const Orkeon.Rag.Abstractions.Options.RerankingOptions.DefaultCandidateK = 50 -> int
+const Orkeon.Rag.Abstractions.Options.RerankingOptions.DefaultTopN = 5 -> int
+override Orkeon.Rag.Abstractions.Models.Chunk.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.Chunk.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.Chunk.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.ChunkRelevance.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.ChunkRelevance.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.ChunkRelevance.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.Citation.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.Citation.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.Citation.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.EmbeddedChunk.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.EmbeddedChunk.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.EmbeddedChunk.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.GroundednessResult.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.GroundednessResult.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.GroundednessResult.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.IngestionReport.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.IngestionReport.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.IngestionReport.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.IngestionRequest.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.IngestionRequest.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.IngestionRequest.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.QueryTransformContext.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.QueryTransformContext.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.QueryTransformContext.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagAnswer.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagAnswer.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagAnswer.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagDocument.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagDocument.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagDocument.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagEvalAggregate.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagEvalAggregate.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagEvalAggregate.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagEvalCase.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagEvalCase.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagEvalCase.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagEvalDataset.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagEvalDataset.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagEvalDataset.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagEvalOptions.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagEvalOptions.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagEvalOptions.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagEvalReport.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagEvalReport.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagEvalReport.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagQuery.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagQuery.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagQuery.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagTrace.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagTrace.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagTrace.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RagTraceStep.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RagTraceStep.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RagTraceStep.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RetrievalQuery.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RetrievalQuery.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RetrievalQuery.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.RetrievalVerdict.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.RetrievalVerdict.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.RetrievalVerdict.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.ScoredChunk.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.ScoredChunk.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.ScoredChunk.ToString() -> string!
+override Orkeon.Rag.Abstractions.Models.SourceDescriptor.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Models.SourceDescriptor.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Models.SourceDescriptor.ToString() -> string!
+override Orkeon.Rag.Abstractions.Options.ChunkingOptions.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Options.ChunkingOptions.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Options.ChunkingOptions.ToString() -> string!
+override Orkeon.Rag.Abstractions.Options.RerankingOptions.Equals(object? obj) -> bool
+override Orkeon.Rag.Abstractions.Options.RerankingOptions.GetHashCode() -> int
+override Orkeon.Rag.Abstractions.Options.RerankingOptions.ToString() -> string!
+static Orkeon.Rag.Abstractions.Models.Chunk.operator !=(Orkeon.Rag.Abstractions.Models.Chunk? left, Orkeon.Rag.Abstractions.Models.Chunk? right) -> bool
+static Orkeon.Rag.Abstractions.Models.Chunk.operator ==(Orkeon.Rag.Abstractions.Models.Chunk? left, Orkeon.Rag.Abstractions.Models.Chunk? right) -> bool
+static Orkeon.Rag.Abstractions.Models.ChunkRelevance.operator !=(Orkeon.Rag.Abstractions.Models.ChunkRelevance? left, Orkeon.Rag.Abstractions.Models.ChunkRelevance? right) -> bool
+static Orkeon.Rag.Abstractions.Models.ChunkRelevance.operator ==(Orkeon.Rag.Abstractions.Models.ChunkRelevance? left, Orkeon.Rag.Abstractions.Models.ChunkRelevance? right) -> bool
+static Orkeon.Rag.Abstractions.Models.Citation.operator !=(Orkeon.Rag.Abstractions.Models.Citation? left, Orkeon.Rag.Abstractions.Models.Citation? right) -> bool
+static Orkeon.Rag.Abstractions.Models.Citation.operator ==(Orkeon.Rag.Abstractions.Models.Citation? left, Orkeon.Rag.Abstractions.Models.Citation? right) -> bool
+static Orkeon.Rag.Abstractions.Models.EmbeddedChunk.operator !=(Orkeon.Rag.Abstractions.Models.EmbeddedChunk? left, Orkeon.Rag.Abstractions.Models.EmbeddedChunk? right) -> bool
+static Orkeon.Rag.Abstractions.Models.EmbeddedChunk.operator ==(Orkeon.Rag.Abstractions.Models.EmbeddedChunk? left, Orkeon.Rag.Abstractions.Models.EmbeddedChunk? right) -> bool
+static Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.operator !=(Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest? left, Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest? right) -> bool
+static Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest.operator ==(Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest? left, Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest? right) -> bool
+static Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.operator !=(Orkeon.Rag.Abstractions.Models.EphemeralSearchResult? left, Orkeon.Rag.Abstractions.Models.EphemeralSearchResult? right) -> bool
+static Orkeon.Rag.Abstractions.Models.EphemeralSearchResult.operator ==(Orkeon.Rag.Abstractions.Models.EphemeralSearchResult? left, Orkeon.Rag.Abstractions.Models.EphemeralSearchResult? right) -> bool
+static Orkeon.Rag.Abstractions.Models.GroundednessResult.operator !=(Orkeon.Rag.Abstractions.Models.GroundednessResult? left, Orkeon.Rag.Abstractions.Models.GroundednessResult? right) -> bool
+static Orkeon.Rag.Abstractions.Models.GroundednessResult.operator ==(Orkeon.Rag.Abstractions.Models.GroundednessResult? left, Orkeon.Rag.Abstractions.Models.GroundednessResult? right) -> bool
+static Orkeon.Rag.Abstractions.Models.IngestionReport.operator !=(Orkeon.Rag.Abstractions.Models.IngestionReport? left, Orkeon.Rag.Abstractions.Models.IngestionReport? right) -> bool
+static Orkeon.Rag.Abstractions.Models.IngestionReport.operator ==(Orkeon.Rag.Abstractions.Models.IngestionReport? left, Orkeon.Rag.Abstractions.Models.IngestionReport? right) -> bool
+static Orkeon.Rag.Abstractions.Models.IngestionRequest.operator !=(Orkeon.Rag.Abstractions.Models.IngestionRequest? left, Orkeon.Rag.Abstractions.Models.IngestionRequest? right) -> bool
+static Orkeon.Rag.Abstractions.Models.IngestionRequest.operator ==(Orkeon.Rag.Abstractions.Models.IngestionRequest? left, Orkeon.Rag.Abstractions.Models.IngestionRequest? right) -> bool
+static Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.operator !=(Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock? left, Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock? right) -> bool
+static Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock.operator ==(Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock? left, Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock? right) -> bool
+static Orkeon.Rag.Abstractions.Models.QueryTransformContext.operator !=(Orkeon.Rag.Abstractions.Models.QueryTransformContext? left, Orkeon.Rag.Abstractions.Models.QueryTransformContext? right) -> bool
+static Orkeon.Rag.Abstractions.Models.QueryTransformContext.operator ==(Orkeon.Rag.Abstractions.Models.QueryTransformContext? left, Orkeon.Rag.Abstractions.Models.QueryTransformContext? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagAnswer.operator !=(Orkeon.Rag.Abstractions.Models.RagAnswer? left, Orkeon.Rag.Abstractions.Models.RagAnswer? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagAnswer.operator ==(Orkeon.Rag.Abstractions.Models.RagAnswer? left, Orkeon.Rag.Abstractions.Models.RagAnswer? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagDocument.operator !=(Orkeon.Rag.Abstractions.Models.RagDocument? left, Orkeon.Rag.Abstractions.Models.RagDocument? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagDocument.operator ==(Orkeon.Rag.Abstractions.Models.RagDocument? left, Orkeon.Rag.Abstractions.Models.RagDocument? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalAggregate.operator !=(Orkeon.Rag.Abstractions.Models.RagEvalAggregate? left, Orkeon.Rag.Abstractions.Models.RagEvalAggregate? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalAggregate.operator ==(Orkeon.Rag.Abstractions.Models.RagEvalAggregate? left, Orkeon.Rag.Abstractions.Models.RagEvalAggregate? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalCase.operator !=(Orkeon.Rag.Abstractions.Models.RagEvalCase? left, Orkeon.Rag.Abstractions.Models.RagEvalCase? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalCase.operator ==(Orkeon.Rag.Abstractions.Models.RagEvalCase? left, Orkeon.Rag.Abstractions.Models.RagEvalCase? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.operator !=(Orkeon.Rag.Abstractions.Models.RagEvalCaseResult? left, Orkeon.Rag.Abstractions.Models.RagEvalCaseResult? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalCaseResult.operator ==(Orkeon.Rag.Abstractions.Models.RagEvalCaseResult? left, Orkeon.Rag.Abstractions.Models.RagEvalCaseResult? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalDataset.operator !=(Orkeon.Rag.Abstractions.Models.RagEvalDataset? left, Orkeon.Rag.Abstractions.Models.RagEvalDataset? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalDataset.operator ==(Orkeon.Rag.Abstractions.Models.RagEvalDataset? left, Orkeon.Rag.Abstractions.Models.RagEvalDataset? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalOptions.operator !=(Orkeon.Rag.Abstractions.Models.RagEvalOptions? left, Orkeon.Rag.Abstractions.Models.RagEvalOptions? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalOptions.operator ==(Orkeon.Rag.Abstractions.Models.RagEvalOptions? left, Orkeon.Rag.Abstractions.Models.RagEvalOptions? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalReport.operator !=(Orkeon.Rag.Abstractions.Models.RagEvalReport? left, Orkeon.Rag.Abstractions.Models.RagEvalReport? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagEvalReport.operator ==(Orkeon.Rag.Abstractions.Models.RagEvalReport? left, Orkeon.Rag.Abstractions.Models.RagEvalReport? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagQuery.operator !=(Orkeon.Rag.Abstractions.Models.RagQuery? left, Orkeon.Rag.Abstractions.Models.RagQuery? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagQuery.operator ==(Orkeon.Rag.Abstractions.Models.RagQuery? left, Orkeon.Rag.Abstractions.Models.RagQuery? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagTrace.operator !=(Orkeon.Rag.Abstractions.Models.RagTrace? left, Orkeon.Rag.Abstractions.Models.RagTrace? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagTrace.operator ==(Orkeon.Rag.Abstractions.Models.RagTrace? left, Orkeon.Rag.Abstractions.Models.RagTrace? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagTraceStep.operator !=(Orkeon.Rag.Abstractions.Models.RagTraceStep? left, Orkeon.Rag.Abstractions.Models.RagTraceStep? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RagTraceStep.operator ==(Orkeon.Rag.Abstractions.Models.RagTraceStep? left, Orkeon.Rag.Abstractions.Models.RagTraceStep? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RetrievalQuery.operator !=(Orkeon.Rag.Abstractions.Models.RetrievalQuery? left, Orkeon.Rag.Abstractions.Models.RetrievalQuery? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RetrievalQuery.operator ==(Orkeon.Rag.Abstractions.Models.RetrievalQuery? left, Orkeon.Rag.Abstractions.Models.RetrievalQuery? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RetrievalVerdict.operator !=(Orkeon.Rag.Abstractions.Models.RetrievalVerdict? left, Orkeon.Rag.Abstractions.Models.RetrievalVerdict? right) -> bool
+static Orkeon.Rag.Abstractions.Models.RetrievalVerdict.operator ==(Orkeon.Rag.Abstractions.Models.RetrievalVerdict? left, Orkeon.Rag.Abstractions.Models.RetrievalVerdict? right) -> bool
+static Orkeon.Rag.Abstractions.Models.ScoredChunk.operator !=(Orkeon.Rag.Abstractions.Models.ScoredChunk? left, Orkeon.Rag.Abstractions.Models.ScoredChunk? right) -> bool
+static Orkeon.Rag.Abstractions.Models.ScoredChunk.operator ==(Orkeon.Rag.Abstractions.Models.ScoredChunk? left, Orkeon.Rag.Abstractions.Models.ScoredChunk? right) -> bool
+static Orkeon.Rag.Abstractions.Models.SourceDescriptor.operator !=(Orkeon.Rag.Abstractions.Models.SourceDescriptor? left, Orkeon.Rag.Abstractions.Models.SourceDescriptor? right) -> bool
+static Orkeon.Rag.Abstractions.Models.SourceDescriptor.operator ==(Orkeon.Rag.Abstractions.Models.SourceDescriptor? left, Orkeon.Rag.Abstractions.Models.SourceDescriptor? right) -> bool
+static Orkeon.Rag.Abstractions.Options.ChunkingOptions.operator !=(Orkeon.Rag.Abstractions.Options.ChunkingOptions? left, Orkeon.Rag.Abstractions.Options.ChunkingOptions? right) -> bool
+static Orkeon.Rag.Abstractions.Options.ChunkingOptions.operator ==(Orkeon.Rag.Abstractions.Options.ChunkingOptions? left, Orkeon.Rag.Abstractions.Options.ChunkingOptions? right) -> bool
+static Orkeon.Rag.Abstractions.Options.RagProfilePresets.Create(Orkeon.Rag.Abstractions.Options.RagProfile profile) -> Orkeon.Rag.Abstractions.Options.RagOptions!
+static Orkeon.Rag.Abstractions.Options.RagProfilePresets.KnownProfileNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Rag.Abstractions.Options.RagProfilePresets.NameOf(Orkeon.Rag.Abstractions.Options.RagProfile profile) -> string!
+static Orkeon.Rag.Abstractions.Options.RagProfilePresets.Parse(string! profileName) -> Orkeon.Rag.Abstractions.Options.RagProfile
+static Orkeon.Rag.Abstractions.Options.RagProfilePresets.TryParse(string? profileName, out Orkeon.Rag.Abstractions.Options.RagProfile profile) -> bool
+static Orkeon.Rag.Abstractions.Options.RerankingOptions.operator !=(Orkeon.Rag.Abstractions.Options.RerankingOptions? left, Orkeon.Rag.Abstractions.Options.RerankingOptions? right) -> bool
+static Orkeon.Rag.Abstractions.Options.RerankingOptions.operator ==(Orkeon.Rag.Abstractions.Options.RerankingOptions? left, Orkeon.Rag.Abstractions.Options.RerankingOptions? right) -> bool
+static Orkeon.Rag.Abstractions.SourceGlobExpander.ExpandAsync(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>! locations, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.SourceDescriptor!>!>!
+static Orkeon.Rag.Abstractions.SourceGlobExpander.HasWildcard(string! location) -> bool

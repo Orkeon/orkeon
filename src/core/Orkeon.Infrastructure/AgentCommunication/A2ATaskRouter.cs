@@ -3,6 +3,7 @@ using Orkeon.Domain.Agent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
@@ -17,6 +18,7 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// so agents registered by other scopes (e.g. the execution pipeline) are visible here.
 /// </para>
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class A2ATaskRouter : IA2ATaskRouter
 {
     private readonly IServiceScopeFactory _scopeFactory;

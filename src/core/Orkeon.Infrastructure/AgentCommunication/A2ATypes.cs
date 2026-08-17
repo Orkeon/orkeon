@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
@@ -7,6 +8,7 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// Wire protocol message envelope for A2A communication.
 /// Follows JSON-RPC style request/response pattern similar to MCP's <c>JsonRpcTypes</c>.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class A2AMessage
 {
     /// <summary>Gets or sets the JSON-RPC version string.</summary>
@@ -37,6 +39,7 @@ public class A2AMessage
 /// <summary>
 /// Error object for A2A wire protocol, following JSON-RPC error conventions.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class A2AError
 {
     /// <summary>Gets or sets the numeric error code.</summary>
@@ -65,6 +68,7 @@ public class A2AError
 /// <summary>
 /// Standard A2A error codes.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class A2AErrorCodes
 {
     /// <summary>The request payload could not be parsed.</summary>

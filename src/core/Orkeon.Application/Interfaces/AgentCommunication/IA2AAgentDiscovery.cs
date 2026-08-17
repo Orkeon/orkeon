@@ -1,10 +1,12 @@
 using Orkeon.Domain.AgentCommunication;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Application.Interfaces.AgentCommunication;
 
 /// <summary>
 /// Discovers remote A2A agents by fetching their agent cards from well-known endpoints.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public interface IA2AAgentDiscovery
 {
     /// <summary>

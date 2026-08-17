@@ -4,6 +4,7 @@ using Orkeon.Rag.Abstractions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Retrieval;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Rag.Corrective;
 
@@ -16,6 +17,7 @@ namespace Orkeon.Rag.Corrective;
 /// <c>&lt; IncorrectThreshold</c> → <see cref="RetrievalGrade.Incorrect"/>,
 /// in between → <see cref="RetrievalGrade.Ambiguous"/>.
 /// </summary>
+[Experimental("ORKEXP003", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed class HeuristicRetrievalEvaluator : IRetrievalEvaluator
 {
     /// <summary>Default coverage at (or above) which the retrieval is graded Correct.</summary>

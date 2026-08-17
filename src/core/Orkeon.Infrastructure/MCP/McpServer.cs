@@ -5,6 +5,7 @@ using System.Text.Json;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
 
@@ -12,6 +13,7 @@ namespace Orkeon.Infrastructure.MCP;
 /// MCP server that exposes Orkeon tools to external MCP clients.
 /// Supports running over stdio or processing individual requests.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class McpServer
 {
     private readonly IToolRegistry _toolRegistry;

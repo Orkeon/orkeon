@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Common;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.Communication;
 
@@ -10,6 +11,7 @@ namespace Orkeon.Infrastructure.Communication;
 /// Designed for single-process orchestration; swap for a distributed
 /// implementation (e.g. Redis Streams) for multi-host deployments.
 /// </summary>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed partial class InMemoryAgentChannel : IAgentChannel
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);

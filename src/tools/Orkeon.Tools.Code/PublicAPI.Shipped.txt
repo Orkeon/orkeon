@@ -1,0 +1,47 @@
+#nullable enable
+Orkeon.Tools.Code.DependencyInjection.CodeToolExtensions
+Orkeon.Tools.Code.ShellCommandRequest
+Orkeon.Tools.Code.ShellCommandRequest.<Clone>$() -> Orkeon.Tools.Code.ShellCommandRequest!
+Orkeon.Tools.Code.ShellCommandRequest.Command.get -> string!
+Orkeon.Tools.Code.ShellCommandRequest.Command.init -> void
+Orkeon.Tools.Code.ShellCommandRequest.Equals(Orkeon.Tools.Code.ShellCommandRequest? other) -> bool
+Orkeon.Tools.Code.ShellCommandRequest.ShellCommandRequest() -> void
+Orkeon.Tools.Code.ShellCommandRequest.TimeoutSeconds.get -> int
+Orkeon.Tools.Code.ShellCommandRequest.TimeoutSeconds.init -> void
+Orkeon.Tools.Code.ShellCommandRequest.WorkingDirectory.get -> string!
+Orkeon.Tools.Code.ShellCommandRequest.WorkingDirectory.init -> void
+Orkeon.Tools.Code.ShellCommandResponse
+Orkeon.Tools.Code.ShellCommandResponse.<Clone>$() -> Orkeon.Tools.Code.ShellCommandResponse!
+Orkeon.Tools.Code.ShellCommandResponse.Completed.get -> bool
+Orkeon.Tools.Code.ShellCommandResponse.Completed.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.Equals(Orkeon.Tools.Code.ShellCommandResponse? other) -> bool
+Orkeon.Tools.Code.ShellCommandResponse.ExitCode.get -> int
+Orkeon.Tools.Code.ShellCommandResponse.ExitCode.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.ShellCommandResponse() -> void
+Orkeon.Tools.Code.ShellCommandResponse.Stderr.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.Stderr.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.Stdout.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.Stdout.init -> void
+Orkeon.Tools.Code.ShellCommandTool
+Orkeon.Tools.Code.ShellCommandTool.ShellCommandTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>? allowedCommands = null, System.Collections.Generic.IEnumerable<string!>? blockedPatterns = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Code.ShellCommandTool!>? logger = null, bool allowInterpreters = false, System.Collections.Generic.IEnumerable<string!>? extraAllowedCommands = null) -> void
+const Orkeon.Tools.Code.ShellCommandTool.MaxOutputLength = 10000 -> int
+override Orkeon.Tools.Code.ShellCommandRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Code.ShellCommandRequest.GetHashCode() -> int
+override Orkeon.Tools.Code.ShellCommandRequest.ToString() -> string!
+override Orkeon.Tools.Code.ShellCommandResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Code.ShellCommandResponse.GetHashCode() -> int
+override Orkeon.Tools.Code.ShellCommandResponse.ToString() -> string!
+override Orkeon.Tools.Code.ShellCommandTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Code.ShellCommandTool.ExecuteTypedAsync(Orkeon.Tools.Code.ShellCommandRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Code.ShellCommandResponse!>!
+override Orkeon.Tools.Code.ShellCommandTool.ValidateTypedRequest(Orkeon.Tools.Code.ShellCommandRequest! request) -> string?
+static Orkeon.Tools.Code.DependencyInjection.CodeToolExtensions.AddOrkeonCodeTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Code.ShellCommandRequest.operator !=(Orkeon.Tools.Code.ShellCommandRequest? left, Orkeon.Tools.Code.ShellCommandRequest? right) -> bool
+static Orkeon.Tools.Code.ShellCommandRequest.operator ==(Orkeon.Tools.Code.ShellCommandRequest? left, Orkeon.Tools.Code.ShellCommandRequest? right) -> bool
+static Orkeon.Tools.Code.ShellCommandResponse.operator !=(Orkeon.Tools.Code.ShellCommandResponse? left, Orkeon.Tools.Code.ShellCommandResponse? right) -> bool
+static Orkeon.Tools.Code.ShellCommandResponse.operator ==(Orkeon.Tools.Code.ShellCommandResponse? left, Orkeon.Tools.Code.ShellCommandResponse? right) -> bool
+static Orkeon.Tools.Code.ShellCommandTool.ExtractExecutable(string! command) -> string!
+static Orkeon.Tools.Code.ShellCommandTool.FindForbiddenOperator(string! command) -> string?
+static Orkeon.Tools.Code.ShellCommandTool.MatchesMountPrefix(string! path, string! mountVirtualPath) -> bool
+static Orkeon.Tools.Code.ShellCommandTool.ParseCommand(string! command) -> (string! Executable, string![]! Arguments)
+static Orkeon.Tools.Code.ShellCommandTool.RewriteOutboundPaths(string! output, System.Collections.Generic.IReadOnlyList<(string! PhysicalBase, string! VirtualPrefix)>! replacements) -> string!
+static Orkeon.Tools.Code.ShellCommandTool.TokenizeCommand(string! command) -> System.Collections.Generic.IReadOnlyList<string!>!

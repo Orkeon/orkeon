@@ -15,6 +15,7 @@ using DomainCrew = Orkeon.Domain.Crew.Crew;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
 using AppTaskResult = Orkeon.Application.Interfaces.Services.TaskResult;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.Crew.Strategies;
 
@@ -36,6 +37,7 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 ///         collects partial output and moves to the next task.</item>
 /// </list>
 /// </remarks>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 {
     // Key used to propagate the derived child budget snapshot via

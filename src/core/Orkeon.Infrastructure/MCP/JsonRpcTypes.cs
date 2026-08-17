@@ -1,11 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
 
 /// <summary>
 /// JSON-RPC 2.0 request message.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class JsonRpcRequest
 {
     /// <summary>Gets or sets the JSON-RPC version string.</summary>
@@ -28,6 +30,7 @@ public class JsonRpcRequest
 /// <summary>
 /// JSON-RPC 2.0 response message.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class JsonRpcResponse
 {
     /// <summary>Gets or sets the JSON-RPC version string.</summary>
@@ -50,6 +53,7 @@ public class JsonRpcResponse
 /// <summary>
 /// JSON-RPC 2.0 error object.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class JsonRpcError
 {
     /// <summary>Gets or sets the numeric error code.</summary>
@@ -80,6 +84,7 @@ public class JsonRpcError
 /// <summary>
 /// JSON-RPC 2.0 notification (request without id).
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class JsonRpcNotification
 {
     /// <summary>Gets or sets the JSON-RPC version string.</summary>
@@ -98,6 +103,7 @@ public class JsonRpcNotification
 /// <summary>
 /// Standard JSON-RPC error codes.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class JsonRpcErrorCodes
 {
     /// <summary>Error code for parse errors (-32700).</summary>

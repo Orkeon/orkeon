@@ -1,10 +1,12 @@
 using Orkeon.Infrastructure.Constants.Network;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
 /// <summary>
 /// Top-level A2A protocol configuration options.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class A2AOptions
 {
     /// <summary>

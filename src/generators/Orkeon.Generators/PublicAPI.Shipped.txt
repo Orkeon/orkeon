@@ -1,0 +1,4 @@
+#nullable enable
+Orkeon.Generators.TypedDictionaryGenerator
+Orkeon.Generators.TypedDictionaryGenerator.Initialize(Microsoft.CodeAnalysis.IncrementalGeneratorInitializationContext context) -> void
+Orkeon.Generators.TypedDictionaryGenerator.TypedDictionaryGenerator() -> void

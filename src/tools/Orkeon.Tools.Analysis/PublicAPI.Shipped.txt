@@ -1,0 +1,78 @@
+#nullable enable
+Orkeon.Tools.Analysis.CodebaseMapTool
+Orkeon.Tools.Analysis.CodebaseMapTool.CodebaseMapTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.CodebaseMapTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
+Orkeon.Tools.Analysis.CodebaseSearchTool
+Orkeon.Tools.Analysis.CodebaseSearchTool.CodebaseSearchTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.CodebaseSearchTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
+Orkeon.Tools.Analysis.ComplexityReportTool
+Orkeon.Tools.Analysis.ComplexityReportTool.ComplexityReportTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.ComplexityReportTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.DependencyGraphTool
+Orkeon.Tools.Analysis.DependencyGraphTool.DependencyGraphTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.DependencyGraphTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions
+Orkeon.Tools.Analysis.FlowTraceTool
+Orkeon.Tools.Analysis.FlowTraceTool.FlowTraceTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.FlowTraceTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
+Orkeon.Tools.Analysis.ImpactAnalysisTool
+Orkeon.Tools.Analysis.ImpactAnalysisTool.ImpactAnalysisTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.ImpactAnalysisTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.IncrementalReindexTool
+Orkeon.Tools.Analysis.IncrementalReindexTool.IncrementalReindexTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider? gitDiff = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IncrementalReindexTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
+Orkeon.Tools.Analysis.IndexCodebaseTool
+Orkeon.Tools.Analysis.IndexCodebaseTool.IndexCodebaseTool(Orkeon.Analysis.Core.InMemoryRaggableStore! store, System.Func<Orkeon.Analysis.Core.RaggableTreeBuilder!>! builderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexCodebaseTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.IndexStatusTool
+Orkeon.Tools.Analysis.IndexStatusTool.IndexStatusTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IndexStatusTool!>? logger = null, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? invalidation = null) -> void
+Orkeon.Tools.Analysis.IsPathIndexedTool
+Orkeon.Tools.Analysis.IsPathIndexedTool.IsPathIndexedTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.IsPathIndexedTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.PackageSummaryTool
+Orkeon.Tools.Analysis.PackageSummaryTool.PackageSummaryTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.PackageSummaryTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.StatementQueryTool
+Orkeon.Tools.Analysis.StatementQueryTool.StatementQueryTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.StatementQueryTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.SubGraphTool
+Orkeon.Tools.Analysis.SubGraphTool.SubGraphTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.SubGraphTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.SymbolDetailTool
+Orkeon.Tools.Analysis.SymbolDetailTool.SymbolDetailTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.SymbolDetailTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.SymbolSourceTool
+Orkeon.Tools.Analysis.SymbolSourceTool.SymbolSourceTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.SymbolSourceTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
+override Orkeon.Tools.Analysis.CodebaseMapTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.CodebaseMapTool.Description.get -> string!
+override Orkeon.Tools.Analysis.CodebaseMapTool.Name.get -> string!
+override Orkeon.Tools.Analysis.CodebaseSearchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.CodebaseSearchTool.Description.get -> string!
+override Orkeon.Tools.Analysis.CodebaseSearchTool.Name.get -> string!
+override Orkeon.Tools.Analysis.ComplexityReportTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.ComplexityReportTool.Description.get -> string!
+override Orkeon.Tools.Analysis.ComplexityReportTool.Name.get -> string!
+override Orkeon.Tools.Analysis.DependencyGraphTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.DependencyGraphTool.Description.get -> string!
+override Orkeon.Tools.Analysis.DependencyGraphTool.Name.get -> string!
+override Orkeon.Tools.Analysis.FlowTraceTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.FlowTraceTool.Description.get -> string!
+override Orkeon.Tools.Analysis.FlowTraceTool.Name.get -> string!
+override Orkeon.Tools.Analysis.ImpactAnalysisTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.ImpactAnalysisTool.Description.get -> string!
+override Orkeon.Tools.Analysis.ImpactAnalysisTool.Name.get -> string!
+override Orkeon.Tools.Analysis.IncrementalReindexTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.IncrementalReindexTool.Description.get -> string!
+override Orkeon.Tools.Analysis.IncrementalReindexTool.Name.get -> string!
+override Orkeon.Tools.Analysis.IndexCodebaseTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.IndexCodebaseTool.Description.get -> string!
+override Orkeon.Tools.Analysis.IndexCodebaseTool.Name.get -> string!
+override Orkeon.Tools.Analysis.IndexStatusTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.IndexStatusTool.Description.get -> string!
+override Orkeon.Tools.Analysis.IndexStatusTool.Name.get -> string!
+override Orkeon.Tools.Analysis.IsPathIndexedTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.IsPathIndexedTool.Description.get -> string!
+override Orkeon.Tools.Analysis.IsPathIndexedTool.Name.get -> string!
+override Orkeon.Tools.Analysis.PackageSummaryTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.PackageSummaryTool.Description.get -> string!
+override Orkeon.Tools.Analysis.PackageSummaryTool.Name.get -> string!
+override Orkeon.Tools.Analysis.StatementQueryTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.StatementQueryTool.Description.get -> string!
+override Orkeon.Tools.Analysis.StatementQueryTool.Name.get -> string!
+override Orkeon.Tools.Analysis.SubGraphTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.SubGraphTool.Description.get -> string!
+override Orkeon.Tools.Analysis.SubGraphTool.Name.get -> string!
+override Orkeon.Tools.Analysis.SymbolDetailTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.SymbolDetailTool.Description.get -> string!
+override Orkeon.Tools.Analysis.SymbolDetailTool.Name.get -> string!
+override Orkeon.Tools.Analysis.SymbolSourceTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.SymbolSourceTool.Description.get -> string!
+override Orkeon.Tools.Analysis.SymbolSourceTool.Name.get -> string!
+static Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions.AddRaggableTreeTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

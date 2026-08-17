@@ -11,5 +11,9 @@
          re-accumulate. Extend this list as further CS rules are cleaned.
          (Analyzer rules — CA*/xUnit* — are escalated via tests/.editorconfig.) -->
     <WarningsAsErrors>$(WarningsAsErrors);CS8602;CS8604</WarningsAsErrors>
+    <!-- Tests exercise the framework's experimental surfaces (A2A, Autonomous,
+         corrective RAG, MCP) by design — the ORKEXP diagnostics target
+         consumers outside this repo (see docs/reference/experimental-apis.md). -->
+    <NoWarn>$(NoWarn);ORKEXP001;ORKEXP002;ORKEXP003;ORKEXP004</NoWarn>
   </PropertyGroup>
 </Project>

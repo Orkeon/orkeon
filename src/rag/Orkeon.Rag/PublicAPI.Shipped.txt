@@ -1,0 +1,662 @@
+#nullable enable
+Orkeon.Rag.Augmentation.KnowledgeContextAugmenter
+Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.BuildContextAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Knowledge.KnowledgeAttachment!>! attachments, string! taskInput, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.KnowledgeContextBlock?>!
+Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.KnowledgeContextAugmenter(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Augmentation.KnowledgeContextAugmenter!>? logger = null) -> void
+Orkeon.Rag.Chunking.ChunkingStrategyBase
+Orkeon.Rag.Chunking.ChunkingStrategyBase.Chunk(Orkeon.Rag.Abstractions.Models.RagDocument! document, Orkeon.Rag.Abstractions.Options.ChunkingOptions! options) -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.Chunk!>!
+Orkeon.Rag.Chunking.ChunkingStrategyBase.ChunkingStrategyBase() -> void
+Orkeon.Rag.Chunking.ChunkingStrategyFactoryDefaults
+Orkeon.Rag.Chunking.PlainTextChunking
+Orkeon.Rag.Chunking.RecursiveChunkingStrategy
+Orkeon.Rag.Chunking.RecursiveChunkingStrategy.RecursiveChunkingStrategy(System.Collections.Generic.IReadOnlyList<string!>? separators = null) -> void
+Orkeon.Rag.Chunking.SemanticChunkingStrategy
+Orkeon.Rag.Chunking.SemanticChunkingStrategy.SemanticChunkingStrategy(System.Func<string!, float[]!>? embeddingFunction = null) -> void
+Orkeon.Rag.Chunking.SentenceChunkingStrategy
+Orkeon.Rag.Chunking.SentenceChunkingStrategy.SentenceChunkingStrategy() -> void
+Orkeon.Rag.Chunking.StructuralChunkingStrategy
+Orkeon.Rag.Chunking.StructuralChunkingStrategy.StructuralChunkingStrategy() -> void
+Orkeon.Rag.Configuration.RagOptionsFactory
+Orkeon.Rag.DependencyInjection.EphemeralSearchExtensions
+Orkeon.Rag.DependencyInjection.HybridRetrievalExtensions
+Orkeon.Rag.DependencyInjection.KnowledgeAugmentationExtensions
+Orkeon.Rag.DependencyInjection.QueryRoutingExtensions
+Orkeon.Rag.DependencyInjection.QueryTransformExtensions
+Orkeon.Rag.DependencyInjection.RagEvaluationExtensions
+Orkeon.Rag.DependencyInjection.RagRerankingExtensions
+Orkeon.Rag.DependencyInjection.RagServiceCollectionExtensions
+Orkeon.Rag.DependencyInjection.RagStoreOptions
+Orkeon.Rag.DependencyInjection.RagStoreOptions.ConnectionString.get -> string?
+Orkeon.Rag.DependencyInjection.RagStoreOptions.ConnectionString.set -> void
+Orkeon.Rag.DependencyInjection.RagStoreOptions.Provider.get -> string?
+Orkeon.Rag.DependencyInjection.RagStoreOptions.Provider.set -> void
+Orkeon.Rag.DependencyInjection.RagStoreOptions.ProviderOptions.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Rag.DependencyInjection.RagStoreOptions.RagStoreOptions() -> void
+Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter
+Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter.AnalysisEmbeddingProviderAdapter(Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider! inner, string? name = null, string? model = null) -> void
+Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter.Dimensions.get -> int
+Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter.GetEmbeddingAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<float[]!>!
+Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter.GetEmbeddingsAsync(System.Collections.Generic.IList<string!>! texts, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IList<float[]!>!>!
+Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter.Model.get -> string!
+Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter.Name.get -> string!
+Orkeon.Rag.Evaluation.ExtractiveOfflineChatClient
+Orkeon.Rag.Evaluation.ExtractiveOfflineChatClient.Dispose() -> void
+Orkeon.Rag.Evaluation.ExtractiveOfflineChatClient.ExtractiveOfflineChatClient() -> void
+Orkeon.Rag.Evaluation.ExtractiveOfflineChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
+Orkeon.Rag.Evaluation.ExtractiveOfflineChatClient.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
+Orkeon.Rag.Evaluation.ExtractiveOfflineChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
+Orkeon.Rag.Evaluation.GenerationJudgement
+Orkeon.Rag.Evaluation.GenerationJudgement.<Clone>$() -> Orkeon.Rag.Evaluation.GenerationJudgement!
+Orkeon.Rag.Evaluation.GenerationJudgement.AnswerRelevance.get -> double?
+Orkeon.Rag.Evaluation.GenerationJudgement.AnswerRelevance.init -> void
+Orkeon.Rag.Evaluation.GenerationJudgement.Equals(Orkeon.Rag.Evaluation.GenerationJudgement? other) -> bool
+Orkeon.Rag.Evaluation.GenerationJudgement.GenerationJudgement() -> void
+Orkeon.Rag.Evaluation.GenerationJudgement.Groundedness.get -> double?
+Orkeon.Rag.Evaluation.GenerationJudgement.Groundedness.init -> void
+Orkeon.Rag.Evaluation.GenerationJudgement.Mode.get -> Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Evaluation.GenerationJudgement.Mode.init -> void
+Orkeon.Rag.Evaluation.HeuristicGenerationJudge
+Orkeon.Rag.Evaluation.HeuristicGenerationJudge.HeuristicGenerationJudge() -> void
+Orkeon.Rag.Evaluation.HeuristicGenerationJudge.JudgeAsync(Orkeon.Rag.Abstractions.Models.RagEvalCase! evalCase, Orkeon.Rag.Abstractions.Models.RagAnswer! answer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Evaluation.GenerationJudgement!>!
+Orkeon.Rag.Evaluation.HeuristicGenerationJudge.Mode.get -> Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Evaluation.IGenerationJudge
+Orkeon.Rag.Evaluation.IGenerationJudge.JudgeAsync(Orkeon.Rag.Abstractions.Models.RagEvalCase! evalCase, Orkeon.Rag.Abstractions.Models.RagAnswer! answer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Evaluation.GenerationJudgement!>!
+Orkeon.Rag.Evaluation.IGenerationJudge.Mode.get -> Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Evaluation.IRagEvalDatasetLoader
+Orkeon.Rag.Evaluation.IRagEvalDatasetLoader.LoadAsync(string! datasetVirtualPath, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagEvalDataset!>!
+Orkeon.Rag.Evaluation.IRagEvalHarness
+Orkeon.Rag.Evaluation.IRagEvalHarness.RunAsync(Orkeon.Rag.Evaluation.RagEvalRunRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Evaluation.RagEvalRunResult!>!
+Orkeon.Rag.Evaluation.LlmGenerationJudge
+Orkeon.Rag.Evaluation.LlmGenerationJudge.JudgeAsync(Orkeon.Rag.Abstractions.Models.RagEvalCase! evalCase, Orkeon.Rag.Abstractions.Models.RagAnswer! answer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Evaluation.GenerationJudgement!>!
+Orkeon.Rag.Evaluation.LlmGenerationJudge.LlmGenerationJudge(Microsoft.Extensions.AI.IChatClient! chatClient, Orkeon.Rag.Evaluation.HeuristicGenerationJudge? fallback = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Evaluation.LlmGenerationJudge!>? logger = null) -> void
+Orkeon.Rag.Evaluation.LlmGenerationJudge.Mode.get -> Orkeon.Rag.Abstractions.Models.RagJudgeMode
+Orkeon.Rag.Evaluation.RagEvalDatasetYamlLoader
+Orkeon.Rag.Evaluation.RagEvalDatasetYamlLoader.LoadAsync(string! datasetVirtualPath, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagEvalDataset!>!
+Orkeon.Rag.Evaluation.RagEvalDatasetYamlLoader.RagEvalDatasetYamlLoader(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Rag.Evaluation.RagEvalGate
+Orkeon.Rag.Evaluation.RagEvalHarness
+Orkeon.Rag.Evaluation.RagEvalHarness.RagEvalHarness(Orkeon.Rag.Evaluation.IRagEvalDatasetLoader! datasetLoader, Orkeon.Rag.Abstractions.Interfaces.IRagEvaluator! evaluator, Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Rag.Evaluation.RagEvalReportWriter! reportWriter, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Evaluation.RagEvalHarness!>? logger = null) -> void
+Orkeon.Rag.Evaluation.RagEvalHarness.RunAsync(Orkeon.Rag.Evaluation.RagEvalRunRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Evaluation.RagEvalRunResult!>!
+Orkeon.Rag.Evaluation.RagEvalReportWriter
+Orkeon.Rag.Evaluation.RagEvalReportWriter.RagEvalReportWriter(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Rag.Evaluation.RagEvalReportWriter.WriteAsync(Orkeon.Rag.Abstractions.Models.RagEvalReport! report, string! outputDirectory, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Rag.Evaluation.RagEvalReportWriter.WriteComparisonAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.RagEvalReport!>! reports, string! outputDirectory, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Rag.Evaluation.RagEvalRunRequest
+Orkeon.Rag.Evaluation.RagEvalRunRequest.<Clone>$() -> Orkeon.Rag.Evaluation.RagEvalRunRequest!
+Orkeon.Rag.Evaluation.RagEvalRunRequest.Collection.get -> string?
+Orkeon.Rag.Evaluation.RagEvalRunRequest.Collection.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.DatasetPath.get -> string!
+Orkeon.Rag.Evaluation.RagEvalRunRequest.DatasetPath.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.Equals(Orkeon.Rag.Evaluation.RagEvalRunRequest? other) -> bool
+Orkeon.Rag.Evaluation.RagEvalRunRequest.IngestCorpus.get -> bool
+Orkeon.Rag.Evaluation.RagEvalRunRequest.IngestCorpus.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.K.get -> int
+Orkeon.Rag.Evaluation.RagEvalRunRequest.K.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.OutputDirectory.get -> string!
+Orkeon.Rag.Evaluation.RagEvalRunRequest.OutputDirectory.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.Profiles.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Evaluation.RagEvalRunRequest.Profiles.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.RagEvalRunRequest() -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.ReindexCorpus.get -> bool
+Orkeon.Rag.Evaluation.RagEvalRunRequest.ReindexCorpus.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.UseLlmJudge.get -> bool
+Orkeon.Rag.Evaluation.RagEvalRunRequest.UseLlmJudge.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunResult
+Orkeon.Rag.Evaluation.RagEvalRunResult.<Clone>$() -> Orkeon.Rag.Evaluation.RagEvalRunResult!
+Orkeon.Rag.Evaluation.RagEvalRunResult.Collection.get -> string!
+Orkeon.Rag.Evaluation.RagEvalRunResult.Collection.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunResult.ComparisonFile.get -> string?
+Orkeon.Rag.Evaluation.RagEvalRunResult.ComparisonFile.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunResult.Dataset.get -> Orkeon.Rag.Abstractions.Models.RagEvalDataset!
+Orkeon.Rag.Evaluation.RagEvalRunResult.Dataset.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunResult.Equals(Orkeon.Rag.Evaluation.RagEvalRunResult? other) -> bool
+Orkeon.Rag.Evaluation.RagEvalRunResult.Ingestion.get -> Orkeon.Rag.Abstractions.Models.IngestionReport?
+Orkeon.Rag.Evaluation.RagEvalRunResult.Ingestion.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunResult.RagEvalRunResult() -> void
+Orkeon.Rag.Evaluation.RagEvalRunResult.Reports.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.RagEvalReport!>!
+Orkeon.Rag.Evaluation.RagEvalRunResult.Reports.init -> void
+Orkeon.Rag.Evaluation.RagEvalRunResult.WrittenFiles.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Rag.Evaluation.RagEvalRunResult.WrittenFiles.init -> void
+Orkeon.Rag.Evaluation.RagEvaluator
+Orkeon.Rag.Evaluation.RagEvaluator.RagEvaluator(Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver! profileResolver, Microsoft.Extensions.AI.IChatClient? judgeChatClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Evaluation.RagEvaluator!>? logger = null) -> void
+Orkeon.Rag.Evaluation.RagEvaluator.RunAsync(Orkeon.Rag.Abstractions.Models.RagEvalDataset! dataset, Orkeon.Rag.Abstractions.Models.RagEvalOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagEvalReport!>!
+Orkeon.Rag.Evaluation.RetrievalEvalMetrics
+Orkeon.Rag.Factories.ChunkingStrategyFactory
+Orkeon.Rag.Factories.ChunkingStrategyFactory.ChunkingStrategyFactory() -> void
+Orkeon.Rag.Factories.NamedRagComponentFactory<TComponent>
+Orkeon.Rag.Factories.NamedRagComponentFactory<TComponent>.Create(string! name) -> TComponent!
+Orkeon.Rag.Factories.NamedRagComponentFactory<TComponent>.IsKnown(string! name) -> bool
+Orkeon.Rag.Factories.NamedRagComponentFactory<TComponent>.KnownNames.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+Orkeon.Rag.Factories.NamedRagComponentFactory<TComponent>.NamedRagComponentFactory() -> void
+Orkeon.Rag.Factories.NamedRagComponentFactory<TComponent>.Register(string! name, System.Func<TComponent!>! factory, params string![]! aliases) -> void
+Orkeon.Rag.Factories.NamedRagComponentFactory<TComponent>.TryCreate(string! name, out TComponent? component) -> bool
+Orkeon.Rag.Factories.QueryTransformerFactory
+Orkeon.Rag.Factories.QueryTransformerFactory.QueryTransformerFactory() -> void
+Orkeon.Rag.Factories.RagComponentNotFoundException
+Orkeon.Rag.Factories.RagComponentNotFoundException.KnownNames.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+Orkeon.Rag.Factories.RagComponentNotFoundException.RagComponentNotFoundException() -> void
+Orkeon.Rag.Factories.RagComponentNotFoundException.RagComponentNotFoundException(string! componentKind, string! requestedName, System.Collections.Generic.IReadOnlyCollection<string!>! knownNames) -> void
+Orkeon.Rag.Factories.RagComponentNotFoundException.RagComponentNotFoundException(string! message) -> void
+Orkeon.Rag.Factories.RagComponentNotFoundException.RagComponentNotFoundException(string! message, System.Exception! innerException) -> void
+Orkeon.Rag.Factories.RagComponentNotFoundException.RequestedName.get -> string!
+Orkeon.Rag.Factories.RerankerFactory
+Orkeon.Rag.Factories.RerankerFactory.RerankerFactory() -> void
+Orkeon.Rag.Ingestion.FileIngestionManifestStore
+Orkeon.Rag.Ingestion.FileIngestionManifestStore.FileIngestionManifestStore(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Rag.Pipeline.RagIngestionOptions? options = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Ingestion.FileIngestionManifestStore!>? logger = null) -> void
+Orkeon.Rag.Ingestion.FileIngestionManifestStore.GetManifestPath(string! collection) -> string!
+Orkeon.Rag.Ingestion.FileIngestionManifestStore.LoadAsync(string! collection, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Ingestion.IngestionManifest?>!
+Orkeon.Rag.Ingestion.FileIngestionManifestStore.SaveAsync(Orkeon.Rag.Ingestion.IngestionManifest! manifest, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Ingestion.IIngestionManifestStore
+Orkeon.Rag.Ingestion.IIngestionManifestStore.LoadAsync(string! collection, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Ingestion.IngestionManifest?>!
+Orkeon.Rag.Ingestion.IIngestionManifestStore.SaveAsync(Orkeon.Rag.Ingestion.IngestionManifest! manifest, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Ingestion.IngestionManifest
+Orkeon.Rag.Ingestion.IngestionManifest.<Clone>$() -> Orkeon.Rag.Ingestion.IngestionManifest!
+Orkeon.Rag.Ingestion.IngestionManifest.Collection.get -> string!
+Orkeon.Rag.Ingestion.IngestionManifest.Collection.init -> void
+Orkeon.Rag.Ingestion.IngestionManifest.Embedding.get -> Orkeon.Rag.Ingestion.ManifestEmbeddingProfile!
+Orkeon.Rag.Ingestion.IngestionManifest.Embedding.init -> void
+Orkeon.Rag.Ingestion.IngestionManifest.Equals(Orkeon.Rag.Ingestion.IngestionManifest? other) -> bool
+Orkeon.Rag.Ingestion.IngestionManifest.IngestionManifest() -> void
+Orkeon.Rag.Ingestion.IngestionManifest.Sources.get -> System.Collections.Generic.Dictionary<string!, Orkeon.Rag.Ingestion.ManifestSourceEntry!>!
+Orkeon.Rag.Ingestion.IngestionManifest.Sources.init -> void
+Orkeon.Rag.Ingestion.IngestionManifest.UpdatedAt.get -> System.DateTimeOffset
+Orkeon.Rag.Ingestion.IngestionManifest.UpdatedAt.init -> void
+Orkeon.Rag.Ingestion.ManifestChunkerProfile
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.<Clone>$() -> Orkeon.Rag.Ingestion.ManifestChunkerProfile!
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Equals(Orkeon.Rag.Ingestion.ManifestChunkerProfile? other) -> bool
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Extensions.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Extensions.init -> void
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.ManifestChunkerProfile() -> void
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Matches(Orkeon.Rag.Ingestion.ManifestChunkerProfile! other) -> bool
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.MaxChunkSize.get -> int
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.MaxChunkSize.init -> void
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Name.get -> string!
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Name.init -> void
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Overlap.get -> int
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Overlap.init -> void
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Version.get -> string!
+Orkeon.Rag.Ingestion.ManifestChunkerProfile.Version.init -> void
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.<Clone>$() -> Orkeon.Rag.Ingestion.ManifestEmbeddingProfile!
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.Dimensions.get -> int
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.Dimensions.init -> void
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.Equals(Orkeon.Rag.Ingestion.ManifestEmbeddingProfile? other) -> bool
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.ManifestEmbeddingProfile() -> void
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.Model.get -> string!
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.Model.init -> void
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.Provider.get -> string!
+Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.Provider.init -> void
+Orkeon.Rag.Ingestion.ManifestSourceEntry
+Orkeon.Rag.Ingestion.ManifestSourceEntry.<Clone>$() -> Orkeon.Rag.Ingestion.ManifestSourceEntry!
+Orkeon.Rag.Ingestion.ManifestSourceEntry.Chunker.get -> Orkeon.Rag.Ingestion.ManifestChunkerProfile!
+Orkeon.Rag.Ingestion.ManifestSourceEntry.Chunker.init -> void
+Orkeon.Rag.Ingestion.ManifestSourceEntry.ContentHash.get -> string!
+Orkeon.Rag.Ingestion.ManifestSourceEntry.ContentHash.init -> void
+Orkeon.Rag.Ingestion.ManifestSourceEntry.Equals(Orkeon.Rag.Ingestion.ManifestSourceEntry? other) -> bool
+Orkeon.Rag.Ingestion.ManifestSourceEntry.IngestedAt.get -> System.DateTimeOffset
+Orkeon.Rag.Ingestion.ManifestSourceEntry.IngestedAt.init -> void
+Orkeon.Rag.Ingestion.ManifestSourceEntry.ManifestSourceEntry() -> void
+Orkeon.Rag.Ingestion.RagCollectionsBootstrapper
+Orkeon.Rag.Ingestion.RagCollectionsBootstrapper.PrepareAsync(Orkeon.Domain.Configuration.RagCrewConfig! config, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Ingestion.RagCollectionsBootstrapper.RagCollectionsBootstrapper(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Ingestion.RagCollectionsBootstrapper!>? logger = null) -> void
+Orkeon.Rag.Loaders.CsvDocumentLoader
+Orkeon.Rag.Loaders.CsvDocumentLoader.CsvDocumentLoader(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Rag.Loaders.DocumentLoaderFactory
+Orkeon.Rag.Loaders.DocumentLoaderFactory.DocumentLoaderFactory(System.Collections.Generic.IEnumerable<Orkeon.Rag.Abstractions.Interfaces.IDocumentLoader!>! loaders) -> void
+Orkeon.Rag.Loaders.DocumentLoaderFactory.GetLoader(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source) -> Orkeon.Rag.Abstractions.Interfaces.IDocumentLoader!
+Orkeon.Rag.Loaders.DocumentLoaderFactory.Loaders.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Interfaces.IDocumentLoader!>!
+Orkeon.Rag.Loaders.DocumentLoaderFactory.TryGetLoader(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source, out Orkeon.Rag.Abstractions.Interfaces.IDocumentLoader? loader) -> bool
+Orkeon.Rag.Loaders.FileDocumentLoaderBase
+Orkeon.Rag.Loaders.FileDocumentLoaderBase.CanLoad(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source) -> bool
+Orkeon.Rag.Loaders.FileDocumentLoaderBase.FileDocumentLoaderBase(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Rag.Loaders.FileDocumentLoaderBase.FileSystem.get -> Orkeon.Domain.FileSystem.IFileSystemService!
+Orkeon.Rag.Loaders.FileDocumentLoaderBase.LoadAsync(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Rag.Abstractions.Models.RagDocument!>!
+Orkeon.Rag.Loaders.HtmlDocumentLoader
+Orkeon.Rag.Loaders.HtmlDocumentLoader.HtmlDocumentLoader(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Rag.Loaders.InlineTextLoader
+Orkeon.Rag.Loaders.InlineTextLoader.CanLoad(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source) -> bool
+Orkeon.Rag.Loaders.InlineTextLoader.InlineTextLoader() -> void
+Orkeon.Rag.Loaders.InlineTextLoader.LoadAsync(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Rag.Abstractions.Models.RagDocument!>!
+Orkeon.Rag.Loaders.PdfDocumentLoader
+Orkeon.Rag.Loaders.PdfDocumentLoader.PdfDocumentLoader(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Rag.Loaders.TextFileLoader
+Orkeon.Rag.Loaders.TextFileLoader.TextFileLoader(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Rag.Loaders.WebPageLoader
+Orkeon.Rag.Loaders.WebPageLoader.CanLoad(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source) -> bool
+Orkeon.Rag.Loaders.WebPageLoader.LoadAsync(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Rag.Abstractions.Models.RagDocument!>!
+Orkeon.Rag.Loaders.WebPageLoader.WebPageLoader(System.Net.Http.HttpClient! httpClient) -> void
+Orkeon.Rag.Pipeline.AdaptiveRagPipeline
+Orkeon.Rag.Pipeline.AdaptiveRagPipeline.AdaptiveRagPipeline(Orkeon.Rag.Abstractions.Interfaces.IQueryComplexityClassifier! classifier, Microsoft.Extensions.AI.IChatClient! chatClient, System.Func<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!>! singleShotPipeline, System.Func<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!>! iterativePipeline, string! singleShotProfileName = "balanced", string! iterativeProfileName = "corrective", Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Pipeline.AdaptiveRagPipeline!>? logger = null) -> void
+Orkeon.Rag.Pipeline.AdaptiveRagPipeline.QueryAsync(Orkeon.Rag.Abstractions.Models.RagQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagAnswer!>!
+Orkeon.Rag.Pipeline.DefaultIngestionPipeline
+Orkeon.Rag.Pipeline.DefaultIngestionPipeline.DefaultIngestionPipeline(Orkeon.Rag.Loaders.DocumentLoaderFactory! loaderFactory, Orkeon.Rag.Factories.ChunkingStrategyFactory! chunkingFactory, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Rag.Validation.DataValidationPipeline! validation, Orkeon.Rag.Ingestion.IIngestionManifestStore! manifestStore, Orkeon.Rag.Pipeline.RagIngestionOptions? options = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Pipeline.DefaultIngestionPipeline!>? logger = null) -> void
+Orkeon.Rag.Pipeline.DefaultIngestionPipeline.IngestAsync(Orkeon.Rag.Abstractions.Models.IngestionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.IngestionReport!>!
+Orkeon.Rag.Pipeline.ProfileRagPipelineResolver
+Orkeon.Rag.Pipeline.ProfileRagPipelineResolver.ProfileRagPipelineResolver(Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Func<Orkeon.Rag.Abstractions.Options.RagOptions!, Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!>! pipelineFactory, System.Func<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!>! defaultPipeline, System.Func<Orkeon.Rag.Abstractions.Interfaces.IQueryComplexityClassifier!>? complexityClassifier = null, System.Func<Microsoft.Extensions.AI.IChatClient!>? chatClient = null, System.Func<Orkeon.Rag.Abstractions.Options.RagOptions!, Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!>? correctivePipelineFactory = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> void
+Orkeon.Rag.Pipeline.ProfileRagPipelineResolver.Resolve(string! profileName) -> Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!
+Orkeon.Rag.Pipeline.RagIngestionOptions
+Orkeon.Rag.Pipeline.RagIngestionOptions.<Clone>$() -> Orkeon.Rag.Pipeline.RagIngestionOptions!
+Orkeon.Rag.Pipeline.RagIngestionOptions.DefaultChunkingStrategy.get -> string!
+Orkeon.Rag.Pipeline.RagIngestionOptions.DefaultChunkingStrategy.init -> void
+Orkeon.Rag.Pipeline.RagIngestionOptions.Equals(Orkeon.Rag.Pipeline.RagIngestionOptions? other) -> bool
+Orkeon.Rag.Pipeline.RagIngestionOptions.ManifestDirectory.get -> string!
+Orkeon.Rag.Pipeline.RagIngestionOptions.ManifestDirectory.init -> void
+Orkeon.Rag.Pipeline.RagIngestionOptions.RagIngestionOptions() -> void
+Orkeon.Rag.Pipeline.StagedRagPipeline
+Orkeon.Rag.Pipeline.StagedRagPipeline.Options.get -> Orkeon.Rag.Abstractions.Options.RagOptions!
+Orkeon.Rag.Pipeline.StagedRagPipeline.QueryAsync(Orkeon.Rag.Abstractions.Models.RagQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagAnswer!>!
+Orkeon.Rag.Pipeline.StagedRagPipeline.RetrieveAsync(Orkeon.Rag.Abstractions.Models.RagQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagAnswer!>!
+Orkeon.Rag.Pipeline.StagedRagPipeline.StagedRagPipeline(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.AI.IChatClient! chatClient, Orkeon.Rag.Abstractions.Options.RagOptions? options = null, Orkeon.Rag.Factories.QueryTransformerFactory? queryTransformers = null, Orkeon.Rag.Factories.RerankerFactory? rerankers = null, Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker? groundednessChecker = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Pipeline.StagedRagPipeline!>? logger = null) -> void
+Orkeon.Rag.QueryTransform.HydeTransformer
+Orkeon.Rag.QueryTransform.HydeTransformer.HydeTransformer(Microsoft.Extensions.AI.IChatClient! chatClient, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.QueryTransform.HydeTransformer!>? logger = null) -> void
+Orkeon.Rag.QueryTransform.HydeTransformer.Kind.get -> Orkeon.Rag.Abstractions.QueryTransformKind
+Orkeon.Rag.QueryTransform.HydeTransformer.Name.get -> string!
+Orkeon.Rag.QueryTransform.HydeTransformer.TransformAsync(string! query, Orkeon.Rag.Abstractions.Models.QueryTransformContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Rag.QueryTransform.IdentityQueryTransformer
+Orkeon.Rag.QueryTransform.IdentityQueryTransformer.IdentityQueryTransformer() -> void
+Orkeon.Rag.QueryTransform.IdentityQueryTransformer.Kind.get -> Orkeon.Rag.Abstractions.QueryTransformKind
+Orkeon.Rag.QueryTransform.IdentityQueryTransformer.Name.get -> string!
+Orkeon.Rag.QueryTransform.IdentityQueryTransformer.TransformAsync(string! query, Orkeon.Rag.Abstractions.Models.QueryTransformContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Rag.QueryTransform.LlmQueryVariantTransformerBase
+Orkeon.Rag.QueryTransform.LlmQueryVariantTransformerBase.TransformAsync(string! query, Orkeon.Rag.Abstractions.Models.QueryTransformContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Rag.QueryTransform.MultiQueryTransformer
+Orkeon.Rag.QueryTransform.MultiQueryTransformer.MultiQueryTransformer(Microsoft.Extensions.AI.IChatClient! chatClient, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.QueryTransform.MultiQueryTransformer!>? logger = null) -> void
+Orkeon.Rag.QueryTransform.QueryTransformFactoryDefaults
+Orkeon.Rag.QueryTransform.RagFusionTransformer
+Orkeon.Rag.QueryTransform.RagFusionTransformer.RagFusionTransformer(Microsoft.Extensions.AI.IChatClient! chatClient, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.QueryTransform.RagFusionTransformer!>? logger = null) -> void
+Orkeon.Rag.Reranking.IRerankerRegistrar
+Orkeon.Rag.Reranking.IRerankerRegistrar.Register(Orkeon.Rag.Factories.RerankerFactory! factory, System.IServiceProvider! serviceProvider) -> void
+Orkeon.Rag.Reranking.LlmListwiseReranker
+Orkeon.Rag.Reranking.LlmListwiseReranker.LlmListwiseReranker(Microsoft.Extensions.AI.IChatClient! chatClient, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Reranking.LlmListwiseReranker!>? logger = null) -> void
+Orkeon.Rag.Reranking.LlmListwiseReranker.Name.get -> string!
+Orkeon.Rag.Reranking.LlmListwiseReranker.RerankAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! candidates, int topN, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
+Orkeon.Rag.Reranking.NoopReranker
+Orkeon.Rag.Reranking.NoopReranker.Name.get -> string!
+Orkeon.Rag.Reranking.NoopReranker.NoopReranker() -> void
+Orkeon.Rag.Reranking.NoopReranker.RerankAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! candidates, int topN, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
+Orkeon.Rag.Retrieval.Bm25Index
+Orkeon.Rag.Retrieval.Bm25Index.Bm25Index(double k1 = 1.2, double b = 0.75) -> void
+Orkeon.Rag.Retrieval.Bm25Index.Count.get -> int
+Orkeon.Rag.Retrieval.Bm25Index.RemoveSource(string! sourceId) -> void
+Orkeon.Rag.Retrieval.Bm25Index.Search(string! query, int topK) -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!
+Orkeon.Rag.Retrieval.Bm25Index.UpsertRange(System.Collections.Generic.IEnumerable<Orkeon.Rag.Abstractions.Models.Chunk!>! chunks) -> void
+Orkeon.Rag.Retrieval.HybridRetrievalOptions
+Orkeon.Rag.Retrieval.HybridRetrievalOptions.Enabled.get -> bool
+Orkeon.Rag.Retrieval.HybridRetrievalOptions.Enabled.set -> void
+Orkeon.Rag.Retrieval.HybridRetrievalOptions.HybridRetrievalOptions() -> void
+Orkeon.Rag.Retrieval.HybridRetrievalOptions.RrfK.get -> int
+Orkeon.Rag.Retrieval.HybridRetrievalOptions.RrfK.set -> void
+Orkeon.Rag.Retrieval.HybridSearchDocumentStore
+Orkeon.Rag.Retrieval.HybridSearchDocumentStore.DeleteBySourceAsync(string! collection, string! sourceId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Retrieval.HybridSearchDocumentStore.HasContentAsync(string! collection, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Rag.Retrieval.HybridSearchDocumentStore.HybridSearchDocumentStore(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! inner, Orkeon.Rag.Retrieval.HybridRetrievalOptions! options, Orkeon.Domain.Memory.IMemoryProvider? provider = null) -> void
+Orkeon.Rag.Retrieval.HybridSearchDocumentStore.Inner.get -> Orkeon.Rag.Abstractions.Interfaces.IDocumentStore!
+Orkeon.Rag.Retrieval.HybridSearchDocumentStore.SearchAsync(string! collection, Orkeon.Rag.Abstractions.Models.RetrievalQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
+Orkeon.Rag.Retrieval.HybridSearchDocumentStore.UpsertAsync(string! collection, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.EmbeddedChunk!>! chunks, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Retrieval.MaximalMarginalRelevance
+Orkeon.Rag.Retrieval.ReciprocalRankFusion
+Orkeon.Rag.Routing.HeuristicQueryComplexityClassifier
+Orkeon.Rag.Routing.HeuristicQueryComplexityClassifier.ClassifyAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.QueryRoute>!
+Orkeon.Rag.Routing.HeuristicQueryComplexityClassifier.HeuristicQueryComplexityClassifier() -> void
+Orkeon.Rag.Routing.LlmQueryComplexityClassifier
+Orkeon.Rag.Routing.LlmQueryComplexityClassifier.ClassifyAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.QueryRoute>!
+Orkeon.Rag.Routing.LlmQueryComplexityClassifier.LlmQueryComplexityClassifier(Microsoft.Extensions.AI.IChatClient! chatClient, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Routing.LlmQueryComplexityClassifier!>? logger = null) -> void
+Orkeon.Rag.Search.EphemeralCollectionSearchService
+Orkeon.Rag.Search.EphemeralCollectionSearchService.EphemeralCollectionSearchService(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Search.EphemeralCollectionSearchService!>? logger = null) -> void
+Orkeon.Rag.Search.EphemeralCollectionSearchService.SearchAsync(Orkeon.Rag.Abstractions.Models.EphemeralSearchRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.EphemeralSearchResult!>!
+Orkeon.Rag.Stores.MemoryProviderDocumentStore
+Orkeon.Rag.Stores.MemoryProviderDocumentStore.DeleteBySourceAsync(string! collection, string! sourceId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Stores.MemoryProviderDocumentStore.HasContentAsync(string! collection, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Rag.Stores.MemoryProviderDocumentStore.MemoryProviderDocumentStore(Orkeon.Domain.Memory.IMemoryProvider! provider) -> void
+Orkeon.Rag.Stores.MemoryProviderDocumentStore.SearchAsync(string! collection, Orkeon.Rag.Abstractions.Models.RetrievalQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!>!
+Orkeon.Rag.Stores.MemoryProviderDocumentStore.UpsertAsync(string! collection, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.EmbeddedChunk!>! chunks, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Validation.ContentIntegrityValidator
+Orkeon.Rag.Validation.ContentIntegrityValidator.ContentIntegrityValidator() -> void
+Orkeon.Rag.Validation.ContentIntegrityValidator.Name.get -> string!
+Orkeon.Rag.Validation.ContentIntegrityValidator.ValidateAsync(string! content, Orkeon.Application.Interfaces.Security.DataValidationContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.DataValidationResult!>!
+Orkeon.Rag.Validation.DataValidationPipeline
+Orkeon.Rag.Validation.DataValidationPipeline.DataValidationPipeline(System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Security.IDataValidator!>! validators, Orkeon.Rag.Validation.IQuarantineStore! quarantineStore, Orkeon.Application.Interfaces.Security.IProvenanceTracker! provenanceTracker, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Validation.DataValidationPipeline!>? logger = null) -> void
+Orkeon.Rag.Validation.DataValidationPipeline.ValidateAsync(string! content, Orkeon.Application.Interfaces.Security.DataValidationContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.DataValidationResult!>!
+Orkeon.Rag.Validation.IQuarantineStore
+Orkeon.Rag.Validation.IQuarantineStore.GetAsync(string! documentId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Validation.QuarantinedDocument?>!
+Orkeon.Rag.Validation.IQuarantineStore.ListPendingAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Validation.QuarantinedDocument!>!>!
+Orkeon.Rag.Validation.IQuarantineStore.QuarantineAsync(string! documentId, string! content, Orkeon.Application.Interfaces.Security.DataValidationResult! result, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Validation.IQuarantineStore.ReviewAsync(string! documentId, bool approved, string! reviewedBy, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Validation.InMemoryQuarantineStore
+Orkeon.Rag.Validation.InMemoryQuarantineStore.GetAsync(string! documentId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Validation.QuarantinedDocument?>!
+Orkeon.Rag.Validation.InMemoryQuarantineStore.InMemoryQuarantineStore() -> void
+Orkeon.Rag.Validation.InMemoryQuarantineStore.ListPendingAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Validation.QuarantinedDocument!>!>!
+Orkeon.Rag.Validation.InMemoryQuarantineStore.QuarantineAsync(string! documentId, string! content, Orkeon.Application.Interfaces.Security.DataValidationResult! result, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Validation.InMemoryQuarantineStore.ReviewAsync(string! documentId, bool approved, string! reviewedBy, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Rag.Validation.InjectionSpan
+Orkeon.Rag.Validation.InjectionSpan.<Clone>$() -> Orkeon.Rag.Validation.InjectionSpan!
+Orkeon.Rag.Validation.InjectionSpan.Deconstruct(out string! RuleId, out string! Description, out int Start, out int Length, out string! Excerpt) -> void
+Orkeon.Rag.Validation.InjectionSpan.Description.get -> string!
+Orkeon.Rag.Validation.InjectionSpan.Description.init -> void
+Orkeon.Rag.Validation.InjectionSpan.Equals(Orkeon.Rag.Validation.InjectionSpan? other) -> bool
+Orkeon.Rag.Validation.InjectionSpan.Excerpt.get -> string!
+Orkeon.Rag.Validation.InjectionSpan.Excerpt.init -> void
+Orkeon.Rag.Validation.InjectionSpan.InjectionSpan(string! RuleId, string! Description, int Start, int Length, string! Excerpt) -> void
+Orkeon.Rag.Validation.InjectionSpan.Length.get -> int
+Orkeon.Rag.Validation.InjectionSpan.Length.init -> void
+Orkeon.Rag.Validation.InjectionSpan.RuleId.get -> string!
+Orkeon.Rag.Validation.InjectionSpan.RuleId.init -> void
+Orkeon.Rag.Validation.InjectionSpan.Start.get -> int
+Orkeon.Rag.Validation.InjectionSpan.Start.init -> void
+Orkeon.Rag.Validation.PromptInjectionAnalysis
+Orkeon.Rag.Validation.PromptInjectionAnalysis.<Clone>$() -> Orkeon.Rag.Validation.PromptInjectionAnalysis!
+Orkeon.Rag.Validation.PromptInjectionAnalysis.Equals(Orkeon.Rag.Validation.PromptInjectionAnalysis? other) -> bool
+Orkeon.Rag.Validation.PromptInjectionAnalysis.PromptInjectionAnalysis() -> void
+Orkeon.Rag.Validation.PromptInjectionAnalysis.Reasons.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Rag.Validation.PromptInjectionAnalysis.Reasons.init -> void
+Orkeon.Rag.Validation.PromptInjectionAnalysis.RiskScore.get -> double
+Orkeon.Rag.Validation.PromptInjectionAnalysis.RiskScore.init -> void
+Orkeon.Rag.Validation.PromptInjectionAnalysis.Spans.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Validation.InjectionSpan!>!
+Orkeon.Rag.Validation.PromptInjectionAnalysis.Spans.init -> void
+Orkeon.Rag.Validation.PromptInjectionAnalysis.Verdict.get -> Orkeon.Rag.Validation.PromptInjectionVerdict
+Orkeon.Rag.Validation.PromptInjectionAnalysis.Verdict.init -> void
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator.Analyze(string! content) -> Orkeon.Rag.Validation.PromptInjectionAnalysis!
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator.Name.get -> string!
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator.Policy.get -> Orkeon.Rag.Validation.PromptInjectionPolicy!
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator.PromptInjectionDocumentValidator() -> void
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator.PromptInjectionDocumentValidator(Orkeon.Rag.Validation.PromptInjectionPolicy! policy) -> void
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator.ShouldDiscard(Orkeon.Rag.Validation.PromptInjectionVerdict verdict) -> bool
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator.Validate(Orkeon.Rag.Abstractions.Models.RagDocument! document) -> Orkeon.Rag.Validation.PromptInjectionAnalysis!
+Orkeon.Rag.Validation.PromptInjectionDocumentValidator.ValidateAsync(string! content, Orkeon.Application.Interfaces.Security.DataValidationContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.DataValidationResult!>!
+Orkeon.Rag.Validation.PromptInjectionPolicy
+Orkeon.Rag.Validation.PromptInjectionPolicy.<Clone>$() -> Orkeon.Rag.Validation.PromptInjectionPolicy!
+Orkeon.Rag.Validation.PromptInjectionPolicy.Equals(Orkeon.Rag.Validation.PromptInjectionPolicy? other) -> bool
+Orkeon.Rag.Validation.PromptInjectionPolicy.PromptInjectionPolicy() -> void
+Orkeon.Rag.Validation.PromptInjectionPolicy.RejectThreshold.get -> double
+Orkeon.Rag.Validation.PromptInjectionPolicy.RejectThreshold.init -> void
+Orkeon.Rag.Validation.PromptInjectionPolicy.SuspiciousAction.get -> Orkeon.Rag.Validation.SuspiciousContentAction
+Orkeon.Rag.Validation.PromptInjectionPolicy.SuspiciousAction.init -> void
+Orkeon.Rag.Validation.PromptInjectionPolicy.SuspiciousThreshold.get -> double
+Orkeon.Rag.Validation.PromptInjectionPolicy.SuspiciousThreshold.init -> void
+Orkeon.Rag.Validation.PromptInjectionVerdict
+Orkeon.Rag.Validation.PromptInjectionVerdict.Clean = 0 -> Orkeon.Rag.Validation.PromptInjectionVerdict
+Orkeon.Rag.Validation.PromptInjectionVerdict.Rejected = 2 -> Orkeon.Rag.Validation.PromptInjectionVerdict
+Orkeon.Rag.Validation.PromptInjectionVerdict.Suspicious = 1 -> Orkeon.Rag.Validation.PromptInjectionVerdict
+Orkeon.Rag.Validation.ProvenanceTracker
+Orkeon.Rag.Validation.ProvenanceTracker.GetAsync(string! documentId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ProvenanceRecord?>!
+Orkeon.Rag.Validation.ProvenanceTracker.ListAsync(string? sourceFilter = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Security.ProvenanceRecord!>!>!
+Orkeon.Rag.Validation.ProvenanceTracker.ProvenanceTracker() -> void
+Orkeon.Rag.Validation.ProvenanceTracker.TrackAsync(string! documentId, string! content, string! source, System.Collections.Generic.IDictionary<string!, string!>? metadata = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ProvenanceRecord!>!
+Orkeon.Rag.Validation.ProvenanceTracker.VerifyIntegrityAsync(string! documentId, string! currentContent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Rag.Validation.QuarantinedDocument
+Orkeon.Rag.Validation.QuarantinedDocument.Approved.get -> bool?
+Orkeon.Rag.Validation.QuarantinedDocument.Approved.init -> void
+Orkeon.Rag.Validation.QuarantinedDocument.Content.get -> string!
+Orkeon.Rag.Validation.QuarantinedDocument.Content.init -> void
+Orkeon.Rag.Validation.QuarantinedDocument.Deconstruct(out string! DocumentId, out string! Content, out Orkeon.Application.Interfaces.Security.DataValidationResult! ValidationResult, out System.DateTimeOffset QuarantinedAt, out string? ReviewedBy, out System.DateTimeOffset? ReviewedAt, out bool? Approved) -> void
+Orkeon.Rag.Validation.QuarantinedDocument.DocumentId.get -> string!
+Orkeon.Rag.Validation.QuarantinedDocument.DocumentId.init -> void
+Orkeon.Rag.Validation.QuarantinedDocument.QuarantinedAt.get -> System.DateTimeOffset
+Orkeon.Rag.Validation.QuarantinedDocument.QuarantinedAt.init -> void
+Orkeon.Rag.Validation.QuarantinedDocument.QuarantinedDocument(Orkeon.Rag.Validation.QuarantinedDocument! original) -> void
+Orkeon.Rag.Validation.QuarantinedDocument.QuarantinedDocument(string! DocumentId, string! Content, Orkeon.Application.Interfaces.Security.DataValidationResult! ValidationResult, System.DateTimeOffset QuarantinedAt, string? ReviewedBy = null, System.DateTimeOffset? ReviewedAt = null, bool? Approved = null) -> void
+Orkeon.Rag.Validation.QuarantinedDocument.ReviewedAt.get -> System.DateTimeOffset?
+Orkeon.Rag.Validation.QuarantinedDocument.ReviewedAt.init -> void
+Orkeon.Rag.Validation.QuarantinedDocument.ReviewedBy.get -> string?
+Orkeon.Rag.Validation.QuarantinedDocument.ReviewedBy.init -> void
+Orkeon.Rag.Validation.QuarantinedDocument.ValidationResult.get -> Orkeon.Application.Interfaces.Security.DataValidationResult!
+Orkeon.Rag.Validation.QuarantinedDocument.ValidationResult.init -> void
+Orkeon.Rag.Validation.SuspiciousContentAction
+Orkeon.Rag.Validation.SuspiciousContentAction.Discard = 1 -> Orkeon.Rag.Validation.SuspiciousContentAction
+Orkeon.Rag.Validation.SuspiciousContentAction.Flag = 0 -> Orkeon.Rag.Validation.SuspiciousContentAction
+Orkeon.Rag.WebFallback.WebFallbackExtensions
+Orkeon.Rag.WebFallback.WebSearchDocumentRetriever
+Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.SearchAsync(string! query, int maxResults, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.RagDocument!>!>!
+Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.WebSearchDocumentRetriever(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Options.IOptions<Orkeon.Rag.WebFallback.WebSearchRetrieverOptions!>! options, Orkeon.Rag.Validation.PromptInjectionDocumentValidator! validator, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.WebFallback.WebSearchDocumentRetriever!>? logger = null) -> void
+Orkeon.Rag.WebFallback.WebSearchDocumentRetrieverAdapter
+Orkeon.Rag.WebFallback.WebSearchDocumentRetrieverAdapter.SearchAsync(string! query, int maxResults, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.RagDocument!>!>!
+Orkeon.Rag.WebFallback.WebSearchDocumentRetrieverAdapter.WebSearchDocumentRetrieverAdapter(Orkeon.Rag.WebFallback.WebSearchDocumentRetriever! inner) -> void
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.ApiKeyEnvVar.get -> string!
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.ApiKeyEnvVar.set -> void
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.Enabled.get -> bool
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.Enabled.set -> void
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.Endpoint.get -> string!
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.Endpoint.set -> void
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.MaxResults.get -> int
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.MaxResults.set -> void
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.SuspiciousAction.get -> Orkeon.Rag.Validation.SuspiciousContentAction
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.SuspiciousAction.set -> void
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.Timeout.get -> System.TimeSpan
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.Timeout.set -> void
+Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.WebSearchRetrieverOptions() -> void
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagExtensions
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipeline
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipeline.CorrectiveRagPipeline(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.AI.IChatClient! chatClient, Orkeon.Rag.Abstractions.Interfaces.IRetrievalEvaluator! retrievalEvaluator, Orkeon.Rag.Abstractions.Options.RagOptions? options = null, Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker? groundednessChecker = null, Orkeon.Rag.Corrective.IWebDocumentRetriever? webRetriever = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Corrective.CorrectiveRagPipeline!>? logger = null, Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy? circuitPolicy = null) -> void
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipeline.Options.get -> Orkeon.Rag.Abstractions.Options.RagOptions!
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipeline.QueryAsync(Orkeon.Rag.Abstractions.Models.RagQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagAnswer!>!
+[ORKEXP003]Orkeon.Rag.Corrective.HeuristicGroundednessChecker
+[ORKEXP003]Orkeon.Rag.Corrective.HeuristicGroundednessChecker.CheckAsync(string! question, string! answer, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.GroundednessResult!>!
+[ORKEXP003]Orkeon.Rag.Corrective.HeuristicGroundednessChecker.GroundedThreshold.get -> double
+[ORKEXP003]Orkeon.Rag.Corrective.HeuristicGroundednessChecker.HeuristicGroundednessChecker(double sentenceCoverageThreshold = 0.6, double groundedThreshold = 0.5) -> void
+[ORKEXP003]Orkeon.Rag.Corrective.HeuristicGroundednessChecker.SentenceCoverageThreshold.get -> double
+[ORKEXP003]Orkeon.Rag.Corrective.HeuristicRetrievalEvaluator
+[ORKEXP003]Orkeon.Rag.Corrective.HeuristicRetrievalEvaluator.EvaluateAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! chunks, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RetrievalVerdict!>!
+[ORKEXP003]Orkeon.Rag.Corrective.HeuristicRetrievalEvaluator.HeuristicRetrievalEvaluator(double correctThreshold = 0.6, double incorrectThreshold = 0.2) -> void
+[ORKEXP003]Orkeon.Rag.Corrective.IWebDocumentRetriever
+[ORKEXP003]Orkeon.Rag.Corrective.IWebDocumentRetriever.SearchAsync(string! query, int maxResults, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.RagDocument!>!>!
+[ORKEXP003]Orkeon.Rag.Corrective.LlmGroundednessChecker
+[ORKEXP003]Orkeon.Rag.Corrective.LlmGroundednessChecker.CheckAsync(string! question, string! answer, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.GroundednessResult!>!
+[ORKEXP003]Orkeon.Rag.Corrective.LlmGroundednessChecker.LlmGroundednessChecker(Microsoft.Extensions.AI.IChatClient! chatClient, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Corrective.LlmGroundednessChecker!>? logger = null) -> void
+[ORKEXP003]Orkeon.Rag.Corrective.LlmRetrievalEvaluator
+[ORKEXP003]Orkeon.Rag.Corrective.LlmRetrievalEvaluator.EvaluateAsync(string! query, System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! chunks, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RetrievalVerdict!>!
+[ORKEXP003]Orkeon.Rag.Corrective.LlmRetrievalEvaluator.LlmRetrievalEvaluator(Microsoft.Extensions.AI.IChatClient! chatClient, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Corrective.LlmRetrievalEvaluator!>? logger = null) -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.<Clone>$() -> Orkeon.Rag.Corrective.RagGraphState!
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Answer.get -> string?
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Answer.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Chunks.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Chunks.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.CurrentQueryText.get -> string!
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Equals(Orkeon.Rag.Corrective.RagGraphState? other) -> bool
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Exhausted.get -> bool
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Exhausted.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Groundedness.get -> Orkeon.Rag.Abstractions.Models.GroundednessResult?
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Groundedness.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Iteration.get -> int
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Iteration.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.NextNode.get -> string!
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.NextNode.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Query.get -> Orkeon.Rag.Abstractions.Models.RagQuery!
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Query.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.RagGraphState() -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.RewrittenQueries.get -> System.Collections.Immutable.ImmutableList<string!>!
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.RewrittenQueries.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.RewrittenQuery.get -> string?
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.RewrittenQuery.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Steps.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.RagTraceStep!>!
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Steps.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Verdict.get -> Orkeon.Rag.Abstractions.Models.RetrievalVerdict?
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Verdict.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Verdicts.get -> System.Collections.Immutable.ImmutableList<Orkeon.Rag.Abstractions.Models.RetrievalVerdict!>!
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.Verdicts.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.WebFallbackAttempted.get -> bool
+[ORKEXP003]Orkeon.Rag.Corrective.RagGraphState.WebFallbackAttempted.init -> void
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.CheckGroundednessNode = "check_groundedness" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.EvaluateNode = "evaluate" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.GenerateNode = "generate" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.RefineNode = "refine" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.RetrieveNode = "retrieve" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.RewriteQueryNode = "rewrite_query" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.RewriteSystemPrompt = "You rewrite search queries for a retrieval system. The previous query failed to retrieve relevant passages, most likely because of a vocabulary gap between the question and the documents. Rewrite the query with alternative wording, synonyms, and expanded key terms. Respond with ONLY the rewritten query text — a single line, no quotes, no explanation." -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.TraceStepPrefix = "corrective:" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.WebFallbackNode = "web_fallback" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.CorrectiveRagPipeline.WebScoreOrigin = "web" -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.HeuristicGroundednessChecker.DefaultGroundedThreshold = 0.5 -> double
+[ORKEXP003]const Orkeon.Rag.Corrective.HeuristicGroundednessChecker.DefaultSentenceCoverageThreshold = 0.6 -> double
+[ORKEXP003]const Orkeon.Rag.Corrective.HeuristicRetrievalEvaluator.DefaultCorrectThreshold = 0.6 -> double
+[ORKEXP003]const Orkeon.Rag.Corrective.HeuristicRetrievalEvaluator.DefaultIncorrectThreshold = 0.2 -> double
+[ORKEXP003]const Orkeon.Rag.Corrective.LlmGroundednessChecker.SystemPrompt = "You are a groundedness verifier for a RAG system. Given a question, a candidate answer, and the source passages the answer must be based on, verify that every claim of the answer is supported by the passages.\nRespond with ONLY a JSON object of the form {\"grounded\": <true|false>, \"score\": <0..1>, \"unsupported_claims\": [\"<claim>\"], \"reason\": \"<short reason>\"}. No prose, no explanation." -> string!
+[ORKEXP003]const Orkeon.Rag.Corrective.LlmRetrievalEvaluator.SystemPrompt = "You are a retrieval grader for a corrective RAG system. Given a user question and the retrieved passages, grade whether the passages contain the information needed to answer:\n- \"correct\": the passages clearly contain the answer.\n- \"incorrect\": the passages are irrelevant to the question.\n- \"ambiguous\": the passages are partially relevant or you are unsure.\nRespond with ONLY a JSON object of the form {\"grade\": \"<correct|incorrect|ambiguous>\", \"reason\": \"<short reason>\", \"chunks\": [{\"id\": \"<chunk id>\", \"relevance\": <0..1>}]}. No prose, no explanation." -> string!
+[ORKEXP003]override Orkeon.Rag.Corrective.RagGraphState.Equals(object? obj) -> bool
+[ORKEXP003]override Orkeon.Rag.Corrective.RagGraphState.GetHashCode() -> int
+[ORKEXP003]override Orkeon.Rag.Corrective.RagGraphState.ToString() -> string!
+[ORKEXP003]static Orkeon.Rag.Corrective.CorrectiveRagExtensions.AddOrkeonCorrectiveRag(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+[ORKEXP003]static Orkeon.Rag.Corrective.RagGraphState.operator !=(Orkeon.Rag.Corrective.RagGraphState? left, Orkeon.Rag.Corrective.RagGraphState? right) -> bool
+[ORKEXP003]static Orkeon.Rag.Corrective.RagGraphState.operator ==(Orkeon.Rag.Corrective.RagGraphState? left, Orkeon.Rag.Corrective.RagGraphState? right) -> bool
+abstract Orkeon.Rag.Chunking.ChunkingStrategyBase.Name.get -> string!
+abstract Orkeon.Rag.Factories.NamedRagComponentFactory<TComponent>.ComponentKind.get -> string!
+abstract Orkeon.Rag.Loaders.FileDocumentLoaderBase.LoadDocumentAsync(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source, Orkeon.Domain.FileSystem.VirtualFileEntry! entry, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagDocument!>!
+abstract Orkeon.Rag.Loaders.FileDocumentLoaderBase.SupportedExtensions.get -> System.Collections.Generic.IReadOnlySet<string!>!
+abstract Orkeon.Rag.QueryTransform.LlmQueryVariantTransformerBase.Kind.get -> Orkeon.Rag.Abstractions.QueryTransformKind
+abstract Orkeon.Rag.QueryTransform.LlmQueryVariantTransformerBase.Name.get -> string!
+const Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.BlockHeader = "## Knowledge Context" -> string!
+const Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.CharsPerToken = 4 -> int
+const Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.DefaultMaxContextTokens = 2000 -> int
+const Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.GroundingInstruction = "Answer from the excerpts below and cite the passages you use with their [n] markers. If the excerpts do not cover the answer, say so explicitly." -> string!
+const Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.TruncationSuffix = "... [truncated]" -> string!
+const Orkeon.Rag.Chunking.ChunkingStrategyBase.HeadingMetadataKey = "heading" -> string!
+const Orkeon.Rag.Chunking.SemanticChunkingStrategy.SimilarityThresholdKey = "similarity_threshold" -> string!
+const Orkeon.Rag.Configuration.RagOptionsFactory.SectionKey = "Orkeon:Rag" -> string!
+const Orkeon.Rag.DependencyInjection.HybridRetrievalExtensions.HybridSectionKey = "Orkeon:Rag:Retrieval:Hybrid" -> string!
+const Orkeon.Rag.DependencyInjection.QueryRoutingExtensions.QueryRoutingSectionKey = "Orkeon:Rag:QueryRouting" -> string!
+const Orkeon.Rag.DependencyInjection.RagServiceCollectionExtensions.IngestionSectionKey = "Orkeon:Rag:Ingestion" -> string!
+const Orkeon.Rag.DependencyInjection.RagServiceCollectionExtensions.RagSectionKey = "Orkeon:Rag" -> string!
+const Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter.DefaultModel = "analysis-embedding" -> string!
+const Orkeon.Rag.Evaluation.ExtractiveOfflineChatClient.AnswerPrefix = "(offline extractive mode — retrieved passages follow)\n" -> string!
+const Orkeon.Rag.Evaluation.LlmGenerationJudge.SystemPrompt = "You are a strict, impartial evaluation judge for retrieval-augmented generation. Score the ANSWER for the QUESTION given the CONTEXT passages. groundedness: fraction of the answer's claims supported by the context (0 to 1). answer_relevance: how completely the answer addresses the question (0 to 1). Respond with ONLY a JSON object: {\"groundedness\": <number>, \"answer_relevance\": <number>}." -> string!
+const Orkeon.Rag.Loaders.FileDocumentLoaderBase.FileKind = "file" -> string!
+const Orkeon.Rag.Loaders.InlineTextLoader.ContentOptionKey = "content" -> string!
+const Orkeon.Rag.Loaders.InlineTextLoader.MetadataOptionPrefix = "meta." -> string!
+const Orkeon.Rag.Loaders.InlineTextLoader.TextKind = "text" -> string!
+const Orkeon.Rag.Loaders.WebPageLoader.UrlKind = "url" -> string!
+const Orkeon.Rag.Loaders.WebPageLoader.WebKind = "web" -> string!
+const Orkeon.Rag.Pipeline.AdaptiveRagPipeline.DirectAnswerSystemPrompt = "Answer the user directly and concisely. No knowledge-base retrieval was performed for this query; do not fabricate citations." -> string!
+const Orkeon.Rag.Pipeline.ProfileRagPipelineResolver.DefaultProfileName = "default" -> string!
+const Orkeon.Rag.Pipeline.StagedRagPipeline.DefaultSystemPrompt = "You are a retrieval-augmented assistant. Answer ONLY from the provided context. Cite the context passages you use with their [n] markers. If the context does not contain the answer, say so explicitly instead of guessing." -> string!
+const Orkeon.Rag.Pipeline.StagedRagPipeline.NoContextAnswer = "No relevant context was found in the knowledge base for this question." -> string!
+const Orkeon.Rag.QueryTransform.HydeTransformer.SystemPrompt = "You write short hypothetical passages for retrieval. Given a question, write one dense, declarative paragraph that would plausibly answer it, using the vocabulary a real document on the topic would use. Do not say you are unsure, do not add preamble or disclaimers — output the passage only." -> string!
+const Orkeon.Rag.QueryTransform.HydeTransformer.TransformerName = "hyde" -> string!
+const Orkeon.Rag.QueryTransform.IdentityQueryTransformer.TransformerName = "none" -> string!
+const Orkeon.Rag.QueryTransform.LlmQueryVariantTransformerBase.SystemPrompt = "You are a search query expansion assistant. Given a user question, generate alternative phrasings that express the same information need from different angles (synonyms, specificity, perspective). Respond with ONLY the requested number of variants, one per line, numbered. No preamble, no explanation." -> string!
+const Orkeon.Rag.QueryTransform.MultiQueryTransformer.TransformerName = "multi-query" -> string!
+const Orkeon.Rag.QueryTransform.RagFusionTransformer.TransformerName = "rag-fusion" -> string!
+const Orkeon.Rag.Reranking.LlmListwiseReranker.RerankerName = "llm" -> string!
+const Orkeon.Rag.Reranking.LlmListwiseReranker.ScoreOrigin = "llm-rerank" -> string!
+const Orkeon.Rag.Reranking.LlmListwiseReranker.SystemPrompt = "You are a relevance ranking assistant. Given a query and numbered passages, respond with ONLY a JSON array of the passage numbers ordered from most to least relevant to the query (example: [3,1,2]). No prose, no explanation." -> string!
+const Orkeon.Rag.Reranking.NoopReranker.RerankerName = "none" -> string!
+const Orkeon.Rag.Retrieval.Bm25Index.Bm25ScoreOrigin = "bm25" -> string!
+const Orkeon.Rag.Retrieval.Bm25Index.DefaultB = 0.75 -> double
+const Orkeon.Rag.Retrieval.Bm25Index.DefaultK1 = 1.2 -> double
+const Orkeon.Rag.Retrieval.HybridSearchDocumentStore.HybridNativeScoreOrigin = "hybrid-native" -> string!
+const Orkeon.Rag.Retrieval.ReciprocalRankFusion.DefaultK = 60 -> int
+const Orkeon.Rag.Retrieval.ReciprocalRankFusion.RrfScoreOrigin = "rrf" -> string!
+const Orkeon.Rag.Routing.LlmQueryComplexityClassifier.SystemPrompt = "You are a query-complexity router for a RAG system. Classify the user query into exactly one route:\n- \"no_retrieval\": greetings, small talk, opinions, or instructions on provided text — no documents needed.\n- \"single_shot\": a simple factual question answerable with one retrieval pass.\n- \"iterative\": a multi-hop, comparative, or multi-document question needing several retrieval passes.\nRespond with ONLY a JSON object of the form {\"route\": \"<route>\"}. No prose, no explanation.\n\nExamples:\nQuery: \"Hello! How are you doing today?\"\n{\"route\": \"no_retrieval\"}\nQuery: \"What is the capital of Australia?\"\n{\"route\": \"single_shot\"}\nQuery: \"Compare the retention policies described in the 2023 and 2024 compliance reports and list what changed.\"\n{\"route\": \"iterative\"}" -> string!
+const Orkeon.Rag.Stores.MemoryProviderDocumentStore.LocalCosineScoreOrigin = "local-cosine" -> string!
+const Orkeon.Rag.Stores.MemoryProviderDocumentStore.VectorScoreOrigin = "vector" -> string!
+const Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.OriginMetadataKey = "web_fallback" -> string!
+const Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.PageClientName = "orkeon-rag-webfallback-pages" -> string!
+const Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.ReasonsMetadataKey = "injection_reasons" -> string!
+const Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.RiskScoreMetadataKey = "injection_risk_score" -> string!
+const Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.SearchClientName = "orkeon-rag-webfallback-search" -> string!
+const Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.VerdictMetadataKey = "injection_verdict" -> string!
+const Orkeon.Rag.WebFallback.WebSearchRetrieverOptions.SectionKey = "Orkeon:Rag:WebFallback" -> string!
+override Orkeon.Rag.Chunking.RecursiveChunkingStrategy.Name.get -> string!
+override Orkeon.Rag.Chunking.SemanticChunkingStrategy.Name.get -> string!
+override Orkeon.Rag.Chunking.SentenceChunkingStrategy.Name.get -> string!
+override Orkeon.Rag.Chunking.StructuralChunkingStrategy.Name.get -> string!
+override Orkeon.Rag.Evaluation.GenerationJudgement.Equals(object? obj) -> bool
+override Orkeon.Rag.Evaluation.GenerationJudgement.GetHashCode() -> int
+override Orkeon.Rag.Evaluation.GenerationJudgement.ToString() -> string!
+override Orkeon.Rag.Evaluation.RagEvalRunRequest.Equals(object? obj) -> bool
+override Orkeon.Rag.Evaluation.RagEvalRunRequest.GetHashCode() -> int
+override Orkeon.Rag.Evaluation.RagEvalRunRequest.ToString() -> string!
+override Orkeon.Rag.Evaluation.RagEvalRunResult.Equals(object? obj) -> bool
+override Orkeon.Rag.Evaluation.RagEvalRunResult.GetHashCode() -> int
+override Orkeon.Rag.Evaluation.RagEvalRunResult.ToString() -> string!
+override Orkeon.Rag.Ingestion.IngestionManifest.Equals(object? obj) -> bool
+override Orkeon.Rag.Ingestion.IngestionManifest.GetHashCode() -> int
+override Orkeon.Rag.Ingestion.IngestionManifest.ToString() -> string!
+override Orkeon.Rag.Ingestion.ManifestChunkerProfile.Equals(object? obj) -> bool
+override Orkeon.Rag.Ingestion.ManifestChunkerProfile.GetHashCode() -> int
+override Orkeon.Rag.Ingestion.ManifestChunkerProfile.ToString() -> string!
+override Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.Equals(object? obj) -> bool
+override Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.GetHashCode() -> int
+override Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.ToString() -> string!
+override Orkeon.Rag.Ingestion.ManifestSourceEntry.Equals(object? obj) -> bool
+override Orkeon.Rag.Ingestion.ManifestSourceEntry.GetHashCode() -> int
+override Orkeon.Rag.Ingestion.ManifestSourceEntry.ToString() -> string!
+override Orkeon.Rag.Pipeline.RagIngestionOptions.Equals(object? obj) -> bool
+override Orkeon.Rag.Pipeline.RagIngestionOptions.GetHashCode() -> int
+override Orkeon.Rag.Pipeline.RagIngestionOptions.ToString() -> string!
+override Orkeon.Rag.QueryTransform.MultiQueryTransformer.Kind.get -> Orkeon.Rag.Abstractions.QueryTransformKind
+override Orkeon.Rag.QueryTransform.MultiQueryTransformer.Name.get -> string!
+override Orkeon.Rag.QueryTransform.RagFusionTransformer.Kind.get -> Orkeon.Rag.Abstractions.QueryTransformKind
+override Orkeon.Rag.QueryTransform.RagFusionTransformer.Name.get -> string!
+override Orkeon.Rag.Validation.InjectionSpan.Equals(object? obj) -> bool
+override Orkeon.Rag.Validation.InjectionSpan.GetHashCode() -> int
+override Orkeon.Rag.Validation.InjectionSpan.ToString() -> string!
+override Orkeon.Rag.Validation.PromptInjectionAnalysis.Equals(object? obj) -> bool
+override Orkeon.Rag.Validation.PromptInjectionAnalysis.GetHashCode() -> int
+override Orkeon.Rag.Validation.PromptInjectionAnalysis.ToString() -> string!
+override Orkeon.Rag.Validation.PromptInjectionPolicy.Equals(object? obj) -> bool
+override Orkeon.Rag.Validation.PromptInjectionPolicy.GetHashCode() -> int
+override Orkeon.Rag.Validation.PromptInjectionPolicy.ToString() -> string!
+override Orkeon.Rag.Validation.QuarantinedDocument.Equals(object? obj) -> bool
+override Orkeon.Rag.Validation.QuarantinedDocument.GetHashCode() -> int
+override Orkeon.Rag.Validation.QuarantinedDocument.ToString() -> string!
+static Orkeon.Rag.Chunking.ChunkingStrategyFactoryDefaults.CreateDefault(System.Func<string!, float[]!>? semanticEmbedding = null) -> Orkeon.Rag.Factories.ChunkingStrategyFactory!
+static Orkeon.Rag.Chunking.ChunkingStrategyFactoryDefaults.RegisterDefaultStrategies(this Orkeon.Rag.Factories.ChunkingStrategyFactory! factory, System.Func<string!, float[]!>? semanticEmbedding = null) -> Orkeon.Rag.Factories.ChunkingStrategyFactory!
+static Orkeon.Rag.Chunking.PlainTextChunking.ChunkText(this Orkeon.Rag.Abstractions.Interfaces.IChunkingStrategy! strategy, string? text, int maxChunkSize, int overlap = 0, string! sourceId = "inline") -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.Chunk!>!
+static Orkeon.Rag.Chunking.PlainTextChunking.LineNumberAt(string! text, int offset) -> int
+static Orkeon.Rag.Configuration.RagOptionsFactory.Build(Microsoft.Extensions.Configuration.IConfiguration! configuration, string? profileName = null) -> Orkeon.Rag.Abstractions.Options.RagOptions!
+static Orkeon.Rag.DependencyInjection.EphemeralSearchExtensions.AddOrkeonEphemeralSearch(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.DependencyInjection.HybridRetrievalExtensions.AddOrkeonHybridRetrieval(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Func<System.IServiceProvider!, Orkeon.Domain.Memory.IMemoryProvider!>? providerResolver = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.DependencyInjection.KnowledgeAugmentationExtensions.AddOrkeonKnowledgeAugmentation(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.DependencyInjection.QueryRoutingExtensions.AddOrkeonQueryRouting(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.DependencyInjection.QueryTransformExtensions.AddOrkeonQueryTransforms(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.DependencyInjection.RagEvaluationExtensions.AddOrkeonRagEvaluation(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.DependencyInjection.RagRerankingExtensions.AddOrkeonRagReranking(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.DependencyInjection.RagServiceCollectionExtensions.AddOrkeonRag(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Rag.Evaluation.GenerationJudgement.operator !=(Orkeon.Rag.Evaluation.GenerationJudgement? left, Orkeon.Rag.Evaluation.GenerationJudgement? right) -> bool
+static Orkeon.Rag.Evaluation.GenerationJudgement.operator ==(Orkeon.Rag.Evaluation.GenerationJudgement? left, Orkeon.Rag.Evaluation.GenerationJudgement? right) -> bool
+static Orkeon.Rag.Evaluation.RagEvalGate.MeanRecallExcluding(Orkeon.Rag.Abstractions.Models.RagEvalReport! report, string! excludedTag) -> double?
+static Orkeon.Rag.Evaluation.RagEvalGate.MeanReciprocalRankExcluding(Orkeon.Rag.Abstractions.Models.RagEvalReport! report, string! excludedTag) -> double?
+static Orkeon.Rag.Evaluation.RagEvalReportWriter.JudgeLabel(Orkeon.Rag.Abstractions.Models.RagEvalReport! report) -> string!
+static Orkeon.Rag.Evaluation.RagEvalReportWriter.ToComparisonMarkdown(System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.RagEvalReport!>! reports) -> string!
+static Orkeon.Rag.Evaluation.RagEvalReportWriter.ToJson(Orkeon.Rag.Abstractions.Models.RagEvalReport! report) -> string!
+static Orkeon.Rag.Evaluation.RagEvalReportWriter.ToMarkdown(Orkeon.Rag.Abstractions.Models.RagEvalReport! report) -> string!
+static Orkeon.Rag.Evaluation.RagEvalRunRequest.operator !=(Orkeon.Rag.Evaluation.RagEvalRunRequest? left, Orkeon.Rag.Evaluation.RagEvalRunRequest? right) -> bool
+static Orkeon.Rag.Evaluation.RagEvalRunRequest.operator ==(Orkeon.Rag.Evaluation.RagEvalRunRequest? left, Orkeon.Rag.Evaluation.RagEvalRunRequest? right) -> bool
+static Orkeon.Rag.Evaluation.RagEvalRunResult.operator !=(Orkeon.Rag.Evaluation.RagEvalRunResult? left, Orkeon.Rag.Evaluation.RagEvalRunResult? right) -> bool
+static Orkeon.Rag.Evaluation.RagEvalRunResult.operator ==(Orkeon.Rag.Evaluation.RagEvalRunResult? left, Orkeon.Rag.Evaluation.RagEvalRunResult? right) -> bool
+static Orkeon.Rag.Evaluation.RetrievalEvalMetrics.Matches(string! identifier, string! relevantRef) -> bool
+static Orkeon.Rag.Evaluation.RetrievalEvalMetrics.PrecisionAtK(System.Collections.Generic.IReadOnlyList<string!>! relevant, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<string!>!>! rankedRetrievedKeys, int k) -> double
+static Orkeon.Rag.Evaluation.RetrievalEvalMetrics.RecallAtK(System.Collections.Generic.IReadOnlyList<string!>! relevant, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<string!>!>! rankedRetrievedKeys, int k) -> double
+static Orkeon.Rag.Evaluation.RetrievalEvalMetrics.ReciprocalRank(System.Collections.Generic.IReadOnlyList<string!>! relevant, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<string!>!>! rankedRetrievedKeys) -> double
+static Orkeon.Rag.Ingestion.IngestionManifest.operator !=(Orkeon.Rag.Ingestion.IngestionManifest? left, Orkeon.Rag.Ingestion.IngestionManifest? right) -> bool
+static Orkeon.Rag.Ingestion.IngestionManifest.operator ==(Orkeon.Rag.Ingestion.IngestionManifest? left, Orkeon.Rag.Ingestion.IngestionManifest? right) -> bool
+static Orkeon.Rag.Ingestion.ManifestChunkerProfile.operator !=(Orkeon.Rag.Ingestion.ManifestChunkerProfile? left, Orkeon.Rag.Ingestion.ManifestChunkerProfile? right) -> bool
+static Orkeon.Rag.Ingestion.ManifestChunkerProfile.operator ==(Orkeon.Rag.Ingestion.ManifestChunkerProfile? left, Orkeon.Rag.Ingestion.ManifestChunkerProfile? right) -> bool
+static Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.operator !=(Orkeon.Rag.Ingestion.ManifestEmbeddingProfile? left, Orkeon.Rag.Ingestion.ManifestEmbeddingProfile? right) -> bool
+static Orkeon.Rag.Ingestion.ManifestEmbeddingProfile.operator ==(Orkeon.Rag.Ingestion.ManifestEmbeddingProfile? left, Orkeon.Rag.Ingestion.ManifestEmbeddingProfile? right) -> bool
+static Orkeon.Rag.Ingestion.ManifestSourceEntry.operator !=(Orkeon.Rag.Ingestion.ManifestSourceEntry? left, Orkeon.Rag.Ingestion.ManifestSourceEntry? right) -> bool
+static Orkeon.Rag.Ingestion.ManifestSourceEntry.operator ==(Orkeon.Rag.Ingestion.ManifestSourceEntry? left, Orkeon.Rag.Ingestion.ManifestSourceEntry? right) -> bool
+static Orkeon.Rag.Pipeline.RagIngestionOptions.operator !=(Orkeon.Rag.Pipeline.RagIngestionOptions? left, Orkeon.Rag.Pipeline.RagIngestionOptions? right) -> bool
+static Orkeon.Rag.Pipeline.RagIngestionOptions.operator ==(Orkeon.Rag.Pipeline.RagIngestionOptions? left, Orkeon.Rag.Pipeline.RagIngestionOptions? right) -> bool
+static Orkeon.Rag.QueryTransform.QueryTransformFactoryDefaults.CreateDefault(System.Func<Microsoft.Extensions.AI.IChatClient!>! chatClient, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> Orkeon.Rag.Factories.QueryTransformerFactory!
+static Orkeon.Rag.QueryTransform.QueryTransformFactoryDefaults.RegisterDefaultTransformers(this Orkeon.Rag.Factories.QueryTransformerFactory! factory, System.Func<Microsoft.Extensions.AI.IChatClient!>! chatClient, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> Orkeon.Rag.Factories.QueryTransformerFactory!
+static Orkeon.Rag.Retrieval.MaximalMarginalRelevance.Select(System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! candidates, System.ReadOnlyMemory<float> queryEmbedding, System.Collections.Generic.IReadOnlyList<System.ReadOnlyMemory<float>>! candidateEmbeddings, int topK, double lambda = 0.7) -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!
+static Orkeon.Rag.Retrieval.MaximalMarginalRelevance.Select(System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>! candidates, int topK, double lambda = 0.7) -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!
+static Orkeon.Rag.Retrieval.ReciprocalRankFusion.Fuse(int k, int topK, params System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>![]! rankings) -> System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.ScoredChunk!>!
+static Orkeon.Rag.Validation.ContentIntegrityValidator.ComputeHash(string! content) -> string!
+static Orkeon.Rag.Validation.InjectionSpan.operator !=(Orkeon.Rag.Validation.InjectionSpan? left, Orkeon.Rag.Validation.InjectionSpan? right) -> bool
+static Orkeon.Rag.Validation.InjectionSpan.operator ==(Orkeon.Rag.Validation.InjectionSpan? left, Orkeon.Rag.Validation.InjectionSpan? right) -> bool
+static Orkeon.Rag.Validation.PromptInjectionAnalysis.CleanResult.get -> Orkeon.Rag.Validation.PromptInjectionAnalysis!
+static Orkeon.Rag.Validation.PromptInjectionAnalysis.operator !=(Orkeon.Rag.Validation.PromptInjectionAnalysis? left, Orkeon.Rag.Validation.PromptInjectionAnalysis? right) -> bool
+static Orkeon.Rag.Validation.PromptInjectionAnalysis.operator ==(Orkeon.Rag.Validation.PromptInjectionAnalysis? left, Orkeon.Rag.Validation.PromptInjectionAnalysis? right) -> bool
+static Orkeon.Rag.Validation.PromptInjectionPolicy.Default.get -> Orkeon.Rag.Validation.PromptInjectionPolicy!
+static Orkeon.Rag.Validation.PromptInjectionPolicy.operator !=(Orkeon.Rag.Validation.PromptInjectionPolicy? left, Orkeon.Rag.Validation.PromptInjectionPolicy? right) -> bool
+static Orkeon.Rag.Validation.PromptInjectionPolicy.operator ==(Orkeon.Rag.Validation.PromptInjectionPolicy? left, Orkeon.Rag.Validation.PromptInjectionPolicy? right) -> bool
+static Orkeon.Rag.Validation.QuarantinedDocument.operator !=(Orkeon.Rag.Validation.QuarantinedDocument? left, Orkeon.Rag.Validation.QuarantinedDocument? right) -> bool
+static Orkeon.Rag.Validation.QuarantinedDocument.operator ==(Orkeon.Rag.Validation.QuarantinedDocument? left, Orkeon.Rag.Validation.QuarantinedDocument? right) -> bool
+static Orkeon.Rag.WebFallback.WebFallbackExtensions.AddOrkeonRagWebFallback(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+virtual Orkeon.Rag.Validation.QuarantinedDocument.<Clone>$() -> Orkeon.Rag.Validation.QuarantinedDocument!
+virtual Orkeon.Rag.Validation.QuarantinedDocument.EqualityContract.get -> System.Type!
+virtual Orkeon.Rag.Validation.QuarantinedDocument.Equals(Orkeon.Rag.Validation.QuarantinedDocument? other) -> bool
+virtual Orkeon.Rag.Validation.QuarantinedDocument.PrintMembers(System.Text.StringBuilder! builder) -> bool

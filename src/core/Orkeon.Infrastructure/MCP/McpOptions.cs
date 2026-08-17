@@ -1,8 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Orkeon.Infrastructure.MCP;
 
 /// <summary>
 /// Top-level MCP configuration options.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpOptions
 {
     /// <summary>
@@ -25,6 +28,7 @@ public class McpOptions
 /// <summary>
 /// Configuration for the Orkeon MCP server.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpServerOptions
 {
     /// <summary>

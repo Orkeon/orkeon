@@ -1,0 +1,51 @@
+#nullable enable
+Orkeon.Tools.Embeddings.Local.DependencyInjection.ServiceCollectionExtensions
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.<Clone>$() -> Orkeon.Tools.Embeddings.Local.LocalEmbedRequest!
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.Equals(Orkeon.Tools.Embeddings.Local.LocalEmbedRequest? other) -> bool
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.Inputs.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.Inputs.init -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.LocalEmbedRequest() -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.Model.get -> string?
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.Model.init -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.RequestedDimensions.get -> int?
+Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.RequestedDimensions.init -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.<Clone>$() -> Orkeon.Tools.Embeddings.Local.LocalEmbedResponse!
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.Dimensions.get -> int
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.Dimensions.init -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.Embeddings.get -> System.Collections.Generic.IReadOnlyList<float[]!>!
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.Embeddings.init -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.Equals(Orkeon.Tools.Embeddings.Local.LocalEmbedResponse? other) -> bool
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.LocalEmbedResponse() -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.Model.get -> string!
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.Model.init -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.TruncatedCount.get -> int
+Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.TruncatedCount.init -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbedTool
+Orkeon.Tools.Embeddings.Local.LocalEmbedTool.LocalEmbedTool(Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider! provider, Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Embeddings.Local.LocalEmbedTool!>? logger = null) -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingGenerator
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingGenerator.Dispose() -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingGenerator.GenerateAsync(System.Collections.Generic.IEnumerable<string!>! values, Microsoft.Extensions.AI.EmbeddingGenerationOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.GeneratedEmbeddings<Microsoft.Extensions.AI.Embedding<float>!>!>!
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingGenerator.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingGenerator.LocalEmbeddingGenerator(Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider! inner) -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingGenerator.Metadata.get -> Microsoft.Extensions.AI.EmbeddingGeneratorMetadata!
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.Dimensions.get -> int
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.Dispose() -> void
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.EmbedBatchAsync(System.Collections.Generic.IReadOnlyList<string!>! texts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.ReadOnlyMemory<float>>!>!
+Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider.LocalEmbeddingProvider(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions? options = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Embeddings.Local.LocalEmbeddingProvider!>? logger = null) -> void
+override Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.GetHashCode() -> int
+override Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.ToString() -> string!
+override Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.GetHashCode() -> int
+override Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.ToString() -> string!
+override Orkeon.Tools.Embeddings.Local.LocalEmbedTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Embeddings.Local.LocalEmbedTool.Description.get -> string!
+override Orkeon.Tools.Embeddings.Local.LocalEmbedTool.Name.get -> string!
+static Orkeon.Tools.Embeddings.Local.DependencyInjection.ServiceCollectionExtensions.AddOrkeonLocalEmbeddings(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Analysis.Abstractions.DependencyInjection.LocalEmbeddingOptions? options = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.operator !=(Orkeon.Tools.Embeddings.Local.LocalEmbedRequest? left, Orkeon.Tools.Embeddings.Local.LocalEmbedRequest? right) -> bool
+static Orkeon.Tools.Embeddings.Local.LocalEmbedRequest.operator ==(Orkeon.Tools.Embeddings.Local.LocalEmbedRequest? left, Orkeon.Tools.Embeddings.Local.LocalEmbedRequest? right) -> bool
+static Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.operator !=(Orkeon.Tools.Embeddings.Local.LocalEmbedResponse? left, Orkeon.Tools.Embeddings.Local.LocalEmbedResponse? right) -> bool
+static Orkeon.Tools.Embeddings.Local.LocalEmbedResponse.operator ==(Orkeon.Tools.Embeddings.Local.LocalEmbedResponse? left, Orkeon.Tools.Embeddings.Local.LocalEmbedResponse? right) -> bool

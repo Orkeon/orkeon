@@ -1,0 +1,32 @@
+#nullable enable
+Orkeon.Tools.Rag.DependencyInjection.RagToolsServiceCollectionExtensions
+Orkeon.Tools.Rag.RagEvalTool
+Orkeon.Tools.Rag.RagEvalTool.CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+Orkeon.Tools.Rag.RagEvalTool.Description.get -> string!
+Orkeon.Tools.Rag.RagEvalTool.ExecuteAsync(string! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!
+Orkeon.Tools.Rag.RagEvalTool.Name.get -> string!
+Orkeon.Tools.Rag.RagEvalTool.RagEvalTool(Orkeon.Rag.Evaluation.IRagEvalHarness! harness) -> void
+Orkeon.Tools.Rag.RagEvalTool.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+Orkeon.Tools.Rag.RagEvalTool.ValidateInput(string! input) -> bool
+Orkeon.Tools.Rag.RagIngestTool
+Orkeon.Tools.Rag.RagIngestTool.CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+Orkeon.Tools.Rag.RagIngestTool.Description.get -> string!
+Orkeon.Tools.Rag.RagIngestTool.ExecuteAsync(string! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!
+Orkeon.Tools.Rag.RagIngestTool.Name.get -> string!
+Orkeon.Tools.Rag.RagIngestTool.RagIngestTool(Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline! ingestionPipeline, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+Orkeon.Tools.Rag.RagIngestTool.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+Orkeon.Tools.Rag.RagIngestTool.ValidateInput(string! input) -> bool
+Orkeon.Tools.Rag.RagSearchTool
+Orkeon.Tools.Rag.RagSearchTool.CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+Orkeon.Tools.Rag.RagSearchTool.Description.get -> string!
+Orkeon.Tools.Rag.RagSearchTool.ExecuteAsync(string! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!
+Orkeon.Tools.Rag.RagSearchTool.Name.get -> string!
+Orkeon.Tools.Rag.RagSearchTool.RagSearchTool(Orkeon.Rag.Abstractions.Interfaces.IRagPipeline! ragPipeline) -> void
+Orkeon.Tools.Rag.RagSearchTool.RagSearchTool(Orkeon.Rag.Abstractions.Interfaces.IRagPipeline! ragPipeline, Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore? raggableStore) -> void
+Orkeon.Tools.Rag.RagSearchTool.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+Orkeon.Tools.Rag.RagSearchTool.ValidateInput(string! input) -> bool
+const Orkeon.Tools.Rag.RagSearchTool.DefaultCollection = "default" -> string!
+const Orkeon.Tools.Rag.RagSearchTool.RaggableTreeCollection = "raggable-tree" -> string!
+static Orkeon.Tools.Rag.DependencyInjection.RagToolsServiceCollectionExtensions.AddOrkeonRagTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Rag.RagEvalTool.FormatResult(Orkeon.Rag.Evaluation.RagEvalRunResult! result) -> string!
+static Orkeon.Tools.Rag.RagIngestTool.FormatReport(Orkeon.Rag.Abstractions.Models.IngestionReport! report) -> string!

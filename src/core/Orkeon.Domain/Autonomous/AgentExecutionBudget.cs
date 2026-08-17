@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Orkeon.Domain.Autonomous;
 
 /// <summary>
@@ -7,6 +9,7 @@ namespace Orkeon.Domain.Autonomous;
 /// exhausted a <see cref="BudgetExhaustedException"/> is thrown, forcing the agent
 /// to return control to its orchestrator.
 /// </summary>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed class AgentExecutionBudget
 {
     // ── Limits (immutable after construction) ────────────────────────────
@@ -209,6 +212,7 @@ public sealed class AgentExecutionBudget
 }
 
 /// <summary>Identifies which budget dimension was exhausted.</summary>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public enum BudgetDimension
 {
     /// <summary>Tool call limit exceeded.</summary>
@@ -224,6 +228,7 @@ public enum BudgetDimension
 }
 
 /// <summary>Immutable snapshot of a budget's current state, suitable for logging and telemetry.</summary>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed record BudgetSnapshot
 {
     /// <summary>Current tool calls.</summary>
@@ -255,6 +260,7 @@ public sealed record BudgetSnapshot
 /// The orchestrator catches this to force a controlled return.
 /// </summary>
 #pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10; ISerializable pattern not required
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed class BudgetExhaustedException : InvalidOperationException
 #pragma warning restore S3925
 {

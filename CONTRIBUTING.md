@@ -189,13 +189,41 @@ public async Task Agent_Should_Execute_Task_Successfully()
 - [ ] Add XML documentation
 - [ ] Fix typos in documentation
 
+## Versioning and API stability
+
+Orkeon follows [Semantic Versioning 2.0](https://semver.org/). The public API is not a
+matter of opinion — it is **recorded in the repository** and enforced at build time:
+
+- Every packable project carries `PublicAPI.Shipped.txt` (the frozen, released surface)
+  and `PublicAPI.Unshipped.txt` (additions since the last release), checked by
+  `Microsoft.CodeAnalysis.PublicApiAnalyzers`. An undeclared public API change fails
+  the build (`RS0016`/`RS0017` are promoted to errors).
+- **Adding** a public API: declare it in `PublicAPI.Unshipped.txt` (the analyzer's code
+  fix does it for you — `dotnet format analyzers --diagnostics RS0016` on the project).
+  At release time, `Unshipped` entries move to `Shipped`.
+- **A breaking change is any edit or removal of a line in `PublicAPI.Shipped.txt`.**
+  It requires a major version bump (a minor is acceptable only before 1.0), a
+  `*REMOVED*` entry in the API file, and a CHANGELOG entry that says so plainly.
+- **Deprecation window**: nothing public is removed without shipping `[Obsolete]` for
+  at least one minor version first, with the replacement named in the message.
+- **`[Experimental]` surfaces are outside this commitment.** A2A, Autonomous
+  orchestration, corrective RAG and the MCP integration carry
+  `[Experimental("ORKEXP00x")]` diagnostics: referencing them is a compile error you
+  suppress explicitly, which is your opt-in to a surface that may change in any
+  release. See [docs/reference/experimental-apis.md](docs/reference/experimental-apis.md).
+- **Stability commitment for the 1.x window**: once 1.0 ships, no breaking change to
+  a non-experimental shipped API before 2.0. Until then (0.x), breaking changes may
+  land in minor versions but are always called out in the CHANGELOG and the migration
+  notes.
+
 ## Release Process
 
 1. Update version numbers
 2. Update CHANGELOG.md
-3. Create release notes
-4. Tag the release
-5. Build and publish NuGet packages
+3. Move `PublicAPI.Unshipped.txt` entries to `PublicAPI.Shipped.txt`
+4. Create release notes
+5. Tag the release
+6. Build and publish NuGet packages
 
 ## Questions?
 

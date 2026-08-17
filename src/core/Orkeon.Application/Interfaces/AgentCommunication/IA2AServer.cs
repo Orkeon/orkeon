@@ -1,9 +1,12 @@
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Orkeon.Application.Interfaces.AgentCommunication;
 
 /// <summary>
 /// Hosts an A2A-compatible HTTP server that exposes local agents for remote task submission.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public interface IA2AServer : IAsyncDisposable
 {
     /// <summary>Starts the A2A server.</summary>

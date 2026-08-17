@@ -2,6 +2,7 @@ using System.Text.Json;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
 
@@ -9,6 +10,7 @@ namespace Orkeon.Infrastructure.MCP;
 /// Adapts an MCP server tool into a Orkeon IBaseTool so it can be
 /// registered in the tool registry and used by agents.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpToolAdapter : IBaseTool
 {
     private readonly McpToolDefinition _definition;

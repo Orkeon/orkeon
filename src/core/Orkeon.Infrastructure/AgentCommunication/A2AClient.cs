@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.Constants.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
@@ -20,6 +21,7 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// them. Certificate rotation requires a new instance: the options snapshot is taken
 /// at construction.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class A2AClient : IA2AClient, IDisposable
 {
     private readonly IHttpClientFactory _httpClientFactory;

@@ -6,12 +6,14 @@ using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Common;
 using Orkeon.Tools.Abstractions.Base;
 using ITool = Orkeon.Domain.Common.ITool;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.Tools;
 
 // ── Request / Response records ────────────────────────────────────────
 
 /// <summary>Request parameters for the spawn agent tool.</summary>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public record SpawnAgentRequest
 {
     /// <summary>Gets the role for the new sub-agent.</summary>
@@ -40,6 +42,7 @@ public record SpawnAgentRequest
 }
 
 /// <summary>Response from the spawn agent tool.</summary>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public record SpawnAgentResponse
 {
     /// <summary>Gets the ID of the spawned agent.</summary>
@@ -75,6 +78,7 @@ public record SpawnAgentResponse
 [ToolContract("spawn_agent", Name = "Spawn sub-agent",
     Description = "Dynamically create and execute a specialised sub-agent for a specific task",
     Category = "Autonomous")]
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResponse>, ITool
 {
     private readonly IAgentFactory _agentFactory;

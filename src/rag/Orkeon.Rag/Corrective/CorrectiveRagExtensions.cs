@@ -7,6 +7,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Configuration;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Rag.Corrective;
 
@@ -20,6 +21,7 @@ namespace Orkeon.Rag.Corrective;
 /// <c>corrective</c> profile resolves through the profile resolver; the
 /// concrete-type registration below remains for hosts wiring the graph alone.
 /// </summary>
+[Experimental("ORKEXP003", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static partial class CorrectiveRagExtensions
 {
     /// <summary>

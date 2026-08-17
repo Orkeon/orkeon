@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
 /// <summary>
 /// Security options for A2A protocol communications, including mTLS configuration.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class A2ASecurityOptions
 {
     /// <summary>

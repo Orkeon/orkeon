@@ -69,6 +69,7 @@ La documentation est organisée en 6 sections thématiques.
 |---------|-------------|
 | [Catalogue des 104 exemples](./reference/examples-catalog.md) | 9 catégories métier, exemples notables détaillés |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante |
+| [APIs expérimentales](./reference/experimental-apis.md) | Surfaces `[Experimental]` (A2A, Autonomous, RAG correctif, MCP), IDs de diagnostic `ORKEXP001–004`, comment s'inscrire |
 | [Sous-systèmes opt-in](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, rate-limiting d'outils, rotation de clés, benchmarking, multi-modal, hooks de kickoff, sous-système RAG — activation explicite `AddOrkeonXxx()` (hors DI par défaut) |
 | [Comparatif des fournisseurs LLM](./arkeon/llm-providers-comparatif.md) | Matrice de capacités par provider (streaming SSE, tool calling natif, grammaire GBNF, `response_format`, thinking, métriques, résilience), dérivée du code source |
 

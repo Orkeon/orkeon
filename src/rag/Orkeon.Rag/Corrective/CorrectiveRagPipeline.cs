@@ -15,6 +15,7 @@ using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Pipeline;
 using Orkeon.Rag.Retrieval;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Rag.Corrective;
 
@@ -48,6 +49,7 @@ namespace Orkeon.Rag.Corrective;
 /// rewritten probes in <see cref="RagTrace.QueryVariants"/>, and the loop count
 /// in <see cref="RagTrace.Iterations"/>.</para>
 /// </remarks>
+[Experimental("ORKEXP003", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed partial class CorrectiveRagPipeline : IRagPipeline
 {
     /// <summary>Graph node retrieving candidates for the current probe.</summary>

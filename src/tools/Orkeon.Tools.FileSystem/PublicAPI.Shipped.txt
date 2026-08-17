@@ -1,0 +1,326 @@
+#nullable enable
+Orkeon.Tools.FileSystem.CountPatternRequest
+Orkeon.Tools.FileSystem.CountPatternRequest.CountPatternRequest() -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.DistinctMatches.get -> bool
+Orkeon.Tools.FileSystem.CountPatternRequest.DistinctMatches.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.IncludeMatches.get -> bool
+Orkeon.Tools.FileSystem.CountPatternRequest.IncludeMatches.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.MaxMatchesReturned.get -> int?
+Orkeon.Tools.FileSystem.CountPatternRequest.MaxMatchesReturned.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.Multiline.get -> bool
+Orkeon.Tools.FileSystem.CountPatternRequest.Multiline.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.Path.get -> string!
+Orkeon.Tools.FileSystem.CountPatternRequest.Path.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.Patterns.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.FileSystem.CountPatternRequest.Patterns.init -> void
+Orkeon.Tools.FileSystem.CountPatternResponse
+Orkeon.Tools.FileSystem.CountPatternResponse.BomStripped.get -> bool
+Orkeon.Tools.FileSystem.CountPatternResponse.BomStripped.set -> void
+Orkeon.Tools.FileSystem.CountPatternResponse.BytesScanned.get -> int
+Orkeon.Tools.FileSystem.CountPatternResponse.BytesScanned.set -> void
+Orkeon.Tools.FileSystem.CountPatternResponse.CountPatternResponse() -> void
+Orkeon.Tools.FileSystem.CountPatternResponse.Counts.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.FileSystem.PatternCount!>!
+Orkeon.Tools.FileSystem.CountPatternResponse.Counts.init -> void
+Orkeon.Tools.FileSystem.CountPatternTool
+Orkeon.Tools.FileSystem.CountPatternTool.CountPatternTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.CountPatternTool!>? logger = null) -> void
+Orkeon.Tools.FileSystem.DependencyInjection.FileSystemToolExtensions
+Orkeon.Tools.FileSystem.DirectoryEntry
+Orkeon.Tools.FileSystem.DirectoryEntry.DirectoryEntry() -> void
+Orkeon.Tools.FileSystem.DirectoryEntry.DirectoryEntry(Orkeon.Tools.FileSystem.DirectoryEntry! original) -> void
+Orkeon.Tools.FileSystem.DirectoryEntry.Name.get -> string!
+Orkeon.Tools.FileSystem.DirectoryEntry.Name.init -> void
+Orkeon.Tools.FileSystem.DirectoryEntry.Path.get -> string!
+Orkeon.Tools.FileSystem.DirectoryEntry.Path.init -> void
+Orkeon.Tools.FileSystem.DirectoryEntry.Size.get -> long?
+Orkeon.Tools.FileSystem.DirectoryEntry.Size.init -> void
+Orkeon.Tools.FileSystem.DirectoryEntry.Type.get -> string!
+Orkeon.Tools.FileSystem.DirectoryEntry.Type.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadRequest
+Orkeon.Tools.FileSystem.DirectoryReadRequest.DirectoryReadRequest() -> void
+Orkeon.Tools.FileSystem.DirectoryReadRequest.DirectoryReadRequest(Orkeon.Tools.FileSystem.DirectoryReadRequest! original) -> void
+Orkeon.Tools.FileSystem.DirectoryReadRequest.MaxResults.get -> int
+Orkeon.Tools.FileSystem.DirectoryReadRequest.MaxResults.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadRequest.Path.get -> string!
+Orkeon.Tools.FileSystem.DirectoryReadRequest.Path.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadRequest.Pattern.get -> string!
+Orkeon.Tools.FileSystem.DirectoryReadRequest.Pattern.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadRequest.Recursive.get -> bool
+Orkeon.Tools.FileSystem.DirectoryReadRequest.Recursive.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Directories.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.FileSystem.DirectoryEntry!>!
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Directories.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.DirectoryReadResponse() -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.DirectoryReadResponse(Orkeon.Tools.FileSystem.DirectoryReadResponse! original) -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Files.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.FileSystem.DirectoryEntry!>!
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Files.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Path.get -> string!
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Path.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.TotalDirectories.get -> int
+Orkeon.Tools.FileSystem.DirectoryReadResponse.TotalDirectories.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.TotalEntriesBeforeTruncation.get -> int?
+Orkeon.Tools.FileSystem.DirectoryReadResponse.TotalEntriesBeforeTruncation.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.TotalFiles.get -> int
+Orkeon.Tools.FileSystem.DirectoryReadResponse.TotalFiles.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Truncated.get -> bool
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Truncated.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Warning.get -> string?
+Orkeon.Tools.FileSystem.DirectoryReadResponse.Warning.init -> void
+Orkeon.Tools.FileSystem.DirectoryReadTool
+Orkeon.Tools.FileSystem.DirectoryReadTool.DirectoryReadTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore? raggableStore = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.DirectoryReadTool!>? logger = null) -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest
+Orkeon.Tools.FileSystem.DirectorySearchRequest.ChunkSize.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchRequest.ChunkSize.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.DirectorySearchRequest() -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.DirectorySearchRequest(Orkeon.Tools.FileSystem.DirectorySearchRequest! original) -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.FilePatterns.get -> string!
+Orkeon.Tools.FileSystem.DirectorySearchRequest.FilePatterns.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.MaxFileSizeKb.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchRequest.MaxFileSizeKb.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.Path.get -> string!
+Orkeon.Tools.FileSystem.DirectorySearchRequest.Path.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.Query.get -> string!
+Orkeon.Tools.FileSystem.DirectorySearchRequest.Query.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.Recursive.get -> bool
+Orkeon.Tools.FileSystem.DirectorySearchRequest.Recursive.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.Threshold.get -> double
+Orkeon.Tools.FileSystem.DirectorySearchRequest.Threshold.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchRequest.TopK.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchRequest.TopK.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResponse
+Orkeon.Tools.FileSystem.DirectorySearchResponse.DirectorySearchResponse() -> void
+Orkeon.Tools.FileSystem.DirectorySearchResponse.DirectorySearchResponse(Orkeon.Tools.FileSystem.DirectorySearchResponse! original) -> void
+Orkeon.Tools.FileSystem.DirectorySearchResponse.FilesProcessed.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchResponse.FilesProcessed.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResponse.FilesSkipped.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchResponse.FilesSkipped.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResponse.Query.get -> string!
+Orkeon.Tools.FileSystem.DirectorySearchResponse.Query.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResponse.ResultCount.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchResponse.ResultCount.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResponse.Results.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.FileSystem.DirectorySearchResult!>!
+Orkeon.Tools.FileSystem.DirectorySearchResponse.Results.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResponse.TotalChunks.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchResponse.TotalChunks.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResult
+Orkeon.Tools.FileSystem.DirectorySearchResult.ApproximateLine.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchResult.ApproximateLine.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResult.ChunkIndex.get -> int
+Orkeon.Tools.FileSystem.DirectorySearchResult.ChunkIndex.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResult.Content.get -> string!
+Orkeon.Tools.FileSystem.DirectorySearchResult.Content.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResult.DirectorySearchResult() -> void
+Orkeon.Tools.FileSystem.DirectorySearchResult.DirectorySearchResult(Orkeon.Tools.FileSystem.DirectorySearchResult! original) -> void
+Orkeon.Tools.FileSystem.DirectorySearchResult.FileExtension.get -> string!
+Orkeon.Tools.FileSystem.DirectorySearchResult.FileExtension.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResult.Score.get -> float
+Orkeon.Tools.FileSystem.DirectorySearchResult.Score.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchResult.SourceFile.get -> string!
+Orkeon.Tools.FileSystem.DirectorySearchResult.SourceFile.init -> void
+Orkeon.Tools.FileSystem.DirectorySearchTool
+Orkeon.Tools.FileSystem.DirectorySearchTool.DirectorySearchTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch! searchService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.DirectorySearchTool!>? logger = null) -> void
+Orkeon.Tools.FileSystem.EmailAttachmentInfo
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.ContentType.get -> string?
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.ContentType.init -> void
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.EmailAttachmentInfo() -> void
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.EmailAttachmentInfo(Orkeon.Tools.FileSystem.EmailAttachmentInfo! original) -> void
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.EncodedSize.get -> int?
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.EncodedSize.init -> void
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.EstimatedSize.get -> int?
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.EstimatedSize.init -> void
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.Filename.get -> string?
+Orkeon.Tools.FileSystem.EmailAttachmentInfo.Filename.init -> void
+Orkeon.Tools.FileSystem.EmailParserRequest
+Orkeon.Tools.FileSystem.EmailParserRequest.EmailParserRequest() -> void
+Orkeon.Tools.FileSystem.EmailParserRequest.EmailParserRequest(Orkeon.Tools.FileSystem.EmailParserRequest! original) -> void
+Orkeon.Tools.FileSystem.EmailParserRequest.ExtractAttachments.get -> bool
+Orkeon.Tools.FileSystem.EmailParserRequest.ExtractAttachments.init -> void
+Orkeon.Tools.FileSystem.EmailParserRequest.ParseHtml.get -> bool
+Orkeon.Tools.FileSystem.EmailParserRequest.ParseHtml.init -> void
+Orkeon.Tools.FileSystem.EmailParserRequest.Path.get -> string!
+Orkeon.Tools.FileSystem.EmailParserRequest.Path.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse
+Orkeon.Tools.FileSystem.EmailParserResponse.Attachments.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.FileSystem.EmailAttachmentInfo!>!
+Orkeon.Tools.FileSystem.EmailParserResponse.Attachments.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.Body.get -> string!
+Orkeon.Tools.FileSystem.EmailParserResponse.Body.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.Cc.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.FileSystem.EmailParserResponse.Cc.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.Date.get -> string!
+Orkeon.Tools.FileSystem.EmailParserResponse.Date.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.EmailParserResponse() -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.EmailParserResponse(Orkeon.Tools.FileSystem.EmailParserResponse! original) -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.From.get -> string!
+Orkeon.Tools.FileSystem.EmailParserResponse.From.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Tools.FileSystem.EmailParserResponse.Headers.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.Priority.get -> string!
+Orkeon.Tools.FileSystem.EmailParserResponse.Priority.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.Subject.get -> string!
+Orkeon.Tools.FileSystem.EmailParserResponse.Subject.init -> void
+Orkeon.Tools.FileSystem.EmailParserResponse.To.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.FileSystem.EmailParserResponse.To.init -> void
+Orkeon.Tools.FileSystem.EmailParserTool
+Orkeon.Tools.FileSystem.EmailParserTool.EmailParserTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.EmailParserTool!>? logger = null) -> void
+Orkeon.Tools.FileSystem.FileReadRequest
+Orkeon.Tools.FileSystem.FileReadRequest.Encoding.get -> string!
+Orkeon.Tools.FileSystem.FileReadRequest.Encoding.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.FileReadRequest() -> void
+Orkeon.Tools.FileSystem.FileReadRequest.MaxLength.get -> int?
+Orkeon.Tools.FileSystem.FileReadRequest.MaxLength.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.Path.get -> string!
+Orkeon.Tools.FileSystem.FileReadRequest.Path.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.UseRaggableCache.get -> bool
+Orkeon.Tools.FileSystem.FileReadRequest.UseRaggableCache.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse
+Orkeon.Tools.FileSystem.FileReadResponse.Content.get -> string!
+Orkeon.Tools.FileSystem.FileReadResponse.Content.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.FileInfo.get -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Tools.FileSystem.FileReadResponse.FileInfo.init -> void
+Orkeon.Tools.FileSystem.FileReadResponse.FileReadResponse() -> void
+Orkeon.Tools.FileSystem.FileReadResponse.ServedFromCache.get -> bool
+Orkeon.Tools.FileSystem.FileReadResponse.ServedFromCache.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.Truncated.get -> bool
+Orkeon.Tools.FileSystem.FileReadResponse.Truncated.set -> void
+Orkeon.Tools.FileSystem.FileReadTool
+Orkeon.Tools.FileSystem.FileReadTool.FileReadTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore? raggableStore = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.FileReadTool!>? logger = null) -> void
+Orkeon.Tools.FileSystem.FileWriteRequest
+Orkeon.Tools.FileSystem.FileWriteRequest.Append.get -> bool
+Orkeon.Tools.FileSystem.FileWriteRequest.Append.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.Content.get -> string!
+Orkeon.Tools.FileSystem.FileWriteRequest.Content.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.CreateBackup.get -> bool
+Orkeon.Tools.FileSystem.FileWriteRequest.CreateBackup.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.Encoding.get -> string!
+Orkeon.Tools.FileSystem.FileWriteRequest.Encoding.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.FileWriteRequest() -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.Path.get -> string!
+Orkeon.Tools.FileSystem.FileWriteRequest.Path.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse
+Orkeon.Tools.FileSystem.FileWriteResponse.BackupPath.get -> string?
+Orkeon.Tools.FileSystem.FileWriteResponse.BackupPath.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.BytesWritten.get -> int
+Orkeon.Tools.FileSystem.FileWriteResponse.BytesWritten.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.Errors.get -> System.Collections.Immutable.ImmutableList<string!>?
+Orkeon.Tools.FileSystem.FileWriteResponse.Errors.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.FileWriteResponse() -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.Path.get -> string!
+Orkeon.Tools.FileSystem.FileWriteResponse.Path.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.Success.get -> bool
+Orkeon.Tools.FileSystem.FileWriteResponse.Success.set -> void
+Orkeon.Tools.FileSystem.FileWriteTool
+Orkeon.Tools.FileSystem.FileWriteTool.FileWriteTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.FileWriteTool!>? logger = null, Orkeon.Analysis.Abstractions.Interfaces.ICitationBlockValidator? citationValidator = null, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
+Orkeon.Tools.FileSystem.PatternCount
+Orkeon.Tools.FileSystem.PatternCount.Count.get -> int
+Orkeon.Tools.FileSystem.PatternCount.Count.set -> void
+Orkeon.Tools.FileSystem.PatternCount.Error.get -> string?
+Orkeon.Tools.FileSystem.PatternCount.Error.set -> void
+Orkeon.Tools.FileSystem.PatternCount.Matches.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Orkeon.Tools.FileSystem.PatternCount.Matches.init -> void
+Orkeon.Tools.FileSystem.PatternCount.Pattern.get -> string!
+Orkeon.Tools.FileSystem.PatternCount.Pattern.set -> void
+Orkeon.Tools.FileSystem.PatternCount.PatternCount() -> void
+override Orkeon.Tools.FileSystem.CountPatternTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.FileSystem.CountPatternTool.Description.get -> string!
+override Orkeon.Tools.FileSystem.CountPatternTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.CountPatternRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.CountPatternResponse!>!
+override Orkeon.Tools.FileSystem.CountPatternTool.Name.get -> string!
+override Orkeon.Tools.FileSystem.CountPatternTool.ValidateTypedRequest(Orkeon.Tools.FileSystem.CountPatternRequest! request) -> string?
+override Orkeon.Tools.FileSystem.DirectoryEntry.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.DirectoryEntry.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.DirectoryEntry.ToString() -> string!
+override Orkeon.Tools.FileSystem.DirectoryReadRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.DirectoryReadRequest.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.DirectoryReadRequest.ToString() -> string!
+override Orkeon.Tools.FileSystem.DirectoryReadResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.DirectoryReadResponse.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.DirectoryReadResponse.ToString() -> string!
+override Orkeon.Tools.FileSystem.DirectoryReadTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.FileSystem.DirectoryReadTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.DirectoryReadRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.DirectoryReadResponse!>!
+override Orkeon.Tools.FileSystem.DirectoryReadTool.ValidateTypedRequest(Orkeon.Tools.FileSystem.DirectoryReadRequest! request) -> string?
+override Orkeon.Tools.FileSystem.DirectorySearchRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.DirectorySearchRequest.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.DirectorySearchRequest.ToString() -> string!
+override Orkeon.Tools.FileSystem.DirectorySearchResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.DirectorySearchResponse.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.DirectorySearchResponse.ToString() -> string!
+override Orkeon.Tools.FileSystem.DirectorySearchResult.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.DirectorySearchResult.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.DirectorySearchResult.ToString() -> string!
+override Orkeon.Tools.FileSystem.DirectorySearchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.FileSystem.DirectorySearchTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.DirectorySearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.DirectorySearchResponse!>!
+override Orkeon.Tools.FileSystem.DirectorySearchTool.ValidateTypedRequest(Orkeon.Tools.FileSystem.DirectorySearchRequest! request) -> string?
+override Orkeon.Tools.FileSystem.EmailAttachmentInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.EmailAttachmentInfo.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.EmailAttachmentInfo.ToString() -> string!
+override Orkeon.Tools.FileSystem.EmailParserRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.EmailParserRequest.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.EmailParserRequest.ToString() -> string!
+override Orkeon.Tools.FileSystem.EmailParserResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.FileSystem.EmailParserResponse.GetHashCode() -> int
+override Orkeon.Tools.FileSystem.EmailParserResponse.ToString() -> string!
+override Orkeon.Tools.FileSystem.EmailParserTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.EmailParserRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.EmailParserResponse!>!
+override Orkeon.Tools.FileSystem.EmailParserTool.ValidateTypedRequest(Orkeon.Tools.FileSystem.EmailParserRequest! request) -> string?
+override Orkeon.Tools.FileSystem.FileReadTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.FileSystem.FileReadTool.Description.get -> string!
+override Orkeon.Tools.FileSystem.FileReadTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.FileReadRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.FileReadResponse!>!
+override Orkeon.Tools.FileSystem.FileReadTool.Name.get -> string!
+override Orkeon.Tools.FileSystem.FileReadTool.ValidateTypedRequest(Orkeon.Tools.FileSystem.FileReadRequest! request) -> string?
+override Orkeon.Tools.FileSystem.FileWriteTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.FileSystem.FileWriteTool.Description.get -> string!
+override Orkeon.Tools.FileSystem.FileWriteTool.ExecuteTypedAsync(Orkeon.Tools.FileSystem.FileWriteRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.FileSystem.FileWriteResponse!>!
+override Orkeon.Tools.FileSystem.FileWriteTool.Name.get -> string!
+override Orkeon.Tools.FileSystem.FileWriteTool.ValidateTypedRequest(Orkeon.Tools.FileSystem.FileWriteRequest! request) -> string?
+static Orkeon.Tools.FileSystem.DependencyInjection.FileSystemToolExtensions.AddOrkeonFileSystemTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.FileSystem.DirectoryEntry.operator !=(Orkeon.Tools.FileSystem.DirectoryEntry? left, Orkeon.Tools.FileSystem.DirectoryEntry? right) -> bool
+static Orkeon.Tools.FileSystem.DirectoryEntry.operator ==(Orkeon.Tools.FileSystem.DirectoryEntry? left, Orkeon.Tools.FileSystem.DirectoryEntry? right) -> bool
+static Orkeon.Tools.FileSystem.DirectoryReadRequest.operator !=(Orkeon.Tools.FileSystem.DirectoryReadRequest? left, Orkeon.Tools.FileSystem.DirectoryReadRequest? right) -> bool
+static Orkeon.Tools.FileSystem.DirectoryReadRequest.operator ==(Orkeon.Tools.FileSystem.DirectoryReadRequest? left, Orkeon.Tools.FileSystem.DirectoryReadRequest? right) -> bool
+static Orkeon.Tools.FileSystem.DirectoryReadResponse.operator !=(Orkeon.Tools.FileSystem.DirectoryReadResponse? left, Orkeon.Tools.FileSystem.DirectoryReadResponse? right) -> bool
+static Orkeon.Tools.FileSystem.DirectoryReadResponse.operator ==(Orkeon.Tools.FileSystem.DirectoryReadResponse? left, Orkeon.Tools.FileSystem.DirectoryReadResponse? right) -> bool
+static Orkeon.Tools.FileSystem.DirectorySearchRequest.operator !=(Orkeon.Tools.FileSystem.DirectorySearchRequest? left, Orkeon.Tools.FileSystem.DirectorySearchRequest? right) -> bool
+static Orkeon.Tools.FileSystem.DirectorySearchRequest.operator ==(Orkeon.Tools.FileSystem.DirectorySearchRequest? left, Orkeon.Tools.FileSystem.DirectorySearchRequest? right) -> bool
+static Orkeon.Tools.FileSystem.DirectorySearchResponse.operator !=(Orkeon.Tools.FileSystem.DirectorySearchResponse? left, Orkeon.Tools.FileSystem.DirectorySearchResponse? right) -> bool
+static Orkeon.Tools.FileSystem.DirectorySearchResponse.operator ==(Orkeon.Tools.FileSystem.DirectorySearchResponse? left, Orkeon.Tools.FileSystem.DirectorySearchResponse? right) -> bool
+static Orkeon.Tools.FileSystem.DirectorySearchResult.operator !=(Orkeon.Tools.FileSystem.DirectorySearchResult? left, Orkeon.Tools.FileSystem.DirectorySearchResult? right) -> bool
+static Orkeon.Tools.FileSystem.DirectorySearchResult.operator ==(Orkeon.Tools.FileSystem.DirectorySearchResult? left, Orkeon.Tools.FileSystem.DirectorySearchResult? right) -> bool
+static Orkeon.Tools.FileSystem.EmailAttachmentInfo.operator !=(Orkeon.Tools.FileSystem.EmailAttachmentInfo? left, Orkeon.Tools.FileSystem.EmailAttachmentInfo? right) -> bool
+static Orkeon.Tools.FileSystem.EmailAttachmentInfo.operator ==(Orkeon.Tools.FileSystem.EmailAttachmentInfo? left, Orkeon.Tools.FileSystem.EmailAttachmentInfo? right) -> bool
+static Orkeon.Tools.FileSystem.EmailParserRequest.operator !=(Orkeon.Tools.FileSystem.EmailParserRequest? left, Orkeon.Tools.FileSystem.EmailParserRequest? right) -> bool
+static Orkeon.Tools.FileSystem.EmailParserRequest.operator ==(Orkeon.Tools.FileSystem.EmailParserRequest? left, Orkeon.Tools.FileSystem.EmailParserRequest? right) -> bool
+static Orkeon.Tools.FileSystem.EmailParserResponse.operator !=(Orkeon.Tools.FileSystem.EmailParserResponse? left, Orkeon.Tools.FileSystem.EmailParserResponse? right) -> bool
+static Orkeon.Tools.FileSystem.EmailParserResponse.operator ==(Orkeon.Tools.FileSystem.EmailParserResponse? left, Orkeon.Tools.FileSystem.EmailParserResponse? right) -> bool
+virtual Orkeon.Tools.FileSystem.DirectoryEntry.<Clone>$() -> Orkeon.Tools.FileSystem.DirectoryEntry!
+virtual Orkeon.Tools.FileSystem.DirectoryEntry.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.DirectoryEntry.Equals(Orkeon.Tools.FileSystem.DirectoryEntry? other) -> bool
+virtual Orkeon.Tools.FileSystem.DirectoryEntry.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.FileSystem.DirectoryReadRequest.<Clone>$() -> Orkeon.Tools.FileSystem.DirectoryReadRequest!
+virtual Orkeon.Tools.FileSystem.DirectoryReadRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.DirectoryReadRequest.Equals(Orkeon.Tools.FileSystem.DirectoryReadRequest? other) -> bool
+virtual Orkeon.Tools.FileSystem.DirectoryReadRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.FileSystem.DirectoryReadResponse.<Clone>$() -> Orkeon.Tools.FileSystem.DirectoryReadResponse!
+virtual Orkeon.Tools.FileSystem.DirectoryReadResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.DirectoryReadResponse.Equals(Orkeon.Tools.FileSystem.DirectoryReadResponse? other) -> bool
+virtual Orkeon.Tools.FileSystem.DirectoryReadResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.FileSystem.DirectorySearchRequest.<Clone>$() -> Orkeon.Tools.FileSystem.DirectorySearchRequest!
+virtual Orkeon.Tools.FileSystem.DirectorySearchRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.DirectorySearchRequest.Equals(Orkeon.Tools.FileSystem.DirectorySearchRequest? other) -> bool
+virtual Orkeon.Tools.FileSystem.DirectorySearchRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.FileSystem.DirectorySearchResponse.<Clone>$() -> Orkeon.Tools.FileSystem.DirectorySearchResponse!
+virtual Orkeon.Tools.FileSystem.DirectorySearchResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.DirectorySearchResponse.Equals(Orkeon.Tools.FileSystem.DirectorySearchResponse? other) -> bool
+virtual Orkeon.Tools.FileSystem.DirectorySearchResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.FileSystem.DirectorySearchResult.<Clone>$() -> Orkeon.Tools.FileSystem.DirectorySearchResult!
+virtual Orkeon.Tools.FileSystem.DirectorySearchResult.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.DirectorySearchResult.Equals(Orkeon.Tools.FileSystem.DirectorySearchResult? other) -> bool
+virtual Orkeon.Tools.FileSystem.DirectorySearchResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.FileSystem.EmailAttachmentInfo.<Clone>$() -> Orkeon.Tools.FileSystem.EmailAttachmentInfo!
+virtual Orkeon.Tools.FileSystem.EmailAttachmentInfo.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.EmailAttachmentInfo.Equals(Orkeon.Tools.FileSystem.EmailAttachmentInfo? other) -> bool
+virtual Orkeon.Tools.FileSystem.EmailAttachmentInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.FileSystem.EmailParserRequest.<Clone>$() -> Orkeon.Tools.FileSystem.EmailParserRequest!
+virtual Orkeon.Tools.FileSystem.EmailParserRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.EmailParserRequest.Equals(Orkeon.Tools.FileSystem.EmailParserRequest? other) -> bool
+virtual Orkeon.Tools.FileSystem.EmailParserRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.FileSystem.EmailParserResponse.<Clone>$() -> Orkeon.Tools.FileSystem.EmailParserResponse!
+virtual Orkeon.Tools.FileSystem.EmailParserResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.FileSystem.EmailParserResponse.Equals(Orkeon.Tools.FileSystem.EmailParserResponse? other) -> bool
+virtual Orkeon.Tools.FileSystem.EmailParserResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool

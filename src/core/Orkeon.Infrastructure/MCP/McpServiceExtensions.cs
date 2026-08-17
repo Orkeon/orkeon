@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 namespace Orkeon.Infrastructure.MCP;
 
 /// <summary>
 /// DI extension methods for registering MCP services.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class McpServiceExtensions
 {
     /// <summary>

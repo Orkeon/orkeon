@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Retrieval;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Rag.Corrective;
 
@@ -17,6 +18,7 @@ namespace Orkeon.Rag.Corrective;
 /// reaches <see cref="GroundedThreshold"/>. Unsupported sentences are returned
 /// as the unsupported claims.
 /// </summary>
+[Experimental("ORKEXP003", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed partial class HeuristicGroundednessChecker : IGroundednessChecker
 {
     /// <summary>Default fraction of a sentence's tokens that must appear in the context.</summary>

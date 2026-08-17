@@ -70,6 +70,7 @@ The documentation is organized into 6 thematic sections.
 |------|-------------|
 | [Catalog of the 104 examples](./reference/examples-catalog.md) | 9 business categories, notable examples detailed |
 | [Limits and constraints](./reference/limitations.md) | Known constraints of the current version |
+| [Experimental APIs](./reference/experimental-apis.md) | `[Experimental]` surfaces (A2A, Autonomous, corrective RAG, MCP), `ORKEXP001–004` diagnostic IDs, how to opt in |
 | [Example data policy](./reference/example-data-policy.md) | Why examples ship config not datasets, how to mount your own input (`/data:ro`, `/output:rw`), and contributor rules for bundled sample fixtures |
 | [Opt-in subsystems](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, tool rate-limiting, key rotation, benchmarking, multi-modal, kickoff hooks, RAG subsystem — explicit activation `AddOrkeonXxx()` (outside default DI) |
 | [Hosting & runner bootstrap](./reference/hosting.md) | `Orkeon.Hosting`: `RunnerHost.Build`, `ConfigureRunnerServices` wiring order (LLM-first, tool suites, VFS, `ServiceProviderToolRegistry`), `RunnerExecution` flows, and the web-host consumption pattern |

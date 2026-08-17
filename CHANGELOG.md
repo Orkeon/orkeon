@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — The public API surface is frozen and enforced (PUB-05)
+
+Ahead of the first public release, the API contract is now mechanical, not aspirational:
+
+- **PublicAPI baselines** — every packable library carries `PublicAPI.Shipped.txt`
+  (29 235 declared public APIs across 28 projects, source-generated members included)
+  and an empty `PublicAPI.Unshipped.txt`, checked by
+  `Microsoft.CodeAnalysis.PublicApiAnalyzers`. An undeclared public API addition or
+  removal is a **build error** (`RS0016`/`RS0017` promoted via `WarningsAsErrors`).
+  Executables (`src/apps/`) opt out — an app's surface is not a contract.
+- **`[Experimental]` on the unstable surfaces** — 71 types now carry
+  `ExperimentalAttribute` with stable diagnostic IDs, documented in
+  `docs/reference/experimental-apis.md` (EN + FR): `ORKEXP001` A2A (pre-v1.0.1
+  implementation), `ORKEXP002` Autonomous orchestration (budget, A2A channel, spawn),
+  `ORKEXP003` corrective RAG (CRAG contracts), `ORKEXP004` MCP (pinned to `2024-11-05`
+  until the protocol upgrade). Referencing them from outside the repository is a
+  compile error to suppress explicitly; `src/`, `tests/` and `examples/` suppress the
+  four IDs centrally because the framework wires its own experimental surfaces.
+- **Versioning policy** — CONTRIBUTING (EN + FR) now states the contract: SemVer, a
+  breaking change is any edit to `PublicAPI.Shipped.txt`, `[Obsolete]` ships at least
+  one minor version before any removal, and no breaking change to a stable shipped API
+  within the 1.x window.
+- The 47 `InternalsVisibleTo` declarations were inventoried: 36 target test projects;
+  the 11 production-to-production grants all belong to shared-kernel pairs already
+  documented by ADR-002/003/006 (abstractions → implementation, Domain → Application/
+  Infrastructure, Cli.Abstractions → Cli) plus two grants to the `orkeon` tool
+  executable — kept, documented in the PUB-05 closure note.
+
 ### Changed — Complete NuGet package metadata (PUB-04)
 
 Every one of the 28 packable projects now ships presentation-grade metadata:

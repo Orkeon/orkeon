@@ -1,4 +1,5 @@
 using Orkeon.Rag.Abstractions.Models;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Rag.Corrective;
 
@@ -15,6 +16,7 @@ namespace Orkeon.Rag.Corrective;
 /// <c>Corrective.WebFallback.Enabled = false</c>) the fallback edge is skipped
 /// and traced.
 /// </remarks>
+[Experimental("ORKEXP003", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public interface IWebDocumentRetriever
 {
     /// <summary>Searches the web for up to <paramref name="maxResults"/> documents matching <paramref name="query"/>.</summary>

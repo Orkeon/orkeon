@@ -57,6 +57,30 @@
           Pack="true" PackagePath="icon.png" Visible="false" />
   </ItemGroup>
 
+  <!-- Public API freeze (PUB-05 / F5). Every packable library carries
+       PublicAPI.Shipped.txt (the frozen surface) + PublicAPI.Unshipped.txt
+       (additions since the last release): an undeclared public API change
+       breaks the build (RS0016/RS0017 promoted to errors below). Apps opt out
+       via OrkeonFreezePublicApi=false in src/apps/Directory.Build.props —
+       an executable's surface is not a contract. RS0026/RS0027/RS0041
+       (overload/oblivious style rules) stay off: they police API *shape*,
+       which the R11.7 API-shape analyzer family already owns. -->
+  <PropertyGroup>
+    <OrkeonFreezePublicApi Condition="'$(OrkeonFreezePublicApi)' == ''">true</OrkeonFreezePublicApi>
+    <NoWarn>$(NoWarn);RS0026;RS0027;RS0041</NoWarn>
+    <!-- The framework wires its own experimental surfaces (A2A, Autonomous,
+         corrective RAG, MCP — see docs/reference/experimental-apis.md);
+         the ORKEXP diagnostics are meant for consumers outside this repo. -->
+    <NoWarn>$(NoWarn);ORKEXP001;ORKEXP002;ORKEXP003;ORKEXP004</NoWarn>
+    <!-- An undeclared public API change is a build error, not an opinion. -->
+    <WarningsAsErrors Condition="'$(OrkeonFreezePublicApi)' == 'true'">$(WarningsAsErrors);RS0016;RS0017</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(OrkeonFreezePublicApi)' == 'true' AND '$(IsPackable)' != 'false'">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildProjectDirectory)/PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="$(MSBuildProjectDirectory)/PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
   <!-- VFS compliance analyzer: forbids direct System.IO usage in framework code.
        Path-based exemptions live in SystemIoUsageAnalyzer.IsExemptByPath.
        Opt out per symbol with [SuppressVfsCompliance("reason")]. -->

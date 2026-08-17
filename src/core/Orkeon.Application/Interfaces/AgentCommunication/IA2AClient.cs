@@ -1,11 +1,13 @@
 
 using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Application.Interfaces.AgentCommunication;
 
 /// <summary>
 /// Client for sending tasks to remote A2A agents.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public interface IA2AClient
 {
     /// <summary>Sends a task to a remote agent and waits for the response.</summary>
@@ -27,6 +29,7 @@ public interface IA2AClient
 /// <summary>
 /// Represents a task request sent to a remote A2A agent.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed record A2ATaskRequest
 {
     /// <summary>Gets the unique task identifier.</summary>
@@ -53,6 +56,7 @@ public sealed record A2ATaskRequest
 /// <summary>
 /// Represents the response to an A2A task.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed record A2ATaskResponse
 {
     /// <summary>Gets the task identifier.</summary>
@@ -80,6 +84,7 @@ public sealed record A2ATaskResponse
 /// <summary>
 /// Represents a streaming update for an A2A task (SSE event).
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed record A2ATaskUpdate
 {
     /// <summary>Gets the task identifier.</summary>
@@ -104,6 +109,7 @@ public sealed record A2ATaskUpdate
 /// Status of an A2A task.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public enum A2ATaskStatus
 {
     /// <summary>Task has been received but not yet started.</summary>

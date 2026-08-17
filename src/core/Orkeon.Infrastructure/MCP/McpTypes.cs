@@ -1,11 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
 
 /// <summary>
 /// Transport type for connecting to an MCP server.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public enum McpTransportType
 {
     /// <summary>Standard input/output transport (subprocess).</summary>
@@ -18,6 +20,7 @@ public enum McpTransportType
 /// <summary>
 /// Configuration for connecting to an MCP server.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpServerConfig
 {
     /// <summary>
@@ -49,6 +52,7 @@ public class McpServerConfig
 /// <summary>
 /// MCP tool definition as returned by tools/list.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpToolDefinition
 {
     /// <summary>Gets or sets the tool name.</summary>
@@ -67,6 +71,7 @@ public class McpToolDefinition
 /// <summary>
 /// Result of an MCP tool call.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpToolCallResult
 {
     /// <summary>Gets the content blocks returned by the tool.</summary>
@@ -81,6 +86,7 @@ public class McpToolCallResult
 /// <summary>
 /// Content block in an MCP response.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpContent
 {
     /// <summary>Gets or sets the content type (e.g., "text", "image").</summary>
@@ -103,6 +109,7 @@ public class McpContent
 /// <summary>
 /// MCP resource descriptor.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpResource
 {
     /// <summary>Gets or sets the resource URI.</summary>
@@ -125,6 +132,7 @@ public class McpResource
 /// <summary>
 /// Capabilities advertised by an MCP server.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpServerCapabilities
 {
     /// <summary>Gets or sets the tools capability info, if supported.</summary>
@@ -143,6 +151,7 @@ public class McpServerCapabilities
 /// <summary>
 /// Info about a specific capability.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpCapabilityInfo
 {
     /// <summary>Gets or sets whether the server supports list-changed notifications for this capability.</summary>
@@ -153,6 +162,7 @@ public class McpCapabilityInfo
 /// <summary>
 /// Runtime status of a connected MCP server.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpServerStatus
 {
     /// <summary>Gets or sets the server identifier.</summary>
@@ -168,6 +178,7 @@ public class McpServerStatus
 /// <summary>
 /// Parameters for tools/call.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpToolCallParams
 {
     /// <summary>Gets or sets the name of the tool to call.</summary>
@@ -182,6 +193,7 @@ public class McpToolCallParams
 /// <summary>
 /// Result of tools/list.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpToolListResult
 {
     /// <summary>Gets the list of available tools.</summary>
@@ -192,6 +204,7 @@ public class McpToolListResult
 /// <summary>
 /// Result of resources/list.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpResourceListResult
 {
     /// <summary>Gets the list of available resources.</summary>
@@ -202,6 +215,7 @@ public class McpResourceListResult
 /// <summary>
 /// Result of initialize handshake.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpInitializeResult
 {
     /// <summary>Gets or sets the MCP protocol version the server implements.</summary>
@@ -220,6 +234,7 @@ public class McpInitializeResult
 /// <summary>
 /// MCP server identification.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpServerInfo
 {
     /// <summary>Gets or sets the server implementation name.</summary>

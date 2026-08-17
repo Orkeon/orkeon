@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using Orkeon.Domain.Tools;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
 
@@ -9,6 +10,7 @@ namespace Orkeon.Infrastructure.MCP;
 /// Manages connections to multiple MCP servers and registers their
 /// tools in the Orkeon tool registry.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class McpToolProvider : IAsyncDisposable
 {
     private readonly IToolRegistry _toolRegistry;

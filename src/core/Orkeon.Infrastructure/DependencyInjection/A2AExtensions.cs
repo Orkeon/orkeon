@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Infrastructure.DomainEvents;
 using Orkeon.Infrastructure.Persistence;
 using Orkeon.Infrastructure.Persistence.Agent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
@@ -18,6 +19,7 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// call <c>AddOrkeonA2A(...)</c> explicitly. See <c>docs/reference/opt-in-subsystems.md</c>.
 /// </para>
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static class A2AExtensions
 {
     /// <summary>

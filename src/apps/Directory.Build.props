@@ -1,0 +1,9 @@
+<Project>
+  <!-- Chain to src/Directory.Build.props. Apps are executables, not contracts:
+       they opt out of the public API freeze (PUB-05); the NuGet icon family
+       stays the central 'core' default. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Build.props, $(MSBuildThisFileDirectory)..))" />
+  <PropertyGroup>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+  </PropertyGroup>
+</Project>

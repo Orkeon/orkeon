@@ -1,0 +1,1238 @@
+#nullable enable
+Orkeon.Tools.Data.CsvReaderRequest
+Orkeon.Tools.Data.CsvReaderRequest.CsvReaderRequest() -> void
+Orkeon.Tools.Data.CsvReaderRequest.CsvReaderRequest(Orkeon.Tools.Data.CsvReaderRequest! original) -> void
+Orkeon.Tools.Data.CsvReaderRequest.Delimiter.get -> string!
+Orkeon.Tools.Data.CsvReaderRequest.Delimiter.init -> void
+Orkeon.Tools.Data.CsvReaderRequest.HasHeader.get -> bool
+Orkeon.Tools.Data.CsvReaderRequest.HasHeader.init -> void
+Orkeon.Tools.Data.CsvReaderRequest.MaxRows.get -> int?
+Orkeon.Tools.Data.CsvReaderRequest.MaxRows.init -> void
+Orkeon.Tools.Data.CsvReaderRequest.Path.get -> string!
+Orkeon.Tools.Data.CsvReaderRequest.Path.init -> void
+Orkeon.Tools.Data.CsvReaderResponse
+Orkeon.Tools.Data.CsvReaderResponse.ColumnCount.get -> int
+Orkeon.Tools.Data.CsvReaderResponse.ColumnCount.init -> void
+Orkeon.Tools.Data.CsvReaderResponse.CsvReaderResponse() -> void
+Orkeon.Tools.Data.CsvReaderResponse.CsvReaderResponse(Orkeon.Tools.Data.CsvReaderResponse! original) -> void
+Orkeon.Tools.Data.CsvReaderResponse.Headers.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.CsvReaderResponse.Headers.init -> void
+Orkeon.Tools.Data.CsvReaderResponse.RowCount.get -> int
+Orkeon.Tools.Data.CsvReaderResponse.RowCount.init -> void
+Orkeon.Tools.Data.CsvReaderResponse.Rows.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.Dictionary<string!, object!>!>!
+Orkeon.Tools.Data.CsvReaderResponse.Rows.init -> void
+Orkeon.Tools.Data.CsvReaderResponse.Truncated.get -> bool
+Orkeon.Tools.Data.CsvReaderResponse.Truncated.init -> void
+Orkeon.Tools.Data.CsvReaderTool
+Orkeon.Tools.Data.CsvReaderTool.CsvReaderTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.CsvReaderTool!>? logger = null) -> void
+Orkeon.Tools.Data.DependencyInjection.DataToolExtensions
+Orkeon.Tools.Data.DocxReadRequest
+Orkeon.Tools.Data.DocxReadRequest.DocxReadRequest() -> void
+Orkeon.Tools.Data.DocxReadRequest.DocxReadRequest(Orkeon.Tools.Data.DocxReadRequest! original) -> void
+Orkeon.Tools.Data.DocxReadRequest.FilePath.get -> string!
+Orkeon.Tools.Data.DocxReadRequest.FilePath.init -> void
+Orkeon.Tools.Data.DocxReadRequest.IncludeMetadata.get -> bool
+Orkeon.Tools.Data.DocxReadRequest.IncludeMetadata.init -> void
+Orkeon.Tools.Data.DocxReadRequest.IncludeTables.get -> bool
+Orkeon.Tools.Data.DocxReadRequest.IncludeTables.init -> void
+Orkeon.Tools.Data.DocxReadResponse
+Orkeon.Tools.Data.DocxReadResponse.Content.get -> string!
+Orkeon.Tools.Data.DocxReadResponse.Content.init -> void
+Orkeon.Tools.Data.DocxReadResponse.DocxReadResponse() -> void
+Orkeon.Tools.Data.DocxReadResponse.DocxReadResponse(Orkeon.Tools.Data.DocxReadResponse! original) -> void
+Orkeon.Tools.Data.DocxReadResponse.Metadata.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Tools.Data.DocxReadResponse.Metadata.init -> void
+Orkeon.Tools.Data.DocxReadResponse.ParagraphCount.get -> int
+Orkeon.Tools.Data.DocxReadResponse.ParagraphCount.init -> void
+Orkeon.Tools.Data.DocxReadResponse.Tables.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.List<string!>!>!
+Orkeon.Tools.Data.DocxReadResponse.Tables.init -> void
+Orkeon.Tools.Data.DocxReadTool
+Orkeon.Tools.Data.DocxReadTool.DocxReadTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.DocxReadTool!>? logger = null) -> void
+Orkeon.Tools.Data.DocxWriteRequest
+Orkeon.Tools.Data.DocxWriteRequest.BulletItems.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.DocxWriteRequest.BulletItems.init -> void
+Orkeon.Tools.Data.DocxWriteRequest.DocxWriteRequest() -> void
+Orkeon.Tools.Data.DocxWriteRequest.DocxWriteRequest(Orkeon.Tools.Data.DocxWriteRequest! original) -> void
+Orkeon.Tools.Data.DocxWriteRequest.FilePath.get -> string!
+Orkeon.Tools.Data.DocxWriteRequest.FilePath.init -> void
+Orkeon.Tools.Data.DocxWriteRequest.Paragraphs.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.DocxWriteRequest.Paragraphs.init -> void
+Orkeon.Tools.Data.DocxWriteRequest.Title.get -> string!
+Orkeon.Tools.Data.DocxWriteRequest.Title.init -> void
+Orkeon.Tools.Data.DocxWriteResponse
+Orkeon.Tools.Data.DocxWriteResponse.DocxWriteResponse() -> void
+Orkeon.Tools.Data.DocxWriteResponse.DocxWriteResponse(Orkeon.Tools.Data.DocxWriteResponse! original) -> void
+Orkeon.Tools.Data.DocxWriteResponse.FilePath.get -> string!
+Orkeon.Tools.Data.DocxWriteResponse.FilePath.init -> void
+Orkeon.Tools.Data.DocxWriteResponse.FileSize.get -> long
+Orkeon.Tools.Data.DocxWriteResponse.FileSize.init -> void
+Orkeon.Tools.Data.DocxWriteResponse.Success.get -> bool
+Orkeon.Tools.Data.DocxWriteResponse.Success.init -> void
+Orkeon.Tools.Data.DocxWriteTool
+Orkeon.Tools.Data.DocxWriteTool.DocxWriteTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.DocxWriteTool!>? logger = null) -> void
+Orkeon.Tools.Data.Graph.ArcadeDbQueryLanguage
+Orkeon.Tools.Data.Graph.ArcadeDbQueryLanguage.Cypher = 0 -> Orkeon.Tools.Data.Graph.ArcadeDbQueryLanguage
+Orkeon.Tools.Data.Graph.ArcadeDbQueryLanguage.Sql = 1 -> Orkeon.Tools.Data.Graph.ArcadeDbQueryLanguage
+Orkeon.Tools.Data.Graph.ArcadeDbRequest
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.ArcadeDbRequest() -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.ArcadeDbRequest(Orkeon.Tools.Data.Graph.ArcadeDbRequest! original) -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.BoltUri.get -> System.Uri?
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.BoltUri.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Database.get -> string!
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Database.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.MaxResults.get -> int
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.MaxResults.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Parameters.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Parameters.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Password.get -> string?
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Password.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Query.get -> string!
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Query.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.QueryLanguage.get -> Orkeon.Tools.Data.Graph.ArcadeDbQueryLanguage
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.QueryLanguage.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Username.get -> string?
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Username.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.ArcadeDbResponse() -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.ArcadeDbResponse(Orkeon.Tools.Data.Graph.ArcadeDbResponse! original) -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.ExecutionTimeMs.get -> long
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.ExecutionTimeMs.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.NodesCreated.get -> int
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.NodesCreated.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.PropertiesSet.get -> int
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.PropertiesSet.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.QueryLanguage.get -> Orkeon.Tools.Data.Graph.ArcadeDbQueryLanguage
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.QueryLanguage.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.RecordCount.get -> int
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.RecordCount.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.Records.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.Dictionary<string!, object!>!>?
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.Records.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.RelationshipsCreated.get -> int
+Orkeon.Tools.Data.Graph.ArcadeDbResponse.RelationshipsCreated.init -> void
+Orkeon.Tools.Data.Graph.ArcadeDbTool
+Orkeon.Tools.Data.Graph.ArcadeDbTool.ArcadeDbTool(Neo4j.Driver.IDriver? driver = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Graph.ArcadeDbTool!>? logger = null) -> void
+Orkeon.Tools.Data.Graph.GraphSchemaRequest
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.Database.get -> string?
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.Database.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.Endpoint.get -> string!
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.Endpoint.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.GraphSchemaRequest() -> void
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.GraphSchemaRequest(Orkeon.Tools.Data.Graph.GraphSchemaRequest! original) -> void
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.GraphType.get -> Orkeon.Tools.Data.Graph.GraphType
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.GraphType.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.Password.get -> string?
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.Password.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.Username.get -> string?
+Orkeon.Tools.Data.Graph.GraphSchemaRequest.Username.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaResponse
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.EdgeLabels.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo!>!
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.EdgeLabels.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.GraphSchemaResponse() -> void
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.GraphSchemaResponse(Orkeon.Tools.Data.Graph.GraphSchemaResponse! original) -> void
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.GraphType.get -> Orkeon.Tools.Data.Graph.GraphType
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.GraphType.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.Indexes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Graph.Models.GraphIndexInfo!>!
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.Indexes.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.PropertyKeys.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo!>!
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.PropertyKeys.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.VertexLabels.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Graph.Models.VertexLabelInfo!>!
+Orkeon.Tools.Data.Graph.GraphSchemaResponse.VertexLabels.init -> void
+Orkeon.Tools.Data.Graph.GraphSchemaTool
+Orkeon.Tools.Data.Graph.GraphSchemaTool.GraphSchemaTool(Gremlin.Net.Driver.IGremlinClient? gremlinClient = null, Neo4j.Driver.IDriver? boltDriver = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Graph.GraphSchemaTool!>? logger = null) -> void
+Orkeon.Tools.Data.Graph.GraphType
+Orkeon.Tools.Data.Graph.GraphType.ArcadeDB = 0 -> Orkeon.Tools.Data.Graph.GraphType
+Orkeon.Tools.Data.Graph.GraphType.JanusGraph = 1 -> Orkeon.Tools.Data.Graph.GraphType
+Orkeon.Tools.Data.Graph.JanusGraphRequest
+Orkeon.Tools.Data.Graph.JanusGraphRequest.Bindings.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.Graph.JanusGraphRequest.Bindings.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphRequest.GremlinEndpoint.get -> string!
+Orkeon.Tools.Data.Graph.JanusGraphRequest.GremlinEndpoint.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphRequest.JanusGraphRequest() -> void
+Orkeon.Tools.Data.Graph.JanusGraphRequest.JanusGraphRequest(Orkeon.Tools.Data.Graph.JanusGraphRequest! original) -> void
+Orkeon.Tools.Data.Graph.JanusGraphRequest.MaxResults.get -> int
+Orkeon.Tools.Data.Graph.JanusGraphRequest.MaxResults.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphRequest.TimeoutMs.get -> long
+Orkeon.Tools.Data.Graph.JanusGraphRequest.TimeoutMs.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphRequest.Traversal.get -> string!
+Orkeon.Tools.Data.Graph.JanusGraphRequest.Traversal.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphResponse
+Orkeon.Tools.Data.Graph.JanusGraphResponse.ExecutionTimeMs.get -> long
+Orkeon.Tools.Data.Graph.JanusGraphResponse.ExecutionTimeMs.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphResponse.JanusGraphResponse() -> void
+Orkeon.Tools.Data.Graph.JanusGraphResponse.JanusGraphResponse(Orkeon.Tools.Data.Graph.JanusGraphResponse! original) -> void
+Orkeon.Tools.Data.Graph.JanusGraphResponse.ResultCount.get -> int
+Orkeon.Tools.Data.Graph.JanusGraphResponse.ResultCount.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphResponse.ResultType.get -> string!
+Orkeon.Tools.Data.Graph.JanusGraphResponse.ResultType.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphResponse.Results.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.Dictionary<string!, object?>!>?
+Orkeon.Tools.Data.Graph.JanusGraphResponse.Results.init -> void
+Orkeon.Tools.Data.Graph.JanusGraphTool
+Orkeon.Tools.Data.Graph.JanusGraphTool.JanusGraphTool(Gremlin.Net.Driver.IGremlinClient? client = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Graph.JanusGraphTool!>? logger = null) -> void
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.<Clone>$() -> Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo!
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.EdgeLabelInfo() -> void
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.Equals(Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo? other) -> bool
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.Label.get -> string!
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.Label.init -> void
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.Properties.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.Properties.init -> void
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.SourceLabel.get -> string?
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.SourceLabel.init -> void
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.TargetLabel.get -> string?
+Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.TargetLabel.init -> void
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.<Clone>$() -> Orkeon.Tools.Data.Graph.Models.GraphIndexInfo!
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.Equals(Orkeon.Tools.Data.Graph.Models.GraphIndexInfo? other) -> bool
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.GraphIndexInfo() -> void
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.IndexType.get -> string?
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.IndexType.init -> void
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.IsUnique.get -> bool
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.IsUnique.init -> void
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.Name.get -> string!
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.Name.init -> void
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.PropertyKeys.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.PropertyKeys.init -> void
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.<Clone>$() -> Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo!
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.Cardinality.get -> string?
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.Cardinality.init -> void
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.DataType.get -> string!
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.DataType.init -> void
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.Equals(Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo? other) -> bool
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.Name.get -> string!
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.Name.init -> void
+Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.PropertyKeyInfo() -> void
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.<Clone>$() -> Orkeon.Tools.Data.Graph.Models.VertexLabelInfo!
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.CountEstimate.get -> long?
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.CountEstimate.init -> void
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.Equals(Orkeon.Tools.Data.Graph.Models.VertexLabelInfo? other) -> bool
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.Label.get -> string!
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.Label.init -> void
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.Properties.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.Properties.init -> void
+Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.VertexLabelInfo() -> void
+Orkeon.Tools.Data.JsonOperation
+Orkeon.Tools.Data.JsonOperation.Format = 2 -> Orkeon.Tools.Data.JsonOperation
+Orkeon.Tools.Data.JsonOperation.Parse = 0 -> Orkeon.Tools.Data.JsonOperation
+Orkeon.Tools.Data.JsonOperation.Query = 1 -> Orkeon.Tools.Data.JsonOperation
+Orkeon.Tools.Data.JsonTool
+Orkeon.Tools.Data.JsonTool.JsonTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.JsonTool!>? logger = null) -> void
+Orkeon.Tools.Data.JsonToolRequest
+Orkeon.Tools.Data.JsonToolRequest.Input.get -> string!
+Orkeon.Tools.Data.JsonToolRequest.Input.set -> void
+Orkeon.Tools.Data.JsonToolRequest.JsonToolRequest() -> void
+Orkeon.Tools.Data.JsonToolRequest.Operation.get -> Orkeon.Tools.Data.JsonOperation
+Orkeon.Tools.Data.JsonToolRequest.Operation.set -> void
+Orkeon.Tools.Data.JsonToolRequest.Query.get -> string?
+Orkeon.Tools.Data.JsonToolRequest.Query.set -> void
+Orkeon.Tools.Data.JsonToolResponse
+Orkeon.Tools.Data.JsonToolResponse.Formatted.get -> string?
+Orkeon.Tools.Data.JsonToolResponse.Formatted.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Info.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.JsonToolResponse.Info.init -> void
+Orkeon.Tools.Data.JsonToolResponse.JsonToolResponse() -> void
+Orkeon.Tools.Data.JsonToolResponse.Length.get -> int?
+Orkeon.Tools.Data.JsonToolResponse.Length.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Parsed.get -> bool?
+Orkeon.Tools.Data.JsonToolResponse.Parsed.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Query.get -> string?
+Orkeon.Tools.Data.JsonToolResponse.Query.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Type.get -> string?
+Orkeon.Tools.Data.JsonToolResponse.Type.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Value.get -> object?
+Orkeon.Tools.Data.JsonToolResponse.Value.set -> void
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.CollectionInfo() -> void
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.CollectionInfo(Orkeon.Tools.Data.MongoDB.Models.CollectionInfo! original) -> void
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.DocumentCount.get -> long
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.DocumentCount.init -> void
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.Indexes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo!>!
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.Indexes.init -> void
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.InferredFields.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.MongoDB.Models.InferredField!>!
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.InferredFields.init -> void
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.Name.get -> string!
+Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.Name.init -> void
+Orkeon.Tools.Data.MongoDB.Models.InferredField
+Orkeon.Tools.Data.MongoDB.Models.InferredField.BsonType.get -> string!
+Orkeon.Tools.Data.MongoDB.Models.InferredField.BsonType.init -> void
+Orkeon.Tools.Data.MongoDB.Models.InferredField.Frequency.get -> double
+Orkeon.Tools.Data.MongoDB.Models.InferredField.Frequency.init -> void
+Orkeon.Tools.Data.MongoDB.Models.InferredField.InferredField() -> void
+Orkeon.Tools.Data.MongoDB.Models.InferredField.InferredField(Orkeon.Tools.Data.MongoDB.Models.InferredField! original) -> void
+Orkeon.Tools.Data.MongoDB.Models.InferredField.IsIndexed.get -> bool
+Orkeon.Tools.Data.MongoDB.Models.InferredField.IsIndexed.init -> void
+Orkeon.Tools.Data.MongoDB.Models.InferredField.Name.get -> string!
+Orkeon.Tools.Data.MongoDB.Models.InferredField.Name.init -> void
+Orkeon.Tools.Data.MongoDB.Models.InferredField.SampleValues.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.MongoDB.Models.InferredField.SampleValues.init -> void
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.IsSparse.get -> bool
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.IsSparse.init -> void
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.IsUnique.get -> bool
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.IsUnique.init -> void
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Keys.get -> System.Collections.Generic.Dictionary<string!, int>!
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Keys.init -> void
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.MongoIndexInfo() -> void
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.MongoIndexInfo(Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo! original) -> void
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Name.get -> string!
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Name.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbOperation.Aggregate = 1 -> Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbOperation.Count = 5 -> Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbOperation.DeleteOne = 4 -> Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbOperation.Distinct = 6 -> Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbOperation.Find = 0 -> Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbOperation.InsertOne = 2 -> Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbOperation.UpdateOne = 3 -> Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbRequest
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Collection.get -> string!
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Collection.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.ConnectionString.get -> string!
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.ConnectionString.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Database.get -> string!
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Database.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Document.get -> string?
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Document.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Filter.get -> string?
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Filter.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Limit.get -> int
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Limit.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.MongoDbRequest() -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.MongoDbRequest(Orkeon.Tools.Data.MongoDB.MongoDbRequest! original) -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Operation.get -> Orkeon.Tools.Data.MongoDB.MongoDbOperation
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Operation.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Pipeline.get -> string?
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Pipeline.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Projection.get -> string?
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Projection.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Skip.get -> int
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Skip.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Sort.get -> string?
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Sort.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Update.get -> string?
+Orkeon.Tools.Data.MongoDB.MongoDbRequest.Update.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.DistinctValues.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.DistinctValues.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.DocumentCount.get -> long
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.DocumentCount.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.Documents.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.Documents.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.ExecutionTimeMs.get -> long
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.ExecutionTimeMs.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.InsertedId.get -> string?
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.InsertedId.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.MatchedCount.get -> long
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.MatchedCount.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.ModifiedCount.get -> long
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.ModifiedCount.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.MongoDbResponse() -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.MongoDbResponse(Orkeon.Tools.Data.MongoDB.MongoDbResponse! original) -> void
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.Operation.get -> string!
+Orkeon.Tools.Data.MongoDB.MongoDbResponse.Operation.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.Collection.get -> string?
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.Collection.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.ConnectionString.get -> string!
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.ConnectionString.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.Database.get -> string!
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.Database.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.MongoDbSchemaRequest() -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.MongoDbSchemaRequest(Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest! original) -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.SampleSize.get -> int
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.SampleSize.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.Collections.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.MongoDB.Models.CollectionInfo!>!
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.Collections.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.DatabaseName.get -> string!
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.DatabaseName.init -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.MongoDbSchemaResponse() -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.MongoDbSchemaResponse(Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse! original) -> void
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaTool
+Orkeon.Tools.Data.MongoDB.MongoDbSchemaTool.MongoDbSchemaTool(MongoDB.Driver.IMongoClient? client = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.MongoDB.MongoDbSchemaTool!>? logger = null) -> void
+Orkeon.Tools.Data.MongoDB.MongoDbTool
+Orkeon.Tools.Data.MongoDB.MongoDbTool.MongoDbTool(MongoDB.Driver.IMongoClient? client = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.MongoDB.MongoDbTool!>? logger = null) -> void
+Orkeon.Tools.Data.PdfReaderPageInfo
+Orkeon.Tools.Data.PdfReaderPageInfo.Height.get -> double
+Orkeon.Tools.Data.PdfReaderPageInfo.Height.init -> void
+Orkeon.Tools.Data.PdfReaderPageInfo.PageNumber.get -> int
+Orkeon.Tools.Data.PdfReaderPageInfo.PageNumber.init -> void
+Orkeon.Tools.Data.PdfReaderPageInfo.PdfReaderPageInfo() -> void
+Orkeon.Tools.Data.PdfReaderPageInfo.PdfReaderPageInfo(Orkeon.Tools.Data.PdfReaderPageInfo! original) -> void
+Orkeon.Tools.Data.PdfReaderPageInfo.Text.get -> string!
+Orkeon.Tools.Data.PdfReaderPageInfo.Text.init -> void
+Orkeon.Tools.Data.PdfReaderPageInfo.Width.get -> double
+Orkeon.Tools.Data.PdfReaderPageInfo.Width.init -> void
+Orkeon.Tools.Data.PdfReaderRequest
+Orkeon.Tools.Data.PdfReaderRequest.PageRange.get -> string?
+Orkeon.Tools.Data.PdfReaderRequest.PageRange.init -> void
+Orkeon.Tools.Data.PdfReaderRequest.Path.get -> string!
+Orkeon.Tools.Data.PdfReaderRequest.Path.init -> void
+Orkeon.Tools.Data.PdfReaderRequest.PdfReaderRequest() -> void
+Orkeon.Tools.Data.PdfReaderRequest.PdfReaderRequest(Orkeon.Tools.Data.PdfReaderRequest! original) -> void
+Orkeon.Tools.Data.PdfReaderResponse
+Orkeon.Tools.Data.PdfReaderResponse.Content.get -> string!
+Orkeon.Tools.Data.PdfReaderResponse.Content.init -> void
+Orkeon.Tools.Data.PdfReaderResponse.PageRange.get -> string!
+Orkeon.Tools.Data.PdfReaderResponse.PageRange.init -> void
+Orkeon.Tools.Data.PdfReaderResponse.Pages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.PdfReaderPageInfo!>!
+Orkeon.Tools.Data.PdfReaderResponse.Pages.init -> void
+Orkeon.Tools.Data.PdfReaderResponse.PagesRead.get -> int
+Orkeon.Tools.Data.PdfReaderResponse.PagesRead.init -> void
+Orkeon.Tools.Data.PdfReaderResponse.PdfReaderResponse() -> void
+Orkeon.Tools.Data.PdfReaderResponse.PdfReaderResponse(Orkeon.Tools.Data.PdfReaderResponse! original) -> void
+Orkeon.Tools.Data.PdfReaderResponse.TotalPages.get -> int
+Orkeon.Tools.Data.PdfReaderResponse.TotalPages.init -> void
+Orkeon.Tools.Data.PdfReaderTool
+Orkeon.Tools.Data.PdfReaderTool.PdfReaderTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.PdfReaderTool!>? logger = null) -> void
+Orkeon.Tools.Data.Relational.DatabaseProviderFactory
+Orkeon.Tools.Data.Relational.DatabaseProviderFactory.DatabaseProviderFactory() -> void
+Orkeon.Tools.Data.Relational.DatabaseProviderFactory.GetProvider(string! providerName) -> System.Data.Common.DbProviderFactory!
+Orkeon.Tools.Data.Relational.DatabaseProviderFactory.IsSupported(string! providerName) -> bool
+Orkeon.Tools.Data.Relational.DatabaseProviderFactory.SupportedProviders.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.ConnectionString.get -> string!
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.ConnectionString.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.DatabaseSchemaRequest() -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.DatabaseSchemaRequest(Orkeon.Tools.Data.Relational.DatabaseSchemaRequest! original) -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.ProviderName.get -> string!
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.ProviderName.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.SchemaScope.get -> Orkeon.Tools.Data.Relational.SchemaScope
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.SchemaScope.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.TableFilter.get -> string?
+Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.TableFilter.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.DatabaseName.get -> string!
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.DatabaseName.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.DatabaseSchemaResponse() -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.DatabaseSchemaResponse(Orkeon.Tools.Data.Relational.DatabaseSchemaResponse! original) -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.ForeignKeys.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo!>?
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.ForeignKeys.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.Indexes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Relational.Models.IndexInfo!>?
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.Indexes.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.ProviderName.get -> string!
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.ProviderName.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.Tables.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Relational.Models.TableInfo!>!
+Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.Tables.init -> void
+Orkeon.Tools.Data.Relational.DatabaseSchemaTool
+Orkeon.Tools.Data.Relational.DatabaseSchemaTool.DatabaseSchemaTool(Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory! providerFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Relational.DatabaseSchemaTool!>? logger = null) -> void
+Orkeon.Tools.Data.Relational.DefaultDatabaseSecurityPolicy
+Orkeon.Tools.Data.Relational.DefaultDatabaseSecurityPolicy.DefaultDatabaseSecurityPolicy() -> void
+Orkeon.Tools.Data.Relational.DefaultDatabaseSecurityPolicy.IsDestructiveOperation(string! query) -> bool
+Orkeon.Tools.Data.Relational.DefaultDatabaseSecurityPolicy.ValidateQuery(string! query, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions! options) -> Orkeon.Domain.SharedKernel.ValidationResult!
+Orkeon.Tools.Data.Relational.MariaDbDatabaseTool
+Orkeon.Tools.Data.Relational.MariaDbDatabaseTool.MariaDbDatabaseTool(Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory! providerFactory, Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy! securityPolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Relational.MariaDbDatabaseTool!>? logger = null) -> void
+Orkeon.Tools.Data.Relational.Models.ColumnInfo
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.<Clone>$() -> Orkeon.Tools.Data.Relational.Models.ColumnInfo!
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.ColumnInfo() -> void
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.DataType.get -> string!
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.DataType.init -> void
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.DefaultValue.get -> string?
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.DefaultValue.init -> void
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.Equals(Orkeon.Tools.Data.Relational.Models.ColumnInfo? other) -> bool
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.IsNullable.get -> bool
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.IsNullable.init -> void
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.IsPrimaryKey.get -> bool
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.IsPrimaryKey.init -> void
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.MaxLength.get -> int?
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.MaxLength.init -> void
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.Name.get -> string!
+Orkeon.Tools.Data.Relational.Models.ColumnInfo.Name.init -> void
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.<Clone>$() -> Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo!
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.Equals(Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo? other) -> bool
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.ForeignKeyInfo() -> void
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.Name.get -> string!
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.Name.init -> void
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.SourceColumns.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.SourceColumns.init -> void
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.SourceTable.get -> string!
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.SourceTable.init -> void
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.TargetColumns.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.TargetColumns.init -> void
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.TargetTable.get -> string!
+Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.TargetTable.init -> void
+Orkeon.Tools.Data.Relational.Models.IndexInfo
+Orkeon.Tools.Data.Relational.Models.IndexInfo.<Clone>$() -> Orkeon.Tools.Data.Relational.Models.IndexInfo!
+Orkeon.Tools.Data.Relational.Models.IndexInfo.Columns.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.Relational.Models.IndexInfo.Columns.init -> void
+Orkeon.Tools.Data.Relational.Models.IndexInfo.Equals(Orkeon.Tools.Data.Relational.Models.IndexInfo? other) -> bool
+Orkeon.Tools.Data.Relational.Models.IndexInfo.IndexInfo() -> void
+Orkeon.Tools.Data.Relational.Models.IndexInfo.IsUnique.get -> bool
+Orkeon.Tools.Data.Relational.Models.IndexInfo.IsUnique.init -> void
+Orkeon.Tools.Data.Relational.Models.IndexInfo.Name.get -> string!
+Orkeon.Tools.Data.Relational.Models.IndexInfo.Name.init -> void
+Orkeon.Tools.Data.Relational.Models.IndexInfo.TableName.get -> string!
+Orkeon.Tools.Data.Relational.Models.IndexInfo.TableName.init -> void
+Orkeon.Tools.Data.Relational.Models.IndexInfo.Type.get -> string?
+Orkeon.Tools.Data.Relational.Models.IndexInfo.Type.init -> void
+Orkeon.Tools.Data.Relational.Models.TableInfo
+Orkeon.Tools.Data.Relational.Models.TableInfo.<Clone>$() -> Orkeon.Tools.Data.Relational.Models.TableInfo!
+Orkeon.Tools.Data.Relational.Models.TableInfo.Columns.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Relational.Models.ColumnInfo!>!
+Orkeon.Tools.Data.Relational.Models.TableInfo.Columns.init -> void
+Orkeon.Tools.Data.Relational.Models.TableInfo.Equals(Orkeon.Tools.Data.Relational.Models.TableInfo? other) -> bool
+Orkeon.Tools.Data.Relational.Models.TableInfo.Name.get -> string!
+Orkeon.Tools.Data.Relational.Models.TableInfo.Name.init -> void
+Orkeon.Tools.Data.Relational.Models.TableInfo.RowCountEstimate.get -> long?
+Orkeon.Tools.Data.Relational.Models.TableInfo.RowCountEstimate.init -> void
+Orkeon.Tools.Data.Relational.Models.TableInfo.Schema.get -> string?
+Orkeon.Tools.Data.Relational.Models.TableInfo.Schema.init -> void
+Orkeon.Tools.Data.Relational.Models.TableInfo.TableInfo() -> void
+Orkeon.Tools.Data.Relational.MySqlDatabaseTool
+Orkeon.Tools.Data.Relational.MySqlDatabaseTool.MySqlDatabaseTool(Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory! providerFactory, Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy! securityPolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Relational.MySqlDatabaseTool!>? logger = null) -> void
+Orkeon.Tools.Data.Relational.PostgresDatabaseTool
+Orkeon.Tools.Data.Relational.PostgresDatabaseTool.PostgresDatabaseTool(Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory! providerFactory, Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy! securityPolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Relational.PostgresDatabaseTool!>? logger = null) -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ConnectionString.get -> string!
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ConnectionString.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.MaxRows.get -> int
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.MaxRows.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Parameters.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Parameters.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ProviderName.get -> string!
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ProviderName.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Query.get -> string!
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Query.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.QueryType.get -> Orkeon.Tools.Data.Relational.RelationalQueryType
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.QueryType.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.RelationalDatabaseRequest() -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.RelationalDatabaseRequest(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! original) -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.TimeoutSeconds.get -> int
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.TimeoutSeconds.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.AffectedRows.get -> int?
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.AffectedRows.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ColumnCount.get -> int?
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ColumnCount.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Columns.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Columns.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ExecutionTimeMs.get -> long
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ExecutionTimeMs.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ProviderName.get -> string!
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ProviderName.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.QueryType.get -> Orkeon.Tools.Data.Relational.RelationalQueryType
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.QueryType.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.RelationalDatabaseResponse() -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.RelationalDatabaseResponse(Orkeon.Tools.Data.Relational.RelationalDatabaseResponse! original) -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.RowCount.get -> int?
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.RowCount.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Rows.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.Dictionary<string!, object!>!>?
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Rows.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ScalarResult.get -> object?
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ScalarResult.init -> void
+Orkeon.Tools.Data.Relational.RelationalDatabaseTool
+Orkeon.Tools.Data.Relational.RelationalDatabaseTool.RelationalDatabaseTool(Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory! providerFactory, Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy! securityPolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Relational.RelationalDatabaseTool!>? logger = null) -> void
+Orkeon.Tools.Data.Relational.RelationalQueryType
+Orkeon.Tools.Data.Relational.RelationalQueryType.Execute = 1 -> Orkeon.Tools.Data.Relational.RelationalQueryType
+Orkeon.Tools.Data.Relational.RelationalQueryType.Scalar = 2 -> Orkeon.Tools.Data.Relational.RelationalQueryType
+Orkeon.Tools.Data.Relational.RelationalQueryType.Select = 0 -> Orkeon.Tools.Data.Relational.RelationalQueryType
+Orkeon.Tools.Data.Relational.SchemaScope
+Orkeon.Tools.Data.Relational.SchemaScope.All = 4 -> Orkeon.Tools.Data.Relational.SchemaScope
+Orkeon.Tools.Data.Relational.SchemaScope.Columns = 1 -> Orkeon.Tools.Data.Relational.SchemaScope
+Orkeon.Tools.Data.Relational.SchemaScope.ForeignKeys = 3 -> Orkeon.Tools.Data.Relational.SchemaScope
+Orkeon.Tools.Data.Relational.SchemaScope.Indexes = 2 -> Orkeon.Tools.Data.Relational.SchemaScope
+Orkeon.Tools.Data.Relational.SchemaScope.Tables = 0 -> Orkeon.Tools.Data.Relational.SchemaScope
+Orkeon.Tools.Data.Relational.SqlServerDatabaseTool
+Orkeon.Tools.Data.Relational.SqlServerDatabaseTool.SqlServerDatabaseTool(Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory! providerFactory, Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy! securityPolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Relational.SqlServerDatabaseTool!>? logger = null) -> void
+Orkeon.Tools.Data.Search.FileSearchRequestBase
+Orkeon.Tools.Data.Search.FileSearchRequestBase.ChunkSize.get -> int
+Orkeon.Tools.Data.Search.FileSearchRequestBase.ChunkSize.init -> void
+Orkeon.Tools.Data.Search.FileSearchRequestBase.FileSearchRequestBase() -> void
+Orkeon.Tools.Data.Search.FileSearchRequestBase.FileSearchRequestBase(Orkeon.Tools.Data.Search.FileSearchRequestBase! original) -> void
+Orkeon.Tools.Data.Search.FileSearchRequestBase.Path.get -> string!
+Orkeon.Tools.Data.Search.FileSearchRequestBase.Path.init -> void
+Orkeon.Tools.Data.Search.FileSearchRequestBase.Query.get -> string!
+Orkeon.Tools.Data.Search.FileSearchRequestBase.Query.init -> void
+Orkeon.Tools.Data.Search.FileSearchRequestBase.Threshold.get -> double
+Orkeon.Tools.Data.Search.FileSearchRequestBase.Threshold.init -> void
+Orkeon.Tools.Data.Search.FileSearchRequestBase.TopK.get -> int
+Orkeon.Tools.Data.Search.FileSearchRequestBase.TopK.init -> void
+Orkeon.Tools.Data.Search.FileSearchResponse
+Orkeon.Tools.Data.Search.FileSearchResponse.FileSearchResponse() -> void
+Orkeon.Tools.Data.Search.FileSearchResponse.FileSearchResponse(Orkeon.Tools.Data.Search.FileSearchResponse! original) -> void
+Orkeon.Tools.Data.Search.FileSearchResponse.FilesProcessed.get -> int
+Orkeon.Tools.Data.Search.FileSearchResponse.FilesProcessed.init -> void
+Orkeon.Tools.Data.Search.FileSearchResponse.Query.get -> string!
+Orkeon.Tools.Data.Search.FileSearchResponse.Query.init -> void
+Orkeon.Tools.Data.Search.FileSearchResponse.ResultCount.get -> int
+Orkeon.Tools.Data.Search.FileSearchResponse.ResultCount.init -> void
+Orkeon.Tools.Data.Search.FileSearchResponse.Results.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Search.FileSearchResult!>!
+Orkeon.Tools.Data.Search.FileSearchResponse.Results.init -> void
+Orkeon.Tools.Data.Search.FileSearchResponse.TotalChunks.get -> int
+Orkeon.Tools.Data.Search.FileSearchResponse.TotalChunks.init -> void
+Orkeon.Tools.Data.Search.FileSearchResult
+Orkeon.Tools.Data.Search.FileSearchResult.ApproximateLine.get -> int
+Orkeon.Tools.Data.Search.FileSearchResult.ApproximateLine.init -> void
+Orkeon.Tools.Data.Search.FileSearchResult.ChunkIndex.get -> int
+Orkeon.Tools.Data.Search.FileSearchResult.ChunkIndex.init -> void
+Orkeon.Tools.Data.Search.FileSearchResult.Content.get -> string!
+Orkeon.Tools.Data.Search.FileSearchResult.Content.init -> void
+Orkeon.Tools.Data.Search.FileSearchResult.FileSearchResult() -> void
+Orkeon.Tools.Data.Search.FileSearchResult.FileSearchResult(Orkeon.Tools.Data.Search.FileSearchResult! original) -> void
+Orkeon.Tools.Data.Search.FileSearchResult.Score.get -> float
+Orkeon.Tools.Data.Search.FileSearchResult.Score.init -> void
+Orkeon.Tools.Data.Search.FileSearchResult.SourceFile.get -> string!
+Orkeon.Tools.Data.Search.FileSearchResult.SourceFile.init -> void
+Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>
+Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.FileSearchToolBase(Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch! searchService, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Data.Search.MdxSearchRequest
+Orkeon.Tools.Data.Search.MdxSearchRequest.MdxSearchRequest() -> void
+Orkeon.Tools.Data.Search.MdxSearchRequest.MdxSearchRequest(Orkeon.Tools.Data.Search.MdxSearchRequest! original) -> void
+Orkeon.Tools.Data.Search.MdxSearchTool
+Orkeon.Tools.Data.Search.MdxSearchTool.MdxSearchTool(Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch! searchService, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Search.MdxSearchTool!>? logger = null) -> void
+Orkeon.Tools.Data.Search.PdfSearchRequest
+Orkeon.Tools.Data.Search.PdfSearchRequest.ChunkSize.get -> int
+Orkeon.Tools.Data.Search.PdfSearchRequest.ChunkSize.init -> void
+Orkeon.Tools.Data.Search.PdfSearchRequest.PageRange.get -> string?
+Orkeon.Tools.Data.Search.PdfSearchRequest.PageRange.init -> void
+Orkeon.Tools.Data.Search.PdfSearchRequest.Path.get -> string!
+Orkeon.Tools.Data.Search.PdfSearchRequest.Path.init -> void
+Orkeon.Tools.Data.Search.PdfSearchRequest.PdfSearchRequest() -> void
+Orkeon.Tools.Data.Search.PdfSearchRequest.PdfSearchRequest(Orkeon.Tools.Data.Search.PdfSearchRequest! original) -> void
+Orkeon.Tools.Data.Search.PdfSearchRequest.Query.get -> string!
+Orkeon.Tools.Data.Search.PdfSearchRequest.Query.init -> void
+Orkeon.Tools.Data.Search.PdfSearchRequest.Threshold.get -> double
+Orkeon.Tools.Data.Search.PdfSearchRequest.Threshold.init -> void
+Orkeon.Tools.Data.Search.PdfSearchRequest.TopK.get -> int
+Orkeon.Tools.Data.Search.PdfSearchRequest.TopK.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResponse
+Orkeon.Tools.Data.Search.PdfSearchResponse.FilesProcessed.get -> int
+Orkeon.Tools.Data.Search.PdfSearchResponse.FilesProcessed.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResponse.PdfSearchResponse() -> void
+Orkeon.Tools.Data.Search.PdfSearchResponse.PdfSearchResponse(Orkeon.Tools.Data.Search.PdfSearchResponse! original) -> void
+Orkeon.Tools.Data.Search.PdfSearchResponse.Query.get -> string!
+Orkeon.Tools.Data.Search.PdfSearchResponse.Query.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResponse.ResultCount.get -> int
+Orkeon.Tools.Data.Search.PdfSearchResponse.ResultCount.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResponse.Results.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.Search.PdfSearchResult!>!
+Orkeon.Tools.Data.Search.PdfSearchResponse.Results.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResponse.TotalChunks.get -> int
+Orkeon.Tools.Data.Search.PdfSearchResponse.TotalChunks.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResponse.TotalPages.get -> int
+Orkeon.Tools.Data.Search.PdfSearchResponse.TotalPages.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResult
+Orkeon.Tools.Data.Search.PdfSearchResult.ChunkIndex.get -> int
+Orkeon.Tools.Data.Search.PdfSearchResult.ChunkIndex.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResult.Content.get -> string!
+Orkeon.Tools.Data.Search.PdfSearchResult.Content.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResult.PageNumber.get -> int
+Orkeon.Tools.Data.Search.PdfSearchResult.PageNumber.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResult.PdfSearchResult() -> void
+Orkeon.Tools.Data.Search.PdfSearchResult.PdfSearchResult(Orkeon.Tools.Data.Search.PdfSearchResult! original) -> void
+Orkeon.Tools.Data.Search.PdfSearchResult.Score.get -> float
+Orkeon.Tools.Data.Search.PdfSearchResult.Score.init -> void
+Orkeon.Tools.Data.Search.PdfSearchResult.SourceFile.get -> string!
+Orkeon.Tools.Data.Search.PdfSearchResult.SourceFile.init -> void
+Orkeon.Tools.Data.Search.PdfSearchTool
+Orkeon.Tools.Data.Search.PdfSearchTool.PdfSearchTool(Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch! searchService, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Search.PdfSearchTool!>? logger = null) -> void
+Orkeon.Tools.Data.Search.TxtSearchRequest
+Orkeon.Tools.Data.Search.TxtSearchRequest.TxtSearchRequest() -> void
+Orkeon.Tools.Data.Search.TxtSearchRequest.TxtSearchRequest(Orkeon.Tools.Data.Search.TxtSearchRequest! original) -> void
+Orkeon.Tools.Data.Search.TxtSearchTool
+Orkeon.Tools.Data.Search.TxtSearchTool.TxtSearchTool(Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch! searchService, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.Search.TxtSearchTool!>? logger = null) -> void
+Orkeon.Tools.Data.XlsxReadRequest
+Orkeon.Tools.Data.XlsxReadRequest.FilePath.get -> string!
+Orkeon.Tools.Data.XlsxReadRequest.FilePath.init -> void
+Orkeon.Tools.Data.XlsxReadRequest.HasHeaderRow.get -> bool
+Orkeon.Tools.Data.XlsxReadRequest.HasHeaderRow.init -> void
+Orkeon.Tools.Data.XlsxReadRequest.IncludeMetadata.get -> bool
+Orkeon.Tools.Data.XlsxReadRequest.IncludeMetadata.init -> void
+Orkeon.Tools.Data.XlsxReadRequest.SheetName.get -> string!
+Orkeon.Tools.Data.XlsxReadRequest.SheetName.init -> void
+Orkeon.Tools.Data.XlsxReadRequest.XlsxReadRequest() -> void
+Orkeon.Tools.Data.XlsxReadRequest.XlsxReadRequest(Orkeon.Tools.Data.XlsxReadRequest! original) -> void
+Orkeon.Tools.Data.XlsxReadResponse
+Orkeon.Tools.Data.XlsxReadResponse.Metadata.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Tools.Data.XlsxReadResponse.Metadata.init -> void
+Orkeon.Tools.Data.XlsxReadResponse.SheetCount.get -> int
+Orkeon.Tools.Data.XlsxReadResponse.SheetCount.init -> void
+Orkeon.Tools.Data.XlsxReadResponse.SheetNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.XlsxReadResponse.SheetNames.init -> void
+Orkeon.Tools.Data.XlsxReadResponse.Sheets.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.XlsxSheetData!>!
+Orkeon.Tools.Data.XlsxReadResponse.Sheets.init -> void
+Orkeon.Tools.Data.XlsxReadResponse.XlsxReadResponse() -> void
+Orkeon.Tools.Data.XlsxReadResponse.XlsxReadResponse(Orkeon.Tools.Data.XlsxReadResponse! original) -> void
+Orkeon.Tools.Data.XlsxReadTool
+Orkeon.Tools.Data.XlsxReadTool.XlsxReadTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.XlsxReadTool!>? logger = null) -> void
+Orkeon.Tools.Data.XlsxSheetData
+Orkeon.Tools.Data.XlsxSheetData.ColumnCount.get -> int
+Orkeon.Tools.Data.XlsxSheetData.ColumnCount.init -> void
+Orkeon.Tools.Data.XlsxSheetData.Headers.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.XlsxSheetData.Headers.init -> void
+Orkeon.Tools.Data.XlsxSheetData.Name.get -> string!
+Orkeon.Tools.Data.XlsxSheetData.Name.init -> void
+Orkeon.Tools.Data.XlsxSheetData.RowCount.get -> int
+Orkeon.Tools.Data.XlsxSheetData.RowCount.init -> void
+Orkeon.Tools.Data.XlsxSheetData.Rows.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.List<string!>!>!
+Orkeon.Tools.Data.XlsxSheetData.Rows.init -> void
+Orkeon.Tools.Data.XlsxSheetData.XlsxSheetData() -> void
+Orkeon.Tools.Data.XlsxSheetData.XlsxSheetData(Orkeon.Tools.Data.XlsxSheetData! original) -> void
+Orkeon.Tools.Data.XlsxSheetInput
+Orkeon.Tools.Data.XlsxSheetInput.Headers.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Data.XlsxSheetInput.Headers.init -> void
+Orkeon.Tools.Data.XlsxSheetInput.Name.get -> string!
+Orkeon.Tools.Data.XlsxSheetInput.Name.init -> void
+Orkeon.Tools.Data.XlsxSheetInput.Rows.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.List<string!>!>!
+Orkeon.Tools.Data.XlsxSheetInput.Rows.init -> void
+Orkeon.Tools.Data.XlsxSheetInput.XlsxSheetInput() -> void
+Orkeon.Tools.Data.XlsxSheetInput.XlsxSheetInput(Orkeon.Tools.Data.XlsxSheetInput! original) -> void
+Orkeon.Tools.Data.XlsxWriteRequest
+Orkeon.Tools.Data.XlsxWriteRequest.AppendToExisting.get -> bool
+Orkeon.Tools.Data.XlsxWriteRequest.AppendToExisting.init -> void
+Orkeon.Tools.Data.XlsxWriteRequest.FilePath.get -> string!
+Orkeon.Tools.Data.XlsxWriteRequest.FilePath.init -> void
+Orkeon.Tools.Data.XlsxWriteRequest.Sheets.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.XlsxSheetInput!>!
+Orkeon.Tools.Data.XlsxWriteRequest.Sheets.init -> void
+Orkeon.Tools.Data.XlsxWriteRequest.XlsxWriteRequest() -> void
+Orkeon.Tools.Data.XlsxWriteRequest.XlsxWriteRequest(Orkeon.Tools.Data.XlsxWriteRequest! original) -> void
+Orkeon.Tools.Data.XlsxWriteResponse
+Orkeon.Tools.Data.XlsxWriteResponse.FilePath.get -> string!
+Orkeon.Tools.Data.XlsxWriteResponse.FilePath.init -> void
+Orkeon.Tools.Data.XlsxWriteResponse.FileSize.get -> long
+Orkeon.Tools.Data.XlsxWriteResponse.FileSize.init -> void
+Orkeon.Tools.Data.XlsxWriteResponse.SheetCount.get -> int
+Orkeon.Tools.Data.XlsxWriteResponse.SheetCount.init -> void
+Orkeon.Tools.Data.XlsxWriteResponse.Success.get -> bool
+Orkeon.Tools.Data.XlsxWriteResponse.Success.init -> void
+Orkeon.Tools.Data.XlsxWriteResponse.XlsxWriteResponse() -> void
+Orkeon.Tools.Data.XlsxWriteResponse.XlsxWriteResponse(Orkeon.Tools.Data.XlsxWriteResponse! original) -> void
+Orkeon.Tools.Data.XlsxWriteTool
+Orkeon.Tools.Data.XlsxWriteTool.XlsxWriteTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.XlsxWriteTool!>? logger = null) -> void
+Orkeon.Tools.Data.XmlOperation
+Orkeon.Tools.Data.XmlOperation.Parse = 0 -> Orkeon.Tools.Data.XmlOperation
+Orkeon.Tools.Data.XmlOperation.Query = 1 -> Orkeon.Tools.Data.XmlOperation
+Orkeon.Tools.Data.XmlParserChildInfo
+Orkeon.Tools.Data.XmlParserChildInfo.Attributes.get -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Tools.Data.XmlParserChildInfo.Attributes.init -> void
+Orkeon.Tools.Data.XmlParserChildInfo.Name.get -> string!
+Orkeon.Tools.Data.XmlParserChildInfo.Name.init -> void
+Orkeon.Tools.Data.XmlParserChildInfo.Value.get -> string!
+Orkeon.Tools.Data.XmlParserChildInfo.Value.init -> void
+Orkeon.Tools.Data.XmlParserChildInfo.XmlParserChildInfo() -> void
+Orkeon.Tools.Data.XmlParserChildInfo.XmlParserChildInfo(Orkeon.Tools.Data.XmlParserChildInfo! original) -> void
+Orkeon.Tools.Data.XmlParserRequest
+Orkeon.Tools.Data.XmlParserRequest.Input.get -> string!
+Orkeon.Tools.Data.XmlParserRequest.Input.init -> void
+Orkeon.Tools.Data.XmlParserRequest.Operation.get -> Orkeon.Tools.Data.XmlOperation
+Orkeon.Tools.Data.XmlParserRequest.Operation.init -> void
+Orkeon.Tools.Data.XmlParserRequest.XmlParserRequest() -> void
+Orkeon.Tools.Data.XmlParserRequest.XmlParserRequest(Orkeon.Tools.Data.XmlParserRequest! original) -> void
+Orkeon.Tools.Data.XmlParserRequest.Xpath.get -> string?
+Orkeon.Tools.Data.XmlParserRequest.Xpath.init -> void
+Orkeon.Tools.Data.XmlParserResponse
+Orkeon.Tools.Data.XmlParserResponse.AttributeCount.get -> int?
+Orkeon.Tools.Data.XmlParserResponse.AttributeCount.init -> void
+Orkeon.Tools.Data.XmlParserResponse.Attributes.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.XmlParserResponse.Attributes.init -> void
+Orkeon.Tools.Data.XmlParserResponse.ChildCount.get -> int?
+Orkeon.Tools.Data.XmlParserResponse.ChildCount.init -> void
+Orkeon.Tools.Data.XmlParserResponse.Children.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.XmlParserChildInfo!>?
+Orkeon.Tools.Data.XmlParserResponse.Children.init -> void
+Orkeon.Tools.Data.XmlParserResponse.Declaration.get -> string?
+Orkeon.Tools.Data.XmlParserResponse.Declaration.init -> void
+Orkeon.Tools.Data.XmlParserResponse.MatchCount.get -> int?
+Orkeon.Tools.Data.XmlParserResponse.MatchCount.init -> void
+Orkeon.Tools.Data.XmlParserResponse.Matches.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Data.XmlParserChildInfo!>?
+Orkeon.Tools.Data.XmlParserResponse.Matches.init -> void
+Orkeon.Tools.Data.XmlParserResponse.Namespace.get -> string?
+Orkeon.Tools.Data.XmlParserResponse.Namespace.init -> void
+Orkeon.Tools.Data.XmlParserResponse.RootElement.get -> string?
+Orkeon.Tools.Data.XmlParserResponse.RootElement.init -> void
+Orkeon.Tools.Data.XmlParserResponse.Source.get -> string?
+Orkeon.Tools.Data.XmlParserResponse.Source.init -> void
+Orkeon.Tools.Data.XmlParserResponse.XmlParserResponse() -> void
+Orkeon.Tools.Data.XmlParserResponse.XmlParserResponse(Orkeon.Tools.Data.XmlParserResponse! original) -> void
+Orkeon.Tools.Data.XmlParserResponse.Xpath.get -> string?
+Orkeon.Tools.Data.XmlParserResponse.Xpath.init -> void
+Orkeon.Tools.Data.XmlParserTool
+Orkeon.Tools.Data.XmlParserTool.XmlParserTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.XmlParserTool!>? logger = null) -> void
+abstract Orkeon.Tools.Data.Search.FileSearchRequestBase.<Clone>$() -> Orkeon.Tools.Data.Search.FileSearchRequestBase!
+abstract Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.SupportedExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+abstract Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.ToolCategory.get -> string!
+override Orkeon.Tools.Data.CsvReaderRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.CsvReaderRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.CsvReaderRequest.ToString() -> string!
+override Orkeon.Tools.Data.CsvReaderResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.CsvReaderResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.CsvReaderResponse.ToString() -> string!
+override Orkeon.Tools.Data.CsvReaderTool.ExecuteTypedAsync(Orkeon.Tools.Data.CsvReaderRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.CsvReaderResponse!>!
+override Orkeon.Tools.Data.CsvReaderTool.ValidateTypedRequest(Orkeon.Tools.Data.CsvReaderRequest! request) -> string?
+override Orkeon.Tools.Data.DocxReadRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.DocxReadRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.DocxReadRequest.ToString() -> string!
+override Orkeon.Tools.Data.DocxReadResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.DocxReadResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.DocxReadResponse.ToString() -> string!
+override Orkeon.Tools.Data.DocxReadTool.ExecuteTypedAsync(Orkeon.Tools.Data.DocxReadRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.DocxReadResponse!>!
+override Orkeon.Tools.Data.DocxReadTool.ValidateTypedRequest(Orkeon.Tools.Data.DocxReadRequest! request) -> string?
+override Orkeon.Tools.Data.DocxWriteRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.DocxWriteRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.DocxWriteRequest.ToString() -> string!
+override Orkeon.Tools.Data.DocxWriteResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.DocxWriteResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.DocxWriteResponse.ToString() -> string!
+override Orkeon.Tools.Data.DocxWriteTool.ExecuteTypedAsync(Orkeon.Tools.Data.DocxWriteRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.DocxWriteResponse!>!
+override Orkeon.Tools.Data.DocxWriteTool.ValidateTypedRequest(Orkeon.Tools.Data.DocxWriteRequest! request) -> string?
+override Orkeon.Tools.Data.Graph.ArcadeDbRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.ArcadeDbRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.ArcadeDbRequest.ToString() -> string!
+override Orkeon.Tools.Data.Graph.ArcadeDbResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.ArcadeDbResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.ArcadeDbResponse.ToString() -> string!
+override Orkeon.Tools.Data.Graph.ArcadeDbTool.ExecuteTypedAsync(Orkeon.Tools.Data.Graph.ArcadeDbRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Graph.ArcadeDbResponse!>!
+override Orkeon.Tools.Data.Graph.ArcadeDbTool.ValidateTypedRequest(Orkeon.Tools.Data.Graph.ArcadeDbRequest! request) -> string?
+override Orkeon.Tools.Data.Graph.GraphSchemaRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.GraphSchemaRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.GraphSchemaRequest.ToString() -> string!
+override Orkeon.Tools.Data.Graph.GraphSchemaResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.GraphSchemaResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.GraphSchemaResponse.ToString() -> string!
+override Orkeon.Tools.Data.Graph.GraphSchemaTool.ExecuteTypedAsync(Orkeon.Tools.Data.Graph.GraphSchemaRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Graph.GraphSchemaResponse!>!
+override Orkeon.Tools.Data.Graph.GraphSchemaTool.ValidateTypedRequest(Orkeon.Tools.Data.Graph.GraphSchemaRequest! request) -> string?
+override Orkeon.Tools.Data.Graph.JanusGraphRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.JanusGraphRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.JanusGraphRequest.ToString() -> string!
+override Orkeon.Tools.Data.Graph.JanusGraphResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.JanusGraphResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.JanusGraphResponse.ToString() -> string!
+override Orkeon.Tools.Data.Graph.JanusGraphTool.ExecuteTypedAsync(Orkeon.Tools.Data.Graph.JanusGraphRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Graph.JanusGraphResponse!>!
+override Orkeon.Tools.Data.Graph.JanusGraphTool.ValidateTypedRequest(Orkeon.Tools.Data.Graph.JanusGraphRequest! request) -> string?
+override Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.ToString() -> string!
+override Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.ToString() -> string!
+override Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.ToString() -> string!
+override Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.ToString() -> string!
+override Orkeon.Tools.Data.JsonTool.ExecuteTypedAsync(Orkeon.Tools.Data.JsonToolRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.JsonToolResponse!>!
+override Orkeon.Tools.Data.JsonTool.ValidateTypedRequest(Orkeon.Tools.Data.JsonToolRequest! request) -> string?
+override Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.ToString() -> string!
+override Orkeon.Tools.Data.MongoDB.Models.InferredField.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.MongoDB.Models.InferredField.GetHashCode() -> int
+override Orkeon.Tools.Data.MongoDB.Models.InferredField.ToString() -> string!
+override Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.ToString() -> string!
+override Orkeon.Tools.Data.MongoDB.MongoDbRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.MongoDB.MongoDbRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.MongoDB.MongoDbRequest.ToString() -> string!
+override Orkeon.Tools.Data.MongoDB.MongoDbResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.MongoDB.MongoDbResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.MongoDB.MongoDbResponse.ToString() -> string!
+override Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.ToString() -> string!
+override Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.ToString() -> string!
+override Orkeon.Tools.Data.MongoDB.MongoDbSchemaTool.ExecuteTypedAsync(Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse!>!
+override Orkeon.Tools.Data.MongoDB.MongoDbSchemaTool.ValidateTypedRequest(Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest! request) -> string?
+override Orkeon.Tools.Data.MongoDB.MongoDbTool.ExecuteTypedAsync(Orkeon.Tools.Data.MongoDB.MongoDbRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.MongoDB.MongoDbResponse!>!
+override Orkeon.Tools.Data.MongoDB.MongoDbTool.ValidateTypedRequest(Orkeon.Tools.Data.MongoDB.MongoDbRequest! request) -> string?
+override Orkeon.Tools.Data.PdfReaderPageInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.PdfReaderPageInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.PdfReaderPageInfo.ToString() -> string!
+override Orkeon.Tools.Data.PdfReaderRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.PdfReaderRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.PdfReaderRequest.ToString() -> string!
+override Orkeon.Tools.Data.PdfReaderResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.PdfReaderResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.PdfReaderResponse.ToString() -> string!
+override Orkeon.Tools.Data.PdfReaderTool.ExecuteTypedAsync(Orkeon.Tools.Data.PdfReaderRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.PdfReaderResponse!>!
+override Orkeon.Tools.Data.PdfReaderTool.ValidateTypedRequest(Orkeon.Tools.Data.PdfReaderRequest! request) -> string?
+override Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.ToString() -> string!
+override Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.ToString() -> string!
+override Orkeon.Tools.Data.Relational.DatabaseSchemaTool.ExecuteTypedAsync(Orkeon.Tools.Data.Relational.DatabaseSchemaRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Relational.DatabaseSchemaResponse!>!
+override Orkeon.Tools.Data.Relational.DatabaseSchemaTool.ValidateTypedRequest(Orkeon.Tools.Data.Relational.DatabaseSchemaRequest! request) -> string?
+override Orkeon.Tools.Data.Relational.MariaDbDatabaseTool.ExecuteTypedAsync(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Relational.RelationalDatabaseResponse!>!
+override Orkeon.Tools.Data.Relational.MariaDbDatabaseTool.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+override Orkeon.Tools.Data.Relational.MariaDbDatabaseTool.ValidateTypedRequest(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request) -> string?
+override Orkeon.Tools.Data.Relational.Models.ColumnInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Relational.Models.ColumnInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.Relational.Models.ColumnInfo.ToString() -> string!
+override Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.ToString() -> string!
+override Orkeon.Tools.Data.Relational.Models.IndexInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Relational.Models.IndexInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.Relational.Models.IndexInfo.ToString() -> string!
+override Orkeon.Tools.Data.Relational.Models.TableInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Relational.Models.TableInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.Relational.Models.TableInfo.ToString() -> string!
+override Orkeon.Tools.Data.Relational.MySqlDatabaseTool.ExecuteTypedAsync(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Relational.RelationalDatabaseResponse!>!
+override Orkeon.Tools.Data.Relational.MySqlDatabaseTool.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+override Orkeon.Tools.Data.Relational.MySqlDatabaseTool.ValidateTypedRequest(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request) -> string?
+override Orkeon.Tools.Data.Relational.PostgresDatabaseTool.ExecuteTypedAsync(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Relational.RelationalDatabaseResponse!>!
+override Orkeon.Tools.Data.Relational.PostgresDatabaseTool.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+override Orkeon.Tools.Data.Relational.PostgresDatabaseTool.ValidateTypedRequest(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request) -> string?
+override Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ToString() -> string!
+override Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.ToString() -> string!
+override Orkeon.Tools.Data.Relational.RelationalDatabaseTool.ExecuteTypedAsync(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Relational.RelationalDatabaseResponse!>!
+override Orkeon.Tools.Data.Relational.RelationalDatabaseTool.ValidateTypedRequest(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request) -> string?
+override Orkeon.Tools.Data.Relational.SqlServerDatabaseTool.ExecuteTypedAsync(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Relational.RelationalDatabaseResponse!>!
+override Orkeon.Tools.Data.Relational.SqlServerDatabaseTool.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+override Orkeon.Tools.Data.Relational.SqlServerDatabaseTool.ValidateTypedRequest(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest! request) -> string?
+override Orkeon.Tools.Data.Search.FileSearchRequestBase.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Search.FileSearchRequestBase.GetHashCode() -> int
+override Orkeon.Tools.Data.Search.FileSearchRequestBase.ToString() -> string!
+override Orkeon.Tools.Data.Search.FileSearchResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Search.FileSearchResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.Search.FileSearchResponse.ToString() -> string!
+override Orkeon.Tools.Data.Search.FileSearchResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Search.FileSearchResult.GetHashCode() -> int
+override Orkeon.Tools.Data.Search.FileSearchResult.ToString() -> string!
+override Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.ExecuteTypedAsync(TRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Search.FileSearchResponse!>!
+override Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.ValidateTypedRequest(TRequest! request) -> string?
+override Orkeon.Tools.Data.Search.MdxSearchRequest.<Clone>$() -> Orkeon.Tools.Data.Search.MdxSearchRequest!
+override Orkeon.Tools.Data.Search.MdxSearchRequest.EqualityContract.get -> System.Type!
+override Orkeon.Tools.Data.Search.MdxSearchRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Search.MdxSearchRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.Search.MdxSearchRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+override Orkeon.Tools.Data.Search.MdxSearchRequest.ToString() -> string!
+override Orkeon.Tools.Data.Search.MdxSearchTool.ChunkingStrategyName.get -> string!
+override Orkeon.Tools.Data.Search.MdxSearchTool.PreprocessContent(string! content) -> string!
+override Orkeon.Tools.Data.Search.MdxSearchTool.SupportedExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+override Orkeon.Tools.Data.Search.MdxSearchTool.ToolCategory.get -> string!
+override Orkeon.Tools.Data.Search.PdfSearchRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Search.PdfSearchRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.Search.PdfSearchRequest.ToString() -> string!
+override Orkeon.Tools.Data.Search.PdfSearchResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Search.PdfSearchResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.Search.PdfSearchResponse.ToString() -> string!
+override Orkeon.Tools.Data.Search.PdfSearchResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Search.PdfSearchResult.GetHashCode() -> int
+override Orkeon.Tools.Data.Search.PdfSearchResult.ToString() -> string!
+override Orkeon.Tools.Data.Search.PdfSearchTool.ExecuteTypedAsync(Orkeon.Tools.Data.Search.PdfSearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.Search.PdfSearchResponse!>!
+override Orkeon.Tools.Data.Search.PdfSearchTool.ValidateTypedRequest(Orkeon.Tools.Data.Search.PdfSearchRequest! request) -> string?
+override Orkeon.Tools.Data.Search.TxtSearchRequest.<Clone>$() -> Orkeon.Tools.Data.Search.TxtSearchRequest!
+override Orkeon.Tools.Data.Search.TxtSearchRequest.EqualityContract.get -> System.Type!
+override Orkeon.Tools.Data.Search.TxtSearchRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.Search.TxtSearchRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.Search.TxtSearchRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+override Orkeon.Tools.Data.Search.TxtSearchRequest.ToString() -> string!
+override Orkeon.Tools.Data.Search.TxtSearchTool.SupportedExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+override Orkeon.Tools.Data.Search.TxtSearchTool.ToolCategory.get -> string!
+override Orkeon.Tools.Data.XlsxReadRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XlsxReadRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.XlsxReadRequest.ToString() -> string!
+override Orkeon.Tools.Data.XlsxReadResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XlsxReadResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.XlsxReadResponse.ToString() -> string!
+override Orkeon.Tools.Data.XlsxReadTool.ExecuteTypedAsync(Orkeon.Tools.Data.XlsxReadRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.XlsxReadResponse!>!
+override Orkeon.Tools.Data.XlsxReadTool.ValidateTypedRequest(Orkeon.Tools.Data.XlsxReadRequest! request) -> string?
+override Orkeon.Tools.Data.XlsxSheetData.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XlsxSheetData.GetHashCode() -> int
+override Orkeon.Tools.Data.XlsxSheetData.ToString() -> string!
+override Orkeon.Tools.Data.XlsxSheetInput.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XlsxSheetInput.GetHashCode() -> int
+override Orkeon.Tools.Data.XlsxSheetInput.ToString() -> string!
+override Orkeon.Tools.Data.XlsxWriteRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XlsxWriteRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.XlsxWriteRequest.ToString() -> string!
+override Orkeon.Tools.Data.XlsxWriteResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XlsxWriteResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.XlsxWriteResponse.ToString() -> string!
+override Orkeon.Tools.Data.XlsxWriteTool.ExecuteTypedAsync(Orkeon.Tools.Data.XlsxWriteRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.XlsxWriteResponse!>!
+override Orkeon.Tools.Data.XlsxWriteTool.ValidateTypedRequest(Orkeon.Tools.Data.XlsxWriteRequest! request) -> string?
+override Orkeon.Tools.Data.XmlParserChildInfo.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XmlParserChildInfo.GetHashCode() -> int
+override Orkeon.Tools.Data.XmlParserChildInfo.ToString() -> string!
+override Orkeon.Tools.Data.XmlParserRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XmlParserRequest.GetHashCode() -> int
+override Orkeon.Tools.Data.XmlParserRequest.ToString() -> string!
+override Orkeon.Tools.Data.XmlParserResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Data.XmlParserResponse.GetHashCode() -> int
+override Orkeon.Tools.Data.XmlParserResponse.ToString() -> string!
+override Orkeon.Tools.Data.XmlParserTool.ExecuteTypedAsync(Orkeon.Tools.Data.XmlParserRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Data.XmlParserResponse!>!
+override Orkeon.Tools.Data.XmlParserTool.ValidateTypedRequest(Orkeon.Tools.Data.XmlParserRequest! request) -> string?
+override sealed Orkeon.Tools.Data.Search.MdxSearchRequest.Equals(Orkeon.Tools.Data.Search.FileSearchRequestBase? other) -> bool
+override sealed Orkeon.Tools.Data.Search.TxtSearchRequest.Equals(Orkeon.Tools.Data.Search.FileSearchRequestBase? other) -> bool
+static Orkeon.Tools.Data.CsvReaderRequest.operator !=(Orkeon.Tools.Data.CsvReaderRequest? left, Orkeon.Tools.Data.CsvReaderRequest? right) -> bool
+static Orkeon.Tools.Data.CsvReaderRequest.operator ==(Orkeon.Tools.Data.CsvReaderRequest? left, Orkeon.Tools.Data.CsvReaderRequest? right) -> bool
+static Orkeon.Tools.Data.CsvReaderResponse.operator !=(Orkeon.Tools.Data.CsvReaderResponse? left, Orkeon.Tools.Data.CsvReaderResponse? right) -> bool
+static Orkeon.Tools.Data.CsvReaderResponse.operator ==(Orkeon.Tools.Data.CsvReaderResponse? left, Orkeon.Tools.Data.CsvReaderResponse? right) -> bool
+static Orkeon.Tools.Data.DependencyInjection.DataToolExtensions.AddGraphDatabaseTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Data.DependencyInjection.DataToolExtensions.AddMongoDbTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Data.DependencyInjection.DataToolExtensions.AddOrkeonDataTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Data.DependencyInjection.DataToolExtensions.AddRelationalDatabaseTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Data.DocxReadRequest.operator !=(Orkeon.Tools.Data.DocxReadRequest? left, Orkeon.Tools.Data.DocxReadRequest? right) -> bool
+static Orkeon.Tools.Data.DocxReadRequest.operator ==(Orkeon.Tools.Data.DocxReadRequest? left, Orkeon.Tools.Data.DocxReadRequest? right) -> bool
+static Orkeon.Tools.Data.DocxReadResponse.operator !=(Orkeon.Tools.Data.DocxReadResponse? left, Orkeon.Tools.Data.DocxReadResponse? right) -> bool
+static Orkeon.Tools.Data.DocxReadResponse.operator ==(Orkeon.Tools.Data.DocxReadResponse? left, Orkeon.Tools.Data.DocxReadResponse? right) -> bool
+static Orkeon.Tools.Data.DocxWriteRequest.operator !=(Orkeon.Tools.Data.DocxWriteRequest? left, Orkeon.Tools.Data.DocxWriteRequest? right) -> bool
+static Orkeon.Tools.Data.DocxWriteRequest.operator ==(Orkeon.Tools.Data.DocxWriteRequest? left, Orkeon.Tools.Data.DocxWriteRequest? right) -> bool
+static Orkeon.Tools.Data.DocxWriteResponse.operator !=(Orkeon.Tools.Data.DocxWriteResponse? left, Orkeon.Tools.Data.DocxWriteResponse? right) -> bool
+static Orkeon.Tools.Data.DocxWriteResponse.operator ==(Orkeon.Tools.Data.DocxWriteResponse? left, Orkeon.Tools.Data.DocxWriteResponse? right) -> bool
+static Orkeon.Tools.Data.Graph.ArcadeDbRequest.operator !=(Orkeon.Tools.Data.Graph.ArcadeDbRequest? left, Orkeon.Tools.Data.Graph.ArcadeDbRequest? right) -> bool
+static Orkeon.Tools.Data.Graph.ArcadeDbRequest.operator ==(Orkeon.Tools.Data.Graph.ArcadeDbRequest? left, Orkeon.Tools.Data.Graph.ArcadeDbRequest? right) -> bool
+static Orkeon.Tools.Data.Graph.ArcadeDbResponse.operator !=(Orkeon.Tools.Data.Graph.ArcadeDbResponse? left, Orkeon.Tools.Data.Graph.ArcadeDbResponse? right) -> bool
+static Orkeon.Tools.Data.Graph.ArcadeDbResponse.operator ==(Orkeon.Tools.Data.Graph.ArcadeDbResponse? left, Orkeon.Tools.Data.Graph.ArcadeDbResponse? right) -> bool
+static Orkeon.Tools.Data.Graph.GraphSchemaRequest.operator !=(Orkeon.Tools.Data.Graph.GraphSchemaRequest? left, Orkeon.Tools.Data.Graph.GraphSchemaRequest? right) -> bool
+static Orkeon.Tools.Data.Graph.GraphSchemaRequest.operator ==(Orkeon.Tools.Data.Graph.GraphSchemaRequest? left, Orkeon.Tools.Data.Graph.GraphSchemaRequest? right) -> bool
+static Orkeon.Tools.Data.Graph.GraphSchemaResponse.operator !=(Orkeon.Tools.Data.Graph.GraphSchemaResponse? left, Orkeon.Tools.Data.Graph.GraphSchemaResponse? right) -> bool
+static Orkeon.Tools.Data.Graph.GraphSchemaResponse.operator ==(Orkeon.Tools.Data.Graph.GraphSchemaResponse? left, Orkeon.Tools.Data.Graph.GraphSchemaResponse? right) -> bool
+static Orkeon.Tools.Data.Graph.JanusGraphRequest.operator !=(Orkeon.Tools.Data.Graph.JanusGraphRequest? left, Orkeon.Tools.Data.Graph.JanusGraphRequest? right) -> bool
+static Orkeon.Tools.Data.Graph.JanusGraphRequest.operator ==(Orkeon.Tools.Data.Graph.JanusGraphRequest? left, Orkeon.Tools.Data.Graph.JanusGraphRequest? right) -> bool
+static Orkeon.Tools.Data.Graph.JanusGraphResponse.operator !=(Orkeon.Tools.Data.Graph.JanusGraphResponse? left, Orkeon.Tools.Data.Graph.JanusGraphResponse? right) -> bool
+static Orkeon.Tools.Data.Graph.JanusGraphResponse.operator ==(Orkeon.Tools.Data.Graph.JanusGraphResponse? left, Orkeon.Tools.Data.Graph.JanusGraphResponse? right) -> bool
+static Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.operator !=(Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo? left, Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo? right) -> bool
+static Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo.operator ==(Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo? left, Orkeon.Tools.Data.Graph.Models.EdgeLabelInfo? right) -> bool
+static Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.operator !=(Orkeon.Tools.Data.Graph.Models.GraphIndexInfo? left, Orkeon.Tools.Data.Graph.Models.GraphIndexInfo? right) -> bool
+static Orkeon.Tools.Data.Graph.Models.GraphIndexInfo.operator ==(Orkeon.Tools.Data.Graph.Models.GraphIndexInfo? left, Orkeon.Tools.Data.Graph.Models.GraphIndexInfo? right) -> bool
+static Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.operator !=(Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo? left, Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo? right) -> bool
+static Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo.operator ==(Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo? left, Orkeon.Tools.Data.Graph.Models.PropertyKeyInfo? right) -> bool
+static Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.operator !=(Orkeon.Tools.Data.Graph.Models.VertexLabelInfo? left, Orkeon.Tools.Data.Graph.Models.VertexLabelInfo? right) -> bool
+static Orkeon.Tools.Data.Graph.Models.VertexLabelInfo.operator ==(Orkeon.Tools.Data.Graph.Models.VertexLabelInfo? left, Orkeon.Tools.Data.Graph.Models.VertexLabelInfo? right) -> bool
+static Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.operator !=(Orkeon.Tools.Data.MongoDB.Models.CollectionInfo? left, Orkeon.Tools.Data.MongoDB.Models.CollectionInfo? right) -> bool
+static Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.operator ==(Orkeon.Tools.Data.MongoDB.Models.CollectionInfo? left, Orkeon.Tools.Data.MongoDB.Models.CollectionInfo? right) -> bool
+static Orkeon.Tools.Data.MongoDB.Models.InferredField.operator !=(Orkeon.Tools.Data.MongoDB.Models.InferredField? left, Orkeon.Tools.Data.MongoDB.Models.InferredField? right) -> bool
+static Orkeon.Tools.Data.MongoDB.Models.InferredField.operator ==(Orkeon.Tools.Data.MongoDB.Models.InferredField? left, Orkeon.Tools.Data.MongoDB.Models.InferredField? right) -> bool
+static Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.operator !=(Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo? left, Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo? right) -> bool
+static Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.operator ==(Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo? left, Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo? right) -> bool
+static Orkeon.Tools.Data.MongoDB.MongoDbRequest.operator !=(Orkeon.Tools.Data.MongoDB.MongoDbRequest? left, Orkeon.Tools.Data.MongoDB.MongoDbRequest? right) -> bool
+static Orkeon.Tools.Data.MongoDB.MongoDbRequest.operator ==(Orkeon.Tools.Data.MongoDB.MongoDbRequest? left, Orkeon.Tools.Data.MongoDB.MongoDbRequest? right) -> bool
+static Orkeon.Tools.Data.MongoDB.MongoDbResponse.operator !=(Orkeon.Tools.Data.MongoDB.MongoDbResponse? left, Orkeon.Tools.Data.MongoDB.MongoDbResponse? right) -> bool
+static Orkeon.Tools.Data.MongoDB.MongoDbResponse.operator ==(Orkeon.Tools.Data.MongoDB.MongoDbResponse? left, Orkeon.Tools.Data.MongoDB.MongoDbResponse? right) -> bool
+static Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.operator !=(Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest? left, Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest? right) -> bool
+static Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.operator ==(Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest? left, Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest? right) -> bool
+static Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.operator !=(Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse? left, Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse? right) -> bool
+static Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.operator ==(Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse? left, Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse? right) -> bool
+static Orkeon.Tools.Data.PdfReaderPageInfo.operator !=(Orkeon.Tools.Data.PdfReaderPageInfo? left, Orkeon.Tools.Data.PdfReaderPageInfo? right) -> bool
+static Orkeon.Tools.Data.PdfReaderPageInfo.operator ==(Orkeon.Tools.Data.PdfReaderPageInfo? left, Orkeon.Tools.Data.PdfReaderPageInfo? right) -> bool
+static Orkeon.Tools.Data.PdfReaderRequest.operator !=(Orkeon.Tools.Data.PdfReaderRequest? left, Orkeon.Tools.Data.PdfReaderRequest? right) -> bool
+static Orkeon.Tools.Data.PdfReaderRequest.operator ==(Orkeon.Tools.Data.PdfReaderRequest? left, Orkeon.Tools.Data.PdfReaderRequest? right) -> bool
+static Orkeon.Tools.Data.PdfReaderResponse.operator !=(Orkeon.Tools.Data.PdfReaderResponse? left, Orkeon.Tools.Data.PdfReaderResponse? right) -> bool
+static Orkeon.Tools.Data.PdfReaderResponse.operator ==(Orkeon.Tools.Data.PdfReaderResponse? left, Orkeon.Tools.Data.PdfReaderResponse? right) -> bool
+static Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.operator !=(Orkeon.Tools.Data.Relational.DatabaseSchemaRequest? left, Orkeon.Tools.Data.Relational.DatabaseSchemaRequest? right) -> bool
+static Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.operator ==(Orkeon.Tools.Data.Relational.DatabaseSchemaRequest? left, Orkeon.Tools.Data.Relational.DatabaseSchemaRequest? right) -> bool
+static Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.operator !=(Orkeon.Tools.Data.Relational.DatabaseSchemaResponse? left, Orkeon.Tools.Data.Relational.DatabaseSchemaResponse? right) -> bool
+static Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.operator ==(Orkeon.Tools.Data.Relational.DatabaseSchemaResponse? left, Orkeon.Tools.Data.Relational.DatabaseSchemaResponse? right) -> bool
+static Orkeon.Tools.Data.Relational.Models.ColumnInfo.operator !=(Orkeon.Tools.Data.Relational.Models.ColumnInfo? left, Orkeon.Tools.Data.Relational.Models.ColumnInfo? right) -> bool
+static Orkeon.Tools.Data.Relational.Models.ColumnInfo.operator ==(Orkeon.Tools.Data.Relational.Models.ColumnInfo? left, Orkeon.Tools.Data.Relational.Models.ColumnInfo? right) -> bool
+static Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.operator !=(Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo? left, Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo? right) -> bool
+static Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo.operator ==(Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo? left, Orkeon.Tools.Data.Relational.Models.ForeignKeyInfo? right) -> bool
+static Orkeon.Tools.Data.Relational.Models.IndexInfo.operator !=(Orkeon.Tools.Data.Relational.Models.IndexInfo? left, Orkeon.Tools.Data.Relational.Models.IndexInfo? right) -> bool
+static Orkeon.Tools.Data.Relational.Models.IndexInfo.operator ==(Orkeon.Tools.Data.Relational.Models.IndexInfo? left, Orkeon.Tools.Data.Relational.Models.IndexInfo? right) -> bool
+static Orkeon.Tools.Data.Relational.Models.TableInfo.operator !=(Orkeon.Tools.Data.Relational.Models.TableInfo? left, Orkeon.Tools.Data.Relational.Models.TableInfo? right) -> bool
+static Orkeon.Tools.Data.Relational.Models.TableInfo.operator ==(Orkeon.Tools.Data.Relational.Models.TableInfo? left, Orkeon.Tools.Data.Relational.Models.TableInfo? right) -> bool
+static Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.operator !=(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest? left, Orkeon.Tools.Data.Relational.RelationalDatabaseRequest? right) -> bool
+static Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.operator ==(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest? left, Orkeon.Tools.Data.Relational.RelationalDatabaseRequest? right) -> bool
+static Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.operator !=(Orkeon.Tools.Data.Relational.RelationalDatabaseResponse? left, Orkeon.Tools.Data.Relational.RelationalDatabaseResponse? right) -> bool
+static Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.operator ==(Orkeon.Tools.Data.Relational.RelationalDatabaseResponse? left, Orkeon.Tools.Data.Relational.RelationalDatabaseResponse? right) -> bool
+static Orkeon.Tools.Data.Search.FileSearchRequestBase.operator !=(Orkeon.Tools.Data.Search.FileSearchRequestBase? left, Orkeon.Tools.Data.Search.FileSearchRequestBase? right) -> bool
+static Orkeon.Tools.Data.Search.FileSearchRequestBase.operator ==(Orkeon.Tools.Data.Search.FileSearchRequestBase? left, Orkeon.Tools.Data.Search.FileSearchRequestBase? right) -> bool
+static Orkeon.Tools.Data.Search.FileSearchResponse.operator !=(Orkeon.Tools.Data.Search.FileSearchResponse? left, Orkeon.Tools.Data.Search.FileSearchResponse? right) -> bool
+static Orkeon.Tools.Data.Search.FileSearchResponse.operator ==(Orkeon.Tools.Data.Search.FileSearchResponse? left, Orkeon.Tools.Data.Search.FileSearchResponse? right) -> bool
+static Orkeon.Tools.Data.Search.FileSearchResult.operator !=(Orkeon.Tools.Data.Search.FileSearchResult? left, Orkeon.Tools.Data.Search.FileSearchResult? right) -> bool
+static Orkeon.Tools.Data.Search.FileSearchResult.operator ==(Orkeon.Tools.Data.Search.FileSearchResult? left, Orkeon.Tools.Data.Search.FileSearchResult? right) -> bool
+static Orkeon.Tools.Data.Search.MdxSearchRequest.operator !=(Orkeon.Tools.Data.Search.MdxSearchRequest? left, Orkeon.Tools.Data.Search.MdxSearchRequest? right) -> bool
+static Orkeon.Tools.Data.Search.MdxSearchRequest.operator ==(Orkeon.Tools.Data.Search.MdxSearchRequest? left, Orkeon.Tools.Data.Search.MdxSearchRequest? right) -> bool
+static Orkeon.Tools.Data.Search.PdfSearchRequest.operator !=(Orkeon.Tools.Data.Search.PdfSearchRequest? left, Orkeon.Tools.Data.Search.PdfSearchRequest? right) -> bool
+static Orkeon.Tools.Data.Search.PdfSearchRequest.operator ==(Orkeon.Tools.Data.Search.PdfSearchRequest? left, Orkeon.Tools.Data.Search.PdfSearchRequest? right) -> bool
+static Orkeon.Tools.Data.Search.PdfSearchResponse.operator !=(Orkeon.Tools.Data.Search.PdfSearchResponse? left, Orkeon.Tools.Data.Search.PdfSearchResponse? right) -> bool
+static Orkeon.Tools.Data.Search.PdfSearchResponse.operator ==(Orkeon.Tools.Data.Search.PdfSearchResponse? left, Orkeon.Tools.Data.Search.PdfSearchResponse? right) -> bool
+static Orkeon.Tools.Data.Search.PdfSearchResult.operator !=(Orkeon.Tools.Data.Search.PdfSearchResult? left, Orkeon.Tools.Data.Search.PdfSearchResult? right) -> bool
+static Orkeon.Tools.Data.Search.PdfSearchResult.operator ==(Orkeon.Tools.Data.Search.PdfSearchResult? left, Orkeon.Tools.Data.Search.PdfSearchResult? right) -> bool
+static Orkeon.Tools.Data.Search.TxtSearchRequest.operator !=(Orkeon.Tools.Data.Search.TxtSearchRequest? left, Orkeon.Tools.Data.Search.TxtSearchRequest? right) -> bool
+static Orkeon.Tools.Data.Search.TxtSearchRequest.operator ==(Orkeon.Tools.Data.Search.TxtSearchRequest? left, Orkeon.Tools.Data.Search.TxtSearchRequest? right) -> bool
+static Orkeon.Tools.Data.XlsxReadRequest.operator !=(Orkeon.Tools.Data.XlsxReadRequest? left, Orkeon.Tools.Data.XlsxReadRequest? right) -> bool
+static Orkeon.Tools.Data.XlsxReadRequest.operator ==(Orkeon.Tools.Data.XlsxReadRequest? left, Orkeon.Tools.Data.XlsxReadRequest? right) -> bool
+static Orkeon.Tools.Data.XlsxReadResponse.operator !=(Orkeon.Tools.Data.XlsxReadResponse? left, Orkeon.Tools.Data.XlsxReadResponse? right) -> bool
+static Orkeon.Tools.Data.XlsxReadResponse.operator ==(Orkeon.Tools.Data.XlsxReadResponse? left, Orkeon.Tools.Data.XlsxReadResponse? right) -> bool
+static Orkeon.Tools.Data.XlsxSheetData.operator !=(Orkeon.Tools.Data.XlsxSheetData? left, Orkeon.Tools.Data.XlsxSheetData? right) -> bool
+static Orkeon.Tools.Data.XlsxSheetData.operator ==(Orkeon.Tools.Data.XlsxSheetData? left, Orkeon.Tools.Data.XlsxSheetData? right) -> bool
+static Orkeon.Tools.Data.XlsxSheetInput.operator !=(Orkeon.Tools.Data.XlsxSheetInput? left, Orkeon.Tools.Data.XlsxSheetInput? right) -> bool
+static Orkeon.Tools.Data.XlsxSheetInput.operator ==(Orkeon.Tools.Data.XlsxSheetInput? left, Orkeon.Tools.Data.XlsxSheetInput? right) -> bool
+static Orkeon.Tools.Data.XlsxWriteRequest.operator !=(Orkeon.Tools.Data.XlsxWriteRequest? left, Orkeon.Tools.Data.XlsxWriteRequest? right) -> bool
+static Orkeon.Tools.Data.XlsxWriteRequest.operator ==(Orkeon.Tools.Data.XlsxWriteRequest? left, Orkeon.Tools.Data.XlsxWriteRequest? right) -> bool
+static Orkeon.Tools.Data.XlsxWriteResponse.operator !=(Orkeon.Tools.Data.XlsxWriteResponse? left, Orkeon.Tools.Data.XlsxWriteResponse? right) -> bool
+static Orkeon.Tools.Data.XlsxWriteResponse.operator ==(Orkeon.Tools.Data.XlsxWriteResponse? left, Orkeon.Tools.Data.XlsxWriteResponse? right) -> bool
+static Orkeon.Tools.Data.XmlParserChildInfo.operator !=(Orkeon.Tools.Data.XmlParserChildInfo? left, Orkeon.Tools.Data.XmlParserChildInfo? right) -> bool
+static Orkeon.Tools.Data.XmlParserChildInfo.operator ==(Orkeon.Tools.Data.XmlParserChildInfo? left, Orkeon.Tools.Data.XmlParserChildInfo? right) -> bool
+static Orkeon.Tools.Data.XmlParserRequest.operator !=(Orkeon.Tools.Data.XmlParserRequest? left, Orkeon.Tools.Data.XmlParserRequest? right) -> bool
+static Orkeon.Tools.Data.XmlParserRequest.operator ==(Orkeon.Tools.Data.XmlParserRequest? left, Orkeon.Tools.Data.XmlParserRequest? right) -> bool
+static Orkeon.Tools.Data.XmlParserResponse.operator !=(Orkeon.Tools.Data.XmlParserResponse? left, Orkeon.Tools.Data.XmlParserResponse? right) -> bool
+static Orkeon.Tools.Data.XmlParserResponse.operator ==(Orkeon.Tools.Data.XmlParserResponse? left, Orkeon.Tools.Data.XmlParserResponse? right) -> bool
+virtual Orkeon.Tools.Data.CsvReaderRequest.<Clone>$() -> Orkeon.Tools.Data.CsvReaderRequest!
+virtual Orkeon.Tools.Data.CsvReaderRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.CsvReaderRequest.Equals(Orkeon.Tools.Data.CsvReaderRequest? other) -> bool
+virtual Orkeon.Tools.Data.CsvReaderRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.CsvReaderResponse.<Clone>$() -> Orkeon.Tools.Data.CsvReaderResponse!
+virtual Orkeon.Tools.Data.CsvReaderResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.CsvReaderResponse.Equals(Orkeon.Tools.Data.CsvReaderResponse? other) -> bool
+virtual Orkeon.Tools.Data.CsvReaderResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.DocxReadRequest.<Clone>$() -> Orkeon.Tools.Data.DocxReadRequest!
+virtual Orkeon.Tools.Data.DocxReadRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.DocxReadRequest.Equals(Orkeon.Tools.Data.DocxReadRequest? other) -> bool
+virtual Orkeon.Tools.Data.DocxReadRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.DocxReadResponse.<Clone>$() -> Orkeon.Tools.Data.DocxReadResponse!
+virtual Orkeon.Tools.Data.DocxReadResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.DocxReadResponse.Equals(Orkeon.Tools.Data.DocxReadResponse? other) -> bool
+virtual Orkeon.Tools.Data.DocxReadResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.DocxWriteRequest.<Clone>$() -> Orkeon.Tools.Data.DocxWriteRequest!
+virtual Orkeon.Tools.Data.DocxWriteRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.DocxWriteRequest.Equals(Orkeon.Tools.Data.DocxWriteRequest? other) -> bool
+virtual Orkeon.Tools.Data.DocxWriteRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.DocxWriteResponse.<Clone>$() -> Orkeon.Tools.Data.DocxWriteResponse!
+virtual Orkeon.Tools.Data.DocxWriteResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.DocxWriteResponse.Equals(Orkeon.Tools.Data.DocxWriteResponse? other) -> bool
+virtual Orkeon.Tools.Data.DocxWriteResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Graph.ArcadeDbRequest.<Clone>$() -> Orkeon.Tools.Data.Graph.ArcadeDbRequest!
+virtual Orkeon.Tools.Data.Graph.ArcadeDbRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Graph.ArcadeDbRequest.Equals(Orkeon.Tools.Data.Graph.ArcadeDbRequest? other) -> bool
+virtual Orkeon.Tools.Data.Graph.ArcadeDbRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Graph.ArcadeDbResponse.<Clone>$() -> Orkeon.Tools.Data.Graph.ArcadeDbResponse!
+virtual Orkeon.Tools.Data.Graph.ArcadeDbResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Graph.ArcadeDbResponse.Equals(Orkeon.Tools.Data.Graph.ArcadeDbResponse? other) -> bool
+virtual Orkeon.Tools.Data.Graph.ArcadeDbResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Graph.GraphSchemaRequest.<Clone>$() -> Orkeon.Tools.Data.Graph.GraphSchemaRequest!
+virtual Orkeon.Tools.Data.Graph.GraphSchemaRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Graph.GraphSchemaRequest.Equals(Orkeon.Tools.Data.Graph.GraphSchemaRequest? other) -> bool
+virtual Orkeon.Tools.Data.Graph.GraphSchemaRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Graph.GraphSchemaResponse.<Clone>$() -> Orkeon.Tools.Data.Graph.GraphSchemaResponse!
+virtual Orkeon.Tools.Data.Graph.GraphSchemaResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Graph.GraphSchemaResponse.Equals(Orkeon.Tools.Data.Graph.GraphSchemaResponse? other) -> bool
+virtual Orkeon.Tools.Data.Graph.GraphSchemaResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Graph.JanusGraphRequest.<Clone>$() -> Orkeon.Tools.Data.Graph.JanusGraphRequest!
+virtual Orkeon.Tools.Data.Graph.JanusGraphRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Graph.JanusGraphRequest.Equals(Orkeon.Tools.Data.Graph.JanusGraphRequest? other) -> bool
+virtual Orkeon.Tools.Data.Graph.JanusGraphRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Graph.JanusGraphResponse.<Clone>$() -> Orkeon.Tools.Data.Graph.JanusGraphResponse!
+virtual Orkeon.Tools.Data.Graph.JanusGraphResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Graph.JanusGraphResponse.Equals(Orkeon.Tools.Data.Graph.JanusGraphResponse? other) -> bool
+virtual Orkeon.Tools.Data.Graph.JanusGraphResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.<Clone>$() -> Orkeon.Tools.Data.MongoDB.Models.CollectionInfo!
+virtual Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.Equals(Orkeon.Tools.Data.MongoDB.Models.CollectionInfo? other) -> bool
+virtual Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.MongoDB.Models.InferredField.<Clone>$() -> Orkeon.Tools.Data.MongoDB.Models.InferredField!
+virtual Orkeon.Tools.Data.MongoDB.Models.InferredField.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.MongoDB.Models.InferredField.Equals(Orkeon.Tools.Data.MongoDB.Models.InferredField? other) -> bool
+virtual Orkeon.Tools.Data.MongoDB.Models.InferredField.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.<Clone>$() -> Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo!
+virtual Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Equals(Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo? other) -> bool
+virtual Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.MongoDB.MongoDbRequest.<Clone>$() -> Orkeon.Tools.Data.MongoDB.MongoDbRequest!
+virtual Orkeon.Tools.Data.MongoDB.MongoDbRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.MongoDB.MongoDbRequest.Equals(Orkeon.Tools.Data.MongoDB.MongoDbRequest? other) -> bool
+virtual Orkeon.Tools.Data.MongoDB.MongoDbRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.MongoDB.MongoDbResponse.<Clone>$() -> Orkeon.Tools.Data.MongoDB.MongoDbResponse!
+virtual Orkeon.Tools.Data.MongoDB.MongoDbResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.MongoDB.MongoDbResponse.Equals(Orkeon.Tools.Data.MongoDB.MongoDbResponse? other) -> bool
+virtual Orkeon.Tools.Data.MongoDB.MongoDbResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.<Clone>$() -> Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest!
+virtual Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.Equals(Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest? other) -> bool
+virtual Orkeon.Tools.Data.MongoDB.MongoDbSchemaRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.<Clone>$() -> Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse!
+virtual Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.Equals(Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse? other) -> bool
+virtual Orkeon.Tools.Data.MongoDB.MongoDbSchemaResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.PdfReaderPageInfo.<Clone>$() -> Orkeon.Tools.Data.PdfReaderPageInfo!
+virtual Orkeon.Tools.Data.PdfReaderPageInfo.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.PdfReaderPageInfo.Equals(Orkeon.Tools.Data.PdfReaderPageInfo? other) -> bool
+virtual Orkeon.Tools.Data.PdfReaderPageInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.PdfReaderRequest.<Clone>$() -> Orkeon.Tools.Data.PdfReaderRequest!
+virtual Orkeon.Tools.Data.PdfReaderRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.PdfReaderRequest.Equals(Orkeon.Tools.Data.PdfReaderRequest? other) -> bool
+virtual Orkeon.Tools.Data.PdfReaderRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.PdfReaderResponse.<Clone>$() -> Orkeon.Tools.Data.PdfReaderResponse!
+virtual Orkeon.Tools.Data.PdfReaderResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.PdfReaderResponse.Equals(Orkeon.Tools.Data.PdfReaderResponse? other) -> bool
+virtual Orkeon.Tools.Data.PdfReaderResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.<Clone>$() -> Orkeon.Tools.Data.Relational.DatabaseSchemaRequest!
+virtual Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.Equals(Orkeon.Tools.Data.Relational.DatabaseSchemaRequest? other) -> bool
+virtual Orkeon.Tools.Data.Relational.DatabaseSchemaRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.<Clone>$() -> Orkeon.Tools.Data.Relational.DatabaseSchemaResponse!
+virtual Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.Equals(Orkeon.Tools.Data.Relational.DatabaseSchemaResponse? other) -> bool
+virtual Orkeon.Tools.Data.Relational.DatabaseSchemaResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.<Clone>$() -> Orkeon.Tools.Data.Relational.RelationalDatabaseRequest!
+virtual Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Equals(Orkeon.Tools.Data.Relational.RelationalDatabaseRequest? other) -> bool
+virtual Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.<Clone>$() -> Orkeon.Tools.Data.Relational.RelationalDatabaseResponse!
+virtual Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Equals(Orkeon.Tools.Data.Relational.RelationalDatabaseResponse? other) -> bool
+virtual Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Search.FileSearchRequestBase.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Search.FileSearchRequestBase.Equals(Orkeon.Tools.Data.Search.FileSearchRequestBase? other) -> bool
+virtual Orkeon.Tools.Data.Search.FileSearchRequestBase.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Search.FileSearchResponse.<Clone>$() -> Orkeon.Tools.Data.Search.FileSearchResponse!
+virtual Orkeon.Tools.Data.Search.FileSearchResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Search.FileSearchResponse.Equals(Orkeon.Tools.Data.Search.FileSearchResponse? other) -> bool
+virtual Orkeon.Tools.Data.Search.FileSearchResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Search.FileSearchResult.<Clone>$() -> Orkeon.Tools.Data.Search.FileSearchResult!
+virtual Orkeon.Tools.Data.Search.FileSearchResult.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Search.FileSearchResult.Equals(Orkeon.Tools.Data.Search.FileSearchResult? other) -> bool
+virtual Orkeon.Tools.Data.Search.FileSearchResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.ChunkingStrategyName.get -> string!
+virtual Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.PreprocessContent(string! content) -> string!
+virtual Orkeon.Tools.Data.Search.MdxSearchRequest.Equals(Orkeon.Tools.Data.Search.MdxSearchRequest? other) -> bool
+virtual Orkeon.Tools.Data.Search.PdfSearchRequest.<Clone>$() -> Orkeon.Tools.Data.Search.PdfSearchRequest!
+virtual Orkeon.Tools.Data.Search.PdfSearchRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Search.PdfSearchRequest.Equals(Orkeon.Tools.Data.Search.PdfSearchRequest? other) -> bool
+virtual Orkeon.Tools.Data.Search.PdfSearchRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Search.PdfSearchResponse.<Clone>$() -> Orkeon.Tools.Data.Search.PdfSearchResponse!
+virtual Orkeon.Tools.Data.Search.PdfSearchResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Search.PdfSearchResponse.Equals(Orkeon.Tools.Data.Search.PdfSearchResponse? other) -> bool
+virtual Orkeon.Tools.Data.Search.PdfSearchResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Search.PdfSearchResult.<Clone>$() -> Orkeon.Tools.Data.Search.PdfSearchResult!
+virtual Orkeon.Tools.Data.Search.PdfSearchResult.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.Search.PdfSearchResult.Equals(Orkeon.Tools.Data.Search.PdfSearchResult? other) -> bool
+virtual Orkeon.Tools.Data.Search.PdfSearchResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.Search.TxtSearchRequest.Equals(Orkeon.Tools.Data.Search.TxtSearchRequest? other) -> bool
+virtual Orkeon.Tools.Data.XlsxReadRequest.<Clone>$() -> Orkeon.Tools.Data.XlsxReadRequest!
+virtual Orkeon.Tools.Data.XlsxReadRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XlsxReadRequest.Equals(Orkeon.Tools.Data.XlsxReadRequest? other) -> bool
+virtual Orkeon.Tools.Data.XlsxReadRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.XlsxReadResponse.<Clone>$() -> Orkeon.Tools.Data.XlsxReadResponse!
+virtual Orkeon.Tools.Data.XlsxReadResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XlsxReadResponse.Equals(Orkeon.Tools.Data.XlsxReadResponse? other) -> bool
+virtual Orkeon.Tools.Data.XlsxReadResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.XlsxSheetData.<Clone>$() -> Orkeon.Tools.Data.XlsxSheetData!
+virtual Orkeon.Tools.Data.XlsxSheetData.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XlsxSheetData.Equals(Orkeon.Tools.Data.XlsxSheetData? other) -> bool
+virtual Orkeon.Tools.Data.XlsxSheetData.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.XlsxSheetInput.<Clone>$() -> Orkeon.Tools.Data.XlsxSheetInput!
+virtual Orkeon.Tools.Data.XlsxSheetInput.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XlsxSheetInput.Equals(Orkeon.Tools.Data.XlsxSheetInput? other) -> bool
+virtual Orkeon.Tools.Data.XlsxSheetInput.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.XlsxWriteRequest.<Clone>$() -> Orkeon.Tools.Data.XlsxWriteRequest!
+virtual Orkeon.Tools.Data.XlsxWriteRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XlsxWriteRequest.Equals(Orkeon.Tools.Data.XlsxWriteRequest? other) -> bool
+virtual Orkeon.Tools.Data.XlsxWriteRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.XlsxWriteResponse.<Clone>$() -> Orkeon.Tools.Data.XlsxWriteResponse!
+virtual Orkeon.Tools.Data.XlsxWriteResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XlsxWriteResponse.Equals(Orkeon.Tools.Data.XlsxWriteResponse? other) -> bool
+virtual Orkeon.Tools.Data.XlsxWriteResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.XmlParserChildInfo.<Clone>$() -> Orkeon.Tools.Data.XmlParserChildInfo!
+virtual Orkeon.Tools.Data.XmlParserChildInfo.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XmlParserChildInfo.Equals(Orkeon.Tools.Data.XmlParserChildInfo? other) -> bool
+virtual Orkeon.Tools.Data.XmlParserChildInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.XmlParserRequest.<Clone>$() -> Orkeon.Tools.Data.XmlParserRequest!
+virtual Orkeon.Tools.Data.XmlParserRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XmlParserRequest.Equals(Orkeon.Tools.Data.XmlParserRequest? other) -> bool
+virtual Orkeon.Tools.Data.XmlParserRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Data.XmlParserResponse.<Clone>$() -> Orkeon.Tools.Data.XmlParserResponse!
+virtual Orkeon.Tools.Data.XmlParserResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Data.XmlParserResponse.Equals(Orkeon.Tools.Data.XmlParserResponse? other) -> bool
+virtual Orkeon.Tools.Data.XmlParserResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool

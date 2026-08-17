@@ -1,0 +1,524 @@
+#nullable enable
+Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter
+Orkeon.Scripting.Bindings.AgentBuilderBinding
+Orkeon.Scripting.Bindings.CrewBuilderBinding
+Orkeon.Scripting.Bindings.ErrorActionBinding
+Orkeon.Scripting.Bindings.JsErrorActionFactory
+Orkeon.Scripting.Bindings.JsErrorActionFactory.JsErrorActionFactory() -> void
+Orkeon.Scripting.Bindings.JsErrorActionFactory.fail() -> Orkeon.Scripting.ErrorPolicy.JsErrorAction!
+Orkeon.Scripting.Bindings.JsErrorActionFactory.fallback(Jint.Native.JsValue! value) -> Orkeon.Scripting.ErrorPolicy.JsErrorAction!
+Orkeon.Scripting.Bindings.JsErrorActionFactory.retry(Jint.Native.JsValue? options = null) -> Orkeon.Scripting.ErrorPolicy.JsErrorAction!
+Orkeon.Scripting.Bindings.JsErrorActionFactory.skip() -> Orkeon.Scripting.ErrorPolicy.JsErrorAction!
+Orkeon.Scripting.Bindings.JsLlmNamespace
+Orkeon.Scripting.Bindings.JsLlmNamespace.anthropic.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Bindings.JsLlmNamespace.azureOpenai.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Bindings.JsLlmNamespace.default.get -> Orkeon.Scripting.Runtime.JsLlmConfig!
+Orkeon.Scripting.Bindings.JsLlmNamespace.default_.get -> Orkeon.Scripting.Runtime.JsLlmConfig!
+Orkeon.Scripting.Bindings.JsLlmNamespace.groq.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Bindings.JsLlmNamespace.ollama.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Bindings.JsLlmNamespace.openai.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Bindings.LlmNamespaceBinding
+Orkeon.Scripting.Bindings.RagNamespaceBinding
+Orkeon.Scripting.Bindings.RagScriptingBackend
+Orkeon.Scripting.Bindings.RagScriptingBackend.<Clone>$() -> Orkeon.Scripting.Bindings.RagScriptingBackend!
+Orkeon.Scripting.Bindings.RagScriptingBackend.Equals(Orkeon.Scripting.Bindings.RagScriptingBackend? other) -> bool
+Orkeon.Scripting.Bindings.RagScriptingBackend.FileSystem.get -> Orkeon.Domain.FileSystem.IFileSystemService!
+Orkeon.Scripting.Bindings.RagScriptingBackend.FileSystem.init -> void
+Orkeon.Scripting.Bindings.RagScriptingBackend.IngestionPipeline.get -> Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline!
+Orkeon.Scripting.Bindings.RagScriptingBackend.IngestionPipeline.init -> void
+Orkeon.Scripting.Bindings.RagScriptingBackend.ProfileResolver.get -> Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver?
+Orkeon.Scripting.Bindings.RagScriptingBackend.ProfileResolver.init -> void
+Orkeon.Scripting.Bindings.RagScriptingBackend.RagPipeline.get -> Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!
+Orkeon.Scripting.Bindings.RagScriptingBackend.RagPipeline.init -> void
+Orkeon.Scripting.Bindings.RagScriptingBackend.RagScriptingBackend() -> void
+Orkeon.Scripting.Bindings.StateGraphBinding
+Orkeon.Scripting.Bindings.StateMachineBinding
+Orkeon.Scripting.Bindings.TaskBuilderBinding
+Orkeon.Scripting.Bindings.TestNamespaceBinding
+Orkeon.Scripting.Bindings.ToolBuilderBinding
+Orkeon.Scripting.Bindings.ToolsNamespaceBinding
+Orkeon.Scripting.Builders.AgentCommandHandler
+Orkeon.Scripting.Builders.AgentCommandHandler.<Clone>$() -> Orkeon.Scripting.Builders.AgentCommandHandler!
+Orkeon.Scripting.Builders.AgentCommandHandler.AgentCommandHandler(string? Intent, Jint.Native.JsValue! Handler) -> void
+Orkeon.Scripting.Builders.AgentCommandHandler.Deconstruct(out string? Intent, out Jint.Native.JsValue! Handler) -> void
+Orkeon.Scripting.Builders.AgentCommandHandler.Equals(Orkeon.Scripting.Builders.AgentCommandHandler? other) -> bool
+Orkeon.Scripting.Builders.AgentCommandHandler.Handler.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Builders.AgentCommandHandler.Handler.init -> void
+Orkeon.Scripting.Builders.AgentCommandHandler.Intent.get -> string?
+Orkeon.Scripting.Builders.AgentCommandHandler.Intent.init -> void
+Orkeon.Scripting.Builders.JsAgent
+Orkeon.Scripting.Builders.JsAgent.CommandHandlers.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Builders.AgentCommandHandler!>!
+Orkeon.Scripting.Builders.JsAgent.id.get -> string!
+Orkeon.Scripting.Builders.JsAgent.name.get -> string!
+Orkeon.Scripting.Builders.JsAgentBuilder
+Orkeon.Scripting.Builders.JsAgentBuilder.JsAgentBuilder() -> void
+Orkeon.Scripting.Builders.JsAgentBuilder.allowDelegation(bool value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.backstory(string! value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.body(Jint.Native.JsValue! fn) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.build() -> Orkeon.Scripting.Builders.JsAgent!
+Orkeon.Scripting.Builders.JsAgentBuilder.concurrency(int value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.goal(string! value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.llm(Jint.Native.JsValue! config) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.maxIterations(int value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.onAgentStart(Jint.Native.JsValue! handler) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.onAgentStop(Jint.Native.JsValue! handler) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.onCommand(Jint.Native.JsValue! handler) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.onCommand(string! intent, Jint.Native.JsValue! handler) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.onError(Jint.Native.JsValue! handler) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.role(string! value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.tools(Jint.Native.JsValue! names) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.verbose() -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.verbose(bool value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.when(Jint.Native.JsValue! predicate) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.withAutonomousTool(Jint.Native.JsValue! tool) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.withAutonomousTools(Jint.Native.JsValue! tools) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.withResponseFormat(string! type) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.withResponseSchema(string! name, Jint.Native.JsValue! schema, Jint.Native.JsValue? strict = null) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.withState(Jint.Native.JsValue! factoryOrSeed) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder
+Orkeon.Scripting.Builders.JsCrewBuilder.JsCrewBuilder(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null) -> void
+Orkeon.Scripting.Builders.JsCrewBuilder.budget(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.build() -> Orkeon.Scripting.Runtime.JsCrew!
+Orkeon.Scripting.Builders.JsCrewBuilder.goal(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.graph(Jint.Native.JsValue! graphInstance) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.manager(Orkeon.Scripting.Builders.JsAgent! agent) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.onCrewComplete(Jint.Native.JsValue! hook) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.onCrewError(Jint.Native.JsValue! hook) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.onCrewStart(Jint.Native.JsValue! hook) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.process(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.verbose() -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.verbose(bool value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.when(Jint.Native.JsValue! predicate) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.withAgent(Orkeon.Scripting.Builders.JsAgent! agent) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.withAgents(Jint.Native.JsValue! agents) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.withTask(Jint.Native.JsValue! task) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.withTasks(Jint.Native.JsValue! tasks) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder
+Orkeon.Scripting.Builders.JsTaskBuilder.JsTaskBuilder() -> void
+Orkeon.Scripting.Builders.JsTaskBuilder.agent(Orkeon.Scripting.Builders.JsAgent! agent) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.build() -> Orkeon.Scripting.Runtime.JsTask!
+Orkeon.Scripting.Builders.JsTaskBuilder.deliverable(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.description(string! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.expect(Jint.Native.JsValue! schema) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.expectedOutput(string! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.when(Jint.Native.JsValue! predicate) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.withContext(Orkeon.Scripting.Runtime.JsTask! task) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.withContexts(Jint.Native.JsValue! tasks) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.withResponseFormat(string! type) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.withResponseSchema(string! name, Jint.Native.JsValue! schema, Jint.Native.JsValue? strict = null) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.withTaskTool(Jint.Native.JsValue! tool) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsToolBuilder
+Orkeon.Scripting.Builders.JsToolBuilder.JsToolBuilder(Jint.Engine! engine) -> void
+Orkeon.Scripting.Builders.JsToolBuilder.build() -> Orkeon.Scripting.Runtime.JsTool!
+Orkeon.Scripting.Builders.JsToolBuilder.description(string! value) -> Orkeon.Scripting.Builders.JsToolBuilder!
+Orkeon.Scripting.Builders.JsToolBuilder.execute(Jint.Native.JsValue! fn) -> Orkeon.Scripting.Builders.JsToolBuilder!
+Orkeon.Scripting.Builders.JsToolBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsToolBuilder!
+Orkeon.Scripting.Builders.JsToolBuilder.withSchema(Jint.Native.JsValue! schema) -> Orkeon.Scripting.Builders.JsToolBuilder!
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.<Clone>$() -> Orkeon.Scripting.Configuration.ScriptingLimitsOptions!
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.Equals(Orkeon.Scripting.Configuration.ScriptingLimitsOptions? other) -> bool
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.ExecutionTimeout.get -> System.TimeSpan
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.ExecutionTimeout.init -> void
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.MemoryLimitBytes.get -> long
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.MemoryLimitBytes.init -> void
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.RecursionLimit.get -> int
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.RecursionLimit.init -> void
+Orkeon.Scripting.Configuration.ScriptingLimitsOptions.ScriptingLimitsOptions() -> void
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.<Clone>$() -> Orkeon.Scripting.Configuration.ScriptingToolchainOptions!
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.Equals(Orkeon.Scripting.Configuration.ScriptingToolchainOptions? other) -> bool
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.EsbuildPath.get -> string?
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.EsbuildPath.init -> void
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.EsbuildTimeout.get -> System.TimeSpan
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.EsbuildTimeout.init -> void
+Orkeon.Scripting.Configuration.ScriptingToolchainOptions.ScriptingToolchainOptions() -> void
+Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper
+Orkeon.Scripting.ErrorPolicy.JsAgentRef
+Orkeon.Scripting.ErrorPolicy.JsAgentRef.id.get -> string!
+Orkeon.Scripting.ErrorPolicy.JsAgentRef.name.get -> string!
+Orkeon.Scripting.ErrorPolicy.JsErrorAction
+Orkeon.Scripting.ErrorPolicy.JsErrorAction.delay.get -> System.TimeSpan?
+Orkeon.Scripting.ErrorPolicy.JsErrorAction.fallbackValue.get -> Jint.Native.JsValue?
+Orkeon.Scripting.ErrorPolicy.JsErrorAction.kind.get -> Orkeon.Scripting.ErrorPolicy.JsErrorActionKind
+Orkeon.Scripting.ErrorPolicy.JsErrorAction.max.get -> int?
+Orkeon.Scripting.ErrorPolicy.JsErrorActionKind
+Orkeon.Scripting.ErrorPolicy.JsErrorActionKind.Fail = 0 -> Orkeon.Scripting.ErrorPolicy.JsErrorActionKind
+Orkeon.Scripting.ErrorPolicy.JsErrorActionKind.Fallback = 3 -> Orkeon.Scripting.ErrorPolicy.JsErrorActionKind
+Orkeon.Scripting.ErrorPolicy.JsErrorActionKind.Retry = 1 -> Orkeon.Scripting.ErrorPolicy.JsErrorActionKind
+Orkeon.Scripting.ErrorPolicy.JsErrorActionKind.Skip = 2 -> Orkeon.Scripting.ErrorPolicy.JsErrorActionKind
+Orkeon.Scripting.ErrorPolicy.JsErrorContext
+Orkeon.Scripting.ErrorPolicy.JsErrorContext.agent.get -> Orkeon.Scripting.ErrorPolicy.JsAgentRef!
+Orkeon.Scripting.ErrorPolicy.JsErrorContext.attempt.get -> int
+Orkeon.Scripting.ErrorPolicy.JsErrorContext.code.get -> string!
+Orkeon.Scripting.ErrorPolicy.JsErrorContext.exception.get -> System.Exception!
+Orkeon.Scripting.ErrorPolicy.JsErrorContext.message.get -> string!
+Orkeon.Scripting.Exceptions.AgentAlreadyInCrewException
+Orkeon.Scripting.Exceptions.AgentAlreadyInCrewException.AgentAlreadyInCrewException() -> void
+Orkeon.Scripting.Exceptions.AgentAlreadyInCrewException.AgentAlreadyInCrewException(string! agentName, string! crewName) -> void
+Orkeon.Scripting.Exceptions.AgentAlreadyInCrewException.AgentAlreadyInCrewException(string! message) -> void
+Orkeon.Scripting.Exceptions.AgentAlreadyInCrewException.AgentAlreadyInCrewException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Exceptions.AgentAlreadyInCrewException.AgentName.get -> string!
+Orkeon.Scripting.Exceptions.AgentAlreadyInCrewException.CrewName.get -> string!
+Orkeon.Scripting.Exceptions.AgentNotInCrewException
+Orkeon.Scripting.Exceptions.AgentNotInCrewException.AgentName.get -> string!
+Orkeon.Scripting.Exceptions.AgentNotInCrewException.AgentNotInCrewException() -> void
+Orkeon.Scripting.Exceptions.AgentNotInCrewException.AgentNotInCrewException(string! agentName) -> void
+Orkeon.Scripting.Exceptions.AgentNotInCrewException.AgentNotInCrewException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Exceptions.AgentNotInThisCrewException
+Orkeon.Scripting.Exceptions.AgentNotInThisCrewException.AgentName.get -> string!
+Orkeon.Scripting.Exceptions.AgentNotInThisCrewException.AgentNotInThisCrewException() -> void
+Orkeon.Scripting.Exceptions.AgentNotInThisCrewException.AgentNotInThisCrewException(string! agentName, string! crewName) -> void
+Orkeon.Scripting.Exceptions.AgentNotInThisCrewException.AgentNotInThisCrewException(string! message) -> void
+Orkeon.Scripting.Exceptions.AgentNotInThisCrewException.AgentNotInThisCrewException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Exceptions.AgentNotInThisCrewException.CrewName.get -> string!
+Orkeon.Scripting.Exceptions.DuplicateAgentNameException
+Orkeon.Scripting.Exceptions.DuplicateAgentNameException.AgentName.get -> string!
+Orkeon.Scripting.Exceptions.DuplicateAgentNameException.CrewName.get -> string!
+Orkeon.Scripting.Exceptions.DuplicateAgentNameException.DuplicateAgentNameException() -> void
+Orkeon.Scripting.Exceptions.DuplicateAgentNameException.DuplicateAgentNameException(string! agentName, string! crewName) -> void
+Orkeon.Scripting.Exceptions.DuplicateAgentNameException.DuplicateAgentNameException(string! message) -> void
+Orkeon.Scripting.Exceptions.DuplicateAgentNameException.DuplicateAgentNameException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Exceptions.InvalidScriptException
+Orkeon.Scripting.Exceptions.InvalidScriptException.InvalidScriptException() -> void
+Orkeon.Scripting.Exceptions.InvalidScriptException.InvalidScriptException(string! message) -> void
+Orkeon.Scripting.Exceptions.InvalidScriptException.InvalidScriptException(string! message, System.Exception! inner) -> void
+Orkeon.Scripting.Exceptions.ReceiveTimeoutException
+Orkeon.Scripting.Exceptions.ReceiveTimeoutException.ReceiveTimeoutException() -> void
+Orkeon.Scripting.Exceptions.ReceiveTimeoutException.ReceiveTimeoutException(System.TimeSpan timeout) -> void
+Orkeon.Scripting.Exceptions.ReceiveTimeoutException.ReceiveTimeoutException(string! message) -> void
+Orkeon.Scripting.Exceptions.ReceiveTimeoutException.ReceiveTimeoutException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Exceptions.ReceiveTimeoutException.Timeout.get -> System.TimeSpan
+Orkeon.Scripting.Exceptions.RecursiveAgentInvocationException
+Orkeon.Scripting.Exceptions.RecursiveAgentInvocationException.AgentName.get -> string!
+Orkeon.Scripting.Exceptions.RecursiveAgentInvocationException.RecursiveAgentInvocationException() -> void
+Orkeon.Scripting.Exceptions.RecursiveAgentInvocationException.RecursiveAgentInvocationException(string! agentName) -> void
+Orkeon.Scripting.Exceptions.RecursiveAgentInvocationException.RecursiveAgentInvocationException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Exceptions.StateMutationOutsideWithException
+Orkeon.Scripting.Exceptions.StateMutationOutsideWithException.PropertyName.get -> string!
+Orkeon.Scripting.Exceptions.StateMutationOutsideWithException.StateMutationOutsideWithException() -> void
+Orkeon.Scripting.Exceptions.StateMutationOutsideWithException.StateMutationOutsideWithException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Exceptions.StateMutationOutsideWithException.StateMutationOutsideWithException(string! propertyName) -> void
+Orkeon.Scripting.Exceptions.WaiterKickedException
+Orkeon.Scripting.Exceptions.WaiterKickedException.QueueName.get -> string!
+Orkeon.Scripting.Exceptions.WaiterKickedException.WaiterKickedException() -> void
+Orkeon.Scripting.Exceptions.WaiterKickedException.WaiterKickedException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Exceptions.WaiterKickedException.WaiterKickedException(string! queueName) -> void
+Orkeon.Scripting.JsEngineFactory
+Orkeon.Scripting.JsEngineFactory.Create() -> Jint.Engine!
+Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingLimitsOptions!>! limits, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null) -> void
+Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Orkeon.Scripting.Configuration.ScriptingLimitsOptions? limits = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null) -> void
+Orkeon.Scripting.Orchestration.GraphSentinels
+Orkeon.Scripting.Orchestration.JsGraphConfig
+Orkeon.Scripting.Orchestration.JsGraphConfig.<Clone>$() -> Orkeon.Scripting.Orchestration.JsGraphConfig!
+Orkeon.Scripting.Orchestration.JsGraphConfig.Deconstruct(out int MaxTransitions, out int MaxStateVisits, out int MaxRetryCycles, out System.TimeSpan? MaxTotalDuration) -> void
+Orkeon.Scripting.Orchestration.JsGraphConfig.Equals(Orkeon.Scripting.Orchestration.JsGraphConfig? other) -> bool
+Orkeon.Scripting.Orchestration.JsGraphConfig.JsGraphConfig(int MaxTransitions, int MaxStateVisits, int MaxRetryCycles, System.TimeSpan? MaxTotalDuration) -> void
+Orkeon.Scripting.Orchestration.JsGraphConfig.MaxRetryCycles.get -> int
+Orkeon.Scripting.Orchestration.JsGraphConfig.MaxRetryCycles.init -> void
+Orkeon.Scripting.Orchestration.JsGraphConfig.MaxStateVisits.get -> int
+Orkeon.Scripting.Orchestration.JsGraphConfig.MaxStateVisits.init -> void
+Orkeon.Scripting.Orchestration.JsGraphConfig.MaxTotalDuration.get -> System.TimeSpan?
+Orkeon.Scripting.Orchestration.JsGraphConfig.MaxTotalDuration.init -> void
+Orkeon.Scripting.Orchestration.JsGraphConfig.MaxTransitions.get -> int
+Orkeon.Scripting.Orchestration.JsGraphConfig.MaxTransitions.init -> void
+Orkeon.Scripting.Orchestration.JsStateGraph
+Orkeon.Scripting.Orchestration.JsStateGraph.name.get -> string!
+Orkeon.Scripting.Orchestration.JsStateGraph.run.get -> System.Func<Jint.Native.JsValue!, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Orchestration.JsStateGraph.runStream(Jint.Native.JsValue! initial, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<object!>!
+Orkeon.Scripting.Orchestration.JsStateMachine
+Orkeon.Scripting.Orchestration.JsStateMachine.current.get -> string!
+Orkeon.Scripting.Orchestration.JsStateMachine.name.get -> string!
+Orkeon.Scripting.Orchestration.JsStateMachine.send.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
+Orkeon.Scripting.Runtime.JsAgentContext
+Orkeon.Scripting.Runtime.JsAgentContext.Dispose() -> void
+Orkeon.Scripting.Runtime.JsAgentContext.lock.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsAgentContext.spawn.get -> System.Func<Orkeon.Scripting.Builders.JsAgentBuilder!, Orkeon.Scripting.Builders.JsAgent!>!
+Orkeon.Scripting.Runtime.JsAgentContext.state.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsAgentContext.stateWith.get -> System.Func<Jint.Native.JsValue!, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsCrew
+Orkeon.Scripting.Runtime.JsCrew.RunAsync(Jint.Native.JsValue? options, System.Threading.CancellationToken externalCt) -> System.Threading.Tasks.Task<Orkeon.Scripting.Runtime.JsCrewResult!>!
+Orkeon.Scripting.Runtime.JsCrew.add(Orkeon.Scripting.Builders.JsAgent! agent) -> void
+Orkeon.Scripting.Runtime.JsCrew.agents.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Builders.JsAgent!>!
+Orkeon.Scripting.Runtime.JsCrew.findById(string! id) -> Orkeon.Scripting.Builders.JsAgent?
+Orkeon.Scripting.Runtime.JsCrew.findByName(string! name) -> Orkeon.Scripting.Builders.JsAgent?
+Orkeon.Scripting.Runtime.JsCrew.findByRole(string! role) -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Builders.JsAgent!>!
+Orkeon.Scripting.Runtime.JsCrew.has(Orkeon.Scripting.Builders.JsAgent! agent) -> bool
+Orkeon.Scripting.Runtime.JsCrew.name.get -> string!
+Orkeon.Scripting.Runtime.JsCrew.remove(Orkeon.Scripting.Builders.JsAgent! agent) -> void
+Orkeon.Scripting.Runtime.JsCrew.run() -> System.Threading.Tasks.Task<Orkeon.Scripting.Runtime.JsCrewResult!>!
+Orkeon.Scripting.Runtime.JsCrew.run(Jint.Native.JsValue? options) -> System.Threading.Tasks.Task<Orkeon.Scripting.Runtime.JsCrewResult!>!
+Orkeon.Scripting.Runtime.JsCrew.runAgent(Orkeon.Scripting.Builders.JsAgent! agent, Jint.Native.JsValue? input) -> System.Threading.Tasks.Task<object?>!
+Orkeon.Scripting.Runtime.JsCrew.runStream(Jint.Native.JsValue? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<object!>!
+Orkeon.Scripting.Runtime.JsCrewProxy
+Orkeon.Scripting.Runtime.JsCrewProxy.findById(string! id) -> Orkeon.Scripting.Builders.JsAgent?
+Orkeon.Scripting.Runtime.JsCrewProxy.findByName(string! name) -> Orkeon.Scripting.Builders.JsAgent?
+Orkeon.Scripting.Runtime.JsCrewProxy.findByRole(string! role) -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Builders.JsAgent!>!
+Orkeon.Scripting.Runtime.JsCrewProxy.has(Orkeon.Scripting.Builders.JsAgent! agent) -> bool
+Orkeon.Scripting.Runtime.JsCrewProxy.lock.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsCrewProxy.name.get -> string!
+Orkeon.Scripting.Runtime.JsCrewResult
+Orkeon.Scripting.Runtime.JsCrewResult.artifacts.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
+Orkeon.Scripting.Runtime.JsCrewResult.output.get -> string!
+Orkeon.Scripting.Runtime.JsCrewResult.tasks.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Runtime.JsTaskResult!>!
+Orkeon.Scripting.Runtime.JsEventBroker
+Orkeon.Scripting.Runtime.JsEventBroker.queue(string! name) -> Orkeon.Scripting.Runtime.JsEventQueue!
+Orkeon.Scripting.Runtime.JsEventBroker.topic(string! name) -> Orkeon.Scripting.Runtime.JsEventTopic!
+Orkeon.Scripting.Runtime.JsEventBroker.topic(string! name, Jint.Native.JsValue! opts) -> Orkeon.Scripting.Runtime.JsEventTopic!
+Orkeon.Scripting.Runtime.JsEventQueue
+Orkeon.Scripting.Runtime.JsEventQueue.info() -> object!
+Orkeon.Scripting.Runtime.JsEventQueue.kick() -> void
+Orkeon.Scripting.Runtime.JsEventQueue.length.get -> int
+Orkeon.Scripting.Runtime.JsEventQueue.name.get -> string!
+Orkeon.Scripting.Runtime.JsEventQueue.peek() -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsEventQueue.pop.get -> System.Func<Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsEventQueue.push(Jint.Native.JsValue! item) -> void
+Orkeon.Scripting.Runtime.JsEventTopic
+Orkeon.Scripting.Runtime.JsEventTopic.mode.get -> string!
+Orkeon.Scripting.Runtime.JsEventTopic.name.get -> string!
+Orkeon.Scripting.Runtime.JsEventTopic.publish.get -> System.Func<Jint.Native.JsValue!, System.Threading.Tasks.Task!>!
+Orkeon.Scripting.Runtime.JsEventTopic.subscribe(Jint.Native.JsValue! handler) -> Orkeon.Scripting.Runtime.JsSubscription!
+Orkeon.Scripting.Runtime.JsExecutionContext
+Orkeon.Scripting.Runtime.JsExecutionContext.broadcast.get -> System.Action<Jint.Native.JsValue!>!
+Orkeon.Scripting.Runtime.JsExecutionContext.crew.get -> Orkeon.Scripting.Runtime.JsCrewProxy!
+Orkeon.Scripting.Runtime.JsExecutionContext.delegate.get -> System.Func<Orkeon.Scripting.Builders.JsAgent!, Jint.Native.JsValue!, Jint.Native.JsValue!>!
+Orkeon.Scripting.Runtime.JsExecutionContext.events.get -> Orkeon.Scripting.Runtime.JsEventBroker!
+Orkeon.Scripting.Runtime.JsExecutionContext.llm.get -> Orkeon.Scripting.Runtime.JsLlmFacade!
+Orkeon.Scripting.Runtime.JsExecutionContext.log.get -> Orkeon.Scripting.Runtime.JsLogger!
+Orkeon.Scripting.Runtime.JsExecutionContext.memory.get -> Orkeon.Scripting.Runtime.JsMemoryRoot!
+Orkeon.Scripting.Runtime.JsExecutionContext.receive.get -> System.Func<Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsExecutionContext.send.get -> System.Action<Orkeon.Scripting.Builders.JsAgent!, Jint.Native.JsValue!>!
+Orkeon.Scripting.Runtime.JsExecutionContext.signal.get -> System.Threading.CancellationToken
+Orkeon.Scripting.Runtime.JsLlmConfig
+Orkeon.Scripting.Runtime.JsLlmConfig.apiKey.get -> string?
+Orkeon.Scripting.Runtime.JsLlmConfig.baseUrl.get -> System.Uri?
+Orkeon.Scripting.Runtime.JsLlmConfig.maxTokens.get -> int?
+Orkeon.Scripting.Runtime.JsLlmConfig.model.get -> string!
+Orkeon.Scripting.Runtime.JsLlmConfig.provider.get -> string!
+Orkeon.Scripting.Runtime.JsLlmConfig.temperature.get -> double?
+Orkeon.Scripting.Runtime.JsLlmConfig.with(Jint.Native.JsValue! overrides) -> Orkeon.Scripting.Runtime.JsLlmConfig!
+Orkeon.Scripting.Runtime.JsLlmFacade
+Orkeon.Scripting.Runtime.JsLlmFacade.act.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.chat.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.complete.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.decide.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.embed.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.extract.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.interrupt() -> void
+Orkeon.Scripting.Runtime.JsLlmFacade.isInterrupted.get -> bool
+Orkeon.Scripting.Runtime.JsLlmFacade.stream.get -> System.Func<string!, Jint.Native.JsValue?, Jint.Native.JsValue!>!
+Orkeon.Scripting.Runtime.JsLogger
+Orkeon.Scripting.Runtime.JsLogger.debug(string! message) -> void
+Orkeon.Scripting.Runtime.JsLogger.error(string! message) -> void
+Orkeon.Scripting.Runtime.JsLogger.info(string! message) -> void
+Orkeon.Scripting.Runtime.JsLogger.warn(string! message) -> void
+Orkeon.Scripting.Runtime.JsMemoryHit
+Orkeon.Scripting.Runtime.JsMemoryHit.id.get -> string!
+Orkeon.Scripting.Runtime.JsMemoryHit.score.get -> double
+Orkeon.Scripting.Runtime.JsMemoryHit.value.get -> object?
+Orkeon.Scripting.Runtime.JsMemoryRoot
+Orkeon.Scripting.Runtime.JsMemoryRoot.agent.get -> Orkeon.Scripting.Runtime.JsMemoryScope!
+Orkeon.Scripting.Runtime.JsMemoryRoot.crew.get -> Orkeon.Scripting.Runtime.JsMemoryScope!
+Orkeon.Scripting.Runtime.JsMemoryScope
+Orkeon.Scripting.Runtime.JsMemoryScope.JsMemoryScope() -> void
+Orkeon.Scripting.Runtime.JsMemoryScope.delete.get -> System.Func<string!, System.Threading.Tasks.Task<bool>!>!
+Orkeon.Scripting.Runtime.JsMemoryScope.get.get -> System.Func<string!, System.Threading.Tasks.Task<object?>!>!
+Orkeon.Scripting.Runtime.JsMemoryScope.search.get -> System.Func<string!, int, System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Runtime.JsMemoryHit!>!>!>!
+Orkeon.Scripting.Runtime.JsMemoryScope.store.get -> System.Func<string!, object?, System.Threading.Tasks.Task!>!
+Orkeon.Scripting.Runtime.JsPublishedEvent
+Orkeon.Scripting.Runtime.JsPublishedEvent.handlerCount.get -> int
+Orkeon.Scripting.Runtime.JsPublishedEvent.lock.get -> System.Func<string!, Jint.Native.JsValue!, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsPublishedEvent.markHandled() -> void
+Orkeon.Scripting.Runtime.JsPublishedEvent.maxHandlers.get -> int
+Orkeon.Scripting.Runtime.JsPublishedEvent.stopPropagation() -> void
+Orkeon.Scripting.Runtime.JsPublishedEvent.value.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsSubscription
+Orkeon.Scripting.Runtime.JsSubscription.unsubscribe() -> void
+Orkeon.Scripting.Runtime.JsTask
+Orkeon.Scripting.Runtime.JsTask.description.get -> string!
+Orkeon.Scripting.Runtime.JsTask.expectedOutput.get -> string!
+Orkeon.Scripting.Runtime.JsTask.id.get -> string!
+Orkeon.Scripting.Runtime.JsTask.name.get -> string!
+Orkeon.Scripting.Runtime.JsTaskResult
+Orkeon.Scripting.Runtime.JsTaskResult.durationMs.get -> double
+Orkeon.Scripting.Runtime.JsTaskResult.name.get -> string!
+Orkeon.Scripting.Runtime.JsTaskResult.output.get -> object?
+Orkeon.Scripting.Runtime.JsTool
+Orkeon.Scripting.Runtime.JsTool.CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+Orkeon.Scripting.Runtime.JsTool.Description.get -> string!
+Orkeon.Scripting.Runtime.JsTool.ExecuteAsync(string! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!
+Orkeon.Scripting.Runtime.JsTool.Name.get -> string!
+Orkeon.Scripting.Runtime.JsTool.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+Orkeon.Scripting.Runtime.JsTool.ValidateInput(string! input) -> bool
+Orkeon.Scripting.Runtime.StreamObservations
+Orkeon.Scripting.Runtime.StreamObservations.StreamObservations() -> void
+Orkeon.Scripting.Runtime.StreamObservations.reasoningChunks.get -> int
+Orkeon.Scripting.Runtime.StreamObservations.usage.get -> Orkeon.Scripting.Runtime.StreamUsage?
+Orkeon.Scripting.Runtime.StreamUsage
+Orkeon.Scripting.Runtime.StreamUsage.StreamUsage() -> void
+Orkeon.Scripting.Runtime.StreamUsage.cacheHitTokens.get -> int?
+Orkeon.Scripting.Runtime.StreamUsage.completionTokens.get -> int?
+Orkeon.Scripting.Runtime.StreamUsage.model.get -> string!
+Orkeon.Scripting.Runtime.StreamUsage.promptTokens.get -> int?
+Orkeon.Scripting.Runtime.StreamUsage.tokensUsed.get -> int
+Orkeon.Scripting.Runtime.UndefinedLlmProvider
+Orkeon.Scripting.Runtime.UndefinedLlmProvider.ChatAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Scripting.Runtime.UndefinedLlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Scripting.Runtime.UndefinedLlmProvider.Name.get -> string!
+Orkeon.Scripting.Runtime.UndefinedLlmProvider.UndefinedLlmProvider() -> void
+Orkeon.Scripting.ScriptHost
+Orkeon.Scripting.ScriptHost.LoadCrewFromFileAsync(string? physicalPath, string! virtualPath, System.Threading.CancellationToken ct, string? inputsJson = null) -> System.Threading.Tasks.Task<Orkeon.Scripting.Runtime.JsCrew!>!
+Orkeon.Scripting.ScriptHost.RunAsync(string! virtualPath, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<object?>!
+Orkeon.Scripting.ScriptHost.RunFromFileAsync(string? physicalPath, string! virtualPath, System.Threading.CancellationToken ct, string? inputsJson = null) -> System.Threading.Tasks.Task<object?>!
+Orkeon.Scripting.ScriptHost.ScriptHost(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Scripting.JsEngineFactory! engineFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.ScriptHost!>? logger = null) -> void
+Orkeon.Scripting.ScriptHost.ScriptHost(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Scripting.Toolchain.IScriptTranspiler! transpiler, Orkeon.Scripting.JsEngineFactory! engineFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.ScriptHost!>? logger = null) -> void
+Orkeon.Scripting.Telemetry.ScriptingActivitySource
+Orkeon.Scripting.Testing.AssertionException
+Orkeon.Scripting.Testing.AssertionException.AssertionException() -> void
+Orkeon.Scripting.Testing.AssertionException.AssertionException(string! message) -> void
+Orkeon.Scripting.Testing.AssertionException.AssertionException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Testing.JsMockLlmExpectationBuilder
+Orkeon.Scripting.Testing.JsMockLlmExpectationBuilder.respond(Jint.Native.JsValue! response) -> void
+Orkeon.Scripting.Testing.JsMockLlmHandle
+Orkeon.Scripting.Testing.JsMockLlmHandle.when(Jint.Native.JsValue! matcher) -> Orkeon.Scripting.Testing.JsMockLlmExpectationBuilder!
+Orkeon.Scripting.Testing.JsMockToolExpectationBuilder
+Orkeon.Scripting.Testing.JsMockToolExpectationBuilder.respond(Jint.Native.JsValue! response) -> void
+Orkeon.Scripting.Testing.JsMockToolHandle
+Orkeon.Scripting.Testing.JsMockToolHandle.respond(Jint.Native.JsValue! response) -> void
+Orkeon.Scripting.Testing.JsMockToolHandle.when(Jint.Native.JsValue! matcher) -> Orkeon.Scripting.Testing.JsMockToolExpectationBuilder!
+Orkeon.Scripting.Testing.JsTestNamespace
+Orkeon.Scripting.Testing.JsTestNamespace.GetMockTool(string! name) -> Orkeon.Scripting.Testing.MockTool?
+Orkeon.Scripting.Testing.JsTestNamespace.JsTestNamespace() -> void
+Orkeon.Scripting.Testing.JsTestNamespace.Llm.get -> Orkeon.Scripting.Testing.MockLlmProvider!
+Orkeon.Scripting.Testing.JsTestNamespace.assertLlmCalled.get -> System.Action<Jint.Native.JsValue?>!
+Orkeon.Scripting.Testing.JsTestNamespace.assertToolCalled.get -> System.Action<string!, Jint.Native.JsValue?>!
+Orkeon.Scripting.Testing.JsTestNamespace.mockLlm.get -> Orkeon.Scripting.Testing.JsMockLlmHandle!
+Orkeon.Scripting.Testing.JsTestNamespace.mockTool.get -> System.Func<string!, Orkeon.Scripting.Testing.JsMockToolHandle!>!
+Orkeon.Scripting.Testing.MockLlmProvider
+Orkeon.Scripting.Testing.MockLlmProvider.ChatAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Scripting.Testing.MockLlmProvider.ChatCalls.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]!>!
+Orkeon.Scripting.Testing.MockLlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Scripting.Testing.MockLlmProvider.GenerateCalls.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Scripting.Testing.MockLlmProvider.MockLlmProvider() -> void
+Orkeon.Scripting.Testing.MockLlmProvider.Name.get -> string!
+Orkeon.Scripting.Testing.MockLlmProvider.TotalCalls.get -> int
+Orkeon.Scripting.Testing.MockTool
+Orkeon.Scripting.Testing.MockTool.CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+Orkeon.Scripting.Testing.MockTool.Calls.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.Protocol.ToolCallRequest!>!
+Orkeon.Scripting.Testing.MockTool.Description.get -> string!
+Orkeon.Scripting.Testing.MockTool.ExecuteAsync(string! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!
+Orkeon.Scripting.Testing.MockTool.MockTool(string! name, string? description = null) -> void
+Orkeon.Scripting.Testing.MockTool.Name.get -> string!
+Orkeon.Scripting.Testing.MockTool.Response.get -> object?
+Orkeon.Scripting.Testing.MockTool.Response.set -> void
+Orkeon.Scripting.Testing.MockTool.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+Orkeon.Scripting.Testing.MockTool.ValidateInput(string! input) -> bool
+Orkeon.Scripting.Toolchain.EsbuildNotFoundException
+Orkeon.Scripting.Toolchain.EsbuildNotFoundException.EsbuildNotFoundException() -> void
+Orkeon.Scripting.Toolchain.EsbuildNotFoundException.EsbuildNotFoundException(string! message) -> void
+Orkeon.Scripting.Toolchain.EsbuildNotFoundException.EsbuildNotFoundException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Toolchain.EsbuildTranspileException
+Orkeon.Scripting.Toolchain.EsbuildTranspileException.EsbuildTranspileException() -> void
+Orkeon.Scripting.Toolchain.EsbuildTranspileException.EsbuildTranspileException(string! message) -> void
+Orkeon.Scripting.Toolchain.EsbuildTranspileException.EsbuildTranspileException(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Toolchain.EsbuildTranspileException.EsbuildTranspileException(string! message, int exitCode) -> void
+Orkeon.Scripting.Toolchain.EsbuildTranspileException.ExitCode.get -> int
+Orkeon.Scripting.Toolchain.EsbuildTranspiler
+Orkeon.Scripting.Toolchain.EsbuildTranspiler.BundleFromFileAsync(string! physicalPath, string! source, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Scripting.Toolchain.EsbuildTranspiler.Dispose() -> void
+Orkeon.Scripting.Toolchain.EsbuildTranspiler.EsbuildTranspiler(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingToolchainOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.EsbuildTranspiler!>? logger = null) -> void
+Orkeon.Scripting.Toolchain.EsbuildTranspiler.EsbuildTranspiler(Orkeon.Scripting.Configuration.ScriptingToolchainOptions? options = null) -> void
+Orkeon.Scripting.Toolchain.EsbuildTranspiler.TranspileAsync(string! tsSource, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Scripting.Toolchain.IScriptTranspiler
+Orkeon.Scripting.Toolchain.IScriptTranspiler.BundleFromFileAsync(string! physicalPath, string! source, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Scripting.Toolchain.IScriptTranspiler.TranspileAsync(string! tsSource, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Scripting.Toolchain.PassThroughTranspiler
+Orkeon.Scripting.Toolchain.PassThroughTranspiler.BundleFromFileAsync(string! physicalPath, string! source, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Scripting.Toolchain.PassThroughTranspiler.PassThroughTranspiler() -> void
+Orkeon.Scripting.Toolchain.PassThroughTranspiler.TranspileAsync(string! tsSource, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Scripting.Versioning.ScriptVersionMismatchError
+Orkeon.Scripting.Versioning.ScriptVersionMismatchError.DeclaredVersion.get -> string!
+Orkeon.Scripting.Versioning.ScriptVersionMismatchError.ScriptVersionMismatchError() -> void
+Orkeon.Scripting.Versioning.ScriptVersionMismatchError.ScriptVersionMismatchError(string! declaredVersion, string! supportedVersion) -> void
+Orkeon.Scripting.Versioning.ScriptVersionMismatchError.ScriptVersionMismatchError(string! message) -> void
+Orkeon.Scripting.Versioning.ScriptVersionMismatchError.ScriptVersionMismatchError(string! message, System.Exception! innerException) -> void
+Orkeon.Scripting.Versioning.ScriptVersionMismatchError.SupportedVersion.get -> string!
+Orkeon.Scripting.Versioning.VersionDirectiveParser
+const Orkeon.Scripting.Bindings.AgentBuilderBinding.GlobalName = "agentBuilder" -> string!
+const Orkeon.Scripting.Bindings.CrewBuilderBinding.GlobalName = "crewBuilder" -> string!
+const Orkeon.Scripting.Bindings.ErrorActionBinding.GlobalName = "ErrorAction" -> string!
+const Orkeon.Scripting.Bindings.LlmNamespaceBinding.DefaultProviderConfigKey = "Orkeon:DefaultLlmProvider" -> string!
+const Orkeon.Scripting.Bindings.LlmNamespaceBinding.GlobalName = "llm" -> string!
+const Orkeon.Scripting.Bindings.RagNamespaceBinding.GlobalName = "rag" -> string!
+const Orkeon.Scripting.Bindings.StateGraphBinding.GlobalName = "stateGraph" -> string!
+const Orkeon.Scripting.Bindings.StateMachineBinding.GlobalName = "stateMachine" -> string!
+const Orkeon.Scripting.Bindings.TaskBuilderBinding.GlobalName = "taskBuilder" -> string!
+const Orkeon.Scripting.Bindings.TestNamespaceBinding.GlobalName = "test" -> string!
+const Orkeon.Scripting.Bindings.ToolBuilderBinding.GlobalName = "toolBuilder" -> string!
+const Orkeon.Scripting.Bindings.ToolsNamespaceBinding.GlobalName = "tools" -> string!
+const Orkeon.Scripting.Configuration.ScriptingLimitsOptions.SectionName = "Orkeon:Scripting:Limits" -> string!
+const Orkeon.Scripting.Configuration.ScriptingToolchainOptions.SectionName = "Orkeon:Scripting:Toolchain" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeAgentNotInCrew = "agent_not_in_crew" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeLlmError = "llm_error" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeLockTimeout = "lock_timeout" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeNetwork = "network" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeRateLimit = "rate_limit" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeReceiveTimeout = "receive_timeout" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeStateMutation = "state_mutation" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeTimeout = "timeout" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeToolError = "tool_error" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeUnknown = "unknown" -> string!
+const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeValidation = "validation" -> string!
+const Orkeon.Scripting.Orchestration.GraphSentinels.End = "__END__" -> string!
+const Orkeon.Scripting.Orchestration.GraphSentinels.Start = "__START__" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.AgentRunSpan = "agent.run" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.CrewRunSpan = "crew.run" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.LlmCallSpan = "llm.call" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.Name = "Orkeon.Scripting" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.ToolCallSpan = "tool.call" -> string!
+const Orkeon.Scripting.Versioning.VersionDirectiveParser.DefaultVersion = "1.0" -> string!
+override Orkeon.Scripting.Bindings.RagScriptingBackend.Equals(object? obj) -> bool
+override Orkeon.Scripting.Bindings.RagScriptingBackend.GetHashCode() -> int
+override Orkeon.Scripting.Bindings.RagScriptingBackend.ToString() -> string!
+override Orkeon.Scripting.Builders.AgentCommandHandler.Equals(object? obj) -> bool
+override Orkeon.Scripting.Builders.AgentCommandHandler.GetHashCode() -> int
+override Orkeon.Scripting.Builders.AgentCommandHandler.ToString() -> string!
+override Orkeon.Scripting.Configuration.ScriptingLimitsOptions.Equals(object? obj) -> bool
+override Orkeon.Scripting.Configuration.ScriptingLimitsOptions.GetHashCode() -> int
+override Orkeon.Scripting.Configuration.ScriptingLimitsOptions.ToString() -> string!
+override Orkeon.Scripting.Configuration.ScriptingToolchainOptions.Equals(object? obj) -> bool
+override Orkeon.Scripting.Configuration.ScriptingToolchainOptions.GetHashCode() -> int
+override Orkeon.Scripting.Configuration.ScriptingToolchainOptions.ToString() -> string!
+override Orkeon.Scripting.Orchestration.JsGraphConfig.Equals(object? obj) -> bool
+override Orkeon.Scripting.Orchestration.JsGraphConfig.GetHashCode() -> int
+override Orkeon.Scripting.Orchestration.JsGraphConfig.ToString() -> string!
+static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.ToConfiguration(Orkeon.Scripting.Runtime.JsCrew! crew) -> Orkeon.Domain.Configuration.CrewConfiguration!
+static Orkeon.Scripting.Bindings.AgentBuilderBinding.Register(Jint.Engine! engine) -> void
+static Orkeon.Scripting.Bindings.CrewBuilderBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null) -> void
+static Orkeon.Scripting.Bindings.ErrorActionBinding.Register(Jint.Engine! engine) -> void
+static Orkeon.Scripting.Bindings.LlmNamespaceBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Configuration.IConfiguration? config = null, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? defaultProvider = null) -> void
+static Orkeon.Scripting.Bindings.RagNamespaceBinding.Register(Jint.Engine! engine, Orkeon.Scripting.Bindings.RagScriptingBackend? backend = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+static Orkeon.Scripting.Bindings.RagScriptingBackend.operator !=(Orkeon.Scripting.Bindings.RagScriptingBackend? left, Orkeon.Scripting.Bindings.RagScriptingBackend? right) -> bool
+static Orkeon.Scripting.Bindings.RagScriptingBackend.operator ==(Orkeon.Scripting.Bindings.RagScriptingBackend? left, Orkeon.Scripting.Bindings.RagScriptingBackend? right) -> bool
+static Orkeon.Scripting.Bindings.StateGraphBinding.Register(Jint.Engine! engine) -> void
+static Orkeon.Scripting.Bindings.StateMachineBinding.Register(Jint.Engine! engine) -> void
+static Orkeon.Scripting.Bindings.TaskBuilderBinding.Register(Jint.Engine! engine) -> void
+static Orkeon.Scripting.Bindings.TestNamespaceBinding.Register(Jint.Engine! engine) -> Orkeon.Scripting.Testing.JsTestNamespace!
+static Orkeon.Scripting.Bindings.ToolBuilderBinding.Register(Jint.Engine! engine) -> void
+static Orkeon.Scripting.Bindings.ToolsNamespaceBinding.Register(Jint.Engine! engine, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+static Orkeon.Scripting.Builders.AgentCommandHandler.operator !=(Orkeon.Scripting.Builders.AgentCommandHandler? left, Orkeon.Scripting.Builders.AgentCommandHandler? right) -> bool
+static Orkeon.Scripting.Builders.AgentCommandHandler.operator ==(Orkeon.Scripting.Builders.AgentCommandHandler? left, Orkeon.Scripting.Builders.AgentCommandHandler? right) -> bool
+static Orkeon.Scripting.Configuration.ScriptingLimitsOptions.operator !=(Orkeon.Scripting.Configuration.ScriptingLimitsOptions? left, Orkeon.Scripting.Configuration.ScriptingLimitsOptions? right) -> bool
+static Orkeon.Scripting.Configuration.ScriptingLimitsOptions.operator ==(Orkeon.Scripting.Configuration.ScriptingLimitsOptions? left, Orkeon.Scripting.Configuration.ScriptingLimitsOptions? right) -> bool
+static Orkeon.Scripting.Configuration.ScriptingToolchainOptions.operator !=(Orkeon.Scripting.Configuration.ScriptingToolchainOptions? left, Orkeon.Scripting.Configuration.ScriptingToolchainOptions? right) -> bool
+static Orkeon.Scripting.Configuration.ScriptingToolchainOptions.operator ==(Orkeon.Scripting.Configuration.ScriptingToolchainOptions? left, Orkeon.Scripting.Configuration.ScriptingToolchainOptions? right) -> bool
+static Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.MapToCode(System.Exception! ex) -> string!
+static Orkeon.Scripting.Orchestration.JsGraphConfig.operator !=(Orkeon.Scripting.Orchestration.JsGraphConfig? left, Orkeon.Scripting.Orchestration.JsGraphConfig? right) -> bool
+static Orkeon.Scripting.Orchestration.JsGraphConfig.operator ==(Orkeon.Scripting.Orchestration.JsGraphConfig? left, Orkeon.Scripting.Orchestration.JsGraphConfig? right) -> bool
+static Orkeon.Scripting.Versioning.VersionDirectiveParser.ParseAndValidate(string! source) -> string!
+static Orkeon.Scripting.Versioning.VersionDirectiveParser.ParseOrDefault(string! source) -> string!
+static readonly Orkeon.Scripting.Telemetry.ScriptingActivitySource.Instance -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Scripting.Toolchain.PassThroughTranspiler.Instance -> Orkeon.Scripting.Toolchain.PassThroughTranspiler!
+static readonly Orkeon.Scripting.Versioning.VersionDirectiveParser.SupportedVersions -> System.Collections.Generic.IReadOnlySet<string!>!

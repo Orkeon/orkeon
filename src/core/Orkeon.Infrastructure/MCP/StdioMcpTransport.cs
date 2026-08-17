@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
 
@@ -10,6 +11,7 @@ namespace Orkeon.Infrastructure.MCP;
 /// MCP transport that communicates with a server process via stdin/stdout.
 /// Each JSON-RPC message is sent as a single line.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class StdioMcpTransport : IMcpTransport
 {
     private readonly McpServerConfig _config;

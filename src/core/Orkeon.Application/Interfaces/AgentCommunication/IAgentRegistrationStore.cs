@@ -1,5 +1,6 @@
 using Orkeon.Domain.Common;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Application.Interfaces.AgentCommunication;
 
@@ -18,6 +19,7 @@ namespace Orkeon.Application.Interfaces.AgentCommunication;
 /// server/router request scopes and the pipeline scopes.
 /// </para>
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public interface IAgentRegistrationStore
 {
     /// <summary>Gets the number of registered agents.</summary>

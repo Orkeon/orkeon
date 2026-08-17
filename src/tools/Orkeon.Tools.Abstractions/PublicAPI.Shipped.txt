@@ -1,0 +1,205 @@
+#nullable enable
+Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter
+Orkeon.Tools.Abstractions.Base.FileToolBase
+Orkeon.Tools.Abstractions.Base.FileToolBase.EnsureDirectoryExistsAsync(string! virtualFilePath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Abstractions.Base.FileToolBase.FileToolBase(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.FileToolBase.FileToolBase(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.FileToolBase.ResolveVirtualPath(string! path, Orkeon.Domain.FileSystem.FileAccessRights requiredRight) -> Orkeon.Domain.Tools.Security.PathValidationResult!
+Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>
+Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.FileToolBase(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.FileToolBase(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.HttpToolBase
+Orkeon.Tools.Abstractions.Base.HttpToolBase.HttpToolBase(Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.HttpToolBase.HttpToolBase(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.HttpToolBase.HttpToolBase(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.HttpToolBase.HttpToolBase(System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.HttpToolBase.SanitizeHeaders(System.Collections.Generic.IDictionary<string!, string!>! headers) -> Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult?
+Orkeon.Tools.Abstractions.Base.HttpToolBase.ValidateUrlAsync(System.Uri! url, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Security.UrlValidationResult!>!
+Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>
+Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.HttpToolBase(Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.HttpToolBase(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.HttpToolBase(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.HttpToolBase(System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.ToolBase
+Orkeon.Tools.Abstractions.Base.ToolBase.CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+Orkeon.Tools.Abstractions.Base.ToolBase.CreateJsonResponse<T>(T! response) -> string!
+Orkeon.Tools.Abstractions.Base.ToolBase.Dispose() -> void
+Orkeon.Tools.Abstractions.Base.ToolBase.ExecuteAsync(string! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!
+Orkeon.Tools.Abstractions.Base.ToolBase.ParseJsonInput<T>(string! input) -> T?
+Orkeon.Tools.Abstractions.Base.ToolBase.ToolBase(Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.ToolBase<TRequest, TResponse>
+Orkeon.Tools.Abstractions.Base.ToolBase<TRequest, TResponse>.ToolBase(Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.ToolSchemaYamlExtensions
+Orkeon.Tools.Abstractions.Base.ValidationResult
+Orkeon.Tools.Abstractions.Base.ValidationResult.Deconstruct(out bool IsValid, out string? Error) -> void
+Orkeon.Tools.Abstractions.Base.ValidationResult.Error.get -> string?
+Orkeon.Tools.Abstractions.Base.ValidationResult.Error.init -> void
+Orkeon.Tools.Abstractions.Base.ValidationResult.IsValid.get -> bool
+Orkeon.Tools.Abstractions.Base.ValidationResult.IsValid.init -> void
+Orkeon.Tools.Abstractions.Base.ValidationResult.ValidationResult(Orkeon.Tools.Abstractions.Base.ValidationResult! original) -> void
+Orkeon.Tools.Abstractions.Base.ValidationResult.ValidationResult(bool IsValid, string? Error = null) -> void
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.AllowDdl.get -> bool
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.AllowDdl.init -> void
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.AllowDestructiveDeletes.get -> bool
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.AllowDestructiveDeletes.init -> void
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.AllowMultiStatement.get -> bool
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.AllowMultiStatement.init -> void
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.DatabaseQueryOptions() -> void
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.DatabaseQueryOptions(Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions! original) -> void
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.MaxRows.get -> int
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.MaxRows.init -> void
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.TimeoutSeconds.get -> int
+Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.TimeoutSeconds.init -> void
+Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory
+Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory.GetProvider(string! providerName) -> System.Data.Common.DbProviderFactory!
+Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory.IsSupported(string! providerName) -> bool
+Orkeon.Tools.Abstractions.Data.IDatabaseProviderFactory.SupportedProviders.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy
+Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy.IsDestructiveOperation(string! query) -> bool
+Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy.ValidateQuery(string! query, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions! options) -> Orkeon.Domain.SharedKernel.ValidationResult!
+Orkeon.Tools.Abstractions.DependencyInjection.AbstractionToolExtensions
+Orkeon.Tools.Abstractions.Helpers.ImageHelper
+Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult
+Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Deconstruct(out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! SanitizedHeaders, out System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
+Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.HeaderSanitizationResult(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult! original) -> void
+Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.HeaderSanitizationResult(System.Collections.Generic.IReadOnlyDictionary<string!, string!>! SanitizedHeaders, System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
+Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.SanitizedHeaders.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.SanitizedHeaders.init -> void
+Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Warnings.init -> void
+Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer
+Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer.HttpHeaderSanitizer(Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer!>? logger = null) -> void
+Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer.SanitizeHeaders(System.Collections.Generic.IDictionary<string!, string!>! headers) -> Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult!
+Orkeon.Tools.Abstractions.Tools.ListMountsRequest
+Orkeon.Tools.Abstractions.Tools.ListMountsRequest.<Clone>$() -> Orkeon.Tools.Abstractions.Tools.ListMountsRequest!
+Orkeon.Tools.Abstractions.Tools.ListMountsRequest.Equals(Orkeon.Tools.Abstractions.Tools.ListMountsRequest? other) -> bool
+Orkeon.Tools.Abstractions.Tools.ListMountsRequest.ListMountsRequest() -> void
+Orkeon.Tools.Abstractions.Tools.ListMountsResponse
+Orkeon.Tools.Abstractions.Tools.ListMountsResponse.<Clone>$() -> Orkeon.Tools.Abstractions.Tools.ListMountsResponse!
+Orkeon.Tools.Abstractions.Tools.ListMountsResponse.Equals(Orkeon.Tools.Abstractions.Tools.ListMountsResponse? other) -> bool
+Orkeon.Tools.Abstractions.Tools.ListMountsResponse.ListMountsResponse() -> void
+Orkeon.Tools.Abstractions.Tools.ListMountsResponse.Mounts.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Abstractions.Tools.MountInfoDto!>!
+Orkeon.Tools.Abstractions.Tools.ListMountsResponse.Mounts.init -> void
+Orkeon.Tools.Abstractions.Tools.ListMountsResponse.Success.get -> bool
+Orkeon.Tools.Abstractions.Tools.ListMountsResponse.Success.init -> void
+Orkeon.Tools.Abstractions.Tools.ListMountsTool
+Orkeon.Tools.Abstractions.Tools.ListMountsTool.ListMountsTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Tools.MountInfoDto
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.<Clone>$() -> Orkeon.Tools.Abstractions.Tools.MountInfoDto!
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.Equals(Orkeon.Tools.Abstractions.Tools.MountInfoDto? other) -> bool
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.MountInfoDto() -> void
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.Overrides.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Abstractions.Tools.OverrideDto!>!
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.Overrides.init -> void
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.Path.get -> string!
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.Path.init -> void
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.Rights.get -> string!
+Orkeon.Tools.Abstractions.Tools.MountInfoDto.Rights.init -> void
+Orkeon.Tools.Abstractions.Tools.OverrideDto
+Orkeon.Tools.Abstractions.Tools.OverrideDto.<Clone>$() -> Orkeon.Tools.Abstractions.Tools.OverrideDto!
+Orkeon.Tools.Abstractions.Tools.OverrideDto.Equals(Orkeon.Tools.Abstractions.Tools.OverrideDto? other) -> bool
+Orkeon.Tools.Abstractions.Tools.OverrideDto.OverrideDto() -> void
+Orkeon.Tools.Abstractions.Tools.OverrideDto.Path.get -> string!
+Orkeon.Tools.Abstractions.Tools.OverrideDto.Path.init -> void
+Orkeon.Tools.Abstractions.Tools.OverrideDto.Rights.get -> string!
+Orkeon.Tools.Abstractions.Tools.OverrideDto.Rights.init -> void
+abstract Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.ExecuteTypedAsync(TRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TResponse!>!
+abstract Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.ExecuteTypedAsync(TRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TResponse!>!
+abstract Orkeon.Tools.Abstractions.Base.ToolBase.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+abstract Orkeon.Tools.Abstractions.Base.ToolBase<TRequest, TResponse>.ExecuteTypedAsync(TRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TResponse!>!
+override Orkeon.Tools.Abstractions.Base.FileToolBase.Category.get -> string!
+override Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+override Orkeon.Tools.Abstractions.Base.HttpToolBase.Category.get -> string!
+override Orkeon.Tools.Abstractions.Base.HttpToolBase.Dispose(bool disposing) -> void
+override Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+override Orkeon.Tools.Abstractions.Base.ToolBase<TRequest, TResponse>.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+override Orkeon.Tools.Abstractions.Base.ValidationResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Abstractions.Base.ValidationResult.GetHashCode() -> int
+override Orkeon.Tools.Abstractions.Base.ValidationResult.ToString() -> string!
+override Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.Equals(object? obj) -> bool
+override Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.GetHashCode() -> int
+override Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.ToString() -> string!
+override Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.GetHashCode() -> int
+override Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.ToString() -> string!
+override Orkeon.Tools.Abstractions.Tools.ListMountsRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Abstractions.Tools.ListMountsRequest.GetHashCode() -> int
+override Orkeon.Tools.Abstractions.Tools.ListMountsRequest.ToString() -> string!
+override Orkeon.Tools.Abstractions.Tools.ListMountsResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Abstractions.Tools.ListMountsResponse.GetHashCode() -> int
+override Orkeon.Tools.Abstractions.Tools.ListMountsResponse.ToString() -> string!
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.Category.get -> string!
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.Description.get -> string!
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.Name.get -> string!
+override Orkeon.Tools.Abstractions.Tools.MountInfoDto.Equals(object? obj) -> bool
+override Orkeon.Tools.Abstractions.Tools.MountInfoDto.GetHashCode() -> int
+override Orkeon.Tools.Abstractions.Tools.MountInfoDto.ToString() -> string!
+override Orkeon.Tools.Abstractions.Tools.OverrideDto.Equals(object? obj) -> bool
+override Orkeon.Tools.Abstractions.Tools.OverrideDto.GetHashCode() -> int
+override Orkeon.Tools.Abstractions.Tools.OverrideDto.ToString() -> string!
+override sealed Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+override sealed Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+override sealed Orkeon.Tools.Abstractions.Base.ToolBase<TRequest, TResponse>.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+readonly Orkeon.Tools.Abstractions.Base.FileToolBase._fileSystemService -> Orkeon.Domain.FileSystem.IFileSystemService!
+readonly Orkeon.Tools.Abstractions.Base.HttpToolBase._httpClient -> System.Net.Http.HttpClient!
+readonly Orkeon.Tools.Abstractions.Base.ToolBase._jsonOptions -> System.Text.Json.JsonSerializerOptions!
+readonly Orkeon.Tools.Abstractions.Base.ToolBase._logger -> Microsoft.Extensions.Logging.ILogger!
+static Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter.ToAIFunction(Orkeon.Domain.Tools.IBaseTool! tool) -> Microsoft.Extensions.AI.AIFunction!
+static Orkeon.Tools.Abstractions.Adapters.BaseToolToAIFunctionAdapter.ToAITools(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> System.Collections.Generic.IList<Microsoft.Extensions.AI.AITool!>!
+static Orkeon.Tools.Abstractions.Base.ToolBase.ExtractErrorMessage(System.Collections.Generic.Dictionary<string!, object?>! responseDict) -> string?
+static Orkeon.Tools.Abstractions.Base.ToolBase.IsValidType(object! value, string! expectedType) -> bool
+static Orkeon.Tools.Abstractions.Base.ToolSchemaYamlExtensions.FromYaml(string! yaml) -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+static Orkeon.Tools.Abstractions.Base.ToolSchemaYamlExtensions.ToYaml(this Orkeon.Domain.Tools.Protocol.ToolSchema! schema) -> string!
+static Orkeon.Tools.Abstractions.Base.ToolSchemaYamlExtensions.ValidateParameters(this Orkeon.Domain.Tools.Protocol.ToolSchema! schema, System.Collections.Generic.Dictionary<string!, object!>! parameters) -> (bool IsValid, string? Error)
+static Orkeon.Tools.Abstractions.Base.ValidationResult.Failed(string! error) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+static Orkeon.Tools.Abstractions.Base.ValidationResult.Success() -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+static Orkeon.Tools.Abstractions.Base.ValidationResult.operator !=(Orkeon.Tools.Abstractions.Base.ValidationResult? left, Orkeon.Tools.Abstractions.Base.ValidationResult? right) -> bool
+static Orkeon.Tools.Abstractions.Base.ValidationResult.operator ==(Orkeon.Tools.Abstractions.Base.ValidationResult? left, Orkeon.Tools.Abstractions.Base.ValidationResult? right) -> bool
+static Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.operator !=(Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? right) -> bool
+static Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.operator ==(Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? right) -> bool
+static Orkeon.Tools.Abstractions.DependencyInjection.AbstractionToolExtensions.AddOrkeonAbstractionTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Abstractions.Helpers.ImageHelper.DetectMimeType(byte[]! data) -> string!
+static Orkeon.Tools.Abstractions.Helpers.ImageHelper.DetectMimeTypeFromPath(string! filePath) -> string!
+static Orkeon.Tools.Abstractions.Helpers.ImageHelper.IsSupportedMimeType(string! mimeType) -> bool
+static Orkeon.Tools.Abstractions.Helpers.ImageHelper.LoadFromUrlAsync(System.Net.Http.HttpClient! httpClient, System.Uri! url, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.Content.ImageContentPart!>!
+static Orkeon.Tools.Abstractions.Helpers.ImageHelper.LoadFromVfsAsync(Orkeon.Domain.FileSystem.IFileSystemService! fs, string! vPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.Content.ImageContentPart!>!
+static Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.operator !=(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? left, Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? right) -> bool
+static Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.operator ==(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? left, Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? right) -> bool
+static Orkeon.Tools.Abstractions.Tools.ListMountsRequest.operator !=(Orkeon.Tools.Abstractions.Tools.ListMountsRequest? left, Orkeon.Tools.Abstractions.Tools.ListMountsRequest? right) -> bool
+static Orkeon.Tools.Abstractions.Tools.ListMountsRequest.operator ==(Orkeon.Tools.Abstractions.Tools.ListMountsRequest? left, Orkeon.Tools.Abstractions.Tools.ListMountsRequest? right) -> bool
+static Orkeon.Tools.Abstractions.Tools.ListMountsResponse.operator !=(Orkeon.Tools.Abstractions.Tools.ListMountsResponse? left, Orkeon.Tools.Abstractions.Tools.ListMountsResponse? right) -> bool
+static Orkeon.Tools.Abstractions.Tools.ListMountsResponse.operator ==(Orkeon.Tools.Abstractions.Tools.ListMountsResponse? left, Orkeon.Tools.Abstractions.Tools.ListMountsResponse? right) -> bool
+static Orkeon.Tools.Abstractions.Tools.MountInfoDto.operator !=(Orkeon.Tools.Abstractions.Tools.MountInfoDto? left, Orkeon.Tools.Abstractions.Tools.MountInfoDto? right) -> bool
+static Orkeon.Tools.Abstractions.Tools.MountInfoDto.operator ==(Orkeon.Tools.Abstractions.Tools.MountInfoDto? left, Orkeon.Tools.Abstractions.Tools.MountInfoDto? right) -> bool
+static Orkeon.Tools.Abstractions.Tools.OverrideDto.operator !=(Orkeon.Tools.Abstractions.Tools.OverrideDto? left, Orkeon.Tools.Abstractions.Tools.OverrideDto? right) -> bool
+static Orkeon.Tools.Abstractions.Tools.OverrideDto.operator ==(Orkeon.Tools.Abstractions.Tools.OverrideDto? left, Orkeon.Tools.Abstractions.Tools.OverrideDto? right) -> bool
+virtual Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.ValidateTypedRequest(TRequest! request) -> string?
+virtual Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.ValidateTypedRequest(TRequest! request) -> string?
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.Access.get -> Orkeon.Domain.Tools.ToolAccess
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.Category.get -> string!
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.Description.get -> string!
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.Dispose(bool disposing) -> void
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.ExecuteCoreAsync(string! input, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.ToolResult!>!
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.Name.get -> string!
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.Parameters.get -> Orkeon.Domain.Tools.ITypedToolParameters?
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.RateLimitPerMinute.get -> int?
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.RequiresHumanApproval.get -> bool
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.ValidateInput(string! input) -> bool
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.ValidateInputInternal(string! input) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+virtual Orkeon.Tools.Abstractions.Base.ToolBase<TRequest, TResponse>.ValidateTypedRequest(TRequest! request) -> string?
+virtual Orkeon.Tools.Abstractions.Base.ValidationResult.<Clone>$() -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+virtual Orkeon.Tools.Abstractions.Base.ValidationResult.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Abstractions.Base.ValidationResult.Equals(Orkeon.Tools.Abstractions.Base.ValidationResult? other) -> bool
+virtual Orkeon.Tools.Abstractions.Base.ValidationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.<Clone>$() -> Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions!
+virtual Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.Equals(Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? other) -> bool
+virtual Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.<Clone>$() -> Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult!
+virtual Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Equals(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? other) -> bool
+virtual Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool

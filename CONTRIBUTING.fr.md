@@ -191,13 +191,44 @@ public async Task Agent_Should_Execute_Task_Successfully()
 - [ ] Ajouter de la documentation XML
 - [ ] Corriger les fautes de frappe dans la documentation
 
+## Versionnement et stabilité API
+
+Orkeon suit le [Semantic Versioning 2.0](https://semver.org/). L'API publique n'est pas
+une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée au build :
+
+- Chaque projet packable porte `PublicAPI.Shipped.txt` (la surface gelée, publiée) et
+  `PublicAPI.Unshipped.txt` (les ajouts depuis la dernière release), contrôlés par
+  `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Un changement d'API publique non déclaré
+  fait échouer le build (`RS0016`/`RS0017` promus en erreurs).
+- **Ajouter** une API publique : la déclarer dans `PublicAPI.Unshipped.txt` (le code
+  fix de l'analyseur le fait pour vous — `dotnet format analyzers --diagnostics RS0016`
+  sur le projet). À la release, les entrées `Unshipped` passent dans `Shipped`.
+- **Un breaking change est toute édition ou suppression d'une ligne de
+  `PublicAPI.Shipped.txt`.** Il exige une version majeure (une mineure n'est acceptable
+  qu'avant la 1.0), une entrée `*REMOVED*` dans le fichier d'API, et une entrée
+  CHANGELOG qui le dit sans détour.
+- **Fenêtre de dépréciation** : rien de public n'est retiré sans avoir livré
+  `[Obsolete]` pendant au moins une version mineure, avec le remplaçant nommé dans le
+  message.
+- **Les surfaces `[Experimental]` sont hors de cet engagement.** A2A, l'orchestration
+  Autonomous, le RAG correctif et l'intégration MCP portent des diagnostics
+  `[Experimental("ORKEXP00x")]` : les référencer est une erreur de compilation à
+  supprimer explicitement — c'est votre opt-in à une surface qui peut changer dans
+  n'importe quelle version. Voir
+  [docs/fr/reference/experimental-apis.md](docs/fr/reference/experimental-apis.md).
+- **Engagement de stabilité pour la fenêtre 1.x** : une fois la 1.0 publiée, aucun
+  breaking change sur une API livrée non expérimentale avant la 2.0. D'ici là (0.x),
+  des breaking changes peuvent arriver en version mineure mais sont toujours annoncés
+  dans le CHANGELOG et les notes de migration.
+
 ## Processus de release
 
 1. Mettre à jour les numéros de version
 2. Mettre à jour CHANGELOG.md
-3. Rédiger les notes de release
-4. Taguer la release
-5. Construire et publier les paquets NuGet
+3. Basculer les entrées `PublicAPI.Unshipped.txt` dans `PublicAPI.Shipped.txt`
+4. Rédiger les notes de release
+5. Taguer la release
+6. Construire et publier les paquets NuGet
 
 ## Des questions ?
 

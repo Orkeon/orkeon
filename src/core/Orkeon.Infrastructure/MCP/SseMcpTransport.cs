@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using Orkeon.Infrastructure.Constants.Llm;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
 
@@ -8,6 +9,7 @@ namespace Orkeon.Infrastructure.MCP;
 /// MCP transport that communicates with a server over HTTP,
 /// posting JSON-RPC requests and receiving JSON responses.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class SseMcpTransport : IMcpTransport
 {
     private readonly Uri _url;

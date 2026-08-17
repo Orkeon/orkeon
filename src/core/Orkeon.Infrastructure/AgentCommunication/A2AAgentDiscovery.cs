@@ -4,6 +4,7 @@ using Orkeon.Domain.AgentCommunication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.Constants.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
@@ -11,6 +12,7 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// Discovers remote A2A agents by fetching their agent cards
 /// from the well-known endpoint (<c>/.well-known/agent.json</c>).
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class A2AAgentDiscovery : IA2AAgentDiscovery
 {
     private readonly IHttpClientFactory _httpClientFactory;

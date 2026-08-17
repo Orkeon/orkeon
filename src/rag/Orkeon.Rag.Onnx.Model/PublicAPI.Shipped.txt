@@ -1,0 +1,9 @@
+#nullable enable
+Orkeon.Rag.Onnx.Model.MsMarcoMiniLmModel
+const Orkeon.Rag.Onnx.Model.MsMarcoMiniLmModel.AssemblyName = "Orkeon.Rag.Onnx.Model" -> string!
+const Orkeon.Rag.Onnx.Model.MsMarcoMiniLmModel.ModelResourceName = "Orkeon.Rag.Onnx.Model.msmarco-minilm-l6-v2.quant.onnx" -> string!
+const Orkeon.Rag.Onnx.Model.MsMarcoMiniLmModel.ModelSha256 = "e9d8ebf845c413e981c175bfe49a3bfa9b3dcce2a3ba54875ee5df5a58639fbe" -> string!
+const Orkeon.Rag.Onnx.Model.MsMarcoMiniLmModel.VocabResourceName = "Orkeon.Rag.Onnx.Model.msmarco-minilm-l6-v2.vocab.txt" -> string!
+const Orkeon.Rag.Onnx.Model.MsMarcoMiniLmModel.VocabSha256 = "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3" -> string!
+static Orkeon.Rag.Onnx.Model.MsMarcoMiniLmModel.OpenModelStream() -> System.IO.Stream!
+static Orkeon.Rag.Onnx.Model.MsMarcoMiniLmModel.OpenVocabStream() -> System.IO.Stream!

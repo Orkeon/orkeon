@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Rag.Corrective;
 
@@ -26,6 +27,7 @@ namespace Orkeon.Rag.Corrective;
 /// side for a verification stage: a broken verifier must not veto answers nor
 /// fuel a rewrite storm. A malformed LLM output never throws.
 /// </remarks>
+[Experimental("ORKEXP003", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed partial class LlmGroundednessChecker : IGroundednessChecker
 {
     /// <summary>System prompt of the verification call.</summary>

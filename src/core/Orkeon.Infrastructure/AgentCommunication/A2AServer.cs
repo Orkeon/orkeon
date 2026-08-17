@@ -34,6 +34,7 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// <c>IAgentRegistrationStore</c> singleton, which persists across requests.
 /// </para>
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class A2AServer : IA2AServer, IDisposable
 {
     private readonly A2AOptions _options;

@@ -1,0 +1,25 @@
+#nullable enable
+Microsoft.Extensions.DependencyInjection.CliServiceCollectionExtensions
+Orkeon.Cli.Commands.ClearCommand
+Orkeon.Cli.Commands.ClearCommand.Aliases.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.Commands.ClearCommand.ClearCommand() -> void
+Orkeon.Cli.Commands.ClearCommand.Description.get -> string!
+Orkeon.Cli.Commands.ClearCommand.ExecuteAsync(Orkeon.Cli.Abstractions.Commands.CommandContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Commands.CommandResult!>!
+Orkeon.Cli.Commands.ClearCommand.Name.get -> string!
+Orkeon.Cli.Commands.ExitCommand
+Orkeon.Cli.Commands.ExitCommand.Aliases.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.Commands.ExitCommand.Description.get -> string!
+Orkeon.Cli.Commands.ExitCommand.ExecuteAsync(Orkeon.Cli.Abstractions.Commands.CommandContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Commands.CommandResult!>!
+Orkeon.Cli.Commands.ExitCommand.ExitCommand() -> void
+Orkeon.Cli.Commands.ExitCommand.Name.get -> string!
+Orkeon.Cli.Commands.HelpCommand
+Orkeon.Cli.Commands.HelpCommand.Aliases.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.Commands.HelpCommand.Description.get -> string!
+Orkeon.Cli.Commands.HelpCommand.ExecuteAsync(Orkeon.Cli.Abstractions.Commands.CommandContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Commands.CommandResult!>!
+Orkeon.Cli.Commands.HelpCommand.HelpCommand() -> void
+Orkeon.Cli.Commands.HelpCommand.Name.get -> string!
+Orkeon.Cli.Registry.DefaultCommandRegistry
+Orkeon.Cli.Registry.DefaultCommandRegistry.Commands.get -> System.Collections.Generic.IEnumerable<Orkeon.Cli.Abstractions.Commands.IInteractiveCommand!>!
+Orkeon.Cli.Registry.DefaultCommandRegistry.DefaultCommandRegistry(Orkeon.Cli.Commands.HelpCommand! help, Orkeon.Cli.Commands.ExitCommand! exit, Orkeon.Cli.Commands.ClearCommand! clear) -> void
+Orkeon.Cli.Registry.DefaultCommandRegistry.Fallback.get -> Orkeon.Cli.Abstractions.Commands.IInteractiveCommand?
+static Microsoft.Extensions.DependencyInjection.CliServiceCollectionExtensions.AddOrkeonCli(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

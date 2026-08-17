@@ -1,0 +1,244 @@
+#nullable enable
+Orkeon.Tools.EventHub.DependencyInjection.EventHubToolsServiceCollectionExtensions
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope!
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.CorrelationId.get -> string?
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.CorrelationId.init -> void
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.Equals(Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope? other) -> bool
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.EventMessageEnvelope() -> void
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.MessageId.get -> string!
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.MessageId.init -> void
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.Metadata.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.Metadata.init -> void
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.Payload.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.Payload.init -> void
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.PublishedAt.get -> string!
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.PublishedAt.init -> void
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.SourceAgentId.get -> string?
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.SourceAgentId.init -> void
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.SourceCrewId.get -> string!
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.SourceCrewId.init -> void
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.Topic.get -> string!
+Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.Topic.init -> void
+Orkeon.Tools.EventHub.Dtos.GetLastValueRequest
+Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.GetLastValueRequest!
+Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.CrewScope.get -> string?
+Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.CrewScope.init -> void
+Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.Equals(Orkeon.Tools.EventHub.Dtos.GetLastValueRequest? other) -> bool
+Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.GetLastValueRequest() -> void
+Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.Key.get -> string!
+Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.Key.init -> void
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.GetLastValueResponse!
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.Equals(Orkeon.Tools.EventHub.Dtos.GetLastValueResponse? other) -> bool
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.Found.get -> bool
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.Found.init -> void
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.GetLastValueResponse() -> void
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.SetAt.get -> string?
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.SetAt.init -> void
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.Value.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.Value.init -> void
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.PostMessageRequest!
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.Equals(Orkeon.Tools.EventHub.Dtos.PostMessageRequest? other) -> bool
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.Metadata.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>?
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.Metadata.init -> void
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.Payload.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.Payload.init -> void
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.PostMessageRequest() -> void
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.TargetMailbox.get -> string!
+Orkeon.Tools.EventHub.Dtos.PostMessageRequest.TargetMailbox.init -> void
+Orkeon.Tools.EventHub.Dtos.PostMessageResponse
+Orkeon.Tools.EventHub.Dtos.PostMessageResponse.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.PostMessageResponse!
+Orkeon.Tools.EventHub.Dtos.PostMessageResponse.Equals(Orkeon.Tools.EventHub.Dtos.PostMessageResponse? other) -> bool
+Orkeon.Tools.EventHub.Dtos.PostMessageResponse.MessageId.get -> string!
+Orkeon.Tools.EventHub.Dtos.PostMessageResponse.MessageId.init -> void
+Orkeon.Tools.EventHub.Dtos.PostMessageResponse.PostMessageResponse() -> void
+Orkeon.Tools.EventHub.Dtos.PostMessageResponse.PostedAt.get -> string!
+Orkeon.Tools.EventHub.Dtos.PostMessageResponse.PostedAt.init -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.PublishEventRequest!
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.Equals(Orkeon.Tools.EventHub.Dtos.PublishEventRequest? other) -> bool
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.LastValueKey.get -> string?
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.LastValueKey.init -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.Metadata.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>?
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.Metadata.init -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.Payload.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.Payload.init -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.PublishEventRequest() -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.RetainAsLastValue.get -> bool
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.RetainAsLastValue.init -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.TargetCrewId.get -> string?
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.TargetCrewId.init -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.Topic.get -> string!
+Orkeon.Tools.EventHub.Dtos.PublishEventRequest.Topic.init -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventResponse
+Orkeon.Tools.EventHub.Dtos.PublishEventResponse.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.PublishEventResponse!
+Orkeon.Tools.EventHub.Dtos.PublishEventResponse.Equals(Orkeon.Tools.EventHub.Dtos.PublishEventResponse? other) -> bool
+Orkeon.Tools.EventHub.Dtos.PublishEventResponse.EventId.get -> string!
+Orkeon.Tools.EventHub.Dtos.PublishEventResponse.EventId.init -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventResponse.PublishEventResponse() -> void
+Orkeon.Tools.EventHub.Dtos.PublishEventResponse.PublishedAt.get -> string!
+Orkeon.Tools.EventHub.Dtos.PublishEventResponse.PublishedAt.init -> void
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest!
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.Equals(Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest? other) -> bool
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.Mailbox.get -> string?
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.Mailbox.init -> void
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.ReceiveMessageRequest() -> void
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.TimeoutMs.get -> int?
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.TimeoutMs.init -> void
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.WaitForever.get -> bool
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.WaitForever.init -> void
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse!
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.Equals(Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse? other) -> bool
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.Message.get -> Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope?
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.Message.init -> void
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.ReceiveMessageResponse() -> void
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.TimedOut.get -> bool
+Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.TimedOut.init -> void
+Orkeon.Tools.EventHub.Dtos.ReplyToRequest
+Orkeon.Tools.EventHub.Dtos.ReplyToRequest.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.ReplyToRequest!
+Orkeon.Tools.EventHub.Dtos.ReplyToRequest.CorrelationId.get -> string!
+Orkeon.Tools.EventHub.Dtos.ReplyToRequest.CorrelationId.init -> void
+Orkeon.Tools.EventHub.Dtos.ReplyToRequest.Equals(Orkeon.Tools.EventHub.Dtos.ReplyToRequest? other) -> bool
+Orkeon.Tools.EventHub.Dtos.ReplyToRequest.Payload.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Tools.EventHub.Dtos.ReplyToRequest.Payload.init -> void
+Orkeon.Tools.EventHub.Dtos.ReplyToRequest.ReplyToRequest() -> void
+Orkeon.Tools.EventHub.Dtos.ReplyToResponse
+Orkeon.Tools.EventHub.Dtos.ReplyToResponse.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.ReplyToResponse!
+Orkeon.Tools.EventHub.Dtos.ReplyToResponse.Equals(Orkeon.Tools.EventHub.Dtos.ReplyToResponse? other) -> bool
+Orkeon.Tools.EventHub.Dtos.ReplyToResponse.RepliedAt.get -> string!
+Orkeon.Tools.EventHub.Dtos.ReplyToResponse.RepliedAt.init -> void
+Orkeon.Tools.EventHub.Dtos.ReplyToResponse.ReplyToResponse() -> void
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.SendRequestRequest!
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.Equals(Orkeon.Tools.EventHub.Dtos.SendRequestRequest? other) -> bool
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.Metadata.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>?
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.Metadata.init -> void
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.Payload.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.Payload.init -> void
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.SendRequestRequest() -> void
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.TargetMailbox.get -> string!
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.TargetMailbox.init -> void
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.TimeoutMs.get -> int?
+Orkeon.Tools.EventHub.Dtos.SendRequestRequest.TimeoutMs.init -> void
+Orkeon.Tools.EventHub.Dtos.SendRequestResponse
+Orkeon.Tools.EventHub.Dtos.SendRequestResponse.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.SendRequestResponse!
+Orkeon.Tools.EventHub.Dtos.SendRequestResponse.CorrelationId.get -> string!
+Orkeon.Tools.EventHub.Dtos.SendRequestResponse.CorrelationId.init -> void
+Orkeon.Tools.EventHub.Dtos.SendRequestResponse.Equals(Orkeon.Tools.EventHub.Dtos.SendRequestResponse? other) -> bool
+Orkeon.Tools.EventHub.Dtos.SendRequestResponse.ResponsePayload.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Tools.EventHub.Dtos.SendRequestResponse.ResponsePayload.init -> void
+Orkeon.Tools.EventHub.Dtos.SendRequestResponse.SendRequestResponse() -> void
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.WaitForEventRequest!
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.Equals(Orkeon.Tools.EventHub.Dtos.WaitForEventRequest? other) -> bool
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.MetadataMatch.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>?
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.MetadataMatch.init -> void
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.TimeoutMs.get -> int?
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.TimeoutMs.init -> void
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.Topic.get -> string!
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.Topic.init -> void
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.WaitForEventRequest() -> void
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.WaitForever.get -> bool
+Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.WaitForever.init -> void
+Orkeon.Tools.EventHub.Dtos.WaitForEventResponse
+Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.<Clone>$() -> Orkeon.Tools.EventHub.Dtos.WaitForEventResponse!
+Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.Equals(Orkeon.Tools.EventHub.Dtos.WaitForEventResponse? other) -> bool
+Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.Message.get -> Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope?
+Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.Message.init -> void
+Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.TimedOut.get -> bool
+Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.TimedOut.init -> void
+Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.WaitForEventResponse() -> void
+Orkeon.Tools.EventHub.GetLastValueTool
+Orkeon.Tools.EventHub.GetLastValueTool.GetLastValueTool(Orkeon.Application.EventHub.IEventHub! hub, Orkeon.Application.EventHub.IEventHubCallerContext! callerContext, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.EventHub.GetLastValueTool!>? logger = null) -> void
+Orkeon.Tools.EventHub.PostMessageTool
+Orkeon.Tools.EventHub.PostMessageTool.PostMessageTool(Orkeon.Application.EventHub.IEventHub! hub, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.EventHub.PostMessageTool!>? logger = null) -> void
+Orkeon.Tools.EventHub.PublishEventTool
+Orkeon.Tools.EventHub.PublishEventTool.PublishEventTool(Orkeon.Application.EventHub.IEventHub! hub, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.EventHub.PublishEventTool!>? logger = null) -> void
+Orkeon.Tools.EventHub.ReceiveMessageTool
+Orkeon.Tools.EventHub.ReceiveMessageTool.ReceiveMessageTool(Orkeon.Application.EventHub.IEventHub! hub, Orkeon.Application.EventHub.IEventHubCallerContext! callerContext, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.EventHub.ReceiveMessageTool!>? logger = null) -> void
+Orkeon.Tools.EventHub.ReplyToTool
+Orkeon.Tools.EventHub.ReplyToTool.ReplyToTool(Orkeon.Application.EventHub.IEventHub! hub, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.EventHub.ReplyToTool!>? logger = null) -> void
+Orkeon.Tools.EventHub.SendRequestTool
+Orkeon.Tools.EventHub.SendRequestTool.SendRequestTool(Orkeon.Application.EventHub.IEventHub! hub, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.EventHub.SendRequestTool!>? logger = null) -> void
+Orkeon.Tools.EventHub.WaitForEventTool
+Orkeon.Tools.EventHub.WaitForEventTool.WaitForEventTool(Orkeon.Application.EventHub.IEventHub! hub, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.EventHub.WaitForEventTool!>? logger = null) -> void
+override Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.PostMessageRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.PostMessageRequest.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.PostMessageRequest.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.PostMessageResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.PostMessageResponse.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.PostMessageResponse.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.PublishEventRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.PublishEventRequest.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.PublishEventRequest.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.PublishEventResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.PublishEventResponse.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.PublishEventResponse.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.ReplyToRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.ReplyToRequest.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.ReplyToRequest.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.ReplyToResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.ReplyToResponse.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.ReplyToResponse.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.SendRequestRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.SendRequestRequest.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.SendRequestRequest.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.SendRequestResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.SendRequestResponse.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.SendRequestResponse.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.ToString() -> string!
+override Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.GetHashCode() -> int
+override Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.ToString() -> string!
+static Orkeon.Tools.EventHub.DependencyInjection.EventHubToolsServiceCollectionExtensions.AddOrkeonEventHubTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.operator !=(Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope? left, Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope.operator ==(Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope? left, Orkeon.Tools.EventHub.Dtos.EventMessageEnvelope? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.operator !=(Orkeon.Tools.EventHub.Dtos.GetLastValueRequest? left, Orkeon.Tools.EventHub.Dtos.GetLastValueRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.GetLastValueRequest.operator ==(Orkeon.Tools.EventHub.Dtos.GetLastValueRequest? left, Orkeon.Tools.EventHub.Dtos.GetLastValueRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.operator !=(Orkeon.Tools.EventHub.Dtos.GetLastValueResponse? left, Orkeon.Tools.EventHub.Dtos.GetLastValueResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.GetLastValueResponse.operator ==(Orkeon.Tools.EventHub.Dtos.GetLastValueResponse? left, Orkeon.Tools.EventHub.Dtos.GetLastValueResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.PostMessageRequest.operator !=(Orkeon.Tools.EventHub.Dtos.PostMessageRequest? left, Orkeon.Tools.EventHub.Dtos.PostMessageRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.PostMessageRequest.operator ==(Orkeon.Tools.EventHub.Dtos.PostMessageRequest? left, Orkeon.Tools.EventHub.Dtos.PostMessageRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.PostMessageResponse.operator !=(Orkeon.Tools.EventHub.Dtos.PostMessageResponse? left, Orkeon.Tools.EventHub.Dtos.PostMessageResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.PostMessageResponse.operator ==(Orkeon.Tools.EventHub.Dtos.PostMessageResponse? left, Orkeon.Tools.EventHub.Dtos.PostMessageResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.PublishEventRequest.operator !=(Orkeon.Tools.EventHub.Dtos.PublishEventRequest? left, Orkeon.Tools.EventHub.Dtos.PublishEventRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.PublishEventRequest.operator ==(Orkeon.Tools.EventHub.Dtos.PublishEventRequest? left, Orkeon.Tools.EventHub.Dtos.PublishEventRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.PublishEventResponse.operator !=(Orkeon.Tools.EventHub.Dtos.PublishEventResponse? left, Orkeon.Tools.EventHub.Dtos.PublishEventResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.PublishEventResponse.operator ==(Orkeon.Tools.EventHub.Dtos.PublishEventResponse? left, Orkeon.Tools.EventHub.Dtos.PublishEventResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.operator !=(Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest? left, Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest.operator ==(Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest? left, Orkeon.Tools.EventHub.Dtos.ReceiveMessageRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.operator !=(Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse? left, Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse.operator ==(Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse? left, Orkeon.Tools.EventHub.Dtos.ReceiveMessageResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.ReplyToRequest.operator !=(Orkeon.Tools.EventHub.Dtos.ReplyToRequest? left, Orkeon.Tools.EventHub.Dtos.ReplyToRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.ReplyToRequest.operator ==(Orkeon.Tools.EventHub.Dtos.ReplyToRequest? left, Orkeon.Tools.EventHub.Dtos.ReplyToRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.ReplyToResponse.operator !=(Orkeon.Tools.EventHub.Dtos.ReplyToResponse? left, Orkeon.Tools.EventHub.Dtos.ReplyToResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.ReplyToResponse.operator ==(Orkeon.Tools.EventHub.Dtos.ReplyToResponse? left, Orkeon.Tools.EventHub.Dtos.ReplyToResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.SendRequestRequest.operator !=(Orkeon.Tools.EventHub.Dtos.SendRequestRequest? left, Orkeon.Tools.EventHub.Dtos.SendRequestRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.SendRequestRequest.operator ==(Orkeon.Tools.EventHub.Dtos.SendRequestRequest? left, Orkeon.Tools.EventHub.Dtos.SendRequestRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.SendRequestResponse.operator !=(Orkeon.Tools.EventHub.Dtos.SendRequestResponse? left, Orkeon.Tools.EventHub.Dtos.SendRequestResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.SendRequestResponse.operator ==(Orkeon.Tools.EventHub.Dtos.SendRequestResponse? left, Orkeon.Tools.EventHub.Dtos.SendRequestResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.operator !=(Orkeon.Tools.EventHub.Dtos.WaitForEventRequest? left, Orkeon.Tools.EventHub.Dtos.WaitForEventRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.WaitForEventRequest.operator ==(Orkeon.Tools.EventHub.Dtos.WaitForEventRequest? left, Orkeon.Tools.EventHub.Dtos.WaitForEventRequest? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.operator !=(Orkeon.Tools.EventHub.Dtos.WaitForEventResponse? left, Orkeon.Tools.EventHub.Dtos.WaitForEventResponse? right) -> bool
+static Orkeon.Tools.EventHub.Dtos.WaitForEventResponse.operator ==(Orkeon.Tools.EventHub.Dtos.WaitForEventResponse? left, Orkeon.Tools.EventHub.Dtos.WaitForEventResponse? right) -> bool

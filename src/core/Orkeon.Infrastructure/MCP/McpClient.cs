@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.MCP;
 
@@ -8,6 +9,7 @@ namespace Orkeon.Infrastructure.MCP;
 /// MCP protocol client. Manages the initialize handshake and exposes
 /// tools/list, tools/call, resources/list, and resources/read RPCs.
 /// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class McpClient : IAsyncDisposable
 {
     private readonly IMcpTransport _transport;

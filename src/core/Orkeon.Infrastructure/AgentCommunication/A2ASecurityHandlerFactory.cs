@@ -3,6 +3,7 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
 
@@ -14,6 +15,7 @@ namespace Orkeon.Infrastructure.AgentCommunication;
 /// connections (<see cref="SocketsHttpHandler.PooledConnectionLifetime"/>) — it is meant
 /// to be built once and shared across calls (ANT-018), not created per request.
 /// </summary>
+[Experimental("ORKEXP001", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public static partial class A2ASecurityHandlerFactory
 {
     /// <summary>

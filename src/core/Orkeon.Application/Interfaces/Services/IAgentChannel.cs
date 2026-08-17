@@ -1,4 +1,5 @@
 using Orkeon.Domain.Common;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Application.Interfaces.Services;
 
@@ -7,6 +8,7 @@ namespace Orkeon.Application.Interfaces.Services;
 /// Unlike <see cref="IAgentCommunicationService"/> which is fire-and-forget,
 /// this channel supports synchronous request/response semantics and correlation tracking.
 /// </summary>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public interface IAgentChannel
 {
     /// <summary>
@@ -56,6 +58,7 @@ public interface IAgentChannel
 /// <param name="Intent">Describes what the sender is asking for (e.g. "clarify", "delegate", "provide_data").</param>
 /// <param name="Payload">The request content (natural language or structured data).</param>
 /// <param name="Metadata">Optional key-value metadata for extensibility.</param>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed record AgentChannelRequest(
     Guid CorrelationId,
     AgentId FromAgentId,
@@ -79,6 +82,7 @@ public sealed record AgentChannelRequest(
 /// <param name="Success">Whether the request was fulfilled successfully.</param>
 /// <param name="Payload">The response content.</param>
 /// <param name="Error">Error message if <paramref name="Success"/> is <c>false</c>.</param>
+[Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed record AgentChannelResponse(
     Guid CorrelationId,
     AgentId FromAgentId,

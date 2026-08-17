@@ -1,0 +1,461 @@
+#nullable enable
+Orkeon.Tools.Web.BraveSearchTool
+Orkeon.Tools.Web.BraveSearchTool.BraveSearchTool(string! apiKey, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.BraveSearchTool!>? logger = null) -> void
+Orkeon.Tools.Web.CacheSearchHit
+Orkeon.Tools.Web.CacheSearchHit.CacheSearchHit() -> void
+Orkeon.Tools.Web.CacheSearchHit.CacheSearchHit(Orkeon.Tools.Web.CacheSearchHit! original) -> void
+Orkeon.Tools.Web.CacheSearchHit.Content.get -> string!
+Orkeon.Tools.Web.CacheSearchHit.Content.init -> void
+Orkeon.Tools.Web.CacheSearchHit.Score.get -> float
+Orkeon.Tools.Web.CacheSearchHit.Score.init -> void
+Orkeon.Tools.Web.CacheSearchHit.Source.get -> string!
+Orkeon.Tools.Web.CacheSearchHit.Source.init -> void
+Orkeon.Tools.Web.CacheSearchHit.Title.get -> string!
+Orkeon.Tools.Web.CacheSearchHit.Title.init -> void
+Orkeon.Tools.Web.CacheSearchHit.Url.get -> System.Uri?
+Orkeon.Tools.Web.CacheSearchHit.Url.init -> void
+Orkeon.Tools.Web.CacheSearchRequest
+Orkeon.Tools.Web.CacheSearchRequest.CacheSearchRequest() -> void
+Orkeon.Tools.Web.CacheSearchRequest.CacheSearchRequest(Orkeon.Tools.Web.CacheSearchRequest! original) -> void
+Orkeon.Tools.Web.CacheSearchRequest.MinScore.get -> double
+Orkeon.Tools.Web.CacheSearchRequest.MinScore.init -> void
+Orkeon.Tools.Web.CacheSearchRequest.Query.get -> string!
+Orkeon.Tools.Web.CacheSearchRequest.Query.init -> void
+Orkeon.Tools.Web.CacheSearchRequest.Source.get -> string?
+Orkeon.Tools.Web.CacheSearchRequest.Source.init -> void
+Orkeon.Tools.Web.CacheSearchRequest.TopK.get -> int
+Orkeon.Tools.Web.CacheSearchRequest.TopK.init -> void
+Orkeon.Tools.Web.CacheSearchRequest.UrlFilter.get -> System.Uri?
+Orkeon.Tools.Web.CacheSearchRequest.UrlFilter.init -> void
+Orkeon.Tools.Web.CacheSearchResponse
+Orkeon.Tools.Web.CacheSearchResponse.CacheSearchResponse() -> void
+Orkeon.Tools.Web.CacheSearchResponse.CacheSearchResponse(Orkeon.Tools.Web.CacheSearchResponse! original) -> void
+Orkeon.Tools.Web.CacheSearchResponse.HitCount.get -> int
+Orkeon.Tools.Web.CacheSearchResponse.HitCount.init -> void
+Orkeon.Tools.Web.CacheSearchResponse.Hits.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.CacheSearchHit!>!
+Orkeon.Tools.Web.CacheSearchResponse.Hits.init -> void
+Orkeon.Tools.Web.CacheSearchResponse.Query.get -> string!
+Orkeon.Tools.Web.CacheSearchResponse.Query.init -> void
+Orkeon.Tools.Web.CacheSearchTool
+Orkeon.Tools.Web.CacheSearchTool.CacheSearchTool(Orkeon.Domain.Memory.IEmbeddingService! embeddingService, Orkeon.Domain.Memory.IMemoryProvider! memoryProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.CacheSearchTool!>? logger = null) -> void
+Orkeon.Tools.Web.DependencyInjection.WebToolExtensions
+Orkeon.Tools.Web.GeneratedImage
+Orkeon.Tools.Web.GeneratedImage.Base64.get -> string?
+Orkeon.Tools.Web.GeneratedImage.Base64.set -> void
+Orkeon.Tools.Web.GeneratedImage.GeneratedImage() -> void
+Orkeon.Tools.Web.GeneratedImage.RevisedPrompt.get -> string?
+Orkeon.Tools.Web.GeneratedImage.RevisedPrompt.set -> void
+Orkeon.Tools.Web.GeneratedImage.SavedPath.get -> string?
+Orkeon.Tools.Web.GeneratedImage.SavedPath.set -> void
+Orkeon.Tools.Web.GeneratedImage.Url.get -> System.Uri?
+Orkeon.Tools.Web.GeneratedImage.Url.set -> void
+Orkeon.Tools.Web.GitHubItem
+Orkeon.Tools.Web.GitHubItem.<Clone>$() -> Orkeon.Tools.Web.GitHubItem!
+Orkeon.Tools.Web.GitHubItem.Body.get -> string!
+Orkeon.Tools.Web.GitHubItem.Body.init -> void
+Orkeon.Tools.Web.GitHubItem.CreatedAt.get -> string!
+Orkeon.Tools.Web.GitHubItem.CreatedAt.init -> void
+Orkeon.Tools.Web.GitHubItem.Equals(Orkeon.Tools.Web.GitHubItem? other) -> bool
+Orkeon.Tools.Web.GitHubItem.GitHubItem() -> void
+Orkeon.Tools.Web.GitHubItem.Number.get -> int
+Orkeon.Tools.Web.GitHubItem.Number.init -> void
+Orkeon.Tools.Web.GitHubItem.State.get -> string!
+Orkeon.Tools.Web.GitHubItem.State.init -> void
+Orkeon.Tools.Web.GitHubItem.Title.get -> string!
+Orkeon.Tools.Web.GitHubItem.Title.init -> void
+Orkeon.Tools.Web.GitHubItem.Url.get -> System.Uri?
+Orkeon.Tools.Web.GitHubItem.Url.init -> void
+Orkeon.Tools.Web.GitHubRequest
+Orkeon.Tools.Web.GitHubRequest.<Clone>$() -> Orkeon.Tools.Web.GitHubRequest!
+Orkeon.Tools.Web.GitHubRequest.Action.get -> string!
+Orkeon.Tools.Web.GitHubRequest.Action.init -> void
+Orkeon.Tools.Web.GitHubRequest.Body.get -> string?
+Orkeon.Tools.Web.GitHubRequest.Body.init -> void
+Orkeon.Tools.Web.GitHubRequest.Equals(Orkeon.Tools.Web.GitHubRequest? other) -> bool
+Orkeon.Tools.Web.GitHubRequest.GitHubRequest() -> void
+Orkeon.Tools.Web.GitHubRequest.Number.get -> int?
+Orkeon.Tools.Web.GitHubRequest.Number.init -> void
+Orkeon.Tools.Web.GitHubRequest.Owner.get -> string!
+Orkeon.Tools.Web.GitHubRequest.Owner.init -> void
+Orkeon.Tools.Web.GitHubRequest.Query.get -> string?
+Orkeon.Tools.Web.GitHubRequest.Query.init -> void
+Orkeon.Tools.Web.GitHubRequest.Repo.get -> string!
+Orkeon.Tools.Web.GitHubRequest.Repo.init -> void
+Orkeon.Tools.Web.GitHubRequest.Title.get -> string?
+Orkeon.Tools.Web.GitHubRequest.Title.init -> void
+Orkeon.Tools.Web.GitHubResponse
+Orkeon.Tools.Web.GitHubResponse.<Clone>$() -> Orkeon.Tools.Web.GitHubResponse!
+Orkeon.Tools.Web.GitHubResponse.Action.get -> string!
+Orkeon.Tools.Web.GitHubResponse.Action.init -> void
+Orkeon.Tools.Web.GitHubResponse.Equals(Orkeon.Tools.Web.GitHubResponse? other) -> bool
+Orkeon.Tools.Web.GitHubResponse.Error.get -> string?
+Orkeon.Tools.Web.GitHubResponse.Error.init -> void
+Orkeon.Tools.Web.GitHubResponse.GitHubResponse() -> void
+Orkeon.Tools.Web.GitHubResponse.Items.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.GitHubItem!>!
+Orkeon.Tools.Web.GitHubResponse.Items.init -> void
+Orkeon.Tools.Web.GitHubResponse.Success.get -> bool
+Orkeon.Tools.Web.GitHubResponse.Success.init -> void
+Orkeon.Tools.Web.GitHubResponse.TotalCount.get -> int
+Orkeon.Tools.Web.GitHubResponse.TotalCount.init -> void
+Orkeon.Tools.Web.GitHubTool
+Orkeon.Tools.Web.GitHubTool.GitHubTool(string? personalAccessToken = null, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Web.HttpApiRequest
+Orkeon.Tools.Web.HttpApiRequest.Body.get -> string?
+Orkeon.Tools.Web.HttpApiRequest.Body.set -> void
+Orkeon.Tools.Web.HttpApiRequest.ContentType.get -> string!
+Orkeon.Tools.Web.HttpApiRequest.ContentType.set -> void
+Orkeon.Tools.Web.HttpApiRequest.Headers.get -> object?
+Orkeon.Tools.Web.HttpApiRequest.Headers.set -> void
+Orkeon.Tools.Web.HttpApiRequest.HttpApiRequest() -> void
+Orkeon.Tools.Web.HttpApiRequest.Method.get -> string!
+Orkeon.Tools.Web.HttpApiRequest.Method.set -> void
+Orkeon.Tools.Web.HttpApiRequest.Url.get -> System.Uri?
+Orkeon.Tools.Web.HttpApiRequest.Url.set -> void
+Orkeon.Tools.Web.HttpApiResponse
+Orkeon.Tools.Web.HttpApiResponse.Body.get -> string!
+Orkeon.Tools.Web.HttpApiResponse.Body.set -> void
+Orkeon.Tools.Web.HttpApiResponse.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Tools.Web.HttpApiResponse.Headers.init -> void
+Orkeon.Tools.Web.HttpApiResponse.HttpApiResponse() -> void
+Orkeon.Tools.Web.HttpApiResponse.IsSuccess.get -> bool
+Orkeon.Tools.Web.HttpApiResponse.IsSuccess.set -> void
+Orkeon.Tools.Web.HttpApiResponse.StatusCode.get -> int
+Orkeon.Tools.Web.HttpApiResponse.StatusCode.set -> void
+Orkeon.Tools.Web.HttpApiResponse.StatusDescription.get -> string!
+Orkeon.Tools.Web.HttpApiResponse.StatusDescription.set -> void
+Orkeon.Tools.Web.HttpApiTool
+Orkeon.Tools.Web.HttpApiTool.HttpApiTool(Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.HttpApiTool!>? logger = null) -> void
+Orkeon.Tools.Web.HttpApiTool.HttpApiTool(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.HttpApiTool!>? logger = null) -> void
+Orkeon.Tools.Web.HttpApiTool.HttpApiTool(System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.HttpApiTool!>? logger = null) -> void
+Orkeon.Tools.Web.ImageGenerationRequest
+Orkeon.Tools.Web.ImageGenerationRequest.ApiKey.get -> string!
+Orkeon.Tools.Web.ImageGenerationRequest.ApiKey.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.ImageGenerationRequest() -> void
+Orkeon.Tools.Web.ImageGenerationRequest.Model.get -> string!
+Orkeon.Tools.Web.ImageGenerationRequest.Model.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.NumberOfImages.get -> int
+Orkeon.Tools.Web.ImageGenerationRequest.NumberOfImages.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.Prompt.get -> string!
+Orkeon.Tools.Web.ImageGenerationRequest.Prompt.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.Quality.get -> string!
+Orkeon.Tools.Web.ImageGenerationRequest.Quality.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.ResponseFormat.get -> string!
+Orkeon.Tools.Web.ImageGenerationRequest.ResponseFormat.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.SaveToPath.get -> string?
+Orkeon.Tools.Web.ImageGenerationRequest.SaveToPath.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.Size.get -> string!
+Orkeon.Tools.Web.ImageGenerationRequest.Size.set -> void
+Orkeon.Tools.Web.ImageGenerationResponse
+Orkeon.Tools.Web.ImageGenerationResponse.ImageCount.get -> int
+Orkeon.Tools.Web.ImageGenerationResponse.ImageCount.set -> void
+Orkeon.Tools.Web.ImageGenerationResponse.ImageGenerationResponse() -> void
+Orkeon.Tools.Web.ImageGenerationResponse.Images.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.GeneratedImage!>!
+Orkeon.Tools.Web.ImageGenerationResponse.Images.init -> void
+Orkeon.Tools.Web.ImageGenerationResponse.Model.get -> string!
+Orkeon.Tools.Web.ImageGenerationResponse.Model.set -> void
+Orkeon.Tools.Web.ImageGenerationTool
+Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
+Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
+Orkeon.Tools.Web.ScrapeElementRequest
+Orkeon.Tools.Web.ScrapeElementRequest.CssSelector.get -> string!
+Orkeon.Tools.Web.ScrapeElementRequest.CssSelector.init -> void
+Orkeon.Tools.Web.ScrapeElementRequest.ExtractAttributes.get -> bool
+Orkeon.Tools.Web.ScrapeElementRequest.ExtractAttributes.init -> void
+Orkeon.Tools.Web.ScrapeElementRequest.IncludeHtml.get -> bool
+Orkeon.Tools.Web.ScrapeElementRequest.IncludeHtml.init -> void
+Orkeon.Tools.Web.ScrapeElementRequest.MaxElements.get -> int
+Orkeon.Tools.Web.ScrapeElementRequest.MaxElements.init -> void
+Orkeon.Tools.Web.ScrapeElementRequest.ScrapeElementRequest() -> void
+Orkeon.Tools.Web.ScrapeElementRequest.ScrapeElementRequest(Orkeon.Tools.Web.ScrapeElementRequest! original) -> void
+Orkeon.Tools.Web.ScrapeElementRequest.Url.get -> System.Uri?
+Orkeon.Tools.Web.ScrapeElementRequest.Url.init -> void
+Orkeon.Tools.Web.ScrapeElementResponse
+Orkeon.Tools.Web.ScrapeElementResponse.CssSelector.get -> string!
+Orkeon.Tools.Web.ScrapeElementResponse.CssSelector.init -> void
+Orkeon.Tools.Web.ScrapeElementResponse.ElementCount.get -> int
+Orkeon.Tools.Web.ScrapeElementResponse.ElementCount.init -> void
+Orkeon.Tools.Web.ScrapeElementResponse.Elements.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.ScrapedElement!>!
+Orkeon.Tools.Web.ScrapeElementResponse.Elements.init -> void
+Orkeon.Tools.Web.ScrapeElementResponse.ReturnedCount.get -> int
+Orkeon.Tools.Web.ScrapeElementResponse.ReturnedCount.init -> void
+Orkeon.Tools.Web.ScrapeElementResponse.ScrapeElementResponse() -> void
+Orkeon.Tools.Web.ScrapeElementResponse.ScrapeElementResponse(Orkeon.Tools.Web.ScrapeElementResponse! original) -> void
+Orkeon.Tools.Web.ScrapeElementResponse.Url.get -> System.Uri?
+Orkeon.Tools.Web.ScrapeElementResponse.Url.init -> void
+Orkeon.Tools.Web.ScrapeElementTool
+Orkeon.Tools.Web.ScrapeElementTool.ScrapeElementTool(Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ScrapeElementTool!>? logger = null) -> void
+Orkeon.Tools.Web.ScrapeElementTool.ScrapeElementTool(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ScrapeElementTool!>? logger = null) -> void
+Orkeon.Tools.Web.ScrapedElement
+Orkeon.Tools.Web.ScrapedElement.Attributes.get -> System.Collections.Generic.Dictionary<string!, string!>?
+Orkeon.Tools.Web.ScrapedElement.Attributes.init -> void
+Orkeon.Tools.Web.ScrapedElement.Html.get -> string?
+Orkeon.Tools.Web.ScrapedElement.Html.init -> void
+Orkeon.Tools.Web.ScrapedElement.Index.get -> int
+Orkeon.Tools.Web.ScrapedElement.Index.init -> void
+Orkeon.Tools.Web.ScrapedElement.ScrapedElement() -> void
+Orkeon.Tools.Web.ScrapedElement.ScrapedElement(Orkeon.Tools.Web.ScrapedElement! original) -> void
+Orkeon.Tools.Web.ScrapedElement.Text.get -> string!
+Orkeon.Tools.Web.ScrapedElement.Text.init -> void
+Orkeon.Tools.Web.SlackMessage
+Orkeon.Tools.Web.SlackMessage.<Clone>$() -> Orkeon.Tools.Web.SlackMessage!
+Orkeon.Tools.Web.SlackMessage.Equals(Orkeon.Tools.Web.SlackMessage? other) -> bool
+Orkeon.Tools.Web.SlackMessage.SlackMessage() -> void
+Orkeon.Tools.Web.SlackMessage.Text.get -> string!
+Orkeon.Tools.Web.SlackMessage.Text.init -> void
+Orkeon.Tools.Web.SlackMessage.Timestamp.get -> string!
+Orkeon.Tools.Web.SlackMessage.Timestamp.init -> void
+Orkeon.Tools.Web.SlackMessage.UserId.get -> string!
+Orkeon.Tools.Web.SlackMessage.UserId.init -> void
+Orkeon.Tools.Web.SlackMessage.Username.get -> string!
+Orkeon.Tools.Web.SlackMessage.Username.init -> void
+Orkeon.Tools.Web.SlackReadMessagesRequest
+Orkeon.Tools.Web.SlackReadMessagesRequest.Channel.get -> string!
+Orkeon.Tools.Web.SlackReadMessagesRequest.Channel.set -> void
+Orkeon.Tools.Web.SlackReadMessagesRequest.Limit.get -> int
+Orkeon.Tools.Web.SlackReadMessagesRequest.Limit.set -> void
+Orkeon.Tools.Web.SlackReadMessagesRequest.Oldest.get -> string?
+Orkeon.Tools.Web.SlackReadMessagesRequest.Oldest.set -> void
+Orkeon.Tools.Web.SlackReadMessagesRequest.SlackReadMessagesRequest() -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse
+Orkeon.Tools.Web.SlackReadMessagesResponse.Channel.get -> string!
+Orkeon.Tools.Web.SlackReadMessagesResponse.Channel.set -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.Error.get -> string?
+Orkeon.Tools.Web.SlackReadMessagesResponse.Error.set -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.MessageCount.get -> int
+Orkeon.Tools.Web.SlackReadMessagesResponse.MessageCount.set -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.Messages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.SlackMessage!>!
+Orkeon.Tools.Web.SlackReadMessagesResponse.Messages.init -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.SlackReadMessagesResponse() -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.Success.get -> bool
+Orkeon.Tools.Web.SlackReadMessagesResponse.Success.set -> void
+Orkeon.Tools.Web.SlackReadTool
+Orkeon.Tools.Web.SlackReadTool.SlackReadTool(string! botToken, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.SlackReadTool!>? logger = null) -> void
+Orkeon.Tools.Web.SlackSendMessageRequest
+Orkeon.Tools.Web.SlackSendMessageRequest.Channel.get -> string!
+Orkeon.Tools.Web.SlackSendMessageRequest.Channel.set -> void
+Orkeon.Tools.Web.SlackSendMessageRequest.Message.get -> string!
+Orkeon.Tools.Web.SlackSendMessageRequest.Message.set -> void
+Orkeon.Tools.Web.SlackSendMessageRequest.SlackSendMessageRequest() -> void
+Orkeon.Tools.Web.SlackSendMessageRequest.ThreadTs.get -> string?
+Orkeon.Tools.Web.SlackSendMessageRequest.ThreadTs.set -> void
+Orkeon.Tools.Web.SlackSendMessageResponse
+Orkeon.Tools.Web.SlackSendMessageResponse.Channel.get -> string!
+Orkeon.Tools.Web.SlackSendMessageResponse.Channel.set -> void
+Orkeon.Tools.Web.SlackSendMessageResponse.Error.get -> string?
+Orkeon.Tools.Web.SlackSendMessageResponse.Error.set -> void
+Orkeon.Tools.Web.SlackSendMessageResponse.SlackSendMessageResponse() -> void
+Orkeon.Tools.Web.SlackSendMessageResponse.Success.get -> bool
+Orkeon.Tools.Web.SlackSendMessageResponse.Success.set -> void
+Orkeon.Tools.Web.SlackSendMessageResponse.Timestamp.get -> string!
+Orkeon.Tools.Web.SlackSendMessageResponse.Timestamp.set -> void
+Orkeon.Tools.Web.SlackTool
+Orkeon.Tools.Web.SlackTool.SlackTool(string! botToken, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.SlackTool!>? logger = null) -> void
+Orkeon.Tools.Web.WebScrapeRequest
+Orkeon.Tools.Web.WebScrapeRequest.Cached.get -> bool
+Orkeon.Tools.Web.WebScrapeRequest.Cached.init -> void
+Orkeon.Tools.Web.WebScrapeRequest.ChunkSize.get -> int
+Orkeon.Tools.Web.WebScrapeRequest.ChunkSize.init -> void
+Orkeon.Tools.Web.WebScrapeRequest.Selector.get -> string?
+Orkeon.Tools.Web.WebScrapeRequest.Selector.init -> void
+Orkeon.Tools.Web.WebScrapeRequest.Url.get -> System.Uri?
+Orkeon.Tools.Web.WebScrapeRequest.Url.init -> void
+Orkeon.Tools.Web.WebScrapeRequest.WebScrapeRequest() -> void
+Orkeon.Tools.Web.WebScrapeRequest.WebScrapeRequest(Orkeon.Tools.Web.WebScrapeRequest! original) -> void
+Orkeon.Tools.Web.WebScrapeResponse
+Orkeon.Tools.Web.WebScrapeResponse.Cached.get -> bool
+Orkeon.Tools.Web.WebScrapeResponse.Cached.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.Content.get -> string!
+Orkeon.Tools.Web.WebScrapeResponse.Content.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.ContentLength.get -> int
+Orkeon.Tools.Web.WebScrapeResponse.ContentLength.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.KeyPrefix.get -> string!
+Orkeon.Tools.Web.WebScrapeResponse.KeyPrefix.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.SelectorMatched.get -> bool
+Orkeon.Tools.Web.WebScrapeResponse.SelectorMatched.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.Summary.get -> string!
+Orkeon.Tools.Web.WebScrapeResponse.Summary.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.Title.get -> string!
+Orkeon.Tools.Web.WebScrapeResponse.Title.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.TotalChunks.get -> int
+Orkeon.Tools.Web.WebScrapeResponse.TotalChunks.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.Url.get -> System.Uri?
+Orkeon.Tools.Web.WebScrapeResponse.Url.init -> void
+Orkeon.Tools.Web.WebScrapeResponse.WebScrapeResponse() -> void
+Orkeon.Tools.Web.WebScrapeResponse.WebScrapeResponse(Orkeon.Tools.Web.WebScrapeResponse! original) -> void
+Orkeon.Tools.Web.WebScrapeTool
+Orkeon.Tools.Web.WebScrapeTool.WebScrapeTool(Orkeon.Domain.Memory.IEmbeddingService! embeddingService, Orkeon.Domain.Memory.IMemoryProvider! memoryProvider, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.WebScrapeTool!>? logger = null) -> void
+Orkeon.Tools.Web.WebScrapeTool.WebScrapeTool(Orkeon.Domain.Memory.IEmbeddingService! embeddingService, Orkeon.Domain.Memory.IMemoryProvider! memoryProvider, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.WebScrapeTool!>? logger = null) -> void
+Orkeon.Tools.Web.WebScrapeTool.WebScrapeTool(Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.WebScrapeTool!>? logger = null) -> void
+Orkeon.Tools.Web.WebScrapeTool.WebScrapeTool(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.WebScrapeTool!>? logger = null) -> void
+Orkeon.Tools.Web.WebSearchRequest
+Orkeon.Tools.Web.WebSearchRequest.<Clone>$() -> Orkeon.Tools.Web.WebSearchRequest!
+Orkeon.Tools.Web.WebSearchRequest.Equals(Orkeon.Tools.Web.WebSearchRequest? other) -> bool
+Orkeon.Tools.Web.WebSearchRequest.MaxResults.get -> int
+Orkeon.Tools.Web.WebSearchRequest.MaxResults.init -> void
+Orkeon.Tools.Web.WebSearchRequest.Query.get -> string!
+Orkeon.Tools.Web.WebSearchRequest.Query.init -> void
+Orkeon.Tools.Web.WebSearchRequest.SearchDepth.get -> string!
+Orkeon.Tools.Web.WebSearchRequest.SearchDepth.init -> void
+Orkeon.Tools.Web.WebSearchRequest.WebSearchRequest() -> void
+Orkeon.Tools.Web.WebSearchResponse
+Orkeon.Tools.Web.WebSearchResponse.<Clone>$() -> Orkeon.Tools.Web.WebSearchResponse!
+Orkeon.Tools.Web.WebSearchResponse.Equals(Orkeon.Tools.Web.WebSearchResponse? other) -> bool
+Orkeon.Tools.Web.WebSearchResponse.Query.get -> string!
+Orkeon.Tools.Web.WebSearchResponse.Query.init -> void
+Orkeon.Tools.Web.WebSearchResponse.ResultCount.get -> int
+Orkeon.Tools.Web.WebSearchResponse.ResultCount.init -> void
+Orkeon.Tools.Web.WebSearchResponse.Results.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.WebSearchResult!>!
+Orkeon.Tools.Web.WebSearchResponse.Results.init -> void
+Orkeon.Tools.Web.WebSearchResponse.WebSearchResponse() -> void
+Orkeon.Tools.Web.WebSearchResult
+Orkeon.Tools.Web.WebSearchResult.<Clone>$() -> Orkeon.Tools.Web.WebSearchResult!
+Orkeon.Tools.Web.WebSearchResult.Content.get -> string!
+Orkeon.Tools.Web.WebSearchResult.Content.init -> void
+Orkeon.Tools.Web.WebSearchResult.Equals(Orkeon.Tools.Web.WebSearchResult? other) -> bool
+Orkeon.Tools.Web.WebSearchResult.Score.get -> double
+Orkeon.Tools.Web.WebSearchResult.Score.init -> void
+Orkeon.Tools.Web.WebSearchResult.Title.get -> string!
+Orkeon.Tools.Web.WebSearchResult.Title.init -> void
+Orkeon.Tools.Web.WebSearchResult.Url.get -> System.Uri?
+Orkeon.Tools.Web.WebSearchResult.Url.init -> void
+Orkeon.Tools.Web.WebSearchResult.WebSearchResult() -> void
+Orkeon.Tools.Web.WebSearchTool
+Orkeon.Tools.Web.WebSearchTool.WebSearchTool(Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.WebSearchTool!>? logger = null) -> void
+const Orkeon.Tools.Web.WebScrapeTool.CacheSourceTag = "web_scrape" -> string!
+const Orkeon.Tools.Web.WebSearchTool.TavilyApiKeySecretName = "TAVILY_API_KEY" -> string!
+override Orkeon.Tools.Web.BraveSearchTool.ExecuteTypedAsync(Orkeon.Tools.Web.WebSearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.WebSearchResponse!>!
+override Orkeon.Tools.Web.BraveSearchTool.ValidateTypedRequest(Orkeon.Tools.Web.WebSearchRequest! request) -> string?
+override Orkeon.Tools.Web.CacheSearchHit.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.CacheSearchHit.GetHashCode() -> int
+override Orkeon.Tools.Web.CacheSearchHit.ToString() -> string!
+override Orkeon.Tools.Web.CacheSearchRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.CacheSearchRequest.GetHashCode() -> int
+override Orkeon.Tools.Web.CacheSearchRequest.ToString() -> string!
+override Orkeon.Tools.Web.CacheSearchResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.CacheSearchResponse.GetHashCode() -> int
+override Orkeon.Tools.Web.CacheSearchResponse.ToString() -> string!
+override Orkeon.Tools.Web.CacheSearchTool.ExecuteTypedAsync(Orkeon.Tools.Web.CacheSearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.CacheSearchResponse!>!
+override Orkeon.Tools.Web.CacheSearchTool.ValidateTypedRequest(Orkeon.Tools.Web.CacheSearchRequest! request) -> string?
+override Orkeon.Tools.Web.GitHubItem.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.GitHubItem.GetHashCode() -> int
+override Orkeon.Tools.Web.GitHubItem.ToString() -> string!
+override Orkeon.Tools.Web.GitHubRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.GitHubRequest.GetHashCode() -> int
+override Orkeon.Tools.Web.GitHubRequest.ToString() -> string!
+override Orkeon.Tools.Web.GitHubResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.GitHubResponse.GetHashCode() -> int
+override Orkeon.Tools.Web.GitHubResponse.ToString() -> string!
+override Orkeon.Tools.Web.GitHubTool.ExecuteTypedAsync(Orkeon.Tools.Web.GitHubRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.GitHubResponse!>!
+override Orkeon.Tools.Web.GitHubTool.ValidateTypedRequest(Orkeon.Tools.Web.GitHubRequest! request) -> string?
+override Orkeon.Tools.Web.HttpApiTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.HttpApiTool.Description.get -> string!
+override Orkeon.Tools.Web.HttpApiTool.ExecuteTypedAsync(Orkeon.Tools.Web.HttpApiRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.HttpApiResponse!>!
+override Orkeon.Tools.Web.HttpApiTool.Name.get -> string!
+override Orkeon.Tools.Web.HttpApiTool.ValidateTypedRequest(Orkeon.Tools.Web.HttpApiRequest! request) -> string?
+override Orkeon.Tools.Web.ImageGenerationTool.ExecuteTypedAsync(Orkeon.Tools.Web.ImageGenerationRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.ImageGenerationResponse!>!
+override Orkeon.Tools.Web.ImageGenerationTool.ValidateTypedRequest(Orkeon.Tools.Web.ImageGenerationRequest! request) -> string?
+override Orkeon.Tools.Web.ScrapeElementRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.ScrapeElementRequest.GetHashCode() -> int
+override Orkeon.Tools.Web.ScrapeElementRequest.ToString() -> string!
+override Orkeon.Tools.Web.ScrapeElementResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.ScrapeElementResponse.GetHashCode() -> int
+override Orkeon.Tools.Web.ScrapeElementResponse.ToString() -> string!
+override Orkeon.Tools.Web.ScrapeElementTool.ExecuteTypedAsync(Orkeon.Tools.Web.ScrapeElementRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.ScrapeElementResponse!>!
+override Orkeon.Tools.Web.ScrapeElementTool.ValidateTypedRequest(Orkeon.Tools.Web.ScrapeElementRequest! request) -> string?
+override Orkeon.Tools.Web.ScrapedElement.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.ScrapedElement.GetHashCode() -> int
+override Orkeon.Tools.Web.ScrapedElement.ToString() -> string!
+override Orkeon.Tools.Web.SlackMessage.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.SlackMessage.GetHashCode() -> int
+override Orkeon.Tools.Web.SlackMessage.ToString() -> string!
+override Orkeon.Tools.Web.SlackReadTool.ExecuteTypedAsync(Orkeon.Tools.Web.SlackReadMessagesRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.SlackReadMessagesResponse!>!
+override Orkeon.Tools.Web.SlackReadTool.ValidateTypedRequest(Orkeon.Tools.Web.SlackReadMessagesRequest! request) -> string?
+override Orkeon.Tools.Web.SlackTool.ExecuteTypedAsync(Orkeon.Tools.Web.SlackSendMessageRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.SlackSendMessageResponse!>!
+override Orkeon.Tools.Web.SlackTool.ValidateTypedRequest(Orkeon.Tools.Web.SlackSendMessageRequest! request) -> string?
+override Orkeon.Tools.Web.WebScrapeRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.WebScrapeRequest.GetHashCode() -> int
+override Orkeon.Tools.Web.WebScrapeRequest.ToString() -> string!
+override Orkeon.Tools.Web.WebScrapeResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.WebScrapeResponse.GetHashCode() -> int
+override Orkeon.Tools.Web.WebScrapeResponse.ToString() -> string!
+override Orkeon.Tools.Web.WebScrapeTool.ExecuteTypedAsync(Orkeon.Tools.Web.WebScrapeRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.WebScrapeResponse!>!
+override Orkeon.Tools.Web.WebScrapeTool.ValidateTypedRequest(Orkeon.Tools.Web.WebScrapeRequest! request) -> string?
+override Orkeon.Tools.Web.WebSearchRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.WebSearchRequest.GetHashCode() -> int
+override Orkeon.Tools.Web.WebSearchRequest.ToString() -> string!
+override Orkeon.Tools.Web.WebSearchResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.WebSearchResponse.GetHashCode() -> int
+override Orkeon.Tools.Web.WebSearchResponse.ToString() -> string!
+override Orkeon.Tools.Web.WebSearchResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Web.WebSearchResult.GetHashCode() -> int
+override Orkeon.Tools.Web.WebSearchResult.ToString() -> string!
+override Orkeon.Tools.Web.WebSearchTool.ExecuteTypedAsync(Orkeon.Tools.Web.WebSearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.WebSearchResponse!>!
+override Orkeon.Tools.Web.WebSearchTool.ValidateTypedRequest(Orkeon.Tools.Web.WebSearchRequest! request) -> string?
+static Orkeon.Tools.Web.CacheSearchHit.operator !=(Orkeon.Tools.Web.CacheSearchHit? left, Orkeon.Tools.Web.CacheSearchHit? right) -> bool
+static Orkeon.Tools.Web.CacheSearchHit.operator ==(Orkeon.Tools.Web.CacheSearchHit? left, Orkeon.Tools.Web.CacheSearchHit? right) -> bool
+static Orkeon.Tools.Web.CacheSearchRequest.operator !=(Orkeon.Tools.Web.CacheSearchRequest? left, Orkeon.Tools.Web.CacheSearchRequest? right) -> bool
+static Orkeon.Tools.Web.CacheSearchRequest.operator ==(Orkeon.Tools.Web.CacheSearchRequest? left, Orkeon.Tools.Web.CacheSearchRequest? right) -> bool
+static Orkeon.Tools.Web.CacheSearchResponse.operator !=(Orkeon.Tools.Web.CacheSearchResponse? left, Orkeon.Tools.Web.CacheSearchResponse? right) -> bool
+static Orkeon.Tools.Web.CacheSearchResponse.operator ==(Orkeon.Tools.Web.CacheSearchResponse? left, Orkeon.Tools.Web.CacheSearchResponse? right) -> bool
+static Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.AddOrkeonBraveSearchTool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! braveApiKey) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.AddOrkeonCacheSearchTool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.AddOrkeonSlackReadTool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! slackBotToken) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.AddOrkeonSlackTool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! slackBotToken) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.AddOrkeonWebSearchTool(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.AddOrkeonWebTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Web.GitHubItem.operator !=(Orkeon.Tools.Web.GitHubItem? left, Orkeon.Tools.Web.GitHubItem? right) -> bool
+static Orkeon.Tools.Web.GitHubItem.operator ==(Orkeon.Tools.Web.GitHubItem? left, Orkeon.Tools.Web.GitHubItem? right) -> bool
+static Orkeon.Tools.Web.GitHubRequest.operator !=(Orkeon.Tools.Web.GitHubRequest? left, Orkeon.Tools.Web.GitHubRequest? right) -> bool
+static Orkeon.Tools.Web.GitHubRequest.operator ==(Orkeon.Tools.Web.GitHubRequest? left, Orkeon.Tools.Web.GitHubRequest? right) -> bool
+static Orkeon.Tools.Web.GitHubResponse.operator !=(Orkeon.Tools.Web.GitHubResponse? left, Orkeon.Tools.Web.GitHubResponse? right) -> bool
+static Orkeon.Tools.Web.GitHubResponse.operator ==(Orkeon.Tools.Web.GitHubResponse? left, Orkeon.Tools.Web.GitHubResponse? right) -> bool
+static Orkeon.Tools.Web.ScrapeElementRequest.operator !=(Orkeon.Tools.Web.ScrapeElementRequest? left, Orkeon.Tools.Web.ScrapeElementRequest? right) -> bool
+static Orkeon.Tools.Web.ScrapeElementRequest.operator ==(Orkeon.Tools.Web.ScrapeElementRequest? left, Orkeon.Tools.Web.ScrapeElementRequest? right) -> bool
+static Orkeon.Tools.Web.ScrapeElementResponse.operator !=(Orkeon.Tools.Web.ScrapeElementResponse? left, Orkeon.Tools.Web.ScrapeElementResponse? right) -> bool
+static Orkeon.Tools.Web.ScrapeElementResponse.operator ==(Orkeon.Tools.Web.ScrapeElementResponse? left, Orkeon.Tools.Web.ScrapeElementResponse? right) -> bool
+static Orkeon.Tools.Web.ScrapedElement.operator !=(Orkeon.Tools.Web.ScrapedElement? left, Orkeon.Tools.Web.ScrapedElement? right) -> bool
+static Orkeon.Tools.Web.ScrapedElement.operator ==(Orkeon.Tools.Web.ScrapedElement? left, Orkeon.Tools.Web.ScrapedElement? right) -> bool
+static Orkeon.Tools.Web.SlackMessage.operator !=(Orkeon.Tools.Web.SlackMessage? left, Orkeon.Tools.Web.SlackMessage? right) -> bool
+static Orkeon.Tools.Web.SlackMessage.operator ==(Orkeon.Tools.Web.SlackMessage? left, Orkeon.Tools.Web.SlackMessage? right) -> bool
+static Orkeon.Tools.Web.WebScrapeRequest.operator !=(Orkeon.Tools.Web.WebScrapeRequest? left, Orkeon.Tools.Web.WebScrapeRequest? right) -> bool
+static Orkeon.Tools.Web.WebScrapeRequest.operator ==(Orkeon.Tools.Web.WebScrapeRequest? left, Orkeon.Tools.Web.WebScrapeRequest? right) -> bool
+static Orkeon.Tools.Web.WebScrapeResponse.operator !=(Orkeon.Tools.Web.WebScrapeResponse? left, Orkeon.Tools.Web.WebScrapeResponse? right) -> bool
+static Orkeon.Tools.Web.WebScrapeResponse.operator ==(Orkeon.Tools.Web.WebScrapeResponse? left, Orkeon.Tools.Web.WebScrapeResponse? right) -> bool
+static Orkeon.Tools.Web.WebSearchRequest.operator !=(Orkeon.Tools.Web.WebSearchRequest? left, Orkeon.Tools.Web.WebSearchRequest? right) -> bool
+static Orkeon.Tools.Web.WebSearchRequest.operator ==(Orkeon.Tools.Web.WebSearchRequest? left, Orkeon.Tools.Web.WebSearchRequest? right) -> bool
+static Orkeon.Tools.Web.WebSearchResponse.operator !=(Orkeon.Tools.Web.WebSearchResponse? left, Orkeon.Tools.Web.WebSearchResponse? right) -> bool
+static Orkeon.Tools.Web.WebSearchResponse.operator ==(Orkeon.Tools.Web.WebSearchResponse? left, Orkeon.Tools.Web.WebSearchResponse? right) -> bool
+static Orkeon.Tools.Web.WebSearchResult.operator !=(Orkeon.Tools.Web.WebSearchResult? left, Orkeon.Tools.Web.WebSearchResult? right) -> bool
+static Orkeon.Tools.Web.WebSearchResult.operator ==(Orkeon.Tools.Web.WebSearchResult? left, Orkeon.Tools.Web.WebSearchResult? right) -> bool
+virtual Orkeon.Tools.Web.CacheSearchHit.<Clone>$() -> Orkeon.Tools.Web.CacheSearchHit!
+virtual Orkeon.Tools.Web.CacheSearchHit.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Web.CacheSearchHit.Equals(Orkeon.Tools.Web.CacheSearchHit? other) -> bool
+virtual Orkeon.Tools.Web.CacheSearchHit.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Web.CacheSearchRequest.<Clone>$() -> Orkeon.Tools.Web.CacheSearchRequest!
+virtual Orkeon.Tools.Web.CacheSearchRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Web.CacheSearchRequest.Equals(Orkeon.Tools.Web.CacheSearchRequest? other) -> bool
+virtual Orkeon.Tools.Web.CacheSearchRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Web.CacheSearchResponse.<Clone>$() -> Orkeon.Tools.Web.CacheSearchResponse!
+virtual Orkeon.Tools.Web.CacheSearchResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Web.CacheSearchResponse.Equals(Orkeon.Tools.Web.CacheSearchResponse? other) -> bool
+virtual Orkeon.Tools.Web.CacheSearchResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Web.ScrapeElementRequest.<Clone>$() -> Orkeon.Tools.Web.ScrapeElementRequest!
+virtual Orkeon.Tools.Web.ScrapeElementRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Web.ScrapeElementRequest.Equals(Orkeon.Tools.Web.ScrapeElementRequest? other) -> bool
+virtual Orkeon.Tools.Web.ScrapeElementRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Web.ScrapeElementResponse.<Clone>$() -> Orkeon.Tools.Web.ScrapeElementResponse!
+virtual Orkeon.Tools.Web.ScrapeElementResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Web.ScrapeElementResponse.Equals(Orkeon.Tools.Web.ScrapeElementResponse? other) -> bool
+virtual Orkeon.Tools.Web.ScrapeElementResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Web.ScrapedElement.<Clone>$() -> Orkeon.Tools.Web.ScrapedElement!
+virtual Orkeon.Tools.Web.ScrapedElement.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Web.ScrapedElement.Equals(Orkeon.Tools.Web.ScrapedElement? other) -> bool
+virtual Orkeon.Tools.Web.ScrapedElement.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Web.WebScrapeRequest.<Clone>$() -> Orkeon.Tools.Web.WebScrapeRequest!
+virtual Orkeon.Tools.Web.WebScrapeRequest.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Web.WebScrapeRequest.Equals(Orkeon.Tools.Web.WebScrapeRequest? other) -> bool
+virtual Orkeon.Tools.Web.WebScrapeRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Orkeon.Tools.Web.WebScrapeResponse.<Clone>$() -> Orkeon.Tools.Web.WebScrapeResponse!
+virtual Orkeon.Tools.Web.WebScrapeResponse.EqualityContract.get -> System.Type!
+virtual Orkeon.Tools.Web.WebScrapeResponse.Equals(Orkeon.Tools.Web.WebScrapeResponse? other) -> bool
+virtual Orkeon.Tools.Web.WebScrapeResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool

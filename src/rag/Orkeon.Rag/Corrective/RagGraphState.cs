@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Orkeon.Rag.Abstractions.Models;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Rag.Corrective;
 
@@ -10,6 +11,7 @@ namespace Orkeon.Rag.Corrective;
 /// the last retrieval verdict, the generated answer, its groundedness, and the
 /// accumulated trace. Every node returns a new instance (<c>with</c> mutations).
 /// </summary>
+[Experimental("ORKEXP003", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public sealed record RagGraphState
 {
     /// <summary>The original user query. Generation and citations always use it.</summary>
