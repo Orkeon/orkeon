@@ -8,8 +8,9 @@ never drift again (OSS-011 / R8.3).
 
 > **Status — proposal, pending maintainer confirmation.** Only the three core libraries are
 > wired for NuGet.org today (PUB-03, 2026-08-17); the first real push lands at the next `v*`
-> tag once the `NUGET_API_KEY` secret is configured — until then the push step warns and
-> no-ops. Decision **D3** (the scripting naming twins) is **resolved** — PUB-02,
+> tag once the owner finishes the Trusted Publishing setup (nuget.org policy + `NUGET_USER`
+> variable) — until then the push steps warn and no-op. Decision **D3** (the scripting naming
+> twins) is **resolved** — PUB-02,
 > 2026-08-17, [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md): the command
 > library was renamed `Orkeon.Cli.Scripting` → `Orkeon.Cli.Commands.Scripting` before any
 > NuGet publish locked the old name in. Expanding beyond the core now only awaits the
@@ -161,10 +162,13 @@ print the runtime install commands rather than failing at first launch.
   `--skip-duplicate` (idempotent re-runs), then the **three core packages** (the "Published in
   v1" table above) to **NuGet.org**. `ci.yml` validates (build + test) and packs nothing;
   `release.yml` builds the installer archives and the container image, no NuGet packing.
-- The NuGet.org step is **gated on the `NUGET_API_KEY` repository secret** (owner action:
-  create a nuget.org API key scoped to `Orkeon.*` and reserve that ID prefix). Until the
-  secret exists, the step emits a warning and no-ops — **nothing has landed on NuGet.org
-  yet**; the first real push happens at the next `v*` tag after the key is configured.
+- NuGet.org auth is **Trusted Publishing (OIDC)** — no long-lived API key. A nuget.org
+  policy (repository `Orkeon/orkeon`, workflow `publish.yml`) lets `NuGet/login` exchange
+  the job's OIDC token for a short-lived key; the steps are gated on the **`NUGET_USER`
+  repository variable** (the nuget.org profile owning the policy — owner actions: create
+  the policy, set the variable, and reserve the `Orkeon.*` ID prefix). Until the variable
+  exists, the steps emit a warning and no-op — **nothing has landed on NuGet.org yet**; the
+  first real push happens at the next `v*` tag after the setup.
   Expanding the NuGet.org set beyond the three core packages stays gated on maintainer
   confirmation of the matrix above (D3 resolved — ADR-007) and is a matrix edit first,
   never a workflow edit made in passing.

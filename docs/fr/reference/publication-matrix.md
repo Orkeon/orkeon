@@ -8,8 +8,9 @@ ne divergent plus jamais (OSS-011 / R8.3).
 
 > **Statut — proposition, en attente de confirmation du mainteneur.** Seules les trois
 > bibliothèques cœur sont câblées vers NuGet.org aujourd'hui (PUB-03, 2026-08-17) ; le
-> premier push réel partira au prochain tag `v*` une fois le secret `NUGET_API_KEY`
-> configuré — d'ici là l'étape avertit et ne fait rien. La décision **D3** (les jumeaux de
+> premier push réel partira au prochain tag `v*` une fois le Trusted Publishing configuré
+> côté propriétaire (politique nuget.org + variable `NUGET_USER`) — d'ici là les étapes
+> avertissent et ne font rien. La décision **D3** (les jumeaux de
 > nommage scripting) est **tranchée** — PUB-02, 2026-08-17,
 > [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md) : la bibliothèque de
 > commandes a été renommée `Orkeon.Cli.Scripting` → `Orkeon.Cli.Commands.Scripting` avant
@@ -165,11 +166,15 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   paquets cœur** (le tableau « Publié en v1 » ci-dessus) vers **NuGet.org**. `ci.yml` valide
   (build + tests) et ne package rien ; `release.yml` construit les archives d'installation et
   l'image conteneur, sans packaging NuGet.
-- L'étape NuGet.org est **conditionnée au secret de dépôt `NUGET_API_KEY`** (action
-  propriétaire : créer une clé API nuget.org limitée à `Orkeon.*` et réserver ce préfixe
-  d'ID). Tant que le secret n'existe pas, l'étape émet un avertissement et ne fait rien —
-  **rien n'a encore atterri sur NuGet.org** ; le premier push réel partira au prochain tag
-  `v*` après configuration de la clé. Étendre le périmètre NuGet.org au-delà des trois
+- L'authentification NuGet.org est le **Trusted Publishing (OIDC)** — aucune clé API longue
+  durée. Une politique nuget.org (dépôt `Orkeon/orkeon`, workflow `publish.yml`) permet à
+  `NuGet/login` d'échanger le jeton OIDC du job contre une clé éphémère ; les étapes sont
+  conditionnées à la **variable de dépôt `NUGET_USER`** (le profil nuget.org propriétaire de
+  la politique — actions propriétaire : créer la politique, poser la variable, et réserver le
+  préfixe d'ID `Orkeon.*`). Tant que la variable n'existe pas, les étapes émettent un
+  avertissement et ne font rien — **rien n'a encore atterri sur NuGet.org** ; le premier push
+  réel partira au prochain tag `v*` après cette configuration. Étendre le périmètre NuGet.org
+  au-delà des trois
   paquets cœur reste conditionné à la confirmation par le mainteneur de la matrice ci-dessus
   (D3 tranchée — ADR-007), et passe d'abord par une édition de la matrice, jamais par une
   retouche de workflow en passant.

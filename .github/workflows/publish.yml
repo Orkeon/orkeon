@@ -1,7 +1,12 @@
 # Publishes NuGet packages on a v* tag: every packable to GitHub Packages (the
 # experiments/ feed), plus the three core libraries to NuGet.org — the v1 public set
-# per docs/reference/publication-matrix.md. The NuGet.org step no-ops with a warning
-# until the NUGET_API_KEY secret is configured (owner action).
+# per docs/reference/publication-matrix.md.
+#
+# NuGet.org auth is Trusted Publishing (OIDC): a nuget.org policy for
+# Orkeon/orkeon + publish.yml exchanges this job's OIDC token for a short-lived
+# API key (NuGet/login) — no long-lived secret. The steps no-op with a warning
+# until the NUGET_USER repository variable (the nuget.org profile that owns the
+# policy) is configured (owner action).
 #
 # The tag must match the version in src/Directory.Build.props, or the run fails
 # before packing. Lesson from the 0.9.1-beta incident: the v0.9.1-beta.rc* tags
@@ -17,10 +22,13 @@
 # (SIGSEGVs at teardown, exit 139 — re-run separately as a non-blocking step).
 name: Publish packages
 on: { push: { tags: [ 'v*' ] } }
-permissions: { contents: write, packages: write }
+# id-token is required by the NuGet.org Trusted Publishing OIDC exchange.
+permissions: { contents: write, packages: write, id-token: write }
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      NUGET_USER: ${{ vars.NUGET_USER }}
     steps:
       - name: Free up runner disk space
         run: |
@@ -68,14 +76,20 @@ jobs:
       # NuGet.org — the public v1 set only (docs/reference/publication-matrix.md):
       # the three core libraries. Expanding this list is a maintainer decision
       # recorded in the matrix, not a workflow edit made in passing.
+      - name: Warn when NuGet.org publishing is not configured
+        if: env.NUGET_USER == ''
+        run: echo "::warning::NuGet.org publish SKIPPED — the NUGET_USER repository variable is not set. Owner action -- on nuget.org create a Trusted Publishing policy (repo Orkeon/orkeon, workflow publish.yml), then set NUGET_USER to the policy's package owner (Settings > Secrets and variables > Actions > Variables)."
+      - name: NuGet.org login (Trusted Publishing — OIDC, short-lived key)
+        if: env.NUGET_USER != ''
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ env.NUGET_USER }}
       - name: Push core packages to NuGet.org
+        if: env.NUGET_USER != ''
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
-          if [ -z "$NUGET_API_KEY" ]; then
-            echo "::warning::NuGet.org publish SKIPPED — the NUGET_API_KEY secret is not configured. Owner action: create a nuget.org API key scoped to Orkeon.* (push new packages + versions) and add it as a repository secret."
-            exit 0
-          fi
           # No PackageId nests under these three prefixes (see the matrix), so the
           # simple glob is exact.
           for id in Orkeon.Domain Orkeon.Application Orkeon.Infrastructure; do

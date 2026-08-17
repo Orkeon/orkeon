@@ -11,8 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `publish.yml` now pushes the three core packages (`Orkeon.Domain`, `Orkeon.Application`,
 `Orkeon.Infrastructure` — the v1 set of `docs/reference/publication-matrix.md`) to
-**NuGet.org** on a `v*` tag, gated on the `NUGET_API_KEY` repository secret: until the owner
-configures the key, the step warns and no-ops instead of failing the release. The workflow
+**NuGet.org** on a `v*` tag. Authentication is **Trusted Publishing (OIDC)**: a nuget.org
+policy for `Orkeon/orkeon` + `publish.yml` lets `NuGet/login` exchange the job's OIDC token
+for a short-lived key — no long-lived API secret exists anywhere. The steps are gated on the
+`NUGET_USER` repository variable: until the owner finishes the nuget.org setup, they warn
+and no-op instead of failing the release. The workflow
 also **refuses a tag that does not match the `src/Directory.Build.props` version** — the
 guard that makes the 0.9.1-beta silent-skip incident (rc tags re-packing an unchanged
 version, `--skip-duplicate` skipping every push) structurally impossible. The README NuGet
