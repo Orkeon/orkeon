@@ -23,9 +23,9 @@ export LANG=C.utf8
 # Environment variables:
 #   SONAR_TOKEN        (required) Authentication token for SonarQube
 #   SONAR_HOST_URL     (optional) SonarQube server URL (default: http://localhost:9000)
-#   SONAR_PROJECT_KEY  (optional) Project key (default: CrewAI.NET — kept by
-#                      maintainer decision, QCM 2026-06-11: renaming the key on
-#                      the server would reset the analysis history)
+#   SONAR_PROJECT_KEY  (optional) Project key (default: Orkeon — renamed from
+#                      the historical CrewAI.NET key on 2026-08-17, PUB-01
+#                      follow-up: last public trace of the pre-rename name)
 #   SONAR_NO_DOCKER    (optional) Set to 1 to forbid the Docker Compose
 #                      fallback when the server is unreachable (implied when
 #                      CI=true, e.g. on GitHub Actions)
@@ -40,9 +40,10 @@ export LANG=C.utf8
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 SONAR_HOST="${SONAR_HOST_URL:-http://localhost:9000}"
-# Project key kept as "CrewAI.NET" by maintainer decision (QCM 2026-06-11) to
-# preserve the analysis history on the SonarQube server.
-SONAR_PROJECT_KEY="${SONAR_PROJECT_KEY:-CrewAI.NET}"
+# Project key renamed "CrewAI.NET" → "Orkeon" (2026-08-17, PUB-01 follow-up).
+# This supersedes QCM 2026-06-11 and resets the server-side analysis history;
+# set SONAR_PROJECT_KEY=CrewAI.NET to keep browsing the old project.
+SONAR_PROJECT_KEY="${SONAR_PROJECT_KEY:-Orkeon}"
 SONAR_TOKEN="${SONAR_TOKEN:?Variable SONAR_TOKEN requise. Export it before running this script.}"
 SOLUTION_PATH="Orkeon.sln"
 COVERAGE_DIR="./coverage"

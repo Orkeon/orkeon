@@ -12,8 +12,9 @@
 
 ## Verdict
 
-**GO**, with the remediations applied below and two non-blocking
-recommendations left to the maintainer.
+**GO**, with the remediations applied below. The two non-blocking
+recommendations were resolved the same day (see the dedicated section:
+Sonar key renamed to `Orkeon`, third-party reference submodule removed).
 
 | # | Historical blocker | Verdict |
 |---|---|---|
@@ -123,21 +124,23 @@ Accepted without action (private repositories, illustrative or log content):
 - These remain acceptable **only while both repositories stay private**; if
   either is ever opened, re-run this pass first.
 
-## Non-blocking recommendations
+## Non-blocking recommendations — both resolved 2026-08-17
 
 1. **SonarQube project key `CrewAI.NET`** (`scripts/sonar-analyze.{sh,ps1}`,
    `docs/guides/quality-gate.md` + FR mirror). A maintainer decision
    (QCM 2026-06-11) kept it for metric continuity on the self-hosted instance,
-   but it is the last remaining public trace of the pre-rename project name.
-   Recommended: rename the key to `Orkeon` before the repository goes public
-   (env override `SONAR_PROJECT_KEY` already exists; history continuity only
-   affects the private Sonar instance). **Owner's call — reverses a recorded
-   decision, so not applied by this audit.**
-2. **`claude-code-system-prompts` submodule** points to a public third-party
+   but it was the last remaining public trace of the pre-rename project name.
+   **Applied (same day, maintainer deferred the call back)**: default key
+   renamed to `Orkeon` in both scripts, quality-gate guide (EN+FR) updated
+   with the superseding decision and its accepted trade-off (analysis history
+   restarts under the new key; `SONAR_PROJECT_KEY=CrewAI.NET` still browses
+   the old project).
+2. **`claude-code-system-prompts` submodule** pointed to a public third-party
    repository (Piebald-AI) used as development reference. Not a leak and not a
-   redistribution (pointer only), but it is unrelated to the framework and
-   will surprise public-repo visitors. Consider dropping it (or moving the
-   reference to backstage) before publication.
+   redistribution (pointer only), but unrelated to the framework and
+   surprising for public-repo visitors. **Applied (same day)**: submodule
+   removed from the main repository; the reference (URL + last pinned commit)
+   is archived in backstage (`prompts/REFERENCE-claude-code-system-prompts.md`).
 
 ## Coordinated decisions
 

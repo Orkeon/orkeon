@@ -4,7 +4,3 @@
 [submodule "backstage"]
 	path = backstage
 	url = https://github.com/Orkeon/backstage.git
-[submodule "claude-code-system-prompts"]
-	path = claude-code-system-prompts
-	url = https://github.com/Piebald-AI/claude-code-system-prompts.git
-	branch = main
