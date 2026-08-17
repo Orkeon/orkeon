@@ -141,6 +141,11 @@ dette de miroirs existante). Le script vérifie l'existence des fichiers, pas l'
 contenu — la synchronisation reste à votre charge ; si vous ne pouvez pas traduire
 immédiatement, ajoutez un miroir minimal et signalez-le pour traduction.
 
+Une exception : `docs/audit/` contient des instantanés d'audit datés (p. ex. les rapports
+GO/NO-GO de publication). Ce sont des archives à date, pas de la documentation vivante —
+ils restent en anglais uniquement et sont exclus du contrat de parité (décision consignée
+dans le rapport GO/NO-GO 2026-08).
+
 ### Tests
 
 * Écrivez des tests unitaires pour les nouvelles fonctionnalités

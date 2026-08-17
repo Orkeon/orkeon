@@ -78,7 +78,7 @@ tasks:
 
 ```bash
 orkeon run examples/06-engineering-devops/103-ts-codebase-with-fsm/config.yaml \
-  --mount /home/cyril/my-ts-project:/src:ro /home/cyril/analysis-output:/output:rw
+  --mount /home/you/my-ts-project:/src:ro /home/you/analysis-output:/output:rw
 ```
 
 **Profil LLM** — ajoutez `--settings examples/appsettings/appsettings.deepseek.local.json` pour choisir explicitement un profil. Les profils prêts à l'emploi sont dans [`examples/appsettings/`](../../appsettings/README.md) : copiez un gabarit `*.example` (retirez le suffixe `.example`) et ajoutez votre clé. Première fois ? Voir [Lancer votre premier exemple](../../../docs/getting-started/run-your-first-example.md).

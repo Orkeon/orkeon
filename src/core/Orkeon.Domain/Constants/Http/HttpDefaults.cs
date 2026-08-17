@@ -16,5 +16,5 @@ public static class HttpDefaults
     public const int ScrapeTimeoutSeconds = 30;
 
     /// <summary>Default User-Agent string sent by Orkeon HTTP clients.</summary>
-    public const string DefaultUserAgent = "Orkeon/1.0 (+https://github.com/cyril-canovas/orkeon)";
+    public const string DefaultUserAgent = "Orkeon/1.0 (+https://github.com/Orkeon/orkeon)";
 }

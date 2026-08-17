@@ -35,7 +35,7 @@ La crew utilise deux points de montage pour separer clairement le code source de
 
 ```bash
 orkeon run examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml \
-  --mount /home/cyril/my-ts-project:/src:ro /home/cyril/analysis-output:/output:rw
+  --mount /home/you/my-ts-project:/src:ro /home/you/analysis-output:/output:rw
 ```
 
 Windows :

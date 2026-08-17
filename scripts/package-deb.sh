@@ -25,7 +25,7 @@ CONFIG="Release"
 STAGE_IN=""
 KEEP_WORK=false
 
-MAINTAINER="Orkeon Contributors <cyril@egnx.com>"
+MAINTAINER="Orkeon Contributors <arion@orkeon.org>"
 HOMEPAGE="https://github.com/Orkeon"
 # apt resolves these at install time; the names differ across distributions, so
 # each family is an alternation covering Debian 12/13 and Ubuntu 22.04→26.04.

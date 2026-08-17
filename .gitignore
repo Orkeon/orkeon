@@ -420,11 +420,13 @@ sonarqube/
 *.log
 
 # --- Internal-only — excluded from the public open-source release ---
-# Internal audit rounds, local Claude tooling, and OSS go/no-go decision docs.
+# Internal audit rounds and local Claude tooling.
 # Kept on disk locally but never published. (Orkeon OSS migration.)
+# docs/audit/ used to be ignored here too — that rule is what "lost" the June
+# 2026 GO/NO-GO reports at the 3-repo split. Lifted by PUB-01 (2026-08-17):
+# audit snapshots are now tracked (and excluded from FR-mirror parity).
 /analysis/
 /.claude/
-/docs/audit/
 
 # Orkeon CLI local state (rag manifests, eval reports)
 .orkeon/

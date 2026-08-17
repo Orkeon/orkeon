@@ -6,7 +6,9 @@ Sections 1-3 cover the `local-embeddings` feature
 all distributed under the MIT License. Section 4 covers the HTML/CSS engine of
 `src/tools/Orkeon.Tools.Web/`, distributed under the MIT License. Section 5 covers
 the LanceDB remote integration (`src/core/Orkeon.Infrastructure/Memory/LanceDb/`),
-distributed under the Apache License 2.0.
+distributed under the Apache License 2.0. Section 7 covers the cross-encoder
+reranker model embedded in `src/rag/Orkeon.Rag.Onnx.Model/`, distributed under
+the Apache License 2.0.
 
 ---
 
@@ -482,3 +484,27 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+---
+
+## 7. ms-marco-MiniLM-L-6-v2 (ONNX model, embedded)
+
+- **Version**: int8-quantized ONNX export embedded in `Orkeon.Rag.Onnx.Model`
+  (`src/rag/Orkeon.Rag.Onnx.Model/assets/msmarco-minilm-l6-v2.quant.onnx` +
+  matching `vocab.txt`) — the only model weights redistributed by this repository.
+- **License**: Apache License 2.0 (SPDX: `Apache-2.0`)
+- **Source**: https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2
+  (sentence-transformers, UKP Lab, Technische Universität Darmstadt); embedded
+  artifact exported by https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2
+  (same Apache-2.0 license).
+- **License text**: https://www.apache.org/licenses/LICENSE-2.0
+- **Role**: cross-encoder reranker for the opt-in RAG reranking stage
+  (`AddOrkeonOnnxReranker()`, `Orkeon.Rag.Onnx`).
+
+Full provenance, retrieval date (2026-07-26) and SHA-256 integrity hashes are
+recorded in the package-level notice file
+[`src/rag/Orkeon.Rag.Onnx.Model/THIRD-PARTY-NOTICES.md`](src/rag/Orkeon.Rag.Onnx.Model/THIRD-PARTY-NOTICES.md),
+which ships inside the NuGet package. Training data note: the model was trained
+on the MS MARCO passage-ranking dataset (Microsoft; the dataset itself carries a
+non-commercial research license, while the trained model is distributed by its
+authors under Apache-2.0).
