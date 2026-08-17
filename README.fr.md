@@ -234,7 +234,7 @@ Autour du cœur, des paquets dédiés couvrent l'hébergement (`Orkeon.Hosting`)
 
 ## État du projet
 
-Orkeon est en **0.9.2-beta** sur .NET 10, en route vers la V1. Jalons récents : la CLI `orkeon` et l'image conteneur `orkeon-runners` avec 105 exemples embarqués et les workflows de modèles locaux ; l'orchestration FSM et Graph ; le process Autonomous avec budgets d'exécution ; le DSL de scripting TypeScript ; l'analyse sémantique de code RaggableTree (15 outils agents) ; le système de plugins ; checkpoint/reprise ; le logging des échanges LLM ; les formats de réponse JSON forcés ; et un 12ᵉ fournisseur LLM (Z.AI GLM).
+Orkeon est en **1.0.0-rc.1** sur .NET 10 — la release candidate de la V1. Jalons récents : la CLI `orkeon` et l'image conteneur `orkeon-runners` avec 105 exemples embarqués et les workflows de modèles locaux ; l'orchestration FSM et Graph ; le process Autonomous avec budgets d'exécution ; le DSL de scripting TypeScript ; l'analyse sémantique de code RaggableTree (15 outils agents) ; le système de plugins ; checkpoint/reprise ; le logging des échanges LLM ; les formats de réponse JSON forcés ; et un 12ᵉ fournisseur LLM (Z.AI GLM).
 
 Chaque pull request est gardée en CI :
 

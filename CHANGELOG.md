@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-08-17
+
+Orkeon's first release candidate — the version that goes to NuGet.org. Everything
+accumulated since `0.9.2-beta` ships here: the RAG subsystem with its five profiles and
+the corrective CRAG graph, declared LLM capabilities across all 12 providers, Orkeon
+Studio, the Windows/Debian/macOS install channels, the TypeScript CLI command layer —
+and, as of this cut, a mechanically frozen public API surface (29 235 declared APIs,
+`[Experimental]` markers on the four unstable areas) with the versioning policy to
+match. Breaking changes below are called out in their own entries (RAG namespace
+extraction, API-shape conformance, `Orkeon.Cli.Commands.Scripting` rename).
+
+### Security — Testcontainers 4.13.0 → 4.14.0 (test infrastructure only)
+
+Clears the last build warning, NU1903: Testcontainers 4.13.0 pulled SSH.NET 2025.1.0
+transitively, which carries a known high-severity advisory
+(GHSA-q939-rpr3-3284); 4.14.0 depends on the fixed SSH.NET 2026.0.0. Test-only
+dependency — nothing shipped in the NuGet packages or installers was affected.
+
 ### Added — The public API surface is frozen and enforced (PUB-05)
 
 Ahead of the first public release, the API contract is now mechanical, not aspirational:
@@ -822,6 +840,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v0.9.0-beta...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...HEAD
+[1.0.0-rc.1]: https://github.com/Orkeon/orkeon/compare/v0.9.2-beta...v1.0.0-rc.1
+[0.9.2-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.0-beta...v0.9.2-beta
 [0.9.0-beta]: https://github.com/Orkeon/orkeon/compare/v0.1.0-alpha...v0.9.0-beta
 [0.1.0-alpha]: https://github.com/Orkeon/orkeon/releases/tag/v0.1.0-alpha

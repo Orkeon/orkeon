@@ -176,4 +176,4 @@ print the runtime install commands rather than failing at first launch.
   Lesson from the 0.9.1-beta incident (see CHANGELOG 0.9.2-beta): the `v0.9.1-beta.rc*` tags
   re-packed the unchanged props version and `--skip-duplicate` silently skipped every push —
   a "release" that published nothing. The guard keeps `--skip-duplicate` honest.
-- Version flows from `src/Directory.Build.props` (currently `0.9.2-beta`); no project overrides it.
+- Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.1`); the only projects overriding it are the three `examples/runners` dotnet tools, bumped in lockstep at each release.

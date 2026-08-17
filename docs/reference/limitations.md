@@ -6,7 +6,7 @@
 
 - `InMemoryUnitOfWork` has, **by design**, no durable persistence step: aggregates live in the in-memory repositories and `SaveChangesAsync` boils down to the (real and ordered) dispatch of domain events. A durable adapter would replace this adapter as a whole — there is no longer any EF migration promise in the code.
 - **Execution state persistence (R3.8)**: by default, crew execution states (`ICrewExecutionStateManager`) are **in-memory only** (no recovery after a crash). Durable persistence is **opt-in**: register a checkpointing state store (`AddOrkeonCheckpointing` / `AddOrkeonSqliteCheckpointing` / `AddOrkeonPostgresCheckpointing`) **and** enable `AddCrewExecutionStatePersistence(...)` (or the `Orkeon:ExecutionState:Persistence` section). Once enabled, states are persisted at every transition and reloaded/reused after a restart — see [Opt-in subsystems](./opt-in-subsystems.md). v1 limits: metadata persisted as invariant strings, `ToolsUsed` not persisted.
-- The framework targets .NET 10 (preview) — current version `0.9.2-beta` (defined in `src/Directory.Build.props`)
+- The framework targets .NET 10 — current version `1.0.0-rc.1` (defined in `src/Directory.Build.props`)
 - LLM providers support `GenerateAsync` and `ChatAsync` but streaming (`IStreamingLlmProvider`) is not uniformly implemented across all providers
 - `FlowEngine` and the Flows system (sequential, parallel, decision steps) exist in the infrastructure but constitute an alternative orchestration system distinct from Crews
 - Custom tools must implement `IBaseTool` or inherit from `ToolBase<TReq,TRes>` — there is no dynamic runtime plugin registration system yet

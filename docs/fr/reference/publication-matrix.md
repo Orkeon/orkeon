@@ -183,4 +183,4 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   les tags `v0.9.1-beta.rc*` ont re-packé la version inchangée des props et
   `--skip-duplicate` a sauté chaque push en silence — une « release » qui n'a rien publié.
   Le garde maintient `--skip-duplicate` honnête.
-- La version provient de `src/Directory.Build.props` (actuellement `0.9.2-beta`) ; aucun projet ne la surcharge.
+- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.1`) ; les seuls projets qui la surchargent sont les trois tools dotnet d'`examples/runners`, bumpés au pas à chaque release.

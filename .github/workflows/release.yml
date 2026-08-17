@@ -553,6 +553,11 @@ jobs:
             artifacts/installers/*.msi
             artifacts/installers/SHA256SUMS
             artifacts/installers/SHA256SUMS.msi
+          # The curated notes are the CHANGELOG section matching this tag; the
+          # auto-generated commit list below is the appendix, not the story.
+          body: |
+            **Curated release notes**: see the section matching this tag in
+            [CHANGELOG.md](https://github.com/Orkeon/orkeon/blob/${{ github.ref_name }}/CHANGELOG.md).
           generate_release_notes: true
 
   # Builds and pushes the example-runners container image to GHCR. Same v* trigger
