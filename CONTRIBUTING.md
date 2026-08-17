@@ -140,9 +140,9 @@ clearing the existing mirror backlog first). The script checks file existence, n
 equivalence — keeping the two in sync is on you; if you cannot translate immediately, add a
 stub mirror and flag it for translation.
 
-One exception: `docs/audit/` contains dated audit snapshots (e.g. GO/NO-GO publication
-reports). These are point-in-time records, not living documentation — they are English-only
-and excluded from the parity contract (decision recorded in the 2026-08 GO/NO-GO report).
+Dated audit snapshots (e.g. GO/NO-GO publication reports) are governance records, not
+living documentation: they live in the maintainers' private governance repository, outside
+`docs/`, so the parity contract applies to the whole documentation tree without exception.
 
 ### Testing
 

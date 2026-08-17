@@ -2,7 +2,7 @@ namespace Orkeon.Application.Callback;
 
 /// <summary>
 /// Comprehensive callback system for agents, tasks, and flow steps.
-/// Python Orkeon equivalent: step_callback and task callbacks
+/// Covers the classic step_callback and task callback hooks.
 /// </summary>
 public interface ICallbackHandler
 {

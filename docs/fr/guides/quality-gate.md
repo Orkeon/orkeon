@@ -27,8 +27,8 @@ Depuis R5.4 :
 ## 2. Clé de projet
 
 La clé de projet SonarQube est **`Orkeon`** (renommée le 2026-08-17 en suite
-de l'audit PUB-01 — l'ancienne clé `CrewAI.NET` était la dernière trace
-publique du nom d'avant renommage du projet). Cette décision remplace la
+de l'audit PUB-01 — l'ancienne clé était la dernière trace du nom d'avant
+renommage du projet). Cette décision remplace la
 décision QCM du 2026-06-11 et assume le compromis qu'elle voulait éviter :
 l'historique d'analyse côté serveur (baseline « nouveau code », tendances)
 repart de la première analyse sous la nouvelle clé ; l'ancien projet reste
@@ -124,5 +124,5 @@ Ne pas modifier les seuils directement dans l'UI SonarQube : ils seraient
 
 | Date | Événement |
 |---|---|
-| 2026-06-11 | Création du gate « Orkeon Transitional » (T0), activation du blocage local + CI (R5.4), alignement de la clé de projet des scripts sur `CrewAI.NET` |
-| 2026-08-17 | Clé de projet renommée `CrewAI.NET` → `Orkeon` (suite de l'audit PUB-01 ; remplace la décision QCM du 2026-06-11, l'historique d'analyse repart sous la nouvelle clé) |
+| 2026-06-11 | Création du gate « Orkeon Transitional » (T0), activation du blocage local + CI (R5.4), alignement de la clé de projet des scripts sur la clé historique |
+| 2026-08-17 | Clé de projet renommée en `Orkeon` (suite de l'audit PUB-01 — clé historique d'avant renommage retirée ; remplace la décision QCM du 2026-06-11, l'historique d'analyse repart sous la nouvelle clé) |

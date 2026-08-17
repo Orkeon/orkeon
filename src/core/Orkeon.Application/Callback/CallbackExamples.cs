@@ -8,7 +8,7 @@ namespace Orkeon.Application.Callback;
 
 /// <summary>
 /// Examples demonstrating how to use the Orkeon callback system.
-/// Python Orkeon equivalent: step_callback and task callback patterns
+/// Covers the classic step_callback and task callback patterns.
 /// </summary>
 public static partial class CallbackExamples
 {

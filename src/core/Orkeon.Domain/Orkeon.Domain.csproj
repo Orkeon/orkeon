@@ -7,7 +7,7 @@
 
     <!-- Package Metadata (package-specific overrides) -->
     <PackageId>Orkeon.Domain</PackageId>
-    <Description>Core domain layer for Orkeon - A C# port of the Python Orkeon library for building collaborative AI agent teams. Contains entities, value objects, domain events, and interfaces.</Description>
+    <Description>Core domain layer for Orkeon, the .NET framework for building collaborative AI agent teams. Contains entities, value objects, domain events, and interfaces.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Domain;DDD;CleanArchitecture</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

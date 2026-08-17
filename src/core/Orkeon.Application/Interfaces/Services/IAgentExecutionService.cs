@@ -9,8 +9,7 @@ using ToolUsage = Orkeon.Domain.Tools.ToolUsage;
 namespace Orkeon.Application.Interfaces.Services;
 
 /// <summary>
-/// Manages agent task execution following Python Orkeon patterns.
-/// Reference: orkeon_docs/concepts/agents.mdx - agent execution
+/// Manages agent task execution.
 /// </summary>
 public interface IAgentExecutionService
 {

@@ -4,7 +4,7 @@ using Orkeon.Application.Interfaces.Ports;
 namespace Orkeon.Application.Execution;
 
 /// <summary>
-/// Memory types following Python Orkeon.
+/// The four classic agent-memory types.
 /// </summary>
 public enum MemoryType
 {

@@ -5,8 +5,7 @@ using Orkeon.Domain.SharedKernel;
 namespace Orkeon.Application.Interfaces.Services;
 
 /// <summary>
-/// Orchestrates crew execution following Python Orkeon patterns.
-/// Reference: orkeon_docs/concepts/crews.mdx - kickoff methods
+/// Orchestrates crew execution (kickoff, streaming and async variants).
 /// </summary>
 public interface ICrewOrchestrationService
 {
@@ -85,7 +84,7 @@ public sealed class CrewExecutionId : Orkeon.Domain.Common.TypedId
 /// <summary>
 /// Input for crew execution.
 /// Variables holds user-supplied key/value pairs used for template interpolation.
-/// In Python Orkeon these are always strings; the <c>object</c> variant is kept for
+/// In snake_case crew YAML these are always strings; the <c>object</c> variant is kept for
 /// backward compatibility but new code should prefer <see cref="WithStringVariables"/>.
 /// </summary>
 public record CrewInput(
@@ -123,7 +122,7 @@ public record CrewInput(
 }
 
 /// <summary>
-/// Output from crew execution matching Python Orkeon.
+/// Output from crew execution.
 /// </summary>
 /// <param name="FinalOutput">The final crew output text.</param>
 /// <param name="TaskOutputs">The per-task outputs.</param>

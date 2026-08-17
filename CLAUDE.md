@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Orkeon is a C# port of the Python Orkeon library. The project enables creation and management of AI agent teams that collaborate on complex tasks using LLMs. 
+Orkeon is a C# framework for creating and managing AI agent teams that collaborate on complex tasks using LLMs.
 
-**Current Status**: Working towards V1 iso-functional with Python Orkeon. Domain and Application layers are ~90% complete. Infrastructure layer has been redesigned (Akka.NET removed; replaced with simple HTTP-based implementations on .NET 10).
+**Current Status**: V1 release candidate (`1.0.0-rc.1`). Domain and Application layers are ~90% complete. Infrastructure layer has been redesigned (Akka.NET removed; replaced with simple HTTP-based implementations on .NET 10).
 
 ## Common Development Commands
 
@@ -112,7 +112,7 @@ The project follows Clean Architecture with clear separation of concerns:
 ### Current Implementation Status
 
 **Working Features**:
-- ✅ Complete Agent, Task, Crew domain models with all Python attributes
+- ✅ Complete Agent, Task, Crew domain models with the full attribute surface
 - ✅ 76 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XML, DirectoryRead, EmailParser, DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
 - ✅ 12 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM)
 - ✅ YAML configuration support
@@ -543,7 +543,7 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 - ChromaDB, Pinecone, and LanceDB are implemented (REST API-based), not placeholders
 - Infrastructure layer has been redesigned without Akka.NET; all projects target `net10.0`
 - Version is defined in `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix` `beta` — currently `0.9.2-beta`); that file is the single source of truth
-- Focus on V1 iso-functional parity, not advanced features
+- Focus on the V1 feature surface, not speculative additions
 - `sonar-project.properties` has been removed (caused scanner conflicts — all params passed via CLI)
 - SonarQube 9.9 LTS: use `sonar.login` (not `sonar.token`) for authentication
 - Use `Format=opencover` for SonarQube coverage collection

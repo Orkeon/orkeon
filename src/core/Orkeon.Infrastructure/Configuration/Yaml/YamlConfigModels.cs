@@ -14,7 +14,7 @@ namespace Orkeon.Infrastructure.Configuration;
 #pragma warning disable CA2227 // Collection properties should be read only
 
 /// <summary>
-/// YAML model for agent configuration in Python Orkeon format.
+/// YAML model for agent configuration in the snake_case crew YAML dialect.
 /// </summary>
 public class AgentYamlConfig
 {
@@ -65,7 +65,7 @@ public class GuardrailsYamlConfig
 }
 
 /// <summary>
-/// YAML model for task configuration in Python Orkeon format.
+/// YAML model for task configuration in the snake_case crew YAML dialect.
 /// </summary>
 public class TaskYamlConfig
 {
@@ -75,7 +75,7 @@ public class TaskYamlConfig
     public string? ExpectedOutput { get; set; }
     /// <summary>Gets or sets the assigned agent identifier.</summary>
     public string? Agent { get; set; }
-    /// <summary>Gets or sets the list of tool names scoped to this task (Python Orkeon parity).</summary>
+    /// <summary>Gets or sets the list of tool names scoped to this task (snake_case YAML parity).</summary>
     public Collection<string>? Tools { get; set; }
     /// <summary>Gets or sets the list of dependency task identifiers.</summary>
     public Collection<string>? Dependencies { get; set; }
@@ -342,7 +342,7 @@ public class CrewYamlConfig
     public CircuitBreakerYamlConfig? CircuitBreaker { get; set; }
     /// <summary>Gets or sets the graph-specific configuration (only used when process is "graph").</summary>
     public GraphYamlConfig? GraphConfig { get; set; }
-    /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (Python Orkeon parity).</summary>
+    /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (snake_case YAML parity).</summary>
     public LlmYamlConfig? Llm { get; set; }
     /// <summary>Gets or sets the crew-level RAG configuration (provider, collections, defaults).</summary>
     public RagYamlConfig? Rag { get; set; }
@@ -377,7 +377,7 @@ public class CrewSettingsYamlConfig
     public CircuitBreakerYamlConfig? CircuitBreaker { get; set; }
     /// <summary>Gets or sets the graph-specific configuration (only used when process is "graph").</summary>
     public GraphYamlConfig? GraphConfig { get; set; }
-    /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (Python Orkeon parity).</summary>
+    /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (snake_case YAML parity).</summary>
     public LlmYamlConfig? Llm { get; set; }
     /// <summary>Gets or sets the crew-level RAG configuration (provider, collections, defaults).</summary>
     public RagYamlConfig? Rag { get; set; }

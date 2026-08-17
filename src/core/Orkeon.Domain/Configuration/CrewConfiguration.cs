@@ -95,7 +95,7 @@ public sealed record TaskConfiguration
     public AgentId? AssignedAgentId { get; init; }
     /// <summary>Gets the identifiers of tasks this task depends on.</summary>
     public IReadOnlyList<TaskId> Dependencies { get; init; } = Array.Empty<TaskId>();
-    /// <summary>Gets the names of tools scoped to this task (Python Orkeon parity).</summary>
+    /// <summary>Gets the names of tools scoped to this task (snake_case YAML parity).</summary>
     public IReadOnlyList<string> RequiredTools { get; init; } = Array.Empty<string>();
     /// <summary>Gets additional context data for this task.</summary>
     public Dictionary<string, object> Context { get; init; } = [];

@@ -6,8 +6,7 @@ using DomainMemoryType = Orkeon.Domain.Memory.MemoryType;
 namespace Orkeon.Application.Interfaces.Services;
 
 /// <summary>
-/// Unified memory service following Python Orkeon memory architecture.
-/// Reference: orkeon_docs/concepts/memory.mdx - 4 memory types
+/// Unified memory service over the four classic memory types.
 /// </summary>
 public interface IMemoryService
 {
@@ -44,7 +43,7 @@ public interface IMemoryService
 }
 
 /// <summary>
-/// Complete memory system with 4 types as per Python Orkeon.
+/// Complete memory system with the 4 classic types.
 /// </summary>
 public interface ICrewMemorySystem
 {

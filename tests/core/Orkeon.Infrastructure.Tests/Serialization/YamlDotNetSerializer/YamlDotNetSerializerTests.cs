@@ -314,7 +314,7 @@ isActive: true";
     public void ShouldIgnoreExtraFields_WhenDeserializeWithUnknownProperties()
     {
         // Arrange — friction #2 from Experiment 07: forward-compatible YAML extensions
-        // (e.g. Python Orkeon adds a new field we don't model yet) must not crash the loader.
+        // (e.g. a newer YAML dialect adds a field we don't model yet) must not crash the loader.
         var yaml = @"
 name: Test
 value: 42

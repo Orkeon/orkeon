@@ -761,7 +761,7 @@ First version actually published to GitHub Packages since `0.9.1-beta` (2026-07-
 
 ### Changed
 
-- **Complete rename: CrewAI → Arkeon → Orkeon** across the entire codebase (solution file, namespaces, projects, docs, HTML, scripts, and examples)
+- **Complete rename to Orkeon** (via the interim Arkeon name) across the entire codebase (solution file, namespaces, projects, docs, HTML, scripts, and examples)
 - **Infrastructure layer redesigned** without Akka.NET: simple HTTP-based implementations, direct `async/await` service calls, standard dependency injection replacing the actor model
 - **Domain encapsulation hardened**: private/internal constructors on all value objects and aggregate roots; `Restore()` factory methods for persistence; `IReadOnlyList<T>` replacing mutable `List<T>` on domain types
 - **15+ anemic domain types converted** to immutable records (`init`-only properties)
@@ -823,7 +823,7 @@ First version actually published to GitHub Packages since `0.9.1-beta` (2026-07-
 
 ## [0.1.0-alpha] - 2025-09-21
 
-Initial public development snapshot. Core domain model established in C# following Clean Architecture principles, as an independent reimplementation inspired by the CrewAI library.
+Initial public development snapshot. Core domain model established in C# following Clean Architecture principles, as an independent implementation.
 
 ### Added
 

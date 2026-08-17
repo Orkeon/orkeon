@@ -8,7 +8,7 @@ namespace Orkeon.Infrastructure.Serialization;
 /// Forgiving deserialization-side type inspector that accepts both camelCase and snake_case
 /// YAML keys for the same C# property. The canonical (serialization) form remains camelCase.
 ///
-/// Experiment 07 friction #2: Python Orkeon YAML uses snake_case (<c>expected_output:</c>,
+/// Experiment 07 friction #2: legacy crew YAML uses snake_case (<c>expected_output:</c>,
 /// <c>output_file:</c>, <c>async_execution:</c>); strict camelCase matching produced a hard
 /// parse error on those crews. This inspector wraps the standard inspector and, when a YAML
 /// key cannot be resolved as-is, retries with a snake_case → camelCase conversion before

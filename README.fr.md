@@ -267,6 +267,3 @@ Si npm est indisponible, le build réussit quand même ; esbuild est alors réso
 
 Orkeon est publié sous [licence MIT](LICENSE.md).
 
-## Remerciements
-
-Orkeon est un framework .NET indépendant d'orchestration d'agents IA, inspiré par [CrewAI](https://github.com/crewAIInc/crewAI) (licence MIT). Nous remercions chaleureusement les auteurs de CrewAI.

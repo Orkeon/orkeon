@@ -3,10 +3,10 @@ using Orkeon.Infrastructure.Serialization;
 namespace Orkeon.Infrastructure.Tests.Serialization;
 
 /// <summary>
-/// Regression coverage for Experiment 07 friction #2: Python Orkeon YAML uses snake_case
+/// Regression coverage for Experiment 07 friction #2: legacy crew YAML uses snake_case
 /// (<c>expected_output:</c>, <c>output_file:</c>, <c>async_execution:</c>, …) and may carry
 /// forward-compatible extra keys. The Orkeon C# loader must accept both conventions and
-/// ignore unknown properties so that authoring in the Python format does not crash the loader.
+/// ignore unknown properties so that authoring in the snake_case dialect does not crash the loader.
 /// </summary>
 public class YamlSnakeCaseToleranceTests
 {

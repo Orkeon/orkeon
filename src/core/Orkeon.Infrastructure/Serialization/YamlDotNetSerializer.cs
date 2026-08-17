@@ -10,7 +10,7 @@ namespace Orkeon.Infrastructure.Serialization
     /// YamlDotNet implementation of IYamlSerializer.
     ///
     /// Serialization is camelCase (canonical form). Deserialization tolerates both camelCase
-    /// (canonical) and snake_case (Python Orkeon parity) keys, and ignores unknown properties
+    /// (canonical) and snake_case (legacy dialect parity) keys, and ignores unknown properties
     /// so that forward-compatible YAML extensions do not crash the loader.
     /// </summary>
     public class YamlDotNetSerializer : IYamlSerializer

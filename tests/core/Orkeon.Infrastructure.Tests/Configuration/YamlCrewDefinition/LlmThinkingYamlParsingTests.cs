@@ -54,7 +54,7 @@ agents:
     [Fact]
     public async Task LoadFromString_ShouldMapThinking_FromSnakeCaseYaml()
     {
-        // Python Orkeon authors write `top_p:` and `thinking.enabled` snake_case — fix #2
+        // Snake_case crew YAML authors write `top_p:` and `thinking.enabled` snake_case — fix #2
         // makes the loader forgiving and fix #4 ensures these still propagate to LlmConfig.
         var loader = BuildLoader();
         var yaml = """

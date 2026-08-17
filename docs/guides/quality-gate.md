@@ -27,8 +27,8 @@ Since R5.4:
 ## 2. Project key
 
 The SonarQube project key is **`Orkeon`** (renamed on 2026-08-17 as a PUB-01
-audit follow-up — the old `CrewAI.NET` key was the last public trace of the
-project's pre-rename name). This supersedes the QCM decision of 2026-06-11 and
+audit follow-up — the old key was the last trace of the project's
+pre-rename name). This supersedes the QCM decision of 2026-06-11 and
 accepts the trade-off it wanted to avoid: the server-side analysis history
 ("new code" baseline, trends) restarts from the first analysis under the new
 key; the old project remains browsable on the self-hosted instance. The key
@@ -123,5 +123,5 @@ overwritten on the next script run.
 
 | Date | Event |
 |---|---|
-| 2026-06-11 | Creation of the "Orkeon Transitional" gate (T0), activation of local + CI blocking (R5.4), alignment of the scripts' project key on `CrewAI.NET` |
-| 2026-08-17 | Project key renamed `CrewAI.NET` → `Orkeon` (PUB-01 audit follow-up; supersedes the 2026-06-11 QCM decision, analysis history restarts under the new key) |
+| 2026-06-11 | Creation of the "Orkeon Transitional" gate (T0), activation of local + CI blocking (R5.4), alignment of the scripts' project key on the historical key |
+| 2026-08-17 | Project key renamed to `Orkeon` (PUB-01 audit follow-up — historical pre-rename key retired; supersedes the 2026-06-11 QCM decision, analysis history restarts under the new key) |
