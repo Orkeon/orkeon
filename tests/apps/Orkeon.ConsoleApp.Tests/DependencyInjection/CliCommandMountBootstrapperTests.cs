@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Orkeon.Cli.Scripting.Configuration;
+using Orkeon.Cli.Commands.Scripting.Configuration;
 using Orkeon.ConsoleApp.DependencyInjection;
 using Orkeon.Infrastructure.Configuration;
 

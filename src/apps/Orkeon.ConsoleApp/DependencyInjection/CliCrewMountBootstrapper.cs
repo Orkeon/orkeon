@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Orkeon.Cli.Scripting.Runtime;
+using Orkeon.Cli.Commands.Scripting.Runtime;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Infrastructure.Configuration;
 

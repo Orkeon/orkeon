@@ -2,7 +2,7 @@
 
 # CLI TypeScript Commands
 
-> User-facing reference for the `Orkeon.Cli.Scripting` subsystem. For the
+> User-facing reference for the `Orkeon.Cli.Commands.Scripting` subsystem. For the
 > architecture spec and design rationale, see
 > `project/features/cli-ts-commands/SPEC.md`.
 
@@ -155,8 +155,8 @@ interface CommandRuntimeContext {
 ```
 
 The full `.d.ts` is shipped as an embedded resource inside
-`Orkeon.Cli.Scripting.dll` (Phase 5 will publish it to disk automatically; for
-now copy `src/cli/Orkeon.Cli.Scripting/Typings/orkeon-cli.d.ts` next to your
+`Orkeon.Cli.Commands.Scripting.dll` (Phase 5 will publish it to disk automatically; for
+now copy `src/cli/Orkeon.Cli.Commands.Scripting/Typings/orkeon-cli.d.ts` next to your
 scripts for IDE autocompletion).
 
 ### Prompts
@@ -374,7 +374,7 @@ scripted> result --ticket=t1   # [t1] HELLO
 
 | Symptom                                  | Likely cause                                                                | Action                                                          |
 |------------------------------------------|------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| `hello` doesn't appear in `help`         | Script outside the configured `Directories`, or evaluation error logged Error| Check logs from `Orkeon.Cli.Scripting.ScriptCommandLoader`.     |
+| `hello` doesn't appear in `help`         | Script outside the configured `Directories`, or evaluation error logged Error| Check logs from `Orkeon.Cli.Commands.Scripting.ScriptCommandLoader`.     |
 | `esbuild not found` on startup           | Tool not installed                                                           | `npm i -g esbuild`, or copy into `tools/scripting-esbuild/`.    |
 | `defineCommand is not defined`           | Script evaluated before bindings (bug)                                       | File an issue with the script path.                              |
 | Prompt doesn't render in the REPL pane   | Adapter not Terminal.Gui or prefix heuristic missed                          | Ensure the script writes prompts with a `> ` suffix.            |

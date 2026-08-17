@@ -1,7 +1,7 @@
 using Orkeon.Cli.Commands;
 using Orkeon.Cli.Registry;
-using Orkeon.Cli.Scripting.Registry;
-using Orkeon.Cli.Scripting.Runtime;
+using Orkeon.Cli.Commands.Scripting.Registry;
+using Orkeon.Cli.Commands.Scripting.Runtime;
 using Orkeon.ConsoleApp.Services;
 using Orkeon.Tests.Shared.FileSystem;
 

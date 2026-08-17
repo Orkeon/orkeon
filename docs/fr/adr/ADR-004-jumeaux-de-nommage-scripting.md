@@ -4,8 +4,11 @@
 
 # ADR-004 — Jumeaux de nommage : `Orkeon.Cli.Scripting` vs `Orkeon.Scripting.Cli`
 
-**Statut** : Accepté (documentation de l'existant) · **Date** : 2026-06
+**Statut** : Remplacé par l'[ADR-007](./ADR-007-d3-renommage-cli-commands-scripting.md) (2026-08-17 — D3 tranchée, la bibliothèque a été renommée `Orkeon.Cli.Commands.Scripting`) · **Date** : 2026-06
 · **Portée** : `src/cli/Orkeon.Cli.Scripting`, `src/scripting/Orkeon.Scripting.Cli`
+
+> Les noms de projets ci-dessous sont ceux en vigueur à la rédaction de cet ADR ; ils sont
+> conservés tels quels à titre d'archive.
 
 ## Contexte
 

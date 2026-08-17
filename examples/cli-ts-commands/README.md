@@ -1,6 +1,6 @@
 # CLI TypeScript Commands — démo
 
-Minimal demonstration of `Orkeon.Cli.Scripting`: a `*.cmd.ts` script discovered at
+Minimal demonstration of `Orkeon.Cli.Commands.Scripting`: a `*.cmd.ts` script discovered at
 runtime, evaluated through Jint, and exposed in the interactive REPL.
 
 ## Lancer la démo

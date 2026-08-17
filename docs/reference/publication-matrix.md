@@ -7,10 +7,11 @@ workflows (`ci.yml` validation, `publish.yml` pack + push on tag, `release.yml` 
 never drift again (OSS-011 / R8.3).
 
 > **Status — proposal, pending maintainer confirmation.** Only the three core libraries are
-> published today. Expanding to the rest of the ecosystem is gated on decision **D3** (the two
-> scripting twins `Orkeon.Cli.Scripting` / `Orkeon.Scripting.Cli` must not have their names
-> locked into NuGet before the rename question is settled — renaming after a first publish is a
-> permanent cost) and on the maintainer confirming the product intent below.
+> published today. Decision **D3** (the scripting naming twins) is **resolved** — PUB-02,
+> 2026-08-17, [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md): the command
+> library was renamed `Orkeon.Cli.Scripting` → `Orkeon.Cli.Commands.Scripting` before any
+> NuGet publish locked the old name in. Expanding beyond the core now only awaits the
+> maintainer confirming the product intent below.
 
 ## Published in v1 (today)
 
@@ -23,8 +24,8 @@ never drift again (OSS-011 / R8.3).
 ## Proposed for a later release (deferred)
 
 The announced ecosystem (the tools family, the `orkeon` CLI tool, hosting, plugins) is meant to
-be installable, but is held back until the core packages are proven on NuGet **and** D3 is
-resolved. Each entry below is `IsPackable=true` and therefore already lands on the **internal
+be installable, but is held back until the core packages are proven on NuGet (D3 is resolved —
+ADR-007). Each entry below is `IsPackable=true` and therefore already lands on the **internal
 GitHub Packages feed** via `publish.yml` (see below), but is **not** pushed to NuGet.org by any
 workflow yet.
 
@@ -34,8 +35,8 @@ workflow yet.
 | `Orkeon.Rag.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | RAG subsystem (RAG-02…06, ADR-006). `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` are the opt-in cross-encoder pair (runtime + embedded int8 weights) — publish the two together. |
 | `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions` | RaggableTree. |
 | `Orkeon.Cli`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui` | CLI libraries. |
-| `Orkeon.Cli.Scripting` | **Gated on D3** — twin-name rename window closes at first publish. |
-| `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` is the `orkeon` dotnet tool (`PackAsTool`). **Gated on D3.** |
+| `Orkeon.Cli.Commands.Scripting` | Renamed from `Orkeon.Cli.Scripting` (D3 resolved — ADR-007, 2026-08-17) before any publish. |
+| `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` is the `orkeon` dotnet tool (`PackAsTool`); name kept by ADR-007 (the PackageId is the install command). |
 | `Orkeon.Hosting` | Packaging host (created by R1.5) — strong candidate to ship with the core bundle. |
 | `Orkeon.Plugins` | Plugin system. |
 
@@ -106,7 +107,7 @@ The `orkeon` CLI is distributed through **seven channels**:
 
 | Channel | Artifact | Runtime | Audience |
 |---|---|---|---|
-| NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. **Still gated on D3** — unchanged by this release, nothing is pushed to NuGet.org |
+| NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. **Awaits the NuGet.org go** (D3 resolved — ADR-007); nothing is pushed to NuGet.org yet |
 | Windows zip + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel. Ships `orkeon-studio` (WPF Orkeon Studio) next to the CLI |
 | Windows MSI (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, double-click install and an "Installed apps" entry. Ships `orkeon-studio` with a Start-menu shortcut. One channel at a time: the MSI refuses to install over a zip install |
 | Debian package | `orkeon_<version>_amd64.deb` | self-contained | Debian / Ubuntu onboarding — the recommended channel. Ships the `orkeon-studio-config` / `orkeon-studio-run` TUIs next to the CLI |
@@ -158,5 +159,5 @@ print the runtime install commands rather than failing at first launch.
   `--skip-duplicate` (idempotent re-runs). `ci.yml` validates (build + test) and packs nothing;
   `release.yml` builds the installer archives and the container image, no NuGet packing.
 - **Nothing is pushed to NuGet.org today** — the matrix above is the proposal for that
-  promotion, gated on D3 and maintainer confirmation.
+  promotion, gated on maintainer confirmation (D3 resolved — ADR-007).
 - Version flows from `src/Directory.Build.props` (currently `0.9.2-beta`); no project overrides it.

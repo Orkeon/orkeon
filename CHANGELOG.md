@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `Orkeon.Cli.Scripting` renamed to `Orkeon.Cli.Commands.Scripting` (ADR-007, decision D3)
+
+The library of TypeScript-scripted interactive CLI commands loses its near-anagram name
+(`Orkeon.Cli.Scripting` vs `Orkeon.Scripting.Cli`): project, PackageId, assembly, root
+namespace and test project are now `Orkeon.Cli.Commands.Scripting(.Tests)`. The `orkeon`
+dotnet tool (`Orkeon.Scripting.Cli`) keeps its name — its PackageId is the install command.
+No published package carried the old name, so nothing breaks outside this repository;
+in-repo consumers were updated in the same change. This supersedes ADR-004 and lifts the D3
+gate in `docs/reference/publication-matrix.md`. Entries below in this Unreleased block use
+the new name even where the work predates the rename.
+
 ### Added — Orkeon Studio: a graphical way in, on Windows and Linux
 
 Configuring Orkeon and launching a crew no longer requires a terminal. **Orkeon Studio**
@@ -249,7 +260,7 @@ A crew failure travels as
 `PromiseRejectedException(ObjectWrapper(AggregateException(HttpRequestException(SocketException))))`
 and its `Message` embeds the full stringified stack — which the REPL used to dump
 verbatim into the transcript (the live `/analyze` incident: ~40 lines of .NET frames
-for one DNS hiccup). New `ConciseErrors` helper (`Orkeon.Cli.Scripting`) unwraps the
+for one DNS hiccup). New `ConciseErrors` helper (`Orkeon.Cli.Commands.Scripting`) unwraps the
 wrapper layers (JS rejection → carried CLR exception, `AggregateException` flatten,
 `TargetInvocationException`) and keeps the first line of the root cause —
 `✗ analyze failed: Resource temporarily unavailable (api.moonshot.ai:443)`. Applied at
@@ -292,7 +303,7 @@ unwrap semantics. Pinned by a dispatch-with-pending-promise integration test (th
 
 ### Added — end-to-end progress channel for long CLI operations
 
-A `ProgressBroker` singleton (`Orkeon.Cli.Scripting.Progress`, registered by
+A `ProgressBroker` singleton (`Orkeon.Cli.Commands.Scripting.Progress`, registered by
 `AddScriptCommands`) now carries a live `{label, step/total | percent, message}`
 snapshot from whoever is doing long work to whoever renders it. Three publishers:
 `ctx.progress(...)` handles from command scripts (which also stamp the ambient

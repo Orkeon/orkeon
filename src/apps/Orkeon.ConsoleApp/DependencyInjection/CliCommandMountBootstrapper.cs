@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Orkeon.Cli.Scripting.Configuration;
+using Orkeon.Cli.Commands.Scripting.Configuration;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Infrastructure.Configuration;
 
@@ -15,7 +15,7 @@ namespace Orkeon.ConsoleApp.DependencyInjection;
 /// <remarks>
 /// <para>
 /// Lives in the <c>Orkeon.ConsoleApp</c> composition root rather than the
-/// <c>Orkeon.Cli.Scripting</c> package because it depends on
+/// <c>Orkeon.Cli.Commands.Scripting</c> package because it depends on
 /// <see cref="FileSystemOptions"/> from <c>Orkeon.Infrastructure</c> — the package
 /// itself must not know about the infrastructure layer (Clean Architecture).
 /// </para>

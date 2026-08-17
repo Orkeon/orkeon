@@ -7,11 +7,12 @@ workflows (`ci.yml` validation, `publish.yml` pack + push sur tag, `release.yml`
 ne divergent plus jamais (OSS-011 / R8.3).
 
 > **Statut — proposition, en attente de confirmation du mainteneur.** Seules les trois
-> bibliothèques cœur sont publiées aujourd'hui. L'extension au reste de l'écosystème est
-> conditionnée à la décision **D3** (les deux jumeaux `Orkeon.Cli.Scripting` /
-> `Orkeon.Scripting.Cli` ne doivent pas voir leurs noms verrouillés dans NuGet avant que la
-> question du renommage soit tranchée — renommer après une première publication est un coût
-> permanent) et à la confirmation par le mainteneur de l'intention produit ci-dessous.
+> bibliothèques cœur sont publiées aujourd'hui. La décision **D3** (les jumeaux de nommage
+> scripting) est **tranchée** — PUB-02, 2026-08-17,
+> [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md) : la bibliothèque de
+> commandes a été renommée `Orkeon.Cli.Scripting` → `Orkeon.Cli.Commands.Scripting` avant
+> qu'une publication NuGet ne fige l'ancien nom. L'extension au-delà du cœur n'attend plus que
+> la confirmation par le mainteneur de l'intention produit ci-dessous.
 
 ## Publié en v1 (aujourd'hui)
 
@@ -24,8 +25,8 @@ ne divergent plus jamais (OSS-011 / R8.3).
 ## Proposé pour une version ultérieure (différé)
 
 L'écosystème annoncé (la famille d'outils, le tool CLI `orkeon`, hosting, plugins) est censé être
-installable, mais retenu jusqu'à ce que les paquets cœur soient éprouvés sur NuGet **et** que D3
-soit tranchée. Chaque entrée ci-dessous est `IsPackable=true` et atterrit donc déjà sur le **feed
+installable, mais retenu jusqu'à ce que les paquets cœur soient éprouvés sur NuGet (D3 est
+tranchée — ADR-007). Chaque entrée ci-dessous est `IsPackable=true` et atterrit donc déjà sur le **feed
 interne GitHub Packages** via `publish.yml` (voir plus bas), mais n'est **pas** poussée vers
 NuGet.org par un workflow pour l'instant.
 
@@ -35,8 +36,8 @@ NuGet.org par un workflow pour l'instant.
 | `Orkeon.Rag.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Sous-système RAG (RAG-02…06, ADR-006). `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` forment la paire cross-encoder opt-in (runtime + poids int8 embarqués) — publier les deux ensemble. |
 | `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions` | RaggableTree. |
 | `Orkeon.Cli`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui` | Bibliothèques CLI. |
-| `Orkeon.Cli.Scripting` | **Conditionné à D3** — la fenêtre de renommage des jumeaux se ferme à la première publication. |
-| `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` est le tool dotnet `orkeon` (`PackAsTool`). **Conditionné à D3.** |
+| `Orkeon.Cli.Commands.Scripting` | Renommé depuis `Orkeon.Cli.Scripting` (D3 tranchée — ADR-007, 2026-08-17) avant toute publication. |
+| `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` est le tool dotnet `orkeon` (`PackAsTool`) ; nom conservé par l'ADR-007 (le PackageId est la commande d'installation). |
 | `Orkeon.Hosting` | Hôte d'empaquetage (créé par R1.5) — candidat sérieux à livrer avec le lot cœur. |
 | `Orkeon.Plugins` | Système de plugins. |
 
@@ -108,7 +109,7 @@ Le CLI `orkeon` est distribué via **sept canaux** :
 
 | Canal | Artefact | Runtime | Public |
 |---|---|---|---|
-| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. **Toujours conditionné à D3** — inchangé par cette release, rien n'est poussé sur NuGet.org |
+| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. **Attend le go NuGet.org** (D3 tranchée — ADR-007) ; rien n'est encore poussé sur NuGet.org |
 | Zip Windows + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | onboarding Windows — le canal recommandé. Livre `orkeon-studio` (Orkeon Studio WPF) à côté du CLI |
 | MSI Windows (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, installation au double-clic et entrée « Applications installées ». Livre `orkeon-studio` avec un raccourci menu Démarrer. Un canal à la fois : le MSI refuse de s'installer par-dessus une install zip |
 | Paquet Debian | `orkeon_<version>_amd64.deb` | self-contained | onboarding Debian / Ubuntu — le canal recommandé. Livre les TUI `orkeon-studio-config` / `orkeon-studio-run` à côté du CLI |
@@ -162,5 +163,5 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   (build + tests) et ne package rien ; `release.yml` construit les archives d'installation et
   l'image conteneur, sans packaging NuGet.
 - **Rien n'est poussé vers NuGet.org aujourd'hui** — la matrice ci-dessus est la proposition
-  pour cette promotion, conditionnée à D3 et à la confirmation du mainteneur.
+  pour cette promotion, conditionnée à la confirmation du mainteneur (D3 tranchée — ADR-007).
 - La version provient de `src/Directory.Build.props` (actuellement `0.9.2-beta`) ; aucun projet ne la surcharge.

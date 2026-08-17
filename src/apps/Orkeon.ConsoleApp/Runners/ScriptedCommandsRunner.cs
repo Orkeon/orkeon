@@ -4,8 +4,8 @@ using Orkeon.Cli.Abstractions.Commands;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Registry;
-using Orkeon.Cli.Scripting.Configuration;
-using Orkeon.Cli.Scripting.Registry;
+using Orkeon.Cli.Commands.Scripting.Configuration;
+using Orkeon.Cli.Commands.Scripting.Registry;
 
 namespace Orkeon.ConsoleApp.Runners;
 

@@ -1,5 +1,5 @@
 using Orkeon.Analysis.Abstractions.Models;
-using Orkeon.Cli.Scripting.Progress;
+using Orkeon.Cli.Commands.Scripting.Progress;
 
 namespace Orkeon.ConsoleApp.Services;
 

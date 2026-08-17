@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.ConsoleApp.Services;
-using Orkeon.Cli.Scripting.Dispatch;
+using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Infrastructure.Communication;
 
 namespace Orkeon.ConsoleApp.Tests.Services;
@@ -105,10 +105,10 @@ public sealed class TuiFidelityWiringAgentRowsTests
     public void Progress_of_a_live_instance_reads_back_as_from_live_instance()
     {
         var dispatch = NewDispatch();
-        var broker = new Orkeon.Cli.Scripting.Progress.ProgressBroker();
+        var broker = new Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker();
         var instance = dispatch.Registry.Register(
             "compact", CommandInstanceKind.Async, "crew:session-compact", "compact", Guid.NewGuid());
-        broker.Report(new Orkeon.Cli.Scripting.Progress.ProgressSnapshot
+        broker.Report(new Orkeon.Cli.Commands.Scripting.Progress.ProgressSnapshot
         {
             Label = "Compacting conversation", Step = 2, Total = 5, Ticket = instance.Ticket,
         });
@@ -126,10 +126,10 @@ public sealed class TuiFidelityWiringAgentRowsTests
         // A crew that dies between report and done must not park a bar forever
         // (design-review pitfall): the reader cross-checks the registry and sweeps.
         var dispatch = NewDispatch();
-        var broker = new Orkeon.Cli.Scripting.Progress.ProgressBroker();
+        var broker = new Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker();
         var instance = dispatch.Registry.Register(
             "compact", CommandInstanceKind.Async, "crew:session-compact", "compact", Guid.NewGuid());
-        broker.Report(new Orkeon.Cli.Scripting.Progress.ProgressSnapshot
+        broker.Report(new Orkeon.Cli.Commands.Scripting.Progress.ProgressSnapshot
         {
             Label = "Compacting conversation", Ticket = instance.Ticket,
         });
@@ -142,8 +142,8 @@ public sealed class TuiFidelityWiringAgentRowsTests
     [Fact]
     public void Unticketed_progress_passes_through_as_foreground_only()
     {
-        var broker = new Orkeon.Cli.Scripting.Progress.ProgressBroker();
-        broker.Report(new Orkeon.Cli.Scripting.Progress.ProgressSnapshot { Label = "deploy", Percent = 50 });
+        var broker = new Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker();
+        broker.Report(new Orkeon.Cli.Commands.Scripting.Progress.ProgressSnapshot { Label = "deploy", Percent = 50 });
 
         var info = TuiFidelityWiring.BuildProgressReader(broker, NewDispatch())();
 

@@ -28,7 +28,7 @@
     <ProjectReference Include="..\..\cli\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
     <ProjectReference Include="..\..\cli\Orkeon.Cli\Orkeon.Cli.csproj" />
     <ProjectReference Include="..\..\cli\Orkeon.Cli.TerminalGui\Orkeon.Cli.TerminalGui.csproj" />
-    <ProjectReference Include="..\..\cli\Orkeon.Cli.Scripting\Orkeon.Cli.Scripting.csproj" />
+    <ProjectReference Include="..\..\cli\Orkeon.Cli.Commands.Scripting\Orkeon.Cli.Commands.Scripting.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
     <!-- Concrete tool packages — composition root responsibility -->

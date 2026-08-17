@@ -4,8 +4,11 @@
 
 # ADR-004 — Naming twins: `Orkeon.Cli.Scripting` vs `Orkeon.Scripting.Cli`
 
-**Status**: Accepted (documents the existing state) · **Date**: 2026-06
+**Status**: Superseded by [ADR-007](./ADR-007-d3-renommage-cli-commands-scripting.md) (2026-08-17 — D3 settled, the library was renamed `Orkeon.Cli.Commands.Scripting`) · **Date**: 2026-06
 · **Scope**: `src/cli/Orkeon.Cli.Scripting`, `src/scripting/Orkeon.Scripting.Cli`
+
+> The project names below are the ones in force when this ADR was written; they are kept
+> unchanged as historical record.
 
 ## Context
 

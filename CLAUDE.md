@@ -452,7 +452,7 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 │   ├── cli/
 │   │   ├── Orkeon.Cli.Abstractions/    # Pure contracts: IInteractiveCommand, runner base, console adapter
 │   │   ├── Orkeon.Cli/                 # Reusable common commands (help/exit/clear) + DefaultCommandRegistry
-│   │   ├── Orkeon.Cli.Scripting/       # TypeScript-scripted interactive commands (adapter Cli.Abstractions ↔ Scripting). NB: distinct du jumeau Orkeon.Scripting.Cli (entrypoint du tool `orkeon`)
+│   │   ├── Orkeon.Cli.Commands.Scripting/ # TypeScript-scripted interactive commands (adapter Cli.Abstractions ↔ Scripting). NB: distinct de Orkeon.Scripting.Cli (entrypoint du tool `orkeon`) — renommé depuis Orkeon.Cli.Scripting (ADR-007)
 │   │   └── Orkeon.Cli.TerminalGui/     # Terminal.Gui v2 split-pane console (logs + REPL); IConsoleAdapter + ILoggerProvider
 │   ├── scripting/
 │   │   ├── Orkeon.Scripting/           # TypeScript-syntax scripting DSL (.ork.ts) — Jint runtime + esbuild transpile
@@ -487,7 +487,7 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 │       └── Orkeon.ConsoleApp/    # Console application
 ├── tests/                        # 29 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
-│   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
+│   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Commands.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
 │   ├── analyzers/                # Orkeon.Compliance.Vfs.Tests
 │   ├── tools/                    # Abstractions, Analysis, Code, Data, Embeddings.Local, EventHub, FileSystem, Rag, Web (9 projects)
@@ -534,8 +534,8 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 ## Important Notes
 
 - **Namespace collision**: `Orkeon.Domain.Task` collides with `System.Threading.Tasks.Task`. In Application-layer files that import both, all `Task` references must be fully qualified as `System.Threading.Tasks.Task`.
-- **Naming twins — do not confuse**: two near-anagram projects exist and are easy to mix up (see [ADR-004](docs/adr/ADR-004-jumeaux-de-nommage-scripting.md)):
-  - `Orkeon.Cli.Scripting` (`src/cli/`) — library of **TypeScript-scripted interactive commands** for CLI runners (adapter between `Orkeon.Cli.Abstractions` and `Orkeon.Scripting`).
+- **Scripting projects — do not confuse** (the historical `Orkeon.Cli.Scripting` naming twin was renamed by [ADR-007](docs/adr/ADR-007-d3-renommage-cli-commands-scripting.md), superseding ADR-004):
+  - `Orkeon.Cli.Commands.Scripting` (`src/cli/`) — library of **TypeScript-scripted interactive commands** for CLI runners (adapter between `Orkeon.Cli.Abstractions` and `Orkeon.Scripting`).
   - `Orkeon.Scripting.Cli` (`src/scripting/`) — the installable **`orkeon` tool** entrypoint (`orkeon run script.ork.ts`, `PackAsTool=true`, `AssemblyName=orkeon`).
   - Mnemonic: the project whose **last** segment is `Cli` is the executable.
 - **Architecture Decision Records** live in `docs/adr/`. Notably ADR-002 documents the `Infrastructure → Tools.Abstractions` shared-kernel exception; ADR-003 covers the `Application → Analysis.Abstractions` and `Infrastructure → Analysis` couplings; ADR-005 covers `Tools.Web`/`Tools.EventHub → Application`; ADR-006 covers the RAG subsystem (`Orkeon.Rag.Abstractions` shared kernel, `Orkeon.Rag → Application`/`Analysis.Abstractions` couplings, legacy RAG namespaces removed without shims).

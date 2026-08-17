@@ -6,8 +6,8 @@ using Orkeon.Compliance.Vfs;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Cli.Abstractions.Console;
-using Orkeon.Cli.Scripting.Configuration;
-using Orkeon.Cli.Scripting.DependencyInjection;
+using Orkeon.Cli.Commands.Scripting.Configuration;
+using Orkeon.Cli.Commands.Scripting.DependencyInjection;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.ConsoleApp.Commands;
 using Orkeon.ConsoleApp.Commands.Agent;
@@ -216,7 +216,7 @@ static class Program
         // The broker itself is registered by AddScriptCommands below; resolution is lazy.
         services.AddSingleton<IProgress<Orkeon.Analysis.Abstractions.Models.IndexBuildProgress>>(sp =>
             new Orkeon.ConsoleApp.Services.IndexProgressBrokerAdapter(
-                sp.GetRequiredService<Orkeon.Cli.Scripting.Progress.ProgressBroker>()));
+                sp.GetRequiredService<Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker>()));
 
         // Console adapter — replaced by TerminalGuiConsoleAdapter when --ui=tui (see below).
         // In plain mode on a real TTY we use the raw-mode line editor, which adds history,

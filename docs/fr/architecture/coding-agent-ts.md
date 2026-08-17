@@ -3,7 +3,7 @@
 # Agent de codage Orkéon (TypeScript)
 
 L'agent de codage est un assistant de codage agentique (à la Claude Code) construit **sur la
-pile scriptée d'Orkéon** — le registre de slash-commands `*.cmd.ts` (`Orkeon.Cli.Scripting`),
+pile scriptée d'Orkéon** — le registre de slash-commands `*.cmd.ts` (`Orkeon.Cli.Commands.Scripting`),
 le runtime de crew `crew.ork.ts` (`Orkeon.Scripting`), et les outils C# `ToolBase`. Il fait
 l'objet de `project/experiments/07-orkeon-coding-agent-ts/` (spec + plan + résultats).
 
@@ -13,7 +13,7 @@ l'objet de `project/experiments/07-orkeon-coding-agent-ts/` (spec + plan + résu
 REPL (Orkeon.ConsoleApp --runner=scripted-commands)
   │  parses "/cmd args" + free text
   ▼
-*.cmd.ts  (Orkeon.Cli.Scripting)              ══ CONTROL PLANE ══
+*.cmd.ts  (Orkeon.Cli.Commands.Scripting)              ══ CONTROL PLANE ══
   defineCommand (sync) / defineAsyncCommand (async)        never does the work itself
   │                         │                          │
   │ tools.*  (direct ops)   │ services.get("script-host")│ services.get("commands")

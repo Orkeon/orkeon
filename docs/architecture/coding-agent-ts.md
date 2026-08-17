@@ -3,7 +3,7 @@
 # Orkéon Coding Agent (TypeScript)
 
 The coding agent is an agentic coding assistant (à la Claude Code) built **on Orkéon's
-scripted stack** — the `*.cmd.ts` slash-command registry (`Orkeon.Cli.Scripting`), the
+scripted stack** — the `*.cmd.ts` slash-command registry (`Orkeon.Cli.Commands.Scripting`), the
 `crew.ork.ts` crew runtime (`Orkeon.Scripting`), and the C# `ToolBase` tools. It is the
 subject of `project/experiments/07-orkeon-coding-agent-ts/` (spec + plan + results).
 
@@ -13,7 +13,7 @@ subject of `project/experiments/07-orkeon-coding-agent-ts/` (spec + plan + resul
 REPL (Orkeon.ConsoleApp --runner=scripted-commands)
   │  parses "/cmd args" + free text
   ▼
-*.cmd.ts  (Orkeon.Cli.Scripting)              ══ CONTROL PLANE ══
+*.cmd.ts  (Orkeon.Cli.Commands.Scripting)              ══ CONTROL PLANE ══
   defineCommand (sync) / defineAsyncCommand (async)        never does the work itself
   │                         │                          │
   │ tools.*  (direct ops)   │ services.get("script-host")│ services.get("commands")

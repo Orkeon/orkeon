@@ -1,7 +1,7 @@
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Abstractions.Registry;
 using Orkeon.Cli.Registry;
-using Orkeon.Cli.Scripting.Registry;
+using Orkeon.Cli.Commands.Scripting.Registry;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.ConsoleApp.Services;

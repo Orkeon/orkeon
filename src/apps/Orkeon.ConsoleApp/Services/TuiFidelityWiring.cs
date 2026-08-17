@@ -2,8 +2,8 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Cli.Scripting.Dispatch;
-using Orkeon.Cli.Scripting.Progress;
+using Orkeon.Cli.Commands.Scripting.Dispatch;
+using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Domain.FileSystem;
 

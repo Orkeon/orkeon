@@ -143,9 +143,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Tools.EventHub", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Tools.EventHub.Tests", "tests\tools\Orkeon.Tools.EventHub.Tests\Orkeon.Tools.EventHub.Tests.csproj", "{526934C4-9217-4CD1-8EAC-770519A4CD67}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Cli.Scripting", "src\cli\Orkeon.Cli.Scripting\Orkeon.Cli.Scripting.csproj", "{F65A9B7B-F03B-4986-839F-43B8029C9DE8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Cli.Commands.Scripting", "src\cli\Orkeon.Cli.Commands.Scripting\Orkeon.Cli.Commands.Scripting.csproj", "{F65A9B7B-F03B-4986-839F-43B8029C9DE8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Cli.Scripting.Tests", "tests\cli\Orkeon.Cli.Scripting.Tests\Orkeon.Cli.Scripting.Tests.csproj", "{A3913220-7F27-4D0B-8ABD-BA4AA65A7254}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Cli.Commands.Scripting.Tests", "tests\cli\Orkeon.Cli.Commands.Scripting.Tests\Orkeon.Cli.Commands.Scripting.Tests.csproj", "{A3913220-7F27-4D0B-8ABD-BA4AA65A7254}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Scripting.Cli.Tests", "tests\scripting\Orkeon.Scripting.Cli.Tests\Orkeon.Scripting.Cli.Tests.csproj", "{08FE8205-8914-46AC-BEE6-668F7B3F5B2D}"
 EndProject

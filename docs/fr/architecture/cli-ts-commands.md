@@ -2,7 +2,7 @@
 
 # Commandes CLI TypeScript
 
-> Référence utilisateur du sous-système `Orkeon.Cli.Scripting`. Pour la
+> Référence utilisateur du sous-système `Orkeon.Cli.Commands.Scripting`. Pour la
 > spécification d'architecture et la justification de conception, voir
 > `project/features/cli-ts-commands/SPEC.md`.
 
@@ -158,8 +158,8 @@ interface CommandRuntimeContext {
 ```
 
 Le `.d.ts` complet est livré comme ressource embarquée dans
-`Orkeon.Cli.Scripting.dll` (la Phase 5 le publiera automatiquement sur disque ;
-pour l'instant, copiez `src/cli/Orkeon.Cli.Scripting/Typings/orkeon-cli.d.ts` à
+`Orkeon.Cli.Commands.Scripting.dll` (la Phase 5 le publiera automatiquement sur disque ;
+pour l'instant, copiez `src/cli/Orkeon.Cli.Commands.Scripting/Typings/orkeon-cli.d.ts` à
 côté de vos scripts pour l'autocomplétion IDE).
 
 ### Prompts
@@ -383,7 +383,7 @@ scripted> result --ticket=t1   # [t1] HELLO
 
 | Symptôme                                 | Cause probable                                                               | Action                                                          |
 |------------------------------------------|------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| `hello` n'apparaît pas dans `help`       | Script hors des `Directories` configurés, ou erreur d'évaluation journalisée en Error | Vérifiez les logs de `Orkeon.Cli.Scripting.ScriptCommandLoader`. |
+| `hello` n'apparaît pas dans `help`       | Script hors des `Directories` configurés, ou erreur d'évaluation journalisée en Error | Vérifiez les logs de `Orkeon.Cli.Commands.Scripting.ScriptCommandLoader`. |
 | `esbuild not found` au démarrage         | Outil non installé                                                            | `npm i -g esbuild`, ou copie dans `tools/scripting-esbuild/`.   |
 | `defineCommand is not defined`           | Script évalué avant les bindings (bug)                                        | Ouvrez une issue avec le chemin du script.                       |
 | Le prompt ne s'affiche pas dans le panneau REPL | Adaptateur autre que Terminal.Gui ou heuristique de préfixe manquée    | Assurez-vous que le script écrit les prompts avec un suffixe `> `. |
