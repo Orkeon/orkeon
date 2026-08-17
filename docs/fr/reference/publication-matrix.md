@@ -7,8 +7,10 @@ workflows (`ci.yml` validation, `publish.yml` pack + push sur tag, `release.yml`
 ne divergent plus jamais (OSS-011 / R8.3).
 
 > **Statut — proposition, en attente de confirmation du mainteneur.** Seules les trois
-> bibliothèques cœur sont publiées aujourd'hui. La décision **D3** (les jumeaux de nommage
-> scripting) est **tranchée** — PUB-02, 2026-08-17,
+> bibliothèques cœur sont câblées vers NuGet.org aujourd'hui (PUB-03, 2026-08-17) ; le
+> premier push réel partira au prochain tag `v*` une fois le secret `NUGET_API_KEY`
+> configuré — d'ici là l'étape avertit et ne fait rien. La décision **D3** (les jumeaux de
+> nommage scripting) est **tranchée** — PUB-02, 2026-08-17,
 > [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md) : la bibliothèque de
 > commandes a été renommée `Orkeon.Cli.Scripting` → `Orkeon.Cli.Commands.Scripting` avant
 > qu'une publication NuGet ne fige l'ancien nom. L'extension au-delà du cœur n'attend plus que
@@ -109,7 +111,7 @@ Le CLI `orkeon` est distribué via **sept canaux** :
 
 | Canal | Artefact | Runtime | Public |
 |---|---|---|---|
-| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. **Attend le go NuGet.org** (D3 tranchée — ADR-007) ; rien n'est encore poussé sur NuGet.org |
+| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. **Attend le go écosystème NuGet.org** (D3 tranchée — ADR-007) : le câblage en place (PUB-03) ne pousse que les trois bibliothèques cœur ; promouvoir le tool est une décision de matrice |
 | Zip Windows + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | onboarding Windows — le canal recommandé. Livre `orkeon-studio` (Orkeon Studio WPF) à côté du CLI |
 | MSI Windows (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, installation au double-clic et entrée « Applications installées ». Livre `orkeon-studio` avec un raccourci menu Démarrer. Un canal à la fois : le MSI refuse de s'installer par-dessus une install zip |
 | Paquet Debian | `orkeon_<version>_amd64.deb` | self-contained | onboarding Debian / Ubuntu — le canal recommandé. Livre les TUI `orkeon-studio-config` / `orkeon-studio-run` à côté du CLI |
@@ -159,9 +161,21 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
 
 - Tout le packaging et le push NuGet vivent dans **`publish.yml`** (tag `v*`) :
   `dotnet pack Orkeon.sln` (+ les tools runners) piloté par `IsPackable`, poussé vers
-  **GitHub Packages** avec `--skip-duplicate` (ré-exécutions idempotentes). `ci.yml` valide
+  **GitHub Packages** avec `--skip-duplicate` (ré-exécutions idempotentes), puis les **trois
+  paquets cœur** (le tableau « Publié en v1 » ci-dessus) vers **NuGet.org**. `ci.yml` valide
   (build + tests) et ne package rien ; `release.yml` construit les archives d'installation et
   l'image conteneur, sans packaging NuGet.
-- **Rien n'est poussé vers NuGet.org aujourd'hui** — la matrice ci-dessus est la proposition
-  pour cette promotion, conditionnée à la confirmation du mainteneur (D3 tranchée — ADR-007).
+- L'étape NuGet.org est **conditionnée au secret de dépôt `NUGET_API_KEY`** (action
+  propriétaire : créer une clé API nuget.org limitée à `Orkeon.*` et réserver ce préfixe
+  d'ID). Tant que le secret n'existe pas, l'étape émet un avertissement et ne fait rien —
+  **rien n'a encore atterri sur NuGet.org** ; le premier push réel partira au prochain tag
+  `v*` après configuration de la clé. Étendre le périmètre NuGet.org au-delà des trois
+  paquets cœur reste conditionné à la confirmation par le mainteneur de la matrice ci-dessus
+  (D3 tranchée — ADR-007), et passe d'abord par une édition de la matrice, jamais par une
+  retouche de workflow en passant.
+- `publish.yml` **refuse un tag qui ne correspond pas à la version de
+  `src/Directory.Build.props`**. Leçon de l'incident 0.9.1-beta (voir CHANGELOG 0.9.2-beta) :
+  les tags `v0.9.1-beta.rc*` ont re-packé la version inchangée des props et
+  `--skip-duplicate` a sauté chaque push en silence — une « release » qui n'a rien publié.
+  Le garde maintient `--skip-duplicate` honnête.
 - La version provient de `src/Directory.Build.props` (actuellement `0.9.2-beta`) ; aucun projet ne la surcharge.

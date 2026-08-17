@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — NuGet.org publication wired for real (PUB-03)
+
+`publish.yml` now pushes the three core packages (`Orkeon.Domain`, `Orkeon.Application`,
+`Orkeon.Infrastructure` — the v1 set of `docs/reference/publication-matrix.md`) to
+**NuGet.org** on a `v*` tag, gated on the `NUGET_API_KEY` repository secret: until the owner
+configures the key, the step warns and no-ops instead of failing the release. The workflow
+also **refuses a tag that does not match the `src/Directory.Build.props` version** — the
+guard that makes the 0.9.1-beta silent-skip incident (rc tags re-packing an unchanged
+version, `--skip-duplicate` skipping every push) structurally impossible. The README NuGet
+badge, which pointed at a package that does not exist on nuget.org yet, is replaced by a
+GitHub release badge until the first real push restores it.
+
 ### Changed — `Orkeon.Cli.Scripting` renamed to `Orkeon.Cli.Commands.Scripting` (ADR-007, decision D3)
 
 The library of TypeScript-scripted interactive CLI commands loses its near-anagram name

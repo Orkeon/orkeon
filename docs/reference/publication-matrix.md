@@ -7,7 +7,9 @@ workflows (`ci.yml` validation, `publish.yml` pack + push on tag, `release.yml` 
 never drift again (OSS-011 / R8.3).
 
 > **Status — proposal, pending maintainer confirmation.** Only the three core libraries are
-> published today. Decision **D3** (the scripting naming twins) is **resolved** — PUB-02,
+> wired for NuGet.org today (PUB-03, 2026-08-17); the first real push lands at the next `v*`
+> tag once the `NUGET_API_KEY` secret is configured — until then the push step warns and
+> no-ops. Decision **D3** (the scripting naming twins) is **resolved** — PUB-02,
 > 2026-08-17, [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md): the command
 > library was renamed `Orkeon.Cli.Scripting` → `Orkeon.Cli.Commands.Scripting` before any
 > NuGet publish locked the old name in. Expanding beyond the core now only awaits the
@@ -107,7 +109,7 @@ The `orkeon` CLI is distributed through **seven channels**:
 
 | Channel | Artifact | Runtime | Audience |
 |---|---|---|---|
-| NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. **Awaits the NuGet.org go** (D3 resolved — ADR-007); nothing is pushed to NuGet.org yet |
+| NuGet dotnet tool | `Orkeon.Scripting.Cli` (`PackAsTool`, command `orkeon`) | needs .NET 10 SDK (`dotnet tool install`) | .NET developers. **Awaits the NuGet.org ecosystem go** (D3 resolved — ADR-007): the wiring in place (PUB-03) pushes only the three core libraries; promoting the tool is a matrix decision |
 | Windows zip + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | Windows onboarding — the recommended channel. Ships `orkeon-studio` (WPF Orkeon Studio) next to the CLI |
 | Windows MSI (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, double-click install and an "Installed apps" entry. Ships `orkeon-studio` with a Start-menu shortcut. One channel at a time: the MSI refuses to install over a zip install |
 | Debian package | `orkeon_<version>_amd64.deb` | self-contained | Debian / Ubuntu onboarding — the recommended channel. Ships the `orkeon-studio-config` / `orkeon-studio-run` TUIs next to the CLI |
@@ -156,8 +158,18 @@ print the runtime install commands rather than failing at first launch.
 
 - All NuGet packing and pushing lives in **`publish.yml`** (tag `v*`): `dotnet pack Orkeon.sln`
   (+ the runner tools) driven by `IsPackable`, pushed to **GitHub Packages** with
-  `--skip-duplicate` (idempotent re-runs). `ci.yml` validates (build + test) and packs nothing;
+  `--skip-duplicate` (idempotent re-runs), then the **three core packages** (the "Published in
+  v1" table above) to **NuGet.org**. `ci.yml` validates (build + test) and packs nothing;
   `release.yml` builds the installer archives and the container image, no NuGet packing.
-- **Nothing is pushed to NuGet.org today** — the matrix above is the proposal for that
-  promotion, gated on maintainer confirmation (D3 resolved — ADR-007).
+- The NuGet.org step is **gated on the `NUGET_API_KEY` repository secret** (owner action:
+  create a nuget.org API key scoped to `Orkeon.*` and reserve that ID prefix). Until the
+  secret exists, the step emits a warning and no-ops — **nothing has landed on NuGet.org
+  yet**; the first real push happens at the next `v*` tag after the key is configured.
+  Expanding the NuGet.org set beyond the three core packages stays gated on maintainer
+  confirmation of the matrix above (D3 resolved — ADR-007) and is a matrix edit first,
+  never a workflow edit made in passing.
+- `publish.yml` **refuses a tag that does not match the `src/Directory.Build.props` version**.
+  Lesson from the 0.9.1-beta incident (see CHANGELOG 0.9.2-beta): the `v0.9.1-beta.rc*` tags
+  re-packed the unchanged props version and `--skip-duplicate` silently skipped every push —
+  a "release" that published nothing. The guard keeps `--skip-duplicate` honest.
 - Version flows from `src/Directory.Build.props` (currently `0.9.2-beta`); no project overrides it.

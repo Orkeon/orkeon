@@ -1,4 +1,14 @@
-# Publishes NuGet packages to GitHub Packages on a v* tag.
+# Publishes NuGet packages on a v* tag: every packable to GitHub Packages (the
+# experiments/ feed), plus the three core libraries to NuGet.org — the v1 public set
+# per docs/reference/publication-matrix.md. The NuGet.org step no-ops with a warning
+# until the NUGET_API_KEY secret is configured (owner action).
+#
+# The tag must match the version in src/Directory.Build.props, or the run fails
+# before packing. Lesson from the 0.9.1-beta incident: the v0.9.1-beta.rc* tags
+# re-packed the unchanged props version and `--skip-duplicate` silently skipped
+# every push — an entire "release" published nothing. `--skip-duplicate` stays
+# (idempotent re-runs of the SAME tag are wanted); the guard removes the silent
+# tag/version drift it used to mask.
 #
 # Hosted runners only have ~14 GB free disk; this repo's native deps need more, so
 # the first step frees ~20 GB. The test phase runs unit + fast tests only — it
@@ -20,6 +30,20 @@ jobs:
           echo "Après:"; df -h / | tail -1
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
+      # Anti-0.9.1 guard: the tag decides nothing — the packed version comes from
+      # src/Directory.Build.props, so a tag that doesn't match it would re-pack an
+      # existing version and --skip-duplicate would "publish" nothing, silently.
+      - name: Verify tag matches Directory.Build.props version
+        run: |
+          prefix=$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' src/Directory.Build.props)
+          suffix=$(sed -n 's/.*<VersionSuffix>\(.*\)<\/VersionSuffix>.*/\1/p' src/Directory.Build.props)
+          version="$prefix${suffix:+-$suffix}"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::Tag v$tag does not match src/Directory.Build.props version $version — bump the props (and CHANGELOG) before tagging. See the 0.9.1-beta incident in CHANGELOG."
+            exit 1
+          fi
+          echo "Tag v$tag matches props version $version."
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '10.0.x' }
       - run: dotnet restore Orkeon.sln
@@ -41,3 +65,21 @@ jobs:
           dotnet nuget push "artifacts/*.nupkg"
           --source "https://nuget.pkg.github.com/Orkeon/index.json"
           --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+      # NuGet.org — the public v1 set only (docs/reference/publication-matrix.md):
+      # the three core libraries. Expanding this list is a maintainer decision
+      # recorded in the matrix, not a workflow edit made in passing.
+      - name: Push core packages to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::warning::NuGet.org publish SKIPPED — the NUGET_API_KEY secret is not configured. Owner action: create a nuget.org API key scoped to Orkeon.* (push new packages + versions) and add it as a repository secret."
+            exit 0
+          fi
+          # No PackageId nests under these three prefixes (see the matrix), so the
+          # simple glob is exact.
+          for id in Orkeon.Domain Orkeon.Application Orkeon.Infrastructure; do
+            dotnet nuget push "artifacts/${id}.*.nupkg" \
+              --source "https://api.nuget.org/v3/index.json" \
+              --api-key "$NUGET_API_KEY" --skip-duplicate
+          done
