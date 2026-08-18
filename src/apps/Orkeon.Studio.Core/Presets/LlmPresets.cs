@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Core.Presets;
 
@@ -115,20 +116,28 @@ public static class LlmPresets
     public static IReadOnlyList<string> Names { get; } =
         [Ollama, DockerModelRunner, OpenAI, Custom, None];
 
-    /// <summary>The presets with their labels and defaults, for a drop-down or a wizard.</summary>
-    public static IReadOnlyList<LlmPresetInfo> Catalog { get; } =
-    [
-        new(Ollama, "Ollama", "Local Ollama server.",
-            OrkeonCliDefaults.OllamaDefault, OrkeonCliDefaults.OllamaDefaultModel, RequiresApiKey: false),
-        new(DockerModelRunner, "Docker Model Runner", "Local llama.cpp engine served by Docker Desktop.",
-            DockerModelRunnerBaseUrl, DockerModelRunnerDefaultModel, RequiresApiKey: false),
-        new(OpenAI, "OpenAI", "OpenAI cloud API.",
-            OrkeonCliDefaults.OpenAI, OrkeonCliDefaults.OpenAIDefaultModel, RequiresApiKey: true),
-        new(Custom, "Other OpenAI-compatible", "DeepSeek, GLM, Mistral, … — base URL and model required.",
-            null, null, RequiresApiKey: true),
-        new(None, "None / offline", "No LLM: runs use the <undefined-llm> echo provider.",
-            null, null, RequiresApiKey: false),
-    ];
+    /// <summary>The presets with their labels and defaults, for a drop-down or a wizard (English).</summary>
+    public static IReadOnlyList<LlmPresetInfo> Catalog { get; } = CatalogFor(EnglishStudioStrings.Instance);
+
+    /// <summary>The catalogue with its labels resolved through a culture port (STUDIO-11).</summary>
+    public static IReadOnlyList<LlmPresetInfo> CatalogFor(IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return
+        [
+            new(Ollama, strings[StudioStringKeys.PresetOllamaTitle], strings[StudioStringKeys.PresetOllamaDescription],
+                OrkeonCliDefaults.OllamaDefault, OrkeonCliDefaults.OllamaDefaultModel, RequiresApiKey: false),
+            new(DockerModelRunner, strings[StudioStringKeys.PresetDmrTitle], strings[StudioStringKeys.PresetDmrDescription],
+                DockerModelRunnerBaseUrl, DockerModelRunnerDefaultModel, RequiresApiKey: false),
+            new(OpenAI, strings[StudioStringKeys.PresetOpenAITitle], strings[StudioStringKeys.PresetOpenAIDescription],
+                OrkeonCliDefaults.OpenAI, OrkeonCliDefaults.OpenAIDefaultModel, RequiresApiKey: true),
+            new(Custom, strings[StudioStringKeys.PresetCustomTitle], strings[StudioStringKeys.PresetCustomDescription],
+                null, null, RequiresApiKey: true),
+            new(None, strings[StudioStringKeys.PresetNoneTitle], strings[StudioStringKeys.PresetNoneDescription],
+                null, null, RequiresApiKey: false),
+        ];
+    }
 
     /// <summary>Returns the catalog entry of a preset, or <see langword="null"/> when unknown.</summary>
     public static LlmPresetInfo? Describe(string? preset) =>
@@ -143,8 +152,22 @@ public static class LlmPresets
         string? preset,
         LlmPresetOverrides? overrides,
         [NotNullWhen(true)] out LlmPresetPlan? plan,
+        out string? error) =>
+        TryCreatePlan(preset, overrides, EnglishStudioStrings.Instance, out plan, out error);
+
+    /// <summary>
+    /// Same as <see cref="TryCreatePlan(string?, LlmPresetOverrides?, out LlmPresetPlan?, out string?)"/>,
+    /// with the error message resolved through a culture port (STUDIO-11).
+    /// </summary>
+    public static bool TryCreatePlan(
+        string? preset,
+        LlmPresetOverrides? overrides,
+        IStudioStrings strings,
+        [NotNullWhen(true)] out LlmPresetPlan? plan,
         out string? error)
     {
+        ArgumentNullException.ThrowIfNull(strings);
+
         plan = null;
         error = null;
 
@@ -189,7 +212,7 @@ public static class LlmPresets
             case Custom:
                 if (baseUrl is null || model is null)
                 {
-                    error = "The custom preset requires both a base URL and a model.";
+                    error = strings[StudioStringKeys.PresetErrorCustomIncomplete];
                     return false;
                 }
 
@@ -208,9 +231,11 @@ public static class LlmPresets
                 return true;
 
             default:
-                error = string.Create(
+                error = string.Format(
                     CultureInfo.InvariantCulture,
-                    $"Unknown preset '{preset}'. Supported: {string.Join(", ", Names)}.");
+                    strings[StudioStringKeys.PresetErrorUnknown],
+                    preset,
+                    string.Join(", ", Names));
                 return false;
         }
     }
@@ -260,34 +285,38 @@ public static class LlmPresets
     /// The guidance <c>orkeon init</c> prints after writing, as messages a UI can show:
     /// how to provide the key, and a warning when it was stored in clear text.
     /// </summary>
-    public static IReadOnlyList<string> Guidance(LlmPresetPlan plan)
+    public static IReadOnlyList<string> Guidance(LlmPresetPlan plan) =>
+        Guidance(plan, EnglishStudioStrings.Instance);
+
+    /// <summary>
+    /// Same as <see cref="Guidance(LlmPresetPlan)"/>, with the messages resolved through a
+    /// culture port (STUDIO-11).
+    /// </summary>
+    public static IReadOnlyList<string> Guidance(LlmPresetPlan plan, IStudioStrings strings)
     {
         ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(strings);
 
         if (string.Equals(plan.Preset, None, StringComparison.Ordinal))
-        {
-            return
-            [
-                "No LLM configured: runs will use the <undefined-llm> echo provider. " +
-                "Configure one when you are ready.",
-            ];
-        }
+            return [strings[StudioStringKeys.PresetGuidanceNone]];
 
         if (plan.ApiKeyEnvName is { } envName)
         {
             var messages = new List<string>
             {
-                string.Create(
+                string.Format(
                     CultureInfo.InvariantCulture,
-                    $"API key: referenced from the environment — set it with: export {envName}=<your-key>"),
+                    strings[StudioStringKeys.PresetGuidanceApiKeyEnv],
+                    envName),
             };
 
             if (!string.Equals(envName, DefaultApiKeyEnv, StringComparison.Ordinal))
             {
-                messages.Add(string.Create(
+                messages.Add(string.Format(
                     CultureInfo.InvariantCulture,
-                    $"Note: the Orkeon runtime reads `{DefaultApiKeyEnv}` natively; " +
-                    $"`{envName}` is only read by the `orkeon init` / `orkeon llm` probes."));
+                    strings[StudioStringKeys.PresetGuidanceNonDefaultEnv],
+                    DefaultApiKeyEnv,
+                    envName));
             }
 
             return messages;
@@ -298,8 +327,10 @@ public static class LlmPresets
         {
             return
             [
-                "WARNING: the API key is stored in plain text in the generated file. " +
-                $"Prefer referencing it from the {DefaultApiKeyEnv} environment variable.",
+                string.Format(
+                    CultureInfo.InvariantCulture,
+                    strings[StudioStringKeys.PresetGuidanceInlineKeyWarning],
+                    DefaultApiKeyEnv),
             ];
         }
 

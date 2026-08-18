@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
@@ -19,16 +20,23 @@ public sealed class TargetSelectionViewModel : ObservableObject
 {
     private readonly RunTargetDetector _detector;
     private readonly IPathPicker _picker;
+    private readonly IStudioStrings _strings;
     private string _selectedPath = "";
     private RunTargetDetection? _detection;
     private RunTargetKind? _preferredDirectoryKind;
     private string? _selectedCandidate;
 
     /// <summary>Builds the picker over a target probe and the browse dialogs.</summary>
-    public TargetSelectionViewModel(ITargetProbe? probe = null, IPathPicker? picker = null)
+    public TargetSelectionViewModel(
+        ITargetProbe? probe = null,
+        IPathPicker? picker = null,
+        IStudioStrings? strings = null)
     {
         _detector = new RunTargetDetector(probe);
         _picker = picker ?? NullPathPicker.Instance;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+        _strings.CultureChanged += (_, _) =>
+            OnPropertiesChanged(nameof(StatusDisplay), nameof(DirectoryRunNotice));
 
         BrowseFileCommand = new RelayCommand(BrowseFile);
         BrowseFolderCommand = new RelayCommand(BrowseFolder);
@@ -137,7 +145,7 @@ public sealed class TargetSelectionViewModel : ObservableObject
     /// <c>orkeon run &lt;directory&gt;</c> (spec §6).
     /// </summary>
     public string? DirectoryRunNotice =>
-        Target?.RequiresDirectoryRunSupport == true ? RunTargetRequirements.DirectoryRunNotice : null;
+        Target?.RequiresDirectoryRunSupport == true ? RunTargetRequirements.DirectoryRunNoticeFor(_strings) : null;
 
     /// <summary>The path that will be handed to <c>orkeon run</c>, which is not always the selected one.</summary>
     public string? RunPath => Target?.RunPath;
@@ -145,14 +153,14 @@ public sealed class TargetSelectionViewModel : ObservableObject
     /// <summary>The detected shape, phrased for the status line.</summary>
     public string StatusDisplay => Detection switch
     {
-        null => "No target selected.",
-        { Status: RunTargetDetectionStatus.Resolved, Target: { } target } => string.Create(
+        null => _strings[StudioStringKeys.TargetNone],
+        { Status: RunTargetDetectionStatus.Resolved, Target: { } target } => string.Format(
             CultureInfo.InvariantCulture,
-            $"{Describe(target.Kind)} — orkeon run {target.RunPath}"),
-        { Status: RunTargetDetectionStatus.NeedsSelection } => string.Create(
+            _strings[StudioStringKeys.TargetResolved], Describe(target.Kind), target.RunPath),
+        { Status: RunTargetDetectionStatus.NeedsSelection } => string.Format(
             CultureInfo.InvariantCulture,
-            $"{Candidates.Count} script(s) found: pick the one to run."),
-        _ => Detection.Error ?? "Detection failed.",
+            _strings[StudioStringKeys.TargetPickScript], Candidates.Count),
+        _ => Detection.Error ?? _strings[StudioStringKeys.TargetDetectionFailed],
     };
 
     /// <summary>The extensions the CLI accepts, shown next to the browse button.</summary>
@@ -194,20 +202,20 @@ public sealed class TargetSelectionViewModel : ObservableObject
         return Detect();
     }
 
-    private static string Describe(RunTargetKind kind) => kind switch
+    private string Describe(RunTargetKind kind) => kind switch
     {
-        RunTargetKind.YamlFile => "YAML crew file",
-        RunTargetKind.ScriptFile => "Scripting crew file",
-        RunTargetKind.MultiFileCrewDirectory => "Multi-file crew directory",
-        RunTargetKind.ScriptDirectory => "Scripting crew directory",
+        RunTargetKind.YamlFile => _strings[StudioStringKeys.TargetKindYamlFile],
+        RunTargetKind.ScriptFile => _strings[StudioStringKeys.TargetKindScriptFile],
+        RunTargetKind.MultiFileCrewDirectory => _strings[StudioStringKeys.TargetKindCrewDirectory],
+        RunTargetKind.ScriptDirectory => _strings[StudioStringKeys.TargetKindScriptDirectory],
         _ => kind.ToString(),
     };
 
     private void BrowseFile()
     {
         var picked = _picker.PickFile(
-            "Select a crew definition",
-            "Crew definitions|*.yaml;*.yml;*.ts;*.js|All files|*.*",
+            _strings[StudioStringKeys.DialogSelectCrewDefinition],
+            _strings[StudioStringKeys.DialogFilterCrew],
             SelectedPath);
 
         if (picked is { Length: > 0 })
@@ -216,7 +224,7 @@ public sealed class TargetSelectionViewModel : ObservableObject
 
     private void BrowseFolder()
     {
-        var picked = _picker.PickFolder("Select a crew directory", SelectedPath);
+        var picked = _picker.PickFolder(_strings[StudioStringKeys.DialogSelectCrewDirectory], SelectedPath);
         if (picked is { Length: > 0 })
             Select(picked);
     }

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio i18n: the whole below-the-view layer follows the language switch (STUDIO-11 tranche 2)
+
+Completes the sweep opened by PUB-19: the `IStudioStrings` registry grows from 4
+to 89 keys covering every string Core and the WPF ViewModels fabricate — the
+`orkeon init` preset catalogue (labels, guidance, plan errors, via
+`LlmPresets.CatalogFor`), the settings resolution chain
+(`SettingsLocations.ResolutionChainFor`), the mount-rights labels
+(`MountRightsTokens.ChoicesFor`/`GetLabel(rights, strings)`), the directory-run
+notice, the `--mount` override semantics, and all ViewModel statuses, summaries,
+dialog titles and filters. Every long-lived ViewModel takes the port (optional,
+English default — TUIs unchanged) and re-emits its bindings on `CultureChanged`;
+transient rows (mounts, overrides, effective-mount table) are refreshed by their
+owners. 89 keys mirrored EN/FR in the WPF resx; a new drift test pins
+resx-EN ≡ `EnglishStudioStrings` so the two English surfaces cannot diverge.
+Deliberately untranslated (CLI-contract policy, like `VALIDATION OK/FAILED`):
+`orkeon doctor` check names/details, validator message bodies, target-detector
+remediations, LLM probe results, and exit-code descriptions.
+
 ### Added — Studio localization port: strings below the view layer follow the language switch (PUB-19 tranche 1)
 
 Foundation for STUDIO-11 ("switching to French leaves some strings in English"):

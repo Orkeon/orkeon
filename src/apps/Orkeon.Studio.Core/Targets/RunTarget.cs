@@ -1,3 +1,6 @@
+using System.Globalization;
+using Orkeon.Studio.Core.Localization;
+
 namespace Orkeon.Studio.Core.Targets;
 
 /// <summary>
@@ -88,4 +91,15 @@ public static class RunTargetRequirements
         "This is a multi-file crew directory: running it uses 'orkeon run <directory>', which " +
         "requires Orkeon >= " + MinimumCliVersion + ". The CLI installed alongside Studio " +
         "supports this.";
+
+    /// <summary><see cref="DirectoryRunNotice"/> resolved through a culture port (STUDIO-11).</summary>
+    public static string DirectoryRunNoticeFor(IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            strings[StudioStringKeys.TargetDirectoryRunNotice],
+            MinimumCliVersion);
+    }
 }

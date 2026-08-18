@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Llm;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
@@ -19,6 +21,7 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
 {
     private readonly ILlmEndpointProbe _probe;
     private readonly IUiDispatcher _dispatcher;
+    private readonly IStudioStrings _strings;
     private string? _connectionTestResult;
 
     /// <summary>Binds the form to the <c>Llm</c> section of the document.</summary>
@@ -26,16 +29,21 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
     /// <param name="onChanged">Called whenever a field writes into the document.</param>
     /// <param name="probe">Runs the connectivity test; defaults to a real HTTP probe.</param>
     /// <param name="dispatcher">Marshals the probe's answer back to the UI thread.</param>
+    /// <param name="strings">Localization port; defaults to the English strings (STUDIO-11).</param>
     public LlmSectionViewModel(
         Func<AppSettingsDocument> document,
         Action onChanged,
         ILlmEndpointProbe? probe = null,
-        IUiDispatcher? dispatcher = null)
+        IUiDispatcher? dispatcher = null,
+        IStudioStrings? strings = null)
         : base(document, onChanged)
     {
         // Lives as long as the tab, which lives as long as the window.
         _probe = probe ?? HttpLlmEndpointProbe.ForCurrentMachine();
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+        _strings.CultureChanged += (_, _) =>
+            OnPropertiesChanged(nameof(DetectedProviderDisplay), nameof(ApiKeyRecommendation));
         TestConnectionCommand = new AsyncRelayCommand(() => TestConnectionAsync());
     }
 
@@ -99,8 +107,8 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
     /// <summary>The detected provider, phrased for the read-only label next to the base URL.</summary>
     public string DetectedProviderDisplay => DetectedProvider switch
     {
-        LlmProviderDetector.None => "No base URL — the runtime falls back to the echo provider.",
-        LlmProviderDetector.Custom => "custom (host not in the known-endpoint table)",
+        LlmProviderDetector.None => _strings[StudioStringKeys.LlmNoBaseUrl],
+        LlmProviderDetector.Custom => _strings[StudioStringKeys.LlmCustomProvider],
         var provider => provider,
     };
 
@@ -108,9 +116,10 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
     public static string ApiKeyEnvironmentVariable => LlmPresets.DefaultApiKeyEnv;
 
     /// <summary>The advice shown under the API key box.</summary>
-    public static string ApiKeyRecommendation =>
-        $"Prefer the {LlmPresets.DefaultApiKeyEnv} environment variable: the runtime reads it with "
-        + "precedence over this file, so the key never has to be stored in clear text.";
+    public string ApiKeyRecommendation => string.Format(
+        CultureInfo.InvariantCulture,
+        _strings[StudioStringKeys.LlmApiKeyRecommendation],
+        LlmPresets.DefaultApiKeyEnv);
 
     /// <summary>Whether a key is currently stored in the file, which the validator reports.</summary>
     public bool HasInlineApiKey => ApiKey is { Length: > 0 };
@@ -143,7 +152,7 @@ public sealed class LlmSectionViewModel : DocumentSectionViewModel
                         "failure is reported in the result line like every other unreachable endpoint.")]
     public async Task<LlmProbeResult> TestConnectionAsync(CancellationToken cancellationToken = default)
     {
-        ConnectionTestResult = "Testing the connection…";
+        ConnectionTestResult = _strings[StudioStringKeys.LlmTesting];
         OnPropertyChanged(nameof(IsTestingConnection));
 
         LlmProbeResult result;

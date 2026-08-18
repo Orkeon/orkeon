@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Core.FileSystem;
 
@@ -41,13 +42,22 @@ public static class MountRightsTokens
     /// <summary>Token of <see cref="MountRights.ReadWriteNoDelete"/>.</summary>
     public const string ReadWriteNoDelete = "rwnd";
 
-    /// <summary>Every choice, in the order a drop-down should list them.</summary>
+    /// <summary>Every choice, in the order a drop-down should list them (English labels).</summary>
     public static IReadOnlyList<MountRightsChoice> Choices { get; } =
-    [
-        new(MountRights.ReadOnly, ReadOnly, "Read only"),
-        new(MountRights.ReadWrite, ReadWrite, "Read / write (create and delete allowed)"),
-        new(MountRights.ReadWriteNoDelete, ReadWriteNoDelete, "Read / write without delete"),
-    ];
+        ChoicesFor(EnglishStudioStrings.Instance);
+
+    /// <summary>The choices with their labels resolved through a culture port (STUDIO-11).</summary>
+    public static IReadOnlyList<MountRightsChoice> ChoicesFor(IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return
+        [
+            new(MountRights.ReadOnly, ReadOnly, strings[StudioStringKeys.RightsReadOnly]),
+            new(MountRights.ReadWrite, ReadWrite, strings[StudioStringKeys.RightsReadWrite]),
+            new(MountRights.ReadWriteNoDelete, ReadWriteNoDelete, strings[StudioStringKeys.RightsReadWriteNoDelete]),
+        ];
+    }
 
     /// <summary>Every valid token, for validation messages.</summary>
     public static IReadOnlyList<string> Tokens { get; } =
@@ -119,10 +129,24 @@ public static class MountRightsTokens
         return false;
     }
 
-    /// <summary>Returns the UI label of a rights value.</summary>
+    /// <summary>Returns the UI label of a rights value (English).</summary>
     [SuppressMessage("Design", "CA1024", Justification = "Lookup over the Choices table, not a property-backed value.")]
     public static string GetLabel(MountRights rights) =>
         Choices.First(c => c.Rights == rights).Label;
+
+    /// <summary>Returns the UI label of a rights value through a culture port (STUDIO-11).</summary>
+    public static string GetLabel(MountRights rights, IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return strings[rights switch
+        {
+            MountRights.ReadOnly => StudioStringKeys.RightsReadOnly,
+            MountRights.ReadWrite => StudioStringKeys.RightsReadWrite,
+            MountRights.ReadWriteNoDelete => StudioStringKeys.RightsReadWriteNoDelete,
+            _ => throw new ArgumentOutOfRangeException(nameof(rights)),
+        }];
+    }
 
     /// <summary>
     /// Position of <paramref name="rights"/> in <see cref="Choices"/> — the index a

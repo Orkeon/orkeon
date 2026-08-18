@@ -159,7 +159,7 @@
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Mounts_Lbl_Rights], Source={x:Static services:I18n.Instance}}"/>
             <ComboBox HorizontalAlignment="Left" MinWidth="220"
-                      ItemsSource="{x:Static mounts:MountEditorViewModel.RightsChoices}"
+                      ItemsSource="{Binding RightsChoices}"
                       SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
 
             <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
@@ -174,7 +174,7 @@
                       <controls:LucideIcon Kind="trash-2" Size="13"/>
                     </Button>
                     <ComboBox DockPanel.Dock="Right" Width="200" Margin="8,0,0,0"
-                              ItemsSource="{x:Static mounts:SubPathOverrideViewModel.RightsChoices}"
+                              ItemsSource="{Binding RightsChoices}"
                               SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
                     <TextBox Style="{StaticResource InputMono}" Text="{Binding RelativePath, UpdateSourceTrigger=PropertyChanged}"/>
                   </DockPanel>

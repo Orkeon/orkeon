@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Globalization;
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -18,20 +19,23 @@ namespace Orkeon.Studio.Wpf.ViewModels.Mounts;
 /// </summary>
 public sealed class MountEditorViewModel : ObservableObject
 {
+    private readonly IStudioStrings _strings;
     private string _physicalPath = "";
     private string _virtualPath = "";
     private MountRights _rights = MountRights.ReadOnly;
     private string _rawText = "";
 
     /// <summary>Creates an empty, editable mount row.</summary>
-    public MountEditorViewModel()
+    public MountEditorViewModel(IStudioStrings? strings = null)
     {
+        _strings = strings ?? EnglishStudioStrings.Instance;
         IsParsed = true;
         Overrides.CollectionChanged += OnOverridesChanged;
     }
 
-    private MountEditorViewModel(string rawText)
+    private MountEditorViewModel(string rawText, IStudioStrings? strings)
     {
+        _strings = strings ?? EnglishStudioStrings.Instance;
         IsParsed = false;
         _rawText = rawText;
         Overrides.CollectionChanged += OnOverridesChanged;
@@ -96,13 +100,13 @@ public sealed class MountEditorViewModel : ObservableObject
     public ObservableCollection<SubPathOverrideViewModel> Overrides { get; } = [];
 
     /// <summary>The closed list of rights tokens, exactly the ones the Domain parser accepts.</summary>
-    public static IReadOnlyList<MountRightsChoice> RightsChoices => MountRightsTokens.Choices;
+    public IReadOnlyList<MountRightsChoice> RightsChoices => MountRightsTokens.ChoicesFor(_strings);
 
     /// <summary>The virtual paths suggested next to the text box.</summary>
     public static IReadOnlyList<string> SuggestedVirtualPaths => MountDefinition.SuggestedVirtualPaths;
 
     /// <summary>The explicit wording of the selected rights, e.g. "Read only".</summary>
-    public string RightsLabel => MountRightsTokens.GetLabel(Rights);
+    public string RightsLabel => MountRightsTokens.GetLabel(Rights, _strings);
 
     /// <summary>Whether <see cref="VirtualPath"/> satisfies the Domain rule, checked as the user types.</summary>
     public bool IsVirtualPathValid => MountDefinition.IsValidVirtualPath(VirtualPath);
@@ -111,11 +115,11 @@ public sealed class MountEditorViewModel : ObservableObject
     public string MountString => IsParsed ? ToDefinition().ToMountString() : RawText;
 
     /// <summary>Builds a row from a parsed Core definition.</summary>
-    public static MountEditorViewModel FromDefinition(MountDefinition definition)
+    public static MountEditorViewModel FromDefinition(MountDefinition definition, IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
 
-        var mount = new MountEditorViewModel
+        var mount = new MountEditorViewModel(strings)
         {
             PhysicalPath = definition.PhysicalPath,
             VirtualPath = definition.VirtualPath,
@@ -123,7 +127,7 @@ public sealed class MountEditorViewModel : ObservableObject
         };
 
         foreach (var item in definition.Overrides)
-            mount.Overrides.Add(new SubPathOverrideViewModel(item));
+            mount.Overrides.Add(new SubPathOverrideViewModel(item, strings));
 
         return mount;
     }
@@ -132,13 +136,13 @@ public sealed class MountEditorViewModel : ObservableObject
     /// Builds a row from a raw entry: parsed into a form when the Core parser accepts it, kept
     /// verbatim and read-only when it does not.
     /// </summary>
-    public static MountEditorViewModel FromRaw(string entry)
+    public static MountEditorViewModel FromRaw(string entry, IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
         return MountDefinition.TryParse(entry, out var definition, out _)
-            ? FromDefinition(definition)
-            : new MountEditorViewModel(entry);
+            ? FromDefinition(definition, strings)
+            : new MountEditorViewModel(entry, strings);
     }
 
     /// <summary>Converts the form back to the Core record.</summary>
@@ -160,9 +164,21 @@ public sealed class MountEditorViewModel : ObservableObject
     /// <summary>Appends an empty override row.</summary>
     public SubPathOverrideViewModel AddOverride()
     {
-        var item = new SubPathOverrideViewModel();
+        var item = new SubPathOverrideViewModel(_strings);
         Overrides.Add(item);
         return item;
+    }
+
+    /// <summary>
+    /// Re-emits every culture-dependent property; called by the owning editor on a language
+    /// switch, so transient rows never subscribe to the port themselves (STUDIO-11).
+    /// </summary>
+    public void RefreshCulture()
+    {
+        OnPropertiesChanged(nameof(RightsChoices), nameof(RightsLabel));
+
+        foreach (var item in Overrides)
+            item.RefreshCulture();
     }
 
     /// <summary>Removes an override row.</summary>

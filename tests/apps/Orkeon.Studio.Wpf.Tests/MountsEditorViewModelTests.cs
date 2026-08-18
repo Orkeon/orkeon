@@ -71,7 +71,7 @@ public sealed class MountEditorViewModelTests
     [Fact]
     public void Should_OfferOnlyTheThreeDomainTokens()
     {
-        Assert.Equal(["ro", "rw", "rwnd"], MountEditorViewModel.RightsChoices.Select(c => c.Token));
+        Assert.Equal(["ro", "rw", "rwnd"], new MountEditorViewModel().RightsChoices.Select(c => c.Token));
     }
 
     [Fact]

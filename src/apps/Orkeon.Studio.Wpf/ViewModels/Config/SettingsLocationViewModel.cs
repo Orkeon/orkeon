@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Storage;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
@@ -25,14 +26,20 @@ public enum SettingsLocationMode
 public sealed class SettingsLocationViewModel : ObservableObject
 {
     private readonly IPathPicker _picker;
+    private readonly IStudioStrings _strings;
     private SettingsLocationMode _mode = SettingsLocationMode.Global;
     private string? _customPath;
     private string? _globalPathError;
 
     /// <summary>Resolves the global path and wires the browse dialogs.</summary>
-    public SettingsLocationViewModel(IPathPicker? picker = null, string? globalPathOverride = null)
+    public SettingsLocationViewModel(
+        IPathPicker? picker = null,
+        string? globalPathOverride = null,
+        IStudioStrings? strings = null)
     {
         _picker = picker ?? NullPathPicker.Instance;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+        _strings.CultureChanged += (_, _) => RefreshResolutionChain();
 
         if (globalPathOverride is { Length: > 0 })
         {
@@ -47,11 +54,21 @@ public sealed class SettingsLocationViewModel : ObservableObject
             _globalPathError = error;
         }
 
-        foreach (var step in SettingsLocations.ResolutionChain)
+        foreach (var step in SettingsLocations.ResolutionChainFor(_strings))
             ResolutionChain.Add(step);
 
         BrowseCommand = new RelayCommand(Browse);
         UseGlobalCommand = new RelayCommand(() => Mode = SettingsLocationMode.Global);
+    }
+
+    /// <summary>Re-publishes the chain in the new culture (STUDIO-11).</summary>
+    private void RefreshResolutionChain()
+    {
+        ResolutionChain.Clear();
+        foreach (var step in SettingsLocations.ResolutionChainFor(_strings))
+            ResolutionChain.Add(step);
+
+        OnPropertyChanged(nameof(ResolutionChainLines));
     }
 
     /// <summary>The four steps the runtime walks to find an appsettings file.</summary>
@@ -121,8 +138,8 @@ public sealed class SettingsLocationViewModel : ObservableObject
     private void Browse()
     {
         var picked = _picker.PickSaveFile(
-            "Save appsettings.json",
-            "JSON files|*.json|All files|*.*",
+            _strings[StudioStringKeys.DialogSaveAppSettings],
+            _strings[StudioStringKeys.DialogFilterJson],
             CustomPath ?? GlobalPath);
 
         if (picked is { Length: > 0 })

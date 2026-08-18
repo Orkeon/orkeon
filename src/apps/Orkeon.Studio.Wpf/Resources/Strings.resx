@@ -170,4 +170,93 @@
   <data name="Core_Validation_Summary" xml:space="preserve"><value>Validation: {0} error(s), {1} warning(s), {2} note(s).</value></data>
   <data name="Core_Launch_NothingRan" xml:space="preserve"><value>Nothing ran — {0}</value></data>
   <data name="Core_Launch_ExitCode" xml:space="preserve"><value>Exit code {0} — {1}</value></data>
+
+  <!-- STUDIO-11 tranche 2: Core catalogues -->
+  <data name="Core_Preset_Ollama_Title" xml:space="preserve"><value>Ollama</value></data>
+  <data name="Core_Preset_Ollama_Desc" xml:space="preserve"><value>Local Ollama server.</value></data>
+  <data name="Core_Preset_Dmr_Title" xml:space="preserve"><value>Docker Model Runner</value></data>
+  <data name="Core_Preset_Dmr_Desc" xml:space="preserve"><value>Local llama.cpp engine served by Docker Desktop.</value></data>
+  <data name="Core_Preset_OpenAI_Title" xml:space="preserve"><value>OpenAI</value></data>
+  <data name="Core_Preset_OpenAI_Desc" xml:space="preserve"><value>OpenAI cloud API.</value></data>
+  <data name="Core_Preset_Custom_Title" xml:space="preserve"><value>Other OpenAI-compatible</value></data>
+  <data name="Core_Preset_Custom_Desc" xml:space="preserve"><value>DeepSeek, GLM, Mistral, … — base URL and model required.</value></data>
+  <data name="Core_Preset_None_Title" xml:space="preserve"><value>None / offline</value></data>
+  <data name="Core_Preset_None_Desc" xml:space="preserve"><value>No LLM: runs use the &lt;undefined-llm&gt; echo provider.</value></data>
+  <data name="Core_Preset_Error_CustomIncomplete" xml:space="preserve"><value>The custom preset requires both a base URL and a model.</value></data>
+  <data name="Core_Preset_Error_Unknown" xml:space="preserve"><value>Unknown preset '{0}'. Supported: {1}.</value></data>
+  <data name="Core_Preset_Guidance_None" xml:space="preserve"><value>No LLM configured: runs will use the &lt;undefined-llm&gt; echo provider. Configure one when you are ready.</value></data>
+  <data name="Core_Preset_Guidance_ApiKeyEnv" xml:space="preserve"><value>API key: referenced from the environment — set it with: export {0}=&lt;your-key&gt;</value></data>
+  <data name="Core_Preset_Guidance_NonDefaultEnv" xml:space="preserve"><value>Note: the Orkeon runtime reads `{0}` natively; `{1}` is only read by the `orkeon init` / `orkeon llm` probes.</value></data>
+  <data name="Core_Preset_Guidance_InlineKeyWarning" xml:space="preserve"><value>WARNING: the API key is stored in plain text in the generated file. Prefer referencing it from the {0} environment variable.</value></data>
+  <data name="Core_Resolution_Step1_Title" xml:space="preserve"><value>Explicit path</value></data>
+  <data name="Core_Resolution_Step1_Desc" xml:space="preserve"><value>The file passed to the runner with --settings. If it does not exist, resolution stops and the runtime falls back to environment variables only.</value></data>
+  <data name="Core_Resolution_Step2_Title" xml:space="preserve"><value>Next to the crew</value></data>
+  <data name="Core_Resolution_Step2_Desc" xml:space="preserve"><value>{0} in the directory holding the crew configuration.</value></data>
+  <data name="Core_Resolution_Step3_Title" xml:space="preserve"><value>Shared appsettings directory</value></data>
+  <data name="Core_Resolution_Step3_Desc" xml:space="preserve"><value>appsettings/{0}, searched by walking up from the crew directory (the legacy _shared/ location is still accepted for one release).</value></data>
+  <data name="Core_Resolution_Step4_Title" xml:space="preserve"><value>Global per-user file</value></data>
+  <data name="Core_Resolution_Step4_Desc" xml:space="preserve"><value>The file written by `orkeon init`: %APPDATA%\Orkeon\appsettings.json on Windows, $XDG_CONFIG_HOME/Orkeon/appsettings.json (else ~/.config/Orkeon/appsettings.json) elsewhere.</value></data>
+  <data name="Core_Rights_ReadOnly" xml:space="preserve"><value>Read only</value></data>
+  <data name="Core_Rights_ReadWrite" xml:space="preserve"><value>Read / write (create and delete allowed)</value></data>
+  <data name="Core_Rights_ReadWriteNoDelete" xml:space="preserve"><value>Read / write without delete</value></data>
+  <data name="Core_Target_DirectoryRunNotice" xml:space="preserve"><value>This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;', which requires Orkeon &gt;= {0}. The CLI installed alongside Studio supports this.</value></data>
+  <data name="Core_MountSemantics_Explanation" xml:space="preserve"><value>The runner injects its own mounts first — the crew's configuration directory (the script's directory as '/script' for a .ork.ts crew), plus the log directory when LLM logging is on — then appends each --mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So the appsettings mount at index 0 is always replaced by the auto-injected one, the first --mount replaces the appsettings mount at index 1 (index 2 with --llm-log), and the two lists are never merged. Appsettings entries past the last written index stay in force.</value></data>
+  <data name="Core_MountSemantics_ExternalMounts" xml:space="preserve"><value>--allow-external-mounts additionally whitelists each --mount base path under 'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working directory (same effect as ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
+  <data name="Core_MountSemantics_ThisLaunch" xml:space="preserve"><value> For this launch the runner injects {0} mount(s) ({1}), so the first --mount occupies '{2}'.</value></data>
+
+  <!-- STUDIO-11 tranche 2: ViewModel-fabricated strings -->
+  <data name="Vm_Config_NewDocument" xml:space="preserve"><value>New empty document. Pick a preset to fill in the Llm section.</value></data>
+  <data name="Vm_Config_NoFileSelected" xml:space="preserve"><value>No file selected.</value></data>
+  <data name="Vm_Config_Loaded" xml:space="preserve"><value>Loaded {0}.</value></data>
+  <data name="Vm_Config_NotSavedErrors" xml:space="preserve"><value>Not saved: {0} error(s) must be fixed first.</value></data>
+  <data name="Vm_Config_NotSavedNoDestination" xml:space="preserve"><value>Not saved: no destination selected.</value></data>
+  <data name="Vm_Config_Saved" xml:space="preserve"><value>Saved to {0}.</value></data>
+  <data name="Vm_Config_SavedLlmWarning" xml:space="preserve"><value>Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider.</value></data>
+  <data name="Vm_Config_NoProblem" xml:space="preserve"><value>No problem found.</value></data>
+  <data name="Vm_Config_ErrorsWarnings" xml:space="preserve"><value>{0} error(s), {1} warning(s).</value></data>
+  <data name="Vm_Llm_NoBaseUrl" xml:space="preserve"><value>No base URL — the runtime falls back to the echo provider.</value></data>
+  <data name="Vm_Llm_CustomProvider" xml:space="preserve"><value>custom (host not in the known-endpoint table)</value></data>
+  <data name="Vm_Llm_ApiKeyRecommendation" xml:space="preserve"><value>Prefer the {0} environment variable: the runtime reads it with precedence over this file, so the key never has to be stored in clear text.</value></data>
+  <data name="Vm_Llm_Testing" xml:space="preserve"><value>Testing the connection…</value></data>
+  <data name="Vm_Diag_NoCheck" xml:space="preserve"><value>orkeon doctor reported no check.</value></data>
+  <data name="Vm_Diag_AllGreen" xml:space="preserve"><value>{0} check(s), all green.</value></data>
+  <data name="Vm_Diag_Findings" xml:space="preserve"><value>{0} check(s): {1} failure(s), {2} warning(s).</value></data>
+  <data name="Vm_Mounts_SummaryOk" xml:space="preserve"><value>{0} mount(s), no error.</value></data>
+  <data name="Vm_Mounts_SummaryErrors" xml:space="preserve"><value>{0} mount(s), {1} error(s).</value></data>
+  <data name="Vm_Mounts_SelectCrewFirst" xml:space="preserve"><value>Select a crew first: the runner injects its own mounts ahead of every --mount, so which configuration key each mount occupies depends on the crew being launched.</value></data>
+  <data name="Vm_Mounts_ExternalWarning" xml:space="preserve"><value>Security: this lets a mount point anywhere on the machine, outside the working directory. Only enable it for a path you chose deliberately.</value></data>
+  <data name="Vm_Mounts_EffectiveNone" xml:space="preserve"><value>{0} effective mount(s); no appsettings entry is replaced.</value></data>
+  <data name="Vm_Mounts_EffectiveReplaced" xml:space="preserve"><value>{0} effective mount(s); {1} appsettings entry(ies) replaced by index.</value></data>
+  <data name="Vm_Mounts_OriginAuto" xml:space="preserve"><value>auto (injected by the runner)</value></data>
+  <data name="Vm_Mounts_OriginReplaces" xml:space="preserve"><value>{0} (replaces «{1}»)</value></data>
+  <data name="Vm_Launch_BinaryNotLocated" xml:space="preserve"><value>The orkeon CLI has not been located yet.</value></data>
+  <data name="Vm_Launch_BinaryNotFound" xml:space="preserve"><value>The orkeon CLI was not found.</value></data>
+  <data name="Vm_Launch_Ready" xml:space="preserve"><value>Ready to launch.</value></data>
+  <data name="Vm_Launch_NoTarget" xml:space="preserve"><value>No target resolved.</value></data>
+  <data name="Vm_Launch_NotLaunchedErrors" xml:space="preserve"><value>Not launched: {0} error(s) must be fixed first.</value></data>
+  <data name="Vm_Launch_Cancelling" xml:space="preserve"><value>Cancelling: the CLI is asked to stop, and is killed if it does not.</value></data>
+  <data name="Vm_Launch_NothingToReplay" xml:space="preserve"><value>Nothing to replay: the entry for '{0}' recorded no arguments.</value></data>
+  <data name="Vm_Launch_Validating" xml:space="preserve"><value>Validating…</value></data>
+  <data name="Vm_Launch_Running" xml:space="preserve"><value>Running…</value></data>
+  <data name="Vm_Target_None" xml:space="preserve"><value>No target selected.</value></data>
+  <data name="Vm_Target_Resolved" xml:space="preserve"><value>{0} — orkeon run {1}</value></data>
+  <data name="Vm_Target_PickScript" xml:space="preserve"><value>{0} script(s) found: pick the one to run.</value></data>
+  <data name="Vm_Target_DetectionFailed" xml:space="preserve"><value>Detection failed.</value></data>
+  <data name="Vm_Target_KindYamlFile" xml:space="preserve"><value>YAML crew file</value></data>
+  <data name="Vm_Target_KindScriptFile" xml:space="preserve"><value>Scripting crew file</value></data>
+  <data name="Vm_Target_KindCrewDirectory" xml:space="preserve"><value>Multi-file crew directory</value></data>
+  <data name="Vm_Target_KindScriptDirectory" xml:space="preserve"><value>Scripting crew directory</value></data>
+  <data name="Vm_Log_Lines" xml:space="preserve"><value>{0} line(s).</value></data>
+  <data name="Vm_Log_LinesDropped" xml:space="preserve"><value>{0} line(s); {1} older line(s) dropped (cap {2}).</value></data>
+  <data name="Vm_Dialog_OpenAppSettings" xml:space="preserve"><value>Open appsettings.json</value></data>
+  <data name="Vm_Dialog_SaveAppSettings" xml:space="preserve"><value>Save appsettings.json</value></data>
+  <data name="Vm_Dialog_SelectAppSettings" xml:space="preserve"><value>Select an appsettings.json</value></data>
+  <data name="Vm_Dialog_SelectInputsFile" xml:space="preserve"><value>Select an inputs file</value></data>
+  <data name="Vm_Dialog_SelectLlmLogDest" xml:space="preserve"><value>Select the LLM log destination</value></data>
+  <data name="Vm_Dialog_SelectCrewDefinition" xml:space="preserve"><value>Select a crew definition</value></data>
+  <data name="Vm_Dialog_SelectCrewDirectory" xml:space="preserve"><value>Select a crew directory</value></data>
+  <data name="Vm_Dialog_SelectMountFolder" xml:space="preserve"><value>Select the folder to mount</value></data>
+  <data name="Vm_Dialog_FilterJson" xml:space="preserve"><value>JSON files|*.json|All files|*.*</value></data>
+  <data name="Vm_Dialog_FilterCrew" xml:space="preserve"><value>Crew definitions|*.yaml;*.yml;*.ts;*.js|All files|*.*</value></data>
+  <data name="Vm_Dialog_FilterAll" xml:space="preserve"><value>All files|*.*</value></data>
 </root>

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Targets;
 
 namespace Orkeon.Studio.Core.Launch;
@@ -170,19 +171,39 @@ public static class MountOverrideSemantics
         "'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working " +
         "directory (same effect as ORKEON_ALLOW_EXTERNAL_MOUNTS=1).";
 
+    /// <summary><see cref="Explanation"/> resolved through a culture port (STUDIO-11).</summary>
+    public static string ExplanationFor(IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+        return strings[StudioStringKeys.MountSemanticsExplanation];
+    }
+
+    /// <summary><see cref="ExternalMountsExplanation"/> resolved through a culture port (STUDIO-11).</summary>
+    public static string ExternalMountsExplanationFor(IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+        return strings[StudioStringKeys.MountSemanticsExternalMounts];
+    }
+
     /// <summary>
     /// <see cref="Explanation"/> followed by the mounts this particular launch injects and the
     /// index its first <c>--mount</c> will therefore occupy.
     /// </summary>
-    public static string Explain(MountAutoInjection autoInjection)
+    public static string Explain(MountAutoInjection autoInjection) =>
+        Explain(autoInjection, EnglishStudioStrings.Instance);
+
+    /// <summary>Same as <see cref="Explain(MountAutoInjection)"/> through a culture port (STUDIO-11).</summary>
+    public static string Explain(MountAutoInjection autoInjection, IStudioStrings strings)
     {
         ArgumentNullException.ThrowIfNull(autoInjection);
+        ArgumentNullException.ThrowIfNull(strings);
 
-        return Explanation + string.Create(
+        return ExplanationFor(strings) + string.Format(
             CultureInfo.InvariantCulture,
-            $" For this launch the runner injects {autoInjection.Count} mount(s) " +
-            $"({string.Join(", ", autoInjection.Mounts)}), so the first --mount occupies " +
-            $"'{ConfigurationKey(autoInjection.Count)}'.");
+            strings[StudioStringKeys.MountSemanticsThisLaunch],
+            autoInjection.Count,
+            string.Join(", ", autoInjection.Mounts),
+            ConfigurationKey(autoInjection.Count));
     }
 
     /// <summary>Configuration key of the mount at the given index.</summary>

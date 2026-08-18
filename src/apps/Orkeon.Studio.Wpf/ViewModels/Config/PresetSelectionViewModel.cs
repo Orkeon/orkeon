@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
@@ -17,6 +18,8 @@ public sealed class PresetSelectionViewModel : ObservableObject
 {
     private readonly Func<AppSettingsDocument> _document;
     private readonly Action _onApplied;
+    private readonly IStudioStrings _strings;
+    private IReadOnlyList<LlmPresetInfo> _catalog;
     private LlmPresetInfo? _selectedPreset;
     private string? _baseUrl;
     private string? _model;
@@ -25,20 +28,26 @@ public sealed class PresetSelectionViewModel : ObservableObject
     private string? _errorMessage;
 
     /// <summary>Binds the picker to the document it will write into once applied.</summary>
-    public PresetSelectionViewModel(Func<AppSettingsDocument> document, Action onApplied)
+    public PresetSelectionViewModel(
+        Func<AppSettingsDocument> document,
+        Action onApplied,
+        IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(onApplied);
 
         _document = document;
         _onApplied = onApplied;
-        _selectedPreset = Catalog.Count > 0 ? Catalog[0] : null;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+        _strings.CultureChanged += (_, _) => RefreshCulture();
+        _catalog = LlmPresets.CatalogFor(_strings);
+        _selectedPreset = _catalog.Count > 0 ? _catalog[0] : null;
 
         ApplyCommand = new RelayCommand(() => Apply(), () => SelectedPreset is not null);
     }
 
     /// <summary>The five presets offered, identical to the <c>orkeon init</c> list.</summary>
-    public static IReadOnlyList<LlmPresetInfo> Catalog => LlmPresets.Catalog;
+    public IReadOnlyList<LlmPresetInfo> Catalog => _catalog;
 
     /// <summary>Writes the selected preset into the document.</summary>
     public RelayCommand ApplyCommand { get; }
@@ -126,7 +135,7 @@ public sealed class PresetSelectionViewModel : ObservableObject
             ApiKeyEnv = ApiKeyEnv,
         };
 
-        if (!LlmPresets.TryCreatePlan(preset.Name, overrides, out var plan, out var error))
+        if (!LlmPresets.TryCreatePlan(preset.Name, overrides, _strings, out var plan, out var error))
         {
             ErrorMessage = error;
             Guidance.Clear();
@@ -137,10 +146,27 @@ public sealed class PresetSelectionViewModel : ObservableObject
         LlmPresets.Apply(_document(), plan);
 
         Guidance.Clear();
-        foreach (var line in LlmPresets.Guidance(plan))
+        foreach (var line in LlmPresets.Guidance(plan, _strings))
             Guidance.Add(line);
 
         _onApplied();
         return true;
+    }
+
+    /// <summary>
+    /// Rebuilds the catalogue in the new culture and re-selects the same preset by name, so a
+    /// language switch never resets what the user picked (STUDIO-11).
+    /// </summary>
+    private void RefreshCulture()
+    {
+        var selectedName = _selectedPreset?.Name;
+
+        _catalog = LlmPresets.CatalogFor(_strings);
+        _selectedPreset = selectedName is null
+            ? null
+            : _catalog.FirstOrDefault(p => string.Equals(p.Name, selectedName, StringComparison.Ordinal));
+
+        OnPropertiesChanged(nameof(Catalog), nameof(SelectedPreset), nameof(Description), nameof(RequiresApiKey));
+        ApplyCommand.RaiseCanExecuteChanged();
     }
 }

@@ -53,7 +53,8 @@ public partial class App : System.Windows.Application
         // never reaches; that is what makes the smoke independent of the environment.
         _viewModel = MainWindowViewModel.CreateForCurrentMachine(
             new WindowPathPicker(),
-            new WpfDispatcher(Dispatcher));
+            new WpfDispatcher(Dispatcher),
+            I18nStudioStrings.Instance);
 
         var window = new MainWindow { DataContext = _viewModel };
         MainWindow = window;

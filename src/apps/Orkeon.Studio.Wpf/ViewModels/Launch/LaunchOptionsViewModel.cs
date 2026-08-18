@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Orkeon.Studio.Core.Launch;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
@@ -63,6 +64,7 @@ public enum SettingsSelectionMode
 public sealed class LaunchOptionsViewModel : ObservableObject
 {
     private readonly IPathPicker _picker;
+    private readonly IStudioStrings _strings;
     private RunTarget? _target;
     private SettingsSelectionMode _settingsMode = SettingsSelectionMode.Automatic;
     private string? _settingsPath;
@@ -75,9 +77,10 @@ public sealed class LaunchOptionsViewModel : ObservableObject
     private RunVariableViewModel? _selectedVariable;
 
     /// <summary>Builds the option panel over the browse dialogs.</summary>
-    public LaunchOptionsViewModel(IPathPicker? picker = null)
+    public LaunchOptionsViewModel(IPathPicker? picker = null, IStudioStrings? strings = null)
     {
         _picker = picker ?? NullPathPicker.Instance;
+        _strings = strings ?? EnglishStudioStrings.Instance;
 
         Variables.CollectionChanged += (_, e) =>
         {
@@ -315,7 +318,10 @@ public sealed class LaunchOptionsViewModel : ObservableObject
 
     private void BrowseSettings()
     {
-        var picked = _picker.PickFile("Select an appsettings.json", "JSON files|*.json|All files|*.*", SettingsPath);
+        var picked = _picker.PickFile(
+            _strings[StudioStringKeys.DialogSelectAppSettings],
+            _strings[StudioStringKeys.DialogFilterJson],
+            SettingsPath);
         if (picked is not { Length: > 0 })
             return;
 
@@ -325,14 +331,20 @@ public sealed class LaunchOptionsViewModel : ObservableObject
 
     private void BrowseInputsFile()
     {
-        var picked = _picker.PickFile("Select an inputs file", "JSON files|*.json|All files|*.*", InputsFilePath);
+        var picked = _picker.PickFile(
+            _strings[StudioStringKeys.DialogSelectInputsFile],
+            _strings[StudioStringKeys.DialogFilterJson],
+            InputsFilePath);
         if (picked is { Length: > 0 })
             InputsFilePath = picked;
     }
 
     private void BrowseLlmLogPath()
     {
-        var picked = _picker.PickSaveFile("Select the LLM log destination", "All files|*.*", LlmLogPath);
+        var picked = _picker.PickSaveFile(
+            _strings[StudioStringKeys.DialogSelectLlmLogDestination],
+            _strings[StudioStringKeys.DialogFilterAll],
+            LlmLogPath);
         if (picked is { Length: > 0 })
             LlmLogPath = picked;
     }

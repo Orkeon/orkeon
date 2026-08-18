@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.Tests.Doubles;
@@ -203,7 +204,7 @@ public sealed class ConfigTabViewModelTests
     public void Should_ApplyThePresetToTheDocument_When_TheCommandRuns()
     {
         var tab = Build();
-        tab.Presets.SelectedPreset = PresetSelectionViewModel.Catalog.First(p => p.Name == "ollama");
+        tab.Presets.SelectedPreset = LlmPresets.Catalog.First(p => p.Name == "ollama");
 
         tab.Presets.ApplyCommand.Execute(null);
 

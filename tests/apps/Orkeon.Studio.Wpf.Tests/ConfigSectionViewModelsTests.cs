@@ -64,8 +64,10 @@ public sealed class LlmSectionViewModelTests
     [Fact]
     public void Should_RecommendTheEnvironmentVariable_For_TheApiKey()
     {
+        var (section, _, _) = Build();
+
         Assert.Equal("ORKEON_Llm__ApiKey", LlmSectionViewModel.ApiKeyEnvironmentVariable);
-        Assert.Contains("ORKEON_Llm__ApiKey", LlmSectionViewModel.ApiKeyRecommendation, StringComparison.Ordinal);
+        Assert.Contains("ORKEON_Llm__ApiKey", section.ApiKeyRecommendation, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -216,7 +218,7 @@ public sealed class PresetSelectionViewModelTests
         var document = AppSettingsDocument.CreateEmpty();
         var presets = new PresetSelectionViewModel(() => document, () => { })
         {
-            SelectedPreset = PresetSelectionViewModel.Catalog.First(p => p.Name == LlmPresets.DockerModelRunner),
+            SelectedPreset = LlmPresets.Catalog.First(p => p.Name == LlmPresets.DockerModelRunner),
         };
 
         Assert.Equal(LlmPresets.DockerModelRunnerBaseUrl, presets.BaseUrl);
@@ -230,7 +232,7 @@ public sealed class PresetSelectionViewModelTests
         var applied = 0;
         var presets = new PresetSelectionViewModel(() => document, () => applied++)
         {
-            SelectedPreset = PresetSelectionViewModel.Catalog.First(p => p.Name == LlmPresets.Ollama),
+            SelectedPreset = LlmPresets.Catalog.First(p => p.Name == LlmPresets.Ollama),
         };
 
         Assert.True(presets.Apply());
@@ -245,7 +247,7 @@ public sealed class PresetSelectionViewModelTests
         var document = AppSettingsDocument.CreateEmpty();
         var presets = new PresetSelectionViewModel(() => document, () => { })
         {
-            SelectedPreset = PresetSelectionViewModel.Catalog.First(p => p.Name == LlmPresets.Custom),
+            SelectedPreset = LlmPresets.Catalog.First(p => p.Name == LlmPresets.Custom),
         };
         presets.BaseUrl = null;
         presets.Model = null;
@@ -261,7 +263,7 @@ public sealed class PresetSelectionViewModelTests
         var document = AppSettingsDocument.CreateEmpty();
         var presets = new PresetSelectionViewModel(() => document, () => { })
         {
-            SelectedPreset = PresetSelectionViewModel.Catalog.First(p => p.Name == LlmPresets.OpenAI),
+            SelectedPreset = LlmPresets.Catalog.First(p => p.Name == LlmPresets.OpenAI),
         };
         presets.ApiKey = null;
 
@@ -276,7 +278,7 @@ public sealed class PresetSelectionViewModelTests
         var document = AppSettingsDocument.Parse("""{"Llm":{"Model":"m"}}""");
         var presets = new PresetSelectionViewModel(() => document, () => { })
         {
-            SelectedPreset = PresetSelectionViewModel.Catalog.First(p => p.Name == LlmPresets.None),
+            SelectedPreset = LlmPresets.Catalog.First(p => p.Name == LlmPresets.None),
         };
 
         presets.Apply();

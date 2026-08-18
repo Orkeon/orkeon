@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.History;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Wpf.ViewModels.Config;
@@ -27,7 +28,8 @@ public sealed class MainWindowViewModel : ObservableObject
         OrkeonProcessRunner? processRunner = null,
         ILaunchHistoryStore? historyStore = null,
         IUiDispatcher? dispatcher = null,
-        string? globalPathOverride = null)
+        string? globalPathOverride = null,
+        IStudioStrings? strings = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
@@ -37,7 +39,9 @@ public sealed class MainWindowViewModel : ObservableObject
             picker,
             runner,
             dispatcher,
-            globalPathOverride);
+            globalPathOverride,
+            llmProbe: null,
+            strings);
 
         Launch = new LaunchTabViewModel(
             runner,
@@ -46,7 +50,8 @@ public sealed class MainWindowViewModel : ObservableObject
             picker,
             historyStore,
             settingsStore,
-            dispatcher);
+            dispatcher,
+            strings);
     }
 
     /// <summary>The appsettings editor (spec §4).</summary>
@@ -70,7 +75,10 @@ public sealed class MainWindowViewModel : ObservableObject
     /// per-user history file. The history store degrades to in-memory when the platform gives us no
     /// configuration directory, rather than refusing to open the window over it.
     /// </summary>
-    public static MainWindowViewModel CreateForCurrentMachine(IPathPicker picker, IUiDispatcher dispatcher)
+    public static MainWindowViewModel CreateForCurrentMachine(
+        IPathPicker picker,
+        IUiDispatcher dispatcher,
+        IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -87,7 +95,9 @@ public sealed class MainWindowViewModel : ObservableObject
             picker,
             OrkeonProcessRunner.ForCurrentMachine(),
             historyStore,
-            dispatcher);
+            dispatcher,
+            globalPathOverride: null,
+            strings);
     }
 
     /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history.</summary>

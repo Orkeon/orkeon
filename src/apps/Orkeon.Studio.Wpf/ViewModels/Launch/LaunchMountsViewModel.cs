@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Launch;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
@@ -12,12 +13,15 @@ namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 /// <summary>One row of the effective mount table: what index <c>i</c> resolves to, and where it came from.</summary>
 public sealed class EffectiveMountViewModel
 {
+    private readonly IStudioStrings _strings;
+
     /// <summary>Wraps a computed effective mount.</summary>
-    public EffectiveMountViewModel(EffectiveMount mount)
+    public EffectiveMountViewModel(EffectiveMount mount, IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(mount);
 
         Mount = mount;
+        _strings = strings ?? EnglishStudioStrings.Instance;
     }
 
     /// <summary>The underlying Core record.</summary>
@@ -47,12 +51,14 @@ public sealed class EffectiveMountViewModel
     /// shifts the index of every <c>--mount</c>.
     /// </summary>
     public string OriginDisplay => OverridesSettings
-        ? string.Create(CultureInfo.InvariantCulture, $"{OriginName} (replaces «{ReplacedSettingsMount}»)")
+        ? string.Format(
+            CultureInfo.InvariantCulture,
+            _strings[StudioStringKeys.MountsOriginReplaces], OriginName, ReplacedSettingsMount)
         : OriginName;
 
     private string OriginName => Origin switch
     {
-        MountOrigin.AutoInjected => "auto (injected by the runner)",
+        MountOrigin.AutoInjected => _strings[StudioStringKeys.MountsOriginAuto],
         MountOrigin.CommandLine => "--mount",
         _ => "appsettings",
     };
@@ -75,14 +81,28 @@ public sealed class LaunchMountsViewModel : ObservableObject
         "Select a crew first: the runner injects its own mounts ahead of every --mount, so which "
         + "configuration key each mount occupies depends on the crew being launched.";
 
+    private readonly IStudioStrings _strings;
     private bool _allowExternalMounts;
     private MountAutoInjection? _autoInjection;
 
     /// <summary>Builds the panel over a directory probe and the browse dialogs.</summary>
-    public LaunchMountsViewModel(IDirectoryProbe? directories = null, IPathPicker? picker = null)
+    public LaunchMountsViewModel(
+        IDirectoryProbe? directories = null,
+        IPathPicker? picker = null,
+        IStudioStrings? strings = null)
     {
-        LaunchMounts = new MountsEditorViewModel(directories, picker, requireAtLeastOne: false);
+        _strings = strings ?? EnglishStudioStrings.Instance;
+
+        LaunchMounts = new MountsEditorViewModel(directories, picker, requireAtLeastOne: false, _strings);
         LaunchMounts.Changed += (_, _) => RecomputeEffectiveMounts();
+
+        // Recomputing rebuilds the effective rows, whose origin column is localized.
+        _strings.CultureChanged += (_, _) =>
+        {
+            OnPropertiesChanged(
+                nameof(OverrideExplanation), nameof(ExternalMountsExplanation), nameof(ExternalMountsWarning));
+            RecomputeEffectiveMounts();
+        };
 
         RecomputeEffectiveMounts();
     }
@@ -100,15 +120,13 @@ public sealed class LaunchMountsViewModel : ObservableObject
     public ObservableCollection<EffectiveMountViewModel> EffectiveMounts { get; } = [];
 
     /// <summary>The sentence explaining the index-based override, shown above the table.</summary>
-    public static string OverrideExplanation => MountOverrideSemantics.Explanation;
+    public string OverrideExplanation => MountOverrideSemantics.ExplanationFor(_strings);
 
     /// <summary>The sentence explaining what <c>--allow-external-mounts</c> additionally permits.</summary>
-    public static string ExternalMountsExplanation => MountOverrideSemantics.ExternalMountsExplanation;
+    public string ExternalMountsExplanation => MountOverrideSemantics.ExternalMountsExplanationFor(_strings);
 
     /// <summary>The security warning shown next to the <c>--allow-external-mounts</c> checkbox.</summary>
-    public static string ExternalMountsWarning =>
-        "Security: this lets a mount point anywhere on the machine, outside the working directory. "
-        + "Only enable it for a path you chose deliberately.";
+    public string ExternalMountsWarning => _strings[StudioStringKeys.MountsExternalWarning];
 
     /// <summary>Whether to pass <c>--allow-external-mounts</c>.</summary>
     public bool AllowExternalMounts
@@ -178,7 +196,7 @@ public sealed class LaunchMountsViewModel : ObservableObject
                 ToMountArguments(), [.. SettingsMounts], autoInjection);
 
             foreach (var mount in effective)
-                EffectiveMounts.Add(new EffectiveMountViewModel(mount));
+                EffectiveMounts.Add(new EffectiveMountViewModel(mount, _strings));
         }
 
         OnPropertiesChanged(nameof(OverriddenCount), nameof(Summary), nameof(HasAutoInjection));
@@ -190,12 +208,12 @@ public sealed class LaunchMountsViewModel : ObservableObject
 
     /// <summary>The one-line verdict above the effective table.</summary>
     public string Summary => !HasAutoInjection
-        ? AutoInjectionUnknownNotice
+        ? _strings[StudioStringKeys.MountsSelectCrewFirst]
         : OverriddenCount == 0
-        ? string.Create(
+        ? string.Format(
             CultureInfo.InvariantCulture,
-            $"{EffectiveMounts.Count} effective mount(s); no appsettings entry is replaced.")
-        : string.Create(
+            _strings[StudioStringKeys.MountsEffectiveNone], EffectiveMounts.Count)
+        : string.Format(
             CultureInfo.InvariantCulture,
-            $"{EffectiveMounts.Count} effective mount(s); {OverriddenCount} appsettings entry(ies) replaced by index.");
+            _strings[StudioStringKeys.MountsEffectiveReplaced], EffectiveMounts.Count, OverriddenCount);
 }

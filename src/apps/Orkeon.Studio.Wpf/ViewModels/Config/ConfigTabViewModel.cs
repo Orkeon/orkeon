@@ -3,6 +3,7 @@ using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Llm;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -24,6 +25,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 {
     private readonly IAppSettingsStore _store;
     private readonly AppSettingsValidator _validator;
+    private readonly IStudioStrings _strings;
     private AppSettingsDocument _document;
     private string _rawJson = "";
     private bool _isDirty;
@@ -38,28 +40,35 @@ public sealed class ConfigTabViewModel : ObservableObject
         OrkeonProcessRunner? processRunner = null,
         IUiDispatcher? dispatcher = null,
         string? globalPathOverride = null,
-        ILlmEndpointProbe? llmProbe = null)
+        ILlmEndpointProbe? llmProbe = null,
+        IStudioStrings? strings = null)
     {
         _store = store ?? PhysicalAppSettingsStore.Instance;
         _validator = new AppSettingsValidator(directories);
+        _strings = strings ?? EnglishStudioStrings.Instance;
         _document = AppSettingsDocument.CreateEmpty();
 
         Picker = picker ?? NullPathPicker.Instance;
 
-        Llm = new LlmSectionViewModel(() => _document, MarkDirty, llmProbe, dispatcher);
+        Llm = new LlmSectionViewModel(() => _document, MarkDirty, llmProbe, dispatcher, _strings);
         RateLimiting = new RateLimitingSectionViewModel(() => _document, MarkDirty);
         Rag = new RagSectionViewModel(() => _document, MarkDirty);
         Logging = new LoggingSectionViewModel(() => _document, MarkDirty);
         LlmLogging = new LlmLoggingSectionViewModel(() => _document, MarkDirty);
 
-        Mounts = new MountsEditorViewModel(directories, Picker, requireAtLeastOne: true);
+        Mounts = new MountsEditorViewModel(directories, Picker, requireAtLeastOne: true, _strings);
         Mounts.Changed += OnMountsChanged;
 
-        Presets = new PresetSelectionViewModel(() => _document, OnPresetApplied);
-        Location = new SettingsLocationViewModel(Picker, globalPathOverride);
+        Presets = new PresetSelectionViewModel(() => _document, OnPresetApplied, _strings);
+        Location = new SettingsLocationViewModel(Picker, globalPathOverride, _strings);
         Diagnostic = new DiagnosticViewModel(
             processRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
-            dispatcher);
+            dispatcher,
+            _strings);
+
+        // Hot language switch (STUDIO-11): the tab lives as long as the window, so the
+        // subscription needs no teardown.
+        _strings.CultureChanged += (_, _) => OnPropertyChanged(nameof(ValidationSummary));
 
         NewCommand = new RelayCommand(NewDocument);
         OpenCommand = new AsyncRelayCommand(OpenAsync);
@@ -185,15 +194,15 @@ public sealed class ConfigTabViewModel : ObservableObject
     public void NewDocument()
     {
         SetDocument(AppSettingsDocument.CreateEmpty());
-        StatusMessage = "New empty document. Pick a preset to fill in the Llm section.";
+        StatusMessage = _strings[StudioStringKeys.ConfigNewDocument];
     }
 
     /// <summary>Opens a file picked in the browser and points the save location at it.</summary>
     public async Task OpenAsync()
     {
         var picked = Picker.PickFile(
-            "Open appsettings.json",
-            "JSON files|*.json|All files|*.*",
+            _strings[StudioStringKeys.DialogOpenAppSettings],
+            _strings[StudioStringKeys.DialogFilterJson],
             Location.EffectivePath);
 
         if (picked is { Length: > 0 })
@@ -206,7 +215,7 @@ public sealed class ConfigTabViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusMessage = "No file selected.";
+            StatusMessage = _strings[StudioStringKeys.ConfigNoFileSelected];
             return false;
         }
 
@@ -219,7 +228,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         SetDocument(document, path);
         Location.UseCustomPath(path);
-        StatusMessage = string.Create(CultureInfo.InvariantCulture, $"Loaded {path}.");
+        StatusMessage = string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigLoaded], path);
         return true;
     }
 
@@ -239,15 +248,16 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         if (HasBlockingErrors)
         {
-            StatusMessage = string.Create(
+            StatusMessage = string.Format(
                 CultureInfo.InvariantCulture,
-                $"Not saved: {ValidationMessages.Count(m => m.IsError)} error(s) must be fixed first.");
+                _strings[StudioStringKeys.ConfigNotSavedErrors],
+                ValidationMessages.Count(m => m.IsError));
             return false;
         }
 
         if (Location.EffectivePath is not { Length: > 0 } path)
         {
-            StatusMessage = "Not saved: no destination selected.";
+            StatusMessage = _strings[StudioStringKeys.ConfigNotSavedNoDestination];
             return false;
         }
 
@@ -256,9 +266,12 @@ public sealed class ConfigTabViewModel : ObservableObject
         LoadedPath = path;
         IsDirty = false;
         StatusMessage = HasLlmWarning
-            ? $"Saved to {path}. Warning {ValidationCodes.LlmSectionMissing}: no Llm section, "
-                + "so runs will use the echo provider."
-            : string.Create(CultureInfo.InvariantCulture, $"Saved to {path}.");
+            ? string.Format(
+                CultureInfo.InvariantCulture,
+                _strings[StudioStringKeys.ConfigSavedLlmWarning],
+                path,
+                ValidationCodes.LlmSectionMissing)
+            : string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigSaved], path);
 
         return true;
     }
@@ -292,8 +305,10 @@ public sealed class ConfigTabViewModel : ObservableObject
             var warnings = ValidationMessages.Count(m => m.Severity == ValidationSeverity.Warning);
 
             return errors == 0 && warnings == 0
-                ? "No problem found."
-                : string.Create(CultureInfo.InvariantCulture, $"{errors} error(s), {warnings} warning(s).");
+                ? _strings[StudioStringKeys.ConfigNoProblem]
+                : string.Format(
+                    CultureInfo.InvariantCulture,
+                    _strings[StudioStringKeys.ConfigErrorsWarnings], errors, warnings);
         }
     }
 

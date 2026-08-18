@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
@@ -50,17 +51,32 @@ public sealed class DiagnosticViewModel : ObservableObject
 {
     private readonly OrkeonProcessRunner _runner;
     private readonly IUiDispatcher _dispatcher;
+    private readonly IStudioStrings _strings;
+    private DoctorReport? _lastReport;
     private string? _summary;
     private string? _errorMessage;
     private bool _hasRun;
 
     /// <summary>Binds the panel to the process runner that will invoke the CLI.</summary>
-    public DiagnosticViewModel(OrkeonProcessRunner runner, IUiDispatcher? dispatcher = null)
+    public DiagnosticViewModel(
+        OrkeonProcessRunner runner,
+        IUiDispatcher? dispatcher = null,
+        IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
 
         _runner = runner;
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+
+        // Only the verdict line re-describes on a language switch: the check names and details
+        // are `orkeon doctor`'s own output and stay as the CLI printed them (STUDIO-11 decision).
+        _strings.CultureChanged += (_, _) =>
+        {
+            if (_lastReport is { } report)
+                Summary = Describe(report);
+        };
+
         RunCommand = new AsyncRelayCommand(() => RunAsync());
     }
 
@@ -109,6 +125,7 @@ public sealed class DiagnosticViewModel : ObservableObject
             foreach (var check in report.Checks)
                 Checks.Add(new DoctorCheckViewModel(check));
 
+            _lastReport = report;
             ErrorMessage = report.ParseError;
             Summary = Describe(report);
             HasRun = true;
@@ -118,21 +135,23 @@ public sealed class DiagnosticViewModel : ObservableObject
         return report;
     }
 
-    private static string Describe(DoctorReport report)
+    private string Describe(DoctorReport report)
     {
         if (report.Run.Outcome == RunOutcome.NotStarted)
             return report.Run.Description;
 
         if (report.Checks.Count == 0)
-            return report.ParseError ?? "orkeon doctor reported no check.";
+            return report.ParseError ?? _strings[StudioStringKeys.DiagNoCheck];
 
         var failures = report.Checks.Count(c => c.Status == DoctorStatus.Failure);
         var warnings = report.Checks.Count(c => c.Status == DoctorStatus.Warning);
 
         return failures == 0 && warnings == 0
-            ? string.Create(CultureInfo.InvariantCulture, $"{report.Checks.Count} check(s), all green.")
-            : string.Create(
+            ? string.Format(
                 CultureInfo.InvariantCulture,
-                $"{report.Checks.Count} check(s): {failures} failure(s), {warnings} warning(s).");
+                _strings[StudioStringKeys.DiagAllGreen], report.Checks.Count)
+            : string.Format(
+                CultureInfo.InvariantCulture,
+                _strings[StudioStringKeys.DiagFindings], report.Checks.Count, failures, warnings);
     }
 }

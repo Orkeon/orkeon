@@ -3,6 +3,7 @@ using System.Globalization;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Validation;
@@ -26,6 +27,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly OrkeonProcessRunner _runner;
     private readonly IAppSettingsStore _settingsStore;
     private readonly IUiDispatcher _dispatcher;
+    private readonly IStudioStrings _strings;
     private CancellationTokenSource? _cancellation;
     private bool _isRunning;
     private string? _commandLinePreview;
@@ -41,16 +43,20 @@ public sealed class LaunchTabViewModel : ObservableObject
         IPathPicker? picker = null,
         ILaunchHistoryStore? historyStore = null,
         IAppSettingsStore? settingsStore = null,
-        IUiDispatcher? dispatcher = null)
+        IUiDispatcher? dispatcher = null,
+        IStudioStrings? strings = null)
     {
         _runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
         _settingsStore = settingsStore ?? PhysicalAppSettingsStore.Instance;
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+        _strings.CultureChanged += (_, _) =>
+            OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary));
 
-        Target = new TargetSelectionViewModel(targetProbe, picker);
-        Options = new LaunchOptionsViewModel(picker);
-        Mounts = new LaunchMountsViewModel(directories, picker);
-        Log = new RunLogViewModel();
+        Target = new TargetSelectionViewModel(targetProbe, picker, _strings);
+        Options = new LaunchOptionsViewModel(picker, _strings);
+        Mounts = new LaunchMountsViewModel(directories, picker, _strings);
+        Log = new RunLogViewModel(_strings);
         History = new LaunchHistoryViewModel(historyStore, _dispatcher);
 
         Target.TargetChanged += OnTargetChanged;
@@ -179,9 +185,9 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>The status line about the co-installed CLI.</summary>
     public string BinaryStatus => BinaryLocation switch
     {
-        null => "The orkeon CLI has not been located yet.",
+        null => _strings[StudioStringKeys.LaunchBinaryNotLocated],
         { Found: true, Path: { } path } => string.Create(CultureInfo.InvariantCulture, $"orkeon: {path}"),
-        var location => location.Error ?? "The orkeon CLI was not found.",
+        var location => location.Error ?? _strings[StudioStringKeys.LaunchBinaryNotFound],
     };
 
     /// <summary>Whether the current selection would be refused before any process is spawned.</summary>
@@ -251,8 +257,10 @@ public sealed class LaunchTabViewModel : ObservableObject
             var warnings = ValidationMessages.Count(m => m.Severity == ValidationSeverity.Warning);
 
             return errors == 0 && warnings == 0
-                ? "Ready to launch."
-                : string.Create(CultureInfo.InvariantCulture, $"{errors} error(s), {warnings} warning(s).");
+                ? _strings[StudioStringKeys.LaunchReady]
+                : string.Format(
+                    CultureInfo.InvariantCulture,
+                    _strings[StudioStringKeys.ConfigErrorsWarnings], errors, warnings);
         }
     }
 
@@ -268,7 +276,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     public void Cancel()
     {
         _cancellation?.Cancel();
-        StatusMessage = "Cancelling: the CLI is asked to stop, and is killed if it does not.";
+        StatusMessage = _strings[StudioStringKeys.LaunchCancelling];
     }
 
     /// <summary>The arguments the current selection produces, or null when it cannot produce any.</summary>
@@ -294,15 +302,16 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         if (Target.Target is not { } target)
         {
-            StatusMessage = "No target resolved.";
+            StatusMessage = _strings[StudioStringKeys.LaunchNoTarget];
             return null;
         }
 
         if (HasBlockingErrors)
         {
-            StatusMessage = string.Create(
+            StatusMessage = string.Format(
                 CultureInfo.InvariantCulture,
-                $"Not launched: {ValidationMessages.Count(m => m.IsError)} error(s) must be fixed first.");
+                _strings[StudioStringKeys.LaunchNotLaunchedErrors],
+                ValidationMessages.Count(m => m.IsError));
             return null;
         }
 
@@ -337,9 +346,10 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         if (entry.Arguments.Count == 0)
         {
-            StatusMessage = string.Create(
+            StatusMessage = string.Format(
                 CultureInfo.InvariantCulture,
-                $"Nothing to replay: the entry for '{entry.Target}' recorded no arguments.");
+                _strings[StudioStringKeys.LaunchNothingToReplay],
+                entry.Target);
             return null;
         }
 
@@ -371,7 +381,9 @@ public sealed class LaunchTabViewModel : ObservableObject
         IsRunning = true;
 
         Log.AppendNotice(CommandLineDisplay.Format(arguments));
-        StatusMessage = dryRun ? "Validating…" : "Running…";
+        StatusMessage = dryRun
+            ? _strings[StudioStringKeys.LaunchValidating]
+            : _strings[StudioStringKeys.LaunchRunning];
 
         try
         {
@@ -386,7 +398,7 @@ public sealed class LaunchTabViewModel : ObservableObject
 
             // A dry run's outcome is a verdict, not just an exit code: the launcher says whether
             // the crew validated, as the terminal launcher does.
-            var outcome = LaunchOutcomeFormatter.Describe(result, dryRun);
+            var outcome = LaunchOutcomeFormatter.Describe(result, dryRun, _strings);
             StatusMessage = outcome;
             Log.AppendNotice(outcome);
 

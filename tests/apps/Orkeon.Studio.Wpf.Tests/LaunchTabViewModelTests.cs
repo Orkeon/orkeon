@@ -327,10 +327,12 @@ public sealed class LaunchMountsViewModelTests
     [Fact]
     public void Should_CarryASecurityWarning_For_ExternalMounts()
     {
-        Assert.Contains("Security", LaunchMountsViewModel.ExternalMountsWarning, StringComparison.Ordinal);
+        var panel = new LaunchMountsViewModel();
+
+        Assert.Contains("Security", panel.ExternalMountsWarning, StringComparison.Ordinal);
         Assert.Contains(
             "PathSecurity:AdditionalAllowedDirectories",
-            LaunchMountsViewModel.ExternalMountsExplanation,
+            panel.ExternalMountsExplanation,
             StringComparison.Ordinal);
     }
 }

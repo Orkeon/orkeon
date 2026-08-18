@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Globalization;
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
@@ -20,6 +21,7 @@ public sealed class MountsEditorViewModel : ObservableObject
     private readonly IDirectoryProbe _directories;
     private readonly IPathPicker _picker;
     private readonly MountValidator _validator;
+    private readonly IStudioStrings _strings;
     private MountEditorViewModel? _selectedMount;
     private bool _suspendValidation;
 
@@ -30,14 +32,23 @@ public sealed class MountsEditorViewModel : ObservableObject
     /// <see langword="true"/> in the appsettings editor, where an empty list makes the runtime refuse
     /// to boot; <see langword="false"/> in the launcher, where adding no mount is normal.
     /// </param>
+    /// <param name="strings">Localization port; defaults to the English strings (STUDIO-11).</param>
     public MountsEditorViewModel(
         IDirectoryProbe? directories = null,
         IPathPicker? picker = null,
-        bool requireAtLeastOne = true)
+        bool requireAtLeastOne = true,
+        IStudioStrings? strings = null)
     {
         _directories = directories ?? PhysicalDirectoryProbe.Instance;
         _picker = picker ?? NullPathPicker.Instance;
         _validator = new MountValidator(_directories);
+        _strings = strings ?? EnglishStudioStrings.Instance;
+        _strings.CultureChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(Summary));
+            foreach (var mount in Mounts)
+                mount.RefreshCulture();
+        };
         RequireAtLeastOne = requireAtLeastOne;
 
         Mounts.CollectionChanged += OnMountsChanged;
@@ -123,7 +134,7 @@ public sealed class MountsEditorViewModel : ObservableObject
         {
             Mounts.Clear();
             foreach (var entry in rawEntries)
-                Mounts.Add(MountEditorViewModel.FromRaw(entry));
+                Mounts.Add(MountEditorViewModel.FromRaw(entry, _strings));
         }
         finally
         {
@@ -140,7 +151,7 @@ public sealed class MountsEditorViewModel : ObservableObject
     /// <summary>Appends an empty mount row, pre-filled with the first suggested virtual path.</summary>
     public MountEditorViewModel AddMount()
     {
-        var mount = new MountEditorViewModel
+        var mount = new MountEditorViewModel(_strings)
         {
             VirtualPath = MountDefinition.SuggestedVirtualPaths.Count > 0
                 ? MountDefinition.SuggestedVirtualPaths[0]
@@ -188,8 +199,12 @@ public sealed class MountsEditorViewModel : ObservableObject
         {
             var errors = ValidationMessages.Count(m => m.IsError);
             return errors == 0
-                ? string.Create(CultureInfo.InvariantCulture, $"{Mounts.Count} mount(s), no error.")
-                : string.Create(CultureInfo.InvariantCulture, $"{Mounts.Count} mount(s), {errors} error(s).");
+                ? string.Format(
+                    CultureInfo.InvariantCulture,
+                    _strings[StudioStringKeys.MountsSummaryOk], Mounts.Count)
+                : string.Format(
+                    CultureInfo.InvariantCulture,
+                    _strings[StudioStringKeys.MountsSummaryErrors], Mounts.Count, errors);
         }
     }
 
@@ -198,7 +213,7 @@ public sealed class MountsEditorViewModel : ObservableObject
         if (SelectedMount is not { IsParsed: true } mount)
             return;
 
-        var picked = _picker.PickFolder("Select the folder to mount", mount.PhysicalPath);
+        var picked = _picker.PickFolder(_strings[StudioStringKeys.DialogSelectMountFolder], mount.PhysicalPath);
         if (picked is { Length: > 0 })
             mount.PhysicalPath = picked;
     }

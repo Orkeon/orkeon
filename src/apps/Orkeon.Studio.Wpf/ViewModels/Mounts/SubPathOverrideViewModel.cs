@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -11,19 +12,22 @@ namespace Orkeon.Studio.Wpf.ViewModels.Mounts;
 /// </summary>
 public sealed class SubPathOverrideViewModel : ObservableObject
 {
+    private readonly IStudioStrings _strings;
     private string _relativePath = "";
     private MountRights _rights = MountRights.ReadOnly;
 
     /// <summary>Creates an empty override row.</summary>
-    public SubPathOverrideViewModel()
+    public SubPathOverrideViewModel(IStudioStrings? strings = null)
     {
+        _strings = strings ?? EnglishStudioStrings.Instance;
     }
 
     /// <summary>Creates a row from an existing Core override.</summary>
-    public SubPathOverrideViewModel(SubPathRightsOverride source)
+    public SubPathOverrideViewModel(SubPathRightsOverride source, IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(source);
 
+        _strings = strings ?? EnglishStudioStrings.Instance;
         _relativePath = source.RelativePath;
         _rights = source.Rights;
     }
@@ -54,7 +58,10 @@ public sealed class SubPathOverrideViewModel : ObservableObject
     }
 
     /// <summary>The closed list of rights offered by the combo box.</summary>
-    public static IReadOnlyList<MountRightsChoice> RightsChoices => MountRightsTokens.Choices;
+    public IReadOnlyList<MountRightsChoice> RightsChoices => MountRightsTokens.ChoicesFor(_strings);
+
+    /// <summary>Re-emits the culture-dependent list; cascaded by the owning row (STUDIO-11).</summary>
+    public void RefreshCulture() => OnPropertyChanged(nameof(RightsChoices));
 
     /// <summary>Converts back to the Core record.</summary>
     public SubPathRightsOverride ToOverride() => new(RelativePath, Rights);

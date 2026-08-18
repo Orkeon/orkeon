@@ -1,5 +1,7 @@
+using System.Globalization;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Core.Storage;
 
@@ -112,19 +114,27 @@ public static class SettingsLocations
     /// which file a launch will actually load.
     /// </summary>
     public static IReadOnlyList<SettingsResolutionStep> ResolutionChain { get; } =
-    [
-        new(1, "Explicit path",
-            "The file passed to the runner with --settings. If it does not exist, resolution stops and " +
-            "the runtime falls back to environment variables only."),
-        new(2, "Next to the crew",
-            $"{AppSettingsDocument.FileName} in the directory holding the crew configuration."),
-        new(3, "Shared appsettings directory",
-            $"appsettings/{AppSettingsDocument.FileName}, searched by walking up from the crew directory " +
-            "(the legacy _shared/ location is still accepted for one release)."),
-        new(4, "Global per-user file",
-            "The file written by `orkeon init`: %APPDATA%\\Orkeon\\appsettings.json on Windows, " +
-            "$XDG_CONFIG_HOME/Orkeon/appsettings.json (else ~/.config/Orkeon/appsettings.json) elsewhere."),
-    ];
+        ResolutionChainFor(EnglishStudioStrings.Instance);
+
+    /// <summary>The resolution chain with its wording resolved through a culture port (STUDIO-11).</summary>
+    public static IReadOnlyList<SettingsResolutionStep> ResolutionChainFor(IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return
+        [
+            new(1, strings[StudioStringKeys.ResolutionStep1Title],
+                strings[StudioStringKeys.ResolutionStep1Description]),
+            new(2, strings[StudioStringKeys.ResolutionStep2Title],
+                string.Format(CultureInfo.InvariantCulture,
+                    strings[StudioStringKeys.ResolutionStep2Description], AppSettingsDocument.FileName)),
+            new(3, strings[StudioStringKeys.ResolutionStep3Title],
+                string.Format(CultureInfo.InvariantCulture,
+                    strings[StudioStringKeys.ResolutionStep3Description], AppSettingsDocument.FileName)),
+            new(4, strings[StudioStringKeys.ResolutionStep4Title],
+                strings[StudioStringKeys.ResolutionStep4Description]),
+        ];
+    }
 
     /// <summary>
     /// Normalizes a user-picked save target the way <c>orkeon init --path</c> does: a
