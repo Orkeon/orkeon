@@ -1,0 +1,82 @@
+# Post-publish verification — "scenario C on PUBLISHED artifacts" (PUB-20).
+#
+# The release.yml smokes install from the JOB artifacts so a broken payload is
+# caught BEFORE anything is published. This workflow closes the remaining gap
+# from the 2026-07-10 onboarding audit: once the GitHub Release exists, verify
+# that what a real user downloads from the Release page walks the same
+# onboarding chain — the assets could differ from the job artifacts only
+# through an upload/tamper/replace accident, which is exactly what this
+# catches. Reuses the same smoke scripts, pointed at the Release assets.
+name: Release verify (published assets)
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to verify (e.g. v1.0.0-rc.1)"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  verify-deb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the published .deb
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          mkdir -p published
+          gh release download "$TAG" --pattern 'orkeon_*_amd64.deb' --dir published
+          ls -la published
+      - name: Smoke the published package
+        run: |
+          deb="$(find published -maxdepth 1 -name 'orkeon_*_amd64.deb' | head -n1)"
+          if [[ -z "$deb" ]]; then
+            echo "No orkeon_*_amd64.deb among the published assets." >&2
+            exit 1
+          fi
+          ./scripts/smoke-onboarding/run-smoke-deb.sh --deb "$deb"
+
+  verify-macos:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the published osx-arm64 tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          mkdir -p published
+          gh release download "$TAG" --pattern 'orkeon-cli-*-osx-arm64.tar.gz' --dir published
+          ls -la published
+      - name: Smoke the published tarball
+        run: |
+          tarball="$(find published -maxdepth 1 -name 'orkeon-cli-*-osx-arm64.tar.gz' | head -n1)"
+          if [[ -z "$tarball" ]]; then
+            echo "No orkeon-cli-*-osx-arm64.tar.gz among the published assets." >&2
+            exit 1
+          fi
+          ./scripts/smoke-onboarding/run-smoke-tarball.sh --tarball "$tarball" --studio absent
+
+  verify-checksums:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download every published asset and verify SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p published && cd published
+          gh release download "$TAG" --repo "$REPO"
+          # Two checksum files by design (see publication-matrix): SHA256SUMS
+          # covers everything but the MSI; SHA256SUMS.msi covers the MSI alone.
+          sha256sum --check --ignore-missing SHA256SUMS
+          sha256sum --check --ignore-missing SHA256SUMS.msi
