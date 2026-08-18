@@ -1,3 +1,5 @@
+> 🇫🇷 [Version française](../fr/reference/hosting.md)
+
 # Orkeon.Hosting — runner & host bootstrap
 
 `Orkeon.Hosting` is the shared bootstrap layer that turns the Orkeon libraries into a runnable host.

@@ -1,3 +1,5 @@
+> 🇫🇷 [Version française](../fr/reference/example-data-policy.md)
+
 # Example data policy
 
 > **See also**: [Run your first example](../getting-started/run-your-first-example.md) · [Example README template](../templates/example-readme.md) · [VFS compliance](../architecture/vfs-compliance.md) · [Back to the index](../INDEX.md)

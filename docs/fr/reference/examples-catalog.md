@@ -2,63 +2,74 @@
 
 > **Voir aussi** : [Retour à l'index](../INDEX.md)
 
-# Catalogue des 104 exemples
+# Catalogue des exemples
 
-Le projet fournit 104 configurations YAML prêtes à l'emploi dans le répertoire `examples/`, organisées en 9 catégories métier :
+Tout ce qui vit sous `examples/` tourne sur le même moteur ; cette page est la carte
+éditoriale. L'**inventaire faisant foi** — chaque exemple numéroté avec son type de
+process, ses comptes agents/tâches et ses outils — est le
+[`examples/INDEX.md`](../../../examples/INDEX.md) généré : il est produit par
+`scripts/generate_examples_index.py` et la CI échoue dès qu'il dérive des dossiers
+sur disque, si bien qu'aucun compte n'est maintenu à la main ici.
 
-| Catégorie | Dossier | Nombre | Focus |
-|-----------|---------|--------|-------|
-| **01 - Enterprise** | `01-Enterprise/` | 15 configs | CRM, ERP, chaîne d'approvisionnement, gestion RH, compliance |
-| **02 - Science & Research** | `02-Science-Research/` | 15 configs | Biologie computationnelle, dynamique moléculaire, méta-analyses, open science |
-| **03 - Finance & Trading** | `03-Finance-Trading/` | 15 configs | Arbitrage, risk management, portfolio optimization, fraud detection |
-| **04 - Health & Wellness** | `04-Health-Wellness/` | 10 configs | Diagnostic support, clinical trials, personalized medicine |
-| **05 - Education** | `05-Education/` | 10 configs | Course design, student assessment, tutoring, adaptive learning |
-| **06 - Engineering & DevOps** | `06-Engineering-DevOps/` | 10 configs | CI/CD automation, infrastructure as code, code review, testing |
-| **07 - Creative & Media** | `07-Creative-Media/` | 10 configs | Content generation, video scripting, design, music composition |
-| **08 - IoT & Smart Systems** | `08-IoT-Smart-Systems/` | 10 configs | Monitoring, predictive maintenance, anomaly detection |
-| **09 - Experimental** | `09-Experimental/` | 6 configs | Exploration, prototypes, recherche avancée, graph orchestration |
+## Les neuf catégories métier
+
+Les crews YAML numérotés vivent dans neuf dossiers thématiques :
+
+| Catégorie | Dossier | Focus |
+|-----------|---------|-------|
+| **01 — Entreprise** | `01-enterprise/` | CRM, due diligence, conformité, RH, supply chain |
+| **02 — Science & Recherche** | `02-science-research/` | Analyse de littérature, biologie computationnelle, science ouverte |
+| **03 — Finance & Trading** | `03-finance-trading/` | Trading algorithmique, détection de fraude, consensus de portefeuille |
+| **04 — Santé & Bien-être** | `04-health-wellness/` | Aide au diagnostic, essais cliniques, plans personnalisés |
+| **05 — Éducation** | `05-education/` | Conception de cours, évaluation, tutorat, apprentissage adaptatif |
+| **06 — Ingénierie & DevOps** | `06-engineering-devops/` | Automatisation CI/CD, infrastructure, revue de code, tests |
+| **07 — Créatif & Médias** | `07-creative-media/` | Génération de contenu, scénarisation, workflows de design |
+| **08 — IoT & Systèmes intelligents** | `08-iot-smart-systems/` | Supervision, maintenance prédictive, détection d'anomalies |
+| **09 — Expérimental** | `09-experimental/` | Prototypes, recherche d'orchestration avancée |
+
+## Au-delà des crews numérotés
+
+| Dossier | Ce qu'il montre |
+|---------|-----------------|
+| `rag/` | Le sous-système RAG : `basic-ingestion/`, `hybrid-retrieval/`, `custom-reranker/`, `crew-yaml/`, plus le jeu d'évaluation offline sous `eval/` |
+| `raggable-tree/` | Analyse sémantique de code : `basic-indexing/`, `crew-yaml/`, `custom-adapter/` |
+| `scripting/` | Le DSL TypeScript (`.ork.ts`) : hello world → spawn dynamique, littéraux FSM/graphe, outils custom, RAG (`08-rag.ork.ts`) |
+| `cli-ts-commands/` | Commandes REPL interactives en `*.cmd.ts`, chargées sans recompilation .NET |
+| `local-embeddings/` | Embeddings locaux (sans clé API) branchés sur la mémoire et la sélection d'agents |
+| `crew-multifile/` | Un crew décrit comme un dossier (`orkeon run <dir>`) |
+| `runners/` | Les projets runners qui exécutent les exemples numérotés, dont deux tools dotnet interactifs |
 
 ## Exemples notables
 
-**Example 1 : Enterprise CRM Crew** (`01-Enterprise/crm-customer-analysis.yaml`)
-- Process : Hierarchical (manager sélectionne spécialistes)
-- Agents : DataAnalyst, CustomerServiceSpecialist, BusinessStrategist
-- Tools : file_read, http_api, database_query, web_scrape
-- Memory : Redis (LongTerm + Episodic)
-- Démontre : routing dynamique, multi-agent collaboration, persistance mémoire
+- **Due diligence avec audit NIST** — `01-enterprise/07-due-diligence-nist/` :
+  process hiérarchique, outillage conformité, mémoire long terme.
+- **Trading algorithmique multi-stratégies** — `03-finance-trading/31-algo-trading/` :
+  spécialistes en parallèle avec agrégation par consensus.
+- **De l'ingestion RAG aux réponses citées** — `rag/basic-ingestion/` : ingérer,
+  récupérer, générer avec citations — puis passer à `hybrid-retrieval/` et au
+  profil `corrective`.
+- **Indexer une base de code, puis l'interroger** — `raggable-tree/basic-indexing/` :
+  indexation Tree-sitter plus les 15 outils d'analyse.
 
-**Example 2 : Science Literature Meta-Analysis** (`02-Science-Research/meta-analysis-crew.yaml`)
-- Process : Sequential (dépendances strictes)
-- Agents : PaperFetcher, BiasDetector, SynthesisWriter
-- Tools : web_scrape, pdf_reader, json_parser, ask_question
-- Memory : ChromaDB (Episodic pour citations)
-- Démontre : pipelines linéaires, document parsing, RAG integration
+## Exécuter un exemple
 
-**Example 3 : Financial Portfolio Optimization** (`03-Finance-Trading/portfolio-optimizer.yaml`)
-- Process : Parallel (indépendance tâches)
-- Agents : EquityAnalyst, BondSpecialist, CryptoExpert, RiskManager
-- Tools : http_api, database_query, code_interpreter, secure_code_sandbox
-- Memory : In-Memory (contexte court, haute fréquence)
-- Démontre : exécution parallèle, calculations financières, isolation code
+```bash
+orkeon run examples/crew-multifile/          # un dossier de crew
+orkeon run examples/scripting/01-hello-world.ork.ts
+./examples/run-example.sh 7                  # exemple numéroté, depuis les sources
+docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners
+# puis dans le conteneur : orkeon-example list && orkeon-example run 7
+```
 
-**Example 4 : DevOps CI/CD Automation** (`06-Engineering-DevOps/cicd-orchestrator.yaml`)
-- Process : Sequential (build → test → deploy)
-- Agents : Builder, Tester, Deployer, Monitor
-- Tools : code_reader, bash_executor, docker_manager, health_checker
-- Memory : Pinecone (anomalies, patterns historiques)
-- Démontre : deployment pipelines, artifact management, monitoring
-
-Chaque exemple inclut :
-- Fichier YAML complet prêt à charger
-- Documentation inline (commentaires)
-- Points de configuration personnalisables (modèles, clés API)
-- Cas d'usage et patterns architecturaux
-
-Charger un exemple :
+Depuis C# (via DI) :
 
 ```csharp
-// crewFactory : ICrewFactory, orchestrator : ICrewOrchestrationService (via DI)
+// crewFactory : ICrewFactory, orchestrator : ICrewOrchestrationService
 var crew = await crewFactory.CreateFromDirectoryAsync(
-    "examples/03-Finance-Trading/portfolio-optimizer/", ct);
+    "examples/01-enterprise/07-due-diligence-nist/", ct);
 var result = await orchestrator.KickoffAsync(crew.Id, CrewInput.Empty(), ct);
 ```
+
+Les exemples livrent de la configuration, pas des jeux de données — voir la
+[politique de données des exemples](./example-data-policy.md) pour monter vos
+propres entrées.

@@ -1,3 +1,5 @@
+> 🇫🇷 [Version française](../fr/getting-started/run-your-first-example.md)
+
 # Run your first example (from source)
 
 > **See also**: [Three ways to run Orkeon](./three-ways-to-run-orkeon.md) · [Overview](./overview.md) · [Bootstrap and execution](./bootstrap.md) · [Back to the index](../INDEX.md)

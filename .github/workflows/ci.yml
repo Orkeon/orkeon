@@ -33,6 +33,10 @@ jobs:
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           echo "Après:"; df -h / | tail -1
       - uses: actions/checkout@v4
+      # Bilingual docs gate (DOC-01/C3): every docs/**.md needs its docs/fr/ mirror
+      # (and root community files their *.fr.md). Cheap, so it runs before the build.
+      - name: Check docs FR/EN parity
+        run: bash scripts/check-docs-parity.sh
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '10.0.x' }
       - uses: actions/cache@v4

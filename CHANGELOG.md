@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Documentation debt cleared; FR/EN parity is now a CI gate (PUB-09)
+
+- The examples catalog (`docs/reference/examples-catalog.md` + FR) is now editorial
+  only: the generated, CI-checked `examples/INDEX.md` is the authoritative inventory,
+  so the page no longer maintains counts or paths by hand (the old page announced
+  104 examples with a table summing to 101 and folder casings that did not exist).
+  It now also covers the RAG, RaggableTree, scripting, CLI-commands, local-embeddings
+  and multi-file showcases.
+- The last four missing French mirrors are delivered (`run-your-first-example`,
+  `example-data-policy`, `hosting`, the example README template): `docs/` parity is
+  green for the first time, and `scripts/check-docs-parity.sh` now runs in `ci.yml`
+  on every push and PR — a missing mirror fails the build. CONTRIBUTING (EN/FR)
+  states the CI-gate wording again.
+
 ## [1.0.0-rc.1] - 2026-08-17
 
 Orkeon's first release candidate — the version that goes to NuGet.org. Everything

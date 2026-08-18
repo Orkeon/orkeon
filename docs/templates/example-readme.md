@@ -1,3 +1,5 @@
+> 🇫🇷 [Version française](../fr/templates/example-readme.md)
+
 # Example README template
 
 > A gabarit for `examples/**/README.md`. Copy the block below into a new example's

@@ -135,8 +135,8 @@ or removes a file under `docs/**.md` (outside `docs/fr/`) **must** make the matc
 its French mirror under `docs/fr/`, and any change to a root community file (`README.md`,
 `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`) **must** update its `*.fr.md` mirror.
 The `scripts/check-docs-parity.sh` script verifies this: it fails when a mirror is missing —
-run it locally before opening the PR. It is not wired into CI yet (wiring it is gated on
-clearing the existing mirror backlog first). The script checks file existence, not content
+run it locally before opening the PR. **This is a CI gate**: `ci.yml` runs the script on
+every push and pull request, so a missing mirror fails the build. The script checks file existence, not content
 equivalence — keeping the two in sync is on you; if you cannot translate immediately, add a
 stub mirror and flag it for translation.
 

@@ -136,8 +136,8 @@ changement à son miroir français sous `docs/fr/`, et toute modification d'un f
 communautaire racine (`README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`)
 **doit** mettre à jour son miroir `*.fr.md`. Le script `scripts/check-docs-parity.sh` le
 vérifie : il échoue dès qu'un miroir manque — exécutez-le localement avant d'ouvrir la PR.
-Il n'est pas encore câblé en CI (le câblage est conditionné à la résorption préalable de la
-dette de miroirs existante). Le script vérifie l'existence des fichiers, pas l'équivalence du
+**C'est un gate CI** : `ci.yml` exécute le script à chaque push et pull request, un miroir
+manquant fait donc échouer le build. Le script vérifie l'existence des fichiers, pas l'équivalence du
 contenu — la synchronisation reste à votre charge ; si vous ne pouvez pas traduire
 immédiatement, ajoutez un miroir minimal et signalez-le pour traduction.
 
