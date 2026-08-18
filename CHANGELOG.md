@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-08-18
+
+Orkeon's first release candidate — the version that goes to NuGet.org. Everything
+accumulated since `0.9.2-beta` ships here: the RAG subsystem with its five profiles and
+the corrective CRAG graph, declared LLM capabilities across all **13 providers**
+(Google Gemini joining as the 13th), the dual-era MCP client and server, A2A task
+persistence, Orkeon Studio with full localization, the Windows/Debian/macOS install
+channels, the TypeScript CLI command layer, the complete API reference site — and a
+mechanically frozen public API surface (29 235 declared APIs, `[Experimental]` markers
+on the four unstable areas) with the versioning policy to match. Breaking changes below
+are called out in their own entries (RAG namespace extraction, API-shape conformance,
+`Orkeon.Cli.Commands.Scripting` rename).
+
 ### Fixed — ExecutionPlanParser no longer throws on non-string JSON values
 
 `ExecutionPlanParser` parses untrusted LLM planning output, yet `"task": 42`,
@@ -186,17 +199,6 @@ initialize-handshake revisions, per the specification's backward-compatibility r
   green for the first time, and `scripts/check-docs-parity.sh` now runs in `ci.yml`
   on every push and PR — a missing mirror fails the build. CONTRIBUTING (EN/FR)
   states the CI-gate wording again.
-
-## [1.0.0-rc.1] - 2026-08-17
-
-Orkeon's first release candidate — the version that goes to NuGet.org. Everything
-accumulated since `0.9.2-beta` ships here: the RAG subsystem with its five profiles and
-the corrective CRAG graph, declared LLM capabilities across all 12 providers, Orkeon
-Studio, the Windows/Debian/macOS install channels, the TypeScript CLI command layer —
-and, as of this cut, a mechanically frozen public API surface (29 235 declared APIs,
-`[Experimental]` markers on the four unstable areas) with the versioning policy to
-match. Breaking changes below are called out in their own entries (RAG namespace
-extraction, API-shape conformance, `Orkeon.Cli.Commands.Scripting` rename).
 
 ### Security — Testcontainers 4.13.0 → 4.14.0 (test infrastructure only)
 
@@ -903,6 +905,15 @@ First version actually published to GitHub Packages since `0.9.1-beta` (2026-07-
 - **`--prebuild-index` CLI flag** removed from the standard runner. Agents now call `index_codebase(root_path="/src")` themselves (optionally gated by `is_path_indexed`). See `project/features/filesystem-sandbox/DECISIONS-2026-04-18.md` §5 for the motivation.
 - **Serialization format bump** — RaggableTree on-disk cache goes from v1.0 to v2.0 (field rename `FilePath` → `VirtualFilePath`). Existing caches will fail to load and need to be rebuilt.
 
+## [0.9.1-beta] - 2026-07-04
+
+Published to GitHub Packages only, without a dedicated changelog section at the
+time; its changes are folded into the [0.9.2-beta] entries above. Recorded here
+so the version chain has no gap. The `v0.9.1-beta.rc*` tags that followed
+re-packed this unchanged version, so `--skip-duplicate` silently skipped every
+push — the incident that motivated the tag↔version guard in the publish
+workflow (see [0.9.2-beta]).
+
 ## [0.9.0-beta] - 2026-03-27
 
 ### Added
@@ -1022,6 +1033,7 @@ Initial public development snapshot. Core domain model established in C# followi
 
 [Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...HEAD
 [1.0.0-rc.1]: https://github.com/Orkeon/orkeon/compare/v0.9.2-beta...v1.0.0-rc.1
-[0.9.2-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.0-beta...v0.9.2-beta
+[0.9.2-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.1-beta.rc1...v0.9.2-beta
+[0.9.1-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.0-beta...v0.9.1-beta.rc1
 [0.9.0-beta]: https://github.com/Orkeon/orkeon/compare/v0.1.0-alpha...v0.9.0-beta
 [0.1.0-alpha]: https://github.com/Orkeon/orkeon/releases/tag/v0.1.0-alpha

@@ -5,6 +5,15 @@ Routes `ILogger` writes into a dedicated **logs pane** at the top of the screen
 and the REPL into the **bottom pane** — so log lines no longer interleave with
 the prompt.
 
+## Install
+
+```
+dotnet add package Orkeon.Cli.TerminalGui --prerelease
+```
+
+> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+
+
 ## What it does
 
 - Implements `IConsoleAdapter` (from `Orkeon.Cli.Abstractions`) on top of a

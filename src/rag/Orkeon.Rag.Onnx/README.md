@@ -4,6 +4,15 @@
 (**Apache-2.0**, sentence-transformers / UKP Lab) but ships **no weights** itself.
 ONNX Runtime and Microsoft.ML.Tokenizers are MIT.
 
+## Install
+
+```
+dotnet add package Orkeon.Rag.Onnx --prerelease
+```
+
+> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+
+
 **Offline story**: weights are resolved in this order, lazily at first use —
 
 1. **`Orkeon.Rag.Onnx.Model` referenced** → embedded int8 weights (~22 MB), **guaranteed

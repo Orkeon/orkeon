@@ -42,10 +42,10 @@
     "content": [
       { "files": ["api/**.yml", "api/index.md"] },
       { "files": ["docs/toc.yml", "docs/*.md", "docs/**/*.md"] },
-      { "files": ["*.md", "toc.yml"], "exclude": ["artifacts/**", "_site/**"] }
+      { "files": ["*.md", "toc.yml"], "exclude": ["artifacts/**", "_site/**", "CLAUDE.md"] }
     ],
     "resource": [
-      { "files": ["images/**", "docs/assets/**"] }
+      { "files": ["docs/assets/**"] }
     ],
     "dest": "_site",
     "globalMetadata": {

@@ -5,6 +5,15 @@
 [`Xenova/ms-marco-MiniLM-L-6-v2`](https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2)
 (`onnx/model_quantized.onnx`, ~22 MB). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
+## Install
+
+```
+dotnet add package Orkeon.Rag.Onnx.Model --prerelease
+```
+
+> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+
+
 **Offline story**: the weights and the WordPiece vocab are committed to this repository and
 embedded as assembly resources. Referencing this package next to `Orkeon.Rag.Onnx` gives the
 cross-encoder reranker a **guaranteed offline** model source — zero network, zero download,

@@ -7,8 +7,10 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ## Install
 
 ```
-dotnet add package Orkeon.Cli
+dotnet add package Orkeon.Cli --prerelease
 ```
+
+> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Documentation
 

@@ -7,7 +7,7 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ## Install
 
 ```
-dotnet add package Orkeon.Application
+dotnet add package Orkeon.Application --prerelease
 ```
 
 ## Documentation

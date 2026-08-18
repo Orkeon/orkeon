@@ -4,6 +4,15 @@ Plugin system for [Orkeon](https://github.com/Orkeon/orkeon): drop third-party
 assemblies in a directory and let them contribute tools, LLM providers, or any other
 service to the host's dependency-injection container — no recompilation of the host.
 
+## Install
+
+```
+dotnet add package Orkeon.Plugins --prerelease
+```
+
+> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+
+
 > **Trust boundary — read this first.** Loading a plugin executes arbitrary code with
 > the **full privileges of the host process**. There is **no sandbox** in v1, and an
 > `AssemblyLoadContext` is an *isolation* mechanism (independent dependency versions,

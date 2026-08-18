@@ -6,10 +6,10 @@
 
 | Version | Supported |
 |---|---|
-| 0.9.x (beta) | ✅ |
-| < 0.9 | ❌ |
+| 1.0.x (incl. release candidates) | ✅ |
+| ≤ 0.9.x (beta) | ❌ |
 
-Orkeon is pre-1.0: only the latest published beta receives security fixes.
+Only the latest published release (currently the 1.0.0 release-candidate line) receives security fixes.
 
 ## Reporting a Vulnerability
 

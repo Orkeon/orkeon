@@ -1,14 +1,24 @@
 # Orkeon.Tools.Rag
 
-Agent tools for the Orkeon RAG subsystem (`src/rag/`), in the `Tools.*` family
-(naming per [ADR-004](../../../docs/adr/ADR-004-jumeaux-de-nommage-scripting.md) —
-`Orkeon.Tools.Rag`, **not** `Orkeon.Rag.Tools`).
+Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
+
+**Orkeon.Tools.Rag** exposes the RAG subsystem (`Orkeon.Rag`) to agents as tools, in the `Tools.*` family (`Orkeon.Tools.Rag`, **not** `Orkeon.Rag.Tools` — see ADR-004/ADR-006).
 
 ## Tools
 
 | Tool | Class | Description |
 |------|-------|-------------|
-| `rag_search` | `RagSearchTool` | Grounded retrieval over the RAG subsystem's `IRagPipeline` (question / `top_k` / `collection`); `collection = "raggable-tree"` routes to the semantic code index (`IRaggableStore`). Output: answer text + `Sources:` block with scores. |
+| `rag_search` | `RagSearchTool` | Grounded retrieval over `IRagPipeline` (question / `top_k` / `collection`); `collection = "raggable-tree"` routes to the semantic code index (`IRaggableStore`). Output: answer text + `Sources:` block with scores. |
+| `rag_ingest` | `RagIngestTool` | Ingests documents into a RAG collection through `IIngestionPipeline` (path or URL, chunking strategy, collection). |
+| `rag_eval` | `RagEvalTool` | Runs the offline RAG evaluation harness (`IRagEvalHarness`) on a golden dataset and reports recall@k / MRR. |
+
+## Install
+
+```
+dotnet add package Orkeon.Tools.Rag --prerelease
+```
+
+> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Registration
 
@@ -17,6 +27,10 @@ services.AddOrkeonRag(configuration);   // Orkeon.Rag.DependencyInjection — th
 services.AddOrkeonRagTools();           // Orkeon.Tools.Rag.DependencyInjection — the agent tools
 ```
 
-Contracts live in `src/rag/Orkeon.Rag.Abstractions/`; implementations and
-named-component factories live in `src/rag/Orkeon.Rag/`. See
-[ADR-006](../../../docs/adr/ADR-006-rag-subsystem.md).
+## Documentation
+
+- [RAG pipeline architecture](https://github.com/Orkeon/orkeon/blob/main/docs/architecture/rag-pipeline.md)
+- [ADR-006 — RAG subsystem](https://github.com/Orkeon/orkeon/blob/main/docs/adr/ADR-006-rag-subsystem.md)
+- [Repository & getting started](https://github.com/Orkeon/orkeon)
+
+MIT © Orkeon Contributors

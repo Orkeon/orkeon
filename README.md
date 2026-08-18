@@ -110,7 +110,7 @@ Runner, Ollama, or a model embedded in the container image) — see the
 |---|---|---|
 | **Run crews with zero install** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — interactive shell, 105 bundled examples (`orkeon-example run 1`), local-model ready | [Container guide](docs/getting-started/three-ways-to-run-orkeon.md#3-container) |
 | **Install the `orkeon` CLI** | Windows and Debian/Ubuntu: the quickstarts below. Other platforms: grab the archive from the [releases](https://github.com/Orkeon/orkeon/releases) (`linux-arm64`, `osx-x64/arm64`), then `./install.sh` | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
-| **Embed Orkeon in your app** | `dotnet add package Orkeon.Domain` (+ `Orkeon.Application`, `Orkeon.Infrastructure`, and opt-in packs as needed) | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
+| **Embed Orkeon in your app** | `dotnet add package Orkeon.Domain --prerelease` (+ `Orkeon.Application`, `Orkeon.Infrastructure`). The opt-in packs (`Orkeon.Rag`, `Orkeon.Tools.*`, `Orkeon.Hosting`, …) are published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages) — see the [publication matrix](docs/reference/publication-matrix.md) | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
 | **Hack on the framework** | `git clone` + `dotnet build Orkeon.sln` | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
 
 **Windows** — download `orkeon-cli-<version>-win-x64.zip` (or the `.msi`) from the [releases](https://github.com/Orkeon/orkeon/releases); it is self-contained, no .NET needed:
@@ -234,12 +234,15 @@ Around the core, dedicated packages cover hosting (`Orkeon.Hosting`), plugins (`
 
 ## Project Status
 
-Orkeon is **1.0.0-rc.1** on .NET 10 — the V1 release candidate. Recent milestones: the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; LLM exchange logging; forced JSON response formats; and a 12th LLM provider (Z.AI GLM).
+Orkeon is **1.0.0-rc.1** on .NET 10 — the V1 release candidate. Recent milestones: the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the 13th LLM provider (Google Gemini).
 
 Every pull request is gated in CI:
 
-- merged line coverage must stay at or above **70 %** (scheduled to rise to 75 %) — currently measured at **82 %** overall
-- a **blocking SonarQube quality gate** ("Orkeon Transitional") with a documented hardening trajectory — see the [quality-gate policy](docs/guides/quality-gate.md). Latest analysis (July 2026): gate green, **0 vulnerabilities, 0 code smells**, 2.2 % duplication across ~114 k lines of code
+- the build compiles with **`-warnaserror` and the full .NET analyzer set** — any new compiler, analyzer, or NuGet-audit warning fails the build
+- the **public API surface is frozen** (Microsoft.CodeAnalysis.PublicApiAnalyzers; undeclared API changes are build errors)
+- the full test suites, the EN/FR documentation parity gate, the examples linters, and a strict docfx build (`--warningsAsErrors`)
+
+Quality analysis runs on a local SonarQube via `scripts/sonar-analyze.sh` — see the [quality-gate policy](docs/guides/quality-gate.md). Latest coverage pass (August 2026): core projects measured at **83–90 %** line coverage, **0 vulnerabilities, 0 code smells**.
 
 Known constraints are tracked in [docs/reference/limitations.md](docs/reference/limitations.md).
 
@@ -247,7 +250,7 @@ Known constraints are tracked in [docs/reference/limitations.md](docs/reference/
 
 ## Contributing
 
-Contributions are welcome. Please open an issue to discuss significant changes before submitting a pull request. Make sure all tests pass (`dotnet test Orkeon.sln`) and that new code follows the Clean Architecture conventions described in [CLAUDE.md](CLAUDE.md).
+Contributions are welcome. Please open an issue to discuss significant changes before submitting a pull request. Make sure all tests pass (`dotnet test Orkeon.sln`) and that new code follows the Clean Architecture conventions described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Building from source
 

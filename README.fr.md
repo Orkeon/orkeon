@@ -110,7 +110,7 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 |---|---|---|
 | **Exécuter des crews sans rien installer** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — shell interactif, 105 exemples embarqués (`orkeon-example run 1`), prêt pour les modèles locaux | [Guide conteneur](docs/fr/getting-started/three-ways-to-run-orkeon.md#3-conteneur) |
 | **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu : les démarrages rapides ci-dessous. Autres plateformes : prenez l'archive dans les [releases](https://github.com/Orkeon/orkeon/releases) (`linux-arm64`, `osx-x64/arm64`), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
-| **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon.Domain` (+ `Orkeon.Application`, `Orkeon.Infrastructure`, et les packs opt-in au besoin) | [Bootstrap et exécution](docs/getting-started/bootstrap.md) |
+| **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon.Domain --prerelease` (+ `Orkeon.Application`, `Orkeon.Infrastructure`). Les packs opt-in (`Orkeon.Rag`, `Orkeon.Tools.*`, `Orkeon.Hosting`, …) sont publiés sur le [feed GitHub Packages](https://github.com/orgs/Orkeon/packages) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md) | [Bootstrap et exécution](docs/getting-started/bootstrap.md) |
 | **Contribuer au framework** | `git clone` + `dotnet build Orkeon.sln` | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
 
 **Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis :
@@ -234,12 +234,15 @@ Autour du cœur, des paquets dédiés couvrent l'hébergement (`Orkeon.Hosting`)
 
 ## État du projet
 
-Orkeon est en **1.0.0-rc.1** sur .NET 10 — la release candidate de la V1. Jalons récents : la CLI `orkeon` et l'image conteneur `orkeon-runners` avec 105 exemples embarqués et les workflows de modèles locaux ; l'orchestration FSM et Graph ; le process Autonomous avec budgets d'exécution ; le DSL de scripting TypeScript ; l'analyse sémantique de code RaggableTree (15 outils agents) ; le système de plugins ; checkpoint/reprise ; le logging des échanges LLM ; les formats de réponse JSON forcés ; et un 12ᵉ fournisseur LLM (Z.AI GLM).
+Orkeon est en **1.0.0-rc.1** sur .NET 10 — la release candidate de la V1. Jalons récents : la CLI `orkeon` et l'image conteneur `orkeon-runners` avec 105 exemples embarqués et les workflows de modèles locaux ; l'orchestration FSM et Graph ; le process Autonomous avec budgets d'exécution ; le DSL de scripting TypeScript ; l'analyse sémantique de code RaggableTree (15 outils agents) ; le système de plugins ; checkpoint/reprise ; le client et serveur MCP bi-ère ; la persistance des tâches A2A ; une surface d'API publique mécaniquement gelée ; et le 13ᵉ fournisseur LLM (Google Gemini).
 
 Chaque pull request est gardée en CI :
 
-- la couverture de lignes fusionnée doit rester à **70 %** ou plus (montée à 75 % planifiée) — actuellement mesurée à **82 %** au global
-- une **quality gate SonarQube bloquante** (« Orkeon Transitional ») avec une trajectoire de durcissement documentée — voir la [politique de quality gate](docs/guides/quality-gate.md). Dernière analyse (juillet 2026) : gate verte, **0 vulnérabilité, 0 code smell**, 2,2 % de duplication sur ~114 k lignes de code
+- le build compile avec **`-warnaserror` et le jeu complet d'analyseurs .NET** — tout nouveau warning compilateur, analyseur ou audit NuGet fait échouer le build
+- la **surface d'API publique est gelée** (Microsoft.CodeAnalysis.PublicApiAnalyzers ; un changement d'API non déclaré est une erreur de build)
+- les suites de tests complètes, la gate de parité documentaire EN/FR, les linters d'exemples et un build docfx strict (`--warningsAsErrors`)
+
+L'analyse qualité tourne sur un SonarQube local via `scripts/sonar-analyze.sh` — voir la [politique de quality gate](docs/fr/guides/quality-gate.md). Dernière passe de couverture (août 2026) : projets cœur mesurés entre **83 et 90 %** de couverture de lignes, **0 vulnérabilité, 0 code smell**.
 
 Les contraintes connues sont suivies dans [docs/reference/limitations.md](docs/reference/limitations.md).
 
@@ -247,7 +250,7 @@ Les contraintes connues sont suivies dans [docs/reference/limitations.md](docs/r
 
 ## Contribuer
 
-Les contributions sont bienvenues. Ouvrez une issue pour discuter des changements significatifs avant de soumettre une pull request. Assurez-vous que tous les tests passent (`dotnet test Orkeon.sln`) et que le nouveau code suit les conventions de Clean Architecture décrites dans [CLAUDE.md](CLAUDE.md).
+Les contributions sont bienvenues. Ouvrez une issue pour discuter des changements significatifs avant de soumettre une pull request. Assurez-vous que tous les tests passent (`dotnet test Orkeon.sln`) et que le nouveau code suit les conventions de Clean Architecture décrites dans [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
 
 ### Compiler depuis les sources
 

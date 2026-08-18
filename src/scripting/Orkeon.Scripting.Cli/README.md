@@ -7,9 +7,11 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ## Install
 
 ```
-dotnet tool install --global Orkeon.Scripting.Cli
+dotnet tool install --global Orkeon.Scripting.Cli --prerelease
 orkeon doctor
 ```
+
+> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 Self-contained installers (Windows zip/MSI, Debian package, macOS tarball) are also published on the [releases page](https://github.com/Orkeon/orkeon/releases) — no .NET SDK required there.
 

@@ -113,7 +113,7 @@ The project follows Clean Architecture with clear separation of concerns:
 
 **Working Features**:
 - ✅ Complete Agent, Task, Crew domain models with the full attribute surface
-- ✅ 76 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XML, DirectoryRead, EmailParser, DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
+- ✅ 79 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XML, DirectoryRead, EmailParser, DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
 - ✅ 13 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM), Gemini
 - ✅ YAML configuration support
 - ✅ Memory abstractions (IMemoryProvider interface)
@@ -198,7 +198,7 @@ The project follows Clean Architecture with clear separation of concerns:
 
 Each provider declares an `LlmProviderCapabilities` (Domain value object, exposed on `ILlmProvider`) stating what its API really supports: `ResponseFormat` (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`. `OpenAICompatibleProviderBase` writes the OpenAI dialect once from that declaration; Anthropic (`output_config`, `thinking: adaptive`, `cache_control`), Ollama (`format`, `think`, `images`) and Qwen (`enable_thinking`, `thinking_budget`) override the hook for their own. **An option declared on a provider that cannot honour it produces a structured warning — never a silent drop.** Add a capability to the record and every provider that declares it inherits the translation.
 
-**Tool System**: Extensible architecture with IBaseTool interface, validation, batch execution, and 76 built-in tool classes.
+**Tool System**: Extensible architecture with IBaseTool interface, validation, batch execution, and 79 built-in tool classes.
 
 **Memory System**: Provider-based architecture supporting Redis, In-Memory, ChromaDB, Pinecone, LanceDB, and SQLite.
 
@@ -429,7 +429,7 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
   - Memory Stores (Redis, SQLite, InMemory, ChromaDB, Pinecone, LanceDB)
   - File System access
   - HTTP clients
-- Orchestration strategies: `Crew/Strategies/` (Sequential, Hierarchical, Parallel, Graph, Autonomous)
+- Orchestration strategies: `Crew/Strategies/` (Sequential, Hierarchical, Parallel, Graph, Autonomous) + `Consensus/` (`ConsensualProcessStrategy`, the 6th mode)
 - Communication: `InMemoryAgentChannel` (A2A lock-free)
 - Autonomous tools: `SpawnAgentTool`, `DelegateWorkTool` (with budget)
 - Framework-specific code
@@ -437,13 +437,13 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **29 src projects** and **29 test projects**, plus two solutions:
+The repository contains **33 src projects** and **33 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
 /workspace/
 ├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 29 projects
+├── src/                          # 33 projects
 │   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
 │   ├── core/
 │   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
@@ -484,8 +484,12 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 │   ├── plugins/
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
 │   └── apps/
-│       └── Orkeon.ConsoleApp/    # Console application
-├── tests/                        # 29 projects
+│       ├── Orkeon.ConsoleApp/    # Interactive REPL (dotnet tool `orkeon-repl`, Terminal.Gui split-pane)
+│       ├── Orkeon.Studio.Config/ # Studio: config TUI (orkeon init flows)
+│       ├── Orkeon.Studio.Core/   # Studio: shared core (settings model, target detection, process runner, localization port)
+│       ├── Orkeon.Studio.Run/    # Studio: run TUI
+│       └── Orkeon.Studio.Wpf/    # Studio: WPF desktop app (net10.0-windows, AssemblyName=Orkeon.Studio, IsPackable=false ×4)
+├── tests/                        # 33 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
 │   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Commands.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
@@ -495,7 +499,7 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 │   ├── analysis/                 # Orkeon.Analysis.Tests (RaggableTree)
 │   ├── hosting/                  # Orkeon.Hosting.Tests
 │   ├── plugins/                  # Orkeon.Plugins.Tests
-│   ├── apps/                     # Orkeon.ConsoleApp.Tests
+│   ├── apps/                     # Orkeon.ConsoleApp.Tests, Orkeon.Studio.{Config,Core,Run,Wpf}.Tests
 │   ├── e2e/                      # Orkeon.E2E.Tests
 │   ├── examples/                 # Orkeon.Examples.Runners.Tests
 │   └── shared/                   # Orkeon.Tests.Shared (common test fixtures)
@@ -541,8 +545,8 @@ The repository contains **29 src projects** and **29 test projects**, plus two s
 - **Architecture Decision Records** live in `docs/adr/`. Notably ADR-002 documents the `Infrastructure → Tools.Abstractions` shared-kernel exception; ADR-003 covers the `Application → Analysis.Abstractions` and `Infrastructure → Analysis` couplings; ADR-005 covers `Tools.Web`/`Tools.EventHub → Application`; ADR-006 covers the RAG subsystem (`Orkeon.Rag.Abstractions` shared kernel, `Orkeon.Rag → Application`/`Analysis.Abstractions` couplings, legacy RAG namespaces removed without shims).
 - `InMemoryUnitOfWork` intentionally has no durable persist step (aggregates live in the in-memory repositories; `SaveChangesAsync` dispatches domain events). The former EF-migration TODO has been removed (R3.8). Durable crew **execution-state** persistence is a separate opt-in: `AddCrewExecutionStatePersistence(...)` + a checkpointing `IStateStore` (see `docs/reference/opt-in-subsystems.md`)
 - ChromaDB, Pinecone, and LanceDB are implemented (REST API-based), not placeholders
-- Infrastructure layer has been redesigned without Akka.NET; all projects target `net10.0`
-- Version is defined in `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix` `beta` — currently `0.9.2-beta`); that file is the single source of truth
+- Infrastructure layer has been redesigned without Akka.NET; all projects target `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf` only)
+- Version is defined in `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix` — currently `1.0.0-rc.1`); that file is the single source of truth, and the publish workflow refuses a `v*` tag that does not match it
 - Focus on the V1 feature surface, not speculative additions
 - `sonar-project.properties` has been removed (caused scanner conflicts — all params passed via CLI)
 - SonarQube 9.9 LTS: use `sonar.login` (not `sonar.token`) for authentication

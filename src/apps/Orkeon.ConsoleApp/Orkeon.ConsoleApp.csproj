@@ -14,15 +14,18 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>orkeon-repl</ToolCommandName>
 
-    <!-- Version flows from the single source of truth (src/Directory.Build.props:
-         0.9.0-beta). No local override (OSS-010/R8.3). -->
+    <!-- Version, Authors and Copyright flow from the single source of truth
+         (src/Directory.Build.props). No local override (OSS-010/R8.3). -->
 
     <!-- Package Metadata -->
-    <Authors>Orkeon Contributors</Authors>
-    <Description>Simple console application for Orkeon</Description>
-    <Copyright>Copyright (c) 2025 Orkeon Contributors</Copyright>
+    <Description>Interactive REPL for Orkeon (`orkeon-repl` dotnet tool): drive agents, crews and tools from a terminal console — Terminal.Gui split-pane UI, TypeScript-scripted commands, full framework stack wired in.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\cli\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
