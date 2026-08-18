@@ -1,0 +1,107 @@
+> 🇫🇷 [Version française](../fr/reference/cli.md)
+
+# `orkeon` CLI reference
+
+The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, and diagnoses an installation. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
+
+```bash
+dotnet tool install --global Orkeon.Scripting.Cli --prerelease
+orkeon doctor
+```
+
+The release binaries and installers (Windows zip/MSI, Debian package, macOS tarballs) also ship the same CLI, self-contained — no .NET SDK required. See [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md).
+
+**Exit codes** (stable): `0` OK · `1` script/config error (missing file, invalid script, validation failure) · `2` unexpected runtime error · `130` cancelled with Ctrl+C.
+
+## `orkeon run`
+
+```bash
+orkeon run <crew.ork.ts | crew.yaml | crew-directory/> [options]
+```
+
+Runs a crew definition and prints its result on stdout. Dispatch is by target type: `.ork.ts`/`.js` goes to the scripting host (esbuild transpile + Jint), `.yaml`/`.yml` — or a directory holding a multi-file YAML crew (`config.yaml` + `agents/` + `tasks/`, or the flat `crew.yaml`/`agents.yaml`/`tasks.yaml` triplet) — goes to the shared one-shot YAML runner.
+
+| Option | Description |
+|---|---|
+| `-s, --settings <path>` | Path to `appsettings.json`. Without it, a fallback chain applies (below). |
+| `-m, --mount <spec>` | VFS mount, Docker-style `<physical>:<virtual>:<rights>[;sub:rights]`. Repeatable. |
+| `--allow-external-mounts` | Allow mounts outside the workspace root (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`). |
+| `-v, --verbose <0-2>` | `0` quiet, `1` LLM & tool exchanges, `2` full debug. |
+| `--llm-log` / `--llm-log-path <dir>` | Log full LLM exchanges as JSONL (default directory `./llm-logs`). |
+| `--inputs <json>` / `--inputs-file <path>` | Structured inputs for **scripts** (global `inputs` variable). |
+| `-V, --var KEY=VALUE` | Variable for a **YAML crew**'s `CrewInput` (task templates `{KEY}`). Repeatable. |
+| `--initial-context <text>` | Initial context string for a **YAML crew**'s `CrewInput`. |
+| `--memory-limit-mb <n>` | Jint memory limit override for this run (`0` disables it). |
+| `--validate` | Dry run: resolve settings, build the host, load the crew with strict tool resolution — no LLM call, no kickoff. Prints `VALIDATION OK/FAILED: …`. |
+| `--list-tools` | Build the host, print the sorted runtime tool registry, exit. No crew path needed. |
+
+```bash
+orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
+  --settings examples/appsettings/appsettings.deepseek.local.json \
+  --mount ./out:/output:rw -v 1
+```
+
+**Settings resolution** — when `--settings` is omitted, the CLI walks a fallback chain: `appsettings.json` next to the crew file, then an `appsettings/appsettings.json` found by walking up the parent directories, then the global per-user file written by `orkeon init`, then `ORKEON_*` environment variables alone. Details and the ready-made profile matrix: [Run your first example](../getting-started/run-your-first-example.md).
+
+## `orkeon init`
+
+Configuration assistant. Generates a valid `appsettings.json` at the global per-user path (`%APPDATA%\Orkeon\appsettings.json` on Windows, `~/.config/Orkeon/appsettings.json` on Linux/macOS) from an interactive 5-choice wizard — `ollama`, `docker-model-runner`, `openai`, `custom`, `none` — or non-interactively via flags, then probes the endpoint (unless `--no-probe`).
+
+| Option | Description |
+|---|---|
+| `-p, --provider <preset>` | `ollama` \| `docker-model-runner` \| `openai` \| `custom` \| `none`. |
+| `-u, --base-url <url>` / `-m, --model <id>` | Endpoint and model. Required for `custom`; presets have defaults. |
+| `-k, --api-key-env <name>` / `--api-key <value>` | Env var holding the key, or a key to store. |
+| `--path <file>` | Write somewhere other than the global per-user path. |
+| `-f, --force` | Overwrite an existing file. |
+| `--no-probe` | Skip the endpoint probe. |
+
+```bash
+orkeon init --provider ollama --model llama3.2 --no-probe
+```
+
+## `orkeon llm`
+
+Two verbs against a live provider endpoint.
+
+**`orkeon llm probe`** — exercises the LLM test protocol against a provider and optionally archives the campaign trace. Key options: `-p, --provider` (required: `openai | anthropic | ollama | azure | groq | together | qwen | deepseek | kimi | mistral | huggingface | zai | gemini`), `-m, --model`, `-u, --base-url` (required for Azure), `--api-version` (Azure deployment mode), `-k, --api-key-env` (default `ORKEON_LLM_API_KEY` — the key itself is never accepted on the command line), `--modes` (comma-separated, e.g. `M1,M2,M8`; default all), `--archive <dir>`, `--format md|json`, `--commit`, `--timeout` (seconds, default 180), `--temperature` (default 0).
+
+**`orkeon llm models`** — lists the models a provider currently serves. Options: `-p, --provider` (required), `-u, --base-url`, `-k, --api-key-env`, `-f, --filter` (shell-style glob), `--json`.
+
+```bash
+ORKEON_LLM_API_KEY=... orkeon llm probe -p deepseek --modes M1,M2 --format json
+orkeon llm models -p ollama --filter 'llama*'
+```
+
+## `orkeon rag`
+
+Three verbs over the RAG subsystem (`ingest`, `search`, `eval`). All share the host options of `run`: `-s/--settings`, `-m/--mount`, `--allow-external-mounts`, `-v/--verbose`. Relative sources resolve against an automatic `{cwd} → /workspace:ro` mount; state lands in `{cwd}/.orkeon → /output:rw`.
+
+**`orkeon rag ingest`** — incremental ingestion (unchanged sources are skipped): `-c, --collection` (required), `--source <path|glob>` (required, repeatable), `--chunking recursive|sentence|structural|semantic`, `--reindex` (full reindex — the only way past an embedding model/dimension change).
+
+**`orkeon rag search`** — asks a question, prints the grounded answer with citations and scores: positional `<question>`, `-c, --collection` (required), `--top-n` (default 5).
+
+**`orkeon rag eval`** — evaluates a collection against a golden dataset (recall@k, MRR, groundedness) and writes markdown/JSON reports: `-d, --dataset` (required), `-c, --collection`, `--profile` or `--compare fast,balanced,…`, `-k` (default 5), `--llm-judge`, `--offline` (zero-network: deterministic extractive stub, no LLM key needed), `--no-ingest`, `--reindex`, `--min-recall` / `--min-mrr` (anti-regression gates, exit 1 below threshold), `--output` (default `/output/rag/eval`).
+
+```bash
+orkeon rag eval --dataset examples/rag/eval/golden.yaml \
+  --compare fast,balanced,quality,corrective,adaptive --offline
+```
+
+## `orkeon doctor`
+
+Installation diagnostic: says in under 15 seconds what works and what is missing, as a ✅/⚠️/❌ table or `--json` (stable `{check, status, detail}` schema for CI). Nine checks: `dotnet-runtime`, `appsettings`, `llm-config`, `llm-reachability`, `esbuild`, `local-embeddings`, `onnx-reranker`, `tree-sitter`, `workspace-write`. Exit codes: `0` all green or warnings only, `1` at least one failing check.
+
+```bash
+orkeon doctor --json
+```
+
+## `orkeon-repl` — the separate interactive console
+
+`orkeon-repl` is a **different tool** built from `src/apps/Orkeon.ConsoleApp` (dotnet tool command `orkeon-repl`): a full interactive REPL that drives agents, crews and tools from a Terminal.Gui split-pane console (logs + REPL), with the full framework stack wired in — built-in tools, RAG, code analysis, local embeddings — and TypeScript-scripted commands. It deliberately does not share the `orkeon` assembly name. See [CLI TypeScript commands](../architecture/cli-ts-commands.md).
+
+---
+
+> **See also**: [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md) ·
+> [Run your first example](../getting-started/run-your-first-example.md) ·
+> [Back to index](../INDEX.md)

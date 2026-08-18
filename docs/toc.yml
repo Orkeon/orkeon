@@ -38,6 +38,10 @@
       href: architecture/cli-ts-commands.md
     - name: TypeScript coding agent
       href: architecture/coding-agent-ts.md
+    - name: MCP client & server
+      href: architecture/mcp.md
+    - name: Orkeon Studio
+      href: architecture/studio.md
     - name: YAML reference
       href: architecture/yaml-schema.md
     - name: RaggableTree — semantic graph
@@ -82,6 +86,10 @@
       href: reference/examples-catalog.md
     - name: LLM provider comparison
       href: reference/llm-providers-comparison.md
+    - name: orkeon CLI reference
+      href: reference/cli.md
+    - name: Configuration reference
+      href: reference/configuration.md
     - name: Limits and constraints
       href: reference/limitations.md
     - name: Experimental APIs

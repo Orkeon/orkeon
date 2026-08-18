@@ -20,6 +20,33 @@ on the four unstable areas) with the versioning policy to match. Breaking change
 are called out in their own entries (RAG namespace extraction, API-shape conformance,
 `Orkeon.Cli.Commands.Scripting` rename).
 
+### Fixed — `orkeon llm probe|models` now know Gemini (PUB-15 leftover)
+
+`LlmProviderFactory` accepted `gemini`/`google` since PUB-15, but the CLI's
+`LlmCatalogClient` had no default base URL for it and did not treat it as
+OpenAI-catalog-compatible — `orkeon llm models -p gemini` failed without an
+explicit `-u`, and the probe help text stopped at 12 providers. Both wired;
+surfaced by the DOC-02 review of the new CLI reference page.
+
+### Changed — Documentation trued up against the code, end to end (DOC-02)
+
+A three-pass audit (docs/ tree, root/examples/OSS surface, facts vs code)
+followed by full remediation. Highlights: the quality-gate page no longer
+claims a blocking Sonar CI gate that does not exist; the fictional
+`autonomousBudget` YAML block is marked not-implemented; two lifted
+limitations rewritten (uniform streaming, runtime plugins); every count
+trued (79 tool classes, 44 domain events, 13 providers, 33+33 projects);
+17 dead `project/` references and 4 failing copy-paste commands fixed;
+~350 French fragments in EN docs translated; `docs/arkeon/` retired;
+`CLAUDE.md` no longer rendered on the docs site; `docs/fr/toc.yml` created
+(51 FR pages were orphans) and the ADR register joined the site nav.
+New pages (EN + FR): `reference/cli.md`, `reference/configuration.md`,
+`architecture/mcp.md`, `architecture/studio.md`. New guards in CI:
+`scripts/check-doc-claims.py` (counts checked against the code), a
+category-README completeness check, and an informational EN/FR drift
+report. New community files: SUPPORT (EN/FR), NOTICE, CODEOWNERS,
+dependabot, CodeQL, a documentation issue form.
+
 ### Fixed — ExecutionPlanParser no longer throws on non-string JSON values
 
 `ExecutionPlanParser` parses untrusted LLM planning output, yet `"task": 42`,

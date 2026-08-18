@@ -28,6 +28,7 @@ internal static class LlmCatalogClient
     {
         "openai", "groq", "together", "togetherai", "deepseek", "kimi", "moonshot",
         "qwen", "mistral", "huggingface", "hf", "zai", "glm", "zhipu",
+        "gemini", "google",
     };
 
     /// <summary>Default base URL per provider key, mirroring what the factory would use.</summary>
@@ -48,6 +49,8 @@ internal static class LlmCatalogClient
         ["zai"] = LlmEndpoints.Zai,
         ["glm"] = LlmEndpoints.Zai,
         ["zhipu"] = LlmEndpoints.Zai,
+        ["gemini"] = LlmEndpoints.Gemini,
+        ["google"] = LlmEndpoints.Gemini,
         ["ollama"] = LlmEndpoints.OllamaDefault,
     };
 

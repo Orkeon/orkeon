@@ -32,6 +32,8 @@ La documentation est organisée en 6 sections thématiques.
 | [Système de plugins](./architecture/plugins.md) | Contrat `IOrkeonPlugin`, découverte VFS, isolation `AssemblyLoadContext`, activation opt-in `AddOrkeonPlugins`, ⚠️ frontière de confiance |
 | [DSL de scripting](./architecture/scripting.md) | DSL à syntaxe TypeScript (`.ork.ts`) : transpilation esbuild, exécution sandboxée Jint, toute la surface Orkeon (agents, crews, tools, FSM, graphes, événements) via builders fluides |
 | [Commandes CLI TypeScript](./architecture/cli-ts-commands.md) | Commandes REPL interactives en `*.cmd.ts` (`defineCommand`) chargées au démarrage sans recompilation .NET, avec dispatch de travail vers les agents |
+| [Client & serveur MCP](./architecture/mcp.md) | Intégration Model Context Protocol bi-ère (`2026-07-28` stateless + révisions legacy), transports, activation, limites honnêtes |
+| [Orkeon Studio](./architecture/studio.md) | Les front-ends graphique/terminal au-dessus des workflows CLI : les quatre projets, le cœur partagé, la localisation, la distribution |
 | [Coding agent TypeScript](./architecture/coding-agent-ts.md) | Agent de codage agentique construit sur la pile scriptée : plan de contrôle `*.cmd.ts` vs moteur `crew.ork.ts`, outils C# `ToolBase` |
 | [Référence YAML](./architecture/yaml-schema.md) | **Source unique** du schéma YAML complet (crew, agents, tasks, circuitBreaker, graphConfig) |
 | [RaggableTree — graphe sémantique](./architecture/raggable-tree.md) | Pipeline 6 phases, 15 tools, 5 langages, réindexation incrémentale, watcher, injection de contexte |
@@ -72,6 +74,8 @@ La documentation est organisée en 6 sections thématiques.
 | Fichier | Description |
 |---------|-------------|
 | [Catalogue des exemples](./reference/examples-catalog.md) | Carte éditoriale d'`examples/` (9 catégories métier + vitrines RAG/RaggableTree/scripting) ; l'`examples/INDEX.md` généré est l'inventaire faisant foi |
+| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `doctor`) avec options et exemples, plus `orkeon-repl` |
+| [Référence de configuration](./reference/configuration.md) | La carte unique des sections d'`appsettings.json` (`Llm`, `Orkeon:*`, `MCP`), sources et précédence, colonne opt-in |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante |
 | [Matrice de conformité A2A](./reference/a2a-conformance.md) | Position honnête face à la spec A2A v1.0 : opérations, modèle de données, bindings, sécurité — ce qui interopère et ce qui n'interopère pas |
 | [APIs expérimentales](./reference/experimental-apis.md) | Surfaces `[Experimental]` (A2A, Autonomous, RAG correctif, MCP), IDs de diagnostic `ORKEXP001–004`, comment s'inscrire |
