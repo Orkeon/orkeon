@@ -123,5 +123,6 @@ public sealed class SystemProcessHandle : IProcessHandle
     // DllImport rather than the source-generated LibraryImport: the latter emits unsafe code,
     // and this project does not enable it for one blittable two-int call.
     [DllImport("libc", EntryPoint = "kill", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     private static extern int KillNative(int pid, int signal);
 }

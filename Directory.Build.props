@@ -3,6 +3,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <!-- Exclure les artefacts de l'autre OS pour éviter les doublons CS0579/CS0757 -->
     <DefaultItemExcludes>$(DefaultItemExcludes);obj-linux/**;obj/**</DefaultItemExcludes>
+    <!-- PUB-18 (P5 of the 2026-06-15 zero-warning campaign): the FULL analyzer set
+         is on, permanently. Every family is either clean or explicitly arbitrated
+         in .editorconfig (the ledger); the 2026-08-18 inventory found 4 stragglers
+         solution-wide, all fixed the same day. CI builds with -warnaserror, so the
+         whole repo is ratcheted at zero warnings under the complete rule set. -->
+    <AnalysisMode>All</AnalysisMode>
+    <AnalysisLevel>latest-all</AnalysisLevel>
   </PropertyGroup>
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj-linux/</BaseIntermediateOutputPath>

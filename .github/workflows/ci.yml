@@ -45,7 +45,11 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore Orkeon.sln
-      - run: dotnet build Orkeon.sln -c Release --no-restore
+      # PUB-18 ratchet: the solution builds at ZERO warnings (2026-06-15 campaign,
+      # re-verified 2026-08-18) and -warnaserror keeps it there — any new compiler,
+      # analyzer or NuGet-audit warning fails CI. Audit advisories breaking the
+      # build is deliberate: fix the pin (see the SSH.NET precedent in CHANGELOG).
+      - run: dotnet build Orkeon.sln -c Release --no-restore -warnaserror
       # Unit + fast tests only (see header for what's excluded and why).
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow&FullyQualifiedName!~Orkeon.Tools.Embeddings.Local"
       # Embeddings assembly alone, tolerating its known exit-139 teardown crash.

@@ -13,6 +13,8 @@ namespace Orkeon.Studio.Core.Tests;
 /// </summary>
 public sealed class LlmPresetsTests
 {
+    private static readonly JsonSerializerOptions s_indentedJson = new() { WriteIndented = true };
+
     /// <summary>Faithful copy of <c>InitCommand.BuildJson</c> (Orkeon.Scripting.Cli, internal).</summary>
     private static string BuildJsonLikeInitCommand(
         string provider, string? baseUrl, string? model, string? inlineApiKey)
@@ -37,7 +39,7 @@ public sealed class LlmPresetsTests
             root["Llm"] = llm;
         }
 
-        return JsonSerializer.Serialize(root, new JsonSerializerOptions { WriteIndented = true })
+        return JsonSerializer.Serialize(root, s_indentedJson)
             + Environment.NewLine;
     }
 

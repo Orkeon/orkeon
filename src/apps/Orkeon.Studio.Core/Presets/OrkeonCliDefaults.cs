@@ -41,6 +41,9 @@ public static class OrkeonCliDefaults
     /// <summary>Qwen (Alibaba DashScope) OpenAI-compatible endpoint.</summary>
     public const string Qwen = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
+    /// <summary>Google Gemini OpenAI-compatible endpoint.</summary>
+    public const string Gemini = "https://generativelanguage.googleapis.com/v1beta/openai";
+
     /// <summary>Kimi (Moonshot AI) international API base URL (OpenAI-compatible).</summary>
     public const string Kimi = "https://api.moonshot.ai/v1";
 

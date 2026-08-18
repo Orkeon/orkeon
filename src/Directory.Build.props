@@ -31,11 +31,12 @@
 
          2. Budget on the NEW only: CS1998 is escalated to a build ERROR via
             WarningsAsErrors so any newly introduced async-without-await breaks
-            the build. The ~2 283 pre-existing analyzer warnings are NOT
-            promoted (no global TreatWarningsAsErrors), so the existing debt is
-            frozen as a baseline without retroactively blocking the repo.
-            Extend the WarningsAsErrors list below as further rules are cleaned
-            to ratchet the budget down over time.
+            the build. The pre-existing analyzer debt (~2 283 warnings when this
+            policy was written) was resorbed to ZERO by the 2026-06-15
+            zero-warning campaign; since PUB-18 (2026-08-18) CI builds with
+            -warnaserror, so the whole solution is ratcheted at zero — any new
+            warning fails the CI build. Extend the WarningsAsErrors list below
+            when a rule must also break LOCAL builds.
 
          3. CS1574 (unresolvable XML doc cref) resorbed to zero on 2026-06-12
             (zero-warning campaign) and frozen as an error. -->

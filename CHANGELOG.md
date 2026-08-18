@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Global zero-warning ratchet: full analyzer set on, CI builds -warnaserror (PUB-18)
+
+The warning-debt story reaches its terminal state. The audit found the "frozen
+~2 283 warnings" note in the build props was stale — the 2026-06-15 zero-warning
+campaign had already resorbed the debt; a fresh full-analysis inventory
+(`AnalysisMode=All`, `AnalysisLevel=latest-all`) surfaced only **four stragglers**
+solution-wide, all fixed (unused TUI palette field, `DefaultDllImportSearchPaths`
+on the libc `kill` P/Invoke, two per-call `JsonSerializerOptions` allocations).
+The complete analyzer rule set is now **enabled permanently** in the root build
+props, and CI compiles with **`-warnaserror`** — any new compiler, analyzer, or
+NuGet-audit warning fails the build (audit advisories breaking CI is deliberate;
+see the SSH.NET precedent). The `.editorconfig` ledger remains the record of the
+deliberate per-scope arbitrations.
+
 ### Changed — DI default stand-ins fully documented; the stub planner now warns (PUB-23)
 
 The deliberately-minimal DI defaults follow the house rule — never a silent drop —

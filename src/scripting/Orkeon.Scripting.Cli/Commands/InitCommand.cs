@@ -61,6 +61,8 @@ internal sealed class InitCommandOptions
 /// </summary>
 internal static class InitCommand
 {
+    private static readonly JsonSerializerOptions s_indentedJson = new() { WriteIndented = true };
+
     /// <summary>The env var the runtime configuration reads natively (AddEnvironmentVariables("ORKEON_")).</summary>
     private const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
 
@@ -395,7 +397,7 @@ internal static class InitCommand
             root["Llm"] = llm;
         }
 
-        return JsonSerializer.Serialize(root, new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine;
+        return JsonSerializer.Serialize(root, s_indentedJson) + Environment.NewLine;
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic messages.")]

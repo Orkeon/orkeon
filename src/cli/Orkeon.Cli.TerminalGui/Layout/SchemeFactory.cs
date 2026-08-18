@@ -34,7 +34,6 @@ public static class SchemeFactory
     // only the fidelity accents use the sampled palette.
 
     private static readonly Color Bg = new(0x0d, 0x0d, 0x0d);
-    private static readonly Color Fg = new(0xe8, 0xe8, 0xe8);
     private static readonly Color DimFg = new(0x8a, 0x8a, 0x8a);
     private static readonly Color AccentFg = new(0xe8, 0x65, 0x4a);   // ✱ gerund, ❯ prompt
     private static readonly Color PostureFg = new(0xd3, 0x3f, 0xb0);  // ▶▶ bypass permissions
