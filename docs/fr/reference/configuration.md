@@ -52,9 +52,9 @@ runtime dégrade vers le provider écho et avertit une fois. Voir
 | `PathSecurity` | Répertoires physiques autorisés (`AdditionalAllowedDirectories`) | `AddOrkeonInfrastructure()` |
 | `Telemetry` | Export OpenTelemetry | `AddOrkeonInfrastructure(configuration)` |
 | `A2A`, `A2A:Security` | Serveur/client A2A, mTLS, schémas d'auth | opt-in `AddOrkeonA2A(configuration)` |
-| `MCP`, `MCP:Server` | Connexions client MCP + serveur MCP optionnel | `AddOrkeonMcp(configuration)` — voir [Intégration MCP](../architecture/mcp.md) |
-| `Evaluation` | Services d'évaluation | opt-in (`EvaluationServiceCollectionExtensions`) |
-| `RaggableTree` | Indexation de codebase (embedding, exclusions) | flag opt-in `RunnerHost` / `AddRaggableTree` |
+| `MCP`, `MCP:Server` | Connexions client MCP + serveur MCP optionnel | — (`AddOrkeonMcp(configuration)` est appelé par `AddOrkeonInfrastructure(configuration)` ; la section `MCP` le gouverne) — voir [Intégration MCP](../architecture/mcp.md) |
+| `Evaluation` | Services d'évaluation | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
+| `RaggableTree` | Indexation de codebase (embedding, exclusions) | **opt-out dans les hôtes runner** : `RunnerHost` l'enregistre par défaut, `RaggableTree:Enabled = false` le désactive ; les consommateurs bibliothèque appellent `AddRaggableTree(options)` explicitement |
 | `Plugins` | Découverte du répertoire de plugins | opt-in `AddOrkeonPlugins(fileSystem, configuration)` |
 
 ## Sections `Orkeon:*`
@@ -66,8 +66,8 @@ runtime dégrade vers le provider écho et avertit une fois. Voir
 | `Orkeon:CrewFactory:StrictTools` | Échec du chargement de crew sur outil inconnu (défaut runners `true`) | `RunnerHost` → `CrewFactoryOptions` | — |
 | `Orkeon:ExecutionState:Persistence` | Persistance durable des états d'exécution (`Enabled`, `DeleteFromStoreOnArchive`) | `ScopedCrewExecutionStateManager` | `AddCrewExecutionStatePersistence(configuration)` — appelé automatiquement par `AddOrkeonInfrastructure(configuration)` quand la section existe ; requiert un `IStateStore` |
 | `Orkeon:Checkpointing:*` | State store Postgres (`ConnectionString`, `SchemaName`, `AutoMigrate`, `MaxHistoryPerSession`) | `CheckpointingExtensions` | `AddOrkeonPostgresCheckpointing(configuration)` |
-| `Orkeon:Consensus` | Options de vote du mode consensuel | Infrastructure | `AddOrkeonConsensus()` |
-| `Orkeon:CostTracking`, `Orkeon:TokenCounter` | Suivi des coûts LLM et comptage de tokens | Infrastructure | `AddOrkeonCostTracking()` |
+| `Orkeon:Consensus` | Options de vote du mode consensuel | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
+| `Orkeon:CostTracking`, `Orkeon:TokenCounter` | Suivi des coûts LLM et comptage de tokens | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
 | `Orkeon:Monitoring` | Backend de monitoring | Infrastructure | `AddOrkeonMonitoring(configuration)` |
 
 ### Embeddings, recherche vectorielle, mémoire
@@ -80,7 +80,7 @@ runtime dégrade vers le provider écho et avertit une fois. Voir
 | `Orkeon:ChromaDb`, `Orkeon:Pinecone` | Stores vectoriels externes | `VectorStoreExtensions` | auto-enregistrés par `AddOrkeonInfrastructure(configuration)` **quand la section existe**, ou `AddOrkeonChromaDb`/`AddOrkeonPinecone` |
 | `Orkeon:LanceDb` | Serveur LanceDB distant | `VectorStoreExtensions` | `AddOrkeonLanceDb(...)` uniquement (jamais auto) |
 | `Orkeon:CognitiveMemory` | Couche de mémoire cognitive | Infrastructure | `AddOrkeonCognitiveMemory(configuration)` |
-| `Orkeon:Encryption` | Chiffrement de la mémoire au repos | Infrastructure | `AddOrkeonEncryption()` (rotation de clés : `AddOrkeonKeyRotation()`) |
+| `Orkeon:Encryption` | Chiffrement de la mémoire au repos | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement). La rotation de clés reste opt-in : `AddOrkeonKeyRotation()` |
 
 ### RAG (`Orkeon:Rag`)
 
@@ -103,9 +103,9 @@ requiert l'opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection
 |---|---|---|---|
 | `Orkeon:Security:PermissionGate` | Barrière par appel d'outil (`Enabled` défaut `false`, `Interactive`) | `ModePermissionGate` | `AddOrkeonPermissionGate(configuration)` — appelé par `RunnerHost` ; sans effet tant que `Enabled = true` n'est pas posé |
 | `Orkeon:Dlp` | Politiques DLP / détection PII | Infrastructure | `AddOrkeonDlp()` |
-| `Orkeon:Guardian` | Pipeline de sûreté de contenu | Infrastructure | `AddOrkeonGuardian()` |
-| `Orkeon:Auth:AzureAD`, `Orkeon:Auth:OIDC` | Providers d'authentification | Infrastructure | `AddOrkeonAuth()` |
-| `Orkeon:CodeSandbox` (+ `:Docker`) | Sandbox de l'interpréteur de code sécurisé | Infrastructure | `AddOrkeonCodeSandbox()` |
+| `Orkeon:Guardian` | Pipeline de sûreté de contenu | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
+| `Orkeon:Auth:AzureAD`, `Orkeon:Auth:OIDC` | Providers d'authentification | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
+| `Orkeon:CodeSandbox` (+ `:Docker`) | Sandbox de l'interpréteur de code sécurisé | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
 | `Orkeon:Sandbox` | Montage sandbox du système de fichiers | `AddSandboxMount(...)` | — |
 | `Orkeon:FileSystem` (`Mounts`) | Montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)) ; surchargé par le CLI `--mount` | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:Tools:Shell:AllowInterpreters` | Autorise interpréteurs/git mutant dans `ShellCommandTool` (**équivalent RCE**, avertissement émis) | `AddOrkeonCodeTools()` | config seule |

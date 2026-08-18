@@ -19,7 +19,7 @@ dotnet add package Orkeon.Rag.Onnx --prerelease
    offline**, zero download. This is the CI path (RAG-04 acceptance criterion 3).
 2. **`OnnxRerankerOptions.ModelPath` / `VocabPath`** — VFS virtual paths read through
    `IFileSystemService`. Provision the files with
-   [`tools/download-reranker-model.sh`](tools/download-reranker-model.sh) (SHA-256 verified).
+   [`tools/download-reranker-model.sh`](https://github.com/Orkeon/orkeon/blob/main/src/rag/Orkeon.Rag.Onnx/tools/download-reranker-model.sh) (SHA-256 verified).
 3. Otherwise → loud, actionable error. **The runtime never downloads weights**
    (supply-chain decision: downloading is a host choice, not a library side effect).
 

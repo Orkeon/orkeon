@@ -6,7 +6,6 @@
 
     <!-- Package Metadata -->
     <PackageId>Orkeon.Tools.Data</PackageId>
-    <Authors>Orkeon Contributors</Authors>
     <Description>Data processing tools for Orkeon agents (JSON, CSV, PDF, XML, SQLite, MongoDB)</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Data;JSON;CSV;PDF;XML;SQLite;MongoDB</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

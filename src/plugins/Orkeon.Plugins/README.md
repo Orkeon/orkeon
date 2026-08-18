@@ -90,4 +90,4 @@ After `BuildServiceProvider()`, plugin-contributed services resolve like any oth
 
 Manifest files (`plugin.json`), permission model / sandboxing, hot reload, per-plugin
 configuration stores. The original design covering those lives in
-[SPECIFICATION.md](SPECIFICATION.md).
+[SPECIFICATION.md](https://github.com/Orkeon/orkeon/blob/main/src/plugins/Orkeon.Plugins/SPECIFICATION.md).

@@ -1,5 +1,5 @@
 # Navigation de la documentation française du site docfx.
-# Miroir de docs/fr/INDEX.md (la carte de la doc fait foi) — tenir les deux à jour.
+# Même jeu de pages que docs/fr/INDEX.md (la carte de la doc fait foi) — tenir les deux à jour ; le regroupement/l'ordre peut différer.
 - name: Vue d'ensemble
   href: INDEX.md
 - name: Démarrage
@@ -126,3 +126,5 @@
   items:
     - name: Gabarit de README d'exemple
       href: templates/example-readme.md
+- name: Documentation anglaise
+  href: ../INDEX.md

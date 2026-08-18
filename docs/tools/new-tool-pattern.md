@@ -28,15 +28,15 @@ Available properties:
 
 ```csharp
 [FieldSchema(
-    Description = "...",       // Description lisible pour le LLM
-    Type = "string",           // Type JSON Schema (inféré si omis)
-    Format = "uri",            // Format OpenAPI (inféré si omis)
-    IsRequired = true,         // Required (inféré de la nullabilité C# si omis)
-    Default = "value",         // Valeur par défaut YAML
-    Enum = new[] { "a", "b" }, // Valeurs autorisées
-    Example = "example",       // Exemple pour la documentation
-    ItemsType = "string",      // Type des éléments si array
-    TypeDefinitionRef = "..."  // Référence à un type défini
+    Description = "...",       // Human-readable description for the LLM
+    Type = "string",           // JSON Schema type (inferred when omitted)
+    Format = "uri",            // OpenAPI format (inferred when omitted)
+    IsRequired = true,         // Required (inferred from C# nullability when omitted)
+    Default = "value",         // YAML default value
+    Enum = new[] { "a", "b" }, // Allowed values
+    Example = "example",       // Example for the documentation
+    ItemsType = "string",      // Element type when array
+    TypeDefinitionRef = "..."  // Reference to a defined type
 )]
 ```
 
@@ -44,8 +44,8 @@ Available properties:
 
 ```csharp
 [ReturnSchema(
-    Description = "...",       // Description du champ retourné
-    Type = "boolean",          // Type JSON Schema (inféré si omis)
+    Description = "...",       // Description of the returned field
+    Type = "boolean",          // JSON Schema type (inferred when omitted)
     Example = true             // Exemple
 )]
 ```
@@ -136,7 +136,7 @@ public sealed class TranslateTool : ToolBase<TranslateRequest, TranslateResponse
     {
         try
         {
-            // Logique métier — ici une traduction simplifiée
+            // Business logic — a simplified translation here
             var translated = $"[{request.TargetLanguage}] {request.Text}";
 
             return new TranslateResponse
@@ -206,8 +206,8 @@ public sealed class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse>
     private const string BaseUrl = "https://api.weatherapi.com/v1";
     private readonly string _apiKey;
 
-    // Ctor simple (HttpClient statique partagé). Pour la protection SSRF, utiliser le ctor
-    // base(IUrlValidator, HttpHeaderSanitizer, HttpClient?, ILogger?).
+    // Simple ctor (shared static HttpClient). For SSRF protection, use the
+    // base(IUrlValidator, HttpHeaderSanitizer, HttpClient?, ILogger?) ctor.
     public WeatherTool(
         string apiKey,
         HttpClient? httpClient = null,
@@ -230,7 +230,7 @@ public sealed class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse>
         {
             var url = $"{BaseUrl}/current.json?key={_apiKey}&q={Uri.EscapeDataString(request.City)}";
 
-            // HttpClient est disponible via le champ protégé _httpClient (hérité de HttpToolBase)
+            // HttpClient is available through the protected _httpClient field (inherited from HttpToolBase)
             var response = await _httpClient.GetAsync(url, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -320,18 +320,18 @@ This pattern lets the tool class access the typed pipeline's serialization/deser
 ```
 ToolBase<TRequest, TResponse> (ou FileToolBase<> / HttpToolBase<>)
     │
-    ├── Contient : private ComponentPipeline _pipeline
-    │                  └── hérite de ComponentBase<TRequest, TResponse>
-    │                       └── délègue à IComponentSerializer (statique)
+    ├── Contains: private ComponentPipeline _pipeline
+    │                  └── inherits ComponentBase<TRequest, TResponse>
+    │                       └── delegates to IComponentSerializer (static)
     │                            └── JsonComponentSerializer (singleton)
     │
     └── sealed override ExecuteCoreAsync()
-         1. MergeWithYamlDefaults(parameters)     → Dict enrichi
+         1. MergeWithYamlDefaults(parameters)     → enriched Dict
          2. _pipeline.Deserialize(merged)          → TRequest
-         3. ValidateTypedRequest(typedRequest)     → null | erreur
-         4. ExecuteTypedAsync(request, ct)         → TResponse  ← VOTRE CODE
+         3. ValidateTypedRequest(typedRequest)     → null | error
+         4. ExecuteTypedAsync(request, ct)         → TResponse  ← YOUR CODE
          5. _pipeline.Serialize(typedResponse)     → Dict
-         6. FilterOutput(resultDict)               → Dict filtré
+         6. FilterOutput(resultDict)               → filtered Dict
          7. return ToolCallResponse(success, result, error)
 ```
 
@@ -344,8 +344,8 @@ public abstract partial class FileToolBase<TRequest, TResponse> : FileToolBase
 {
     private readonly ComponentPipeline _pipeline = new();
 
-    // Le pipeline scellé empêche les sous-classes de court-circuiter
-    // la sérialisation ou la validation
+    // The sealed pipeline prevents subclasses from bypassing
+    // serialization or validation
     protected sealed override async Task<ProtocolToolCallResponse> ExecuteCoreAsync(
         ProtocolToolCallRequest request, CancellationToken cancellationToken)
     {
@@ -363,7 +363,7 @@ public abstract partial class FileToolBase<TRequest, TResponse> : FileToolBase
         return new ProtocolToolCallResponse(Success: success, Result: filteredResult, Error: error);
     }
 
-    // Votre point d'extension — logique métier pure
+    // Your extension point — pure business logic
     protected abstract Task<TResponse> ExecuteTypedAsync(
         TRequest request, CancellationToken cancellationToken);
 
@@ -409,12 +409,12 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddOrkeonMyPackageTools(
         this IServiceCollection services)
     {
-        // Enregistrer chaque outil comme IBaseTool
+        // Register each tool as an IBaseTool
         services.TryAddSingleton<IBaseTool, WeatherTool>();
         services.TryAddSingleton<IBaseTool, TranslateTool>();
 
-        // Les outils seront automatiquement disponibles dans IToolRegistry
-        // et utilisables par nom dans les fichiers YAML
+        // The tools become automatically available in IToolRegistry
+        // and usable by name in YAML files
         return services;
     }
 }
@@ -431,11 +431,11 @@ services.AddOrkeonMyPackageTools();  // Vos outils custom
 ## Pattern recap
 
 ```
-1. Choisir la base class    →  ToolBase<> / FileToolBase<> / HttpToolBase<>
-2. Définir TRequest          →  Record avec [FieldSchema] sur chaque propriété
-3. Définir TResponse         →  Record avec [ReturnSchema] sur chaque propriété
-4. Implémenter la classe     →  override Name, Description, ExecuteTypedAsync
-5. (Optionnel) Validation    →  override ValidateTypedRequest
+1. Pick the base class       →  ToolBase<> / FileToolBase<> / HttpToolBase<>
+2. Define TRequest           →  Record with [FieldSchema] on each property
+3. Define TResponse          →  Record with [ReturnSchema] on each property
+4. Implement the class       →  override Name, Description, ExecuteTypedAsync
+5. (Optional) Validation     →  override ValidateTypedRequest
 6. Enregistrer               →  Builder / DI / ToolFactory
 ```
 

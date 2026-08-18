@@ -18,5 +18,4 @@ back.
 | [ADR-005](./ADR-005-famille-tools-heterogene.md) | The heterogeneous `Tools.*` family (`Tools.Web`/`Tools.EventHub → Application`) | Accepted |
 | [ADR-006](./ADR-006-rag-subsystem.md) | The `src/rag/` subsystem: `Orkeon.Rag.Abstractions` shared kernel, legacy RAG namespaces removed without shims | Accepted |
 | [ADR-007](./ADR-007-d3-renommage-cli-commands-scripting.md) | Decision D3: `Orkeon.Cli.Scripting` renamed to `Orkeon.Cli.Commands.Scripting` before any NuGet publish | Accepted |
-
 | [ADR — RaggableTree](../architecture/raggable-tree-adr.md) | 6-level stratified semantic graph via Tree-sitter (unnumbered — lives with its architecture guide; amended 2026-08-18) | Accepted |

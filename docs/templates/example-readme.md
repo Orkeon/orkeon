@@ -2,13 +2,15 @@
 
 # Example README template
 
-> A gabarit for `examples/**/README.md`. Copy the block below into a new example's
+> A template for `examples/**/README.md`. Copy the block below into a new example's
 > `README.md` and fill each section. Delete this preamble and any optional section
 > that does not apply. Keep it short — the point is to let someone run the example
 > without reading the code.
 >
 > **Required sections**: What it does · Prerequisites · Required data · Run it ·
 > Expected output · Approx. duration & cost.
+
+> NB: example READMEs are written in English (they live outside `docs/`, so the bilingual parity contract does not apply to them) — this template's French twin exists for reference only.
 
 ---
 

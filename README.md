@@ -240,7 +240,7 @@ Every pull request is gated in CI:
 
 - the build compiles with **`-warnaserror` and the full .NET analyzer set** — any new compiler, analyzer, or NuGet-audit warning fails the build
 - the **public API surface is frozen** (Microsoft.CodeAnalysis.PublicApiAnalyzers; undeclared API changes are build errors)
-- the full test suites, the EN/FR documentation parity gate, the examples linters, and a strict docfx build (`--warningsAsErrors`)
+- the unit and fast test suites (Integration/Slow suites run nightly in a dedicated workflow) and the EN/FR documentation parity gate; path-filtered gates add the examples linters on PRs touching `examples/`, and a strict docfx build (`--warningsAsErrors`) on PRs touching sources or docs
 
 Quality analysis runs on a local SonarQube via `scripts/sonar-analyze.sh` — see the [quality-gate policy](docs/guides/quality-gate.md). Latest coverage pass (August 2026): core projects measured at **83–90 %** line coverage, **0 vulnerabilities, 0 code smells**.
 

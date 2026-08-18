@@ -14,6 +14,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>orkeon-claim-verify</ToolCommandName>
     <Description>Interactive claim-verification REPL runner for Orkeon (dotnet tool).</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Orkeon Contributors</Authors>
     <VersionPrefix>1.0.0</VersionPrefix>
     <VersionSuffix>rc.1</VersionSuffix>
@@ -29,4 +30,8 @@
     <ProjectReference Include="../../../src/cli/Orkeon.Cli.Abstractions/Orkeon.Cli.Abstractions.csproj" />
     <ProjectReference Include="../../../src/cli/Orkeon.Cli.TerminalGui/Orkeon.Cli.TerminalGui.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

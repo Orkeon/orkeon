@@ -6,7 +6,6 @@
 
     <!-- Package Metadata -->
     <PackageId>Orkeon.Tools.Code</PackageId>
-    <Authors>Orkeon Contributors</Authors>
     <Description>Code interpreter tool for Orkeon agents (Roslyn scripting)</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Code;Roslyn;Scripting</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

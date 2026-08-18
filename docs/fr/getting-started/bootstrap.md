@@ -237,6 +237,17 @@ await foreach (var executionEvent in orchestrator.KickoffStreamingAsync(crew.Id,
 }
 ```
 
+> **Granularité du streaming.** La pleine granularité par appel d'outil (événements
+> `AgentThought` de type `Reasoning` / `ToolSelection` / `ToolExecution` / `Conclusion`)
+> requiert un `IStreamingAgentExecutionService`. `AddOrkeonInfrastructure()` en enregistre
+> un (`StreamingAgentExecutionService`) **par défaut**, aucun câblage supplémentaire n'est
+> donc nécessaire — il lui faut seulement un `IChatClient` / provider LLM configuré (voir
+> [Fournisseurs LLM](../architecture/llm-providers.md)). Si le service est absent (setup DI
+> partiel, ou orchestrateur construit à la main sans lui), `KickoffStreamingAsync`
+> **dégrade en rejeu par tâche** — un événement `Conclusion` par tâche, sans détail des
+> appels d'outils — et journalise un `Warning` explicite nommant l'enregistrement manquant,
+> plutôt que de rétrograder en silence.
+
 **Mode asynchrone non-bloquant (fire-and-forget)** :
 ```csharp
 // Démarrer l'exécution sans attendre la complétion

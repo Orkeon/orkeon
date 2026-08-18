@@ -27,8 +27,8 @@ La documentation est organisée en 6 sections thématiques.
 | [Système de mémoire](./architecture/memory-system.md) | 5 types de mémoire, 6 providers (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), mémoire cognitive |
 | [Événements, CQRS et observabilité](./architecture/domain-events.md) | 44 domain events, pipeline CQRS, callbacks à 2 niveaux |
 | [EventHub et cycle de vie des crews](./architecture/event-hub-and-crew-lifecycle.md) | Spécification de référence du messaging inter-agents et inter-crews (EventHub) et de la mise en sommeil/réveil des crews — ports Application, adapters InMemory + SQLite |
-| [Sécurité, résilience et plugins](./architecture/security.md) | 7 couches de sécurité, politiques Polly, checkpointing, système de plugins |
-| [Conformité VFS](./architecture/vfs-compliance.md) | Principe VFS-only (tout I/O via `IFileSystemService`) : analyseur Roslyn `Orkeon.Compliance.Vfs`, 5 diagnostics, périmètres exemptés, critères de sortie de la migration |
+| [Sécurité, résilience et plugins](./architecture/security.md) | 6 couches de sécurité, politiques Polly, checkpointing, système de plugins |
+| [Conformité VFS](./architecture/vfs-compliance.md) | Principe VFS-only (tout I/O via `IFileSystemService`) : analyseur Roslyn `Orkeon.Compliance.Vfs`, 7 diagnostics, périmètres exemptés, critères de sortie de la migration |
 | [Système de plugins](./architecture/plugins.md) | Contrat `IOrkeonPlugin`, découverte VFS, isolation `AssemblyLoadContext`, activation opt-in `AddOrkeonPlugins`, ⚠️ frontière de confiance |
 | [DSL de scripting](./architecture/scripting.md) | DSL à syntaxe TypeScript (`.ork.ts`) : transpilation esbuild, exécution sandboxée Jint, toute la surface Orkeon (agents, crews, tools, FSM, graphes, événements) via builders fluides |
 | [Commandes CLI TypeScript](./architecture/cli-ts-commands.md) | Commandes REPL interactives en `*.cmd.ts` (`defineCommand`) chargées au démarrage sans recompilation .NET, avec dispatch de travail vers les agents |

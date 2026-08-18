@@ -4,7 +4,7 @@
 
 > Référence utilisateur du sous-système `Orkeon.Cli.Commands.Scripting`. Pour la
 > spécification d'architecture et la justification de conception, voir
-> the maintainers' design archive (feature `cli-ts-commands`, SPEC).
+> l'archive de conception des mainteneurs (feature `cli-ts-commands`, SPEC).
 
 ## De quoi s'agit-il
 
@@ -330,7 +330,7 @@ d'instances) et ajoute `commands` à la whitelist par défaut. Les agents sont
 connectés avec
 `AgentCommandRegistrar.Register(agent, engine, engineLock, service.Channel, service.Directory)`,
 qui enregistre le handler de canal et le mapping nom→id. Voir
-the maintainers' design archive (feature `cli-ts-commands`, COMMAND-DISPATCH-DESIGN §11) pour la
+l'archive de conception des mainteneurs (feature `cli-ts-commands`, COMMAND-DISPATCH-DESIGN §11) pour la
 cartographie complète des fichiers.
 
 ### Exemple de bout en bout

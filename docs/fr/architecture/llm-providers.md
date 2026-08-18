@@ -38,7 +38,7 @@ llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
 ```
 
 Il pilote `orkeon llm probe` sur les modes M1–M10, M12 et M13 du
-protocole de test des fournisseurs (matrice interne des mainteneurs) §5 et
+protocole de test des fournisseurs (matrice interne des mainteneurs) et
 archive un rapport Markdown par campagne. `orkeon llm models -p <fournisseur> --filter
 'gpt-5.6-*'` liste ce qu'un fournisseur sert réellement : aucune campagne ne dépend d'une
 liste de modèles maintenue à la main.

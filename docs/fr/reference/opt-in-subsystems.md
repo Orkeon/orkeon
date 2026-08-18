@@ -48,7 +48,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Benchmarking d'évaluation | `AddOrkeonBenchmarking()` | Infrastructure | `IBenchmarkRunner` | Bêta |
 | Contenu multi-modal (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Bêta (réel depuis R3.9) |
 | Hooks de kickoff | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Expérimental |
-| Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Bêta |
+| Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` — ⚠️ **les hôtes runner font l'inverse (opt-out)** : `RunnerHost` l'enregistre par défaut et `RaggableTree:Enabled = false` le désactive | Analysis | `ICodebaseContextProvider` | Bêta |
 | Sous-système RAG (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) ; profils `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (défaut `fast`) ; `balanced`/`quality`/`adaptive` exigent le cross-encoder ONNX — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, poids embarqués, hors-ligne) ; `corrective` non (le graphe boucle au lieu de reranker) ; le repli web correctif est purement config — `AddOrkeonRag` câble déjà le transport, les deux interrupteurs `Enabled` gouvernent (`Orkeon:Rag:Corrective:WebFallback` politique, `Orkeon:Rag:WebFallback` transport) — voir la section détaillée plus bas | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (à étages / graphe correctif), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Bêta |
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
 | Barrière de permissions (par appel d'outil) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consommé par la boucle scriptée `ctx.llm.act` | Bêta |
@@ -56,14 +56,19 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
 | Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL | Bêta |
 | Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Bêta |
-| Client & serveur MCP | `AddOrkeonMcp(...)` | Infrastructure | `McpClient` / `McpServer` — bi-ère (`2026-07-28` stateless + révisions legacy `initialize`) ; surface `[Experimental]`, voir [APIs expérimentales](./experimental-apis.md) | Expérimental |
 | Embeddings locaux sur machine | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, sans clé API) — premier maillon de la chaîne de résolution des embeddings | Bêta |
-| Stores d'état de checkpointing | `AddOrkeonCheckpointing()` / `AddOrkeonSqliteCheckpointing(...)` / `AddOrkeonPostgresCheckpointing(...)` | Infrastructure | `IStateStore` — consommé par la persistance d'état d'exécution (ci-dessus) et la persistance des tâches A2A | Bêta |
-| Fournisseurs de mémoire externes | `AddOrkeonChromaDb(...)` / `AddOrkeonPinecone(...)` / `AddOrkeonLanceDb(...)` / `AddOrkeonRedisMemory(...)` (ou clés de type via `MemoryProviderFactory`) | Infrastructure | Implémentations `IMemoryProvider` — voir [Système de mémoire](../architecture/memory-system.md) | Bêta |
+| Fournisseurs de mémoire externes (LanceDB, Redis) | `AddOrkeonLanceDb(...)` / `AddOrkeonRedisMemory(...)` (ou clés de type via `MemoryProviderFactory`). ⚠️ ChromaDB et Pinecone ne sont **pas** opt-in : `AddOrkeonInfrastructure(configuration)` les enregistre automatiquement quand leur section `Orkeon:ChromaDb`/`Orkeon:Pinecone` existe | Infrastructure | Implémentations `IMemoryProvider` — voir [Système de mémoire](../architecture/memory-system.md) | Bêta |
 | Mémoire cognitive | `AddOrkeonCognitiveMemory(...)` | Infrastructure | Couche de mémoire cognitive au-dessus d'`IMemoryProvider` | Expérimental |
-| Pipeline Guardian | `AddOrkeonGuardian()` | Infrastructure | Hooks de sûreté de contenu autour de l'exécution des agents | Bêta |
-| Moteur de Flows | `AddOrkeonFlows()` | Infrastructure | `FlowEngine` (étapes séquentielles/parallèles/décision) — un système d'orchestration distinct des Crews | Bêta |
-| Training | `AddOrkeonTraining()` | Infrastructure | Services de capture de données d'entraînement/fine-tuning | Expérimental |
+
+
+> **Hors de ce catalogue — enregistrés par `AddOrkeonInfrastructure()` et
+> gouvernés par la configuration, pas par un geste d'enregistrement** : MCP
+> (section `MCP`, via la surcharge `IConfiguration`), le store de checkpointing
+> sans paramètre (`AddOrkeonCheckpointing()` ; les variantes SQLite/Postgres
+> restent explicites), le pipeline Guardian, le moteur de Flows, Training,
+> Consensus, CostTracking, Encryption, Auth et CodeSandbox. Leurs sections de
+> configuration sont cartographiées dans la
+> [Référence de configuration](./configuration.md).
 
 **Maturité** — *Bêta* : implémentation complète et testée, API susceptible d'évoluer
 avant la v1. *Expérimental* : implémentation fonctionnelle mais non câblée dans le
@@ -305,7 +310,7 @@ partiel (signalé au cas par cas ci-dessous).
   generate → groundedness), graphe correctif CRAG, presets de profils et
   harnais d'évaluation hors ligne. Guide complet :
   [rag-pipeline.md](../architecture/rag-pipeline.md), décisions :
-  [ADR-006](../../adr/ADR-006-rag-subsystem.md).
+  [ADR-006](../adr/ADR-006-rag-subsystem.md).
 - **Activation** :
   ```csharp
   services.AddOrkeonRag(configuration);   // Orkeon.Rag.DependencyInjection
@@ -450,8 +455,11 @@ Les tests d'enregistrement
 et `tests/core/Orkeon.Application.Tests/DependencyInjection/KickoffHookExtensionsTests.cs`)
 vérifient :
 
-1. qu'**aucun** port dormant n'est enregistré par `AddOrkeonApplication()` /
-   `AddOrkeonInfrastructure()` (les deux surcharges) ;
+1. qu'**aucun port dormant du jeu opt-in d'origine** n'est enregistré par
+   `AddOrkeonApplication()` / `AddOrkeonInfrastructure()` (les deux
+   surcharges) — les lignes ajoutées ensuite (plugins, embeddings locaux,
+   LanceDB/Redis, mémoire cognitive) sont gardées par leurs propres suites,
+   pas par ce test ;
 2. que chaque `AddOrkeonXxx()` produit un graphe **résolvable** seul (avec logging et,
    le cas échéant, une `IConfiguration`) ;
 3. que les opt-ins **composent** avec le socle (sémantique `TryAdd`, pas de doublons).

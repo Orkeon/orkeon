@@ -315,7 +315,7 @@ type/extension de source — texte, CSV, HTML, PDF, `WebPageLoader` pour les URL
 - **Validation** (sécurité du chemin d'ingestion) : `PromptInjectionDocumentValidator` et
   `ContentIntegrityValidator` s'exécutent sur chaque document ; le contenu rejeté part vers
   l'`IQuarantineStore` et la provenance est enregistrée (`IProvenanceTracker`). Détails et
-  modèle de menace dans [security.md (EN)](../../architecture/security.md#rag-web-fallback--prompt-injection).
+  modèle de menace dans [security.md](./security.md#repli-web-rag--injection-de-prompt).
 - **Manifeste incrémental** (par collection, un fichier JSON écrit via le VFS à
   `{ManifestDirectory}/{collection}.json`) : le hash de contenu de chaque source et le
   profil d'embedding (provider, modèle, dimensions) y sont consignés. Les sources inchangées
@@ -530,7 +530,7 @@ avertissement, et la clé d'API ne provient jamais que de la variable d'environn
 contenu `Rejected` ne quitte jamais le retriever, le contenu `Suspicious` est marqué dans
 les métadonnées ou écarté selon `SuspiciousAction`, et le contenu n'est jamais réécrit.
 Modèle de menace, signaux détectés et limites honnêtes :
-[security.md (EN)](../../architecture/security.md#rag-web-fallback--prompt-injection). Les
+[security.md](./security.md#repli-web-rag--injection-de-prompt). Les
 chunks web portent `ScoreOrigin = "web"` et ouvrent l'ensemble de travail ; les chunks
 retrouvés localement — qui viennent d'être notés `Incorrect` — le ferment.
 
@@ -582,5 +582,5 @@ politique/transport (RAG-06, cette page et ADR-006).
   qualité de la réécriture (analyse honnête dans `examples/rag/eval/README.md` et
   [limitations](../reference/limitations.md)).
 - Les heuristiques anti-injection du fallback web sont fondées sur des motifs et
-  contournables ([security.md (EN)](../../architecture/security.md#rag-web-fallback--prompt-injection)) ;
+  contournables ([security.md](./security.md#repli-web-rag--injection-de-prompt)) ;
   le fallback est opt-in et n'est pas éprouvé contre un vrai réseau en CI.

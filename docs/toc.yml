@@ -1,5 +1,5 @@
 # Navigation of the documentation section of the docfx site.
-# Mirrors docs/INDEX.md (the source of truth for the doc map) — update both.
+# Same page set as docs/INDEX.md (the source of truth for the doc map) — update both; grouping/order may differ.
 - name: Overview
   href: INDEX.md
 - name: Getting started

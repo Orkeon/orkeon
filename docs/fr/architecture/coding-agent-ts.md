@@ -5,7 +5,7 @@
 L'agent de codage est un assistant de codage agentique (à la Claude Code) construit **sur la
 pile scriptée d'Orkeon** — le registre de slash-commands `*.cmd.ts` (`Orkeon.Cli.Commands.Scripting`),
 le runtime de crew `crew.ork.ts` (`Orkeon.Scripting`), et les outils C# `ToolBase`. Il fait
-l'objet de `experiments/07-orkeon-coding-agent-ts/` (the `experiments` companion submodule) (spec + plan + résultats).
+l'objet de `experiments/07-orkeon-coding-agent-ts/` (le submodule compagnon `experiments`) (spec + plan + résultats).
 
 ## Architecture : plan de contrôle vs moteur
 
@@ -51,10 +51,18 @@ du JSON avant évaluation — le hook de pré-exécution du `ScriptHost`). Les c
 ## La boucle interactive (`main-loop`)
 
 La boucle est un agent dont **le `.body()` est la boucle** : il appelle
-`ctx.llm.act(prompt)`, qui exécute le cycle LLM ⇄ tool-calling sur le catalogue d'outils de
+`ctx.llm.act(prompt, opts)`, qui exécute le cycle LLM ⇄ tool-calling sur le catalogue d'outils de
 l'agent. Elle est lancée comme une crew (`runCrewAsync("main-loop", { prompt, permissionMode })`)
 — *pas* via `onCommand`, qui n'a pas de `ctx`. La continuité de conversation entre les
 exécutions vient du singleton `ISessionBufferService`.
+
+`ActOptions.system` sème un **vrai message `role:"system"`** en tête du prompt utilisateur
+(persistant à chaque itération de la boucle d'outils). Sans lui, `act()` envoyait un unique
+message utilisateur — c'est ainsi que les agents scriptés tournaient avant cette option :
+l'identité et la politique d'outils voyageaient avec l'autorité d'un message utilisateur, et
+la gestion système native des providers (le `system` top-level d'Anthropic, `cache_control`)
+ne se déclenchait jamais. Un message système de niveau conversation l'emporte sur
+`LlmConfig.SystemMessage` chez tous les providers.
 
 Barrière de permissions (v1) : les outils de lecture sont toujours autorisés ; `file_write`
 et `shell_command` sont enveloppés (via `withAutonomousTool`) de sorte que **le mode `plan`

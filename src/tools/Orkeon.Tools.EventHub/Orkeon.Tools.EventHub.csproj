@@ -5,7 +5,6 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Tools.EventHub</PackageId>
-    <Authors>Orkeon Contributors</Authors>
     <Description>EventHub agent tools for Orkeon: publish_event, post_message, send_request, reply_to, receive_message, wait_for_event, get_last_value.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;EventHub;Messaging</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

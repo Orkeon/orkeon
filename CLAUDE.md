@@ -123,7 +123,7 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ **NEW**: Structured tool calling protocol (JSON-based)
 - ✅ **NEW**: Configurable agent selection (`OrkeonApplicationOptions.AgentSelectionStrategy`: `FirstFit` default, `Embedding`, `Skill`). Semantic (`Embedding`) selection requires a real embedding provider — see `docs/reference/limitations.md`
 - ✅ **NEW**: Strongly typed configurations (AgentConfiguration, TaskContext, etc.)
-- ✅ **NEW**: SequentialProcessStrategy (Akka.NET replacement; one strategy per ProcessType via ProcessStrategyFactory)
+- ✅ **NEW**: SequentialCrewOrchestrator (Akka.NET replacement — the ICrewOrchestrationService implementation; per-mode strategies live in Crew/Strategies/ + Consensus/)
 - ✅ **NEW**: Typed Request/Response pipeline (ComponentBase<TReq,TRes>)
 - ✅ **NEW**: Autonomous orchestration mode (`ProcessType.Autonomous`) with multi-dimensional execution budget, recursive delegation, agent self-spawn, and A2A request/response communication
 - ✅ **NEW**: FSM orchestration (`StateMachine<TState, TEvent>`) with circuit breaker (4 mechanisms)
@@ -521,18 +521,13 @@ The repository contains **33 src projects** and **33 test projects**, plus two s
 ├── sonarqube/                    # Generated SonarQube reports (*.md)
 ├── docker-compose.sonarqube.yml
 ├── docs/
-│   ├── INDEX.md                  # Documentation map
-│   ├── getting-started/          # bootstrap.md, overview.md, yaml-and-builders.md
-│   ├── architecture/             # raggable-tree.md, scripting.md, vfs-compliance.md, security.md, llm-providers.md, etc.
-│   ├── guides/, orchestration/, reference/, tools/
-│   └── reference/llm-providers-comparison.md  # provider capability matrix
-└── project/                      # Project management (non-code)
-    ├── marketing/                # Positioning, personas, brand, assets
-    ├── roadmap/                  # Feature backlog & gap analysis
-    ├── features/                 # Feature specifications
-    ├── experiments/
-    ├── tasks/                    # Actionable dev tasks (1 file per task)
-    └── prompts/                  # Claude/AI assistant prompts
+│   ├── INDEX.md                  # Documentation map (docs/fr/ is the full French mirror — CI parity gate)
+│   ├── getting-started/          # bootstrap.md, overview.md, yaml-and-builders.md, three-ways…, default-behaviors.md
+│   ├── architecture/             # raggable-tree.md, scripting.md, vfs-compliance.md, security.md, llm-providers.md, mcp.md, studio.md, etc.
+│   ├── guides/, orchestration/, tools/, adr/, templates/
+│   └── reference/                # cli.md, configuration.md, limitations.md, publication-matrix.md, llm-providers-comparison.md, opt-in-subsystems.md, …
+├── backstage/                    # Private submodule: project management (audits, roadmap, tasks fiches, marketing)
+└── experiments/                  # Private submodule: experiments (e.g. 07-orkeon-coding-agent-ts)
 ```
 
 ## Important Notes

@@ -11,7 +11,7 @@
 | `ask_question` | `AskQuestionTool` | `ToolBase<AskQuestionRequest, AskQuestionResponse>` | Poser une question à un collègue agent spécialisé | `{ "question": "What is the Q4 revenue?", "coworker": "Financial Analyst" }` |
 | `delegate_work` | `DelegateWorkTool` | `ToolBase<DelegateWorkRequest, DelegateWorkResponse>` | Déléguer une tâche complète à un agent spécialisé | `{ "task": "Analyze competitor pricing", "coworker": "Market Researcher", "context": "Focus on SaaS B2B" }` |
 
-## Outils de recherche et connaissance (`Orkeon.Infrastructure`)
+## Outils de recherche et connaissance (`Orkeon.Infrastructure` / `Orkeon.Tools.Rag`)
 
 | Outil | Classe | Base | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|

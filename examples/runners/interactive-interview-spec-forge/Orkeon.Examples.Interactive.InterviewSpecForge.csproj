@@ -14,6 +14,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>orkeon-spec-forge</ToolCommandName>
     <Description>Interactive interview-spec-forge REPL runner for Orkeon (dotnet tool).</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Orkeon Contributors</Authors>
     <VersionPrefix>1.0.0</VersionPrefix>
     <VersionSuffix>rc.1</VersionSuffix>
@@ -26,4 +27,8 @@
     <ProjectReference Include="../../../src/cli/Orkeon.Cli.TerminalGui/Orkeon.Cli.TerminalGui.csproj" />
     <ProjectReference Include="../../../src/tools/Orkeon.Tools.Embeddings.Local/Orkeon.Tools.Embeddings.Local.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

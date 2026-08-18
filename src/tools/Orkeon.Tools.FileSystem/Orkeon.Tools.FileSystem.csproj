@@ -6,7 +6,6 @@
 
     <!-- Package Metadata -->
     <PackageId>Orkeon.Tools.FileSystem</PackageId>
-    <Authors>Orkeon Contributors</Authors>
     <Description>File system tools for Orkeon agents</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;FileSystem</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

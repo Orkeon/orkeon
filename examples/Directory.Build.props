@@ -6,8 +6,11 @@
   <PropertyGroup>
     <!-- Examples and demo runners are NOT shipped as NuGet packages, so
          `dotnet pack Orkeon.sln` (which includes a few example projects) does not
-         emit parasite packages. The sole opt-in exception is Orkeon.Runners.Shared
-         (examples/runners/_shared), which sets <IsPackable>true</IsPackable>. -->
+         emit parasite packages. Three runner projects opt back in with
+         <IsPackable>true</IsPackable>: Orkeon.Runners.Shared (_shared, library)
+         and the two packaged dotnet tools Orkeon.Runners.ClaimVerification
+         (orkeon-claim-verify) and Orkeon.Runners.InterviewSpecForge
+         (orkeon-spec-forge), all pushed by publish.yml. -->
     <IsPackable>false</IsPackable>
     <!-- Examples deliberately showcase experimental surfaces (Autonomous, A2A,
          corrective RAG, MCP); the ORKEXP diagnostics target consumers outside

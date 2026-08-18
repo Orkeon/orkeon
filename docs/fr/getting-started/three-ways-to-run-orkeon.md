@@ -2,7 +2,7 @@
 
 # Trois façons d'exécuter Orkeon
 
-> **Voir aussi** : [Lancer votre premier exemple (EN)](../../getting-started/run-your-first-example.md) · [Vue d'ensemble](./overview.md) · [Retour à l'index](../INDEX.md)
+> **Voir aussi** : [Lancer votre premier exemple](./run-your-first-example.md) · [Vue d'ensemble](./overview.md) · [Retour à l'index](../INDEX.md)
 
 Les crews Orkeon se lancent de trois façons. Choisissez celle qui correspond à
 ce que vous acceptez d'installer :
@@ -18,7 +18,7 @@ config de la crew est l'argument positionnel de `orkeon run <config>` (le runner
 `orkeon-trading` la prend en `--config` à la place) ; les flags optionnels
 (`--settings`, `-v`, `--mount`, `--var`, `--llm-log`, …) sont documentés une
 seule fois, en détail, dans
-[Lancer votre premier exemple (EN)](../../getting-started/run-your-first-example.md#every-flag-explained).
+[Lancer votre premier exemple](./run-your-first-example.md#chaque-flag-expliqué).
 
 > **Vous préférez une fenêtre à une invite ?** Les paquets de release Windows et
 > Linux embarquent aussi **[Orkeon Studio](#orkeon-studio-la-voie-graphique)** —
@@ -45,7 +45,7 @@ C'est la voie la plus souple — elle peut exécuter **tous** les exemples et pr
 en compte vos modifications locales. Les exemples finance passent par
 `examples/03-finance-trading` sur le runner `orkeon-trading`. Guide complet,
 configuration des profils LLM et dépannage :
-[Lancer votre premier exemple (EN)](../../getting-started/run-your-first-example.md).
+[Lancer votre premier exemple](./run-your-first-example.md).
 
 ---
 
@@ -257,7 +257,7 @@ les rend scriptables et vérifiables en CI.
 Le CLI résout les settings LLM exactement comme depuis les sources.
 `orkeon init` couvre le cas courant ; passez `--settings` pour pointer un profil
 précis à la place (voir la
-[matrice des profils (EN)](../../getting-started/run-your-first-example.md#3-choose-an-llm-profile)) :
+[matrice des profils](./run-your-first-example.md#3-choisir-un-profil-llm)) :
 
 ```bash
 orkeon run chemin/vers/config.yaml \
@@ -507,4 +507,4 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
 
 Quel que soit votre choix, les flags et l'histoire des profils `appsettings`
 sont identiques — lisez-les une fois dans
-[Lancer votre premier exemple (EN)](../../getting-started/run-your-first-example.md).
+[Lancer votre premier exemple](./run-your-first-example.md).

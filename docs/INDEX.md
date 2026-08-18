@@ -27,8 +27,8 @@ The documentation is organized into 6 thematic sections.
 | [Memory system](./architecture/memory-system.md) | 5 memory types, 6 providers (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), cognitive memory |
 | [Events, CQRS and observability](./architecture/domain-events.md) | 44 domain events, CQRS pipeline, 2-level callbacks |
 | [EventHub and crew lifecycle](./architecture/event-hub-and-crew-lifecycle.md) | Reference specification for inter-agent and inter-crew messaging (EventHub) and crew sleep/wake — Application ports, InMemory + SQLite adapters |
-| [Security, resilience and plugins](./architecture/security.md) | 7 security layers, Polly policies, checkpointing, plugin system |
-| [VFS compliance](./architecture/vfs-compliance.md) | VFS-only principle (all I/O via `IFileSystemService`): `Orkeon.Compliance.Vfs` Roslyn analyzer, 5 diagnostics, exempted scopes, migration exit criteria |
+| [Security, resilience and plugins](./architecture/security.md) | 6 security layers, Polly policies, checkpointing, plugin system |
+| [VFS compliance](./architecture/vfs-compliance.md) | VFS-only principle (all I/O via `IFileSystemService`): `Orkeon.Compliance.Vfs` Roslyn analyzer, 7 diagnostics, exempted scopes, migration exit criteria |
 | [Plugin system](./architecture/plugins.md) | `IOrkeonPlugin` contract, VFS discovery, `AssemblyLoadContext` isolation, opt-in activation `AddOrkeonPlugins`, ⚠️ trust boundary |
 | [Scripting DSL](./architecture/scripting.md) | TypeScript-syntax DSL (`.ork.ts`): esbuild transpilation, sandboxed Jint execution, the full Orkeon surface (agents, crews, tools, FSM, graphs, events) via fluent builders |
 | [TypeScript CLI commands](./architecture/cli-ts-commands.md) | Interactive REPL commands in `*.cmd.ts` (`defineCommand`) loaded at startup without .NET recompilation, with work dispatch to agents |
@@ -82,7 +82,7 @@ The documentation is organized into 6 thematic sections.
 | [Example data policy](./reference/example-data-policy.md) | Why examples ship config not datasets, how to mount your own input (`/data:ro`, `/output:rw`), and contributor rules for bundled sample fixtures |
 | [Opt-in subsystems](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, tool rate-limiting, key rotation, benchmarking, multi-modal, kickoff hooks, RAG subsystem — explicit activation `AddOrkeonXxx()` (outside default DI) |
 | [Hosting & runner bootstrap](./reference/hosting.md) | `Orkeon.Hosting`: `RunnerHost.Build`, `ConfigureRunnerServices` wiring order (LLM-first, tool suites, VFS, `ServiceProviderToolRegistry`), `RunnerExecution` flows, and the web-host consumption pattern |
-| [Example README template](./templates/example-readme.md) | Gabarit for `examples/**/README.md`: What it does / Prerequisites / Required data / Run it (per way) / Expected output / Duration & cost |
+| [Example README template](./templates/example-readme.md) | Template for `examples/**/README.md`: What it does / Prerequisites / Required data / Run it (per way) / Expected output / Duration & cost |
 | [LLM provider comparison](./reference/llm-providers-comparison.md) | Capability matrix per provider (SSE streaming, native tool calling, GBNF grammar, `response_format`, thinking, metrics, resilience), derived from the source code |
 | [Publication matrix](./reference/publication-matrix.md) | **Source of truth** for what ships where: NuGet.org vs GitHub Packages, dotnet tools, installer artifacts, version flow |
 

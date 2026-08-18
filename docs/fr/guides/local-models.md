@@ -2,7 +2,7 @@
 
 # Exécuter Orkeon sur des modèles locaux
 
-> **Voir aussi** : [Trois façons d'exécuter Orkeon (EN)](../../getting-started/three-ways-to-run-orkeon.md) · les profils `examples/appsettings/` · [Retour à l'index](../INDEX.md)
+> **Voir aussi** : [Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md) · les profils `examples/appsettings/` · [Retour à l'index](../INDEX.md)
 
 Chaque exemple et chaque crew Orkeon peut tourner sur un modèle installé sur
 votre machine — sans clé API, sans cloud. Trois approches, du zéro-install au

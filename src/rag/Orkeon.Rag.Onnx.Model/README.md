@@ -3,7 +3,7 @@
 **License**: the embedded model is [`cross-encoder/ms-marco-MiniLM-L-6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2)
 (**Apache-2.0**, sentence-transformers / UKP Lab), as the int8-quantized ONNX export published by
 [`Xenova/ms-marco-MiniLM-L-6-v2`](https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2)
-(`onnx/model_quantized.onnx`, ~22 MB). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+(`onnx/model_quantized.onnx`, ~22 MB). See [THIRD-PARTY-NOTICES.md](https://github.com/Orkeon/orkeon/blob/main/src/rag/Orkeon.Rag.Onnx.Model/THIRD-PARTY-NOTICES.md).
 
 ## Install
 

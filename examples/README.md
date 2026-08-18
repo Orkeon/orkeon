@@ -149,10 +149,12 @@ The full generated catalog (process, agents, tools per example) lives in [INDEX.
 | 06 | [Engineering & DevOps](06-engineering-devops/) | 12 | Engineering & DevOps — CI/CD, incident response, chaos engineering, TS-scripted codebase crews |
 | 07 | [Creative & Media](07-creative-media/) | 10 | Creative & media — narrative, podcast, music, worldbuilding |
 | 08 | [IoT & Smart Systems](08-iot-smart-systems/) | 10 | IoT, physical world & smart systems — smart home, fleet, energy |
-| 09 | [Experimental](09-experimental/) | 9 | Avant-garde & experimental — self-adaptive crews, civilization sim, graph orchestration, streaming |
+| 09 | [Experimental](09-experimental/) | 7 | Avant-garde & experimental — self-adaptive crews, civilization sim, graph orchestration, streaming |
 
-The per-category counts above are directory counts; the numbered prefixes are
-historical and not contiguous — [INDEX.md](INDEX.md) is the authoritative list.
+The counts above are crew examples (directories with a `config.yaml`); tool
+packs (`Orkeon.Trading.Tools`) and standalone demo projects (`streaming-demo`,
+`llm-response-format`) are excluded. The numbered prefixes are historical and
+not contiguous — [INDEX.md](INDEX.md) is the authoritative list.
 
 ## Shared Resources & Showcases
 

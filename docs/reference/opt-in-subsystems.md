@@ -48,7 +48,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Evaluation benchmarking | `AddOrkeonBenchmarking()` | Infrastructure | `IBenchmarkRunner` | Beta |
 | Multi-modal content (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Beta (real since R3.9) |
 | Kickoff hooks | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Experimental |
-| Codebase context (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Beta |
+| Codebase context (RaggableTree) | `AddRaggableTree(options)` — ⚠️ **runner hosts opt out instead**: `RunnerHost` registers it by default and `RaggableTree:Enabled = false` disables it | Analysis | `ICodebaseContextProvider` | Beta |
 | RAG subsystem (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`); profiles `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (default `fast`); `balanced`/`quality`/`adaptive` need the ONNX cross-encoder — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, embedded weights, offline); `corrective` does not (the graph loops instead of reranking); the corrective web fallback is config-only — `AddOrkeonRag` already wires the transport, the two `Enabled` switches govern (`Orkeon:Rag:Corrective:WebFallback` policy, `Orkeon:Rag:WebFallback` transport) — see the detailed section below | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (staged / corrective graph), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Beta |
 | Execution state persistence (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Beta |
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
@@ -56,14 +56,17 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
 | Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
 | Plugin system | `AddOrkeonPlugins(...)` (never registered implicitly) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — directory discovery, isolated collectible `AssemblyLoadContext`s; ⚠️ loaded assemblies run with full trust — see [Plugins](../architecture/plugins.md) | Beta |
-| MCP client & server | `AddOrkeonMcp(...)` | Infrastructure | `McpClient` / `McpServer` — dual-era (`2026-07-28` stateless + legacy `initialize` revisions); `[Experimental]` surface, see [Experimental APIs](./experimental-apis.md) | Experimental |
 | Local on-device embeddings | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, no API key) — first link of the embedding resolution chain | Beta |
-| Checkpointing state stores | `AddOrkeonCheckpointing()` / `AddOrkeonSqliteCheckpointing(...)` / `AddOrkeonPostgresCheckpointing(...)` | Infrastructure | `IStateStore` — consumed by execution-state persistence (above) and A2A task persistence | Beta |
-| External memory providers | `AddOrkeonChromaDb(...)` / `AddOrkeonPinecone(...)` / `AddOrkeonLanceDb(...)` / `AddOrkeonRedisMemory(...)` (or type keys via `MemoryProviderFactory`) | Infrastructure | `IMemoryProvider` implementations — see [Memory system](../architecture/memory-system.md) | Beta |
+| External memory providers (LanceDB, Redis) | `AddOrkeonLanceDb(...)` / `AddOrkeonRedisMemory(...)` (or type keys via `MemoryProviderFactory`). ⚠️ ChromaDB and Pinecone are **not** opt-in: `AddOrkeonInfrastructure(configuration)` auto-registers them when their `Orkeon:ChromaDb`/`Orkeon:Pinecone` section exists | Infrastructure | `IMemoryProvider` implementations — see [Memory system](../architecture/memory-system.md) | Beta |
 | Cognitive memory | `AddOrkeonCognitiveMemory(...)` | Infrastructure | cognitive memory layering over `IMemoryProvider` | Experimental |
-| Guardian pipeline | `AddOrkeonGuardian()` | Infrastructure | content-safety pipeline hooks around agent execution | Beta |
-| Flows engine | `AddOrkeonFlows()` | Infrastructure | `FlowEngine` (sequential/parallel/decision steps) — an orchestration system distinct from Crews | Beta |
-| Training | `AddOrkeonTraining()` | Infrastructure | training/fine-tuning data capture services | Experimental |
+
+> **Not in this catalog — registered by `AddOrkeonInfrastructure()` and gated by
+> configuration, not by a registration gesture**: MCP (`MCP` section, via the
+> `IConfiguration` overload), the parameterless checkpointing store
+> (`AddOrkeonCheckpointing()`; the SQLite/Postgres variants stay explicit), the
+> Guardian pipeline, the Flows engine, Training, Consensus, CostTracking,
+> Encryption, Auth and CodeSandbox. Their configuration sections are mapped in
+> the [Configuration reference](./configuration.md).
 
 **Maturity** — *Beta*: complete and tested implementation, API likely to evolve
 before v1. *Experimental*: functional implementation but not wired into the
@@ -84,10 +87,10 @@ partial (flagged case by case below).
   `sendSubscribe` (SSE), `GET/DELETE /a2a/tasks/{id}`.
 - **Activation**:
   ```csharp
-  // Par configuration (section "A2A" ; "A2A:Security" pour mTLS/auth)
+  // By configuration (section "A2A"; "A2A:Security" for mTLS/auth)
   services.AddOrkeonA2A(configuration);
 
-  // Ou par délégué, sans IConfiguration
+  // Or by delegate, without IConfiguration
   services.AddOrkeonA2A(options => options.EnableServer = true);
   ```
   `IA2AServer` is only registered when `EnableServer` is true.
@@ -127,7 +130,7 @@ partial (flagged case by case below).
 - **Activation**:
   ```csharp
   services.AddOrkeonMonitoring(configuration); // lie Orkeon:Monitoring
-  services.AddOrkeonMonitoring();              // options par défaut
+  services.AddOrkeonMonitoring();              // default options
   ```
 - **Dependencies**: logging only (default options are registered when no
   configuration is passed).
@@ -207,14 +210,14 @@ partial (flagged case by case below).
   ```csharp
   var rotation = provider.GetRequiredService<IKeyRotationService>();
 
-  // 1. Générer et persister la nouvelle clé sous un nom de secret versionné
-  //    (refuse d'écraser un secret existant — fail-closed)
+  // 1. Generate and persist the new key under a versioned secret name
+  //    (refuses to overwrite an existing secret — fail-closed)
   await rotation.ProvisionNewKeyAsync(writableSecrets, "orkeon-encryption-key-v2");
 
-  // 2. Re-chiffrer le store brut (sous le décorateur) de l'ancienne vers la nouvelle clé
+  // 2. Re-encrypt the raw store (under the decorator) from the old key to the new one
   var result = await rotation.RotateAsync(rawStore, oldProvider, newProvider);
 
-  // 3. Basculer la configuration de l'hôte sur le nouveau nom de secret
+  // 3. Switch the host configuration over to the new secret name
   ```
 - **Known limits**: the rotation runs on the **raw** memory provider (under the
   `EncryptedMemoryProviderDecorator` decorator, type `MemoryProviderBase` for
@@ -248,7 +251,7 @@ partial (flagged case by case below).
 - **Activation**:
   ```csharp
   services.AddOrkeonMultiModal(configuration); // lie Orkeon:MultiModal
-  services.AddOrkeonMultiModal();              // options par défaut
+  services.AddOrkeonMultiModal();              // default options
   ```
 - **Dependencies**: `IContentValidationService` only needs the options;
   `IMultiModalContentLoader` requires a resolvable `IFileSystemService`
@@ -444,8 +447,10 @@ The registration tests
 and `tests/core/Orkeon.Application.Tests/DependencyInjection/KickoffHookExtensionsTests.cs`)
 verify:
 
-1. that **no** dormant port is registered by `AddOrkeonApplication()` /
-   `AddOrkeonInfrastructure()` (both overloads);
+1. that **no dormant port of the original opt-in set** is registered by
+   `AddOrkeonApplication()` / `AddOrkeonInfrastructure()` (both overloads) —
+   the rows added later (plugins, local embeddings, LanceDB/Redis, cognitive
+   memory) are guarded by their own suites, not by this test;
 2. that each `AddOrkeonXxx()` produces a graph that is **resolvable** on its own (with
    logging and, where applicable, an `IConfiguration`);
 3. that the opt-ins **compose** with the core (`TryAdd` semantics, no duplicates).

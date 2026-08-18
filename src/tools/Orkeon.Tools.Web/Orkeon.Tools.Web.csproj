@@ -6,7 +6,6 @@
 
     <!-- Package Metadata -->
     <PackageId>Orkeon.Tools.Web</PackageId>
-    <Authors>Orkeon Contributors</Authors>
     <Description>Web tools for Orkeon agents (HTTP API, Web Scraping)</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Web;HTTP;Scraping</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
