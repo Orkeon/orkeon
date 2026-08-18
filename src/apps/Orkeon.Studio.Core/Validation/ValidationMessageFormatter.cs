@@ -1,4 +1,5 @@
 using System.Globalization;
+using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Core.Validation;
 
@@ -45,20 +46,29 @@ public static class ValidationMessageFormatter
             .ToList();
     }
 
-    /// <summary>A one-line summary of a validation pass, for a status bar.</summary>
+    /// <summary>A one-line summary of a validation pass, for a status bar (English).</summary>
     public static string Summarize(IReadOnlyList<ValidationMessage> messages)
+        => Summarize(messages, EnglishStudioStrings.Instance);
+
+    /// <summary>
+    /// A one-line summary of a validation pass in the given culture port (STUDIO-11:
+    /// the WPF front passes its resx-backed bridge, the TUIs the English default).
+    /// </summary>
+    public static string Summarize(IReadOnlyList<ValidationMessage> messages, IStudioStrings strings)
     {
         ArgumentNullException.ThrowIfNull(messages);
+        ArgumentNullException.ThrowIfNull(strings);
 
         if (messages.Count == 0)
-            return "Validation: no findings.";
+            return strings[StudioStringKeys.ValidationNoFindings];
 
         var errors = messages.Count(message => message.Severity == ValidationSeverity.Error);
         var warnings = messages.Count(message => message.Severity == ValidationSeverity.Warning);
         var infos = messages.Count - errors - warnings;
 
-        return string.Create(
+        return string.Format(
             CultureInfo.InvariantCulture,
-            $"Validation: {errors} error(s), {warnings} warning(s), {infos} note(s).");
+            strings[StudioStringKeys.ValidationSummary],
+            errors, warnings, infos);
     }
 }

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio localization port: strings below the view layer follow the language switch (PUB-19 tranche 1)
+
+Foundation for STUDIO-11 ("switching to French leaves some strings in English"):
+`Orkeon.Studio.Core` gains a localization port (`IStudioStrings`, key registry,
+English defaults) consumed by the shared formatters — `ValidationMessageFormatter`
+and `LaunchOutcomeFormatter` first — through additive overloads (the TUIs keep the
+English default, no regression). The WPF front bridges the port onto its
+resx-backed `I18n` (`I18nStudioStrings`, hot language switch relayed via
+`CultureChanged`), with the new keys mirrored EN/FR under the existing resx-parity
+test. CLI verdict words (`VALIDATION OK`/`FAILED`) deliberately stay untranslated.
+The ViewModel sweep continues on this pattern (tracked in STUDIO-11).
+
+### Added — Test pyramid rebalanced: offline E2E per orchestration mode, nightly integration, no swallowed SIGSEGV (PUB-17)
+
+- **E2E grows from 17 to 43 executed facts, all offline**: a new suite drives the
+  full DI stack (Application + Infrastructure) through
+  `ICrewOrchestrationService.KickoffAsync` for **each of the six orchestration
+  modes** (sequential, hierarchical, parallel, consensual, graph, autonomous) with
+  a scripted LLM — per mode: the kickoff completes, produces exactly one output per
+  declared task, and demonstrably drives the LLM (no silent no-op path). Two
+  `Category=Slow` facts spawn the real `orkeon` CLI from source and `--validate` a
+  single-YAML example and a multi-file crew directory end-to-end.
+- **`integration.yml`**: the Integration/Slow suites (Testcontainers databases) now
+  run nightly (02:17 UTC, also dispatchable). A red run opens or comments a
+  tracking issue — failures are visible, not buried in a log.
+- **The blanket `continue-on-error` on Embeddings.Local is gone** (ci.yml and
+  publish.yml): the step now inspects the results — a genuine test failure fails
+  the build; only the known ONNX teardown crash (exit 139 **after** a clean
+  "Passed!" summary) is tolerated, explicitly and with a warning annotation.
+
 ### Changed — Global zero-warning ratchet: full analyzer set on, CI builds -warnaserror (PUB-18)
 
 The warning-debt story reaches its terminal state. The audit found the "frozen

@@ -164,4 +164,10 @@
   <data name="Scr_Hist_Sub" xml:space="preserve"><value>Chaque lancement est enregistré localement et rejouable avec exactement les mêmes arguments.</value></data>
   <data name="Hist_Replay" xml:space="preserve"><value>Préparer le rejeu</value></data>
   <data name="Hist_Reload" xml:space="preserve"><value>Recharger</value></data>
+
+  <!-- STUDIO-11: strings fabricated below the view layer (Core formatters via IStudioStrings) -->
+  <data name="Core_Validation_NoFindings" xml:space="preserve"><value>Validation : aucun constat.</value></data>
+  <data name="Core_Validation_Summary" xml:space="preserve"><value>Validation : {0} erreur(s), {1} avertissement(s), {2} note(s).</value></data>
+  <data name="Core_Launch_NothingRan" xml:space="preserve"><value>Rien n'a été exécuté — {0}</value></data>
+  <data name="Core_Launch_ExitCode" xml:space="preserve"><value>Code de sortie {0} — {1}</value></data>
 </root>
