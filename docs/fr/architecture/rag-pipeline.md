@@ -97,6 +97,7 @@ Tous dans `Orkeon.Rag.Abstractions` (`Interfaces/`, `Models/`, `Options/`) :
 | Contrat | Rôle |
 |---|---|
 | `IRagPipeline` | Façade de requête : `RagQuery` → `RagAnswer` (citations + trace) |
+| `IRagRetrievalCapable` | Opt-in : la moitié retrieval seule (`transform → retrieve → fuse → rerank → assemble`), pas de génération, aucun appel LLM |
 | `IIngestionPipeline` | Façade d'ingestion : `IngestionRequest` → `IngestionReport` |
 | `IDocumentStore` | Upsert / recherche / suppression par source sur une collection nommée |
 | `IDocumentLoader` | Source → `RagDocument` (texte, CSV, HTML, PDF, page web) |
@@ -361,11 +362,46 @@ agents:
 ## Surfaces scripting et CLI
 
 - **DSL de scripting** (`.ork.ts`) : les globales de première classe `rag.ingest({
-  collection, sources, chunkingStrategy?, reindex? })` et `rag.query(question, {
-  collection, profile?, topN? })` — voir `examples/scripting/08-rag.ork.ts`. L'espace de
-  noms est toujours enregistré ; les appels échouent avec un message actionnable quand
-  l'hôte n'a pas câblé le sous-système.
+  collection, sources, chunkingStrategy?, reindex? })`, `rag.query(question, {
+  collection, profile?, topN? })` et `rag.retrieve(question, { … })` — voir
+  `examples/scripting/08-rag.ork.ts`. L'espace de noms est toujours enregistré ; les appels
+  échouent avec un message actionnable quand l'hôte n'a pas câblé le sous-système. `query`
+  et `retrieve` renvoient un payload de même forme et seul `query` exécute l'étape de
+  génération : un script qui ne lit que `citations` devrait appeler `retrieve` — voir
+  ci-dessous.
 - **CLI** (`orkeon`) : `orkeon rag ingest|search|eval` sur les mêmes pipelines.
+
+## Retrieval sans génération
+
+`IRagRetrievalCapable.RetrieveAsync` exécute les étapes 1 à 5 et s'arrête. Même requête,
+mêmes passages, aucun appel LLM.
+
+Sa raison d'être est une mesure plutôt qu'une préférence : un appelant qui cite les passages
+retrouvés — parce qu'il veut la preuve, pas son résumé — payait quand même une génération
+ancrée. Sur la passe de comblement d'exp02 (2026-08-04), sept appels `rag.query` dont les
+réponses étaient écartées par construction ont coûté **14 748 tokens de complétion, dont
+68 % de tokens de raisonnement, et 394 s de temps réel**. Rien dans l'API ne permettait à
+l'appelant de s'arrêter après `assemble`.
+
+```csharp
+if (pipeline is IRagRetrievalCapable retriever)
+{
+    var answer = await retriever.RetrieveAsync(
+        new RagQuery { Text = question, Collection = "kb", TopN = 6 });
+    // answer.Text is empty; answer.Citations holds the assembled passages.
+}
+```
+
+Deux propriétés à connaître avant de s'y fier :
+
+- **La capacité est opt-in et doit être sondée.** `StagedRagPipeline` l'implémente ; le
+  graphe correctif non, parce qu'il entrelace l'évaluation du retrieval avec la génération —
+  « retrieval seul » n'est pas un préfixe de son exécution. `rag.retrieve` lève une
+  exception sur un pipeline qui ne peut pas l'honorer plutôt que de se replier sur
+  `QueryAsync`, ce qui facturerait exactement ce que l'appelant demandait d'éviter.
+- **La trace porte toujours une étape `generate`**, dont le détail indique que l'étape a été
+  sautée à dessein. Une étape absente se lirait comme une trace produite par un pipeline
+  plus ancien.
 
 ## Évaluation (datasets golden, gate CI)
 

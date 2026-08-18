@@ -161,8 +161,25 @@ tasks:
 ```
 1. graphConfig champs explicites     (priorité haute)
 2. graphConfig.circuitBreakerPreset  (base de valeurs)
-3. CircuitBreakerPolicy.Strict       (fallback si rien n'est configuré)
+3. config circuitBreaker niveau crew (quand aucun graphConfig n'est présent)
+4. CircuitBreakerPolicy.Strict       (fallback si rien n'est configuré)
 ```
+
+### Cheminement de la configuration jusqu'à l'exécution
+
+Le bloc `graphConfig` voyage jusqu'au graphe en cours d'exécution :
+
+1. `YamlCrewDefinitionLoader` mappe le YAML dans `CrewConfiguration.GraphConfig`.
+2. `CrewFactory` le reporte (ainsi que l'éventuel `circuitBreaker` niveau crew) sur l'agrégat
+   Domain `Crew` (`Crew.GraphConfig` / `Crew.CircuitBreaker`), afin qu'il survive jusqu'à l'exécution.
+3. À l'exécution, `GraphProcessStrategy` lit la config **depuis l'argument crew** et résout la
+   `CircuitBreakerPolicy` effective + `MaxRetryCycles` via `CircuitBreakerPolicyFactory.ResolveGraph`.
+   Lire depuis le crew (et non depuis l'instance de stratégie partagée, scopée) évite que les
+   réglages par crew ne fuient entre exécutions concurrentes.
+
+Quand le crew ne porte aucun `graphConfig`, la stratégie retombe sur ses valeurs par défaut
+intégrées (`CircuitBreakerPolicy.Strict`, `MaxRetryCycles = 2`) — le comportement est inchangé
+par rapport à avant.
 
 ### Modèles YAML
 

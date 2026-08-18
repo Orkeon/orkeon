@@ -2,40 +2,74 @@
 
 # Comparatif des fournisseurs LLM — Orkeon
 
-> État au 2026-06-12 (ligne Gemini ajoutée le 2026-08-18 — la matrice EN, plus récente, fait foi), dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`).
+> État au 2026-07-27, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
+> et des `LlmProviderCapabilities` déclarées par chaque fournisseur.
 > Légende : ✓ supporté · ✗ absent · ◐ partiel/générique.
 
-| Fournisseur | Classe de base | Streaming SSE | Tool calling natif | Chat multi-tours (rôles tool) | Message système | top_p / stop | Grammaire GBNF | response_format JSON | thinking / reasoning_effort | reasoning_content round-trip | Métriques cache prompt | Métriques timing | Résilience Polly | Sanitization clé API |
-|---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ |
-| **OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
-| **Groq** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✓ | ✓ | ✓ |
-| **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
-| **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
-| **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
-| **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (non déclaré — surface compat non documentée) | ✓ effort | ✗ | ◐ | ✗ | ✓ | ✓ |
-| **Mistral AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
-| **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
-| **Anthropic** | HttpLlmProviderBase | ✓ | ✓ | ✓ | ✓ (séparé natif) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| **Ollama** | HttpLlmProviderBase | ✓ | ✗ | ◐ (concat) | ✓ (prepend) | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| **Azure OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
+| Fournisseur | Classe de base | Streaming SSE | Tool calling natif | Chat multi-tours (rôles tool) | Message système | top_p / stop | Grammaire GBNF | response_format | thinking | Vision | reasoning_content round-trip | Cache prompt | Métriques timing | Résilience Polly | Sanitization clé API |
+|---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| **OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Azure OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Anthropic** | HttpLlmProviderBase | ✓ natif | ✓ | ✓ | ✓ (natif, séparé) | ✓ | ✗ | ✓ schema | ✓ adaptive | ✓ | ✗ | ✓ explicite | ✗ | ✓ | ✓ |
+| **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✗ | ✓ | ✓ métriques | ✗ | ✓ | ✓ |
+| **Z.AI (GLM)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ✓ métriques | ✗ | ✓ | ✓ |
+| **Groq** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✓ | ✓ | ✓ |
+| **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Mistral AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ budget | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (non déclaré — surface compat non documentée) | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ✗ | ✓ | ✓ |
+
+## Comment lire les colonnes de capacités
+
+`response_format`, `thinking` et `Vision` ne sont pas maintenus à la main ici : chaque fournisseur
+déclare un value object `LlmProviderCapabilities`, et `OpenAICompatibleProviderBase` le traduit une
+seule fois dans le dialecte OpenAI. Anthropic, Ollama et Qwen surchargent le hook parce que leurs
+API parlent leur propre dialecte.
+
+- **`response_format`** — `object` signifie que l'API garantit un JSON bien formé ; `schema`
+  signifie qu'elle valide contre un JSON Schema côté serveur. Un schéma envoyé à un fournisseur
+  qui ne supporte que `object` est **rétrogradé avec un avertissement**, jamais en silence.
+  **Anthropic est schema-only** : il n'a pas d'équivalent de `json_object`, donc une demande JSON
+  sans schéma y est signalée plutôt qu'envoyée.
+- **`thinking`** — `effort` n'accepte qu'une indication de niveau ; `toggle` peut en plus activer
+  et désactiver le raisonnement ; `budget` accepte en outre un budget de tokens explicite (Qwen
+  uniquement — Anthropic rejette `budget_tokens` avec un 400 sur la génération actuelle).
+- **Tout ce qu'un fournisseur ne supporte pas est signalé.** Une option déclarée en YAML sur un
+  fournisseur qui ne peut pas l'honorer produit un avertissement actionnable nommant l'option, le
+  fournisseur et le remède. C'était le vrai défaut relevé par l'audit du 2026-07-27 : pas le
+  câblage manquant, mais son invisibilité.
 
 ## Notes
 
-- **◐ cache prompt** (OpenAI-compat) : `OpenAICompatibleProviderBase.ParseSuccessResponse` parse génériquement `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`, mais seul DeepSeek les émet réellement côté API.
-- **◐ chat multi-tours** (Ollama) : pas d'override `ChatAsync` → repli sur la concaténation de prompts de `HttpLlmProviderBase`, sans rôles `tool` / `tool_call_id`.
-- **Azure OpenAI** (R10.7) : désormais bâti sur `OpenAICompatibleProviderBase` avec la stratégie de tool calling natif OpenAI câblée par `LlmProviderFactory` ; l'endpoint par déploiement (`/openai/deployments/{model}/chat/completions?api-version=…`) et l'authentification `api-key` sont préservés.
+- **◐ cache prompt (auto)** : le fournisseur met en cache les préfixes de prompt implicitement et
+  rapporte le hit ; `OpenAICompatibleProviderBase.ParseSuccessResponse` lit génériquement
+  `prompt_cache_hit/miss_tokens` et le champ standard OpenAI
+  `prompt_tokens_details.cached_tokens`. **✓ explicite** (Anthropic) signifie que le cache ne fait
+  rien tant qu'un point d'arrêt `cache_control` n'est pas posé — opt-in via `LlmCacheConfig` / le
+  bloc YAML `cache:`.
+- **SSE Anthropic** : `ChatStreamingAsync` parse nativement le flux d'événements de la Messages
+  API depuis LLM-05 ; auparavant il retombait sur une émulation bufferisée, donc aucun token
+  n'arrivait tôt.
+- **Tool calling Ollama** : passe par `/api/chat` dès que la conversation déclare des outils,
+  rejoue des appels d'outils, ou transporte une image ; tout le reste conserve `/api/generate`
+  (streaming NDJSON, GBNF). Le protocole de repli textuel reste en charge pour les modèles sans
+  support des outils.
+- **Azure OpenAI** : deux formes d'API — l'URL de déploiement datée (par défaut) et la surface
+  v1 GA (`api_version: v1`), seule voie vers la Responses API et vers les modèles non-OpenAI
+  qu'Azure revend.
+- **HuggingFace** : les identifiants de modèle acceptent un suffixe de routage (`:fastest` /
+  `:cheapest` / `:preferred` / `:<partner>`) — le seul levier de coût et de latence sur Inference
+  Providers.
 - **top_p / stop** : Ollama n'expose que `temperature` + `num_predict` (= max_tokens).
-- **Grammaire GBNF** : injectée dans le chemin `BuildRequestPayload` (prompt), pour les backends compatibles llama.cpp/vLLM et Ollama.
-- **Polly** et **Sanitization clé API** : fournis par `HttpLlmProviderBase` → actifs sur tous les fournisseurs.
+- **Polly** et **Sanitization clé API** : fournis par `HttpLlmProviderBase` → actifs partout.
 
-## Particularités DeepSeek (le plus complet)
+## Ce que cette table ne prouve pas
 
-Seul fournisseur à câbler :
-
-- le round-trip `reasoning_content` (re-émis verbatim à chaque tour, obligatoire en thinking mode sinon HTTP 400) ;
-- le bloc `thinking` (`enabled`/`disabled`) + `reasoning_effort` ;
-- `response_format: json_object` avec garde-fou loggé si le prompt ne contient pas « json » ;
-- les métriques de context caching (`prompt_cache_hit/miss_tokens`, facturées 1/10 du prix d'entrée).
-
-Couverture de tests : `DeepSeekCacheMetricsTests`, `DeepSeekReasoningRoundTripTests`, `DeepSeekResponseFormatPayloadTests`, `DeepSeekResponseFormatStreamingTests`, `DeepSeekThinkingPayloadTests`.
+Chaque ligne est adossée à des tests unitaires qui vérifient le payload émis — contre un **handler
+HTTP mocké**. Un mock prouve qu'Orkeon envoie ce que nous croyons envoyer ; il ne prouve pas que
+le fournisseur l'accepte. Les preuves d'exécution réelle sont suivies séparément dans le journal
+de la matrice de tests (`backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md` §7) ; lancez une
+campagne avec `orkeon llm probe --provider <name> --archive <dir>`.

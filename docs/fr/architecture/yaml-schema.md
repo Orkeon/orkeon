@@ -45,6 +45,12 @@ agents:
       model: string       # Modèle LLM ("gpt-4", "claude-3-opus", etc.)
       temperature: float  # Créativité (0.0-1.0)
       maxTokens: int      # Limite de tokens en sortie
+    guardrails:           # Règles opérationnelles injectées dans le system prompt de l'agent (optionnel)
+      preset: string      # "analysis" | "strict" | "creative"
+      header: string      # En-tête de section (remplace l'en-tête du preset)
+      rules: [string]     # Règles globales numérotées
+      toolRules:          # Règles rendues seulement quand l'agent possède l'outil
+        <tool_name>: [string]
     knowledge:            # Collections de connaissance (RAG) attachées à l'agent (optionnel)
       - string            # Forme courte : nom de collection avec options par défaut
       - collection: string       # Forme longue (clé requise)
@@ -72,9 +78,26 @@ tasks:
       maxRetries: int           # Retries après échec
       maxToolCallsPerRound: int # Tool calls max par round
       maxValidationRetries: int # Boucles validation max
+    guardrails:           # Guardrails au niveau tâche, même forme que le bloc agent (optionnel)
+      preset: string      # "analysis" | "strict" | "creative"
+      header: string
+      rules: [string]
+      toolRules:
+        <tool_name>: [string]
 ```
 
 Le bloc `circuitBreaker` est également utilisable au niveau racine du YAML (défaut pour toutes les tâches).
+
+## Configuration Guardrails
+
+Les guardrails sont des règles opérationnelles rendues dans le **system prompt** de l'agent exécutant.
+Ils peuvent être déclarés sur un **agent** (s'appliquent à toutes les tâches que l'agent exécute) et/ou
+sur une **tâche** (s'appliquent uniquement à cette tâche). Quand les deux sont présents, **les deux
+s'appliquent — les guardrails de l'agent sont rendus d'abord, puis ceux de la tâche** en section
+séparée. `preset` (`analysis` / `strict` / `creative`) fournit un socle de règles de base ; les
+`rules`/`toolRules` explicites sont fusionnées par-dessus, et les `toolRules` d'un outil donné ne sont
+émises que si l'agent exécutant possède effectivement cet outil. Un en-tête de `preset` prime sur un
+`header` personnalisé.
 
 ## Configuration Knowledge & RAG
 

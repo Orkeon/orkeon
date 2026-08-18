@@ -51,8 +51,10 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` | Analysis | `ICodebaseContextProvider` | Bêta |
 | Sous-système RAG (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) ; profils `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (défaut `fast`) ; `balanced`/`quality`/`adaptive` exigent le cross-encoder ONNX — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, poids embarqués, hors-ligne) ; `corrective` non (le graphe boucle au lieu de reranker) ; le repli web correctif est purement config — `AddOrkeonRag` câble déjà le transport, les deux interrupteurs `Enabled` gouvernent (`Orkeon:Rag:Corrective:WebFallback` politique, `Orkeon:Rag:WebFallback` transport) — voir la section détaillée plus bas | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (à étages / graphe correctif), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Bêta |
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
+| Barrière de permissions (par appel d'outil) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consommé par la boucle scriptée `ctx.llm.act` | Bêta |
 | Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Bêta |
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
+| Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL | Bêta |
 | Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Bêta |
 | Client & serveur MCP | `AddOrkeonMcp(...)` | Infrastructure | `McpClient` / `McpServer` — bi-ère (`2026-07-28` stateless + révisions legacy `initialize`) ; surface `[Experimental]`, voir [APIs expérimentales](./experimental-apis.md) | Expérimental |
 | Embeddings locaux sur machine | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, sans clé API) — premier maillon de la chaîne de résolution des embeddings | Bêta |
@@ -375,6 +377,29 @@ partiel (signalé au cas par cas ci-dessous).
 
 ---
 
+## Barrière de permissions — `AddOrkeonPermissionGate(configuration)` (exp07 F2)
+
+- **Activation** : appelée par `RunnerHost` et le bootstrap de la ConsoleApp, mais
+  n'enregistre rien tant que `Orkeon:Security:PermissionGate:Enabled = true` n'est pas
+  posé. `Interactive` (défaut `false`) déclare un canal d'approbation ; le laisser à
+  `false` tant que le flux Ask du REPL n'a pas atterri (v2).
+- **Effet** : `ModePermissionGate` est consulté par la boucle scriptée `ctx.llm.act`
+  avant CHAQUE exécution d'outil. Modes : `bypassPermissions` → tout autoriser ;
+  `plan` → refuser tout ce qui n'est pas une lecture ; `acceptEdits` → accepter
+  automatiquement les lectures + `file_write`, demander pour le shell ; `default` →
+  tout demander. En headless, chaque demande dégrade en un `DENIED:` motivé renvoyé
+  au modèle comme résultat d'outil (pas d'exception). Les outils inconnus sont
+  classés comme écritures (fail-closed).
+- **Classification déclarative** : les outils peuvent auto-déclarer leur classe via
+  `IBaseTool.Access` (`ToolAccess.Read` / `Edit` / `Execute`) — une déclaration
+  l'emporte sur les tables de noms de la barrière ; `Unspecified` (le défaut) se
+  replie sur les tables. Les outils de lecture intégrés
+  (file/directory/session/memory/analysis), `file_write` (Edit) et
+  `shell_command`/`http_api` (Execute) se déclarent tous.
+- **Défaut rétro-compatible** : flag absent → aucune barrière enregistrée → `act` se
+  comporte exactement comme avant. Les scripts optent pour un mode à l'appel via
+  l'option d'act `permissionMode`.
+
 ## Shell : interpréteurs, allowlist & réécriture VFS — `Orkeon:Tools:Shell:*`
 
 - **`AllowInterpreters = true`** (config seule, lue par `AddOrkeonCodeTools()`) :
@@ -400,6 +425,21 @@ partiel (signalé au cas par cas ci-dessous).
   passes sont des no-ops.
 - **Défaut rétro-compatible** : aucune clé → allowlist stricte lecture-seule,
   comportement historique inchangé.
+
+## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration)` (exp07 F5 L3)
+
+- **Activation** : appelée par le bootstrap de la ConsoleApp, mais n'enregistre rien
+  tant que `Orkeon:Cli:ConsoleStreaming:Enabled = true` n'est pas posé.
+- **Effet** : enregistre `ConsoleLlmDeltaSink` comme `ILlmDeltaSink`. Quand un sink
+  est présent et que le provider LLM streame (`IStreamingLlmProvider`), la boucle
+  scriptée `ctx.llm.act` bascule sur le chemin SSE et chaque delta de contenu est
+  écrit incrémentalement vers l'`IConsoleAdapter` de l'hôte — le REPL rend les
+  tokens au fil de leur arrivée sans que le script passe `onDelta`. Les tours qui ne
+  streament aucun contenu visible (appels d'outils purs) n'émettent rien. Le sink
+  compose avec un `onDelta` côté script (les deux reçoivent chaque delta).
+- **Défaut rétro-compatible** : flag absent → aucun sink enregistré → `act` conserve
+  son rendu bufferisé (identique à l'octet près), les scripts peuvent toujours
+  streamer via `onDelta`.
 
 ---
 

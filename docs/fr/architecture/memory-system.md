@@ -132,6 +132,22 @@ REST LanceDB Cloud/Enterprise et `Options` peut porter `ApiKey`, `TableName`, `D
 (sans endpoint : avertissement explicite et repli In-Memory ; câblage DI via
 `AddOrkeonLanceDb`). Un type inconnu retombe sur In-Memory avec un avertissement explicite.
 
+### Sélection du provider par crew
+
+Une crew peut déclarer son propre provider via `memoryProvider` en YAML (ou `CrewBuilder.WithMemoryProvider`).
+La sélection voyage jusqu'au run au lieu d'être figée globalement par la configuration `Memory:Provider` :
+
+1. `memoryProvider` est mappé dans `CrewConfiguration.MemoryProvider`, que `CrewFactory` reporte sur
+   l'agrégat de domaine `Crew` (`Crew.MemoryProvider`).
+2. Au kickoff, l'orchestrateur enregistre `Crew.Id → Crew.MemoryProvider` dans le singleton
+   `CrewMemoryProviderRegistry` (indexé par crew, donc les sélections ne fuient jamais d'une crew à l'autre).
+3. Quand `MemoryService` matérialise le système de mémoire de cette crew, il résout la chaîne enregistrée
+   en un `IMemoryProvider` concret via `MemoryProviderFactory` et adosse la mémoire **long terme** de la
+   crew à ce provider (la mémoire court terme reste une fenêtre glissante in-process). Les types
+   inconnus/indisponibles conservent le repli In-Memory-avec-avertissement de la factory.
+
+Une crew qui ne déclare aucun `memoryProvider` utilise le store in-process par défaut — le comportement est inchangé.
+
 ## Chiffrement au repos
 
 `EncryptedMemoryProviderDecorator` enveloppe n'importe quel `IMemoryProvider` (SQLite,

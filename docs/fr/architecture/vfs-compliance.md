@@ -87,7 +87,7 @@ L'argument `reason` est obligatoire et doit nommer la catégorie d'audit dont il
 > nullable déclenche désormais `ORKVFS007`) et les shims `[Obsolete]` liés au FS ont été supprimés.
 > Ne pas réintroduire ces catégories.
 
-Toute nouvelle classe d'exception doit d'abord être consignée dans l'audit de conformité VFS (the maintainers' archive, `audit-vfs-compliance-*`) avant l'ajout d'une suppression.
+Toute nouvelle classe d'exception doit d'abord être consignée dans l'audit de conformité VFS (l'archive des mainteneurs, `audit-vfs-compliance-*`) avant l'ajout d'une suppression.
 
 ### Exceptions permanentes ratifiées (2D)
 
@@ -110,6 +110,42 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 2. Travailler en chemins virtuels (`/workspace/...`, `/output/...`, `/tmp/...`).
 3. Ne jamais ajouter de fallback `System.IO` par chemin `string`. Il n'existe pas de constructeur de rétro-compatibilité — la DI est la seule voie de construction.
 4. Pour énumérer, streamer, copier ou observer, utiliser les méthodes dédiées de `IFileSystemService` plutôt que les primitives `System.IO` équivalentes (y compris `StreamReader`/`StreamWriter` — envelopper un `Stream` issu de `OpenReadStreamAsync`/`OpenWriteStreamAsync`, jamais un chemin).
+
+## Mounts par scope (surcharge ambiante des mounts)
+
+L'ensemble des mounts est un singleton défini au démarrage : `AddOrkeonFileSystem` construit un
+`FileSystemRegistry` unique à partir de `Orkeon:FileSystem:Mounts`, et `IFileSystemService` est un
+singleton au-dessus. C'est correct pour un runner mono-tenant, mais un hôte qui exécute plusieurs
+crews dans un même processus (p. ex. un moteur d'exécution pilotant un profil différent par run)
+doit pouvoir donner **ses propres mounts à un flux d'exécution** sans perturber les autres.
+
+`IFileSystemService` ne peut pas devenir DI-scoped pour cela : des dizaines de singletons l'injectent,
+donc une durée de vie scoped en ferait une dépendance captive. À la place, les mounts par scope sont
+fournis par une **surcharge ambiante** — `IFileSystemScope` (enregistré en singleton, adossé à
+`AsyncLocal<FileSystemRegistry?>`, `AsyncLocalFileSystemScope`). Le singleton `FileSystemService` la
+lit **à chaque opération** : il résout contre le registre ambiant quand un flux d'exécution en a
+installé un, et contre le registre de démarrage sinon. `AsyncLocal` isole la valeur par flux de
+contrôle asynchrone, donc des runs concurrents ne voient jamais les mounts les uns des autres, et un
+hôte qui n'entre jamais dans un scope conserve un comportement identique à l'octet près.
+
+```csharp
+// Dans un scope de run : installer les mounts du profil du run pour ce flux async uniquement.
+var mounts = profileMountStrings.Select(FileSystemMount.Parse).ToList();
+using var registry = new FileSystemRegistry(mounts);   // l'appelant possède la durée de vie du registre
+using var _ = fileSystemScope.Enter(registry);          // restauré au dispose (imbrication supportée)
+
+// Tout appel IFileSystemService sur CE flux async résout désormais contre `mounts` ;
+// les autres runs concurrents continuent de voir les mounts de démarrage.
+```
+
+Les gardes s'appliquent aux mounts scopés exactement comme aux mounts de démarrage, car elles
+s'exécutent à chaque opération sur le registre actif : le registre applique les droits de mount + le
+confinement contre la traversée de chemin, et `IPathValidator` applique indépendamment les contrôles
+racine-workspace / chemins bloqués / extensions (`PathSecurity:DefaultWorkspaceRoot`,
+`AdditionalAllowedDirectories`). Un mount scopé dont la base physique se situe hors de la racine
+workspace autorisée est refusé exactement comme le serait un mount de démarrage. L'appelant possède
+la durée de vie du `FileSystemRegistry` scopé (`Enter` ne le dispose pas — le disposer soi-même,
+comme ci-dessus).
 
 ## Comportement en CI
 

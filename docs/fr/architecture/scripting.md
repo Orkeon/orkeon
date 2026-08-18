@@ -35,7 +35,7 @@ src/
     │   ├── ErrorPolicy/          ← JsErrorAction, ErrorCodeMapper
     │   ├── Telemetry/            ← ScriptingActivitySource
     │   └── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
-    └── Orkeon.Scripting.Cli/     ← `orkeon run script.ork.ts`
+    └── Orkeon.Scripting.Cli/     ← `orkeon run <crew.ork.ts | crew.yaml>`
 ```
 
 ## Démarrage rapide
@@ -50,6 +50,21 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
 
 La CLI émet le résultat du script en JSON sur stdout ; les codes de sortie suivent la
 convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` annulé).
+
+Le même verbe `run` accepte aussi un **crew YAML** — l'extension du fichier sélectionne
+la voie (`.yaml`/`.yml` → runner de crew YAML, `.ork.ts`/`.js` → DSL de scripting) :
+
+```bash
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/09-experimental/llm-response-format/crew.yaml
+```
+
+Pour les crews YAML, l'outil délègue au runner one-shot partagé (le même chemin de code
+que le `Orkeon.Examples.Runner` autonome), donc les drapeaux propres au YAML s'appliquent :
+`-V/--var KEY=VALUE`, `--initial-context`, plus les drapeaux partagés
+`--settings/--mount/--allow-external-mounts/--verbose/--llm-log[-path]`. Les drapeaux
+propres aux scripts (`--inputs`, `--inputs-file`, `--memory-limit-mb`) sont ignorés sur
+la voie YAML. Le runner YAML affiche la sortie du crew sous une bannière
+`=== Crew Output ===` au lieu d'un `result` JSON.
 
 ## Récapitulatif de l'API
 
@@ -69,7 +84,10 @@ convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` a
 
 La voie de configuration YAML reste supportée et inchangée. Les scripts et les crews
 YAML peuvent partager la même application hôte : le DSL est l'une des surfaces
-d'écriture parmi d'autres, pas un remplacement.
+d'écriture parmi d'autres, pas un remplacement. L'outil `orkeon` publié exécute
+désormais **les deux** surfaces directement (`orkeon run crew.yaml` et
+`orkeon run crew.ork.ts`), si bien qu'un consommateur externe qui ne dépend que des
+packages publiés n'a plus à compiler un runner sur mesure pour exécuter des crews YAML.
 
 ## Appels bloquants depuis les scripts
 

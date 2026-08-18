@@ -115,13 +115,50 @@ Les 15 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysi
 
 Le framework expose `ICodebaseContextProvider` qui produit un résumé compact du codebase (packages, top complexité, top couplage, patterns détectés) à injecter dans le system prompt d'un agent au démarrage. Trois formats : `markdown` (défaut, ~300 tokens), `compact` (~150 tokens), `json` (~400 tokens). L'injection n'a lieu que si un index est présent et si l'agent possède au moins un tool RaggableTree.
 
-Trois modes de synchronisation gouvernent la réaction aux événements watcher (`ICodebaseWatcher` → `IRaggableTreeEventBus`) :
+## Recherche hybride
 
-| Mode | Comportement |
-|------|---------------|
-| `frozen` (défaut) | L'agent ignore les changements ; il reste sur son `IndexId` d'origine. |
-| `live` | L'agent invalide les résultats de tools pour les FQN impactés et interroge à nouveau l'index. |
-| `breakOnChange` | L'agent avorte sa tâche proprement avec un statut `IndexChanged`. |
+`codebase_search` (et `IRaggableStore.SemanticSearchAsync`) est **hybride** depuis le
+chantier fraîcheur : un classement cosinus par embeddings et un classement lexical BM25
+sont fusionnés par Reciprocal Rank Fusion (`SemanticQuery.Mode` : `Hybrid` par défaut /
+`Vector` / `Lexical`). Le versant lexical utilise un **tokenizer conscient du code**
+(`CodeTokenizer`) : les identifiants sont découpés aux frontières camelCase / snake_case /
+chiffres et indexés à la fois en sous-tokens et en entier
+(`getUserById` → `get user by id getuserbyid`), de sorte que les requêtes par identifiant
+exact gardent leur signal fort tandis que les requêtes conceptuelles gagnent en rappel.
+Chaque `SearchHit` porte `MatchOrigin` (`hybrid`/`vector`/`bm25`) ; les scores hybrides
+sont des **agrégats de rangs** RRF (pas des similarités — ne jamais les comparer entre
+origines). Sans embedder câblé, `Hybrid` dégrade vers `Lexical` au lieu de renvoyer vide ;
+un `Vector` explicite conserve le contrat historique.
+
+## Fraîcheur (coordination édition ↔ recherche)
+
+L'index reste fidèle à un workspace en cours d'édition grâce à une conception
+**mark-dirty + réindexation paresseuse** :
+
+- **Hook d'écriture** — `FileWriteTool` prend un `IIndexInvalidation` optionnel
+  (enregistré par `AddRaggableTree`, implémenté par le store) : chaque écriture réussie
+  marque son chemin comme sale. O(1), synchrone, no-op hors des racines indexées.
+- **Passe paresseuse** — les tools de lecture (`codebase_search`, `symbol_source`,
+  `flow_trace`, `codebase_map`) appellent `IndexFreshnessService.EnsureFreshAsync` avant
+  de répondre : l'ensemble sale ∪ les **changements du working tree git** (attrape les
+  éditions via `shell_command`) est réindexé incrémentalement — groupé, single-flight,
+  avec debounce (une sonde git propre fait foi pendant 2 s). Les réponses de
+  `codebase_search` rapportent `refreshed_files` ; `index_status` rapporte
+  `dirty_count`/`dirty_paths`, de sorte que le « périmé » est observable.
+- **Sûreté du store** — `InMemoryRaggableStore` détient un `ReaderWriterLockSlim` : les
+  recherches énumèrent en sécurité PENDANT une réindexation incrémentale (auparavant une
+  recherche concurrente pouvait lever sur les dictionnaires mutés). Le rafraîchissement
+  publie `RaggableTreeUpdated` sur l'`IRaggableTreeEventBus`.
+- **Barrière d'échec** — un rafraîchissement en échec sert l'index courant (périmé) et
+  conserve la dette de saleté pour la tentative suivante : un résultat périmé vaut mieux
+  qu'une recherche morte.
+
+Note historique : une version antérieure de ce document décrivait trois modes de
+synchronisation pilotés par le watcher (`frozen`/`live`/`breakOnChange` via
+`RaggableTreeIndexMode`). Ces modes n'ont jamais été consommés par aucun code — l'enum
+existait, rien ne la lisait. La conception de fraîcheur ci-dessus remplace cette fiction ;
+`ICodebaseWatcher` reste disponible pour les hôtes qui veulent une invalidation en push
+par-dessus la passe paresseuse.
 
 ## Extensibilité
 
