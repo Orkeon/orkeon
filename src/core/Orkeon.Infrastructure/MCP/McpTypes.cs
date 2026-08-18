@@ -81,6 +81,14 @@ public class McpToolCallResult
     /// <summary>Gets or sets whether the result represents an error.</summary>
     [JsonPropertyName("isError")]
     public bool? IsError { get; set; }
+
+    /// <summary>
+    /// Gets or sets the result type: "complete" for ordinary results, "input_required"
+    /// for multi-round-trip interim results (absent on legacy servers = complete).
+    /// </summary>
+    [JsonPropertyName("resultType")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ResultType { get; set; }
 }
 
 /// <summary>
@@ -199,6 +207,26 @@ public class McpToolListResult
     /// <summary>Gets the list of available tools.</summary>
     [JsonPropertyName("tools")]
     public IReadOnlyList<McpToolDefinition> Tools { get; init; } = [];
+
+    /// <summary>Gets or sets the result type ("complete"; absent on legacy servers, to be treated as complete).</summary>
+    [JsonPropertyName("resultType")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ResultType { get; set; }
+
+    /// <summary>Gets or sets the freshness hint, in milliseconds (2026-07-28 CacheableResult).</summary>
+    [JsonPropertyName("ttlMs")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? TtlMs { get; set; }
+
+    /// <summary>Gets or sets the cache scope: "public" or "private" (2026-07-28 CacheableResult).</summary>
+    [JsonPropertyName("cacheScope")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? CacheScope { get; set; }
+
+    /// <summary>Gets or sets result metadata (carries the server identity on modern results).</summary>
+    [JsonPropertyName("_meta")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Meta { get; set; }
 }
 
 /// <summary>
@@ -244,4 +272,60 @@ public class McpServerInfo
     /// <summary>Gets or sets the server version string.</summary>
     [JsonPropertyName("version")]
     public string? Version { get; set; }
+}
+
+/// <summary>
+/// The protocol era a connected MCP server speaks (2026-07-28 stateless vs
+/// initialize-handshake revisions).
+/// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public enum McpProtocolEra
+{
+    /// <summary>Era not yet detected — no request has been exchanged.</summary>
+    Unknown,
+
+    /// <summary>Modern, stateless lineage: per-request `_meta`, `server/discover` (2026-07-28+).</summary>
+    Modern,
+
+    /// <summary>Legacy lineage: `initialize` handshake sessions (2025-11-25 and earlier).</summary>
+    Legacy
+}
+
+/// <summary>
+/// Result of the mandatory `server/discover` RPC (2026-07-28).
+/// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpDiscoverResult
+{
+    /// <summary>Gets or sets the result type (always "complete" for discovery).</summary>
+    [JsonPropertyName("resultType")]
+    public string ResultType { get; set; } = "complete";
+
+    /// <summary>Gets the protocol versions the server supports.</summary>
+    [JsonPropertyName("supportedVersions")]
+    public IReadOnlyList<string> SupportedVersions { get; init; } = [];
+
+    /// <summary>Gets or sets the capabilities the server supports.</summary>
+    [JsonPropertyName("capabilities")]
+    public McpServerCapabilities Capabilities { get; set; } = new();
+
+    /// <summary>Gets or sets optional natural-language guidance for LLMs using this server.</summary>
+    [JsonPropertyName("instructions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Instructions { get; set; }
+
+    /// <summary>Gets or sets the freshness hint, in milliseconds.</summary>
+    [JsonPropertyName("ttlMs")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? TtlMs { get; set; }
+
+    /// <summary>Gets or sets the cache scope ("public" or "private").</summary>
+    [JsonPropertyName("cacheScope")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? CacheScope { get; set; }
+
+    /// <summary>Gets or sets result metadata (carries the server identity under `io.modelcontextprotocol/serverInfo`).</summary>
+    [JsonPropertyName("_meta")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Meta { get; set; }
 }

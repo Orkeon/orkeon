@@ -6,8 +6,12 @@ using System.Diagnostics.CodeAnalysis;
 namespace Orkeon.Infrastructure.MCP;
 
 /// <summary>
-/// MCP transport that communicates with a server over HTTP,
-/// posting JSON-RPC requests and receiving JSON responses.
+/// MCP transport that communicates with a server over HTTP, posting one
+/// JSON-RPC message per request (the Streamable HTTP shape, JSON-response
+/// mode). Modern requests carry the required MCP headers, derived from the
+/// message itself; an SSE-framed response body is unwrapped to its final
+/// JSON-RPC message. Server-initiated streams (`subscriptions/listen`) are
+/// not consumed.
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class SseMcpTransport : IMcpTransport
@@ -67,12 +71,17 @@ public class SseMcpTransport : IMcpTransport
                 throw new InvalidOperationException("Transport is not connected.");
 
             var json = JsonSerializer.Serialize(request);
-            using var content = new StringContent(json, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType);
+            using var message = new HttpRequestMessage(HttpMethod.Post, _url)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType)
+            };
+            AddMcpHeaders(message, request);
 
-            var httpResponse = await _httpClient.PostAsync(_url, content, ct).ConfigureAwait(false);
+            var httpResponse = await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
             httpResponse.EnsureSuccessStatusCode();
 
-            var responseJson = await httpResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseBody = await httpResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var responseJson = UnwrapSsePayload(httpResponse.Content.Headers.ContentType?.MediaType, responseBody);
             var response = JsonSerializer.Deserialize<JsonRpcResponse>(responseJson);
 
             if (response == null)
@@ -86,6 +95,72 @@ public class SseMcpTransport : IMcpTransport
 
             return response;
         }
+    }
+
+    /// <inheritdoc />
+    public Task SendNotificationAsync(JsonRpcNotification notification, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+        return SendNotificationCoreAsync();
+
+        async Task SendNotificationCoreAsync()
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Transport is not connected.");
+
+            var json = JsonSerializer.Serialize(notification);
+            using var message = new HttpRequestMessage(HttpMethod.Post, _url)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, HttpDefaults.JsonContentType)
+            };
+            message.Headers.TryAddWithoutValidation(McpProtocol.MethodHeader, notification.Method);
+
+            var httpResponse = await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
+            httpResponse.EnsureSuccessStatusCode();
+        }
+    }
+
+    /// <summary>
+    /// Adds the Streamable HTTP request headers, derived from the JSON-RPC
+    /// message itself: MCP-Protocol-Version (from `params._meta`), Mcp-Method,
+    /// and Mcp-Name (from `params.name`, when present). Legacy requests carry
+    /// no modern `_meta` and therefore no protocol-version header.
+    /// </summary>
+    private static void AddMcpHeaders(HttpRequestMessage message, JsonRpcRequest request)
+    {
+        message.Headers.TryAddWithoutValidation(McpProtocol.MethodHeader, request.Method);
+
+        var version = McpProtocol.TryReadRequestedVersion(request.Params);
+        if (version != null)
+            message.Headers.TryAddWithoutValidation(McpProtocol.ProtocolVersionHeader, version);
+
+        if (request.Params is { ValueKind: JsonValueKind.Object } p &&
+            p.TryGetProperty("name", out var name) &&
+            name.ValueKind == JsonValueKind.String)
+        {
+            message.Headers.TryAddWithoutValidation(McpProtocol.NameHeader, name.GetString());
+        }
+    }
+
+    /// <summary>
+    /// When the server framed its answer as an SSE stream, extracts the last
+    /// `data:` payload (the final JSON-RPC message of the request's stream);
+    /// plain JSON bodies pass through untouched.
+    /// </summary>
+    private static string UnwrapSsePayload(string? mediaType, string body)
+    {
+        if (!string.Equals(mediaType, "text/event-stream", StringComparison.OrdinalIgnoreCase))
+            return body;
+
+        string? lastData = null;
+        foreach (var rawLine in body.Split('\n'))
+        {
+            var line = rawLine.TrimEnd('\r');
+            if (line.StartsWith("data:", StringComparison.Ordinal))
+                lastData = line["data:".Length..].TrimStart();
+        }
+
+        return lastData ?? body;
     }
 
     /// <inheritdoc />

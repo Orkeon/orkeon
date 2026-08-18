@@ -13,7 +13,7 @@ public class JsonRpcTypesTests
         var request = new JsonRpcRequest
         {
             Method = "tools/list",
-            Id = 42,
+            Id = JsonSerializer.SerializeToElement(42),
             Params = JsonDocument.Parse("{\"cursor\":\"abc\"}").RootElement
         };
 
@@ -25,7 +25,7 @@ public class JsonRpcTypesTests
         Assert.NotNull(deserialized);
         Assert.Equal("2.0", deserialized!.Jsonrpc);
         Assert.Equal("tools/list", deserialized.Method);
-        Assert.Equal(42, deserialized.Id);
+        Assert.Equal(42, deserialized.Id!.Value.GetInt32());
         Assert.NotNull(deserialized.Params);
         Assert.Equal("abc", deserialized.Params!.Value.GetProperty("cursor").GetString());
     }
@@ -36,7 +36,7 @@ public class JsonRpcTypesTests
         // Arrange
         var response = new JsonRpcResponse
         {
-            Id = 1,
+            Id = JsonSerializer.SerializeToElement(1),
             Result = JsonDocument.Parse("{\"tools\":[]}").RootElement
         };
 
@@ -47,7 +47,7 @@ public class JsonRpcTypesTests
         // Assert
         Assert.NotNull(deserialized);
         Assert.Equal("2.0", deserialized!.Jsonrpc);
-        Assert.Equal(1, deserialized.Id);
+        Assert.Equal(1, deserialized.Id!.Value.GetInt32());
         Assert.NotNull(deserialized.Result);
         Assert.Null(deserialized.Error);
     }
@@ -58,7 +58,7 @@ public class JsonRpcTypesTests
         // Arrange
         var response = new JsonRpcResponse
         {
-            Id = 2,
+            Id = JsonSerializer.SerializeToElement(2),
             Error = new JsonRpcError(-32601, "Method not found")
         };
 
@@ -111,7 +111,7 @@ public class JsonRpcTypesTests
         var request = new JsonRpcRequest
         {
             Method = "tools/list",
-            Id = 1
+            Id = JsonSerializer.SerializeToElement(1)
         };
 
         // Act

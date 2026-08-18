@@ -32,7 +32,7 @@ var budget = AgentExecutionBudget.Default;
 | `ORKEXP001` | **A2A (agent-to-agent protocol)** — `IA2AClient`, `IA2AServer`, `IA2AAgentDiscovery`, `IA2ATaskRouter`, `IAgentRegistrationStore`, the `A2A*` implementations and `AddOrkeonA2A` | The implementation predates the A2A v1.0.1 specification; the conformance pass (PUB-08) will reshape parts of it (task persistence, certificate revocation). |
 | `ORKEXP002` | **Autonomous orchestration** — `AgentExecutionBudget` and its budget types, `IAgentChannel`/`InMemoryAgentChannel`, `AutonomousProcessStrategy`, `SpawnAgentTool` | The youngest orchestration mode: budget dimensions, spawn semantics and A2A channel contracts may still move with field feedback. |
 | `ORKEXP003` | **Corrective RAG** — `CorrectiveRagPipeline`, `IRetrievalEvaluator`, `IGroundednessChecker` and the `Corrective` evaluator/checker implementations | The CRAG loop contracts (verdicts, re-loop bounds, web-fallback policy) are calibrated against a young evaluation corpus. |
-| `ORKEXP004` | **MCP integration** — `McpClient`, `McpServer`, transports, options and protocol types | Pinned to protocol version `2024-11-05`; the upgrade to the current MCP specification (PUB-07) will change the wire surface. |
+| `ORKEXP004` | **MCP integration** — `McpClient`, `McpServer`, transports, options and protocol types | Dual-era since PUB-07 (modern `2026-07-28` + legacy initialize revisions), but parts of the modern surface are still unimplemented (`subscriptions/listen`, multi-round-trip requests, OAuth) and the wire types may still move. |
 
 Everything not marked `[Experimental]` and listed in a package's `PublicAPI.Shipped.txt`
 is covered by the stability commitment: a change there is a **breaking change** and is

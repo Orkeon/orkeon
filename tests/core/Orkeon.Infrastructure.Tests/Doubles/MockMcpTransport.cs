@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Orkeon.Infrastructure.MCP;
 
 namespace Orkeon.Infrastructure.Tests.Doubles;
@@ -7,13 +8,15 @@ namespace Orkeon.Infrastructure.Tests.Doubles;
 /// </summary>
 public class MockMcpTransport : IMcpTransport
 {
-    private JsonRpcResponse _sendRequestResult = new() { Jsonrpc = "2.0", Id = 1 };
+    private JsonRpcResponse _sendRequestResult = new() { Jsonrpc = "2.0", Id = JsonSerializer.SerializeToElement(1) };
     private Func<JsonRpcRequest, CancellationToken, Task<JsonRpcResponse>>? _sendRequestFunc;
     private bool _isConnected;
 
     // --- Tracking ---
     public int ConnectCallCount { get; private set; }
     public int SendRequestCallCount { get; private set; }
+    public int SendNotificationCallCount { get; private set; }
+    public List<JsonRpcNotification> AllSentNotifications { get; } = [];
     public JsonRpcRequest? LastSentRequest { get; private set; }
     public List<JsonRpcRequest> AllSentRequests { get; } = [];
     public int DisposeCallCount { get; private set; }
@@ -71,6 +74,13 @@ public class MockMcpTransport : IMcpTransport
         };
 
         return response;
+    }
+
+    public Task SendNotificationAsync(JsonRpcNotification notification, CancellationToken ct = default)
+    {
+        SendNotificationCallCount++;
+        AllSentNotifications.Add(notification);
+        return Task.CompletedTask;
     }
 
     public ValueTask DisposeAsync()

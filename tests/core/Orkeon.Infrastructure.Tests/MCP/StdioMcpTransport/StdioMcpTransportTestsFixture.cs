@@ -69,7 +69,7 @@ public class StdioMcpTransportTestsFixture
         var request = new JsonRpcRequest
         {
             Method = method,
-            Id = id
+            Id = JsonSerializer.SerializeToElement(id)
         };
         if (paramsJson != null)
             request.Params = JsonDocument.Parse(paramsJson).RootElement;

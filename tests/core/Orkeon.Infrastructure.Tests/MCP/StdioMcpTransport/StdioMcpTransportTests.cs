@@ -56,7 +56,7 @@ public class StdioMcpTransportTests
         var request = new JsonRpcRequest
         {
             Method = "test",
-            Id = 1,
+            Id = JsonSerializer.SerializeToElement(1),
             Params = JsonDocument.Parse("{\"hello\":\"world\"}").RootElement
         };
 
@@ -66,7 +66,7 @@ public class StdioMcpTransportTests
         var response = await transport.SendRequestAsync(request, TestContext.Current.CancellationToken);
 
         Assert.NotNull(response);
-        Assert.Equal(1, response.Id);
+        Assert.Equal(1, response.Id!.Value.GetInt32());
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class StdioMcpTransportTests
         var config = new McpServerConfig { Command = EchoCommand };
         var transport = new StdioMcpTransportSut(config);
 
-        var request = new JsonRpcRequest { Method = "test", Id = 1 };
+        var request = new JsonRpcRequest { Method = "test", Id = JsonSerializer.SerializeToElement(1) };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => transport.SendRequestAsync(request, TestContext.Current.CancellationToken));
         Assert.Contains("not connected", ex.Message);

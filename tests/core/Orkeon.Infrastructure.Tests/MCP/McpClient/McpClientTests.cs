@@ -22,7 +22,7 @@ public sealed class McpClientTests : IAsyncDisposable
         var json = JsonSerializer.Serialize(result);
         return new JsonRpcResponse
         {
-            Id = id,
+            Id = JsonSerializer.SerializeToElement(id),
             Result = JsonDocument.Parse(json).RootElement
         };
     }
@@ -33,7 +33,7 @@ public sealed class McpClientTests : IAsyncDisposable
         // Arrange
         var client = CreateClient();
 
-        _mockTransport.SetSendRequestFunc(req => CreateResponse(req.Id!.Value, new McpInitializeResult
+        _mockTransport.SetSendRequestFunc(req => CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
         {
             ProtocolVersion = "2024-11-05",
             Capabilities = new McpServerCapabilities
@@ -59,7 +59,7 @@ public sealed class McpClientTests : IAsyncDisposable
     {
         // Arrange
         var client = CreateClient();
-        _mockTransport.SetSendRequestFunc(req => CreateResponse(req.Id!.Value, new McpInitializeResult
+        _mockTransport.SetSendRequestFunc(req => CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
         {
             ProtocolVersion = "2024-11-05",
             Capabilities = new McpServerCapabilities
@@ -99,14 +99,14 @@ public sealed class McpClientTests : IAsyncDisposable
             callCount++;
             if (callCount == 1) // initialize
             {
-                return CreateResponse(req.Id!.Value, new McpInitializeResult
+                return CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
                 {
                     ProtocolVersion = "2024-11-05",
                     Capabilities = new McpServerCapabilities()
                 });
             }
             // tools/list
-            return CreateResponse(req.Id!.Value, new McpToolListResult
+            return CreateResponse(req.Id!.Value.GetInt32(), new McpToolListResult
             {
                 Tools =
                 [
@@ -140,14 +140,14 @@ public sealed class McpClientTests : IAsyncDisposable
             callCount++;
             if (callCount == 1) // initialize
             {
-                return CreateResponse(req.Id!.Value, new McpInitializeResult
+                return CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
                 {
                     ProtocolVersion = "2024-11-05",
                     Capabilities = new McpServerCapabilities()
                 });
             }
             // tools/call
-            return CreateResponse(req.Id!.Value, new McpToolCallResult
+            return CreateResponse(req.Id!.Value.GetInt32(), new McpToolCallResult
             {
                 Content = [new() { Type = "text", Text = "42" }]
             });
@@ -184,14 +184,14 @@ public sealed class McpClientTests : IAsyncDisposable
             callCount++;
             if (callCount == 1) // initialize
             {
-                return CreateResponse(req.Id!.Value, new McpInitializeResult
+                return CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
                 {
                     ProtocolVersion = "2024-11-05",
                     Capabilities = new McpServerCapabilities()
                 });
             }
             // tools/call
-            return CreateResponse(req.Id!.Value, new McpToolCallResult
+            return CreateResponse(req.Id!.Value.GetInt32(), new McpToolCallResult
             {
                 Content =
                 [
@@ -224,14 +224,14 @@ public sealed class McpClientTests : IAsyncDisposable
             callCount++;
             if (callCount == 1) // initialize
             {
-                return CreateResponse(req.Id!.Value, new McpInitializeResult
+                return CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
                 {
                     ProtocolVersion = "2024-11-05",
                     Capabilities = new McpServerCapabilities()
                 });
             }
             // resources/list
-            return CreateResponse(req.Id!.Value, new McpResourceListResult
+            return CreateResponse(req.Id!.Value.GetInt32(), new McpResourceListResult
             {
                 Resources =
                 [
@@ -267,7 +267,7 @@ public sealed class McpClientTests : IAsyncDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => client.ListToolsAsync(TestContext.Current.CancellationToken));
-        Assert.Contains("not been initialized", ex.Message);
+        Assert.Contains("not connected", ex.Message);
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public sealed class McpClientTests : IAsyncDisposable
             callCount++;
             if (callCount == 1) // initialize
             {
-                return CreateResponse(req.Id!.Value, new McpInitializeResult
+                return CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
                 {
                     ProtocolVersion = "2024-11-05",
                     Capabilities = new McpServerCapabilities()
@@ -315,7 +315,7 @@ public sealed class McpClientTests : IAsyncDisposable
 
         _mockTransport.SetSendRequestResult(new JsonRpcResponse
         {
-            Id = 1,
+            Id = JsonSerializer.SerializeToElement(1),
             Error = new JsonRpcError(-32600, "Unsupported protocol version")
         });
 

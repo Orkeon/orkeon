@@ -20,6 +20,11 @@ public interface IMcpTransport : IAsyncDisposable
     Task<JsonRpcResponse> SendRequestAsync(JsonRpcRequest request, CancellationToken ct = default);
 
     /// <summary>
+    /// Sends a JSON-RPC notification (no id, no response expected).
+    /// </summary>
+    Task SendNotificationAsync(JsonRpcNotification notification, CancellationToken ct = default);
+
+    /// <summary>
     /// Whether the transport is currently connected.
     /// </summary>
     bool IsConnected { get; }

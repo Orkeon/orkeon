@@ -72,7 +72,8 @@ public partial class McpToolProvider : IAsyncDisposable
 
             try
             {
-                var initResult = await client.InitializeAsync(ct).ConfigureAwait(false);
+                // Dual-era connection: server/discover probe, legacy initialize fallback.
+                await client.ConnectAsync(ct).ConfigureAwait(false);
                 var tools = await client.ListToolsAsync(ct).ConfigureAwait(false);
 
                 var registeredNames = new List<string>();
@@ -88,7 +89,7 @@ public partial class McpToolProvider : IAsyncDisposable
                 }
 
                 _clients[serverId] = new McpClientEntry(
-                    client, transport, registeredNames, initResult.Capabilities);
+                    client, transport, registeredNames, client.Capabilities);
 
                 LogConnectedToMcpServer(serverId, registeredNames.Count);
             }
@@ -114,7 +115,7 @@ public partial class McpToolProvider : IAsyncDisposable
 
         try
         {
-            var initResult = await client.InitializeAsync(ct).ConfigureAwait(false);
+            await client.ConnectAsync(ct).ConfigureAwait(false);
             var tools = await client.ListToolsAsync(ct).ConfigureAwait(false);
 
             var registeredNames = new List<string>();
@@ -129,7 +130,7 @@ public partial class McpToolProvider : IAsyncDisposable
             }
 
             _clients[serverId] = new McpClientEntry(
-                client, transport, registeredNames, initResult.Capabilities);
+                client, transport, registeredNames, client.Capabilities);
         }
         catch
         {

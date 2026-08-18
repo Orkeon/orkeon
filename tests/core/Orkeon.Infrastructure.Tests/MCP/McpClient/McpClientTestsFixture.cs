@@ -33,7 +33,7 @@ public sealed class McpClientTestsFixture : IAsyncDisposable
         McpServerCapabilities? capabilities = null,
         McpServerInfo? serverInfo = null)
     {
-        return WithSendRequestFunc(req => CreateResponse(req.Id!.Value, new McpInitializeResult
+        return WithSendRequestFunc(req => CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
         {
             ProtocolVersion = protocolVersion,
             Capabilities = capabilities ?? new McpServerCapabilities(),
@@ -50,7 +50,7 @@ public sealed class McpClientTestsFixture : IAsyncDisposable
             callCount++;
             if (callCount == 1) // initialize
             {
-                return CreateResponse(req.Id!.Value, new McpInitializeResult
+                return CreateResponse(req.Id!.Value.GetInt32(), new McpInitializeResult
                 {
                     ProtocolVersion = "2024-11-05",
                     Capabilities = new McpServerCapabilities()
@@ -79,7 +79,7 @@ public sealed class McpClientTestsFixture : IAsyncDisposable
         var json = JsonSerializer.Serialize(result);
         return new JsonRpcResponse
         {
-            Id = id,
+            Id = JsonSerializer.SerializeToElement(id),
             Result = JsonDocument.Parse(json).RootElement
         };
     }

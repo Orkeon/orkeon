@@ -4,9 +4,6 @@ namespace Orkeon.Domain.Common;
 /// Exception thrown when a builder's Build() method is called with invalid or incomplete configuration.
 /// </summary>
 #pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10; ISerializable pattern not required
-/// <summary>
-/// Thrown when a fluent builder is finalized with invalid or missing configuration.
-/// </summary>
 public sealed class BuilderValidationException : InvalidOperationException
 #pragma warning restore S3925
 {

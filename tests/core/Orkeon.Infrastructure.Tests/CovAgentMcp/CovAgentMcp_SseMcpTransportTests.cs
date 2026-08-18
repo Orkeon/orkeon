@@ -76,7 +76,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         using var innerHandler4 = new StubHttpMessageHandler(_ => JsonResponse("{}"));
         using var http = new HttpClient(innerHandler4);
         await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
-        var request = new JsonRpcRequest { Method = "ping", Id = 1 };
+        var request = new JsonRpcRequest { Method = "ping", Id = JsonSerializer.SerializeToElement(1) };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => transport.SendRequestAsync(request, TestContext.Current.CancellationToken));
@@ -87,15 +87,15 @@ public sealed class CovAgentMcp_SseMcpTransportTests
     public async Task SendRequestAsync_PostsToConfiguredUrlWithJsonBody()
     {
         using var handler = new StubHttpMessageHandler(_ =>
-            JsonResponse(SerializeResponse(new JsonRpcResponse { Id = 42 })));
+            JsonResponse(SerializeResponse(new JsonRpcResponse { Id = JsonSerializer.SerializeToElement(42) })));
         using var http = new HttpClient(handler);
         await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
-        var request = new JsonRpcRequest { Method = "tools/list", Id = 42 };
+        var request = new JsonRpcRequest { Method = "tools/list", Id = JsonSerializer.SerializeToElement(42) };
         var response = await transport.SendRequestAsync(request, TestContext.Current.CancellationToken);
 
-        Assert.Equal(42, response.Id);
+        Assert.Equal(42, response.Id!.Value.GetInt32());
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.Equal(Endpoint, handler.LastRequest.RequestUri!.ToString());
         Assert.Contains("tools/list", handler.LastRequestBody);
@@ -106,7 +106,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
     {
         var errorResponse = new JsonRpcResponse
         {
-            Id = 7,
+            Id = JsonSerializer.SerializeToElement(7),
             Error = new JsonRpcError(JsonRpcErrorCodes.MethodNotFound, "no such method")
         };
         using var innerHandler3 = new StubHttpMessageHandler(_ =>
@@ -115,7 +115,7 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
-        var response = await transport.SendRequestAsync(new JsonRpcRequest { Method = "x", Id = 7 }, TestContext.Current.CancellationToken);
+        var response = await transport.SendRequestAsync(new JsonRpcRequest { Method = "x", Id = JsonSerializer.SerializeToElement(7) }, TestContext.Current.CancellationToken);
 
         Assert.NotNull(response.Error);
         Assert.Equal(JsonRpcErrorCodes.MethodNotFound, response.Error!.Code);
@@ -131,10 +131,10 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         await using var transport = new SseMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
-        var request = new JsonRpcRequest { Method = "x", Id = 99 };
+        var request = new JsonRpcRequest { Method = "x", Id = JsonSerializer.SerializeToElement(99) };
         var response = await transport.SendRequestAsync(request, TestContext.Current.CancellationToken);
 
-        Assert.Equal(99, response.Id);
+        Assert.Equal(99, response.Id!.Value.GetInt32());
         Assert.NotNull(response.Error);
         Assert.Equal(JsonRpcErrorCodes.InternalError, response.Error!.Code);
         Assert.Contains("Empty response", response.Error.Message);
@@ -150,14 +150,14 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<HttpRequestException>(
-            () => transport.SendRequestAsync(new JsonRpcRequest { Method = "x", Id = 1 }, TestContext.Current.CancellationToken));
+            () => transport.SendRequestAsync(new JsonRpcRequest { Method = "x", Id = JsonSerializer.SerializeToElement(1) }, TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task DisposeAsync_WhenNotOwningHttpClient_DoesNotDisposeIt()
     {
         using var handler = new StubHttpMessageHandler(_ =>
-            JsonResponse(SerializeResponse(new JsonRpcResponse { Id = 1 })));
+            JsonResponse(SerializeResponse(new JsonRpcResponse { Id = JsonSerializer.SerializeToElement(1) })));
         using var http = new HttpClient(handler);
         var transport = new SseMcpTransport(new Uri(Endpoint), http);
         await transport.ConnectAsync(TestContext.Current.CancellationToken);
@@ -168,8 +168,8 @@ public sealed class CovAgentMcp_SseMcpTransportTests
         // The externally-owned HttpClient must still be usable (not disposed).
         var transport2 = new SseMcpTransport(new Uri(Endpoint), http);
         await transport2.ConnectAsync(TestContext.Current.CancellationToken);
-        var resp = await transport2.SendRequestAsync(new JsonRpcRequest { Method = "x", Id = 1 }, TestContext.Current.CancellationToken);
-        Assert.Equal(1, resp.Id);
+        var resp = await transport2.SendRequestAsync(new JsonRpcRequest { Method = "x", Id = JsonSerializer.SerializeToElement(1) }, TestContext.Current.CancellationToken);
+        Assert.Equal(1, resp.Id!.Value.GetInt32());
         await transport2.DisposeAsync();
     }
 

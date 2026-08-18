@@ -3,6 +3,8 @@ using Orkeon.Infrastructure.MCP;
 using StdioSut = Orkeon.Infrastructure.MCP.StdioMcpTransport;
 using SysProcess = System.Diagnostics.Process;
 
+using System.Text.Json;
+
 namespace Orkeon.Infrastructure.Tests.CovAgentMcp;
 
 /// <summary>
@@ -34,7 +36,7 @@ public sealed class CovAgentMcp_StdioMcpTransportTests
     public async Task SendRequestAsync_WhenNotConnected_ThrowsInvalidOperation()
     {
         var transport = new StdioSut(new McpServerConfig { Command = "noop" });
-        var request = new JsonRpcRequest { Method = "test", Id = 1 };
+        var request = new JsonRpcRequest { Method = "test", Id = JsonSerializer.SerializeToElement(1) };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => transport.SendRequestAsync(request, TestContext.Current.CancellationToken));

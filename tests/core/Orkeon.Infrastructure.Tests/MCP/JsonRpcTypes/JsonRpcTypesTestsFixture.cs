@@ -12,7 +12,7 @@ public class JsonRpcTypesTestsFixture
         var request = new JsonRpcRequest
         {
             Method = method,
-            Id = id
+            Id = JsonSerializer.SerializeToElement(id)
         };
         if (paramsJson != null)
             request.Params = JsonDocument.Parse(paramsJson).RootElement;
@@ -24,14 +24,14 @@ public class JsonRpcTypesTestsFixture
     public static JsonRpcResponse CreateResponseWithResult(int id, string resultJson)
         => new()
         {
-            Id = id,
+            Id = JsonSerializer.SerializeToElement(id),
             Result = JsonDocument.Parse(resultJson).RootElement
         };
 
     public static JsonRpcResponse CreateResponseWithError(int id, int code, string message)
         => new()
         {
-            Id = id,
+            Id = JsonSerializer.SerializeToElement(id),
             Error = new JsonRpcError(code, message)
         };
 

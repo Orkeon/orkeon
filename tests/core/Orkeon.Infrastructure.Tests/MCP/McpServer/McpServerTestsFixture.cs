@@ -43,7 +43,7 @@ public class McpServerTestsFixture
     public McpServer Build() => new(_mockRegistry, _options);
 
     public async Task<JsonRpcResponse> ProcessRequestAsync(JsonRpcRequest request)
-        => await Build().ProcessRequestAsync(request);
+        => (await Build().ProcessRequestAsync(request))!;
 
     // --- Request factories ---
 
@@ -51,7 +51,7 @@ public class McpServerTestsFixture
         => new()
         {
             Method = "initialize",
-            Id = id,
+            Id = JsonSerializer.SerializeToElement(id),
             Params = JsonDocument.Parse(@"{
                 ""protocolVersion"": ""2024-11-05"",
                 ""capabilities"": {},
@@ -60,13 +60,13 @@ public class McpServerTestsFixture
         };
 
     public static JsonRpcRequest CreateToolsListRequest(int id = 2)
-        => new() { Method = "tools/list", Id = id };
+        => new() { Method = "tools/list", Id = JsonSerializer.SerializeToElement(id) };
 
     public static JsonRpcRequest CreateToolCallRequest(string name, string argsJson = "{}", int id = 3)
         => new()
         {
             Method = "tools/call",
-            Id = id,
+            Id = JsonSerializer.SerializeToElement(id),
             Params = JsonDocument.Parse($@"{{""name"": ""{name}"", ""arguments"": {argsJson}}}").RootElement
         };
 

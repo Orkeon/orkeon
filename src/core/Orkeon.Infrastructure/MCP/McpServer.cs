@@ -10,12 +10,18 @@ using System.Diagnostics.CodeAnalysis;
 namespace Orkeon.Infrastructure.MCP;
 
 /// <summary>
-/// MCP server that exposes Orkeon tools to external MCP clients.
-/// Supports running over stdio or processing individual requests.
+/// Dual-era MCP server that exposes Orkeon tools to external MCP clients:
+/// it serves modern, stateless requests (2026-07-28 — per-request `_meta`,
+/// `server/discover`) and legacy initialize-handshake clients (2025-11-25
+/// and earlier) on the same endpoint. Supports running over stdio or
+/// processing individual requests.
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class McpServer
 {
+    /// <summary>Freshness hint returned on tools/list (the DI tool set is stable for a process).</summary>
+    private const long ToolListTtlMs = 60_000;
+
     private readonly IToolRegistry _toolRegistry;
     private readonly McpServerOptions _options;
     private readonly ILogger _logger;
@@ -48,24 +54,53 @@ public partial class McpServer
     }
 
     /// <summary>
-    /// Processes a single JSON-RPC request and returns the response.
+    /// Processes a single JSON-RPC request and returns the response, or null when the
+    /// message is a notification (which must not be answered).
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "JSON-RPC boundary fault barrier: any handler failure is converted into a JSON-RPC InternalError response so one bad request cannot crash the MCP server.")]
-    public Task<JsonRpcResponse> ProcessRequestAsync(
+    public Task<JsonRpcResponse?> ProcessRequestAsync(
         JsonRpcRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         return ProcessRequestCoreAsync();
 
-        async Task<JsonRpcResponse> ProcessRequestCoreAsync()
+        async Task<JsonRpcResponse?> ProcessRequestCoreAsync()
         {
             try
             {
+                // Notifications (no id) are processed silently and never answered.
+                // A JSON `"id": null` deserializes as a Null-kind element, not a C# null.
+                if (request.Id is null ||
+                    request.Id.Value.ValueKind == JsonValueKind.Null ||
+                    request.Method.StartsWith("notifications/", StringComparison.Ordinal))
+                {
+                    LogNotificationReceived(request.Method);
+                    return null;
+                }
+
+                // Modern requests declare their protocol version per request; a declared
+                // version we do not support is rejected independently of the method.
+                var requestedVersion = McpProtocol.TryReadRequestedVersion(request.Params);
+                if (requestedVersion != null &&
+                    !McpProtocol.SupportedVersions.Contains(requestedVersion))
+                {
+                    return new JsonRpcResponse
+                    {
+                        Id = request.Id,
+                        Error = McpProtocol.CreateUnsupportedVersionError(requestedVersion)
+                    };
+                }
+
+                var isModern = requestedVersion != null;
+
                 return request.Method switch
                 {
+                    "server/discover" => HandleDiscover(request),
                     "initialize" => HandleInitialize(request),
-                    "tools/list" => await HandleToolsList(request).ConfigureAwait(false),
-                    "tools/call" => await HandleToolsCall(request, ct).ConfigureAwait(false),
+                    // ping was removed from the modern lineage; it stays served for legacy sessions.
+                    "ping" when !isModern => CreateSuccessResponse(request.Id, new { }),
+                    "tools/list" => await HandleToolsList(request, isModern).ConfigureAwait(false),
+                    "tools/call" => await HandleToolsCall(request, isModern, ct).ConfigureAwait(false),
                     _ => CreateErrorResponse(request.Id, JsonRpcErrorCodes.MethodNotFound,
                         $"Method not found: {request.Method}")
                 };
@@ -80,7 +115,7 @@ public partial class McpServer
 
     /// <summary>
     /// Runs the MCP server on stdin/stdout, reading JSON-RPC messages
-    /// line by line and writing responses.
+    /// line by line and writing responses (notifications get none).
     /// </summary>
     public async Task RunStdioAsync(CancellationToken ct = default)
     {
@@ -101,6 +136,8 @@ public partial class McpServer
                 if (request == null) continue;
 
                 var response = await ProcessRequestAsync(request, ct).ConfigureAwait(false);
+                if (response == null) continue;
+
                 var responseJson = JsonSerializer.Serialize(response);
                 await writer.WriteLineAsync(responseJson.AsMemory(), ct).ConfigureAwait(false);
                 await writer.FlushAsync(ct).ConfigureAwait(false);
@@ -117,11 +154,45 @@ public partial class McpServer
         }
     }
 
+    private JsonRpcResponse HandleDiscover(JsonRpcRequest request)
+    {
+        var result = new McpDiscoverResult
+        {
+            SupportedVersions = McpProtocol.SupportedVersions,
+            Capabilities = new McpServerCapabilities
+            {
+                Tools = new McpCapabilityInfo { ListChanged = true }
+            },
+            TtlMs = ToolListTtlMs,
+            CacheScope = "private",
+            Meta = BuildServerInfoMeta()
+        };
+
+        return CreateSuccessResponse(request.Id, result);
+    }
+
     private JsonRpcResponse HandleInitialize(JsonRpcRequest request)
     {
+        // Legacy negotiation: echo the requested revision when we support it,
+        // otherwise answer with our newest legacy revision (the legacy spec then
+        // leaves the decision to the client).
+        string? requested = null;
+        if (request.Params is { ValueKind: JsonValueKind.Object } p &&
+            p.TryGetProperty("protocolVersion", out var v) &&
+            v.ValueKind == JsonValueKind.String)
+        {
+            requested = v.GetString();
+        }
+
+        var negotiated = requested != null && McpProtocol.SupportedLegacyVersions.Contains(requested)
+            ? requested
+            : McpProtocol.SupportedLegacyVersions[0];
+
+        LogLegacyInitialize(requested, negotiated);
+
         var result = new McpInitializeResult
         {
-            ProtocolVersion = "2024-11-05",
+            ProtocolVersion = negotiated,
             Capabilities = new McpServerCapabilities
             {
                 Tools = new McpCapabilityInfo { ListChanged = true }
@@ -136,22 +207,33 @@ public partial class McpServer
         return CreateSuccessResponse(request.Id, result);
     }
 
-    private async Task<JsonRpcResponse> HandleToolsList(JsonRpcRequest request)
+    private async Task<JsonRpcResponse> HandleToolsList(JsonRpcRequest request, bool isModern)
     {
         var tools = await _toolRegistry.GetAllToolsAsync().ConfigureAwait(false);
 
-        var mcpTools = tools.Select(t => new McpToolDefinition
-        {
-            Name = t.Name,
-            Description = t.Description,
-            InputSchema = ConvertToolSchemaToJsonSchema(t.Schema)
-        }).ToList();
+        // Deterministic order (2026-07-28 SHOULD): stable client caches, better prompt caching.
+        var mcpTools = tools
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .Select(t => new McpToolDefinition
+            {
+                Name = t.Name,
+                Description = t.Description,
+                InputSchema = ConvertToolSchemaToJsonSchema(t.Schema)
+            }).ToList();
 
-        var result = new McpToolListResult { Tools = mcpTools };
+        var result = new McpToolListResult
+        {
+            Tools = mcpTools,
+            // Additive fields: legacy clients ignore unknown members; modern clients require them.
+            ResultType = "complete",
+            TtlMs = ToolListTtlMs,
+            CacheScope = "private",
+            Meta = isModern ? BuildServerInfoMeta() : null
+        };
         return CreateSuccessResponse(request.Id, result);
     }
 
-    private async Task<JsonRpcResponse> HandleToolsCall(JsonRpcRequest request, CancellationToken ct)
+    private async Task<JsonRpcResponse> HandleToolsCall(JsonRpcRequest request, bool isModern, CancellationToken ct)
     {
         McpToolCallParams? callParams = null;
         if (request.Params.HasValue)
@@ -196,6 +278,7 @@ public partial class McpServer
         var mcpResult = new McpToolCallResult
         {
             IsError = !response.Success,
+            ResultType = "complete",
             Content =
             [
                 new()
@@ -207,8 +290,17 @@ public partial class McpServer
                 }
             ]
         };
+        _ = isModern; // both eras share the same result shape for tools/call
 
         return CreateSuccessResponse(request.Id, mcpResult);
+    }
+
+    private JsonElement BuildServerInfoMeta()
+    {
+        return JsonSerializer.SerializeToElement(new Dictionary<string, object>
+        {
+            [McpProtocol.MetaServerInfo] = new { name = _options.Name, version = _options.Version }
+        });
     }
 
     /// <summary>
@@ -253,7 +345,7 @@ public partial class McpServer
         return JsonDocument.Parse(json).RootElement;
     }
 
-    private static JsonRpcResponse CreateSuccessResponse(int? id, object result)
+    private static JsonRpcResponse CreateSuccessResponse(JsonElement? id, object result)
     {
         var json = JsonSerializer.Serialize(result);
         return new JsonRpcResponse
@@ -263,7 +355,7 @@ public partial class McpServer
         };
     }
 
-    private static JsonRpcResponse CreateErrorResponse(int? id, int code, string message)
+    private static JsonRpcResponse CreateErrorResponse(JsonElement? id, int code, string message)
     {
         return new JsonRpcResponse
         {
@@ -275,9 +367,17 @@ public partial class McpServer
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Error processing request: {Method}")]
     private partial void LogErrorProcessingRequest(Exception ex, string method);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "MCP server starting on stdio")]
-    private partial void LogMcpServerStarting();
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "MCP server starting on stdio (dual-era: {Modern} + legacy initialize)", SkipEnabledCheck = false)]
+    private partial void LogMcpServerStartingCore(string modern);
+
+    private void LogMcpServerStarting() => LogMcpServerStartingCore(McpProtocol.ModernVersion);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Failed to parse request: {Line}")]
     private partial void LogFailedToParseRequest(Exception ex, string line);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "MCP notification received: {Method}")]
+    private partial void LogNotificationReceived(string method);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Legacy MCP initialize: requested {Requested}, negotiated {Negotiated}")]
+    private partial void LogLegacyInitialize(string? requested, string negotiated);
 }

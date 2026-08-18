@@ -17,7 +17,8 @@ public partial class StdioMcpTransport : IMcpTransport
     private readonly McpServerConfig _config;
     private readonly ILogger _logger;
     private SysProcess? _process;
-    private readonly ConcurrentDictionary<int, TaskCompletionSource<JsonRpcResponse>> _pendingRequests = new();
+    // Keyed by the raw JSON text of the id: JSON-RPC ids may be numbers or strings.
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<JsonRpcResponse>> _pendingRequests = new();
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private Task? _readLoopTask;
     private CancellationTokenSource? _readCts;
@@ -108,7 +109,7 @@ public partial class StdioMcpTransport : IMcpTransport
         if (!_isConnected || _process == null)
             throw new InvalidOperationException("Transport is not connected.");
 
-        var id = request.Id ?? throw new ArgumentException("Request must have an Id.", nameof(request));
+        var id = request.Id?.GetRawText() ?? throw new ArgumentException("Request must have an Id.", nameof(request));
 
         return SendRequestAsyncCore();
 
@@ -142,6 +143,31 @@ public partial class StdioMcpTransport : IMcpTransport
         }
     }
 
+    /// <inheritdoc />
+    public Task SendNotificationAsync(JsonRpcNotification notification, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+        if (!_isConnected || _process == null)
+            throw new InvalidOperationException("Transport is not connected.");
+
+        return SendNotificationCoreAsync();
+
+        async Task SendNotificationCoreAsync()
+        {
+            var json = JsonSerializer.Serialize(notification);
+            await _writeLock.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                await _process.StandardInput.WriteLineAsync(json.AsMemory(), ct).ConfigureAwait(false);
+                await _process.StandardInput.FlushAsync(ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+        }
+    }
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Read-loop fault barrier: an unexpected error reading the child process stdout is logged and the loop terminates cleanly, faulting pending requests, rather than crashing the host (cancellation is handled separately).")]
     private async Task ReadLoopAsync(CancellationToken ct)
     {
@@ -156,7 +182,8 @@ public partial class StdioMcpTransport : IMcpTransport
                 try
                 {
                     var response = JsonSerializer.Deserialize<JsonRpcResponse>(line);
-                    if (response?.Id != null && _pendingRequests.TryRemove(response.Id.Value, out var tcs))
+                    if (response?.Id is { } responseId &&
+                        _pendingRequests.TryRemove(responseId.GetRawText(), out var tcs))
                     {
                         tcs.TrySetResult(response);
                     }

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — MCP unpinned from 2024-11-05: dual-era client and server (PUB-07)
+
+The MCP integration no longer hardcodes the first protocol revision. Both sides now
+speak the **modern stateless lineage (`2026-07-28`)** and fall back to the legacy
+initialize-handshake revisions, per the specification's backward-compatibility rules:
+
+- **Client** (`McpClient.ConnectAsync`): probes with `server/discover`; a modern answer
+  selects the newest mutually supported revision (renegotiating on
+  `UnsupportedProtocolVersionError`, including mid-flight), anything else falls back to
+  the legacy `initialize` handshake — which now really negotiates (`2025-11-25`,
+  `2025-06-18`, `2024-11-05`) instead of pinning `2024-11-05`, and finally sends the
+  required `notifications/initialized` (it never did). Modern requests carry
+  per-request `_meta` (protocol version, client info/capabilities); `input_required`
+  interim results (MRTR) are surfaced as explicit tool errors rather than partial data.
+- **Server** (`McpServer`): dual-era on the same endpoint — implements the mandatory
+  `server/discover`, validates the per-request declared version (`-32022`
+  `UnsupportedProtocolVersionError` with the supported list), answers legacy
+  `initialize` with real version negotiation, no longer replies to notifications,
+  returns `tools/list` in deterministic order with the required
+  `resultType`/`ttlMs`/`cacheScope` fields plus server identity in result `_meta`.
+- **Wire**: JSON-RPC ids are no longer int-only (string ids from external clients now
+  round-trip; stdio correlation is id-agnostic); the HTTP transport sends the
+  Streamable HTTP headers (`MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`) and
+  unwraps SSE-framed response bodies.
+- 13 new dual-era tests (104 MCP tests total). Remaining gaps are documented in
+  `docs/reference/limitations.md`: no `subscriptions/listen`, no MRTR, no MCP OAuth,
+  JSON-response mode only on HTTP, and `2025-03-26` excluded (mandatory batching).
+
 ### Added — Full API reference site and community templates (PUB-10, PUB-12)
 
 - **docfx now covers every published library** (25 assemblies — 2 916 generated API

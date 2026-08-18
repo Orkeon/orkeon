@@ -22,9 +22,12 @@ public class JsonRpcRequest
     [JsonPropertyName("params")]
     public JsonElement? Params { get; set; }
 
-    /// <summary>Gets or sets the request identifier.</summary>
+    /// <summary>
+    /// Gets or sets the request identifier. JSON-RPC allows numbers and strings;
+    /// the raw element is kept so external ids round-trip unchanged.
+    /// </summary>
     [JsonPropertyName("id")]
-    public int? Id { get; set; }
+    public JsonElement? Id { get; set; }
 }
 
 /// <summary>
@@ -45,9 +48,12 @@ public class JsonRpcResponse
     [JsonPropertyName("error")]
     public JsonRpcError? Error { get; set; }
 
-    /// <summary>Gets or sets the request identifier this response corresponds to.</summary>
+    /// <summary>
+    /// Gets or sets the request identifier this response corresponds to (number or
+    /// string — kept as the raw element so external ids round-trip unchanged).
+    /// </summary>
     [JsonPropertyName("id")]
-    public int? Id { get; set; }
+    public JsonElement? Id { get; set; }
 }
 
 /// <summary>

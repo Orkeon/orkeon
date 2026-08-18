@@ -1,1 +1,62 @@
 #nullable enable
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.get -> int?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.get -> int?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.ProcessRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpTransport.SendNotificationAsync(Orkeon.Infrastructure.MCP.JsonRpcNotification! notification, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.get -> System.Text.Json.JsonElement?
+[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.get -> System.Text.Json.JsonElement?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ConnectAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.Era.get -> Orkeon.Infrastructure.MCP.McpProtocolEra
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.NegotiatedVersion.get -> string!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.CacheScope.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.CacheScope.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Capabilities.get -> Orkeon.Infrastructure.MCP.McpServerCapabilities!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Capabilities.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Instructions.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Instructions.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.McpDiscoverResult() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Meta.get -> System.Text.Json.JsonElement?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Meta.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.ResultType.get -> string!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.ResultType.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.SupportedVersions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.SupportedVersions.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.TtlMs.get -> long?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.TtlMs.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpErrorCodes
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocol
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocolEra
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocolEra.Legacy = 2 -> Orkeon.Infrastructure.MCP.McpProtocolEra
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocolEra.Modern = 1 -> Orkeon.Infrastructure.MCP.McpProtocolEra
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocolEra.Unknown = 0 -> Orkeon.Infrastructure.MCP.McpProtocolEra
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.ProcessRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse?>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolCallResult.ResultType.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolCallResult.ResultType.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.CacheScope.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.CacheScope.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.Meta.get -> System.Text.Json.JsonElement?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.Meta.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.ResultType.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.ResultType.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.TtlMs.get -> long?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.TtlMs.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SendNotificationAsync(Orkeon.Infrastructure.MCP.JsonRpcNotification! notification, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.SendNotificationAsync(Orkeon.Infrastructure.MCP.JsonRpcNotification! notification, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpErrorCodes.HeaderMismatch = -32020 -> int
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpErrorCodes.MissingRequiredClientCapability = -32021 -> int
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpErrorCodes.UnsupportedProtocolVersion = -32022 -> int
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MetaClientCapabilities = "io.modelcontextprotocol/clientCapabilities" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MetaClientInfo = "io.modelcontextprotocol/clientInfo" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MetaProtocolVersion = "io.modelcontextprotocol/protocolVersion" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MetaServerInfo = "io.modelcontextprotocol/serverInfo" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MethodHeader = "Mcp-Method" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.ModernVersion = "2026-07-28" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.NameHeader = "Mcp-Name" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.ProtocolVersionHeader = "MCP-Protocol-Version" -> string!
+[ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.BuildParamsWithMeta(object? parameters, string! protocolVersion, string! clientName, string! clientVersion) -> System.Text.Json.JsonElement
+[ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.CreateUnsupportedVersionError(string! requested) -> Orkeon.Infrastructure.MCP.JsonRpcError!
+[ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.ReadSupportedVersionsFromError(Orkeon.Infrastructure.MCP.JsonRpcError! error) -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.TryReadRequestedVersion(System.Text.Json.JsonElement? parameters) -> string?
+[ORKEXP004]static readonly Orkeon.Infrastructure.MCP.McpProtocol.SupportedLegacyVersions -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP004]static readonly Orkeon.Infrastructure.MCP.McpProtocol.SupportedVersions -> System.Collections.Generic.IReadOnlyList<string!>!

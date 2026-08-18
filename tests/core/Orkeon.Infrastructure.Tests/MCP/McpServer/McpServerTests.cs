@@ -73,7 +73,7 @@ public class McpServerTests
         var request = new JsonRpcRequest
         {
             Method = "initialize",
-            Id = 1,
+            Id = JsonSerializer.SerializeToElement(1),
             Params = JsonDocument.Parse(@"{
                 ""protocolVersion"": ""2024-11-05"",
                 ""capabilities"": {},
@@ -82,11 +82,11 @@ public class McpServerTests
         };
 
         // Act
-        var response = await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken);
+        var response = (await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken))!;
 
         // Assert
         Assert.Null(response.Error);
-        Assert.Equal(1, response.Id);
+        Assert.Equal(1, response.Id!.Value.GetInt32());
         Assert.NotNull(response.Result);
 
         var result = JsonSerializer.Deserialize<McpInitializeResult>(
@@ -120,10 +120,10 @@ public class McpServerTests
         _mockRegistry.AddTool("search", tool1);
         _mockRegistry.AddTool("calculate", tool2);
 
-        var request = new JsonRpcRequest { Method = "tools/list", Id = 2 };
+        var request = new JsonRpcRequest { Method = "tools/list", Id = JsonSerializer.SerializeToElement(2) };
 
         // Act
-        var response = await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken);
+        var response = (await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken))!;
 
         // Assert
         Assert.Null(response.Error);
@@ -132,8 +132,9 @@ public class McpServerTests
             response.Result!.Value.GetRawText());
         Assert.NotNull(result);
         Assert.Equal(2, result!.Tools.Count);
-        Assert.Equal("search", result.Tools[0].Name);
-        Assert.Equal("calculate", result.Tools[1].Name);
+        // 2026-07-28: tools/list is returned in deterministic (ordinal) order.
+        Assert.Equal("calculate", result.Tools[0].Name);
+        Assert.Equal("search", result.Tools[1].Name);
     }
 
     [Fact]
@@ -150,7 +151,7 @@ public class McpServerTests
         var request = new JsonRpcRequest
         {
             Method = "tools/call",
-            Id = 3,
+            Id = JsonSerializer.SerializeToElement(3),
             Params = JsonDocument.Parse(@"{
                 ""name"": ""search"",
                 ""arguments"": { ""query"": ""hello"" }
@@ -158,7 +159,7 @@ public class McpServerTests
         };
 
         // Act
-        var response = await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken);
+        var response = (await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken))!;
 
         // Assert
         Assert.Null(response.Error);
@@ -185,7 +186,7 @@ public class McpServerTests
         var request = new JsonRpcRequest
         {
             Method = "tools/call",
-            Id = 4,
+            Id = JsonSerializer.SerializeToElement(4),
             Params = JsonDocument.Parse(@"{
                 ""name"": ""nonexistent"",
                 ""arguments"": {}
@@ -193,7 +194,7 @@ public class McpServerTests
         };
 
         // Act
-        var response = await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken);
+        var response = (await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken))!;
 
         // Assert
         Assert.NotNull(response.Error);
@@ -209,11 +210,11 @@ public class McpServerTests
         var request = new JsonRpcRequest
         {
             Method = "unknown/method",
-            Id = 5
+            Id = JsonSerializer.SerializeToElement(5)
         };
 
         // Act
-        var response = await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken);
+        var response = (await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken))!;
 
         // Assert
         Assert.NotNull(response.Error);
@@ -229,12 +230,12 @@ public class McpServerTests
         // No tools in registry
 
         // Act — verify each method dispatches to the correct handler
-        var initResponse = await server.ProcessRequestAsync(
-            new JsonRpcRequest { Method = "initialize", Id = 1 }, TestContext.Current.CancellationToken);
-        var toolsListResponse = await server.ProcessRequestAsync(
-            new JsonRpcRequest { Method = "tools/list", Id = 2 }, TestContext.Current.CancellationToken);
-        var unknownResponse = await server.ProcessRequestAsync(
-            new JsonRpcRequest { Method = "prompts/list", Id = 3 }, TestContext.Current.CancellationToken);
+        var initResponse = (await server.ProcessRequestAsync(
+            new JsonRpcRequest { Method = "initialize", Id = JsonSerializer.SerializeToElement(1) }, TestContext.Current.CancellationToken))!;
+        var toolsListResponse = (await server.ProcessRequestAsync(
+            new JsonRpcRequest { Method = "tools/list", Id = JsonSerializer.SerializeToElement(2) }, TestContext.Current.CancellationToken))!;
+        var unknownResponse = (await server.ProcessRequestAsync(
+            new JsonRpcRequest { Method = "prompts/list", Id = JsonSerializer.SerializeToElement(3) }, TestContext.Current.CancellationToken))!;
 
         // Assert
         Assert.Null(initResponse.Error);
@@ -251,12 +252,12 @@ public class McpServerTests
         var request = new JsonRpcRequest
         {
             Method = "tools/call",
-            Id = 6,
+            Id = JsonSerializer.SerializeToElement(6),
             Params = JsonDocument.Parse(@"{}").RootElement
         };
 
         // Act
-        var response = await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken);
+        var response = (await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken))!;
 
         // Assert
         Assert.NotNull(response.Error);
@@ -278,7 +279,7 @@ public class McpServerTests
         var request = new JsonRpcRequest
         {
             Method = "tools/call",
-            Id = 7,
+            Id = JsonSerializer.SerializeToElement(7),
             Params = JsonDocument.Parse(@"{
                 ""name"": ""failing-tool"",
                 ""arguments"": {}
@@ -286,7 +287,7 @@ public class McpServerTests
         };
 
         // Act
-        var response = await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken);
+        var response = (await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken))!;
 
         // Assert
         Assert.Null(response.Error); // JSON-RPC level success, tool-level error
