@@ -353,4 +353,189 @@ public class CrewMapperTests
         _ = expectedDtoStatus;
         Assert.NotNull(dto);
     }
+
+    // ── SONAR-14: branches that were still unexercised ────────────────────
+
+    [Fact]
+    public void ToDto_ProjectsAgentAndTaskIds_AsPlaceholderDtos()
+    {
+        var crew = DomainCrew.Create("Team goal", DomainProcessType.Sequential);
+        var agentId = Orkeon.Domain.Common.AgentId.Create();
+        var taskId = Orkeon.Domain.Common.TaskId.Create();
+        crew.AddAgent(agentId);
+        crew.AddTask(taskId);
+
+        var dto = CrewMapper.ToDto(crew);
+
+        var agent = Assert.Single(dto.Agents);
+        Assert.Equal(agentId.Value.ToString(), agent.Id);
+        Assert.Equal("standard", agent.Type);
+        Assert.Equal("Active", agent.Status);
+
+        var task = Assert.Single(dto.Tasks);
+        Assert.Equal(taskId.Value.ToString(), task.Id);
+        Assert.Equal("Pending", task.Status);
+        Assert.Equal("Normal", task.Priority);
+    }
+
+    [Fact]
+    public void ToDto_MapsHierarchical_AndFallsBackToSequentialForUnlistedModes()
+    {
+        var hierarchical = DomainCrew.Create(
+            "Managed goal", DomainProcessType.Hierarchical,
+            managerAgentId: Orkeon.Domain.Common.AgentId.Create());
+        Assert.Equal("Hierarchical", CrewMapper.ToDto(hierarchical).ProcessType);
+
+        // Graph is not part of the DTO vocabulary — the mapper degrades to Sequential.
+        var graph = DomainCrew.Create("Graph goal", DomainProcessType.Graph);
+        Assert.Equal("Sequential", CrewMapper.ToDto(graph).ProcessType);
+    }
+
+    [Fact]
+    public void ToDto_MapsExecutingAndFailedStatuses()
+    {
+        var crew = DomainCrew.Create("Lifecycle goal", DomainProcessType.Sequential);
+        crew.AddAgent(Orkeon.Domain.Common.AgentId.Create());
+        crew.AddTask(Orkeon.Domain.Common.TaskId.Create());
+
+        crew.StartExecution();
+        Assert.Equal("Executing", CrewMapper.ToDto(crew).Status);
+
+        crew.FailExecution("unit-test failure");
+        Assert.Equal("Failed", CrewMapper.ToDto(crew).Status);
+    }
+
+    [Theory]
+    [InlineData(ProcessType.Parallel, "Parallel")]
+    [InlineData(ProcessType.Consensual, "Consensual")]
+    public void FromCreateRequest_MapsTheProcessType(ProcessType requested, string expectedDomainValue)
+    {
+        var request = new CreateCrewRequest
+        {
+            Name = "Any",
+            Description = "Typed goal",
+            Process = requested,
+            Verbose = false,
+            Planning = false
+        };
+
+        var crew = CrewMapper.FromCreateRequest(request);
+
+        Assert.Equal(expectedDomainValue, crew.ProcessType.Value);
+    }
+
+    [Fact]
+    public void FromCreateRequest_Hierarchical_SurfacesTheDomainManagerGuard()
+    {
+        // The enum arm maps fine; Crew.Create then rejects a manager-less hierarchy.
+        var request = new CreateCrewRequest
+        {
+            Name = "Any",
+            Description = "Managed goal",
+            Process = ProcessType.Hierarchical,
+            Verbose = false,
+            Planning = false
+        };
+
+        Assert.Throws<ArgumentException>(() => CrewMapper.FromCreateRequest(request));
+    }
+
+    [Fact]
+    public void FromCreateRequest_UnknownEnumValue_FallsBackToSequential()
+    {
+        var request = new CreateCrewRequest
+        {
+            Name = "Any",
+            Description = "Fallback goal",
+            Process = (ProcessType)999,
+            Verbose = false,
+            Planning = false
+        };
+
+        var crew = CrewMapper.FromCreateRequest(request);
+
+        Assert.Equal(DomainProcessType.Sequential, crew.ProcessType);
+    }
+
+    [Fact]
+    public void ToCrewInput_HandlesNullInput_AndNullMembers()
+    {
+        var fromNull = CrewMapper.ToCrewInput(null!);
+        Assert.Equal("Default context", fromNull.InitialContext);
+        Assert.Empty(fromNull.Variables.ToDictionary());
+
+        var sparse = new Orkeon.Application.Interfaces.Services.CrewInput(null, null!);
+        var mapped = CrewMapper.ToCrewInput(sparse);
+        Assert.Equal("Default context", mapped.InitialContext);
+        Assert.Empty(mapped.Variables.ToDictionary());
+
+        var full = new Orkeon.Application.Interfaces.Services.CrewInput(
+            "Given context", new Dictionary<string, object> { ["k"] = "v" });
+        var mappedFull = CrewMapper.ToCrewInput(full);
+        Assert.Equal("Given context", mappedFull.InitialContext);
+        Assert.Equal("v", mappedFull.Variables.GetString("k"));
+    }
+
+    [Fact]
+    public void ToCrewOutputDto_MapsTaskOutputs_AndRebuildsTokenUsage()
+    {
+        var taskId = Orkeon.Domain.Common.TaskId.Create();
+        var domainOutput = Orkeon.Domain.Crew.CrewOutput.CreateSuccess(
+            "final text",
+            structuredOutput: null,
+            taskOutputs:
+            [
+                Orkeon.Domain.Task.ValueObjects.TaskOutput.Create("task result", taskId: taskId)
+            ],
+            executionTime: TimeSpan.FromSeconds(3),
+            metadata: Orkeon.Domain.Crew.ValueObjects.CrewMetadata.FromDictionary(new Dictionary<string, object>
+            {
+                [Orkeon.Domain.Crew.ValueObjects.CrewMetadata.TotalTokensKey] = 100,
+                [Orkeon.Domain.Crew.ValueObjects.CrewMetadata.PromptTokensKey] = 60,
+                [Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CompletionTokensKey] = 40,
+            }));
+
+        var dto = CrewMapper.ToCrewOutputDto(domainOutput);
+
+        Assert.Equal("final text", dto.FinalOutput);
+        var task = Assert.Single(dto.TaskOutputs);
+        Assert.Equal(taskId.ToString(), task.TaskId);
+        Assert.Equal("task result", task.Content);
+
+        Assert.NotNull(dto.TokensUsed);
+        Assert.Equal(100, dto.TokensUsed!.TotalTokens);
+        Assert.Equal(60, dto.TokensUsed.PromptTokens);
+        Assert.Equal(40, dto.TokensUsed.CompletionTokens);
+    }
+
+    [Fact]
+    public void ToCrewOutputDto_TotalTokensOnly_DefaultsPromptAndCompletionToZero()
+    {
+        var domainOutput = Orkeon.Domain.Crew.CrewOutput.CreateSuccess(
+            "final", null, [],
+            TimeSpan.Zero,
+            Orkeon.Domain.Crew.ValueObjects.CrewMetadata.FromDictionary(new Dictionary<string, object>
+            {
+                [Orkeon.Domain.Crew.ValueObjects.CrewMetadata.TotalTokensKey] = 77,
+            }));
+
+        var dto = CrewMapper.ToCrewOutputDto(domainOutput);
+
+        Assert.NotNull(dto.TokensUsed);
+        Assert.Equal(77, dto.TokensUsed!.TotalTokens);
+        Assert.Equal(0, dto.TokensUsed.PromptTokens);
+        Assert.Equal(0, dto.TokensUsed.CompletionTokens);
+    }
+
+    [Fact]
+    public void ToCrewOutputDto_WithoutTokenTelemetry_LeavesUsageNull_NeverAFabricatedZero()
+    {
+        var domainOutput = Orkeon.Domain.Crew.CrewOutput.CreateSuccess(
+            "final", null, [], TimeSpan.Zero);
+
+        var dto = CrewMapper.ToCrewOutputDto(domainOutput);
+
+        Assert.Null(dto.TokensUsed);
+        Assert.Throws<ArgumentNullException>(() => CrewMapper.ToCrewOutputDto(null!));
+    }
 }

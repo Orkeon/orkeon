@@ -1,5 +1,8 @@
+using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Application.Crew.DeliverableResolvers;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
@@ -435,5 +438,156 @@ public sealed class FinalMessageResolverTests : IDisposable
 
         Assert.False(unwrapped);
         Assert.Equal(payload, result);
+    }
+
+    // ── SONAR-14: inline FQN validation, access denial, resolve-time unwrap ──
+
+    /// <summary>Scripted validator: returns a fixed result or throws.</summary>
+    private sealed class ScriptedFqnValidator : IInlineFqnValidator
+    {
+        public InlineFqnValidationResult Result { get; set; } = new();
+        public Exception? ExceptionToThrow { get; set; }
+
+        public System.Threading.Tasks.Task<InlineFqnValidationResult> ValidateAsync(
+            string content, CancellationToken ct)
+        {
+            if (ExceptionToThrow is not null) throw ExceptionToThrow;
+            return System.Threading.Tasks.Task.FromResult(Result);
+        }
+    }
+
+    /// <summary>Always-enabled logger recording the formatted entries.</summary>
+    private sealed class ListLogger : ILogger<FinalMessageResolver>
+    {
+        public List<string> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
+            Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add(formatter(state, exception));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FqnValidatorOutcomes_DecorateThePersistedResult()
+    {
+        var validator = new ScriptedFqnValidator
+        {
+            Result = new InlineFqnValidationResult
+            {
+                UnknownFqns = ["Ghost.Symbol"],
+                Rewrites = ImmutableDictionary<string, string>.Empty
+                    .Add("cs::Mapper", "cs::Orkeon.Application.Common.Mapping.CrewMapper"),
+                Ambiguous = [new AmbiguousFqn("ts::Store", ["a.ts::Store", "b.ts::Store"])],
+            },
+        };
+        var logger = new ListLogger();
+        var resolver = new FinalMessageResolver(_fs, logger, validator);
+        var task = BuildTask("/output/fqn.md");
+
+        var result = await resolver.ResolveAsync(task, "# Report\n\nBody.", CancellationToken.None);
+
+        Assert.True(result.Persisted);
+        Assert.Equal("Ghost.Symbol", Assert.Single(result.UnknownFqns!.Value));
+        Assert.Equal("cs::Orkeon.Application.Common.Mapping.CrewMapper", result.RewrittenFqns!["cs::Mapper"]);
+        var ambiguous = Assert.Single(result.AmbiguousFqns!.Value);
+        Assert.Equal("ts::Store", ambiguous.BareFqn);
+        Assert.Equal(2, ambiguous.Candidates.Length);
+
+        Assert.Contains(logger.Entries, e => e.Contains("not found in RaggableTree", StringComparison.Ordinal));
+        Assert.Contains(logger.Entries, e => e.Contains("auto-rewrote", StringComparison.Ordinal));
+        Assert.Contains(logger.Entries, e => e.Contains("ambiguous", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FqnValidator_AllClean_LeavesTheDecorationsNull()
+    {
+        var resolver = new FinalMessageResolver(
+            _fs, NullLogger<FinalMessageResolver>.Instance, new ScriptedFqnValidator());
+        var task = BuildTask("/output/clean.md");
+
+        var result = await resolver.ResolveAsync(task, "# Clean\n\nBody.", CancellationToken.None);
+
+        Assert.True(result.Persisted);
+        Assert.Null(result.UnknownFqns);
+        Assert.Null(result.RewrittenFqns);
+        Assert.Null(result.AmbiguousFqns);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FqnValidatorFault_IsSwallowed_TheDeliverableStaysPersisted()
+    {
+        var validator = new ScriptedFqnValidator
+        {
+            ExceptionToThrow = new InvalidOperationException("store offline"),
+        };
+        var logger = new ListLogger();
+        var resolver = new FinalMessageResolver(_fs, logger, validator);
+        var task = BuildTask("/output/faulty.md");
+
+        var result = await resolver.ResolveAsync(task, "# Report\n\nBody.", CancellationToken.None);
+
+        Assert.True(result.Persisted);
+        Assert.Null(result.UnknownFqns);
+        Assert.Contains(logger.Entries, e => e.Contains("inline FQN validation failed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FqnValidatorCancellation_Propagates()
+    {
+        var validator = new ScriptedFqnValidator
+        {
+            ExceptionToThrow = new OperationCanceledException(),
+        };
+        var resolver = new FinalMessageResolver(
+            _fs, NullLogger<FinalMessageResolver>.Instance, validator);
+        var task = BuildTask("/output/cancelled.md");
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            resolver.ResolveAsync(task, "# Report\n\nBody.", CancellationToken.None));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AccessDenied_YieldsAFailedResult_WithTheDedicatedReason()
+    {
+        // A fake VFS mounted elsewhere denies the write outside its mounts.
+        var deniedFs = new FakeFileSystemService().AddMount("/elsewhere");
+        var resolver = new FinalMessageResolver(deniedFs, NullLogger<FinalMessageResolver>.Instance);
+        var task = BuildTask("/output/forbidden.md");
+
+        var result = await resolver.ResolveAsync(task, "# Report", CancellationToken.None);
+
+        Assert.False(result.Persisted);
+        Assert.Equal("access_denied", result.FailureReason);
+        Assert.Equal(0, result.SizeBytes);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task LineFencedPayload_IsUnwrappedDuringResolve()
+    {
+        var logger = new ListLogger();
+        var resolver = new FinalMessageResolver(_fs, logger);
+        var task = BuildTaskWithFormat("/output/fenced.yaml", "yaml");
+        var fenced = string.Join('\n', Enumerable.Range(1, 10).Select(i => $"`key{i}: value{i}`"));
+
+        var result = await resolver.ResolveAsync(task, fenced, CancellationToken.None);
+
+        Assert.True(result.Persisted);
+        var written = await File.ReadAllTextAsync(
+            Path.Combine(_tempDir, "fenced.yaml"), TestContext.Current.CancellationToken);
+        Assert.StartsWith("key1: value1", written, StringComparison.Ordinal);
+        Assert.DoesNotContain("`", written, StringComparison.Ordinal);
+        Assert.Contains(logger.Entries, e => e.Contains("unwrapped line-fenced payload", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void StripPreambleByFormat_TinyCosmeticPrefix_IsTrimmedWithoutCountingAsAStrip()
+    {
+        var (payload, stripped, bytesSkipped) =
+            FinalMessageResolver.StripPreambleByFormat("\n\nname: crew", "yaml");
+
+        Assert.Equal("name: crew", payload);
+        Assert.True(stripped);
+        Assert.Equal(2, bytesSkipped);
     }
 }
