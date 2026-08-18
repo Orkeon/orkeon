@@ -17,6 +17,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read   # required by codeql-action on private repos (workflow-run lookup at upload time)
     steps:
       - uses: actions/checkout@v4
       - uses: github/codeql-action/init@v3
