@@ -183,6 +183,36 @@ def iter_examples():
                 yield sub / "README.md"
 
 
+def check_category_readmes() -> list[tuple[Path, Finding]]:
+    """Every example directory of a category must be mentioned in the category README.
+
+    Keeps the per-category tables from silently drifting when an example is added
+    (DOC-02/F2 — three category READMEs had missing rows).
+    """
+    findings: list[tuple[Path, Finding]] = []
+    for cat in sorted(EXAMPLES.iterdir()):
+        if not cat.is_dir() or not CATEGORY_RE.match(cat.name):
+            continue
+        readme = cat / "README.md"
+        if not readme.is_file():
+            findings.append((cat, Finding("error", 0, "category README.md missing")))
+            continue
+        text = readme.read_text(encoding="utf-8", errors="replace")
+        for sub in sorted(cat.iterdir()):
+            if not sub.is_dir() or not EXAMPLE_RE.match(sub.name):
+                continue
+            num = sub.name.split("-", 1)[0]
+            # A row mention counts as either the bare number in a table row or the
+            # directory name anywhere in the README.
+            if sub.name in text or re.search(rf"^\|\s*{num}\s*\|", text, flags=re.M):
+                continue
+            findings.append((readme, Finding(
+                "error", 0,
+                f"example '{sub.name}' has no row/mention in the category README",
+            )))
+    return findings
+
+
 def check_index() -> Finding | None:
     script = SCRIPTS / "generate-examples-index.sh"
     if not script.is_file():
@@ -229,6 +259,16 @@ def main() -> int:
                 n_err += 1
             else:
                 n_warn += 1
+
+    for path, f in check_category_readmes():
+        rel = path.relative_to(ROOT)
+        print(f"\n{rel}")
+        tag = "ERROR " if f.level == "error" else "warn  "
+        print(f"  {tag}{rel}: {f.msg}")
+        if f.level == "error":
+            n_err += 1
+        else:
+            n_warn += 1
 
     if not args.no_index_check:
         idx = check_index()

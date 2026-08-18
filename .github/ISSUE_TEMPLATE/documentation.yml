@@ -1,0 +1,38 @@
+name: Documentation issue
+description: Wrong, outdated or missing documentation (EN or FR)
+title: "[docs]: "
+labels: ["documentation"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: Path or URL of the affected page (e.g. docs/getting-started/bootstrap.md, or a docs-site URL).
+      placeholder: docs/…
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of problem
+      options:
+        - Factually wrong (does not match the code)
+        - Outdated (was true, is not anymore)
+        - Missing (undocumented feature or behavior)
+        - Broken link or navigation
+        - EN/FR mirrors disagree
+        - Typo / wording
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong, and what would be right
+      description: Quote the current text if possible. If the code contradicts the doc, a pointer to the code (path or type name) makes the fix immediate.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        Note: `docs/**` pages are maintained in English and French in parallel — a fix
+        usually lands in both mirrors. PRs welcome (see CONTRIBUTING.md).

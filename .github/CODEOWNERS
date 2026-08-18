@@ -1,0 +1,5 @@
+# Review routing. All paths default to the maintainers team.
+# Owner action before this takes effect: create the @Orkeon/maintainers team
+# (or replace it with individual handles) — an unknown team makes the file
+# inert and GitHub flags it in the CODEOWNERS editor.
+* @Orkeon/maintainers

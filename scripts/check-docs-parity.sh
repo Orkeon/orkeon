@@ -35,7 +35,7 @@ if [ -n "$missing_en" ]; then
 fi
 
 # --- root community pairs ---------------------------------------------------------------
-for base in README CONTRIBUTING CODE_OF_CONDUCT SECURITY; do
+for base in README CONTRIBUTING CODE_OF_CONDUCT SECURITY SUPPORT; do
   if [ -f "$base.md" ] && [ ! -f "$base.fr.md" ]; then
     echo "::error::$base.md has no French mirror $base.fr.md"; fail=1
   fi
@@ -50,3 +50,22 @@ if [ "$fail" -ne 0 ]; then
 fi
 
 echo "Documentation parity check passed: all docs have their bilingual mirror."
+
+# --- informational content-drift report (never fails the build) ------------------------
+# The parity contract is existence-only by design; this surfaces mirrors whose line
+# counts diverge enough to suggest one side fell behind (DOC-02/F3).
+DRIFT_THRESHOLD=${DRIFT_THRESHOLD:-15}
+drift=0
+while IFS= read -r f; do
+  en="docs/$f"; fr="docs/fr/$f"
+  [ -f "$fr" ] || continue
+  en_lc=$(wc -l < "$en"); fr_lc=$(wc -l < "$fr")
+  delta=$((en_lc - fr_lc)); [ "$delta" -lt 0 ] && delta=$((-delta))
+  if [ "$delta" -gt "$DRIFT_THRESHOLD" ]; then
+    [ "$drift" -eq 0 ] && echo "::notice::EN/FR content drift (informational, threshold ${DRIFT_THRESHOLD} lines):"
+    note "$en ($en_lc) vs $fr ($fr_lc) — Δ$delta"
+    drift=$((drift + 1))
+  fi
+done <<< "$en_docs"
+[ "$drift" -gt 0 ] && echo "  ($drift mirror(s) drifting — informational only, the contributor keeps content in sync)"
+exit 0

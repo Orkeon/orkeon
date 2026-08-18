@@ -37,6 +37,10 @@ jobs:
       # (and root community files their *.fr.md). Cheap, so it runs before the build.
       - name: Check docs FR/EN parity
         run: bash scripts/check-docs-parity.sh
+      # Numeric-claims gate (DOC-02/F1): provider/tool/example/project counts and
+      # the version string in README/INDEX/CLAUDE.md are checked against the code.
+      - name: Check documentation claims against the code
+        run: python3 scripts/check-doc-claims.py
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '10.0.x' }
       - uses: actions/cache@v4

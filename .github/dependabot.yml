@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # NuGet — one weekly PR wave, minor/patch grouped to keep the noise down.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      nuget-minor-patch:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 10
+
+  # GitHub Actions pins.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+
+  # The esbuild toolchain lockfile used by the scripting layer.
+  - package-ecosystem: npm
+    directory: /tools/scripting-esbuild
+    schedule:
+      interval: weekly
+      day: monday
