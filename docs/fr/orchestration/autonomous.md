@@ -8,6 +8,11 @@
 
 Orkeon fournit un mode d'orchestration autonome (`ProcessType.Autonomous`) où les agents s'auto-organisent pour réclamer des tâches, déléguer récursivement à leurs pairs, et spawner des sous-agents spécialisés à la volée. Toute l'exécution est contrainte par un `AgentExecutionBudget` multi-dimensions qui garantit la terminaison.
 
+> **Défaut DI à connaître** : de base, `ITaskDelegator` est un stub qui refuse toute
+> demande de délégation (il avertit une fois, avec le correctif) — voir
+> [Comportements par défaut](../getting-started/default-behaviors.md) avant de câbler
+> une crew qui délègue beaucoup.
+
 Contrairement aux modes Sequential/Hierarchical où l'orchestrateur contrôle le flux, et au mode Graph où le graphe d'état définit la topologie, le mode Autonomous laisse les agents prendre les décisions de délégation et de spawn. L'orchestrateur n'intervient que pour enforcer le budget et collecter les résultats.
 
 ### Positionnement par rapport aux autres stratégies

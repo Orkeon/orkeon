@@ -667,4 +667,24 @@ public class AgentPlannerServiceTests
     }
 
     #endregion
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldWarnOnce_OnFirstPlan_ThenStaySilentAtWarningLevel()
+    {
+        // PUB-23: the stub planner announces itself at Warning exactly once,
+        // with the remediation gesture in the message.
+        var logger = new TestLogger();
+        var planner = new AgentPlannerService(logger);
+        var task = CreateTestTask();
+
+        await planner.CreatePlanAsync(task, TestContext.Current.CancellationToken);
+        await planner.CreatePlanAsync(task, TestContext.Current.CancellationToken);
+
+        var warnings = logger.LoggedMessages
+            .Where(m => m.StartsWith("[Warning]", StringComparison.Ordinal) &&
+                        m.Contains("stub planner", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var single = Assert.Single(warnings);
+        Assert.Contains("IAgentPlanner", single);
+    }
+
 }

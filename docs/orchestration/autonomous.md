@@ -8,6 +8,11 @@
 
 Orkeon provides an autonomous orchestration mode (`ProcessType.Autonomous`) in which agents self-organize to claim tasks, delegate recursively to their peers, and spawn specialized sub-agents on the fly. All execution is constrained by a multi-dimensional `AgentExecutionBudget` that guarantees termination.
 
+> **DI default worth knowing**: out of the box, `ITaskDelegator` is a stub that denies
+> every delegation request (it warns once, with the fix) — see
+> [Default behaviors](../getting-started/default-behaviors.md) before wiring a
+> delegation-heavy crew.
+
 Unlike the Sequential/Hierarchical modes where the orchestrator controls the flow, and the Graph mode where the state graph defines the topology, the Autonomous mode lets the agents make the delegation and spawn decisions. The orchestrator only steps in to enforce the budget and collect the results.
 
 ### Positioning relative to the other strategies

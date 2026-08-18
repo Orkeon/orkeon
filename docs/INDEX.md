@@ -15,6 +15,7 @@ The documentation is organized into 6 thematic sections.
 | [Overview](./getting-started/overview.md) | Architecture, core concepts (Agent, Task, Tool, Crew), YAML vs Fluent Builder |
 | [Bootstrap and execution](./getting-started/bootstrap.md) | Dependency injection, running a Crew, batch/streaming/fire-and-forget modes |
 | [YAML, Builders and CrewFactory](./getting-started/yaml-and-builders.md) | Fluent Builders, YAML schema, CrewFactory pipeline, loading modes |
+| [Default behaviors](./getting-started/default-behaviors.md) | The deliberately-minimal DI defaults (planner, delegator, knowledge store…): what each does, the warn-once signal, and the replacement gesture |
 
 ### Architecture
 

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — DI default stand-ins fully documented; the stub planner now warns (PUB-23)
+
+The deliberately-minimal DI defaults follow the house rule — never a silent drop —
+and the last gap is closed: `AgentPlannerService` (the fixed 4-step stub planner,
+the most misleading stand-in since it emits a plausible "plan" every run) now
+announces itself with a **one-time Warning naming the replacement gesture**, like
+the Infrastructure stubs already did (previously Debug-only, invisible under
+default logging). New page `docs/getting-started/default-behaviors.md` (EN + FR)
+inventories every default — the six that warn, the six that are silent by design
+and why — with the exact replacement snippet for each; linked from limitations and
+the Autonomous orchestration guide. No functional behavior change.
+
 ### Added — Google Gemini provider: 13th LLM provider (PUB-15)
 
 `GeminiLlmProvider` joins the family through Google's OpenAI-compatible endpoint

@@ -16,12 +16,14 @@ namespace Orkeon.Application.Agent;
 /// <c>ExecutionOrchestrator</c> always has a planner available. Plan creation does not
 /// inspect the task content; only <see cref="RefinePlanAsync"/> and
 /// <see cref="ValidatePlanAsync"/> implement real logic (feedback-driven step retry and
-/// structural validation). Each <see cref="CreatePlanAsync"/> call emits a Debug log
-/// stating that the stub is in use.
+/// structural validation). The first <see cref="CreatePlanAsync"/> call emits a
+/// warn-once Warning stating that the stub is in use, with the remediation gesture
+/// (register your own <see cref="IAgentPlanner"/>); subsequent calls log at Debug.
 /// </remarks>
 public partial class AgentPlannerService : IAgentPlanner
 {
     private readonly ILogger<AgentPlannerService> _logger;
+    private int _warnedOnce;
 
     /// <summary>
     /// Initializes a new instance of <see cref="AgentPlannerService"/>.
@@ -40,7 +42,9 @@ public partial class AgentPlannerService : IAgentPlanner
     {
         ArgumentNullException.ThrowIfNull(task);
         LogCreatingPlan(task.Id);
-        LogStubPlanner(task.Id);
+        WarnOnce();
+        if (_logger.IsEnabled(LogLevel.Debug))
+            LogStubPlanner(task.Id);
 
         // Create basic steps for the task
         var steps = new List<PlanStep>
@@ -211,7 +215,16 @@ public partial class AgentPlannerService : IAgentPlanner
     [LoggerMessage(Level = LogLevel.Information, Message = "Creating plan for task {TaskId}")]
     private partial void LogCreatingPlan(string taskId);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "AgentPlannerService is a deterministic stub planner — emitting the fixed 4-step plan for task {TaskId}; an LLM-backed planner is a planned feature")]
+    private void WarnOnce()
+    {
+        if (Interlocked.Exchange(ref _warnedOnce, 1) == 0)
+            LogStubPlannerFirstUse();
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "AgentPlannerService is a deterministic stub planner: every task gets the same fixed 4-step plan (confidence 0.8). Register your own IAgentPlanner in DI (services.AddSingleton<IAgentPlanner, YourPlanner>() before AddOrkeonApplication) to replace it — see docs/getting-started/default-behaviors.md")]
+    private partial void LogStubPlannerFirstUse();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "AgentPlannerService stub plan emitted for task {TaskId}")]
     private partial void LogStubPlanner(string taskId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Refining plan {PlanId} based on feedback")]
