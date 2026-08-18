@@ -1,0 +1,25 @@
+{
+  "_comment": "Settings template — Google Gemini (OpenAI-compatible endpoint). Copy this file WITHOUT the .example suffix (-> appsettings.gemini.local.json), then fill in your key. The ${GEMINI_API_KEY} placeholder is NOT expanded automatically: replace it with the plain key, or leave it and override at runtime via the ORKEON_Llm__ApiKey=... environment variable. The factory auto-detects GeminiLlmProvider from the generativelanguage.googleapis.com host.",
+  "_models": [
+    "gemini-3.7-flash — primary chat model of the OpenAI-compatibility surface (default)",
+    "gemini-2.5-flash-image — image generation (out of Orkeon chat scope)"
+  ],
+  "Llm": {
+    "Model": "gemini-3.7-flash",
+    "BaseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "ApiKey": "${GEMINI_API_KEY}",
+    "Temperature": 0.2,
+    "MaxTokens": 24576,
+    "TimeoutSeconds": 600
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 16,
+    "GlobalRequestsPerMinute": 300,
+    "ProviderRequestsPerMinute": 300,
+    "AgentRequestsPerMinute": 10,
+    "QueueLimit": 512
+  },
+  "LlmLogging": {
+    "FullEmbeddingLog": false
+  }
+}

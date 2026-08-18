@@ -4,6 +4,10 @@
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.get -> int?
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.get -> int?
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.ProcessRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse!>!
+Orkeon.Infrastructure.LLMs.GeminiLlmProvider
+Orkeon.Infrastructure.LLMs.GeminiLlmProvider.GeminiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GeminiLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.GeminiLlmProvider.GeminiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GeminiLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.GeminiLlmProvider.GeminiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GeminiLlmProvider!>? logger = null) -> void
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2AOptions!>! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions!>? security = null, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore? taskStore = null) -> void
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Orkeon.Infrastructure.AgentCommunication.A2AOptions! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions? security = null, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore? taskStore = null) -> void
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.StateStoreA2ATaskStore
@@ -69,3 +73,9 @@
 [ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.TryReadRequestedVersion(System.Text.Json.JsonElement? parameters) -> string?
 [ORKEXP004]static readonly Orkeon.Infrastructure.MCP.McpProtocol.SupportedLegacyVersions -> System.Collections.Generic.IReadOnlyList<string!>!
 [ORKEXP004]static readonly Orkeon.Infrastructure.MCP.McpProtocol.SupportedVersions -> System.Collections.Generic.IReadOnlyList<string!>!
+const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Gemini = "https://generativelanguage.googleapis.com/v1beta/openai" -> string!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.ProviderDisplayName.get -> string!

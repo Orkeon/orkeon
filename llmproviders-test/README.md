@@ -2,7 +2,7 @@
 
 # Campagnes de validation des providers LLM
 
-Ce dossier porte les **preuves d'exécution réelle** des 12 providers LLM d'Orkéon : les
+Ce dossier porte les **preuves d'exécution réelle** des 13 providers LLM d'Orkéon : les
 scripts qui lancent les campagnes, et le rapport archivé de chacune.
 
 > **Pourquoi ce dossier existe.** Le dépôt compte ≈ 400 tests unitaires sur les providers

@@ -24,6 +24,12 @@ public static class LlmEndpoints
     /// <summary>Together AI API base URL (OpenAI-compatible).</summary>
     public const string Together = "https://api.together.xyz/v1";
 
+    /// <summary>
+    /// Google Gemini OpenAI-compatible endpoint (Bearer auth with the Gemini API key).
+    /// Verified on ai.google.dev/gemini-api/docs/openai, 2026-08-18.
+    /// </summary>
+    public const string Gemini = "https://generativelanguage.googleapis.com/v1beta/openai";
+
     /// <summary>Qwen (Alibaba DashScope) OpenAI-compatible endpoint.</summary>
     public const string Qwen = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 

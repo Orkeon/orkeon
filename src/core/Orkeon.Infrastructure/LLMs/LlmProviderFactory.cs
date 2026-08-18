@@ -54,6 +54,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             "kimi" or "moonshot" => CreateKimiProvider(config),
             "mistral" => CreateMistralProvider(config),
             "huggingface" or "hf" => CreateHuggingFaceProvider(config),
+            "gemini" or "google" => CreateGeminiProvider(config),
             "zai" or "glm" or "zhipu" => CreateZaiProvider(config),
             _ => CreateOpenAIProvider(config) // Default to OpenAI
         };
@@ -81,6 +82,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             "kimi" or "moonshot" => CreateKimiProvider(config),
             "mistral" => CreateMistralProvider(config),
             "huggingface" or "hf" => CreateHuggingFaceProvider(config),
+            "gemini" or "google" => CreateGeminiProvider(config),
             "zai" or "glm" or "zhipu" => CreateZaiProvider(config),
             _ => throw new NotSupportedException($"Provider type '{providerType}' is not supported.")
         };
@@ -155,6 +157,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return "kimi";
         if (url.Contains("mistral.ai", StringComparison.Ordinal))
             return "mistral";
+        // Google Gemini: the OpenAI-compatible host (Vertex AI endpoints are a separate,
+        // OAuth-authenticated surface and are deliberately NOT matched here).
+        if (url.Contains("generativelanguage.googleapis.com", StringComparison.Ordinal))
+            return "gemini";
         if (url.Contains("huggingface.co", StringComparison.Ordinal) || url.Contains("hf.co", StringComparison.Ordinal))
             return "huggingface";
         // Z.AI (Zhipu GLM): match the full host, not the bare "z.ai" substring
@@ -207,6 +213,8 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return "kimi";
         if (m.StartsWith("glm", StringComparison.Ordinal))
             return "zai";
+        if (m.StartsWith("gemini", StringComparison.Ordinal))
+            return "gemini";
 
         return null;
     }
@@ -329,6 +337,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// <summary>Creates Kimi (Moonshot AI) provider instance.</summary>
     private LlmProviderAdapter CreateKimiProvider(LlmConfig config)
         => Adapt<KimiLlmProvider>(logger => new KimiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+
+    /// <summary>Creates Google Gemini provider instance.</summary>
+    private LlmProviderAdapter CreateGeminiProvider(LlmConfig config)
+        => Adapt<GeminiLlmProvider>(logger => new GeminiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Mistral AI provider instance.</summary>
     private LlmProviderAdapter CreateMistralProvider(LlmConfig config)

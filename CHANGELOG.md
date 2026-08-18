@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Google Gemini provider: 13th LLM provider (PUB-15)
+
+`GeminiLlmProvider` joins the family through Google's OpenAI-compatible endpoint
+(`generativelanguage.googleapis.com/v1beta/openai`, Bearer auth with the Gemini API
+key). Capabilities verified against the compatibility documentation (2026-08-18):
+effort-only thinking (`reasoning_effort` mapping to Gemini's `thinking_level`),
+vision via `image_url` data URIs; `response_format` is undocumented on the compat
+surface and therefore stays **undeclared** — a JSON-format request triggers the
+structured capability warning instead of a silent drop. Factory auto-detection by
+host (`generativelanguage.googleapis.com`) and model prefix (`gemini-*`); default
+model `gemini-3.7-flash`; `appsettings.gemini.local.json.example` template added;
+provider docs, comparison matrices and counts updated EN/FR. Vertex AI and AWS
+Bedrock remain out of scope (OAuth/SigV4 SDK stacks conflict with the simple-HTTP
+provider principle — recorded in the PUB-15 fiche).
+
 ### Added — A2A task persistence lifts the 501; conformance matrix published (PUB-08)
 
 - **`GET /a2a/tasks/{id}` is real now** — opt-in: register a checkpointing state store

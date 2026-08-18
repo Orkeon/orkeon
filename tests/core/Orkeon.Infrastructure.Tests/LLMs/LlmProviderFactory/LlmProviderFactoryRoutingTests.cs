@@ -86,9 +86,12 @@ public class LlmProviderFactoryRoutingTests
     [InlineData("deepseek-v4-flash", null, "deepseek")]
     [InlineData("qwen3.7-plus", null, "qwen")]
     [InlineData("glm-5.2", null, "zai")]
+    // Gemini (PUB-15): model-prefix and OpenAI-compatible host routing.
+    [InlineData("gemini-3.7-flash", null, "gemini")]
     [InlineData("unknown-model", null, "OpenAI")]
     [InlineData(null, "https://api.deepseek.com", "deepseek")]
     [InlineData(null, "https://api.z.ai/api/paas/v4", "zai")]
+    [InlineData(null, "https://generativelanguage.googleapis.com/v1beta/openai", "gemini")]
     [InlineData(null, "https://api.groq.com/openai/v1", "groq")]
     [InlineData(null, "https://api.mistral.ai/v1", "mistral")]
     [InlineData(null, "https://my-resource.openai.azure.com", "azure-openai")]

@@ -2,7 +2,7 @@
 
 # Comparatif des fournisseurs LLM — Orkeon
 
-> État au 2026-06-12, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`).
+> État au 2026-06-12 (ligne Gemini ajoutée le 2026-08-18 — la matrice EN, plus récente, fait foi), dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`).
 > Légende : ✓ supporté · ✗ absent · ◐ partiel/générique.
 
 | Fournisseur | Classe de base | Streaming SSE | Tool calling natif | Chat multi-tours (rôles tool) | Message système | top_p / stop | Grammaire GBNF | response_format JSON | thinking / reasoning_effort | reasoning_content round-trip | Métriques cache prompt | Métriques timing | Résilience Polly | Sanitization clé API |
@@ -13,6 +13,7 @@
 | **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
 | **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
 | **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
+| **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (non déclaré — surface compat non documentée) | ✓ effort | ✗ | ◐ | ✗ | ✓ | ✓ |
 | **Mistral AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ◐ | ✗ | ✓ | ✓ |
 | **Anthropic** | HttpLlmProviderBase | ✓ | ✓ | ✓ | ✓ (séparé natif) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |

@@ -39,6 +39,8 @@ public static class ProviderDefaults
         ["mistral"] = MistralDefaults.DefaultModel,
         ["huggingface"] = HuggingFaceDefaults.DefaultModel,
         ["hf"] = HuggingFaceDefaults.DefaultModel,
+        ["gemini"] = GeminiDefaults.DefaultModel,
+        ["google"] = GeminiDefaults.DefaultModel,
         ["zai"] = ZaiDefaults.DefaultModel,
         ["glm"] = ZaiDefaults.DefaultModel,
         ["zhipu"] = ZaiDefaults.DefaultModel,
@@ -114,6 +116,16 @@ public static class ProviderDefaults
     {
         /// <summary>Default Qwen model (<c>qwen-turbo</c> is absent from the current catalogue).</summary>
         public const string DefaultModel = "qwen3.7-plus";
+    }
+
+    /// <summary>Default model constants for Google Gemini.</summary>
+    internal static class GeminiDefaults
+    {
+        /// <summary>
+        /// Default Gemini model — the primary chat model of the OpenAI-compatibility
+        /// documentation (verified 2026-08-18).
+        /// </summary>
+        public const string DefaultModel = "gemini-3.7-flash";
     }
 
     /// <summary>Default model constants for Mistral AI.</summary>

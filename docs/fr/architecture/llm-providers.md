@@ -20,6 +20,7 @@ Fournisseurs implémentés :
 | Qwen | `QwenLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Mistral AI | `MistralLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Z.AI (Zhipu GLM) | `ZaiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| Google Gemini | `GeminiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
 Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`) sont disponibles dans `Orkeon.Infrastructure.LLMs.Adapters` pour intégrer d'autres fournisseurs compatibles avec l'interface `IChatClient`.
 

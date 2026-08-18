@@ -20,7 +20,7 @@ container, see [Three ways to run Orkeon](./three-ways-to-run-orkeon.md).
 |---|---|
 | **.NET SDK ≥ 10.0.300** | The repository pins the SDK in `global.json` with `rollForward: latestFeature`. An older SDK fails the build (see [Troubleshooting](#troubleshooting)). Verify with `dotnet --version`. |
 | **Git** | To clone the repository. |
-| **An LLM endpoint + key** | Any of the 12 supported providers, or a local endpoint such as Docker Model Runner / Ollama. Supplied through an `appsettings` profile (below). |
+| **An LLM endpoint + key** | Any of the 13 supported providers, or a local endpoint such as Docker Model Runner / Ollama. Supplied through an `appsettings` profile (below). |
 
 ## 1. Clone and build
 
@@ -54,6 +54,7 @@ Runners read their LLM configuration (endpoint, model, API key) from an
 | `appsettings.deepseek.local.json.example` | DeepSeek cloud |
 | `appsettings.openai.local.json.example` | OpenAI cloud |
 | `appsettings.glm.local.json.example` / `appsettings.glm-medium.local.json.example` | Z.AI (GLM) |
+| `appsettings.gemini.local.json.example` | Google Gemini |
 | `appsettings.local.json.example` | Blank template to fill in |
 
 Copy the template that matches your provider, drop it to a real `*.local.json`
