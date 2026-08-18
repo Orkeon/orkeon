@@ -77,6 +77,9 @@ public sealed class JsMockLlmHandle
     public JsMockLlmExpectationBuilder when(JsValue matcher) => new(_provider, matcher);
 }
 
+/// <summary>
+/// Builds mock-LLM expectations in the scripting test namespace.
+/// </summary>
 public sealed class JsMockLlmExpectationBuilder
 {
     private readonly MockLlmProvider _provider;
@@ -127,6 +130,9 @@ public sealed class JsMockToolHandle
     }
 }
 
+/// <summary>
+/// Builds mock-tool expectations in the scripting test namespace.
+/// </summary>
 public sealed class JsMockToolExpectationBuilder
 {
     private readonly MockTool _tool;

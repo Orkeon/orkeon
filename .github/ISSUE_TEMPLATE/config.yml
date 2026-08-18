@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/Orkeon/orkeon/discussions
+    about: Ask questions, share what you built, discuss ideas before they become issues.
+  - name: Security vulnerability
+    url: https://github.com/Orkeon/orkeon/blob/main/SECURITY.md
+    about: Please do NOT open a public issue for security reports — follow the security policy.

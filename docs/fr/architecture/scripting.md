@@ -40,8 +40,8 @@ src/
 
 ## Démarrage rapide
 
-Voir [`project/features/scripting-dsl/chapters/00-quickstart.md`](../../../project/features/scripting-dsl/chapters/00-quickstart.md)
-pour le tutoriel exécutable. De bout en bout :
+Les tutoriels exécutables vivent dans [`examples/scripting/`](https://github.com/Orkeon/orkeon/tree/main/examples/scripting)
+(du hello world aux littéraux FSM/graphe et au RAG). De bout en bout :
 
 ```bash
 dotnet build src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj
@@ -61,7 +61,7 @@ convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` a
 | Formes littérales `stateMachine` / `stateGraph` | `chapters/07` |
 | `onError`, `ErrorAction`, codes d'erreur | `chapters/05`, `chapters/13` |
 | Hooks de cycle de vie (`onAgentStart`, `onCrewComplete`, …) | `chapters/05` |
-| `onCommand` — répondre par nom aux commandes CLI dispatchées | [cli-ts-commands.md](../architecture/cli-ts-commands.md#the-agent-side--oncommand) |
+| `onCommand` — répondre par nom aux commandes CLI dispatchées | [cli-ts-commands.md](../architecture/cli-ts-commands.md#côté-agent--oncommand) |
 | Namespace intégré `tools.X(...)` | `chapters/03` §tools |
 | Providers LLM (`llm.openai`, `llm.default`, etc.) | `chapters/03` §llm |
 
@@ -109,4 +109,4 @@ retourne un ticket immédiatement et livre le résumé du crew au callback
 
 ## Référence
 
-[Spécification complète du DSL](../../../project/features/scripting-dsl/INDEX.md)
+Cette page et les typings livrés avec la CLI (`orkeon-cli.d.ts`) constituent la référence du DSL

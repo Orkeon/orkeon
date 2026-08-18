@@ -40,8 +40,8 @@ src/
 
 ## Quick start
 
-See [`project/features/scripting-dsl/chapters/00-quickstart.md`](../../project/features/scripting-dsl/chapters/00-quickstart.md)
-for the executable tutorial. End-to-end:
+The runnable tutorials live in [`examples/scripting/`](https://github.com/Orkeon/orkeon/tree/main/examples/scripting)
+(hello world through FSM/graph literals and RAG). End-to-end:
 
 ```bash
 dotnet build src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj
@@ -127,4 +127,4 @@ returns a ticket immediately and delivers the crew summary to a
 
 ## Reference
 
-[Full DSL specification](../../project/features/scripting-dsl/INDEX.md)
+This page and the typings shipped with the CLI (`orkeon-cli.d.ts`) are the DSL reference

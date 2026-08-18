@@ -503,7 +503,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Full provenance, retrieval date (2026-07-26) and SHA-256 integrity hashes are
 recorded in the package-level notice file
-[`src/rag/Orkeon.Rag.Onnx.Model/THIRD-PARTY-NOTICES.md`](src/rag/Orkeon.Rag.Onnx.Model/THIRD-PARTY-NOTICES.md),
+[`src/rag/Orkeon.Rag.Onnx.Model/THIRD-PARTY-NOTICES.md`](https://github.com/Orkeon/orkeon/blob/main/src/rag/Orkeon.Rag.Onnx.Model/THIRD-PARTY-NOTICES.md),
 which ships inside the NuGet package. Training data note: the model was trained
 on the MS MARCO passage-ranking dataset (Microsoft; the dataset itself carries a
 non-commercial research license, while the trained model is distributed by its

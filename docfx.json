@@ -3,26 +3,56 @@
     {
       "src": [
         {
-          "files": ["src/core/**/*.csproj", "src/tools/Orkeon.Tools.Abstractions/*.csproj"],
+          "files": [
+            "src/core/Orkeon.Domain/bin/Release/net10.0/Orkeon.Domain.dll",
+            "src/core/Orkeon.Application/bin/Release/net10.0/Orkeon.Application.dll",
+            "src/core/Orkeon.Infrastructure/bin/Release/net10.0/Orkeon.Infrastructure.dll",
+            "src/tools/Orkeon.Tools.Abstractions/bin/Release/net10.0/Orkeon.Tools.Abstractions.dll",
+            "src/tools/Orkeon.Tools.Analysis/bin/Release/net10.0/Orkeon.Tools.Analysis.dll",
+            "src/tools/Orkeon.Tools.Code/bin/Release/net10.0/Orkeon.Tools.Code.dll",
+            "src/tools/Orkeon.Tools.Data/bin/Release/net10.0/Orkeon.Tools.Data.dll",
+            "src/tools/Orkeon.Tools.Embeddings.Local/bin/Release/net10.0/Orkeon.Tools.Embeddings.Local.dll",
+            "src/tools/Orkeon.Tools.EventHub/bin/Release/net10.0/Orkeon.Tools.EventHub.dll",
+            "src/tools/Orkeon.Tools.FileSystem/bin/Release/net10.0/Orkeon.Tools.FileSystem.dll",
+            "src/tools/Orkeon.Tools.Rag/bin/Release/net10.0/Orkeon.Tools.Rag.dll",
+            "src/tools/Orkeon.Tools.Web/bin/Release/net10.0/Orkeon.Tools.Web.dll",
+            "src/rag/Orkeon.Rag.Abstractions/bin/Release/net10.0/Orkeon.Rag.Abstractions.dll",
+            "src/rag/Orkeon.Rag/bin/Release/net10.0/Orkeon.Rag.dll",
+            "src/rag/Orkeon.Rag.Onnx/bin/Release/net10.0/Orkeon.Rag.Onnx.dll",
+            "src/rag/Orkeon.Rag.Onnx.Model/bin/Release/net10.0/Orkeon.Rag.Onnx.Model.dll",
+            "src/analysis/Orkeon.Analysis.Abstractions/bin/Release/net10.0/Orkeon.Analysis.Abstractions.dll",
+            "src/analysis/Orkeon.Analysis/bin/Release/net10.0/Orkeon.Analysis.dll",
+            "src/scripting/Orkeon.Scripting/bin/Release/net10.0/Orkeon.Scripting.dll",
+            "src/cli/Orkeon.Cli.Abstractions/bin/Release/net10.0/Orkeon.Cli.Abstractions.dll",
+            "src/cli/Orkeon.Cli/bin/Release/net10.0/Orkeon.Cli.dll",
+            "src/cli/Orkeon.Cli.Commands.Scripting/bin/Release/net10.0/Orkeon.Cli.Commands.Scripting.dll",
+            "src/cli/Orkeon.Cli.TerminalGui/bin/Release/net10.0/Orkeon.Cli.TerminalGui.dll",
+            "src/hosting/Orkeon.Hosting/bin/Release/net10.0/Orkeon.Hosting.dll",
+            "src/plugins/Orkeon.Plugins/bin/Release/net10.0/Orkeon.Plugins.dll"
+          ],
           "src": "."
         }
       ],
       "dest": "api",
-      "properties": {
-        "TargetFramework": "net10.0"
-      }
+      "namespaceLayout": "nested",
+      "memberLayout": "samePage"
     }
   ],
   "build": {
     "content": [
       { "files": ["api/**.yml", "api/index.md"] },
       { "files": ["docs/toc.yml", "docs/*.md", "docs/**/*.md"] },
-      { "files": ["*.md", "toc.yml"] }
+      { "files": ["*.md", "toc.yml"], "exclude": ["artifacts/**", "_site/**"] }
     ],
     "resource": [
-      { "files": ["images/**"] }
+      { "files": ["images/**", "docs/assets/**"] }
     ],
     "dest": "_site",
+    "globalMetadata": {
+      "_appName": "Orkeon",
+      "_appTitle": "Orkeon",
+      "_enableSearch": true
+    },
     "globalMetadataFiles": [],
     "template": ["default", "modern"],
     "postProcessors": [],

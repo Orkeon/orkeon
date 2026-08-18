@@ -29,7 +29,7 @@ Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToCh
 
 Tous les tests unitaires de ce domaine parlent à un handler HTTP mocké : ils prouvent
 qu'Orkéon envoie ce qu'on croit, pas que le fournisseur l'accepte. La seconde preuve se
-construit avec le kit de campagne [`llmproviders-test/`](../../../llmproviders-test/README.md) :
+construit avec le kit de campagne [`llmproviders-test/`](https://github.com/Orkeon/orkeon/tree/main/llmproviders-test) :
 
 ```bash
 llmproviders-test/run-campaign.sh --provider ollama --model llama3.2   # premier run, coût nul
@@ -37,7 +37,7 @@ llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
 ```
 
 Il pilote `orkeon llm probe` sur les modes M1–M10, M12 et M13 du
-[protocole de test](../../../backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md) §5 et
+protocole de test des fournisseurs (matrice interne des mainteneurs) §5 et
 archive un rapport Markdown par campagne. `orkeon llm models -p <fournisseur> --filter
 'gpt-5.6-*'` liste ce qu'un fournisseur sert réellement : aucune campagne ne dépend d'une
 liste de modèles maintenue à la main.

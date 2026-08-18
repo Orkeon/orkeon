@@ -2,6 +2,9 @@ using System.Collections.Immutable;
 
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Watches an indexed codebase for file changes and feeds incremental re-indexing.
+/// </summary>
 public interface ICodebaseWatcher : IAsyncDisposable
 {
     Task StartAsync(WatcherOptions options, CancellationToken ct);

@@ -1,6 +1,6 @@
 # Run Orkeon on local models
 
-> **See also**: [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md) · [Settings profiles](../../examples/appsettings/README.md) · [Back to the index](../INDEX.md)
+> **See also**: [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md) · the `examples/appsettings/` profiles · [Back to the index](../INDEX.md)
 
 Every Orkeon example and crew can run against a model on your own machine — no
 API key, no cloud. There are three ways to do it, from zero-install to fully

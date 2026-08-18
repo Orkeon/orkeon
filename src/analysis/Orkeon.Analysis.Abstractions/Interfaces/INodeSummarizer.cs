@@ -2,6 +2,9 @@ using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Produces natural-language summaries for RaggableTree nodes.
+/// </summary>
 public interface INodeSummarizer
 {
     Task<string?> SummarizeAsync(

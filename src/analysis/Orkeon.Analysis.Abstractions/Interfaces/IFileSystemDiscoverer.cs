@@ -2,6 +2,9 @@ using System.Collections.Immutable;
 
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Discovers the source files of a codebase eligible for indexing (discovery phase).
+/// </summary>
 public interface IFileSystemDiscoverer
 {
     IAsyncEnumerable<DiscoveredFile> DiscoverAsync(DiscoveryRequest req, CancellationToken ct);

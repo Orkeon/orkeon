@@ -7,7 +7,7 @@
 Tout ce qui vit sous `examples/` tourne sur le même moteur ; cette page est la carte
 éditoriale. L'**inventaire faisant foi** — chaque exemple numéroté avec son type de
 process, ses comptes agents/tâches et ses outils — est le
-[`examples/INDEX.md`](../../../examples/INDEX.md) généré : il est produit par
+[`examples/INDEX.md`](https://github.com/Orkeon/orkeon/blob/main/examples/INDEX.md) généré : il est produit par
 `scripts/generate_examples_index.py` et la CI échoue dès qu'il dérive des dossiers
 sur disque, si bien qu'aucun compte n'est maintenu à la main ici.
 

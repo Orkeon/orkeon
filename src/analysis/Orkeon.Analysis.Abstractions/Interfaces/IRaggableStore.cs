@@ -4,6 +4,9 @@ using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Persists and queries the stratified RaggableTree graph.
+/// </summary>
 public interface IRaggableStore
 {
     Task<RaggableNode?> GetAsync(string fqn, CancellationToken ct);

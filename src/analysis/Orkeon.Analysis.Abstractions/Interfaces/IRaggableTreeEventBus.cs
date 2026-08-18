@@ -2,6 +2,9 @@ using System.Collections.Immutable;
 
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Publishes RaggableTree lifecycle events (index and node updates) to subscribers.
+/// </summary>
 public interface IRaggableTreeEventBus
 {
     void Publish(RaggableTreeUpdated evt);

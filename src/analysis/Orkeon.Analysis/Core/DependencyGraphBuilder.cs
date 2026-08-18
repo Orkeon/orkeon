@@ -10,6 +10,9 @@ using TsQuery = TreeSitter.Query;
 
 namespace Orkeon.Analysis.Core;
 
+/// <summary>
+/// Builds the cross-node dependency edge set of a RaggableTree.
+/// </summary>
 public sealed class DependencyGraphBuilder
 {
     private readonly ILanguageAdapter _adapter;

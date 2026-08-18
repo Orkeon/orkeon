@@ -1,0 +1,67 @@
+# Documentation site (docfx): API reference for every published library + the
+# docs/ tree (PUB-10).
+#
+# - PRs and pushes touching sources or docs VALIDATE the site (metadata + build);
+#   broken xrefs and bad TOC entries fail here instead of on the published site.
+# - A v* tag PUBLISHES _site to GitHub Pages (aligned with the release cut —
+#   the site always documents a tagged version). Requires Pages to be enabled
+#   on the repository (Settings → Pages → Source: GitHub Actions) — owner action.
+name: Docs site
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+    paths: [ 'src/**', 'docs/**', 'docfx.json', 'toc.yml', 'api/index.md', '.github/workflows/docs.yml' ]
+  pull_request:
+    branches: [ main ]
+    paths: [ 'src/**', 'docs/**', 'docfx.json', 'toc.yml', 'api/index.md', '.github/workflows/docs.yml' ]
+permissions:
+  contents: read
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Same disk situation as ci.yml: the native deps need more than the
+      # ~14 GB the hosted runner offers.
+      - name: Free up runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - run: dotnet tool install -g docfx
+      - run: dotnet restore Orkeon.sln
+      # docfx metadata reads the COMPILED Release assemblies (docfx.json lists
+      # them): the Roslyn workspace docfx uses for csproj-based metadata does
+      # not run the Orkeon.Generators source generator (CS8795), while the
+      # built DLLs carry the exact shipped surface, generated members included.
+      - run: dotnet build Orkeon.sln -c Release --no-restore
+      # No --warningsAsErrors on metadata: it emits a handful of benign
+      # InvalidAssemblyReference warnings (third-party deps like Terminal.Gui or
+      # OnnxRuntime are not copy-local in library bin folders). The build step
+      # below is strict — that is where link/xref integrity is checked.
+      - name: Generate API metadata
+        run: docfx metadata docfx.json
+      - name: Build site
+        run: docfx build docfx.json --warningsAsErrors
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  # Publication is tag-only: the site always reflects a released version.
+  deploy:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

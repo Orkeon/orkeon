@@ -405,6 +405,10 @@ project/experiments/**/runner-output-*.txt
 
 # DocFX generated site
 _site/
+# docfx generated metadata (api/index.md and api/toc-hand-written files stay tracked)
+api/**/*.yml
+api/*.yml
+api/.manifest
 /scripts/fix_enums.js
 
 # Local appsettings overrides

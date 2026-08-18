@@ -29,15 +29,15 @@ Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdap
 
 Every unit test in this area speaks to a mocked HTTP handler, which proves Orkeon sends what
 we believe it sends — not that the vendor accepts it. The second proof is produced by the
-campaign kit in [`llmproviders-test/`](../../llmproviders-test/README.md):
+campaign kit in [`llmproviders-test/`](https://github.com/Orkeon/orkeon/tree/main/llmproviders-test):
 
 ```bash
 llmproviders-test/run-campaign.sh --provider ollama --model llama3.2   # zero-cost first run
 llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
 ```
 
-It drives `orkeon llm probe` over modes M1–M10, M12 and M13 of the
-[test protocol](../../backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md) §5 and archives
+It drives `orkeon llm probe` over modes M1–M10, M12 and M13 of the provider
+test protocol (maintainers' internal matrix) and archives
 one Markdown report per campaign. `orkeon llm models -p <provider> --filter 'gpt-5.6-*'`
 lists what a provider currently serves, so a campaign never depends on a hand-maintained
 model list.

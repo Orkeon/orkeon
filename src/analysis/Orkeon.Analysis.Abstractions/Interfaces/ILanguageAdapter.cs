@@ -2,6 +2,9 @@ using TsNode = TreeSitter.Node;
 
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Language-specific adapter that extracts symbols and statements from a Tree-sitter AST.
+/// </summary>
 public interface ILanguageAdapter
 {
     string LanguageName { get; }

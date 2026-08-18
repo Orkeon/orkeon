@@ -21,6 +21,9 @@ namespace Orkeon.Scripting.Builders;
 /// </remarks>
 #pragma warning disable IDE1006 // Naming style aligned with the JS surface
 #pragma warning disable CS1591 // Each fluent method documents itself via the .d.ts roll-up
+/// <summary>
+/// Fluent agent builder exposed to .ork.ts scripts as agentBuilder().
+/// </summary>
 public sealed class JsAgentBuilder
 {
     internal string? AgentName { get; private set; }

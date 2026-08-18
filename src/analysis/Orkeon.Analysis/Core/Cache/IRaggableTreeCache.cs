@@ -2,6 +2,9 @@ using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Core.Cache;
 
+/// <summary>
+/// In-memory cache of loaded RaggableTree graphs.
+/// </summary>
 public interface IRaggableTreeCache
 {
     Task<RaggableTreeCacheLoadResult> LoadAsync(string rootPath, CancellationToken ct);

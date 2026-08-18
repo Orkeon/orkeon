@@ -1,5 +1,8 @@
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Supplies git diffs so incremental re-indexing can scope itself to changed files.
+/// </summary>
 public interface IGitDiffProvider
 {
     Task<IReadOnlyList<string>> GetChangedFilesAsync(string rootPath, string fromCommit, string toCommit, CancellationToken ct);

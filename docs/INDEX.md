@@ -34,7 +34,7 @@ The documentation is organized into 6 thematic sections.
 | [RaggableTree — semantic graph](./architecture/raggable-tree.md) | 6-phase pipeline, 15 tools, 5 languages, incremental reindexing, watcher, context injection |
 | [RAG pipeline](./architecture/rag-pipeline.md) | The `src/rag/` subsystem: ingestion, 7-stage pipeline (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), corrective CRAG graph, web fallback, 5 profiles, measured evaluation |
 | [ADR — RaggableTree](./architecture/raggable-tree-adr.md) | Decision for a 6-level stratified graph via Tree-sitter, rejected alternatives, consequences |
-| [Architecture Decision Records (ADR)](./adr/) | ADR-002 (Tools.Abstractions shared kernel), ADR-003 (Analysis shared kernels), ADR-004 (scripting naming twins — superseded by ADR-007), ADR-005 (heterogeneous Tools.* family), ADR-006 (RAG subsystem `src/rag/`), ADR-007 (D3: `Orkeon.Cli.Commands.Scripting` rename) |
+| [Architecture Decision Records (ADR)](./adr/README.md) | ADR-002 (Tools.Abstractions shared kernel), ADR-003 (Analysis shared kernels), ADR-004 (scripting naming twins — superseded by ADR-007), ADR-005 (heterogeneous Tools.* family), ADR-006 (RAG subsystem `src/rag/`), ADR-007 (D3: `Orkeon.Cli.Commands.Scripting` rename) |
 
 ### Orchestration
 

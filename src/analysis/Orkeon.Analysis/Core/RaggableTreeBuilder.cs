@@ -8,6 +8,9 @@ using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Analysis.Core;
 
+/// <summary>
+/// Orchestrates the indexing pipeline that turns a codebase into a RaggableTree.
+/// </summary>
 public sealed class RaggableTreeBuilder
 {
     private readonly Dictionary<string, ILanguageAdapter> _adaptersByLanguage;

@@ -247,7 +247,7 @@ To point to an ONNX model other than the embedded BGE-micro-v2, declare a read-o
 }
 ```
 
-The licenses of the model and of the upstream package are tracked in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md). A minimal console example lives in [`examples/local-embeddings/`](../../examples/local-embeddings/).
+The licenses of the model and of the upstream package are tracked in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md). A minimal console example lives in [`examples/local-embeddings/`](https://github.com/Orkeon/orkeon/tree/main/examples/local-embeddings).
 
 ### Adding a vector store
 

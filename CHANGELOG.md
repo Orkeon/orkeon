@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Full API reference site and community templates (PUB-10, PUB-12)
+
+- **docfx now covers every published library** (25 assemblies — 2 916 generated API
+  pages, nested-namespace navigation) instead of core + Tools.Abstractions only.
+  Metadata is generated from the compiled Release assemblies, so source-generated
+  members are included. The never-finished navigation is real now (`toc.yml`,
+  `docs/toc.yml`, `api/index.md`), and the new `docs.yml` workflow builds the site
+  strictly (`--warningsAsErrors`) on every PR touching sources or docs, and deploys
+  it to GitHub Pages on each `v*` tag.
+- The strict build flushed out **31 broken documentation links** — including two
+  references to the maintainers' private repository and four to a spec folder that
+  no longer exists in the public tree — all fixed; ADR index pages (EN/FR) added.
+- **Community templates**: structured issue forms (bug report with install-channel
+  and reproduction fields, feature request), contact links routing questions to
+  Discussions and security reports to SECURITY.md, and a pull-request template whose
+  checklist mirrors what CI actually enforces (API freeze declaration, FR parity
+  gate, CHANGELOG entry, executable bits, VFS-only I/O).
+- 25 public entry-point types that had no XML `<summary>` (RaggableTree contracts,
+  scripting JS builders, `BuilderValidationException`…) are now documented.
+
 ### Changed — Documentation debt cleared; FR/EN parity is now a CI gate (PUB-09)
 
 - The examples catalog (`docs/reference/examples-catalog.md` + FR) is now editorial

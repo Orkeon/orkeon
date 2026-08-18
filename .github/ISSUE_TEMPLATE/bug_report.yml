@@ -1,0 +1,62 @@
+name: Bug report
+description: Something in Orkeon does not behave as documented
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more precise the report,
+        the faster the fix — the sections below mirror what we need to reproduce it.
+  - type: input
+    id: version
+    attributes:
+      label: Orkeon version
+      description: "`orkeon --version`, the NuGet package version, or the commit SHA for a source build."
+      placeholder: "1.0.0-rc.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Install channel
+      options:
+        - NuGet packages (embedded in my app)
+        - orkeon CLI — Windows zip / MSI
+        - orkeon CLI — Debian package
+        - orkeon CLI — macOS tarball
+        - dotnet tool install
+        - Container image (orkeon-runners)
+        - Source build
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS + version, .NET SDK/runtime version, LLM provider if relevant.
+      placeholder: "Windows 11 / .NET SDK 10.0.301 / DeepSeek"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands, crew YAML / `.ork.ts` snippet, or C# snippet. Trim to the minimum that still fails.
+      placeholder: |
+        1. `orkeon run crew.yaml --settings …`
+        2. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead — paste the exact error line and, if useful, the relevant transcript/log excerpt (use `--llm-log` for LLM exchanges; redact your API keys).
+    validations:
+      required: true

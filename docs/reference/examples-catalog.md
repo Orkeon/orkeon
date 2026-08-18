@@ -7,7 +7,7 @@
 Everything under `examples/` runs on the same engine; this page is the editorial map.
 The **authoritative inventory** — every numbered example with its process type,
 agent/task counts and referenced tools — is the generated
-[`examples/INDEX.md`](../../examples/INDEX.md): it is produced by
+[`examples/INDEX.md`](https://github.com/Orkeon/orkeon/blob/main/examples/INDEX.md): it is produced by
 `scripts/generate_examples_index.py` and CI fails when it drifts from the folders on
 disk, so no count is maintained by hand here.
 

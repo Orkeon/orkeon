@@ -2,6 +2,9 @@ using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Computes vector embeddings for RaggableTree node texts (embed phase of the pipeline).
+/// </summary>
 public interface IEmbeddingProvider
 {
     int Dimensions { get; }

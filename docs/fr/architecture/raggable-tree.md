@@ -215,7 +215,7 @@ Pour pointer vers un autre modèle ONNX que le BGE-micro-v2 embarqué, déclarer
 }
 ```
 
-Les licences du modèle et du package upstream sont tracées dans [`THIRD-PARTY-NOTICES.md`](../../../THIRD-PARTY-NOTICES.md). Un exemple console minimal vit dans [`examples/local-embeddings/`](../../../examples/local-embeddings/).
+Les licences du modèle et du package upstream sont tracées dans [`THIRD-PARTY-NOTICES.md`](../../../THIRD-PARTY-NOTICES.md). Un exemple console minimal vit dans [`examples/local-embeddings/`](https://github.com/Orkeon/orkeon/tree/main/examples/local-embeddings).
 
 ### Ajouter un vector store
 

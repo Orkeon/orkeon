@@ -30,7 +30,7 @@
 ## Prérequis
 
 - SDK .NET ≥ 10.0.300 (sources) — ou le runtime .NET 10 (binaire de release)
-- Un profil LLM (voir la [matrice de profils](../../appsettings/)) ; cet exemple a
+- Un profil LLM (voir la matrice de profils sous `examples/appsettings/`) ; cet exemple a
   été validé contre `<provider>`.
 - <Tout autre prérequis : un service qui tourne, une clé API au-delà du LLM, …>
 
@@ -82,7 +82,8 @@ docker run --rm \
 > **Exemple finance / trading ?** Remplacez la CLI par `orkeon-trading --config
 > examples/<chemin>/config.yaml …` (il ajoute les 44 outils de trading). Dans le
 > conteneur, sélectionnez-le avec `-e ORKEON_RUNNER=trading`.
-> Référence des flags : [Exécuter votre premier exemple](../../../docs/fr/getting-started/run-your-first-example.md#chaque-flag-expliqué).
+> Référence des flags : [Exécuter votre premier exemple](../getting-started/run-your-first-example.md#chaque-flag-expliqué)
+> (ajustez le chemin relatif une fois ce fichier dans un dossier d'exemple).
 
 ## Sortie attendue
 

@@ -2,6 +2,9 @@ using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Abstractions.Interfaces;
 
+/// <summary>
+/// Provides the vector store backing semantic search over graph nodes.
+/// </summary>
 public interface IVectorStoreProvider
 {
     Task IndexAsync(IReadOnlyList<VectorDocument> documents, CancellationToken ct);
