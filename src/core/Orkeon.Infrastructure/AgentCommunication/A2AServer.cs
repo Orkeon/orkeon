@@ -41,6 +41,7 @@ public partial class A2AServer : IA2AServer, IDisposable
     private readonly A2ASecurityOptions _security;
     private readonly IA2ATaskRouter _taskRouter;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IA2ATaskStore? _taskStore;
     private readonly ILogger _logger;
 
     private HttpListener? _listener;
@@ -69,12 +70,14 @@ public partial class A2AServer : IA2AServer, IDisposable
     /// <param name="scopeFactory">Factory used to open one DI scope per incoming request (the scoped <see cref="IAgentRepository"/> is resolved inside it).</param>
     /// <param name="logger">Optional logger.</param>
     /// <param name="security">Optional A2A security options.</param>
+    /// <param name="taskStore">Optional task persistence (lifts the 501 on GET /a2a/tasks/{id} — see AddOrkeonA2ATaskPersistence).</param>
     public A2AServer(
         IOptions<A2AOptions> options,
         IA2ATaskRouter taskRouter,
         IServiceScopeFactory scopeFactory,
         ILogger<A2AServer>? logger = null,
-        IOptions<A2ASecurityOptions>? security = null)
+        IOptions<A2ASecurityOptions>? security = null,
+        IA2ATaskStore? taskStore = null)
     {
         _options = options?.Value ?? new A2AOptions();
         _security = security?.Value ?? new A2ASecurityOptions();
@@ -82,6 +85,7 @@ public partial class A2AServer : IA2AServer, IDisposable
         _taskRouter = taskRouter;
         ArgumentNullException.ThrowIfNull(scopeFactory);
         _scopeFactory = scopeFactory;
+        _taskStore = taskStore;
         _logger = logger ?? NullLogger<A2AServer>.Instance;
     }
 
@@ -91,7 +95,8 @@ public partial class A2AServer : IA2AServer, IDisposable
         IA2ATaskRouter taskRouter,
         IServiceScopeFactory scopeFactory,
         ILogger<A2AServer>? logger = null,
-        A2ASecurityOptions? security = null)
+        A2ASecurityOptions? security = null,
+        IA2ATaskStore? taskStore = null)
     {
         _options = options ?? new A2AOptions();
         _security = security ?? new A2ASecurityOptions();
@@ -99,6 +104,7 @@ public partial class A2AServer : IA2AServer, IDisposable
         _taskRouter = taskRouter;
         ArgumentNullException.ThrowIfNull(scopeFactory);
         _scopeFactory = scopeFactory;
+        _taskStore = taskStore;
         _logger = logger ?? NullLogger<A2AServer>.Instance;
     }
 
@@ -520,7 +526,11 @@ public partial class A2AServer : IA2AServer, IDisposable
             return;
         }
 
+        await PersistTaskAsync(request, A2ATaskStatus.Working, null, null, ct).ConfigureAwait(false);
+
         var response = await _taskRouter.RouteTaskAsync(request, ct).ConfigureAwait(false);
+
+        await PersistTaskAsync(request, response.Status, response.Output, response.Error, ct).ConfigureAwait(false);
         await WriteJsonResponse(context.Response, 200, response, ct).ConfigureAwait(false);
     }
 
@@ -553,9 +563,11 @@ public partial class A2AServer : IA2AServer, IDisposable
                 Timestamp = DateTime.UtcNow
             };
             await WriteSseEvent(writer, workingUpdate).ConfigureAwait(false);
+            await PersistTaskAsync(request, A2ATaskStatus.Working, null, null, ct).ConfigureAwait(false);
 
             // Route the task
             var response = await _taskRouter.RouteTaskAsync(request, ct).ConfigureAwait(false);
+            await PersistTaskAsync(request, response.Status, response.Output, response.Error, ct).ConfigureAwait(false);
 
             // Send final update
             var finalUpdate = new A2ATaskUpdate
@@ -578,32 +590,109 @@ public partial class A2AServer : IA2AServer, IDisposable
         }
     }
 
-    private static async Task HandleGetTaskAsync(
+    private async Task HandleGetTaskAsync(
         HttpListenerContext context, string path, CancellationToken ct)
     {
-        // Task status retrieval requires task persistence, which is not yet implemented
-        // (see remediation R3.8). Return an explicit 501 instead of fabricating a 200/Pending
-        // status for an unknown task id. Once persistence lands, this becomes 404 for unknown ids.
         var taskId = Uri.UnescapeDataString(path["/a2a/tasks/".Length..]);
 
-        await WriteJsonResponse(context.Response, 501, new
+        // Without a task store, keep the explicit 501: better than fabricating a
+        // 200/Pending status for an id we know nothing about (PUB-08 lifts this
+        // by registering AddOrkeonA2ATaskPersistence over the checkpointing store).
+        if (_taskStore == null)
         {
-            error = "Task status retrieval is not implemented (no task persistence).",
-            taskId
-        }, ct).ConfigureAwait(false);
-    }
+            await WriteJsonResponse(context.Response, 501, new
+            {
+                error = "Task status retrieval is not enabled: register a checkpointing state store and call AddOrkeonA2ATaskPersistence().",
+                taskId
+            }, ct).ConfigureAwait(false);
+            return;
+        }
 
-    private static async Task HandleCancelTaskAsync(
-        HttpListenerContext context, string path, CancellationToken ct)
-    {
-        var taskId = path["/a2a/tasks/".Length..];
+        var record = await _taskStore.GetAsync(taskId, ct).ConfigureAwait(false);
+        if (record == null)
+        {
+            await WriteJsonResponse(context.Response, 404, new
+            {
+                error = "Unknown task id.",
+                taskId
+            }, ct).ConfigureAwait(false);
+            return;
+        }
 
         await WriteJsonResponse(context.Response, 200, new A2ATaskResponse
         {
-            TaskId = Uri.UnescapeDataString(taskId),
+            TaskId = record.TaskId,
+            Status = record.Status,
+            Output = record.Output,
+            Error = record.Error,
+            Timestamp = record.UpdatedAt
+        }, ct).ConfigureAwait(false);
+    }
+
+    private async Task HandleCancelTaskAsync(
+        HttpListenerContext context, string path, CancellationToken ct)
+    {
+        var taskId = Uri.UnescapeDataString(path["/a2a/tasks/".Length..]);
+
+        // With a store: 404 for unknown ids, and the cancellation is recorded.
+        // Without one, the legacy acknowledgement shape is kept (documented limit:
+        // in-flight work is not interrupted either way — cancellation is advisory).
+        if (_taskStore != null)
+        {
+            var record = await _taskStore.GetAsync(taskId, ct).ConfigureAwait(false);
+            if (record == null)
+            {
+                await WriteJsonResponse(context.Response, 404, new
+                {
+                    error = "Unknown task id.",
+                    taskId
+                }, ct).ConfigureAwait(false);
+                return;
+            }
+
+            await _taskStore.SaveAsync(record with
+            {
+                Status = A2ATaskStatus.Cancelled,
+                UpdatedAt = DateTime.UtcNow
+            }, ct).ConfigureAwait(false);
+        }
+
+        await WriteJsonResponse(context.Response, 200, new A2ATaskResponse
+        {
+            TaskId = taskId,
             Status = A2ATaskStatus.Cancelled,
             Timestamp = DateTime.UtcNow
         }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Best-effort persistence of a task lifecycle transition: storage failures are
+    /// logged, never allowed to fail the request that triggered them.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Persistence is an observability side-channel of the request: a store outage must not turn a successful task exchange into a 500.")]
+    private async Task PersistTaskAsync(
+        A2ATaskRequest request, A2ATaskStatus status, string? output, string? error, CancellationToken ct)
+    {
+        if (_taskStore == null) return;
+
+        try
+        {
+            var existing = await _taskStore.GetAsync(request.Id, ct).ConfigureAwait(false);
+            await _taskStore.SaveAsync(new A2ATaskRecord
+            {
+                TaskId = request.Id,
+                SkillId = request.SkillId,
+                Status = status,
+                Output = output,
+                Error = error,
+                CreatedAt = existing?.CreatedAt ?? DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogTaskPersistenceFailed(ex, request.Id);
+        }
     }
 
     private static async Task WriteSseEvent<T>(StreamWriter writer, T data)
@@ -660,6 +749,9 @@ public partial class A2AServer : IA2AServer, IDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Error accepting A2A request")]
     private partial void LogErrorAcceptingA2ARequest(Exception ex);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "A2A task persistence failed for task {TaskId}")]
+    private partial void LogTaskPersistenceFailed(Exception ex, string taskId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Error handling A2A request")]
     private partial void LogErrorHandlingA2ARequest(Exception ex);

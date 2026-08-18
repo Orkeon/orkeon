@@ -1,1 +1,27 @@
 #nullable enable
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.<Clone>$() -> Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.A2ATaskRecord() -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.CreatedAt.get -> System.DateTime
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.CreatedAt.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Equals(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? other) -> bool
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Error.get -> string?
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Error.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Output.get -> string?
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Output.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.SkillId.get -> string?
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.SkillId.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Status.get -> Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Status.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.TaskId.get -> string!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.TaskId.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.UpdatedAt.get -> System.DateTime
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.UpdatedAt.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore.GetAsync(string! taskId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord?>!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore.SaveAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord! record, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Equals(object? obj) -> bool
+[ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.GetHashCode() -> int
+[ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.ToString() -> string!
+[ORKEXP001]static Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.operator !=(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? left, Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? right) -> bool
+[ORKEXP001]static Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.operator ==(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? left, Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? right) -> bool

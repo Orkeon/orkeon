@@ -14,9 +14,6 @@ namespace Orkeon.Scripting.Builders;
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591
-/// <summary>
-/// Fluent task builder exposed to .ork.ts scripts.
-/// </summary>
 public sealed class JsTaskBuilder
 {
     private string? _name;

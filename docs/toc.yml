@@ -82,6 +82,8 @@
       href: reference/limitations.md
     - name: Experimental APIs
       href: reference/experimental-apis.md
+    - name: A2A conformance matrix
+      href: reference/a2a-conformance.md
     - name: Example data policy
       href: reference/example-data-policy.md
     - name: Opt-in subsystems

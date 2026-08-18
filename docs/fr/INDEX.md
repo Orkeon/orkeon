@@ -70,6 +70,7 @@ La documentation est organisée en 6 sections thématiques.
 |---------|-------------|
 | [Catalogue des exemples](./reference/examples-catalog.md) | Carte éditoriale d'`examples/` (9 catégories métier + vitrines RAG/RaggableTree/scripting) ; l'`examples/INDEX.md` généré est l'inventaire faisant foi |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante |
+| [Matrice de conformité A2A](./reference/a2a-conformance.md) | Position honnête face à la spec A2A v1.0 : opérations, modèle de données, bindings, sécurité — ce qui interopère et ce qui n'interopère pas |
 | [APIs expérimentales](./reference/experimental-apis.md) | Surfaces `[Experimental]` (A2A, Autonomous, RAG correctif, MCP), IDs de diagnostic `ORKEXP001–004`, comment s'inscrire |
 | [Politique de données des exemples](./reference/example-data-policy.md) | Pourquoi les exemples livrent de la config et pas des datasets, comment monter vos entrées (`/data:ro`, `/output:rw`), règles contributeurs pour les fixtures |
 | [Hosting & bootstrap des runners](./reference/hosting.md) | `Orkeon.Hosting` : `RunnerHost.Build`, ordre de câblage `ConfigureRunnerServices` (LLM d'abord, suites d'outils, VFS, `ServiceProviderToolRegistry`), flux `RunnerExecution`, pattern hôte web |

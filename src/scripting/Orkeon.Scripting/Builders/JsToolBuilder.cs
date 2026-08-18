@@ -12,9 +12,6 @@ namespace Orkeon.Scripting.Builders;
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591
-/// <summary>
-/// Fluent custom-tool builder exposed to .ork.ts scripts.
-/// </summary>
 public sealed class JsToolBuilder
 {
     private readonly Engine _engine;

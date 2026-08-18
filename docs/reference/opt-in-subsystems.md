@@ -65,6 +65,10 @@ partial (flagged case by case below).
 
 ## A2A server/protocol — `AddOrkeonA2A(...)`
 
+> **Task persistence add-on (PUB-08)**: `AddOrkeonA2ATaskPersistence()` stores A2A task
+> lifecycles over the opt-in checkpointing `IStateStore` (register one first), turning
+> `GET /a2a/tasks/{id}` into a real 200/404 endpoint instead of the explicit 501.
+
 - **Role**: inter-process agent-to-agent communication (A2A protocol):
   agent discovery (`/.well-known/agent.json`), HTTP client, task routing
   and, optionally, an HTTP server (`HttpListener`) exposing `POST /a2a/tasks/send`,

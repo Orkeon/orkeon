@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — A2A task persistence lifts the 501; conformance matrix published (PUB-08)
+
+- **`GET /a2a/tasks/{id}` is real now** — opt-in: register a checkpointing state store
+  (`AddOrkeonCheckpointing` / SQLite / Postgres) plus the new
+  `AddOrkeonA2ATaskPersistence()`, and the A2A server records every task lifecycle
+  transition (`IA2ATaskStore` port over the existing `IStateStore`, best-effort — a
+  store outage never fails the task exchange). The endpoint answers `200` with the
+  recorded state and `404` for unknown ids; `DELETE /a2a/tasks/{id}` now records the
+  cancellation and answers `404` for unknown ids instead of fabricating an
+  acknowledgement (cancellation stays advisory). Without the opt-in, the explicit
+  `501` remains — never invented state.
+- **A2A conformance matrix** (`docs/reference/a2a-conformance.md`, EN + FR): the
+  honest inventory of the 0.x-era surface against the A2A v1.0 specification —
+  operations, data model (5 vs 9 task states), bindings (own REST dialect; none of
+  the three canonical bindings), security. Includes the PUB-08 certificate-revocation
+  decision: short-lived certificates over CRL/OCSP for the private-CA mTLS model.
+- 6 new persistence tests (adapter round-trip + end-to-end HTTP 200/404/501/cancel).
+
 ### Changed — MCP unpinned from 2024-11-05: dual-era client and server (PUB-07)
 
 The MCP integration no longer hardcodes the first protocol revision. Both sides now

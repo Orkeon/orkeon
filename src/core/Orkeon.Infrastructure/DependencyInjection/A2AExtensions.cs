@@ -67,6 +67,20 @@ public static class A2AExtensions
     }
 
     /// <summary>
+    /// Enables durable A2A task lifecycle records over the opt-in checkpointing
+    /// <c>IStateStore</c> (PUB-08): lifts the <c>501</c> on <c>GET /a2a/tasks/{id}</c>
+    /// (200/404 instead) and makes <c>DELETE /a2a/tasks/{id}</c> answer 404 for
+    /// unknown ids. Requires a checkpointing store registration
+    /// (<c>AddOrkeonCheckpointing</c> / <c>AddOrkeonSqliteCheckpointing</c> /
+    /// <c>AddOrkeonPostgresCheckpointing</c>) — the task records ride that store.
+    /// </summary>
+    public static IServiceCollection AddOrkeonA2ATaskPersistence(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IA2ATaskStore, StateStoreA2ATaskStore>();
+        return services;
+    }
+
+    /// <summary>
     /// Registers the A2A services shared by both overloads, plus the external
     /// dependencies the subsystem needs so the opt-in graph is resolvable on its own
     /// (TryAdd — registrations made by <c>AddOrkeonInfrastructure()</c> win when present).
