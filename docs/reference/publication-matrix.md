@@ -97,13 +97,13 @@ before anything is published — the `release` job `needs` all of them.
 unsigned, quarantined or malformed native library (`libtree-sitter*.dylib`, onnxruntime, the
 esbuild binary) is killed at load time, so it fails there rather than in a user's terminal.
 
-The debian version string replaces `-` with `~` (`0.9.2-beta` → `orkeon_0.9.2~beta_amd64.deb`)
+The debian version string replaces `-` with `~` (`1.0.0-rc.1` → `orkeon_1.0.0~rc.1_amd64.deb`)
 so a pre-release sorts before its final under `dpkg`.
 
 The MSI's `ProductVersion` drops the suffix instead: Windows Installer versions carry only three
-numeric fields, so `build-msi.ps1` truncates `0.9.2-beta` to `0.9.2` for the property that
+numeric fields, so `build-msi.ps1` truncates `1.0.0-rc.1` to `1.0.0` for the property that
 `<MajorUpgrade>` actually compares. Nothing is silently lost — the full string survives in the
-`.msi` filename (`orkeon-0.9.2-beta-win-x64.msi`) and in the `ARPCOMMENTS` property shown in
+`.msi` filename (`orkeon-1.0.0-rc.1-win-x64.msi`) and in the `ARPCOMMENTS` property shown in
 "Installed apps".
 
 The `orkeon` CLI is distributed through **seven channels**:
@@ -176,4 +176,4 @@ print the runtime install commands rather than failing at first launch.
   Lesson from the 0.9.1-beta incident (see CHANGELOG 0.9.2-beta): the `v0.9.1-beta.rc*` tags
   re-packed the unchanged props version and `--skip-duplicate` silently skipped every push —
   a "release" that published nothing. The guard keeps `--skip-duplicate` honest.
-- Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.1`); the only projects overriding it are the three `examples/runners` dotnet tools, bumped in lockstep at each release.
+- Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.1`); the only projects overriding it are the three `examples/runners` packables (two dotnet tools plus the shared library), bumped in lockstep at each release.

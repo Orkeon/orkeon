@@ -1,4 +1,4 @@
-# 01 - Classiques Entreprise (1-15)
+# 01 - Classiques Entreprise (1-16)
 
 Enterprise use cases demonstrating core Orkeon patterns: sequential pipelines, hierarchical delegation, parallel execution with convergence, and human-in-the-loop validation.
 
@@ -21,3 +21,4 @@ Enterprise use cases demonstrating core Orkeon patterns: sequential pipelines, h
 | 13 | Audit de Securite Informatique | Hierarchical | Securite |
 | 14 | Pipeline ETL Intelligent | Sequential | Fiabilite |
 | 15 | Redaction de Propositions Commerciales | Sequential | Securite |
+| 16 | Session Q&A Interactive (recherche web, citations, boucle conversationnelle) | Sequential (interactif) | Simplicite |

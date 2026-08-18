@@ -87,7 +87,7 @@ L'argument `reason` est obligatoire et doit nommer la catégorie d'audit dont il
 > nullable déclenche désormais `ORKVFS007`) et les shims `[Obsolete]` liés au FS ont été supprimés.
 > Ne pas réintroduire ces catégories.
 
-Toute nouvelle classe d'exception doit d'abord être consignée dans l'audit de conformité VFS (`project/audit-vfs-compliance-*.md`) avant l'ajout d'une suppression.
+Toute nouvelle classe d'exception doit d'abord être consignée dans l'audit de conformité VFS (the maintainers' archive, `audit-vfs-compliance-*`) avant l'ajout d'une suppression.
 
 ### Exceptions permanentes ratifiées (2D)
 

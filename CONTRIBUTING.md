@@ -60,38 +60,38 @@ dotnet build Orkeon.sln
 dotnet test Orkeon.sln
 ```
 
+> **First build touches the network once**: the scripting layer bootstraps a small
+> esbuild toolchain (`npm ci` under `tools/scripting-esbuild/`, strictly from the
+> committed lockfile). To skip it (CI, no-npm machines):
+> `dotnet build Orkeon.sln -p:SkipScriptingNpmInstall=true` — the build still
+> succeeds and esbuild is resolved from `PATH` at runtime.
+
 ## Project Structure
+
+The solution has **33 src projects across 11 zones**, each mirrored by a test
+project (plus `tests/e2e`, `tests/examples`, `tests/shared`):
 
 ```
 src/
-├── core/
-│   ├── Orkeon.Domain/          # Core domain entities
-│   ├── Orkeon.Application/     # Application services
-│   └── Orkeon.Infrastructure/  # External integrations
-├── tools/
-│   ├── Orkeon.Tools.Abstractions/  # Tool base classes & interfaces
-│   ├── Orkeon.Tools.Code/          # Code-related tools
-│   ├── Orkeon.Tools.Data/          # Data manipulation tools
-│   ├── Orkeon.Tools.FileSystem/    # File system tools
-│   └── Orkeon.Tools.Web/           # Web/HTTP tools
-├── plugins/
-│   └── Orkeon.Plugins/        # Plugin system
-└── apps/
-    └── Orkeon.ConsoleApp/     # Console application
+├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (Clean Architecture core)
+├── tools/       # 9 tool packs: Abstractions, Analysis (RaggableTree), Code, Data,
+│                #   Embeddings.Local, EventHub, FileSystem, Rag, Web
+├── rag/         # RAG subsystem: Rag.Abstractions, Rag, Rag.Onnx, Rag.Onnx.Model
+├── analysis/    # RaggableTree engine: Analysis.Abstractions, Analysis
+├── scripting/   # Orkeon.Scripting (.ork.ts DSL) + Orkeon.Scripting.Cli (the `orkeon` tool)
+├── cli/         # Cli.Abstractions, Cli, Cli.Commands.Scripting, Cli.TerminalGui
+├── hosting/     # Orkeon.Hosting (RunnerHost)
+├── plugins/     # Orkeon.Plugins (runtime plugin loading)
+├── generators/  # Orkeon.Generators (source generators)
+├── analyzers/   # Orkeon.Compliance.Vfs (VFS-only Roslyn analyzer)
+└── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
-tests/
-├── core/
-│   ├── Orkeon.Domain.Tests/
-│   ├── Orkeon.Application.Tests/
-│   └── Orkeon.Infrastructure.Tests/
-├── plugins/
-│   └── Orkeon.Plugins.Tests/
-└── shared/
-    └── Orkeon.Tests.Shared/   # Common test fixtures
-
-examples/                 # Example projects
-docs/                    # Documentation
+examples/        # 105 bundled examples (9 categories + showcases) — own solution
+docs/            # Documentation, EN + docs/fr mirror (CI parity gate)
 ```
+
+The full annotated tree lives in
+[docs/getting-started/overview.md](docs/getting-started/overview.md#project-structure).
 
 ## Coding Standards
 
@@ -171,20 +171,19 @@ public async Task Agent_Should_Execute_Task_Successfully()
 ## Areas for Contribution
 
 ### High Priority
-- [ ] ChromaDB memory provider implementation
-- [ ] Pinecone memory provider
-- [ ] Additional LLM providers (Anthropic, Cohere)
+- [ ] Additional LLM providers (Cohere, Vertex AI / Bedrock via their SDKs)
+- [ ] Additional language adapters for RaggableTree (`ILanguageAdapter`: Java, Ruby, PHP…)
+- [ ] MCP interop testing against reference servers (MCP Inspector)
 - [ ] Performance optimizations
-- [ ] Documentation improvements
+- [ ] Documentation improvements (see the EN/FR parity contract below)
 
 ### Medium Priority
-- [ ] Additional tools (Slack, Discord, Email)
-- [ ] Streaming support
-- [ ] Real-time agent communication
+- [ ] Additional tools (calendar, ticketing, messaging beyond Slack/Email)
+- [ ] Additional memory providers (Qdrant, Weaviate, Milvus)
 - [ ] Web UI for crew management
 
 ### Good First Issues
-- [ ] Add more examples
+- [ ] Add more examples (follow [the example README template](docs/templates/example-readme.md))
 - [ ] Improve error messages
 - [ ] Add XML documentation
 - [ ] Fix typos in documentation
@@ -218,16 +217,21 @@ matter of opinion — it is **recorded in the repository** and enforced at build
 
 ## Release Process
 
-1. Update version numbers
-2. Update CHANGELOG.md
-3. Move `PublicAPI.Unshipped.txt` entries to `PublicAPI.Shipped.txt`
-4. Create release notes
-5. Tag the release
-6. Build and publish NuGet packages
+1. Bump `VersionPrefix`/`VersionSuffix` in `src/Directory.Build.props` — the single
+   source of truth. The publish workflow **refuses a `v*` tag that does not match it**.
+2. Cut the `[Unreleased]` section of `CHANGELOG.md` into a dated version section.
+3. Move `PublicAPI.Unshipped.txt` entries to `PublicAPI.Shipped.txt`.
+4. Make sure CI is green: `-warnaserror` build, tests, `scripts/check-docs-parity.sh`,
+   examples linters, strict docfx build.
+5. Tag `v<version>` and push the tag. This triggers: `publish.yml` (packs everything;
+   pushes **Domain/Application/Infrastructure to NuGet.org**, every package to GitHub
+   Packages — see [the publication matrix](docs/reference/publication-matrix.md)),
+   `release.yml` (Windows zip+MSI, macOS tarballs, Debian package) and `docs.yml`
+   (deploys the documentation site to GitHub Pages).
 
 ## Questions?
 
-Feel free to open an issue with your question or reach out on Discord.
+Feel free to open an issue, or start a thread in [GitHub Discussions](https://github.com/Orkeon/orkeon/discussions).
 
 ## License
 

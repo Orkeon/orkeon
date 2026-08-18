@@ -6,6 +6,8 @@
 
 The documentation is organized into 6 thematic sections.
 
+> **Language policy** — every page under `docs/` is maintained in English and French in parallel (`docs/fr/` mirrors the tree path-for-path); a missing mirror fails CI (`scripts/check-docs-parity.sh`). See [CONTRIBUTING.md](../CONTRIBUTING.md) for the contract.
+
 ### Getting started
 
 | File | Description |
@@ -23,7 +25,7 @@ The documentation is organized into 6 thematic sections.
 |------|-------------|
 | [LLM providers](./architecture/llm-providers.md) | 13 providers (OpenAI, Anthropic, Azure, Groq, Ollama, etc.), adapters, factory, real-API campaign kit |
 | [Memory system](./architecture/memory-system.md) | 5 memory types, 6 providers (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), cognitive memory |
-| [Events, CQRS and observability](./architecture/domain-events.md) | 41 domain events, CQRS pipeline, 2-level callbacks |
+| [Events, CQRS and observability](./architecture/domain-events.md) | 44 domain events, CQRS pipeline, 2-level callbacks |
 | [EventHub and crew lifecycle](./architecture/event-hub-and-crew-lifecycle.md) | Reference specification for inter-agent and inter-crew messaging (EventHub) and crew sleep/wake — Application ports, InMemory + SQLite adapters |
 | [Security, resilience and plugins](./architecture/security.md) | 7 security layers, Polly policies, checkpointing, plugin system |
 | [VFS compliance](./architecture/vfs-compliance.md) | VFS-only principle (all I/O via `IFileSystemService`): `Orkeon.Compliance.Vfs` Roslyn analyzer, 5 diagnostics, exempted scopes, migration exit criteria |
@@ -31,7 +33,7 @@ The documentation is organized into 6 thematic sections.
 | [Scripting DSL](./architecture/scripting.md) | TypeScript-syntax DSL (`.ork.ts`): esbuild transpilation, sandboxed Jint execution, the full Orkeon surface (agents, crews, tools, FSM, graphs, events) via fluent builders |
 | [TypeScript CLI commands](./architecture/cli-ts-commands.md) | Interactive REPL commands in `*.cmd.ts` (`defineCommand`) loaded at startup without .NET recompilation, with work dispatch to agents |
 | [TypeScript coding agent](./architecture/coding-agent-ts.md) | Agentic coding agent built on the scripted stack: `*.cmd.ts` control plane vs `crew.ork.ts` engine, C# `ToolBase` tools |
-| [YAML reference](./architecture/yaml-schema.md) | **Single source** of the complete YAML schema (crew, agents, tasks, circuitBreaker, graphConfig, autonomousBudget) |
+| [YAML reference](./architecture/yaml-schema.md) | **Single source** of the complete YAML schema (crew, agents, tasks, circuitBreaker, graphConfig) |
 | [RaggableTree — semantic graph](./architecture/raggable-tree.md) | 6-phase pipeline, 15 tools, 5 languages, incremental reindexing, watcher, context injection |
 | [RAG pipeline](./architecture/rag-pipeline.md) | The `src/rag/` subsystem: ingestion, 7-stage pipeline (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), corrective CRAG graph, web fallback, 5 profiles, measured evaluation |
 | [ADR — RaggableTree](./architecture/raggable-tree-adr.md) | Decision for a 6-level stratified graph via Tree-sitter, rejected alternatives, consequences |
@@ -50,7 +52,7 @@ The documentation is organized into 6 thematic sections.
 
 | File | Description |
 |------|-------------|
-| [Tool inventory](./tools/inventory.md) | 36+ tools by category, YAML resolution, DI registration, identified gaps |
+| [Tool inventory](./tools/inventory.md) | 75+ tools by category, YAML resolution, DI registration, identified gaps |
 | [Creating a new tool](./tools/new-tool-pattern.md) | Typed pipeline, FieldSchema/ReturnSchema attributes, composition pattern, registration |
 
 ### Guides
@@ -62,7 +64,7 @@ The documentation is organized into 6 thematic sections.
 | [New orchestration blueprint](./guides/blueprint.md) | 8-step template to add a new ProcessType to the framework |
 | [Multi-modal content (vision)](./guides/multimodal.md) | Real vision (R3.9): `MultiModalContent` → `LlmMessage` → Anthropic (image blocks) / OpenAI (`image_url`) payloads, VFS loader, opt-in activation |
 | [LLM response format](./guides/llm-response-format.md) | Forced JSON output at the provider boundary (`response_format: json_object`), 5-level override cascade (crew → agent → task → script → call), first wired provider: DeepSeek |
-| [SonarQube Quality Gate](./guides/quality-gate.md) | Blocking "Orkeon Transitional" gate (R5.4): transitional thresholds, hardening trajectory, automatic provisioning by the scripts |
+| [SonarQube Quality Gate](./guides/quality-gate.md) | Local SonarQube analysis with the "Orkeon Transitional" gate: transitional thresholds, hardening trajectory, automatic provisioning by the scripts |
 | [Local models](./guides/local-models.md) | Run everything on your own machine: Docker Model Runner (pull/configure/inspect, 128K contexts), Ollama, embedded `local-llm` image variant, model switching, troubleshooting |
 
 ### Reference
@@ -77,7 +79,8 @@ The documentation is organized into 6 thematic sections.
 | [Opt-in subsystems](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, tool rate-limiting, key rotation, benchmarking, multi-modal, kickoff hooks, RAG subsystem — explicit activation `AddOrkeonXxx()` (outside default DI) |
 | [Hosting & runner bootstrap](./reference/hosting.md) | `Orkeon.Hosting`: `RunnerHost.Build`, `ConfigureRunnerServices` wiring order (LLM-first, tool suites, VFS, `ServiceProviderToolRegistry`), `RunnerExecution` flows, and the web-host consumption pattern |
 | [Example README template](./templates/example-readme.md) | Gabarit for `examples/**/README.md`: What it does / Prerequisites / Required data / Run it (per way) / Expected output / Duration & cost |
-| [LLM provider comparison](./arkeon/llm-providers-comparatif.md) | Capability matrix per provider (SSE streaming, native tool calling, GBNF grammar, `response_format`, thinking, metrics, resilience), derived from the source code |
+| [LLM provider comparison](./reference/llm-providers-comparison.md) | Capability matrix per provider (SSE streaming, native tool calling, GBNF grammar, `response_format`, thinking, metrics, resilience), derived from the source code |
+| [Publication matrix](./reference/publication-matrix.md) | **Source of truth** for what ships where: NuGet.org vs GitHub Packages, dotnet tools, installer artifacts, version flow |
 
 ---
 
@@ -107,22 +110,3 @@ overview → new-tool-pattern → yaml-and-builders → blueprint → inventory
 
 Understand the architecture, then master the typed pipeline and the composition pattern. The blueprint guides the creation of new orchestration modes. The inventory serves as a reference to position contributions.
 
----
-
-## Migration from the legacy documentation
-
-The legacy documentation (`docs/arkeon/` folder) has been reorganized as follows:
-
-| Legacy file | New file(s) |
-|-------------|-------------|
-| `01_OVERVIEW.md` | `getting-started/overview.md` + `getting-started/bootstrap.md` |
-| `02_FEATURES.md` | Split into 8 thematic files (see above) |
-| `03_TOOLS_INVENTORY.md` | `tools/inventory.md` |
-| `04_NEW_TOOL_PATTERN.md` | `tools/new-tool-pattern.md` |
-| `05_PORTING_METHODOLOGY.md` | `guides/porting-methodology.md` |
-| `06_PORTING_EXAMPLE.md` | `guides/porting-example.md` |
-| `07_FSM_ORCHESTRATION.md` | `orchestration/fsm.md` |
-| `08_GRAPH_ORCHESTRATION.md` | `orchestration/graph.md` |
-| `09_AUTONOMOUS_ORCHESTRATION.md` | `orchestration/autonomous.md` |
-| `10_PROCESS_TYPES.md` | `orchestration/process-types.md` |
-| `BLUEPRINT_NEW_ORCHESTRATION.md` | `guides/blueprint.md` |

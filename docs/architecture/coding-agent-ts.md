@@ -1,11 +1,11 @@
 > 🇫🇷 [Version française](../fr/architecture/coding-agent-ts.md)
 
-# Orkéon Coding Agent (TypeScript)
+# Orkeon Coding Agent (TypeScript)
 
-The coding agent is an agentic coding assistant (à la Claude Code) built **on Orkéon's
+The coding agent is an agentic coding assistant (à la Claude Code) built **on Orkeon's
 scripted stack** — the `*.cmd.ts` slash-command registry (`Orkeon.Cli.Commands.Scripting`), the
 `crew.ork.ts` crew runtime (`Orkeon.Scripting`), and the C# `ToolBase` tools. It is the
-subject of `project/experiments/07-orkeon-coding-agent-ts/` (spec + plan + results).
+subject of `experiments/07-orkeon-coding-agent-ts/` (the `experiments` companion submodule) (spec + plan + results).
 
 ## Architecture: control plane vs engine
 
@@ -87,12 +87,12 @@ tools directly.
 
 ```bash
 # REPL (loads the 17 commands)
-DEEPSEEK_API_KEY=sk-... bash project/experiments/07-orkeon-coding-agent-ts/run-repl.sh
+DEEPSEEK_API_KEY=sk-... bash experiments/07-orkeon-coding-agent-ts/run-repl.sh
 
 # A single crew standalone (honours .body() + ctx.llm)
-bash project/experiments/07-orkeon-coding-agent-ts/run-crew.sh crews/git-commit/crew.ork.ts
+bash experiments/07-orkeon-coding-agent-ts/run-crew.sh crews/git-commit/crew.ork.ts
 ```
 
 The REPL needs an LLM key for the crews/loop. The 17 commands and the crew launching are
 exercised by automated tests (`Exp07CommandSurfaceTests`, `ScriptHostFacadeTests`) without a
-key. See `project/experiments/07-orkeon-coding-agent-ts/RESULTS.md` for the acceptance matrix.
+key. See `experiments/07-orkeon-coding-agent-ts/RESULTS.md` for the acceptance matrix.

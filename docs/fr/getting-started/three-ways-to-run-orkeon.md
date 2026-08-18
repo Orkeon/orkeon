@@ -270,7 +270,7 @@ dans le répertoire courant, puis le même en remontant les répertoires parents
 puis le fichier global per-user écrit par `orkeon init`, puis les variables
 d'environnement `ORKEON_*` seules.
 
-**Une crew peut aussi être un dossier** (Orkeon >= 0.9.2-beta). Pointez
+**Une crew peut aussi être un dossier**. Pointez
 `orkeon run` sur un répertoire contenant une crew multi-fichiers — `config.yaml`
 pour les réglages de la crew, un agent par fichier sous `agents/`, une task par
 fichier sous `tasks/`, le nom de chaque fichier servant d'identifiant — et il se

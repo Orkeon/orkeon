@@ -53,6 +53,15 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
 | Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Bêta |
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
+| Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Bêta |
+| Client & serveur MCP | `AddOrkeonMcp(...)` | Infrastructure | `McpClient` / `McpServer` — bi-ère (`2026-07-28` stateless + révisions legacy `initialize`) ; surface `[Experimental]`, voir [APIs expérimentales](./experimental-apis.md) | Expérimental |
+| Embeddings locaux sur machine | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, sans clé API) — premier maillon de la chaîne de résolution des embeddings | Bêta |
+| Stores d'état de checkpointing | `AddOrkeonCheckpointing()` / `AddOrkeonSqliteCheckpointing(...)` / `AddOrkeonPostgresCheckpointing(...)` | Infrastructure | `IStateStore` — consommé par la persistance d'état d'exécution (ci-dessus) et la persistance des tâches A2A | Bêta |
+| Fournisseurs de mémoire externes | `AddOrkeonChromaDb(...)` / `AddOrkeonPinecone(...)` / `AddOrkeonLanceDb(...)` / `AddOrkeonRedisMemory(...)` (ou clés de type via `MemoryProviderFactory`) | Infrastructure | Implémentations `IMemoryProvider` — voir [Système de mémoire](../architecture/memory-system.md) | Bêta |
+| Mémoire cognitive | `AddOrkeonCognitiveMemory(...)` | Infrastructure | Couche de mémoire cognitive au-dessus d'`IMemoryProvider` | Expérimental |
+| Pipeline Guardian | `AddOrkeonGuardian()` | Infrastructure | Hooks de sûreté de contenu autour de l'exécution des agents | Bêta |
+| Moteur de Flows | `AddOrkeonFlows()` | Infrastructure | `FlowEngine` (étapes séquentielles/parallèles/décision) — un système d'orchestration distinct des Crews | Bêta |
+| Training | `AddOrkeonTraining()` | Infrastructure | Services de capture de données d'entraînement/fine-tuning | Expérimental |
 
 **Maturité** — *Bêta* : implémentation complète et testée, API susceptible d'évoluer
 avant la v1. *Expérimental* : implémentation fonctionnelle mais non câblée dans le

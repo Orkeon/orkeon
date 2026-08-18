@@ -10,21 +10,23 @@ Aggregates emit events via `RaiseDomainEvent()` (inherited from `AggregateRoot<T
 
 Agent events (10 types): `AgentCreatedEvent`, `AgentAssignedToTaskEvent`, `AgentStartedTaskEvent`, `AgentCompletedTaskEvent`, `AgentFailedTaskEvent`, `AgentCapabilitiesUpdatedEvent`, `AgentCollaborationStartedEvent`, `AgentMemoryUpdatedEvent`, `AgentKilledEvent`, `AgentSpawnedEvent`.
 
-Crew events (10 types): `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `AgentLeftCrewEvent`, `TaskAddedToCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent`, `CrewProcessTypeChangedEvent`, `CrewGoalUpdatedEvent`.
+Crew events (11 types): `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `AgentLeftCrewEvent`, `TaskAddedToCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent`, `CrewCompletedEvent`, `CrewProcessTypeChangedEvent`, `CrewGoalUpdatedEvent`.
 
-Task events (10 types): `TaskCreatedEvent`, `TaskAssignedEvent`, `TaskStatusChangedEvent`, `TaskStartedEvent`, `TaskCompletedEvent`, `TaskFailedEvent`, `TaskCancelledEvent`, `TaskDependenciesUpdatedEvent`, `TaskBlockedEvent`, `TaskUnblockedEvent`.
+Task events (11 types): `TaskCreatedEvent`, `TaskAssignedEvent`, `TaskStatusChangedEvent`, `TaskStartedEvent`, `TaskCompletedEvent`, `TaskFailedEvent`, `TaskCancelledEvent`, `TaskDependenciesUpdatedEvent`, `TaskContextUpdatedEvent`, `TaskBlockedEvent`, `TaskUnblockedEvent`.
 
 Memory events (6 types): `MemoryStoreCreatedEvent`, `MemoryAddedEvent`, `MemoryPromotedEvent`, `EntityMemoryUpdatedEvent`, `EpisodicMemoryAddedEvent`, `MemoryClearedEvent`.
 
 Delegation events (5 types): `TaskDelegatedEvent`, `DelegationCompletedEvent`, `DelegationQueuedEvent`, `AgentRegisteredForDelegationEvent`, `AgentUnregisteredFromDelegationEvent`.
 
-Total: 41 domain events covering the entire lifecycle of agents, crews, tasks, memory and delegation.
+Human-input events (1 type): `HumanInputRequestedEvent`.
+
+Total: 44 domain events covering the entire lifecycle of agents, crews, tasks, memory, delegation and human input.
 
 ## CQRS and pipeline
 
 The Application layer implements the CQRS pattern with the `ICommand`/`ICommandHandler<TCommand, TResult>` and `IQuery<TResult>`/`IQueryHandler<TQuery, TResult>` interfaces (`Orkeon.Application.Common`). Handlers are auto-scanned and registered at startup via `AddCqrsHandlers()`.
 
-Existing commands: `CreateCrewCommand`, `CreateTaskCommand`. Queries: `GetCrewQuery`, `GetTaskQuery`, `SearchMemoryQuery`.
+Existing commands: `CreateAgentCommand`, `CreateCrewCommand`, `CreateTaskCommand`, `AddMemoryCommand`, `CreateMemoryStoreCommand`. Queries: `GetAgentQuery`, `GetCrewQuery`, `GetTaskQuery`, `SearchMemoryQuery`.
 
 ## Callbacks and observability
 

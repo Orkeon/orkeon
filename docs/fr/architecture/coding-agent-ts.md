@@ -1,11 +1,11 @@
 > 🇬🇧 [English version](../../architecture/coding-agent-ts.md)
 
-# Agent de codage Orkéon (TypeScript)
+# Agent de codage Orkeon (TypeScript)
 
 L'agent de codage est un assistant de codage agentique (à la Claude Code) construit **sur la
-pile scriptée d'Orkéon** — le registre de slash-commands `*.cmd.ts` (`Orkeon.Cli.Commands.Scripting`),
+pile scriptée d'Orkeon** — le registre de slash-commands `*.cmd.ts` (`Orkeon.Cli.Commands.Scripting`),
 le runtime de crew `crew.ork.ts` (`Orkeon.Scripting`), et les outils C# `ToolBase`. Il fait
-l'objet de `project/experiments/07-orkeon-coding-agent-ts/` (spec + plan + résultats).
+l'objet de `experiments/07-orkeon-coding-agent-ts/` (the `experiments` companion submodule) (spec + plan + résultats).
 
 ## Architecture : plan de contrôle vs moteur
 
@@ -87,13 +87,13 @@ C'est ainsi que `/cost`, `/diff`, `/memory`, … appellent directement les outil
 
 ```bash
 # REPL (loads the 17 commands)
-DEEPSEEK_API_KEY=sk-... bash project/experiments/07-orkeon-coding-agent-ts/run-repl.sh
+DEEPSEEK_API_KEY=sk-... bash experiments/07-orkeon-coding-agent-ts/run-repl.sh
 
 # A single crew standalone (honours .body() + ctx.llm)
-bash project/experiments/07-orkeon-coding-agent-ts/run-crew.sh crews/git-commit/crew.ork.ts
+bash experiments/07-orkeon-coding-agent-ts/run-crew.sh crews/git-commit/crew.ork.ts
 ```
 
 Le REPL a besoin d'une clé LLM pour les crews/la boucle. Les 17 commandes et le lancement de
 crew sont exercés par des tests automatisés (`Exp07CommandSurfaceTests`,
 `ScriptHostFacadeTests`) sans clé. Voir
-`project/experiments/07-orkeon-coding-agent-ts/RESULTS.md` pour la matrice d'acceptation.
+`experiments/07-orkeon-coding-agent-ts/RESULTS.md` pour la matrice d'acceptation.

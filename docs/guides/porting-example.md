@@ -41,12 +41,12 @@ The `FraudDetectionService` flags orders with a score > 80 for manual review. Th
 ### Agent 1: Order Collector
 
 ```
-Responsabilité source : OrderIngestionService
-→ Rôle agent         : "Order Data Collector"
-→ Objectif agent     : "Retrieve and structure new order data from the database"
-→ Backstory          : "Experienced data engineer specialized in order management systems"
-→ Outils nécessaires : RelationalDatabaseTool (PostgreSQL)
-→ Contraintes        : MaxIterations=5, MaxRpm=10
+Source responsibility  : OrderIngestionService
+→ Agent role          : "Order Data Collector"
+→ Agent goal          : "Retrieve and structure new order data from the database"
+→ Backstory           : "Experienced data engineer specialized in order management systems"
+→ Required tools      : RelationalDatabaseTool (PostgreSQL)
+→ Constraints         : MaxIterations=5, MaxRpm=10
 ```
 
 **Key decision**: We do not port the RabbitMQ reading. The agent reads pending orders directly from the PostgreSQL database. Queue consumption stays outside the agent perimeter — it is a purely mechanical infrastructure operation (no LLM reasoning needed).
@@ -54,23 +54,23 @@ Responsabilité source : OrderIngestionService
 ### Agent 2: Inventory Checker
 
 ```
-Responsabilité source : InventoryCheckService
-→ Rôle agent         : "Inventory Verification Specialist"
-→ Objectif agent     : "Verify product availability and flag out-of-stock items"
-→ Backstory          : "Supply chain analyst with deep knowledge of inventory systems"
-→ Outils nécessaires : HttpApiTool (API Catalogue)
-→ Contraintes        : MaxIterations=10, MaxRpm=20
+Source responsibility  : InventoryCheckService
+→ Agent role          : "Inventory Verification Specialist"
+→ Agent goal          : "Verify product availability and flag out-of-stock items"
+→ Backstory           : "Supply chain analyst with deep knowledge of inventory systems"
+→ Required tools      : HttpApiTool (Catalog API)
+→ Constraints         : MaxIterations=10, MaxRpm=20
 ```
 
 ### Agent 3: Fraud Analyst
 
 ```
-Responsabilité source : FraudDetectionService
-→ Rôle agent         : "Fraud Detection Analyst"
-→ Objectif agent     : "Analyze order risk based on customer history and transaction patterns"
-→ Backstory          : "Senior fraud prevention specialist with expertise in e-commerce transaction patterns"
-→ Outils nécessaires : RelationalDatabaseTool (historique client), JsonTool (structuration résultat)
-→ Contraintes        : MaxIterations=10, MaxRpm=10
+Source responsibility  : FraudDetectionService
+→ Agent role          : "Fraud Detection Analyst"
+→ Agent goal          : "Analyze order risk based on customer history and transaction patterns"
+→ Backstory           : "Senior fraud prevention specialist with expertise in e-commerce transaction patterns"
+→ Required tools      : RelationalDatabaseTool (customer history), JsonTool (result structuring)
+→ Constraints         : MaxIterations=10, MaxRpm=10
 ```
 
 **Key decision**: The LLM brings real value here — it can reason about complex fraud patterns beyond the static rules of the original service. The risk score is produced with a textual justification the original service did not provide.
@@ -78,12 +78,12 @@ Responsabilité source : FraudDetectionService
 ### Agent 4: Pricing Specialist
 
 ```
-Responsabilité source : PricingService
-→ Rôle agent         : "Pricing Calculation Specialist"
-→ Objectif agent     : "Apply promotions and compute final pricing (HT, TVA, TTC)"
-→ Backstory          : "Pricing analyst expert in French tax regulations and promotional strategies"
-→ Outils nécessaires : CsvReaderTool (fichier promotions), SecureCodeInterpreterTool (calculs)
-→ Contraintes        : MaxIterations=5, MaxRpm=10
+Source responsibility  : PricingService
+→ Agent role          : "Pricing Calculation Specialist"
+→ Agent goal          : "Apply promotions and compute final pricing (HT, TVA, TTC)"
+→ Backstory           : "Pricing analyst expert in French tax regulations and promotional strategies"
+→ Required tools      : CsvReaderTool (promotions file), SecureCodeInterpreterTool (calculations)
+→ Constraints         : MaxIterations=5, MaxRpm=10
 ```
 
 **Key decision**: Use `SecureCodeInterpreterTool` for the VAT (TVA) calculations rather than a custom tool. The LLM generates the C# calculation code which is executed in the sandbox — this gives the flexibility to handle complex promotion rules without hardcoding the logic.
@@ -91,12 +91,12 @@ Responsabilité source : PricingService
 ### Agent 5: Notification Writer
 
 ```
-Responsabilité source : NotificationService
-→ Rôle agent         : "Customer Communication Specialist"
-→ Objectif agent     : "Generate personalized order confirmation content"
-→ Backstory          : "Customer experience writer skilled in e-commerce communication"
-→ Outils nécessaires : FileWriteTool (génération du contenu)
-→ Contraintes        : MaxIterations=3, MaxRpm=5
+Source responsibility  : NotificationService
+→ Agent role          : "Customer Communication Specialist"
+→ Agent goal          : "Generate personalized order confirmation content"
+→ Backstory           : "Customer experience writer skilled in e-commerce communication"
+→ Required tools      : FileWriteTool (content generation)
+→ Constraints         : MaxIterations=3, MaxRpm=5
 ```
 
 **Key decision**: SMTP sending stays outside the agent perimeter — only the generation of the email content is ported. The actual sending is a mechanical operation that will be triggered by the calling system after receiving the Crew's result. A custom `SmtpSendTool` could be created if the sending must be integrated.
@@ -124,7 +124,7 @@ All the required tools already exist. No custom tool is needed for this port.
 ### Task definition (Fluent Builder approach)
 
 ```csharp
-// Task 1 — Collecte des données commande
+// Task 1 — Order data collection
 var collectTask = new CrewTaskBuilder()
     .Description("Query the orders database for pending orders with status 'NEW'. " +
                  "For each order, retrieve: order_id, customer_id, product_ids, " +
@@ -134,18 +134,18 @@ var collectTask = new CrewTaskBuilder()
     .AssignTo(orderCollector)
     .Build();
 
-// Task 2 — Vérification de stock
+// Task 2 — Stock verification
 var stockTask = new CrewTaskBuilder()
     .Description("For each order from the previous task, call the inventory API " +
                  "at https://api.internal/catalog/v1/stock to verify product availability. " +
                  "Flag any out-of-stock items. Return the order list with availability status.")
     .ExpectedOutput("JSON array of orders enriched with stock availability per product")
     .Priority(TaskPriority.High)
-    .DependsOn(collectTask)  // Accepte CrewTask ou TaskId
+    .DependsOn(collectTask)  // Accepts CrewTask or TaskId
     .AssignTo(inventoryChecker)
     .Build();
 
-// Task 3 — Analyse fraude
+// Task 3 — Fraud analysis
 var fraudTask = new CrewTaskBuilder()
     .Description("For each order with available stock, analyze fraud risk. " +
                  "Query customer purchase history from the database. " +
@@ -154,11 +154,11 @@ var fraudTask = new CrewTaskBuilder()
     .ExpectedOutput("JSON array of orders with risk_score (0-100) and risk_justification")
     .Priority(TaskPriority.High)
     .DependsOn(stockTask)
-    .HumanInput(true)  // Revue manuelle si score > 80
+    .HumanInput(true)  // Manual review if score > 80
     .AssignTo(fraudAnalyst)
     .Build();
 
-// Task 4 — Calcul prix
+// Task 4 — Price calculation
 var pricingTask = new CrewTaskBuilder()
     .Description("For each approved order (risk_score <= 80 or manually approved), " +
                  "read the promotions CSV file at /data/promotions.csv. " +
@@ -170,7 +170,7 @@ var pricingTask = new CrewTaskBuilder()
     .AssignTo(pricingSpecialist)
     .Build();
 
-// Task 5 — Génération notification
+// Task 5 — Notification generation
 var notifTask = new CrewTaskBuilder()
     .Description("For each priced order, generate a personalized confirmation email " +
                  "in French. Include: order summary, items with prices, total TTC, " +
@@ -366,12 +366,12 @@ using Orkeon.Infrastructure.DependencyInjection;
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
-        // Enregistrer les services Orkeon.
-        // Pour un provider LLM configuré (clé API, modèle), enregistrez un ILlmProvider
-        // AVANT AddOrkeonInfrastructure() — ses TryAdd* respectent l'enregistrement existant.
+        // Register the Orkeon services.
+        // For a configured LLM provider (API key, model), register an ILlmProvider
+        // BEFORE AddOrkeonInfrastructure() — its TryAdd* calls honor the existing registration.
         services.AddOrkeonApplication();
-        // L'overload avec IConfiguration active aussi les modules liés aux sections
-        // "Orkeon:*" (ChromaDb, Pinecone, Telemetry, MCP, RAG, ...)
+        // The IConfiguration overload also activates the modules tied to the
+        // "Orkeon:*" sections (ChromaDb, Pinecone, Telemetry, MCP, RAG, ...)
         services.AddOrkeonInfrastructure(context.Configuration);
         services.AddOrkeonFileSystemTools();
         services.AddOrkeonDataTools();
@@ -380,7 +380,7 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
-// Attendre que l'hôte soit construit
+// Wait for the host to be built
 await host.StartAsync();
 ```
 
@@ -413,26 +413,26 @@ public class OrderProcessingService
     {
         try
         {
-            // 1. Charger la crew depuis le fichier YAML
+            // 1. Load the crew from the YAML file
             _logger.LogInformation("Loading order processing crew from config.yaml");
             var crew = await _crewFactory.CreateFromFileAsync(
                 "config/order-processing/config.yaml",
                 cancellationToken);
 
-            // 2. Préparer l'entrée
+            // 2. Prepare the input
             var input = CrewInput.Empty(
                 "Process all pending orders from today with fraud analysis and pricing");
 
-            // 3. Exécuter la crew
+            // 3. Run the crew
             _logger.LogInformation("Starting crew execution: {CrewId}", crew.Id);
             var output = await _orchestrator.KickoffAsync(crew.Id, input, cancellationToken);
 
-            // 4. Exploiter les résultats
+            // 4. Use the results
             _logger.LogInformation("Crew execution completed in {Duration}ms",
                 output.Duration.TotalMilliseconds);
             _logger.LogInformation("Final output:\n{Output}", output.FinalOutput);
 
-            // 5. Traiter les sorties de chaque task
+            // 5. Process each task's outputs
             foreach (var taskOutput in output.TaskOutputs)
             {
                 _logger.LogInformation(
@@ -447,7 +447,7 @@ public class OrderProcessingService
                 }
             }
 
-            // 6. Post-traitement : envoi des notifications générées
+            // 6. Post-processing: send the generated notifications
             await SendConfirmationEmailsAsync(output, cancellationToken);
         }
         catch (Exception ex)
@@ -459,7 +459,7 @@ public class OrderProcessingService
 
     private async Task SendConfirmationEmailsAsync(CrewOutput output, CancellationToken cancellationToken)
     {
-        // Lire les fichiers de confirmation générés par notification_writer
+        // Read the confirmation files generated by notification_writer
         var confirmationDir = new DirectoryInfo("/output/confirmations/");
         if (!confirmationDir.Exists)
         {
@@ -477,10 +477,10 @@ public class OrderProcessingService
                 var orderId = Path.GetFileNameWithoutExtension(file.Name);
                 var htmlContent = await File.ReadAllTextAsync(file.FullName, cancellationToken);
 
-                // Appeler votre service SMTP (hors Orkeon)
+                // Call your SMTP service (outside Orkeon)
                 // await _emailService.SendAsync(
                 //     recipient: customer.Email,
-                //     subject: $"Confirmation de commande {orderId}",
+                //     subject: $"Order confirmation {orderId}",
                 //     htmlBody: htmlContent,
                 //     cancellationToken: cancellationToken);
 
@@ -509,7 +509,7 @@ public class OrderProcessingMessageConsumer : IMessageHandler
     {
         _logger.LogInformation("Received order processing event");
 
-        // Les messages RabbitMQ déclenchent simplement l'appel à la crew
+        // RabbitMQ messages simply trigger the crew call
         await _orderProcessing.ProcessOrdersAsync(cancellationToken);
     }
 }

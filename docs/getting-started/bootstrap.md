@@ -21,28 +21,28 @@ using Orkeon.Tools.Code.DependencyInjection;
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
-        // 1. Couche Application (CQRS, orchestration, services)
+        // 1. Application layer (CQRS, orchestration, services)
         services.AddOrkeonApplication();
 
-        // 2. Couche Infrastructure (LLM, mémoire, sécurité, YAML)
+        // 2. Infrastructure layer (LLM, memory, security, YAML)
         services.AddOrkeonInfrastructure();
 
-        // 3. Suites d'outils
-        // FileSystem : FileRead, FileWrite, DirectoryRead, DirectoryCreate, etc.
+        // 3. Tool suites
+        // FileSystem: FileRead, FileWrite, DirectoryRead, DirectorySearch, EmailParser, CountPattern
         services.AddOrkeonFileSystemTools();
 
-        // Data : CSV, PDF, JSON, DOCX, SQL queries, MongoDB queries, etc.
+        // Data: CSV, PDF, JSON, DOCX, SQL queries, MongoDB queries, etc.
         services.AddOrkeonDataTools();
 
-        // Web : WebSearch, WebScrape, HttpApi, GitHub, etc.
+        // Web: WebSearch, WebScrape, HttpApi, GitHub, etc.
         services.AddOrkeonWebTools();
 
-        // Code : ShellCommand, SecureCodeInterpreter
+        // Code: ShellCommand, SecureCodeInterpreter
         services.AddOrkeonCodeTools();
     })
     .Build();
 
-// Démarrer l'application
+// Start the application
 await host.RunAsync();
 ```
 
@@ -62,7 +62,7 @@ replace a default implementation (for example `IPathValidator` or
 honored regardless of the order of subsequent calls:
 
 ```csharp
-// Votre implémentation gagne car TryAdd* ne réenregistre pas un service déjà présent.
+// Your implementation wins because TryAdd* does not re-register an already present service.
 services.AddSingleton<IPathValidator, MyPathValidator>();
 services.AddOrkeonInfrastructure();
 ```
@@ -94,9 +94,12 @@ Two overloads exist and produce containers with **different** capabilities:
 > is present.
 
 > **Opt-in subsystems (R4.9)**: A2A, monitoring backend, MultiModal, NIST, DLP,
-> tool rate-limiting, key rotation, benchmarking and kickoff hooks are registered
-> by **neither** of the two overloads — they are enabled explicitly via their
-> `AddOrkeonXxx()` extension. See
+> tool rate-limiting, key rotation, benchmarking, kickoff hooks — and likewise
+> the **RAG subsystem** (`AddOrkeonRag` + `AddOrkeonRagTools`), **RaggableTree**
+> (`AddRaggableTree`), the **plugin system** (`AddOrkeonPlugins`), **MCP**
+> (`AddOrkeonMcp`), the **permission gate** and the checkpointing stores — are
+> registered by **neither** of the two overloads: each is enabled explicitly via
+> its `AddOrkeonXxx()` extension. Full catalog:
 > [Opt-in subsystems](../reference/opt-in-subsystems.md).
 
 ## Running a Crew
@@ -104,50 +107,50 @@ Two overloads exist and produce containers with **different** capabilities:
 ### Approach 1: From a YAML file
 
 ```csharp
-// Récupérer les services depuis l'hôte
+// Retrieve the services from the host
 var crewFactory = host.Services.GetRequiredService<ICrewFactory>();
 var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 
-// Créer la Crew depuis le fichier YAML
+// Create the Crew from the YAML file
 var crew = await crewFactory.CreateFromFileAsync("config/sales-report-crew.yaml");
 
-// Préparer l'entrée
+// Prepare the input
 var input = CrewInput.Empty("Process last week's sales data");
 
-// Exécuter la Crew de manière synchrone
+// Run the Crew synchronously
 var output = await orchestrator.KickoffAsync(crew.Id, input);
 
-// Afficher les résultats
-Console.WriteLine("=== Résultat Final ===");
+// Print the results
+Console.WriteLine("=== Final Result ===");
 Console.WriteLine(output.FinalOutput);
 
-Console.WriteLine("\n=== Résultats par Task ===");
+Console.WriteLine("\n=== Results per Task ===");
 foreach (var taskOutput in output.TaskOutputs)
 {
     Console.WriteLine($"[{taskOutput.TaskId}] {taskOutput.Content[..Math.Min(100, taskOutput.Content.Length)]}...");
 }
 
-Console.WriteLine($"\nDurée totale : {output.Duration.TotalSeconds:F2}s");
+Console.WriteLine($"\nTotal duration: {output.Duration.TotalSeconds:F2}s");
 ```
 
 ### Approach 2: From the Fluent Builder
 
 ```csharp
-// Récupérer les repositories et l'orchestrator
+// Retrieve the repositories and the orchestrator
 var agentRepository = host.Services.GetRequiredService<IAgentRepository>();
 var taskRepository = host.Services.GetRequiredService<ITaskRepository>();
 var crewRepository = host.Services.GetRequiredService<ICrewRepository>();
 var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 
-// (Après avoir créé analyst, writer, analyzeTask, reportTask, crew avec builders)
-// Persister les entités dans les repositories
+// (After creating analyst, writer, analyzeTask, reportTask, crew with builders)
+// Persist the entities in the repositories
 await agentRepository.AddAsync(analyst);
 await agentRepository.AddAsync(writer);
 await taskRepository.AddAsync(analyzeTask);
 await taskRepository.AddAsync(reportTask);
 await crewRepository.AddAsync(crew);
 
-// Exécuter la Crew
+// Run the Crew
 var variables = new Dictionary<string, object>
 {
     ["start_date"] = "2024-10-01",
@@ -170,10 +173,10 @@ Running a Crew uses the following types:
 **CrewInput** (`Orkeon.Application.Interfaces.Services`):
 ```csharp
 public record CrewInput(
-    string? InitialContext,                          // Contexte initial textuel
-    IReadOnlyDictionary<string, object> Variables);  // Variables d'exécution
+    string? InitialContext,                          // Initial textual context
+    IReadOnlyDictionary<string, object> Variables);  // Execution variables
 
-// Helpers :
+// Helpers:
 //   CrewInput.Empty(initialContext)
 //   CrewInput.WithStringVariables(initialContext, variables)
 ```
@@ -183,10 +186,10 @@ public record CrewInput(
 **CrewOutput** (`Orkeon.Application.Interfaces.Services`):
 ```csharp
 public record CrewOutput(
-    string FinalOutput,                       // Résultat final textuel
-    IReadOnlyList<TaskOutput> TaskOutputs,    // Résultats par tâche
-    TimeSpan Duration,                        // Durée d'exécution
-    TokenUsage? TokensUsed);                  // Consommation de tokens (si disponible)
+    string FinalOutput,                       // Final textual result
+    IReadOnlyList<TaskOutput> TaskOutputs,    // Results per task
+    TimeSpan Duration,                        // Execution duration
+    TokenUsage? TokensUsed);                  // Token consumption (when available)
 ```
 
 **TaskOutput** (`Orkeon.Application.Execution`):
@@ -194,13 +197,13 @@ public record CrewOutput(
 public record TaskOutput(
     string TaskId,
     string? AgentId,
-    string Content,                                  // Sortie de la tâche
+    string Content,                                  // Task output
     DateTime CompletedAt,
     bool Success,
     TimeSpan ExecutionTime,
     IReadOnlyList<ToolUsage>? ToolsUsed = null)
 {
-    public string RawOutput => Content;              // Alias de Content
+    public string RawOutput => Content;              // Alias of Content
 }
 ```
 
@@ -210,7 +213,7 @@ Orkeon supports several execution modes via `ICrewOrchestrationService`:
 
 **Iterative mode (batch)**:
 ```csharp
-// Exécuter la Crew pour chaque élément d'une collection
+// Run the Crew for each element of a collection
 var inputs = new List<CrewInput>
 {
     CrewInput.Empty("Process sales data for region 1"),
@@ -220,17 +223,17 @@ var inputs = new List<CrewInput>
 
 var batchOutput = await orchestrator.KickoffForEachAsync(crew.Id, inputs);
 
-// batchOutput est de type BatchOutput contenant les résultats individuels
+// batchOutput is a BatchOutput containing the individual results
 ```
 
 **Streaming mode**:
 ```csharp
-// Exécuter la Crew et recevoir les événements en temps réel via IAsyncEnumerable
+// Run the Crew and receive the events in real time via IAsyncEnumerable
 await foreach (var executionEvent in orchestrator.KickoffStreamingAsync(crew.Id, input))
 {
     Console.WriteLine(
         $"[{executionEvent.Timestamp:HH:mm:ss}] {executionEvent.AgentRole} — {executionEvent.TaskDescription}");
-    Console.WriteLine($"  {executionEvent.Thought.Type} : {executionEvent.Thought.Content}");
+    Console.WriteLine($"  {executionEvent.Thought.Type}: {executionEvent.Thought.Content}");
 }
 ```
 
@@ -246,12 +249,12 @@ await foreach (var executionEvent in orchestrator.KickoffStreamingAsync(crew.Id,
 
 **Non-blocking asynchronous mode (fire-and-forget)**:
 ```csharp
-// Démarrer l'exécution sans attendre la complétion
+// Start the execution without awaiting completion
 var executionId = await orchestrator.KickoffAsyncNoWait(crew.Id, input);
 
-Console.WriteLine($"Exécution démarrée avec ID : {executionId}");
+Console.WriteLine($"Execution started with ID: {executionId}");
 
-// Vérifier le statut ultérieurement
+// Check the status later
 var status = await orchestrator.GetExecutionStatusAsync(executionId);
-Console.WriteLine($"Statut : {status.State}");
+Console.WriteLine($"Status: {status.State}");
 ```

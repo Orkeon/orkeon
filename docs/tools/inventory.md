@@ -94,15 +94,21 @@
 
 ## Summary by category
 
-| Category | Count | Package |
-|-----------|--------|---------|
-| Collaboration | 2 | `Orkeon.Infrastructure` |
-| Search / RAG | 2 | `Orkeon.Infrastructure` + `Orkeon.Tools.Rag` |
-| Code | 2 | `Orkeon.Infrastructure` + `Orkeon.Tools.Code` |
-| Files | 5 | `Orkeon.Tools.FileSystem` |
-| Data | 17+ | `Orkeon.Tools.Data` |
-| Web | 8+ | `Orkeon.Tools.Web` |
-| **Total** | **36+** | |
+The tables above list the tools registered by the standard DI suites. Counting
+**concrete tool classes** across the whole framework (the number quoted in the
+README's "75+ built-in tools"):
+
+| Package | Tool classes |
+|---------|--------------|
+| `Orkeon.Tools.Data` | 22 |
+| `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 15 |
+| `Orkeon.Infrastructure` (collaboration, search, sandbox, human input) | 12 |
+| `Orkeon.Tools.Web` | 10 |
+| `Orkeon.Tools.EventHub` | 7 |
+| `Orkeon.Tools.FileSystem` | 6 |
+| `Orkeon.Tools.Rag` | 3 |
+| `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 each |
+| **Total** | **79** |
 
 ## Tool resolution by name (YAML → instance)
 
@@ -113,12 +119,12 @@ When a crew is defined in YAML, tools are referenced by their name (the tool cla
 ```
 YAML config: tools: ["relational_database_query", "csv_reader"]
        ↓
-CrewFactory appelle IToolRegistry.GetToolByNameAsync("relational_database_query")
+CrewFactory calls IToolRegistry.GetToolByNameAsync("relational_database_query")
        ↓
-IToolRegistry cherche l'outil enregistré avec Name == "relational_database_query"
+IToolRegistry looks up the registered tool with Name == "relational_database_query"
        ↓
-Si trouvé → ITool injecté dans l'Agent via AgentBuilder.WithTool()
-Si absent → CrewFactory lève une erreur de validation
+If found → ITool injected into the Agent via AgentBuilder.WithTool()
+If missing → CrewFactory raises a validation error
 ```
 
 ### Tool registration
@@ -126,7 +132,7 @@ Si absent → CrewFactory lève une erreur de validation
 Tools are registered in `IToolRegistry` at application startup via the DI extensions:
 
 ```csharp
-// Chaque suite enregistre ses outils dans IToolRegistry
+// Each suite registers its tools in IToolRegistry
 services.AddOrkeonFileSystemTools();   // file_read, file_write, directory_read, directory_search, email_parser
 services.AddOrkeonDataTools();         // csv_reader, pdf_reader, json_tool, docx_reader, relational_database_query, mongodb_query, ...
 services.AddOrkeonWebTools();          // web_search, brave_search, web_scrape, http_api, github, slack_send_message, ...
@@ -202,7 +208,7 @@ The tool will then be accessible in YAML through its `Name`:
 agents:
   my_agent:
     tools:
-      - "mon_custom_tool"  # Correspond à Name du tool
+      - "mon_custom_tool"  # Matches the tool's Name property
 ```
 
 ## Identified functional gaps

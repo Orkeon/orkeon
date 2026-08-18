@@ -1,3 +1,5 @@
+> 🇫🇷 [Version française](../fr/architecture/rag-pipeline.md)
+
 > **See also**: [ADR-006 — RAG subsystem](../adr/ADR-006-rag-subsystem.md) · [Memory system](./memory-system.md) · [Opt-in subsystems](../reference/opt-in-subsystems.md) · [Back to index](../INDEX.md)
 
 # RAG pipeline

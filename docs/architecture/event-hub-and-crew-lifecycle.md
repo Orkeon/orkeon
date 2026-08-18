@@ -5,9 +5,9 @@
 **Status**: design frozen, ready for v1 implementation
 **Date**: 2026-05-23
 **Scope**: `Orkeon.Application` (ports), `Orkeon.Infrastructure` (InMemory + SQLite adapters)
-**Audience**: Orkéon developers
+**Audience**: Orkeon developers
 
-This document consolidates the architectural decisions made for Orkéon's inter-agent and inter-crew messaging layer, as well as for putting crews to sleep and waking them up. It serves as the single reference for the v1 implementation.
+This document consolidates the architectural decisions made for Orkeon's inter-agent and inter-crew messaging layer, as well as for putting crews to sleep and waking them up. It serves as the single reference for the v1 implementation.
 
 ---
 
@@ -18,7 +18,7 @@ This document consolidates the architectural decisions made for Orkéon's inter-
 - Provide agents and the system with a unified in-memory messaging primitive.
 - Allow an inactive crew to be put to sleep and woken up later upon arrival of an expected message.
 - Guarantee that messages and in-flight waits survive a process restart (optional SQLite persistence).
-- Expose the same functional surface across Orkéon's three paradigms: C#, YAML, TypeScript.
+- Expose the same functional surface across Orkeon's three paradigms: C#, YAML, TypeScript.
 - Support inter-crew messaging secured by a declarative whitelist.
 
 ### 1.2 Out of scope for v1
@@ -32,7 +32,7 @@ This document consolidates the architectural decisions made for Orkéon's inter-
 ## 2. Overview
 
 ```
-                      Agent (LLM hétérogène)
+                      Agent (heterogeneous LLM)
                               │
               ┌───────────────┼───────────────┐
               │               │               │
@@ -79,44 +79,44 @@ namespace Orkeon.Application.EventHub;
 
 public interface IEventHub
 {
-    // Broadcast 1→N (anonyme, topic-based)
+    // Broadcast 1→N (anonymous, topic-based)
     Task PublishAsync(
         string topic,
         object payload,
         PublishOptions? options,
         CancellationToken ct);
 
-    // Fire-and-forget 1→1 (vers une boîte adressée)
+    // Fire-and-forget 1→1 (to an addressed mailbox)
     Task PostAsync(
         MailboxAddress to,
         object payload,
         CancellationToken ct);
 
-    // Request-response 1→1 (timeout obligatoire — pas de Forever ici)
+    // Request-response 1→1 (mandatory timeout — no Forever here)
     Task<TResponse> SendAsync<TRequest, TResponse>(
         MailboxAddress to,
         TRequest request,
         TimeSpan timeout,
         CancellationToken ct);
 
-    // Réponse à un Send pendant (corrélation interne)
+    // Response to a pending Send (internal correlation)
     Task ReplyAsync(
         CorrelationId correlation,
         object payload,
         CancellationToken ct);
 
-    // Souscription longue durée (filtrée par TargetCrewId automatiquement)
+    // Long-lived subscription (automatically filtered by TargetCrewId)
     IAsyncEnumerable<Message> SubscribeAsync(
         string topic,
         CancellationToken ct);
 
-    // Wait court terme sur topic / mailbox / correlation (Finite ou Forever)
+    // Short-term wait on topic / mailbox / correlation (Finite or Forever)
     Task<Message> WaitForAsync(
         WaitDescriptor descriptor,
         WaitTimeout timeout,
         CancellationToken ct);
 
-    // Dernière valeur retenue (scope optionnel par crew)
+    // Last retained value (optional per-crew scope)
     Task<Message?> GetLastValueAsync(
         string key,
         CrewId? crewScope,
@@ -131,7 +131,7 @@ public sealed record PublishOptions
 {
     public CrewId? TargetCrewId { get; init; }                    // null = global
     public ImmutableDictionary<string, string>? Metadata { get; init; }
-    public bool RetainAsLastValue { get; init; }                  // alimente LastValueCache
+    public bool RetainAsLastValue { get; init; }                  // feeds the LastValueCache
     public string? LastValueKey { get; init; }
 }
 
@@ -148,7 +148,7 @@ public sealed record WaitOnReply(CorrelationId Correlation) : WaitDescriptor;
 public abstract record WaitTimeout;
 
 public sealed record FiniteWaitTimeout(TimeSpan Duration) : WaitTimeout;
-// FiniteWaitTimeout.Of(TimeSpan) valide Duration > 0
+// FiniteWaitTimeout.Of(TimeSpan) validates Duration > 0
 
 public sealed record ForeverWaitTimeout : WaitTimeout
 {
@@ -159,16 +159,16 @@ public sealed record ForeverWaitTimeout : WaitTimeout
 ### 3.3 Associated components (other ports)
 
 ```csharp
-// Façade orchestrant les transitions de cycle de vie.
-// Appelée par l'IIdleDetector (sleep) et l'IEventHub (wake on message / timeout).
-// Délègue l'activation effective à ICrewActivator.
+// Facade orchestrating the lifecycle transitions.
+// Called by the IIdleDetector (sleep) and the IEventHub (wake on message / timeout).
+// Delegates the actual activation to ICrewActivator.
 public interface ICrewLifecycleManager
 {
     Task SleepAsync(CrewId id, SleepReason reason, CancellationToken ct);
     Task<Crew> WakeAsync(CrewId id, Message trigger, CancellationToken ct);
 }
 
-// Persistance brute du snapshot. Pas de logique métier.
+// Raw snapshot persistence. No business logic.
 public interface ICrewStateStore
 {
     Task SaveAsync(CrewId id, CrewSnapshot snapshot, CancellationToken ct);
@@ -176,10 +176,10 @@ public interface ICrewStateStore
     Task DeleteAsync(CrewId id, CancellationToken ct);
 }
 
-// Implémentation concrète de l'activation : charge depuis ICrewStateStore,
-// reconstruit les Agents et Mailboxes, restaure le budget et l'OrchestrationState,
-// puis livre le message déclencheur. Pas appelé directement par l'EventHub —
-// passe toujours par ICrewLifecycleManager.WakeAsync.
+// Concrete activation implementation: loads from ICrewStateStore,
+// rebuilds the Agents and Mailboxes, restores the budget and the OrchestrationState,
+// then delivers the triggering message. Not called directly by the EventHub —
+// always goes through ICrewLifecycleManager.WakeAsync.
 public interface ICrewActivator
 {
     Task<Crew> ActivateAsync(CrewId id, Message? trigger, CancellationToken ct);
@@ -199,10 +199,10 @@ public interface IWaitScheduler
 
 public interface IEventSchemaRegistry
 {
-    // Récupère le schéma JSON enregistré pour un SchemaId donné
+    // Retrieves the JSON schema registered for a given SchemaId
     Task<JsonNode?> GetAsync(string schemaId, CancellationToken ct);
 
-    // Enregistre un schéma (versionné). Rejet si SchemaId déjà enregistré avec un schéma différent.
+    // Registers a (versioned) schema. Rejected if the SchemaId is already registered with a different schema.
     Task RegisterAsync(string schemaId, JsonNode schema, CancellationToken ct);
 }
 ```
@@ -271,7 +271,7 @@ public sealed record Message
     public required MessageId Id { get; init; }
     public required string Topic { get; init; }
     public required CrewId SourceCrewId { get; init; }
-    public AgentId? SourceAgentId { get; init; }                  // null = système
+    public AgentId? SourceAgentId { get; init; }                  // null = system
     public CrewId? TargetCrewId { get; init; }                    // null = global
     public MailboxAddress? TargetMailbox { get; init; }
     public CorrelationId? CorrelationId { get; init; }
@@ -288,9 +288,9 @@ public sealed record Message
 ### 6.2 `MailboxAddress` format (URI)
 
 ```
-agent://{crewId}/{agentId}      boîte d'un agent précis
-crew://{crewId}                  boîte de la crew (router interne)
-topic://{topicName}              alias d'un topic broadcast
+agent://{crewId}/{agentId}      mailbox of a specific agent
+crew://{crewId}                  crew mailbox (internal router)
+topic://{topicName}              alias of a broadcast topic
 ```
 
 Validated by regex at the entry of the port, the C# builder, the YAML loader and the TS SDK. `TargetCrewId` is extracted automatically from the `TargetMailbox`; any inconsistency between the two is rejected by the middleware.
@@ -301,26 +301,26 @@ Validated by regex at the entry of the port, the C# builder, the YAML loader and
 
 ```
                  ┌─────────┐
-                 │ Active  │ ◄── démarrage / restauration
+                 │ Active  │ ◄── startup / restoration
                  └────┬────┘
-                      │ idle_timeout dépassé
-                      │ ET la crew est en WaitingForMessage
+                      │ idle_timeout exceeded
+                      │ AND the crew is in WaitingForMessage
                       ▼
                  ┌─────────┐
-                 │Snapshot.│  écriture atomique CrewSnapshot + pending_waits
+                 │Snapshot.│  atomic write of CrewSnapshot + pending_waits
                  └────┬────┘
                       ▼
                  ┌─────────┐
-                 │ Asleep  │  ── survit aux redémarrages process ──
+                 │ Asleep  │  ── survives process restarts ──
                  └────┬────┘
-                      │ message matchant un pending_wait
-                      │   OU expiration finite atteinte (scheduler)
+                      │ message matching a pending_wait
+                      │   OR finite expiration reached (scheduler)
                       ▼
                  ┌─────────┐
-                 │Activat. │  ICrewActivator charge snapshot, recompose Crew
+                 │Activat. │  ICrewActivator loads snapshot, recomposes Crew
                  └────┬────┘
                       ▼
-                  Active (livre le message déclencheur à l'agent)
+                  Active (delivers the triggering message to the agent)
 ```
 
 ### 7.1 Idle detection
@@ -520,7 +520,7 @@ Consequence for heterogeneous models: if business logic depends on an order betw
 ```sql
 CREATE TABLE crew_snapshots (
     crew_id        TEXT PRIMARY KEY,
-    snapshot       BLOB NOT NULL,                -- JSON sérialisé
+    snapshot       BLOB NOT NULL,                -- serialized JSON
     mode           TEXT NOT NULL,                -- ProcessType
     schema_version INTEGER NOT NULL,
     snapshot_at    TEXT NOT NULL,                -- ISO8601
@@ -656,7 +656,7 @@ var crew = new CrewBuilder()
         .AllowedTopics("fraud.check", "fraud.result"))
     .Build();
 
-// Consommation directe pour code utilisateur
+// Direct consumption for user code
 public sealed class CustomFlow(IEventHub hub)
 {
     public Task NotifyAsync() =>
@@ -703,7 +703,7 @@ export const orderProcessor = defineCrew({
       allowedTopics: ['fraud.check', 'fraud.result']
     }
   ],
-  event: {                              // singulier, lié à l'EventHub
+  event: {                              // singular, tied to the EventHub
     publish: [
       { topic: 'order.processed', targetCrewId: 'billing-crew' },
       { topic: 'audit.event' }
@@ -714,7 +714,7 @@ export const orderProcessor = defineCrew({
   },
 });
 
-// Côté agent custom
+// Custom agent side
 agent.event.publish('order.processed', payload, { targetCrewId: 'billing-crew' });
 
 const resp = await agent.event.send(
@@ -861,7 +861,7 @@ Each message produces a span with these attributes:
 
 ## 20. References
 
-- `docs/architecture/raggable-tree.md` — the reference Clean Architecture port/adapter pattern in Orkéon.
+- `docs/architecture/raggable-tree.md` — the reference Clean Architecture port/adapter pattern in Orkeon.
 - `src/core/Orkeon.Domain/Autonomous/AgentExecutionBudget.cs` — multi-dimensional budget used for budget-aware `CancellationToken`s.
 - `src/core/Orkeon.Infrastructure/Communication/InMemoryAgentChannel.cs` — existing lock-free communication pattern, to be reused for `InMemoryEventHub`.
-- `src/core/Orkeon.Infrastructure/Memory/EncryptedSqliteMemoryProvider.cs` — reference for `SqliteCrewStateStore`.
+- `src/core/Orkeon.Infrastructure/Memory/EncryptedMemoryProviderDecorator.cs` — reference for `SqliteCrewStateStore`.

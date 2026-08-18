@@ -12,12 +12,12 @@ Orkeon offers **6 orchestration strategies** via the `ProcessType` value object 
 
 ```csharp
 // Orkeon.Domain.SharedKernel.ValueObjects.ProcessType (sealed record)
-ProcessType.Sequential    // Pipeline linéaire
+ProcessType.Sequential    // Linear pipeline
 ProcessType.Hierarchical  // Manager + workers
-ProcessType.Parallel      // Exécution concurrente
-ProcessType.Consensual    // Vote et consensus
-ProcessType.Graph         // Graphe d'états avec cycles contrôlés
-ProcessType.Autonomous    // Auto-organisation avec budget
+ProcessType.Parallel      // Concurrent execution
+ProcessType.Consensual    // Voting and consensus
+ProcessType.Graph         // State graph with controlled cycles
+ProcessType.Autonomous    // Self-organization with budget
 ```
 
 ### Implementation architecture
@@ -84,12 +84,12 @@ Task 3 → Agent C → output₃ → final result
 crew:
   process: sequential
   tasks:
-    - description: "Collecter les données"
-      expected_output: "Données brutes"
-    - description: "Analyser les données"
-      expected_output: "Rapport d'analyse"
-    - description: "Générer les recommandations"
-      expected_output: "Plan d'action"
+    - description: "Collect the data"
+      expected_output: "Raw data"
+    - description: "Analyze the data"
+      expected_output: "Analysis report"
+    - description: "Generate the recommendations"
+      expected_output: "Action plan"
 ```
 
 ### Fluent Builder configuration
@@ -233,12 +233,12 @@ Start ──┼── Task 2 → Agent B → output₂ ──┼── Aggregati
 crew:
   process: parallel
   tasks:
-    - description: "Analyser le marché français"
-      expected_output: "Rapport France"
-    - description: "Analyser le marché allemand"
-      expected_output: "Rapport Allemagne"
-    - description: "Analyser le marché espagnol"
-      expected_output: "Rapport Espagne"
+    - description: "Analyze the French market"
+      expected_output: "France report"
+    - description: "Analyze the German market"
+      expected_output: "Germany report"
+    - description: "Analyze the Spanish market"
+      expected_output: "Spain report"
 ```
 
 ### Advantages
@@ -420,9 +420,9 @@ START ──→ execute_task ──→ route ──┬── success ──→ e
 crew:
   process: graph
   graph_config:
-    circuit_breaker: Strict    # ou Default, Permissive
+    circuit_breaker: Strict    # or Default, Permissive
     max_retry_cycles: 3
-    # Surcharges individuelles possibles :
+    # Individual overrides possible:
     max_transitions: 75
     state_timeout: "00:03:00"
 ```
@@ -516,12 +516,12 @@ var request = AgentChannelRequest.Create(
     from: analyst.Id,
     to: researcher.Id,
     intent: "find_data",
-    payload: "Statistiques marché 2025");
+    payload: "2025 market statistics");
 
 var response = await channel.RequestAsync(request, timeout);
 
 // Broadcast (fire-and-forget)
-await channel.BroadcastAsync(analyst.Id, crew.Id, "Résultats disponibles", ct);
+await channel.BroadcastAsync(analyst.Id, crew.Id, "Results available", ct);
 ```
 
 ### YAML configuration
@@ -530,8 +530,8 @@ await channel.BroadcastAsync(analyst.Id, crew.Id, "Résultats disponibles", ct);
 crew:
   process: autonomous
   autonomous_budget:
-    preset: Default           # Strict, Default, ou Permissive
-    # Surcharges possibles :
+    preset: Default           # Strict, Default, or Permissive
+    # Possible overrides:
     max_tool_calls: 20
     max_delegation_depth: 3
     max_wall_time: "00:10:00"

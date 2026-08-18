@@ -83,8 +83,8 @@ whose Domain-only rule is unchanged):
    `Application` references `Rag.Abstractions` only, never `Orkeon.Rag`.
 2. **`Orkeon.Rag → Orkeon.Analysis.Abstractions`** — hosts `AnalysisEmbeddingProviderAdapter`
    (moved out of `Orkeon.Infrastructure/LLMs/Embeddings/`), the bridge from the Analysis
-   embedding abstraction to the Application port ("dans `Orkeon.Rag`, qui référence les deux
-   mondes", plan §4.1).
+   embedding abstraction to the Application port ("in `Orkeon.Rag`, which references both
+   worlds", plan §4.1).
 
 Vigilance note: besides the DI wiring file, `Orkeon.Infrastructure` currently also uses
 `Orkeon.Rag.Embeddings.AnalysisEmbeddingProviderAdapter` from

@@ -45,7 +45,7 @@ graph TB
     end
 
     subgraph Infrastructure["Orkeon.Infrastructure — Couche Infrastructure"]
-        SeqOrch["SequentialCrewOrchestrator"]
+        SeqOrch["SequentialProcessStrategy"]
         LlmProviders["LLM Providers<br/>(OpenAI, Anthropic, Groq,<br/>Ollama, Azure, DeepSeek...)"]
         MemProviders["Memory Providers<br/>(InMemory, Redis, SQLite,<br/>ChromaDB, Pinecone, LanceDB)"]
         ToolImpl["Tool Implementations"]
@@ -264,22 +264,33 @@ La collaboration entre agents est également supportée au niveau domaine : `Age
 
 ```
 Orkeon.sln
-├── src/
+├── src/                            # 33 projets, 11 zones
 │   ├── core/
-│   │   ├── Orkeon.Domain/          # Entités, Value Objects, Interfaces, Events
-│   │   ├── Orkeon.Application/     # CQRS, Services, Orchestration, Ports
-│   │   └── Orkeon.Infrastructure/  # Implémentations, LLMs, Memory, DI
-│   ├── tools/
-│   │   ├── Orkeon.Tools.Abstractions/  # Classes de base outils
-│   │   ├── Orkeon.Tools.Code/          # Outils code (ShellCommand)
-│   │   ├── Orkeon.Tools.Data/          # Outils données (CSV, PDF, JSON, SQL, MongoDB)
-│   │   ├── Orkeon.Tools.FileSystem/    # Outils fichiers (Read, Write, Directory)
-│   │   └── Orkeon.Tools.Web/           # Outils web (Search, Scrape, HTTP, GitHub)
-│   ├── plugins/
-│   │   └── Orkeon.Plugins/        # Système de plugins
+│   │   ├── Orkeon.Domain/          # Entités, value objects, interfaces, événements
+│   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
+│   │   └── Orkeon.Infrastructure/  # Implémentations, providers LLM, mémoire, DI
+│   ├── tools/                      # 9 packs d'outils
+│   │   ├── Orkeon.Tools.Abstractions/     # Classes de base des outils
+│   │   ├── Orkeon.Tools.Analysis/         # Outils agents RaggableTree (15)
+│   │   ├── Orkeon.Tools.Code/             # Outils code (ShellCommand)
+│   │   ├── Orkeon.Tools.Data/             # Outils données (CSV, PDF, JSON, SQL, MongoDB…)
+│   │   ├── Orkeon.Tools.Embeddings.Local/ # Embeddings locaux (BGE-micro ONNX)
+│   │   ├── Orkeon.Tools.EventHub/         # Outils de messagerie EventHub
+│   │   ├── Orkeon.Tools.FileSystem/       # Outils fichiers (Read, Write, Directory…)
+│   │   ├── Orkeon.Tools.Rag/              # Outils agents RAG
+│   │   └── Orkeon.Tools.Web/              # Outils web (Search, Scrape, HTTP, GitHub…)
+│   ├── rag/                        # Sous-système RAG (Abstractions, Rag, Onnx, Onnx.Model)
+│   ├── analysis/                   # Moteur RaggableTree (Abstractions, Analysis)
+│   ├── scripting/                  # DSL .ork.ts (Orkeon.Scripting) + la CLI `orkeon` (Orkeon.Scripting.Cli)
+│   ├── cli/                        # Briques CLI (Abstractions, Cli, Commands.Scripting, TerminalGui)
+│   ├── hosting/                    # Orkeon.Hosting (RunnerHost)
+│   ├── plugins/                    # Orkeon.Plugins (chargement de plugins au runtime)
+│   ├── generators/                 # Orkeon.Generators (générateurs de source)
+│   ├── analyzers/                  # Orkeon.Compliance.Vfs (analyseur Roslyn)
 │   └── apps/
-│       └── Orkeon.ConsoleApp/     # Application console interactive
-├── tests/                          # Tests miroir de src/
-├── examples/                       # Exemples d'utilisation
-└── docs/                           # Documentation
+│       ├── Orkeon.ConsoleApp/      # REPL interactif (`orkeon-repl`)
+│       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)
+├── tests/                          # Miroir de src/ (33 projets) + e2e, examples, shared
+├── examples/                       # 105 exemples embarqués (9 catégories + vitrines)
+└── docs/                           # Documentation (EN + miroir docs/fr)
 ```

@@ -142,18 +142,18 @@ name: "my-crew"
 process: "graph"
 
 graphConfig:
-  maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
+  maxRetryCycles: int           # default: 2 — retry cycles for failed tasks
   circuitBreakerPreset: string  # "strict" | "permissive" | "default"
-  maxTransitions: int           # Surcharge le preset
-  maxStateVisits: int           # Détection de cycles (surcharge le preset)
-  maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
+  maxTransitions: int           # Overrides the preset
+  maxStateVisits: int           # Cycle detection (overrides the preset)
+  maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 
 agents:
   <agent_id>:
-    # ... même schéma que sequential
+    # ... same schema as sequential
 tasks:
   <task_id>:
-    # ... même schéma que sequential
+    # ... same schema as sequential
 ```
 
 ### Resolution hierarchy
@@ -196,7 +196,7 @@ The mapping is performed by `YamlCrewDefinitionLoader.MapGraphConfig()`.
 using Orkeon.Domain.Graph;
 using Orkeon.Domain.Common.StateMachine;
 
-// Définir un état type
+// Define a state type
 class PipelineState
 {
     public Queue<string> Pending { get; set; } = new();
@@ -204,7 +204,7 @@ class PipelineState
     public int RetryCount { get; set; }
 }
 
-// Construire le graphe
+// Build the graph
 var graph = new StateGraph<PipelineState>(CircuitBreakerPolicy.Strict)
     .AddNode("process", async (state, ct) =>
     {
@@ -222,7 +222,7 @@ var graph = new StateGraph<PipelineState>(CircuitBreakerPolicy.Strict)
             : StateGraph<PipelineState>.EndNode,
         ["process", StateGraph<PipelineState>.EndNode]);
 
-// Compiler et exécuter
+// Compile and run
 var runner = graph.Compile();
 
 runner.OnNodeCompleted += (_, args) =>
@@ -246,15 +246,15 @@ Console.WriteLine($"Total transitions: {result.TotalTransitions}");
 using Orkeon.Infrastructure.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 
-// Charger la config YAML
+// Load the YAML config
 var loader = serviceProvider.GetRequiredService<ICrewDefinitionLoader>();
 var config = await loader.LoadFromFileAsync("config.yaml");
 
-// La factory crée automatiquement le GraphProcessStrategy
+// The factory automatically creates the GraphProcessStrategy
 var factory = serviceProvider.GetRequiredService<IProcessStrategyFactory>();
 var strategy = factory.CreateStrategy(ProcessType.Graph);
 
-// Exécuter
+// Run
 var result = await strategy.ExecuteSequentialAsync(crew, plan, inputVariables);
 ```
 

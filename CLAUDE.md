@@ -123,7 +123,7 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ **NEW**: Structured tool calling protocol (JSON-based)
 - ✅ **NEW**: Configurable agent selection (`OrkeonApplicationOptions.AgentSelectionStrategy`: `FirstFit` default, `Embedding`, `Skill`). Semantic (`Embedding`) selection requires a real embedding provider — see `docs/reference/limitations.md`
 - ✅ **NEW**: Strongly typed configurations (AgentConfiguration, TaskContext, etc.)
-- ✅ **NEW**: SequentialCrewOrchestrator (Akka.NET replacement)
+- ✅ **NEW**: SequentialProcessStrategy (Akka.NET replacement; one strategy per ProcessType via ProcessStrategyFactory)
 - ✅ **NEW**: Typed Request/Response pipeline (ComponentBase<TReq,TRes>)
 - ✅ **NEW**: Autonomous orchestration mode (`ProcessType.Autonomous`) with multi-dimensional execution budget, recursive delegation, agent self-spawn, and A2A request/response communication
 - ✅ **NEW**: FSM orchestration (`StateMachine<TState, TEvent>`) with circuit breaker (4 mechanisms)
@@ -525,7 +525,7 @@ The repository contains **33 src projects** and **33 test projects**, plus two s
 │   ├── getting-started/          # bootstrap.md, overview.md, yaml-and-builders.md
 │   ├── architecture/             # raggable-tree.md, scripting.md, vfs-compliance.md, security.md, llm-providers.md, etc.
 │   ├── guides/, orchestration/, reference/, tools/
-│   └── arkeon/                   # llm-providers-comparatif.md
+│   └── reference/llm-providers-comparison.md  # provider capability matrix
 └── project/                      # Project management (non-code)
     ├── marketing/                # Positioning, personas, brand, assets
     ├── roadmap/                  # Feature backlog & gap analysis

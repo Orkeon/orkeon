@@ -28,7 +28,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddOrkeonInfrastructure();
 
         // 3. Suites d'outils
-        // FileSystem : FileRead, FileWrite, DirectoryRead, DirectoryCreate, etc.
+        // FileSystem : FileRead, FileWrite, DirectoryRead, DirectorySearch, EmailParser, CountPattern
         services.AddOrkeonFileSystemTools();
 
         // Data : CSV, PDF, JSON, DOCX, SQL queries, MongoDB queries, etc.
@@ -94,10 +94,13 @@ Deux surcharges existent et produisent des conteneurs aux capacités **différen
 > est présente.
 
 > **Sous-systèmes opt-in (R4.9)** : A2A, monitoring backend, MultiModal, NIST, DLP,
-> rate-limiting d'outils, rotation de clés, benchmarking et hooks de kickoff ne sont
-> enregistrés par **aucune** des deux surcharges — ils s'activent explicitement via
-> leur extension `AddOrkeonXxx()`. Voir
-> [Sous-systèmes opt-in](../reference/opt-in-subsystems.md).
+> rate-limiting d'outils, rotation de clés, benchmarking, hooks de kickoff — et de
+> même le **sous-système RAG** (`AddOrkeonRag` + `AddOrkeonRagTools`),
+> **RaggableTree** (`AddRaggableTree`), le **système de plugins**
+> (`AddOrkeonPlugins`), **MCP** (`AddOrkeonMcp`), la **permission gate** et les
+> stores de checkpointing — ne sont enregistrés par **aucune** des deux
+> surcharges : chacun s'active explicitement via son extension `AddOrkeonXxx()`.
+> Catalogue complet : [Sous-systèmes opt-in](../reference/opt-in-subsystems.md).
 
 ## Exécuter une Crew
 

@@ -1,0 +1,120 @@
+# Navigation de la documentation française du site docfx.
+# Miroir de docs/fr/INDEX.md (la carte de la doc fait foi) — tenir les deux à jour.
+- name: Vue d'ensemble
+  href: INDEX.md
+- name: Démarrage
+  items:
+    - name: Trois façons d'exécuter Orkeon
+      href: getting-started/three-ways-to-run-orkeon.md
+    - name: Exécuter votre premier exemple
+      href: getting-started/run-your-first-example.md
+    - name: Vue d'ensemble
+      href: getting-started/overview.md
+    - name: Bootstrap et exécution
+      href: getting-started/bootstrap.md
+    - name: YAML, Builders et CrewFactory
+      href: getting-started/yaml-and-builders.md
+    - name: Comportements par défaut
+      href: getting-started/default-behaviors.md
+- name: Architecture
+  items:
+    - name: Fournisseurs LLM
+      href: architecture/llm-providers.md
+    - name: Système de mémoire
+      href: architecture/memory-system.md
+    - name: Événements, CQRS et observabilité
+      href: architecture/domain-events.md
+    - name: EventHub et cycle de vie des crews
+      href: architecture/event-hub-and-crew-lifecycle.md
+    - name: Sécurité, résilience et plugins
+      href: architecture/security.md
+    - name: Conformité VFS
+      href: architecture/vfs-compliance.md
+    - name: Système de plugins
+      href: architecture/plugins.md
+    - name: DSL de scripting
+      href: architecture/scripting.md
+    - name: Commandes CLI TypeScript
+      href: architecture/cli-ts-commands.md
+    - name: Coding agent TypeScript
+      href: architecture/coding-agent-ts.md
+    - name: Référence YAML
+      href: architecture/yaml-schema.md
+    - name: RaggableTree — graphe sémantique
+      href: architecture/raggable-tree.md
+    - name: Pipeline RAG
+      href: architecture/rag-pipeline.md
+- name: Orchestration
+  items:
+    - name: Guide comparatif ProcessTypes
+      href: orchestration/process-types.md
+    - name: FSM — Machine à états
+      href: orchestration/fsm.md
+    - name: Graph — Graphe d'états
+      href: orchestration/graph.md
+    - name: Autonomous — Auto-organisation
+      href: orchestration/autonomous.md
+- name: Outils
+  items:
+    - name: Inventaire des outils
+      href: tools/inventory.md
+    - name: Créer un nouvel outil
+      href: tools/new-tool-pattern.md
+- name: Guides
+  items:
+    - name: Méthodologie de portage
+      href: guides/porting-methodology.md
+    - name: Exemple de portage
+      href: guides/porting-example.md
+    - name: Blueprint nouvelle orchestration
+      href: guides/blueprint.md
+    - name: Contenu multi-modal (vision)
+      href: guides/multimodal.md
+    - name: Format de réponse LLM
+      href: guides/llm-response-format.md
+    - name: Quality Gate SonarQube
+      href: guides/quality-gate.md
+    - name: Modèles locaux
+      href: guides/local-models.md
+- name: Référence
+  items:
+    - name: Catalogue des exemples
+      href: reference/examples-catalog.md
+    - name: Comparatif des fournisseurs LLM
+      href: reference/llm-providers-comparison.md
+    - name: Limites et contraintes
+      href: reference/limitations.md
+    - name: APIs expérimentales
+      href: reference/experimental-apis.md
+    - name: Matrice de conformité A2A
+      href: reference/a2a-conformance.md
+    - name: Politique de données des exemples
+      href: reference/example-data-policy.md
+    - name: Sous-systèmes opt-in
+      href: reference/opt-in-subsystems.md
+    - name: Hosting & bootstrap des runners
+      href: reference/hosting.md
+    - name: Matrice de publication NuGet
+      href: reference/publication-matrix.md
+- name: Décisions d'architecture (ADR)
+  items:
+    - name: Registre des ADR
+      href: adr/README.md
+    - name: ADR-002 — Shared kernel Tools.Abstractions
+      href: adr/ADR-002-tool-abstractions-shared-kernel.md
+    - name: ADR-003 — Shared kernels secondaires (Analysis)
+      href: adr/ADR-003-shared-kernels-secondaires.md
+    - name: ADR-004 — Jumeaux de nommage scripting (remplacé)
+      href: adr/ADR-004-jumeaux-de-nommage-scripting.md
+    - name: ADR-005 — Famille Tools.* hétérogène
+      href: adr/ADR-005-famille-tools-heterogene.md
+    - name: ADR-006 — Sous-système RAG
+      href: adr/ADR-006-rag-subsystem.md
+    - name: ADR-007 — Renommage Cli.Commands.Scripting (D3)
+      href: adr/ADR-007-d3-renommage-cli-commands-scripting.md
+    - name: ADR — Graphe sémantique RaggableTree
+      href: architecture/raggable-tree-adr.md
+- name: Gabarits
+  items:
+    - name: Gabarit de README d'exemple
+      href: templates/example-readme.md

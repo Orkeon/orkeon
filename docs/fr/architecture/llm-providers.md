@@ -29,7 +29,7 @@ Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToCh
 ## Valider un fournisseur contre son API réelle
 
 Tous les tests unitaires de ce domaine parlent à un handler HTTP mocké : ils prouvent
-qu'Orkéon envoie ce qu'on croit, pas que le fournisseur l'accepte. La seconde preuve se
+qu'Orkeon envoie ce qu'on croit, pas que le fournisseur l'accepte. La seconde preuve se
 construit avec le kit de campagne [`llmproviders-test/`](https://github.com/Orkeon/orkeon/tree/main/llmproviders-test) :
 
 ```bash

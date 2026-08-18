@@ -86,6 +86,14 @@ Option la plus rapide à implémenter mais la plus fragile : ne distingue pas le
 - Les re-exports TypeScript (`export { Foo } from './bar'`) et les imports Python dynamiques peuvent produire des `UnresolvedRef`. Décision : documenter la limite plutôt que construire un résolveur lourd en V1.
 - Le cache JSON est non versionné et donc invalide aux changements d'adapter. Décision : recalculer à la demande, sans migration automatique.
 
+## Amendement — 2026-08-18
+
+La surface d'outils est passée depuis des 13 tools décrits ici à **15**
+(`Orkeon.Tools.Analysis`) ; le chiffre dérivé « 25 points d'extension » est
+désormais 27. Les comptes ci-dessus sont conservés tels quels — cet ADR est un
+enregistrement de décision gelé ; [le guide RaggableTree](./raggable-tree.md)
+est l'inventaire de référence, maintenu.
+
 ---
 
 > **Voir aussi** : [Guide RaggableTree](./raggable-tree.md) · [Retour à l'index](../INDEX.md)

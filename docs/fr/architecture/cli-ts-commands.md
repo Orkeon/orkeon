@@ -4,11 +4,11 @@
 
 > Référence utilisateur du sous-système `Orkeon.Cli.Commands.Scripting`. Pour la
 > spécification d'architecture et la justification de conception, voir
-> `project/features/cli-ts-commands/SPEC.md`.
+> the maintainers' design archive (feature `cli-ts-commands`, SPEC).
 
 ## De quoi s'agit-il
 
-Un moyen d'ajouter des **commandes REPL interactives** à un runner CLI Orkéon en
+Un moyen d'ajouter des **commandes REPL interactives** à un runner CLI Orkeon en
 déposant des fichiers `*.cmd.ts` dans un dossier — pas de recompilation .NET, pas
 de redémarrage de l'hôte au-delà du runner lui-même. Chaque script déclare une ou
 plusieurs commandes via le helper global `defineCommand({...})` ; le chargeur les
@@ -330,7 +330,7 @@ d'instances) et ajoute `commands` à la whitelist par défaut. Les agents sont
 connectés avec
 `AgentCommandRegistrar.Register(agent, engine, engineLock, service.Channel, service.Directory)`,
 qui enregistre le handler de canal et le mapping nom→id. Voir
-`project/features/cli-ts-commands/COMMAND-DISPATCH-DESIGN.md` §11 pour la
+the maintainers' design archive (feature `cli-ts-commands`, COMMAND-DISPATCH-DESIGN §11) pour la
 cartographie complète des fichiers.
 
 ### Exemple de bout en bout

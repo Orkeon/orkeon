@@ -1,3 +1,5 @@
+> 🇫🇷 [Version française](../fr/guides/local-models.md)
+
 # Run Orkeon on local models
 
 > **See also**: [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md) · the `examples/appsettings/` profiles · [Back to the index](../INDEX.md)

@@ -26,7 +26,7 @@ Orkeon supporte deux approches pour définir une crew. Le choix impacte le workf
 | Prompt engineering itératif | Rapide — éditer descriptions/backstories | Plus lent |
 | Outils custom avec dépendances | Nécessite enregistrement DI séparé | Instanciation directe possible |
 | Partage de configurations | Fichier YAML portable | Code C# à intégrer |
-| Exemples de référence | 103 exemples YAML dans `examples/` | Builders documentés dans la doc |
+| Exemples de référence | 100+ exemples YAML dans `examples/` (voir l'`examples/INDEX.md` généré) | Builders documentés dans la doc |
 
 **Recommandation** : privilégier l'approche **YAML-first** pour le portage. Le YAML permet d'itérer rapidement sur les prompts (descriptions, backstories) sans toucher au code. Les outils custom restent en C# et sont enregistrés via DI.
 

@@ -1,3 +1,5 @@
+> 🇬🇧 [English version](../../guides/local-models.md)
+
 # Exécuter Orkeon sur des modèles locaux
 
 > **Voir aussi** : [Trois façons d'exécuter Orkeon (EN)](../../getting-started/three-ways-to-run-orkeon.md) · les profils `examples/appsettings/` · [Retour à l'index](../INDEX.md)

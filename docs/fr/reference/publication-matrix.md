@@ -99,13 +99,13 @@ bibliothèque native non signée, en quarantaine ou malformée (`libtree-sitter*
 onnxruntime, le binaire esbuild) est tuée au chargement, donc l'échec se produit là plutôt que
 dans le terminal d'un utilisateur.
 
-La version debian remplace `-` par `~` (`0.9.2-beta` → `orkeon_0.9.2~beta_amd64.deb`) pour
+La version debian remplace `-` par `~` (`1.0.0-rc.1` → `orkeon_1.0.0~rc.1_amd64.deb`) pour
 qu'une pré-version se classe avant sa version finale au sens de `dpkg`.
 
 Le `ProductVersion` du MSI, lui, perd carrément le suffixe : Windows Installer ne porte que trois
-champs numériques, donc `build-msi.ps1` tronque `0.9.2-beta` en `0.9.2` pour la propriété que
+champs numériques, donc `build-msi.ps1` tronque `1.0.0-rc.1` en `1.0.0` pour la propriété que
 `<MajorUpgrade>` compare réellement. Rien n'est perdu en silence — la version complète survit
-dans le nom du `.msi` (`orkeon-0.9.2-beta-win-x64.msi`) et dans la propriété `ARPCOMMENTS`
+dans le nom du `.msi` (`orkeon-1.0.0-rc.1-win-x64.msi`) et dans la propriété `ARPCOMMENTS`
 affichée dans « Applications installées ».
 
 Le CLI `orkeon` est distribué via **sept canaux** :
@@ -183,4 +183,4 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   les tags `v0.9.1-beta.rc*` ont re-packé la version inchangée des props et
   `--skip-duplicate` a sauté chaque push en silence — une « release » qui n'a rien publié.
   Le garde maintient `--skip-duplicate` honnête.
-- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.1`) ; les seuls projets qui la surchargent sont les trois tools dotnet d'`examples/runners`, bumpés au pas à chaque release.
+- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.1`) ; les seuls projets qui la surchargent sont les trois packables d'`examples/runners` (deux tools dotnet plus la bibliothèque partagée), bumpés au pas à chaque release.

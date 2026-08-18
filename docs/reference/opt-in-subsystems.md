@@ -55,6 +55,15 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
 | Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
 | Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
+| Plugin system | `AddOrkeonPlugins(...)` (never registered implicitly) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — directory discovery, isolated collectible `AssemblyLoadContext`s; ⚠️ loaded assemblies run with full trust — see [Plugins](../architecture/plugins.md) | Beta |
+| MCP client & server | `AddOrkeonMcp(...)` | Infrastructure | `McpClient` / `McpServer` — dual-era (`2026-07-28` stateless + legacy `initialize` revisions); `[Experimental]` surface, see [Experimental APIs](./experimental-apis.md) | Experimental |
+| Local on-device embeddings | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, no API key) — first link of the embedding resolution chain | Beta |
+| Checkpointing state stores | `AddOrkeonCheckpointing()` / `AddOrkeonSqliteCheckpointing(...)` / `AddOrkeonPostgresCheckpointing(...)` | Infrastructure | `IStateStore` — consumed by execution-state persistence (above) and A2A task persistence | Beta |
+| External memory providers | `AddOrkeonChromaDb(...)` / `AddOrkeonPinecone(...)` / `AddOrkeonLanceDb(...)` / `AddOrkeonRedisMemory(...)` (or type keys via `MemoryProviderFactory`) | Infrastructure | `IMemoryProvider` implementations — see [Memory system](../architecture/memory-system.md) | Beta |
+| Cognitive memory | `AddOrkeonCognitiveMemory(...)` | Infrastructure | cognitive memory layering over `IMemoryProvider` | Experimental |
+| Guardian pipeline | `AddOrkeonGuardian()` | Infrastructure | content-safety pipeline hooks around agent execution | Beta |
+| Flows engine | `AddOrkeonFlows()` | Infrastructure | `FlowEngine` (sequential/parallel/decision steps) — an orchestration system distinct from Crews | Beta |
+| Training | `AddOrkeonTraining()` | Infrastructure | training/fine-tuning data capture services | Experimental |
 
 **Maturity** — *Beta*: complete and tested implementation, API likely to evolve
 before v1. *Experimental*: functional implementation but not wired into the

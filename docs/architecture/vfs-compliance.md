@@ -85,7 +85,7 @@ The `reason` argument is mandatory and should name the audit category it belongs
 > trips `ORKVFS007`) and the FS-related `[Obsolete]` shims were deleted. Do not reintroduce either
 > category.
 
-Any new class of exception should first be captured in the VFS compliance audit (`project/audit-vfs-compliance-*.md`) before a suppression is added.
+Any new class of exception should first be captured in the VFS compliance audit (the maintainers' archive, `audit-vfs-compliance-*`) before a suppression is added.
 
 ### Ratified permanent exceptions (2D)
 

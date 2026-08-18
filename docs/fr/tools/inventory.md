@@ -94,15 +94,21 @@
 
 ## Récapitulatif par catégorie
 
-| Catégorie | Nombre | Package |
-|-----------|--------|---------|
-| Collaboration | 2 | `Orkeon.Infrastructure` |
-| Recherche / RAG | 2 | `Orkeon.Infrastructure` + `Orkeon.Tools.Rag` |
-| Code | 2 | `Orkeon.Infrastructure` + `Orkeon.Tools.Code` |
-| Fichiers | 5 | `Orkeon.Tools.FileSystem` |
-| Données | 17+ | `Orkeon.Tools.Data` |
-| Web | 8+ | `Orkeon.Tools.Web` |
-| **Total** | **36+** | |
+Les tableaux ci-dessus listent les outils enregistrés par les suites DI
+standard. En comptant les **classes d'outils concrètes** sur tout le framework
+(le chiffre des « 75+ outils intégrés » du README) :
+
+| Package | Classes d'outils |
+|---------|------------------|
+| `Orkeon.Tools.Data` | 22 |
+| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 15 |
+| `Orkeon.Infrastructure` (collaboration, recherche, sandbox, saisie humaine) | 12 |
+| `Orkeon.Tools.Web` | 10 |
+| `Orkeon.Tools.EventHub` | 7 |
+| `Orkeon.Tools.FileSystem` | 6 |
+| `Orkeon.Tools.Rag` | 3 |
+| `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 chacun |
+| **Total** | **79** |
 
 ## Résolution des outils par nom (YAML → instance)
 

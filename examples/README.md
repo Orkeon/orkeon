@@ -46,7 +46,7 @@ Examples are **data-driven**: each example is a directory containing a `config.y
 | Command | Scope | Purpose |
 |--------|-------|---------|
 | **`orkeon run <config.yaml>`** | all non-finance examples | The default entry point — general-purpose toolset (FileSystem, Web, Data, Code). Available as an installed binary, a `dotnet tool`, or `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …` from a source checkout |
-| **`orkeon-trading --config <config.yaml>`** | `03-finance-trading/*` | Adds 44 specialized trading tools on top of the standard toolset |
+| **the trading runner** (`dotnet run --project examples/runners/trading -- --config <config.yaml>`) | `03-finance-trading/*` | Adds 44 specialized trading tools on top of the standard toolset — `run-example.sh` dispatches to it automatically |
 
 ## LLM Configuration
 
@@ -107,6 +107,11 @@ orkeon run examples/01-enterprise/01-research-assistant/config.yaml
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/01-enterprise/01-research-assistant/config.yaml
 ```
 
+`run-example.sh` also handles the **code-driven examples** (the `rag/*`,
+`raggable-tree/*`, `local-embeddings/` and `streaming-demo` showcases, which are
+C# projects rather than YAML crews): when it finds a `.csproj` instead of a
+`config.yaml`, it falls back to `dotnet run --project <that project>`.
+
 ## Automated Testing
 
 Test all 105 examples at once:
@@ -136,19 +141,30 @@ The full generated catalog (process, agents, tools per example) lives in [INDEX.
 
 | # | Category | Examples | Description |
 |---|----------|----------|-------------|
-| 01 | [Enterprise](01-enterprise/) | 1-15 | Classiques Entreprise -- research, code review, email, reports, support |
-| 02 | [Science & Research](02-science-research/) | 16-30 | Sciences & Recherche -- meta-analysis, debates, genomics, knowledge graphs |
-| 03 | [Finance & Trading](03-finance-trading/) | 31-45 | Finance & Trading -- algo trading, fraud detection, compliance, ESG |
-| 04 | [Health & Wellness](04-health-wellness/) | 46-55 | Sante & Bien-etre -- diagnosis, nutrition, clinical trials, telemedicine |
-| 05 | [Education](05-education/) | 56-65 | Education & Formation -- tutoring, exams, gamification, mentoring |
-| 06 | [Engineering & DevOps](06-engineering-devops/) | 66-75 | Ingenierie & DevOps -- CI/CD, incident response, chaos engineering |
-| 07 | [Creative & Media](07-creative-media/) | 76-85 | Creativite & Media -- narrative, podcast, music, worldbuilding |
-| 08 | [IoT & Smart Systems](08-iot-smart-systems/) | 86-95 | IoT, Monde Physique & Smart Systems -- smart home, fleet, energy |
-| 09 | [Experimental](09-experimental/) | 96-101 | Avant-Garde & Experimental -- self-adaptive crews, civilization sim |
+| 01 | [Enterprise](01-enterprise/) | 16 | Enterprise classics — research, code review, email, reports, support, interactive Q&A |
+| 02 | [Science & Research](02-science-research/) | 15 | Science & research — meta-analysis, debates, genomics, knowledge graphs |
+| 03 | [Finance & Trading](03-finance-trading/) | 15 | Finance & trading — algo trading, fraud detection, compliance, ESG (+ the `Orkeon.Trading.Tools` pack) |
+| 04 | [Health & Wellness](04-health-wellness/) | 10 | Health & wellness — diagnosis, nutrition, clinical trials, telemedicine |
+| 05 | [Education](05-education/) | 10 | Education & training — tutoring, exams, gamification, mentoring |
+| 06 | [Engineering & DevOps](06-engineering-devops/) | 12 | Engineering & DevOps — CI/CD, incident response, chaos engineering, TS-scripted codebase crews |
+| 07 | [Creative & Media](07-creative-media/) | 10 | Creative & media — narrative, podcast, music, worldbuilding |
+| 08 | [IoT & Smart Systems](08-iot-smart-systems/) | 10 | IoT, physical world & smart systems — smart home, fleet, energy |
+| 09 | [Experimental](09-experimental/) | 9 | Avant-garde & experimental — self-adaptive crews, civilization sim, graph orchestration, streaming |
 
-## Shared Resources
+The per-category counts above are directory counts; the numbered prefixes are
+historical and not contiguous — [INDEX.md](INDEX.md) is the authoritative list.
 
-- [`appsettings/`](appsettings/) -- LLM configuration profiles (committed default + provider templates; see [`appsettings/README.md`](appsettings/README.md))
+## Shared Resources & Showcases
+
+- [`appsettings/`](appsettings/) — LLM configuration profiles (committed default + provider templates; see [`appsettings/README.md`](appsettings/README.md))
+- [`rag/`](rag/) — RAG subsystem showcases (basic-ingestion, hybrid-retrieval, custom-reranker, crew-yaml + the `eval/` golden dataset)
+- [`raggable-tree/`](raggable-tree/) — RaggableTree showcases (basic-indexing, crew-yaml, custom-adapter)
+- [`scripting/`](scripting/) — `.ork.ts` crew script examples
+- [`cli-ts-commands/`](cli-ts-commands/) — TypeScript CLI command examples (`*.cmd.ts`)
+- [`local-embeddings/`](local-embeddings/) — on-device embeddings example
+- [`crew-multifile/`](crew-multifile/) — a crew split across multiple YAML files
+- [`runners/`](runners/) — the runner hosts (trading, interactive, TUI) used by the examples
+- [`others/`](others/) — miscellaneous fixtures
 
 ## Solution
 

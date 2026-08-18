@@ -109,7 +109,7 @@ La réindexation incrémentale (`IncrementalReindexEngine`) repart de la phase 2
 | `complexity_report` | Top-N par métrique (Cyclomatic, LoC, Callers...) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
 | `statement_query` | Requêtes structurelles L4 (if, try, return...) | `{ "parent_fqn": "...", "kinds": ["TryCatch"] }` |
 
-Les 15 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableTreeToolsServiceCollectionExtensions`).
+Les 15 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 ## Stratégies d'agents
 

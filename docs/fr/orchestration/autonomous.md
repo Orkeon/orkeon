@@ -236,14 +236,6 @@ crew:
   name: research-team
   process: autonomous      # ← active le mode autonome
   goal: "Produire un rapport de recherche complet"
-  
-  autonomousBudget:        # ← optionnel, défauts si absent
-    maxToolCalls: 20
-    maxDelegationDepth: 2
-    maxWallTime: "00:10:00"
-    maxTokensConsumed: 32000
-    maxSpawnedAgents: 3
-    preset: default        # ou "strict" / "permissive"
 
   agents:
     - role: researcher
@@ -261,7 +253,7 @@ crew:
       allowDelegation: false
 ```
 
-> **Note** : Le parsing YAML de `autonomousBudget` n'est pas encore implémenté. Le mode Autonomous utilise `AgentExecutionBudget.Default` pour l'instant. L'injection du budget custom depuis YAML est prévue en v1.1.
+> **Note** : il n'existe pas de clé YAML `autonomousBudget` — le loader n'en parse pas. Dans les crews YAML, le mode Autonomous s'exécute toujours avec `AgentExecutionBudget.Default` ; un budget personnalisé (presets `Strict`/`Default`/`Permissive` ou valeurs custom) n'est disponible que via l'API C#.
 
 ## Complémentarité avec les autres modes
 

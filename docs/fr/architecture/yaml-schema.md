@@ -163,25 +163,18 @@ circuitBreaker:
 
 ## Configuration Autonomous Budget
 
-Quand `process: "autonomous"` est utilisé, un bloc `autonomousBudget` optionnel configure le budget d'exécution multi-dimensions :
-
-```yaml
-autonomousBudget:              # ← optionnel, défauts si absent
-  maxToolCalls: int            # Nombre max d'appels outils (default: 15)
-  maxDelegationDepth: int      # Profondeur max de delegation recursive (default: 2)
-  maxWallTime: string          # Temps reel maximum au format HH:MM:SS (default: "00:05:00")
-  maxTokensConsumed: int       # Tokens totaux - prompt + completion (default: 16000)
-  maxSpawnedAgents: int        # Nombre max de sous-agents crees (default: 3)
-  preset: string               # "strict" | "default" | "permissive" (surcharge les valeurs ci-dessus)
-```
-
-**Presets prédéfinis** :
-
-- **strict** : MaxToolCalls=8, MaxDelegationDepth=1, MaxWallTime=2min, MaxTokens=8000, MaxSpawns=1
-- **default** : MaxToolCalls=15, MaxDelegationDepth=2, MaxWallTime=5min, MaxTokens=16000, MaxSpawns=3
-- **permissive** : MaxToolCalls=50, MaxDelegationDepth=4, MaxWallTime=15min, MaxTokens=64000, MaxSpawns=10
-
-> **Note** : le parsing YAML de `autonomousBudget` n'est pas encore implémenté dans le loader. En l'absence de ce bloc, `AgentExecutionBudget.Default` est utilisé. Les presets sont fonctionnels via l'API C# (`AgentExecutionBudget.Strict`, `.Default`, `.Permissive`).
+> **⚠️ Non implémenté en YAML.** Il n'existe **aucune clé `autonomousBudget`**
+> dans le schéma YAML aujourd'hui : le loader n'en parse pas, et aucun modèle
+> YAML correspondant n'existe. Avec `process: "autonomous"`,
+> `AgentExecutionBudget.Default` est toujours utilisé. Le budget
+> multi-dimensions se configure **uniquement via l'API C#** — presets
+> `AgentExecutionBudget.Strict` / `.Default` / `.Permissive` ou valeurs
+> personnalisées (voir le
+> [guide de l'orchestration Autonomous](../orchestration/autonomous.md)) :
+>
+> - **Strict** : MaxToolCalls=8, MaxDelegationDepth=1, MaxWallTime=2min, MaxTokens=8000, MaxSpawns=1
+> - **Default** : MaxToolCalls=15, MaxDelegationDepth=2, MaxWallTime=5min, MaxTokens=16000, MaxSpawns=3
+> - **Permissive** : MaxToolCalls=50, MaxDelegationDepth=4, MaxWallTime=15min, MaxTokens=64000, MaxSpawns=10
 
 ## Modèles YAML
 
@@ -192,7 +185,6 @@ Les modèles YAML incluent :
 - `LlmYamlConfig` (modèle, température, max tokens)
 - `CircuitBreakerYamlConfig` (preset, seuils, guards)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges)
-- `AutonomousBudgetYamlConfig` (presets, limites multi-dimensions)
 - `RagYamlConfig` (provider, collections + sources/chunking, défauts) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`
 

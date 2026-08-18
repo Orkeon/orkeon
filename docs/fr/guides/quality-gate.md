@@ -18,9 +18,14 @@ La politique « 80 % sur le nouveau code » était documentée mais jamais appli
 
 Depuis R5.4 :
 
-- le gate est **bloquant** : analyse avec `sonar.qualitygate.wait=true`, verdict
-  relu via l'API (`/api/qualitygates/project_status`), **code de sortie non nul**
-  si le gate est FAILED — en local (scripts) comme en CI (workflow) ;
+- le gate est **bloquant là où l'analyse tourne** : analyse avec
+  `sonar.qualitygate.wait=true`, verdict relu via l'API
+  (`/api/qualitygates/project_status`), **code de sortie non nul** si le gate
+  est FAILED. L'analyse est **lancée par les mainteneurs contre le SonarQube
+  auto-hébergé** (`scripts/sonar-analyze.{sh,ps1}`) — **aucun workflow CI
+  n'exécute SonarQube aujourd'hui** (les anciens workflows Sonar ont été
+  supprimés ; câbler l'analyse dans une voie CI planifiée reste un
+  reliquat ouvert) ;
 - les seuils sont **transitoires** (réalistes au regard de l'état mesuré au
   2026-05-31) et leur **durcissement est planifié** ci-dessous.
 
@@ -52,7 +57,7 @@ dont le seuil diffère, et (ré)associe le gate au projet.
 
 | Condition | Sens | Seuil transitoire (T0) | Cible finale | Justification du seuil transitoire |
 |---|---|:--:|:--:|---|
-| `new_coverage` | ≥ | **70 %** | 80 % | Nouveau code à 71,3 % au 2026-05-31 ; aligné sur la gate de couverture CI à 70 % (décision R5.2). Remonte avec R5.5/R5.6. |
+| `new_coverage` | ≥ | **70 %** | 80 % | Nouveau code à 71,3 % au 2026-05-31 ; aligné sur la cible de couverture à 70 % (décision R5.2). Remonte avec R5.5/R5.6. |
 | `new_reliability_rating` | ≤ | **B (2)** | A (1) | B tolère les bugs *mineurs* le temps de corriger les 3 bugs *majeurs* connus. Au 2026-05-31 le nouveau code était à **C** : la condition reste rouge tant que ces 3 bugs ne sont pas corrigés — **c'est voulu** (pression ciblée du gate bloquant sur les seules vraies causes, cf. fiche R5.4). |
 | `new_security_rating` | ≤ | **A (1)** | A (1) | Déjà tenue — maintenue stricte. |
 | `new_maintainability_rating` | ≤ | **A (1)** | A (1) | Déjà tenue — maintenue stricte. |
@@ -65,10 +70,13 @@ dont le seuil diffère, et (ré)associe le gate au projet.
 |---|---|---|
 | `scripts/sonar-analyze.sh` | `sonar.qualitygate.wait=true` + relecture API du verdict (statut + conditions échouées loguées) | **exit code ≠ 0** (le rapport Markdown est tout de même généré) |
 | `scripts/sonar-analyze.ps1` | idem | **exit code ≠ 0** |
-| `.github/workflows/sonar.yml` (job `sonarqube`) | délègue à `sonar-analyze.sh` (`SONAR_NO_DOCKER=1`) | **job rouge** sur push `main`/`develop` et PR vers `main` |
 
+Il n'y a **pas de surface CI** : aucun workflow GitHub n'exécute d'analyse
+SonarQube (ce que la CI garde sur chaque PR, c'est le build `-warnaserror`
+avec le jeu complet d'analyseurs, le gel d'API, les suites de tests et les
+gates documentaires — voir [État du projet](../../../README.fr.md#état-du-projet)).
 Le verdict (statut + chaque condition échouée avec valeur réelle et seuil) est
-visible dans les logs du script et du job CI.
+visible dans les logs du script.
 
 ## 5. Trajectoire de durcissement
 
@@ -77,7 +85,7 @@ pas de big-bang. Récapitulatif :
 
 | Condition | T0 (transitoire, aujourd'hui) | Critère de passage | T1 | Critère de passage | T2 (cible) |
 |---|:--:|---|:--:|---|:--:|
-| `new_coverage` | 70 % | R5.5 (tests contractuels `Tools.Analysis`) **et** R5.6 (dé-flake) livrés ; gate CI montée à 75 % (R5.2) | 75 % | nouveau code stable ≥ 80 % sur ~1 mois de merges | **80 %** |
+| `new_coverage` | 70 % | R5.5 (tests contractuels `Tools.Analysis`) **et** R5.6 (dé-flake) livrés ; cible de couverture montée à 75 % (R5.2) | 75 % | nouveau code stable ≥ 80 % sur ~1 mois de merges | **80 %** |
 | `new_reliability_rating` | B | les 3 bugs majeurs connus corrigés (campagne de remédiation) | A | — | **A** |
 | `new_security_hotspots_reviewed` | 0 % (neutralisée) | les 9 hotspots hérités statués sur le serveur (remédiation sécurité, fiche 07) | 100 % | — | **100 %** |
 | `new_security_rating` | A | déjà au niveau cible | A | — | **A** |
@@ -111,18 +119,16 @@ Ne pas modifier les seuils directement dans l'UI SonarQube : ils seraient
   du serveur).
 - `new_coverage` n'est **pas évaluée** par SonarQube si aucune couverture n'est
   importée : un import de couverture cassé peut faire passer le gate à tort.
-  C'est pourquoi le script installe ReportGenerator automatiquement et le
-  workflow CI l'installe explicitement.
-- En CI, le fallback Docker des scripts est désactivé (`SONAR_NO_DOCKER=1`) :
-  un serveur injoignable fait échouer le job au lieu de booter une instance
-  éphémère sans historique (qui rendrait le verdict « nouveau code » dénué de
-  sens).
-- L'ancien workflow `.github/workflows/sonarqube.yml` (non bloquant, clé
-  `Orkeon`) est rendu redondant par `sonar.yml` et a vocation à être supprimé.
+  C'est pourquoi le script installe ReportGenerator automatiquement.
+- Sur une machine headless, le fallback Docker des scripts peut être désactivé
+  (`SONAR_NO_DOCKER=1`) : un serveur injoignable fait alors échouer la passe au
+  lieu de booter une instance éphémère sans historique (qui rendrait le verdict
+  « nouveau code » dénué de sens).
 
 ## 8. Historique
 
 | Date | Événement |
 |---|---|
-| 2026-06-11 | Création du gate « Orkeon Transitional » (T0), activation du blocage local + CI (R5.4), alignement de la clé de projet des scripts sur la clé historique |
+| 2026-06-11 | Création du gate « Orkeon Transitional » (T0), activation du blocage local (R5.4), alignement de la clé de projet des scripts sur la clé historique |
 | 2026-08-17 | Clé de projet renommée en `Orkeon` (suite de l'audit PUB-01 — clé historique d'avant renommage retirée ; remplace la décision QCM du 2026-06-11, l'historique d'analyse repart sous la nouvelle clé) |
+| 2026-08-18 | Document réaligné sur la réalité (DOC-02) : aucun workflow CI Sonar n'existe — l'application du verdict est locale aux scripts d'analyse ; références aux anciens workflows retirées |

@@ -23,17 +23,17 @@ Run any example with `bash examples/run-example.sh <runner> <category>/<example>
 
 | Category | Examples | Runner |
 |----------|:--------:|--------|
-| [01 - Classiques Entreprise (1-15)](#01---classiques-entreprise-1-15) | 16 | `standard` |
+| [01 - Classiques Entreprise (1-16)](#01---classiques-entreprise-1-16) | 16 | `standard` |
 | [02 - Sciences & Recherche (16-30)](#02---sciences--recherche-16-30) | 15 | `standard` |
 | [03 - Finance & Trading (31-45)](#03---finance--trading-31-45) | 15 | `trading` |
 | [04 - Sante & Bien-etre (46-55)](#04---sante--bien-etre-46-55) | 10 | `standard` |
 | [05 - Education & Formation (56-65)](#05---education--formation-56-65) | 10 | `standard` |
-| [06 - Ingenierie & DevOps (66-75)](#06---ingenierie--devops-66-75) | 12 | `standard` |
+| [06 - Ingenierie & DevOps (66-75, 102-103)](#06---ingenierie--devops-66-75-102-103) | 12 | `standard` |
 | [07 - Creativite & Media (76-85)](#07---creativite--media-76-85) | 10 | `standard` |
 | [08 - IoT, Monde Physique & Smart Systems (86-95)](#08---iot-monde-physique--smart-systems-86-95) | 10 | `standard` |
 | [09 - Avant-Garde & Experimental (96-102)](#09---avant-garde--experimental-96-102) | 7 | `standard` |
 
-## 01 - Classiques Entreprise (1-15)
+## 01 - Classiques Entreprise (1-16)
 
 Runner: `standard` · 16 examples · folder [`01-enterprise/`](01-enterprise/)
 
@@ -134,7 +134,7 @@ Runner: `standard` · 10 examples · folder [`05-education/`](05-education/)
 | 64 | [64. Accessibilite Universelle des Contenus](05-education/64-accessibility/) | Parallel | 4 | 4 | `file_read`, `file_write`, `json_tool`, `xml_parser` | ✅ |
 | 65 | [65. Mentorat IA pour Developpeurs](05-education/65-developer-mentoring/) | Parallel | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `file_write` | ✅ |
 
-## 06 - Ingenierie & DevOps (66-75)
+## 06 - Ingenierie & DevOps (66-75, 102-103)
 
 Runner: `standard` · 12 examples · folder [`06-engineering-devops/`](06-engineering-devops/)
 

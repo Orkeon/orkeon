@@ -154,7 +154,7 @@ Notes :
   est prétraité indépendamment (c'était déjà le cas entre les trois fichiers plats).
 
 Côté CLI, `orkeon run <dossier>` accepte directement ces répertoires
-(Orkeon >= 0.9.2-beta) — voir
+— voir
 [Trois façons d'exécuter Orkeon](./three-ways-to-run-orkeon.md#exécuter).
 
 ## CrewFactory — Du YAML aux objets domaine

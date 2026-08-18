@@ -20,3 +20,9 @@ Experimental and cutting-edge use cases: self-adaptive crews, multi-party negoti
 showing real-time streaming of agent execution via `IStreamingAgentExecutionService`.
 Run it directly with `dotnet run --project 09-experimental/streaming-demo`. It reads
 its own `appsettings.json` (Docker Model Runner by default).
+
+## llm-response-format
+
+`llm-response-format/` is a minimal demo of the `response_format` cascade
+(forced JSON output at the provider boundary), showing the same crew expressed
+in YAML and through the fluent API. See its [README](llm-response-format/README.md).

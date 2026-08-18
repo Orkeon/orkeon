@@ -1,4 +1,4 @@
-> 🇬🇧 [English version](../../arkeon/llm-providers-comparatif.md)
+> 🇬🇧 [English version](../../reference/llm-providers-comparison.md)
 
 # Comparatif des fournisseurs LLM — Orkeon
 

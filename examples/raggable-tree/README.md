@@ -1,0 +1,12 @@
+# RaggableTree showcases
+
+Runnable demos of the RaggableTree semantic code graph (`src/analysis/` — see
+the [RaggableTree guide](../../docs/architecture/raggable-tree.md)). Each
+sub-example has its own README; they are C# projects, so `run-example.sh` falls
+back to `dotnet run --project …` for them.
+
+| Example | What it shows |
+|---------|---------------|
+| [`basic-indexing/`](basic-indexing/) | The smallest end-to-end run: index a directory, inspect the 6-level graph |
+| [`crew-yaml/`](crew-yaml/) | A YAML-defined crew consuming a RaggableTree index through the analysis tools |
+| [`custom-adapter/`](custom-adapter/) | Teaching RaggableTree a new language by implementing `ILanguageAdapter` |

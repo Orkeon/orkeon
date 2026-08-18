@@ -146,5 +146,5 @@ Les 6 stratégies de process (Sequential, Hierarchical, Autonomous, Graph, Paral
 - Câblage DeepSeek : `Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.ApplyProviderSpecificOptions`
 - Loader YAML : `Orkeon.Infrastructure.Configuration.YamlCrewDefinitionLoader.MapResponseFormat`
 - Extensions call-time : `Orkeon.Infrastructure.LLMs.Extensions.LlmProviderExtensions`
-- Plan / spec : `project/tasks/LLM-RESPONSE-FORMAT-PLAN.md`
+- Plan / spec : the maintainers' archive (LLM-RESPONSE-FORMAT plan)
 - Doc API DeepSeek : https://api-docs.deepseek.com/api/create-chat-completion

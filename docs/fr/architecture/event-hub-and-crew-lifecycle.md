@@ -5,9 +5,9 @@
 **Statut** : design figé, prêt pour implémentation v1
 **Date** : 2026-05-23
 **Périmètre** : `Orkeon.Application` (ports), `Orkeon.Infrastructure` (adapters InMemory + SQLite)
-**Public** : développeurs Orkéon
+**Public** : développeurs Orkeon
 
-Ce document consolide les décisions architecturales prises pour la couche de messaging inter-agents et inter-crews d'Orkéon, ainsi que pour la mise en sommeil / réveil des crews. Il sert de référence unique pour l'implémentation v1.
+Ce document consolide les décisions architecturales prises pour la couche de messaging inter-agents et inter-crews d'Orkeon, ainsi que pour la mise en sommeil / réveil des crews. Il sert de référence unique pour l'implémentation v1.
 
 ---
 
@@ -18,7 +18,7 @@ Ce document consolide les décisions architecturales prises pour la couche de me
 - Fournir aux agents et au système une primitive unifiée de messaging in-memory.
 - Permettre la mise en sommeil d'une crew inactive et son réveil ultérieur sur arrivée d'un message attendu.
 - Garantir la survie des messages et des waits en cours à un redémarrage du process (persistance SQLite optionnelle).
-- Exposer la même surface fonctionnelle dans les trois paradigmes Orkéon : C#, YAML, TypeScript.
+- Exposer la même surface fonctionnelle dans les trois paradigmes Orkeon : C#, YAML, TypeScript.
 - Supporter le messaging inter-crew sécurisé par une whitelist déclarative.
 
 ### 1.2 Hors-périmètre v1
@@ -861,7 +861,7 @@ Chaque message produit un span avec ces attributs :
 
 ## 20. Références
 
-- `docs/architecture/raggable-tree.md` — pattern Clean Architecture port/adapter de référence dans Orkéon.
+- `docs/architecture/raggable-tree.md` — pattern Clean Architecture port/adapter de référence dans Orkeon.
 - `src/core/Orkeon.Domain/Autonomous/AgentExecutionBudget.cs` — budget multi-dimensionnel utilisé pour les `CancellationToken` budget-aware.
 - `src/core/Orkeon.Infrastructure/Communication/InMemoryAgentChannel.cs` — pattern de communication lock-free existant, à réutiliser pour `InMemoryEventHub`.
-- `src/core/Orkeon.Infrastructure/Memory/EncryptedSqliteMemoryProvider.cs` — référence pour `SqliteCrewStateStore`.
+- `src/core/Orkeon.Infrastructure/Memory/EncryptedMemoryProviderDecorator.cs` — référence pour `SqliteCrewStateStore`.

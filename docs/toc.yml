@@ -80,6 +80,8 @@
   items:
     - name: Examples catalog
       href: reference/examples-catalog.md
+    - name: LLM provider comparison
+      href: reference/llm-providers-comparison.md
     - name: Limits and constraints
       href: reference/limitations.md
     - name: Experimental APIs
@@ -94,3 +96,27 @@
       href: reference/hosting.md
     - name: NuGet publication matrix
       href: reference/publication-matrix.md
+- name: Architecture Decision Records
+  items:
+    - name: ADR register
+      href: adr/README.md
+    - name: ADR-002 — Tools.Abstractions shared kernel
+      href: adr/ADR-002-tool-abstractions-shared-kernel.md
+    - name: ADR-003 — Secondary shared kernels (Analysis)
+      href: adr/ADR-003-shared-kernels-secondaires.md
+    - name: ADR-004 — Scripting naming twins (superseded)
+      href: adr/ADR-004-jumeaux-de-nommage-scripting.md
+    - name: ADR-005 — Heterogeneous Tools.* family
+      href: adr/ADR-005-famille-tools-heterogene.md
+    - name: ADR-006 — RAG subsystem
+      href: adr/ADR-006-rag-subsystem.md
+    - name: ADR-007 — Cli.Commands.Scripting rename (D3)
+      href: adr/ADR-007-d3-renommage-cli-commands-scripting.md
+    - name: ADR — RaggableTree semantic graph
+      href: architecture/raggable-tree-adr.md
+- name: Templates
+  items:
+    - name: Example README template
+      href: templates/example-readme.md
+- name: Documentation française
+  href: fr/toc.yml

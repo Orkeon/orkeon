@@ -23,51 +23,51 @@ Orkeon supports full crew configuration via YAML. The `YamlCrewDefinitionLoader`
 The YAML structure follows this schema:
 
 ```yaml
-# Schéma complet CrewYamlConfig
-name: string              # Identifiant de la crew
-goal: string              # Objectif (requis)
+# Complete CrewYamlConfig schema
+name: string              # Crew identifier
+goal: string              # Goal (required)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
 verbose: bool             # default: false
 memory: bool              # default: false
 memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb"
 planning: bool            # default: false
-managerAgent: string      # Requis si process = "hierarchical"
+managerAgent: string      # Required when process = "hierarchical"
 
 agents:
-  <agent_id>:             # Clé = identifiant unique de l'agent
-    role: string          # Rôle de l'agent (requis)
-    goal: string          # Objectif personnel de l'agent (requis)
-    backstory: string     # Contexte et expertise (multi-ligne recommandé)
-    tools: [string]       # Noms d'outils enregistrés dans IToolRegistry
-    allowDelegation: bool # default: true — permet la délégation à d'autres agents
-    maxIter: int          # default: 20 — itérations maximales avant timeout
-    maxRpm: int           # default: 10 — requêtes par minute (rate limiting)
-    verbose: bool         # default: false — logs détaillés pour cet agent
+  <agent_id>:             # Key = unique agent identifier
+    role: string          # Agent role (required)
+    goal: string          # Agent's personal goal (required)
+    backstory: string     # Context and expertise (multi-line recommended)
+    tools: [string]       # Names of tools registered in IToolRegistry
+    allowDelegation: bool # default: true — allows delegation to other agents
+    maxIter: int          # default: 20 — maximum iterations before timeout
+    maxRpm: int           # default: 10 — requests per minute (rate limiting)
+    verbose: bool         # default: false — detailed logs for this agent
     llm:
-      model: string       # Modèle LLM ("gpt-4", "claude-3-opus", etc.)
-      temperature: float  # Créativité (0.0-1.0)
-      maxTokens: int      # Limite de tokens en sortie
+      model: string       # LLM model ("gpt-4", "claude-3-opus", etc.)
+      temperature: float  # Creativity (0.0-1.0)
+      maxTokens: int      # Output token limit
 
 tasks:
-  <task_id>:              # Clé = identifiant unique de la tâche
-    description: string   # Description détaillée de la tâche (requis)
-    expectedOutput: string # Format/contenu attendu en résultat (requis)
-    agent: string         # ID de l'agent assigné à la tâche
-    dependencies: [string] # IDs des tâches prérequises (garantit l'ordre)
-    asyncExecution: bool  # default: false — exécution asynchrone
-    humanInput: bool      # default: false — demande intervention humaine
-    context: {key: value} # Données additionnelles de contexte
-    circuitBreaker:       # Configuration FSM / circuit breaker (optionnel)
+  <task_id>:              # Key = unique task identifier
+    description: string   # Detailed task description (required)
+    expectedOutput: string # Expected output format/content (required)
+    agent: string         # ID of the agent assigned to the task
+    dependencies: [string] # IDs of prerequisite tasks (guarantees ordering)
+    asyncExecution: bool  # default: false — asynchronous execution
+    humanInput: bool      # default: false — requests human intervention
+    context: {key: value} # Additional context data
+    circuitBreaker:       # FSM / circuit breaker configuration (optional)
       preset: string      # "strict" | "permissive" | "default"
-      maxTransitions: int # Transitions max avant trip
-      stateTimeoutSeconds: int  # Timeout par état (secondes)
-      maxStateVisits: int       # Visites max d'un même état (cycles)
-      maxTotalDurationSeconds: int # Durée totale max (secondes)
+      maxTransitions: int # Max transitions before trip
+      stateTimeoutSeconds: int  # Per-state timeout (seconds)
+      maxStateVisits: int       # Max visits of the same state (cycles)
+      maxTotalDurationSeconds: int # Max total duration (seconds)
       useDegradedMode: bool     # true = Degraded, false = exception
-      maxRetries: int           # Retries après échec
-      maxToolCallsPerRound: int # Tool calls max par round
-      maxValidationRetries: int # Boucles validation max
-    guardrails:           # Guardrails au niveau tâche (optionnel) — même forme qu'au niveau agent
+      maxRetries: int           # Retries after failure
+      maxToolCallsPerRound: int # Max tool calls per round
+      maxValidationRetries: int # Max validation loops
+    guardrails:           # Task-level guardrails (optional) — same shape as at agent level
       preset: string      # "analysis" | "strict" | "creative"
       header: string
       rules: [string]
@@ -85,11 +85,11 @@ When `process: "graph"` is used, an additional `graphConfig` block configures th
 
 ```yaml
 graphConfig:
-  maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
+  maxRetryCycles: int           # default: 2 — retry cycles for failed tasks
   circuitBreakerPreset: string  # "strict" | "permissive" | "default"
-  maxTransitions: int           # Surcharge le preset
-  maxStateVisits: int           # Détection de cycles (surcharge le preset)
-  maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
+  maxTransitions: int           # Overrides the preset
+  maxStateVisits: int           # Cycle detection (overrides the preset)
+  maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 ```
 
 See [Graph Orchestration](../orchestration/graph.md) for the full details.
@@ -113,7 +113,7 @@ The `YamlCrewDefinitionLoader` loader supports two modes:
 **Single-file mode**: contains agents and tasks in a single file
 
 ```csharp
-// loader : ICrewDefinitionLoader (implémentation YamlCrewDefinitionLoader) résolu via DI
+// loader: ICrewDefinitionLoader (YamlCrewDefinitionLoader implementation) resolved via DI
 var config = await loader.LoadFromFileAsync("crews/research_crew.yaml", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 ```
@@ -123,7 +123,7 @@ var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 ```csharp
 var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
-// Charge automatiquement : crew.yaml, agents.yaml, tasks.yaml
+// Automatically loads: crew.yaml, agents.yaml, tasks.yaml
 ```
 
 **Per-entity directory mode**: crew settings in `config.yaml`
@@ -144,7 +144,7 @@ crews/research/
 ```
 
 ```csharp
-// Même appel : la disposition est détectée automatiquement.
+// Same call: the layout is detected automatically.
 var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 ```
@@ -161,7 +161,7 @@ Notes:
   (this was already true across the three flat files).
 
 On the CLI side, `orkeon run <directory>` accepts these directories directly
-(Orkeon >= 0.9.2-beta) — see
+— see
 [Three ways to run Orkeon](./three-ways-to-run-orkeon.md#run).
 
 ## CrewFactory — From YAML to domain objects
@@ -185,36 +185,36 @@ The creation pipeline transforms the YAML configuration into operational domain 
 
 ```csharp
 /// <summary>
-/// Crée une Crew à partir d'une CrewConfiguration déjà désérialisée.
-/// Utilisé après LoadFromFile/LoadFromDirectory.
+/// Creates a Crew from an already deserialized CrewConfiguration.
+/// Used after LoadFromFile/LoadFromDirectory.
 /// </summary>
 public async Task<Crew> CreateFromConfigAsync(
     CrewConfiguration config,
     CancellationToken ct = default)
 {
-    // Valide la config, résout les outils, crée agents/tasks/crew
+    // Validates the config, resolves the tools, creates agents/tasks/crew
 }
 
 /// <summary>
-/// Crée une Crew directement à partir d'un fichier YAML.
-/// Mode fichier unique (agents + tasks dans le même fichier).
+/// Creates a Crew directly from a YAML file.
+/// Single-file mode (agents + tasks in the same file).
 /// </summary>
 public async Task<Crew> CreateFromFileAsync(
     string yamlFilePath,
     CancellationToken ct = default)
 {
-    // Désérialise YAML → CrewYamlConfig → appelle CreateFromConfigAsync
+    // Deserializes YAML → CrewYamlConfig → calls CreateFromConfigAsync
 }
 
 /// <summary>
-/// Crée une Crew à partir d'un répertoire YAML.
-/// Mode multi-fichier : crew.yaml + agents.yaml + tasks.yaml
+/// Creates a Crew from a YAML directory.
+/// Multi-file mode: crew.yaml + agents.yaml + tasks.yaml
 /// </summary>
 public async Task<Crew> CreateFromDirectoryAsync(
     string directoryPath,
     CancellationToken ct = default)
 {
-    // Charge agents.yaml, tasks.yaml, crew.yaml → appelle CreateFromConfigAsync
+    // Loads agents.yaml, tasks.yaml, crew.yaml → calls CreateFromConfigAsync
 }
 ```
 

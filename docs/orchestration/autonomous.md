@@ -118,10 +118,10 @@ The budget controls 5 independent dimensions. Each dimension has a thread-safe c
 ### Presets
 
 ```csharp
-// Production : limites conservatrices
+// Production: conservative limits
 var budget = AgentExecutionBudget.Strict;
 
-// Développement : limites larges
+// Development: loose limits
 var budget = AgentExecutionBudget.Permissive;
 
 // Custom
@@ -154,17 +154,17 @@ This guarantees that the sum of the children's consumption never exceeds the par
 The bidirectional channel lets agents communicate in request/response mode:
 
 ```csharp
-// Agent A demande a Agent B de clarifier
+// Agent A asks Agent B to clarify
 var request = AgentChannelRequest.Create(
     from: agentA.Id,
     to: agentB.Id,
     intent: "clarify",
-    payload: "Quel format de données pour le rapport ?");
+    payload: "Which data format for the report?");
 
 var response = await channel.RequestAsync(request, timeout: TimeSpan.FromSeconds(30));
 
 if (response.Success)
-    Console.WriteLine($"Réponse: {response.Payload}");
+    Console.WriteLine($"Response: {response.Payload}");
 ```
 
 ### Standard intents
@@ -182,13 +182,13 @@ The `InMemoryAgentChannel` implementation is in-process and lock-free. For a mul
 Tool injected into autonomous agents to create specialized sub-agents on the fly:
 
 ```csharp
-// Le LLM de l'agent génère cet appel d'outil :
+// The agent's LLM generates this tool call:
 {
     "tool": "spawn_agent",
     "parameters": {
         "role": "data_analyst",
-        "goal": "Analyser les tendances de ventes Q4",
-        "task": "Produire un rapport CSV des ventes par region",
+        "goal": "Analyze Q4 sales trends",
+        "task": "Produce a CSV report of sales by region",
         "wait_for_result": true,
         "allow_delegation": false
     }
@@ -234,34 +234,26 @@ All key events are logged via `LoggerMessage`:
 ```yaml
 crew:
   name: research-team
-  process: autonomous      # ← active le mode autonome
-  goal: "Produire un rapport de recherche complet"
-  
-  autonomousBudget:        # ← optionnel, défauts si absent
-    maxToolCalls: 20
-    maxDelegationDepth: 2
-    maxWallTime: "00:10:00"
-    maxTokensConsumed: 32000
-    maxSpawnedAgents: 3
-    preset: default        # ou "strict" / "permissive"
+  process: autonomous      # ← enables the autonomous mode
+  goal: "Produce a complete research report"
 
   agents:
     - role: researcher
-      goal: "Trouver des sources fiables"
+      goal: "Find reliable sources"
       allowDelegation: true
-      tools: [web_search, spawn_agent]  # ← spawn_agent pour self-spawn
+      tools: [web_search, spawn_agent]  # ← spawn_agent for self-spawn
 
     - role: analyst
-      goal: "Analyser et synthétiser les données"
+      goal: "Analyze and synthesize the data"
       allowDelegation: true
       tools: [json_search, csv_search]
 
     - role: writer
-      goal: "Rédiger le rapport final"
+      goal: "Write the final report"
       allowDelegation: false
 ```
 
-> **Note**: YAML parsing of `autonomousBudget` is not implemented yet. The Autonomous mode uses `AgentExecutionBudget.Default` for now. Injecting a custom budget from YAML is planned for v1.1.
+> **Note**: there is no `autonomousBudget` YAML key — the loader does not parse one. In YAML crews the Autonomous mode always runs with `AgentExecutionBudget.Default`; a custom budget (presets `Strict`/`Default`/`Permissive` or custom values) is available through the C# API only.
 
 ## Complementarity with the other modes
 

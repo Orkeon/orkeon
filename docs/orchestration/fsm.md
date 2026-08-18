@@ -136,26 +136,26 @@ The `IsToolRegistered` guard blocks calls to tools not registered on the agent, 
 The `circuitBreaker` block can be used at two levels in the `config.yaml`:
 
 ```yaml
-# Niveau crew — défauts pour toutes les tâches
+# Crew level — defaults for all tasks
 circuitBreaker:
   preset: string              # "strict" | "permissive" | "default"
-  maxTransitions: int         # Surcharge le preset
-  stateTimeoutSeconds: int    # Timeout par état en secondes
-  maxStateVisits: int         # Détection de cycles
-  maxTotalDurationSeconds: int # Durée totale en secondes
+  maxTransitions: int         # Overrides the preset
+  stateTimeoutSeconds: int    # Per-state timeout in seconds
+  maxStateVisits: int         # Cycle detection
+  maxTotalDurationSeconds: int # Total duration in seconds
   useDegradedMode: bool       # true = Degraded, false = exception
-  maxRetries: int             # Retries après échec (guard)
-  maxToolCallsPerRound: int   # Tool calls max par round (guard)
-  maxValidationRetries: int   # Boucles validation max (guard)
+  maxRetries: int             # Retries after failure (guard)
+  maxToolCallsPerRound: int   # Max tool calls per round (guard)
+  maxValidationRetries: int   # Max validation loops (guard)
 
 tasks:
   <task_id>:
     description: string
-    # Niveau task — override pour cette tâche spécifique
+    # Task level — override for this specific task
     circuitBreaker:
-      maxTransitions: int     # Surcharge le défaut crew
+      maxTransitions: int     # Overrides the crew default
       stateTimeoutSeconds: int
-      # ... mêmes champs que ci-dessus
+      # ... same fields as above
 ```
 
 ### Resolution hierarchy
@@ -185,17 +185,17 @@ The mapping is performed by `YamlCrewDefinitionLoader.MapCircuitBreaker()`. The 
 using Orkeon.Domain.Common.StateMachine;
 using Orkeon.Domain.Task;
 
-// Créer une FSM avec le preset Strict
+// Create an FSM with the Strict preset
 var fsm = TaskExecutionStateMachine.Create(CircuitBreakerPolicy.Strict);
 
-// Observer les transitions
+// Observe the transitions
 fsm.OnTransition += (_, result) =>
     Console.WriteLine($"{result.FromState} -> {result.ToState} via {result.Trigger}");
 
 fsm.OnCircuitBroken += (_, status) =>
     Console.WriteLine($"CIRCUIT BROKEN: {status.BrokenReason}");
 
-// Contexte de garde
+// Guard context
 var ctx = new TaskExecutionGuardContext
 {
     RetryCount = 0,
@@ -205,7 +205,7 @@ var ctx = new TaskExecutionGuardContext
     IsToolRegistered = true,
 };
 
-// Exécuter le workflow
+// Run the workflow
 fsm.Fire(TaskExecutionEvent.BeginExecution);
 fsm.Fire(TaskExecutionEvent.RequestToolCall, ctx);
 fsm.Fire(TaskExecutionEvent.ToolCallCompleted);
@@ -221,7 +221,7 @@ Console.WriteLine(fsm.IsTerminal);   // true
 ```csharp
 using Orkeon.Infrastructure.Configuration;
 
-// La CircuitBreakerPolicyFactory résout la hiérarchie crew + task
+// The CircuitBreakerPolicyFactory resolves the crew + task hierarchy
 var fsm = CircuitBreakerPolicyFactory.CreateTaskFsm(
     crewDefault: crewConfig.CircuitBreaker,
     taskOverride: taskConfig.CircuitBreaker

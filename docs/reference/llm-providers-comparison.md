@@ -1,4 +1,4 @@
-> 🇫🇷 [Version française](../fr/arkeon/llm-providers-comparatif.md)
+> 🇫🇷 [Version française](../fr/reference/llm-providers-comparison.md)
 
 # LLM Provider Comparison — Orkeon
 

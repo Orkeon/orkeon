@@ -16,10 +16,8 @@ fail=0
 note() { printf '  - %s\n' "$1"; }
 
 # --- docs/ ⇄ docs/fr/ -------------------------------------------------------------------
-# docs/audit/ holds dated audit snapshots (GO/NO-GO reports) — English-only by decision
-# (PUB-01, 2026-08-17), excluded from the bilingual parity contract.
-en_docs=$(cd docs && find . -name '*.md' -not -path './fr/*' -not -path './audit/*' | sed 's|^\./||' | sort)
-fr_docs=$(cd docs/fr && find . -name '*.md' -not -path './audit/*' | sed 's|^\./||' | sort)
+en_docs=$(cd docs && find . -name '*.md' -not -path './fr/*' | sed 's|^\./||' | sort)
+fr_docs=$(cd docs/fr && find . -name '*.md' | sed 's|^\./||' | sort)
 
 missing_fr=$(comm -23 <(printf '%s\n' "$en_docs") <(printf '%s\n' "$fr_docs"))
 missing_en=$(comm -13 <(printf '%s\n' "$en_docs") <(printf '%s\n' "$fr_docs"))

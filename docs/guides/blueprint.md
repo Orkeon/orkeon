@@ -13,7 +13,7 @@ This document serves as a reproducible guide for implementing and documenting a 
 Before starting, identify:
 
 - **Type name**: e.g. `StateGraph`, `AgenticSwarm`, `PipelineDAG`
-- **Doc number**: create a file in `docs/orchestration/` (e.g. `docs/orchestration/nouveau-type.md`)
+- **Doc number**: create a file in `docs/orchestration/` (e.g. `docs/orchestration/new-type.md`)
 - **Example number**: next free index in `examples/` (e.g. `104`)
 - **Initial scope**: where the new type applies first (Task, Crew, Flow)
 
@@ -58,13 +58,13 @@ public sealed class <NomType><TState, TEvent>
     where TEvent : notnull
 {
     private readonly object _lock = new();
-    // ... état interne, compteurs, histogramme
+    // ... internal state, counters, histogram
 
-    // Points d'extension obligatoires :
-    // 1. Vérification des limites AVANT chaque opération
-    // 2. Hook d'action APRÈS chaque opération réussie
-    // 3. Événements pour observabilité externe
-    // 4. Mode dégradé (fallback state) quand UseDegradedMode = true
+    // Mandatory extension points:
+    // 1. Check limits BEFORE each operation
+    // 2. Action hook AFTER each successful operation
+    // 3. Events for external observability
+    // 4. Degraded mode (fallback state) when UseDegradedMode = true
 }
 ```
 
@@ -80,14 +80,14 @@ public sealed class <NomType>Builder<TState, TEvent>
     public <NomType>Builder<TState, TEvent> WithDegradedState(TState state) { ... }
     public <NomType>Builder<TState, TEvent> WithCircuitBreaker(<NomType>Policy policy) { ... }
 
-    // Fonctions clé pour dictionnaires internes (utile si TState n'est pas un enum) :
+    // Key functions for internal dictionaries (useful when TState is not an enum):
     public <NomType>Builder<TState, TEvent> WithStateKey(Func<TState, string> keyFunc) { ... }
     public <NomType>Builder<TState, TEvent> WithEventKey(Func<TEvent, string> keyFunc) { ... }
 
-    // Pattern nested builder pour les transitions/nœuds :
+    // Nested builder pattern for transitions/nodes:
     public TransitionBuilder When(TState from, TEvent trigger) { ... }
 
-    // Raccourci pour transition simple sans guard ni action :
+    // Shortcut for a simple transition without guard or action:
     public <NomType>Builder<TState, TEvent> AddTransition(TState from, TEvent trigger, TState to) { ... }
 
     public <NomType><TState, TEvent> Build() { ... }
@@ -124,16 +124,16 @@ public sealed class <NomType>Builder<TState, TEvent>
 ```csharp
 public sealed record <Scope>GuardContext
 {
-    // Compteurs de boucle (adapter selon le type d'orchestration)
+    // Loop counters (adapt to the orchestration type)
     public int RetryCount { get; init; }
     public int MaxRetries { get; init; } = 3;
 
-    // Compteurs spécifiques au type
-    // Ex FSM : ToolCallCount, ValidationAttempts
-    // Ex LangGraph : NodeVisitCount, EdgeTraversalCount
-    // Ex Agentique : SubAgentSpawnCount, DelegationDepth
+    // Type-specific counters
+    // FSM example: ToolCallCount, ValidationAttempts
+    // LangGraph example: NodeVisitCount, EdgeTraversalCount
+    // Agentic example: SubAgentSpawnCount, DelegationDepth
 
-    // Predicats derives
+    // Derived predicates
     public bool CanRetry => RetryCount < MaxRetries;
     // ...
 }
@@ -159,33 +159,33 @@ Every orchestration type MUST implement at minimum:
 namespace Orkeon.Domain.Configuration;
 
 /// <summary>
-/// DTO immutable pour la configuration <NomType> depuis YAML.
-/// Tous les champs sont nullable pour permettre l'héritage crew → task.
+/// Immutable DTO for the <NomType> configuration coming from YAML.
+/// All fields are nullable to allow crew → task inheritance.
 /// </summary>
 public sealed record <NomType>Config
 {
     public string? Preset { get; init; }
 
-    // Champs du circuit breaker (communs à tous les types)
+    // Circuit breaker fields (common to all types)
     public int? MaxTransitions { get; init; }
     public int? StateTimeoutSeconds { get; init; }
     public int? MaxStateVisits { get; init; }
     public int? MaxTotalDurationSeconds { get; init; }
     public bool? UseDegradedMode { get; init; }
 
-    // Champs spécifiques au type (guards)
+    // Type-specific fields (guards)
     public int? MaxRetries { get; init; }
-    // ... adapter selon le type
+    // ... adapt to the type
 }
 ```
 
 **Modify** `CrewConfiguration.cs` (which also contains `TaskConfiguration`):
 
 ```csharp
-// Dans le record CrewConfiguration (même fichier) :
+// In the CrewConfiguration record (same file):
 public <NomType>Config? <NomType> { get; init; }
 
-// Dans le record TaskConfiguration (même fichier CrewConfiguration.cs) :
+// In the TaskConfiguration record (same CrewConfiguration.cs file):
 public <NomType>Config? <NomType> { get; init; }
 ```
 
@@ -205,21 +205,21 @@ namespace Orkeon.Infrastructure.Configuration;
 public static class <NomType>PolicyFactory
 {
     /// <summary>
-    /// Résolution hiérarchique : task override → crew default → preset → Strict fallback.
+    /// Hierarchical resolution: task override → crew default → preset → Strict fallback.
     /// </summary>
     public static <NomType>Policy Resolve(
         <NomType>Config? crewDefault,
         <NomType>Config? taskOverride)
     {
-        // 1. Déterminer le preset de base
-        // 2. Appliquer les overrides crew-level
-        // 3. Appliquer les overrides task-level (écrase crew)
-        // 4. Convertir int seconds → TimeSpan
+        // 1. Determine the base preset
+        // 2. Apply the crew-level overrides
+        // 3. Apply the task-level overrides (they override crew)
+        // 4. Convert int seconds → TimeSpan
     }
 
     /// <summary>
-    /// Crée une FSM spécialisée (retour type concret, pas générique).
-    /// Le nom de la méthode doit refléter le scope : CreateTaskFsm, CreateCrewFsm, etc.
+    /// Creates a specialized FSM (concrete return type, not generic).
+    /// The method name must reflect the scope: CreateTaskFsm, CreateCrewFsm, etc.
     /// </summary>
     public static StateMachine<TaskExecutionState, TaskExecutionEvent> Create<Scope>Fsm(
         <NomType>Config? crewDefault,
@@ -230,8 +230,8 @@ public static class <NomType>PolicyFactory
     }
 
     /// <summary>
-    /// Construit le guard context avec fusion hiérarchique des limites.
-    /// Le task override prend les champs non-null, sinon crew default, sinon valeur par défaut du record.
+    /// Builds the guard context with hierarchical merging of the limits.
+    /// The task override wins for non-null fields, then crew default, then the record's default value.
     /// </summary>
     public static <Scope>GuardContext CreateGuardContext(
         <NomType>Config? crewDefault,
@@ -241,24 +241,24 @@ public static class <NomType>PolicyFactory
         return new <Scope>GuardContext
         {
             MaxRetries = effective?.MaxRetries ?? 3,
-            // ... autres champs avec fallback par défaut
-            IsToolRegistered = true, // Concern runtime, pas config
+            // ... other fields with default fallback
+            IsToolRegistered = true, // Runtime concern, not config
         };
     }
 }
 
-// --- Exemple réel (CircuitBreakerPolicyFactory) ---
-// La méthode `CreateTaskFsm` retourne un type concret, pas générique.
-// La méthode `ApplyOverrides` est private et gère la conversion int seconds → TimeSpan.
+// --- Real example (CircuitBreakerPolicyFactory) ---
+// The `CreateTaskFsm` method returns a concrete type, not a generic one.
+// The `ApplyOverrides` method is private and handles the int seconds → TimeSpan conversion.
 ```
 
 ### Resolution hierarchy (invariant across all types)
 
 ```
-1. Task-level config       (priorité haute — champs non-null écrasent)
-2. Crew-level config       (défaut — champs non-null écrasent le preset)
-3. Preset nommé            (si spécifié dans Preset — base de valeurs)
-4. <NomType>Policy.Strict  (fallback si rien n'est configuré)
+1. Task-level config       (high priority — non-null fields override)
+2. Crew-level config       (default — non-null fields override the preset)
+3. Named preset            (if specified in Preset — base values)
+4. <NomType>Policy.Strict  (fallback when nothing is configured)
 ```
 
 ---
@@ -278,7 +278,7 @@ private sealed class <NomType>YamlConfig
     [YamlMember(Alias = "maxTransitions")]
     public int? MaxTransitions { get; set; }
 
-    // ... tous les champs avec [YamlMember(Alias = "camelCase")]
+    // ... all fields with [YamlMember(Alias = "camelCase")]
 }
 ```
 
@@ -287,15 +287,15 @@ private sealed class <NomType>YamlConfig
 The `YamlCrewDefinitionLoader` uses different models for single-file and multi-file loading:
 
 ```csharp
-// Dans CrewYamlConfig (chargement single-file config.yaml) :
-[YamlMember(Alias = "<nomType>")]     // ex: "stateGraph", "agenticSwarm"
+// In CrewYamlConfig (single-file config.yaml loading):
+[YamlMember(Alias = "<nomType>")]     // e.g. "stateGraph", "agenticSwarm"
 public <NomType>YamlConfig? <NomType> { get; set; }
 
-// Dans CrewSettingsYamlConfig (chargement multi-file : crew.yaml) :
+// In CrewSettingsYamlConfig (multi-file loading: crew.yaml):
 [YamlMember(Alias = "<nomType>")]
 public <NomType>YamlConfig? <NomType> { get; set; }
 
-// Dans TaskYamlConfig (utilisé dans les deux modes) :
+// In TaskYamlConfig (used in both modes):
 [YamlMember(Alias = "<nomType>")]
 public <NomType>YamlConfig? <NomType> { get; set; }
 ```
@@ -375,12 +375,12 @@ Start from example 102 or 103 as the base, then:
 ### 7.2 config.yaml structure
 
 ```yaml
-# === Bloc de configuration du nouveau type au niveau crew ===
-<nomType>:                          # ex: stateGraph, agenticSwarm
+# === Configuration block of the new type at crew level ===
+<nomType>:                          # e.g. stateGraph, agenticSwarm
   preset: "strict"
   useDegradedMode: true
   maxRetries: 3
-  # ... champs spécifiques au type
+  # ... type-specific fields
 
 agents:
   - role: "..."
@@ -389,7 +389,7 @@ agents:
 tasks:
   - id: task_1
     description: "..."
-    # === Override au niveau task ===
+    # === Task-level override ===
     <nomType>:
       maxTransitions: 200
       stateTimeoutSeconds: 600
@@ -401,22 +401,22 @@ tasks:
 README structure:
 
 ```markdown
-# Exemple <Num> — <Titre>
+# Example <Num> — <Title>
 
-## Objectif
-Quoi et pourquoi.
+## Goal
+What and why.
 
-## Diagramme
-ASCII ou Mermaid du graphe/workflow.
+## Diagram
+ASCII or Mermaid of the graph/workflow.
 
-## Configuration YAML
-Bloc annoté avec les valeurs clés.
+## YAML configuration
+Annotated block with the key values.
 
-## Diff avec l'exemple <Num-1>
-Ce qui change par rapport à l'exemple précédent.
+## Diff with example <Num-1>
+What changes compared to the previous example.
 
-## Exécution
-Commande pour lancer l'exemple.
+## Run
+Command to run the example.
 ```
 
 ---
@@ -428,89 +428,89 @@ Commande pour lancer l'exemple.
 ### 8.1 Mandatory document structure
 
 ```markdown
-# Orchestration par <NomType>
+# <NomType> orchestration
 
-## Vue d'ensemble
-Paragraphe introductif : quoi, pourquoi, où dans l'architecture.
+## Overview
+Introductory paragraph: what, why, where in the architecture.
 
 ## Architecture
 
-### Couche Domain — Framework générique
-Table : Classe | Rôle (pointer vers les fichiers)
+### Domain layer — Generic framework
+Table: Class | Role (point to the files)
 
-### Couche Domain — Spécialisation <Scope>
-Table : Classe | Rôle
+### Domain layer — <Scope> specialization
+Table: Class | Role
 
-### Couche Infrastructure — Intégration YAML
-Table : Classe | Rôle
+### Infrastructure layer — YAML integration
+Table: Class | Role
 
-### Couche Domain — Configuration
-Table : Classe | Rôle
+### Domain layer — Configuration
+Table: Class | Role
 
-## Graphe / Diagramme
-ASCII art du graphe d'états ou du workflow.
-Lister les états terminaux.
+## Graph / Diagram
+ASCII art of the state graph or workflow.
+List the terminal states.
 
-## Circuit breaker / Mécanismes de protection
-Table : Mécanisme | Paramètre | Description
-Expliquer les deux modes (exception vs dégradé).
+## Circuit breaker / Protection mechanisms
+Table: Mechanism | Parameter | Description
+Explain the two modes (exception vs degraded).
 
 ## Presets
-Table : Preset | Valeurs (reprendre Strict, Default, Permissive)
+Table: Preset | Values (reuse Strict, Default, Permissive)
 
-## Observabilité
-Événements exposés, contenu du status/snapshot.
+## Observability
+Exposed events, status/snapshot contents.
 
-## Guards types
-Table : Guard | Transition/Nœud protégé | Condition
-Expliquer le guard anti-hallucination.
+## Typical guards
+Table: Guard | Protected transition/node | Condition
+Explain the anti-hallucination guard.
 
 ## Configuration YAML
 
-### Schéma
-Bloc YAML annoté avec types et descriptions.
+### Schema
+Annotated YAML block with types and descriptions.
 
-### Hiérarchie de résolution
-Diagramme ASCII : task → crew → preset → fallback.
+### Resolution hierarchy
+ASCII diagram: task → crew → preset → fallback.
 
-### Modèles YAML
-Table : Modèle C# | Classe YAML | Fichier
+### YAML models
+Table: C# model | YAML class | File
 
-## Utilisation en code C#
+## Usage in C# code
 
-### Création manuelle (Fluent Builder)
-Exemple complet avec observabilité et guard context.
+### Manual creation (Fluent Builder)
+Complete example with observability and guard context.
 
-### Création depuis la configuration YAML
-Exemple avec la PolicyFactory.
+### Creation from the YAML configuration
+Example with the PolicyFactory.
 
-### Construction custom
-Exemple avec le builder générique.
+### Custom construction
+Example with the generic builder.
 
-## Exemple <Num>
-Référence vers l'exemple, résumé des ajouts.
+## Example <Num>
+Reference to the example, summary of the additions.
 
-## Relation avec l'existant
+## Relation to the existing code
 
 ### StateTransitionManager
-Explication de la complémentarité (lifecycle vs runtime).
+Explanation of the complementarity (lifecycle vs runtime).
 
 ### SequentialCrewOrchestrator
-Explication du point d'intégration (IProcessStrategy).
+Explanation of the integration point (IProcessStrategy).
 
-### <Autres types d'orchestration existants>
-Comment ce type coexiste avec les précédents.
+### <Other existing orchestration types>
+How this type coexists with the previous ones.
 
 ## Tests
-Table : Fichier | Couverture
-Commande de test.
+Table: File | Coverage
+Test command.
 ```
 
 ### 8.2 Update the existing files
 
 1. **`docs/INDEX.md`**:
    - Add a line in the Orchestration section
-   - Add the file to the "Découverte" reading path
+   - Add the file to the "I want to understand the framework" reading path
 
 2. **`docs/architecture/yaml-schema.md`**:
    - Add the YAML schema of the new configuration block

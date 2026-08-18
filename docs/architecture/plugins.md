@@ -39,8 +39,8 @@ using Orkeon.Plugins;
 
 public sealed class WeatherPlugin : IOrkeonPlugin
 {
-    public string Name => "acme.weather-tools";   // nom stable
-    public string Version => "1.0.0";             // informatif, SemVer recommandé
+    public string Name => "acme.weather-tools";   // stable name
+    public string Version => "1.0.0";             // informational, SemVer recommended
 
     public void ConfigureServices(IServiceCollection services)
     {
@@ -60,7 +60,7 @@ public sealed class WeatherPlugin : IOrkeonPlugin
   <PackageReference Include="Orkeon.Plugins" ExcludeAssets="runtime" />
 </ItemGroup>
 <PropertyGroup>
-  <!-- émet le .deps.json utilisé pour résoudre les dépendances privées -->
+  <!-- emits the .deps.json used to resolve the private dependencies -->
   <EnableDynamicLoading>true</EnableDynamicLoading>
 </PropertyGroup>
 ```
@@ -73,11 +73,11 @@ layouts are recognized, at the first level only:
 
 ```
 /plugins/
-├── MyPlugin.dll                  # disposition « à plat »
+├── MyPlugin.dll                  # "flat" layout
 └── WeatherPlugin/
-    ├── WeatherPlugin.dll         # disposition « dossier par plugin » (<dir>/<dir>.dll)
-    ├── WeatherPlugin.deps.json   # pilote la résolution des dépendances privées
-    └── Newtonsoft.Json.dll       # dépendance privée, jamais traitée comme plugin
+    ├── WeatherPlugin.dll         # "folder per plugin" layout (<dir>/<dir>.dll)
+    ├── WeatherPlugin.deps.json   # drives the resolution of the private dependencies
+    └── Newtonsoft.Json.dll       # private dependency, never treated as a plugin
 ```
 
 Candidates must carry the `.dll` extension and satisfy `SearchPattern`
@@ -116,16 +116,16 @@ Consistent with the [opt-in subsystems](../reference/opt-in-subsystems.md) patte
 ```csharp
 using Orkeon.Plugins;
 
-// L'IFileSystemService est construit au bootstrap, avant le DI
-// (même étape que la provision des mounts VFS).
+// The IFileSystemService is built at bootstrap, before DI
+// (same step as the VFS mount provisioning).
 services.AddOrkeonPlugins(fileSystem, options =>
 {
     options.Directory = "/plugins";
     options.SearchPattern = "*.dll";
-    options.ContinueOnError = false;   // fail fast (défaut)
+    options.ContinueOnError = false;   // fail fast (default)
 });
 
-// Ou liaison depuis la configuration (section "Plugins") :
+// Or binding from the configuration ("Plugins" section):
 services.AddOrkeonPlugins(fileSystem, configuration);
 ```
 

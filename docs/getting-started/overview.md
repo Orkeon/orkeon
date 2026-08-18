@@ -14,7 +14,7 @@ The framework follows a Clean Architecture / DDD architecture and targets .NET 1
 
 ```mermaid
 graph TB
-    subgraph Domain["Orkeon.Domain — Couche Domaine"]
+    subgraph Domain["Orkeon.Domain — Domain layer"]
         Agent["Agent<br/>(AggregateRoot&lt;AgentId&gt;)"]
         CrewTask["CrewTask<br/>(AggregateRoot&lt;TaskId&gt;)"]
         Crew["Crew<br/>(AggregateRoot&lt;CrewId&gt;)"]
@@ -23,16 +23,16 @@ graph TB
         IMem["IMemoryProvider<br/>(Interface)"]
         DomainEvents["Domain Events"]
 
-        Crew -->|"contient"| Agent
-        Crew -->|"contient"| CrewTask
-        Agent -->|"utilise"| ITool
-        Agent -->|"utilise"| ILlm
-        CrewTask -->|"assignée à"| Agent
-        Agent -->|"émet"| DomainEvents
-        Crew -->|"émet"| DomainEvents
+        Crew -->|"contains"| Agent
+        Crew -->|"contains"| CrewTask
+        Agent -->|"uses"| ITool
+        Agent -->|"uses"| ILlm
+        CrewTask -->|"assigned to"| Agent
+        Agent -->|"emits"| DomainEvents
+        Crew -->|"emits"| DomainEvents
     end
 
-    subgraph Application["Orkeon.Application — Couche Application"]
+    subgraph Application["Orkeon.Application — Application layer"]
         Orchestrator["ExecutionOrchestrator"]
         CQRS["Commands / Queries<br/>(CQRS)"]
         CallbackOrch["CallbackOrchestrator"]
@@ -44,8 +44,8 @@ graph TB
         AgentExec --> MemService
     end
 
-    subgraph Infrastructure["Orkeon.Infrastructure — Couche Infrastructure"]
-        SeqOrch["SequentialCrewOrchestrator"]
+    subgraph Infrastructure["Orkeon.Infrastructure — Infrastructure layer"]
+        SeqOrch["SequentialProcessStrategy"]
         LlmProviders["LLM Providers<br/>(OpenAI, Anthropic, Groq,<br/>Ollama, Azure, DeepSeek...)"]
         MemProviders["Memory Providers<br/>(InMemory, Redis, SQLite,<br/>ChromaDB, Pinecone, LanceDB)"]
         ToolImpl["Tool Implementations"]
@@ -53,19 +53,19 @@ graph TB
         DI["DI Registration<br/>(ServiceCollectionExtensions)"]
 
         SeqOrch --> Orchestrator
-        LlmProviders -.->|"implémente"| ILlm
-        MemProviders -.->|"implémente"| IMem
-        ToolImpl -.->|"implémente"| ITool
+        LlmProviders -.->|"implements"| ILlm
+        MemProviders -.->|"implements"| IMem
+        ToolImpl -.->|"implements"| ITool
     end
 
-    subgraph Tools["Orkeon.Tools.* — Packages d'outils"]
+    subgraph Tools["Orkeon.Tools.* — Tool packages"]
         ToolsFS["Tools.FileSystem<br/>(FileRead, FileWrite,<br/>DirectoryRead...)"]
         ToolsData["Tools.Data<br/>(CSV, PDF, JSON,<br/>DOCX, SQL, MongoDB...)"]
         ToolsWeb["Tools.Web<br/>(WebSearch, WebScrape,<br/>HttpApi, GitHub...)"]
         ToolsCode["Tools.Code<br/>(ShellCommand)"]
     end
 
-    Tools -.->|"implémente"| ITool
+    Tools -.->|"implements"| ITool
 
     style Domain fill:#e8f5e9,stroke:#2e7d32
     style Application fill:#e3f2fd,stroke:#1565c0
@@ -196,7 +196,7 @@ tasks:
 The C# equivalent with the Fluent Builder API:
 
 ```csharp
-// Créer les agents
+// Create the agents
 var analyst = new AgentBuilder()
     .Role("Sales Data Analyst")
     .Goal("Extract and analyze sales metrics from the database")
@@ -215,7 +215,7 @@ var writer = new AgentBuilder()
     .MaxIterations(5)
     .Build();
 
-// Créer les tasks
+// Create the tasks
 var analyzeTask = new CrewTaskBuilder()
     .Description("Query the sales database for the last 7 days. Calculate: total revenue, top 5 products by units sold, week-over-week growth rate. Return structured JSON.")
     .ExpectedOutput("JSON object with revenue, top_products array, and growth_rate")
@@ -229,7 +229,7 @@ var reportTask = new CrewTaskBuilder()
     .DependsOn(analyzeTask)
     .Build();
 
-// Créer la Crew
+// Create the Crew
 var crew = new CrewBuilder()
     .Goal("Produce weekly sales analysis report")
     .Sequential()
@@ -264,22 +264,33 @@ Collaboration between agents is also supported at the domain level: `Agent.Colla
 
 ```
 Orkeon.sln
-├── src/
+├── src/                            # 33 projects, 11 zones
 │   ├── core/
-│   │   ├── Orkeon.Domain/          # Entités, Value Objects, Interfaces, Events
-│   │   ├── Orkeon.Application/     # CQRS, Services, Orchestration, Ports
-│   │   └── Orkeon.Infrastructure/  # Implémentations, LLMs, Memory, DI
-│   ├── tools/
-│   │   ├── Orkeon.Tools.Abstractions/  # Classes de base outils
-│   │   ├── Orkeon.Tools.Code/          # Outils code (ShellCommand)
-│   │   ├── Orkeon.Tools.Data/          # Outils données (CSV, PDF, JSON, SQL, MongoDB)
-│   │   ├── Orkeon.Tools.FileSystem/    # Outils fichiers (Read, Write, Directory)
-│   │   └── Orkeon.Tools.Web/           # Outils web (Search, Scrape, HTTP, GitHub)
-│   ├── plugins/
-│   │   └── Orkeon.Plugins/        # Système de plugins
+│   │   ├── Orkeon.Domain/          # Entities, value objects, interfaces, events
+│   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
+│   │   └── Orkeon.Infrastructure/  # Implementations, LLM providers, memory, DI
+│   ├── tools/                      # 9 tool packs
+│   │   ├── Orkeon.Tools.Abstractions/     # Tool base classes
+│   │   ├── Orkeon.Tools.Analysis/         # RaggableTree agent tools (15)
+│   │   ├── Orkeon.Tools.Code/             # Code tools (ShellCommand)
+│   │   ├── Orkeon.Tools.Data/             # Data tools (CSV, PDF, JSON, SQL, MongoDB…)
+│   │   ├── Orkeon.Tools.Embeddings.Local/ # On-device embeddings (BGE-micro ONNX)
+│   │   ├── Orkeon.Tools.EventHub/         # EventHub messaging tools
+│   │   ├── Orkeon.Tools.FileSystem/       # File tools (Read, Write, Directory…)
+│   │   ├── Orkeon.Tools.Rag/              # RAG agent tools
+│   │   └── Orkeon.Tools.Web/              # Web tools (Search, Scrape, HTTP, GitHub…)
+│   ├── rag/                        # RAG subsystem (Abstractions, Rag, Onnx, Onnx.Model)
+│   ├── analysis/                   # RaggableTree engine (Abstractions, Analysis)
+│   ├── scripting/                  # .ork.ts DSL (Orkeon.Scripting) + the `orkeon` CLI (Orkeon.Scripting.Cli)
+│   ├── cli/                        # CLI building blocks (Abstractions, Cli, Commands.Scripting, TerminalGui)
+│   ├── hosting/                    # Orkeon.Hosting (RunnerHost)
+│   ├── plugins/                    # Orkeon.Plugins (runtime plugin loading)
+│   ├── generators/                 # Orkeon.Generators (source generators)
+│   ├── analyzers/                  # Orkeon.Compliance.Vfs (Roslyn analyzer)
 │   └── apps/
-│       └── Orkeon.ConsoleApp/     # Application console interactive
-├── tests/                          # Tests miroir de src/
-├── examples/                       # Exemples d'utilisation
-└── docs/                           # Documentation
+│       ├── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
+│       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)
+├── tests/                          # Mirrors src/ (33 projects) + e2e, examples, shared
+├── examples/                       # 105 bundled examples (9 categories + showcases)
+└── docs/                           # Documentation (EN + docs/fr mirror)
 ```

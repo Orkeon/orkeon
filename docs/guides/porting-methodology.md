@@ -11,8 +11,8 @@ This guide details the methodology for porting an existing .NET application to a
 Porting consists of decomposing the responsibilities of a monolithic or modular application into specialized agent roles, equipped with tools, and orchestrated by one or more Crews.
 
 ```
-Application source → Analyse des responsabilités → Mapping vers agents
-→ Identification des outils → Définition des tasks → Plan de portage
+Source application → Responsibility analysis → Mapping to agents
+→ Tool identification → Task definition → Porting plan
 ```
 
 ## Choosing the approach: YAML-first or Code-first
@@ -26,21 +26,21 @@ Orkeon supports two approaches for defining a crew. The choice impacts the porti
 | Iterative prompt engineering | Fast — edit descriptions/backstories | Slower |
 | Custom tools with dependencies | Requires separate DI registration | Direct instantiation possible |
 | Sharing configurations | Portable YAML file | C# code to integrate |
-| Reference examples | 103 YAML examples in `examples/` | Builders documented in the docs |
+| Reference examples | 100+ YAML examples in `examples/` (see the generated `examples/INDEX.md`) | Builders documented in the docs |
 
 **Recommendation**: favor the **YAML-first** approach for porting. YAML lets you iterate quickly on the prompts (descriptions, backstories) without touching the code. Custom tools remain in C# and are registered via DI.
 
 ### YAML-first workflow
 
 ```
-1. Écrire config.yaml (agents, tasks, process type)
-2. Identifier les outils manquants
-3. Coder les outils custom (ToolBase<TReq, TRes>)
-4. Enregistrer via DI (AddSingleton<IBaseTool, MonTool>())
-5. Charger et exécuter :
+1. Write config.yaml (agents, tasks, process type)
+2. Identify the missing tools
+3. Code the custom tools (ToolBase<TReq, TRes>)
+4. Register via DI (AddSingleton<IBaseTool, MonTool>())
+5. Load and run:
    var crew = await crewFactory.CreateFromFileAsync("config.yaml");
    var output = await orchestrator.KickoffAsync(crew.Id, input);
-6. Itérer sur les prompts dans le YAML
+6. Iterate on the prompts in the YAML
 ```
 
 ## Step 1 — Analyze the source application's responsibilities
@@ -85,12 +85,12 @@ A good Orkeon agent follows these principles:
 For each responsibility identified in Step 1, fill in this template:
 
 ```
-Responsabilité source : [description]
-→ Rôle agent         : [AgentRole — nom concis du spécialiste]
-→ Objectif agent     : [AgentGoal — résultat attendu]
-→ Backstory          : [AgentBackstory — contexte et expertise]
-→ Outils nécessaires : [liste des outils]
-→ Contraintes        : [MaxIterations, MaxRpm, AllowDelegation]
+Source responsibility  : [description]
+→ Agent role          : [AgentRole — concise specialist name]
+→ Agent goal          : [AgentGoal — expected result]
+→ Backstory           : [AgentBackstory — context and expertise]
+→ Required tools      : [list of tools]
+→ Constraints         : [MaxIterations, MaxRpm, AllowDelegation]
 ```
 
 ### 2.3 Common mapping patterns
@@ -226,21 +226,21 @@ Every port requires this dependency-injection setup:
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
-        // Requis — couches Application et Infrastructure
+        // Required — Application and Infrastructure layers
         services.AddOrkeonApplication();
         services.AddOrkeonInfrastructure();
 
-        // Suites d'outils — ajouter uniquement celles nécessaires
-        services.AddOrkeonFileSystemTools();   // Si agents lisent/écrivent des fichiers
-        services.AddOrkeonDataTools();         // Si agents manipulent CSV, PDF, JSON, SQL, MongoDB
-        services.AddOrkeonWebTools();          // Si agents font du web search, scraping, HTTP API
-        services.AddOrkeonCodeTools();         // Si agents exécutent du shell
+        // Tool suites — add only the ones you need
+        services.AddOrkeonFileSystemTools();   // If agents read/write files
+        services.AddOrkeonDataTools();         // If agents handle CSV, PDF, JSON, SQL, MongoDB
+        services.AddOrkeonWebTools();          // If agents do web search, scraping, HTTP API
+        services.AddOrkeonCodeTools();         // If agents execute shell commands
 
-        // Outils custom identifiés en Étape 3
+        // Custom tools identified in Step 3
         services.AddSingleton<IBaseTool, MonOutilCustom1>();
         services.AddSingleton<IBaseTool, MonOutilCustom2>();
 
-        // Configuration LLM (si pas de défaut)
+        // LLM configuration (if no default)
         services.Configure<LlmConfig>(context.Configuration.GetSection("Llm"));
     })
     .Build();
@@ -249,11 +249,11 @@ var host = Host.CreateDefaultBuilder(args)
 ### 5.6 Execution pattern
 
 ```csharp
-// Charger la crew depuis le YAML
+// Load the crew from the YAML
 var crewFactory = host.Services.GetRequiredService<ICrewFactory>();
 var crew = await crewFactory.CreateFromFileAsync("config.yaml");
 
-// Préparer l'input avec des variables d'exécution
+// Prepare the input with execution variables
 var variables = new Dictionary<string, object>
 {
     ["date"] = DateTime.Today.ToString("yyyy-MM-dd"),
@@ -261,23 +261,23 @@ var variables = new Dictionary<string, object>
 };
 
 var input = new CrewInput(
-    "Contexte initial pour l'exécution",
+    "Initial context for the execution",
     variables);
 
-// Exécuter et récupérer les résultats
+// Run and retrieve the results
 var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 var output = await orchestrator.KickoffAsync(crew.Id, input);
 
-// Exploiter les résultats
+// Use the results
 var failedTasks = output.TaskOutputs.Where(t => !t.Success).ToList();
 if (failedTasks.Count == 0)
 {
-    // Succès — traiter le résultat final
+    // Success — process the final result
     Console.WriteLine(output.FinalOutput);
 }
 else
 {
-    // Échec — identifier les tasks en erreur
+    // Failure — identify the failed tasks
     foreach (var failed in failedTasks)
         Console.Error.WriteLine($"Task {failed.TaskId} failed: {failed.RawOutput}");
 }

@@ -31,17 +31,17 @@ MultiModalContent (Domain)            LlmMessage (Domain)              Payload p
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.SharedKernel.ValueObjects.Content;
 
-// 1. Depuis des bytes (envoyés en base64)
+// 1. From bytes (sent as base64)
 var content = MultiModalContent.Empty()
-    .AddText("Décris ce graphique")
+    .AddText("Describe this chart")
     .AddImage(ImageContentPart.FromBytes(pngBytes, "image/png"));
 
-// 2. Ou depuis une URL http(s) (le provider télécharge l'image)
+// 2. Or from an http(s) URL (the provider downloads the image)
 var contentFromUrl = MultiModalContent.Empty()
-    .AddText("Que montre cette photo ?")
+    .AddText("What does this photo show?")
     .AddImage(ImageContentPart.FromUri(new Uri("https://example.com/photo.jpg"), "image/jpeg"));
 
-// 3. Envoi via n'importe quel ILlmProvider vision (Anthropic, OpenAI)
+// 3. Send via any vision ILlmProvider (Anthropic, OpenAI)
 var response = await provider.ChatAsync([LlmMessage.User(content)]);
 ```
 
@@ -56,7 +56,7 @@ var loader = provider.GetRequiredService<IMultiModalContentLoader>();
 var image = await loader.LoadImageAsync("/workspace/chart.png");
 
 var content = MultiModalContent.Empty()
-    .AddText("Analyse ce graphique")
+    .AddText("Analyze this chart")
     .AddImage(image);
 ```
 
@@ -78,7 +78,7 @@ Clear errors guaranteed:
 {
   "role": "user",
   "content": [
-    { "type": "text", "text": "Décris ce graphique" },
+    { "type": "text", "text": "Describe this chart" },
     { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": "iVBOR..." } }
   ]
 }
@@ -93,7 +93,7 @@ Base64 data URLs (`data:image/png;base64,...`) are unwrapped into a `base64` sou
 {
   "role": "user",
   "content": [
-    { "type": "text", "text": "Décris ce graphique" },
+    { "type": "text", "text": "Describe this chart" },
     { "type": "image_url", "image_url": { "url": "data:image/png;base64,iVBOR..." } }
   ]
 }
@@ -108,9 +108,9 @@ The subsystem remains **opt-in** (decision R4.9) — see
 [Opt-in subsystems](../reference/opt-in-subsystems.md):
 
 ```csharp
-services.AddOrkeonFileSystem(configuration);   // prérequis du loader (VFS)
-services.AddOrkeonMultiModal(configuration);   // lie Orkeon:MultiModal
-// ou : services.AddOrkeonMultiModal();        // options par défaut
+services.AddOrkeonFileSystem(configuration);   // loader prerequisite (VFS)
+services.AddOrkeonMultiModal(configuration);   // binds Orkeon:MultiModal
+// or: services.AddOrkeonMultiModal();         // default options
 ```
 
 Options (`Orkeon:MultiModal`): `Enabled`, `MaxImageSizeBytes` (20 MB by default),

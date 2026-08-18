@@ -256,7 +256,7 @@ current directory, then the same walking up the parent directories, then the
 global per-user file written by `orkeon init`, then `ORKEON_*` environment
 variables alone.
 
-**A crew can also be a directory** (Orkeon >= 0.9.2-beta). Point `orkeon run` at a
+**A crew can also be a directory**. Point `orkeon run` at a
 folder holding a multi-file crew — `config.yaml` for the crew settings, one agent
 per file under `agents/`, one task per file under `tasks/`, each file name being
 the entity id — and it loads exactly like a single YAML file. The legacy flat
