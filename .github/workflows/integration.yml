@@ -1,0 +1,59 @@
+# Nightly integration run (PUB-17 T2): everything ci.yml deliberately excludes.
+#
+# ci.yml stays fast on PRs (unit + fast tests only). This workflow runs the
+# Category=Integration and Category=Slow suites — Testcontainers pulls real
+# database images (Redis, Postgres, MsSql, Mongo, MariaDb…), so it needs the
+# Docker daemon of a hosted ubuntu runner and tens of minutes. A red run is
+# VISIBLE: it opens (or comments) a pinned tracking issue instead of dying in
+# a log nobody reads.
+name: Integration (nightly)
+on:
+  schedule:
+    - cron: "17 2 * * *"   # 02:17 UTC nightly (odd minute to dodge the cron rush)
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: integration-nightly
+  cancel-in-progress: false
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Free up runner disk space
+        run: |
+          echo "Avant:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          echo "Après:"; df -h / | tail -1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore Orkeon.sln
+      - run: dotnet build Orkeon.sln -c Release --no-restore
+      - name: Run Integration + Slow suites (Testcontainers)
+        run: >
+          dotnet test Orkeon.sln -c Release --no-build
+          --filter "Category=Integration|Category=Slow"
+          --logger "console;verbosity=minimal"
+      - name: Surface the failure as a tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Nightly integration run is red"
+          existing="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number' || true)"
+          body="Nightly Integration/Slow suites failed: $RUN_URL"
+          if [ -n "$existing" ] && [ "$existing" != "null" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --label bug --body "$body"
+          fi

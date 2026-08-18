@@ -52,6 +52,22 @@ jobs:
       - run: dotnet build Orkeon.sln -c Release --no-restore -warnaserror
       # Unit + fast tests only (see header for what's excluded and why).
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow&FullyQualifiedName!~Orkeon.Tools.Embeddings.Local"
-      # Embeddings assembly alone, tolerating its known exit-139 teardown crash.
-      - run: dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build
-        continue-on-error: true
+      # Embeddings assembly alone, in its own test process (the native ONNX
+      # runtime SIGSEGVs the host at TEARDOWN — exit 139 — after every test has
+      # passed). PUB-17 T3: no blanket continue-on-error anymore — the step
+      # inspects the results: a genuine test failure fails CI; only the known
+      # crash-after-green teardown (exit 139 with a clean "Passed!" summary) is
+      # tolerated, explicitly and loudly.
+      - name: Test Embeddings.Local (tolerate teardown SIGSEGV only after green results)
+        run: |
+          set +e
+          out="$(dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build 2>&1)"
+          rc=$?
+          echo "$out"
+          if [ $rc -eq 0 ]; then exit 0; fi
+          if [ $rc -eq 139 ] && echo "$out" | grep -q "Passed!" && ! echo "$out" | grep -qE "Failed:[[:space:]]*[1-9]"; then
+            echo "::warning::Embeddings.Local: all tests passed; the ONNX native runtime crashed the test host at teardown (exit 139 — known issue, tracked in PUB-17/SONAR-14). Treated as green."
+            exit 0
+          fi
+          echo "::error::Embeddings.Local test run failed (exit $rc) with real failures — not the known teardown crash."
+          exit $rc
