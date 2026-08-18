@@ -110,6 +110,7 @@ public sealed partial class ExecutionPlanParser : IExecutionPlanParser
         int? parallelGroup = ExtractParallelGroup(taskElement);
         var dependencies = ExtractDependencies(taskElement, tasks);
         string? instructions = taskElement.TryGetProperty("instructions", out var instProp)
+            && instProp.ValueKind == JsonValueKind.String
             ? instProp.GetString()
             : null;
 
@@ -124,7 +125,10 @@ public sealed partial class ExecutionPlanParser : IExecutionPlanParser
         JsonElement taskElement,
         IReadOnlyList<TaskId> tasks)
     {
-        if (!taskElement.TryGetProperty("task", out var taskIdProp))
+        // LLM output is untrusted: a non-string "task" must skip the entry,
+        // not throw out of GetString().
+        if (!taskElement.TryGetProperty("task", out var taskIdProp) ||
+            taskIdProp.ValueKind != JsonValueKind.String)
             return null;
 
         var taskIdStr = taskIdProp.GetString();
@@ -155,6 +159,10 @@ public sealed partial class ExecutionPlanParser : IExecutionPlanParser
 
         foreach (var dep in depsProp.EnumerateArray())
         {
+            // Skip non-string entries instead of throwing on GetString().
+            if (dep.ValueKind != JsonValueKind.String)
+                continue;
+
             var depStr = dep.GetString();
             if (depStr == null)
                 continue;
@@ -173,7 +181,8 @@ public sealed partial class ExecutionPlanParser : IExecutionPlanParser
         ExecutionPlan plan,
         TaskId taskId)
     {
-        if (!taskElement.TryGetProperty("agent", out var agentProp))
+        if (!taskElement.TryGetProperty("agent", out var agentProp) ||
+            agentProp.ValueKind != JsonValueKind.String)
             return plan;
 
         var agentIdStr = agentProp.GetString();

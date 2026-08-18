@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — ExecutionPlanParser no longer throws on non-string JSON values
+
+`ExecutionPlanParser` parses untrusted LLM planning output, yet `"task": 42`,
+`"instructions": 42`, `"agent": 42` or a number/null inside `"dependencies"`
+escaped the `JsonException` net as an `InvalidOperationException` from
+`JsonElement.GetString()` and took the whole planning pass down. Every
+string-position read is now guarded by a `ValueKind` check: malformed entries
+degrade the same way unknown ids always have (entry skipped, dependency
+dropped, agent unassigned) instead of throwing. Surfaced by the SONAR-14
+coverage pass on the parser.
+
 ### Added — Studio i18n: the whole below-the-view layer follows the language switch (STUDIO-11 tranche 2)
 
 Completes the sweep opened by PUB-19: the `IStudioStrings` registry grows from 4
