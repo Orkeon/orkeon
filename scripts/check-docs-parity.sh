@@ -3,7 +3,7 @@
 #
 # Fails if any English documentation file lacks its French mirror (or vice versa):
 #   - every docs/**/*.md outside docs/fr/  ⇄  docs/fr/**/*.md
-#   - the root community pairs              README/CONTRIBUTING/CODE_OF_CONDUCT/SECURITY .md ⇄ .fr.md
+#   - the root pairs                        README/CONTRIBUTING/CODE_OF_CONDUCT/SECURITY/SUPPORT/index .md ⇄ .fr.md
 #
 # This checks file *existence* (the contract), not content equivalence — a missing mirror
 # is a hard error; keeping the two in sync content-wise stays the contributor's job.
@@ -35,7 +35,7 @@ if [ -n "$missing_en" ]; then
 fi
 
 # --- root community pairs ---------------------------------------------------------------
-for base in README CONTRIBUTING CODE_OF_CONDUCT SECURITY SUPPORT; do
+for base in README CONTRIBUTING CODE_OF_CONDUCT SECURITY SUPPORT index; do
   if [ -f "$base.md" ] && [ ! -f "$base.fr.md" ]; then
     echo "::error::$base.md has no French mirror $base.fr.md"; fail=1
   fi
