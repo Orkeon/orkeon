@@ -367,6 +367,12 @@ internal static partial class RunCommand
                     (ILlmUsageSink)sp.GetRequiredService<ICrewExecutionHook>());
                 services.AddSingleton<ILlmDeltaSink>(sp =>
                     (ILlmDeltaSink)sp.GetRequiredService<ICrewExecutionHook>());
+
+                // D6: an observed run never approves on the user's behalf. The runner's
+                // AutoApprove fallback is registered by TryAdd, so an explicit singleton
+                // here wins without removing anything.
+                services.AddSingleton<IHumanInputProvider>(
+                    new Run.JsonLinesHumanInputProvider(events, new Run.StdinAnswerChannel(Console.In)));
             })
             .ConfigureAwait(false);
 

@@ -27,6 +27,12 @@ internal static class RunEventKinds
 
     /// <summary>An anomaly, recoverable or not.</summary>
     public const string Error = "error";
+
+    /// <summary>A running crew is waiting on a human (BUS-04).</summary>
+    public const string InputNeeded = "input.needed";
+
+    /// <summary>Inbound: the human's answer, correlated to the question (stdin).</summary>
+    public const string InputGiven = "input.given";
 }
 
 /// <summary>
