@@ -32,6 +32,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
     };
 
     private readonly IEventHubCallerContext _callerContext;
+    private readonly EventHubMiddlewarePipeline _pipeline;
     private readonly ILogger<InMemoryEventHub> _logger;
 
     // Subscribers: topic → (subscriptionId → SubscriberState).
@@ -56,12 +57,14 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
     /// <summary>Initializes a new instance of <see cref="InMemoryEventHub"/>.</summary>
     public InMemoryEventHub(
         IEventHubCallerContext callerContext,
-        ILogger<InMemoryEventHub> logger)
+        ILogger<InMemoryEventHub> logger,
+        IEnumerable<IEventHubMiddleware>? middlewares = null)
     {
         ArgumentNullException.ThrowIfNull(callerContext);
         ArgumentNullException.ThrowIfNull(logger);
         _callerContext = callerContext;
         _logger = logger;
+        _pipeline = new EventHubMiddlewarePipeline(middlewares ?? []);
     }
 
     // ── Mailbox lifecycle ───────────────────────────────────────────────
@@ -91,7 +94,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
     // ── PublishAsync ────────────────────────────────────────────────────
 
     /// <inheritdoc/>
-    public System.Threading.Tasks.Task PublishAsync(
+    public async System.Threading.Tasks.Task PublishAsync(
         string topic,
         object payload,
         PublishOptions? options,
@@ -114,6 +117,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
             SchemaId = options?.SchemaId ?? DefaultSchemaId
         });
 
+        message = await _pipeline.OnPublishAsync(message, ct).ConfigureAwait(false);
         DispatchToTopic(topic, message);
 
         if (options?.RetainAsLastValue == true)
@@ -132,7 +136,6 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
             var scope = options?.TargetCrewId?.ToString() ?? "<global>";
             LogPublished(topic, message.Id, scope);
         }
-        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     private void DispatchToTopic(string topic, Message message)

@@ -22,4 +22,18 @@ public static class EventHubServiceCollectionExtensions
         services.TryAddSingleton<IEventHub, InMemoryEventHub>();
         return services;
     }
+
+    /// <summary>
+    /// Registers one middleware on the hub pipeline (HUB-01). Order of registration is order
+    /// of execution on the publish path, and the reverse on the receive path — the spec's §12
+    /// sequence is Logging → Telemetry → Acl → Idempotency → Validation, and it matters:
+    /// logging must see what the ACL later rejects.
+    /// </summary>
+    public static IServiceCollection AddEventHubMiddleware<TMiddleware>(this IServiceCollection services)
+        where TMiddleware : class, IEventHubMiddleware
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddSingleton<IEventHubMiddleware, TMiddleware>();
+        return services;
+    }
 }
