@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0-rc.2] - 2026-08-20
-
 ### Added — The Atelier: `orkeon forge`, from a need in plain words to a deployable crew (FORGE-01→08)
 
 The missing step between "I have a problem" and a running agent team. `orkeon forge
@@ -1114,8 +1112,7 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.2...HEAD
-[1.0.0-rc.2]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...v1.0.0-rc.2
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...HEAD
 [1.0.0-rc.1]: https://github.com/Orkeon/orkeon/compare/v0.9.2-beta...v1.0.0-rc.1
 [0.9.2-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.1-beta.rc1...v0.9.2-beta
 [0.9.1-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.0-beta...v0.9.1-beta.rc1

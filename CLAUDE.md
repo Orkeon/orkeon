@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Orkeon is a C# framework for creating and managing AI agent teams that collaborate on complex tasks using LLMs.
 
-**Current Status**: V1 release candidate (`1.0.0-rc.1`). Domain and Application layers are ~90% complete. Infrastructure layer has been redesigned (Akka.NET removed; replaced with simple HTTP-based implementations on .NET 10).
+**Current Status**: V1 release candidate (`1.0.0-rc.2`, not yet tagged). Domain and Application layers are ~90% complete. Infrastructure layer has been redesigned (Akka.NET removed; replaced with simple HTTP-based implementations on .NET 10).
 
 ## Common Development Commands
 
@@ -541,7 +541,7 @@ The repository contains **33 src projects** and **33 test projects**, plus two s
 - `InMemoryUnitOfWork` intentionally has no durable persist step (aggregates live in the in-memory repositories; `SaveChangesAsync` dispatches domain events). The former EF-migration TODO has been removed (R3.8). Durable crew **execution-state** persistence is a separate opt-in: `AddCrewExecutionStatePersistence(...)` + a checkpointing `IStateStore` (see `docs/reference/opt-in-subsystems.md`)
 - ChromaDB, Pinecone, and LanceDB are implemented (REST API-based), not placeholders
 - Infrastructure layer has been redesigned without Akka.NET; all projects target `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf` only)
-- Version is defined in `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix` — currently `1.0.0-rc.1`); that file is the single source of truth, and the publish workflow refuses a `v*` tag that does not match it
+- Version is defined in `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix` — currently `1.0.0-rc.2`); that file is the single source of truth, and the publish workflow refuses a `v*` tag that does not match it
 - Focus on the V1 feature surface, not speculative additions
 - `sonar-project.properties` has been removed (caused scanner conflicts — all params passed via CLI)
 - SonarQube 9.9 LTS: use `sonar.login` (not `sonar.token`) for authentication

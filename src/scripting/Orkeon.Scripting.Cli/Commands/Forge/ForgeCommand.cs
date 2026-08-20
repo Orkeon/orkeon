@@ -446,7 +446,11 @@ internal static class ForgeCommand
         var events = new ForgeEventWriter(renderer ?? Console.Out);
         events.SessionStarted(session, resumed: true);
 
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace);
+        // Quietly: promotion is offline by design and needs the path only to reference it
+        // from the launch scripts. Warning that no model is configured would be a false
+        // alarm on a command that never talks to one — a missing settings file simply means
+        // the generated launcher carries no --settings line.
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, quiet: true);
         try
         {
             var result = ForgePromoter.Promote(
