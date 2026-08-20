@@ -49,4 +49,19 @@ public static class EventHubServiceCollectionExtensions
         services.AddEventHubMiddleware<Middleware.TelemetryEventHubMiddleware>();
         return services;
     }
+
+    /// <summary>
+    /// Registers the ACL stage (HUB-03). It comes after the observation pair so a refusal is
+    /// logged and spanned before it travels back to the caller — the whole reason logging
+    /// sits outermost. The policy decides what an undeclared crew may do; the permissive
+    /// default keeps every existing crew working the day the stage is switched on.
+    /// </summary>
+    public static IServiceCollection AddOrkeonEventHubAcl(
+        this IServiceCollection services, ICrewLinkPolicy? policy = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddSingleton(policy ?? PermissiveCrewLinkPolicy.Instance);
+        services.AddEventHubMiddleware<Middleware.AclEventHubMiddleware>();
+        return services;
+    }
 }

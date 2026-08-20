@@ -13,7 +13,14 @@ public enum MailboxKind
     /// <summary>Internal router mailbox of a crew (<c>crew://{crewId}</c>).</summary>
     Crew,
     /// <summary>Alias for a broadcast topic (<c>topic://{topicName}</c>).</summary>
-    Topic
+    Topic,
+    /// <summary>
+    /// An external peer attached to the hub from outside the process
+    /// (<c>client://{name}</c>) — Orkeon Studio, a terminal client, any process driving a run
+    /// over the event protocol. It is not a crew and not an agent, which is why it needs a
+    /// scheme of its own rather than borrowing one (RC2 R3).
+    /// </summary>
+    Client
 }
 
 /// <summary>
@@ -37,9 +44,13 @@ public sealed record MailboxAddress
     /// <summary>Gets the topic name embedded in the address (only for <see cref="MailboxKind.Topic"/>).</summary>
     public string? Topic { get; init; }
 
+    /// <summary>Gets the external peer's name (only for <see cref="MailboxKind.Client"/>).</summary>
+    public string? ClientName { get; init; }
+
     private const string AgentScheme = "agent://";
     private const string CrewScheme = "crew://";
     private const string TopicScheme = "topic://";
+    private const string ClientScheme = "client://";
 
     /// <summary>
     /// Parses a URI into a <see cref="MailboxAddress"/>. Accepts the three documented schemes.
@@ -67,9 +78,11 @@ public sealed record MailboxAddress
             return ParseCrew(uri);
         if (uri.StartsWith(TopicScheme, StringComparison.Ordinal))
             return ParseTopic(uri);
+        if (uri.StartsWith(ClientScheme, StringComparison.Ordinal))
+            return ParseClient(uri);
 
         throw new InvalidMailboxAddressException(
-            $"Unsupported mailbox scheme in '{uri}'. Expected one of: agent://, crew://, topic://.",
+            $"Unsupported mailbox scheme in '{uri}'. Expected one of: agent://, crew://, topic://, client://.",
             nameof(uri));
     }
 
@@ -124,6 +137,21 @@ public sealed record MailboxAddress
             Raw = uri,
             CrewId = crewId,
             AgentId = agentId
+        };
+    }
+
+    private static MailboxAddress ParseClient(string uri)
+    {
+        var name = uri[ClientScheme.Length..];
+        if (string.IsNullOrWhiteSpace(name) || name.Contains('/', StringComparison.Ordinal))
+            throw new InvalidMailboxAddressException(
+                $"client:// address must be of the form client://{{name}} — got '{uri}'.", nameof(uri));
+
+        return new MailboxAddress
+        {
+            Kind = MailboxKind.Client,
+            Raw = uri,
+            ClientName = name
         };
     }
 
