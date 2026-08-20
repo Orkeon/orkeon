@@ -33,6 +33,21 @@ internal static class RunEventKinds
 
     /// <summary>Inbound: the human's answer, correlated to the question (stdin).</summary>
     public const string InputGiven = "input.given";
+
+    /// <summary>A tool was invoked; correlated with its <see cref="ToolReturned"/>.</summary>
+    public const string ToolCalled = "tool.called";
+
+    /// <summary>A tool finished, successfully or not — including when it threw.</summary>
+    public const string ToolReturned = "tool.returned";
+
+    /// <summary>
+    /// One agent handed work to another. A delegation is a tool call underneath, but calling
+    /// it one would bury the single thing that makes a hierarchical run readable.
+    /// </summary>
+    public const string DelegationStarted = "delegation.started";
+
+    /// <summary>The team grew at runtime — the autonomous mode's most opaque moment.</summary>
+    public const string AgentSpawned = "agent.spawned";
 }
 
 /// <summary>

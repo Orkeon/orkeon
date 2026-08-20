@@ -45,6 +45,10 @@ Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriq
 |---|---|---|
 | `run.started` | `target`, `stream` | Le run commence. |
 | `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens?`, `toolCalls?` | Chaque tâche se termine, **dans les six modes d'orchestration**. |
+| `tool.called` | `toolName`, `argsSummary?` | Un outil est invoqué. `argsSummary` résume les **noms** d'arguments, jamais leur contenu : un appel peut porter un fichier entier. |
+| `tool.returned` | `toolName`, `success`, `durationMs` | L'outil a fini — **y compris s'il a levé**, pour qu'un observateur n'affiche jamais une étape éternellement en cours. Corrélé à son `tool.called`. |
+| `delegation.started` | `toAgentId?`, `taskId?` | Un agent a confié du travail à un autre. |
+| `agent.spawned` | `role?`, `reason?` | L'équipe a grandi en cours d'exécution. |
 | `cost.updated` | `tokens`, `usd?`, `budgetRemaining?` | Le compteur de jetons bouge. |
 | `llm.delta` | `text` | Un fragment de texte généré. **Seulement sous `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?` | Une tâche déclarée `humanInput: true` pose une question. |

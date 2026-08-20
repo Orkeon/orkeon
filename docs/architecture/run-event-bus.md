@@ -45,6 +45,10 @@ Payload fields sit **flat** beside the envelope, not nested under a `payload` ke
 |---|---|---|
 | `run.started` | `target`, `stream` | The run begins. |
 | `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens?`, `toolCalls?` | Each task finishes, in every orchestration mode. |
+| `tool.called` | `toolName`, `argsSummary?` | A tool is invoked. `argsSummary` is a digest of the argument names, never the arguments: a call can carry a whole file. |
+| `tool.returned` | `toolName`, `success`, `durationMs` | The tool finished — **including when it threw**, so a watcher never shows a step running forever. Correlated with its `tool.called`. |
+| `delegation.started` | `toAgentId?`, `taskId?` | One agent handed work to another. |
+| `agent.spawned` | `role?`, `reason?` | The team grew at runtime. |
 | `cost.updated` | `tokens`, `usd?`, `budgetRemaining?` | The token meter moves. |
 | `llm.delta` | `text` | A fragment of generated text. **Only under `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?` | A task declared `humanInput: true` is asking. |

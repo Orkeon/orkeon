@@ -370,6 +370,20 @@ internal static partial class RunCommand
             {
                 services.AddSemanticSearchTool();
 
+                // BUS-03: wrap every registered tool so its calls become events. Doing it
+                // here — where tools enter the process — covers the three agent loops and the
+                // scripting facade at once, including paths written after this one. The
+                // decorator implements ITool, not just IBaseTool, because CrewFactory assigns
+                // with `tool is ITool`: a base-only decorator would leave agents toolless.
+                foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IBaseTool)).ToList())
+                {
+                    services.Remove(descriptor);
+                    services.Add(new ServiceDescriptor(
+                        typeof(IBaseTool),
+                        sp => new Run.ObservedTool((IBaseTool)Resolve(sp, descriptor)!, events),
+                        descriptor.Lifetime));
+                }
+
                 // ICrewExecutionHook is a single service and the runner may already have
                 // registered AutoSummaryWriter on it. Take that registration over rather
                 // than past it: observing a run must not cost it its AUTO_SUMMARY.md.
