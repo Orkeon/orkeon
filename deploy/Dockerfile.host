@@ -1,0 +1,35 @@
+# The Orkeon service host as a container image (GATE-05).
+#
+#   docker build -f deploy/Dockerfile.host -t orkeon-host .
+#   docker run --rm \
+#     -v ./appsettings.json:/etc/orkeon/appsettings.json:ro \
+#     -v orkeon-state:/var/lib/orkeon \
+#     -e ORKEON_DISCORD_TOKEN \
+#     orkeon-host
+#
+# The token is passed by name, never baked in: a secret in an image layer stays in that layer
+# for as long as the image exists, including after someone "removes" it in a later one.
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY . .
+RUN dotnet publish src/hosting/Orkeon.Host/Orkeon.Host.csproj \
+      --configuration Release \
+      --output /app \
+      -p:PublishSingleFile=false
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
+WORKDIR /opt/orkeon
+
+COPY --from=build /app .
+
+# A daemon running someone else's prompts through tools should not be root while doing it.
+RUN useradd --system --create-home --home-dir /var/lib/orkeon orkeon \
+ && mkdir -p /etc/orkeon /var/lib/orkeon \
+ && chown -R orkeon:orkeon /var/lib/orkeon
+USER orkeon
+
+WORKDIR /var/lib/orkeon
+
+ENTRYPOINT ["/opt/orkeon/orkeon-host", "--settings", "/etc/orkeon/appsettings.json"]

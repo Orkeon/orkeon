@@ -1,0 +1,159 @@
+> 🇫🇷 [Version française](../fr/architecture/service-host.md)
+
+# The service host and the chat gateway
+
+**Scope**: `orkeon-host` — the daemon that hosts crews, and the gateway that lets people reach them from a chat channel.
+**Audience**: whoever installs and operates Orkeon on a server.
+
+Until this, Orkeon could be run from a terminal or embedded in a program. Both assume a human in front of a screen, on the same machine, for the length of one process. The service host lifts all three assumptions; the Discord channel gives the first place people can talk to it from somewhere they already are.
+
+---
+
+## 1. What it is, and what it is not
+
+**It is** a long-lived process that hosts one or more crews, isolates each run, bounds concurrency, answers a chat channel, and stops without abandoning work in flight.
+
+**It is not a scheduler.** rc.2 ships none, deliberately. A crew that should run every morning still needs the artifact `orkeon forge promote --schedule` produces — a Windows task, a systemd timer or a cron line — installed by a person. The host lays the foundation for one; it does not pretend to be it, and no part of this document should be read as saying otherwise.
+
+The same binary runs three ways: in a terminal, as a systemd unit, as a Windows service. `UseSystemd()` and `UseWindowsService()` are inert outside their supervisor, so nothing is built differently. A daemon you cannot run in the foreground is a daemon you cannot debug.
+
+---
+
+## 2. Configuring it
+
+```json
+{
+  "Llm": { "Provider": "deepseek", "Model": "deepseek-chat" },
+
+  "Orkeon": {
+    "Host": {
+      "RunTimeout": "00:30:00",
+      "ShutdownGracePeriod": "00:00:20",
+
+      "Crews": [
+        {
+          "Name": "support",
+          "Path": "/srv/orkeon/crews/support",
+          "Profile": {
+            "Interactive": false,
+            "Persistent": false,
+            "Chat": true,
+            "MaxConcurrentRuns": 4
+          }
+        }
+      ],
+
+      "Discord": {
+        "Enabled": true,
+        "TokenEnvironmentVariable": "ORKEON_DISCORD_TOKEN",
+        "AllowedUserIds": ["123456789012345678"],
+        "ProgressInterval": "00:00:02"
+      }
+    }
+  }
+}
+```
+
+`Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches.
+
+### No secret is ever written here
+
+`TokenEnvironmentVariable` holds the **name** of an environment variable. The token itself never touches the configuration file, a commit, or a container image layer — where it would remain for as long as the image exists, including after someone "removes" it in a later layer. This is the rule the LLM providers already follow, and a bot token, which can read every message a server sends, does not get an exception.
+
+### The profile, and its two off-by-default axes
+
+| Axis | Default | Why |
+|---|---|---|
+| `Interactive` | `false` | A crew hosted without a channel that can answer must not ask: it would stop on its first question and wait forever. |
+| `Persistent` | `false` | Memory outliving a run means one conversation can read another's. |
+| `Chat` | `true` | rc.2's crews are driven by conversation. |
+| `MaxConcurrentRuns` | `4` | A daemon accepting every request that arrives dies under its first burst, and a chat channel makes bursts trivial. |
+
+A request beyond the ceiling is **refused with an answer**, not queued: "we are busy, try again shortly" is something a channel relays to a person; an invisible queue is not.
+
+---
+
+## 3. Isolation
+
+Each run gets its own dependency-injection scope. That is not a detail — it is the defence against the risk the gateway design calls its most serious: a memory scope leaking between conversations.
+
+`IMemoryScope` is registered *scoped*, so two runs sharing a provider would share a memory. One scope per run means a run's memory belongs to it and **dies with it**, which matters twice over: the leak would otherwise exist not only between two live conversations but between a finished one and everything that follows.
+
+Each run also carries its own deadline (`RunTimeout`). A daemon has nobody watching to press Ctrl-C, so a run with no timeout is a stuck daemon waiting on a model that will never answer.
+
+---
+
+## 4. The gateway
+
+A message becomes a run in a fixed order: **authorize, route, acknowledge, work.**
+
+**Authorize first.** A sender who is not on the allow list never reaches a crew, never costs a token, and never appears in a log as an accepted request. They are told, because silence looks like a broken bot.
+
+> **An empty allow list denies everyone**, and the channel refuses to start rather than answering nobody in silence. The opposite default is how a bot invited to a public server ends up spending someone's API budget on strangers.
+
+**Route.** rc.2 ships one strategy: **a thread is a run**. It is the only mapping a person can predict without being told — what happens in this thread is one job — and it gives parallelism without inventing a notion of session anyone has to learn. A second message in a running thread is refused with an explanation rather than starting a second run whose answers nobody could tell apart.
+
+**Acknowledge.** Every chat platform's response window is measured in seconds; a crew is measured in minutes. The acknowledgement goes out before any work starts, and carries the stop button — so a run can be interrupted from the moment it begins, not from the moment it first reports progress, which on a slow first step can be minutes later.
+
+**Work**, reporting as it goes. Progress is **throttled** (`ProgressInterval`, 2 seconds by default): a run emits an event per agent thought and per tool call, and relaying each one would exhaust Discord's per-channel rate limit inside a single crew. The last suppressed update is flushed just before the final answer, so a run does not end on a view several steps stale.
+
+### Commands
+
+| Command | Effect |
+|---|---|
+| `/status` | What this conversation is running, and since when. |
+| `/stop` | Stops this conversation's run. The **Stop button** does exactly the same thing — someone who prefers clicking should not get different behaviour from someone who prefers typing. |
+
+---
+
+## 5. Installing it
+
+### systemd
+
+[`deploy/systemd/orkeon-host.service`](https://github.com/orkeon/orkeon/blob/main/deploy/systemd/orkeon-host.service).
+
+```bash
+sudo cp deploy/systemd/orkeon-host.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now orkeon-host
+journalctl -u orkeon-host -f
+```
+
+`Type=notify`, because the host reports readiness once the crews are loaded rather than when the process starts — otherwise systemd would call a host that failed to read its configuration "started" for as long as it took to exit.
+
+`Restart=on-failure`, not `always`: a host that stops because no crew is configured is telling the operator something, and a restart loop buries the message.
+
+`TimeoutStopSec` is deliberately longer than `ShutdownGracePeriod`, so runs in flight get their grace before systemd loses patience. **Raise one without the other and the one left behind stops meaning anything.**
+
+Secrets go in `/etc/orkeon/orkeon-host.env`, readable only by the service user. The unit file stays free of them.
+
+### Windows
+
+```powershell
+.\deploy\windows\install-service.ps1 `
+  -ExecutablePath C:\Orkeon\orkeon-host.exe `
+  -SettingsPath   C:\Orkeon\appsettings.json
+Start-Service -Name Orkeon
+```
+
+### Container
+
+[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). The token is passed by name at run time, never baked into a layer.
+
+---
+
+## 6. What ships, and what does not
+
+**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, and the Discord channel with `/status`, `/stop` and the stop button.
+
+**Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, multi-crew dynamic hosting, and every channel other than Discord. The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
+
+**One thing cannot be verified in CI**: the specification's own acceptance criterion — launching a crew from a real Discord thread, watching it progress, stopping it by button, with the service running as a systemd daemon. It needs a Discord account and a server, which is an owner action. What CI does hold is everything either side of the socket: the message translation, the two platform limits, authorization, routing, throttling and isolation.
+
+---
+
+## 7. See also
+
+- [The run event bus](run-event-bus.md) — the protocol a watching process reads, and the shape the gateway's ports were written to accommodate.
+- [EventHub and crew lifecycle](event-hub-and-crew-lifecycle.md) — inter-crew messaging and its ACL.
+- [Publication matrix](../reference/publication-matrix.md) — where `orkeon-host` ships.

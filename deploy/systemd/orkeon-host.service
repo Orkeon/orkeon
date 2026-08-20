@@ -1,0 +1,62 @@
+# The Orkeon service host, as a systemd unit (GATE-05).
+#
+# Install:
+#   sudo cp orkeon-host.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now orkeon-host
+#
+# Two things this file does NOT do, on purpose. It does not carry a bot token or an API key —
+# those are named by environment variable in the configuration and provided by the drop-in
+# below, so a unit file can be read, copied and committed without leaking anything. And it does
+# not schedule anything: rc.2 ships no scheduler, so a crew that should run every morning still
+# needs the artifact `orkeon forge promote --schedule` produces.
+
+[Unit]
+Description=Orkeon service host
+Documentation=https://github.com/orkeon/orkeon/blob/main/docs/architecture/service-host.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Type=notify because the host calls UseSystemd(): it tells systemd it is up once the crews are
+# loaded, not when the process starts. Without it systemd would consider a host that failed to
+# read its configuration "started" for as long as it took to exit.
+Type=notify
+NotifyAccess=all
+
+ExecStart=/opt/orkeon/orkeon-host --settings /etc/orkeon/appsettings.json
+WorkingDirectory=/var/lib/orkeon
+
+# Restart on failure, not always: a host that stops because it has no crew configured is
+# telling the operator something, and restarting it in a loop would bury the message.
+Restart=on-failure
+RestartSec=10s
+
+# Longer than the host's own ShutdownGracePeriod (20s by default), so runs in flight get their
+# grace period before systemd loses patience. Raising one without the other makes the setting
+# that stays behind meaningless.
+TimeoutStopSec=45s
+
+# The watchdog systemd resets on each heartbeat from UseSystemd().
+WatchdogSec=60s
+
+User=orkeon
+Group=orkeon
+
+# Secrets by reference: put ORKEON_DISCORD_TOKEN=… and the LLM keys in a file readable only by
+# the service user. The unit itself stays free of them.
+EnvironmentFile=-/etc/orkeon/orkeon-host.env
+
+# A daemon running someone else's prompts through tools should reach as little as possible.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/orkeon
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

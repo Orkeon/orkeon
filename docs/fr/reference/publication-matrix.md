@@ -79,6 +79,12 @@ remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 | `SHA256SUMS` | les scripts d'empaquetage du job `installers` (`package-deb.sh` rafraîchit sa propre ligne) | une ligne par artefact ci-dessus **sauf le MSI** | — |
 | `SHA256SUMS.msi` | `build-msi.ps1`, dans le job `msi` | le MSI seul | — |
 
+### Le host de service
+
+`orkeon-host` est livré dans l'archive complète (`--app-set full`), self-contained : un daemon supervisé par systemd ou le SCM Windows ne doit pas dépendre d'un runtime que quelqu'un peut mettre à jour sous ses pieds. Ce n'est **pas** un dotnet tool — il s'installe en service, il ne s'invoque pas depuis un shell.
+
+Ses artefacts de déploiement vivent dans [`deploy/`](https://github.com/orkeon/orkeon/tree/main/deploy) : une unité systemd (`Type=notify`, redémarrage sur échec, watchdog, durcie), un script PowerShell qui l'enregistre auprès du SCM, et un Dockerfile. Aucun des trois ne porte de secret — le jeton du bot et les clés d'API sont nommés par variable d'environnement dans la configuration et fournis par la machine, donc une unité ou une couche d'image peut être lue par n'importe qui sans rien divulguer.
+
 Deux fichiers de sommes plutôt qu'un : le job ubuntu `installers` écrit `SHA256SUMS` avant que
 le MSI n'existe — il est construit plus tard, sur `windows-latest`. Chaque fichier de sommes
 est produit par le job qui a produit l'artefact qu'il couvre.

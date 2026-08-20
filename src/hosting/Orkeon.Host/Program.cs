@@ -35,6 +35,10 @@ var host = RunnerHost.Build(
         services.AddSingleton<ICrewRunner>(sp => sp.GetRequiredService<CrewRunner>());
         services.AddHostedService<CrewHostService>();
 
+        services.Configure<Orkeon.Host.Gateway.DiscordChannelOptions>(
+            context.Configuration.GetSection(Orkeon.Host.Gateway.DiscordChannelOptions.SectionName));
+        services.AddHostedService<Orkeon.Host.Gateway.ChatChannelService>();
+
         services.AddHealthChecks().AddCheck<CrewHostHealthCheck>("orkeon-host");
     },
     configureBuilder: builder => builder

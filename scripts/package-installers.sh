@@ -116,6 +116,9 @@ APPS=(
   "orkeon-studio|src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj|Orkeon.Studio|true|win-x64"
   "orkeon-studio-config|src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj|Orkeon.Studio.Config|true|"
   "orkeon-studio-run|src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj|Orkeon.Studio.Run|true|"
+  # The service host (GATE-05). Self-contained: a daemon supervised by systemd or the
+  # Windows SCM must not depend on a runtime someone may upgrade underneath it.
+  "orkeon-host|src/hosting/Orkeon.Host/Orkeon.Host.csproj|orkeon-host|true|"
 )
 
 # True when the app's RID filter (5th column) admits $2; empty filter = all RIDs.

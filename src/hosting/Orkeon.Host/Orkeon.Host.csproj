@@ -29,6 +29,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- GATE-04: the first external SaaS SDK in the runtime. Referenced by the daemon
+         only, and loaded only when a Discord channel is configured — a deployment that
+         hosts no chat channel pays the assembly on disk and nothing else. -->
+    <PackageReference Include="Discord.Net" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
