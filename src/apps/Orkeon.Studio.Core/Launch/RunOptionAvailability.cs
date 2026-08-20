@@ -37,6 +37,15 @@ public enum RunOption
 
     /// <summary><c>--validate</c>.</summary>
     Validate,
+
+    /// <summary><c>--events</c>.</summary>
+    Events,
+
+    /// <summary><c>--stream</c>.</summary>
+    Stream,
+
+    /// <summary><c>--client</c>.</summary>
+    Client,
 }
 
 /// <summary>
@@ -99,6 +108,9 @@ public static class RunOptionAvailability
             RunOption.LlmLog => "--llm-log",
             RunOption.LlmLogPath => "--llm-log-path",
             RunOption.Validate => "--validate",
+            RunOption.Events => "--events",
+            RunOption.Stream => "--stream",
+            RunOption.Client => "--client",
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, "Unknown run option."),
         };
 }

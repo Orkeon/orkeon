@@ -15,6 +15,9 @@ public static class RunArgumentsBuilder
     /// <summary>The CLI verb these arguments start with.</summary>
     public const string RunVerb = "run";
 
+    /// <summary>The only stream format there is; spelled out because the CLI takes a value.</summary>
+    public const string EventsFormat = "jsonl";
+
     /// <summary>
     /// Builds the arguments for <paramref name="target"/>, in the order a user would type
     /// them: <c>run &lt;path&gt;</c> first, then the dialect options, then the shared ones.
@@ -95,6 +98,23 @@ public static class RunArgumentsBuilder
 
         if (effective.Validate)
             arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Validate));
+
+        // The observation flags come last so the argv a user reads still opens with what they
+        // chose, and ends with how the screen watches it.
+        if (effective.Events)
+        {
+            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Events));
+            arguments.Add(EventsFormat);
+
+            if (effective.Stream)
+                arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Stream));
+
+            if (!string.IsNullOrWhiteSpace(effective.ClientName))
+            {
+                arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Client));
+                arguments.Add(effective.ClientName);
+            }
+        }
 
         return arguments;
     }

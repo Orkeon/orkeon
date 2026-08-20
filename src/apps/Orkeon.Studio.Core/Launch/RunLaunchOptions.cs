@@ -57,6 +57,25 @@ public sealed record RunLaunchOptions
     /// <summary><c>--validate</c>: strict crew load, no LLM probe, no kickoff.</summary>
     public bool Validate { get; init; }
 
+    /// <summary>
+    /// <c>--events jsonl</c>: ask for the event protocol instead of plain text. A screen that
+    /// shows progress rather than scrollback needs it; the raw-terminal path does not.
+    /// </summary>
+    public bool Events { get; init; }
+
+    /// <summary>
+    /// <c>--stream</c>: include token-by-token <c>llm.delta</c> events. Only meaningful with
+    /// <see cref="Events"/>, and verbose by nature — a delta per token saturates any UI.
+    /// </summary>
+    public bool Stream { get; init; }
+
+    /// <summary>
+    /// <c>--client &lt;name&gt;</c>: the name the watching process answers to on the hub
+    /// (<c>client://{name}</c>). Only meaningful with <see cref="Events"/>; null keeps the
+    /// CLI's own default.
+    /// </summary>
+    public string? ClientName { get; init; }
+
     /// <summary>Highest accepted <see cref="Verbosity"/>.</summary>
     public const int MaxVerbosity = 2;
 }

@@ -60,6 +60,35 @@ public sealed record OrkeonEvent
         Root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
             ? value.GetDouble()
             : null;
+
+    /// <summary>
+    /// String-array property, empty when absent. Non-string entries are skipped rather than
+    /// failing the whole list: a screen showing three of four choices beats one showing none.
+    /// </summary>
+    public IReadOnlyList<string> GetStrings(string name)
+    {
+        if (!Root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Array)
+            return [];
+
+        var items = new List<string>(value.GetArrayLength());
+        foreach (var element in value.EnumerateArray())
+        {
+            if (element.ValueKind == JsonValueKind.String && element.GetString() is { } text)
+                items.Add(text);
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// A property rendered back to JSON text, whatever its shape — the way to carry an opaque
+    /// payload through to a screen without this type having to know what is in it. Null when
+    /// absent.
+    /// </summary>
+    public string? GetRawJson(string name) =>
+        Root.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null
+            ? value.GetRawText()
+            : null;
 }
 
 /// <summary>
