@@ -34,6 +34,9 @@ Runs a crew definition and prints its result on stdout. Dispatch is by target ty
 | `--memory-limit-mb <n>` | Jint memory limit override for this run (`0` disables it). |
 | `--validate` | Dry run: resolve settings, build the host, load the crew with strict tool resolution — no LLM call, no kickoff. Prints `VALIDATION OK/FAILED: …`. |
 | `--list-tools` | Build the host, print the sorted runtime tool registry, exit. No crew path needed. |
+| `--events jsonl` | Emit the versioned event protocol on stdout instead of the plain rendering, and read commands on stdin. This is how Orkeon Studio watches a run. See [The run event bus](../architecture/run-event-bus.md). |
+| `--stream` | With `--events`, also emit `llm.delta` events token by token. Verbose by nature: off unless asked for. |
+| `--client <name>` | With `--events`, the name the watching process answers to on the run's hub (`client://<name>`, default `studio`). Agents can post and send to that address; a crew's `links:` block authorizes it. |
 
 ```bash
 orkeon run examples/01-enterprise/01-research-assistant/config.yaml \

@@ -27,7 +27,8 @@ The documentation is organized into 6 thematic sections.
 | [LLM providers](./architecture/llm-providers.md) | 13 providers (OpenAI, Anthropic, Azure, Groq, Ollama, etc.), adapters, factory, real-API campaign kit |
 | [Memory system](./architecture/memory-system.md) | 5 memory types, 6 providers (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), cognitive memory |
 | [Events, CQRS and observability](./architecture/domain-events.md) | 44 domain events, CQRS pipeline, 2-level callbacks |
-| [EventHub and crew lifecycle](./architecture/event-hub-and-crew-lifecycle.md) | Reference specification for inter-agent and inter-crew messaging (EventHub) and crew sleep/wake — Application ports, InMemory + SQLite adapters |
+| [EventHub and crew lifecycle](./architecture/event-hub-and-crew-lifecycle.md) | Reference specification for inter-agent and inter-crew messaging (EventHub) and crew sleep/wake — Application ports, the in-memory adapter and its five middleware stages |
+| [The run event bus](./architecture/run-event-bus.md) | `orkeon run --events jsonl`: the versioned protocol another program reads, the commands it can send back, and the `client://` seat it gets at the run's hub |
 | [Security, resilience and plugins](./architecture/security.md) | 6 security layers, Polly policies, checkpointing, plugin system |
 | [VFS compliance](./architecture/vfs-compliance.md) | VFS-only principle (all I/O via `IFileSystemService`): `Orkeon.Compliance.Vfs` Roslyn analyzer, 7 diagnostics, exempted scopes, migration exit criteria |
 | [Plugin system](./architecture/plugins.md) | `IOrkeonPlugin` contract, VFS discovery, `AssemblyLoadContext` isolation, opt-in activation `AddOrkeonPlugins`, ⚠️ trust boundary |

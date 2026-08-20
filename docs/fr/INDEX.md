@@ -27,7 +27,8 @@ La documentation est organisée en 6 sections thématiques.
 | [Fournisseurs LLM](./architecture/llm-providers.md) | 13 providers (OpenAI, Anthropic, Azure, Groq, Ollama, etc.), adaptateurs, factory, kit de campagnes sur API réelle |
 | [Système de mémoire](./architecture/memory-system.md) | 5 types de mémoire, 6 providers (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), mémoire cognitive |
 | [Événements, CQRS et observabilité](./architecture/domain-events.md) | 44 domain events, pipeline CQRS, callbacks à 2 niveaux |
-| [EventHub et cycle de vie des crews](./architecture/event-hub-and-crew-lifecycle.md) | Spécification de référence du messaging inter-agents et inter-crews (EventHub) et de la mise en sommeil/réveil des crews — ports Application, adapters InMemory + SQLite |
+| [EventHub et cycle de vie des crews](./architecture/event-hub-and-crew-lifecycle.md) | Spécification de référence du messaging inter-agents et inter-crews (EventHub) et de la mise en sommeil/réveil des crews — ports Application, l'adaptateur en mémoire et ses cinq étages de middleware |
+| [Le bus d'événements du run](./architecture/run-event-bus.md) | `orkeon run --events jsonl` : le protocole versionné qu'un autre programme lit, les commandes qu'il peut renvoyer, et le siège `client://` qu'il obtient sur le hub du run |
 | [Sécurité, résilience et plugins](./architecture/security.md) | 6 couches de sécurité, politiques Polly, checkpointing, système de plugins |
 | [Conformité VFS](./architecture/vfs-compliance.md) | Principe VFS-only (tout I/O via `IFileSystemService`) : analyseur Roslyn `Orkeon.Compliance.Vfs`, 7 diagnostics, périmètres exemptés, critères de sortie de la migration |
 | [Système de plugins](./architecture/plugins.md) | Contrat `IOrkeonPlugin`, découverte VFS, isolation `AssemblyLoadContext`, activation opt-in `AddOrkeonPlugins`, ⚠️ frontière de confiance |

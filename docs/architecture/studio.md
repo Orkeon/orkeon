@@ -25,6 +25,7 @@ A library with no UI and no entry point, consumed only by the three front-ends. 
 - **Targets/** — run-target detection (`RunTargetDetector`): a `config.yaml`, a multi-file crew directory, or a `.ork.ts` script.
 - **Launch/ & Process/** — building the `orkeon run` command line (`RunArgumentsBuilder`, `RunLaunchOptions`), locating the binary (`OrkeonBinaryLocator`), running it and streaming output (`OrkeonProcessRunner`, `IProcessLauncher`), interpreting exit codes (`OrkeonExitCodes`, `LaunchOutcomeFormatter`), and the `orkeon doctor` report (`DoctorReport`).
 - **Forge/** — the typed client of `orkeon forge --events jsonl` (the Atelier): a tolerant line parser pinned against the CLI's golden protocol lines, the session projection every front reads (`ForgeSessionModel`, milestone mapping, the ✔/✘ checklist rules), the child-process driver with the stdin answer channel (`ForgeClient`), the on-disk session catalogue ("My solutions") and the resume hydrator. Studio's process never touches an LLM — it only ever sees JSON lines.
+- **Run/** — the typed client of a **watched** `orkeon run --events jsonl` (BUS-06): `RunClient`, ForgeClient's sibling and deliberately its twin — same launcher, same locator, same envelope parser — and `RunProgressModel`, which folds the stream into what a screen shows (finished tasks, cost, the question the run is waiting on). The client also carries the seat the run's hub gives a watching process: post to an agent, publish, subscribe, reply. See [The run event bus](run-event-bus.md).
 - **Storage/ & History/** — settings locations and resolution chain (`SettingsLocations`, `AppSettingsFile`), launch history (`LaunchHistoryStore`).
 - **Validation/** — `AppSettingsValidator` + `ValidationMessageFormatter`.
 - **Localization/** — the `IStudioStrings` port (below).
@@ -38,6 +39,16 @@ Core's dependency list is deliberately slim: only `Orkeon.Domain` (mounts, `LlmD
 - **`orkeon-studio`** (WPF, Windows) — one desktop window with a sidebar of screens: the **Solve** group (the Atelier: describe a problem, watch the team being forged, try it, adopt it — see [Forge a team from a need](../getting-started/forge-a-team-from-a-need.md)), the settings editor (presets, sections, mounts, raw JSON, diagnostic) and the crew launcher (run + history), with light/dark theme, an EN/FR language toggle and a guided tour. It references only `Orkeon.Studio.Core`.
 
 The Solve screen is the doctrine at work: Studio launches `orkeon forge --events jsonl` as a child process, renders its event stream (conversation, milestones, checklist), and answers over stdin. A capability absent from the stream does not exist on the screen — which is exactly what keeps the terminal `orkeon forge` and the WPF screen from drifting apart.
+
+### The Launch screen is no longer a terminal
+
+It used to be a twenty-thousand-line list: honest, and a terminal with a theme. The person launching a crew from Studio wants two things scrollback does not give — is it advancing, and is it waiting on me — so the screen now watches the run through the same protocol the Solve screen uses (`--events jsonl`, on by default; unchecking the option gives the plain argv back).
+
+What it shows: finished tasks with their agent, duration and tokens; a cost line; and **the run's question, asked on screen**. Before this, a task declared `humanInput: true` was auto-approved behind the user's back — a defensible fallback for an unattended run, and the wrong answer entirely once a screen is watching.
+
+The raw log is **demoted, not removed**. A line the panel cannot read falls through to it rather than into nothing, which is the rule the terminal launcher already followed.
+
+Three refusals keep the panel honest, and each is pinned by a test. A silent run says "nothing reported yet" rather than implying progress. A question arriving without a correlation id is not shown as pending, because answering needs an address. And an answer that could not be written leaves the question open instead of pretending it landed.
 
 ## Localization: the `IStudioStrings` port
 

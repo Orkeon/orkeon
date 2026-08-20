@@ -34,6 +34,9 @@ Exécute une définition de crew et imprime son résultat sur stdout. Le dispatc
 | `--memory-limit-mb <n>` | Plafond mémoire Jint pour cette exécution (`0` le désactive). |
 | `--validate` | Dry run : résout les settings, construit l'hôte, charge le crew avec résolution stricte des outils — aucun appel LLM, aucun kickoff. Imprime `VALIDATION OK/FAILED: …`. |
 | `--list-tools` | Construit l'hôte, imprime le registre trié des outils runtime, puis sort. Aucun chemin de crew requis. |
+| `--events jsonl` | Émet le protocole d'événements versionné sur stdout au lieu du rendu texte, et lit des commandes sur stdin. C'est ainsi qu'Orkeon Studio observe un run. Voir [Le bus d'événements du run](../architecture/run-event-bus.md). |
+| `--stream` | Avec `--events`, émet aussi les `llm.delta` jeton par jeton. Verbeux par nature : désactivé sauf demande. |
+| `--client <nom>` | Avec `--events`, le nom auquel le processus observateur répond sur le hub du run (`client://<nom>`, défaut `studio`). Les agents peuvent lui écrire à cette adresse ; le bloc `links:` d'une crew l'autorise. |
 
 ```bash
 orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
