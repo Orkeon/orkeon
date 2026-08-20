@@ -61,6 +61,13 @@ public static class EventHubServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton(policy ?? PermissiveCrewLinkPolicy.Instance);
+
+        // One instance behind both faces: the factory writes what a crew declared, the ACL
+        // reads it. Registering them separately would give the ACL an empty registry.
+        services.TryAddSingleton<InMemoryCrewLinkRegistry>();
+        services.TryAddSingleton<ICrewLinkRegistry>(sp => sp.GetRequiredService<InMemoryCrewLinkRegistry>());
+        services.TryAddSingleton<ICrewLinkProvider>(sp => sp.GetRequiredService<InMemoryCrewLinkRegistry>());
+
         services.AddEventHubMiddleware<Middleware.AclEventHubMiddleware>();
         return services;
     }

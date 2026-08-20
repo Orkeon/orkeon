@@ -1,4 +1,5 @@
 using Orkeon.Application.EventHub;
+using Orkeon.Domain.EventHub;
 using Orkeon.Application.EventHub.Exceptions;
 
 namespace Orkeon.Infrastructure.EventHub.Middleware;

@@ -28,26 +28,6 @@
 Orkeon.Application.EventHub.MailboxAddress.ClientName.get -> string?
 Orkeon.Application.EventHub.MailboxAddress.ClientName.init -> void
 Orkeon.Application.EventHub.MailboxKind.Client = 3 -> Orkeon.Application.EventHub.MailboxKind
-Orkeon.Application.EventHub.CrewLink
-Orkeon.Application.EventHub.CrewLink.<Clone>$() -> Orkeon.Application.EventHub.CrewLink!
-Orkeon.Application.EventHub.CrewLink.AllowedTopics.get -> System.Collections.Immutable.ImmutableArray<string!>
-Orkeon.Application.EventHub.CrewLink.AllowedTopics.init -> void
-Orkeon.Application.EventHub.CrewLink.AllowsOutbound.get -> bool
-Orkeon.Application.EventHub.CrewLink.Authorizes(string! topic) -> bool
-Orkeon.Application.EventHub.CrewLink.ClientName.get -> string?
-Orkeon.Application.EventHub.CrewLink.CrewLink() -> void
-Orkeon.Application.EventHub.CrewLink.Direction.get -> Orkeon.Application.EventHub.CrewLinkDirection
-Orkeon.Application.EventHub.CrewLink.Direction.init -> void
-Orkeon.Application.EventHub.CrewLink.Equals(Orkeon.Application.EventHub.CrewLink? other) -> bool
-Orkeon.Application.EventHub.CrewLink.Matches(Orkeon.Application.EventHub.MailboxAddress! target) -> bool
-Orkeon.Application.EventHub.CrewLink.Matches(Orkeon.Domain.Common.CrewId! target) -> bool
-Orkeon.Application.EventHub.CrewLink.TargetsClient.get -> bool
-Orkeon.Application.EventHub.CrewLink.To.get -> string!
-Orkeon.Application.EventHub.CrewLink.To.init -> void
-Orkeon.Application.EventHub.CrewLinkDirection
-Orkeon.Application.EventHub.CrewLinkDirection.Bidirectional = 2 -> Orkeon.Application.EventHub.CrewLinkDirection
-Orkeon.Application.EventHub.CrewLinkDirection.Inbound = 1 -> Orkeon.Application.EventHub.CrewLinkDirection
-Orkeon.Application.EventHub.CrewLinkDirection.Outbound = 0 -> Orkeon.Application.EventHub.CrewLinkDirection
 Orkeon.Application.EventHub.Exceptions.EventAclException
 Orkeon.Application.EventHub.Exceptions.EventAclException.EventAclException() -> void
 Orkeon.Application.EventHub.Exceptions.EventAclException.EventAclException(string! message) -> void
@@ -55,21 +35,16 @@ Orkeon.Application.EventHub.Exceptions.EventAclException.EventAclException(strin
 Orkeon.Application.EventHub.ICrewLinkPolicy
 Orkeon.Application.EventHub.ICrewLinkPolicy.AllowsUndeclared.get -> bool
 Orkeon.Application.EventHub.ICrewLinkProvider
-Orkeon.Application.EventHub.ICrewLinkProvider.LinksFor(Orkeon.Domain.Common.CrewId! source) -> System.Collections.Immutable.ImmutableArray<Orkeon.Application.EventHub.CrewLink!>
 Orkeon.Application.EventHub.PermissiveCrewLinkPolicy
 Orkeon.Application.EventHub.PermissiveCrewLinkPolicy.AllowsUndeclared.get -> bool
 Orkeon.Application.EventHub.PermissiveCrewLinkPolicy.PermissiveCrewLinkPolicy() -> void
 Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy
 Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy.AllowsUndeclared.get -> bool
 Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy.RestrictiveCrewLinkPolicy() -> void
-const Orkeon.Application.EventHub.CrewLink.ClientPrefix = "client:" -> string!
-override Orkeon.Application.EventHub.CrewLink.Equals(object? obj) -> bool
-override Orkeon.Application.EventHub.CrewLink.GetHashCode() -> int
-override Orkeon.Application.EventHub.CrewLink.ToString() -> string!
-static Orkeon.Application.EventHub.CrewLink.ForClient(string! name) -> string!
-static Orkeon.Application.EventHub.CrewLink.operator !=(Orkeon.Application.EventHub.CrewLink? left, Orkeon.Application.EventHub.CrewLink? right) -> bool
-static Orkeon.Application.EventHub.CrewLink.operator ==(Orkeon.Application.EventHub.CrewLink? left, Orkeon.Application.EventHub.CrewLink? right) -> bool
 static Orkeon.Application.EventHub.PermissiveCrewLinkPolicy.Instance.get -> Orkeon.Application.EventHub.PermissiveCrewLinkPolicy!
 static Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy.Instance.get -> Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy!
-*REMOVED*Orkeon.Application.EventHub.CrewLink.Matches(Orkeon.Domain.Common.CrewId! target) -> bool
-Orkeon.Application.EventHub.CrewLink.MatchesCrew(Orkeon.Domain.Common.CrewId! target) -> bool
+Orkeon.Application.EventHub.CrewLinkMailboxExtensions
+Orkeon.Application.EventHub.ICrewLinkProvider.LinksFor(Orkeon.Domain.Common.CrewId! source) -> System.Collections.Immutable.ImmutableArray<Orkeon.Domain.EventHub.CrewLink!>
+Orkeon.Application.EventHub.ICrewLinkRegistry
+Orkeon.Application.EventHub.ICrewLinkRegistry.Register(Orkeon.Domain.Common.CrewId! crew, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.EventHub.CrewLink!>! links) -> void
+static Orkeon.Application.EventHub.CrewLinkMailboxExtensions.Matches(this Orkeon.Domain.EventHub.CrewLink! link, Orkeon.Application.EventHub.MailboxAddress! target) -> bool

@@ -219,7 +219,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         {
             var snapshot = new TaskExecutionSnapshot
             {
-                TaskId = result.TaskId.Value.ToString(),
+                TaskId = result.TaskId?.Value.ToString() ?? string.Empty,
                 AgentRole = "graph",
                 Success = result.Success,
                 Duration = result.ExecutionTime,

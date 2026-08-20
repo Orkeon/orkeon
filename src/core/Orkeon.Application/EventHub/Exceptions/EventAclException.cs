@@ -1,3 +1,5 @@
+using Orkeon.Domain.EventHub;
+
 namespace Orkeon.Application.EventHub.Exceptions;
 
 /// <summary>

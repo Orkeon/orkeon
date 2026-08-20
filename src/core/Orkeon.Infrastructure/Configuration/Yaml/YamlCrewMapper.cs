@@ -1,8 +1,10 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
+using Orkeon.Domain.EventHub;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Constants.Llm;
@@ -53,6 +55,7 @@ public sealed partial class YamlCrewMapper
             CircuitBreaker = MapCircuitBreaker(settings.CircuitBreaker),
             GraphConfig = MapGraphConfig(settings.GraphConfig),
             Rag = MapRag(settings.Rag),
+            Links = MapLinks(settings.Links),
         };
     }
 
@@ -467,6 +470,42 @@ public sealed partial class YamlCrewMapper
     /// Maps the crew-level <c>rag:</c> YAML block to its typed model. Returns null when the
     /// block is absent. Pure parsing — no ingestion is triggered here (kickoff is a later lot).
     /// </summary>
+    /// <summary>
+    /// Maps the <c>links:</c> block (HUB-03). An entry without a <c>to:</c> is dropped rather
+    /// than turned into a link pointing nowhere — a malformed authorization must not become a
+    /// permissive one. An unknown <c>direction:</c> falls back to <c>outbound</c>, the narrowest
+    /// of the three.
+    /// </summary>
+    private static List<CrewLink> MapLinks(Collection<LinkYamlConfig>? yaml)
+    {
+        if (yaml is not { Count: > 0 })
+            return [];
+
+        var links = new List<CrewLink>(yaml.Count);
+        foreach (var entry in yaml)
+        {
+            if (string.IsNullOrWhiteSpace(entry?.To))
+                continue;
+
+            links.Add(new CrewLink
+            {
+                To = entry.To.Trim(),
+                Direction = ParseLinkDirection(entry.Direction),
+                AllowedTopics = entry.AllowedTopics is { Count: > 0 } topics ? [.. topics] : [],
+            });
+        }
+
+        return links;
+    }
+
+    private static CrewLinkDirection ParseLinkDirection(string? value) =>
+        value?.Trim().ToUpperInvariant() switch
+        {
+            "INBOUND" => CrewLinkDirection.Inbound,
+            "BIDIRECTIONAL" or "BOTH" => CrewLinkDirection.Bidirectional,
+            _ => CrewLinkDirection.Outbound,
+        };
+
     private static RagCrewConfig? MapRag(RagYamlConfig? yaml)
     {
         if (yaml is null)
@@ -676,4 +715,7 @@ public sealed record CrewMappingSettings
 
     /// <summary>Crew-level RAG block — provider, declared collections, retrieval defaults (<c>crew.rag</c>).</summary>
     public RagYamlConfig? Rag { get; init; }
+
+    /// <summary>Crew-level EventHub authorizations (<c>crew.links</c>).</summary>
+    public Collection<LinkYamlConfig>? Links { get; init; }
 }

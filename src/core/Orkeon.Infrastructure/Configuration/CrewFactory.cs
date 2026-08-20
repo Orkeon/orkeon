@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orkeon.Application.EventHub;
 using Orkeon.Application.Interfaces;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
@@ -30,6 +31,7 @@ public partial class CrewFactory : ICrewFactory
     private readonly bool _strictTools;
     private readonly bool _prepareRagCollections;
     private readonly Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? _ragBootstrapper;
+    private readonly ICrewLinkRegistry? _linkRegistry;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -47,6 +49,11 @@ public partial class CrewFactory : ICrewFactory
     /// and <see cref="CrewFactoryOptions.PrepareRagCollections"/> is enabled, the collections
     /// declared by the configuration's <c>rag:</c> block are ingested at crew creation.
     /// </param>
+    /// <param name="linkRegistry">
+    /// Optional EventHub link registry (registered by <c>AddOrkeonEventHubAcl</c>): the crew's
+    /// <c>links:</c> block is read from YAML long before the crew has an identity, so the
+    /// authorizations are handed over here, once the <see cref="CrewId"/> exists.
+    /// </param>
 #pragma warning disable S107 // DI-composed factory: one optional collaborator per opt-in subsystem
     public CrewFactory(
         ICrewDefinitionLoader loader,
@@ -56,7 +63,8 @@ public partial class CrewFactory : ICrewFactory
         IAgentRepository agentRepository,
         ITaskRepository taskRepository,
         IOptions<CrewFactoryOptions>? options = null,
-        Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null)
+        Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null,
+        ICrewLinkRegistry? linkRegistry = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(loader);
@@ -74,6 +82,7 @@ public partial class CrewFactory : ICrewFactory
         _strictTools = options?.Value.StrictTools ?? false;
         _prepareRagCollections = options?.Value.PrepareRagCollections ?? true;
         _ragBootstrapper = ragBootstrapper;
+        _linkRegistry = linkRegistry;
     }
 
     /// <inheritdoc />
@@ -110,10 +119,34 @@ public partial class CrewFactory : ICrewFactory
             await _taskRepository.AddAsync(task, ct).ConfigureAwait(false);
         await _crewRepository.AddAsync(crew, ct).ConfigureAwait(false);
 
+        RegisterLinks(config, crew.Id);
+
         LogSuccessfullyCreatedCrewWithId(config.Name, crew.Id);
 
         return crew;
     }
+
+    /// <summary>
+    /// Hands the crew's <c>links:</c> declarations to the ACL (HUB-03). A configuration that
+    /// declares links while the ACL is absent gets a warning rather than silence: the author
+    /// wrote an authorization, and a door nobody guards is worth saying out loud.
+    /// </summary>
+    private void RegisterLinks(CrewConfiguration config, CrewId crewId)
+    {
+        if (config.Links.Count == 0)
+            return;
+
+        if (_linkRegistry is null)
+        {
+            LogLinksDeclaredButAclMissing(config.Name);
+            return;
+        }
+
+        _linkRegistry.Register(crewId, config.Links);
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}' declares a links: block but the EventHub ACL is not registered — call AddOrkeonEventHubAcl(); the declared authorizations are not enforced.")]
+    private partial void LogLinksDeclaredButAclMissing(string crewName);
 
     /// <summary>
     /// Ingests the collections declared by the configuration's <c>rag:</c> block (RAG-03/C3).

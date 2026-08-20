@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Orkeon.Application.EventHub;
 using Orkeon.Application.EventHub.Exceptions;
 using Orkeon.Domain.Common;
+using Orkeon.Domain.EventHub;
 using Orkeon.Infrastructure.EventHub.Middleware;
 
 namespace Orkeon.Infrastructure.Tests.EventHub;

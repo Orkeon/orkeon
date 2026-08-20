@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using Orkeon.Domain.Common;
 
-namespace Orkeon.Application.EventHub;
+namespace Orkeon.Domain.EventHub;
 
 /// <summary>Which way a <see cref="CrewLink"/> lets messages travel (spec §10.3).</summary>
 public enum CrewLinkDirection
@@ -17,9 +17,15 @@ public enum CrewLinkDirection
 }
 
 /// <summary>
-/// Declarative authorization between two participants of the hub (spec §10.2). Checked on the
-/// **sender** side, at <c>Publish</c> (scoped), <c>Post</c> and <c>Send</c> time — a global
-/// <c>Publish</c> with no target stays free, and subscribers filter on their own side.
+/// Declarative authorization between two participants of the hub (spec §10.2). It lives in the
+/// Domain because it is what a crew *declares* — the <c>links:</c> block of its YAML — rather
+/// than a transport detail; matching it against a mailbox address is the Application's job
+/// (<c>CrewLinkMailboxExtensions</c>).
+/// <para>
+/// Checked on the **sender** side, at <c>Publish</c> (scoped), <c>Post</c> and <c>Send</c>
+/// time — a global <c>Publish</c> with no target stays free, and subscribers filter on their
+/// own side.
+/// </para>
 /// <para>
 /// The YAML shape is <c>links: [{ to, direction, allowed_topics }]</c> under a crew.
 /// </para>
@@ -62,21 +68,6 @@ public sealed record CrewLink
     /// <summary>Whether the link lets the declaring side send outwards.</summary>
     public bool AllowsOutbound =>
         Direction is CrewLinkDirection.Outbound or CrewLinkDirection.Bidirectional;
-
-    /// <summary>Whether the link matches <paramref name="target"/>, crew or client alike.</summary>
-    public bool Matches(MailboxAddress target)
-    {
-        ArgumentNullException.ThrowIfNull(target);
-
-        return target.Kind switch
-        {
-            MailboxKind.Client => TargetsClient
-                && string.Equals(ClientName, target.ClientName, StringComparison.Ordinal),
-            MailboxKind.Agent or MailboxKind.Crew => !TargetsClient
-                && string.Equals(To, target.CrewId?.ToString(), StringComparison.Ordinal),
-            _ => false,
-        };
-    }
 
     /// <summary>Whether the link matches a crew named directly (the scoped-publish case).</summary>
     public bool MatchesCrew(CrewId target)

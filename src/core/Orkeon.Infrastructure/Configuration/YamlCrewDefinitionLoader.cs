@@ -194,6 +194,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 GraphConfig = crewSettings?.GraphConfig,
                 CrewDefaultLlm = crewSettings?.Llm,
                 Rag = crewSettings?.Rag,
+                Links = crewSettings?.Links,
             },
             agents,
             tasks);
@@ -252,6 +253,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 GraphConfig = crewYaml?.GraphConfig,
                 CrewDefaultLlm = crewYaml?.Llm,
                 Rag = crewYaml?.Rag,
+                Links = crewYaml?.Links,
             },
             crewYaml?.Agents,
             crewYaml?.Tasks);

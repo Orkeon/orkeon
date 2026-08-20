@@ -40,6 +40,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     /// <param name="managerAgent">The manager agent responsible for task delegation and review.</param>
     /// <param name="executionService">The agent execution service.</param>
     /// <param name="memoryScope">The memory scope.</param>
+    /// <param name="hook">Optional execution hook notified as each task is finalised (BUS-03).</param>
     public HierarchicalProcessStrategy(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,

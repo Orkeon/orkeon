@@ -346,10 +346,33 @@ public class CrewYamlConfig
     public LlmYamlConfig? Llm { get; set; }
     /// <summary>Gets or sets the crew-level RAG configuration (provider, collections, defaults).</summary>
     public RagYamlConfig? Rag { get; set; }
+    /// <summary>Gets or sets the EventHub authorizations declared by the crew (<c>links:</c>).</summary>
+    public Collection<LinkYamlConfig>? Links { get; set; }
     /// <summary>Gets or sets the agent configurations keyed by agent identifier.</summary>
     public Dictionary<string, AgentYamlConfig>? Agents { get; set; }
     /// <summary>Gets or sets the task configurations keyed by task identifier.</summary>
     public Dictionary<string, TaskYamlConfig>? Tasks { get; set; }
+}
+
+/// <summary>
+/// YAML model for one entry of a crew's <c>links:</c> block — an EventHub authorization
+/// (HUB-03). Shape: <c>- to: other-crew</c>, <c>direction: outbound|inbound|bidirectional</c>,
+/// <c>allowed_topics: [a, b]</c>.
+/// </summary>
+public class LinkYamlConfig
+{
+    /// <summary>
+    /// Gets or sets the correspondent: a crew identifier, or <c>client:name</c> for an external
+    /// peer such as Studio — that peer is not a crew, and the ACL has to be able to name it.
+    /// </summary>
+    public string? To { get; set; }
+    /// <summary>Gets or sets the direction (<c>outbound</c> by default).</summary>
+    public string? Direction { get; set; }
+    /// <summary>
+    /// Gets or sets the authorized topics. Omitted or empty authorizes every topic: a link
+    /// declared without a list is a decision to trust the correspondent broadly.
+    /// </summary>
+    public Collection<string>? AllowedTopics { get; set; }
 }
 
 /// <summary>
@@ -381,6 +404,8 @@ public class CrewSettingsYamlConfig
     public LlmYamlConfig? Llm { get; set; }
     /// <summary>Gets or sets the crew-level RAG configuration (provider, collections, defaults).</summary>
     public RagYamlConfig? Rag { get; set; }
+    /// <summary>Gets or sets the EventHub authorizations declared by the crew (<c>links:</c>).</summary>
+    public Collection<LinkYamlConfig>? Links { get; set; }
 }
 
 #pragma warning restore CA2227 // Collection properties should be read only

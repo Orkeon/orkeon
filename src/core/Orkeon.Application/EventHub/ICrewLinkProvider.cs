@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Orkeon.Domain.Common;
+using Orkeon.Domain.EventHub;
 
 namespace Orkeon.Application.EventHub;
 
@@ -15,6 +16,22 @@ public interface ICrewLinkProvider
     /// declared none — see <see cref="ICrewLinkPolicy"/> for what that implies.
     /// </summary>
     ImmutableArray<CrewLink> LinksFor(CrewId source);
+}
+
+/// <summary>
+/// The write side of the link source. A crew's <c>links:</c> block is read from YAML long
+/// before the crew has an identity, so the factory hands the links over once the
+/// <see cref="CrewId"/> exists — the ACL then reads them synchronously, on the path of every
+/// published message, without touching a repository.
+/// </summary>
+public interface ICrewLinkRegistry : ICrewLinkProvider
+{
+    /// <summary>
+    /// Records what <paramref name="crew"/> declared. Registering an empty list is not the
+    /// same as never registering: it still means "this crew declared nothing", which is what
+    /// <see cref="ICrewLinkPolicy"/> arbitrates.
+    /// </summary>
+    void Register(CrewId crew, IReadOnlyList<CrewLink> links);
 }
 
 /// <summary>

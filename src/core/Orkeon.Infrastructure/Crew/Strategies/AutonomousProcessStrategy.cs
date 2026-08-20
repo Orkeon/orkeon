@@ -457,7 +457,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         {
             var taskSnapshot = new TaskExecutionSnapshot
             {
-                TaskId = result.TaskId.Value.ToString(),
+                TaskId = result.TaskId?.Value.ToString() ?? string.Empty,
                 AgentRole = "autonomous",
                 Success = result.Success,
                 Duration = result.ExecutionTime,
