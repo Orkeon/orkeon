@@ -130,7 +130,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             var snapshot = new TaskExecutionSnapshot
             {
                 TaskId = taskId.Value.ToString(),
-                AgentRole = appOutput.AgentId,
+                AgentRole = appOutput.AgentId ?? string.Empty,
                 Success = domainOutput.Success,
                 Duration = domainOutput.ExecutionTime,
                 CompletedAt = DateTimeOffset.UtcNow,

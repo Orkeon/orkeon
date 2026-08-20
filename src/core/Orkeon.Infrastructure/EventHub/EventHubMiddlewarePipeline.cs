@@ -36,17 +36,17 @@ internal sealed class EventHubMiddlewarePipeline
 
     /// <summary>Runs the publish path, outermost middleware first.</summary>
     public Task<Message> OnPublishAsync(Message message, CancellationToken ct) =>
-        Run(message, ct, reverse: false, static (m, msg, next, token) => m.OnPublishAsync(msg, next, token));
+        Run(message, reverse: false, static (m, msg, next, token) => m.OnPublishAsync(msg, next, token), ct);
 
     /// <summary>Runs the receive path, in reverse so wrapping is symmetric.</summary>
     public Task<Message> OnReceiveAsync(Message message, CancellationToken ct) =>
-        Run(message, ct, reverse: true, static (m, msg, next, token) => m.OnReceiveAsync(msg, next, token));
+        Run(message, reverse: true, static (m, msg, next, token) => m.OnReceiveAsync(msg, next, token), ct);
 
     private Task<Message> Run(
         Message message,
-        CancellationToken ct,
         bool reverse,
-        Func<IEventHubMiddleware, Message, Func<Message, Task<Message>>, CancellationToken, Task<Message>> invoke)
+        Func<IEventHubMiddleware, Message, Func<Message, Task<Message>>, CancellationToken, Task<Message>> invoke,
+        CancellationToken ct)
     {
         if (_middlewares.Count == 0)
             return Task.FromResult(message);

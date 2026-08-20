@@ -52,6 +52,7 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
     /// <param name="memoryScope">The memory scope.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="options">The consensual process options.</param>
+    /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
     public ConsensualProcessStrategy(
         IVotingStrategy votingStrategy,
         IAgentExecutionService executionService,

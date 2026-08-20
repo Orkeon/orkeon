@@ -20,13 +20,13 @@ namespace Orkeon.Infrastructure.Crew;
 internal sealed partial class CrewHookDispatcher
 {
     private readonly ICrewExecutionHook? _hook;
-    private readonly ILogger? _logger;
+    private readonly ILogger _logger;
 
     /// <summary>Creates a dispatcher; a null hook makes every call a no-op.</summary>
     internal CrewHookDispatcher(ICrewExecutionHook? hook, ILogger? logger = null)
     {
         _hook = hook;
-        _logger = logger;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
     }
 
     /// <summary>Whether anything is listening — lets a caller skip building a snapshot for nobody.</summary>

@@ -1,4 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Infrastructure.EventHub.DependencyInjection;
 using Orkeon.Application.EventHub;
 using Orkeon.Domain.Common;
 using Orkeon.Infrastructure.EventHub;
@@ -119,6 +121,38 @@ public class EventHubMiddlewarePipelineTests
         // The outer middleware still saw the message on the way in — that is why logging
         // sits outermost.
         Assert.Equal(["logging:publish:in"], trace);
+    }
+
+    [Fact]
+    public void The_observation_stages_register_in_the_specs_order()
+    {
+        // §12 is Logging → Telemetry → Acl → …, and logging must be outermost so it sees
+        // what a later stage rejects. Registration order is execution order (HUB-01).
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddLogging();
+        services.AddOrkeonEventHubObservability();
+
+        using var provider = services.BuildServiceProvider();
+        var registered = provider.GetServices<IEventHubMiddleware>().Select(m => m.GetType().Name).ToList();
+
+        Assert.Equal(["LoggingEventHubMiddleware", "TelemetryEventHubMiddleware"], registered);
+    }
+
+    [Fact]
+    public async Task A_rejected_message_is_logged_and_its_span_is_marked_failed()
+    {
+        // The reject path is the reason to instrument at all: an operator needs the line,
+        // and a refused message must be a failed span rather than a missing one.
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddLogging();
+        services.AddOrkeonEventHubObservability();
+        using var provider = services.BuildServiceProvider();
+
+        var pipeline = new EventHubMiddlewarePipeline(
+            [.. provider.GetServices<IEventHubMiddleware>(), new RefusingMiddleware()]);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => pipeline.OnPublishAsync(AnyMessage(), TestContext.Current.CancellationToken));
     }
 
     [Fact]

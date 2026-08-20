@@ -49,6 +49,11 @@ public static class OrkeonDiagnostics
     public static readonly ActivitySource MemorySource = new("Orkeon.Memory", ServiceVersion);
 
     /// <summary>
+    /// ActivitySource for EventHub messaging (publish, post, send, receive) — HUB-02.
+    /// </summary>
+    public static readonly ActivitySource EventHubSource = new("Orkeon.EventHub", ServiceVersion);
+
+    /// <summary>
     /// All ActivitySource names for registration with OpenTelemetry.
     /// </summary>
     public static readonly string[] AllSourceNames =
@@ -58,7 +63,8 @@ public static class OrkeonDiagnostics
         "Orkeon.Task",
         "Orkeon.Llm",
         "Orkeon.Tool",
-        "Orkeon.Memory"
+        "Orkeon.Memory",
+        "Orkeon.EventHub"
     ];
 }
 

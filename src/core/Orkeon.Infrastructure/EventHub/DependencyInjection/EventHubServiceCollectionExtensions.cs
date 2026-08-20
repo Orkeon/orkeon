@@ -36,4 +36,17 @@ public static class EventHubServiceCollectionExtensions
         services.AddSingleton<IEventHubMiddleware, TMiddleware>();
         return services;
     }
+
+    /// <summary>
+    /// Registers the two observation stages (HUB-02) in the spec's §12 order: logging first
+    /// so it sees what a later stage rejects, then telemetry. Opt-in — a hub that nobody
+    /// watches pays nothing.
+    /// </summary>
+    public static IServiceCollection AddOrkeonEventHubObservability(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddEventHubMiddleware<Middleware.LoggingEventHubMiddleware>();
+        services.AddEventHubMiddleware<Middleware.TelemetryEventHubMiddleware>();
+        return services;
+    }
 }

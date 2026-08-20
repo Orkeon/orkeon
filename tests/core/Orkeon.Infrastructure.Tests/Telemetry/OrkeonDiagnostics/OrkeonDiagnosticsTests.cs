@@ -45,15 +45,16 @@ public class OrkeonDiagnosticsTests
     }
 
     [Fact]
-    public void ShouldContainAllSixSources_WhenAccessingAllSourceNames()
+    public void ShouldContainEverySource_WhenAccessingAllSourceNames()
     {
-        Assert.Equal(6, global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames.Length);
+        Assert.Equal(7, global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames.Length);
         Assert.Contains("Orkeon.Crew", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames);
         Assert.Contains("Orkeon.Agent", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames);
         Assert.Contains("Orkeon.Task", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames);
         Assert.Contains("Orkeon.Llm", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames);
         Assert.Contains("Orkeon.Tool", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames);
         Assert.Contains("Orkeon.Memory", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames);
+        Assert.Contains("Orkeon.EventHub", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames);
     }
 
     [Fact]
