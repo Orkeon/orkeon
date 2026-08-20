@@ -198,7 +198,7 @@ internal sealed class RunLauncherViewModel
             RecordInHistory = !dryRun,
         };
 
-        return Session.RunAsync(request, onOutput, cancellationToken);
+        return Session.RunAsync(request, onOutput, cancellationToken: cancellationToken);
     }
 
     /// <summary>
@@ -224,7 +224,7 @@ internal sealed class RunLauncherViewModel
             WorkingDirectory = entry.WorkingDirectory,
         };
 
-        return Session.RunAsync(request, onOutput, cancellationToken);
+        return Session.RunAsync(request, onOutput, cancellationToken: cancellationToken);
     }
 
     /// <summary>

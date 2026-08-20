@@ -78,7 +78,7 @@ public class RunSessionTests
         var session = fixture.Build();
 
         var lines = new List<ProcessOutputLine>();
-        await session.RunAsync(Request(), lines.Add, TestContext.Current.CancellationToken);
+        await session.RunAsync(Request(), lines.Add, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, lines.Count);
         Assert.Equal(ProcessOutputChannel.StandardOutput, lines[0].Channel);
@@ -112,7 +112,7 @@ public class RunSessionTests
         // The scripted line is the readiness marker: cancelling before the child is really
         // running would test the token, not the stop path.
         var running = new TaskCompletionSource();
-        var run = session.RunAsync(Request(), _ => running.TrySetResult(), TestContext.Current.CancellationToken);
+        var run = session.RunAsync(Request(), _ => running.TrySetResult(), cancellationToken: TestContext.Current.CancellationToken);
         await running.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         Assert.True(session.RequestCancellation());
@@ -133,7 +133,7 @@ public class RunSessionTests
         var session = fixture.Build();
 
         var running = new TaskCompletionSource();
-        var run = session.RunAsync(Request(), _ => running.TrySetResult(), TestContext.Current.CancellationToken);
+        var run = session.RunAsync(Request(), _ => running.TrySetResult(), cancellationToken: TestContext.Current.CancellationToken);
         await running.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         session.RequestCancellation();
         await run;
@@ -160,7 +160,7 @@ public class RunSessionTests
         var session = fixture.Build();
 
         var running = new TaskCompletionSource();
-        var run = session.RunAsync(Request(), _ => running.TrySetResult(), TestContext.Current.CancellationToken);
+        var run = session.RunAsync(Request(), _ => running.TrySetResult(), cancellationToken: TestContext.Current.CancellationToken);
         await running.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(

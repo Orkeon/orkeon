@@ -238,6 +238,14 @@
   <data name="Vm_Launch_NothingToReplay" xml:space="preserve"><value>Rien à rejouer : l'entrée pour « {0} » n'a enregistré aucun argument.</value></data>
   <data name="Vm_Launch_Validating" xml:space="preserve"><value>Validation…</value></data>
   <data name="Vm_Launch_Running" xml:space="preserve"><value>Exécution…</value></data>
+  <data name="Vm_RunProgress_NothingYet" xml:space="preserve"><value>Rien de rapporté pour l'instant.</value></data>
+  <data name="Vm_RunProgress_TasksDone" xml:space="preserve"><value>{0} tâche(s) terminée(s).</value></data>
+  <data name="Vm_RunProgress_Succeeded" xml:space="preserve"><value>Terminé avec succès.</value></data>
+  <data name="Vm_RunProgress_Failed" xml:space="preserve"><value>Terminé en échec.</value></data>
+  <data name="Vm_RunProgress_Cost" xml:space="preserve"><value>{0} jetons · {1}</value></data>
+  <data name="Vm_RunProgress_Watch" xml:space="preserve"><value>Afficher la progression plutôt que la sortie brute</value></data>
+  <data name="Vm_RunProgress_Stream" xml:space="preserve"><value>Diffuser le texte généré jeton par jeton</value></data>
+  <data name="Vm_RunProgress_Answer" xml:space="preserve"><value>Répondre</value></data>
   <data name="Vm_Target_None" xml:space="preserve"><value>Aucune cible sélectionnée.</value></data>
   <data name="Vm_Target_Resolved" xml:space="preserve"><value>{0} — orkeon run {1}</value></data>
   <data name="Vm_Target_PickScript" xml:space="preserve"><value>{0} script(s) trouvé(s) : choisissez celui à exécuter.</value></data>

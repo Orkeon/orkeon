@@ -75,9 +75,17 @@ public sealed class RunSession
     /// so the launcher stays alive and shows exit code 130.
     /// </summary>
     /// <exception cref="InvalidOperationException">A run is already in flight.</exception>
+    /// <param name="request">What to launch, and whether to record it.</param>
+    /// <param name="onOutput">Receives each output line as it arrives.</param>
+    /// <param name="onInputReady">
+    /// Receives the child's stdin, for a screen that answers the run's questions rather than
+    /// only watching it.
+    /// </param>
+    /// <param name="cancellationToken">Stops the run.</param>
     public async Task<ProcessRunResult> RunAsync(
         RunLaunchRequest request,
         Action<ProcessOutputLine>? onOutput = null,
+        Action<IProcessInputWriter>? onInputReady = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -103,7 +111,8 @@ public sealed class RunSession
                 request.WorkingDirectory,
                 onOutput,
                 gracePeriod: null,
-                cancellation.Token).ConfigureAwait(false);
+                onInputReady,
+                cancellationToken: cancellation.Token).ConfigureAwait(false);
         }
         finally
         {

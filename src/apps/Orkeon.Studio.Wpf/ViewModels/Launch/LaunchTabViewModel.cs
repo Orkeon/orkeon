@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Orkeon.Studio.Core.Run;
+using System.Text.Json;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
@@ -26,6 +28,7 @@ public sealed class LaunchTabViewModel : ObservableObject
 {
     private readonly OrkeonProcessRunner _runner;
     private readonly RunSession _session;
+    private volatile IProcessInputWriter? _input;
     private readonly IAppSettingsStore _settingsStore;
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
@@ -60,6 +63,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         Options = new LaunchOptionsViewModel(picker, _strings);
         Mounts = new LaunchMountsViewModel(directories, picker, _strings);
         Log = new RunLogViewModel(_strings);
+        Progress = new RunProgressViewModel(_strings);
         History = new LaunchHistoryViewModel(historyStore, _dispatcher);
 
         Target.TargetChanged += OnTargetChanged;
@@ -90,6 +94,12 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     /// <summary>The streamed output panel (spec §5.3).</summary>
     public RunLogViewModel Log { get; }
+
+    /// <summary>
+    /// What the run reported, as progress rather than scrollback (BUS-06). The raw
+    /// <see cref="Log"/> stays available behind it — demoted, not removed.
+    /// </summary>
+    public RunProgressViewModel Progress { get; }
 
     /// <summary>The replayable launch history (spec §5.3).</summary>
     public LaunchHistoryViewModel History { get; }
@@ -382,12 +392,15 @@ public sealed class LaunchTabViewModel : ObservableObject
             ? _strings[StudioStringKeys.LaunchValidating]
             : _strings[StudioStringKeys.LaunchRunning];
 
+        Progress.Reset(Answer);
+
         try
         {
             var result = await _session.RunAsync(
                 request,
-                line => _dispatcher.Post(() => Log.Append(line)),
-                cancellationToken);
+                line => _dispatcher.Post(() => Receive(line)),
+                writer => _input = writer,
+                cancellationToken: cancellationToken);
 
             LastResult = result;
 
@@ -406,8 +419,31 @@ public sealed class LaunchTabViewModel : ObservableObject
         finally
         {
             IsRunning = false;
+            _input = null;
         }
     }
+
+    /// <summary>
+    /// Routes one output line: a protocol event feeds the progress panel, anything else lands
+    /// in the raw log. A line the panel cannot read is never dropped — what the stream said
+    /// stays visible, which is the rule the terminal launcher already followed.
+    /// </summary>
+    private void Receive(ProcessOutputLine line)
+    {
+        if (line.Channel == ProcessOutputChannel.StandardOutput && Progress.TryApply(line.Text))
+            return;
+
+        Log.Append(line);
+    }
+
+    /// <summary>
+    /// Sends one answer down the run's stdin. False when no child is listening, which the
+    /// panel reads as "the question is still open" rather than pretending it was answered.
+    /// </summary>
+    private bool Answer(string correlationId, string value) =>
+        _input is { } writer
+        && writer.TryWriteLine(JsonSerializer.Serialize(
+            new { kind = RunEventKinds.InputGiven, correlationId, value }));
 
     private static string? GetWorkingDirectory(RunTarget target) =>
         target.Kind is RunTargetKind.MultiFileCrewDirectory or RunTargetKind.ScriptDirectory

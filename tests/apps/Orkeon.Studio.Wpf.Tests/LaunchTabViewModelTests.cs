@@ -428,6 +428,24 @@ public sealed class LaunchTabViewModelTests
 
         Assert.NotNull(result);
         Assert.Equal(RunOutcome.Success, result!.Outcome);
+
+        // BUS-06: the screen watches the run rather than tailing it, so the protocol flags
+        // are part of a normal launch. Turning the option off gives the old argv back.
+        Assert.Equal(
+            ["run", "/crews/team.yaml", "--events", "jsonl", "--client", "studio"],
+            launcher.LastRequest!.Arguments);
+    }
+
+    [Fact]
+    public async Task Should_KeepThePlainArgv_When_ProgressWatchingIsTurnedOff()
+    {
+        var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
+        var (tab, launcher, _) = Build(probe);
+        tab.Target.Select("/crews/team.yaml");
+        tab.Options.WatchProgress = false;
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
         Assert.Equal(["run", "/crews/team.yaml"], launcher.LastRequest!.Arguments);
     }
 

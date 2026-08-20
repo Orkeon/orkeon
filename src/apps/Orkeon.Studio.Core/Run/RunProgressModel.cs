@@ -166,6 +166,20 @@ public sealed class RunProgressModel
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Clears the pending question because the answer was accepted by the run's stdin. The
+    /// caller knows the write succeeded; the run itself does not echo the answer back, so
+    /// waiting for an event that never comes would leave the question on screen forever.
+    /// </summary>
+    public void AnswerAccepted()
+    {
+        if (PendingQuestion is null)
+            return;
+
+        PendingQuestion = null;
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     private static RunQuestion? ReadQuestion(OrkeonEvent orkeonEvent)
     {
         var correlationId = orkeonEvent.CorrelationId;

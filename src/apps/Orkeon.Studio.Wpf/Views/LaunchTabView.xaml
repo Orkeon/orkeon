@@ -189,6 +189,13 @@
                 <ComboBox ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
                           SelectedItem="{Binding Options.Verbosity}"/>
                 <CheckBox Margin="0,10,0,0" Foreground="{DynamicResource InkBrush}"
+                          IsChecked="{Binding Options.WatchProgress}"
+                          Content="{Binding [Vm_RunProgress_Watch], Source={x:Static services:I18n.Instance}}"/>
+                <CheckBox Margin="16,7,0,0" Foreground="{DynamicResource InkBrush}"
+                          IsChecked="{Binding Options.StreamGeneratedText}"
+                          IsEnabled="{Binding Options.CanStreamGeneratedText}"
+                          Content="{Binding [Vm_RunProgress_Stream], Source={x:Static services:I18n.Instance}}"/>
+                <CheckBox Margin="0,10,0,0" Foreground="{DynamicResource InkBrush}"
                           IsChecked="{Binding Options.LlmLogEnabled}"
                           Content="{Binding [Run_LlmLog], Source={x:Static services:I18n.Instance}}"/>
                 <DockPanel Margin="0,7,0,0">
@@ -347,6 +354,93 @@
             <TextBlock FontSize="12" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Text="{Binding StatusMessage}"/>
           </StackPanel>
         </DockPanel>
+
+        <!-- BUS-06: what the run reported, as progress. The raw console below is demoted,
+             not removed — a line the panel cannot read still has to be visible somewhere. -->
+        <Border Style="{StaticResource Card}" Margin="0,10,0,0"
+                Visibility="{Binding Options.WatchProgress, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel>
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}"
+                         Text="{Binding Progress.CostSummary}"/>
+              <TextBlock FontSize="12" Foreground="{DynamicResource InkBrush}"
+                         Text="{Binding Progress.Summary}"/>
+            </DockPanel>
+
+            <TextBlock Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap"
+                       Foreground="{DynamicResource DangerBrush}"
+                       Visibility="{Binding Progress.HasError, Converter={StaticResource BooleanToVisibility}}"
+                       Text="{Binding Progress.LastError}"/>
+
+            <ItemsControl ItemsSource="{Binding Progress.Tasks}" Margin="0,6,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel Margin="0,2">
+                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0"
+                               Text="{Binding Duration}"/>
+                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0"
+                               Text="{Binding Tokens}"/>
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Size="13" Margin="0,0,7,0">
+                        <controls:LucideIcon.Style>
+                          <Style TargetType="controls:LucideIcon">
+                            <Setter Property="Kind" Value="circle-x"/>
+                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding Success}" Value="True">
+                                <Setter Property="Kind" Value="circle-check"/>
+                                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </controls:LucideIcon.Style>
+                      </controls:LucideIcon>
+                      <TextBlock FontSize="12" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+                    </StackPanel>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- The question the run is waiting on. Before BUS-04 it was approved in the
+                 user's back; it is now asked here, and silence is never consent. -->
+            <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
+                    Background="{DynamicResource WarningWeakBrush}"
+                    Visibility="{Binding Progress.IsAsking, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock FontSize="12" TextWrapping="Wrap"
+                           Foreground="{DynamicResource InkBrush}"
+                           Text="{Binding Progress.QuestionPrompt}"/>
+
+                <ItemsControl ItemsSource="{Binding Progress.QuestionChoices}" Margin="0,8,0,0"
+                              Visibility="{Binding Progress.IsChoice, Converter={StaticResource BooleanToVisibility}}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0"
+                              Content="{Binding}"
+                              CommandParameter="{Binding}"
+                              Command="{Binding DataContext.Progress.ChooseCommand,
+                                                RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <DockPanel Margin="0,8,0,0"
+                           Visibility="{Binding Progress.IsChoice, Converter={StaticResource InverseBooleanToVisibility}}">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
+                          Command="{Binding Progress.AnswerCommand}"
+                          Content="{Binding [Vm_RunProgress_Answer], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Text="{Binding Progress.AnswerText, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Border>
 
         <!-- Virtualized console: a long run streams tens of thousands of lines, and only the
              visible ones may ever be realized as controls. Same #0B1822 in both themes. -->

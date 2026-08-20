@@ -73,6 +73,8 @@ public sealed class LaunchOptionsViewModel : ObservableObject
     private string? _inputsFilePath;
     private int _verbosity;
     private bool _llmLogEnabled;
+    private bool _watchProgress = true;
+    private bool _streamGeneratedText;
     private string? _llmLogPath;
     private RunVariableViewModel? _selectedVariable;
 
@@ -292,6 +294,34 @@ public sealed class LaunchOptionsViewModel : ObservableObject
     /// Assembles the Core options record. Options that do not apply to the current dialect are left
     /// out rather than carried through, so the builder never has to reject them.
     /// </summary>
+    /// <summary>
+    /// Whether the run is watched through the event protocol rather than tailed as raw text.
+    /// On by default: a screen that shows progress is the point of launching from Studio
+    /// instead of a terminal. The raw log stays available either way.
+    /// </summary>
+    public bool WatchProgress
+    {
+        get => _watchProgress;
+        set
+        {
+            if (SetProperty(ref _watchProgress, value))
+                OnPropertyChanged(nameof(CanStreamGeneratedText));
+        }
+    }
+
+    /// <summary>
+    /// Whether to also stream generated text token by token. Off by default and verbose by
+    /// nature — a delta per token saturates both the pipe and the screen reading it.
+    /// </summary>
+    public bool StreamGeneratedText
+    {
+        get => _streamGeneratedText;
+        set => SetProperty(ref _streamGeneratedText, value);
+    }
+
+    /// <summary>Whether streaming can be asked for at all — it needs the protocol.</summary>
+    public bool CanStreamGeneratedText => WatchProgress;
+
     public RunLaunchOptions ToOptions(
         IReadOnlyList<string>? mounts = null,
         bool allowExternalMounts = false,
@@ -308,7 +338,16 @@ public sealed class LaunchOptionsViewModel : ObservableObject
         LlmLogEnabled = LlmLogEnabled,
         LlmLogPath = LlmLogPath,
         Validate = validate,
+
+        // A dry run reports a verdict, not progress: asking it for the event protocol would
+        // buy a stream with nothing in it.
+        Events = WatchProgress && !validate,
+        Stream = WatchProgress && StreamGeneratedText && !validate,
+        ClientName = WatchProgress && !validate ? StudioClientName : null,
     };
+
+    /// <summary>The name Studio answers to on a watched run's hub (<c>client://studio</c>).</summary>
+    public const string StudioClientName = "studio";
 
     private void RemoveSelectedVariable()
     {

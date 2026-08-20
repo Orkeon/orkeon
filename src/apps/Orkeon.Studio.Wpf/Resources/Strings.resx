@@ -238,6 +238,14 @@
   <data name="Vm_Launch_NothingToReplay" xml:space="preserve"><value>Nothing to replay: the entry for '{0}' recorded no arguments.</value></data>
   <data name="Vm_Launch_Validating" xml:space="preserve"><value>Validating…</value></data>
   <data name="Vm_Launch_Running" xml:space="preserve"><value>Running…</value></data>
+  <data name="Vm_RunProgress_NothingYet" xml:space="preserve"><value>Nothing reported yet.</value></data>
+  <data name="Vm_RunProgress_TasksDone" xml:space="preserve"><value>{0} task(s) finished.</value></data>
+  <data name="Vm_RunProgress_Succeeded" xml:space="preserve"><value>Finished successfully.</value></data>
+  <data name="Vm_RunProgress_Failed" xml:space="preserve"><value>Finished with a failure.</value></data>
+  <data name="Vm_RunProgress_Cost" xml:space="preserve"><value>{0} tokens · {1}</value></data>
+  <data name="Vm_RunProgress_Watch" xml:space="preserve"><value>Show progress instead of raw output</value></data>
+  <data name="Vm_RunProgress_Stream" xml:space="preserve"><value>Stream generated text token by token</value></data>
+  <data name="Vm_RunProgress_Answer" xml:space="preserve"><value>Answer</value></data>
   <data name="Vm_Target_None" xml:space="preserve"><value>No target selected.</value></data>
   <data name="Vm_Target_Resolved" xml:space="preserve"><value>{0} — orkeon run {1}</value></data>
   <data name="Vm_Target_PickScript" xml:space="preserve"><value>{0} script(s) found: pick the one to run.</value></data>

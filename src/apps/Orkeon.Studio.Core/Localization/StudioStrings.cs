@@ -258,6 +258,33 @@ public static class StudioStringKeys
     /// <summary>"Running…"</summary>
     public const string LaunchRunning = "Vm_Launch_Running";
 
+    // ---- Watched-run progress panel (BUS-06) --------------------------------
+
+    /// <summary>"Nothing reported yet."</summary>
+    public const string RunProgressNothingYet = "Vm_RunProgress_NothingYet";
+
+    /// <summary>"{0} task(s) finished."</summary>
+    public const string RunProgressTasksDone = "Vm_RunProgress_TasksDone";
+
+    /// <summary>"Finished successfully."</summary>
+    public const string RunProgressSucceeded = "Vm_RunProgress_Succeeded";
+
+    /// <summary>"Finished with a failure."</summary>
+    public const string RunProgressFailed = "Vm_RunProgress_Failed";
+
+    /// <summary>"{0} tokens · {1}"</summary>
+    public const string RunProgressCost = "Vm_RunProgress_Cost";
+
+    /// <summary>"Show progress instead of raw output"</summary>
+    public const string RunProgressWatch = "Vm_RunProgress_Watch";
+
+    /// <summary>"Stream generated text token by token"</summary>
+    public const string RunProgressStream = "Vm_RunProgress_Stream";
+
+    /// <summary>"Answer"</summary>
+    public const string RunProgressAnswer = "Vm_RunProgress_Answer";
+
+
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
     /// <summary>"No target selected."</summary>
@@ -496,6 +523,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.LaunchNothingToReplay] = "Nothing to replay: the entry for '{0}' recorded no arguments.",
         [StudioStringKeys.LaunchValidating] = "Validating…",
         [StudioStringKeys.LaunchRunning] = "Running…",
+        [StudioStringKeys.RunProgressNothingYet] = "Nothing reported yet.",
+        [StudioStringKeys.RunProgressTasksDone] = "{0} task(s) finished.",
+        [StudioStringKeys.RunProgressSucceeded] = "Finished successfully.",
+        [StudioStringKeys.RunProgressFailed] = "Finished with a failure.",
+        [StudioStringKeys.RunProgressCost] = "{0} tokens · {1}",
+        [StudioStringKeys.RunProgressWatch] = "Show progress instead of raw output",
+        [StudioStringKeys.RunProgressStream] = "Stream generated text token by token",
+        [StudioStringKeys.RunProgressAnswer] = "Answer",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",
