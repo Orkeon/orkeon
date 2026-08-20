@@ -61,20 +61,29 @@ public static partial class RunnerHost
     /// </param>
     /// <param name="configureLogging">Optional callback to customize logging (default: Console + Information).</param>
     /// <param name="configureServices">Optional callback to register additional services.</param>
+    /// <param name="configureBuilder">
+    /// Optional callback on the builder itself, before it is built. The service host uses it
+    /// for <c>UseSystemd()</c> and <c>UseWindowsService()</c>: a long-lived daemon needs to
+    /// tell its supervisor it is up, and that is decided on the builder, not in the services.
+    /// </param>
     public static IHost Build(
         string? settingsPath,
         IReadOnlyList<string> cliMounts,
         bool allowExternalMounts = false,
         string? llmLogPath = null,
         Action<HostBuilderContext, ILoggingBuilder>? configureLogging = null,
-        Action<HostBuilderContext, IServiceCollection>? configureServices = null)
+        Action<HostBuilderContext, IServiceCollection>? configureServices = null,
+        Action<IHostBuilder>? configureBuilder = null)
     {
-        var host = Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration((_, builder) =>
-                ConfigureAppConfiguration(builder, settingsPath, cliMounts, allowExternalMounts))
+        var builder = Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration((_, b) =>
+                ConfigureAppConfiguration(b, settingsPath, cliMounts, allowExternalMounts))
             .ConfigureServices((context, services) =>
-                ConfigureRunnerServices(context, services, llmLogPath, configureLogging, configureServices))
-            .Build();
+                ConfigureRunnerServices(context, services, llmLogPath, configureLogging, configureServices));
+
+        configureBuilder?.Invoke(builder);
+
+        var host = builder.Build();
 
         WarnIfLlmNotConfigured(host);
         return host;

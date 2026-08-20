@@ -1,0 +1,77 @@
+namespace Orkeon.Host;
+
+/// <summary>
+/// How a hosted crew behaves once the service owns it rather than a terminal
+/// (spec §5.3, four axes).
+/// </summary>
+internal sealed record CrewHostingProfile
+{
+    /// <summary>
+    /// Whether the crew can ask a human anything. A crew hosted without a channel that can
+    /// answer must not be interactive: it would stop on its first question and wait forever.
+    /// </summary>
+    public bool Interactive { get; init; }
+
+    /// <summary>
+    /// Whether the crew's memory outlives one run. Off by default: sharing memory between
+    /// two conversations is the leak the spec calls the most serious risk of this design.
+    /// </summary>
+    public bool Persistent { get; init; }
+
+    /// <summary>Whether the crew is driven by a chat conversation rather than a schedule or an API call.</summary>
+    public bool Chat { get; init; } = true;
+
+    /// <summary>
+    /// How many runs of this crew may be in flight at once. Bounded on purpose: a daemon
+    /// that accepts unlimited concurrent runs is a daemon that dies under its first burst.
+    /// </summary>
+    public int MaxConcurrentRuns { get; init; } = 4;
+
+    /// <summary>The profile a chat-driven crew gets when the configuration says nothing else.</summary>
+    public static CrewHostingProfile Default => new();
+}
+
+/// <summary>One crew the service hosts, as the configuration declares it.</summary>
+internal sealed record HostedCrewOptions
+{
+    /// <summary>The name the channels and the operator use to refer to it.</summary>
+    public string Name { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Path to the crew definition — a YAML file, a multi-file crew directory, or an
+    /// <c>.ork.ts</c> script. The same targets <c>orkeon run</c> accepts.
+    /// </summary>
+    public string Path { get; init; } = string.Empty;
+
+    /// <summary>How it behaves under the host.</summary>
+    public CrewHostingProfile Profile { get; init; } = CrewHostingProfile.Default;
+}
+
+/// <summary>
+/// The service's configuration, bound from the <c>Orkeon:Host</c> section.
+/// <para>
+/// **No secret is ever written here.** A bot token or an API key is referenced by the *name*
+/// of an environment variable, never by value — the same rule the LLM providers already
+/// follow, and one a chat bot does not get to break.
+/// </para>
+/// </summary>
+internal sealed record OrkeonHostOptions
+{
+    /// <summary>Configuration section this binds to.</summary>
+    public const string SectionName = "Orkeon:Host";
+
+    /// <summary>The crews the service hosts. rc.2 hosts one; the shape already allows more.</summary>
+    public IReadOnlyList<HostedCrewOptions> Crews { get; init; } = [];
+
+    /// <summary>
+    /// How long a run may take before the host cancels it. A daemon has no user watching to
+    /// press Ctrl-C, so an unbounded run is a stuck daemon.
+    /// </summary>
+    public TimeSpan RunTimeout { get; init; } = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// How long the host waits for in-flight runs on shutdown before giving up. Systemd sends
+    /// SIGKILL after its own timeout, so this must stay under it.
+    /// </summary>
+    public TimeSpan ShutdownGracePeriod { get; init; } = TimeSpan.FromSeconds(20);
+}

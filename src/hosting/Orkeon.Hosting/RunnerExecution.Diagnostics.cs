@@ -154,14 +154,28 @@ public static partial class RunnerExecution
     /// directory form (already validated by <see cref="TryBuildHost"/> via
     /// <see cref="CrewDirectoryLayout"/>). Shared by the one-shot and validate flows so both
     /// accept the same <c>-c/--config</c> targets identically.
+    /// <para>
+    /// Public because the service host loads the same targets: a crew hosted by a daemon and a
+    /// crew launched from a terminal must be the same crew, and duplicating the dispatch is how
+    /// they would quietly stop being.
+    /// </para>
     /// </summary>
-    private static Task<Domain.Crew.Crew> LoadCrewAsync(
+    /// <param name="host">The built host, for the services a scripted crew needs.</param>
+    /// <param name="factory">The crew factory.</param>
+    /// <param name="configPath">A <c>.ork.ts</c> source, a crew directory, or a YAML file.</param>
+    /// <param name="logger">Logger for the loading trace.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public static Task<Domain.Crew.Crew> LoadCrewAsync(
         IHost host,
         ICrewFactory factory,
         string configPath,
         ILogger logger,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
+
         if (IsScriptedCrewDefinition(configPath))
             return LoadCrewFromScriptAsync(host, factory, configPath, logger, ct);
 

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>orkeon-host</AssemblyName>
+    <RootNamespace>Orkeon.Host</RootNamespace>
+
+    <!-- Not a dotnet tool: this one is installed as a daemon (systemd unit, Windows
+         service, container image), so it ships through the publish matrix rather than
+         through NuGet. GATE-05 owns those entries. -->
+    <IsPackable>false</IsPackable>
+
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orkeon.Hosting\Orkeon.Hosting.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Host types are internal to the executable; the test project consumes them
+         through a ProjectReference. -->
+    <InternalsVisibleTo Include="Orkeon.Host.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+  </ItemGroup>
+
+</Project>
