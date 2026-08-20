@@ -19,9 +19,13 @@ public sealed record CrewEventBinding(
 public sealed record CrewEventContext(DomainCrew Crew, Message Message);
 
 /// <summary>
-/// v1.0 minimalist fluent extension allowing crew authors to declare event handlers.
-/// The wiring to <see cref="IEventHub"/> proper arrives with v1.2; v1.0 simply records
-/// the bindings on the builder for downstream consumers to fetch.
+/// Fluent extension letting crew authors declare event handlers.
+/// <para>
+/// **The bindings are recorded, not dispatched.** Nothing in the hub routes an incoming message
+/// to these handlers yet, and the fluent builder has no way to declare a <c>CrewLink</c> either
+/// — link declarations reach the ACL through a crew's YAML <c>links:</c> block and
+/// <c>CrewFactory</c>. Both are real gaps, stated here rather than left to be discovered.
+/// </para>
 /// </summary>
 public static class CrewBuilderEventHubExtensions
 {
@@ -31,8 +35,7 @@ public static class CrewBuilderEventHubExtensions
     /// Records a (topic, handler) binding on <paramref name="builder"/>. Chainable.
     /// </summary>
     /// <remarks>
-    /// v1.2 (per spec §15) will introduce <c>.Links</c> and the middleware pipeline that actually
-    /// dispatches incoming messages to these handlers. v1.0 only persists the declarations.
+    /// The declaration is persisted on the builder; no dispatcher reads it yet.
     /// </remarks>
     public static CrewBuilder OnEvent(
         this CrewBuilder builder,

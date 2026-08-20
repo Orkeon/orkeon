@@ -16,4 +16,11 @@ public class MonitoringOptions
     /// Number of minutes to retain detailed metrics data.
     /// </summary>
     public int MetricsRetentionMinutes { get; set; } = 60;
+
+    /// <summary>
+    /// Prefix of the activity-source names whose traces are captured. Defaults to every Orkeon
+    /// source; narrow it to watch one subsystem — or, in a test, to a name nothing else emits,
+    /// since the listener is process-wide and would otherwise pick up unrelated activity.
+    /// </summary>
+    public string TraceSourcePrefix { get; set; } = "Orkeon";
 }

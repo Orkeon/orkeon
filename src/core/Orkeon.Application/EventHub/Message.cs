@@ -43,4 +43,11 @@ public sealed record Message
 
     /// <summary>Identifier of the schema describing <see cref="Payload"/>.</summary>
     public required string SchemaId { get; init; }
+
+    /// <summary>
+    /// The identifier stamped when the caller declared no schema at all. It means "plain JSON,
+    /// no contract" — which is what every <c>Post</c>, <c>Send</c> and <c>Reply</c> carries, and
+    /// why the validation stage lets it through instead of demanding a registration nobody made.
+    /// </summary>
+    public const string NoDeclaredSchemaId = "application/json";
 }

@@ -21,8 +21,12 @@ public sealed class TraceExplorerServiceTests : IClassFixture<TraceExplorerServi
     [Fact]
     public async Task GetRecentTracesAsync_ReturnsEmpty_WhenNoTraces()
     {
+        // Listens to a prefix nothing emits, so "empty" means empty rather than "no other test
+        // happened to emit an Orkeon activity while this one ran".
+        using var isolated = _fixture.CreateService(sourcePrefix: "Orkeon.Test.NothingEmitsThis");
+
         // Act
-        var traces = await _service.GetRecentTracesAsync(ct: TestContext.Current.CancellationToken);
+        var traces = await isolated.GetRecentTracesAsync(ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(traces);

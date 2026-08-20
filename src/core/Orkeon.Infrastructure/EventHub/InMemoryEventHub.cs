@@ -18,7 +18,6 @@ namespace Orkeon.Infrastructure.EventHub;
 /// </summary>
 public sealed partial class InMemoryEventHub : IEventHub, IDisposable
 {
-    private const string DefaultSchemaId = "application/json";
 
     // Synthetic topics stamped on Post/Send/Reply messages so they round-trip through Message envelopes.
     private const string PostTopic = "_mailbox.post";
@@ -114,7 +113,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
             CorrelationId = null,
             Payload = payload,
             Metadata = options?.Metadata,
-            SchemaId = options?.SchemaId ?? DefaultSchemaId
+            SchemaId = options?.SchemaId ?? Message.NoDeclaredSchemaId
         });
 
         message = await _pipeline.OnPublishAsync(message, ct).ConfigureAwait(false);
@@ -135,6 +134,25 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         {
             var scope = options?.TargetCrewId?.ToString() ?? "<global>";
             LogPublished(topic, message.Id, scope);
+        }
+    }
+
+    /// <summary>
+    /// Runs the receive stages for one recipient about to consume <paramref name="message"/>,
+    /// returning <see langword="null"/> when a stage says the recipient already had it. A
+    /// duplicate is not an error the consumer should ever see, so it is swallowed here and the
+    /// message is skipped.
+    /// </summary>
+    private async Task<Message?> DeliverAsync(Message message, CancellationToken ct)
+    {
+        try
+        {
+            return await _pipeline.OnReceiveAsync(message, ct).ConfigureAwait(false);
+        }
+        catch (DuplicateMessageException)
+        {
+            LogDuplicateDropped(message.Topic, message.Id);
+            return null;
         }
     }
 
@@ -171,14 +189,15 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
     {
         ArgumentNullException.ThrowIfNull(recipient);
         ct.ThrowIfCancellationRequested();
-        return PostCoreAsync(recipient, payload, correlation: null, topic: PostTopic);
+        return PostCoreAsync(recipient, payload, correlation: null, topic: PostTopic, ct);
     }
 
-    private System.Threading.Tasks.Task PostCoreAsync(
+    private async System.Threading.Tasks.Task PostCoreAsync(
         MailboxAddress to,
         object payload,
         CorrelationId? correlation,
-        string topic)
+        string topic,
+        CancellationToken ct)
     {
         if (!_mailboxes.TryGetValue(to.Raw, out var entry))
             throw new MailboxNotFoundException(to.Raw);
@@ -194,13 +213,17 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
             CorrelationId = correlation,
             Payload = payload,
             Metadata = null,
-            SchemaId = DefaultSchemaId
+            SchemaId = Message.NoDeclaredSchemaId
         });
+
+        // Mailbox traffic goes through the same stages as a publish. It has to: the ACL guards
+        // who may reach a mailbox, and client:// — the one address that leaves the process —
+        // is only ever reached this way.
+        message = await _pipeline.OnPublishAsync(message, ct).ConfigureAwait(false);
 
         entry.Channel.Writer.TryWrite(message);
         if (_logger.IsEnabled(LogLevel.Debug))
             LogPosted(to.Raw, message.Id);
-        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     // ── SendAsync ───────────────────────────────────────────────────────
@@ -239,7 +262,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
 
         try
         {
-            await PostCoreAsync(to, request!, correlation, SendTopic).ConfigureAwait(false);
+            await PostCoreAsync(to, request!, correlation, SendTopic, ct).ConfigureAwait(false);
         }
         catch
         {
@@ -296,7 +319,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
                 CorrelationId = correlation,
                 Payload = payload,
                 Metadata = null,
-                SchemaId = DefaultSchemaId
+                SchemaId = Message.NoDeclaredSchemaId
             });
             pendingTcs.TrySetResult(replyMessage);
             // Also fulfil any WaitForAsync(OnReply) waiter for the same id.
@@ -318,7 +341,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
                 CorrelationId = correlation,
                 Payload = payload,
                 Metadata = null,
-                SchemaId = DefaultSchemaId
+                SchemaId = Message.NoDeclaredSchemaId
             });
             waiterOnly.TrySetResult(replyMessage);
             return System.Threading.Tasks.Task.CompletedTask;
@@ -366,7 +389,11 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
             while (await channel.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
             {
                 while (channel.Reader.TryRead(out var msg))
-                    yield return msg;
+                {
+                    var delivered = await DeliverAsync(msg, ct).ConfigureAwait(false);
+                    if (delivered is not null)
+                        yield return delivered;
+                }
             }
         }
         finally
@@ -437,8 +464,12 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
                 {
                     while (channel.Reader.TryRead(out var msg))
                     {
-                        if (MetadataMatches(msg, descriptor.MetadataMatch))
-                            return msg;
+                        if (!MetadataMatches(msg, descriptor.MetadataMatch))
+                            continue;
+
+                        var delivered = await DeliverAsync(msg, linked.Token).ConfigureAwait(false);
+                        if (delivered is not null)
+                            return delivered;
                     }
                 }
             }
@@ -481,7 +512,11 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
                 while (await entry.Channel.Reader.WaitToReadAsync(linked.Token).ConfigureAwait(false))
                 {
                     if (entry.Channel.Reader.TryRead(out var msg))
-                        return msg;
+                    {
+                        var delivered = await DeliverAsync(msg, linked.Token).ConfigureAwait(false);
+                        if (delivered is not null)
+                            return delivered;
+                    }
                 }
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested && timeout is FiniteWaitTimeout)
@@ -677,4 +712,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "EventHub posted to mailbox={Mailbox} id={MessageId}")]
     private partial void LogPosted(string mailbox, MessageId messageId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "EventHub dropped an already-delivered message topic={Topic} id={MessageId}")]
+    private partial void LogDuplicateDropped(string topic, MessageId messageId);
 }

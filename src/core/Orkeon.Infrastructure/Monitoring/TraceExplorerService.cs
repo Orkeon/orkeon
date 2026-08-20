@@ -30,10 +30,11 @@ public sealed partial class TraceExplorerService : ITraceExplorer, IDisposable
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _maxTraceHistory = options?.Value?.MaxTraceHistory ?? 1000;
+        var prefix = options?.Value?.TraceSourcePrefix ?? "Orkeon";
 
         _activityListener = new ActivityListener
         {
-            ShouldListenTo = source => source.Name.StartsWith("Orkeon", StringComparison.Ordinal),
+            ShouldListenTo = source => source.Name.StartsWith(prefix, StringComparison.Ordinal),
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = OnActivityStopped
         };

@@ -3,8 +3,13 @@ using System.Text.Json.Nodes;
 namespace Orkeon.Application.EventHub;
 
 /// <summary>
-/// Stores JSON Schemas associated with <c>Message.SchemaId</c> values. v1.0 ships the port plus
-/// an in-memory implementation; validation middleware arrives in v1.2.
+/// Stores JSON Schemas associated with <c>Message.SchemaId</c> values.
+/// <para>
+/// <c>ValidationEventHubMiddleware</c> consults it to refuse a message declaring a contract
+/// nobody registered. It checks that the contract *exists*, not that the payload conforms to
+/// it: no JSON Schema engine ships here, and half of one would look like a guarantee while
+/// being none.
+/// </para>
 /// </summary>
 /// <remarks>
 /// Ambiguity resolved: the spec references a <c>JsonSchema</c> type that does not exist in the

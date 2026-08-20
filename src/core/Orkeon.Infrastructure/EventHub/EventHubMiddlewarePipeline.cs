@@ -3,10 +3,9 @@ using Orkeon.Application.EventHub;
 namespace Orkeon.Infrastructure.EventHub;
 
 /// <summary>
-/// Runs the <see cref="IEventHubMiddleware"/> chain on both hub paths (HUB-01). The port
-/// shipped in v1.0 with the contract only — its own doc comment says the runner "arrives in
-/// v1.2 alongside ACL and OTel" — so until now nothing logged, instrumented, authorized,
-/// deduplicated or validated a hub message.
+/// Runs the <see cref="IEventHubMiddleware"/> chain on both hub paths (HUB-01). The port had
+/// shipped as a contract with no runner, so nothing logged, instrumented, authorized,
+/// deduplicated or validated a hub message until this existed.
 /// <para>
 /// Order is the registration order, and it is not cosmetic: the spec's §12 sequence puts
 /// logging first so it sees everything the ACL later rejects, and validation last because it

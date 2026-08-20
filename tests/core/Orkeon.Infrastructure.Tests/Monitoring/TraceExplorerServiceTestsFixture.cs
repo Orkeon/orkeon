@@ -16,8 +16,18 @@ public sealed class TraceExplorerServiceTestsFixture : IDisposable
         Logger = new NullLogger();
     }
 
-    public TraceExplorerService CreateService(int maxTraceHistory = 1000) =>
-        new(Logger, new OptionsWrapper(new MonitoringOptions { MaxTraceHistory = maxTraceHistory }));
+    /// <summary>
+    /// Builds a service listening to <paramref name="sourcePrefix"/>. The listener is
+    /// process-wide, so a test asserting "no traces" against the default <c>Orkeon</c> prefix
+    /// is really asserting that no other test in the assembly emitted one — which is not true
+    /// and became less true as the suite grew.
+    /// </summary>
+    public TraceExplorerService CreateService(int maxTraceHistory = 1000, string sourcePrefix = "Orkeon") =>
+        new(Logger, new OptionsWrapper(new MonitoringOptions
+        {
+            MaxTraceHistory = maxTraceHistory,
+            TraceSourcePrefix = sourcePrefix,
+        }));
 
     public void Dispose()
     {

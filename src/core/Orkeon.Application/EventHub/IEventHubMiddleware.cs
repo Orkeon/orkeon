@@ -5,7 +5,8 @@ namespace Orkeon.Application.EventHub;
 /// to be plugged into both the publish and the receive paths.
 /// </summary>
 /// <remarks>
-/// v1.0 ships the contract only; the pipeline runner arrives in v1.2 alongside ACL and OTel.
+/// The runner is <c>EventHubMiddlewarePipeline</c>; the five stages it composes — logging,
+/// telemetry, ACL, idempotency, validation — all ship.
 /// </remarks>
 public interface IEventHubMiddleware
 {

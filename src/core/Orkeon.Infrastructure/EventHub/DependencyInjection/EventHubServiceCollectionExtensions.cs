@@ -71,4 +71,37 @@ public static class EventHubServiceCollectionExtensions
         services.AddEventHubMiddleware<Middleware.AclEventHubMiddleware>();
         return services;
     }
+
+    /// <summary>
+    /// Registers the idempotency stage (HUB-04). It refuses a message a mailbox already
+    /// consumed, and only there: a topic message legitimately reaches every subscriber, so
+    /// deduplicating it by identifier would starve all but the first.
+    /// <para>
+    /// The memory is bounded and does not survive the process — rc.2's hub is in-memory too, so
+    /// a durable ledger behind a volatile hub would guard a scenario the subsystem cannot cross.
+    /// </para>
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="capacity">How many consumed identifiers to remember.</param>
+    public static IServiceCollection AddOrkeonEventHubIdempotency(
+        this IServiceCollection services, int capacity = Middleware.IdempotencyEventHubMiddleware.DefaultCapacity)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddSingleton<IEventHubMiddleware>(_ => new Middleware.IdempotencyEventHubMiddleware(capacity));
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the validation stage (HUB-04), last of the five because it is the only one
+    /// that consults a store. It checks that a declared <c>SchemaId</c> names a contract the
+    /// registry holds — not that the payload conforms to it, which would need a JSON Schema
+    /// engine this repository does not ship and should not half-implement.
+    /// </summary>
+    public static IServiceCollection AddOrkeonEventHubValidation(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddSingleton<IEventSchemaRegistry, InMemoryEventSchemaRegistry>();
+        services.AddEventHubMiddleware<Middleware.ValidationEventHubMiddleware>();
+        return services;
+    }
 }

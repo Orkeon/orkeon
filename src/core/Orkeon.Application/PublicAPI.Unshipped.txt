@@ -48,3 +48,16 @@ Orkeon.Application.EventHub.ICrewLinkProvider.LinksFor(Orkeon.Domain.Common.Crew
 Orkeon.Application.EventHub.ICrewLinkRegistry
 Orkeon.Application.EventHub.ICrewLinkRegistry.Register(Orkeon.Domain.Common.CrewId! crew, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.EventHub.CrewLink!>! links) -> void
 static Orkeon.Application.EventHub.CrewLinkMailboxExtensions.Matches(this Orkeon.Domain.EventHub.CrewLink! link, Orkeon.Application.EventHub.MailboxAddress! target) -> bool
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.DuplicateMessageException() -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.DuplicateMessageException(Orkeon.Application.EventHub.MessageId! messageId) -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.DuplicateMessageException(string! message) -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.DuplicateMessageException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.MessageId.get -> Orkeon.Application.EventHub.MessageId?
+Orkeon.Application.EventHub.Exceptions.EventValidationException
+Orkeon.Application.EventHub.Exceptions.EventValidationException.EventValidationException() -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException.EventValidationException(string! message) -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException.EventValidationException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException.EventValidationException(string! schemaId, string! topic) -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException.SchemaId.get -> string?
+const Orkeon.Application.EventHub.Message.NoDeclaredSchemaId = "application/json" -> string!
