@@ -2,6 +2,8 @@ using System.Text.Json;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Crew;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
@@ -98,6 +100,28 @@ internal sealed class RunCommandOptions
         [Option("initial-context", Required = false, Default = null,
             HelpText = "Initial context string passed to a YAML crew's CrewInput. Ignored for .ork.ts scripts.")]
         public string? InitialContext { get; set; }
+
+        /// <summary>
+        /// Emits the versioned event protocol on stdout instead of plain text (BUS-02).
+        /// The value is accepted for the spec's spelling (<c>--events jsonl</c>) and for
+        /// forward compatibility; <c>jsonl</c> is the only stream format there is.
+        /// </summary>
+        [Option("events", Required = false, Default = null,
+            HelpText = "Emit the versioned JSONL event protocol on stdout (task progress, cost, " +
+                       "run outcome) instead of plain text. This is how Orkeon Studio drives a run.")]
+        public string? Events { get; set; }
+
+        /// <summary>
+        /// Includes token-by-token <c>llm.delta</c> events in the stream. Opt-in: a delta per
+        /// token saturates both the pipe and any UI reading it.
+        /// </summary>
+        [Option("stream", Required = false, Default = false,
+            HelpText = "With --events, also emit llm.delta events token by token. Verbose by " +
+                       "nature: off unless asked for.")]
+        public bool Stream { get; set; }
+
+        /// <summary>Whether the run must emit the event protocol.</summary>
+        internal bool EmitsEvents => Events is not null;
 
         /// <summary>
         /// Dry-run: build the host and load the crew (strict tool resolution) without probing the
@@ -288,11 +312,88 @@ internal static partial class RunCommand
     /// <see cref="Program.ExitOk"/>/<see cref="Program.ExitScriptError"/>/<see cref="Program.ExitRuntimeError"/>/<see cref="Program.ExitCancelled"/>,
     /// so we return its code verbatim.
     /// </summary>
-    private static Task<int> RunViaSharedRunnerAsync(RunCommandOptions options)
-        => RunnerExecution.RunOneShotAsync(
+    private static async Task<int> RunViaSharedRunnerAsync(RunCommandOptions options)
+    {
+        if (!options.EmitsEvents)
+        {
+            return await RunnerExecution.RunOneShotAsync(
+                ToRunnerOptions(options),
+                "orkeon",
+                configureServices: (_, services) => services.AddSemanticSearchTool())
+                .ConfigureAwait(false);
+        }
+
+        return await RunWithEventsAsync(options).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The observed run (BUS-02): the same shared runner, with the event stream wired onto
+    /// the seams that already exist — task completions, the token meter, and generation
+    /// deltas under <c>--stream</c>. The stream opens before the host is built and closes
+    /// on the runner's own exit code, so a configuration failure is reported as an event
+    /// rather than as silence.
+    /// </summary>
+    private static async Task<int> RunWithEventsAsync(RunCommandOptions options)
+    {
+        var events = new Events.OrkeonEventWriter(Console.Out);
+        events.Emit(Run.RunEventKinds.RunStarted, new
+        {
+            target = options.ScriptPath,
+            stream = options.Stream,
+        });
+
+        Run.RunEventObserver? observer = null;
+        var exitCode = await RunnerExecution.RunOneShotAsync(
             ToRunnerOptions(options),
             "orkeon",
-            configureServices: (_, services) => services.AddSemanticSearchTool());
+            configureServices: (_, services) =>
+            {
+                services.AddSemanticSearchTool();
+
+                // ICrewExecutionHook is a single service and the runner may already have
+                // registered AutoSummaryWriter on it. Take that registration over rather
+                // than past it: observing a run must not cost it its AUTO_SUMMARY.md.
+                var existing = services.LastOrDefault(d => d.ServiceType == typeof(ICrewExecutionHook));
+                if (existing is not null)
+                    services.Remove(existing);
+
+                services.AddScoped<ICrewExecutionHook>(sp =>
+                {
+                    var inner = existing is null ? null : (ICrewExecutionHook?)Resolve(sp, existing);
+                    observer = new Run.RunEventObserver(events, inner, options.Stream);
+                    return observer;
+                });
+                services.AddSingleton<ILlmUsageSink>(sp =>
+                    (ILlmUsageSink)sp.GetRequiredService<ICrewExecutionHook>());
+                services.AddSingleton<ILlmDeltaSink>(sp =>
+                    (ILlmDeltaSink)sp.GetRequiredService<ICrewExecutionHook>());
+            })
+            .ConfigureAwait(false);
+
+        events.Emit(Run.RunEventKinds.RunFinished, new
+        {
+            success = exitCode == Program.ExitOk,
+            exitCode,
+            tokens = observer?.TokensUsed ?? 0,
+        });
+
+        return exitCode;
+    }
+
+    /// <summary>
+    /// Materialises a captured service descriptor — the runner registers its hook by
+    /// factory, so the descriptor is the only handle on the instance it would have built.
+    /// </summary>
+    private static object? Resolve(IServiceProvider sp, ServiceDescriptor descriptor)
+    {
+        if (descriptor.ImplementationInstance is { } instance)
+            return instance;
+        if (descriptor.ImplementationFactory is { } factory)
+            return factory(sp);
+        return descriptor.ImplementationType is { } type
+            ? ActivatorUtilities.CreateInstance(sp, type)
+            : null;
+    }
 
     /// <summary>
     /// Maps the shared fields of <see cref="RunCommandOptions"/> onto a <see cref="RunnerOptionsBase"/>
