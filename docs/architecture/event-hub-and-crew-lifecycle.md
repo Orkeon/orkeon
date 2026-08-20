@@ -2,12 +2,12 @@
 
 # EventHub & Crew Lifecycle — Reference Specification
 
-**Status**: design frozen, ready for v1 implementation
-**Date**: 2026-05-23
-**Scope**: `Orkeon.Application` (ports), `Orkeon.Infrastructure` (InMemory + SQLite adapters)
+**Scope**: `Orkeon.Application` (ports), `Orkeon.Infrastructure` (adapters)
 **Audience**: Orkeon developers
 
-This document consolidates the architectural decisions made for Orkeon's inter-agent and inter-crew messaging layer, as well as for putting crews to sleep and waking them up. It serves as the single reference for the v1 implementation.
+This document consolidates the architectural decisions made for Orkeon's inter-agent and inter-crew messaging layer, as well as for putting crews to sleep and waking them up.
+
+> **It is a specification, and it describes more than the repository currently contains.** What ships: the `IEventHub` port and its in-memory adapter, the seven agent tools, the middleware pipeline and its five stages (§12), the `links:` grammar and the ACL (§10). What does not: SQLite persistence (§11), crew sleep and wake-up (§7, §8), and the JSON-Schema-driven parity toolchain (§13.1). Each section that describes something unbuilt says so on the spot — read those notes as part of the contract.
 
 ---
 
@@ -478,18 +478,35 @@ An agent of crew Y receives, among the messages of a topic it subscribes to, tho
 ### 10.2 `CrewLink` — declarative authorization
 
 ```yaml
-crew:
-  name: billing-crew
-  links:
-    - to: fraud-crew
-      direction: bidirectional
-      allowed_topics: [fraud.check, fraud.result]
-    - to: audit-crew
-      direction: outbound
-      allowed_topics: [audit.event]
+name: billing-crew
+links:
+  - to: fraud-crew
+    direction: bidirectional
+    allowed_topics: [fraud.check, fraud.result]
+  - to: audit-crew
+    direction: outbound
+    allowed_topics: [audit.event]
+  - to: "client:studio"        # an external peer, not a crew — see below
+    direction: bidirectional
 ```
 
-The ACL middleware rejects `Post` / `Send` / scoped `Publish` calls that do not match a `CrewLink` allowing the direction and the topic. Global `Publish` calls (without `target_crew_id`) remain free; subscribers filter on the `Subscribe` side.
+`links:` sits beside `name:` and `agents:` — at the root of a single-file crew YAML, or in `crew.yaml` of the multi-file layout. Declaring it in the fluent C# builder is **not** possible: links reach the ACL through a crew's YAML and `CrewFactory`.
+
+The ACL stage rejects `Post` / `Send` / scoped `Publish` calls that no `CrewLink` authorizes for the direction and the topic. Three rules, each with its reason:
+
+| Case | Decision | Why |
+|---|---|---|
+| Message with **no target** (global `Publish`) | passes | a global publish is an offer, not a delivery; subscribers filter on their own side |
+| Crew that declared **no link at all** | passes by default | the hub shipped without any ACL, so refusing undeclared traffic the day the stage is switched on would break every existing crew. A deployment that wants a closed door registers `RestrictiveCrewLinkPolicy` |
+| Crew that **did** declare links | held to them, direction and topic list included | declaring one link is the act that closes the door |
+
+An **empty `allowed_topics`** authorizes every topic: a link that authorized nothing would be pointless, so the empty case is trust rather than an accident. An entry with no `to:` is dropped rather than turned into a link pointing nowhere, and an unreadable `direction:` falls back to `outbound`, the narrowest of the three — a malformed authorization must never become a permissive one.
+
+### 10.2.1 Naming an external peer
+
+`CrewLink` authorizes a crew to talk to a crew. A process outside the hub — Studio watching a run, a gateway — is not one, and it reaches the hub through the `client://{name}` mailbox scheme. A link names it with the reserved `client:` prefix, as in the example above.
+
+Without that, an external peer would escape the ACL simply by not being modelled. This is the one place the implementation extends this specification rather than applying it.
 
 ### 10.3 `CrewLink` direction
 
@@ -499,7 +516,7 @@ The ACL middleware rejects `Post` / `Send` / scoped `Publish` calls that do not 
 | `inbound` | B can send to A, but not the other way around |
 | `bidirectional` | Both directions |
 
-A `CrewLink` is checked on the **sender** side by the ACL middleware at `PublishAsync`/`PostAsync`/`SendAsync` time.
+A `CrewLink` is checked on the **sender** side, at `PublishAsync` / `PostAsync` / `SendAsync` time — mailbox traffic included, which matters because `client://` is only ever reached that way. Authorization happens **once**: the receive path deliberately does not check again, since re-checking would refuse a message that already passed and would refuse an inbound message whose sender the ACL does not model.
 
 ### 10.4 Ordering guarantees
 
@@ -619,15 +636,39 @@ public interface IEventHubMiddleware
 }
 ```
 
-Standard v1 order:
+The runner is `EventHubMiddlewarePipeline`. Order is the registration order on the publish path and the reverse on the receive path, so a stage wraps a message symmetrically going in and coming out. A stage short-circuits by **throwing**; the pipeline does not catch, because a refusal has to reach the caller.
 
-1. **`LoggingMiddleware`** — structured logging (correlation_id, source/target crew, topic, latency).
-2. **`TelemetryMiddleware`** — OTel spans with the attributes `crew.source`, `crew.target`, `event.topic`, `event.pattern`.
-3. **`AclMiddleware`** — checks `CrewLink`; rejects unauthorized messages with `EventAclException`.
-4. **`IdempotencyMiddleware`** — consults `processed_messages` (reception only).
-5. **`ValidationMiddleware`** — validates `SchemaId` against `IEventSchemaRegistry`.
+The order below is not cosmetic: logging comes first so it sees everything a later stage rejects, and validation last because it is the only stage that consults a store.
 
-Custom middlewares are injectable via DI (`AddEventHubMiddleware<T>()`).
+| # | Stage | Registration | What it does |
+|---|---|---|---|
+| 1 | `LoggingEventHubMiddleware` | `AddOrkeonEventHubObservability()` | structured logging: correlation id, source and target crew, topic, latency |
+| 2 | `TelemetryEventHubMiddleware` | idem | OTel spans on the `Orkeon.EventHub` source, attributes `crew.source`, `crew.target`, `event.topic`, `event.pattern` |
+| 3 | `AclEventHubMiddleware` | `AddOrkeonEventHubAcl(policy?)` | checks `CrewLink` on publish; refuses with `EventAclException` (§10) |
+| 4 | `IdempotencyEventHubMiddleware` | `AddOrkeonEventHubIdempotency(capacity?)` | refuses a message a mailbox already consumed, on receive |
+| 5 | `ValidationEventHubMiddleware` | `AddOrkeonEventHubValidation()` | checks that a declared `SchemaId` names a registered contract, on publish |
+
+Every stage is opt-in — a hub nobody watches pays nothing — and custom stages are injectable with `AddEventHubMiddleware<T>()`.
+
+### 12.1 Where the stages run
+
+The publish stages run on `Publish`, **and on `Post` and `Send`**: mailbox traffic has to travel them, since the ACL guards who may reach a mailbox and `client://` — the one address that leaves the process — is only ever reached that way.
+
+The receive stages run where a recipient *consumes* a message: draining a subscription, a wait on a topic, a wait on a mailbox. Awaiting a `Send` reply does not go through them — it is the tail of an exchange already observed at publish time, and it resolves a `TaskCompletionSource` rather than draining a channel.
+
+### 12.2 Idempotency guards point-to-point delivery only
+
+A message addressed to a mailbox has exactly one legitimate reader, so "already processed?" is a well-posed question there. A topic message legitimately reaches **every** subscriber, and deduplicating it by identifier would starve all but the first — a bug that would look like a feature. Topic traffic therefore passes untouched.
+
+The middleware contract can only pass a message on or stop it by throwing, so "drop this duplicate" is said with `DuplicateMessageException`, which the hub catches at the delivery site. A consumer never sees it.
+
+> **The memory does not survive the process.** It is a bounded set of identifiers in the hub's own process — which is coherent, since the hub is in-memory too. A restart clears it and a replayed message would be processed again. That is a stated limit: durable idempotence belongs with the durable hub of §11, and the port absorbs the change the day it exists.
+
+### 12.3 What validation validates
+
+That the declared contract **exists** in `IEventSchemaRegistry` — not that the payload conforms to it. No JSON Schema engine ships here, and half of one would look like a guarantee while being none. What the stage does catch is real: a typo in a schema id, or an event type the deployment never declared.
+
+A message carrying `Message.NoDeclaredSchemaId` (`application/json`) declares no contract at all — every `Post`, `Send` and `Reply` does — and passes. Declaring a schema is what engages the check, the same way declaring a link closes the ACL's door. The refusal is raised on **publish**, because a subscriber cannot fix a schema someone else declared.
 
 ---
 
@@ -646,14 +687,11 @@ Without this single source, the three paradigms drift apart within a few weeks.
 ### 13.2 C# — fluent builder + DI
 
 ```csharp
+// Not built: .IdleTimeout and .Links do not exist on CrewBuilder, and the bindings
+// recorded by .OnEvent are not dispatched to by anything. Declare links in YAML
+// (§10.2); consume the hub directly, as below.
 var crew = new CrewBuilder()
     .Name("order-processor")
-    .IdleTimeout(TimeSpan.FromMinutes(5))
-    .OnEvent("order.received", ctx => ctx.Crew.Resume(ctx.Message))
-    .Links(link => link
-        .To("fraud-crew")
-        .Bidirectional()
-        .AllowedTopics("fraud.check", "fraud.result"))
     .Build();
 
 // Direct consumption for user code
@@ -763,13 +801,18 @@ Each message produces a span with these attributes:
 
 ## 15. Implementation roadmap
 
-| Increment | Deliverables | Exit criteria |
+**Built.** The `IEventHub` port and everything §3 describes, `InMemoryEventHub`, the seven agent tools, the `links:` grammar and the ACL (§10), and the whole middleware pipeline with its five stages (§12) — logging, telemetry, ACL, idempotency, validation.
+
+**Not built**, each behind the same port so that building it changes no caller:
+
+| Missing | What it would bring | Where it is described |
 |---|---|---|
-| **v1.0** | Complete `IEventHub` port, `Message`, `MailboxAddress`, `WaitTimeout`, `WaitDescriptor`, `InMemoryEventHub`, 7 tools, minimal C# builder | Unit tests: publish/post/send/reply, finite + forever wait, fan-out, filtering by `TargetCrewId` |
-| **v1.1** | `SqliteCrewStateStore`, `SqliteEventHub` (outbox + processed_messages + pending_waits), `ICrewLifecycleManager`, `IIdleDetector`, `IWaitScheduler` | Integration tests: crash mid-handle → redelivery via outbox, sleep → wake on message, sleep → wake on timeout, lazy boot |
-| **v1.2** | Complete middleware pipeline (Logging / Telemetry / Acl / Idempotency / Validation), `CrewLink` ACL, OTel | Cross-crew tests: `CrewLink` whitelist, cross-crew leak blocked, OTel spans produced |
-| **v1.3** | YAML loader + JSON Schema validation, TypeScript SDK `@orkeon/sdk` with type generation | Parity tests: the same config in C#/YAML/TS produces the same runtime behavior |
-| **v2.0** | `RedisStreamsEventHub` (distributed multi-node) behind the same port | Multi-process tests: publish on one side, wait on the other, ACL preserved |
+| Durable hub and state store | messages and in-flight waits surviving a restart; idempotency that outlives the process | §11 |
+| Crew sleep and wake-up | `ICrewLifecycleManager`, `IIdleDetector`, `IWaitScheduler`, snapshots | §7, §8 |
+| Canonical JSON schema toolchain | YAML validated and TypeScript types generated from one source | §13.1 |
+| Distributed brokerage | multi-node, publish on one side and wait on the other, ACL preserved | §1.2 |
+
+Two smaller inertias worth naming rather than discovering: `CrewBuilder.OnEvent` records bindings nothing dispatches, and the fluent builder cannot declare a `CrewLink` at all.
 
 ---
 

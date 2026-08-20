@@ -2,12 +2,12 @@
 
 # EventHub & Crew Lifecycle — Spécification de référence
 
-**Statut** : design figé, prêt pour implémentation v1
-**Date** : 2026-05-23
-**Périmètre** : `Orkeon.Application` (ports), `Orkeon.Infrastructure` (adapters InMemory + SQLite)
+**Périmètre** : `Orkeon.Application` (ports), `Orkeon.Infrastructure` (adapters)
 **Public** : développeurs Orkeon
 
-Ce document consolide les décisions architecturales prises pour la couche de messaging inter-agents et inter-crews d'Orkeon, ainsi que pour la mise en sommeil / réveil des crews. Il sert de référence unique pour l'implémentation v1.
+Ce document consolide les décisions architecturales prises pour la couche de messaging inter-agents et inter-crews d'Orkeon, ainsi que pour la mise en sommeil / réveil des crews.
+
+> **C'est une spécification, et elle décrit plus que ce que le dépôt contient aujourd'hui.** Ce qui est livré : le port `IEventHub` et son adaptateur en mémoire, les sept outils d'agent, le pipeline de middlewares et ses cinq étages (§12), la grammaire `links:` et l'ACL (§10). Ce qui ne l'est pas : la persistance SQLite (§11), la mise en sommeil et le réveil des crews (§7, §8), et la chaîne de parité pilotée par JSON Schema (§13.1). Chaque section décrivant quelque chose de non construit le dit sur place — ces notes font partie du contrat.
 
 ---
 
@@ -478,18 +478,35 @@ Un agent de crew Y reçoit, parmi les messages d'un topic auquel il est abonné,
 ### 10.2 `CrewLink` — autorisation déclarative
 
 ```yaml
-crew:
-  name: billing-crew
-  links:
-    - to: fraud-crew
-      direction: bidirectional
-      allowed_topics: [fraud.check, fraud.result]
-    - to: audit-crew
-      direction: outbound
-      allowed_topics: [audit.event]
+name: billing-crew
+links:
+  - to: fraud-crew
+    direction: bidirectional
+    allowed_topics: [fraud.check, fraud.result]
+  - to: audit-crew
+    direction: outbound
+    allowed_topics: [audit.event]
+  - to: "client:studio"        # un pair externe, pas une crew — voir plus bas
+    direction: bidirectional
 ```
 
-Le middleware ACL refuse les `Post` / `Send` / `Publish scopé` qui ne matchent pas une `CrewLink` autorisant la direction et le topic. Les `Publish global` (sans `target_crew_id`) restent libres ; les abonnés filtrent côté `Subscribe`.
+`links:` se place à côté de `name:` et `agents:` — à la racine d'un YAML de crew en fichier unique, ou dans le `crew.yaml` de la disposition multi-fichiers. Le déclarer depuis le builder fluide C# n'est **pas** possible : les liens atteignent l'ACL par le YAML d'une crew et `CrewFactory`.
+
+L'étage ACL refuse les `Post` / `Send` / `Publish` scopé qu'aucune `CrewLink` n'autorise pour la direction et le topic. Trois règles, chacune avec sa raison :
+
+| Cas | Décision | Pourquoi |
+|---|---|---|
+| Message **sans cible** (`Publish` global) | passe | une publication globale est une offre, pas une remise ; les abonnés filtrent de leur côté |
+| Crew n'ayant déclaré **aucun lien** | passe par défaut | le hub a été livré sans aucune ACL : refuser le trafic non déclaré le jour où l'étage s'allume casserait toutes les crews existantes. Un déploiement qui veut une porte fermée enregistre `RestrictiveCrewLinkPolicy` |
+| Crew ayant **déclaré** des liens | tenue à ses liens, direction et liste de topics comprises | déclarer un lien est le geste qui ferme la porte |
+
+Un **`allowed_topics` vide** autorise tous les topics : un lien qui n'autoriserait rien serait sans objet, donc le cas vide est une confiance, pas un accident. Une entrée sans `to:` est écartée plutôt que transformée en lien pointant nulle part, et une `direction:` illisible retombe sur `outbound`, la plus étroite des trois — une autorisation malformée ne doit jamais devenir une autorisation permissive.
+
+### 10.2.1 Nommer un pair externe
+
+`CrewLink` autorise une crew à parler à une crew. Un processus hors du hub — Studio qui regarde un run, une passerelle — n'en est pas une, et il atteint le hub par le schéma de boîte aux lettres `client://{nom}`. Un lien le nomme avec le préfixe réservé `client:`, comme dans l'exemple ci-dessus.
+
+Sans cela, un pair externe échapperait à l'ACL simplement en n'étant pas modélisé. C'est le seul endroit où l'implémentation étend cette spécification au lieu de l'appliquer.
 
 ### 10.3 Direction de la `CrewLink`
 
@@ -499,7 +516,7 @@ Le middleware ACL refuse les `Post` / `Send` / `Publish scopé` qui ne matchent 
 | `inbound` | B peut envoyer vers A, mais pas l'inverse |
 | `bidirectional` | Les deux sens |
 
-Une `CrewLink` est vérifiée côté **émetteur** par le middleware ACL au moment du `PublishAsync`/`PostAsync`/`SendAsync`.
+Une `CrewLink` est vérifiée côté **émetteur**, au moment du `PublishAsync` / `PostAsync` / `SendAsync` — trafic de boîte aux lettres compris, ce qui compte puisque `client://` ne s'atteint que par là. L'autorisation a lieu **une fois** : le chemin de réception ne revérifie délibérément pas, car revérifier refuserait un message déjà passé, et refuserait un message entrant dont l'ACL ne modélise pas l'émetteur.
 
 ### 10.4 Garanties d'ordering
 
@@ -619,15 +636,39 @@ public interface IEventHubMiddleware
 }
 ```
 
-Ordre standard v1 :
+L'exécuteur est `EventHubMiddlewarePipeline`. L'ordre est celui de l'enregistrement sur le chemin de publication, et l'inverse sur le chemin de réception : un étage enveloppe donc un message symétriquement à l'aller et au retour. Un étage court-circuite en **levant** ; le pipeline n'attrape pas, car un refus doit atteindre l'appelant.
 
-1. **`LoggingMiddleware`** — log structuré (correlation_id, source/target crew, topic, latence).
-2. **`TelemetryMiddleware`** — spans OTel avec attributs `crew.source`, `crew.target`, `event.topic`, `event.pattern`.
-3. **`AclMiddleware`** — vérifie `CrewLink` ; rejette les messages non autorisés avec `EventAclException`.
-4. **`IdempotencyMiddleware`** — consulte `processed_messages` (réception uniquement).
-5. **`ValidationMiddleware`** — valide `SchemaId` contre `IEventSchemaRegistry`.
+L'ordre ci-dessous n'est pas cosmétique : la journalisation vient en premier pour voir tout ce qu'un étage ultérieur rejette, et la validation en dernier parce qu'elle est le seul étage qui consulte un magasin.
 
-Middlewares custom injectables via DI (`AddEventHubMiddleware<T>()`).
+| # | Étage | Enregistrement | Rôle |
+|---|---|---|---|
+| 1 | `LoggingEventHubMiddleware` | `AddOrkeonEventHubObservability()` | log structuré : correlation id, crew source et cible, topic, latence |
+| 2 | `TelemetryEventHubMiddleware` | idem | spans OTel sur la source `Orkeon.EventHub`, attributs `crew.source`, `crew.target`, `event.topic`, `event.pattern` |
+| 3 | `AclEventHubMiddleware` | `AddOrkeonEventHubAcl(policy?)` | vérifie `CrewLink` à la publication ; refuse par `EventAclException` (§10) |
+| 4 | `IdempotencyEventHubMiddleware` | `AddOrkeonEventHubIdempotency(capacity?)` | refuse un message qu'une boîte aux lettres a déjà consommé, en réception |
+| 5 | `ValidationEventHubMiddleware` | `AddOrkeonEventHubValidation()` | vérifie qu'un `SchemaId` déclaré nomme un contrat enregistré, à la publication |
+
+Chaque étage est opt-in — un hub que personne ne regarde ne paie rien — et les étages custom sont injectables par `AddEventHubMiddleware<T>()`.
+
+### 12.1 Où tournent les étages
+
+Les étages de publication tournent sur `Publish`, **et sur `Post` et `Send`** : le trafic de boîte aux lettres doit les traverser, puisque l'ACL garde qui peut atteindre une boîte et que `client://` — la seule adresse qui sort du processus — ne s'atteint que par là.
+
+Les étages de réception tournent là où un destinataire *consomme* un message : consommation d'un abonnement, attente sur un topic, attente sur une boîte aux lettres. L'attente d'une réponse à un `Send` n'y passe pas — c'est la queue d'un échange déjà observé à la publication, et elle dénoue un `TaskCompletionSource` au lieu de vider un canal.
+
+### 12.2 L'idempotence ne garde que le point à point
+
+Un message adressé à une boîte aux lettres a exactement un lecteur légitime : « déjà traité ? » y est une question bien posée. Un message de topic atteint légitimement **chaque** abonné, et le dédupliquer par identifiant affamerait tous sauf le premier — un bug qui ressemblerait à une fonctionnalité. Le trafic de topic passe donc intact.
+
+Le contrat de middleware ne sait que laisser passer ou lever ; « écarte ce doublon » se dit donc par `DuplicateMessageException`, que le hub attrape au point de livraison. Un consommateur ne la voit jamais.
+
+> **La mémoire ne survit pas au processus.** C'est un ensemble borné d'identifiants dans le processus du hub — ce qui est cohérent, le hub étant lui aussi en mémoire. Un redémarrage la vide et un message rejoué serait retraité. C'est une limite assumée : l'idempotence durable appartient au hub durable du §11, et le port absorbe le changement le jour où il existe.
+
+### 12.3 Ce que la validation valide
+
+Que le contrat déclaré **existe** dans `IEventSchemaRegistry` — pas que la charge utile s'y conforme. Aucun moteur JSON Schema n'est embarqué ici, et la moitié d'un moteur ressemblerait à une garantie sans en être une. Ce que l'étage attrape est réel : une faute de frappe dans un `schema_id`, ou un type d'événement que le déploiement n'a jamais déclaré.
+
+Un message portant `Message.NoDeclaredSchemaId` (`application/json`) ne déclare aucun contrat — c'est le cas de tout `Post`, `Send` et `Reply` — et passe. Déclarer un schéma est le geste qui engage le contrôle, comme déclarer un lien ferme la porte de l'ACL. Le refus est levé à la **publication**, car un abonné ne peut rien à un schéma déclaré par quelqu'un d'autre.
 
 ---
 
@@ -646,14 +687,11 @@ Sans cette source unique, les trois paradigmes dérivent en quelques semaines.
 ### 13.2 C# — fluent builder + DI
 
 ```csharp
+// Non construit : .IdleTimeout et .Links n'existent pas sur CrewBuilder, et les
+// liaisons enregistrées par .OnEvent ne sont distribuées par rien. Déclarez les
+// liens en YAML (§10.2) ; consommez le hub directement, comme ci-dessous.
 var crew = new CrewBuilder()
     .Name("order-processor")
-    .IdleTimeout(TimeSpan.FromMinutes(5))
-    .OnEvent("order.received", ctx => ctx.Crew.Resume(ctx.Message))
-    .Links(link => link
-        .To("fraud-crew")
-        .Bidirectional()
-        .AllowedTopics("fraud.check", "fraud.result"))
     .Build();
 
 // Consommation directe pour code utilisateur
@@ -763,13 +801,18 @@ Chaque message produit un span avec ces attributs :
 
 ## 15. Roadmap d'implémentation
 
-| Incrément | Livrables | Critères de sortie |
+**Construit.** Le port `IEventHub` et tout ce que décrit le §3, `InMemoryEventHub`, les sept outils d'agent, la grammaire `links:` et l'ACL (§10), et tout le pipeline de middlewares avec ses cinq étages (§12) — journalisation, télémétrie, ACL, idempotence, validation.
+
+**Non construit**, chacun derrière le même port pour que le construire ne change aucun appelant :
+
+| Manquant | Ce que cela apporterait | Où c'est décrit |
 |---|---|---|
-| **v1.0** | Port `IEventHub` complet, `Message`, `MailboxAddress`, `WaitTimeout`, `WaitDescriptor`, `InMemoryEventHub`, 7 tools, builder C# minimal | Tests unitaires : publish/post/send/reply, wait finite + forever, fan-out, filtrage par `TargetCrewId` |
-| **v1.1** | `SqliteCrewStateStore`, `SqliteEventHub` (outbox + processed_messages + pending_waits), `ICrewLifecycleManager`, `IIdleDetector`, `IWaitScheduler` | Tests d'intégration : crash mid-handle → redelivery via outbox, sleep → wake on message, sleep → wake on timeout, lazy boot |
-| **v1.2** | Middleware pipeline complet (Logging / Telemetry / Acl / Idempotency / Validation), `CrewLink` ACL, OTel | Tests cross-crew : `CrewLink` whitelist, fuite cross-crew bloquée, spans OTel produits |
-| **v1.3** | YAML loader + JSON Schema validation, TypeScript SDK `@orkeon/sdk` avec génération de types | Tests de parité : même config en C#/YAML/TS produit le même comportement runtime |
-| **v2.0** | `RedisStreamsEventHub` (distribué multi-nœuds) derrière le même port | Tests multi-process : publish d'un côté, wait de l'autre, ACL préservée |
+| Hub durable et magasin d'état | messages et attentes en vol survivant à un redémarrage ; idempotence qui dépasse le processus | §11 |
+| Sommeil et réveil des crews | `ICrewLifecycleManager`, `IIdleDetector`, `IWaitScheduler`, snapshots | §7, §8 |
+| Chaîne JSON Schema canonique | YAML validé et types TypeScript générés depuis une source unique | §13.1 |
+| Courtage distribué | multi-nœuds, publish d'un côté et wait de l'autre, ACL préservée | §1.2 |
+
+Deux inerties plus petites, à nommer plutôt qu'à laisser découvrir : `CrewBuilder.OnEvent` enregistre des liaisons que rien ne distribue, et le builder fluide ne sait pas déclarer une `CrewLink`.
 
 ---
 
