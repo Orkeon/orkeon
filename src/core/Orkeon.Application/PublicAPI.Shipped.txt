@@ -2828,6 +2828,7 @@ Orkeon.Application.EventHub.CrewEventContext.Deconstruct(out Orkeon.Domain.Crew.
 Orkeon.Application.EventHub.CrewEventContext.Equals(Orkeon.Application.EventHub.CrewEventContext? other) -> bool
 Orkeon.Application.EventHub.CrewEventContext.Message.get -> Orkeon.Application.EventHub.Message!
 Orkeon.Application.EventHub.CrewEventContext.Message.init -> void
+Orkeon.Application.EventHub.CrewLinkMailboxExtensions
 Orkeon.Application.EventHub.EventHubCaller
 Orkeon.Application.EventHub.EventHubCaller.<Clone>$() -> Orkeon.Application.EventHub.EventHubCaller!
 Orkeon.Application.EventHub.EventHubCaller.AgentId.get -> Orkeon.Domain.Common.AgentId?
@@ -2837,6 +2838,22 @@ Orkeon.Application.EventHub.EventHubCaller.CrewId.init -> void
 Orkeon.Application.EventHub.EventHubCaller.Deconstruct(out Orkeon.Domain.Common.CrewId! CrewId, out Orkeon.Domain.Common.AgentId? AgentId) -> void
 Orkeon.Application.EventHub.EventHubCaller.Equals(Orkeon.Application.EventHub.EventHubCaller? other) -> bool
 Orkeon.Application.EventHub.EventHubCaller.EventHubCaller(Orkeon.Domain.Common.CrewId! CrewId, Orkeon.Domain.Common.AgentId? AgentId) -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.DuplicateMessageException() -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.DuplicateMessageException(Orkeon.Application.EventHub.MessageId! messageId) -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.DuplicateMessageException(string! message) -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.DuplicateMessageException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.EventHub.Exceptions.DuplicateMessageException.MessageId.get -> Orkeon.Application.EventHub.MessageId?
+Orkeon.Application.EventHub.Exceptions.EventAclException
+Orkeon.Application.EventHub.Exceptions.EventAclException.EventAclException() -> void
+Orkeon.Application.EventHub.Exceptions.EventAclException.EventAclException(string! message) -> void
+Orkeon.Application.EventHub.Exceptions.EventAclException.EventAclException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException
+Orkeon.Application.EventHub.Exceptions.EventValidationException.EventValidationException() -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException.EventValidationException(string! message) -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException.EventValidationException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException.EventValidationException(string! schemaId, string! topic) -> void
+Orkeon.Application.EventHub.Exceptions.EventValidationException.SchemaId.get -> string?
 Orkeon.Application.EventHub.Exceptions.InvalidMailboxAddressException
 Orkeon.Application.EventHub.Exceptions.InvalidMailboxAddressException.InvalidMailboxAddressException() -> void
 Orkeon.Application.EventHub.Exceptions.InvalidMailboxAddressException.InvalidMailboxAddressException(string! message) -> void
@@ -2873,6 +2890,12 @@ Orkeon.Application.EventHub.FiniteWaitTimeout.FiniteWaitTimeout(System.TimeSpan 
 Orkeon.Application.EventHub.ForeverWaitTimeout
 Orkeon.Application.EventHub.ForeverWaitTimeout.Equals(Orkeon.Application.EventHub.ForeverWaitTimeout? other) -> bool
 Orkeon.Application.EventHub.ForeverWaitTimeout.ForeverWaitTimeout() -> void
+Orkeon.Application.EventHub.ICrewLinkPolicy
+Orkeon.Application.EventHub.ICrewLinkPolicy.AllowsUndeclared.get -> bool
+Orkeon.Application.EventHub.ICrewLinkProvider
+Orkeon.Application.EventHub.ICrewLinkProvider.LinksFor(Orkeon.Domain.Common.CrewId! source) -> System.Collections.Immutable.ImmutableArray<Orkeon.Domain.EventHub.CrewLink!>
+Orkeon.Application.EventHub.ICrewLinkRegistry
+Orkeon.Application.EventHub.ICrewLinkRegistry.Register(Orkeon.Domain.Common.CrewId! crew, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.EventHub.CrewLink!>! links) -> void
 Orkeon.Application.EventHub.IEventHub
 Orkeon.Application.EventHub.IEventHub.GetLastValueAsync(string! key, Orkeon.Domain.Common.CrewId? crewScope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message?>!
 Orkeon.Application.EventHub.IEventHub.PostAsync(Orkeon.Application.EventHub.MailboxAddress! recipient, object! payload, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
@@ -2894,6 +2917,8 @@ Orkeon.Application.EventHub.MailboxAddress
 Orkeon.Application.EventHub.MailboxAddress.<Clone>$() -> Orkeon.Application.EventHub.MailboxAddress!
 Orkeon.Application.EventHub.MailboxAddress.AgentId.get -> Orkeon.Domain.Common.AgentId?
 Orkeon.Application.EventHub.MailboxAddress.AgentId.init -> void
+Orkeon.Application.EventHub.MailboxAddress.ClientName.get -> string?
+Orkeon.Application.EventHub.MailboxAddress.ClientName.init -> void
 Orkeon.Application.EventHub.MailboxAddress.CrewId.get -> Orkeon.Domain.Common.CrewId?
 Orkeon.Application.EventHub.MailboxAddress.CrewId.init -> void
 Orkeon.Application.EventHub.MailboxAddress.Equals(Orkeon.Application.EventHub.MailboxAddress? other) -> bool
@@ -2906,6 +2931,7 @@ Orkeon.Application.EventHub.MailboxAddress.Topic.get -> string?
 Orkeon.Application.EventHub.MailboxAddress.Topic.init -> void
 Orkeon.Application.EventHub.MailboxKind
 Orkeon.Application.EventHub.MailboxKind.Agent = 0 -> Orkeon.Application.EventHub.MailboxKind
+Orkeon.Application.EventHub.MailboxKind.Client = 3 -> Orkeon.Application.EventHub.MailboxKind
 Orkeon.Application.EventHub.MailboxKind.Crew = 1 -> Orkeon.Application.EventHub.MailboxKind
 Orkeon.Application.EventHub.MailboxKind.Topic = 2 -> Orkeon.Application.EventHub.MailboxKind
 Orkeon.Application.EventHub.Message
@@ -2935,6 +2961,9 @@ Orkeon.Application.EventHub.Message.TargetMailbox.init -> void
 Orkeon.Application.EventHub.Message.Topic.get -> string!
 Orkeon.Application.EventHub.Message.Topic.init -> void
 Orkeon.Application.EventHub.MessageId
+Orkeon.Application.EventHub.PermissiveCrewLinkPolicy
+Orkeon.Application.EventHub.PermissiveCrewLinkPolicy.AllowsUndeclared.get -> bool
+Orkeon.Application.EventHub.PermissiveCrewLinkPolicy.PermissiveCrewLinkPolicy() -> void
 Orkeon.Application.EventHub.PublishOptions
 Orkeon.Application.EventHub.PublishOptions.<Clone>$() -> Orkeon.Application.EventHub.PublishOptions!
 Orkeon.Application.EventHub.PublishOptions.Equals(Orkeon.Application.EventHub.PublishOptions? other) -> bool
@@ -2949,6 +2978,9 @@ Orkeon.Application.EventHub.PublishOptions.SchemaId.get -> string?
 Orkeon.Application.EventHub.PublishOptions.SchemaId.init -> void
 Orkeon.Application.EventHub.PublishOptions.TargetCrewId.get -> Orkeon.Domain.Common.CrewId?
 Orkeon.Application.EventHub.PublishOptions.TargetCrewId.init -> void
+Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy
+Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy.AllowsUndeclared.get -> bool
+Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy.RestrictiveCrewLinkPolicy() -> void
 Orkeon.Application.EventHub.WaitDescriptor
 Orkeon.Application.EventHub.WaitDescriptor.WaitDescriptor(Orkeon.Application.EventHub.WaitDescriptor! original) -> void
 Orkeon.Application.EventHub.WaitOnMailbox
@@ -6368,6 +6400,24 @@ Orkeon.Application.Validation.ValidationResult.IsValid.get -> bool
 Orkeon.Application.Validation.ValidationResult.IsValid.init -> void
 Orkeon.Application.Validation.ValidationResult.ValidationResult(Orkeon.Application.Validation.ValidationResult! original) -> void
 Orkeon.Application.Validation.ValidationResult.ValidationResult(bool IsValid, System.Collections.Generic.IReadOnlyList<string!>! Errors) -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.<Clone>$() -> Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.A2ATaskRecord() -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.CreatedAt.get -> System.DateTime
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.CreatedAt.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Equals(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? other) -> bool
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Error.get -> string?
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Error.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Output.get -> string?
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Output.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.SkillId.get -> string?
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.SkillId.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Status.get -> Orkeon.Application.Interfaces.AgentCommunication.A2ATaskStatus
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Status.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.TaskId.get -> string!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.TaskId.init -> void
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.UpdatedAt.get -> System.DateTime
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.UpdatedAt.init -> void
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest.<Clone>$() -> Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest!
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest.A2ATaskRequest() -> void
@@ -6428,6 +6478,9 @@ Orkeon.Application.Validation.ValidationResult.ValidationResult(bool IsValid, Sy
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2AServer.StopAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter.RouteTaskAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse!>!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore.GetAsync(string! taskId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord?>!
+[ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore.SaveAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord! record, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IAgentRegistrationStore
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IAgentRegistrationStore.Contains(Orkeon.Domain.Common.AgentId! id) -> bool
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IAgentRegistrationStore.Count.get -> int
@@ -6436,6 +6489,9 @@ Orkeon.Application.Validation.ValidationResult.ValidationResult(bool IsValid, Sy
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IAgentRegistrationStore.Save(Orkeon.Domain.Agent.Agent! agent) -> void
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IAgentRegistrationStore.Snapshot() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>!
 [ORKEXP001]Orkeon.Application.Interfaces.AgentCommunication.IAgentRegistrationStore.TryAdd(Orkeon.Domain.Agent.Agent! agent) -> bool
+[ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.Equals(object? obj) -> bool
+[ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.GetHashCode() -> int
+[ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.ToString() -> string!
 [ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest.Equals(object? obj) -> bool
 [ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest.GetHashCode() -> int
 [ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest.ToString() -> string!
@@ -6445,6 +6501,8 @@ Orkeon.Application.Validation.ValidationResult.ValidationResult(bool IsValid, Sy
 [ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskUpdate.Equals(object? obj) -> bool
 [ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskUpdate.GetHashCode() -> int
 [ORKEXP001]override Orkeon.Application.Interfaces.AgentCommunication.A2ATaskUpdate.ToString() -> string!
+[ORKEXP001]static Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.operator !=(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? left, Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? right) -> bool
+[ORKEXP001]static Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord.operator ==(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? left, Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord? right) -> bool
 [ORKEXP001]static Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest.operator !=(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest? left, Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest? right) -> bool
 [ORKEXP001]static Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest.operator ==(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest? left, Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest? right) -> bool
 [ORKEXP001]static Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse.operator !=(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse? left, Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse? right) -> bool
@@ -6548,6 +6606,7 @@ const Orkeon.Application.Constants.Resilience.RetryDefaults.MaxJitterMillisecond
 const Orkeon.Application.Constants.Resilience.RetryDefaults.QuotaExceededDelayMinutes = 5 -> int
 const Orkeon.Application.Constants.Resilience.RetryDefaults.RateLimitDelayMinutes = 1 -> int
 const Orkeon.Application.Constants.Resilience.RetryDefaults.TimeoutRetryDelaySeconds = 5 -> int
+const Orkeon.Application.EventHub.Message.NoDeclaredSchemaId = "application/json" -> string!
 override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.Equals(object? obj) -> bool
 override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.GetHashCode() -> int
 override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.ToString() -> string!
@@ -7771,6 +7830,7 @@ static Orkeon.Application.EventHub.CrewEventBinding.operator !=(Orkeon.Applicati
 static Orkeon.Application.EventHub.CrewEventBinding.operator ==(Orkeon.Application.EventHub.CrewEventBinding? left, Orkeon.Application.EventHub.CrewEventBinding? right) -> bool
 static Orkeon.Application.EventHub.CrewEventContext.operator !=(Orkeon.Application.EventHub.CrewEventContext? left, Orkeon.Application.EventHub.CrewEventContext? right) -> bool
 static Orkeon.Application.EventHub.CrewEventContext.operator ==(Orkeon.Application.EventHub.CrewEventContext? left, Orkeon.Application.EventHub.CrewEventContext? right) -> bool
+static Orkeon.Application.EventHub.CrewLinkMailboxExtensions.Matches(this Orkeon.Domain.EventHub.CrewLink! link, Orkeon.Application.EventHub.MailboxAddress! target) -> bool
 static Orkeon.Application.EventHub.EventHubCaller.operator !=(Orkeon.Application.EventHub.EventHubCaller? left, Orkeon.Application.EventHub.EventHubCaller? right) -> bool
 static Orkeon.Application.EventHub.EventHubCaller.operator ==(Orkeon.Application.EventHub.EventHubCaller? left, Orkeon.Application.EventHub.EventHubCaller? right) -> bool
 static Orkeon.Application.EventHub.FiniteWaitTimeout.Of(System.TimeSpan duration) -> Orkeon.Application.EventHub.FiniteWaitTimeout!
@@ -7787,8 +7847,10 @@ static Orkeon.Application.EventHub.Message.operator ==(Orkeon.Application.EventH
 static Orkeon.Application.EventHub.MessageId.From(System.Ulid value) -> Orkeon.Application.EventHub.MessageId!
 static Orkeon.Application.EventHub.MessageId.From(string! value) -> Orkeon.Application.EventHub.MessageId!
 static Orkeon.Application.EventHub.MessageId.NewId() -> Orkeon.Application.EventHub.MessageId!
+static Orkeon.Application.EventHub.PermissiveCrewLinkPolicy.Instance.get -> Orkeon.Application.EventHub.PermissiveCrewLinkPolicy!
 static Orkeon.Application.EventHub.PublishOptions.operator !=(Orkeon.Application.EventHub.PublishOptions? left, Orkeon.Application.EventHub.PublishOptions? right) -> bool
 static Orkeon.Application.EventHub.PublishOptions.operator ==(Orkeon.Application.EventHub.PublishOptions? left, Orkeon.Application.EventHub.PublishOptions? right) -> bool
+static Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy.Instance.get -> Orkeon.Application.EventHub.RestrictiveCrewLinkPolicy!
 static Orkeon.Application.EventHub.WaitDescriptor.operator !=(Orkeon.Application.EventHub.WaitDescriptor? left, Orkeon.Application.EventHub.WaitDescriptor? right) -> bool
 static Orkeon.Application.EventHub.WaitDescriptor.operator ==(Orkeon.Application.EventHub.WaitDescriptor? left, Orkeon.Application.EventHub.WaitDescriptor? right) -> bool
 static Orkeon.Application.EventHub.WaitOnMailbox.operator !=(Orkeon.Application.EventHub.WaitOnMailbox? left, Orkeon.Application.EventHub.WaitOnMailbox? right) -> bool

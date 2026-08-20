@@ -189,7 +189,7 @@ Orkeon.Infrastructure.Configuration.CrewFactory
 Orkeon.Infrastructure.Configuration.CrewFactory.CreateFromConfigAsync(Orkeon.Domain.Configuration.CrewConfiguration! config, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
 Orkeon.Infrastructure.Configuration.CrewFactory.CreateFromDirectoryAsync(string! directoryPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
 Orkeon.Infrastructure.Configuration.CrewFactory.CreateFromFileAsync(string! yamlFilePath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
-Orkeon.Infrastructure.Configuration.CrewFactory.CrewFactory(Orkeon.Application.Interfaces.ICrewDefinitionLoader! loader, Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Configuration.CrewFactory!>! logger, Orkeon.Domain.Crew.ICrewRepository! crewRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Domain.Task.ITaskRepository! taskRepository, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.CrewFactoryOptions!>? options = null, Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null) -> void
+Orkeon.Infrastructure.Configuration.CrewFactory.CrewFactory(Orkeon.Application.Interfaces.ICrewDefinitionLoader! loader, Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Configuration.CrewFactory!>! logger, Orkeon.Domain.Crew.ICrewRepository! crewRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Domain.Task.ITaskRepository! taskRepository, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.CrewFactoryOptions!>? options = null, Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null, Orkeon.Application.EventHub.ICrewLinkRegistry? linkRegistry = null) -> void
 Orkeon.Infrastructure.Configuration.CrewFactoryOptions
 Orkeon.Infrastructure.Configuration.CrewFactoryOptions.CrewFactoryOptions() -> void
 Orkeon.Infrastructure.Configuration.CrewFactoryOptions.PrepareRagCollections.get -> bool
@@ -208,6 +208,8 @@ Orkeon.Infrastructure.Configuration.CrewMappingSettings.Goal.get -> string?
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Goal.init -> void
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.GraphConfig.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.GraphConfig.init -> void
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Links.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.LinkYamlConfig!>?
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Links.init -> void
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.ManagerAgent.get -> string?
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.ManagerAgent.init -> void
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Memory.get -> bool?
@@ -232,6 +234,8 @@ Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Goal.get -> string?
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Goal.set -> void
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.GraphConfig.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.GraphConfig.set -> void
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Links.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.LinkYamlConfig!>?
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Links.set -> void
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Llm.get -> Orkeon.Infrastructure.Configuration.LlmYamlConfig?
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Llm.set -> void
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.ManagerAgent.get -> string?
@@ -260,6 +264,8 @@ Orkeon.Infrastructure.Configuration.CrewYamlConfig.Goal.get -> string?
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Goal.set -> void
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.GraphConfig.get -> Orkeon.Infrastructure.Configuration.GraphYamlConfig?
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.GraphConfig.set -> void
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Links.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.LinkYamlConfig!>?
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Links.set -> void
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Llm.get -> Orkeon.Infrastructure.Configuration.LlmYamlConfig?
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Llm.set -> void
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.ManagerAgent.get -> string?
@@ -329,6 +335,14 @@ Orkeon.Infrastructure.Configuration.GuardrailsYamlConfig.Rules.get -> System.Col
 Orkeon.Infrastructure.Configuration.GuardrailsYamlConfig.Rules.set -> void
 Orkeon.Infrastructure.Configuration.GuardrailsYamlConfig.ToolRules.get -> System.Collections.Generic.Dictionary<string!, System.Collections.Generic.List<string!>!>?
 Orkeon.Infrastructure.Configuration.GuardrailsYamlConfig.ToolRules.set -> void
+Orkeon.Infrastructure.Configuration.LinkYamlConfig
+Orkeon.Infrastructure.Configuration.LinkYamlConfig.AllowedTopics.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.LinkYamlConfig.AllowedTopics.set -> void
+Orkeon.Infrastructure.Configuration.LinkYamlConfig.Direction.get -> string?
+Orkeon.Infrastructure.Configuration.LinkYamlConfig.Direction.set -> void
+Orkeon.Infrastructure.Configuration.LinkYamlConfig.LinkYamlConfig() -> void
+Orkeon.Infrastructure.Configuration.LinkYamlConfig.To.get -> string?
+Orkeon.Infrastructure.Configuration.LinkYamlConfig.To.set -> void
 Orkeon.Infrastructure.Configuration.LlmOverrideYamlConfig
 Orkeon.Infrastructure.Configuration.LlmOverrideYamlConfig.LlmOverrideYamlConfig() -> void
 Orkeon.Infrastructure.Configuration.LlmOverrideYamlConfig.MaxTokens.get -> int?
@@ -543,7 +557,7 @@ Orkeon.Infrastructure.Consensus.ConsensualProcessOptions.RoleWeights.get -> Syst
 Orkeon.Infrastructure.Consensus.ConsensualProcessOptions.VotingOptions.get -> Orkeon.Application.Interfaces.VotingOptions!
 Orkeon.Infrastructure.Consensus.ConsensualProcessOptions.VotingOptions.set -> void
 Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy
-Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy.ConsensualProcessStrategy(Orkeon.Application.Interfaces.IVotingStrategy! votingStrategy, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy!>! logger, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Consensus.ConsensualProcessOptions!>! options) -> void
+Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy.ConsensualProcessStrategy(Orkeon.Application.Interfaces.IVotingStrategy! votingStrategy, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy!>! logger, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Consensus.ConsensualProcessOptions!>! options, Orkeon.Application.Crew.ICrewExecutionHook? hook = null) -> void
 Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy.ExecuteAutonomousAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Autonomous.AgentExecutionBudget! budget, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy.ExecuteConsensualAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy.ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Common.AgentId! managerAgentId, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
@@ -664,7 +678,7 @@ Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.ExecuteAutonomousAsyn
 Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Common.AgentId! managerAgentId, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.ExecuteParallelAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.ExecuteSequentialAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
-Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.GraphProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider! delegationProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy!>! logger) -> void
+Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.GraphProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider! delegationProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy!>! logger, Orkeon.Application.Crew.ICrewExecutionHook? hook = null) -> void
 Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.MaxRetryCycles.get -> int
 Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.MaxRetryCycles.init -> void
 Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy
@@ -672,13 +686,13 @@ Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy.ExecuteAutonom
 Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy.ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Common.AgentId! managerAgentId, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy.ExecuteParallelAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy.ExecuteSequentialAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
-Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy.HierarchicalProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy!>! logger, Orkeon.Application.Interfaces.IManagerAgent! managerAgent, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope) -> void
+Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy.HierarchicalProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.HierarchicalProcessStrategy!>! logger, Orkeon.Application.Interfaces.IManagerAgent! managerAgent, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Orkeon.Application.Crew.ICrewExecutionHook? hook = null) -> void
 Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy
 Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ExecuteAutonomousAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Autonomous.AgentExecutionBudget! budget, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Common.AgentId! managerAgentId, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ExecuteParallelAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ExecuteSequentialAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
-Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ParallelProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy!>! logger) -> void
+Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ParallelProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy!>! logger, Orkeon.Application.Crew.ICrewExecutionHook? hook = null) -> void
 Orkeon.Infrastructure.Crew.Strategies.ProcessStrategyFactory
 Orkeon.Infrastructure.Crew.Strategies.ProcessStrategyFactory.CreateStrategy(Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! processType) -> Orkeon.Domain.Crew.IProcessStrategy!
 Orkeon.Infrastructure.Crew.Strategies.ProcessStrategyFactory.ProcessStrategyFactory(System.IServiceProvider! serviceProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.ProcessStrategyFactory!>! logger) -> void
@@ -923,10 +937,14 @@ Orkeon.Infrastructure.EventHub.DefaultEventHubCallerContext.DefaultEventHubCalle
 Orkeon.Infrastructure.EventHub.DefaultEventHubCallerContext.Push(Orkeon.Application.EventHub.EventHubCaller! caller) -> System.IDisposable!
 Orkeon.Infrastructure.EventHub.DependencyInjection.EventHubServiceCollectionExtensions
 Orkeon.Infrastructure.EventHub.EventHubBudgetExtensions
+Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry
+Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry.InMemoryCrewLinkRegistry() -> void
+Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry.LinksFor(Orkeon.Domain.Common.CrewId! source) -> System.Collections.Immutable.ImmutableArray<Orkeon.Domain.EventHub.CrewLink!>
+Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry.Register(Orkeon.Domain.Common.CrewId! crew, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.EventHub.CrewLink!>! links) -> void
 Orkeon.Infrastructure.EventHub.InMemoryEventHub
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.Dispose() -> void
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.GetLastValueAsync(string! key, Orkeon.Domain.Common.CrewId? crewScope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message?>!
-Orkeon.Infrastructure.EventHub.InMemoryEventHub.InMemoryEventHub(Orkeon.Application.EventHub.IEventHubCallerContext! callerContext, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.EventHub.InMemoryEventHub!>! logger) -> void
+Orkeon.Infrastructure.EventHub.InMemoryEventHub.InMemoryEventHub(Orkeon.Application.EventHub.IEventHubCallerContext! callerContext, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.EventHub.InMemoryEventHub!>! logger, System.Collections.Generic.IEnumerable<Orkeon.Application.EventHub.IEventHubMiddleware!>? middlewares = null) -> void
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.PostAsync(Orkeon.Application.EventHub.MailboxAddress! recipient, object! payload, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.RegisterMailbox(Orkeon.Application.EventHub.MailboxAddress! address) -> System.IDisposable!
@@ -938,6 +956,14 @@ Orkeon.Infrastructure.EventHub.InMemoryEventSchemaRegistry
 Orkeon.Infrastructure.EventHub.InMemoryEventSchemaRegistry.GetAsync(string! schemaId, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Text.Json.Nodes.JsonNode?>!
 Orkeon.Infrastructure.EventHub.InMemoryEventSchemaRegistry.InMemoryEventSchemaRegistry() -> void
 Orkeon.Infrastructure.EventHub.InMemoryEventSchemaRegistry.RegisterAsync(string! schemaId, System.Text.Json.Nodes.JsonNode! schema, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware
+Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware.IdempotencyEventHubMiddleware(int capacity = 10000) -> void
+Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware.OnPublishAsync(Orkeon.Application.EventHub.Message! message, System.Func<Orkeon.Application.EventHub.Message!, System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!>! nextHandler, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
+Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware.OnReceiveAsync(Orkeon.Application.EventHub.Message! message, System.Func<Orkeon.Application.EventHub.Message!, System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!>! nextHandler, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
+Orkeon.Infrastructure.EventHub.Middleware.ValidationEventHubMiddleware
+Orkeon.Infrastructure.EventHub.Middleware.ValidationEventHubMiddleware.OnPublishAsync(Orkeon.Application.EventHub.Message! message, System.Func<Orkeon.Application.EventHub.Message!, System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!>! nextHandler, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
+Orkeon.Infrastructure.EventHub.Middleware.ValidationEventHubMiddleware.OnReceiveAsync(Orkeon.Application.EventHub.Message! message, System.Func<Orkeon.Application.EventHub.Message!, System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!>! nextHandler, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
+Orkeon.Infrastructure.EventHub.Middleware.ValidationEventHubMiddleware.ValidationEventHubMiddleware(Orkeon.Application.EventHub.IEventSchemaRegistry! schemas) -> void
 Orkeon.Infrastructure.EventHub.WaitTimedOutMessageFactory
 Orkeon.Infrastructure.FileSystem.FileSystemService
 Orkeon.Infrastructure.FileSystem.FileSystemService.AppendAllTextAsync(string! virtualPath, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<int>!
@@ -1230,6 +1256,10 @@ Orkeon.Infrastructure.LLMs.Embeddings.UnconfiguredEmbeddingProvider.Name.get -> 
 Orkeon.Infrastructure.LLMs.Embeddings.UnconfiguredEmbeddingProvider.UnconfiguredEmbeddingProvider(string? message = null) -> void
 Orkeon.Infrastructure.LLMs.Embeddings.VectorSearchServiceExtensions
 Orkeon.Infrastructure.LLMs.Extensions.LlmProviderExtensions
+Orkeon.Infrastructure.LLMs.GeminiLlmProvider
+Orkeon.Infrastructure.LLMs.GeminiLlmProvider.GeminiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GeminiLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.GeminiLlmProvider.GeminiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GeminiLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.GeminiLlmProvider.GeminiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GeminiLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.GroqLlmProvider
 Orkeon.Infrastructure.LLMs.GroqLlmProvider.GroqLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GroqLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.GroqLlmProvider.GroqLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GroqLlmProvider!>? logger = null) -> void
@@ -1682,6 +1712,8 @@ Orkeon.Infrastructure.Monitoring.MonitoringOptions.MaxTraceHistory.set -> void
 Orkeon.Infrastructure.Monitoring.MonitoringOptions.MetricsRetentionMinutes.get -> int
 Orkeon.Infrastructure.Monitoring.MonitoringOptions.MetricsRetentionMinutes.set -> void
 Orkeon.Infrastructure.Monitoring.MonitoringOptions.MonitoringOptions() -> void
+Orkeon.Infrastructure.Monitoring.MonitoringOptions.TraceSourcePrefix.get -> string!
+Orkeon.Infrastructure.Monitoring.MonitoringOptions.TraceSourcePrefix.set -> void
 Orkeon.Infrastructure.Monitoring.TraceExplorerService
 Orkeon.Infrastructure.Monitoring.TraceExplorerService.Dispose() -> void
 Orkeon.Infrastructure.Monitoring.TraceExplorerService.GetRecentTracesAsync(int limit = 50, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Monitoring.TraceInfo!>!>!
@@ -2841,8 +2873,8 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions.TrustedCertificateAuthorities.get -> System.Collections.ObjectModel.Collection<string!>!
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions.TrustedClientCertificateThumbprints.get -> System.Collections.ObjectModel.Collection<string!>!
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer
-[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2AOptions!>! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions!>? security = null) -> void
-[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Orkeon.Infrastructure.AgentCommunication.A2AOptions! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions? security = null) -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2AOptions!>! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions!>? security = null, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore? taskStore = null) -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Orkeon.Infrastructure.AgentCommunication.A2AOptions! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions? security = null, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore? taskStore = null) -> void
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.Dispose() -> void
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.DisposeAsync() -> System.Threading.Tasks.ValueTask
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.IsRunning.get -> bool
@@ -2851,6 +2883,10 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ATaskRouter
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ATaskRouter.A2ATaskRouter(Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2ATaskRouter!>? logger = null) -> void
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ATaskRouter.RouteTaskAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskResponse!>!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.StateStoreA2ATaskStore
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.StateStoreA2ATaskStore.GetAsync(string! taskId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord?>!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.StateStoreA2ATaskStore.SaveAsync(Orkeon.Application.Interfaces.AgentCommunication.A2ATaskRecord! record, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.StateStoreA2ATaskStore.StateStoreA2ATaskStore(Orkeon.Application.Interfaces.Checkpointing.IStateStore! stateStore) -> void
 [ORKEXP001]const Orkeon.Infrastructure.AgentCommunication.A2AErrorCodes.InternalError = -32603 -> int
 [ORKEXP001]const Orkeon.Infrastructure.AgentCommunication.A2AErrorCodes.InvalidParams = -32602 -> int
 [ORKEXP001]const Orkeon.Infrastructure.AgentCommunication.A2AErrorCodes.InvalidRequest = -32600 -> int
@@ -2860,6 +2896,7 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP001]const Orkeon.Infrastructure.AgentCommunication.A2AErrorCodes.TaskNotFound = -32001 -> int
 [ORKEXP001]static Orkeon.Infrastructure.AgentCommunication.A2AExtensions.AddOrkeonA2A(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 [ORKEXP001]static Orkeon.Infrastructure.AgentCommunication.A2AExtensions.AddOrkeonA2A(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Orkeon.Infrastructure.AgentCommunication.A2AOptions!>? configure = null, System.Action<Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions!>? configureSecurity = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+[ORKEXP001]static Orkeon.Infrastructure.AgentCommunication.A2AExtensions.AddOrkeonA2ATaskPersistence(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 [ORKEXP001]static Orkeon.Infrastructure.AgentCommunication.A2ASecurityHandlerFactory.CreateAsync(Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions? security, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Logging.ILogger? logger = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Net.Http.SocketsHttpHandler!>!
 [ORKEXP001]virtual Orkeon.Infrastructure.AgentCommunication.A2AClient.Dispose(bool disposing) -> void
 [ORKEXP001]virtual Orkeon.Infrastructure.AgentCommunication.A2AServer.Dispose(bool disposing) -> void
@@ -2870,7 +2907,7 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP002]Orkeon.Infrastructure.Communication.InMemoryAgentChannel.RegisterHandler(Orkeon.Domain.Common.AgentId! agentId, System.Func<Orkeon.Application.Interfaces.Services.AgentChannelRequest!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.AgentChannelResponse!>!>! handler) -> System.IDisposable!
 [ORKEXP002]Orkeon.Infrastructure.Communication.InMemoryAgentChannel.RequestAsync(Orkeon.Application.Interfaces.Services.AgentChannelRequest! request, System.TimeSpan? timeout = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.AgentChannelResponse!>!
 [ORKEXP002]Orkeon.Infrastructure.Crew.Strategies.AutonomousProcessStrategy
-[ORKEXP002]Orkeon.Infrastructure.Crew.Strategies.AutonomousProcessStrategy.AutonomousProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Services.IAgentChannel! channel, Orkeon.Application.Interfaces.IManagerAgent! managerAgent, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.AutonomousProcessStrategy!>! logger) -> void
+[ORKEXP002]Orkeon.Infrastructure.Crew.Strategies.AutonomousProcessStrategy.AutonomousProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Services.IAgentChannel! channel, Orkeon.Application.Interfaces.IManagerAgent! managerAgent, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.AutonomousProcessStrategy!>! logger, Orkeon.Application.Crew.ICrewExecutionHook? hook = null) -> void
 [ORKEXP002]Orkeon.Infrastructure.Crew.Strategies.AutonomousProcessStrategy.ExecuteAutonomousAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Autonomous.AgentExecutionBudget! budget, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 [ORKEXP002]Orkeon.Infrastructure.Crew.Strategies.AutonomousProcessStrategy.ExecuteHierarchicalAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Common.AgentId! managerAgentId, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 [ORKEXP002]Orkeon.Infrastructure.Crew.Strategies.AutonomousProcessStrategy.ExecuteParallelAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
@@ -2932,6 +2969,7 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpTransport
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpTransport.ConnectAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpTransport.IsConnected.get -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.IMcpTransport.SendNotificationAsync(Orkeon.Infrastructure.MCP.JsonRpcNotification! notification, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.IMcpTransport.SendRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.Code.get -> int
@@ -2952,7 +2990,7 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.Params.get -> System.Text.Json.JsonElement?
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.Params.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest
-[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.get -> int?
+[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.get -> System.Text.Json.JsonElement?
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.JsonRpcRequest() -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Jsonrpc.get -> string!
@@ -2964,7 +3002,7 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Error.get -> Orkeon.Infrastructure.MCP.JsonRpcError?
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Error.set -> void
-[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.get -> int?
+[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.get -> System.Text.Json.JsonElement?
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.JsonRpcResponse() -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Jsonrpc.get -> string!
@@ -2978,12 +3016,15 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.CallToolAsync(string! name, System.Text.Json.JsonElement? arguments = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpToolCallResult!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.Capabilities.get -> Orkeon.Infrastructure.MCP.McpServerCapabilities?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ConnectAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.DisposeAsync() -> System.Threading.Tasks.ValueTask
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.Era.get -> Orkeon.Infrastructure.MCP.McpProtocolEra
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.InitializeAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpInitializeResult!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.IsInitialized.get -> bool
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ListResourcesAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpResource!>!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ListToolsAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpToolDefinition!>!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.McpClient(Orkeon.Infrastructure.MCP.IMcpTransport! transport, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpClient!>? logger = null) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.NegotiatedVersion.get -> string!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ReadResourceAsync(System.Uri! uri, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.McpToolCallResult!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpClient.ServerInfo.get -> Orkeon.Infrastructure.MCP.McpServerInfo?
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpContent
@@ -2996,6 +3037,23 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpContent.Text.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpContent.Type.get -> string!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpContent.Type.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.CacheScope.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.CacheScope.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Capabilities.get -> Orkeon.Infrastructure.MCP.McpServerCapabilities!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Capabilities.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Instructions.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Instructions.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.McpDiscoverResult() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Meta.get -> System.Text.Json.JsonElement?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.Meta.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.ResultType.get -> string!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.ResultType.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.SupportedVersions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.SupportedVersions.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.TtlMs.get -> long?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpDiscoverResult.TtlMs.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpErrorCodes
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpInitializeResult
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpInitializeResult.Capabilities.get -> Orkeon.Infrastructure.MCP.McpServerCapabilities!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpInitializeResult.Capabilities.set -> void
@@ -3011,6 +3069,11 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpOptions.Enabled.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpOptions.McpOptions() -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpOptions.Servers.get -> System.Collections.Generic.Dictionary<string!, Orkeon.Infrastructure.MCP.McpServerConfig!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocol
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocolEra
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocolEra.Legacy = 2 -> Orkeon.Infrastructure.MCP.McpProtocolEra
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocolEra.Modern = 1 -> Orkeon.Infrastructure.MCP.McpProtocolEra
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpProtocolEra.Unknown = 0 -> Orkeon.Infrastructure.MCP.McpProtocolEra
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpResource
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpResource.Description.get -> string?
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpResource.Description.set -> void
@@ -3028,7 +3091,7 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServer
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.MCP.McpServerOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.McpServer(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Orkeon.Infrastructure.MCP.McpServerOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.McpServer!>? logger = null) -> void
-[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.ProcessRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.ProcessRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse?>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.RunStdioAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerCapabilities
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerCapabilities.McpServerCapabilities() -> void
@@ -3094,6 +3157,8 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolCallResult.IsError.get -> bool?
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolCallResult.IsError.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolCallResult.McpToolCallResult() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolCallResult.ResultType.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolCallResult.ResultType.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition.Description.get -> string!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition.Description.set -> void
@@ -3103,9 +3168,17 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition.Name.get -> string!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition.Name.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.CacheScope.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.CacheScope.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.McpToolListResult() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.Meta.get -> System.Text.Json.JsonElement?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.Meta.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.ResultType.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.ResultType.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpToolDefinition!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.Tools.init -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.TtlMs.get -> long?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolListResult.TtlMs.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.McpServerConfig! config, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -3120,12 +3193,14 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.ConnectAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.DisposeAsync() -> System.Threading.Tasks.ValueTask
 [ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.IsConnected.get -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SendNotificationAsync(Orkeon.Infrastructure.MCP.JsonRpcNotification! notification, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SendRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.SseMcpTransport.SseMcpTransport(System.Uri! url, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.SseMcpTransport!>? logger = null) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport
 [ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.ConnectAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.DisposeAsync() -> System.Threading.Tasks.ValueTask
 [ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.IsConnected.get -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.SendNotificationAsync(Orkeon.Infrastructure.MCP.JsonRpcNotification! notification, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.SendRequestAsync(Orkeon.Infrastructure.MCP.JsonRpcRequest! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.MCP.JsonRpcResponse!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.StdioMcpTransport(Orkeon.Infrastructure.MCP.McpServerConfig! config, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.StdioMcpTransport!>? logger = null) -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.StdioMcpTransport.StdioMcpTransport(System.Diagnostics.Process! process, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.MCP.StdioMcpTransport!>? logger = null) -> void
@@ -3134,9 +3209,26 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.InvalidRequest = -32600 -> int
 [ORKEXP004]const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.MethodNotFound = -32601 -> int
 [ORKEXP004]const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.ParseError = -32700 -> int
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpErrorCodes.HeaderMismatch = -32020 -> int
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpErrorCodes.MissingRequiredClientCapability = -32021 -> int
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpErrorCodes.UnsupportedProtocolVersion = -32022 -> int
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MetaClientCapabilities = "io.modelcontextprotocol/clientCapabilities" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MetaClientInfo = "io.modelcontextprotocol/clientInfo" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MetaProtocolVersion = "io.modelcontextprotocol/protocolVersion" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MetaServerInfo = "io.modelcontextprotocol/serverInfo" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.MethodHeader = "Mcp-Method" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.ModernVersion = "2026-07-28" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.NameHeader = "Mcp-Name" -> string!
+[ORKEXP004]const Orkeon.Infrastructure.MCP.McpProtocol.ProtocolVersionHeader = "MCP-Protocol-Version" -> string!
+[ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.BuildParamsWithMeta(object? parameters, string! protocolVersion, string! clientName, string! clientVersion) -> System.Text.Json.JsonElement
+[ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.CreateUnsupportedVersionError(string! requested) -> Orkeon.Infrastructure.MCP.JsonRpcError!
+[ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.ReadSupportedVersionsFromError(Orkeon.Infrastructure.MCP.JsonRpcError! error) -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP004]static Orkeon.Infrastructure.MCP.McpProtocol.TryReadRequestedVersion(System.Text.Json.JsonElement? parameters) -> string?
 [ORKEXP004]static Orkeon.Infrastructure.MCP.McpServer.ConvertToolSchemaToJsonSchema(Orkeon.Domain.Tools.Protocol.ToolSchema! schema) -> System.Text.Json.JsonElement?
 [ORKEXP004]static Orkeon.Infrastructure.MCP.McpServiceExtensions.AddOrkeonMcp(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 [ORKEXP004]static Orkeon.Infrastructure.MCP.McpToolAdapter.ConvertToToolSchema(Orkeon.Infrastructure.MCP.McpToolDefinition! definition) -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+[ORKEXP004]static readonly Orkeon.Infrastructure.MCP.McpProtocol.SupportedLegacyVersions -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP004]static readonly Orkeon.Infrastructure.MCP.McpProtocol.SupportedVersions -> System.Collections.Generic.IReadOnlyList<string!>!
 abstract Orkeon.Infrastructure.Evaluation.Base.EvaluatorBase<TInput, TResult>.BuildParametersFromInput(Orkeon.Application.Evaluation.EvaluationInput! input) -> System.Collections.Generic.Dictionary<string!, object?>!
 abstract Orkeon.Infrastructure.Evaluation.Base.EvaluatorBase<TInput, TResult>.Description.get -> string!
 abstract Orkeon.Infrastructure.Evaluation.Base.EvaluatorBase<TInput, TResult>.ExtractScore(TResult! result) -> double
@@ -3179,6 +3271,7 @@ const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.SseDoneMarker = "[DONE]" 
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Anthropic = "https://api.anthropic.com" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.ChromaDbDefault = "http://localhost:8000" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.DeepSeek = "https://api.deepseek.com" -> string!
+const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Gemini = "https://generativelanguage.googleapis.com/v1beta/openai" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Groq = "https://api.groq.com/openai/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.HuggingFace = "https://router.huggingface.co/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Kimi = "https://api.moonshot.ai/v1" -> string!
@@ -3222,6 +3315,7 @@ const Orkeon.Infrastructure.Constants.Security.TokenBudgetDefaults.PerAgentToken
 const Orkeon.Infrastructure.Constants.Security.TokenBudgetDefaults.PerCrewTokenBudget = 500000 -> int
 const Orkeon.Infrastructure.Evaluation.Evaluators.SchemaComplianceEvaluator.SchemaMetadataKey = "expected_schema" -> string!
 const Orkeon.Infrastructure.Evaluation.Evaluators.ToolAccuracyEvaluator.ExpectedToolsKey = "expected_tools" -> string!
+const Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware.DefaultCapacity = 10000 -> int
 const Orkeon.Infrastructure.EventHub.WaitTimedOutMessageFactory.ReservedTopic = "_system.wait_timed_out" -> string!
 const Orkeon.Infrastructure.EventHub.WaitTimedOutMessageFactory.SchemaId = "_system/wait_timed_out/v1" -> string!
 const Orkeon.Infrastructure.LLMs.Embeddings.DefaultEmbeddingProviderResolver.EmbeddingCacheSectionKey = "Orkeon:EmbeddingCache" -> string!
@@ -3391,6 +3485,11 @@ override Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.DefaultModel.get -> stri
 override Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.ExtractResponseMetadata(System.Text.Json.JsonDocument! doc, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
 override Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.GeminiLlmProvider.ProviderDisplayName.get -> string!
 override Orkeon.Infrastructure.LLMs.GroqLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 override Orkeon.Infrastructure.LLMs.GroqLlmProvider.DefaultBaseUrl.get -> System.Uri!
 override Orkeon.Infrastructure.LLMs.GroqLlmProvider.DefaultModel.get -> string!
@@ -3727,6 +3826,11 @@ static Orkeon.Infrastructure.Evaluation.Evaluators.ToolAccuracyResult.operator =
 static Orkeon.Infrastructure.Evaluation.LlmJudge.LlmJudgeEvaluatorBase.JudgeInstructionSuffix.get -> string!
 static Orkeon.Infrastructure.Evaluation.ReportExporter.ToMarkdown(Orkeon.Application.Evaluation.BenchmarkReport! report) -> string!
 static Orkeon.Infrastructure.Evaluation.ReportExporter.ToMarkdown(Orkeon.Infrastructure.Evaluation.ComparisonResult! comparison) -> string!
+static Orkeon.Infrastructure.EventHub.DependencyInjection.EventHubServiceCollectionExtensions.AddEventHubMiddleware<TMiddleware>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Infrastructure.EventHub.DependencyInjection.EventHubServiceCollectionExtensions.AddOrkeonEventHubAcl(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Application.EventHub.ICrewLinkPolicy? policy = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Infrastructure.EventHub.DependencyInjection.EventHubServiceCollectionExtensions.AddOrkeonEventHubIdempotency(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, int capacity = 10000) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Infrastructure.EventHub.DependencyInjection.EventHubServiceCollectionExtensions.AddOrkeonEventHubObservability(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Infrastructure.EventHub.DependencyInjection.EventHubServiceCollectionExtensions.AddOrkeonEventHubValidation(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.EventHub.DependencyInjection.EventHubServiceCollectionExtensions.AddOrkeonInMemoryEventHub(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.EventHub.EventHubBudgetExtensions.WaitForAsync(this Orkeon.Application.EventHub.IEventHub! hub, Orkeon.Application.EventHub.WaitDescriptor! descriptor, Orkeon.Application.EventHub.WaitTimeout! timeout, Orkeon.Domain.Autonomous.AgentExecutionBudget! budget, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
 static Orkeon.Infrastructure.EventHub.EventHubBudgetExtensions.WaitForAsync(this Orkeon.Application.EventHub.IEventHub! hub, Orkeon.Application.EventHub.WaitDescriptor! descriptor, Orkeon.Application.EventHub.WaitTimeout! timeout, Orkeon.Domain.Autonomous.AgentExecutionBudget! budget, System.TimeSpan pollInterval, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
@@ -3889,6 +3993,7 @@ static readonly Orkeon.Infrastructure.Serialization.JsonComponentSerializer.Inst
 static readonly Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AgentSource -> System.Diagnostics.ActivitySource!
 static readonly Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AllSourceNames -> string![]!
 static readonly Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.CrewSource -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.EventHubSource -> System.Diagnostics.ActivitySource!
 static readonly Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.LlmSource -> System.Diagnostics.ActivitySource!
 static readonly Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.MemorySource -> System.Diagnostics.ActivitySource!
 static readonly Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.TaskSource -> System.Diagnostics.ActivitySource!

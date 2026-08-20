@@ -61,6 +61,68 @@ Docs: [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.m
 the `orkeon forge` section of the CLI reference, and `examples/forge/promote-demo/` — a
 bundled ready session whose `list`/`promote` half runs with no LLM at all.
 
+### Added — Watch a run, talk to it, host it: the event bus, the hub pipeline, the service host (BUS, HUB, GATE)
+
+Three chantiers that share one goal: a crew you can see, answer and reach from outside the
+process it runs in.
+
+**`orkeon run --events jsonl`** speaks a versioned protocol instead of printing for a person —
+one JSON document per line out, one per line back. Task completions in **all six orchestration
+modes** (no mode is second-class), cost, generation deltas under `--stream`, tool calls,
+delegations and runtime agent spawns. Tool events come from a single decorator applied where
+tools enter the process, so the three agent loops and the scripting facade are covered at once —
+including paths written after it. Contract: [The run event bus](docs/architecture/run-event-bus.md),
+plus a ~90-line dependency-free reader in `examples/run-events/` with a recorded stream to try
+offline.
+
+- **Silence is not consent.** Without the protocol, a task declared `humanInput: true` was
+  auto-approved behind the user's back. Asking for the stream replaces that provider: the
+  question goes out and the run waits. No answer — closed channel, cancelled run — is a
+  **refusal**, never an approval.
+- **Studio's Launch screen stopped being a terminal.** It shows finished tasks, cost and the
+  run's question on screen; the raw log is demoted, not removed. A silent run says "nothing
+  reported yet" rather than implying progress, and a question with no correlation id is not
+  shown as pending, because answering needs an address.
+
+**The EventHub's middleware pipeline** ships complete: logging, telemetry, ACL, idempotency and
+validation, on both the publish and the receive path. The `links:` YAML grammar lets a crew
+declare who it may talk to, and `client://{name}` lets an external process be named — without
+it, a watching peer would escape the ACL by simply not being modelled. Idempotency guards
+point-to-point delivery only: deduplicating a topic message by identifier would starve every
+subscriber but the first. Its memory does not survive the process, which is stated rather than
+implied.
+
+**`orkeon-host`** hosts crews as a daemon — systemd unit, Windows service or container, same
+binary, and runnable in a terminal because a daemon you cannot run in the foreground is one you
+cannot debug. One dependency-injection scope per run, which is what keeps one conversation's
+memory from reaching another's. A Discord channel gives the first place people can reach a crew
+from: allow-list authorization checked **before** routing, thread-is-run mapping, an immediate
+acknowledgement carrying a Stop button, throttled progress, `/status` and `/stop`. An empty
+allow list denies everyone and refuses to start.
+
+It hosts crews; it does not schedule them. rc.2 ships no scheduler, and neither the docs nor the
+systemd unit implies otherwise. Docs:
+[The service host and the chat gateway](docs/architecture/service-host.md) (EN/FR),
+`examples/service-host/`, and `deploy/` for the unit, the SCM script and the Dockerfile.
+
+### Changed — EventHub API surface, and the crew configuration
+
+`CrewLink` and `CrewLinkDirection` live in `Orkeon.Domain.EventHub`: a link is what a crew
+*declares*, not a transport detail. `CrewConfiguration` gained `Links`. `MailboxAddress` gained
+the `client://` scheme. Several constructors gained an optional trailing parameter — the five
+orchestration strategies (`ICrewExecutionHook`), `InMemoryEventHub` (middlewares), `CrewFactory`
+(the link registry) and `RunnerHost.Build` (a builder hook). Source-compatible; recompile.
+
+### Fixed — Two harness defects that were reporting success
+
+`TraceExplorerService` listened to every process-wide `Orkeon` activity source, so a test
+asserting "no traces" was really asserting that no other test emitted one — true by luck, and
+less true as the suite grew. Trace capture is now scopeable via `MonitoringOptions.TraceSourcePrefix`.
+
+The E2E CLI tests rebuilt the CLI on every invocation, and two classes doing that concurrently
+made MSBuild write its diagnostics onto the stream under assertion. The CLI is now built once
+per assembly and run with `--no-build`.
+
 ## [1.0.0-rc.1] - 2026-08-18
 
 Orkeon's first release candidate — the version that goes to NuGet.org. Everything
