@@ -5,6 +5,7 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Orkeon.Domain.Task;
 using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
 using Orkeon.Application.Interfaces;
+using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
@@ -30,6 +31,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     private readonly IManagerAgent _managerAgent;
     private readonly IAgentExecutionService _executionService;
     private readonly IMemoryScope _memoryScope;
+    private readonly CrewHookDispatcher _hooks;
 
     /// <summary>Initializes a new instance of <see cref="HierarchicalProcessStrategy"/>.</summary>
     /// <param name="taskRepository">The task repository.</param>
@@ -44,7 +46,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         ILogger<HierarchicalProcessStrategy> logger,
         IManagerAgent managerAgent,
         IAgentExecutionService executionService,
-        IMemoryScope memoryScope)
+        IMemoryScope memoryScope,
+        ICrewExecutionHook? hook = null)
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -58,6 +61,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         _executionService = executionService;
         ArgumentNullException.ThrowIfNull(memoryScope);
         _memoryScope = memoryScope;
+        _hooks = new CrewHookDispatcher(hook, logger);
     }
 
     /// <inheritdoc />
@@ -109,6 +113,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         var tokenTally = new TokenUsageTally();
 
         var results = new List<DomainTaskOutput>();
+        var taskSnapshots = new List<TaskExecutionSnapshot>();
         foreach (var taskId in crew.Tasks)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -121,7 +126,24 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             results.Add(domainOutput);
             applicationTaskOutputs.Add(appOutput);
             context = updatedContext!;
+
+            var snapshot = new TaskExecutionSnapshot
+            {
+                TaskId = taskId.Value.ToString(),
+                AgentRole = appOutput.AgentId,
+                Success = domainOutput.Success,
+                Duration = domainOutput.ExecutionTime,
+                CompletedAt = DateTimeOffset.UtcNow,
+                ToolCallCount = appOutput.ToolsUsed?.Count ?? 0,
+            };
+            taskSnapshots.Add(snapshot);
+            await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
         }
+
+        await _hooks.CrewCompletedAsync(
+            CrewHookDispatcher.Snapshot(
+                crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Completed),
+            cancellationToken).ConfigureAwait(false);
 
         return BuildCrewOutput(results, workerAgents, managerAgent, crew, startTime, tokenTally);
     }

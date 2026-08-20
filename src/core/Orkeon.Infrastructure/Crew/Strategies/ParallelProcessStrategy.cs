@@ -3,6 +3,7 @@ using Orkeon.Domain.Crew;
 using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Common;
+using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
@@ -26,6 +27,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     private readonly IAgentRepository _agentRepository;
     private readonly IAgentExecutionService _executionService;
     private readonly IMemoryScope _memoryScope;
+    private readonly CrewHookDispatcher _hooks;
     private readonly ILogger<ParallelProcessStrategy> _logger;
 
     /// <summary>Initializes a new instance of <see cref="ParallelProcessStrategy"/>.</summary>
@@ -34,12 +36,14 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// <param name="executionService">The agent execution service.</param>
     /// <param name="memoryScope">The memory scope.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
     public ParallelProcessStrategy(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,
         IAgentExecutionService executionService,
         IMemoryScope memoryScope,
-        ILogger<ParallelProcessStrategy> logger)
+        ILogger<ParallelProcessStrategy> logger,
+        ICrewExecutionHook? hook = null)
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -51,6 +55,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         _memoryScope = memoryScope;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _hooks = new CrewHookDispatcher(hook, logger);
     }
 
     /// <inheritdoc />
@@ -109,6 +114,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             throw new InvalidOperationException("No agents available for parallel execution");
 
         // Load all tasks and create execution pairs, using plan ordering
+        var taskSnapshots = new System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot>();
         var executionTasks = new List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>>();
         var taskIndex = 0;
 
@@ -182,6 +188,19 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
 
                 LogCompletedParallelExecutionOfTask(capturedTask.Id, result.Success);
 
+                var snapshot = new TaskExecutionSnapshot
+                {
+                    TaskId = capturedTask.Id.Value.ToString(),
+                    AgentRole = capturedAgent.Role.Value,
+                    Success = result.Success,
+                    Duration = result.ExecutionTime,
+                    CompletedAt = DateTimeOffset.UtcNow,
+                    ToolCallCount = result.ToolsUsed?.Count ?? 0,
+                    TokensUsed = result.TokensUsed,
+                };
+                taskSnapshots.Add(snapshot);
+                await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
+
                 return (domainOutput, appOutput);
             }));
         }
@@ -196,6 +215,11 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         var allOutputs = string.Join("\n\n", domainResults.Select(r => r.Output));
 
         LogParallelExecutionCompletedForCrew(crew.Id, totalTime);
+
+        await _hooks.CrewCompletedAsync(
+            CrewHookDispatcher.Snapshot(
+                crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Completed),
+            cancellationToken).ConfigureAwait(false);
 
         return DomainCrewOutput.CreateSuccess(
             output: allOutputs,

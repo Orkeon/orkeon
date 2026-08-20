@@ -1,6 +1,7 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.SharedKernel;
@@ -48,9 +49,10 @@ tasks:
 """;
     }
 
-    private static async Task<(CrewOutput Output, StubLlmProvider Stub, StubChatClient Chat)> RunAsync(
+    private static async Task<(CrewOutput Output, StubLlmProvider Stub, StubChatClient Chat, RecordingExecutionHook Hook)> RunAsync(
         string yaml, CancellationToken ct)
     {
+        var hook = new RecordingExecutionHook();
         var stub = new StubLlmProvider().RespondTo(prompt => new LlmResponse
         {
             Content = $"[offline] answer to: {prompt[..Math.Min(40, prompt.Length)]}"
@@ -65,6 +67,7 @@ tasks:
         // Host-supplied LLM registrations win over the TryAdd fallbacks. The chat
         // client's lifetime is owned by the container (disposed with the provider).
         using var chatClient = new StubChatClient();
+        services.AddSingleton<ICrewExecutionHook>(hook);
         services.AddSingleton<ILlmProvider>(stub);
         services.AddSingleton<IChatClient>(chatClient);
         // Mirror the runner host: Application first (real AgentExecutionService,
@@ -86,7 +89,7 @@ tasks:
             new CrewInput("offline e2e", new Dictionary<string, object>()),
             ct);
 
-        return (output, stub, chatClient);
+        return (output, stub, chatClient, hook);
     }
 
     public static TheoryData<string> Modes() =>
@@ -96,7 +99,7 @@ tasks:
     [MemberData(nameof(Modes))]
     public async Task Kickoff_Completes_Offline(string mode)
     {
-        var (output, _, _) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
+        var (output, _, _, _) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
 
         Assert.NotNull(output);
         Assert.False(string.IsNullOrWhiteSpace(output.FinalOutput),
@@ -107,7 +110,7 @@ tasks:
     [MemberData(nameof(Modes))]
     public async Task Kickoff_ProducesPerTaskOutputs(string mode)
     {
-        var (output, _, _) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
+        var (output, _, _, _) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(output.TaskOutputs);
     }
@@ -116,7 +119,7 @@ tasks:
     [MemberData(nameof(Modes))]
     public async Task Kickoff_DrivesTheLlm(string mode)
     {
-        var (_, stub, chat) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
+        var (_, stub, chat, _) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
 
         var llmCalls = stub.GenerateCalls.Count + stub.ChatCalls.Count + chat.CallCount;
         Assert.True(llmCalls > 0,
@@ -128,13 +131,66 @@ tasks:
     public async Task Kickoff_ProducesOneOutputPerDeclaredTask(string mode)
     {
         const int declaredTasks = 2;
-        var (output, _, _) = await RunAsync(CrewYaml(mode, declaredTasks), TestContext.Current.CancellationToken);
+        var (output, _, _, _) = await RunAsync(CrewYaml(mode, declaredTasks), TestContext.Current.CancellationToken);
 
         // No task silently dropped, none executed twice into the result set.
         Assert.Equal(declaredTasks, output.TaskOutputs.Count);
     }
 
     /// <summary>Offline IChatClient so no TryAdd fallback wires a real client.</summary>
+    /// <summary>
+    /// R5 of the rc.2 train: **no orchestration mode is second-class**. Before BUS-03 only
+    /// the sequential strategy notified <see cref="ICrewExecutionHook"/>, so anything
+    /// observing a run — Studio's screen, AUTO_SUMMARY.md — saw nothing on the five others.
+    /// This is the acceptance test for that decision, and it runs on all six modes.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Modes))]
+    public async Task Kickoff_NotifiesTheExecutionHook_OnEveryMode(string mode)
+    {
+        var (output, _, _, hook) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
+
+        Assert.NotEmpty(output.TaskOutputs);
+        Assert.NotEmpty(hook.CompletedTasks);
+        Assert.True(
+            hook.CrewCompletions + hook.CrewFailures > 0,
+            $"mode '{mode}' never reported a crew-level outcome to the hook");
+    }
+
+    /// <summary>Records what the orchestration strategies notify, for the test above.</summary>
+    internal sealed class RecordingExecutionHook : ICrewExecutionHook
+    {
+        private readonly Lock _gate = new();
+        private readonly List<string> _tasks = [];
+
+        public IReadOnlyList<string> CompletedTasks
+        {
+            get { lock (_gate) { return [.. _tasks]; } }
+        }
+
+        public int CrewCompletions { get; private set; }
+
+        public int CrewFailures { get; private set; }
+
+        public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
+        {
+            lock (_gate) { _tasks.Add(snapshot.TaskId); }
+            return Task.CompletedTask;
+        }
+
+        public Task OnCrewCompletedAsync(CrewExecutionSnapshot snapshot, CancellationToken ct)
+        {
+            lock (_gate) { CrewCompletions++; }
+            return Task.CompletedTask;
+        }
+
+        public Task OnCrewFailedAsync(CrewExecutionSnapshot snapshot, Exception? ex, CancellationToken ct)
+        {
+            lock (_gate) { CrewFailures++; }
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class StubChatClient : IChatClient
     {
         private int _callCount;

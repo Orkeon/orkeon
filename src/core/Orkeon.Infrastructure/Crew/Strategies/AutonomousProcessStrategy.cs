@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Crew;
+using Orkeon.Infrastructure.Crew;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Autonomous;
@@ -51,6 +53,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     private readonly IAgentChannel _channel;
     private readonly IManagerAgent _managerAgent;
     private readonly IMemoryScope _memoryScope;
+    private readonly CrewHookDispatcher _hooks;
     private readonly ILogger<AutonomousProcessStrategy> _logger;
 
     /// <summary>Initializes a new instance of <see cref="AutonomousProcessStrategy"/>.</summary>
@@ -61,7 +64,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         IAgentChannel channel,
         IManagerAgent managerAgent,
         IMemoryScope memoryScope,
-        ILogger<AutonomousProcessStrategy> logger)
+        ILogger<AutonomousProcessStrategy> logger,
+        ICrewExecutionHook? hook = null)
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -77,6 +81,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         _memoryScope = memoryScope;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _hooks = new CrewHookDispatcher(hook, logger);
     }
 
     /// <inheritdoc />
@@ -171,7 +176,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 reg.Dispose();
         }
 
-        return BuildOutput(domainResults, agents, crew, startTime, budget, tokenTally);
+        return await BuildOutputAsync(domainResults, agents, crew, startTime, budget, tokenTally).ConfigureAwait(false);
     }
 
     // ── Private methods ──────────────────────────────────────────────────
@@ -419,7 +424,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             ToolsUsed: result.ToolsUsed);
     }
 
-    private DomainCrewOutput BuildOutput(
+    private async Task<DomainCrewOutput> BuildOutputAsync(
         List<TaskOutput> results,
         List<DomainAgent> agents,
         DomainCrew crew,
@@ -443,6 +448,32 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 .Add("budget_spawned", $"{snapshot.SpawnedAgents}/{snapshot.MaxSpawnedAgents}")
                 .Add("budget_exhausted", snapshot.IsExhausted))
             .Build();
+
+        // Autonomous agents delegate and spawn: there is no ordered task loop to hook
+        // into, so the outcome is reported when the run settles. The budget snapshot is
+        // what makes that report worth reading here.
+        var taskSnapshots = new List<TaskExecutionSnapshot>(results.Count);
+        foreach (var result in results)
+        {
+            var taskSnapshot = new TaskExecutionSnapshot
+            {
+                TaskId = result.TaskId.Value.ToString(),
+                AgentRole = "autonomous",
+                Success = result.Success,
+                Duration = result.ExecutionTime,
+                CompletedAt = DateTimeOffset.UtcNow,
+                ToolCallCount = snapshot.ToolCalls,
+            };
+            taskSnapshots.Add(taskSnapshot);
+            await _hooks.TaskCompletedAsync(taskSnapshot).ConfigureAwait(false);
+        }
+
+        await _hooks.CrewCompletedAsync(
+            CrewHookDispatcher.Snapshot(
+                crew.Id.ToString(), startTime, taskSnapshots,
+                snapshot.IsExhausted ? CrewHookStatus.Canceled : CrewHookStatus.Completed,
+                snapshot.IsExhausted ? "Execution budget exhausted" : null))
+            .ConfigureAwait(false);
 
         return DomainCrewOutput.CreateSuccess(
             output: finalOutput,

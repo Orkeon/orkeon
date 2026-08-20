@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Crew;
+using Orkeon.Infrastructure.Crew;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Context;
 using Orkeon.Domain.Autonomous;
@@ -40,6 +42,7 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
     private readonly IMemoryScope _memoryScope;
     private readonly ILogger<ConsensualProcessStrategy> _logger;
     private readonly ConsensualProcessOptions _options;
+    private readonly CrewHookDispatcher _hooks;
 
     /// <summary>Initializes a new instance of <see cref="ConsensualProcessStrategy"/>.</summary>
     /// <param name="votingStrategy">The voting strategy.</param>
@@ -56,7 +59,8 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         IAgentRepository agentRepository,
         IMemoryScope memoryScope,
         ILogger<ConsensualProcessStrategy> logger,
-        IOptions<ConsensualProcessOptions> options)
+        IOptions<ConsensualProcessOptions> options,
+        ICrewExecutionHook? hook = null)
     {
         ArgumentNullException.ThrowIfNull(votingStrategy);
         _votingStrategy = votingStrategy;
@@ -72,6 +76,7 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         _logger = logger;
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
+        _hooks = new CrewHookDispatcher(hook, logger);
     }
 
     /// <inheritdoc />
@@ -131,6 +136,7 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
 
         var startTime = DateTime.UtcNow;
         var domainResults = new List<DomainTaskOutput>();
+        var taskSnapshots = new List<TaskExecutionSnapshot>();
         var applicationOutputs = new List<ApplicationTaskOutput>();
 
         // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
@@ -177,6 +183,12 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
                 // Fallback = Fail was triggered. Tokens were still consumed by the
                 // voting rounds — propagate the measured cost with the failure.
                 var totalTime = DateTime.UtcNow - startTime;
+                await _hooks.CrewFailedAsync(
+                    CrewHookDispatcher.Snapshot(
+                        crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed,
+                        $"Consensus could not be reached for task {taskId}"),
+                    cause: null, ct).ConfigureAwait(false);
+
                 return DomainCrewOutput.CreateFailure(
                     error: $"Consensus could not be reached for task {taskId}",
                     taskOutputs: domainResults,
@@ -208,12 +220,30 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
                 structuredOutput: taskResult.StructuredOutput));
 
             LogTaskCompletedViaConsensusSuccess(taskId, taskResult.Success);
+
+            var snapshot = new TaskExecutionSnapshot
+            {
+                TaskId = task.Id.Value.ToString(),
+                // Consensus has no single author: the vote is the agent.
+                AgentRole = "consensus",
+                Success = taskResult.Success,
+                Duration = taskResult.ExecutionTime,
+                CompletedAt = DateTimeOffset.UtcNow,
+                ToolCallCount = taskResult.ToolsUsed?.Count ?? 0,
+            };
+            taskSnapshots.Add(snapshot);
+            await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);
         }
 
         var totalExecutionTime = DateTime.UtcNow - startTime;
         var finalOutput = domainResults.LastOrDefault()?.Output ?? string.Empty;
 
         LogConsensualExecutionCompletedForCrew(crew.Id, totalExecutionTime);
+
+        await _hooks.CrewCompletedAsync(
+            CrewHookDispatcher.Snapshot(
+                crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Completed),
+            ct).ConfigureAwait(false);
 
         return DomainCrewOutput.CreateSuccess(
             output: finalOutput,

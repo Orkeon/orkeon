@@ -5,6 +5,8 @@ using Orkeon.Domain.Crew;
 using Orkeon.Domain.Graph;
 using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Crew;
+using Orkeon.Infrastructure.Crew;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Context;
@@ -37,6 +39,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private readonly IAgentRepository _agentRepository;
     private readonly IAgentExecutionService _executionService;
     private readonly IMemoryScope _memoryScope;
+    private readonly CrewHookDispatcher _hooks;
     private readonly AgentDelegationToolsProvider _delegationProvider;
     private readonly ILogger<GraphProcessStrategy> _logger;
 
@@ -63,7 +66,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         IAgentExecutionService executionService,
         IMemoryScope memoryScope,
         AgentDelegationToolsProvider delegationProvider,
-        ILogger<GraphProcessStrategy> logger)
+        ILogger<GraphProcessStrategy> logger,
+        ICrewExecutionHook? hook = null)
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -77,6 +81,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         _delegationProvider = delegationProvider;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _hooks = new CrewHookDispatcher(hook, logger);
     }
 
     /// <inheritdoc />
@@ -161,6 +166,14 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             var domainResults = finalState.DomainResults;
             var finalOutput = (domainResults.Count > 0 ? domainResults[^1] : null)?.Output ?? string.Empty;
 
+            // A graph's nodes are not tasks, so there is no per-task moment to hook into
+            // mid-run: the results are reported when the graph joins.
+            var snapshots = await NotifyResultsAsync(domainResults).ConfigureAwait(false);
+            await _hooks.CrewCompletedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, snapshots, CrewHookStatus.Completed))
+                .ConfigureAwait(false);
+
             return DomainCrewOutput.CreateSuccess(
                 output: finalOutput,
                 structuredOutput: null,
@@ -175,6 +188,12 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
             // The graph nodes mutate the state instance in place, so initialState carries
             // the tokens consumed up to the break — propagate them, they were paid for.
+            var brokenSnapshots = await NotifyResultsAsync(initialState.DomainResults).ConfigureAwait(false);
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, brokenSnapshots, CrewHookStatus.Failed, ex.Message),
+                ex).ConfigureAwait(false);
+
             return DomainCrewOutput.CreateFailure(
                 error: $"Graph execution stopped by circuit breaker: {ex.Message}",
                 taskOutputs: initialState.DomainResults,
@@ -188,6 +207,31 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// using the canonical keys, so the orchestrator can rebuild a real token usage
     /// (R10.8 — the internal count previously never left the state).
     /// </summary>
+    /// <summary>
+    /// Reports each produced result to the hook and returns the snapshots, so the
+    /// crew-level event carries exactly what the per-task events announced.
+    /// </summary>
+    private async Task<List<TaskExecutionSnapshot>> NotifyResultsAsync(
+        IReadOnlyList<DomainTaskOutput> results)
+    {
+        var snapshots = new List<TaskExecutionSnapshot>(results.Count);
+        foreach (var result in results)
+        {
+            var snapshot = new TaskExecutionSnapshot
+            {
+                TaskId = result.TaskId.Value.ToString(),
+                AgentRole = "graph",
+                Success = result.Success,
+                Duration = result.ExecutionTime,
+                CompletedAt = DateTimeOffset.UtcNow,
+            };
+            snapshots.Add(snapshot);
+            await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
+        }
+
+        return snapshots;
+    }
+
     private static Orkeon.Domain.Crew.ValueObjects.CrewMetadata BuildTokenMetadata(CrewGraphState state)
         => TokenUsageTally.WriteTo(
                 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder(),
