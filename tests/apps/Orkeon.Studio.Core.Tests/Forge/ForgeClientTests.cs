@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Tests.Doubles;
@@ -46,11 +47,11 @@ public class ForgeClientTests
         var (client, processes) = Build();
         processes
             .WithStandardOutput(
-                """{"v":1,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}""",
+                """{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}""",
                 "some stray non-protocol line")
             .WithStandardError("warning: something");
 
-        var events = new List<ForgeEvent>();
+        var events = new List<OrkeonEvent>();
         var raw = new List<ProcessOutputLine>();
         var result = await client.RunAsync(
             new ForgeStartRequest { Need = "veille", WorkingDirectory = "/ws" },
@@ -200,12 +201,12 @@ public sealed class ForgeSessionCatalogTests : IDisposable
     {
         // Verbatim shape of the CLI's session.json (v1) — the drift pin.
         WriteSession("veille", """
-            {"v":1,"slug":"veille","title":"Veille fournisseurs","format":"yaml","state":"Promoted","status":"Promoted",
+            {"v":2,"slug":"veille","title":"Veille fournisseurs","format":"yaml","state":"Promoted","status":"Promoted",
              "iteration":2,"repairAttempts":0,"budget":{"maxIterations":3},"promotedTo":"/solutions/veille",
              "createdAt":"2026-08-18T09:00:00Z","updatedAt":"2026-08-19T08:00:00Z"}
             """);
         WriteSession("rapport", """
-            {"v":1,"slug":"rapport","title":"Rapport hebdo","format":"yaml","state":"Test","status":"Active",
+            {"v":2,"slug":"rapport","title":"Rapport hebdo","format":"yaml","state":"Test","status":"Active",
              "iteration":1,"repairAttempts":0,"budget":{},"createdAt":"2026-08-19T10:00:00Z","updatedAt":"2026-08-19T10:30:00Z"}
             """);
         WriteSession("cassee", "{ not json at all");

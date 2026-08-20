@@ -1,4 +1,5 @@
 using System.Globalization;
+using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
@@ -284,10 +285,10 @@ public sealed class ForgeTabViewModel : ObservableObject
         SessionActivated?.Invoke(this, EventArgs.Empty);
     }
 
-    private void OnEvent(ForgeEvent forgeEvent) => _dispatcher.Post(() =>
+    private void OnEvent(OrkeonEvent orkeonEvent) => _dispatcher.Post(() =>
     {
-        _model.Feed(forgeEvent);
-        RawLog.AppendNotice(forgeEvent.Root.GetRawText());
+        _model.Feed(orkeonEvent);
+        RawLog.AppendNotice(orkeonEvent.Root.GetRawText());
         Refresh();
     });
 

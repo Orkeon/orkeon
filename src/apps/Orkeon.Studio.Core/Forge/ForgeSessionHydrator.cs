@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Events;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Orkeon.Compliance.Vfs;
@@ -45,7 +46,7 @@ public static class ForgeSessionHydrator
                 if (string.Equals(role, "user", StringComparison.OrdinalIgnoreCase))
                     model.AddUserMessage(text);
                 else
-                    Feed(model, $$"""{"v":1,"seq":0,"ts":"","kind":"assistant.message","text":{{JsonSerializer.Serialize(text)}}}""");
+                    Feed(model, $$"""{"v":2,"seq":0,"ts":"","kind":"assistant.message","text":{{JsonSerializer.Serialize(text)}}}""");
             }
             catch (JsonException)
             {
@@ -60,7 +61,7 @@ public static class ForgeSessionHydrator
         if (ReadObject(path) is not { } artifact)
             return;
 
-        var envelope = new JsonObject { ["v"] = 1, ["seq"] = 0, ["ts"] = "", ["kind"] = kind, [property] = artifact };
+        var envelope = new JsonObject { ["v"] = 2, ["seq"] = 0, ["ts"] = "", ["kind"] = kind, [property] = artifact };
         Feed(model, envelope.ToJsonString());
     }
 
@@ -70,7 +71,7 @@ public static class ForgeSessionHydrator
         if (ReadObject(path) is not { } artifact)
             return;
 
-        var envelope = new JsonObject { ["v"] = 1, ["seq"] = 0, ["ts"] = "", ["kind"] = kind };
+        var envelope = new JsonObject { ["v"] = 2, ["seq"] = 0, ["ts"] = "", ["kind"] = kind };
         foreach (var property in artifact.ToList())
         {
             artifact.Remove(property.Key);
@@ -83,8 +84,8 @@ public static class ForgeSessionHydrator
 
     private static void Feed(ForgeSessionModel model, string line)
     {
-        if (ForgeEventParser.TryParse(line, out var forgeEvent))
-            model.Feed(forgeEvent!);
+        if (OrkeonEventParser.TryParse(line, out var orkeonEvent))
+            model.Feed(orkeonEvent!);
     }
 
     private static JsonObject? ReadObject(string path)

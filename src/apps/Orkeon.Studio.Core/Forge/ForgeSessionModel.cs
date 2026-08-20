@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Events;
 using System.Text.Json;
 
 namespace Orkeon.Studio.Core.Forge;
@@ -155,69 +156,69 @@ public sealed class ForgeSessionModel
     }
 
     /// <summary>Applies one event to the projection. Unknown kinds are ignored here — the client shows them raw at level 3.</summary>
-    public void Feed(ForgeEvent forgeEvent)
+    public void Feed(OrkeonEvent orkeonEvent)
     {
-        ArgumentNullException.ThrowIfNull(forgeEvent);
+        ArgumentNullException.ThrowIfNull(orkeonEvent);
 
-        switch (forgeEvent.Kind)
+        switch (orkeonEvent.Kind)
         {
             case ForgeEventKinds.SessionStarted:
-                Slug = forgeEvent.GetString("slug");
-                Directory = forgeEvent.GetString("dir");
-                Format = forgeEvent.GetString("format");
-                Resumed = forgeEvent.GetBool("resumed") ?? false;
+                Slug = orkeonEvent.GetString("slug");
+                Directory = orkeonEvent.GetString("dir");
+                Format = orkeonEvent.GetString("format");
+                Resumed = orkeonEvent.GetBool("resumed") ?? false;
                 FinishedStatus = null;
                 break;
 
             case ForgeEventKinds.StageEntered:
-                Stage = forgeEvent.GetString("stage");
-                Iteration = (int)(forgeEvent.GetInt64("iteration") ?? Iteration);
+                Stage = orkeonEvent.GetString("stage");
+                Iteration = (int)(orkeonEvent.GetInt64("iteration") ?? Iteration);
                 if (ForgeMilestones.FromStage(Stage) is { } milestone)
                     Milestone = milestone;
                 _decisionOptions.Clear();
                 break;
 
             case ForgeEventKinds.AssistantMessage:
-                if (forgeEvent.GetString("text") is { } text)
+                if (orkeonEvent.GetString("text") is { } text)
                     _messages.Add(new ForgeChatMessage(ForgeChatMessage.Assistant, text));
                 break;
 
             case ForgeEventKinds.BriefReady:
-                ReadBrief(forgeEvent);
+                ReadBrief(orkeonEvent);
                 break;
 
             case ForgeEventKinds.BlueprintReady:
-                ReadBlueprint(forgeEvent);
+                ReadBlueprint(orkeonEvent);
                 break;
 
             case ForgeEventKinds.FileWritten:
-                if (forgeEvent.GetString("path") is { } path && !_files.Contains(path, StringComparer.Ordinal))
+                if (orkeonEvent.GetString("path") is { } path && !_files.Contains(path, StringComparer.Ordinal))
                     _files.Add(path);
                 break;
 
             case ForgeEventKinds.ValidationResult:
-                ValidationOk = forgeEvent.GetBool("ok");
+                ValidationOk = orkeonEvent.GetBool("ok");
                 _validationErrors.Clear();
-                _validationErrors.AddRange(ReadStrings(forgeEvent.Root, "errors"));
+                _validationErrors.AddRange(ReadStrings(orkeonEvent.Root, "errors"));
                 break;
 
             case ForgeEventKinds.RunStarted:
-                RunNumber = (int)(forgeEvent.GetInt64("run") ?? 0);
+                RunNumber = (int)(orkeonEvent.GetInt64("run") ?? 0);
                 RunInProgress = true;
                 _activity.Clear();
                 break;
 
             case ForgeEventKinds.TaskCompleted:
                 _activity.Add(new ForgeTaskProgress(
-                    forgeEvent.GetString("taskId"),
-                    forgeEvent.GetString("agentRole"),
-                    forgeEvent.GetBool("success") ?? false,
-                    forgeEvent.GetInt64("durationMs") ?? 0));
+                    orkeonEvent.GetString("taskId"),
+                    orkeonEvent.GetString("agentRole"),
+                    orkeonEvent.GetBool("success") ?? false,
+                    orkeonEvent.GetInt64("durationMs") ?? 0));
                 break;
 
             case ForgeEventKinds.CostUpdated:
-                TokensSpent = forgeEvent.GetInt64("tokens") ?? TokensSpent;
-                TokensRemaining = forgeEvent.GetInt64("budgetRemaining");
+                TokensSpent = orkeonEvent.GetInt64("tokens") ?? TokensSpent;
+                TokensRemaining = orkeonEvent.GetInt64("budgetRemaining");
                 break;
 
             case ForgeEventKinds.RunFinished:
@@ -225,24 +226,24 @@ public sealed class ForgeSessionModel
                 break;
 
             case ForgeEventKinds.VerdictReady:
-                ReadVerdict(forgeEvent);
+                ReadVerdict(orkeonEvent);
                 break;
 
             case ForgeEventKinds.DecisionNeeded:
                 _decisionOptions.Clear();
-                _decisionOptions.AddRange(ReadStrings(forgeEvent.Root, "options"));
+                _decisionOptions.AddRange(ReadStrings(orkeonEvent.Root, "options"));
                 break;
 
             case ForgeEventKinds.Promoted:
                 Promotion = new ForgePromotion(
-                    forgeEvent.GetString("path") ?? "",
-                    forgeEvent.GetString("launcher") ?? "",
-                    forgeEvent.GetString("install"));
+                    orkeonEvent.GetString("path") ?? "",
+                    orkeonEvent.GetString("launcher") ?? "",
+                    orkeonEvent.GetString("install"));
                 Milestone = ForgeMilestone.Adopt;
                 break;
 
             case ForgeEventKinds.SessionFinished:
-                FinishedStatus = forgeEvent.GetString("status");
+                FinishedStatus = orkeonEvent.GetString("status");
                 _decisionOptions.Clear();
                 // Ready is the engine's ordinary stop — no runner, no stage.entered — and
                 // for the user it IS the Adopt milestone: the crew waits to be taken.
@@ -252,9 +253,9 @@ public sealed class ForgeSessionModel
 
             case ForgeEventKinds.Error:
                 LastError = new ForgeErrorInfo(
-                    forgeEvent.GetString("code") ?? "",
-                    forgeEvent.GetString("message") ?? "",
-                    forgeEvent.GetBool("recoverable") ?? false);
+                    orkeonEvent.GetString("code") ?? "",
+                    orkeonEvent.GetString("message") ?? "",
+                    orkeonEvent.GetBool("recoverable") ?? false);
                 break;
 
             default:
@@ -296,9 +297,9 @@ public sealed class ForgeSessionModel
         return items;
     }
 
-    private void ReadBrief(ForgeEvent forgeEvent)
+    private void ReadBrief(OrkeonEvent orkeonEvent)
     {
-        if (!forgeEvent.Root.TryGetProperty("brief", out var brief) || brief.ValueKind != JsonValueKind.Object)
+        if (!orkeonEvent.Root.TryGetProperty("brief", out var brief) || brief.ValueKind != JsonValueKind.Object)
             return;
 
         if (brief.TryGetProperty("goal", out var goal) && goal.ValueKind == JsonValueKind.String)
@@ -319,9 +320,9 @@ public sealed class ForgeSessionModel
         }
     }
 
-    private void ReadBlueprint(ForgeEvent forgeEvent)
+    private void ReadBlueprint(OrkeonEvent orkeonEvent)
     {
-        if (!forgeEvent.Root.TryGetProperty("blueprint", out var blueprint) || blueprint.ValueKind != JsonValueKind.Object)
+        if (!orkeonEvent.Root.TryGetProperty("blueprint", out var blueprint) || blueprint.ValueKind != JsonValueKind.Object)
             return;
 
         // agent key → role, so the steps can speak in roles, not keys.
@@ -366,10 +367,10 @@ public sealed class ForgeSessionModel
         Proposal = new ForgeProposal(steps, ReadString(blueprint, "rationale"), tools);
     }
 
-    private void ReadVerdict(ForgeEvent forgeEvent)
+    private void ReadVerdict(OrkeonEvent orkeonEvent)
     {
         var findings = new List<ForgeFindingView>();
-        if (forgeEvent.Root.TryGetProperty("findings", out var rawFindings) && rawFindings.ValueKind == JsonValueKind.Array)
+        if (orkeonEvent.Root.TryGetProperty("findings", out var rawFindings) && rawFindings.ValueKind == JsonValueKind.Array)
         {
             foreach (var finding in rawFindings.EnumerateArray())
             {
@@ -384,7 +385,7 @@ public sealed class ForgeSessionModel
         }
 
         var suggestions = new List<ForgeSuggestionView>();
-        if (forgeEvent.Root.TryGetProperty("suggestions", out var rawSuggestions) && rawSuggestions.ValueKind == JsonValueKind.Array)
+        if (orkeonEvent.Root.TryGetProperty("suggestions", out var rawSuggestions) && rawSuggestions.ValueKind == JsonValueKind.Array)
         {
             foreach (var suggestion in rawSuggestions.EnumerateArray())
             {
@@ -398,9 +399,9 @@ public sealed class ForgeSessionModel
         }
 
         Verdict = new ForgeVerdictView(
-            forgeEvent.GetDouble("score") ?? 0.0,
-            forgeEvent.GetBool("passing") ?? false,
-            forgeEvent.GetString("judge") ?? "",
+            orkeonEvent.GetDouble("score") ?? 0.0,
+            orkeonEvent.GetBool("passing") ?? false,
+            orkeonEvent.GetString("judge") ?? "",
             findings,
             suggestions);
     }

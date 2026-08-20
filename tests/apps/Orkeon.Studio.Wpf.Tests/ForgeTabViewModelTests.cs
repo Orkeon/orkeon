@@ -40,10 +40,10 @@ public class ForgeTabViewModelTests
         var (vm, processes, _) = Build();
         processes.OutputToEmit.AddRange(
         [
-            Out("""{"v":1,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
-            Out("""{"v":1,"seq":2,"ts":"t","kind":"stage.entered","stage":"brief","iteration":1}"""),
-            Out("""{"v":1,"seq":3,"ts":"t","kind":"assistant.message","text":"Quel est l'objectif ?"}"""),
-            Out("""{"v":1,"seq":4,"ts":"t","kind":"session.finished","status":"abandoned","exitCode":0}"""),
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"stage.entered","stage":"brief","iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"assistant.message","text":"Quel est l'objectif ?"}"""),
+            Out("""{"v":2,"seq":4,"ts":"t","kind":"session.finished","status":"abandoned","exitCode":0}"""),
         ]);
 
         vm.NeedText = "je veux une veille fournisseur";
@@ -92,11 +92,11 @@ public class ForgeTabViewModelTests
         var (vm, processes, _) = Build();
         processes.OutputToEmit.AddRange(
         [
-            Out("""{"v":1,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
-            Out("""{"v":1,"seq":2,"ts":"t","kind":"brief.ready","brief":{"goal":"Veille fournisseurs","acceptance":[{"id":"A1","statement":"Le résumé cite ses sources","kind":"must"}]}}"""),
-            Out("""{"v":1,"seq":3,"ts":"t","kind":"stage.entered","stage":"verdict","iteration":1}"""),
-            Out("""{"v":1,"seq":4,"ts":"t","kind":"verdict.ready","score":0.4,"passing":false,"findings":[{"id":"F1","severity":"major","acceptance":"A1","statement":"Les sources manquent"}],"suggestions":[],"judge":"llm"}"""),
-            Out("""{"v":1,"seq":5,"ts":"t","kind":"decision.needed","options":["accept","refine","abort"]}"""),
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"brief.ready","brief":{"goal":"Veille fournisseurs","acceptance":[{"id":"A1","statement":"Le résumé cite ses sources","kind":"must"}]}}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"stage.entered","stage":"verdict","iteration":1}"""),
+            Out("""{"v":2,"seq":4,"ts":"t","kind":"verdict.ready","score":0.4,"passing":false,"findings":[{"id":"F1","severity":"major","acceptance":"A1","statement":"Les sources manquent"}],"suggestions":[],"judge":"llm"}"""),
+            Out("""{"v":2,"seq":5,"ts":"t","kind":"decision.needed","options":["accept","refine","abort"]}"""),
         ]);
 
         vm.NeedText = "veille";
@@ -117,8 +117,8 @@ public class ForgeTabViewModelTests
         picker.FolderToReturn = "/solutions";
         processes.OutputToEmit.AddRange(
         [
-            Out("""{"v":1,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
-            Out("""{"v":1,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
         ]);
 
         vm.NeedText = "veille";
@@ -132,9 +132,9 @@ public class ForgeTabViewModelTests
         processes.OutputToEmit.Clear();
         processes.OutputToEmit.AddRange(
         [
-            Out("""{"v":1,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":true}"""),
-            Out("""{"v":1,"seq":2,"ts":"t","kind":"promoted","path":"/solutions/veille","launcher":"run.sh","schedule":"schedule","install":"crontab hint"}"""),
-            Out("""{"v":1,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":true}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"promoted","path":"/solutions/veille","launcher":"run.sh","schedule":"schedule","install":"crontab hint"}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
         ]);
         await vm.StoreCommand.ExecuteAsync();
 
@@ -152,8 +152,8 @@ public class ForgeTabViewModelTests
         picker.FolderToReturn = "/solutions";
         processes.OutputToEmit.AddRange(
         [
-            Out("""{"v":1,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
-            Out("""{"v":1,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
         ]);
         vm.NeedText = "veille";
         await vm.StartCommand.ExecuteAsync();

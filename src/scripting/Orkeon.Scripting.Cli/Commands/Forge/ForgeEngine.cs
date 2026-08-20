@@ -1,3 +1,4 @@
+using Orkeon.Scripting.Cli.Events;
 using Orkeon.Domain.Common.StateMachine;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
@@ -85,19 +86,19 @@ internal sealed class ForgeEngine
     private readonly ForgeSession _session;
     private readonly ForgeEventWriter _events;
     private readonly Dictionary<ForgeState, IForgeStageRunner> _runners;
-    private readonly IForgeClock _clock;
+    private readonly IOrkeonClock _clock;
 
     /// <summary>Builds the engine over a session and the runners this build carries.</summary>
     public ForgeEngine(
         ForgeSession session,
         ForgeEventWriter events,
         IEnumerable<IForgeStageRunner> runners,
-        IForgeClock? clock = null)
+        IOrkeonClock? clock = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _runners = (runners ?? throw new ArgumentNullException(nameof(runners))).ToDictionary(r => r.Stage);
-        _clock = clock ?? SystemForgeClock.Instance;
+        _clock = clock ?? SystemOrkeonClock.Instance;
     }
 
     /// <summary>

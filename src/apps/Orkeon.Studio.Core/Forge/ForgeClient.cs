@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Events;
 using System.Text.Json;
 using Orkeon.Studio.Core.Process;
 
@@ -88,7 +89,7 @@ public static class ForgeArgumentsBuilder
 /// <summary>
 /// The Studio side of the forge protocol (SPEC-ORKEON-FORGE §5-§6): launches
 /// <c>orkeon forge --events jsonl</c> as a child process, parses its stdout into
-/// <see cref="ForgeEvent"/>s, and answers over stdin — <c>user.message</c> and
+/// <see cref="OrkeonEvent"/>s, and answers over stdin — <c>user.message</c> and
 /// <c>decision.made</c>, one JSON line each. The Studio process never touches an LLM;
 /// it only ever sees these lines.
 /// </summary>
@@ -121,7 +122,7 @@ public sealed class ForgeClient
     /// </summary>
     public async Task<ProcessRunResult> RunAsync(
         ForgeStartRequest request,
-        Action<ForgeEvent> onEvent,
+        Action<OrkeonEvent> onEvent,
         Action<ProcessOutputLine>? onRaw = null,
         CancellationToken cancellationToken = default)
     {
@@ -152,9 +153,9 @@ public sealed class ForgeClient
                 line =>
                 {
                     if (line.Channel == ProcessOutputChannel.StandardOutput
-                        && ForgeEventParser.TryParse(line.Text, out var forgeEvent))
+                        && OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
                     {
-                        onEvent(forgeEvent!);
+                        onEvent(orkeonEvent!);
                     }
                     else
                     {
@@ -181,7 +182,7 @@ public sealed class ForgeClient
         string destination,
         string? schedule,
         string? workingDirectory,
-        Action<ForgeEvent> onEvent,
+        Action<OrkeonEvent> onEvent,
         Action<ProcessOutputLine>? onRaw = null,
         CancellationToken cancellationToken = default)
     {
@@ -208,9 +209,9 @@ public sealed class ForgeClient
                 line =>
                 {
                     if (line.Channel == ProcessOutputChannel.StandardOutput
-                        && ForgeEventParser.TryParse(line.Text, out var forgeEvent))
+                        && OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
                     {
-                        onEvent(forgeEvent!);
+                        onEvent(orkeonEvent!);
                     }
                     else
                     {

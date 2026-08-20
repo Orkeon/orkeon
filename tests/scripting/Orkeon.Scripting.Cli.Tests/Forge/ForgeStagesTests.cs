@@ -84,7 +84,7 @@ public sealed class ForgeStagesTests : IDisposable
     }
 
     private ForgeEngine Engine(ForgeSession session, params IForgeStageRunner[] runners) =>
-        new(session, new ForgeEventWriter(_output, new FakeForgeClock()), runners, new FakeForgeClock());
+        new(session, new ForgeEventWriter(_output, new FakeOrkeonClock()), runners, new FakeOrkeonClock());
 
     private IReadOnlyList<JsonElement> Events() =>
     [

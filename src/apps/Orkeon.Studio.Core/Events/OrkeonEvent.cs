@@ -1,0 +1,109 @@
+using System.Text.Json;
+
+namespace Orkeon.Studio.Core.Events;
+
+/// <summary>
+/// One line of an Orkeon event stream: the envelope fields plus the whole document, kept as
+/// JSON — a projection reads the payload in one place, this type only guarantees the
+/// envelope. The same shape carries both streaming verbs (<c>forge</c> and <c>run</c>), so
+/// a client needs a single reader.
+/// </summary>
+public sealed record OrkeonEvent
+{
+    /// <summary>Protocol version of the envelope.</summary>
+    public required int Version { get; init; }
+
+    /// <summary>Strictly increasing sequence number.</summary>
+    public required long Seq { get; init; }
+
+    /// <summary>Event kind — or unknown, kept as-is so the client can still show it.</summary>
+    public required string Kind { get; init; }
+
+    /// <summary>The whole event document (envelope + flat payload), detached from its parser.</summary>
+    public required JsonElement Root { get; init; }
+
+    /// <summary>The crew execution this event belongs to; absent outside a run.</summary>
+    public string? CrewId => GetString("crewId");
+
+    /// <summary>The agent that emitted it; absent for crew-level events.</summary>
+    public string? AgentId => GetString("agentId");
+
+    /// <summary>Ties every event of one unit of work together.</summary>
+    public string? CorrelationId => GetString("correlationId");
+
+    /// <summary>
+    /// The event that caused this one — what makes a delegation tree or a spawn graph
+    /// reconstructible on this side of the wire.
+    /// </summary>
+    public string? CausationId => GetString("causationId");
+
+    /// <summary>String property, null when absent or not a string.</summary>
+    public string? GetString(string name) =>
+        Root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    /// <summary>Boolean property, null when absent.</summary>
+    public bool? GetBool(string name) =>
+        Root.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean()
+            : null;
+
+    /// <summary>Integer property, null when absent or not a number.</summary>
+    public long? GetInt64(string name) =>
+        Root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
+            ? value.GetInt64()
+            : null;
+
+    /// <summary>Floating-point property, null when absent or not a number.</summary>
+    public double? GetDouble(string name) =>
+        Root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
+            ? value.GetDouble()
+            : null;
+}
+
+/// <summary>
+/// Tolerant reader of one stream line (the <c>DoctorReportParser</c> discipline): a line
+/// that is not an event — malformed JSON, missing envelope — comes back <c>false</c> and
+/// the caller shows it raw instead of losing it. The protocol is versioned; the version is
+/// surfaced, never enforced here — a client decides what to do with a future one.
+/// </summary>
+public static class OrkeonEventParser
+{
+    /// <summary>The protocol version this client was written against.</summary>
+    public const int KnownProtocolVersion = 2;
+
+    /// <summary>Parses one stdout line into an event; false when the line is not one.</summary>
+    public static bool TryParse(string? line, out OrkeonEvent? orkeonEvent)
+    {
+        orkeonEvent = null;
+        if (string.IsNullOrWhiteSpace(line))
+            return false;
+
+        try
+        {
+            using var document = JsonDocument.Parse(line);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("kind", out var kind) || kind.ValueKind != JsonValueKind.String
+                || !root.TryGetProperty("v", out var version) || version.ValueKind != JsonValueKind.Number
+                || !root.TryGetProperty("seq", out var seq) || seq.ValueKind != JsonValueKind.Number)
+            {
+                return false;
+            }
+
+            orkeonEvent = new OrkeonEvent
+            {
+                Version = version.GetInt32(),
+                Seq = seq.GetInt64(),
+                Kind = kind.GetString()!,
+                Root = root.Clone(),
+            };
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+}

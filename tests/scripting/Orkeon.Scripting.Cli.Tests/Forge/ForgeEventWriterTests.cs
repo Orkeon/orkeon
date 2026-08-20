@@ -1,9 +1,10 @@
 using Orkeon.Scripting.Cli.Commands.Forge;
+using Orkeon.Scripting.Cli.Events;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
 /// <summary>A clock the test scripts: each read advances by one second, so lines differ visibly.</summary>
-internal sealed class FakeForgeClock : IForgeClock
+internal sealed class FakeOrkeonClock : IOrkeonClock
 {
     private DateTimeOffset _now = new(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
 
@@ -30,7 +31,7 @@ public class ForgeEventWriterTests
     public void The_envelope_is_the_pinned_golden_form()
     {
         var output = new StringWriter();
-        var writer = new ForgeEventWriter(output, new FakeForgeClock());
+        var writer = new ForgeEventWriter(output, new FakeOrkeonClock());
 
         writer.Emit("stage.entered", new { stage = "brief", iteration = 1 });
         writer.Emit("question.asked", new { id = "q1", text = "Quel est l'objectif ?", answerKind = "free" });
@@ -38,10 +39,10 @@ public class ForgeEventWriterTests
         writer.SessionFinished("abandoned", 0);
 
         var expected = string.Join('\n',
-            """{"v":1,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"stage.entered","stage":"brief","iteration":1}""",
-            """{"v":1,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"question.asked","id":"q1","text":"Quel est l'objectif ?","answerKind":"free"}""",
-            """{"v":1,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"error","code":"FORGE-BUDGET-EXHAUSTED","message":"The session's token budget is exhausted.","recoverable":true}""",
-            """{"v":1,"seq":4,"ts":"2026-08-19T12:00:03Z","kind":"session.finished","status":"abandoned","exitCode":0}""",
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"stage.entered","stage":"brief","iteration":1}""",
+            """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"question.asked","id":"q1","text":"Quel est l'objectif ?","answerKind":"free"}""",
+            """{"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"error","code":"FORGE-BUDGET-EXHAUSTED","message":"The session's token budget is exhausted.","recoverable":true}""",
+            """{"v":2,"seq":4,"ts":"2026-08-19T12:00:03Z","kind":"session.finished","status":"abandoned","exitCode":0}""",
             "");
 
         Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
@@ -51,7 +52,7 @@ public class ForgeEventWriterTests
     public void The_sequence_is_strictly_increasing_from_one()
     {
         var output = new StringWriter();
-        var writer = new ForgeEventWriter(output, new FakeForgeClock());
+        var writer = new ForgeEventWriter(output, new FakeOrkeonClock());
 
         for (var i = 0; i < 3; i++)
             writer.Emit("stage.entered", new { stage = "brief", iteration = 1 });
@@ -67,18 +68,47 @@ public class ForgeEventWriterTests
     public void A_payload_never_overrides_the_envelope_fields()
     {
         var output = new StringWriter();
-        var writer = new ForgeEventWriter(output, new FakeForgeClock());
+        var writer = new ForgeEventWriter(output, new FakeOrkeonClock());
 
-        // A hostile or buggy payload naming an envelope field must not corrupt the contract…
-        writer.Emit("stage.entered", new { v = 99, seq = 99, kind = "spoofed", stage = "brief" });
+        // A hostile or buggy payload naming an envelope field must not corrupt the contract.
+        // The identity names are reserved too, and the forge emits with an empty scope — so
+        // a payload cannot smuggle a crewId in through the back door either.
+        writer.Emit("stage.entered", new
+        {
+            v = 99,
+            seq = 99,
+            kind = "spoofed",
+            crewId = "forged",
+            causationId = "forged",
+            stage = "brief",
+        });
 
         var root = System.Text.Json.JsonDocument.Parse(output.ToString()).RootElement;
 
-        // …the payload's spelling wins on collisions is NOT acceptable for v/seq/kind:
-        Assert.Equal(1, root.GetProperty("v").GetInt32());
+        Assert.Equal(OrkeonEventWriter.ProtocolVersion, root.GetProperty("v").GetInt32());
         Assert.Equal(1, root.GetProperty("seq").GetInt32());
         Assert.Equal("stage.entered", root.GetProperty("kind").GetString());
         Assert.Equal("brief", root.GetProperty("stage").GetString());
+
+        // Absent identity stays absent: the key is omitted, never written as null.
+        Assert.False(root.TryGetProperty("crewId", out _));
+        Assert.False(root.TryGetProperty("causationId", out _));
+    }
+
+    [Fact]
+    public void A_scoped_event_carries_its_identity_in_the_envelope()
+    {
+        var output = new StringWriter();
+        var writer = new OrkeonEventWriter(output, new FakeOrkeonClock());
+
+        writer.Emit(
+            "task.completed",
+            new OrkeonEventScope { CrewId = "c-7f3a", AgentId = "a-91b", CorrelationId = "r-3311" },
+            new { taskId = "collect", success = true });
+
+        Assert.Equal(
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"task.completed","crewId":"c-7f3a","agentId":"a-91b","correlationId":"r-3311","taskId":"collect","success":true}""",
+            output.ToString().TrimEnd('\r', '\n'));
     }
 
     [Fact]
