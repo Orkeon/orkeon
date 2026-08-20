@@ -43,6 +43,37 @@ orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
 
 **Settings resolution** — when `--settings` is omitted, the CLI walks a fallback chain: `appsettings.json` next to the crew file, then an `appsettings/appsettings.json` found by walking up the parent directories, then the global per-user file written by `orkeon init`, then `ORKEON_*` environment variables alone. Details and the ready-made profile matrix: [Run your first example](../getting-started/run-your-first-example.md).
 
+## `orkeon forge`
+
+```bash
+orkeon forge "summarize my supplier's new offers every morning"   # start from a need
+orkeon forge                                   # start with the interview
+orkeon forge list                              # list the workspace's sessions
+orkeon forge resume <slug>                     # pick a session up exactly where it stopped
+orkeon forge promote <slug> --to <dir>         # ship a ready session as an ordinary folder
+```
+
+The Atelier: a guided path from a need in plain words to a deployable crew. An assistant interviews you and captures a structured brief — goal, inputs, **acceptance criteria**, a sample input — then proposes a team plan, renders it, validates it, **tries it in a sandbox on your sample**, and judges the result **against your own criteria**. Not conforming? The diagnosis feeds a refine loop, bounded by a hard budget (iterations, tokens, wall time). Every session lives under `.orkeon/forge/<slug>/` — resumable, diffable between attempts, auditable.
+
+Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forge refuses to open the interview without one (`FORGE-LLM-UNAVAILABLE`) rather than degrade silently. `list` and `promote` are fully offline.
+
+| Option | Description |
+|---|---|
+| `--format yaml\|script` | Rendered format (default `yaml`). `script` renders an editable `crew.ork.ts` and needs esbuild — absent, a new session falls back to YAML with `FORGE-ESBUILD-MISSING`. A session's format never changes on resume. |
+| `--events jsonl` | Emit the versioned event protocol on stdout instead of the terminal rendering; answers go down stdin (this is how Orkeon Studio drives the forge). |
+| `--auto` | Arbitrate non-conforming verdicts without a human, within the budget. |
+| `--dry` | Stop after validation — generate and validate, never execute. Resume without `--dry` to try it. |
+| `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | The budget (default 3 iterations; `0` = unlimited tokens/time). Resuming may raise it; consumption always carries over. |
+| `-s, --settings <path>` | Same semantics as `orkeon run`. |
+| `--pack <dir>` | Override the embedded prompt pack. |
+| `--to <dir>` | *(promote)* Destination folder; must not exist or be empty. |
+| `--schedule daily@HH:mm\|hourly` | *(promote)* Generate schedule artifacts under `schedule/` — Windows task XML, systemd timer, cron line. The install command is **displayed, never executed**: Orkeon has no scheduler. |
+| `--with-settings` | *(promote)* Copy the resolved settings file into the folder. Off by default — a settings file usually carries API keys and the folder is made to be shared. |
+
+The sandbox: the try runs in-process with writes confined to the session's `/output` mount, and `shell_command`/`code_interpreter` removed from the tool catalogue — the team plan can only name tools the validation will accept.
+
+The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.cmd` composed against the `orkeon run` grammar with your sample inputs pre-filled, and `FORGE.md` — the crew's identity card (goal, acceptance criteria, verdict, version), written in the interview's language. `orkeon run <dir>/crew` launches it; the Studio launcher detects it.
+
 ## `orkeon init`
 
 Configuration assistant. Generates a valid `appsettings.json` at the global per-user path (`%APPDATA%\Orkeon\appsettings.json` on Windows, `~/.config/Orkeon/appsettings.json` on Linux/macOS) from an interactive 5-choice wizard — `ollama`, `docker-model-runner`, `openai`, `custom`, `none` — or non-interactively via flags, then probes the endpoint (unless `--no-probe`).

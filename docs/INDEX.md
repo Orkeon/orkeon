@@ -18,6 +18,7 @@ The documentation is organized into 6 thematic sections.
 | [Bootstrap and execution](./getting-started/bootstrap.md) | Dependency injection, running a Crew, batch/streaming/fire-and-forget modes |
 | [YAML, Builders and CrewFactory](./getting-started/yaml-and-builders.md) | Fluent Builders, YAML schema, CrewFactory pipeline, loading modes |
 | [Default behaviors](./getting-started/default-behaviors.md) | The deliberately-minimal DI defaults (planner, delegator, knowledge store…): what each does, the warn-once signal, and the replacement gesture |
+| [Forge a team from a need](./getting-started/forge-a-team-from-a-need.md) | The Atelier (`orkeon forge`): need → interview → team → sandboxed try → verdict against your own criteria → promotion, sessions resumable on disk |
 
 ### Architecture
 

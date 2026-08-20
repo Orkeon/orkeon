@@ -25,10 +25,10 @@ namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 public sealed class LaunchTabViewModel : ObservableObject
 {
     private readonly OrkeonProcessRunner _runner;
+    private readonly RunSession _session;
     private readonly IAppSettingsStore _settingsStore;
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
-    private CancellationTokenSource? _cancellation;
     private bool _isRunning;
     private string? _commandLinePreview;
     private string? _statusMessage;
@@ -47,6 +47,9 @@ public sealed class LaunchTabViewModel : ObservableObject
         IStudioStrings? strings = null)
     {
         _runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
+        // The run lifecycle is the shared Core session, not a re-implementation: the terminal
+        // launcher runs over the very same class, which is what keeps the two in step.
+        _session = new RunSession(_runner, historyStore);
         _settingsStore = settingsStore ?? PhysicalAppSettingsStore.Instance;
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings ?? EnglishStudioStrings.Instance;
@@ -275,7 +278,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>Stops the running child process.</summary>
     public void Cancel()
     {
-        _cancellation?.Cancel();
+        _session.RequestCancellation();
         StatusMessage = _strings[StudioStringKeys.LaunchCancelling];
     }
 
@@ -319,16 +322,16 @@ public sealed class LaunchTabViewModel : ObservableObject
         var workingDirectory = GetWorkingDirectory(target);
 
         return await ExecuteAsync(
-            arguments,
-            workingDirectory,
-            LaunchHistoryEntry.Starting(
-                target.SelectedPath,
-                arguments,
-                Options.EffectiveSettingsPath,
-                workingDirectory),
-            // A dry run is not a launch: recording it would fill the replayable history with
-            // entries that never ran a crew. The terminal launcher makes the same exclusion.
-            recordInHistory: !validate,
+            new RunLaunchRequest
+            {
+                TargetPath = target.SelectedPath,
+                Arguments = arguments,
+                SettingsPath = Options.EffectiveSettingsPath,
+                WorkingDirectory = workingDirectory,
+                // A dry run is not a launch: recording it would fill the replayable history with
+                // entries that never ran a crew. The terminal launcher makes the same exclusion.
+                RecordInHistory = !validate,
+            },
             validate,
             cancellationToken);
     }
@@ -356,43 +359,35 @@ public sealed class LaunchTabViewModel : ObservableObject
         LoadIntoForm(entry);
 
         return await ExecuteAsync(
-            entry.Arguments,
-            entry.WorkingDirectory,
-            LaunchHistoryEntry.Starting(
-                entry.Target,
-                entry.Arguments,
-                entry.SettingsPath,
-                entry.WorkingDirectory),
-            recordInHistory: true,
+            new RunLaunchRequest
+            {
+                TargetPath = entry.Target,
+                Arguments = entry.Arguments,
+                SettingsPath = entry.SettingsPath,
+                WorkingDirectory = entry.WorkingDirectory,
+            },
             dryRun: false,
             cancellationToken);
     }
 
     private async Task<ProcessRunResult> ExecuteAsync(
-        IReadOnlyList<string> arguments,
-        string? workingDirectory,
-        LaunchHistoryEntry entry,
-        bool recordInHistory,
+        RunLaunchRequest request,
         bool dryRun,
         CancellationToken cancellationToken)
     {
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _cancellation = cancellation;
         IsRunning = true;
 
-        Log.AppendNotice(CommandLineDisplay.Format(arguments));
+        Log.AppendNotice(CommandLineDisplay.Format(request.Arguments));
         StatusMessage = dryRun
             ? _strings[StudioStringKeys.LaunchValidating]
             : _strings[StudioStringKeys.LaunchRunning];
 
         try
         {
-            var result = await _runner.RunAsync(
-                arguments,
-                workingDirectory,
+            var result = await _session.RunAsync(
+                request,
                 line => _dispatcher.Post(() => Log.Append(line)),
-                gracePeriod: null,
-                cancellation.Token);
+                cancellationToken);
 
             LastResult = result;
 
@@ -402,15 +397,15 @@ public sealed class LaunchTabViewModel : ObservableObject
             StatusMessage = outcome;
             Log.AppendNotice(outcome);
 
-            if (recordInHistory)
-                await History.RecordAsync(entry.WithResult(result), CancellationToken.None);
+            // The session already recorded the run; the panel only projects its list.
+            if (request.RecordInHistory)
+                History.Publish(_session.History);
 
             return result;
         }
         finally
         {
             IsRunning = false;
-            _cancellation = null;
         }
     }
 

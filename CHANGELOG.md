@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.2] - 2026-08-20
+
+### Added — The Atelier: `orkeon forge`, from a need in plain words to a deployable crew (FORGE-01→08)
+
+The missing step between "I have a problem" and a running agent team. `orkeon forge
+"summarize my supplier's new offers every morning"` opens a short interview, captures a
+structured brief — goal, inputs, **acceptance criteria**, a sample input — plans a team,
+renders it as ordinary crew files, validates it, **tries it in a sandbox on that sample**,
+and judges the result against the criteria the user stated. Not conforming? The diagnosis
+feeds a refine loop, bounded by a hard three-dimension budget (iterations, tokens, wall
+time). `orkeon forge promote <slug> --to <dir>` then ships the crew as an ordinary folder.
+
+The spine is deterministic — a `StateMachine<ForgeState, ForgeTrigger>` with 11 states,
+checkpointed after every step — and only schema-validated `brief_submit` /
+`blueprint_submit` submissions advance it: the conversation is carried by an embedded crew
+(the scripting DSL running under Jint, `ctx.llm.act()` reached natively), but it never
+steers the cycle. Sessions live under `.orkeon/forge/<slug>/` — resumable
+(`forge resume`), diffable between attempts, auditable — and every run emits a versioned
+JSONL event protocol (`--events jsonl`), golden-pinned on both sides of the wire.
+
+- **Two formats, one generation.** The assistant produces a single schema-constrained
+  blueprint; two deterministic renderers derive from it — the per-entity YAML layout
+  (default) or an editable `crew.ork.ts` (`--format script`, needs esbuild; absent, a new
+  session falls back to YAML with `FORGE-ESBUILD-MISSING`). Both converge on the same
+  `CrewDefinitionValidator`, and the sandboxed try loads the crew **from the rendered
+  files** — what was written is what runs.
+- **The sandbox restricts by removing tools from the catalogue**, not by hoping the model
+  abstains: `shell_command` and `code_interpreter` are gone from the list that feeds *both*
+  the blueprint prompt and the validation, and writes are confined to the session's
+  `/output` mount, snapshotted per run.
+- **The verdict is recomputed, never trusted**: score ≥ 0.7 *and* no blocking finding, with
+  a missed `must` criterion blocking regardless of score. With no judge available, the
+  verdict announces itself as `deterministic` and leans on mechanical checks — it never
+  invents a passing score. Accepting a non-conforming result on sight stays legitimate.
+- **Promotion is honest about its limits**: the folder carries `crew/`, `run.sh`/`run.cmd`
+  composed against the CLI's own `orkeon run` grammar with the sample inputs pre-filled,
+  and `FORGE.md` — the crew's identity card, written in the interview's language. With
+  `--schedule daily@HH:mm|hourly`, the Windows task XML, systemd timer and cron line are
+  generated and the install command is **displayed, never executed**: Orkeon has no
+  scheduler, and pretending otherwise would promise supervision it cannot give.
+
+**In Orkeon Studio**, the same engine drives a new **Solve** screen (WPF): a conversation on
+the left, one card at a time on the right — success criteria, the proposal in plain words,
+the live try, the ✔/✘ checklist quoting those criteria verbatim, then "what now?". Studio
+spawns `orkeon forge --events jsonl` as a child process and answers over stdin; it never
+touches an LLM itself, and a capability absent from the event stream exists on no screen.
+`Orkeon.Studio.Core` gains a `Forge/` client (tolerant parser pinned against the CLI's
+golden lines, session projection, catalogue, resume hydrator) without a single new
+dependency. `RunSession`/`RunLaunchRequest`/`TargetSelectionModel`/`LaunchOptionsModel` were
+promoted into `Orkeon.Studio.Core.Launch` along the way, so the launch lifecycle now exists
+once instead of twice.
+
+Docs: [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md) (EN/FR),
+the `orkeon forge` section of the CLI reference, and `examples/forge/promote-demo/` — a
+bundled ready session whose `list`/`promote` half runs with no LLM at all.
+
 ## [1.0.0-rc.1] - 2026-08-18
 
 Orkeon's first release candidate — the version that goes to NuGet.org. Everything
@@ -1058,7 +1114,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.2...HEAD
+[1.0.0-rc.2]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/Orkeon/orkeon/compare/v0.9.2-beta...v1.0.0-rc.1
 [0.9.2-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.1-beta.rc1...v0.9.2-beta
 [0.9.1-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.0-beta...v0.9.1-beta.rc1

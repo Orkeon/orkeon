@@ -1,10 +1,9 @@
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Targets;
-using Orkeon.Studio.Run.Launcher;
-using Orkeon.Studio.Run.Tests.Doubles;
+using Orkeon.Studio.Core.Tests.Doubles;
 
-namespace Orkeon.Studio.Run.Tests.Launcher;
+namespace Orkeon.Studio.Core.Tests.Launch;
 
 /// <summary>
 /// The options form: which fields a target leaves usable, what the form drops when the

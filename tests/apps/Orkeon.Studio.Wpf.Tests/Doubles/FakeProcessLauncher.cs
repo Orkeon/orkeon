@@ -18,12 +18,24 @@ public sealed class FakeProcessLauncher : IProcessLauncher
 
     public ProcessLaunchRequest? LastRequest => Requests.Count > 0 ? Requests[^1] : null;
 
+    /// <summary>What the caller wrote to stdin, when the request wired <c>OnInputReady</c>.</summary>
+    public List<string> InputLines { get; } = [];
+
+    /// <summary>
+    /// Called after the input writer was handed over and before the scripted output plays —
+    /// the window a test uses to write stdin while the "child" is still alive.
+    /// </summary>
+    public Action? WhileRunning { get; set; }
+
     public Task<ProcessRunResult> RunAsync(
         ProcessLaunchRequest request,
         Action<ProcessOutputLine>? onOutput = null,
         CancellationToken cancellationToken = default)
     {
         Requests.Add(request);
+
+        request.OnInputReady?.Invoke(new RecordingInputWriter(this));
+        WhileRunning?.Invoke();
 
         foreach (var line in OutputToEmit)
             onOutput?.Invoke(line);
@@ -37,5 +49,18 @@ public sealed class FakeProcessLauncher : IProcessLauncher
         }
 
         return Task.FromResult(ProcessRunResult.FromExitCode(ExitCode, TimeSpan.Zero));
+    }
+
+    private sealed class RecordingInputWriter(FakeProcessLauncher owner) : IProcessInputWriter
+    {
+        public bool TryWriteLine(string line)
+        {
+            owner.InputLines.Add(line);
+            return true;
+        }
+
+        public void Close()
+        {
+        }
     }
 }

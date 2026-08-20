@@ -1,0 +1,6 @@
+description: "Collect today's offers from {supplier_url} with their source links."
+expectedOutput: "The raw list of offers, one line each, with a source URL."
+agent: "collector"
+dependencies: []
+asyncExecution: false
+humanInput: false

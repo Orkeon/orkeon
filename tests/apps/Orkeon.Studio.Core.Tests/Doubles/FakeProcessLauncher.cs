@@ -33,6 +33,12 @@ public sealed class FakeProcessLauncher : IProcessLauncher
     /// <summary>Number of runs started.</summary>
     public int StartCount => Requests.Count;
 
+    /// <summary>Lines the caller wrote to the child's stdin, when the request redirected it.</summary>
+    public List<string> InputLines { get; } = new();
+
+    /// <summary>Whether the caller closed the child's stdin.</summary>
+    public bool InputClosed { get; private set; }
+
     /// <summary>Adds a scripted standard-output line.</summary>
     public FakeProcessLauncher WithStandardOutput(params string[] lines)
     {
@@ -57,6 +63,9 @@ public sealed class FakeProcessLauncher : IProcessLauncher
     {
         Requests.Add(request);
 
+        if (request.OnInputReady is { } onInputReady)
+            onInputReady(new RecordingInputWriter(this));
+
         try
         {
             foreach (var line in ScriptedOutput)
@@ -80,5 +89,22 @@ public sealed class FakeProcessLauncher : IProcessLauncher
         }
 
         return ProcessRunResult.FromExitCode(ExitCode, TimeSpan.FromMilliseconds(1));
+    }
+
+    /// <summary>Records instead of piping: what was written, and whether stdin was closed.</summary>
+    private sealed class RecordingInputWriter(FakeProcessLauncher owner) : IProcessInputWriter
+    {
+        public bool TryWriteLine(string line)
+        {
+            ArgumentNullException.ThrowIfNull(line);
+
+            if (owner.InputClosed)
+                return false;
+
+            owner.InputLines.Add(line);
+            return true;
+        }
+
+        public void Close() => owner.InputClosed = true;
     }
 }

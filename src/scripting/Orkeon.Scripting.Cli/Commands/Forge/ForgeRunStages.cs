@@ -1,0 +1,351 @@
+using System.Globalization;
+using Orkeon.Application.Crew;
+
+namespace Orkeon.Scripting.Cli.Commands.Forge;
+
+/// <summary>
+/// Live progress of the sandboxed run (SPEC-ORKEON-FORGE §9.2): the engine host's
+/// <see cref="ICrewExecutionHook"/>, projecting each finished task onto the event stream.
+/// The forge host registers no other hook — <c>AutoSummaryWriter</c> belongs to
+/// <c>RunnerExecution</c>, not to <c>RunnerHost.Build</c> — so no composition is needed
+/// here (verified; the spec's caution §9.2 targeted the runner hosts).
+/// </summary>
+internal sealed class ForgeRunObserver : ICrewExecutionHook
+{
+    private ForgeEventWriter? _events;
+
+    /// <summary>Attaches the stream; before this, the observer stays silent.</summary>
+    public void Attach(ForgeEventWriter events) => _events = events;
+
+    /// <inheritdoc />
+    public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
+    {
+        _events?.Emit("task.completed", new
+        {
+            taskId = snapshot.TaskId,
+            agentRole = snapshot.AgentRole,
+            success = snapshot.Success,
+            durationMs = (long)snapshot.Duration.TotalMilliseconds,
+            tokens = snapshot.TokensUsed,
+            toolCalls = snapshot.ToolCallCount,
+        });
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task OnCrewCompletedAsync(CrewExecutionSnapshot snapshot, CancellationToken ct) =>
+        Task.CompletedTask;   // run.finished belongs to the stage, which owns the verdicting
+
+    /// <inheritdoc />
+    public Task OnCrewFailedAsync(CrewExecutionSnapshot isPartial, Exception? ex, CancellationToken ct) =>
+        Task.CompletedTask;   // failure is detected on the CrewOutput shape (SPEC §9.3)
+}
+
+/// <summary>
+/// The sandboxed test (SPEC-ORKEON-FORGE §9): runs the rendered crew on the brief's sample,
+/// snapshots everything under <c>runs/&lt;n&gt;/</c>, and always hands over to the diagnosis
+/// — a failed run is explained, never just reported.
+/// </summary>
+internal sealed class TestStage : IForgeStageRunner
+{
+    /// <summary>The per-session directory holding one sub-directory per run.</summary>
+    public const string RunsDirectoryName = "runs";
+
+    /// <summary>Where the run's <c>/output</c> mount lands physically, inside the session.</summary>
+    public const string OutputDirectoryName = "output";
+
+    /// <summary>The diagnosis's handle on the latest run.</summary>
+    public const string LastRunFileName = "last-run.json";
+
+    private readonly IForgeTestBench _bench;
+
+    /// <summary>Builds the stage over the bench seam.</summary>
+    public TestStage(IForgeTestBench bench) =>
+        _bench = bench ?? throw new ArgumentNullException(nameof(bench));
+
+    /// <inheritdoc />
+    public ForgeState Stage => ForgeState.Test;
+
+    /// <inheritdoc />
+    public async Task<ForgeStageOutcome> RunAsync(
+        ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
+    {
+        var runNumber = session.Document.Iteration;
+        var runDirectory = Path.Combine(session.Directory, RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture));
+        Directory.CreateDirectory(runDirectory);
+
+        events.Emit("run.started", new { run = runNumber, target = ForgeYamlRenderer.CrewDirectoryName });
+
+        ForgeTestRun run;
+        try
+        {
+            run = await _bench.ExecuteAsync(session, runNumber, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;   // interruption stays an interruption — the session is saved upstream
+        }
+#pragma warning disable CA1031 // stage fault barrier: a bench crash must end the cycle as a failure, not as an unhandled exception
+        catch (Exception ex)
+        {
+            return new ForgeStageOutcome
+            {
+                Trigger = ForgeTrigger.Fail,
+                Detail = $"The test bench crashed: {ex.Message}",
+            };
+        }
+#pragma warning restore CA1031
+
+        var relativeOutput = Path.Combine(RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture), "output.md");
+        await File.WriteAllTextAsync(Path.Combine(session.Directory, relativeOutput), run.Output, cancellationToken)
+            .ConfigureAwait(false);
+        session.SaveArtifact(Path.Combine(RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture), "run.json"), run);
+        session.SaveArtifact(LastRunFileName, run);
+
+        // The run's /output mount is snapshotted into the run directory and cleared, so
+        // deliverables never leak from one cycle into the next one's diagnosis.
+        SnapshotOutputs(session.Directory, runDirectory);
+
+        events.Emit("run.finished", new { run = runNumber, success = run.Success, outputPath = relativeOutput });
+
+        return new ForgeStageOutcome
+        {
+            Trigger = ForgeTrigger.TestCompleted,
+            TokensConsumed = run.Tokens ?? 0,
+        };
+    }
+
+    private static void SnapshotOutputs(string sessionDirectory, string runDirectory)
+    {
+        var outputDirectory = Path.Combine(sessionDirectory, OutputDirectoryName);
+        if (!Directory.Exists(outputDirectory))
+            return;
+
+        var snapshot = Path.Combine(runDirectory, OutputDirectoryName);
+        Directory.CreateDirectory(snapshot);
+
+        foreach (var file in Directory.EnumerateFiles(outputDirectory, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(outputDirectory, file);
+            var target = Path.Combine(snapshot, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Move(file, target, overwrite: true);
+        }
+    }
+}
+
+/// <summary>
+/// The diagnosis (SPEC-ORKEON-FORGE §10): mechanical checks first — run completion, output
+/// presence, promised deliverables — then the judge against the acceptance criteria, when
+/// one is available. A degraded verdict says it is one; it never fakes a score.
+/// </summary>
+internal sealed class DiagnoseStage : IForgeStageRunner
+{
+    private readonly IForgeJudge _judge;
+
+    /// <summary>Builds the stage over the judge seam.</summary>
+    public DiagnoseStage(IForgeJudge judge) =>
+        _judge = judge ?? throw new ArgumentNullException(nameof(judge));
+
+    /// <inheritdoc />
+    public ForgeState Stage => ForgeState.Diagnose;
+
+    /// <inheritdoc />
+    public async Task<ForgeStageOutcome> RunAsync(
+        ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
+    {
+        var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName);
+        var run = session.TryLoadArtifact<ForgeTestRun>(TestStage.LastRunFileName);
+        if (brief is null || run is null)
+        {
+            return new ForgeStageOutcome
+            {
+                Trigger = ForgeTrigger.Fail,
+                FailureCode = ForgeErrorCodes.SessionCorrupt,
+                Detail = "The diagnosis needs the brief and the last run, and one of them is missing.",
+            };
+        }
+
+        var mechanical = MechanicalFindings(session, run);
+
+        // A failed run never consults the judge — nothing to judge, nothing to pay.
+        var judgement = run.Success && !string.IsNullOrWhiteSpace(run.Output)
+            ? await _judge.JudgeAsync(brief, run.Output, cancellationToken).ConfigureAwait(false)
+            : ForgeJudgement.Unavailable;
+
+        ForgeVerdict verdict;
+        if (judgement.Verdict is { } judged)
+        {
+            verdict = judged with { Findings = [.. mechanical, .. judged.Findings] };
+            verdict = verdict with
+            {
+                Passing = verdict.Score >= ForgeVerdict.PassingThreshold && !verdict.HasBlockingFinding,
+            };
+        }
+        else
+        {
+            // No judge (or nothing worth judging): mechanical checks only, and said so.
+            var passing = mechanical.Count == 0;
+            verdict = new ForgeVerdict
+            {
+                Score = passing ? ForgeVerdict.PassingThreshold : 0.0,
+                Passing = passing,
+                Findings = mechanical,
+                Judge = ForgeVerdict.JudgeDeterministic,
+            };
+        }
+
+        var runDirectory = Path.Combine(TestStage.RunsDirectoryName, run.Run.ToString(CultureInfo.InvariantCulture));
+        session.SaveArtifact(Path.Combine(runDirectory, "verdict.json"), verdict);
+        session.SaveArtifact("verdict.json", verdict);
+
+        events.Emit("verdict.ready", new
+        {
+            score = verdict.Score,
+            passing = verdict.Passing,
+            findings = verdict.Findings,
+            suggestions = verdict.Suggestions,
+            judge = verdict.Judge,
+        });
+
+        return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, TokensConsumed = judgement.Tokens };
+    }
+
+    /// <summary>What no judge is needed to see; blocking when the run itself went wrong.</summary>
+    private static List<ForgeFinding> MechanicalFindings(ForgeSession session, ForgeTestRun run)
+    {
+        var findings = new List<ForgeFinding>();
+
+        if (!run.Success)
+        {
+            findings.Add(new ForgeFinding
+            {
+                Id = "F-RUN",
+                Severity = "blocking",
+                Statement = "The crew did not complete its run.",
+                Evidence = run.Error ?? run.Output,
+            });
+            return findings;
+        }
+
+        if (string.IsNullOrWhiteSpace(run.Output))
+        {
+            findings.Add(new ForgeFinding
+            {
+                Id = "F-EMPTY",
+                Severity = "blocking",
+                Statement = "The run produced no output.",
+            });
+        }
+
+        // Every deliverable the blueprint promised must exist in the run's snapshot.
+        var blueprint = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
+        foreach (var task in blueprint?.Tasks ?? [])
+        {
+            if (task.Deliverable is not { Length: > 0 } deliverable)
+                continue;
+
+            var relative = deliverable.TrimStart('/');
+            if (relative.StartsWith("output/", StringComparison.Ordinal))
+                relative = relative["output/".Length..];
+
+            var expected = Path.Combine(
+                session.Directory,
+                TestStage.RunsDirectoryName,
+                run.Run.ToString(CultureInfo.InvariantCulture),
+                TestStage.OutputDirectoryName,
+                relative);
+
+            if (!File.Exists(expected))
+            {
+                findings.Add(new ForgeFinding
+                {
+                    Id = $"F-DELIVERABLE-{task.Key}",
+                    Severity = "major",
+                    Statement = $"Task '{task.Key}' promised '{deliverable}' and the run did not produce it.",
+                });
+            }
+        }
+
+        return findings;
+    }
+}
+
+/// <summary>
+/// The arbitration (SPEC-ORKEON-FORGE §10): conforming goes to Ready; anything else is the
+/// user's call — or <c>--auto</c>'s, which only ever refines within the budget. A refine
+/// folds the findings and suggestions back into the blueprint prompt, verbatim.
+/// </summary>
+internal sealed class VerdictStage : IForgeStageRunner
+{
+    private static readonly string[] DecisionOptions = ["accept", "refine", "abort"];
+
+    private readonly bool _auto;
+    private readonly IForgeUserChannel _channel;
+
+    /// <summary>Builds the stage; <paramref name="auto"/> arbitrates without a human.</summary>
+    public VerdictStage(bool auto, IForgeUserChannel channel)
+    {
+        _auto = auto;
+        _channel = channel ?? throw new ArgumentNullException(nameof(channel));
+    }
+
+    /// <inheritdoc />
+    public ForgeState Stage => ForgeState.Verdict;
+
+    /// <inheritdoc />
+    public async Task<ForgeStageOutcome> RunAsync(
+        ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
+    {
+        var verdict = session.TryLoadArtifact<ForgeVerdict>("verdict.json");
+        if (verdict is null)
+        {
+            return new ForgeStageOutcome
+            {
+                Trigger = ForgeTrigger.Fail,
+                FailureCode = ForgeErrorCodes.SessionCorrupt,
+                Detail = "The arbitration needs a verdict, and none is saved.",
+            };
+        }
+
+        if (verdict.Passing)
+            return new ForgeStageOutcome { Trigger = ForgeTrigger.Accepted };
+
+        if (_auto)
+        {
+            FeedRefine(session, verdict);
+            return new ForgeStageOutcome { Trigger = ForgeTrigger.RefineRequested };
+        }
+
+        events.Emit("decision.needed", new { options = DecisionOptions });
+        var decision = await _channel.ReadDecisionAsync(DecisionOptions, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new OperationCanceledException("The user channel closed at the arbitration.");
+
+        switch (decision)
+        {
+            case "accept":
+                // Keeping a non-conforming result is legitimate — the user judged on sight.
+                return new ForgeStageOutcome { Trigger = ForgeTrigger.Accepted };
+
+            case "refine":
+                FeedRefine(session, verdict);
+                return new ForgeStageOutcome { Trigger = ForgeTrigger.RefineRequested };
+
+            default:
+                return new ForgeStageOutcome { Trigger = ForgeTrigger.Abandon };
+        }
+    }
+
+    /// <summary>The diagnosis becomes the next blueprint turn's error feed, verbatim (SPEC §4).</summary>
+    private static void FeedRefine(ForgeSession session, ForgeVerdict verdict)
+    {
+        var feed = new List<string>();
+        foreach (var finding in verdict.Findings)
+            feed.Add($"[{finding.Severity}] {finding.Statement}" + (finding.Acceptance is { } a ? $" (criterion {a})" : ""));
+        foreach (var suggestion in verdict.Suggestions)
+            feed.Add($"Suggested change on {suggestion.Target}: {suggestion.Change} — {suggestion.Reason}");
+
+        session.SaveArtifact(ForgeSession.RepairFileName, new ForgeRepairState { Errors = feed });
+    }
+}

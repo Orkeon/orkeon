@@ -1,0 +1,7 @@
+description: "Write the morning summary of the collected offers, citing each source."
+expectedOutput: "A one-page markdown summary with sources cited."
+agent: "writer"
+dependencies:
+  - "collect"
+asyncExecution: false
+humanInput: false

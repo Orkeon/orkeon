@@ -326,6 +326,50 @@ public static class StudioStringKeys
 
     /// <summary>"All files|*.*"</summary>
     public const string DialogFilterAll = "Vm_Dialog_FilterAll";
+
+    // ── the Atelier (SPEC-ORKEON-FORGE §12, UX study §2: no framework word at level 1) ──
+
+    /// <summary>"Summarize a site's news every morning"</summary>
+    public const string ForgeExample1 = "Vm_Forge_Example1";
+
+    /// <summary>"Produce a weekly summary from my files"</summary>
+    public const string ForgeExample2 = "Vm_Forge_Example2";
+
+    /// <summary>"Compare offers and flag the best one"</summary>
+    public const string ForgeExample3 = "Vm_Forge_Example3";
+
+    /// <summary>"Turn a folder of documents into a report"</summary>
+    public const string ForgeExample4 = "Vm_Forge_Example4";
+
+    /// <summary>"I am preparing a proposal…"</summary>
+    public const string ForgeStatusPreparing = "Vm_Forge_StatusPreparing";
+
+    /// <summary>"Trying it on your example…"</summary>
+    public const string ForgeStatusTrying = "Vm_Forge_StatusTrying";
+
+    /// <summary>"Checking the result against what you asked…"</summary>
+    public const string ForgeStatusJudging = "Vm_Forge_StatusJudging";
+
+    /// <summary>"Your solution is ready."</summary>
+    public const string ForgeStatusReady = "Vm_Forge_StatusReady";
+
+    /// <summary>"Something went wrong — open the details for the technical part."</summary>
+    public const string ForgeStatusFailed = "Vm_Forge_StatusFailed";
+
+    /// <summary>"Stopped — you can pick it up again from My solutions."</summary>
+    public const string ForgeStatusStopped = "Vm_Forge_StatusStopped";
+
+    /// <summary>"Attempt {0}"</summary>
+    public const string ForgeAttempt = "Vm_Forge_Attempt";
+
+    /// <summary>"I could not check this automatically — judge for yourself."</summary>
+    public const string ForgeCheckUnverified = "Vm_Forge_CheckUnverified";
+
+    /// <summary>"The try is done (score {0})."</summary>
+    public const string ForgeResultScore = "Vm_Forge_ResultScore";
+
+    /// <summary>"Choose where to store the solution"</summary>
+    public const string ForgeStorePickTitle = "Vm_Forge_StorePickTitle";
 }
 
 /// <summary>
@@ -476,6 +520,20 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DialogFilterJson] = "JSON files|*.json|All files|*.*",
         [StudioStringKeys.DialogFilterCrew] = "Crew definitions|*.yaml;*.yml;*.ts;*.js|All files|*.*",
         [StudioStringKeys.DialogFilterAll] = "All files|*.*",
+        [StudioStringKeys.ForgeExample1] = "Summarize a site's news every morning",
+        [StudioStringKeys.ForgeExample2] = "Produce a weekly summary from my files",
+        [StudioStringKeys.ForgeExample3] = "Compare offers and flag the best one",
+        [StudioStringKeys.ForgeExample4] = "Turn a folder of documents into a report",
+        [StudioStringKeys.ForgeStatusPreparing] = "I am preparing a proposal…",
+        [StudioStringKeys.ForgeStatusTrying] = "Trying it on your example…",
+        [StudioStringKeys.ForgeStatusJudging] = "Checking the result against what you asked…",
+        [StudioStringKeys.ForgeStatusReady] = "Your solution is ready.",
+        [StudioStringKeys.ForgeStatusFailed] = "Something went wrong — open the details for the technical part.",
+        [StudioStringKeys.ForgeStatusStopped] = "Stopped — you can pick it up again from My solutions.",
+        [StudioStringKeys.ForgeAttempt] = "Attempt {0}",
+        [StudioStringKeys.ForgeCheckUnverified] = "I could not check this automatically — judge for yourself.",
+        [StudioStringKeys.ForgeResultScore] = "The try is done (score {0}).",
+        [StudioStringKeys.ForgeStorePickTitle] = "Choose where to store the solution",
     };
 
     /// <summary>Every declared key with its English text, for the front-ends' drift tests.</summary>

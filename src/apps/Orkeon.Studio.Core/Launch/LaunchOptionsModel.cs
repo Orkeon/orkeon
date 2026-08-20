@@ -1,11 +1,10 @@
 using System.Globalization;
 using Orkeon.Studio.Core.FileSystem;
-using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Storage;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Validation;
 
-namespace Orkeon.Studio.Run.Launcher;
+namespace Orkeon.Studio.Core.Launch;
 
 /// <summary>
 /// The launch form's fields, and the <see cref="RunLaunchOptions"/> they add up to.
@@ -16,7 +15,7 @@ namespace Orkeon.Studio.Run.Launcher;
 /// (<see cref="RunOptionAvailability"/>).
 /// </para>
 /// </summary>
-internal sealed class LaunchOptionsModel
+public sealed class LaunchOptionsModel
 {
     private readonly MountValidator _mountValidator;
     private readonly List<RunVariable> _variables = [];

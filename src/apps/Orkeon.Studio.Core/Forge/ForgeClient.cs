@@ -1,0 +1,255 @@
+using System.Text.Json;
+using Orkeon.Studio.Core.Process;
+
+namespace Orkeon.Studio.Core.Forge;
+
+/// <summary>What to launch: a new session from a need, or the resume of an existing one.</summary>
+public sealed record ForgeStartRequest
+{
+    /// <summary>The problem in the user's words; null opens with the interview.</summary>
+    public string? Need { get; init; }
+
+    /// <summary>Slug of the session to resume; wins over <see cref="Need"/>.</summary>
+    public string? ResumeSlug { get; init; }
+
+    /// <summary>Workspace the session lives under (the CLI's working directory).</summary>
+    public string? WorkingDirectory { get; init; }
+
+    /// <summary>Explicit settings path, same semantics as <c>orkeon run</c>.</summary>
+    public string? SettingsPath { get; init; }
+
+    /// <summary>Arbitrate without a human — Studio keeps the human, so false by default.</summary>
+    public bool Auto { get; init; }
+}
+
+/// <summary>
+/// The <c>orkeon forge</c> argv, composed against the CLI's §5.1 grammar. Mirrors the
+/// grammar the same way <c>RunArgumentsBuilder</c> mirrors <c>orkeon run</c> — the drift
+/// pin is <c>ForgeClientTests</c>' golden argv.
+/// </summary>
+public static class ForgeArgumentsBuilder
+{
+    /// <summary>The CLI verb.</summary>
+    public const string ForgeVerb = "forge";
+
+    /// <summary>
+    /// Builds the argv of <c>forge promote</c>: destination required, schedule passed
+    /// through verbatim — the engine owns the grammar and refuses loudly, the client never
+    /// pre-validates what it does not own.
+    /// </summary>
+    public static IReadOnlyList<string> BuildPromote(string slug, string destination, string? schedule)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+
+        var arguments = new List<string> { ForgeVerb, "promote", slug, "--to", destination, "--events", "jsonl" };
+        if (!string.IsNullOrWhiteSpace(schedule))
+        {
+            arguments.Add("--schedule");
+            arguments.Add(schedule);
+        }
+
+        return arguments;
+    }
+
+    /// <summary>Builds the argv of <paramref name="request"/>, <c>--events jsonl</c> always on.</summary>
+    public static IReadOnlyList<string> Build(ForgeStartRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var arguments = new List<string> { ForgeVerb };
+
+        if (!string.IsNullOrWhiteSpace(request.ResumeSlug))
+        {
+            arguments.Add("resume");
+            arguments.Add(request.ResumeSlug);
+        }
+        else if (!string.IsNullOrWhiteSpace(request.Need))
+        {
+            arguments.Add(request.Need);
+        }
+
+        arguments.Add("--events");
+        arguments.Add("jsonl");
+
+        if (!string.IsNullOrWhiteSpace(request.SettingsPath))
+        {
+            arguments.Add("--settings");
+            arguments.Add(request.SettingsPath);
+        }
+
+        if (request.Auto)
+            arguments.Add("--auto");
+
+        return arguments;
+    }
+}
+
+/// <summary>
+/// The Studio side of the forge protocol (SPEC-ORKEON-FORGE §5-§6): launches
+/// <c>orkeon forge --events jsonl</c> as a child process, parses its stdout into
+/// <see cref="ForgeEvent"/>s, and answers over stdin — <c>user.message</c> and
+/// <c>decision.made</c>, one JSON line each. The Studio process never touches an LLM;
+/// it only ever sees these lines.
+/// </summary>
+public sealed class ForgeClient
+{
+    private readonly IProcessLauncher _launcher;
+    private readonly OrkeonBinaryLocator _locator;
+    private volatile IProcessInputWriter? _input;
+    private CancellationTokenSource? _cancellation;
+
+    /// <summary>Creates a client over an explicit launcher and locator (the test seam).</summary>
+    public ForgeClient(IProcessLauncher launcher, OrkeonBinaryLocator locator)
+    {
+        _launcher = launcher ?? throw new ArgumentNullException(nameof(launcher));
+        _locator = locator ?? throw new ArgumentNullException(nameof(locator));
+    }
+
+    /// <summary>Creates a client over the real machine and real processes.</summary>
+    public static ForgeClient ForCurrentMachine() =>
+        new(SystemProcessLauncher.Instance, OrkeonBinaryLocator.ForCurrentMachine());
+
+    /// <summary>Whether a forge child is currently alive.</summary>
+    public bool IsRunning { get; private set; }
+
+    /// <summary>
+    /// Runs one engine invocation to completion. Protocol lines reach
+    /// <paramref name="onEvent"/>; everything else — stderr, unparsable stdout — reaches
+    /// <paramref name="onRaw"/>, never dropped (the terminal's own rule: what the stream
+    /// said stays visible). Callbacks arrive serialized, on a background thread.
+    /// </summary>
+    public async Task<ProcessRunResult> RunAsync(
+        ForgeStartRequest request,
+        Action<ForgeEvent> onEvent,
+        Action<ProcessOutputLine>? onRaw = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(onEvent);
+        if (IsRunning)
+            throw new InvalidOperationException("A forge session is already running.");
+
+        var location = _locator.Locate();
+        if (!location.Found)
+            return ProcessRunResult.NotStarted(location.Error ?? $"`{OrkeonBinaryLocator.ExecutableBaseName}` was not found.");
+
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _cancellation = linked;
+        IsRunning = true;
+        try
+        {
+            var launch = new ProcessLaunchRequest
+            {
+                FileName = location.Path!,
+                Arguments = ForgeArgumentsBuilder.Build(request),
+                WorkingDirectory = request.WorkingDirectory,
+                OnInputReady = writer => _input = writer,
+            };
+
+            return await _launcher.RunAsync(
+                launch,
+                line =>
+                {
+                    if (line.Channel == ProcessOutputChannel.StandardOutput
+                        && ForgeEventParser.TryParse(line.Text, out var forgeEvent))
+                    {
+                        onEvent(forgeEvent!);
+                    }
+                    else
+                    {
+                        onRaw?.Invoke(line);
+                    }
+                },
+                linked.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            IsRunning = false;
+            _input = null;
+            _cancellation = null;
+        }
+    }
+
+    /// <summary>
+    /// Promotes a Ready session to <paramref name="destination"/> — the "Adopter" card's
+    /// gesture. Same child process, same protocol; the <c>promoted</c> event carries the
+    /// folder, the launcher and the displayed-never-executed install command.
+    /// </summary>
+    public async Task<ProcessRunResult> PromoteAsync(
+        string slug,
+        string destination,
+        string? schedule,
+        string? workingDirectory,
+        Action<ForgeEvent> onEvent,
+        Action<ProcessOutputLine>? onRaw = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(onEvent);
+        if (IsRunning)
+            throw new InvalidOperationException("A forge session is already running.");
+
+        var location = _locator.Locate();
+        if (!location.Found)
+            return ProcessRunResult.NotStarted(location.Error ?? $"`{OrkeonBinaryLocator.ExecutableBaseName}` was not found.");
+
+        IsRunning = true;
+        try
+        {
+            var launch = new ProcessLaunchRequest
+            {
+                FileName = location.Path!,
+                Arguments = ForgeArgumentsBuilder.BuildPromote(slug, destination, schedule),
+                WorkingDirectory = workingDirectory,
+            };
+
+            return await _launcher.RunAsync(
+                launch,
+                line =>
+                {
+                    if (line.Channel == ProcessOutputChannel.StandardOutput
+                        && ForgeEventParser.TryParse(line.Text, out var forgeEvent))
+                    {
+                        onEvent(forgeEvent!);
+                    }
+                    else
+                    {
+                        onRaw?.Invoke(line);
+                    }
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
+
+    /// <summary>Sends the user's next conversation turn; false when no child is listening.</summary>
+    public bool SendMessage(string text)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        return WriteLine(new { kind = ForgeEventKinds.UserMessage, text });
+    }
+
+    /// <summary>Sends an arbitration (<c>accept</c>/<c>refine</c>/<c>abort</c>); false when no child is listening.</summary>
+    public bool SendDecision(string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        return WriteLine(new { kind = ForgeEventKinds.DecisionMade, value });
+    }
+
+    /// <summary>Asks the running child to stop; false when nothing runs or it was already asked.</summary>
+    public bool RequestCancellation()
+    {
+        var cancellation = _cancellation;
+        if (cancellation is null || cancellation.IsCancellationRequested)
+            return false;
+
+        cancellation.Cancel();
+        return true;
+    }
+
+    private bool WriteLine(object payload) =>
+        _input is { } writer && writer.TryWriteLine(JsonSerializer.Serialize(payload));
+}

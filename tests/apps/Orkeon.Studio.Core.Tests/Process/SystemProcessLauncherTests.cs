@@ -64,6 +64,56 @@ public sealed class SystemProcessLauncherTests
     }
 
     [Fact]
+    public async Task Lines_written_to_stdin_reach_the_child_in_utf8()
+    {
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
+
+        var written = new List<bool>();
+        var lines = new List<string>();
+
+        var result = await SystemProcessLauncher.Instance
+            .RunAsync(
+                Script("""read a; read b; echo "got:$a:$b" """) with
+                {
+                    // The writer is handed over synchronously right after the start, so the
+                    // dialogue can begin before the first await resolves.
+                    OnInputReady = writer =>
+                    {
+                        written.Add(writer.TryWriteLine("première"));
+                        written.Add(writer.TryWriteLine("deuxième"));
+                    },
+                },
+                line => lines.Add(line.Text),
+                TestContext.Current.CancellationToken)
+            .WaitAsync(TestTimeout, TestContext.Current.CancellationToken);
+
+        Assert.Equal([true, true], written);
+        Assert.Equal(RunOutcome.Success, result.Outcome);
+        Assert.Equal(["got:première:deuxième"], lines);
+    }
+
+    [Fact]
+    public async Task Writing_to_a_finished_child_reports_false_instead_of_throwing()
+    {
+        Assert.SkipUnless(ShellAvailable, ShellRequired);
+
+        IProcessInputWriter? input = null;
+
+        var result = await SystemProcessLauncher.Instance
+            .RunAsync(
+                Script("exit 0") with { OnInputReady = writer => input = writer },
+                cancellationToken: TestContext.Current.CancellationToken)
+            .WaitAsync(TestTimeout, TestContext.Current.CancellationToken);
+
+        Assert.Equal(RunOutcome.Success, result.Outcome);
+        Assert.NotNull(input);
+
+        // The launcher closed stdin when the run ended: the dialogue is over, not broken.
+        Assert.False(input!.TryWriteLine("too late"));
+        input.Close();   // idempotent, never throws
+    }
+
+    [Fact]
     public async Task Standard_error_is_reported_on_its_own_channel()
     {
         Assert.SkipUnless(ShellAvailable, ShellRequired);

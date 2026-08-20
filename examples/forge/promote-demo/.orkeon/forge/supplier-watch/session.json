@@ -1,0 +1,20 @@
+{
+  "v": 1,
+  "slug": "supplier-watch",
+  "title": "Summarize the supplier's new offers every morning",
+  "format": "yaml",
+  "state": "Ready",
+  "status": "Ready",
+  "iteration": 1,
+  "repairAttempts": 0,
+  "budget": {
+    "maxIterations": 3,
+    "maxTokens": 0,
+    "maxWallSeconds": 0,
+    "consumedIterations": 1,
+    "consumedTokens": 4210,
+    "consumedWallSeconds": 74
+  },
+  "createdAt": "2026-08-19T09:00:00Z",
+  "updatedAt": "2026-08-19T09:02:00Z"
+}

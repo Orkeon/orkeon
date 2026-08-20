@@ -434,4 +434,8 @@ sonarqube/
 
 # Orkeon CLI local state (rag manifests, eval reports)
 .orkeon/
+# …except the Atelier's demo workspace, whose whole point is to ship a real
+# forge session (examples/forge/promote-demo) so `forge list`/`promote` can be
+# run straight from a clone.
+!examples/forge/promote-demo/.orkeon/
 /.github/copilot-instructions.md

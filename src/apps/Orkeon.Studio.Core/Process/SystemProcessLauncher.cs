@@ -81,6 +81,13 @@ public sealed class SystemProcessLauncher : IProcessLauncher
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
+        StandardInputWriter? input = null;
+        if (request.OnInputReady is { } onInputReady)
+        {
+            input = new StandardInputWriter(process.StandardInput);
+            onInputReady(input);
+        }
+
         var handle = new SystemProcessHandle(process);
         var termination = new ProcessTerminationOutcome { Mode = ProcessTerminationMode.Exited };
         var cancelled = false;
@@ -99,6 +106,7 @@ public sealed class SystemProcessLauncher : IProcessLauncher
         }
 
         stopwatch.Stop();
+        input?.Close();
         await WaitForOutputFlushAsync(stdoutClosed.Task, stderrClosed.Task).ConfigureAwait(false);
 
         var rawExitCode = ReadExitCode(process);
@@ -117,6 +125,14 @@ public sealed class SystemProcessLauncher : IProcessLauncher
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+
+        if (request.OnInputReady is not null)
+        {
+            // UTF-8 without BOM: a line-oriented child (one JSON document per line) must
+            // never see three stray bytes ahead of its first message.
+            startInfo.RedirectStandardInput = true;
+            startInfo.StandardInputEncoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        }
 
         // ArgumentList, never a joined command line: a crew path holding a space or a quote
         // must reach the child exactly as the user picked it.
@@ -142,6 +158,58 @@ public sealed class SystemProcessLauncher : IProcessLauncher
     {
         try { return process.ExitCode; }
         catch (InvalidOperationException) { return -1; }
+    }
+
+    /// <summary>
+    /// The child's stdin behind a lock: the UI thread answers questions while the run loop
+    /// owns the process, and a write must never race the close.
+    /// </summary>
+    private sealed class StandardInputWriter(StreamWriter writer) : IProcessInputWriter
+    {
+        private readonly Lock _gate = new();
+        private bool _closed;
+
+        public bool TryWriteLine(string line)
+        {
+            ArgumentNullException.ThrowIfNull(line);
+
+            lock (_gate)
+            {
+                if (_closed)
+                    return false;
+
+                try
+                {
+                    writer.WriteLine(line);
+                    writer.Flush();
+                    return true;
+                }
+                catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException)
+                {
+                    // The child exited or closed its stdin: end of dialogue, not an error.
+                    return false;
+                }
+            }
+        }
+
+        public void Close()
+        {
+            lock (_gate)
+            {
+                if (_closed)
+                    return;
+
+                _closed = true;
+                try
+                {
+                    writer.Close();
+                }
+                catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+                {
+                    // Already gone with the process; closing was the point.
+                }
+            }
+        }
     }
 
     /// <summary>Funnels both reader threads through one lock so the sink sees one line at a time.</summary>

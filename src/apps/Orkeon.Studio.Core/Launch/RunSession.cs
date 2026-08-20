@@ -1,10 +1,10 @@
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Process;
 
-namespace Orkeon.Studio.Run.Launcher;
+namespace Orkeon.Studio.Core.Launch;
 
 /// <summary>What one launch spawns.</summary>
-internal sealed record RunLaunchRequest
+public sealed record RunLaunchRequest
 {
     /// <summary>The crew the launch is about, as the history records it.</summary>
     public required string TargetPath { get; init; }
@@ -29,8 +29,12 @@ internal sealed record RunLaunchRequest
 /// One launcher's run lifecycle: at most one <c>orkeon</c> child at a time, its output
 /// handed to the caller line by line, its cancellation reachable from the UI thread, and
 /// its outcome appended to the recent list.
+/// <para>
+/// Every front-end shares this class rather than re-implementing the lifecycle: the
+/// terminal launcher, the WPF Launch tab, and any future flow that spawns the CLI.
+/// </para>
 /// </summary>
-internal sealed class RunSession
+public sealed class RunSession
 {
     private readonly OrkeonProcessRunner _runner;
     private readonly ILaunchHistoryStore? _history;
@@ -55,7 +59,7 @@ internal sealed class RunSession
     /// <summary>Where the CLI binary was found — a status field, no process is spawned.</summary>
     public BinaryLocation LocateBinary() => _runner.LocateBinary();
 
-    /// <summary>Reads the recent-launch list; a session with no store keeps an empty one.</summary>
+    /// <summary>Reads the recent-launch list; a session with no store starts from an empty one.</summary>
     public async Task<LaunchHistory> LoadHistoryAsync(CancellationToken cancellationToken = default)
     {
         if (_history is not null)
@@ -109,10 +113,16 @@ internal sealed class RunSession
 
         LastResult = result;
 
-        if (_history is not null && request.RecordInHistory)
+        if (request.RecordInHistory)
         {
+            var completed = entry.WithResult(result);
+
             // Not the run's token: a cancelled run must still be recorded with its 130.
-            History = await _history.RecordAsync(entry.WithResult(result), CancellationToken.None).ConfigureAwait(false);
+            // Without a store the list still accumulates in memory, so a session-only
+            // front-end shows the same recent list as a persisted one.
+            History = _history is not null
+                ? await _history.RecordAsync(completed, CancellationToken.None).ConfigureAwait(false)
+                : History.Add(completed);
         }
 
         return result;

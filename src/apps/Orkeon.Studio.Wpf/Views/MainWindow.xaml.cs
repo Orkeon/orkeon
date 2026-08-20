@@ -12,6 +12,21 @@ public partial class MainWindow : Window
         InitializeComponent();
         UpdateLangButtons();
         UpdateThemeButton();
+        DataContextChanged += (_, _) => WireForgeNavigation();
+    }
+
+    /// <summary>
+    /// The two Atelier gestures that move the navigation: an activated session brings the
+    /// "Nouveau problème" screen forward, a "Relancer" lands on the launcher (the target
+    /// path itself is wired in the ViewModel — this is only the visible panel).
+    /// </summary>
+    private void WireForgeNavigation()
+    {
+        if (DataContext is not ViewModels.Shell.MainWindowViewModel shell)
+            return;
+
+        shell.Forge.SessionActivated += (_, _) => NavForgeNew.IsChecked = true;
+        shell.Forge.RelaunchRequested += (_, _) => NavRun.IsChecked = true;
     }
 
     // ── window chrome ──

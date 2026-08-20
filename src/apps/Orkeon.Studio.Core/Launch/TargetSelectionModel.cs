@@ -1,9 +1,9 @@
 using Orkeon.Studio.Core.Targets;
 
-namespace Orkeon.Studio.Run.Launcher;
+namespace Orkeon.Studio.Core.Launch;
 
 /// <summary>What the target picker is currently showing.</summary>
-internal enum TargetSelectionState
+public enum TargetSelectionState
 {
     /// <summary>Nothing picked yet.</summary>
     Empty,
@@ -24,7 +24,7 @@ internal enum TargetSelectionState
 /// shows. It decides nothing about the shapes itself — errors, including the ambiguity
 /// error that names both candidates, are surfaced verbatim.
 /// </summary>
-internal sealed class TargetSelectionModel
+public sealed class TargetSelectionModel
 {
     private readonly RunTargetDetector _detector;
 

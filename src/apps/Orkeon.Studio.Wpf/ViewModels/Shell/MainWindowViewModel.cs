@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
@@ -29,7 +30,9 @@ public sealed class MainWindowViewModel : ObservableObject
         ILaunchHistoryStore? historyStore = null,
         IUiDispatcher? dispatcher = null,
         string? globalPathOverride = null,
-        IStudioStrings? strings = null)
+        IStudioStrings? strings = null,
+        ForgeClient? forgeClient = null,
+        string? forgeWorkspace = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
@@ -52,6 +55,17 @@ public sealed class MainWindowViewModel : ObservableObject
             settingsStore,
             dispatcher,
             strings);
+
+        Forge = new Wpf.ViewModels.Forge.ForgeTabViewModel(
+            forgeClient,
+            picker,
+            dispatcher,
+            strings,
+            forgeWorkspace);
+
+        // "Relancer" hands the adopted folder to the ordinary launcher — the promoted
+        // crew is not proprietary to the Atelier (SPEC §11).
+        Forge.RelaunchRequested += (_, e) => Launch.Target.SelectedPath = e.Path;
     }
 
     /// <summary>The appsettings editor (spec §4).</summary>
@@ -59,6 +73,9 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>The crew launcher (spec §5).</summary>
     public LaunchTabViewModel Launch { get; }
+
+    /// <summary>The Atelier — the "Résoudre" screen (SPEC-ORKEON-FORGE §12).</summary>
+    public Wpf.ViewModels.Forge.ForgeTabViewModel Forge { get; }
 
     /// <summary>Which tab is showing.</summary>
     public int SelectedTabIndex

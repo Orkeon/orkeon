@@ -38,6 +38,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- FORGE-03: the assistant pack, embedded so `orkeon forge` needs no file on disk;
+         extracted into the session directory at run time (overridable with `-\-pack`). -->
+    <EmbeddedResource Include="Commands\Forge\Packs\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommandLineParser" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging" />

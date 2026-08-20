@@ -1,0 +1,381 @@
+<!-- The "Résoudre" screen (SPEC-ORKEON-FORGE §12, UX study): a conversation and a dossier,
+     four milestones, level 3 folded. DataContext: ForgeTabViewModel (bound as Forge). -->
+<UserControl x:Class="Orkeon.Studio.Wpf.Views.ForgeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
+             xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
+  <UserControl.Resources>
+    <Style x:Key="MilestoneLabel" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+      <Setter Property="Margin" Value="0,0,6,0"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="MilestoneChevron" TargetType="TextBlock" BasedOn="{StaticResource MilestoneLabel}">
+      <Setter Property="Text" Value="▸"/>
+      <Setter Property="Margin" Value="0,0,6,0"/>
+    </Style>
+  </UserControl.Resources>
+
+  <Grid>
+    <!-- ══════════ START PAGE: the blank page is the first enemy (§4.1) ══════════ -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  Visibility="{Binding IsStartPage, Converter={StaticResource BooleanToVisibility}}">
+      <StackPanel MaxWidth="640" HorizontalAlignment="Center" Margin="0,48,0,0">
+        <TextBlock Style="{StaticResource H1}" TextAlignment="Center"
+                   Text="{Binding [Forge_Start_Title], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource SubTitle}" TextAlignment="Center" Margin="0,6,0,18"
+                   Text="{Binding [Forge_Start_Hint], Source={x:Static services:I18n.Instance}}"/>
+
+        <TextBox Style="{StaticResource Input}" MinHeight="72" TextWrapping="Wrap" AcceptsReturn="True"
+                 VerticalScrollBarVisibility="Auto"
+                 Text="{Binding NeedText, UpdateSourceTrigger=PropertyChanged}"/>
+
+        <Button Style="{StaticResource BtnPrimary}" HorizontalAlignment="Right" Margin="0,10,0,0"
+                Command="{Binding StartCommand}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="wand-2" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+            <TextBlock Text="{Binding [Forge_Start_Action], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+
+        <TextBlock Style="{StaticResource Eyebrow}" Margin="0,26,0,8"
+                   Text="{Binding [Forge_Start_Examples], Source={x:Static services:I18n.Instance}}"/>
+        <ItemsControl ItemsSource="{Binding Examples}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Left" Margin="0,0,0,6"
+                      Command="{Binding DataContext.UseExampleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      CommandParameter="{Binding}">
+                <TextBlock Text="{Binding}"/>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Style="{StaticResource Hint}" Margin="0,14,0,0" TextWrapping="Wrap"
+                   Text="{Binding StatusMessage}"
+                   Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ══════════ THE SESSION: conversation + dossier, stable geography (§3) ══════════ -->
+    <Grid Visibility="{Binding HasActiveSession, Converter={StaticResource BooleanToVisibility}}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <!-- milestone banner: an indicator, never a navigation -->
+      <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,4,10">
+        <TextBlock Text="{Binding [Forge_Milestone_Describe], Source={x:Static services:I18n.Instance}}">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource MilestoneLabel}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding Milestones.IsDescribeCurrent}" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
+        <TextBlock Style="{StaticResource MilestoneChevron}"/>
+        <TextBlock Text="{Binding [Forge_Milestone_Propose], Source={x:Static services:I18n.Instance}}">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource MilestoneLabel}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding Milestones.IsProposeCurrent}" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
+        <TextBlock Style="{StaticResource MilestoneChevron}"/>
+        <TextBlock Text="{Binding [Forge_Milestone_Try], Source={x:Static services:I18n.Instance}}">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource MilestoneLabel}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding Milestones.IsTryCurrent}" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
+        <TextBlock Style="{StaticResource MilestoneChevron}"/>
+        <TextBlock Margin="0"
+                   Text="{Binding [Forge_Milestone_Adopt], Source={x:Static services:I18n.Instance}}">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource MilestoneLabel}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding Milestones.IsAdoptCurrent}" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
+      </StackPanel>
+
+      <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="5*"/>
+          <ColumnDefinition Width="16"/>
+          <ColumnDefinition Width="7*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- CONVERSATION -->
+        <Border Grid.Column="0" Style="{StaticResource Card}">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding Conversation.Messages}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border CornerRadius="10" Padding="11,8" Margin="0,0,0,8" MaxWidth="420"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="1">
+                      <Border.Style>
+                        <Style TargetType="Border">
+                          <Setter Property="HorizontalAlignment" Value="Left"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsUser}" Value="True">
+                              <Setter Property="HorizontalAlignment" Value="Right"/>
+                              <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Border.Style>
+                      <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12.5"
+                                 Foreground="{DynamicResource InkBrush}"/>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <Grid Grid.Row="1" Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <TextBox Grid.Column="0" Style="{StaticResource Input}"
+                       Text="{Binding Conversation.InputText, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="{Binding [Forge_Input_Hint], Source={x:Static services:I18n.Instance}}">
+                <TextBox.InputBindings>
+                  <KeyBinding Key="Return" Command="{Binding Conversation.SendCommand}"/>
+                </TextBox.InputBindings>
+              </TextBox>
+              <Button Grid.Column="1" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
+                      Command="{Binding Conversation.SendCommand}">
+                <TextBlock Text="{Binding [Forge_Act_Send], Source={x:Static services:I18n.Instance}}"/>
+              </Button>
+              <Button Grid.Column="2" Style="{StaticResource BtnGhost}" Margin="8,0,0,0"
+                      Command="{Binding StopCommand}">
+                <TextBlock Text="{Binding [Forge_Act_Stop], Source={x:Static services:I18n.Instance}}"/>
+              </Button>
+            </Grid>
+          </Grid>
+        </Border>
+
+        <!-- THE DOSSIER: one main card at a time (§3) -->
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <!-- Success card -->
+            <Border Style="{StaticResource Card}"
+                    Visibility="{Binding Dossier.IsSuccessCard, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource CardTitle}"
+                           Text="{Binding [Forge_Card_Success_Title], Source={x:Static services:I18n.Instance}}"/>
+                <ItemsControl ItemsSource="{Binding Dossier.Criteria}" Margin="0,10,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock TextWrapping="Wrap" Margin="0,0,0,6" FontSize="12.5"
+                                 Foreground="{DynamicResource InkBrush}">
+                        <Run Text="✔"/> <Run Text="{Binding Mode=OneWay}"/>
+                      </TextBlock>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <!-- Proposal card -->
+            <Border Style="{StaticResource Card}"
+                    Visibility="{Binding Dossier.IsProposalCard, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource CardTitle}"
+                           Text="{Binding [Forge_Card_Proposal_Title], Source={x:Static services:I18n.Instance}}"/>
+                <ItemsControl ItemsSource="{Binding Dossier.Steps}" Margin="0,10,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,6" FontSize="12.5"
+                                 Foreground="{DynamicResource InkBrush}"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,2"
+                           Visibility="{Binding Dossier.Rationale, Converter={StaticResource StringPresentToVisibility}}"
+                           Text="{Binding [Forge_Card_Proposal_Why], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding Dossier.Rationale}" TextWrapping="Wrap" FontSize="12.5"
+                           Foreground="{DynamicResource InkMutedBrush}"
+                           Visibility="{Binding Dossier.Rationale, Converter={StaticResource StringPresentToVisibility}}"/>
+                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,2"
+                           Visibility="{Binding Dossier.Needs, Converter={StaticResource StringPresentToVisibility}}"
+                           Text="{Binding [Forge_Card_Proposal_Needs], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="11" Text="{Binding Dossier.Needs}"
+                           Visibility="{Binding Dossier.Needs, Converter={StaticResource StringPresentToVisibility}}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" Text="{Binding Dossier.StatusLine}"
+                           Visibility="{Binding Dossier.StatusLine, Converter={StaticResource StringPresentToVisibility}}"/>
+              </StackPanel>
+            </Border>
+
+            <!-- Trying card -->
+            <Border Style="{StaticResource Card}"
+                    Visibility="{Binding Dossier.IsTryingCard, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource CardTitle}" Text="{Binding Dossier.StatusLine}"/>
+                <ItemsControl ItemsSource="{Binding Dossier.Activity}" Margin="0,10,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}" Margin="0,0,0,5" FontSize="12.5"
+                                 Foreground="{DynamicResource InkBrush}"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <!-- Result card: deliverable-first lives in /output; the checklist closes the loop (§4.3) -->
+            <Border Style="{StaticResource Card}"
+                    Visibility="{Binding Dossier.IsResultCard, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource CardTitle}" Text="{Binding Dossier.ResultSummary}"/>
+                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,4"
+                           Text="{Binding [Forge_Card_Result_Against], Source={x:Static services:I18n.Instance}}"/>
+                <ItemsControl ItemsSource="{Binding Dossier.Checklist}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="0,0,0,7">
+                        <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource InkBrush}">
+                          <Run Text="{Binding Mark, Mode=OneWay}"/> <Run Text="{Binding Statement, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontSize="11.5" Margin="18,2,0,0"
+                                   Foreground="{DynamicResource InkMutedBrush}"
+                                   Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
+                            Visibility="{Binding Dossier.DecisionPending, Converter={StaticResource BooleanToVisibility}}">
+                  <Button Style="{StaticResource BtnPrimary}" Command="{Binding DecideCommand}" CommandParameter="accept" Margin="0,0,8,0">
+                    <TextBlock Text="{Binding [Forge_Act_Accept], Source={x:Static services:I18n.Instance}}"/>
+                  </Button>
+                  <Button Style="{StaticResource BtnGhost}" Command="{Binding DecideCommand}" CommandParameter="refine" Margin="0,0,8,0">
+                    <TextBlock Text="{Binding [Forge_Act_Refine], Source={x:Static services:I18n.Instance}}"/>
+                  </Button>
+                  <Button Style="{StaticResource BtnGhost}" Command="{Binding DecideCommand}" CommandParameter="abort">
+                    <TextBlock Text="{Binding [Forge_Act_Abort], Source={x:Static services:I18n.Instance}}"/>
+                  </Button>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Adopt card (§4.4) -->
+            <Border Style="{StaticResource Card}"
+                    Visibility="{Binding Dossier.IsAdoptCard, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource CardTitle}"
+                           Text="{Binding [Forge_Card_Adopt_Title], Source={x:Static services:I18n.Instance}}"/>
+                <StackPanel Visibility="{Binding Dossier.IsPromoted, Converter={StaticResource InverseBooleanToVisibility}}">
+                  <Button Style="{StaticResource BtnPrimary}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                          Command="{Binding StoreCommand}">
+                    <TextBlock Text="{Binding [Forge_Act_Store], Source={x:Static services:I18n.Instance}}"/>
+                  </Button>
+                  <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Style="{StaticResource BtnGhost}" Command="{Binding ScheduleCommand}" Margin="0,0,8,0">
+                      <TextBlock Text="{Binding [Forge_Act_Schedule], Source={x:Static services:I18n.Instance}}"/>
+                    </Button>
+                    <TextBlock VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource InkMutedBrush}"
+                               Text="{Binding [Forge_Schedule_At], Source={x:Static services:I18n.Instance}}" Margin="0,0,6,0"/>
+                    <TextBox Style="{StaticResource Input}" Width="64"
+                             Text="{Binding Dossier.ScheduleTime, UpdateSourceTrigger=PropertyChanged}"/>
+                  </StackPanel>
+                </StackPanel>
+                <StackPanel Visibility="{Binding Dossier.IsPromoted, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,2"
+                             Text="{Binding [Forge_Adopt_Stored], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="11" Text="{Binding Dossier.PromotedPath}"/>
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,8,0,2"
+                             Visibility="{Binding Dossier.InstallCommand, Converter={StaticResource StringPresentToVisibility}}"
+                             Text="{Binding [Forge_Adopt_Install], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Style="{StaticResource InputMono}" IsReadOnly="True" TextWrapping="Wrap"
+                           Text="{Binding Dossier.InstallCommand, Mode=OneWay}"
+                           Visibility="{Binding Dossier.InstallCommand, Converter={StaticResource StringPresentToVisibility}}"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Error card: a plain sentence, technical details folded (§7 of the study) -->
+            <Border Style="{StaticResource Card}"
+                    Visibility="{Binding Dossier.IsErrorCard, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock Style="{StaticResource CardTitle}"
+                           Text="{Binding [Forge_Card_Error_Title], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding Dossier.ErrorMessage}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           FontSize="12.5" Foreground="{DynamicResource InkBrush}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0"
+                           Text="{Binding Dossier.ErrorCode}"
+                           Visibility="{Binding Dossier.ErrorCode, Converter={StaticResource StringPresentToVisibility}}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+
+      <!-- footer: the only permanent machinery (§3) + level 3, folded, never required (§6) -->
+      <StackPanel Grid.Row="2" Margin="0,10,0,0">
+        <DockPanel>
+          <ToggleButton DockPanel.Dock="Right" Style="{x:Null}" Background="Transparent" BorderThickness="0"
+                        Cursor="Hand" IsChecked="{Binding IsDetailsOpen}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="info" Size="12" Margin="0,0,5,0" Foreground="{DynamicResource InkMutedBrush}"/>
+              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}"
+                         Text="{Binding [Forge_Details], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </ToggleButton>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Footer}"/>
+            <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" Margin="12,0,0,0"
+                       Text="{Binding StatusMessage}"
+                       Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
+          </StackPanel>
+        </DockPanel>
+        <Border Style="{StaticResource Well}" MaxHeight="220" Margin="0,8,0,0"
+                Visibility="{Binding IsDetailsOpen, Converter={StaticResource BooleanToVisibility}}">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <TextBlock Style="{StaticResource MonoText}" FontSize="10" Text="{Binding SessionSlug}"/>
+              <ItemsControl ItemsSource="{Binding RawLog.Lines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="10" Text="{Binding Text}" TextWrapping="Wrap"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>

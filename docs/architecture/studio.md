@@ -24,6 +24,7 @@ A library with no UI and no entry point, consumed only by the three front-ends. 
 - **Presets/ & Llm/** — the LLM preset catalogue (`LlmPresets`, `OrkeonCliDefaults`) and endpoint probing (`ILlmEndpointProbe`/`HttpLlmEndpointProbe`, `LlmApiKeyResolver`).
 - **Targets/** — run-target detection (`RunTargetDetector`): a `config.yaml`, a multi-file crew directory, or a `.ork.ts` script.
 - **Launch/ & Process/** — building the `orkeon run` command line (`RunArgumentsBuilder`, `RunLaunchOptions`), locating the binary (`OrkeonBinaryLocator`), running it and streaming output (`OrkeonProcessRunner`, `IProcessLauncher`), interpreting exit codes (`OrkeonExitCodes`, `LaunchOutcomeFormatter`), and the `orkeon doctor` report (`DoctorReport`).
+- **Forge/** — the typed client of `orkeon forge --events jsonl` (the Atelier): a tolerant line parser pinned against the CLI's golden protocol lines, the session projection every front reads (`ForgeSessionModel`, milestone mapping, the ✔/✘ checklist rules), the child-process driver with the stdin answer channel (`ForgeClient`), the on-disk session catalogue ("My solutions") and the resume hydrator. Studio's process never touches an LLM — it only ever sees JSON lines.
 - **Storage/ & History/** — settings locations and resolution chain (`SettingsLocations`, `AppSettingsFile`), launch history (`LaunchHistoryStore`).
 - **Validation/** — `AppSettingsValidator` + `ValidationMessageFormatter`.
 - **Localization/** — the `IStudioStrings` port (below).
@@ -34,7 +35,9 @@ Core's dependency list is deliberately slim: only `Orkeon.Domain` (mounts, `LlmD
 
 - **`orkeon-studio-config`** (TUI) — full-screen editor for the settings file: provider presets, model and endpoint, logging, rate limiting, RAG profile, the VFS mount table, a raw-JSON view, and a diagnostic screen running `orkeon doctor`. Rendering only: every behaviour comes from Core.
 - **`orkeon-studio-run`** (TUI) — pick a target, set the run options (including `--validate` for a dry run), watch the output live, cancel if needed. `--version` and `--help` are answered headlessly before Terminal.Gui initializes, so both TUIs stay scriptable and CI-checkable.
-- **`orkeon-studio`** (WPF, Windows) — one desktop window with a sidebar of screens: the settings editor (presets, sections, mounts, raw JSON, diagnostic) and the crew launcher (run + history), with light/dark theme, an EN/FR language toggle and a guided tour. It references only `Orkeon.Studio.Core`.
+- **`orkeon-studio`** (WPF, Windows) — one desktop window with a sidebar of screens: the **Solve** group (the Atelier: describe a problem, watch the team being forged, try it, adopt it — see [Forge a team from a need](../getting-started/forge-a-team-from-a-need.md)), the settings editor (presets, sections, mounts, raw JSON, diagnostic) and the crew launcher (run + history), with light/dark theme, an EN/FR language toggle and a guided tour. It references only `Orkeon.Studio.Core`.
+
+The Solve screen is the doctrine at work: Studio launches `orkeon forge --events jsonl` as a child process, renders its event stream (conversation, milestones, checklist), and answers over stdin. A capability absent from the stream does not exist on the screen — which is exactly what keeps the terminal `orkeon forge` and the WPF screen from drifting apart.
 
 ## Localization: the `IStudioStrings` port
 

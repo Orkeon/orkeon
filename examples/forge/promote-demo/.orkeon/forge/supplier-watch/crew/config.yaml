@@ -1,0 +1,7 @@
+# Rendered by the Atelier from the blueprint — see ../../../../README.md.
+name: "supplier-watch"
+goal: "Summarize the supplier's new offers"
+process: "sequential"
+verbose: false
+memory: false
+planning: false

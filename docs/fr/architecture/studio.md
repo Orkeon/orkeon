@@ -24,6 +24,7 @@ Une bibliothèque sans UI et sans point d'entrée, consommée uniquement par les
 - **Presets/ & Llm/** — le catalogue de presets LLM (`LlmPresets`, `OrkeonCliDefaults`) et la sonde d'endpoint (`ILlmEndpointProbe`/`HttpLlmEndpointProbe`, `LlmApiKeyResolver`).
 - **Targets/** — détection de la cible d'exécution (`RunTargetDetector`) : un `config.yaml`, un répertoire de crew multi-fichiers, ou un script `.ork.ts`.
 - **Launch/ & Process/** — construction de la ligne de commande `orkeon run` (`RunArgumentsBuilder`, `RunLaunchOptions`), localisation du binaire (`OrkeonBinaryLocator`), exécution et flux de sortie (`OrkeonProcessRunner`, `IProcessLauncher`), interprétation des codes de sortie (`OrkeonExitCodes`, `LaunchOutcomeFormatter`), et le rapport `orkeon doctor` (`DoctorReport`).
+- **Forge/** — le client typé d'`orkeon forge --events jsonl` (l'Atelier) : un parseur de lignes tolérant, épinglé contre les lignes d'or du protocole côté CLI, la projection de session que tous les fronts lisent (`ForgeSessionModel`, correspondance des jalons, les règles de la checklist ✔/✘), le pilote de processus enfant avec le canal de réponse stdin (`ForgeClient`), le catalogue de sessions sur disque (« Mes solutions ») et l'hydrateur de reprise. Le processus Studio ne touche jamais à un LLM — il ne voit que des lignes JSON.
 - **Storage/ & History/** — emplacements des settings et chaîne de résolution (`SettingsLocations`, `AppSettingsFile`), historique des lancements (`LaunchHistoryStore`).
 - **Validation/** — `AppSettingsValidator` + `ValidationMessageFormatter`.
 - **Localization/** — le port `IStudioStrings` (ci-dessous).
@@ -34,7 +35,9 @@ La liste de dépendances de Core est volontairement mince : seulement `Orkeon.Do
 
 - **`orkeon-studio-config`** (TUI) — éditeur plein écran du fichier de settings : presets fournisseur, modèle et endpoint, logging, rate limiting, profil RAG, la table des montages VFS, une vue JSON brut, et un écran de diagnostic exécutant `orkeon doctor`. Rendu uniquement : chaque comportement vient de Core.
 - **`orkeon-studio-run`** (TUI) — choisir une cible, régler les options d'exécution (dont `--validate` pour un dry run), suivre la sortie en direct, annuler au besoin. `--version` et `--help` sont répondus en mode headless avant l'initialisation de Terminal.Gui, ce qui garde les deux TUIs scriptables et vérifiables en CI.
-- **`orkeon-studio`** (WPF, Windows) — une fenêtre de bureau avec une barre latérale d'écrans : l'éditeur de settings (presets, sections, montages, JSON brut, diagnostic) et le lanceur de crews (exécution + historique), avec thème clair/sombre, bascule de langue EN/FR et visite guidée. Il ne référence que `Orkeon.Studio.Core`.
+- **`orkeon-studio`** (WPF, Windows) — une fenêtre de bureau avec une barre latérale d'écrans : le groupe **Résoudre** (l'Atelier : décrire un problème, voir l'équipe se forger, l'essayer, l'adopter — voir [Forger une équipe à partir d'un besoin](../getting-started/forge-a-team-from-a-need.md)), l'éditeur de settings (presets, sections, montages, JSON brut, diagnostic) et le lanceur de crews (exécution + historique), avec thème clair/sombre, bascule de langue EN/FR et visite guidée. Il ne référence que `Orkeon.Studio.Core`.
+
+L'écran Résoudre est la doctrine en actes : Studio lance `orkeon forge --events jsonl` en processus enfant, rend son flux d'événements (conversation, jalons, checklist), et répond sur stdin. Une capacité absente du flux n'existe pas à l'écran — c'est exactement ce qui empêche le `orkeon forge` du terminal et l'écran WPF de diverger.
 
 ## Localisation : le port `IStudioStrings`
 

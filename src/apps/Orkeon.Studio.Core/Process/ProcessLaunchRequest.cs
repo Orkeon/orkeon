@@ -28,4 +28,13 @@ public sealed record ProcessLaunchRequest
     /// before it is killed with its whole tree.
     /// </summary>
     public TimeSpan GracePeriod { get; init; } = DefaultGracePeriod;
+
+    /// <summary>
+    /// When set, the child's standard input is redirected (UTF-8, no BOM) and this receives
+    /// the writer right after the child starts, on the launching thread. Null — the default —
+    /// leaves stdin alone, which is what every plain launch wants; a caller sets this only to
+    /// drive a line-oriented dialogue with the child, and accepts that a child which reads
+    /// stdin will wait on it.
+    /// </summary>
+    public Action<IProcessInputWriter>? OnInputReady { get; init; }
 }

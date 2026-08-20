@@ -259,4 +259,52 @@
   <data name="Vm_Dialog_FilterJson" xml:space="preserve"><value>Fichiers JSON|*.json|Tous les fichiers|*.*</value></data>
   <data name="Vm_Dialog_FilterCrew" xml:space="preserve"><value>Définitions de crew|*.yaml;*.yml;*.ts;*.js|Tous les fichiers|*.*</value></data>
   <data name="Vm_Dialog_FilterAll" xml:space="preserve"><value>Tous les fichiers|*.*</value></data>
+  <data name="Grp_Solve" xml:space="preserve"><value>Résoudre</value></data>
+  <data name="Nav_ForgeNew" xml:space="preserve"><value>Nouveau problème</value></data>
+  <data name="Nav_ForgeSolutions" xml:space="preserve"><value>Mes solutions</value></data>
+  <data name="Forge_Start_Title" xml:space="preserve"><value>Qu&#x27;est-ce qu&#x27;on résout aujourd&#x27;hui ?</value></data>
+  <data name="Forge_Start_Hint" xml:space="preserve"><value>Décrivez votre problème, comme à un collègue…</value></data>
+  <data name="Forge_Start_Examples" xml:space="preserve"><value>Ou partez d&#x27;un exemple :</value></data>
+  <data name="Forge_Start_Action" xml:space="preserve"><value>Commencer</value></data>
+  <data name="Forge_Resume" xml:space="preserve"><value>Reprendre</value></data>
+  <data name="Forge_Relaunch" xml:space="preserve"><value>Relancer</value></data>
+  <data name="Forge_Milestone_Describe" xml:space="preserve"><value>Décrire</value></data>
+  <data name="Forge_Milestone_Propose" xml:space="preserve"><value>Proposer</value></data>
+  <data name="Forge_Milestone_Try" xml:space="preserve"><value>Essayer</value></data>
+  <data name="Forge_Milestone_Adopt" xml:space="preserve"><value>Adopter</value></data>
+  <data name="Forge_Card_Success_Title" xml:space="preserve"><value>La réussite</value></data>
+  <data name="Forge_Card_Proposal_Title" xml:space="preserve"><value>Voici comment je propose de m&#x27;y prendre</value></data>
+  <data name="Forge_Card_Proposal_Why" xml:space="preserve"><value>Pourquoi cette forme :</value></data>
+  <data name="Forge_Card_Proposal_Needs" xml:space="preserve"><value>Ce qu&#x27;elle peut toucher :</value></data>
+  <data name="Forge_Card_Result_Against" xml:space="preserve"><value>Par rapport à ce que vous vouliez :</value></data>
+  <data name="Forge_Act_Accept" xml:space="preserve"><value>Ça me va</value></data>
+  <data name="Forge_Act_Refine" xml:space="preserve"><value>Corriger et réessayer</value></data>
+  <data name="Forge_Act_Abort" xml:space="preserve"><value>En rester là</value></data>
+  <data name="Forge_Card_Adopt_Title" xml:space="preserve"><value>Votre solution est prête. Et maintenant ?</value></data>
+  <data name="Forge_Act_Store" xml:space="preserve"><value>La ranger dans un dossier…</value></data>
+  <data name="Forge_Act_Schedule" xml:space="preserve"><value>La programmer</value></data>
+  <data name="Forge_Schedule_At" xml:space="preserve"><value>chaque jour à</value></data>
+  <data name="Forge_Adopt_Stored" xml:space="preserve"><value>Rangée dans</value></data>
+  <data name="Forge_Adopt_Install" xml:space="preserve"><value>Pour installer la planification (affichée, jamais exécutée à votre place) :</value></data>
+  <data name="Forge_Input_Hint" xml:space="preserve"><value>Répondre…</value></data>
+  <data name="Forge_Act_Send" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="Forge_Act_Stop" xml:space="preserve"><value>Arrêter</value></data>
+  <data name="Forge_Details" xml:space="preserve"><value>Détails</value></data>
+  <data name="Forge_Card_Error_Title" xml:space="preserve"><value>Quelque chose demande votre attention</value></data>
+  <data name="Forge_Solutions_Title" xml:space="preserve"><value>Mes solutions</value></data>
+  <data name="Forge_Solutions_Empty" xml:space="preserve"><value>Rien pour l&#x27;instant — décrivez votre premier problème.</value></data>
+  <data name="Vm_Forge_Example1" xml:space="preserve"><value>Résumer chaque matin les nouveautés d&#x27;un site</value></data>
+  <data name="Vm_Forge_Example2" xml:space="preserve"><value>Produire une synthèse hebdo à partir de mes fichiers</value></data>
+  <data name="Vm_Forge_Example3" xml:space="preserve"><value>Comparer des offres et me signaler la meilleure</value></data>
+  <data name="Vm_Forge_Example4" xml:space="preserve"><value>Transformer un dossier de documents en rapport</value></data>
+  <data name="Vm_Forge_StatusPreparing" xml:space="preserve"><value>Je prépare une proposition…</value></data>
+  <data name="Vm_Forge_StatusTrying" xml:space="preserve"><value>J&#x27;essaie sur votre exemple…</value></data>
+  <data name="Vm_Forge_StatusJudging" xml:space="preserve"><value>Je vérifie le résultat par rapport à votre demande…</value></data>
+  <data name="Vm_Forge_StatusReady" xml:space="preserve"><value>Votre solution est prête.</value></data>
+  <data name="Vm_Forge_StatusFailed" xml:space="preserve"><value>Quelque chose s&#x27;est mal passé — ouvrez les détails pour la partie technique.</value></data>
+  <data name="Vm_Forge_StatusStopped" xml:space="preserve"><value>Arrêté — reprenez quand vous voulez depuis « Mes solutions ».</value></data>
+  <data name="Vm_Forge_Attempt" xml:space="preserve"><value>Essai {0}</value></data>
+  <data name="Vm_Forge_CheckUnverified" xml:space="preserve"><value>Je n&#x27;ai pas pu vérifier ce point automatiquement — jugez sur pièce.</value></data>
+  <data name="Vm_Forge_ResultScore" xml:space="preserve"><value>L&#x27;essai est terminé (score {0}).</value></data>
+  <data name="Vm_Forge_StorePickTitle" xml:space="preserve"><value>Choisissez où ranger la solution</value></data>
 </root>

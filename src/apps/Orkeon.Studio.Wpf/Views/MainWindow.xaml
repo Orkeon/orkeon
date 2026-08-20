@@ -140,7 +140,23 @@
           </Border>
 
           <StackPanel>
+            <!-- "Résoudre" leads: the new user's door (SPEC-ORKEON-FORGE §12.1, UX study §5) -->
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,0,0,7"
+                       Text="{Binding [Grp_Solve], Source={x:Static services:I18n.Instance}}"/>
+            <RadioButton x:Name="NavForgeNew" GroupName="Nav" Style="{StaticResource NavItem}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="wand-2" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_ForgeNew], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton x:Name="NavForgeSolutions" GroupName="Nav" Style="{StaticResource NavItem}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="compass" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_ForgeSolutions], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </RadioButton>
+
+            <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
                        Text="{Binding [Grp_Config], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton x:Name="NavStart" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True">
               <StackPanel Orientation="Horizontal">
@@ -193,6 +209,13 @@
 
       <!-- CONTENT: one panel per nav item, visibility driven by the RadioButtons -->
       <Grid Grid.Column="1">
+        <Grid Visibility="{Binding IsChecked, ElementName=NavForgeNew, Converter={StaticResource BooleanToVisibility}}">
+          <views:ForgeView x:Name="ForgePanel" DataContext="{Binding Forge}" Margin="30,24,30,20"/>
+        </Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+                      Visibility="{Binding IsChecked, ElementName=NavForgeSolutions, Converter={StaticResource BooleanToVisibility}}">
+          <views:ForgeSolutionsView MaxWidth="880" DataContext="{Binding Forge}"/>
+        </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavStart, Converter={StaticResource BooleanToVisibility}}">
           <views:StartView x:Name="StartPanel" MaxWidth="880" DataContext="{Binding Config}"/>

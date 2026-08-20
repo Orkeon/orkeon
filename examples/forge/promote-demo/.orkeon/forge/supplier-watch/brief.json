@@ -1,0 +1,19 @@
+{
+  "goal": "Summarize the supplier's new offers every morning",
+  "context": "Electronic components purchasing",
+  "inputs": [
+    { "name": "supplier_url", "description": "The supplier's offers page", "example": "https://supplier.example/offers" }
+  ],
+  "expectedOutput": { "format": "markdown", "description": "A one-page summary with sources cited" },
+  "constraints": [ "less than one page" ],
+  "toolHints": [ "read a web page" ],
+  "acceptance": [
+    { "id": "A1", "statement": "The summary cites its sources", "kind": "must" },
+    { "id": "A2", "statement": "Less than one page", "kind": "should" }
+  ],
+  "sample": {
+    "variables": { "supplier_url": "https://supplier.example/offers" },
+    "initialContext": "First try on the demo page"
+  },
+  "language": "en"
+}

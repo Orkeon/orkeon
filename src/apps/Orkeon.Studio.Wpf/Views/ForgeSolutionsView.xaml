@@ -1,0 +1,45 @@
+<!-- "Mes solutions" (UX study §5): problems in progress and problems solved, one list.
+     DataContext: ForgeTabViewModel (bound as Forge). -->
+<UserControl x:Class="Orkeon.Studio.Wpf.Views.ForgeSolutionsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
+  <StackPanel>
+    <TextBlock Style="{StaticResource H1}"
+               Text="{Binding [Forge_Solutions_Title], Source={x:Static services:I18n.Instance}}"/>
+    <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
+               Text="{Binding [Forge_Solutions_Empty], Source={x:Static services:I18n.Instance}}"
+               Visibility="{Binding Solutions.IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
+
+    <ItemsControl ItemsSource="{Binding Solutions.Solutions}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Border CornerRadius="10" Padding="14,10" Margin="0,0,0,7" BorderThickness="1"
+                  BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0"
+                        Visibility="{Binding CanResume, Converter={StaticResource BooleanToVisibility}}"
+                        Command="{Binding DataContext.ResumeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}">
+                  <TextBlock Text="{Binding [Forge_Resume], Source={x:Static services:I18n.Instance}}"/>
+                </Button>
+                <Button Style="{StaticResource BtnPrimary}"
+                        Visibility="{Binding CanRelaunch, Converter={StaticResource BooleanToVisibility}}"
+                        Command="{Binding DataContext.RelaunchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}">
+                  <TextBlock Text="{Binding [Forge_Relaunch], Source={x:Static services:I18n.Instance}}"/>
+                </Button>
+              </StackPanel>
+              <StackPanel>
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                           Text="{Binding Title}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="9.5" Text="{Binding Slug}"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

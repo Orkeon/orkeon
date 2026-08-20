@@ -37,6 +37,7 @@ The numbered YAML crews live in nine thematic folders:
 | `cli-ts-commands/` | Interactive REPL commands in `*.cmd.ts`, loaded without .NET recompilation |
 | `local-embeddings/` | On-device embeddings (no API key) wired into memory and agent selection |
 | `crew-multifile/` | A crew described as a directory (`orkeon run <dir>`) |
+| `forge/promote-demo/` | The Atelier's offline half: a ready `orkeon forge` session bundled as a workspace — `forge list`, then `forge promote` into an ordinary folder (no LLM needed) |
 | `runners/` | The runner projects that execute the numbered examples, incl. two interactive dotnet tools |
 
 ## Notable examples

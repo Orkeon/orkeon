@@ -113,25 +113,23 @@ public sealed class LaunchHistoryViewModel : ObservableObject
             return;
 
         var history = await _store.LoadAsync(cancellationToken);
-        _dispatcher.Post(() => Publish(history));
+        Publish(history);
     }
 
-    /// <summary>Records a launch and republishes the list.</summary>
-    public async Task RecordAsync(LaunchHistoryEntry entry, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Replaces the list with <paramref name="history"/>, marshalled onto the UI thread.
+    /// This is how the tab republishes the shared <c>RunSession</c>'s list after a run —
+    /// the session is the only recorder, the panel only projects, so the two can never
+    /// drift apart.
+    /// </summary>
+    public void Publish(LaunchHistory history)
     {
-        ArgumentNullException.ThrowIfNull(entry);
+        ArgumentNullException.ThrowIfNull(history);
 
-        if (_store is null)
-        {
-            _dispatcher.Post(() => Entries.Insert(0, new LaunchHistoryEntryViewModel(entry)));
-            return;
-        }
-
-        var history = await _store.RecordAsync(entry, cancellationToken);
-        _dispatcher.Post(() => Publish(history));
+        _dispatcher.Post(() => PublishCore(history));
     }
 
-    private void Publish(LaunchHistory history)
+    private void PublishCore(LaunchHistory history)
     {
         Entries.Clear();
         foreach (var entry in history.Entries)

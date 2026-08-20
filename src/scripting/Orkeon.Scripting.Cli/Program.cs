@@ -39,6 +39,10 @@ internal static class Program
         if (args.Length > 0 && string.Equals(args[0], "doctor", StringComparison.OrdinalIgnoreCase))
             return await DoctorCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
 
+        // `orkeon forge` — the Atelier: need → generated crew → validation (FORGE-03).
+        if (args.Length > 0 && string.Equals(args[0], "forge", StringComparison.OrdinalIgnoreCase))
+            return await Commands.Forge.ForgeCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
+
         // Strip a leading "run" verb so users can write `orkeon run script.ork.ts`.
         // Future verbs (e.g. `test`) will get their own dispatch branch here.
         var effective = args;

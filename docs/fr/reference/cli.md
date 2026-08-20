@@ -43,6 +43,37 @@ orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
 
 **Résolution des settings** — sans `--settings`, le CLI suit une chaîne de repli : `appsettings.json` à côté du fichier de crew, puis un `appsettings/appsettings.json` trouvé en remontant les répertoires parents, puis le fichier global par utilisateur écrit par `orkeon init`, puis les variables d'environnement `ORKEON_*` seules. Détails et matrice de profils prêts à l'emploi : [Exécuter votre premier exemple](../getting-started/run-your-first-example.md).
 
+## `orkeon forge`
+
+```bash
+orkeon forge "résumer chaque matin les nouvelles offres de mon fournisseur"   # partir d'un besoin
+orkeon forge                                   # ouvrir sur l'entretien
+orkeon forge list                              # lister les sessions du workspace
+orkeon forge resume <slug>                     # reprendre une session exactement là où elle s'est arrêtée
+orkeon forge promote <slug> --to <dir>         # sortir une session prête en dossier ordinaire
+```
+
+L'Atelier : un parcours guidé du besoin en langage naturel à l'équipe déployable. Un assistant vous interroge et capte un brief structuré — objectif, entrées, **critères d'acceptation**, un exemple d'entrée — puis propose un plan d'équipe, le rend, le valide, **l'essaie en bac à sable sur votre exemple**, et juge le résultat **contre vos propres critères**. Non conforme ? Le diagnostic alimente une boucle de correction, bornée par un budget dur (itérations, jetons, temps). Chaque session vit sous `.orkeon/forge/<slug>/` — reprenable, diffable entre tentatives, auditable.
+
+Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la forge refuse d'ouvrir l'entretien sans lui (`FORGE-LLM-UNAVAILABLE`) plutôt que de dégrader en silence. `list` et `promote` sont entièrement hors ligne.
+
+| Option | Description |
+|---|---|
+| `--format yaml\|script` | Format rendu (défaut `yaml`). `script` rend un `crew.ork.ts` éditable et exige esbuild — absent, une nouvelle session retombe sur YAML avec `FORGE-ESBUILD-MISSING`. Le format d'une session ne change jamais en reprise. |
+| `--events jsonl` | Émet le protocole d'événements versionné sur stdout au lieu du rendu terminal ; les réponses descendent sur stdin (c'est ainsi qu'Orkeon Studio pilote la forge). |
+| `--auto` | Arbitre les verdicts non conformes sans humain, dans les limites du budget. |
+| `--dry` | S'arrête après la validation — génère et valide, n'exécute jamais. Reprenez sans `--dry` pour essayer. |
+| `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | Le budget (défaut 3 itérations ; `0` = jetons/temps illimités). Une reprise peut le relever ; la consommation est toujours reportée. |
+| `-s, --settings <path>` | Mêmes sémantiques qu'`orkeon run`. |
+| `--pack <dir>` | Surcharge le pack de prompts embarqué. |
+| `--to <dir>` | *(promote)* Dossier de destination ; doit être inexistant ou vide. |
+| `--schedule daily@HH:mm\|hourly` | *(promote)* Génère les artefacts de planification sous `schedule/` — XML de tâche Windows, timer systemd, ligne cron. La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur. |
+| `--with-settings` | *(promote)* Copie le fichier de settings résolu dans le dossier. Off par défaut — un settings porte souvent des clés API et le dossier est fait pour être partagé. |
+
+Le bac à sable : l'essai tourne in-process avec les écritures confinées au montage `/output` de la session, et `shell_command`/`code_interpreter` retirés du catalogue d'outils — le plan d'équipe ne peut nommer que des outils que la validation acceptera.
+
+Le dossier promu est ordinaire : `crew/` (ou `crew/crew.ork.ts`), `run.sh`/`run.cmd` composés contre la grammaire d'`orkeon run` avec vos entrées d'exemple pré-remplies, et `FORGE.md` — la carte d'identité de l'équipe (objectif, critères d'acceptation, verdict, version), écrite dans la langue de l'entretien. `orkeon run <dir>/crew` le lance ; le lanceur Studio le détecte.
+
 ## `orkeon init`
 
 Assistant de configuration. Génère un `appsettings.json` valide au chemin global par utilisateur (`%APPDATA%\Orkeon\appsettings.json` sous Windows, `~/.config/Orkeon/appsettings.json` sous Linux/macOS) via un assistant interactif à 5 choix — `ollama`, `docker-model-runner`, `openai`, `custom`, `none` — ou en mode non interactif par flags, puis sonde l'endpoint (sauf `--no-probe`).
