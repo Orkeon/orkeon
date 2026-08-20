@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.HumanInput;
 using Orkeon.Scripting.Cli.Events;
@@ -16,74 +15,6 @@ internal interface IAnswerChannel
     /// closes. Returns null when no answer will come.
     /// </summary>
     Task<string?> ReadAnswerAsync(string correlationId, CancellationToken cancellationToken);
-}
-
-/// <summary>
-/// Reads <c>input.given { correlationId, value }</c> from stdin, one JSON document per line.
-/// Malformed lines are skipped: the outbound stream is the contract, the inbound one is
-/// tolerant — the same rule the Atelier's channel follows.
-/// </summary>
-internal sealed class StdinAnswerChannel : IAnswerChannel
-{
-    private readonly TextReader _input;
-
-    /// <summary>Reads from <paramref name="input"/> (stdin in the CLI).</summary>
-    public StdinAnswerChannel(TextReader input) =>
-        _input = input ?? throw new ArgumentNullException(nameof(input));
-
-    /// <inheritdoc />
-    public async Task<string?> ReadAnswerAsync(string correlationId, CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            var line = await _input.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (line is null)
-                return null;   // the channel closed: no answer will come
-
-            if (TryReadAnswer(line, correlationId, out var value))
-                return value;
-        }
-
-        return null;
-    }
-
-    /// <summary>Parses one inbound line; false when it is not the answer we are waiting for.</summary>
-    internal static bool TryReadAnswer(string line, string correlationId, out string? value)
-    {
-        value = null;
-        if (string.IsNullOrWhiteSpace(line))
-            return false;
-
-        try
-        {
-            using var document = JsonDocument.Parse(line);
-            var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object
-                || !root.TryGetProperty("kind", out var kind)
-                || kind.GetString() != RunEventKinds.InputGiven)
-            {
-                return false;
-            }
-
-            // An answer without a correlation id answers whatever is pending: a human
-            // typing into a terminal has no id to quote, and refusing them would be silly.
-            if (root.TryGetProperty("correlationId", out var id)
-                && id.ValueKind == JsonValueKind.String
-                && id.GetString() != correlationId)
-            {
-                return false;
-            }
-
-            value = root.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String
-                ? v.GetString()
-                : null;
-            return value is not null;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
 }
 
 /// <summary>

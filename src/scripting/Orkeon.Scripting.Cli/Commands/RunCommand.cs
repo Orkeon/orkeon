@@ -3,6 +3,7 @@ using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew;
+using Orkeon.Application.EventHub;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.FileSystem;
@@ -119,6 +120,16 @@ internal sealed class RunCommandOptions
             HelpText = "With --events, also emit llm.delta events token by token. Verbose by " +
                        "nature: off unless asked for.")]
         public bool Stream { get; set; }
+
+        /// <summary>
+        /// The name the observing process answers to, as it appears in <c>client://{name}</c>.
+        /// Agents post to that address to reach it, and a crew authorizes the exchange by
+        /// declaring <c>to: "client:{name}"</c> in its <c>links:</c> block.
+        /// </summary>
+        [Option("client", Required = false, Default = "studio",
+            HelpText = "With --events, the name of the observing peer on the hub (client://<name>). " +
+                       "Agents can post and send to that address; a crew's links: block authorizes it.")]
+        public string Client { get; set; } = "studio";
 
         /// <summary>Whether the run must emit the event protocol.</summary>
         internal bool EmitsEvents => Events is not null;
@@ -343,6 +354,15 @@ internal static partial class RunCommand
         });
 
         Run.RunEventObserver? observer = null;
+        Run.JsonLinesEventHubBridge? bridge = null;
+
+        // One reader on stdin, routed by kind. Two would race, and BUS-04's channel dropped
+        // every line that was not a human answer — including the hub commands.
+        var inbound = new Run.InboundCommandPump(
+            Console.In,
+            (line, ct) => bridge?.HandleCommandAsync(line, ct) ?? System.Threading.Tasks.Task.CompletedTask);
+        await using var inboundLifetime = inbound.ConfigureAwait(false);
+
         var exitCode = await RunnerExecution.RunOneShotAsync(
             ToRunnerOptions(options),
             "orkeon",
@@ -372,9 +392,27 @@ internal static partial class RunCommand
                 // AutoApprove fallback is registered by TryAdd, so an explicit singleton
                 // here wins without removing anything.
                 services.AddSingleton<IHumanInputProvider>(
-                    new Run.JsonLinesHumanInputProvider(events, new Run.StdinAnswerChannel(Console.In)));
+                    new Run.JsonLinesHumanInputProvider(events, inbound));
+
+                // BUS-05: give the observing process a seat at the hub. A decorator, so local
+                // traffic keeps going through the in-memory hub untouched — and only when the
+                // host registered a hub at all.
+                var hubDescriptor = services.LastOrDefault(d => d.ServiceType == typeof(IEventHub));
+                if (hubDescriptor is not null)
+                {
+                    services.Remove(hubDescriptor);
+                    services.AddSingleton<IEventHub>(sp =>
+                    {
+                        var inner = (IEventHub)Resolve(sp, hubDescriptor)!;
+                        bridge = new Run.JsonLinesEventHubBridge(inner, events, options.Client);
+                        return bridge;
+                    });
+                }
             })
             .ConfigureAwait(false);
+
+        if (bridge is not null)
+            await bridge.DisposeAsync().ConfigureAwait(false);
 
         events.Emit(Run.RunEventKinds.RunFinished, new
         {

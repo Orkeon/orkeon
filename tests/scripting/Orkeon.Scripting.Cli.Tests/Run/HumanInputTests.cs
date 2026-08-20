@@ -127,17 +127,30 @@ public sealed class HumanInputTests : IDisposable
     }
 
     [Theory]
-    [InlineData("""{"kind":"input.given","correlationId":"c-1","value":"ok"}""", "ok")]
-    [InlineData("""{"kind":"input.given","value":"ok"}""", "ok")]                     // no id: answers what is pending
-    [InlineData("""{"kind":"input.given","correlationId":"other","value":"ok"}""", null)]
-    [InlineData("""{"kind":"user.message","text":"ok"}""", null)]
-    [InlineData("not json at all", null)]
-    [InlineData("", null)]
-    public void The_inbound_line_is_read_tolerantly(string line, string? expected)
+    [InlineData("""{"kind":"input.given","correlationId":"c-1","value":"ok"}""", "c-1", "ok")]
+    [InlineData("""{"kind":"input.given","value":"ok"}""", null, "ok")]   // no id: answers what is pending
+    [InlineData("""{"kind":"input.given","correlationId":"other","value":"ok"}""", "other", "ok")]
+    [InlineData("""{"kind":"input.given","correlationId":"c-1"}""", "c-1", null)]
+    [InlineData("not json at all", null, null)]
+    public void The_inbound_answer_is_read_tolerantly(string line, string? expectedId, string? expected)
     {
-        var read = StdinAnswerChannel.TryReadAnswer(line, "c-1", out var value);
+        var read = InboundCommandPump.TryReadAnswer(line, out var correlationId, out var value);
 
         Assert.Equal(expected is not null, read);
         Assert.Equal(expected, value);
+        if (expected is not null)
+            Assert.Equal(expectedId, correlationId);
+    }
+
+    [Theory]
+    [InlineData("""{"kind":"input.given","value":"ok"}""", "input.given")]
+    [InlineData("""{"kind":"post","to":"agent://c/a"}""", "post")]
+    [InlineData("""{"text":"no kind here"}""", null)]
+    [InlineData("""["not an object"]""", null)]
+    [InlineData("not json at all", null)]
+    [InlineData("", null)]
+    public void The_pump_routes_by_kind_and_ignores_what_it_cannot_read(string line, string? expected)
+    {
+        Assert.Equal(expected, InboundCommandPump.TryReadKind(line));
     }
 }
