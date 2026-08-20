@@ -1,18 +1,22 @@
-using System.Diagnostics;
-
 namespace Orkeon.E2E.Tests;
 
 /// <summary>
 /// FORGE-08: the real `orkeon forge` CLI, spawned as a process, exercised on its fully
 /// offline half — `list`, the loud refusals, and `promote` on the bundled ready session
 /// (examples/forge/promote-demo). No LLM, no key, no network: the interview and the
-/// sandboxed try belong to the owner-side recipe. Category=Slow: each invocation is a
-/// `dotnet run` of the CLI.
+/// sandboxed try belong to the owner-side recipe. Category=Slow: each invocation spawns the
+/// CLI, built once by <see cref="OrkeonCliFixture"/>.
 /// </summary>
 [Trait("Category", "Slow")]
+[Collection(OrkeonCliFixture.CollectionName)]
 public sealed class ForgeCliOfflineSlowTests : IDisposable
 {
-    private static readonly string RepoRoot = FindRepoRoot();
+    private readonly OrkeonCliFixture _cli;
+
+    private string RepoRoot => _cli.RepoRoot;
+
+    /// <summary>Takes the shared CLI build; see <see cref="OrkeonCliFixture"/> for why.</summary>
+    public ForgeCliOfflineSlowTests(OrkeonCliFixture cli) => _cli = cli;
 
     private readonly string _scratch =
         Path.Combine(Path.GetTempPath(), "orkeon-e2e-forge-" + Guid.NewGuid().ToString("N"));
@@ -23,37 +27,8 @@ public sealed class ForgeCliOfflineSlowTests : IDisposable
             Directory.Delete(_scratch, recursive: true);
     }
 
-    private static string FindRepoRoot()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir != null && !File.Exists(Path.Combine(dir, "Orkeon.sln")))
-            dir = Path.GetDirectoryName(dir);
-        return dir ?? throw new InvalidOperationException("Orkeon.sln not found above the test base directory.");
-    }
-
-    private static (int ExitCode, string Output) RunCli(string arguments, string workingDirectory)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "dotnet",
-            Arguments = $"run --project {Path.Combine(RepoRoot, "src", "scripting", "Orkeon.Scripting.Cli")} -- {arguments}",
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false
-        };
-
-        using var process = Process.Start(psi)!;
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
-        if (!process.WaitForExit((int)TimeSpan.FromMinutes(12).TotalMilliseconds))
-        {
-            process.Kill(entireProcessTree: true);
-            throw new TimeoutException($"CLI did not exit. Output so far:\n{stdout}\n{stderr}");
-        }
-
-        return (process.ExitCode, stdout + "\n" + stderr);
-    }
+    private (int ExitCode, string Output) RunCli(string arguments, string workingDirectory) =>
+        _cli.RunCli(arguments, workingDirectory, TimeSpan.FromMinutes(12));
 
     /// <summary>A private copy of the bundled demo workspace — promote mutates the session.</summary>
     private string CopyDemoWorkspace()
