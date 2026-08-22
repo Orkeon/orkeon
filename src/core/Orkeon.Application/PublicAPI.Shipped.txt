@@ -2291,7 +2291,7 @@ Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommandValidator
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommandValidator.CreateCrewCommandValidator() -> void
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommandValidator.Validate(Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand! command) -> Orkeon.Application.Validation.ValidationResult!
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewHandler
-Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewHandler.CreateCrewHandler(Orkeon.Domain.Crew.ICrewRepository! crewRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewHandler!>! logger) -> void
+Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewHandler.CreateCrewHandler(Orkeon.Domain.Crew.ICrewRepository! crewRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewHandler!>! logger, Orkeon.Application.EventHub.ICrewLinkRegistry? linkRegistry = null) -> void
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewHandler.HandleAsync(Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand! command, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Crew.DTOs.CrewDto!>!
 Orkeon.Application.Crew.CompositionRecommendation
 Orkeon.Application.Crew.CompositionRecommendation.CompositionRecommendation(Orkeon.Application.Crew.CompositionRecommendation! original) -> void

@@ -217,4 +217,79 @@ public class PipelineOnMailboxTrafficTests
         await Assert.ThrowsAsync<MailboxNotFoundException>(
             () => hub.PostAsync(mailbox, new { ok = true }, TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public async Task Two_replies_to_one_correlation_resolve_one_exchange_not_two()
+    {
+        // The consume of the two waiter maps is gated: without it, two concurrent replies
+        // could split them — one resolving the Send caller, the other a WaitForAsync waiter,
+        // one exchange ending with two different payloads and both repliers told they won.
+        var caller = new DefaultEventHubCallerContext();
+        using var hub = Build(caller);
+
+        var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
+        using var registration = hub.RegisterMailbox(mailbox) as IDisposable;
+
+        var send = hub.SendAsync<object, object>(
+            mailbox, new { ask = true }, TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        var request = await hub.WaitForAsync(
+            new WaitOnMailbox(mailbox), new FiniteWaitTimeout(TimeSpan.FromSeconds(2)), TestContext.Current.CancellationToken);
+
+        var first = hub.ReplyAsync(request.CorrelationId!, new { n = 1 }, TestContext.Current.CancellationToken);
+        var second = hub.ReplyAsync(request.CorrelationId!, new { n = 2 }, TestContext.Current.CancellationToken);
+
+        var outcomes = await Task.WhenAll(
+            Wrap(first), Wrap(second));
+
+        await send;
+        Assert.Equal(1, outcomes.Count(delivered => delivered));
+
+        static async Task<bool> Wrap(System.Threading.Tasks.Task reply)
+        {
+            try
+            {
+                await reply.ConfigureAwait(false);
+                return true;
+            }
+            catch (UnknownCorrelationException)
+            {
+                return false;
+            }
+        }
+    }
+
+    [Fact]
+    public async Task The_mailbox_stamp_is_taken_after_the_pipeline()
+    {
+        // §10.4 promises FIFO by PublishedAt. The stamp used to be taken before the pipeline
+        // await: two posters whose middlewares completed out of order delivered in stamp-
+        // inverted order. The stamp now happens under the write gate, at the write.
+        var caller = new DefaultEventHubCallerContext();
+        var before = DateTimeOffset.UtcNow;
+        var slow = new DelayingMiddleware(TimeSpan.FromMilliseconds(50));
+        using var hub = Build(caller, slow);
+
+        var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
+        using var registration = hub.RegisterMailbox(mailbox) as IDisposable;
+
+        await hub.PostAsync(mailbox, new { ok = true }, TestContext.Current.CancellationToken);
+        var delivered = await hub.WaitForAsync(
+            new WaitOnMailbox(mailbox), new FiniteWaitTimeout(TimeSpan.FromSeconds(2)), TestContext.Current.CancellationToken);
+
+        // Stamped after the 50 ms pipeline, not before it.
+        Assert.True(delivered.PublishedAt - before >= TimeSpan.FromMilliseconds(45),
+            $"stamp {delivered.PublishedAt:O} predates the pipeline (started {before:O})");
+    }
+
+    private sealed class DelayingMiddleware(TimeSpan delay) : IEventHubMiddleware
+    {
+        public async Task<Message> OnPublishAsync(Message message, Func<Message, Task<Message>> nextHandler, CancellationToken ct)
+        {
+            await Task.Delay(delay, ct).ConfigureAwait(false);
+            return await nextHandler(message).ConfigureAwait(false);
+        }
+
+        public Task<Message> OnReceiveAsync(Message message, Func<Message, Task<Message>> nextHandler, CancellationToken ct)
+            => nextHandler(message);
+    }
 }

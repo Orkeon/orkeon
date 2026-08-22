@@ -290,4 +290,18 @@ public class AclEventHubMiddlewareTests
 
         Assert.Equal("fraud.check", message.Topic);
     }
+
+    [Fact]
+    public async Task The_process_itself_is_not_a_crew_the_ACL_models()
+    {
+        // System-sourced traffic — the host's own code, the client bridge relaying its peer —
+        // cannot be named by any link, so under the closed policy it could be neither
+        // authorized nor granted: the daemon's own gateway would have refused itself.
+        var acl = new AclEventHubMiddleware(World(), RestrictiveCrewLinkPolicy.Instance);
+        var studio = MailboxAddress.Parse(new Uri("client://studio"));
+
+        var message = await Run(acl, Message("_mailbox.post", CrewId.System, mailbox: studio));
+
+        Assert.Equal("_mailbox.post", message.Topic);
+    }
 }

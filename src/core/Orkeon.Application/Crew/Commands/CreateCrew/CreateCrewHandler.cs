@@ -15,16 +15,19 @@ public partial class CreateCrewHandler : ICommandHandler<CreateCrewCommand, Crew
 {
     private readonly ICrewRepository _crewRepository;
     private readonly ILogger<CreateCrewHandler> _logger;
+    private readonly EventHub.ICrewLinkRegistry? _linkRegistry;
 
     /// <summary>
     /// Initializes a new instance of <see cref="CreateCrewHandler"/>.
     /// </summary>
     public CreateCrewHandler(
         ICrewRepository crewRepository,
-        ILogger<CreateCrewHandler> logger)
+        ILogger<CreateCrewHandler> logger,
+        EventHub.ICrewLinkRegistry? linkRegistry = null)
     {
         _crewRepository = crewRepository;
         _logger = logger;
+        _linkRegistry = linkRegistry;
     }
 
     /// <summary>
@@ -59,6 +62,13 @@ public partial class CreateCrewHandler : ICommandHandler<CreateCrewCommand, Crew
 
             // Save the crew
             await _crewRepository.AddAsync(crew, cancellationToken).ConfigureAwait(false);
+
+            // Links name crews by name while messages carry ids, so even a crew created
+            // through the API — which cannot declare links — must be resolvable as somebody
+            // else's target. Without this, the first YAML crew to declare a `links:` block
+            // silently made every API-created crew unreachable.
+            if (!string.IsNullOrWhiteSpace(command.Name))
+                _linkRegistry?.Register(crew.Id, command.Name, links: null);
 
             // Map to DTO and return
             return new CrewDto

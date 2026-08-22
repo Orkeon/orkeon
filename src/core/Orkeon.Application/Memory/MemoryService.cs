@@ -160,9 +160,6 @@ public partial class MemoryService : IMemoryService, IDisposable
         LogMemoryCleared(crewId, typeFilter);
     }
 
-    /// <summary>
-    /// Disposes all memory systems and their underlying resources.
-    /// </summary>
     /// <inheritdoc />
     public void ReleaseMemorySystem(CrewId crewId)
     {
@@ -173,7 +170,7 @@ public partial class MemoryService : IMemoryService, IDisposable
         (system as IDisposable)?.Dispose();
     }
 
-    /// <summary>Disposes every held memory system.</summary>
+    /// <summary>Disposes all memory systems and their underlying resources.</summary>
     public void Dispose()
     {
         Dispose(true);

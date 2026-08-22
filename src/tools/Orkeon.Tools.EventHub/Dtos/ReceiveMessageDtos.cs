@@ -20,7 +20,7 @@ public sealed record ReceiveMessageRequest
 
     /// <summary>Optional explicit mailbox; defaults to the current agent's mailbox.</summary>
     [JsonPropertyName("mailbox")]
-    [FieldSchema(Description = "Optional mailbox URI. Defaults to the calling agent's mailbox.", IsRequired = false)]
+    [FieldSchema(Description = "Optional mailbox URI, restricted to the calling crew's own mailboxes (agent:// or crew:// of this crew). Defaults to the calling agent's mailbox.", IsRequired = false)]
     public string? Mailbox { get; init; }
 }
 

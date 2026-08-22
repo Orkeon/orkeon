@@ -197,6 +197,13 @@ public static partial class RunnerHost
         services.AddOrkeonInMemoryEventHub();
         services.AddOrkeonEventHubTools();
 
+        // The ACL rides along, with the permissive default: a crew that declares no links:
+        // block behaves exactly as before, and a crew that declares one is actually held to
+        // it. Without this line the links: grammar parsed, registered — and guarded nothing,
+        // because no composition root ever put the stage on the pipeline. A deployment that
+        // wants the closed door swaps the policy in its own configureServices.
+        services.AddOrkeonEventHubAcl();
+
         // Virtual file system mounts (from appsettings + CLI --mount args)
         var fsSection = context.Configuration.GetSection("Orkeon:FileSystem:Mounts");
         if (fsSection.Exists() && fsSection.GetChildren().Any())

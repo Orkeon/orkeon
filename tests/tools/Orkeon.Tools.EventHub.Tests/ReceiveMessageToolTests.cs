@@ -71,6 +71,16 @@ public sealed class ReceiveMessageToolTests : IClassFixture<EventHubToolsFixture
             var refusedClient = await _fx.ReceiveMessage.CallAsync(new ToolCallRequest("receive_message", client), TestContext.Current.CancellationToken);
             Assert.False(refusedClient.Success);
 
+            var topic = new Dictionary<string, object?>
+            {
+                ["mailbox"] = "topic://updates",
+                ["timeout_ms"] = 50
+            };
+            var refusedTopic = await _fx.ReceiveMessage.CallAsync(new ToolCallRequest("receive_message", topic), TestContext.Current.CancellationToken);
+            // A topic:// mailbox is a shared named queue on the hub — draining it is the
+            // same destructive competition as any other foreign mailbox.
+            Assert.False(refusedTopic.Success);
+
             var own = new Dictionary<string, object?>
             {
                 ["mailbox"] = $"crew://{crewId}",

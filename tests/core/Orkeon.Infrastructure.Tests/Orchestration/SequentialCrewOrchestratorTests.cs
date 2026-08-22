@@ -133,6 +133,9 @@ public class SequentialCrewOrchestratorTests
         /// <summary>Runs at execution time, where an ambient context can be observed.</summary>
         public Action? OnExecute { get; set; }
 
+        /// <summary>Async variant, to force a real suspension inside the strategy.</summary>
+        public Func<System.Threading.Tasks.Task>? OnExecuteAsync { get; set; }
+
         /// <summary>When set, this output is returned verbatim instead of the default one.</summary>
         public DomainCrewOutput? ConfiguredOutput { get; set; }
 
@@ -157,23 +160,25 @@ public class SequentialCrewOrchestratorTests
         public Task<DomainCrewOutput> ExecuteAutonomousAsync(DomainCrew crew, AgentExecutionBudget budget, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException("Autonomous execution is not covered by this test double.");
 
-        private Task<DomainCrewOutput> CreateOutput(DomainCrew crew)
+        private async Task<DomainCrewOutput> CreateOutput(DomainCrew crew)
         {
             OnExecute?.Invoke();
+            if (OnExecuteAsync is not null)
+                await OnExecuteAsync().ConfigureAwait(false);
 
             if (ShouldFail)
                 throw new InvalidOperationException("Process strategy failed");
 
             if (ConfiguredOutput is not null)
-                return Task.FromResult(ConfiguredOutput);
+                return ConfiguredOutput;
 
-            return Task.FromResult(new DomainCrewOutput(
+            return new DomainCrewOutput(
                 $"Completed crew goal: {crew.Goal}",
                 null,
                 [],
                 true,
                 TimeSpan.FromMilliseconds(100),
-                null));
+                null);
         }
     }
 
@@ -633,6 +638,34 @@ public class SequentialCrewOrchestratorTests
 
         Assert.Equal(crew.Id, observed);
         // And popped afterwards: the identity belongs to the run, not to the thread.
+        Assert.Equal(Orkeon.Domain.Common.CrewId.System, callerContext.Current.CrewId);
+    }
+
+    [Fact]
+    public async Task The_pushed_identity_never_leaks_into_the_callers_flow()
+    {
+        // The subtle half of the push: an AsyncLocal mutated in an async method's
+        // synchronous prefix mutates the CALLER's execution context, and the pop then runs
+        // on the callee's resumed copy where it cannot undo it. With a strategy that truly
+        // suspends — every real run does — the caller's flow after KickoffAsync must still
+        // be System, or the host's next hub call wears the previous crew's badge.
+        var repository = new TestCrewRepository();
+        var stateManager = new TestStateManager();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var callerContext = new Orkeon.Infrastructure.EventHub.DefaultEventHubCallerContext();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), stateManager, strategyFactory, new ExecutionPlanParser(),
+            hubCallerContext: callerContext);
+
+        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        strategyFactory.Strategy.OnExecuteAsync = async () => await System.Threading.Tasks.Task.Yield();
+
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
         Assert.Equal(Orkeon.Domain.Common.CrewId.System, callerContext.Current.CrewId);
     }
 }

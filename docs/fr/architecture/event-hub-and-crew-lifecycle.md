@@ -505,6 +505,8 @@ L'étage ACL refuse les `Post` / `Send` / `Publish` scopé qu'aucune `CrewLink` 
 
 Un **`allowed_topics` vide** autorise tous les topics : un lien qui n'autoriserait rien serait sans objet, donc le cas vide est une confiance, pas un accident. La liste ne contraint que les **topics** : le courrier point à point (`Post`/`Send`) porte un topic synthétique du hub qu'aucun auteur ne pourrait nommer, il est donc autorisé par le lien lui-même — direction et destinataire. Une entrée sans `to:`, ou avec une `direction:` illisible, est **écartée avec un avertissement** plutôt que devinée — une direction devinée est une autorisation que l'auteur n'a jamais écrite — et la présence du bloc ferme quand même la porte : une autorisation malformée ne doit jamais devenir permissive.
 
+Une forme YAML échappe à cette règle, et elle est dite plutôt que cachée : une clé **`links:` nue, sans valeur**, se désérialise en null — indistinguable d'un bloc absent — et se lit donc comme *jamais déclaré*. Pour fermer la porte explicitement, écrivez `links: []` : la liste vide est une vraie déclaration, et elle refuse tout.
+
 ### 10.2.1 Nommer un pair externe
 
 `CrewLink` autorise une crew à parler à une crew. Un processus hors du hub — Studio qui regarde un run, une passerelle — n'en est pas une, et il atteint le hub par le schéma de boîte aux lettres `client://{nom}`. Un lien le nomme avec le préfixe réservé `client:`, comme dans l'exemple ci-dessus.
@@ -659,7 +661,7 @@ Chaque étage est opt-in — un hub que personne ne regarde ne paie rien — et 
 
 ### 12.1 Où tournent les étages
 
-Les étages de publication tournent sur `Publish`, **sur `Post` et `Send`**, et **sur `Reply`** : le trafic de boîte aux lettres doit les traverser, puisque l'ACL garde qui peut atteindre une boîte et que `client://` — la seule adresse qui sort du processus — ne s'atteint que par là. Une réponse est du trafic de hub comme un autre — `reply_to` et le pont client l'atteignent depuis l'extérieur du processus, et une réponse ni journalisée, ni spannée, ni vérifiée serait le seul message que personne n'observe.
+Les étages de publication tournent sur `Publish`, **sur `Post` et `Send`**, et **sur `Reply`** : le trafic de boîte aux lettres doit les traverser, puisque l'ACL garde qui peut atteindre une boîte et que `client://` — la seule adresse qui sort du processus — ne s'atteint que par là. Une réponse est du trafic de hub comme un autre — `reply_to` et le pont client l'atteignent depuis l'extérieur du processus, et une réponse ni journalisée ni spannée serait le seul message que personne n'observe. Une exemption délibérée : l'ACL n'*autorise* pas une réponse. Une réponse est adressée par son id de corrélation — un ULID frappé par le demandeur et remis au seul destinataire de la requête — donc posséder l'id **est** l'autorisation, à la manière d'une capability ; un contrôle par lien exigerait une grammaire « qui peut me répondre » que personne n'a demandée.
 
 Les étages de réception tournent là où un destinataire *consomme* un message : consommation d'un abonnement, attente sur un topic, attente sur une boîte aux lettres. L'attente d'une réponse à un `Send` n'y passe pas — c'est la queue d'un échange dont la réponse a déjà traversé les étages de publication, et elle dénoue un `TaskCompletionSource` au lieu de vider un canal.
 

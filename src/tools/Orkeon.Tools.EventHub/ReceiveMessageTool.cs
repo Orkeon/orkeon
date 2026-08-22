@@ -13,7 +13,7 @@ namespace Orkeon.Tools.EventHub;
 /// </summary>
 [ToolContract("receive_message",
     Name = "receive_message",
-    Description = "Pull the next message from a mailbox (default: current agent). Requires exactly one of timeout_ms / wait_forever.",
+    Description = "Pull the next message from a mailbox (default: current agent). Only mailboxes of the calling crew are readable — reading is destructive, and a mailbox belongs to its owner. Requires exactly one of timeout_ms / wait_forever.",
     Category = "EventHub")]
 public sealed class ReceiveMessageTool : ToolBase<ReceiveMessageRequest, ReceiveMessageResponse>, ITool
 {

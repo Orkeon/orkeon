@@ -505,6 +505,8 @@ The ACL stage rejects `Post` / `Send` / scoped `Publish` calls that no `CrewLink
 
 An **empty `allowed_topics`** authorizes every topic: a link that authorized nothing would be pointless, so the empty case is trust rather than an accident. The list constrains **topics only**: point-to-point mail (`Post`/`Send`) carries a synthetic hub topic no author could name, so it is authorized by the link itself — direction and target. An entry with no `to:`, or with a `direction:` nobody can read, is **dropped with a warning** rather than guessed at — a guessed direction is an authorization the author never wrote — and the block's presence still closes the door: a malformed authorization must never become a permissive one.
 
+One YAML shape escapes that rule, and it is stated rather than hidden: a **bare `links:` key with no value** deserializes to null, indistinguishable from an absent block, and therefore reads as *never declared*. To close the door explicitly, write `links: []` — the empty list is a real declaration, and it refuses everything.
+
 ### 10.2.1 Naming an external peer
 
 `CrewLink` authorizes a crew to talk to a crew. A process outside the hub — Studio watching a run, a gateway — is not one, and it reaches the hub through the `client://{name}` mailbox scheme. A link names it with the reserved `client:` prefix, as in the example above.
@@ -659,7 +661,7 @@ Every stage is opt-in — a hub nobody watches pays nothing — and custom stage
 
 ### 12.1 Where the stages run
 
-The publish stages run on `Publish`, **on `Post` and `Send`**, and **on `Reply`**: mailbox traffic has to travel them, since the ACL guards who may reach a mailbox and `client://` — the one address that leaves the process — is only ever reached that way. A reply is hub traffic like any other — `reply_to` and the client bridge both reach it from outside the process, and an unlogged, unspanned, unchecked reply would be the one message nobody observes.
+The publish stages run on `Publish`, **on `Post` and `Send`**, and **on `Reply`**: mailbox traffic has to travel them, since the ACL guards who may reach a mailbox and `client://` — the one address that leaves the process — is only ever reached that way. A reply is hub traffic like any other — `reply_to` and the client bridge both reach it from outside the process, and an unlogged, unspanned reply would be the one message nobody observes. One deliberate exemption: the ACL does not *authorize* a reply. A reply is addressed by its correlation id — a ULID minted by the requester and handed only to whoever received the request — so possession of the id **is** the authorization, the way a capability works; a link-based check would need a "who may answer me" grammar nobody has asked for.
 
 The receive stages run where a recipient *consumes* a message: draining a subscription, a wait on a topic, a wait on a mailbox. Awaiting a `Send` reply does not go through them — that is the tail of an exchange whose reply already travelled the publish stages, and it resolves a `TaskCompletionSource` rather than draining a channel.
 

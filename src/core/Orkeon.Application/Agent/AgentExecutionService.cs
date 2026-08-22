@@ -107,11 +107,18 @@ namespace Orkeon.Application.Agent
         {
             LogAgentStartingTask(agent.Role, task.Description);
 
-            // Layer the agent onto the ambient hub identity: the orchestrator pushed the crew,
-            // this narrows it to the agent for the duration of the task — which is what gives
-            // the EventHub tools a real SourceAgentId and receive_message its own mailbox.
+            // The hub identity for this task comes from the execution context, not from the
+            // ambient value: the context carries the authoritative crew id on every path —
+            // including ones where nothing upstream pushed (the streaming service, direct
+            // service use). And the push happens only after a forced suspension: an
+            // AsyncLocal mutated in an async method's synchronous prefix mutates the
+            // *caller's* execution context, so without the fork the strategy loop would
+            // carry a stale AgentId from task to task.
+            if (_hubCallerContext is not null)
+                await System.Threading.Tasks.Task.Yield();
+
             using var hubCallerScope = _hubCallerContext?.Push(
-                new EventHub.EventHubCaller(_hubCallerContext.Current.CrewId, agent.Id));
+                new EventHub.EventHubCaller(context.CrewId, agent.Id));
 
             var startTime = DateTime.UtcNow;
 

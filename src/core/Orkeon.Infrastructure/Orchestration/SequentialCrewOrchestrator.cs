@@ -139,11 +139,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // the ambient caller to source its messages, and the ACL is blind — every sender
             // looks like CrewId.System — unless someone pushes it here (HUB-03). AsyncLocal,
             // so it flows through strategies, agents and tools alike.
-            using var hubCallerScope = _hubCallerContext?.Push(
-                new Orkeon.Application.EventHub.EventHubCaller(crew.Id, null));
-
-            var domainOutput = await ExecuteAndCompleteAsync(
-                crew, processStrategy, domainInput, input, cancellationToken).ConfigureAwait(false);
+            var domainOutput = await RunWithCrewIdentityAsync(
+                crew.Id,
+                () => ExecuteAndCompleteAsync(crew, processStrategy, domainInput, input, cancellationToken))
+                .ConfigureAwait(false);
 
             // Checkpoint each task output
             if (_checkpointManager != null && sessionId != null)
@@ -322,6 +321,26 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
+    /// Runs <paramref name="body"/> with the crew's identity pushed on the hub caller
+    /// context. The <see cref="System.Threading.Tasks.Task.Yield"/> is load-bearing: an
+    /// <see cref="AsyncLocal{T}"/> mutated in the synchronous prefix of an async method
+    /// mutates the *caller's* execution context — the caller of KickoffAsync would keep the
+    /// crew's identity ambient after the run, and a batch kickoff would end up wearing the
+    /// last crew's badge. Forcing a suspension first forks the context, so the push can only
+    /// flow down into the run, never back up.
+    /// </summary>
+    private async Task<T> RunWithCrewIdentityAsync<T>(CrewId crewId, Func<Task<T>> body)
+    {
+        if (_hubCallerContext is null)
+            return await body().ConfigureAwait(false);
+
+        await System.Threading.Tasks.Task.Yield();
+
+        using var scope = _hubCallerContext.Push(new Orkeon.Application.EventHub.EventHubCaller(crewId, null));
+        return await body().ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Kickoff For Each Async.
     /// </summary>
     public async Task<BatchOutput> KickoffForEachAsync(
@@ -341,8 +360,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
         return new BatchOutput(
             Results: results.ToList(),
-            SuccessCount: results.Count(r => r.FinalOutput != null),
-            FailureCount: results.Count(r => r.FinalOutput == null),
+            SuccessCount: results.Count(r => r.Succeeded),
+            FailureCount: results.Count(r => !r.Succeeded),
             TotalDuration: stopwatch.Elapsed);
     }
 
@@ -378,8 +397,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
                 await _stateManager.UpdateStateAsync(executionId, s =>
                 {
+                    // KickoffAsync never throws; Succeeded is how a failed run says so, and
+                    // marking it Completed regardless would make the no-wait state lie.
                     s.Output = output;
-                    s.Status = ExecutionState.Completed;
+                    s.Status = output.Succeeded ? ExecutionState.Completed : ExecutionState.Failed;
+                    s.Error = output.Succeeded ? s.Error : output.FinalOutput;
                     s.Progress = 1.0;
                 }).ConfigureAwait(false);
             }
@@ -454,6 +476,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 DateTime.UtcNow);
             yield break;
         }
+
+        // Same identity discipline as KickoffAsync — the streaming path used to skip the
+        // push entirely, leaving CrewId.System ambient, which quietly disabled the
+        // receive_message ownership guard for streamed agents. Yield first: the fork keeps
+        // the push inside this iterator's flow (see RunWithCrewIdentityAsync).
+        await System.Threading.Tasks.Task.Yield();
+        using var identityScope = _hubCallerContext?.Push(
+            new Orkeon.Application.EventHub.EventHubCaller(crewId, null));
 
         var context = new Orkeon.Application.Context.SimpleExecutionContext(
             crewId,

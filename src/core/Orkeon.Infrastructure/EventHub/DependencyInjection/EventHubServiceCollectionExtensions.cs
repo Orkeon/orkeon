@@ -72,6 +72,21 @@ public static class EventHubServiceCollectionExtensions
         this IServiceCollection services, ICrewLinkPolicy? policy = null)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // An explicit policy that silently loses to an earlier registration is the worst
+        // possible failure mode here: the operator asked for a closed door and got an open
+        // one. A null policy defers to whatever is registered (or the permissive default);
+        // an explicit one must either win or be told it cannot.
+        var existingPolicy = services.LastOrDefault(d => d.ServiceType == typeof(ICrewLinkPolicy));
+        if (policy is not null && existingPolicy is not null
+            && !ReferenceEquals(existingPolicy.ImplementationInstance, policy))
+        {
+            throw new InvalidOperationException(
+                "AddOrkeonEventHubAcl was called with an explicit ICrewLinkPolicy but a different "
+                + "policy is already registered. Register the policy once, in one place — a "
+                + "silently-ignored restrictive policy is an open door nobody asked for.");
+        }
+
         services.TryAddSingleton(policy ?? PermissiveCrewLinkPolicy.Instance);
 
         // One instance behind both faces: the factory writes what a crew declared, the ACL

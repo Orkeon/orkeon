@@ -169,4 +169,27 @@ agents:
         Assert.NotNull(config.Links);
         Assert.Empty(config.Links!);
     }
+
+    [Fact]
+    public async Task LoadFromString_AnExplicitlyEmptyBlock_IsDeclaredAndClosed()
+    {
+        // `links: []` is the way to close the door explicitly. Note the asymmetry it pins:
+        // a BARE `links:` key with no value deserializes to null — indistinguishable from an
+        // absent block for the YAML layer — and therefore reads as "never declared". Writing
+        // the empty list is what makes the declaration real.
+        var yaml = """
+name: billing
+goal: x
+links: []
+agents:
+  worker:
+    role: Worker
+    goal: work
+""";
+
+        var config = await BuildLoader().LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(config.Links);
+        Assert.Empty(config.Links!);
+    }
 }

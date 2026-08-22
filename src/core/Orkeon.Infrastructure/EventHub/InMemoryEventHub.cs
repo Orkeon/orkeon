@@ -53,6 +53,9 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
     // LastValueCache: keyed by (scope:string, key:string). Scope is crewId.ToString() or "" for global.
     private readonly ConcurrentDictionary<(string Scope, string Key), Message> _lastValues = new();
 
+    // Serializes the consumption of a reply's two waiter maps (see ReplyAsync).
+    private readonly Lock _replyConsumeGate = new();
+
     /// <summary>Initializes a new instance of <see cref="InMemoryEventHub"/>.</summary>
     public InMemoryEventHub(
         IEventHubCallerContext callerContext,
@@ -86,7 +89,14 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         if (_mailboxes.TryGetValue(rawAddress, out var entry) && entry.DecrementRef() == 0)
         {
             _mailboxes.TryRemove(rawAddress, out _);
-            entry.Channel.Writer.TryComplete();
+
+            // Completed under the same gate PostCoreAsync writes under: without it, a write
+            // could slip in between the removal and the completion — a message the caller
+            // was told was posted, sitting in a channel whose only reader is gone.
+            lock (entry.WriteGate)
+            {
+                entry.Channel.Writer.TryComplete();
+            }
         }
     }
 
@@ -127,7 +137,14 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
                     nameof(options));
 
             var scopeKey = options.TargetCrewId is null ? "" : options.TargetCrewId.ToString()!;
-            _lastValues[(scopeKey, options.LastValueKey)] = message;
+
+            // Monotonic by stamp: two racing retained publishes are delivered in stamp order
+            // (the dispatch lock guarantees it), and the cache must not end up holding the
+            // older of the two.
+            _lastValues.AddOrUpdate(
+                (scopeKey, options.LastValueKey),
+                message,
+                (_, existing) => existing.PublishedAt <= message.PublishedAt ? message : existing);
         }
 
         if (_logger.IsEnabled(LogLevel.Debug))
@@ -358,11 +375,19 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         // exempts only the *receive* half, and says so).
         replyMessage = await _pipeline.OnPublishAsync(replyMessage, ct).ConfigureAwait(false);
 
-        var delivered = false;
-        if (_pendingReplies.TryRemove(correlationKey, out var pendingTcs))
-            delivered |= pendingTcs.TrySetResult(replyMessage);
-        if (_replyWaiters.TryRemove(correlationKey, out var waiterTcs))
-            delivered |= waiterTcs.TrySetResult(replyMessage);
+        // Consumed under one gate: two concurrent replies to the same correlation must not
+        // split the maps — one resolving the Send caller, the other the WaitForAsync waiter,
+        // one exchange ending with two different payloads and both repliers told they won.
+        // The loser of this gate finds both maps empty and hears so.
+        bool delivered;
+        lock (_replyConsumeGate)
+        {
+            delivered = false;
+            if (_pendingReplies.TryRemove(correlationKey, out var pendingTcs))
+                delivered |= pendingTcs.TrySetResult(replyMessage);
+            if (_replyWaiters.TryRemove(correlationKey, out var waiterTcs))
+                delivered |= waiterTcs.TrySetResult(replyMessage);
+        }
 
         if (!delivered)
             throw new UnknownCorrelationException(correlationKey);

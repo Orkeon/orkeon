@@ -79,6 +79,15 @@ internal sealed class AclEventHubMiddleware : IEventHubMiddleware
         if (message.TargetMailbox is { Kind: MailboxKind.Topic })
             return;
 
+        // Traffic from the process itself — the host's own code, the client bridge relaying
+        // its peer — is not a crew the ACL models. It cannot be named by a link, so under the
+        // closed policy it could be neither authorized nor granted, and the daemon's own
+        // gateway would refuse itself. Whoever runs the process already stands above the hub
+        // (they hold its stdin and its configuration); the same reasoning exempts the system
+        // caller in receive_message.
+        if (Orkeon.Domain.Common.CrewId.IsSystem(message.SourceCrewId))
+            return;
+
         var declared = _links.LinksFor(message.SourceCrewId);
         if (declared.IsDefault)
         {
