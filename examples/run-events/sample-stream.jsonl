@@ -1,10 +1,10 @@
 {"v":2,"seq":1,"ts":"2026-08-20T09:14:02Z","kind":"run.started","target":"supplier-watch/crew","stream":false}
 {"v":2,"seq":2,"ts":"2026-08-20T09:14:05Z","kind":"tool.called","correlationId":"01K2WT1","toolName":"web_scrape","argsSummary":"url, selector"}
 {"v":2,"seq":3,"ts":"2026-08-20T09:14:08Z","kind":"tool.returned","correlationId":"01K2WT1","toolName":"web_scrape","success":true,"durationMs":2914}
-{"v":2,"seq":4,"ts":"2026-08-20T09:14:09Z","crewId":"01K2W7","agentId":"researcher","kind":"cost.updated","tokens":1240,"model":"deepseek-chat","provider":"deepseek"}
-{"v":2,"seq":5,"ts":"2026-08-20T09:14:09Z","crewId":"01K2W7","agentId":"01K2W8","kind":"task.completed","taskId":"collect","agentRole":"researcher","success":true,"durationMs":7767,"tokens":1240,"toolCalls":3}
+{"v":2,"seq":4,"ts":"2026-08-20T09:14:09Z","agentId":"researcher","kind":"cost.updated","tokens":1240,"model":"deepseek-chat"}
+{"v":2,"seq":5,"ts":"2026-08-20T09:14:09Z","agentId":"researcher","kind":"task.completed","taskId":"collect","agentRole":"researcher","success":true,"durationMs":7767,"tokens":1240,"toolCalls":3}
 {"v":2,"seq":6,"ts":"2026-08-20T09:14:15Z","correlationId":"01K2WA","kind":"input.needed","inputKind":"confirm","prompt":"Two suppliers changed their prices. Publish the report?"}
-{"v":2,"seq":7,"ts":"2026-08-20T09:14:21Z","crewId":"01K2W7","agentId":"writer","kind":"cost.updated","tokens":3350,"model":"deepseek-chat","provider":"deepseek"}
-{"v":2,"seq":8,"ts":"2026-08-20T09:14:21Z","crewId":"01K2W7","agentId":"01K2W9","kind":"task.completed","taskId":"write","agentRole":"writer","success":true,"durationMs":5716,"tokens":2110}
+{"v":2,"seq":7,"ts":"2026-08-20T09:14:21Z","agentId":"writer","kind":"cost.updated","tokens":3350,"model":"deepseek-chat"}
+{"v":2,"seq":8,"ts":"2026-08-20T09:14:21Z","agentId":"writer","kind":"task.completed","taskId":"write","agentRole":"writer","success":true,"durationMs":5716,"tokens":2110,"toolCalls":0}
 {"v":2,"seq":9,"ts":"2026-08-20T09:14:21Z","kind":"hub.message","from":"crew://01K2W7","topic":"run.progress","payload":{"stage":"reporting"}}
 {"v":2,"seq":10,"ts":"2026-08-20T09:14:21Z","kind":"run.finished","success":true,"exitCode":0,"tokens":3350}

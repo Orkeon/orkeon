@@ -27,6 +27,8 @@ Orkeon.Hosting.RunnerOptionsBase.LlmLogEnabled.get -> bool
 Orkeon.Hosting.RunnerOptionsBase.LlmLogEnabled.set -> void
 Orkeon.Hosting.RunnerOptionsBase.LlmLogPath.get -> string?
 Orkeon.Hosting.RunnerOptionsBase.LlmLogPath.set -> void
+Orkeon.Hosting.RunnerOptionsBase.MachineReadableStdout.get -> bool
+Orkeon.Hosting.RunnerOptionsBase.MachineReadableStdout.set -> void
 Orkeon.Hosting.RunnerOptionsBase.Mounts.get -> System.Collections.Generic.IEnumerable<string!>!
 Orkeon.Hosting.RunnerOptionsBase.Mounts.set -> void
 Orkeon.Hosting.RunnerOptionsBase.ParseVariables() -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!

@@ -27,7 +27,7 @@ namespace Orkeon.Scripting.Cli.Commands.Run;
 /// they are named rather than buried among tool calls.
 /// </para>
 /// </summary>
-internal sealed class ObservedTool : ITool
+internal sealed class ObservedTool : ITool, IDisposable
 {
     /// <summary>
     /// The tool whose call means one agent delegated to another — the wire name of
@@ -156,6 +156,14 @@ internal sealed class ObservedTool : ITool
 
     private static string? Argument(IReadOnlyDictionary<string, object?>? arguments, string name) =>
         arguments is not null && arguments.TryGetValue(name, out var value) ? value?.ToString() : null;
+
+    /// <summary>
+    /// Disposal cascades to the wrapped tool: the container tracks what the decorating
+    /// factory returned — this instance — so without the cascade the inner tool's resources
+    /// (HttpToolBase owns an HttpClient) would never be released on observed runs, while
+    /// unobserved runs release them fine.
+    /// </summary>
+    public void Dispose() => (_inner as IDisposable)?.Dispose();
 
     /// <summary>
     /// A short, printable digest of the arguments. Deliberately not the arguments themselves:

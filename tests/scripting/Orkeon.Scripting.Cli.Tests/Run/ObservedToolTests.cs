@@ -109,7 +109,7 @@ public class ObservedToolTests
         // run is over and the screen says it is not.
         var inner = new ScriptedTool("file_read") { Throws = new InvalidOperationException("boom") };
         var output = new StringWriter();
-        var tool = new ObservedTool(inner, new OrkeonEventWriter(output));
+        using var tool = new ObservedTool(inner, new OrkeonEventWriter(output));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => tool.ExecuteAsync("x", TestContext.Current.CancellationToken));
@@ -125,7 +125,7 @@ public class ObservedToolTests
     {
         var inner = new ScriptedTool("file_read") { Succeeds = false };
         var output = new StringWriter();
-        var tool = new ObservedTool(inner, new OrkeonEventWriter(output));
+        using var tool = new ObservedTool(inner, new OrkeonEventWriter(output));
 
         await tool.ExecuteAsync("x", TestContext.Current.CancellationToken);
 

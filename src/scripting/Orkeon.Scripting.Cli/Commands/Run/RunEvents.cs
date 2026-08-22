@@ -112,8 +112,25 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         _inner?.OnCrewCompletedAsync(snapshot, ct) ?? Task.CompletedTask;
 
     /// <inheritdoc />
-    public Task OnCrewFailedAsync(CrewExecutionSnapshot snapshot, Exception? ex, CancellationToken ct) =>
-        _inner?.OnCrewFailedAsync(snapshot, ex, ct) ?? Task.CompletedTask;
+    public Task OnCrewFailedAsync(CrewExecutionSnapshot snapshot, Exception? ex, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        // The strategies' terminal dispatch has to reach the WIRE, not just AUTO_SUMMARY.md:
+        // without this line the `error` kind had no producer on the run path at all, and
+        // Studio's error surface was unreachable for the exact events built to feed it.
+        _events.Emit(
+            RunEventKinds.Error,
+            new OrkeonEventScope { CrewId = Blank(snapshot.CrewId) },
+            new
+            {
+                code = snapshot.Status == CrewHookStatus.Canceled ? "crew_cancelled" : "crew_failed",
+                message = snapshot.FailureReason ?? ex?.Message ?? string.Empty,
+                recoverable = false,
+            });
+
+        return _inner?.OnCrewFailedAsync(snapshot, ex, ct) ?? Task.CompletedTask;
+    }
 
     /// <inheritdoc />
     public void Record(CostUsageEvent usage)

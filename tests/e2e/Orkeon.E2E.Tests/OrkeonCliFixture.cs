@@ -35,9 +35,9 @@ public sealed class OrkeonCliFixture
         RepoRoot = FindRepoRoot();
         ProjectPath = Path.Combine(RepoRoot, "src", "scripting", "Orkeon.Scripting.Cli");
 
-        var (exitCode, output) = RunDotnet($"build \"{ProjectPath}\" --nologo -v:q", RepoRoot, TimeSpan.FromMinutes(10));
+        var (exitCode, stdout, stderr) = RunDotnet($"build \"{ProjectPath}\" --nologo -v:q", RepoRoot, TimeSpan.FromMinutes(10));
         if (exitCode != 0)
-            throw new InvalidOperationException($"Building the orkeon CLI failed with exit code {exitCode}:\n{output}");
+            throw new InvalidOperationException($"Building the orkeon CLI failed with exit code {exitCode}:\n{stdout}\n{stderr}");
     }
 
     /// <summary>
@@ -45,13 +45,24 @@ public sealed class OrkeonCliFixture
     /// merged streams — no build output can reach them, which is the whole point.
     /// </summary>
     public (int ExitCode, string Output) RunCli(
+        string arguments, string workingDirectory, TimeSpan? timeout = null)
+    {
+        var (exitCode, stdout, stderr) = RunCliSplit(arguments, workingDirectory, timeout);
+        return (exitCode, stdout + "\n" + stderr);
+    }
+
+    /// <summary>
+    /// Runs the built CLI keeping the two streams apart — the only way to assert stdout
+    /// purity, which is the `--events` contract: protocol lines and nothing else.
+    /// </summary>
+    public (int ExitCode, string Stdout, string Stderr) RunCliSplit(
         string arguments, string workingDirectory, TimeSpan? timeout = null) =>
         RunDotnet(
             $"run --project \"{ProjectPath}\" --no-build -- {arguments}",
             workingDirectory,
             timeout ?? TimeSpan.FromMinutes(5));
 
-    private static (int ExitCode, string Output) RunDotnet(
+    private static (int ExitCode, string Stdout, string Stderr) RunDotnet(
         string arguments, string workingDirectory, TimeSpan timeout)
     {
         var psi = new ProcessStartInfo
@@ -75,7 +86,7 @@ public sealed class OrkeonCliFixture
                 $"`dotnet {arguments}` did not exit within {timeout}. Output so far:\n{stdout.Result}\n{stderr.Result}");
         }
 
-        return (process.ExitCode, stdout.Result + "\n" + stderr.Result);
+        return (process.ExitCode, stdout.Result, stderr.Result);
     }
 
     private static string FindRepoRoot()

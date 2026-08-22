@@ -61,10 +61,12 @@ public sealed record OrkeonEvent
             ? number
             : null;
 
-    /// <summary>Floating-point property, null when absent or not a number.</summary>
+    /// <summary>Floating-point property, null when absent or not a representable number.</summary>
     public double? GetDouble(string name) =>
-        Root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
-            ? value.GetDouble()
+        Root.TryGetProperty(name, out var value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetDouble(out var number)
+            ? number
             : null;
 
     /// <summary>

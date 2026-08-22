@@ -22,7 +22,12 @@ internal sealed class ObservedRunContext : IAsyncDisposable
     private readonly bool _stream;
     private readonly string _clientName;
     private RunEventObserver? _observer;
-    private JsonLinesEventHubBridge? _bridge;
+
+    // Written once by the IEventHub singleton factory (whatever thread first resolves the
+    // hub), read by the command worker: volatile so a command cannot observe a stale null
+    // after the bridge exists. A command arriving BEFORE the host has built the hub is
+    // dropped by design — there is no hub to project it onto yet.
+    private volatile JsonLinesEventHubBridge? _bridge;
     private bool _finished;
 
     /// <summary>Builds the context and starts the single stdin reader immediately.</summary>
@@ -159,13 +164,18 @@ internal sealed class ObservedRunContext : IAsyncDisposable
 
     private async Task DisposeCoreAsync()
     {
+        // The pump goes first, deliberately: disposing the bridge while the command worker
+        // still runs left a window where a concurrent `subscribe` re-armed a relay AFTER the
+        // bridge had snapshotted its subscriptions — a relay nobody would ever cancel,
+        // writing hub.message lines after run.finished. Closing the pump completes the
+        // command channel and awaits the worker, so nothing can touch the bridge afterwards.
+        await Inbound.DisposeAsync().ConfigureAwait(false);
+
         if (_bridge is not null)
         {
             await _bridge.DisposeAsync().ConfigureAwait(false);
             _bridge = null;
         }
-
-        await Inbound.DisposeAsync().ConfigureAwait(false);
     }
 
     /// <summary>

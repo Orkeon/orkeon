@@ -44,16 +44,16 @@ Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriq
 | `kind` | Charge utile | Quand |
 |---|---|---|
 | `run.started` | `target`, `stream` | Le run commence. |
-| `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens?`, `toolCalls?` | Chaque tâche se termine, **dans les six modes d'orchestration**. |
+| `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens`, `toolCalls` | Chaque tâche se termine, **dans les six modes d'orchestration** — échec et annulation compris (voir `error`). `tokens` et `toolCalls` valent `0` quand le mode ne les mesure pas, jamais absents. |
 | `tool.called` | `toolName`, `argsSummary?` | Un outil est invoqué. `argsSummary` résume les **noms** d'arguments, jamais leur contenu : un appel peut porter un fichier entier. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | L'outil a fini — **y compris s'il a levé**, pour qu'un observateur n'affiche jamais une étape éternellement en cours. Corrélé à son `tool.called`. |
 | `delegation.started` | `toRole?` | Un agent a confié du travail à un autre (l'outil `delegate_work_to_coworker`). La description de la tâche reste hors du flux, comme toute valeur d'argument. |
 | `agent.spawned` | `role?`, `reason?` | L'équipe a grandi en cours d'exécution — émis quand un appel à l'outil `spawn_agent` est observé. rc.2 ne câble cet outil sur aucun agent par défaut : ce kind n'apparaît que dans les déploiements qui l'attachent eux-mêmes. |
-| `cost.updated` | `tokens`, `model?`, `provider?` | Le compteur de jetons bouge. `tokens` est cumulatif. **Aucun champ de prix** : le framework n'a pas de table de prix, et en inventer une serait pire que l'omettre. |
+| `cost.updated` | `tokens`, `model?`, `provider?` | Le compteur de jetons bouge. `tokens` est cumulatif ; `model` quand le fournisseur le rapporte ; `provider` seulement sur les appels de la façade de scripting. **Aucun champ de prix** : le framework n'a pas de table de prix, et en inventer une serait pire que l'omettre. |
 | `llm.delta` | `text` | Un fragment de texte généré. **Seulement sous `--stream`.** |
-| `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?` | Une tâche déclarée `humanInput: true` pose une question. |
+| `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?`, `defaultValue?`, `taskDescription?` | Une tâche déclarée `humanInput: true` pose une question. |
 | `hub.message` | `from?`, `topic?`, `payload?` | Le hub du run a relayé quelque chose à ce processus. `from` est l'adresse hub de l'expéditeur (`agent://{crew}/{agent}`, `crew://{crew}`), pour que le pair puisse attribuer et répondre ; absent quand le hub ne la connaît pas (la réponse à un `send`, appariée par `correlationId`). |
-| `error` | `code`, `message`, `recoverable` | Quelque chose a échoué. |
+| `error` | `code`, `message`, `recoverable` | Quelque chose a échoué. Un run qui s'arrête — annulé ou en échec, dans n'importe quel mode — se termine par `code: crew_cancelled` ou `crew_failed` avant `run.finished`. |
 | `run.finished` | `success`, `exitCode`, `tokens` | Le run se termine. |
 
 Un run qui ne rapporte rien n'est pas un run qui se passe bien — c'est un run qui ne rapporte rien. Un client doit montrer la différence, pas la masquer.

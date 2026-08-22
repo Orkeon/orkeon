@@ -87,6 +87,14 @@ public abstract class RunnerOptionsBase
     public bool Validate { get; set; }
 
     /// <summary>
+    /// True when stdout carries a machine protocol (an `--events` run): the human summary —
+    /// the crew's final output, duration, tokens — is then written to stderr instead. A
+    /// banner between two JSONL documents is a parser error on the client, and the terminal
+    /// or a raw-log pane still shows the answer where humans read it.
+    /// </summary>
+    public bool MachineReadableStdout { get; set; }
+
+    /// <summary>
     /// Build the host and print the sorted registry tool names (one per line) to stdout,
     /// then exit. The runtime tool manifest consumed by tooling/linting.
     /// </summary>

@@ -44,16 +44,16 @@ Payload fields sit **flat** beside the envelope, not nested under a `payload` ke
 | `kind` | Payload | When |
 |---|---|---|
 | `run.started` | `target`, `stream` | The run begins. |
-| `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens?`, `toolCalls?` | Each task finishes, in every orchestration mode. |
+| `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens`, `toolCalls` | Each task finishes, in every orchestration mode — failure and cancellation included (see `error`). `tokens` and `toolCalls` are `0` when the mode does not track them, never absent. |
 | `tool.called` | `toolName`, `argsSummary?` | A tool is invoked. `argsSummary` is a digest of the argument names, never the arguments: a call can carry a whole file. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | The tool finished — **including when it threw**, so a watcher never shows a step running forever. Correlated with its `tool.called`. |
 | `delegation.started` | `toRole?` | One agent handed work to another (the `delegate_work_to_coworker` tool). The task description stays off the stream, like every other argument value. |
 | `agent.spawned` | `role?`, `reason?` | The team grew at runtime — emitted when a `spawn_agent` tool call is observed. rc.2 wires that tool into no agent by default, so this kind only appears in deployments that attach it themselves. |
-| `cost.updated` | `tokens`, `model?`, `provider?` | The token meter moves. `tokens` is cumulative. There is **no price field**: the framework has no price table, and inventing one would be worse than omitting it. |
+| `cost.updated` | `tokens`, `model?`, `provider?` | The token meter moves. `tokens` is cumulative; `model` when the provider reports it; `provider` only on the scripting facade's calls. There is **no price field**: the framework has no price table, and inventing one would be worse than omitting it. |
 | `llm.delta` | `text` | A fragment of generated text. **Only under `--stream`.** |
-| `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?` | A task declared `humanInput: true` is asking. |
+| `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?`, `defaultValue?`, `taskDescription?` | A task declared `humanInput: true` is asking. |
 | `hub.message` | `from?`, `topic?`, `payload?` | The run's hub relayed something to this process. `from` is the sender's own hub address (`agent://{crew}/{agent}`, `crew://{crew}`) so the peer can attribute and answer; it is absent when the hub does not know (the answer to a `send`, which pairs by `correlationId` instead). |
-| `error` | `code`, `message`, `recoverable` | Something went wrong. |
+| `error` | `code`, `message`, `recoverable` | Something went wrong. A run that stops — cancelled or failed, in any mode — ends with `code: crew_cancelled` or `crew_failed` before `run.finished`. |
 | `run.finished` | `success`, `exitCode`, `tokens` | The run ends. |
 
 A run that reports nothing is not a run going well — it is a run reporting nothing. A client should show the difference rather than hide it.

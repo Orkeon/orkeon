@@ -265,7 +265,7 @@ public static partial class RunnerExecution
             LogKickingOffCrew(logger, crew.Goal);
             var output = await orchestrator.KickoffAsync(crew.Id, input, cts.Token).ConfigureAwait(false);
 
-            PrintCrewOutput(output);
+            PrintCrewOutput(output, opts.MachineReadableStdout ? Console.Error : Console.Out);
             return 0;
         }
         catch (OperationCanceledException)
@@ -341,14 +341,16 @@ public static partial class RunnerExecution
     /// Renders the one-shot crew result (final output, duration, token usage) to the console.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static void PrintCrewOutput(CrewOutput output)
+    private static void PrintCrewOutput(CrewOutput output, TextWriter destination)
     {
-        Console.WriteLine();
-        Console.WriteLine("=== Crew Output ===");
-        Console.WriteLine(output.FinalOutput);
-        Console.WriteLine();
-        Console.WriteLine($"Duration: {output.Duration}");
-        Console.WriteLine(output.TokensUsed is { } usage
+        // On an --events run the destination is stderr: stdout is the protocol, and this
+        // banner between two JSONL documents was the one non-envelope thing it still carried.
+        destination.WriteLine();
+        destination.WriteLine("=== Crew Output ===");
+        destination.WriteLine(output.FinalOutput);
+        destination.WriteLine();
+        destination.WriteLine($"Duration: {output.Duration}");
+        destination.WriteLine(output.TokensUsed is { } usage
             ? $"Tokens used: {usage.TotalTokens}"
             : "Tokens used: (not measured)");
     }

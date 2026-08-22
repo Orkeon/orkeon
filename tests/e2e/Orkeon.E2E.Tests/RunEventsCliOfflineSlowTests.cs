@@ -3,10 +3,11 @@ using System.Text.Json;
 namespace Orkeon.E2E.Tests;
 
 /// <summary>
-/// BUS-07: the real <c>orkeon run --events jsonl</c>, spawned as a process, on its fully offline
-/// half — the envelope it writes, and the promise that a failure before the host even builds is
-/// reported as an event rather than as silence. A successful run needs a model; the protocol's
-/// shape does not.
+/// BUS-07: the real <c>orkeon run --events jsonl</c>, spawned as a process, fully offline —
+/// the envelope it writes on failure, and a whole successful run through the echo-provider
+/// fallback: the review found the original invariant only ever ran on a stream that could not
+/// fault (two events, no payloads), so the null-omission and stdout-purity promises were
+/// asserted precisely where they could not break.
 /// </summary>
 [Trait("Category", "Slow")]
 [Collection(OrkeonCliFixture.CollectionName)]
@@ -82,6 +83,65 @@ public sealed class RunEventsCliOfflineSlowTests
             // optional, and a client must not have to tell "absent" from "explicitly nothing".
             foreach (var property in element.EnumerateObject())
                 Assert.NotEqual(JsonValueKind.Null, property.Value.ValueKind);
+        }
+    }
+
+    [Fact]
+    public void A_successful_run_keeps_stdout_pure_and_free_of_nulls()
+    {
+        // The rich half of the invariant: a real crew, run to success offline (no Llm section
+        // → echo provider), emitting cost.updated and task.completed with actual payloads.
+        // Two promises under test: every stdout line is an envelope — the human summary
+        // banner used to land between two JSONL documents — and no key is ever null.
+        var dir = Path.Combine(Path.GetTempPath(), $"orkeon-e2e-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "appsettings.json"), "{}");
+            File.WriteAllText(Path.Combine(dir, "crew.yaml"), """
+name: smoke-crew
+goal: Run one task offline
+process: "sequential"
+agents:
+  worker:
+    role: Echoist
+    goal: Echo things back
+tasks:
+  say:
+    description: Say hello
+    expected_output: A greeting
+    agent: worker
+""");
+
+            var (exitCode, stdout, stderr) = _cli.RunCliSplit(
+                $"run \"{Path.Combine(dir, "crew.yaml")}\" --events jsonl --allow-external-mounts " +
+                $"--settings \"{Path.Combine(dir, "appsettings.json")}\"",
+                _cli.RepoRoot, TimeSpan.FromMinutes(5));
+
+            Assert.Equal(0, exitCode);
+
+            // stdout carries the protocol and nothing else.
+            var stdoutLines = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Assert.All(stdoutLines, line => Assert.StartsWith("{\"v\":2", line, StringComparison.Ordinal));
+
+            var events = ProtocolLines(stdout);
+            Assert.Contains(events, e => e.GetProperty("kind").GetString() == "run.started");
+            Assert.Contains(events, e => e.GetProperty("kind").GetString() == "task.completed");
+            var finished = Assert.Single(events, e => e.GetProperty("kind").GetString() == "run.finished");
+            Assert.True(finished.GetProperty("success").GetBoolean());
+
+            foreach (var element in events)
+            {
+                foreach (var property in element.EnumerateObject())
+                    Assert.NotEqual(JsonValueKind.Null, property.Value.ValueKind);
+            }
+
+            // The human summary moved, it did not vanish: the answer stays where humans read.
+            Assert.Contains("Crew Output", stderr, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
         }
     }
 

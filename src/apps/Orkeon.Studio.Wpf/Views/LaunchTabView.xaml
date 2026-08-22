@@ -410,8 +410,11 @@
                     MaxHeight="160"
                     Visibility="{Binding Progress.HasGeneratedText, Converter={StaticResource BooleanToVisibility}}">
               <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <!-- ConsoleFgBrush, not InkBrush: the console background is near-black in
+                     BOTH themes by design, and the light theme's ink is dark navy — dark on
+                     dark. The console pair travels together. -->
                 <TextBlock FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"
-                           Foreground="{DynamicResource InkBrush}"
+                           Foreground="{DynamicResource ConsoleFgBrush}"
                            Text="{Binding Progress.GeneratedText}"/>
               </ScrollViewer>
             </Border>

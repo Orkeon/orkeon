@@ -279,14 +279,6 @@ internal static partial class RunCommand
         if (IsYamlConfig(options.ScriptPath))
             return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
 
-        // OUT-OF-SCOPE: probing the user-supplied script path; CLI entry runs outside
-        // the VFS abstraction (scripts live wherever the user invokes us from).
-        if (!File.Exists(options.ScriptPath))
-        {
-            await Console.Error.WriteLineAsync($"orkeon run: script not found: {options.ScriptPath}").ConfigureAwait(false);
-            return Program.ExitScriptError;
-        }
-
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>
         {
@@ -314,7 +306,20 @@ internal static partial class RunCommand
         int exitCode;
         try
         {
-            exitCode = await RunWithHostAsync(options, observed, cts.Token).ConfigureAwait(false);
+            // OUT-OF-SCOPE: probing the user-supplied script path; CLI entry runs outside
+            // the VFS abstraction (scripts live wherever the user invokes us from). Checked
+            // INSIDE the evented frame: a typo'd script used to produce total silence on an
+            // --events run — not even run.started — while the same typo on a .yaml target
+            // opened and closed the stream properly.
+            if (!File.Exists(options.ScriptPath))
+            {
+                await Console.Error.WriteLineAsync($"orkeon run: script not found: {options.ScriptPath}").ConfigureAwait(false);
+                exitCode = Program.ExitScriptError;
+            }
+            else
+            {
+                exitCode = await RunWithHostAsync(options, observed, cts.Token).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -368,7 +373,18 @@ internal static partial class RunCommand
     /// </summary>
     private static async Task<int> RunViaSharedRunnerAsync(RunCommandOptions options)
     {
-        if (!options.EmitsEvents)
+        // The diagnostic modes are not runs: --list-tools prints a manifest and --validate a
+        // verdict, both as plain text on stdout by their own contract. Wrapping them in the
+        // protocol produced a run.started with an empty target and raw text interleaved with
+        // JSONL — worse than either format alone. Say so instead of guessing.
+        if (options.EmitsEvents && (options.ListTools || options.Validate))
+        {
+            await Console.Error.WriteLineAsync(
+                "orkeon run: --events has no effect with --list-tools or --validate; plain output follows.")
+                .ConfigureAwait(false);
+        }
+
+        if (!options.EmitsEvents || options.ListTools || options.Validate)
         {
             return await RunnerExecution.RunOneShotAsync(
                 ToRunnerOptions(options),
@@ -421,6 +437,7 @@ internal static partial class RunCommand
     internal static RunnerOptionsBase ToRunnerOptions(RunCommandOptions options)
         => new YamlRunnerOptions
         {
+            MachineReadableStdout = options.EmitsEvents,
             ConfigPath = options.ScriptPath,
             SettingsPath = options.SettingsPath,
             Mounts = options.Mounts,
@@ -648,7 +665,11 @@ internal static partial class RunCommand
         // entry's directory. ScriptHost still uses virtualPath for VFS reads and logging.
         var result = await scriptHost.RunFromFileAsync(fullPath, virtualPath, linkCts.Token, inputsJson).ConfigureAwait(false);
 
-        Console.WriteLine(SerializeRunResult(result));
+        // On an observed run stdout belongs to the protocol: the pretty-printed result blob
+        // between the last event and run.finished was a parser error handed to every client.
+        // Humans (a terminal, Studio's raw pane) read it from stderr instead.
+        await (observed is null ? Console.Out : Console.Error)
+            .WriteLineAsync(SerializeRunResult(result)).ConfigureAwait(false);
         return Program.ExitOk;
     }
 
