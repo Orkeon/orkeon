@@ -18,7 +18,7 @@ Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy
 Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy.IsDestructiveOperation(string! query) -> bool
 Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy.ValidateQuery(string! query, Orkeon.Application.Abstractions.Data.DatabaseQueryOptions! options) -> Orkeon.Domain.SharedKernel.ValidationResult!
 Orkeon.Application.Agent.AgentExecutionService
-Orkeon.Application.Agent.AgentExecutionService.AgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentExecutionService!>! logger, Orkeon.Application.Interfaces.Services.IExecutionOrchestrator! executionOrchestrator, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator! callbackOrchestrator, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Orkeon.Application.Interfaces.Ports.IPerformanceMetrics? performanceMetrics = null) -> void
+Orkeon.Application.Agent.AgentExecutionService.AgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentExecutionService!>! logger, Orkeon.Application.Interfaces.Services.IExecutionOrchestrator! executionOrchestrator, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator! callbackOrchestrator, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Orkeon.Application.Interfaces.Ports.IPerformanceMetrics? performanceMetrics = null, Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null) -> void
 Orkeon.Application.Agent.AgentExecutionService.CanExecuteTaskAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Application.Agent.AgentExecutionService.ExecuteTaskAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
 Orkeon.Application.Agent.AgentExecutionService.ExecuteTaskAsync<TOutput>(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult<TOutput!>!>!
@@ -2895,7 +2895,8 @@ Orkeon.Application.EventHub.ICrewLinkPolicy.AllowsUndeclared.get -> bool
 Orkeon.Application.EventHub.ICrewLinkProvider
 Orkeon.Application.EventHub.ICrewLinkProvider.LinksFor(Orkeon.Domain.Common.CrewId! source) -> System.Collections.Immutable.ImmutableArray<Orkeon.Domain.EventHub.CrewLink!>
 Orkeon.Application.EventHub.ICrewLinkRegistry
-Orkeon.Application.EventHub.ICrewLinkRegistry.Register(Orkeon.Domain.Common.CrewId! crew, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.EventHub.CrewLink!>! links) -> void
+Orkeon.Application.EventHub.ICrewLinkProvider.NameOf(Orkeon.Domain.Common.CrewId! crew) -> string?
+Orkeon.Application.EventHub.ICrewLinkRegistry.Register(Orkeon.Domain.Common.CrewId! crew, string! crewName, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.EventHub.CrewLink!>? links) -> void
 Orkeon.Application.EventHub.IEventHub
 Orkeon.Application.EventHub.IEventHub.GetLastValueAsync(string! key, Orkeon.Domain.Common.CrewId? crewScope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message?>!
 Orkeon.Application.EventHub.IEventHub.PostAsync(Orkeon.Application.EventHub.MailboxAddress! recipient, object! payload, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
@@ -6606,7 +6607,7 @@ const Orkeon.Application.Constants.Resilience.RetryDefaults.MaxJitterMillisecond
 const Orkeon.Application.Constants.Resilience.RetryDefaults.QuotaExceededDelayMinutes = 5 -> int
 const Orkeon.Application.Constants.Resilience.RetryDefaults.RateLimitDelayMinutes = 1 -> int
 const Orkeon.Application.Constants.Resilience.RetryDefaults.TimeoutRetryDelaySeconds = 5 -> int
-const Orkeon.Application.EventHub.Message.NoDeclaredSchemaId = "application/json" -> string!
+const Orkeon.Application.EventHub.Message.NoDeclaredSchemaId = "_none" -> string!
 override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.Equals(object? obj) -> bool
 override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.GetHashCode() -> int
 override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.ToString() -> string!
@@ -7830,7 +7831,7 @@ static Orkeon.Application.EventHub.CrewEventBinding.operator !=(Orkeon.Applicati
 static Orkeon.Application.EventHub.CrewEventBinding.operator ==(Orkeon.Application.EventHub.CrewEventBinding? left, Orkeon.Application.EventHub.CrewEventBinding? right) -> bool
 static Orkeon.Application.EventHub.CrewEventContext.operator !=(Orkeon.Application.EventHub.CrewEventContext? left, Orkeon.Application.EventHub.CrewEventContext? right) -> bool
 static Orkeon.Application.EventHub.CrewEventContext.operator ==(Orkeon.Application.EventHub.CrewEventContext? left, Orkeon.Application.EventHub.CrewEventContext? right) -> bool
-static Orkeon.Application.EventHub.CrewLinkMailboxExtensions.Matches(this Orkeon.Domain.EventHub.CrewLink! link, Orkeon.Application.EventHub.MailboxAddress! target) -> bool
+static Orkeon.Application.EventHub.CrewLinkMailboxExtensions.Matches(this Orkeon.Domain.EventHub.CrewLink! link, Orkeon.Application.EventHub.MailboxAddress! target, string? targetCrewName) -> bool
 static Orkeon.Application.EventHub.EventHubCaller.operator !=(Orkeon.Application.EventHub.EventHubCaller? left, Orkeon.Application.EventHub.EventHubCaller? right) -> bool
 static Orkeon.Application.EventHub.EventHubCaller.operator ==(Orkeon.Application.EventHub.EventHubCaller? left, Orkeon.Application.EventHub.EventHubCaller? right) -> bool
 static Orkeon.Application.EventHub.FiniteWaitTimeout.Of(System.TimeSpan duration) -> Orkeon.Application.EventHub.FiniteWaitTimeout!

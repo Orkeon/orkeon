@@ -48,6 +48,8 @@ public sealed record Message
     /// The identifier stamped when the caller declared no schema at all. It means "plain JSON,
     /// no contract" — which is what every <c>Post</c>, <c>Send</c> and <c>Reply</c> carries, and
     /// why the validation stage lets it through instead of demanding a registration nobody made.
+    /// Deliberately not a plausible real id (a deployment could legitimately register
+    /// <c>application/json</c> as a schema, and a sentinel that collides is silently unchecked).
     /// </summary>
-    public const string NoDeclaredSchemaId = "application/json";
+    public const string NoDeclaredSchemaId = "_none";
 }

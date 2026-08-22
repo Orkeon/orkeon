@@ -36,6 +36,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly ICheckpointManager? _checkpointManager;
     private readonly IExecutionPlanParser _executionPlanParser;
     private readonly Orkeon.Application.Memory.CrewMemoryProviderRegistry? _memoryProviderRegistry;
+    private readonly Orkeon.Application.EventHub.IEventHubCallerContext? _hubCallerContext;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SequentialCrewOrchestrator"/>.
@@ -51,7 +52,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         IStreamingAgentExecutionService? streamingService = null,
         IAgentRepository? agentRepository = null,
         ICheckpointManager? checkpointManager = null,
-        Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null)
+        Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null,
+        Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -68,6 +70,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _agentRepository = agentRepository;
         _checkpointManager = checkpointManager;
         _memoryProviderRegistry = memoryProviderRegistry;
+        _hubCallerContext = hubCallerContext;
     }
 
     /// <summary>
@@ -130,6 +133,13 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // Get the appropriate process strategy (every process type, including
             // Consensual, routes through the factory — R3.3)
             var processStrategy = _processStrategyFactory.CreateStrategy(crew.ProcessType);
+
+            // Stamp the crew's identity on everything the run touches: the EventHub reads
+            // the ambient caller to source its messages, and the ACL is blind — every sender
+            // looks like CrewId.System — unless someone pushes it here (HUB-03). AsyncLocal,
+            // so it flows through strategies, agents and tools alike.
+            using var hubCallerScope = _hubCallerContext?.Push(
+                new Orkeon.Application.EventHub.EventHubCaller(crew.Id, null));
 
             var domainOutput = await ExecuteAndCompleteAsync(
                 crew, processStrategy, domainInput, input, cancellationToken).ConfigureAwait(false);

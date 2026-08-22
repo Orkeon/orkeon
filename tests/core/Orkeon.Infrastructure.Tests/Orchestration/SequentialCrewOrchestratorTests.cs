@@ -130,6 +130,9 @@ public class SequentialCrewOrchestratorTests
         public bool ShouldFail { get; set; }
         public IReadOnlyDictionary<string, string>? LastReceivedVariables { get; private set; }
 
+        /// <summary>Runs at execution time, where an ambient context can be observed.</summary>
+        public Action? OnExecute { get; set; }
+
         /// <summary>When set, this output is returned verbatim instead of the default one.</summary>
         public DomainCrewOutput? ConfiguredOutput { get; set; }
 
@@ -156,6 +159,8 @@ public class SequentialCrewOrchestratorTests
 
         private Task<DomainCrewOutput> CreateOutput(DomainCrew crew)
         {
+            OnExecute?.Invoke();
+
             if (ShouldFail)
                 throw new InvalidOperationException("Process strategy failed");
 
@@ -595,4 +600,33 @@ public class SequentialCrewOrchestratorTests
     }
 
     #endregion
+
+    [Fact]
+    public async Task KickoffAsync_PushesTheCrewIdentityOnTheHubCallerContext()
+    {
+        // HUB-03's ACL reads Message.SourceCrewId, and the hub stamps it from this ambient
+        // context. Nothing else in production pushes it — if the orchestrator stops doing so,
+        // every sender degrades back to CrewId.System and the ACL is blind again.
+        var repository = new TestCrewRepository();
+        var stateManager = new TestStateManager();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var callerContext = new Orkeon.Infrastructure.EventHub.DefaultEventHubCallerContext();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), stateManager, strategyFactory, new ExecutionPlanParser(),
+            hubCallerContext: callerContext);
+
+        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        Orkeon.Domain.Common.CrewId? observed = null;
+        strategyFactory.Strategy.OnExecute = () => observed = callerContext.Current.CrewId;
+
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(crew.Id, observed);
+        // And popped afterwards: the identity belongs to the run, not to the thread.
+        Assert.Equal(Orkeon.Domain.Common.CrewId.System, callerContext.Current.CrewId);
+    }
 }

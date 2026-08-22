@@ -127,22 +127,23 @@ public partial class CrewFactory : ICrewFactory
     }
 
     /// <summary>
-    /// Hands the crew's <c>links:</c> declarations to the ACL (HUB-03). A configuration that
-    /// declares links while the ACL is absent gets a warning rather than silence: the author
-    /// wrote an authorization, and a door nobody guards is worth saying out loud.
+    /// Hands the crew's identity and <c>links:</c> declarations to the ACL (HUB-03). Every
+    /// crew registers — links name crews by <c>name:</c> while messages carry ids, so a crew
+    /// that declared nothing must still be resolvable as somebody else's target. A
+    /// configuration that declares links while the ACL is absent gets a warning rather than
+    /// silence: the author wrote an authorization, and a door nobody guards is worth saying
+    /// out loud.
     /// </summary>
     private void RegisterLinks(CrewConfiguration config, CrewId crewId)
     {
-        if (config.Links.Count == 0)
-            return;
-
         if (_linkRegistry is null)
         {
-            LogLinksDeclaredButAclMissing(config.Name);
+            if (config.Links is not null)
+                LogLinksDeclaredButAclMissing(config.Name);
             return;
         }
 
-        _linkRegistry.Register(crewId, config.Links);
+        _linkRegistry.Register(crewId, config.Name, config.Links);
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}' declares a links: block but the EventHub ACL is not registered — call AddOrkeonEventHubAcl(); the declared authorizations are not enforced.")]

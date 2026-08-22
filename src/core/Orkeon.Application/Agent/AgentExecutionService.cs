@@ -18,6 +18,7 @@ namespace Orkeon.Application.Agent
         private readonly ICallbackOrchestrator _callbackOrchestrator;
         private readonly IMemoryCoordinator _memoryCoordinator;
         private readonly IPerformanceMetrics? _performanceMetrics;
+        private readonly EventHub.IEventHubCallerContext? _hubCallerContext;
 
         private const string TaskCastErrorMessage = "Task must be a Domain Task";
 
@@ -38,7 +39,8 @@ namespace Orkeon.Application.Agent
             IExecutionOrchestrator executionOrchestrator,
             ICallbackOrchestrator callbackOrchestrator,
             IMemoryCoordinator memoryCoordinator,
-            IPerformanceMetrics? performanceMetrics = null)
+            IPerformanceMetrics? performanceMetrics = null,
+            EventHub.IEventHubCallerContext? hubCallerContext = null)
         {
             ArgumentNullException.ThrowIfNull(logger);
             _logger = logger;
@@ -49,6 +51,7 @@ namespace Orkeon.Application.Agent
             ArgumentNullException.ThrowIfNull(memoryCoordinator);
             _memoryCoordinator = memoryCoordinator;
             _performanceMetrics = performanceMetrics;
+            _hubCallerContext = hubCallerContext;
         }
 
         /// <summary>
@@ -103,6 +106,12 @@ namespace Orkeon.Application.Agent
             CancellationToken cancellationToken)
         {
             LogAgentStartingTask(agent.Role, task.Description);
+
+            // Layer the agent onto the ambient hub identity: the orchestrator pushed the crew,
+            // this narrows it to the agent for the duration of the task — which is what gives
+            // the EventHub tools a real SourceAgentId and receive_message its own mailbox.
+            using var hubCallerScope = _hubCallerContext?.Push(
+                new EventHub.EventHubCaller(_hubCallerContext.Current.CrewId, agent.Id));
 
             var startTime = DateTime.UtcNow;
 

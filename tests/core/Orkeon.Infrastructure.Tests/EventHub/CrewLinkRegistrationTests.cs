@@ -46,7 +46,7 @@ public class CrewLinkRegistrationTests
         {
             Name = "billing",
             Goal = "test",
-            Links = links,
+            Links = links.Length == 0 ? null : links,
             Agents = [new AgentConfiguration { Id = agentId, Role = "worker", Goal = "do work", Backstory = "b" }],
             Tasks =
             [
@@ -73,18 +73,24 @@ public class CrewLinkRegistrationTests
 
         var link = Assert.Single(registry.LinksFor(crew.Id));
         Assert.Equal("fraud", link.To);
+        Assert.Equal("billing", registry.NameOf(crew.Id));
     }
 
     [Fact]
-    public async Task A_crew_declaring_nothing_registers_nothing()
+    public async Task A_crew_declaring_nothing_still_registers_its_name()
     {
+        // Links name crews by name while messages carry ids, so a crew that declared nothing
+        // must still be resolvable as somebody *else's* target — otherwise `to: billing`
+        // written by another crew could never match. Its own links stay "never declared"
+        // (default), which the policy arbitrates.
         var registry = new InMemoryCrewLinkRegistry();
         var factory = BuildFactory(registry);
 
         var crew = await factory.CreateFromConfigAsync(
             Configuration(), TestContext.Current.CancellationToken);
 
-        Assert.Empty(registry.LinksFor(crew.Id));
+        Assert.True(registry.LinksFor(crew.Id).IsDefault);
+        Assert.Equal("billing", registry.NameOf(crew.Id));
     }
 
     [Fact]
@@ -109,16 +115,36 @@ public class CrewLinkRegistrationTests
         var registry = new InMemoryCrewLinkRegistry();
         var crewId = CrewId.Create();
 
-        registry.Register(crewId, [new CrewLink { To = "fraud" }]);
-        registry.Register(crewId, [new CrewLink { To = "audit" }]);
+        registry.Register(crewId, "billing", [new CrewLink { To = "fraud" }]);
+        registry.Register(crewId, "billing", [new CrewLink { To = "audit" }]);
 
         var link = Assert.Single(registry.LinksFor(crewId));
         Assert.Equal("audit", link.To);
     }
 
     [Fact]
-    public void An_unknown_crew_reads_as_undeclared()
+    public void An_unknown_crew_reads_as_never_declared_and_has_no_name()
     {
-        Assert.Empty(new InMemoryCrewLinkRegistry().LinksFor(CrewId.Create()));
+        var registry = new InMemoryCrewLinkRegistry();
+        var unknown = CrewId.Create();
+
+        Assert.True(registry.LinksFor(unknown).IsDefault);
+        Assert.Null(registry.NameOf(unknown));
+    }
+
+    [Fact]
+    public void A_declared_empty_list_is_not_the_same_as_never_declaring()
+    {
+        // Empty-after-parsing is what a malformed links: block collapses to; the ACL refuses
+        // on it. Collapsing it to "never declared" would turn a malformed authorization into
+        // a permissive one — the exact failure the grammar documentation forbids.
+        var registry = new InMemoryCrewLinkRegistry();
+        var crewId = CrewId.Create();
+
+        registry.Register(crewId, "billing", []);
+
+        var links = registry.LinksFor(crewId);
+        Assert.False(links.IsDefault);
+        Assert.True(links.IsEmpty);
     }
 }

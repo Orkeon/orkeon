@@ -11,10 +11,12 @@ public static class CrewLinkMailboxExtensions
 {
     /// <summary>
     /// Whether <paramref name="link"/> names <paramref name="target"/>, crew or external peer
-    /// alike. A topic mailbox never matches: a link authorizes a correspondent, and a topic is
-    /// not one.
+    /// alike. Links name crews by <c>name:</c> while addresses carry ids, so the caller
+    /// resolves the address's crew id to <paramref name="targetCrewName"/> first (via
+    /// <see cref="ICrewLinkProvider.NameOf"/>); an unresolvable crew matches nothing. A topic
+    /// mailbox never matches: a link authorizes a correspondent, and a topic is not one.
     /// </summary>
-    public static bool Matches(this CrewLink link, MailboxAddress target)
+    public static bool Matches(this CrewLink link, MailboxAddress target, string? targetCrewName)
     {
         ArgumentNullException.ThrowIfNull(link);
         ArgumentNullException.ThrowIfNull(target);
@@ -23,8 +25,7 @@ public static class CrewLinkMailboxExtensions
         {
             MailboxKind.Client => link.TargetsClient
                 && string.Equals(link.ClientName, target.ClientName, StringComparison.Ordinal),
-            MailboxKind.Agent or MailboxKind.Crew => !link.TargetsClient
-                && string.Equals(link.To, target.CrewId?.ToString(), StringComparison.Ordinal),
+            MailboxKind.Agent or MailboxKind.Crew => link.MatchesCrewName(targetCrewName),
             _ => false,
         };
     }

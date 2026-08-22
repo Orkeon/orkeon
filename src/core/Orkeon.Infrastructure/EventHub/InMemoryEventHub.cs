@@ -117,7 +117,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         });
 
         message = await _pipeline.OnPublishAsync(message, ct).ConfigureAwait(false);
-        DispatchToTopic(topic, message);
+        message = DispatchToTopic(topic, message);
 
         if (options?.RetainAsLastValue == true)
         {
@@ -156,19 +156,28 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         }
     }
 
-    private void DispatchToTopic(string topic, Message message)
+    private Message DispatchToTopic(string topic, Message message)
     {
         if (!_subscribers.TryGetValue(topic, out var bucket))
-            return;
+            return message with { PublishedAt = DateTimeOffset.UtcNow };
 
-        foreach (var subscriber in bucket.Values)
+        // §10.4 promises FIFO by PublishedAt per topic and per subscriber. The stamp and the
+        // writes happen under one short lock so two publishers racing through middlewares of
+        // different latencies cannot deliver out of stamp order. TryWrite never blocks
+        // (unbounded channels), so the lock is held for nanoseconds, not for a delivery.
+        lock (bucket)
         {
-            if (!ShouldDeliver(message, subscriber))
-                continue;
+            message = message with { PublishedAt = DateTimeOffset.UtcNow };
+            foreach (var subscriber in bucket.Values)
+            {
+                if (!ShouldDeliver(message, subscriber))
+                    continue;
 
-            // Channels are unbounded → TryWrite never blocks and never returns false unless completed.
-            subscriber.Channel.Writer.TryWrite(message);
+                subscriber.Channel.Writer.TryWrite(message);
+            }
         }
+
+        return message;
     }
 
     private static bool ShouldDeliver(Message message, Subscriber subscriber)
@@ -199,7 +208,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         string topic,
         CancellationToken ct)
     {
-        if (!_mailboxes.TryGetValue(to.Raw, out var entry))
+        if (!_mailboxes.ContainsKey(to.Raw))
             throw new MailboxNotFoundException(to.Raw);
 
         var caller = _callerContext.Current;
@@ -221,7 +230,24 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         // is only ever reached this way.
         message = await _pipeline.OnPublishAsync(message, ct).ConfigureAwait(false);
 
-        entry.Channel.Writer.TryWrite(message);
+        // The pipeline awaited, so the world may have moved: the entry captured above can have
+        // been unregistered (its writer completed) in the meantime, and TryWrite would then
+        // silently drop a message the caller was told was posted. Re-resolve and let the write
+        // itself be the proof of existence. The stamp happens under the entry's write gate so
+        // §10.4's FIFO-by-PublishedAt holds against racing posters.
+        if (!_mailboxes.TryGetValue(to.Raw, out var entry))
+            throw new MailboxNotFoundException(to.Raw);
+
+        bool written;
+        lock (entry.WriteGate)
+        {
+            message = message with { PublishedAt = DateTimeOffset.UtcNow };
+            written = entry.Channel.Writer.TryWrite(message);
+        }
+
+        if (!written)
+            throw new MailboxNotFoundException(to.Raw);
+
         if (_logger.IsEnabled(LogLevel.Debug))
             LogPosted(to.Raw, message.Id);
     }
@@ -297,7 +323,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
     // ── ReplyAsync ──────────────────────────────────────────────────────
 
     /// <inheritdoc/>
-    public System.Threading.Tasks.Task ReplyAsync(
+    public async System.Threading.Tasks.Task ReplyAsync(
         CorrelationId correlation,
         object payload,
         CancellationToken ct)
@@ -306,48 +332,40 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         ct.ThrowIfCancellationRequested();
 
         var correlationKey = correlation.AsString();
+
+        // Fail fast before the pipeline runs — but do not *remove* the waiters yet: a stage
+        // may refuse the reply, and consuming the correlation first would turn that refusal
+        // into a sender stuck waiting for its full timeout.
+        if (!_pendingReplies.ContainsKey(correlationKey) && !_replyWaiters.ContainsKey(correlationKey))
+            throw new UnknownCorrelationException(correlationKey);
+
+        var caller = _callerContext.Current;
+        var replyMessage = BuildMessage(new MessageBuildContext
+        {
+            Topic = ReplyTopic,
+            SourceCrewId = caller.CrewId,
+            SourceAgentId = caller.AgentId,
+            TargetCrewId = null,
+            TargetMailbox = null,
+            CorrelationId = correlation,
+            Payload = payload,
+            Metadata = null,
+            SchemaId = Message.NoDeclaredSchemaId
+        });
+
+        // A reply is hub traffic like any other: unlogged, unspanned, unchecked was a hole —
+        // reply_to and the client bridge both reach this from outside the process (§12.1
+        // exempts only the *receive* half, and says so).
+        replyMessage = await _pipeline.OnPublishAsync(replyMessage, ct).ConfigureAwait(false);
+
+        var delivered = false;
         if (_pendingReplies.TryRemove(correlationKey, out var pendingTcs))
-        {
-            var caller = _callerContext.Current;
-            var replyMessage = BuildMessage(new MessageBuildContext
-            {
-                Topic = ReplyTopic,
-                SourceCrewId = caller.CrewId,
-                SourceAgentId = caller.AgentId,
-                TargetCrewId = null,
-                TargetMailbox = null,
-                CorrelationId = correlation,
-                Payload = payload,
-                Metadata = null,
-                SchemaId = Message.NoDeclaredSchemaId
-            });
-            pendingTcs.TrySetResult(replyMessage);
-            // Also fulfil any WaitForAsync(OnReply) waiter for the same id.
-            if (_replyWaiters.TryRemove(correlationKey, out var waiterTcs))
-                waiterTcs.TrySetResult(replyMessage);
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
+            delivered |= pendingTcs.TrySetResult(replyMessage);
+        if (_replyWaiters.TryRemove(correlationKey, out var waiterTcs))
+            delivered |= waiterTcs.TrySetResult(replyMessage);
 
-        if (_replyWaiters.TryRemove(correlationKey, out var waiterOnly))
-        {
-            var caller = _callerContext.Current;
-            var replyMessage = BuildMessage(new MessageBuildContext
-            {
-                Topic = ReplyTopic,
-                SourceCrewId = caller.CrewId,
-                SourceAgentId = caller.AgentId,
-                TargetCrewId = null,
-                TargetMailbox = null,
-                CorrelationId = correlation,
-                Payload = payload,
-                Metadata = null,
-                SchemaId = Message.NoDeclaredSchemaId
-            });
-            waiterOnly.TrySetResult(replyMessage);
-            return System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        throw new UnknownCorrelationException(correlationKey);
+        if (!delivered)
+            throw new UnknownCorrelationException(correlationKey);
     }
 
     // ── SubscribeAsync ──────────────────────────────────────────────────
@@ -684,6 +702,10 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         public MailboxEntry(MailboxAddress address) => Address = address;
 
         public MailboxAddress Address { get; }
+
+        // Serializes the PublishedAt stamp with the write so mailbox FIFO (§10.4) survives
+        // posters whose publish pipelines complete out of order.
+        public object WriteGate { get; } = new();
         public Channel<Message> Channel { get; } = System.Threading.Channels.Channel.CreateUnbounded<Message>(
             new UnboundedChannelOptions
             {

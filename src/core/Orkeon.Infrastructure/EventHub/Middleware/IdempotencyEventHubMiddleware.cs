@@ -21,11 +21,8 @@ namespace Orkeon.Infrastructure.EventHub.Middleware;
 /// not an oversight; the port absorbs the change of mind the day a persistent hub exists.
 /// </para>
 /// </summary>
-public sealed class IdempotencyEventHubMiddleware : IEventHubMiddleware
+internal sealed class IdempotencyEventHubMiddleware : IEventHubMiddleware
 {
-    /// <summary>How many identifiers are remembered before the oldest are forgotten.</summary>
-    public const int DefaultCapacity = 10_000;
-
     private readonly int _capacity;
     private readonly ConcurrentDictionary<MessageId, byte> _seen = new();
 
@@ -39,7 +36,7 @@ public sealed class IdempotencyEventHubMiddleware : IEventHubMiddleware
     /// How many identifiers to remember. Bounded on purpose: an unbounded set behind a
     /// long-running hub is a leak that only shows up in production.
     /// </param>
-    public IdempotencyEventHubMiddleware(int capacity = DefaultCapacity)
+    public IdempotencyEventHubMiddleware(int capacity = DependencyInjection.EventHubServiceCollectionExtensions.DefaultIdempotencyCapacity)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
         _capacity = capacity;

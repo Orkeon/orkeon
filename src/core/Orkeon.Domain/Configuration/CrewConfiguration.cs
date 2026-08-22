@@ -43,10 +43,11 @@ public sealed record CrewConfiguration
     public RagCrewConfig? Rag { get; init; }
     /// <summary>
     /// Gets the EventHub authorizations this crew declares (<c>links:</c> block — who it may
-    /// talk to, in which direction, on which topics). Empty when the crew declares none, which
-    /// the ACL reads as "undeclared" and arbitrates by policy rather than by refusal.
+    /// talk to, in which direction, on which topics). <see langword="null"/> when the crew
+    /// never wrote the block — the ACL arbitrates that by policy. An **empty** list means the
+    /// block exists but no entry survived parsing: the door is closed, never silently opened.
     /// </summary>
-    public IReadOnlyList<CrewLink> Links { get; init; } = Array.Empty<CrewLink>();
+    public IReadOnlyList<CrewLink>? Links { get; init; }
     /// <summary>Gets additional metadata for this crew configuration.</summary>
     public Dictionary<string, object> Metadata { get; init; } = [];
 }

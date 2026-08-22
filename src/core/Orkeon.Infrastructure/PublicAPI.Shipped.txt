@@ -940,7 +940,8 @@ Orkeon.Infrastructure.EventHub.EventHubBudgetExtensions
 Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry
 Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry.InMemoryCrewLinkRegistry() -> void
 Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry.LinksFor(Orkeon.Domain.Common.CrewId! source) -> System.Collections.Immutable.ImmutableArray<Orkeon.Domain.EventHub.CrewLink!>
-Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry.Register(Orkeon.Domain.Common.CrewId! crew, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.EventHub.CrewLink!>! links) -> void
+Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry.NameOf(Orkeon.Domain.Common.CrewId! crew) -> string?
+Orkeon.Infrastructure.EventHub.InMemoryCrewLinkRegistry.Register(Orkeon.Domain.Common.CrewId! crew, string! crewName, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.EventHub.CrewLink!>? links) -> void
 Orkeon.Infrastructure.EventHub.InMemoryEventHub
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.Dispose() -> void
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.GetLastValueAsync(string! key, Orkeon.Domain.Common.CrewId? crewScope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message?>!
@@ -956,14 +957,6 @@ Orkeon.Infrastructure.EventHub.InMemoryEventSchemaRegistry
 Orkeon.Infrastructure.EventHub.InMemoryEventSchemaRegistry.GetAsync(string! schemaId, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Text.Json.Nodes.JsonNode?>!
 Orkeon.Infrastructure.EventHub.InMemoryEventSchemaRegistry.InMemoryEventSchemaRegistry() -> void
 Orkeon.Infrastructure.EventHub.InMemoryEventSchemaRegistry.RegisterAsync(string! schemaId, System.Text.Json.Nodes.JsonNode! schema, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
-Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware
-Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware.IdempotencyEventHubMiddleware(int capacity = 10000) -> void
-Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware.OnPublishAsync(Orkeon.Application.EventHub.Message! message, System.Func<Orkeon.Application.EventHub.Message!, System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!>! nextHandler, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
-Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware.OnReceiveAsync(Orkeon.Application.EventHub.Message! message, System.Func<Orkeon.Application.EventHub.Message!, System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!>! nextHandler, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
-Orkeon.Infrastructure.EventHub.Middleware.ValidationEventHubMiddleware
-Orkeon.Infrastructure.EventHub.Middleware.ValidationEventHubMiddleware.OnPublishAsync(Orkeon.Application.EventHub.Message! message, System.Func<Orkeon.Application.EventHub.Message!, System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!>! nextHandler, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
-Orkeon.Infrastructure.EventHub.Middleware.ValidationEventHubMiddleware.OnReceiveAsync(Orkeon.Application.EventHub.Message! message, System.Func<Orkeon.Application.EventHub.Message!, System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!>! nextHandler, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.Message!>!
-Orkeon.Infrastructure.EventHub.Middleware.ValidationEventHubMiddleware.ValidationEventHubMiddleware(Orkeon.Application.EventHub.IEventSchemaRegistry! schemas) -> void
 Orkeon.Infrastructure.EventHub.WaitTimedOutMessageFactory
 Orkeon.Infrastructure.FileSystem.FileSystemService
 Orkeon.Infrastructure.FileSystem.FileSystemService.AppendAllTextAsync(string! virtualPath, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<int>!
@@ -1809,7 +1802,7 @@ Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffAsync(Orke
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffAsyncNoWait(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewExecutionId!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffForEachAsync(Orkeon.Domain.Common.CrewId! crewId, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Services.CrewInput!>! inputs, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.BatchOutput!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
-Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.SequentialCrewOrchestrator(Orkeon.Domain.Crew.ICrewRepository! crewRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator!>! logger, Orkeon.Application.Interfaces.Services.ICrewExecutionStateManager! stateManager, Orkeon.Domain.Crew.IProcessStrategyFactory! processStrategyFactory, Orkeon.Domain.Crew.Interfaces.IExecutionPlanParser! executionPlanParser, Orkeon.Application.Interfaces.Services.IStreamingAgentExecutionService? streamingService = null, Orkeon.Domain.Agent.IAgentRepository? agentRepository = null, Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager? checkpointManager = null, Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null) -> void
+Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.SequentialCrewOrchestrator(Orkeon.Domain.Crew.ICrewRepository! crewRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator!>! logger, Orkeon.Application.Interfaces.Services.ICrewExecutionStateManager! stateManager, Orkeon.Domain.Crew.IProcessStrategyFactory! processStrategyFactory, Orkeon.Domain.Crew.Interfaces.IExecutionPlanParser! executionPlanParser, Orkeon.Application.Interfaces.Services.IStreamingAgentExecutionService? streamingService = null, Orkeon.Domain.Agent.IAgentRepository? agentRepository = null, Orkeon.Application.Interfaces.Checkpointing.ICheckpointManager? checkpointManager = null, Orkeon.Application.Memory.CrewMemoryProviderRegistry? memoryProviderRegistry = null, Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null) -> void
 Orkeon.Infrastructure.Orchestration.StateManagementExtensions
 Orkeon.Infrastructure.OutputParsing.OutputParserFactory
 Orkeon.Infrastructure.OutputParsing.OutputParserFactory.CreateParser(Orkeon.Application.Interfaces.Ports.OutputFormat format) -> Orkeon.Application.Interfaces.Ports.IStructuredOutputParser!
@@ -3315,7 +3308,7 @@ const Orkeon.Infrastructure.Constants.Security.TokenBudgetDefaults.PerAgentToken
 const Orkeon.Infrastructure.Constants.Security.TokenBudgetDefaults.PerCrewTokenBudget = 500000 -> int
 const Orkeon.Infrastructure.Evaluation.Evaluators.SchemaComplianceEvaluator.SchemaMetadataKey = "expected_schema" -> string!
 const Orkeon.Infrastructure.Evaluation.Evaluators.ToolAccuracyEvaluator.ExpectedToolsKey = "expected_tools" -> string!
-const Orkeon.Infrastructure.EventHub.Middleware.IdempotencyEventHubMiddleware.DefaultCapacity = 10000 -> int
+const Orkeon.Infrastructure.EventHub.DependencyInjection.EventHubServiceCollectionExtensions.DefaultIdempotencyCapacity = 10000 -> int
 const Orkeon.Infrastructure.EventHub.WaitTimedOutMessageFactory.ReservedTopic = "_system.wait_timed_out" -> string!
 const Orkeon.Infrastructure.EventHub.WaitTimedOutMessageFactory.SchemaId = "_system/wait_timed_out/v1" -> string!
 const Orkeon.Infrastructure.LLMs.Embeddings.DefaultEmbeddingProviderResolver.EmbeddingCacheSectionKey = "Orkeon:EmbeddingCache" -> string!

@@ -19,7 +19,7 @@ namespace Orkeon.Infrastructure.EventHub.Middleware;
 /// engages the check, the same way declaring a link is what closes the ACL's door.
 /// </para>
 /// </summary>
-public sealed class ValidationEventHubMiddleware : IEventHubMiddleware
+internal sealed class ValidationEventHubMiddleware : IEventHubMiddleware
 {
     private readonly IEventSchemaRegistry _schemas;
 

@@ -77,10 +77,31 @@ public sealed class ReceiveMessageTool : ToolBase<ReceiveMessageRequest, Receive
 
     private MailboxAddress ResolveMailbox(ReceiveMessageRequest request)
     {
-        if (!string.IsNullOrWhiteSpace(request.Mailbox))
-            return MailboxAddress.Parse(new Uri(request.Mailbox));
-
         var caller = _callerContext.Current;
+
+        if (!string.IsNullOrWhiteSpace(request.Mailbox))
+        {
+            var explicitAddress = MailboxAddress.Parse(new Uri(request.Mailbox));
+
+            // Reading a mailbox is destructive — the hub auto-registers waiters, so a reader
+            // competes with the legitimate owner for every message. A crew may therefore only
+            // read its *own* mailboxes: without this, receive_message(mailbox: "client://studio")
+            // would let any agent siphon the traffic of an external peer the ACL guards on the
+            // write side. The system caller (in-process host code, no crew pushed) stays
+            // unrestricted — it is the process itself.
+            if (!Orkeon.Domain.Common.CrewId.IsSystem(caller.CrewId)
+                && (explicitAddress.Kind is not (MailboxKind.Agent or MailboxKind.Crew)
+                    || !caller.CrewId.Equals(explicitAddress.CrewId)))
+            {
+                throw new InvalidOperationException(
+                    $"receive_message may only read mailboxes of the calling crew; " +
+                    $"'{explicitAddress.Raw}' belongs to someone else. The reader of a mailbox " +
+                    "is its owner — that assumption is what the hub's sender-side ACL rests on.");
+            }
+
+            return explicitAddress;
+        }
+
         if (caller.AgentId is null)
             throw new InvalidOperationException(
                 "receive_message has no explicit mailbox and the caller context exposes no AgentId. " +

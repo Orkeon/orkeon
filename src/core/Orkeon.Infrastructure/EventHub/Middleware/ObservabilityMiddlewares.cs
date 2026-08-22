@@ -6,9 +6,12 @@ using Orkeon.Infrastructure.Telemetry;
 namespace Orkeon.Infrastructure.EventHub.Middleware;
 
 /// <summary>
-/// Structured logging of every hub message (HUB-02, spec §12 stage 1). Registered
-/// **outermost** on purpose: it must see what the ACL later rejects, which is precisely the
-/// moment an operator needs a line in the log.
+/// Structured logging of hub messages (HUB-02, spec §12 stage 1). Registered **outermost on
+/// the publish path** on purpose: it must see what the ACL later rejects, which is precisely
+/// the moment an operator needs a line in the log. On the *receive* path the chain runs in
+/// reverse, so this stage sits innermost there — a message a receive stage refuses (an
+/// idempotency duplicate) is dropped before this line would fire; the hub's own
+/// <c>LogDuplicateDropped</c> covers that case at Debug level.
 /// <para>
 /// It never swallows: a middleware further in that refuses lets the exception through, and
 /// this one logs the refusal on the way out before re-throwing.
@@ -111,7 +114,9 @@ internal sealed class TelemetryEventHubMiddleware : IEventHubMiddleware
         catch (Exception ex)
         {
             // A refused message is a failed span, not a missing one — that is the whole
-            // value of instrumenting the reject path.
+            // value of instrumenting the reject path. True of every publish-side refusal;
+            // a receive-side one (an idempotency duplicate) never reaches this stage, since
+            // the receive chain runs in reverse and observability sits innermost there.
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }

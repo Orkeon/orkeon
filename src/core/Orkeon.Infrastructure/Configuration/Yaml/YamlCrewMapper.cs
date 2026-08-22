@@ -55,7 +55,7 @@ public sealed partial class YamlCrewMapper
             CircuitBreaker = MapCircuitBreaker(settings.CircuitBreaker),
             GraphConfig = MapGraphConfig(settings.GraphConfig),
             Rag = MapRag(settings.Rag),
-            Links = MapLinks(settings.Links),
+            Links = MapLinks(settings.Name ?? string.Empty, settings.Links),
         };
     }
 
@@ -471,26 +471,37 @@ public sealed partial class YamlCrewMapper
     /// block is absent. Pure parsing — no ingestion is triggered here (kickoff is a later lot).
     /// </summary>
     /// <summary>
-    /// Maps the <c>links:</c> block (HUB-03). An entry without a <c>to:</c> is dropped rather
-    /// than turned into a link pointing nowhere — a malformed authorization must not become a
-    /// permissive one. An unknown <c>direction:</c> falls back to <c>outbound</c>, the narrowest
-    /// of the three.
+    /// Maps the <c>links:</c> block (HUB-03). An absent block maps to <see langword="null"/> —
+    /// "never declared", which the ACL arbitrates by policy. A present block always yields a
+    /// list, even when every entry had to be dropped: a malformed authorization must close the
+    /// door, never open it. An entry without a <c>to:</c>, or with a <c>direction:</c> nobody
+    /// can read, is dropped **with a warning** rather than guessed at — a guessed direction is
+    /// an authorization the author never wrote.
     /// </summary>
-    private static List<CrewLink> MapLinks(Collection<LinkYamlConfig>? yaml)
+    private List<CrewLink>? MapLinks(string crewName, Collection<LinkYamlConfig>? yaml)
     {
-        if (yaml is not { Count: > 0 })
-            return [];
+        if (yaml is null)
+            return null;
 
         var links = new List<CrewLink>(yaml.Count);
         foreach (var entry in yaml)
         {
             if (string.IsNullOrWhiteSpace(entry?.To))
+            {
+                LogLinkDroppedNoTarget(crewName);
                 continue;
+            }
+
+            if (!TryParseLinkDirection(entry.Direction, out var direction))
+            {
+                LogLinkDroppedBadDirection(crewName, entry.To.Trim(), entry.Direction!);
+                continue;
+            }
 
             links.Add(new CrewLink
             {
                 To = entry.To.Trim(),
-                Direction = ParseLinkDirection(entry.Direction),
+                Direction = direction,
                 AllowedTopics = entry.AllowedTopics is { Count: > 0 } topics ? [.. topics] : [],
             });
         }
@@ -498,13 +509,36 @@ public sealed partial class YamlCrewMapper
         return links;
     }
 
-    private static CrewLinkDirection ParseLinkDirection(string? value) =>
-        value?.Trim().ToUpperInvariant() switch
+    private static bool TryParseLinkDirection(string? value, out CrewLinkDirection direction)
+    {
+        // An absent direction is the common case and means "I want to talk to them": outbound.
+        // A present-but-unreadable one is a typo in an authorization, and the entry is dropped
+        // by the caller rather than silently granted a direction.
+        switch (value?.Trim().ToUpperInvariant())
         {
-            "INBOUND" => CrewLinkDirection.Inbound,
-            "BIDIRECTIONAL" or "BOTH" => CrewLinkDirection.Bidirectional,
-            _ => CrewLinkDirection.Outbound,
-        };
+            case null or "":
+            case "OUTBOUND":
+                direction = CrewLinkDirection.Outbound;
+                return true;
+            case "INBOUND":
+                direction = CrewLinkDirection.Inbound;
+                return true;
+            case "BIDIRECTIONAL" or "BOTH":
+                direction = CrewLinkDirection.Bidirectional;
+                return true;
+            default:
+                direction = default;
+                return false;
+        }
+    }
+
+    [LoggerMessage(EventId = 111, Level = LogLevel.Warning,
+        Message = "Crew '{CrewName}': a links: entry has no to: and was dropped — the door stays closed, but the authorization the author meant is not enforced.")]
+    private partial void LogLinkDroppedNoTarget(string crewName);
+
+    [LoggerMessage(EventId = 112, Level = LogLevel.Warning,
+        Message = "Crew '{CrewName}': the links: entry for '{To}' carries an unreadable direction '{Direction}' and was dropped — the door stays closed, but the authorization the author meant is not enforced.")]
+    private partial void LogLinkDroppedBadDirection(string crewName, string to, string direction);
 
     private static RagCrewConfig? MapRag(RagYamlConfig? yaml)
     {

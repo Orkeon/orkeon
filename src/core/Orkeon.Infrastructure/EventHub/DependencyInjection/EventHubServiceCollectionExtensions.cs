@@ -10,6 +10,13 @@ namespace Orkeon.Infrastructure.EventHub.DependencyInjection;
 public static class EventHubServiceCollectionExtensions
 {
     /// <summary>
+    /// Default number of consumed message identifiers the idempotency stage remembers.
+    /// Bounded on purpose: an unbounded set behind a long-running hub is a leak that only
+    /// shows up in production.
+    /// </summary>
+    public const int DefaultIdempotencyCapacity = 10_000;
+
+    /// <summary>
     /// Registers the v1.0 in-memory <see cref="IEventHub"/>, <see cref="IEventHubCallerContext"/>,
     /// and <see cref="IEventSchemaRegistry"/> implementations as singletons.
     /// Idempotent — safe to call multiple times.
@@ -33,7 +40,12 @@ public static class EventHubServiceCollectionExtensions
         where TMiddleware : class, IEventHubMiddleware
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddSingleton<IEventHubMiddleware, TMiddleware>();
+
+        // Idempotent per middleware type: composition roots that layer modules call these
+        // helpers more than once, and a duplicated stage means doubled log lines, nested
+        // spans, or a second ACL refusal — never what the second call meant.
+        if (!services.Any(d => d.ServiceType == typeof(IEventHubMiddleware) && d.ImplementationType == typeof(TMiddleware)))
+            services.AddSingleton<IEventHubMiddleware, TMiddleware>();
         return services;
     }
 
@@ -84,10 +96,17 @@ public static class EventHubServiceCollectionExtensions
     /// <param name="services">The service collection.</param>
     /// <param name="capacity">How many consumed identifiers to remember.</param>
     public static IServiceCollection AddOrkeonEventHubIdempotency(
-        this IServiceCollection services, int capacity = Middleware.IdempotencyEventHubMiddleware.DefaultCapacity)
+        this IServiceCollection services, int capacity = DefaultIdempotencyCapacity)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddSingleton<IEventHubMiddleware>(_ => new Middleware.IdempotencyEventHubMiddleware(capacity));
+
+        // Idempotent, like the other stage helpers: the concrete type doubles as the marker.
+        if (!services.Any(d => d.ServiceType == typeof(Middleware.IdempotencyEventHubMiddleware)))
+        {
+            services.AddSingleton(_ => new Middleware.IdempotencyEventHubMiddleware(capacity));
+            services.AddSingleton<IEventHubMiddleware>(sp => sp.GetRequiredService<Middleware.IdempotencyEventHubMiddleware>());
+        }
+
         return services;
     }
 
