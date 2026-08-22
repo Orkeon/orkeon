@@ -47,12 +47,12 @@ Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriq
 | `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens?`, `toolCalls?` | Chaque tâche se termine, **dans les six modes d'orchestration**. |
 | `tool.called` | `toolName`, `argsSummary?` | Un outil est invoqué. `argsSummary` résume les **noms** d'arguments, jamais leur contenu : un appel peut porter un fichier entier. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | L'outil a fini — **y compris s'il a levé**, pour qu'un observateur n'affiche jamais une étape éternellement en cours. Corrélé à son `tool.called`. |
-| `delegation.started` | `toAgentId?`, `taskId?` | Un agent a confié du travail à un autre. |
-| `agent.spawned` | `role?`, `reason?` | L'équipe a grandi en cours d'exécution. |
-| `cost.updated` | `tokens`, `usd?`, `budgetRemaining?` | Le compteur de jetons bouge. |
+| `delegation.started` | `toRole?` | Un agent a confié du travail à un autre (l'outil `delegate_work_to_coworker`). La description de la tâche reste hors du flux, comme toute valeur d'argument. |
+| `agent.spawned` | `role?`, `reason?` | L'équipe a grandi en cours d'exécution — émis quand un appel à l'outil `spawn_agent` est observé. rc.2 ne câble cet outil sur aucun agent par défaut : ce kind n'apparaît que dans les déploiements qui l'attachent eux-mêmes. |
+| `cost.updated` | `tokens`, `model?`, `provider?` | Le compteur de jetons bouge. `tokens` est cumulatif. **Aucun champ de prix** : le framework n'a pas de table de prix, et en inventer une serait pire que l'omettre. |
 | `llm.delta` | `text` | Un fragment de texte généré. **Seulement sous `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?` | Une tâche déclarée `humanInput: true` pose une question. |
-| `hub.message` | `from`, `topic?`, `payload` | Le hub du run a relayé quelque chose à ce processus. |
+| `hub.message` | `from?`, `topic?`, `payload?` | Le hub du run a relayé quelque chose à ce processus. `from` est l'adresse hub de l'expéditeur (`agent://{crew}/{agent}`, `crew://{crew}`), pour que le pair puisse attribuer et répondre ; absent quand le hub ne la connaît pas (la réponse à un `send`, appariée par `correlationId`). |
 | `error` | `code`, `message`, `recoverable` | Quelque chose a échoué. |
 | `run.finished` | `success`, `exitCode`, `tokens` | Le run se termine. |
 
@@ -107,7 +107,11 @@ Sans lien déclaré, la politique par défaut de l'ACL laisse quand même passer
 orkeon run crew.yaml --events jsonl --client mon-observateur
 ```
 
-Lisez stdout ligne par ligne, analysez chaque ligne en JSON, aiguillez sur `kind`. Écrivez réponses et commandes sur stdin, un document JSON par ligne, avec vidage du tampon.
+Lisez stdout ligne par ligne, analysez chaque ligne en JSON, aiguillez sur `kind`. Écrivez réponses et commandes sur stdin, un document JSON par ligne, avec vidage du tampon. Trois faits sur lesquels un pilote peut compter :
+
+- **Les deux dialectes le parlent.** Une cible `.ork.ts` est observée par les mêmes coutures qu'une crew YAML — outils, compteur de jetons, pont du hub et fournisseur de réponses humaines arrivent tous jusqu'à l'hôte de script.
+- **stdout porte le protocole et rien d'autre.** Sur un run observé, chaque ligne de log part sur stderr ; un log entre deux documents JSONL serait une erreur de parsing chez vous.
+- **`jsonl` est la seule valeur que `--events` accepte**, et il le dit plutôt que de deviner ; `--client` sans `--events` avertit au lieu d'être ignoré en silence.
 
 Un échange minimal :
 
@@ -125,7 +129,7 @@ Deux règles à respecter en construisant votre client. **Ignorez un `kind` que 
 
 ## 7. Qui lit ceci aujourd'hui
 
-- **Orkeon Studio**, dont l'écran « Lancer » montre progression, coût et questions du run au lieu d'un défilement — voir [Studio](studio.md).
-- `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence en ~380 lignes, sans aucune dépendance à Infrastructure ni à un LLM.
+- **Orkeon Studio**, dont l'écran « Lancer » montre progression, coût et questions du run au lieu d'un défilement — voir [Studio](studio.md). Studio observe et répond aux questions ; il n'occupe pas le siège du hub : un agent qui fait `send` vers `client://studio` sans réponse expire, et un timeout est un refus — la règle que le silence suit partout sur ce bus.
+- `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence en ~380 lignes, sans aucune dépendance à Infrastructure ni à un LLM. `RunClient` est la forme à copier pour un pair qui, lui, prend le siège : subscribe, post, reply.
 
 La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge), donc un client qui lit l'un lit l'autre.

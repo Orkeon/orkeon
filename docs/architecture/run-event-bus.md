@@ -47,12 +47,12 @@ Payload fields sit **flat** beside the envelope, not nested under a `payload` ke
 | `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens?`, `toolCalls?` | Each task finishes, in every orchestration mode. |
 | `tool.called` | `toolName`, `argsSummary?` | A tool is invoked. `argsSummary` is a digest of the argument names, never the arguments: a call can carry a whole file. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | The tool finished — **including when it threw**, so a watcher never shows a step running forever. Correlated with its `tool.called`. |
-| `delegation.started` | `toAgentId?`, `taskId?` | One agent handed work to another. |
-| `agent.spawned` | `role?`, `reason?` | The team grew at runtime. |
-| `cost.updated` | `tokens`, `usd?`, `budgetRemaining?` | The token meter moves. |
+| `delegation.started` | `toRole?` | One agent handed work to another (the `delegate_work_to_coworker` tool). The task description stays off the stream, like every other argument value. |
+| `agent.spawned` | `role?`, `reason?` | The team grew at runtime — emitted when a `spawn_agent` tool call is observed. rc.2 wires that tool into no agent by default, so this kind only appears in deployments that attach it themselves. |
+| `cost.updated` | `tokens`, `model?`, `provider?` | The token meter moves. `tokens` is cumulative. There is **no price field**: the framework has no price table, and inventing one would be worse than omitting it. |
 | `llm.delta` | `text` | A fragment of generated text. **Only under `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?` | A task declared `humanInput: true` is asking. |
-| `hub.message` | `from`, `topic?`, `payload` | The run's hub relayed something to this process. |
+| `hub.message` | `from?`, `topic?`, `payload?` | The run's hub relayed something to this process. `from` is the sender's own hub address (`agent://{crew}/{agent}`, `crew://{crew}`) so the peer can attribute and answer; it is absent when the hub does not know (the answer to a `send`, which pairs by `correlationId` instead). |
 | `error` | `code`, `message`, `recoverable` | Something went wrong. |
 | `run.finished` | `success`, `exitCode`, `tokens` | The run ends. |
 
@@ -107,7 +107,11 @@ Without a declared link the ACL's default policy still lets traffic through — 
 orkeon run crew.yaml --events jsonl --client my-watcher
 ```
 
-Read stdout line by line, parse each as JSON, switch on `kind`. Write answers and commands to stdin, one JSON document per line, flushed.
+Read stdout line by line, parse each as JSON, switch on `kind`. Write answers and commands to stdin, one JSON document per line, flushed. Three facts a driver can rely on:
+
+- **Both dialects speak it.** A `.ork.ts` target is observed through the same seams as a YAML crew — the tools, the token meter, the hub bridge and the human-input provider all flow into the script host.
+- **stdout is the protocol and nothing else.** On an observed run every log line goes to stderr; a log between two JSONL documents would be a parser error on your side.
+- **`jsonl` is the only value `--events` accepts**, and it says so rather than guessing; `--client` without `--events` warns instead of being silently ignored.
 
 A minimal exchange:
 
@@ -125,7 +129,7 @@ Two rules worth building against. **Ignore a `kind` you do not know** — a newe
 
 ## 7. What reads this today
 
-- **Orkeon Studio**, whose Launch screen shows progress, cost and the run's questions instead of scrollback — see [Studio](studio.md).
-- `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client in ~380 lines with no dependency on Infrastructure or any LLM.
+- **Orkeon Studio**, whose Launch screen shows progress, cost and the run's questions instead of scrollback — see [Studio](studio.md). Studio watches and answers questions; it does not staff the hub seat: an agent that `send`s to `client://studio` and gets no reply times out, and a timeout is a refusal — the same rule silence follows everywhere on this bus.
+- `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client in ~380 lines with no dependency on Infrastructure or any LLM. `RunClient` is the shape to copy for a peer that *does* take the seat: subscribe, post, and reply.
 
 The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream, so a client that reads one reads both.

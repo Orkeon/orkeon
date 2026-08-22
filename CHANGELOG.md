@@ -68,10 +68,13 @@ process it runs in.
 
 **`orkeon run --events jsonl`** speaks a versioned protocol instead of printing for a person —
 one JSON document per line out, one per line back. Task completions in **all six orchestration
-modes** (no mode is second-class), cost, generation deltas under `--stream`, tool calls,
-delegations and runtime agent spawns. Tool events come from a single decorator applied where
-tools enter the process, so the three agent loops and the scripting facade are covered at once —
-including paths written after it. Contract: [The run event bus](docs/architecture/run-event-bus.md),
+modes** — terminal events included: a cancelled or failed run still says so, in every mode —
+cost with model and provider (no invented price: the framework has no price table), generation
+deltas under `--stream`, tool calls, delegations, and runtime agent spawns when a `spawn_agent`
+tool is attached. Tool events come from a single decorator applied where tools enter the
+process — the DI registrations, and through the `IToolDecorator` port the per-agent delegation
+pair — so the agent loops and the scripting facade are covered at once, `.ork.ts` targets
+included. Contract: [The run event bus](docs/architecture/run-event-bus.md),
 plus a ~90-line dependency-free reader in `examples/run-events/` with a recorded stream to try
 offline.
 
@@ -108,10 +111,19 @@ systemd unit implies otherwise. Docs:
 ### Changed — EventHub API surface, and the crew configuration
 
 `CrewLink` and `CrewLinkDirection` live in `Orkeon.Domain.EventHub`: a link is what a crew
-*declares*, not a transport detail. `CrewConfiguration` gained `Links`. `MailboxAddress` gained
-the `client://` scheme. Several constructors gained an optional trailing parameter — the five
-orchestration strategies (`ICrewExecutionHook`), `InMemoryEventHub` (middlewares), `CrewFactory`
-(the link registry) and `RunnerHost.Build` (a builder hook). Source-compatible; recompile.
+*declares*, not a transport detail — and it names its target by the crew's **`name:`**, the only
+identity a YAML author has (`ICrewLinkRegistry.Register` records the id ↔ name mapping for every
+crew, links or not). `CrewConfiguration` gained a nullable `Links` (never-declared and
+declared-empty are different answers to the ACL). `MailboxAddress` gained the `client://`
+scheme. `Message.NoDeclaredSchemaId` is `"_none"` — a sentinel that cannot collide with a real
+schema id. `CrewOutput` gained `Succeeded`, because `KickoffAsync` never throws and a host has
+to tell an answer from an apology. `IMemoryService` gained `ReleaseMemorySystem`, the
+daemon-side counterpart of loading a crew per message. The forge stream shares the run envelope
+and speaks protocol **v2** (was v1); its reserved-name set grew from four to eight. Several
+constructors gained an optional trailing parameter — the orchestration strategies
+(`ICrewExecutionHook`), `InMemoryEventHub` (middlewares), `CrewFactory` (the link registry),
+`AgentDelegationToolsProvider` (the tool decorator) and `RunnerHost.Build` (a builder hook).
+Source-compatible; recompile.
 
 ### Fixed — Two harness defects that were reporting success
 

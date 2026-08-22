@@ -54,7 +54,9 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
 }
 ```
 
-`Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**.
+`Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
+
+La configuration est **validée au démarrage** : un chemin de crew manquant, un timeout à zéro, un canal activé avec une liste d'autorisation vide ou une variable de jeton absente refusent le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
 
 ### Aucun secret n'est jamais écrit ici
 
@@ -75,9 +77,9 @@ Une requête au-delà du plafond est **refusée avec une réponse**, pas mise en
 
 ## 3. L'isolation
 
-Chaque run obtient son propre scope d'injection de dépendances. Ce n'est pas un détail — c'est la défense contre le risque que la conception de la passerelle désigne comme le plus sérieux : une fuite de mémoire entre conversations.
+Chaque run obtient son propre scope d'injection de dépendances, et l'état par crew d'un run est libéré quand il se termine. À eux deux, ils portent la défense contre le risque que la conception de la passerelle désigne comme le plus sérieux : de l'état qui fuit entre conversations.
 
-`IMemoryScope` est enregistré *scoped* : deux runs partageant un fournisseur partageraient une mémoire. Un scope par run signifie que la mémoire d'un run lui appartient et **meurt avec lui**, ce qui compte doublement : sinon la fuite existerait non seulement entre deux conversations vivantes, mais entre une conversation terminée et tout ce qui suit.
+Trois faits, énoncés précisément parce qu'une version antérieure de cette section en surestimait un. Le **scope** isole les services scoped — le repository de crews avant tout : la crew d'une conversation n'est jamais résoluble depuis le run d'une autre. La **libération** tient les services process-wide honnêtes : chaque message charge une crew fraîche avec un id frais, et le service de mémoire comme le registre de fournisseurs abandonnent leur entrée à la fin du run — sans quoi un daemon en accumule une par conversation, pour toujours. Et le drapeau **`Persistent`** reste le vrai garde-fou d'une mémoire qui survit à un run : il est éteint par défaut, et l'allumer est le geste par lequel l'exploitant dit que deux runs peuvent partager.
 
 Chaque run porte aussi son échéance (`RunTimeout`). Un daemon n'a personne pour appuyer sur Ctrl-C : un run sans délai est un daemon bloqué à attendre un modèle qui ne répondra pas.
 
@@ -93,7 +95,7 @@ Un message devient un run dans un ordre fixe : **autoriser, router, accuser réc
 
 **Router.** rc.2 livre une seule stratégie : **un thread est un run**. C'est la seule correspondance qu'une personne peut prédire sans qu'on la lui explique — ce qui se passe dans ce fil est un travail — et elle donne le parallélisme sans inventer une notion de session que quiconque doive apprendre. Un second message dans un fil qui tourne est refusé avec une explication, plutôt que de lancer un second run dont personne ne saurait distinguer les réponses.
 
-**Accuser réception.** La fenêtre de réponse de toute plateforme de chat se mesure en secondes ; une crew se mesure en minutes. L'accusé de réception part avant tout travail, et porte le bouton d'arrêt — pour qu'un run soit interruptible dès son début, et non depuis sa première ligne de progression, qui sur une première étape lente peut arriver des minutes plus tard.
+**Accuser réception.** La fenêtre de réponse de toute plateforme de chat se mesure en secondes ; une crew se mesure en minutes. L'accusé de réception part avec l'**admission** : à l'instant où la place du run est réservée — toujours avant tout travail de crew, et porteur du bouton d'arrêt, pour qu'un run soit interruptible dès sa première seconde. Un refus (crew inconnue, saturée) est répondu sans accusé : « je m'y mets » plus un bouton Stop, suivi de « on est occupé », serait une promesse rétractée par sa propre ligne suivante — avec un bouton accroché à rien.
 
 **Travailler**, en rapportant au fil de l'eau. La progression est **throttlée** (`ProgressInterval`, 2 secondes par défaut) : un run émet un événement par pensée d'agent et par appel d'outil, et relayer chacun épuiserait la limite de débit par canal de Discord à l'intérieur d'une seule crew. La dernière mise à jour supprimée est vidée juste avant la réponse finale, pour qu'un run ne se termine pas sur une vue vieille de trois étapes.
 
@@ -121,7 +123,9 @@ journalctl -u orkeon-host -f
 
 `Type=notify`, parce que le host signale sa disponibilité une fois les crews chargées et non au démarrage du processus — sinon systemd considérerait un host incapable de lire sa configuration comme « démarré » aussi longtemps qu'il met à sortir.
 
-`Restart=on-failure`, pas `always` : un host qui s'arrête faute de crew configurée dit quelque chose à l'exploitant, et une boucle de redémarrage enterre le message.
+`Restart=on-failure`, pas `always`, et `RestartPreventExitStatus=78` : une configuration que le host refuse — pas de crew, un chemin inexistant, une liste d'autorisation vide, une variable de jeton absente — sort en 78 (EX_CONFIG) *avant* la disponibilité, et la redémarrer toutes les dix secondes enterrerait le seul message que l'exploitant doit lire. Un crash sort non-zéro et redémarre ; un canal qui meurt emporte le host avec le code 1, pour la même raison — un daemon qui existe pour être joignable ne doit pas survivre à sa propre surdité avec un statut propre.
+
+Il n'y a délibérément **pas de `WatchdogSec`** : l'intégration systemd de .NET envoie `READY=1` et `STOPPING=1` et aucun battement de watchdog — en armer un ferait tuer par systemd un host sain à son premier battement manqué, jamais envoyé.
 
 `TimeoutStopSec` est délibérément plus long que `ShutdownGracePeriod`, pour que les runs en vol aient leur grâce avant que systemd ne perde patience. **Augmenter l'un sans l'autre rend celui qui reste en arrière dépourvu de sens.**
 

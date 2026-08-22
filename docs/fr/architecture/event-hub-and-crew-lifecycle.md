@@ -492,15 +492,18 @@ links:
 
 `links:` se place à côté de `name:` et `agents:` — à la racine d'un YAML de crew en fichier unique, ou dans le `crew.yaml` de la disposition multi-fichiers. Le déclarer depuis le builder fluide C# n'est **pas** possible : les liens atteignent l'ACL par le YAML d'une crew et `CrewFactory`.
 
-L'étage ACL refuse les `Post` / `Send` / `Publish` scopé qu'aucune `CrewLink` n'autorise pour la direction et le topic. Trois règles, chacune avec sa raison :
+`to:` nomme la crew cible par son **`name:`**, comparé mot pour mot — la seule identité qu'un auteur YAML possède en écrivant le bloc, les ids de crew étant frappés à la création. Chaque crew enregistre son nom auprès de l'ACL à sa création, même sans déclarer de liens : les liens des *autres* doivent pouvoir la nommer.
+
+L'étage ACL refuse les `Post` / `Send` / `Publish` scopé qu'aucune `CrewLink` n'autorise. Quatre règles, chacune avec sa raison :
 
 | Cas | Décision | Pourquoi |
 |---|---|---|
-| Message **sans cible** (`Publish` global) | passe | une publication globale est une offre, pas une remise ; les abonnés filtrent de leur côté |
-| Crew n'ayant déclaré **aucun lien** | passe par défaut | le hub a été livré sans aucune ACL : refuser le trafic non déclaré le jour où l'étage s'allume casserait toutes les crews existantes. Un déploiement qui veut une porte fermée enregistre `RestrictiveCrewLinkPolicy` |
-| Crew ayant **déclaré** des liens | tenue à ses liens, direction et liste de topics comprises | déclarer un lien est le geste qui ferme la porte |
+| Message **sans cible** (`Publish` global, ou boîte `topic://`) | passe | une diffusion est une offre, pas une remise ; les abonnés filtrent de leur côté |
+| Crew n'ayant **jamais déclaré** de bloc `links:` | passe par défaut | le hub a été livré sans aucune ACL : refuser le trafic non déclaré le jour où l'étage s'allume casserait toutes les crews existantes. Un déploiement qui veut une porte fermée enregistre `RestrictiveCrewLinkPolicy` — et sous elle, un émetteur non déclaré passe encore quand la *cible* lui a accordé un lien `inbound` (§10.3) |
+| Crew ayant **déclaré** des liens | tenue à ses liens — bloc déclaré-mais-vide compris, qui refuse tout | déclarer est le geste qui ferme la porte ; un bloc dont toutes les entrées ont échoué au parsing doit la fermer, jamais l'ouvrir |
+| Crew dont un lien déclaré correspond | passe | pour un publish scopé, le lien doit nommer la cible **et** autoriser le topic ; pour `Post`/`Send`, le lien suffit — voir ci-dessous |
 
-Un **`allowed_topics` vide** autorise tous les topics : un lien qui n'autoriserait rien serait sans objet, donc le cas vide est une confiance, pas un accident. Une entrée sans `to:` est écartée plutôt que transformée en lien pointant nulle part, et une `direction:` illisible retombe sur `outbound`, la plus étroite des trois — une autorisation malformée ne doit jamais devenir une autorisation permissive.
+Un **`allowed_topics` vide** autorise tous les topics : un lien qui n'autoriserait rien serait sans objet, donc le cas vide est une confiance, pas un accident. La liste ne contraint que les **topics** : le courrier point à point (`Post`/`Send`) porte un topic synthétique du hub qu'aucun auteur ne pourrait nommer, il est donc autorisé par le lien lui-même — direction et destinataire. Une entrée sans `to:`, ou avec une `direction:` illisible, est **écartée avec un avertissement** plutôt que devinée — une direction devinée est une autorisation que l'auteur n'a jamais écrite — et la présence du bloc ferme quand même la porte : une autorisation malformée ne doit jamais devenir permissive.
 
 ### 10.2.1 Nommer un pair externe
 
@@ -516,7 +519,11 @@ Sans cela, un pair externe échapperait à l'ACL simplement en n'étant pas mod�
 | `inbound` | B peut envoyer vers A, mais pas l'inverse |
 | `bidirectional` | Les deux sens |
 
-Une `CrewLink` est vérifiée côté **émetteur**, au moment du `PublishAsync` / `PostAsync` / `SendAsync` — trafic de boîte aux lettres compris, ce qui compte puisque `client://` ne s'atteint que par là. L'autorisation a lieu **une fois** : le chemin de réception ne revérifie délibérément pas, car revérifier refuserait un message déjà passé, et refuserait un message entrant dont l'ACL ne modélise pas l'émetteur.
+Une `CrewLink` est vérifiée côté **émetteur**, au moment du `PublishAsync` / `PostAsync` / `SendAsync` — trafic de boîte aux lettres compris, ce qui compte puisque `client://` ne s'atteint que par là. La déclaration propre de l'émetteur gouverne son trafic sortant : un lien `outbound` ou `bidirectional` l'accorde, un lien `inbound` non.
+
+`inbound` est un **grant** : « le pair nommé peut m'écrire ». Il est consulté sur les déclarations de la *cible* quand l'émetteur n'a lui-même jamais déclaré de bloc `links:` et que le déploiement refuse le trafic non déclaré — exactement le moment où le mot-clé compte. Il ne rouvre jamais une porte que l'émetteur a fermée lui-même : une crew qui a déclaré des liens ne nommant pas la cible reste refusée, quoi que la cible accorde.
+
+L'autorisation a lieu **une fois**, à l'envoi : le chemin de réception ne revérifie délibérément pas, car revérifier refuserait un message déjà passé. Une hypothèse voyage avec cette décision : **le lecteur d'une boîte en est le propriétaire.** Le hub auto-enregistre les attentes et la lecture est destructive, donc `receive_message` n'accepte que les boîtes de la crew appelante — sans cette restriction, n'importe quel agent pourrait siphonner `client://studio`, le trafic même que l'ACL garde à l'écriture.
 
 ### 10.4 Garanties d'ordering
 
@@ -638,7 +645,7 @@ public interface IEventHubMiddleware
 
 L'exécuteur est `EventHubMiddlewarePipeline`. L'ordre est celui de l'enregistrement sur le chemin de publication, et l'inverse sur le chemin de réception : un étage enveloppe donc un message symétriquement à l'aller et au retour. Un étage court-circuite en **levant** ; le pipeline n'attrape pas, car un refus doit atteindre l'appelant.
 
-L'ordre ci-dessous n'est pas cosmétique : la journalisation vient en premier pour voir tout ce qu'un étage ultérieur rejette, et la validation en dernier parce qu'elle est le seul étage qui consulte un magasin.
+L'ordre ci-dessous n'est pas cosmétique : sur le **chemin de publication**, la journalisation vient en premier pour voir tout ce qu'un étage ultérieur rejette, et la validation en dernier parce qu'elle est le seul étage qui consulte un magasin. Sur le chemin de réception, la chaîne tourne en sens inverse par construction : l'observabilité y est donc la plus intérieure — un message qu'un étage de réception refuse (un doublon d'idempotence) est écarté avant que la journalisation ne parle ; la ligne Debug du hub couvre ce cas.
 
 | # | Étage | Enregistrement | Rôle |
 |---|---|---|---|
@@ -652,9 +659,9 @@ Chaque étage est opt-in — un hub que personne ne regarde ne paie rien — et 
 
 ### 12.1 Où tournent les étages
 
-Les étages de publication tournent sur `Publish`, **et sur `Post` et `Send`** : le trafic de boîte aux lettres doit les traverser, puisque l'ACL garde qui peut atteindre une boîte et que `client://` — la seule adresse qui sort du processus — ne s'atteint que par là.
+Les étages de publication tournent sur `Publish`, **sur `Post` et `Send`**, et **sur `Reply`** : le trafic de boîte aux lettres doit les traverser, puisque l'ACL garde qui peut atteindre une boîte et que `client://` — la seule adresse qui sort du processus — ne s'atteint que par là. Une réponse est du trafic de hub comme un autre — `reply_to` et le pont client l'atteignent depuis l'extérieur du processus, et une réponse ni journalisée, ni spannée, ni vérifiée serait le seul message que personne n'observe.
 
-Les étages de réception tournent là où un destinataire *consomme* un message : consommation d'un abonnement, attente sur un topic, attente sur une boîte aux lettres. L'attente d'une réponse à un `Send` n'y passe pas — c'est la queue d'un échange déjà observé à la publication, et elle dénoue un `TaskCompletionSource` au lieu de vider un canal.
+Les étages de réception tournent là où un destinataire *consomme* un message : consommation d'un abonnement, attente sur un topic, attente sur une boîte aux lettres. L'attente d'une réponse à un `Send` n'y passe pas — c'est la queue d'un échange dont la réponse a déjà traversé les étages de publication, et elle dénoue un `TaskCompletionSource` au lieu de vider un canal.
 
 ### 12.2 L'idempotence ne garde que le point à point
 
@@ -668,7 +675,7 @@ Le contrat de middleware ne sait que laisser passer ou lever ; « écarte ce dou
 
 Que le contrat déclaré **existe** dans `IEventSchemaRegistry` — pas que la charge utile s'y conforme. Aucun moteur JSON Schema n'est embarqué ici, et la moitié d'un moteur ressemblerait à une garantie sans en être une. Ce que l'étage attrape est réel : une faute de frappe dans un `schema_id`, ou un type d'événement que le déploiement n'a jamais déclaré.
 
-Un message portant `Message.NoDeclaredSchemaId` (`application/json`) ne déclare aucun contrat — c'est le cas de tout `Post`, `Send` et `Reply` — et passe. Déclarer un schéma est le geste qui engage le contrôle, comme déclarer un lien ferme la porte de l'ACL. Le refus est levé à la **publication**, car un abonné ne peut rien à un schéma déclaré par quelqu'un d'autre.
+Un message portant `Message.NoDeclaredSchemaId` (`"_none"` — délibérément pas un id plausible : un déploiement pourrait légitimement enregistrer `application/json`, et une sentinelle en collision passerait sans contrôle, en silence) ne déclare aucun contrat — c'est le cas de tout `Post`, `Send` et `Reply` — et passe. Déclarer un schéma est le geste qui engage le contrôle, comme déclarer un lien ferme la porte de l'ACL. Le refus est levé à la **publication**, car un abonné ne peut rien à un schéma déclaré par quelqu'un d'autre.
 
 ---
 

@@ -14,7 +14,14 @@ opposite default is how a bot invited to a public server ends up spending your A
 strangers.
 
 **`Path`** must point at your crew. It accepts what `orkeon run` accepts: a YAML file, a
-multi-file crew directory, or an `.ork.ts` script.
+multi-file crew directory, or an `.ork.ts` script — with one caveat for the script form:
+transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare
+service install carries it. A daemon-hosted crew is a YAML crew unless you install esbuild.
+
+The host validates all of this at start: a wrong path, an empty allow list or an unset token
+variable refuse the start with exit code 78 — before the service reports ready — and the
+systemd unit deliberately does not restart on that code, so the message stays on top of the
+journal instead of scrolling away every ten seconds.
 
 **The mounts** describe what the crew may read and write, in virtual paths. Everything a crew
 touches goes through them.

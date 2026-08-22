@@ -437,13 +437,13 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **33 src projects** and **33 test projects**, plus two solutions:
+The repository contains **34 src projects** and **34 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
 /workspace/
 ├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 33 projects
+├── src/                          # 34 projects
 │   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
 │   ├── core/
 │   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
@@ -480,7 +480,8 @@ The repository contains **33 src projects** and **33 test projects**, plus two s
 │   ├── generators/
 │   │   └── Orkeon.Generators/    # Source generators (TypedDictionary…)
 │   ├── hosting/
-│   │   └── Orkeon.Hosting/       # Shared runner host (RunnerHost/RunnerExecution, semantic_search opt-in)
+│   │   ├── Orkeon.Hosting/       # Shared runner host (RunnerHost/RunnerExecution, semantic_search opt-in)
+│   │   └── Orkeon.Host/          # Service host daemon `orkeon-host` (crew registry, chat gateway, Discord channel — GATE)
 │   ├── plugins/
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
 │   └── apps/
@@ -489,7 +490,7 @@ The repository contains **33 src projects** and **33 test projects**, plus two s
 │       ├── Orkeon.Studio.Core/   # Studio: shared core (settings model, target detection, process runner, localization port)
 │       ├── Orkeon.Studio.Run/    # Studio: run TUI
 │       └── Orkeon.Studio.Wpf/    # Studio: WPF desktop app (net10.0-windows, AssemblyName=Orkeon.Studio, IsPackable=false ×4)
-├── tests/                        # 33 projects
+├── tests/                        # 34 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
 │   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Commands.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
@@ -497,7 +498,7 @@ The repository contains **33 src projects** and **33 test projects**, plus two s
 │   ├── tools/                    # Abstractions, Analysis, Code, Data, Embeddings.Local, EventHub, FileSystem, Rag, Web (9 projects)
 │   ├── rag/                      # Orkeon.Rag.Abstractions.Tests (incl. ArchitectureTests), Orkeon.Rag.Tests, Orkeon.Rag.Onnx.Tests
 │   ├── analysis/                 # Orkeon.Analysis.Tests (RaggableTree)
-│   ├── hosting/                  # Orkeon.Hosting.Tests
+│   ├── hosting/                  # Orkeon.Hosting.Tests, Orkeon.Host.Tests
 │   ├── plugins/                  # Orkeon.Plugins.Tests
 │   ├── apps/                     # Orkeon.ConsoleApp.Tests, Orkeon.Studio.{Config,Core,Run,Wpf}.Tests
 │   ├── e2e/                      # Orkeon.E2E.Tests

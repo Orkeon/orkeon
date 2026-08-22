@@ -54,7 +54,9 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
 }
 ```
 
-`Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches.
+`Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches. One caveat travels with the script form: transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare service install carries it — a daemon-hosted crew is a YAML crew unless you install esbuild yourself.
+
+The configuration is **validated at start**: a missing crew path, a zero timeout, an enabled channel with an empty allow list or an unset token variable all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time.
 
 ### No secret is ever written here
 
@@ -75,9 +77,9 @@ A request beyond the ceiling is **refused with an answer**, not queued: "we are 
 
 ## 3. Isolation
 
-Each run gets its own dependency-injection scope. That is not a detail — it is the defence against the risk the gateway design calls its most serious: a memory scope leaking between conversations.
+Each run gets its own dependency-injection scope, and each run's per-crew state is released when it ends. Between them they carry the defence against the risk the gateway design calls its most serious: state leaking between conversations.
 
-`IMemoryScope` is registered *scoped*, so two runs sharing a provider would share a memory. One scope per run means a run's memory belongs to it and **dies with it**, which matters twice over: the leak would otherwise exist not only between two live conversations but between a finished one and everything that follows.
+Three facts, stated precisely because an earlier version of this section overstated one of them. The **scope** is what isolates the scoped services — the crew repository above all, so one conversation's crew is never resolvable from another's run. The **release** is what keeps the process-wide services honest: every message loads a fresh crew with a fresh id, and the memory service and provider registry drop their entry for it when the run ends — otherwise a daemon accumulates one per conversation, forever. And the **`Persistent` flag** stays the real guard on memory outliving a run: it is off by default, and turning it on is the operator saying two runs may share.
 
 Each run also carries its own deadline (`RunTimeout`). A daemon has nobody watching to press Ctrl-C, so a run with no timeout is a stuck daemon waiting on a model that will never answer.
 
@@ -93,7 +95,7 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 **Route.** rc.2 ships one strategy: **a thread is a run**. It is the only mapping a person can predict without being told — what happens in this thread is one job — and it gives parallelism without inventing a notion of session anyone has to learn. A second message in a running thread is refused with an explanation rather than starting a second run whose answers nobody could tell apart.
 
-**Acknowledge.** Every chat platform's response window is measured in seconds; a crew is measured in minutes. The acknowledgement goes out before any work starts, and carries the stop button — so a run can be interrupted from the moment it begins, not from the moment it first reports progress, which on a slow first step can be minutes later.
+**Acknowledge.** Every chat platform's response window is measured in seconds; a crew is measured in minutes. The acknowledgement rides on **admission**: it goes out the moment the run's slot is reserved — still before any crew work, and carrying the stop button, so a run can be interrupted from its first second. A refusal (unknown crew, busy) is answered without an acknowledgement: "working on it" plus a Stop button, followed by "we are busy", would be a promise retracted by its own next line — with a button attached to nothing.
 
 **Work**, reporting as it goes. Progress is **throttled** (`ProgressInterval`, 2 seconds by default): a run emits an event per agent thought and per tool call, and relaying each one would exhaust Discord's per-channel rate limit inside a single crew. The last suppressed update is flushed just before the final answer, so a run does not end on a view several steps stale.
 
@@ -121,7 +123,9 @@ journalctl -u orkeon-host -f
 
 `Type=notify`, because the host reports readiness once the crews are loaded rather than when the process starts — otherwise systemd would call a host that failed to read its configuration "started" for as long as it took to exit.
 
-`Restart=on-failure`, not `always`: a host that stops because no crew is configured is telling the operator something, and a restart loop buries the message.
+`Restart=on-failure`, not `always`, and `RestartPreventExitStatus=78`: a configuration the host refuses — no crew, a path that does not exist, an empty allow list, an unset token variable — exits 78 (EX_CONFIG) *before readiness*, and restarting on it every ten seconds would bury the one message the operator needs to read. A crash exits non-zero and does restart; a channel that dies takes the host down with exit 1 for the same reason — a daemon that exists to be reachable must not survive its own deafness with a clean status.
+
+There is deliberately **no `WatchdogSec`**: the .NET systemd integration sends `READY=1` and `STOPPING=1` and no watchdog keepalive, so arming one would make systemd kill a healthy host on its first missed — never-sent — ping.
 
 `TimeoutStopSec` is deliberately longer than `ShutdownGracePeriod`, so runs in flight get their grace before systemd loses patience. **Raise one without the other and the one left behind stops meaning anything.**
 

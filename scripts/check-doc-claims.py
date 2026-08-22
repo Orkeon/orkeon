@@ -46,7 +46,9 @@ def gt_llm_providers() -> int:
 
 
 def gt_tool_classes() -> int:
-    skip = {"IBaseTool.cs", "MockTool.cs", "JsTool.cs"}
+    # Skipped: interfaces, doubles, adapters and decorators that match the glob without
+    # being built-in tools (ObservedTool is BUS-03's instrumentation decorator).
+    skip = {"IBaseTool.cs", "MockTool.cs", "JsTool.cs", "ObservedTool.cs"}
     files = [
         f for f in (ROOT / "src").rglob("*Tool.cs")
         if not any(part in ("obj", "bin", "obj-linux") for part in f.parts)

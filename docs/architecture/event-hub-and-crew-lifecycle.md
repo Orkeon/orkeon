@@ -492,15 +492,18 @@ links:
 
 `links:` sits beside `name:` and `agents:` — at the root of a single-file crew YAML, or in `crew.yaml` of the multi-file layout. Declaring it in the fluent C# builder is **not** possible: links reach the ACL through a crew's YAML and `CrewFactory`.
 
-The ACL stage rejects `Post` / `Send` / scoped `Publish` calls that no `CrewLink` authorizes for the direction and the topic. Three rules, each with its reason:
+`to:` names the target crew by its **`name:`**, matched verbatim — the only identity a YAML author has when writing the block, since crew ids are minted at creation time. Every crew registers its name with the ACL at creation, even one that declares no links: other crews' links have to be able to name it.
+
+The ACL stage rejects `Post` / `Send` / scoped `Publish` calls that no `CrewLink` authorizes. Four rules, each with its reason:
 
 | Case | Decision | Why |
 |---|---|---|
-| Message with **no target** (global `Publish`) | passes | a global publish is an offer, not a delivery; subscribers filter on their own side |
-| Crew that declared **no link at all** | passes by default | the hub shipped without any ACL, so refusing undeclared traffic the day the stage is switched on would break every existing crew. A deployment that wants a closed door registers `RestrictiveCrewLinkPolicy` |
-| Crew that **did** declare links | held to them, direction and topic list included | declaring one link is the act that closes the door |
+| Message with **no target** (global `Publish`, or a `topic://` mailbox) | passes | a broadcast is an offer, not a delivery; subscribers filter on their own side |
+| Crew that **never declared** a `links:` block | passes by default | the hub shipped without any ACL, so refusing undeclared traffic the day the stage is switched on would break every existing crew. A deployment that wants a closed door registers `RestrictiveCrewLinkPolicy` — and under it, an undeclared sender still gets through when the *target* granted it an `inbound` link (§10.3) |
+| Crew that **did** declare links | held to them — a declared-but-empty block included, which refuses everything | declaring is the act that closes the door; a block whose entries all failed to parse must close it, never open it |
+| Crew whose declared link matches | passes | for a crew-scoped publish, the link must name the target **and** authorize the topic; for `Post`/`Send`, the link itself authorizes — see below |
 
-An **empty `allowed_topics`** authorizes every topic: a link that authorized nothing would be pointless, so the empty case is trust rather than an accident. An entry with no `to:` is dropped rather than turned into a link pointing nowhere, and an unreadable `direction:` falls back to `outbound`, the narrowest of the three — a malformed authorization must never become a permissive one.
+An **empty `allowed_topics`** authorizes every topic: a link that authorized nothing would be pointless, so the empty case is trust rather than an accident. The list constrains **topics only**: point-to-point mail (`Post`/`Send`) carries a synthetic hub topic no author could name, so it is authorized by the link itself — direction and target. An entry with no `to:`, or with a `direction:` nobody can read, is **dropped with a warning** rather than guessed at — a guessed direction is an authorization the author never wrote — and the block's presence still closes the door: a malformed authorization must never become a permissive one.
 
 ### 10.2.1 Naming an external peer
 
@@ -516,7 +519,11 @@ Without that, an external peer would escape the ACL simply by not being modelled
 | `inbound` | B can send to A, but not the other way around |
 | `bidirectional` | Both directions |
 
-A `CrewLink` is checked on the **sender** side, at `PublishAsync` / `PostAsync` / `SendAsync` time — mailbox traffic included, which matters because `client://` is only ever reached that way. Authorization happens **once**: the receive path deliberately does not check again, since re-checking would refuse a message that already passed and would refuse an inbound message whose sender the ACL does not model.
+A `CrewLink` is checked on the **sender** side, at `PublishAsync` / `PostAsync` / `SendAsync` time — mailbox traffic included, which matters because `client://` is only ever reached that way. The sender's own declaration rules its outbound traffic: an `outbound` or `bidirectional` link grants it, an `inbound` link does not.
+
+`inbound` is a **grant**: "the named peer may send to me". It is consulted on the *target's* declarations when the sender itself never declared a `links:` block and the deployment refuses undeclared traffic — which is exactly when the keyword matters. It never reopens a door the sender closed itself: a crew that declared links not naming the target stays refused, whatever the target grants.
+
+Authorization happens **once**, on the send: the receive path deliberately does not check again, since re-checking would refuse a message that already passed. One assumption travels with that decision: **the reader of a mailbox is its owner.** The hub auto-registers waiters and reading is destructive, so `receive_message` only accepts mailboxes of the calling crew — without that restriction, any agent could siphon `client://studio`, the very traffic the write-side ACL guards.
 
 ### 10.4 Ordering guarantees
 
@@ -638,7 +645,7 @@ public interface IEventHubMiddleware
 
 The runner is `EventHubMiddlewarePipeline`. Order is the registration order on the publish path and the reverse on the receive path, so a stage wraps a message symmetrically going in and coming out. A stage short-circuits by **throwing**; the pipeline does not catch, because a refusal has to reach the caller.
 
-The order below is not cosmetic: logging comes first so it sees everything a later stage rejects, and validation last because it is the only stage that consults a store.
+The order below is not cosmetic: on the **publish path** logging comes first so it sees everything a later stage rejects, and validation last because it is the only stage that consults a store. On the receive path the chain runs in reverse by construction, so observability sits innermost there — a message a receive stage refuses (an idempotency duplicate) is dropped before logging would fire; the hub's own Debug line covers that case.
 
 | # | Stage | Registration | What it does |
 |---|---|---|---|
@@ -652,9 +659,9 @@ Every stage is opt-in — a hub nobody watches pays nothing — and custom stage
 
 ### 12.1 Where the stages run
 
-The publish stages run on `Publish`, **and on `Post` and `Send`**: mailbox traffic has to travel them, since the ACL guards who may reach a mailbox and `client://` — the one address that leaves the process — is only ever reached that way.
+The publish stages run on `Publish`, **on `Post` and `Send`**, and **on `Reply`**: mailbox traffic has to travel them, since the ACL guards who may reach a mailbox and `client://` — the one address that leaves the process — is only ever reached that way. A reply is hub traffic like any other — `reply_to` and the client bridge both reach it from outside the process, and an unlogged, unspanned, unchecked reply would be the one message nobody observes.
 
-The receive stages run where a recipient *consumes* a message: draining a subscription, a wait on a topic, a wait on a mailbox. Awaiting a `Send` reply does not go through them — it is the tail of an exchange already observed at publish time, and it resolves a `TaskCompletionSource` rather than draining a channel.
+The receive stages run where a recipient *consumes* a message: draining a subscription, a wait on a topic, a wait on a mailbox. Awaiting a `Send` reply does not go through them — that is the tail of an exchange whose reply already travelled the publish stages, and it resolves a `TaskCompletionSource` rather than draining a channel.
 
 ### 12.2 Idempotency guards point-to-point delivery only
 
@@ -668,7 +675,7 @@ The middleware contract can only pass a message on or stop it by throwing, so "d
 
 That the declared contract **exists** in `IEventSchemaRegistry` — not that the payload conforms to it. No JSON Schema engine ships here, and half of one would look like a guarantee while being none. What the stage does catch is real: a typo in a schema id, or an event type the deployment never declared.
 
-A message carrying `Message.NoDeclaredSchemaId` (`application/json`) declares no contract at all — every `Post`, `Send` and `Reply` does — and passes. Declaring a schema is what engages the check, the same way declaring a link closes the ACL's door. The refusal is raised on **publish**, because a subscriber cannot fix a schema someone else declared.
+A message carrying `Message.NoDeclaredSchemaId` (`"_none"` — deliberately not a plausible real id: a deployment could legitimately register `application/json`, and a colliding sentinel would be silently unchecked) declares no contract at all — every `Post`, `Send` and `Reply` does — and passes. Declaring a schema is what engages the check, the same way declaring a link closes the ACL's door. The refusal is raised on **publish**, because a subscriber cannot fix a schema someone else declared.
 
 ---
 
