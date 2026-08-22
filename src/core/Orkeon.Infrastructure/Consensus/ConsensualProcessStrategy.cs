@@ -163,6 +163,10 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
             ? plannedTasks.Select(pt => pt.TaskId)
             : crew.Tasks;
 
+        // The terminal event goes out on EVERY exit: "consensus not reached" was the only
+        // failure this mode reported, and a throwing round or a Ctrl+C escaped silently.
+        try
+        {
         foreach (var taskId in taskIds)
         {
             ct.ThrowIfCancellationRequested();
@@ -234,6 +238,23 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
             };
             taskSnapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);
+        }
+        }
+        catch (OperationCanceledException)
+        {
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
+                null, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed, ex.Message),
+                ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
         }
 
         var totalExecutionTime = DateTime.UtcNow - startTime;

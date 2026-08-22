@@ -169,6 +169,24 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         {
             LogBudgetExhausted(crew.Id, ex.Dimension, ex.Message);
         }
+        catch (OperationCanceledException)
+        {
+            // The terminal event goes out on every exit — hooks used to live only on the
+            // success path (BuildOutputAsync), so a Ctrl+C froze the watcher mid-run.
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, [], CrewHookStatus.Canceled, "Execution was cancelled."),
+                null, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, [], CrewHookStatus.Failed, ex.Message),
+                ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
         finally
         {
             // Unregister all agents
@@ -462,7 +480,9 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 Success = result.Success,
                 Duration = result.ExecutionTime,
                 CompletedAt = DateTimeOffset.UtcNow,
-                ToolCallCount = snapshot.ToolCalls,
+                // Deliberately no per-task tool count: the budget counter is crew-wide, and
+                // stamping it on every task over-reported by a factor of N. The real totals
+                // travel in the crew metadata (budget_tool_calls).
             };
             taskSnapshots.Add(taskSnapshot);
             await _hooks.TaskCompletedAsync(taskSnapshot).ConfigureAwait(false);

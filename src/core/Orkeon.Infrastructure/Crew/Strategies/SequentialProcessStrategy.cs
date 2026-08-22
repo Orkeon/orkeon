@@ -33,10 +33,11 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     private readonly ILogger<SequentialProcessStrategy> _logger;
 
     /// <summary>
-    /// Optional lifecycle hook that receives task-by-task and crew-level events.
-    /// When not registered in DI the field remains null and no callbacks are made.
+    /// Best-effort hook dispatcher (BUS-03). Shared with the five other modes — this
+    /// strategy used to carry its own private copy of the fault barrier, and the two
+    /// implementations drifting apart is how the other modes shipped without one.
     /// </summary>
-    private readonly ICrewExecutionHook? _hook;
+    private readonly CrewHookDispatcher _hooks;
 
     /// <summary>Initializes a new instance of <see cref="SequentialProcessStrategy"/>.</summary>
     /// <param name="taskRepository">The task repository.</param>
@@ -67,7 +68,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         _delegationProvider = delegationProvider;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
-        _hook = hook;
+        _hooks = new CrewHookDispatcher(hook, logger);
     }
 
     /// <inheritdoc />
@@ -150,10 +151,10 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 _delegationProvider.UpdateExecutionContext(context);
                 LogTaskCompletedSuccess(taskId, taskSnapshot.Success);
 
-                if (_hook is not null)
+                if (_hooks.HasHook)
                 {
                     taskSnapshots.Add(taskSnapshot);
-                    await NotifyTaskCompletedAsync(taskSnapshot).ConfigureAwait(false);
+                    await _hooks.TaskCompletedAsync(taskSnapshot, CancellationToken.None).ConfigureAwait(false);
                 }
             }
 
@@ -163,7 +164,10 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             LogSequentialExecutionCompletedForCrew(crew.Id, totalTime);
             LogTotalTokensUsed(crew.Id, tokenTally.TotalTokens);
 
-            await NotifyCrewCompletedAsync(crew.Id.Value.ToString(), startedAt, taskSnapshots).ConfigureAwait(false);
+            await _hooks.CrewCompletedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Completed),
+                CancellationToken.None).ConfigureAwait(false);
 
             var metadata = tokenTally
                 .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
@@ -176,20 +180,21 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 executionTime: totalTime,
                 metadata: metadata);
         }
-        catch (OperationCanceledException) when (_hook is not null)
+        catch (OperationCanceledException) when (_hooks.HasHook)
         {
-            var crewSnapshot = BuildCrewSnapshot(
-                crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Canceled,
-                "Crew execution was canceled (timeout or external cancellation).");
-            await TryNotifyCrewFailedAsync(crewSnapshot, null).ConfigureAwait(false);
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Canceled,
+                    "Crew execution was canceled (timeout or external cancellation)."),
+                null, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
-        catch (Exception ex) when (_hook is not null)
+        catch (Exception ex) when (_hooks.HasHook)
         {
-            var crewSnapshot = BuildCrewSnapshot(
-                crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Failed,
-                ex.Message);
-            await TryNotifyCrewFailedAsync(crewSnapshot, ex).ConfigureAwait(false);
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Failed, ex.Message),
+                ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
     }
@@ -260,67 +265,6 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         };
 
         return (updatedContext, snapshot, executionResult);
-    }
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty completion hook is logged and must not break the crew execution pipeline.")]
-    private async System.Threading.Tasks.Task NotifyTaskCompletedAsync(TaskExecutionSnapshot snapshot)
-    {
-        if (_hook is null) return;
-        try
-        {
-            await _hook.OnTaskCompletedAsync(snapshot, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            LogHookOnTaskCompletedFailed(ex);
-        }
-    }
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty crew-completed hook is logged and must not break the crew execution pipeline.")]
-    private async System.Threading.Tasks.Task NotifyCrewCompletedAsync(
-        string crewId, DateTimeOffset startedAt, List<TaskExecutionSnapshot> taskSnapshots)
-    {
-        if (_hook is null) return;
-        var crewSnapshot = BuildCrewSnapshot(crewId, startedAt, taskSnapshots, CrewHookStatus.Completed, null);
-        try
-        {
-            await _hook.OnCrewCompletedAsync(crewSnapshot, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            LogHookOnCrewCompletedFailed(ex);
-        }
-    }
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a failure in the crew-failed hook is logged and must not mask the original failure being reported.")]
-    private async System.Threading.Tasks.Task TryNotifyCrewFailedAsync(CrewExecutionSnapshot snapshot, Exception? ex)
-    {
-        try
-        {
-            await _hook!.OnCrewFailedAsync(snapshot, ex, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception hookEx)
-        {
-            LogHookOnCrewFailedFailed(hookEx);
-        }
-    }
-
-    private static CrewExecutionSnapshot BuildCrewSnapshot(
-        string crewId,
-        DateTimeOffset startedAt,
-        List<TaskExecutionSnapshot> taskSnapshots,
-        CrewHookStatus status,
-        string? failureReason)
-    {
-        return new CrewExecutionSnapshot
-        {
-            CrewId = crewId,
-            StartedAt = startedAt,
-            EndedAt = DateTimeOffset.UtcNow,
-            Tasks = taskSnapshots.ToImmutableList(),
-            Status = status,
-            FailureReason = failureReason,
-        };
     }
 
     private async System.Threading.Tasks.Task<List<DomainAgent>> LoadAgentsAsync(DomainCrew crew)
@@ -403,14 +347,5 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Agent [{AgentRole}] exited with reason {ExitReason} after {IterationsUsed} iterations. Last error: {LastError}")]
     private partial void LogAgentExitedWithReason(object agentRole, string exitReason, int iterationsUsed, string lastError);
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "ICrewExecutionHook.OnTaskCompletedAsync threw an exception")]
-    private partial void LogHookOnTaskCompletedFailed(Exception ex);
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "ICrewExecutionHook.OnCrewCompletedAsync threw an exception")]
-    private partial void LogHookOnCrewCompletedFailed(Exception ex);
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "ICrewExecutionHook.OnCrewFailedAsync threw an exception")]
-    private partial void LogHookOnCrewFailedFailed(Exception ex);
 
 }

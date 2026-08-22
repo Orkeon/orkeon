@@ -205,8 +205,29 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             }));
         }
 
-        // Wait for all tasks
-        var results = await System.Threading.Tasks.Task.WhenAll(executionTasks).ConfigureAwait(false);
+        // Wait for all tasks. One faulted task means WhenAll throws — the terminal event
+        // must still go out, or a watcher sees a run frozen at its last completed sibling.
+        (DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)[] results;
+        try
+        {
+            results = await System.Threading.Tasks.Task.WhenAll(executionTasks).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
+                null, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed, ex.Message),
+                ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
 
         var domainResults = results.Select(r => r.domainOutput).ToList();
         var totalTime = DateTime.UtcNow - startTime;

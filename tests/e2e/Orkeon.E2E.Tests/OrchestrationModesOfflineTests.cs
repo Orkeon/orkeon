@@ -49,8 +49,11 @@ tasks:
 """;
     }
 
+    private static Task<(CrewOutput Output, StubLlmProvider Stub, StubChatClient Chat, RecordingExecutionHook Hook)> RunAsync(
+        string yaml, CancellationToken ct) => RunAsync(yaml, chatClientOverride: null, ct);
+
     private static async Task<(CrewOutput Output, StubLlmProvider Stub, StubChatClient Chat, RecordingExecutionHook Hook)> RunAsync(
-        string yaml, CancellationToken ct)
+        string yaml, IChatClient? chatClientOverride, CancellationToken ct)
     {
         var hook = new RecordingExecutionHook();
         var stub = new StubLlmProvider().RespondTo(prompt => new LlmResponse
@@ -69,7 +72,7 @@ tasks:
         using var chatClient = new StubChatClient();
         services.AddSingleton<ICrewExecutionHook>(hook);
         services.AddSingleton<ILlmProvider>(stub);
-        services.AddSingleton<IChatClient>(chatClient);
+        services.AddSingleton<IChatClient>(chatClientOverride ?? chatClient);
         // Mirror the runner host: Application first (real AgentExecutionService,
         // scoped), then Infrastructure (whose stubs are TryAdd and lose).
         services.AddOrkeonApplication();
@@ -155,6 +158,51 @@ tasks:
         Assert.True(
             hook.CrewCompletions + hook.CrewFailures > 0,
             $"mode '{mode}' never reported a crew-level outcome to the hook");
+    }
+
+    /// <summary>
+    /// The half the happy-path theory above cannot see: a run that stops — cancelled, or
+    /// broken by its model — must still deliver a terminal event. Before this review, only
+    /// the sequential mode had the fault barrier; on the five others a Ctrl+C ended the run
+    /// with the watcher's screen frozen mid-progress, and no test could tell.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Modes))]
+    public async Task A_cancelled_run_still_reports_a_terminal_event(string mode)
+    {
+        using var cts = new CancellationTokenSource();
+        using var cancellingClient = new CancelOnFirstCallChatClient(cts);
+
+        var (_, _, _, hook) = await RunAsync(CrewYaml(mode), cancellingClient, cts.Token);
+
+        Assert.True(
+            hook.CrewCompletions + hook.CrewFailures > 0,
+            $"mode '{mode}' went silent on cancellation — no terminal event reached the hook");
+    }
+
+    /// <summary>
+    /// Cancels the shared token from inside the first LLM exchange, then refuses it — the
+    /// closest offline stand-in for a user pressing Ctrl+C while the model is generating.
+    /// </summary>
+    private sealed class CancelOnFirstCallChatClient(CancellationTokenSource cts) : IChatClient
+    {
+        public async Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            await cts.CancelAsync().ConfigureAwait(false);
+            throw new OperationCanceledException(cts.Token);
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+            => throw new OperationCanceledException(cts.Token);
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose()
+        {
+            // Nothing owned.
+        }
     }
 
     /// <summary>Records what the orchestration strategies notify, for the test above.</summary>

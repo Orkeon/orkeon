@@ -92,13 +92,14 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     {
         ArgumentNullException.ThrowIfNull(crew);
         ArgumentNullException.ThrowIfNull(plan);
-        return ExecuteSequentialCoreAsync(crew, plan, inputVariables);
+        return ExecuteSequentialCoreAsync(crew, plan, inputVariables, cancellationToken);
     }
 
     private async Task<DomainCrewOutput> ExecuteSequentialCoreAsync(
         DomainCrew crew,
         DomainExecutionPlan plan,
-        IReadOnlyDictionary<string, string>? inputVariables)
+        IReadOnlyDictionary<string, string>? inputVariables,
+        CancellationToken cancellationToken)
     {
         LogStartingGraphExecution(crew.Id);
         var startTime = DateTime.UtcNow;
@@ -157,7 +158,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
         try
         {
-            var result = await runner.RunAsync(initialState, CancellationToken.None).ConfigureAwait(false);
+            // The caller's token used to be dropped on the floor here (CancellationToken.None):
+            // a graph crew could not be cancelled at all — no Ctrl+C, no host RunTimeout.
+            var result = await runner.RunAsync(initialState, cancellationToken).ConfigureAwait(false);
             var finalState = result.FinalState;
             var totalTime = DateTime.UtcNow - startTime;
 
@@ -171,8 +174,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             var snapshots = await NotifyResultsAsync(domainResults).ConfigureAwait(false);
             await _hooks.CrewCompletedAsync(
                 CrewHookDispatcher.Snapshot(
-                    crew.Id.ToString(), startTime, snapshots, CrewHookStatus.Completed))
-                .ConfigureAwait(false);
+                    crew.Id.ToString(), startTime, snapshots, CrewHookStatus.Completed),
+                cancellationToken).ConfigureAwait(false);
 
             return DomainCrewOutput.CreateSuccess(
                 output: finalOutput,
@@ -192,13 +195,31 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, brokenSnapshots, CrewHookStatus.Failed, ex.Message),
-                ex).ConfigureAwait(false);
+                ex, CancellationToken.None).ConfigureAwait(false);
 
             return DomainCrewOutput.CreateFailure(
                 error: $"Graph execution stopped by circuit breaker: {ex.Message}",
                 taskOutputs: initialState.DomainResults,
                 executionTime: totalTime,
                 metadata: BuildTokenMetadata(initialState));
+        }
+        catch (OperationCanceledException)
+        {
+            // The terminal event goes out on every exit: the circuit breaker was the only
+            // failure this mode reported, and any other escape froze the watcher mid-run.
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, [], CrewHookStatus.Canceled, "Execution was cancelled."),
+                null, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, [], CrewHookStatus.Failed, ex.Message),
+                ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
         }
     }
 

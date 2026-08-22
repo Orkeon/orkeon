@@ -115,30 +115,55 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
         var results = new List<DomainTaskOutput>();
         var taskSnapshots = new List<TaskExecutionSnapshot>();
-        foreach (var taskId in crew.Tasks)
+
+        // The terminal event goes out on EVERY exit — success, cancellation, failure. Without
+        // the two catches, a Ctrl+C or a throwing task ended the run with the watcher's screen
+        // frozen mid-progress: only the sequential mode had this barrier, and "no mode is
+        // second-class" was true of the happy path alone.
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var (domainOutput, appOutput, updatedContext) = await ProcessSingleTaskAsync(
-                taskId, workerAgents, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
-
-            if (domainOutput == null || appOutput == null)
-                continue;
-
-            results.Add(domainOutput);
-            applicationTaskOutputs.Add(appOutput);
-            context = updatedContext!;
-
-            var snapshot = new TaskExecutionSnapshot
+            foreach (var taskId in crew.Tasks)
             {
-                TaskId = taskId.Value.ToString(),
-                AgentRole = appOutput.AgentId ?? string.Empty,
-                Success = domainOutput.Success,
-                Duration = domainOutput.ExecutionTime,
-                CompletedAt = DateTimeOffset.UtcNow,
-                ToolCallCount = appOutput.ToolsUsed?.Count ?? 0,
-            };
-            taskSnapshots.Add(snapshot);
-            await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                var (domainOutput, appOutput, updatedContext) = await ProcessSingleTaskAsync(
+                    taskId, workerAgents, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
+
+                if (domainOutput == null || appOutput == null)
+                    continue;
+
+                results.Add(domainOutput);
+                applicationTaskOutputs.Add(appOutput);
+                context = updatedContext!;
+
+                var snapshot = new TaskExecutionSnapshot
+                {
+                    TaskId = taskId.Value.ToString(),
+                    AgentRole = appOutput.AgentId ?? string.Empty,
+                    Success = domainOutput.Success,
+                    Duration = domainOutput.ExecutionTime,
+                    CompletedAt = DateTimeOffset.UtcNow,
+                    ToolCallCount = appOutput.ToolsUsed?.Count ?? 0,
+                };
+                taskSnapshots.Add(snapshot);
+                await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The run's own token is cancelled; the dispatch must still go out.
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
+                null, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await _hooks.CrewFailedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed, ex.Message),
+                ex, CancellationToken.None).ConfigureAwait(false);
+            throw;
         }
 
         await _hooks.CrewCompletedAsync(
