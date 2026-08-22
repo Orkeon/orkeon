@@ -24,7 +24,8 @@ systemd unit deliberately does not restart on that code, so the message stays on
 journal instead of scrolling away every ten seconds.
 
 **The mounts** describe what the crew may read and write, in virtual paths. Everything a crew
-touches goes through them.
+touches goes through them. The crew definitions themselves need no mount: the host mounts each
+configured crew's directory read-only, automatically.
 
 ## The two secrets, and where they are not
 

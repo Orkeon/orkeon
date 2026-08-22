@@ -82,10 +82,13 @@ internal sealed class ThrottledResponder : IChatResponder
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        // The window leaves with the conversation: a completed thread's state kept around
-        // would be one entry per conversation, forever — daemon arithmetic.
+        // Flush the suppressed line, but PRESERVE the window: every gateway path completes —
+        // /status, /stop, an "already running" refusal — and tearing the window down there
+        // reset the interval and let a chatty user defeat the throttle mid-run, the exact
+        // rate-limit exhaustion this class exists to prevent. Windows are reclaimed by the
+        // idle sweep below, not by replies.
         string? pending = null;
-        if (_windows.TryRemove(message.ConversationId, out var window))
+        if (_windows.TryGetValue(message.ConversationId, out var window))
         {
             lock (window)
             {
@@ -98,5 +101,28 @@ internal sealed class ThrottledResponder : IChatResponder
             await _inner.ProgressAsync(message, pending, ct).ConfigureAwait(false);
 
         await _inner.CompleteAsync(message, text, ct).ConfigureAwait(false);
+
+        SweepIdleWindows();
+    }
+
+    /// <summary>
+    /// Drops windows that have been quiet for many intervals. Bounded housekeeping instead of
+    /// per-reply teardown: one entry per idle conversation is daemon arithmetic, but tying the
+    /// window's life to "any completed reply" tied it to the wrong clock.
+    /// </summary>
+    private void SweepIdleWindows()
+    {
+        if (_windows.Count < 128)
+            return;
+
+        var cutoff = _time.GetUtcNow() - (_interval * 20);
+        foreach (var (conversationId, window) in _windows)
+        {
+            lock (window)
+            {
+                if (window.LastSentAt < cutoff && window.Suppressed is null)
+                    _windows.TryRemove(conversationId, out _);
+            }
+        }
     }
 }

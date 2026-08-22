@@ -35,9 +35,6 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
           "Name": "support",
           "Path": "/srv/orkeon/crews/support",
           "Profile": {
-            "Interactive": false,
-            "Persistent": false,
-            "Chat": true,
             "MaxConcurrentRuns": 4
           }
         }
@@ -54,7 +51,7 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
 }
 ```
 
-`Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches. One caveat travels with the script form: transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare service install carries it — a daemon-hosted crew is a YAML crew unless you install esbuild yourself.
+`Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches. Each crew's directory is **mounted read-only into the VFS automatically**, 1:1 — the loader reads through the virtual file system like everything else in the framework, and a path that only existed on the physical disk would pass the startup probe and then fail on every message. One caveat travels with the script form: transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare service install carries it — a daemon-hosted crew is a YAML crew unless you install esbuild yourself.
 
 The configuration is **validated at start**: a missing crew path, a zero timeout, an enabled channel with an empty allow list or an unset token variable all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time.
 
@@ -62,14 +59,16 @@ The configuration is **validated at start**: a missing crew path, a zero timeout
 
 `TokenEnvironmentVariable` holds the **name** of an environment variable. The token itself never touches the configuration file, a commit, or a container image layer — where it would remain for as long as the image exists, including after someone "removes" it in a later layer. This is the rule the LLM providers already follow, and a bot token, which can read every message a server sends, does not get an exception.
 
-### The profile, and its two off-by-default axes
+### The profile: one axis, on purpose
 
 | Axis | Default | Why |
 |---|---|---|
-| `Interactive` | `false` | A crew hosted without a channel that can answer must not ask: it would stop on its first question and wait forever. |
-| `Persistent` | `false` | Memory outliving a run means one conversation can read another's. |
-| `Chat` | `true` | rc.2's crews are driven by conversation. |
 | `MaxConcurrentRuns` | `4` | A daemon accepting every request that arrives dies under its first burst, and a chat channel makes bursts trivial. |
+
+The profile deliberately carries nothing else. Earlier drafts sketched `Interactive`,
+`Persistent` and `Chat` flags; the review found them bound from configuration and read by
+nothing — an operator could flip them and change nothing at all. Configuration surface that
+does nothing is worse than absent, so rc.2 ships the one knob that works.
 
 A request beyond the ceiling is **refused with an answer**, not queued: "we are busy, try again shortly" is something a channel relays to a person; an invisible queue is not.
 
@@ -79,7 +78,7 @@ A request beyond the ceiling is **refused with an answer**, not queued: "we are 
 
 Each run gets its own dependency-injection scope, and each run's per-crew state is released when it ends. Between them they carry the defence against the risk the gateway design calls its most serious: state leaking between conversations.
 
-Three facts, stated precisely because an earlier version of this section overstated one of them. The **scope** is what isolates the scoped services — the crew repository above all, so one conversation's crew is never resolvable from another's run. The **release** is what keeps the process-wide services honest: every message loads a fresh crew with a fresh id, and the memory service and provider registry drop their entry for it when the run ends — otherwise a daemon accumulates one per conversation, forever. And the **`Persistent` flag** stays the real guard on memory outliving a run: it is off by default, and turning it on is the operator saying two runs may share.
+Two mechanisms, stated precisely because an earlier version of this section overstated what stood behind them. The **scope** is what isolates the scoped services — the crew repository above all, so one conversation's crew is never resolvable from another's run. The **release** is what keeps the process-wide services honest: every message loads a fresh crew with a fresh id, and the memory service and provider registry drop their entry for it when the run ends — otherwise a daemon accumulates one per conversation, forever. Memory outliving a hosted run is impossible by construction in rc.2 — there is no flag to get wrong.
 
 Each run also carries its own deadline (`RunTimeout`). A daemon has nobody watching to press Ctrl-C, so a run with no timeout is a stuck daemon waiting on a model that will never answer.
 
@@ -121,7 +120,7 @@ sudo systemctl enable --now orkeon-host
 journalctl -u orkeon-host -f
 ```
 
-`Type=notify`, because the host reports readiness once the crews are loaded rather than when the process starts — otherwise systemd would call a host that failed to read its configuration "started" for as long as it took to exit.
+`Type=notify`, because the host reports readiness once its configuration has been accepted — every crew path probed, every option validated — rather than when the process starts. Otherwise systemd would call a host that failed to read its configuration "started" for as long as it took to exit.
 
 `Restart=on-failure`, not `always`, and `RestartPreventExitStatus=78`: a configuration the host refuses — no crew, a path that does not exist, an empty allow list, an unset token variable — exits 78 (EX_CONFIG) *before readiness*, and restarting on it every ten seconds would bury the one message the operator needs to read. A crash exits non-zero and does restart; a channel that dies takes the host down with exit 1 for the same reason — a daemon that exists to be reachable must not survive its own deafness with a clean status.
 

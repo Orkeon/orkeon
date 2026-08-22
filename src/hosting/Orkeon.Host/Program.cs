@@ -24,7 +24,12 @@ var mounts = ArgumentValues(args, "--mount").Concat(ArgumentValues(args, "-m")).
 // "nothing configured" instead of "your file is not where you said". Both are configuration
 // errors, refused before anything starts, with exit 78 so systemd does not loop on them.
 // OUT-OF-SCOPE: probing the operator-supplied settings path; bootstrap runs before the VFS.
-if ((Array.IndexOf(args, "--settings") == args.Length - 1) || (Array.IndexOf(args, "-s") == args.Length - 1))
+// LastIndexOf, and only when the flag is actually present: Array.IndexOf returns -1 for an
+// absent flag, and with no arguments at all `-1 == args.Length - 1` was true — a bare
+// `orkeon-host` exited 78 complaining about a flag nobody typed, and the unit's
+// RestartPreventExitStatus then made sure it was never retried.
+var lastSettingsFlag = Math.Max(Array.LastIndexOf(args, "--settings"), Array.LastIndexOf(args, "-s"));
+if (lastSettingsFlag >= 0 && lastSettingsFlag == args.Length - 1)
 {
     await Console.Error.WriteLineAsync("orkeon-host: --settings requires a path.").ConfigureAwait(false);
     return HostConfigurationException.ExitCode;
@@ -36,24 +41,59 @@ if (settingsPath is not null && !StartupProbes.SettingsFileExists(settingsPath))
     return HostConfigurationException.ExitCode;
 }
 
+// Each hosted crew's directory is mounted read-only, 1:1: the loader reads through the VFS,
+// and a crew path that only exists on the physical disk would pass the startup probe and
+// then fail on every message. The crew definitions are the host's primary input — declared
+// by the operator in the configuration — so their mounts do not require the external-mounts
+// opt-in any more than the CLI's own config directory does.
+var bootConfiguration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json", optional: true)
+    .AddJsonFile(settingsPath ?? "appsettings.json", optional: true)
+    .AddEnvironmentVariables()
+    .AddEnvironmentVariables("ORKEON_")
+    .Build();
+var bootOptions = bootConfiguration.GetSection(OrkeonHostOptions.SectionName).Get<OrkeonHostOptions>() ?? new OrkeonHostOptions();
+var crewMounts = HostCrewMounts.For(bootOptions.Crews);
+mounts.AddRange(crewMounts);
+
 using var host = RunnerHost.Build(
     settingsPath,
     mounts,
-    allowExternalMounts: args.Contains("--allow-external-mounts", StringComparer.Ordinal),
+    allowExternalMounts: crewMounts.Count > 0 || args.Contains("--allow-external-mounts", StringComparer.Ordinal),
     llmLogPath: null,
     configureLogging: null,
     configureServices: (context, services) =>
     {
         services.Configure<OrkeonHostOptions>(context.Configuration.GetSection(OrkeonHostOptions.SectionName));
 
+        // The generic host caps the WHOLE stop sequence at HostOptions.ShutdownTimeout
+        // (default 30 s). Left alone, an operator raising ShutdownGracePeriod past ~25 s
+        // silently truncated their own drain — the docs tell them to scale TimeoutStopSec,
+        // and the framework then cut them off underneath it. Budget: the grace, the drain's
+        // 5 s teardown wait, and 5 s for the channel to disconnect.
+        var hostSection = context.Configuration.GetSection(OrkeonHostOptions.SectionName).Get<OrkeonHostOptions>() ?? new OrkeonHostOptions();
+        services.Configure<Microsoft.Extensions.Hosting.HostOptions>(
+            o => o.ShutdownTimeout = hostSection.ShutdownGracePeriod + TimeSpan.FromSeconds(10));
+
         services.AddSingleton<CrewHostRegistry>();
         services.AddSingleton<CrewRunner>();
         services.AddSingleton<ICrewRunner>(sp => sp.GetRequiredService<CrewRunner>());
-        services.AddHostedService<CrewHostService>();
+
+        // One progress hook per run scope: the strategies dispatch task completions into it,
+        // and CrewRunner wires its callback to the conversation watching the run. This is
+        // what makes "reports progress as tasks finish" true rather than documented.
+        services.AddScoped<RunProgressHook>();
+        services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
+            sp => sp.GetRequiredService<RunProgressHook>());
 
         services.Configure<Orkeon.Host.Gateway.DiscordChannelOptions>(
             context.Configuration.GetSection(Orkeon.Host.Gateway.DiscordChannelOptions.SectionName));
+
+        // Registration order is stop order reversed (hosted services stop LIFO): the channel
+        // FIRST so it stops LAST — the drain must run while the channel can still deliver,
+        // or the grace period keeps runs alive to produce answers nobody can receive.
         services.AddHostedService<Orkeon.Host.Gateway.ChatChannelService>();
+        services.AddHostedService<CrewHostService>();
     },
     configureBuilder: builder => builder
         .UseSystemd()

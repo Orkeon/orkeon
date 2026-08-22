@@ -49,6 +49,14 @@ internal sealed partial class ChatChannelService : BackgroundService
         // no operator sees before it matters.
         if (_discord.Enabled)
         {
+            // Validated here rather than assumed: this service now STARTS before
+            // CrewHostService (registration order is stop order reversed, and the drain must
+            // precede the channel's stop), so it can no longer lean on the host service
+            // having refused an empty crew list first.
+            if (_registry.Crews.Count == 0)
+                throw new HostConfigurationException(
+                    $"The Discord channel is enabled but no crew is configured under '{OrkeonHostOptions.SectionName}:Crews'.");
+
             if (_discord.AllowedUserIds.Count == 0)
             {
                 LogEmptyAllowList();
@@ -103,6 +111,17 @@ internal sealed partial class ChatChannelService : BackgroundService
         {
             // Expected: this is how the host stops us.
         }
+        catch (HostConfigurationException ex)
+        {
+            // A configuration refusal keeps its contract (exit 78, no restart loop) even if
+            // one slips past StartAsync. Rethrowing would NOT keep it: an ExecuteAsync
+            // escape goes to BackgroundServiceExceptionBehavior.StopHost, which exits 0 —
+            // and mapping it to the crash path would put a typo on a ten-second restart
+            // cycle instead.
+            LogChannelRefusedConfiguration(ex);
+            Environment.ExitCode = HostConfigurationException.ExitCode;
+            _lifetime.StopApplication();
+        }
 #pragma warning disable CA1031 // Fault barrier for the channel: the failure mode is chosen here, not propagated blind.
         catch (Exception ex)
 #pragma warning restore CA1031
@@ -122,4 +141,7 @@ internal sealed partial class ChatChannelService : BackgroundService
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "The Discord channel died; stopping the host so the supervisor restarts it")]
     private partial void LogChannelCrashed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "The Discord channel refused its configuration; stopping the host without a restart loop")]
+    private partial void LogChannelRefusedConfiguration(Exception ex);
 }

@@ -18,9 +18,10 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-# Type=notify because the host calls UseSystemd(): it tells systemd it is up once the crews are
-# loaded, not when the process starts. Without it systemd would consider a host that failed to
-# read its configuration "started" for as long as it took to exit.
+# Type=notify because the host calls UseSystemd(): it tells systemd it is up once its
+# configuration has been accepted (crew paths probed, options validated), not when the process
+# starts. Without it systemd would consider a host that failed to read its configuration
+# "started" for as long as it took to exit.
 Type=notify
 
 ExecStart=/opt/orkeon/orkeon-host --settings /etc/orkeon/appsettings.json

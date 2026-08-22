@@ -35,9 +35,6 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
           "Name": "support",
           "Path": "/srv/orkeon/crews/support",
           "Profile": {
-            "Interactive": false,
-            "Persistent": false,
-            "Chat": true,
             "MaxConcurrentRuns": 4
           }
         }
@@ -54,7 +51,7 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
 }
 ```
 
-`Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
+`Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Le dossier de chaque crew est **monté automatiquement dans le VFS, en lecture seule, 1:1** — le loader lit par le système de fichiers virtuel comme tout le reste du framework, et un chemin qui n'existerait que sur le disque physique passerait la sonde de démarrage puis échouerait à chaque message. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
 
 La configuration est **validée au démarrage** : un chemin de crew manquant, un timeout à zéro, un canal activé avec une liste d'autorisation vide ou une variable de jeton absente refusent le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
 
@@ -62,14 +59,17 @@ La configuration est **validée au démarrage** : un chemin de crew manquant, un
 
 `TokenEnvironmentVariable` porte le **nom** d'une variable d'environnement. Le jeton lui-même ne touche jamais le fichier de configuration, un commit, ni une couche d'image de conteneur — où il resterait aussi longtemps que l'image existe, y compris après que quelqu'un l'a « supprimé » dans une couche ultérieure. C'est la règle que suivent déjà les fournisseurs LLM, et un jeton de bot, qui peut lire tous les messages d'un serveur, n'y fait pas exception.
 
-### Le profil, et ses deux axes désactivés par défaut
+### Le profil : un seul axe, à dessein
 
 | Axe | Défaut | Pourquoi |
 |---|---|---|
-| `Interactive` | `false` | Une crew hébergée sans canal capable de répondre ne doit pas poser de question : elle s'arrêterait à la première et attendrait indéfiniment. |
-| `Persistent` | `false` | Une mémoire qui survit à un run, c'est une conversation qui peut lire celle d'une autre. |
-| `Chat` | `true` | Les crews de rc.2 sont pilotées par la conversation. |
 | `MaxConcurrentRuns` | `4` | Un daemon qui accepte toutes les requêtes qui arrivent meurt à sa première rafale, et un canal de chat rend les rafales triviales. |
+
+Le profil ne porte délibérément rien d'autre. Des brouillons antérieurs esquissaient des
+drapeaux `Interactive`, `Persistent` et `Chat` ; la révision les a trouvés liés à la
+configuration et lus par personne — un exploitant pouvait les basculer sans rien changer du
+tout. Une surface de configuration qui ne fait rien est pire qu'absente : rc.2 livre le seul
+bouton qui fonctionne.
 
 Une requête au-delà du plafond est **refusée avec une réponse**, pas mise en file : « on est occupé, réessayez » est quelque chose qu'un canal relaie à une personne ; une file d'attente invisible ne l'est pas.
 
@@ -79,7 +79,7 @@ Une requête au-delà du plafond est **refusée avec une réponse**, pas mise en
 
 Chaque run obtient son propre scope d'injection de dépendances, et l'état par crew d'un run est libéré quand il se termine. À eux deux, ils portent la défense contre le risque que la conception de la passerelle désigne comme le plus sérieux : de l'état qui fuit entre conversations.
 
-Trois faits, énoncés précisément parce qu'une version antérieure de cette section en surestimait un. Le **scope** isole les services scoped — le repository de crews avant tout : la crew d'une conversation n'est jamais résoluble depuis le run d'une autre. La **libération** tient les services process-wide honnêtes : chaque message charge une crew fraîche avec un id frais, et le service de mémoire comme le registre de fournisseurs abandonnent leur entrée à la fin du run — sans quoi un daemon en accumule une par conversation, pour toujours. Et le drapeau **`Persistent`** reste le vrai garde-fou d'une mémoire qui survit à un run : il est éteint par défaut, et l'allumer est le geste par lequel l'exploitant dit que deux runs peuvent partager.
+Deux mécanismes, énoncés précisément parce qu'une version antérieure de cette section surestimait ce qui les portait. Le **scope** isole les services scoped — le repository de crews avant tout : la crew d'une conversation n'est jamais résoluble depuis le run d'une autre. La **libération** tient les services process-wide honnêtes : chaque message charge une crew fraîche avec un id frais, et le service de mémoire comme le registre de fournisseurs abandonnent leur entrée à la fin du run — sans quoi un daemon en accumule une par conversation, pour toujours. Une mémoire qui survivrait à un run hébergé est impossible par construction en rc.2 — il n'y a pas de drapeau à se tromper.
 
 Chaque run porte aussi son échéance (`RunTimeout`). Un daemon n'a personne pour appuyer sur Ctrl-C : un run sans délai est un daemon bloqué à attendre un modèle qui ne répondra pas.
 
@@ -121,7 +121,7 @@ sudo systemctl enable --now orkeon-host
 journalctl -u orkeon-host -f
 ```
 
-`Type=notify`, parce que le host signale sa disponibilité une fois les crews chargées et non au démarrage du processus — sinon systemd considérerait un host incapable de lire sa configuration comme « démarré » aussi longtemps qu'il met à sortir.
+`Type=notify`, parce que le host signale sa disponibilité une fois sa configuration acceptée — chaque chemin de crew sondé, chaque option validée — et non au démarrage du processus. Sinon systemd considérerait un host incapable de lire sa configuration comme « démarré » aussi longtemps qu'il met à sortir.
 
 `Restart=on-failure`, pas `always`, et `RestartPreventExitStatus=78` : une configuration que le host refuse — pas de crew, un chemin inexistant, une liste d'autorisation vide, une variable de jeton absente — sort en 78 (EX_CONFIG) *avant* la disponibilité, et la redémarrer toutes les dix secondes enterrerait le seul message que l'exploitant doit lire. Un crash sort non-zéro et redémarre ; un canal qui meurt emporte le host avec le code 1, pour la même raison — un daemon qui existe pour être joignable ne doit pas survivre à sa propre surdité avec un statut propre.
 

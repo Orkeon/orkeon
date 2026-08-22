@@ -102,8 +102,7 @@ internal sealed partial class ChatGateway
                 {
                     _router.Attach(message.ConversationId, runId);
                     await responder.AcknowledgeAsync(message, $"Working on it with '{crewName}'…", ct).ConfigureAwait(false);
-                },
-                ct).ConfigureAwait(false);
+                }).ConfigureAwait(false);
         }
         finally
         {

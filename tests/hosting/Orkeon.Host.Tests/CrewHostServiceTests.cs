@@ -67,4 +67,32 @@ public sealed class CrewHostServiceTests : IDisposable
         await service.StartAsync(TestContext.Current.CancellationToken);
         await service.StopAsync(TestContext.Current.CancellationToken);
     }
+
+    [Fact]
+    public async Task The_drain_stops_what_the_grace_did_not_see_finish()
+    {
+        // With runs no longer linked to the stopping token, the drain is the thing that
+        // actually reaches them: grace first, then RequestStopAll. This pins that a stop
+        // request really lands on a run still in flight at shutdown.
+        var options = new OrkeonHostOptions
+        {
+            Crews = [Crew()],
+            ShutdownGracePeriod = TimeSpan.FromMilliseconds(50),
+        };
+        var registry = new CrewHostRegistry(Options.Create(options));
+        using var service = new CrewHostService(registry, Options.Create(options), NullLogger<CrewHostService>.Instance);
+
+        // Deliberately CancellationToken.None: BackgroundService links its stopping token
+        // to whatever StartAsync receives, and xUnit's ambient test token firing under a
+        // loaded parallel run made the service stop itself before the run was even started.
+        await service.StartAsync(CancellationToken.None);
+
+        var run = registry.TryStart("support", "test:drain")!;
+        Assert.False(run.Cancellation.IsCancellationRequested);
+
+        await service.StopAsync(CancellationToken.None);
+
+        Assert.True(run.Cancellation.IsCancellationRequested);
+        Assert.True(run.StopRequested);
+    }
 }

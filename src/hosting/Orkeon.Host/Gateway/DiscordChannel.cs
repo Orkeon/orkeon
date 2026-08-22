@@ -247,14 +247,17 @@ internal sealed partial class DiscordResponder : IChatResponder
             return;
         }
 
-        if (await _client.GetChannelAsync(channelId).ConfigureAwait(false) is not IMessageChannel channel)
-        {
-            LogNoChannel(message.ConversationId);
-            return;
-        }
-
         try
         {
+            // The lookup sits INSIDE the barrier: GetChannelAsync falls back to REST for an
+            // uncached channel and can throw on a hiccup — and the acknowledgement is awaited
+            // by the runner, so a throw here used to fail a run over a greeting.
+            if (await _client.GetChannelAsync(channelId).ConfigureAwait(false) is not IMessageChannel channel)
+            {
+                LogNoChannel(message.ConversationId);
+                return;
+            }
+
             await channel.SendMessageAsync(Truncate(text), components: components).ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // A channel that refuses a reply must not fail the run.

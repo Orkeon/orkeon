@@ -20,6 +20,14 @@ internal sealed record HostedRun
 
     /// <summary>Cancels this run and nothing else.</summary>
     public required CancellationTokenSource Cancellation { get; init; }
+
+    /// <summary>
+    /// True when a person (or the drain) asked this run to stop — as opposed to its own
+    /// deadline firing. The two collapse into one cancelled token, and the runner needs the
+    /// difference to say "stopped" versus "timed out": the single most common question about
+    /// a hosted run.
+    /// </summary>
+    public bool StopRequested { get; set; }
 }
 
 /// <summary>
@@ -144,12 +152,20 @@ internal sealed class CrewHostRegistry
             if (run.Cancellation.IsCancellationRequested)
                 return false;
 
+            run.StopRequested = true;
             run.Cancellation.Cancel();
             return true;
         }
         catch (ObjectDisposedException)
         {
             return false;
+        }
+        catch (AggregateException)
+        {
+            // Cancel() runs registered callbacks synchronously and wraps their failures. The
+            // stop was still delivered; a callback's tantrum must not escape into a button
+            // handler or take the drain — and with it the host's clean exit — down.
+            return true;
         }
     }
 }

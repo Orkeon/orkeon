@@ -20,8 +20,7 @@ internal sealed class ScriptedRunner : ICrewRunner
         string prompt,
         string origin,
         Action<string>? onProgress = null,
-        Func<string, Task>? onStarted = null,
-        CancellationToken cancellationToken = default)
+        Func<string, Task>? onStarted = null)
     {
         Ran.Add($"{crewName}:{prompt}");
 

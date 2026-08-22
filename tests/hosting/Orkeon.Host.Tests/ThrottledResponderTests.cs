@@ -11,10 +11,10 @@ using Orkeon.Host.Tests.Doubles;
 /// </summary>
 public class ThrottledResponderTests
 {
-    private static InboundMessage Message() => new()
+    private static InboundMessage Message(string conversation = "thread-1") => new()
     {
         Channel = "test",
-        ConversationId = "thread-1",
+        ConversationId = conversation,
         SenderId = "trusted",
         Text = "do the thing",
         ReceivedAt = DateTimeOffset.UnixEpoch,
@@ -97,5 +97,46 @@ public class ThrottledResponderTests
         await responder.CompleteAsync(Message(), "done", TestContext.Current.CancellationToken);
 
         Assert.Equal(["ack", "complete"], inner.Sent.Select(s => s.Kind));
+    }
+
+    [Fact]
+    public async Task Two_conversations_have_two_windows_and_never_swap_content()
+    {
+        // The first version shared one window across every thread: thread B finishing first
+        // flushed thread A's suppressed progress into B's channel — a structural
+        // cross-conversation content leak in the very component the isolation story leans
+        // on — and the shared interval starved every thread but one.
+        var (responder, inner, _) = Build();
+
+        await responder.ProgressAsync(Message("thread-A"), "A step 1", CancellationToken.None);
+        await responder.ProgressAsync(Message("thread-A"), "A step 2 (suppressed)", CancellationToken.None);
+        await responder.ProgressAsync(Message("thread-B"), "B step 1", CancellationToken.None);
+
+        // B's own window is fresh: its first progress goes out despite A's recent send.
+        Assert.Contains(("progress", "B step 1"), inner.Sent);
+
+        await responder.CompleteAsync(Message("thread-B"), "B done", CancellationToken.None);
+
+        // B's completion must not carry A's suppressed line.
+        Assert.DoesNotContain(("progress", "A step 2 (suppressed)"), inner.Sent);
+
+        await responder.CompleteAsync(Message("thread-A"), "A done", CancellationToken.None);
+        Assert.Contains(("progress", "A step 2 (suppressed)"), inner.Sent);
+    }
+
+    [Fact]
+    public async Task A_status_reply_mid_run_does_not_reset_the_throttle()
+    {
+        // Every gateway path completes — /status, /stop, refusals — and tearing the window
+        // down there let a chatty user defeat the throttle entirely: each reply re-opened
+        // the interval, and the next progress line went straight out.
+        var (responder, inner, _) = Build();
+
+        await responder.ProgressAsync(Message(), "step 1", CancellationToken.None);
+        await responder.CompleteAsync(Message(), "status: running", CancellationToken.None);
+
+        await responder.ProgressAsync(Message(), "step 2 (inside the window)", CancellationToken.None);
+
+        Assert.DoesNotContain(("progress", "step 2 (inside the window)"), inner.Sent);
     }
 }

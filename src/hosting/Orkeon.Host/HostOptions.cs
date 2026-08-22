@@ -1,33 +1,24 @@
 namespace Orkeon.Host;
 
 /// <summary>
-/// How a hosted crew behaves once the service owns it rather than a terminal
-/// (spec §5.3, four axes).
+/// How a hosted crew behaves once the service owns it rather than a terminal.
+/// <para>
+/// rc.2 ships exactly one axis. The spec sketched four (interactive, persistent, chat,
+/// concurrency); the review found the first three bound from configuration and read by
+/// nothing — an operator could flip them and change nothing at all, and the documentation
+/// credited one of them as a defence. Configuration surface that does nothing is worse than
+/// absent, so they are gone until the code behind them exists.
+/// </para>
 /// </summary>
 internal sealed record CrewHostingProfile
 {
-    /// <summary>
-    /// Whether the crew can ask a human anything. A crew hosted without a channel that can
-    /// answer must not be interactive: it would stop on its first question and wait forever.
-    /// </summary>
-    public bool Interactive { get; init; }
-
-    /// <summary>
-    /// Whether the crew's memory outlives one run. Off by default: sharing memory between
-    /// two conversations is the leak the spec calls the most serious risk of this design.
-    /// </summary>
-    public bool Persistent { get; init; }
-
-    /// <summary>Whether the crew is driven by a chat conversation rather than a schedule or an API call.</summary>
-    public bool Chat { get; init; } = true;
-
     /// <summary>
     /// How many runs of this crew may be in flight at once. Bounded on purpose: a daemon
     /// that accepts unlimited concurrent runs is a daemon that dies under its first burst.
     /// </summary>
     public int MaxConcurrentRuns { get; init; } = 4;
 
-    /// <summary>The profile a chat-driven crew gets when the configuration says nothing else.</summary>
+    /// <summary>The profile a hosted crew gets when the configuration says nothing else.</summary>
     public static CrewHostingProfile Default => new();
 }
 

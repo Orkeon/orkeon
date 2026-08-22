@@ -58,7 +58,18 @@ internal sealed partial class CrewHostService : BackgroundService
         {
             // Expected: this is how a stop arrives.
         }
+    }
 
+    /// <inheritdoc />
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        // The drain lives HERE, not after the stopping token fires in ExecuteAsync. On
+        // .NET 10 the base's StopAsync does not wait for ExecuteAsync's post-cancellation
+        // tail — a probe showed drain-after-token skipped in 299 runs out of 300 — so a
+        // drain written there looked graceful and essentially never ran before the host
+        // moved on to stopping everything else. StopAsync is awaited by the host, within
+        // the ShutdownTimeout this service's options budget.
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
         await DrainAsync().ConfigureAwait(false);
     }
 
