@@ -18,13 +18,14 @@ public class EventHubBridgeTests
     private sealed class Harness : IAsyncDisposable
     {
         public StringWriter Output { get; } = new();
+        public DefaultEventHubCallerContext Caller { get; } = new();
         public InMemoryEventHub Inner { get; }
         public JsonLinesEventHubBridge Bridge { get; }
 
         public Harness(string clientName = "studio")
         {
-            Inner = new InMemoryEventHub(new DefaultEventHubCallerContext(), NullLogger<InMemoryEventHub>.Instance);
-            Bridge = new JsonLinesEventHubBridge(Inner, new OrkeonEventWriter(Output), clientName);
+            Inner = new InMemoryEventHub(Caller, NullLogger<InMemoryEventHub>.Instance);
+            Bridge = new JsonLinesEventHubBridge(Inner, new OrkeonEventWriter(Output), clientName, Caller);
         }
 
         public IReadOnlyList<JsonElement> Emitted() =>
@@ -52,7 +53,10 @@ public class EventHubBridgeTests
 
         var emitted = Assert.Single(harness.Emitted());
         Assert.Equal("hub.message", emitted.GetProperty("kind").GetString());
-        Assert.Equal("client://studio", emitted.GetProperty("from").GetString());
+        // No ambient caller in this harness → no `from`, omitted rather than null. The first
+        // version asserted `from == "client://studio"` — the *recipient's* own address — and
+        // certified a line that told the peer every message came from itself.
+        Assert.False(emitted.TryGetProperty("from", out _));
         Assert.Equal("world", emitted.GetProperty("payload").GetProperty("hello").GetString());
     }
 
@@ -219,5 +223,45 @@ public class EventHubBridgeTests
 
         Assert.Fail("No event was emitted on the outbound stream.");
         return default;
+    }
+
+    [Fact]
+    public async Task A_relayed_post_names_the_crew_that_sent_it()
+    {
+        // hub.message.from used to carry the *recipient's* own address — every line told the
+        // peer it was talking to itself, and nothing could be attributed or answered.
+        await using var harness = new Harness();
+        var crew = Orkeon.Domain.Common.CrewId.Create();
+
+        using (harness.Caller.Push(new EventHubCaller(crew, null)))
+        {
+            await harness.Bridge.PostAsync(
+                Address("client://studio"), new { hello = "world" }, TestContext.Current.CancellationToken);
+        }
+
+        var emitted = Assert.Single(harness.Emitted());
+        Assert.Equal($"crew://{crew}", emitted.GetProperty("from").GetString());
+    }
+
+    [Fact]
+    public async Task A_topic_whose_stream_ended_can_be_subscribed_again()
+    {
+        // The relay used to keep its slot forever when the hub completed the stream on its
+        // own — StartRelay guards on ContainsKey, so the topic became unsubscribable.
+        await using var harness = new Harness();
+
+        await harness.Bridge.HandleCommandAsync("""{"kind":"subscribe","topic":"t"}""", TestContext.Current.CancellationToken);
+        await harness.Bridge.HandleCommandAsync("""{"kind":"unsubscribe","topic":"t"}""", TestContext.Current.CancellationToken);
+
+        await harness.Bridge.HandleCommandAsync("""{"kind":"subscribe","topic":"t"}""", TestContext.Current.CancellationToken);
+        await harness.Inner.PublishAsync("t", new { n = 1 }, null, TestContext.Current.CancellationToken);
+
+        // The republished message must reach the peer through the fresh relay.
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline && harness.Emitted().Count == 0)
+            await Task.Delay(20, TestContext.Current.CancellationToken);
+
+        var emitted = Assert.Single(harness.Emitted());
+        Assert.Equal("t", emitted.GetProperty("topic").GetString());
     }
 }

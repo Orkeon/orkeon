@@ -1,7 +1,7 @@
 #nullable enable
 Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider
 Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider.AddDelegationToolsToAgent(Orkeon.Domain.Agent.Agent! agent) -> void
-Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider.AgentDelegationToolsProvider(Orkeon.Application.Interfaces.Services.IAgentCommunicationService! communicationService, Orkeon.Application.Interfaces.Services.IAgentExecutionService! agentExecutionService, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider!>! logger) -> void
+Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider.AgentDelegationToolsProvider(Orkeon.Application.Interfaces.Services.IAgentCommunicationService! communicationService, Orkeon.Application.Interfaces.Services.IAgentExecutionService! agentExecutionService, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider!>! logger, Orkeon.Application.Interfaces.Ports.IToolDecorator? toolDecorator = null) -> void
 Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider.RegisterAgent(Orkeon.Domain.Common.AgentId! agentId, string! role) -> void
 Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider.RegisterAgentEntity(Orkeon.Domain.Agent.Agent! agent) -> void
 Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider.UpdateExecutionContext(Orkeon.Application.Context.SimpleExecutionContext! context) -> void

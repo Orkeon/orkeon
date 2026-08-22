@@ -156,10 +156,11 @@ public sealed class ForgeRunStagesTests : IDisposable
             Kinds());
         Assert.Equal("ready", Events()[^1].GetProperty("status").GetString());
 
-        // The meter is cumulative and honest about the absence of a ceiling.
+        // The meter is cumulative, and an absent ceiling is an absent key: the envelope
+        // contract says omitted, never null — for forge lines like for run lines.
         var cost = Events().Single(e => e.GetProperty("kind").GetString() == "cost.updated");
         Assert.Equal(500, cost.GetProperty("tokens").GetInt64());
-        Assert.Equal(JsonValueKind.Null, cost.GetProperty("budgetRemaining").ValueKind);
+        Assert.False(cost.TryGetProperty("budgetRemaining", out _));
     }
 
     [Fact]

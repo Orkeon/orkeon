@@ -133,24 +133,44 @@ public class ObservedToolTests
     }
 
     [Fact]
+    public void The_delegate_constant_is_the_real_contract_name()
+    {
+        // DelegateWorkTool's [ToolContract] is the name ObservedTool.Name returns. The first
+        // version said "delegate_work" and the delegation branch was unreachable — every
+        // delegation reported as an ordinary tool call, all tests green.
+        var contract = (Orkeon.Domain.Attributes.ToolContractAttribute?)Attribute.GetCustomAttribute(
+            typeof(Orkeon.Infrastructure.Tools.DelegateWorkTool),
+            typeof(Orkeon.Domain.Attributes.ToolContractAttribute));
+
+        Assert.NotNull(contract);
+        Assert.Equal(ObservedTool.DelegateToolName, contract!.UniqueName);
+    }
+
+    [Fact]
     public async Task Delegation_and_spawn_are_named_rather_than_buried_among_tool_calls()
     {
         // They are tool calls underneath, but what they mean is not "a tool ran": one is an
         // agent handing work over, the other a team growing. Those are the two moments that
         // make an autonomous run hard to follow.
+        // The wire shape is DelegateWorkRequest's, snake_case — the first version of this
+        // test invented friendlier names ("coworker") and certified a branch no real call
+        // could reach.
         var (delegating, delegateOutput) = Observe(ObservedTool.DelegateToolName);
         await delegating.CallAsync(
             new Protocol.ToolCallRequest(ObservedTool.DelegateToolName, new Dictionary<string, object?>
             {
-                ["coworker"] = "analyst",
+                ["coworker_role"] = "analyst",
                 ["task"] = "check the figures",
             }),
             TestContext.Current.CancellationToken);
 
         var delegation = Emitted(delegateOutput)[0];
         Assert.Equal("delegation.started", delegation.GetProperty("kind").GetString());
-        Assert.Equal("analyst", delegation.GetProperty("toAgentId").GetString());
-        Assert.Equal("check the figures", delegation.GetProperty("taskId").GetString());
+        Assert.Equal("analyst", delegation.GetProperty("toRole").GetString());
+        // The task description is content, not identity: it stays off the stream like every
+        // other argument value.
+        Assert.False(delegation.TryGetProperty("taskId", out _));
+        Assert.False(delegation.TryGetProperty("task", out _));
 
         var (spawning, spawnOutput) = Observe(ObservedTool.SpawnToolName);
         await spawning.CallAsync(

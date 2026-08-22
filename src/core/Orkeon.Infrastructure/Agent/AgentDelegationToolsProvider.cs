@@ -15,6 +15,7 @@ public partial class AgentDelegationToolsProvider
     private readonly IAgentCommunicationService _communicationService;
     private readonly IAgentExecutionService _agentExecutionService;
     private readonly ILogger<AgentDelegationToolsProvider> _logger;
+    private readonly Orkeon.Application.Interfaces.Ports.IToolDecorator? _toolDecorator;
     private readonly Dictionary<string, AgentId> _agentRoleMapping = [];
     private readonly Dictionary<AgentId, DomainAgent> _agentEntities = [];
     private SimpleExecutionContext? _currentContext;
@@ -23,10 +24,12 @@ public partial class AgentDelegationToolsProvider
     /// <param name="communicationService">The agent communication service.</param>
     /// <param name="agentExecutionService">The agent execution service for synchronous delegation.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="toolDecorator">Optional observer seam wrapping the per-agent tools (BUS-03).</param>
     public AgentDelegationToolsProvider(
         IAgentCommunicationService communicationService,
         IAgentExecutionService agentExecutionService,
-        ILogger<AgentDelegationToolsProvider> logger)
+        ILogger<AgentDelegationToolsProvider> logger,
+        Orkeon.Application.Interfaces.Ports.IToolDecorator? toolDecorator = null)
     {
         ArgumentNullException.ThrowIfNull(communicationService);
         _communicationService = communicationService;
@@ -34,6 +37,7 @@ public partial class AgentDelegationToolsProvider
         _agentExecutionService = agentExecutionService;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _toolDecorator = toolDecorator;
     }
 
     /// <summary>
@@ -85,12 +89,18 @@ public partial class AgentDelegationToolsProvider
             _logger as ILogger<AskQuestionTool>
         );
 
-        // Add tools to agent (ownership transfer — see comment above)
-        agent.AddTool(delegateWorkTool);
-        agent.AddTool(askQuestionTool);
+        // Add tools to agent (ownership transfer — see comment above). Decorated when an
+        // observer is registered: these two are built per agent with `new`, so the DI-level
+        // decoration that covers every registered tool never sees them — and a delegation is
+        // exactly the call BUS-03's watcher cannot afford to miss.
+        agent.AddTool(Decorate(delegateWorkTool));
+        agent.AddTool(Decorate(askQuestionTool));
 
         LogAddedDelegationToolsToAgent(agent.Id, agent.Role);
     }
+
+    private Orkeon.Domain.Common.ITool Decorate(Orkeon.Domain.Common.ITool tool) =>
+        _toolDecorator?.Decorate(tool) ?? tool;
 
     /// <summary>
     /// Registers an agent entity for synchronous delegation lookup.

@@ -48,21 +48,33 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
     private readonly OrkeonEventWriter _events;
     private readonly string _clientName;
     private readonly MailboxAddress _clientMailbox;
+    private readonly IEventHubCallerContext? _callerContext;
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<JsonElement>> _pendingFromPeer = new();
-    private readonly ConcurrentDictionary<string, CancellationTokenSource> _relays = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, RelaySubscription> _relays = new(StringComparer.Ordinal);
+
+    private sealed record RelaySubscription(CancellationTokenSource Cancellation)
+    {
+        public Task? Pump { get; set; }
+    }
 
     /// <summary>Builds the bridge around the local hub and the outbound stream.</summary>
     /// <param name="inner">The hub carrying local traffic. Untouched for everything not aimed at the peer.</param>
     /// <param name="events">The outbound stream the peer reads.</param>
     /// <param name="clientName">The peer's name, as it appears in <c>client://{name}</c>.</param>
-    public JsonLinesEventHubBridge(IEventHub inner, OrkeonEventWriter events, string clientName)
+    /// <param name="callerContext">
+    /// The ambient hub identity, when the host exposes one. It is what lets a relayed line say
+    /// *who* posted — without it the peer knows only that somebody did.
+    /// </param>
+    public JsonLinesEventHubBridge(
+        IEventHub inner, OrkeonEventWriter events, string clientName, IEventHubCallerContext? callerContext = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _events = events ?? throw new ArgumentNullException(nameof(events));
         ArgumentException.ThrowIfNullOrWhiteSpace(clientName);
         _clientName = clientName;
         _clientMailbox = MailboxAddress.Parse(new Uri($"client://{clientName}"));
+        _callerContext = callerContext;
     }
 
     /// <summary>The address agents use to reach the external peer.</summary>
@@ -82,7 +94,7 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         if (!IsPeer(recipient))
             return _inner.PostAsync(recipient, payload, ct);
 
-        Relay(topic: null, payload: payload, correlationId: null);
+        Relay(topic: null, payload: payload, correlationId: null, from: DescribeAmbientCaller());
         return System.Threading.Tasks.Task.CompletedTask;
     }
 
@@ -105,7 +117,7 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
 
         try
         {
-            Relay(topic: null, payload: request, correlationId: correlationId);
+            Relay(topic: null, payload: request, correlationId: correlationId, from: DescribeAmbientCaller());
 
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
             linked.CancelAfter(timeout);
@@ -236,7 +248,9 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
             .SendAsync<JsonElement, JsonElement>(to!, payload.Clone(), timeout, ct)
             .ConfigureAwait(false);
 
-        Relay(topic: null, payload: answer, correlationId: correlationId);
+        // The answer pairs with the peer's own correlation id; the responder's identity is
+        // not carried by SendAsync's return, so `from` stays absent rather than guessed.
+        Relay(topic: null, payload: answer, correlationId: correlationId, from: null);
     }
 
     private async Task PublishFromPeerAsync(JsonElement root, CancellationToken ct)
@@ -285,30 +299,39 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         if (string.IsNullOrWhiteSpace(topic) || _relays.ContainsKey(topic))
             return;      // subscribing twice to one topic would double every message
 
-        var relay = CancellationTokenSource.CreateLinkedTokenSource(ct);
+#pragma warning disable CA2000 // Ownership transfers to _relays; disposed by StopRelay, the pump's finally, or DisposeAsync.
+        var relay = new RelaySubscription(CancellationTokenSource.CreateLinkedTokenSource(ct));
+#pragma warning restore CA2000
         if (!_relays.TryAdd(topic, relay))
         {
-            relay.Dispose();
+            relay.Cancellation.Dispose();
             return;
         }
 
         // Open the subscription here, not inside the background task: the hub registers a
         // subscriber the moment SubscribeAsync is called, so deferring that call would leave a
         // window where the peer has asked to listen and is not yet listening.
-        var stream = _inner.SubscribeAsync(topic, relay.Token);
-        _ = Task.Run(() => RelayTopicAsync(topic, stream), CancellationToken.None);
+        var stream = _inner.SubscribeAsync(topic, relay.Cancellation.Token);
+        relay.Pump = Task.Run(() => RelayTopicAsync(topic, relay, stream), CancellationToken.None);
     }
 
-    private async Task RelayTopicAsync(string topic, IAsyncEnumerable<Message> stream)
+    private async Task RelayTopicAsync(string topic, RelaySubscription relay, IAsyncEnumerable<Message> stream)
     {
         try
         {
             await foreach (var message in stream.ConfigureAwait(false))
-                Relay(topic, ReadPayload(message), correlationId: message.CorrelationId?.AsString());
+                Relay(topic, ReadPayload(message), correlationId: message.CorrelationId?.AsString(), from: DescribeSource(message));
         }
         catch (OperationCanceledException)
         {
             // Unsubscribed, or the run ended.
+        }
+        finally
+        {
+            // A stream that ends on its own (the hub completed it) must free the slot, or the
+            // topic could never be subscribed again — StartRelay guards on ContainsKey.
+            if (_relays.TryRemove(topic, out var current) && ReferenceEquals(current, relay))
+                relay.Cancellation.Dispose();
         }
     }
 
@@ -323,8 +346,8 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         var topic = topicElement.GetString();
         if (topic is not null && _relays.TryRemove(topic, out var relay))
         {
-            relay.Cancel();
-            relay.Dispose();
+            relay.Cancellation.Cancel();
+            relay.Cancellation.Dispose();
         }
     }
 
@@ -333,18 +356,45 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
 
-    private void Relay(string? topic, object? payload, string? correlationId)
+    private void Relay(string? topic, object? payload, string? correlationId, string? from)
     {
         var scope = correlationId is null
             ? OrkeonEventScope.None
             : new OrkeonEventScope { CorrelationId = correlationId };
 
+        // Null entries are omitted by the writer — the contract's "absent key is omitted"
+        // holds for hub.message like for every other kind.
         _events.Emit(HubCommandKinds.HubMessage, scope, new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["from"] = _clientMailbox.Raw,
+            ["from"] = from,
             ["topic"] = topic,
             ["payload"] = payload,
         });
+    }
+
+    /// <summary>
+    /// Who a relayed message came from, in the hub's own address grammar — the peer cannot
+    /// answer, or even attribute, a line that does not say.
+    /// </summary>
+    private static string? DescribeSource(Message message)
+    {
+        if (CrewId.IsSystem(message.SourceCrewId))
+            return message.SourceAgentId is null ? null : $"agent://{message.SourceCrewId}/{message.SourceAgentId}";
+
+        return message.SourceAgentId is not null
+            ? $"agent://{message.SourceCrewId}/{message.SourceAgentId}"
+            : $"crew://{message.SourceCrewId}";
+    }
+
+    private string? DescribeAmbientCaller()
+    {
+        var caller = _callerContext?.Current;
+        if (caller is null || (CrewId.IsSystem(caller.CrewId) && caller.AgentId is null))
+            return null;
+
+        return caller.AgentId is not null
+            ? $"agent://{caller.CrewId}/{caller.AgentId}"
+            : $"crew://{caller.CrewId}";
     }
 
     private static JsonElement? ReadPayload(Message message)
@@ -388,13 +438,39 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        foreach (var relay in _relays.Values)
+        var relays = _relays.Values.ToArray();
+        _relays.Clear();
+
+        foreach (var relay in relays)
         {
-            await relay.CancelAsync().ConfigureAwait(false);
-            relay.Dispose();
+            try
+            {
+                await relay.Cancellation.CancelAsync().ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException)
+            {
+                // The relay's own pump won the race to clean up a naturally-ended stream.
+            }
         }
 
-        _relays.Clear();
+        // Await the pumps: a fire-and-forget relay still writing after dispose would race the
+        // final run.finished line on the shared stream.
+        foreach (var relay in relays)
+        {
+            if (relay.Pump is { } pump)
+            {
+                try
+                {
+                    await pump.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected: that is how relays stop.
+                }
+            }
+
+            relay.Cancellation.Dispose();
+        }
 
         foreach (var pending in _pendingFromPeer.Values)
             pending.TrySetCanceled();

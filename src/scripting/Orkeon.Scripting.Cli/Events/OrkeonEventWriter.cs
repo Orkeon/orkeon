@@ -139,6 +139,12 @@ internal class OrkeonEventWriter
                     foreach (var property in extra.ToList())
                     {
                         extra.Remove(property.Key);
+
+                        // The contract says an absent key is omitted, never written as null —
+                        // and the writer is the only place that can hold every emitter to it.
+                        if (property.Value is null)
+                            continue;
+
                         if (!ReservedNames.Contains(property.Key))
                             envelope[property.Key] = property.Value;
                     }

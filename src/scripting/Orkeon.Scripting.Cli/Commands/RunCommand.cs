@@ -214,6 +214,24 @@ internal static partial class RunCommand
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: after cancellation, file-not-found and esbuild errors are handled specifically, any other unexpected failure is converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
     private static async Task<int> ExecuteCoreAsync(RunCommandOptions options)
     {
+        // --events accepts exactly one spelling. Any other value used to produce JSONL
+        // silently — a caller asking for a format we do not have must hear "no", not receive
+        // a stream they did not ask for.
+        if (options.Events is not null && !string.Equals(options.Events, "jsonl", StringComparison.OrdinalIgnoreCase))
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon run: unsupported --events format '{options.Events}' (only: jsonl).").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        // --client only means something on an evented run: the peer's seat exists on the hub
+        // the bridge opens. Saying so beats silently ignoring the option.
+        if (!options.EmitsEvents && !string.Equals(options.Client, "studio", StringComparison.Ordinal))
+        {
+            await Console.Error.WriteLineAsync(
+                "orkeon run: --client has no effect without --events jsonl.").ConfigureAwait(false);
+        }
+
         // --list-tools dumps the runtime tool registry and needs no crew definition: it goes
         // straight to the shared runner (same host, same tool set as a real kickoff), so the
         // emitted manifest matches the standard runner byte-for-byte. Handled BEFORE the
@@ -276,31 +294,56 @@ internal static partial class RunCommand
             cts.Cancel();
         };
 
+        // BUS-02 on the script path too: the first version consulted EmitsEvents only on the
+        // shared-runner branch, so `--events jsonl` on a .ork.ts printed plain text and not a
+        // single protocol line — while Studio added the flag for both dialects.
+        Run.ObservedRunContext? observed = null;
+        if (options.EmitsEvents)
+        {
+            var events = new Events.OrkeonEventWriter(Console.Out);
+            events.Emit(Run.RunEventKinds.RunStarted, new
+            {
+                target = options.ScriptPath,
+                stream = options.Stream,
+            });
+#pragma warning disable CA2000 // Disposed on every path: FinishAsync below tears the context down, including when the run threw.
+            observed = new Run.ObservedRunContext(events, options.Stream, options.Client);
+#pragma warning restore CA2000
+        }
+
+        int exitCode;
         try
         {
-            return await RunWithHostAsync(options, cts.Token).ConfigureAwait(false);
+            exitCode = await RunWithHostAsync(options, observed, cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            return Program.ExitCancelled;
+            exitCode = Program.ExitCancelled;
         }
         catch (FileNotFoundException ex)
         {
             await Console.Error.WriteLineAsync($"orkeon run: {ex.Message}").ConfigureAwait(false);
-            return Program.ExitScriptError;
+            exitCode = Program.ExitScriptError;
         }
         catch (EsbuildNotFoundException ex)
         {
-            return ReportEsbuildNotFound(ex);
+            exitCode = ReportEsbuildNotFound(ex);
         }
         catch (EsbuildTranspileException ex)
         {
-            return ReportEsbuildTranspileError(ex);
+            exitCode = ReportEsbuildTranspileError(ex);
         }
         catch (Exception ex)
         {
-            return ReportUnexpectedError(ex);
+            exitCode = ReportUnexpectedError(ex);
         }
+
+        // The stream closes on the real exit code — a failed transpile is an event, not
+        // silence — and the pump/bridge are torn down before the process leaves.
+        if (observed is not null)
+            exitCode = await observed.FinishAsync(exitCode).ConfigureAwait(false);
+
+        return exitCode;
     }
 
     /// <summary>True when the config path is a YAML crew (<c>.yaml</c>/<c>.yml</c>, case-insensitive).</summary>
@@ -353,15 +396,8 @@ internal static partial class RunCommand
             stream = options.Stream,
         });
 
-        Run.RunEventObserver? observer = null;
-        Run.JsonLinesEventHubBridge? bridge = null;
-
-        // One reader on stdin, routed by kind. Two would race, and BUS-04's channel dropped
-        // every line that was not a human answer — including the hub commands.
-        var inbound = new Run.InboundCommandPump(
-            Console.In,
-            (line, ct) => bridge?.HandleCommandAsync(line, ct) ?? System.Threading.Tasks.Task.CompletedTask);
-        await using var inboundLifetime = inbound.ConfigureAwait(false);
+        var observed = new Run.ObservedRunContext(events, options.Stream, options.Client);
+        await using var lifetime = observed.ConfigureAwait(false);
 
         var exitCode = await RunnerExecution.RunOneShotAsync(
             ToRunnerOptions(options),
@@ -369,88 +405,11 @@ internal static partial class RunCommand
             configureServices: (_, services) =>
             {
                 services.AddSemanticSearchTool();
-
-                // BUS-03: wrap every registered tool so its calls become events. Doing it
-                // here — where tools enter the process — covers the three agent loops and the
-                // scripting facade at once, including paths written after this one. The
-                // decorator implements ITool, not just IBaseTool, because CrewFactory assigns
-                // with `tool is ITool`: a base-only decorator would leave agents toolless.
-                foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IBaseTool)).ToList())
-                {
-                    services.Remove(descriptor);
-                    services.Add(new ServiceDescriptor(
-                        typeof(IBaseTool),
-                        sp => new Run.ObservedTool((IBaseTool)Resolve(sp, descriptor)!, events),
-                        descriptor.Lifetime));
-                }
-
-                // ICrewExecutionHook is a single service and the runner may already have
-                // registered AutoSummaryWriter on it. Take that registration over rather
-                // than past it: observing a run must not cost it its AUTO_SUMMARY.md.
-                var existing = services.LastOrDefault(d => d.ServiceType == typeof(ICrewExecutionHook));
-                if (existing is not null)
-                    services.Remove(existing);
-
-                services.AddScoped<ICrewExecutionHook>(sp =>
-                {
-                    var inner = existing is null ? null : (ICrewExecutionHook?)Resolve(sp, existing);
-                    observer = new Run.RunEventObserver(events, inner, options.Stream);
-                    return observer;
-                });
-                services.AddSingleton<ILlmUsageSink>(sp =>
-                    (ILlmUsageSink)sp.GetRequiredService<ICrewExecutionHook>());
-                services.AddSingleton<ILlmDeltaSink>(sp =>
-                    (ILlmDeltaSink)sp.GetRequiredService<ICrewExecutionHook>());
-
-                // D6: an observed run never approves on the user's behalf. The runner's
-                // AutoApprove fallback is registered by TryAdd, so an explicit singleton
-                // here wins without removing anything.
-                services.AddSingleton<IHumanInputProvider>(
-                    new Run.JsonLinesHumanInputProvider(events, inbound));
-
-                // BUS-05: give the observing process a seat at the hub. A decorator, so local
-                // traffic keeps going through the in-memory hub untouched — and only when the
-                // host registered a hub at all.
-                var hubDescriptor = services.LastOrDefault(d => d.ServiceType == typeof(IEventHub));
-                if (hubDescriptor is not null)
-                {
-                    services.Remove(hubDescriptor);
-                    services.AddSingleton<IEventHub>(sp =>
-                    {
-                        var inner = (IEventHub)Resolve(sp, hubDescriptor)!;
-                        bridge = new Run.JsonLinesEventHubBridge(inner, events, options.Client);
-                        return bridge;
-                    });
-                }
+                observed.WireServices(services);
             })
             .ConfigureAwait(false);
 
-        if (bridge is not null)
-            await bridge.DisposeAsync().ConfigureAwait(false);
-
-        events.Emit(Run.RunEventKinds.RunFinished, new
-        {
-            success = exitCode == Program.ExitOk,
-            exitCode,
-            tokens = observer?.TokensUsed ?? 0,
-        });
-
-        return exitCode;
-    }
-
-    /// <summary>
-    /// Materialises a captured service descriptor — the runner registers its hook by
-    /// factory, so the descriptor is the only handle on the instance it would have built.
-    /// </summary>
-    private static object? Resolve(IServiceProvider sp, ServiceDescriptor descriptor)
-    {
-        if (descriptor.ImplementationInstance is { } instance)
-            return instance;
-        if (descriptor.ImplementationFactory is { } factory)
-            return factory(sp);
-        return descriptor.ImplementationType is { } type
-            ? ActivatorUtilities.CreateInstance(sp, type)
-            : null;
+        return await observed.FinishAsync(exitCode).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -511,7 +470,8 @@ internal static partial class RunCommand
         return Program.ExitRuntimeError;
     }
 
-    private static async Task<int> RunWithHostAsync(RunCommandOptions options, CancellationToken externalCt)
+    private static async Task<int> RunWithHostAsync(
+        RunCommandOptions options, Run.ObservedRunContext? observed, CancellationToken externalCt)
     {
         var fullPath = Path.GetFullPath(options.ScriptPath);
         var scriptDir = Path.GetDirectoryName(fullPath)!;
@@ -580,6 +540,11 @@ internal static partial class RunCommand
                 // so a profile that never reranks pays nothing.
                 services.AddOrkeonOnnxReranker();
                 services.AddOrkeonRagTools();
+
+                // --events: same observed seams as the shared-runner path. The script facade
+                // resolves its tools and sinks from this very host, so the decorated tools,
+                // the delta/usage observer and the hub bridge all flow into ctx.* naturally.
+                observed?.WireServices(services);
             });
 
         var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Scripting.Cli");

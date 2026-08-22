@@ -167,7 +167,12 @@ public static class ServiceCollectionExtensions
                 var validationPipeline = sp.GetService<IOutputValidationPipeline>();
                 var parserFactory = sp.GetService<IOutputParserFactory>();
                 if (validationPipeline != null && parserFactory != null && rateLimiter != null)
-                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, rateLimiter, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem);
+                {
+                    // The usage sink is the seam an observed run's token meter hangs on —
+                    // resolved optionally, so hosts without one pay nothing.
+                    var usageSink = sp.GetService<Interfaces.Ports.ILlmUsageSink>();
+                    orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, rateLimiter, fullProvider, toolCallingStrategy, deliverableFactory, fileSystem, usageSink);
+                }
                 else if (validationPipeline != null && parserFactory != null)
                     orchestrator = new ExecutionOrchestrator(logger, llmProvider, planner, chatClient, tools, validationPipeline, parserFactory, fileSystem);
                 else

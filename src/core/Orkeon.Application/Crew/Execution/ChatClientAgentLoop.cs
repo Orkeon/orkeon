@@ -20,19 +20,22 @@ internal sealed class ChatClientAgentLoop
     private readonly LlmCallGate _llmGate;
     private readonly ChatOptionsComposer _optionsComposer;
     private readonly ChatToolDispatcher _toolDispatcher;
+    private readonly Interfaces.Ports.ILlmUsageSink? _usageSink;
 
     internal ChatClientAgentLoop(
         ILogger logger,
         IChatClient chatClient,
         LlmCallGate llmGate,
         ChatOptionsComposer optionsComposer,
-        ChatToolDispatcher toolDispatcher)
+        ChatToolDispatcher toolDispatcher,
+        Interfaces.Ports.ILlmUsageSink? usageSink = null)
     {
         _logger = logger;
         _chatClient = chatClient;
         _llmGate = llmGate;
         _optionsComposer = optionsComposer;
         _toolDispatcher = toolDispatcher;
+        _usageSink = usageSink;
     }
 
     /// <summary>
@@ -118,6 +121,20 @@ internal sealed class ChatClientAgentLoop
             promptTokensTotal += (int)(chatResponse.Usage?.InputTokenCount ?? 0);
             completionTokensTotal += (int)(chatResponse.Usage?.OutputTokenCount ?? 0);
             AccumulateCacheUsage(chatResponse, ref cacheHitTotal, ref cacheMissTotal, agent.Role);
+
+            // The one place the YAML/agent path actually sees per-call usage — without this
+            // Record, ILlmUsageSink only ever heard from the scripting facade, and an observed
+            // crew run reported zero tokens no matter what it spent.
+            if (_usageSink is not null && chatResponse.Usage is { } usage)
+            {
+                _usageSink.Record(new Interfaces.Ports.CostUsageEvent
+                {
+                    AgentId = agent.Role,
+                    Model = chatResponse.ModelId ?? string.Empty,
+                    PromptTokens = (int)(usage.InputTokenCount ?? 0),
+                    CompletionTokens = (int)(usage.OutputTokenCount ?? 0),
+                });
+            }
 
             var dispatch = await TryDispatchToolCallsAsync(
                 chatResponse,

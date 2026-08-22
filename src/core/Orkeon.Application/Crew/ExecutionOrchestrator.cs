@@ -42,6 +42,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private readonly Domain.SharedKernel.ILlmProvider? _fullProvider;
     private readonly Interfaces.LLM.IToolCallingStrategy? _toolCallingStrategy;
     private readonly IDeliverableResolverFactory? _deliverableResolverFactory;
+    private readonly Interfaces.Ports.ILlmUsageSink? _usageSink;
     private readonly Domain.FileSystem.IFileSystemService _fileSystem = null!;
 
     // ── Internally composed collaborators (R4.1) ─────────────────────────────
@@ -68,7 +69,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem);
 
     private ChatClientAgentLoop ChatLoop =>
-        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher);
+        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, _usageSink);
 
     private LegacyTextAgentLoop LegacyLoop =>
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate);
@@ -208,6 +209,30 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _fullProvider = fullProvider;
         _toolCallingStrategy = toolCallingStrategy;
         _deliverableResolverFactory = deliverableResolverFactory;
+    }
+
+    /// <summary>
+    /// Constructor adding the optional LLM usage sink — the seam an observed run's token
+    /// meter hangs on. Optional and last, so every existing composition keeps resolving.
+    /// </summary>
+    public ExecutionOrchestrator(
+        ILogger<ExecutionOrchestrator> logger,
+        IBasicLlmProvider llmProvider,
+        Domain.Crew.Planning.IAgentPlanner planner,
+        IChatClient chatClient,
+        IEnumerable<Domain.Tools.IBaseTool> registeredTools,
+        IOutputValidationPipeline validationPipeline,
+        IOutputParserFactory parserFactory,
+        ILlmRateLimiter rateLimiter,
+        Domain.SharedKernel.ILlmProvider? fullProvider,
+        Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy,
+        IDeliverableResolverFactory? deliverableResolverFactory,
+        Domain.FileSystem.IFileSystemService fileSystem,
+        Interfaces.Ports.ILlmUsageSink? usageSink)
+        : this(logger, llmProvider, planner, chatClient, registeredTools, validationPipeline, parserFactory,
+               rateLimiter, fullProvider, toolCallingStrategy, deliverableResolverFactory, fileSystem)
+    {
+        _usageSink = usageSink;
     }
 
     /// <summary>

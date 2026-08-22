@@ -117,4 +117,22 @@ public class ForgeEventWriterTests
         Assert.Equal("brief", ForgeEventWriter.Spell(ForgeState.Brief));
         Assert.Equal("verdict", ForgeEventWriter.Spell(ForgeState.Verdict));
     }
+
+    [Fact]
+    public void A_null_payload_field_is_omitted_never_written()
+    {
+        // "An absent key is omitted, never written as null" is the contract's own sentence,
+        // and the writer is the only place that can hold every emitter to it. The first
+        // version enforced it for envelope fields alone; payloads with nulls (a topic-less
+        // hub.message, a question without choices) leaked `null` onto the wire, and the E2E
+        // invariant only ever ran on a stream that could not fault.
+        var output = new StringWriter();
+        var writer = new OrkeonEventWriter(output, new FakeOrkeonClock());
+
+        writer.Emit("x", new { present = "yes", missing = (string?)null });
+
+        var root = System.Text.Json.JsonDocument.Parse(output.ToString()).RootElement;
+        Assert.Equal("yes", root.GetProperty("present").GetString());
+        Assert.False(root.TryGetProperty("missing", out _));
+    }
 }

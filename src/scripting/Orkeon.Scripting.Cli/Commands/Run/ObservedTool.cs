@@ -29,10 +29,15 @@ namespace Orkeon.Scripting.Cli.Commands.Run;
 /// </summary>
 internal sealed class ObservedTool : ITool
 {
-    /// <summary>The tool whose call means one agent delegated to another.</summary>
-    public const string DelegateToolName = "delegate_work";
+    /// <summary>
+    /// The tool whose call means one agent delegated to another — the wire name of
+    /// <c>DelegateWorkTool</c>'s <c>[ToolContract]</c>, which is what <c>Name</c> returns.
+    /// The first version of this constant said <c>delegate_work</c>, and the branch below was
+    /// unreachable: every delegation was reported as an ordinary tool call.
+    /// </summary>
+    public const string DelegateToolName = "delegate_work_to_coworker";
 
-    /// <summary>The tool whose call means the team grew at runtime.</summary>
+    /// <summary>The tool whose call means the team grew at runtime (<c>SpawnAgentTool</c>'s contract name).</summary>
     public const string SpawnToolName = "spawn_agent";
 
     private readonly IBaseTool _inner;
@@ -103,10 +108,11 @@ internal sealed class ObservedTool : ITool
         switch (Name)
         {
             case DelegateToolName:
+                // Field names come from DelegateWorkRequest's wire shape (snake_case, with the
+                // camel spelling tolerated) — not from names one would like the tool to have.
                 _events.Emit(RunEventKinds.DelegationStarted, scope, new
                 {
-                    toAgentId = Argument(arguments, "coworker") ?? Argument(arguments, "agent"),
-                    taskId = Argument(arguments, "task"),
+                    toRole = Argument(arguments, "coworker_role") ?? Argument(arguments, "coworkerRole"),
                 });
                 break;
 
@@ -114,7 +120,7 @@ internal sealed class ObservedTool : ITool
                 _events.Emit(RunEventKinds.AgentSpawned, scope, new
                 {
                     role = Argument(arguments, "role"),
-                    reason = Argument(arguments, "goal") ?? Argument(arguments, "reason"),
+                    reason = Argument(arguments, "goal"),
                 });
                 break;
 
@@ -163,5 +169,25 @@ internal sealed class ObservedTool : ITool
         var summary = string.Join(", ", arguments.Keys.Take(6));
         return arguments.Count > 6 ? summary + ", …" : summary;
     }
+}
 
+/// <summary>
+/// The <see cref="Orkeon.Application.Interfaces.Ports.IToolDecorator"/> face of
+/// <see cref="ObservedTool"/> — what lets tools built outside DI (the per-agent delegation
+/// pair above all) be observed like the registered ones.
+/// </summary>
+internal sealed class ObservedToolDecorator : Orkeon.Application.Interfaces.Ports.IToolDecorator
+{
+    private readonly OrkeonEventWriter _events;
+
+    /// <summary>Reports every decorated tool onto <paramref name="events"/>.</summary>
+    public ObservedToolDecorator(OrkeonEventWriter events) =>
+        _events = events ?? throw new ArgumentNullException(nameof(events));
+
+    /// <inheritdoc />
+    public ITool Decorate(ITool tool)
+    {
+        ArgumentNullException.ThrowIfNull(tool);
+        return tool is ObservedTool ? tool : new ObservedTool(tool, _events);
+    }
 }
