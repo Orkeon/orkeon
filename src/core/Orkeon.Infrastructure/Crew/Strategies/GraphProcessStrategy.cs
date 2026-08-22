@@ -104,6 +104,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         LogStartingGraphExecution(crew.Id);
         var startTime = DateTime.UtcNow;
 
+        try
+        {
+
         // Load agents
         var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
         if (agents.Count == 0 && crew.Tasks.Count > 0)
@@ -203,14 +206,22 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                 executionTime: totalTime,
                 metadata: BuildTokenMetadata(initialState));
         }
+        }
         catch (OperationCanceledException)
         {
-            // The terminal event goes out on every exit: the circuit breaker was the only
-            // failure this mode reported, and any other escape froze the watcher mid-run.
+            // The terminal event goes out on every exit — setup included: an agent-less
+            // crew or a graph that fails to compile is the everyday failure, and the
+            // circuit breaker used to be the only failure this mode reported.
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, [], CrewHookStatus.Canceled, "Execution was cancelled."),
                 null, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        catch (GraphCircuitBrokenException)
+        {
+            // Already reported by the inner handler, which returned a failure output; a
+            // rethrow only happens if that handler itself failed — let it surface as-is.
             throw;
         }
         catch (Exception ex)

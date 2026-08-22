@@ -98,36 +98,38 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         var taskSnapshots = new List<TaskExecutionSnapshot>();
         var tokenTally = new TokenUsageTally();
 
-        var variables = inputVariables != null
-            ? new Dictionary<string, string>(inputVariables)
-            : [];
-
-        var context = new SimpleExecutionContext(
-            crew.Id,
-            variables,
-            _memoryScope,
-            applicationOutputs,
-            cancellationToken);
-
-        var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
-
-        // Register agent entities and add delegation tools
-        foreach (var agent in agents)
-        {
-            _delegationProvider.RegisterAgentEntity(agent);
-            _delegationProvider.AddDelegationToolsToAgent(agent);
-        }
-
-        if (agents.Count == 0 && crew.Tasks.Count > 0)
-            throw new InvalidOperationException("No agents available for sequential execution");
-
-        _delegationProvider.UpdateExecutionContext(context);
-
-        var taskIds = GetOrderedTaskIds(crew, plan);
-        var agentIndex = 0;
-
         try
         {
+            var variables = inputVariables != null
+                ? new Dictionary<string, string>(inputVariables)
+                : [];
+
+            var context = new SimpleExecutionContext(
+                crew.Id,
+                variables,
+                _memoryScope,
+                applicationOutputs,
+                cancellationToken);
+
+            // Setup inside the barrier — an agent-less crew is the everyday failure, and it
+            // has to produce a terminal event like any other exit.
+            var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
+
+            // Register agent entities and add delegation tools
+            foreach (var agent in agents)
+            {
+                _delegationProvider.RegisterAgentEntity(agent);
+                _delegationProvider.AddDelegationToolsToAgent(agent);
+            }
+
+            if (agents.Count == 0 && crew.Tasks.Count > 0)
+                throw new InvalidOperationException("No agents available for sequential execution");
+
+            _delegationProvider.UpdateExecutionContext(context);
+
+            var taskIds = GetOrderedTaskIds(crew, plan);
+            var agentIndex = 0;
+
             foreach (var taskId in taskIds)
             {
                 cancellationToken.ThrowIfCancellationRequested();

@@ -146,6 +146,11 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         // winning result.
         var tokenTally = new TokenUsageTally();
 
+        // The terminal event goes out on EVERY exit — setup included: "consensus not
+        // reached" was the only failure this mode reported, and a throwing round, a Ctrl+C
+        // or an agent-less crew escaped silently.
+        try
+        {
         // Load all agents
         var agents = new List<DomainAgent>();
         foreach (var agentId in crew.Agents)
@@ -163,10 +168,6 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
             ? plannedTasks.Select(pt => pt.TaskId)
             : crew.Tasks;
 
-        // The terminal event goes out on EVERY exit: "consensus not reached" was the only
-        // failure this mode reported, and a throwing round or a Ctrl+C escaped silently.
-        try
-        {
         foreach (var taskId in taskIds)
         {
             ct.ThrowIfCancellationRequested();

@@ -889,4 +889,50 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
         _memoryScope.Dispose();
         GC.SuppressFinalize(this);
     }
+
+    /// <summary>Counts terminal hook dispatches, for the setup-failure barrier test below.</summary>
+    private sealed class CountingHook : Orkeon.Application.Crew.ICrewExecutionHook
+    {
+        public int CrewFailures { get; private set; }
+        public int CrewCompletions { get; private set; }
+
+        public Task OnTaskCompletedAsync(Orkeon.Application.Crew.TaskExecutionSnapshot snapshot, CancellationToken ct) => Task.CompletedTask;
+
+        public Task OnCrewCompletedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot snapshot, CancellationToken ct)
+        {
+            CrewCompletions++;
+            return Task.CompletedTask;
+        }
+
+        public Task OnCrewFailedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot snapshot, Exception? ex, CancellationToken ct)
+        {
+            CrewFailures++;
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task A_setup_failure_still_reports_a_terminal_event()
+    {
+        // The everyday failure — a manager that does not exist — used to escape before the
+        // barrier even opened: the fault barrier covered the task loop, not the setup, so a
+        // mis-declared crew ended with no terminal event and a watcher frozen on nothing.
+        var hook = new CountingHook();
+        var strategy = new HierarchicalProcessStrategy(
+            new MinimalTaskRepository(_tasks),
+            new MinimalAgentRepository(_agents),
+            _logger,
+            _managerAgent,
+            _executionService,
+            _memoryScope,
+            hook);
+
+        var crew = CreateSimpleCrew();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => strategy.ExecuteHierarchicalAsync(crew, AgentId.Create(), cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(1, hook.CrewFailures);
+        Assert.Equal(0, hook.CrewCompletions);
+    }
 }

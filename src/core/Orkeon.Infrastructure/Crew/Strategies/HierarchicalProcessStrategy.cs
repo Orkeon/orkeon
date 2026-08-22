@@ -90,38 +90,38 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     {
         LogStartingHierarchicalExecutionForCrew(crew.Id, managerAgentId);
 
-        var managerAgent = await _agentRepository.GetByIdAsync(managerAgentId, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Manager agent {managerAgentId} not found");
-
         var startTime = DateTime.UtcNow;
-        var workerAgents = await GetWorkerAgentsAsync(crew, managerAgent).ConfigureAwait(false);
-
-        if (workerAgents.Count == 0)
-            throw new InvalidOperationException("No worker agents available for hierarchical execution");
-
-        var variables = inputVariables != null
-            ? new Dictionary<string, string>(inputVariables)
-            : [];
-
-        var applicationTaskOutputs = new List<ApplicationTaskOutput>();
-        var context = new SimpleExecutionContext(
-            crew.Id, variables, _memoryScope,
-            applicationTaskOutputs, cancellationToken);
-
-        // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
-        // Records every worker execution, including revision re-executions. The manager's
-        // own assign/review LLM usage is not surfaced by IManagerAgent and stays unmetered.
-        var tokenTally = new TokenUsageTally();
-
         var results = new List<DomainTaskOutput>();
         var taskSnapshots = new List<TaskExecutionSnapshot>();
 
-        // The terminal event goes out on EVERY exit — success, cancellation, failure. Without
-        // the two catches, a Ctrl+C or a throwing task ended the run with the watcher's screen
-        // frozen mid-progress: only the sequential mode had this barrier, and "no mode is
-        // second-class" was true of the happy path alone.
+        // The terminal event goes out on EVERY exit — success, cancellation, failure — and
+        // the barrier covers SETUP as well as the loop: a missing manager or an agent-less
+        // crew is the everyday failure, and ending it without a terminal event left the
+        // watcher's screen frozen on nothing at all.
         try
         {
+            var managerAgent = await _agentRepository.GetByIdAsync(managerAgentId, cancellationToken).ConfigureAwait(false)
+                ?? throw new InvalidOperationException($"Manager agent {managerAgentId} not found");
+
+            var workerAgents = await GetWorkerAgentsAsync(crew, managerAgent).ConfigureAwait(false);
+
+            if (workerAgents.Count == 0)
+                throw new InvalidOperationException("No worker agents available for hierarchical execution");
+
+            var variables = inputVariables != null
+                ? new Dictionary<string, string>(inputVariables)
+                : [];
+
+            var applicationTaskOutputs = new List<ApplicationTaskOutput>();
+            var context = new SimpleExecutionContext(
+                crew.Id, variables, _memoryScope,
+                applicationTaskOutputs, cancellationToken);
+
+            // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
+            // Records every worker execution, including revision re-executions. The manager's
+            // own assign/review LLM usage is not surfaced by IManagerAgent and stays unmetered.
+            var tokenTally = new TokenUsageTally();
+
             foreach (var taskId in crew.Tasks)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -147,6 +147,13 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 taskSnapshots.Add(snapshot);
                 await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
             }
+
+            await _hooks.CrewCompletedAsync(
+                CrewHookDispatcher.Snapshot(
+                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Completed),
+                cancellationToken).ConfigureAwait(false);
+
+            return BuildCrewOutput(results, workerAgents, managerAgent, crew, startTime, tokenTally);
         }
         catch (OperationCanceledException)
         {
@@ -165,13 +172,6 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
-
-        await _hooks.CrewCompletedAsync(
-            CrewHookDispatcher.Snapshot(
-                crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Completed),
-            cancellationToken).ConfigureAwait(false);
-
-        return BuildCrewOutput(results, workerAgents, managerAgent, crew, startTime, tokenTally);
     }
 
     private async Task<List<DomainAgent>> GetWorkerAgentsAsync(DomainCrew crew, DomainAgent managerAgent)

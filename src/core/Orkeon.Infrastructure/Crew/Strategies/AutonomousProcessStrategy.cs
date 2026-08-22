@@ -116,27 +116,34 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         LogStartingAutonomousExecution(crew.Id, budget.MaxToolCalls, budget.MaxDelegationDepth);
 
         var startTime = DateTime.UtcNow;
-        var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
-
-        if (agents.Count == 0)
-            throw new InvalidOperationException("No agents available for autonomous execution.");
-
-        // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
-        // Thread-safe: A2A channel handlers record delegated executions concurrently.
-        var tokenTally = new TokenUsageTally();
-
-        // Register all agents on the channel
-        var registrations = RegisterAgentsOnChannel(agents, budget, tokenTally);
-
-        var variables = inputVariables != null
-            ? new Dictionary<string, string>(inputVariables)
-            : [];
 
         var applicationOutputs = new List<ApplicationTaskOutput>();
         var domainResults = new List<TaskOutput>();
+        var agents = new List<DomainAgent>();
+        var tokenTally = new TokenUsageTally();
+        List<IDisposable> registrations = [];
 
         try
         {
+            // Setup inside the barrier: an agent-less crew is the everyday failure, and it
+            // has to produce a terminal event like any other exit.
+            agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
+
+            if (agents.Count == 0)
+                throw new InvalidOperationException("No agents available for autonomous execution.");
+
+            // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
+            // Thread-safe: A2A channel handlers record delegated executions concurrently.
+            // (The tally is created above so the compiler can see it assigned on the
+            // BudgetExhausted fall-through; it records nothing until agents register.)
+
+            // Register all agents on the channel
+            registrations = RegisterAgentsOnChannel(agents, budget, tokenTally);
+
+            var variables = inputVariables != null
+                ? new Dictionary<string, string>(inputVariables)
+                : [];
+
             foreach (var taskId in crew.Tasks)
             {
                 cancellationToken.ThrowIfCancellationRequested();

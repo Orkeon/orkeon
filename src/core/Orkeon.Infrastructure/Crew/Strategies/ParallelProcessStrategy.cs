@@ -102,6 +102,15 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             ? new Dictionary<string, string>(inputVariables)
             : [];
 
+        var taskSnapshots = new System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot>();
+        var executionTasks = new List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>>();
+
+        // The barrier covers setup AND the fan-out loop, not only the WhenAll: a cancellation
+        // firing mid-fan-out used to escape with tasks 1..n-1 already launched — no terminal
+        // event, and orphans still emitting task.completed after the strategy had returned.
+        (DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)[] results;
+        try
+        {
         // Load all agents
         var agents = new List<DomainAgent>();
         foreach (var agentId in crew.Agents)
@@ -113,9 +122,6 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         if (agents.Count == 0)
             throw new InvalidOperationException("No agents available for parallel execution");
 
-        // Load all tasks and create execution pairs, using plan ordering
-        var taskSnapshots = new System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot>();
-        var executionTasks = new List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>>();
         var taskIndex = 0;
 
         // Use plan tasks if available, otherwise fall back to crew tasks
@@ -207,13 +213,14 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
 
         // Wait for all tasks. One faulted task means WhenAll throws — the terminal event
         // must still go out, or a watcher sees a run frozen at its last completed sibling.
-        (DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)[] results;
-        try
-        {
-            results = await System.Threading.Tasks.Task.WhenAll(executionTasks).ConfigureAwait(false);
+        results = await System.Threading.Tasks.Task.WhenAll(executionTasks).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
+            // Let the already-launched tasks settle before the terminal event: they observe
+            // the same token, and a task.completed emitted AFTER the terminal event would
+            // read as a run speaking from beyond its own grave.
+            await SettleAsync(executionTasks).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Canceled, "Execution was cancelled."),
@@ -222,6 +229,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         }
         catch (Exception ex)
         {
+            await SettleAsync(executionTasks).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed, ex.Message),
@@ -250,6 +258,25 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             metadata: tokenTally
                 .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
                 .Build());
+    }
+
+    /// <summary>
+    /// Awaits every launched task, swallowing their outcomes — the barrier is about to
+    /// report the crew-level failure, and a faulted sibling must neither mask it nor
+    /// outlive it.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Quiescing already-launched tasks before the terminal dispatch; their individual outcomes are already in the snapshots.")]
+    private static async System.Threading.Tasks.Task SettleAsync(
+        List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>> tasks)
+    {
+        try
+        {
+            await System.Threading.Tasks.Task.WhenAll(tasks).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Individual failures were converted or are being reported by the caller.
+        }
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Starting parallel execution for crew {CrewId}")]

@@ -175,6 +175,10 @@ tasks:
 
         var (_, _, _, hook) = await RunAsync(CrewYaml(mode), cancellingClient, cts.Token);
 
+        // Terminal event, not specifically CrewFailed: the execution service converts a
+        // cooperative cancellation into a failed TaskResult, so a mode whose fan-out already
+        // completed (parallel, legitimately) reports Completed with failed tasks. What no
+        // mode may do is go silent — the frozen-screen failure this theory exists to pin.
         Assert.True(
             hook.CrewCompletions + hook.CrewFailures > 0,
             $"mode '{mode}' went silent on cancellation — no terminal event reached the hook");
