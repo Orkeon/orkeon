@@ -75,3 +75,30 @@ internal sealed record OrkeonHostOptions
     /// </summary>
     public TimeSpan ShutdownGracePeriod { get; init; } = TimeSpan.FromSeconds(20);
 }
+
+/// <summary>
+/// A configuration the host refuses to start on. Distinct from any runtime failure because
+/// the exit codes differ on purpose: a config error exits 78 (EX_CONFIG), which the systemd
+/// unit lists in RestartPreventExitStatus — restarting on a typo would loop every ten seconds
+/// and bury the one message the operator needs to read.
+/// </summary>
+internal sealed class HostConfigurationException : Exception
+{
+    /// <summary>The process exit code for a refused configuration (sysexits EX_CONFIG).</summary>
+    public const int ExitCode = 78;
+
+    /// <summary>Creates the exception with the operator-facing reason.</summary>
+    public HostConfigurationException(string message) : base(message)
+    {
+    }
+
+    /// <summary>Parameterless form for serializers; prefer the message overload.</summary>
+    public HostConfigurationException() : base("The host configuration is invalid.")
+    {
+    }
+
+    /// <summary>Message-and-cause form.</summary>
+    public HostConfigurationException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+}

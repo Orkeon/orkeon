@@ -97,7 +97,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 FinalOutput: "Crew execution failed: CrewId cannot be null",
                 TaskOutputs: [],
                 Duration: stopwatch.Elapsed,
-                TokensUsed: null); // nothing executed — nothing was measured
+                TokensUsed: null) // nothing executed — nothing was measured
+            { Succeeded = false };
         }
 
         LogOrchestratingCrewExecution(crewId);
@@ -161,7 +162,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 FinalOutput: domainOutput.Output,
                 TaskOutputs: domainOutput.TaskOutputs?.Select(ConvertTaskOutput).ToList() ?? [],
                 Duration: stopwatch.Elapsed,
-                TokensUsed: ExtractTokenUsage(domainOutput));
+                TokensUsed: ExtractTokenUsage(domainOutput))
+            { Succeeded = domainOutput.Success };
         }
         catch (Exception ex)
         {
@@ -178,7 +180,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 FinalOutput: $"Crew execution failed: {ex.Message}",
                 TaskOutputs: [],
                 Duration: stopwatch.Elapsed,
-                TokensUsed: null); // failed before telemetry could be collected
+                TokensUsed: null) // failed before telemetry could be collected
+            { Succeeded = false };
         }
         }
     }

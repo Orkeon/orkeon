@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,39 +14,39 @@ namespace Orkeon.Host;
 /// finish before the process leaves.
 /// </para>
 /// </summary>
+[Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: validates operator-supplied crew paths at service start, before any VFS mount exists.")]
 internal sealed partial class CrewHostService : BackgroundService
 {
     private readonly CrewHostRegistry _registry;
     private readonly OrkeonHostOptions _options;
-    private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<CrewHostService> _logger;
 
-    /// <summary>Builds the service over the registry and the host's lifetime.</summary>
+    /// <summary>Builds the service over the registry and the host's options.</summary>
     public CrewHostService(
         CrewHostRegistry registry,
         IOptions<OrkeonHostOptions> options,
-        IHostApplicationLifetime lifetime,
         ILogger<CrewHostService> logger)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
-        _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <inheritdoc />
+    public override Task StartAsync(CancellationToken cancellationToken)
+    {
+        // Validated in StartAsync, deliberately: a refused configuration fails the host
+        // start itself — BEFORE UseSystemd() sends READY=1. The first version validated
+        // after readiness, so systemd recorded a host with no crew, or with a crew path
+        // that does not exist, as "active (running)" right up to its clean exit.
+        ValidateConfiguration();
+        return base.StartAsync(cancellationToken);
     }
 
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (_registry.Crews.Count == 0)
-        {
-            // A daemon hosting nothing is a configuration mistake, not a state to sit in
-            // quietly: systemd would report it as healthy forever.
-            LogNoCrewsConfigured(OrkeonHostOptions.SectionName);
-            _lifetime.StopApplication();
-            return;
-        }
-
         foreach (var crew in _registry.Crews)
             LogHostingCrew(crew.Name, crew.Path, crew.Profile.MaxConcurrentRuns);
 
@@ -61,6 +60,47 @@ internal sealed partial class CrewHostService : BackgroundService
         }
 
         await DrainAsync().ConfigureAwait(false);
+    }
+
+    private void ValidateConfiguration()
+    {
+        if (_registry.Crews.Count == 0)
+        {
+            // A daemon hosting nothing is a configuration mistake, not a state to sit in
+            // quietly: systemd would report it as healthy forever.
+            LogNoCrewsConfigured(OrkeonHostOptions.SectionName);
+            throw new HostConfigurationException(
+                $"No hosted crew is configured under '{OrkeonHostOptions.SectionName}:Crews'.");
+        }
+
+        foreach (var crew in _registry.Crews)
+        {
+            if (string.IsNullOrWhiteSpace(crew.Name) || string.IsNullOrWhiteSpace(crew.Path))
+                throw new HostConfigurationException("Every hosted crew needs a Name and a Path.");
+
+            // OUT-OF-SCOPE: probing the operator-supplied crew path; host bootstrap runs
+            // before the VFS mounts exist. Discovered at startup on purpose — the first
+            // version only found a missing crew on the first user message, when the daemon
+            // was already "ready" and every run could only fail.
+            if (!File.Exists(crew.Path) && !Directory.Exists(crew.Path))
+                throw new HostConfigurationException(
+                    $"Hosted crew '{crew.Name}' points at '{crew.Path}', which does not exist.");
+
+            if (crew.Profile.MaxConcurrentRuns < 1)
+                throw new HostConfigurationException(
+                    $"Hosted crew '{crew.Name}' declares MaxConcurrentRuns {crew.Profile.MaxConcurrentRuns}; at least 1 is required.");
+        }
+
+        // Zero cancels every run at its first instant; past the CancelAfter ceiling the
+        // runner would throw on every start. Both are configuration mistakes, refused here
+        // with the words to fix them rather than discovered one failed run at a time.
+        if (_options.RunTimeout <= TimeSpan.Zero || _options.RunTimeout.TotalMilliseconds > int.MaxValue)
+            throw new HostConfigurationException(
+                $"RunTimeout must be positive and under ~24.8 days; got {_options.RunTimeout}.");
+
+        if (_options.ShutdownGracePeriod < TimeSpan.Zero)
+            throw new HostConfigurationException(
+                $"ShutdownGracePeriod cannot be negative; got {_options.ShutdownGracePeriod}.");
     }
 
     /// <summary>
@@ -83,6 +123,12 @@ internal sealed partial class CrewHostService : BackgroundService
         var stopped = _registry.RequestStopAll();
         if (stopped > 0)
             LogStoppedRemaining(stopped);
+
+        // Give the cancelled runs a moment to actually unwind and release their slots —
+        // asking and immediately leaving would hand systemd a process still mid-teardown.
+        var teardown = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        while (_registry.Running.Count > 0 && DateTimeOffset.UtcNow < teardown)
+            await Task.Delay(TimeSpan.FromMilliseconds(200), CancellationToken.None).ConfigureAwait(false);
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "No hosted crew is configured under '{Section}:Crews'; the service has nothing to do and is stopping.")]
@@ -96,34 +142,4 @@ internal sealed partial class CrewHostService : BackgroundService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Grace period elapsed: asked {Stopped} run(s) to stop")]
     private partial void LogStoppedRemaining(int stopped);
-}
-
-/// <summary>
-/// Reports whether the service is doing what it was configured to do — hosting crews, and not
-/// wedged at its concurrency ceiling.
-/// </summary>
-internal sealed class CrewHostHealthCheck : IHealthCheck
-{
-    private readonly CrewHostRegistry _registry;
-
-    /// <summary>Builds the check over the registry.</summary>
-    public CrewHostHealthCheck(CrewHostRegistry registry) =>
-        _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-
-    /// <inheritdoc />
-    public Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context, CancellationToken cancellationToken = default)
-    {
-        if (_registry.Crews.Count == 0)
-            return Task.FromResult(HealthCheckResult.Unhealthy("No hosted crew is configured."));
-
-        var running = _registry.Running.Count;
-        var capacity = _registry.Crews.Sum(crew => crew.Profile.MaxConcurrentRuns);
-
-        // Full is not broken — it is a service doing all the work it agreed to. Degraded says
-        // that plainly, so an operator scaling up sees it and a supervisor does not restart it.
-        return Task.FromResult(running >= capacity
-            ? HealthCheckResult.Degraded($"At capacity: {running}/{capacity} run(s) in flight.")
-            : HealthCheckResult.Healthy($"{running}/{capacity} run(s) in flight."));
-    }
 }

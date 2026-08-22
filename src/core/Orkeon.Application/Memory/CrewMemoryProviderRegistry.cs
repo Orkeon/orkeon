@@ -28,6 +28,17 @@ public sealed class CrewMemoryProviderRegistry
     }
 
     /// <summary>
+    /// Forgets a crew's selection entirely — the daemon-side counterpart of
+    /// <see cref="SetProvider"/>: every hosted message loads a fresh crew with a fresh id,
+    /// and an entry per run that nothing ever removes is a leak with a slow fuse.
+    /// </summary>
+    public void Remove(CrewId crewId)
+    {
+        ArgumentNullException.ThrowIfNull(crewId);
+        _providers.TryRemove(crewId, out _);
+    }
+
+    /// <summary>
     /// Returns the crew's declared provider, or <c>null</c> when none was recorded.
     /// </summary>
     public string? GetProvider(CrewId crewId)

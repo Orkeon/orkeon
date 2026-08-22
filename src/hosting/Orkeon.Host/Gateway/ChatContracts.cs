@@ -121,6 +121,14 @@ internal interface IConversationRouter
     /// <summary>The run identifier already serving this conversation, or null when none is.</summary>
     string? FindRun(string conversationId);
 
+    /// <summary>
+    /// Atomically claims the conversation for a new run. False when it is already claimed —
+    /// the one-run-per-conversation rule, enforced here rather than by a check-then-act in
+    /// the gateway: two messages interleaving across an await both passed that check, and
+    /// two runs answered one thread.
+    /// </summary>
+    bool TryBegin(string conversationId);
+
     /// <summary>Remembers that <paramref name="runId"/> is serving <paramref name="conversationId"/>.</summary>
     void Attach(string conversationId, string runId);
 

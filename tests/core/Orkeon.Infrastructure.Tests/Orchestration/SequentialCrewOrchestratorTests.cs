@@ -386,6 +386,9 @@ public class SequentialCrewOrchestratorTests
         // Assert — the orchestrator catches exceptions and returns a failure output
         Assert.NotNull(result);
         Assert.Contains("Crew execution failed", result.FinalOutput);
+        // The machine-readable half: KickoffAsync never throws, so Succeeded is the only way
+        // a host can tell "the crew answered" from "the crew died and here is the apology".
+        Assert.False(result.Succeeded);
     }
 
     [Fact]
@@ -494,6 +497,9 @@ public class SequentialCrewOrchestratorTests
 
         // Assert — failure output carries no fabricated zero usage
         Assert.Contains("Crew execution failed", result.FinalOutput);
+        // The machine-readable half: KickoffAsync never throws, so Succeeded is the only way
+        // a host can tell "the crew answered" from "the crew died and here is the apology".
+        Assert.False(result.Succeeded);
         Assert.Null(result.TokensUsed);
     }
 

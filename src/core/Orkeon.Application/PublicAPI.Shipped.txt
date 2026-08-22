@@ -4793,6 +4793,8 @@ Orkeon.Application.Interfaces.Services.CrewOutput.Duration.get -> System.TimeSpa
 Orkeon.Application.Interfaces.Services.CrewOutput.Duration.init -> void
 Orkeon.Application.Interfaces.Services.CrewOutput.FinalOutput.get -> string!
 Orkeon.Application.Interfaces.Services.CrewOutput.FinalOutput.init -> void
+Orkeon.Application.Interfaces.Services.CrewOutput.Succeeded.get -> bool
+Orkeon.Application.Interfaces.Services.CrewOutput.Succeeded.init -> void
 Orkeon.Application.Interfaces.Services.CrewOutput.TaskOutputs.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Execution.TaskOutput!>!
 Orkeon.Application.Interfaces.Services.CrewOutput.TaskOutputs.init -> void
 Orkeon.Application.Interfaces.Services.CrewOutput.TokensUsed.get -> Orkeon.Application.Interfaces.Services.TokenUsage?
@@ -4923,6 +4925,7 @@ Orkeon.Application.Interfaces.Services.IMemorySearchService.SearchAsync(Orkeon.D
 Orkeon.Application.Interfaces.Services.IMemoryService
 Orkeon.Application.Interfaces.Services.IMemoryService.ClearMemoryAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Domain.Memory.MemoryType? typeFilter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Services.IMemoryService.GetMemorySystem(Orkeon.Domain.Common.CrewId! crewId) -> Orkeon.Application.Interfaces.Services.ICrewMemorySystem!
+Orkeon.Application.Interfaces.Services.IMemoryService.ReleaseMemorySystem(Orkeon.Domain.Common.CrewId! crewId) -> void
 Orkeon.Application.Interfaces.Services.IMemoryService.SaveMemoryAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Domain.Memory.MemoryItem! item, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Services.IMemoryService.SearchMemoryAsync(Orkeon.Domain.Common.CrewId! crewId, string! query, int maxResults = 10, Orkeon.Domain.Memory.MemoryType? typeFilter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryItem!>!>!
 Orkeon.Application.Interfaces.Services.IShortTermMemory
@@ -5246,6 +5249,7 @@ Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.Sho
 Orkeon.Application.Memory.CrewMemoryProviderRegistry
 Orkeon.Application.Memory.CrewMemoryProviderRegistry.CrewMemoryProviderRegistry() -> void
 Orkeon.Application.Memory.CrewMemoryProviderRegistry.GetProvider(Orkeon.Domain.Common.CrewId! crewId) -> string?
+Orkeon.Application.Memory.CrewMemoryProviderRegistry.Remove(Orkeon.Domain.Common.CrewId! crewId) -> void
 Orkeon.Application.Memory.CrewMemoryProviderRegistry.SetProvider(Orkeon.Domain.Common.CrewId! crewId, string? providerType) -> void
 Orkeon.Application.Memory.DTOs.MemoryConfigurationDto
 Orkeon.Application.Memory.DTOs.MemoryConfigurationDto.<Clone>$() -> Orkeon.Application.Memory.DTOs.MemoryConfigurationDto!
@@ -5340,6 +5344,7 @@ Orkeon.Application.Memory.MemoryService.ClearMemoryAsync(Orkeon.Domain.Common.Cr
 Orkeon.Application.Memory.MemoryService.Dispose() -> void
 Orkeon.Application.Memory.MemoryService.GetMemorySystem(Orkeon.Domain.Common.CrewId! crewId) -> Orkeon.Application.Interfaces.Services.ICrewMemorySystem!
 Orkeon.Application.Memory.MemoryService.MemoryService(Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory! memoryProviderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryService!>! logger, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> void
+Orkeon.Application.Memory.MemoryService.ReleaseMemorySystem(Orkeon.Domain.Common.CrewId! crewId) -> void
 Orkeon.Application.Memory.MemoryService.SaveMemoryAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Domain.Memory.MemoryItem! item, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Memory.MemoryService.SearchMemoryAsync(Orkeon.Domain.Common.CrewId! crewId, string! query, int maxResults = 10, Orkeon.Domain.Memory.MemoryType? typeFilter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryItem!>!>!
 Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto

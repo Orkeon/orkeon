@@ -33,6 +33,7 @@ internal sealed record HostedRun
 internal sealed class CrewHostRegistry
 {
     private readonly ConcurrentDictionary<string, HostedRun> _runs = new(StringComparer.Ordinal);
+    private readonly Lock _admission = new();
     private readonly OrkeonHostOptions _options;
     private readonly TimeProvider _time;
 
@@ -60,7 +61,7 @@ internal sealed class CrewHostRegistry
     /// is unknown or already at its concurrency limit. Returning null rather than throwing is
     /// deliberate: "we are busy" is an answer a channel can relay, not an incident.
     /// </summary>
-    public HostedRun? TryStart(string crewName, string origin, CancellationToken linkedTo = default)
+    public HostedRun? TryStart(string crewName, string origin)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewName);
         ArgumentException.ThrowIfNullOrWhiteSpace(origin);
@@ -70,23 +71,33 @@ internal sealed class CrewHostRegistry
             return null;
 
         // Counted rather than gated by a semaphore: the caller needs to know *now* whether it
-        // was accepted, so it can say so, instead of queueing behind an invisible wait.
-        var inFlight = _runs.Values.Count(run =>
-            string.Equals(run.CrewName, crew.Name, StringComparison.OrdinalIgnoreCase));
-
-        if (inFlight >= crew.Profile.MaxConcurrentRuns)
-            return null;
-
-        var run = new HostedRun
+        // was accepted, so it can say so, instead of queueing behind an invisible wait. Count
+        // and admit under one short lock — count-then-add let two simultaneous callers both
+        // read Max-1 and both get in, overshooting the one bound this registry exists for.
+        //
+        // The run's cancellation source is deliberately NOT linked to any caller token: on
+        // SIGTERM the channel's stopping token fires at t=0, and runs linked to it were dead
+        // before the shutdown grace period ever started — the drain politely waited for
+        // corpses. Stopping a run is the registry's own gesture (RequestStop / the drain).
+        lock (_admission)
         {
-            Id = Guid.NewGuid().ToString("N")[..12],
-            CrewName = crew.Name,
-            Origin = origin,
-            StartedAt = _time.GetUtcNow(),
-            Cancellation = CancellationTokenSource.CreateLinkedTokenSource(linkedTo),
-        };
+            var inFlight = _runs.Values.Count(run =>
+                string.Equals(run.CrewName, crew.Name, StringComparison.OrdinalIgnoreCase));
 
-        return _runs.TryAdd(run.Id, run) ? run : null;
+            if (inFlight >= crew.Profile.MaxConcurrentRuns)
+                return null;
+
+            var run = new HostedRun
+            {
+                Id = Guid.NewGuid().ToString("N")[..12],
+                CrewName = crew.Name,
+                Origin = origin,
+                StartedAt = _time.GetUtcNow(),
+                Cancellation = new CancellationTokenSource(),
+            };
+
+            return _runs.TryAdd(run.Id, run) ? run : null;
+        }
     }
 
     /// <summary>Releases a run's slot and disposes its cancellation source.</summary>
@@ -102,11 +113,10 @@ internal sealed class CrewHostRegistry
     /// </summary>
     public bool RequestStop(string runId)
     {
-        if (!_runs.TryGetValue(runId, out var run) || run.Cancellation.IsCancellationRequested)
+        if (!_runs.TryGetValue(runId, out var run))
             return false;
 
-        run.Cancellation.Cancel();
-        return true;
+        return TryCancel(run);
     }
 
     /// <summary>Asks every run in flight to stop, and reports how many were asked.</summary>
@@ -115,13 +125,31 @@ internal sealed class CrewHostRegistry
         var asked = 0;
         foreach (var run in _runs.Values)
         {
-            if (run.Cancellation.IsCancellationRequested)
-                continue;
-
-            run.Cancellation.Cancel();
-            asked++;
+            if (TryCancel(run))
+                asked++;
         }
 
         return asked;
+    }
+
+    /// <summary>
+    /// Cancels a run's source, racing its own completion gracefully: Finish disposes the
+    /// source, and a Stop pressed in the same instant a run ends must read as "already
+    /// finished", not throw ObjectDisposedException out of a button handler.
+    /// </summary>
+    private static bool TryCancel(HostedRun run)
+    {
+        try
+        {
+            if (run.Cancellation.IsCancellationRequested)
+                return false;
+
+            run.Cancellation.Cancel();
+            return true;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
     }
 }

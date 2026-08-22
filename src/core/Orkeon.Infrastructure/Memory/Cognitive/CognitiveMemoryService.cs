@@ -78,6 +78,10 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
         _innerMemoryService.GetMemorySystem(crewId);
 
     /// <inheritdoc />
+    public void ReleaseMemorySystem(CrewId crewId) =>
+        _innerMemoryService.ReleaseMemorySystem(crewId);
+
+    /// <inheritdoc />
     public Task SaveMemoryAsync(CrewId crewId, MemoryItem item, CancellationToken cancellationToken = default) =>
         _innerMemoryService.SaveMemoryAsync(crewId, item, cancellationToken);
 

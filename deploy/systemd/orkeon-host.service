@@ -22,7 +22,6 @@ Wants=network-online.target
 # loaded, not when the process starts. Without it systemd would consider a host that failed to
 # read its configuration "started" for as long as it took to exit.
 Type=notify
-NotifyAccess=all
 
 ExecStart=/opt/orkeon/orkeon-host --settings /etc/orkeon/appsettings.json
 WorkingDirectory=/var/lib/orkeon
@@ -31,14 +30,20 @@ WorkingDirectory=/var/lib/orkeon
 # telling the operator something, and restarting it in a loop would bury the message.
 Restart=on-failure
 RestartSec=10s
+# Exit 78 (EX_CONFIG) is the host refusing its configuration — a missing crew path, an empty
+# allow list, an unset token variable. Restarting on that loops every ten seconds and buries
+# the one message the operator needs to read; a crash (exit 1) still restarts.
+RestartPreventExitStatus=78
 
 # Longer than the host's own ShutdownGracePeriod (20s by default), so runs in flight get their
 # grace period before systemd loses patience. Raising one without the other makes the setting
 # that stays behind meaningless.
 TimeoutStopSec=45s
 
-# The watchdog systemd resets on each heartbeat from UseSystemd().
-WatchdogSec=60s
+# No WatchdogSec, deliberately. Microsoft.Extensions.Hosting.Systemd sends READY=1 and
+# STOPPING=1 and nothing else — it has no WATCHDOG=1 keepalive. A watchdog armed here would
+# declare the host hung on its first missed (never-sent) ping and kill it every interval,
+# taking the runs in flight with it, forever.
 
 User=orkeon
 Group=orkeon

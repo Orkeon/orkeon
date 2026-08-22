@@ -12,6 +12,10 @@ namespace Orkeon.Host.Gateway;
 /// </summary>
 internal sealed class ThreadIsRunRouter : IConversationRouter
 {
+    // A claimed-but-not-yet-started conversation holds this marker: the claim must exist
+    // before the run id does, or the gap between them is exactly the race TryBegin closes.
+    private const string PendingRun = "";
+
     private readonly ConcurrentDictionary<string, string> _runs = new(StringComparer.Ordinal);
     private readonly string _defaultCrew;
 
@@ -37,7 +41,14 @@ internal sealed class ThreadIsRunRouter : IConversationRouter
     public string? FindRun(string conversationId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
-        return _runs.TryGetValue(conversationId, out var runId) ? runId : null;
+        return _runs.TryGetValue(conversationId, out var runId) && runId.Length > 0 ? runId : null;
+    }
+
+    /// <inheritdoc />
+    public bool TryBegin(string conversationId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
+        return _runs.TryAdd(conversationId, PendingRun);
     }
 
     /// <inheritdoc />

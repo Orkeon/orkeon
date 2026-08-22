@@ -1,59 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Host.Gateway;
+using Orkeon.Host.Tests.Doubles;
 
 namespace Orkeon.Host.Tests;
-
-/// <summary>Records what the gateway said, in the order it said it.</summary>
-internal sealed class RecordingResponder : IChatResponder
-{
-    public List<(string Kind, string Text)> Sent { get; } = [];
-
-    public Task AcknowledgeAsync(InboundMessage message, string text, CancellationToken ct)
-    {
-        Sent.Add(("ack", text));
-        return Task.CompletedTask;
-    }
-
-    public Task ProgressAsync(InboundMessage message, string text, CancellationToken ct)
-    {
-        Sent.Add(("progress", text));
-        return Task.CompletedTask;
-    }
-
-    public Task CompleteAsync(InboundMessage message, string text, CancellationToken ct)
-    {
-        Sent.Add(("complete", text));
-        return Task.CompletedTask;
-    }
-}
-
-/// <summary>A runner that answers however the test asks it to, without a crew or a model.</summary>
-internal sealed class ScriptedRunner : ICrewRunner
-{
-    public HostedRunResult Result { get; set; } = new(HostedRunOutcome.Completed, "run-1", "done");
-
-    public List<string> Ran { get; } = [];
-
-    public Func<Action<string>?, Action<string>?, Task>? Behaviour { get; set; }
-
-    public async Task<HostedRunResult> RunAsync(
-        string crewName,
-        string prompt,
-        string origin,
-        Action<string>? onProgress = null,
-        Action<string>? onStarted = null,
-        CancellationToken cancellationToken = default)
-    {
-        Ran.Add($"{crewName}:{prompt}");
-        onStarted?.Invoke(Result.RunId ?? "run-1");
-
-        if (Behaviour is not null)
-            await Behaviour(onProgress, onStarted);
-
-        return Result;
-    }
-}
 
 /// <summary>
 /// GATE-03: the order in which a message becomes a run — authorize, route, acknowledge, work —
@@ -116,10 +66,13 @@ public class ChatGatewayTests
     }
 
     [Fact]
-    public async Task The_acknowledgement_goes_out_before_the_work_starts()
+    public async Task The_acknowledgement_rides_on_admission_and_goes_out_before_the_work()
     {
         // Every chat platform's response window is measured in seconds; a crew is measured in
-        // minutes. Acknowledging afterwards would be acknowledging into a closed window.
+        // minutes. But acknowledging *before admission* promised work — with a Stop button
+        // attached to nothing — that the very next line could refuse as Busy. So the ack goes
+        // out the moment the slot is reserved: still before any crew work, never before a
+        // refusal.
         var (gateway, runner, _, _) = Build();
         var responder = new RecordingResponder();
         var acknowledgedBeforeRun = false;
@@ -135,6 +88,58 @@ public class ChatGatewayTests
         Assert.Equal("ack", responder.Sent[0].Kind);
         Assert.Equal("complete", responder.Sent[^1].Kind);
         Assert.Equal("support:do the thing", Assert.Single(runner.Ran));
+    }
+
+    [Fact]
+    public async Task A_refused_run_gets_an_answer_but_no_acknowledgement()
+    {
+        // "Working on it…" plus a Stop button, followed by "we are busy", is a promise
+        // followed by its own retraction — and a button that does nothing when pressed.
+        var (gateway, runner, _, _) = Build();
+        runner.Admits = false;
+        runner.Result = new HostedRunResult(HostedRunOutcome.Busy, null, "busy, try again shortly");
+
+        var responder = new RecordingResponder();
+        await gateway.HandleAsync(Message("do the thing"), responder, TestContext.Current.CancellationToken);
+
+        var reply = Assert.Single(responder.Sent);
+        Assert.Equal("complete", reply.Kind);
+        Assert.Contains("busy", reply.Text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task A_word_starting_with_a_command_is_a_prompt_not_a_command()
+    {
+        // "/stopwatch the build" is work to do, not a stop. First-token match only.
+        var (gateway, runner, _, _) = Build();
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(Message("/stopwatch the build"), responder, TestContext.Current.CancellationToken);
+
+        Assert.Equal("support:/stopwatch the build", Assert.Single(runner.Ran));
+    }
+
+    [Fact]
+    public async Task Two_messages_racing_into_one_conversation_start_one_run()
+    {
+        // The old guard was FindRun-then-await: two messages interleaving across the ack both
+        // passed it, and one thread got two runs whose answers nobody could tell apart. The
+        // claim is now atomic (TryBegin), and this race cannot start a second run.
+        var (gateway, runner, _, _) = Build();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        runner.Behaviour = (_, _) => release.Task;
+
+        var first = gateway.HandleAsync(Message("first"), new RecordingResponder(), TestContext.Current.CancellationToken);
+        var second = gateway.HandleAsync(Message("second"), new RecordingResponder(), TestContext.Current.CancellationToken);
+
+        // Whichever claimed the conversation runs; the other is refused without running.
+        await second.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)
+            .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        release.TrySetResult();
+        await first;
+        await second;
+
+        Assert.Single(runner.Ran);
     }
 
     [Fact]
@@ -158,7 +163,7 @@ public class ChatGatewayTests
         // The bug this pins: attaching the run id only when the run *finished* would have made
         // /stop permanently unable to find anything to stop.
         var (gateway, runner, registry, router) = Build();
-        var started = registry.TryStart("support", "test:thread-1", TestContext.Current.CancellationToken)!;
+        var started = registry.TryStart("support", "test:thread-1")!;
         runner.Result = new HostedRunResult(HostedRunOutcome.Completed, started.Id, "done");
 
         var stopping = new RecordingResponder();
@@ -191,7 +196,7 @@ public class ChatGatewayTests
     public async Task Status_reports_what_the_conversation_is_doing()
     {
         var (gateway, runner, registry, _) = Build();
-        var started = registry.TryStart("support", "test:thread-1", TestContext.Current.CancellationToken)!;
+        var started = registry.TryStart("support", "test:thread-1")!;
         runner.Result = new HostedRunResult(HostedRunOutcome.Completed, started.Id, "done");
 
         var status = new RecordingResponder();

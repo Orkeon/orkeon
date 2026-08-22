@@ -2,6 +2,8 @@ using Orkeon.Host.Gateway;
 
 namespace Orkeon.Host.Tests;
 
+using Orkeon.Host.Tests.Doubles;
+
 /// <summary>
 /// GATE-03: progress is throttled, the acknowledgement and the final answer are not. A run
 /// emits an event per agent thought and per tool call; relaying each one would exhaust a chat

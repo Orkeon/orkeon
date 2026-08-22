@@ -16,6 +16,14 @@ public interface IMemoryService
     ICrewMemorySystem GetMemorySystem(CrewId crewId);
 
     /// <summary>
+    /// Forgets everything held for <paramref name="crewId"/> and releases its resources.
+    /// In a one-shot CLI this never matters — the process exits. In a daemon, where every
+    /// message loads a fresh crew with a fresh id, an unreleased memory system is one leaked
+    /// entry per conversation, forever.
+    /// </summary>
+    void ReleaseMemorySystem(CrewId crewId);
+
+    /// <summary>
     /// Saves a memory item to appropriate memory types.
     /// </summary>
     System.Threading.Tasks.Task SaveMemoryAsync(

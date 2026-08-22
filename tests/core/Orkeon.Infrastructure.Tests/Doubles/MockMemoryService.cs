@@ -11,6 +11,11 @@ namespace Orkeon.Infrastructure.Tests.Doubles;
 /// </summary>
 public sealed class MockMemoryService : IMemoryService
 {
+    public void ReleaseMemorySystem(CrewId crewId)
+    {
+        // Nothing held per crew in this double.
+    }
+
     private readonly List<MemoryItem> _savedItems = [];
     private IReadOnlyList<MemoryItem> _searchResult = Array.Empty<MemoryItem>();
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using IHostApplicationLifetime = Microsoft.Extensions.Hosting.IHostApplicationLifetime;
 
 namespace Orkeon.Host.Gateway;
 
@@ -19,6 +20,7 @@ internal sealed partial class ChatChannelService : BackgroundService
     private readonly CrewHostRegistry _registry;
     private readonly ILoggerFactory _loggers;
     private readonly ILogger<ChatChannelService> _logger;
+    private readonly IHostApplicationLifetime _lifetime;
 
     /// <summary>Builds the service over the channel configuration and the runner.</summary>
     public ChatChannelService(
@@ -26,7 +28,8 @@ internal sealed partial class ChatChannelService : BackgroundService
         ICrewRunner runner,
         CrewHostRegistry registry,
         ILoggerFactory loggers,
-        ILogger<ChatChannelService> logger)
+        ILogger<ChatChannelService> logger,
+        IHostApplicationLifetime lifetime)
     {
         ArgumentNullException.ThrowIfNull(discord);
         _discord = discord.Value;
@@ -34,6 +37,36 @@ internal sealed partial class ChatChannelService : BackgroundService
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _loggers = loggers ?? throw new ArgumentNullException(nameof(loggers));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
+    }
+
+    /// <inheritdoc />
+    public override Task StartAsync(CancellationToken cancellationToken)
+    {
+        // Validated in StartAsync, deliberately: a refused channel configuration fails the
+        // host start itself, before READY=1. The first version logged and returned — the
+        // daemon stayed up, deaf, and reported as started, the one version of the failure
+        // no operator sees before it matters.
+        if (_discord.Enabled)
+        {
+            if (_discord.AllowedUserIds.Count == 0)
+            {
+                LogEmptyAllowList();
+                throw new HostConfigurationException(
+                    "The Discord channel is enabled but Discord:AllowedUserIds is empty — it would answer nobody.");
+            }
+
+            if (_discord.ProgressInterval <= TimeSpan.Zero)
+                throw new HostConfigurationException(
+                    $"Discord:ProgressInterval must be positive; got {_discord.ProgressInterval}.");
+
+            if (_discord.ReadToken() is null)
+                throw new HostConfigurationException(
+                    $"The Discord channel is enabled but the environment variable "
+                    + $"'{_discord.TokenEnvironmentVariable}' is empty or unset.");
+        }
+
+        return base.StartAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -42,16 +75,7 @@ internal sealed partial class ChatChannelService : BackgroundService
         if (!_discord.Enabled)
             return;
 
-        if (_registry.Crews.Count == 0)
-            return;   // CrewHostService already said so and is stopping the application.
-
         var authorizer = new AllowListChatAuthorizer(_discord.AllowedUserIds);
-        if (authorizer.IsEmpty)
-        {
-            LogEmptyAllowList();
-            return;
-        }
-
         var router = new ThreadIsRunRouter(_registry.Crews[0].Name);
         var gateway = new ChatGateway(_runner, router, authorizer, _registry, _loggers.CreateLogger<ChatGateway>());
 
@@ -69,11 +93,33 @@ internal sealed partial class ChatChannelService : BackgroundService
             return Task.CompletedTask;
         };
 
-        await channel.RunAsync(
-            (message, ct) => gateway.HandleAsync(message, channel.Responder, ct),
-            stoppingToken).ConfigureAwait(false);
+        try
+        {
+            await channel.RunAsync(
+                (message, ct) => gateway.HandleAsync(message, channel.Responder, ct),
+                stoppingToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Expected: this is how the host stops us.
+        }
+#pragma warning disable CA1031 // Fault barrier for the channel: the failure mode is chosen here, not propagated blind.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            // A dead channel is a dead service — the daemon exists to be reachable. Exit
+            // non-zero so Restart=on-failure actually restarts: the default behaviour
+            // (StopHost) exits 0, and systemd read a crashed bot as a clean, deliberate stop
+            // that it must respect forever.
+            LogChannelCrashed(ex);
+            Environment.ExitCode = 1;
+            _lifetime.StopApplication();
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The Discord channel is enabled but its allow list is empty; it would answer nobody, so it will not start. Add Discord:AllowedUserIds.")]
     private partial void LogEmptyAllowList();
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "The Discord channel died; stopping the host so the supervisor restarts it")]
+    private partial void LogChannelCrashed(Exception ex);
 }

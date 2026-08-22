@@ -73,9 +73,13 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         if (token is null)
         {
             // Naming the variable is the whole point: "token missing" without it sends an
-            // operator hunting through three files.
+            // operator hunting through three files. And it throws rather than returning: a
+            // silent return left the daemon up, deaf, and reported as healthy — the one
+            // version of this failure no operator ever sees.
             LogNoToken(_options.TokenEnvironmentVariable);
-            return;
+            throw new HostConfigurationException(
+                $"The Discord channel is enabled but the environment variable "
+                + $"'{_options.TokenEnvironmentVariable}' is empty or unset.");
         }
 
         _client.Log += message =>
@@ -84,8 +88,22 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
             return Task.CompletedTask;
         };
 
-        _client.MessageReceived += socketMessage => OnMessageAsync(socketMessage, onMessage, ct);
-        _client.ButtonExecuted += OnButtonAsync;
+        // Handlers are dispatched OFF the gateway task, deliberately. Discord.Net awaits
+        // each handler on the connection's dispatch loop: a handler that runs the whole crew
+        // (minutes) blocks /stop, the stop button, every concurrent thread — and the
+        // HeartbeatAck frames, so any run longer than the heartbeat window forced a
+        // disconnect. That serialization is also what made MaxConcurrentRuns unreachable
+        // from Discord.
+        _client.MessageReceived += socketMessage =>
+        {
+            Dispatch(() => OnMessageAsync(socketMessage, onMessage, ct));
+            return Task.CompletedTask;
+        };
+        _client.ButtonExecuted += component =>
+        {
+            Dispatch(() => OnButtonAsync(component));
+            return Task.CompletedTask;
+        };
 
         await _client.LoginAsync(TokenType.Bot, token).ConfigureAwait(false);
         await _client.StartAsync().ConfigureAwait(false);
@@ -101,6 +119,22 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         }
 
         await _client.StopAsync().ConfigureAwait(false);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fault barrier for detached handlers: an exception here has no caller left to reach, so it is logged instead of lost.")]
+    private void Dispatch(Func<Task> handler)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await handler().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                LogHandlerFailed(ex);
+            }
+        });
     }
 
     private async Task OnMessageAsync(
@@ -166,6 +200,9 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Discord [{Source}] {Message}")]
     private partial void LogFromDiscord(string source, string message);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "A Discord handler failed; the message it served gets no reply")]
+    private partial void LogHandlerFailed(Exception ex);
 }
 
 /// <summary>
@@ -237,10 +274,21 @@ internal sealed partial class DiscordResponder : IChatResponder
         const int limit = 2000;
         const string ellipsis = "\n…(truncated)";
 
-        if (string.IsNullOrEmpty(text))
+        // Whitespace-only counts as empty: Discord refuses a blank body, so the send would
+        // fail and the user's only reading of "it finished" would be total silence.
+        if (string.IsNullOrWhiteSpace(text))
             return "(no output)";
 
-        return text.Length <= limit ? text : text[..(limit - ellipsis.Length)] + ellipsis;
+        if (text.Length <= limit)
+            return text;
+
+        // Never cut inside a surrogate pair: an emoji at the boundary would leave a lone
+        // surrogate, which Discord rejects — turning "too long" into "not sent at all".
+        var cut = limit - ellipsis.Length;
+        if (char.IsHighSurrogate(text[cut - 1]))
+            cut--;
+
+        return text[..cut] + ellipsis;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "No Discord channel {ConversationId} to reply in")]

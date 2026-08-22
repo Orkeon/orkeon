@@ -60,22 +60,24 @@ internal sealed partial class ChatGateway
 
         var text = message.Text.Trim();
 
-        if (text.StartsWith(StopCommand, StringComparison.OrdinalIgnoreCase))
+        // First-token match, not StartsWith: "/stopwatch the build" is a prompt, not a stop.
+        if (IsCommand(text, StopCommand))
         {
             await StopAsync(message, responder, ct).ConfigureAwait(false);
             return;
         }
 
-        if (text.StartsWith(StatusCommand, StringComparison.OrdinalIgnoreCase))
+        if (IsCommand(text, StatusCommand))
         {
             await StatusAsync(message, responder, ct).ConfigureAwait(false);
             return;
         }
 
-        if (_router.FindRun(message.ConversationId) is not null)
+        // One conversation, one run — claimed atomically. A FindRun check followed by an
+        // await let two interleaving messages both pass and start two runs in one thread,
+        // giving the user answers nobody could tell apart.
+        if (!_router.TryBegin(message.ConversationId))
         {
-            // One conversation, one run. Starting a second here would give the user two
-            // answers with no way to tell which question each belongs to.
             await responder
                 .CompleteAsync(message, "This conversation is already running. Use /stop first, or open a new thread.", ct)
                 .ConfigureAwait(false);
@@ -83,8 +85,6 @@ internal sealed partial class ChatGateway
         }
 
         var crewName = _router.ResolveCrew(message);
-        await responder.AcknowledgeAsync(message, $"Working on it with '{crewName}'…", ct).ConfigureAwait(false);
-
         var origin = $"{message.Channel}:{message.ConversationId}";
         HostedRunResult result;
         try
@@ -94,9 +94,15 @@ internal sealed partial class ChatGateway
                 text,
                 origin,
                 progress => Report(message, responder, progress, ct),
-                // Attached as the run starts, not when it ends: a conversation that only
-                // learned the id afterwards could never stop what it was waiting on.
-                runId => _router.Attach(message.ConversationId, runId),
+                // The acknowledgement rides on admission, not before it: acknowledging first
+                // promised work — with a Stop button attached to nothing — that the very next
+                // line could refuse as Busy. And attaching before acknowledging is what makes
+                // that button work from the first second.
+                onStarted: async runId =>
+                {
+                    _router.Attach(message.ConversationId, runId);
+                    await responder.AcknowledgeAsync(message, $"Working on it with '{crewName}'…", ct).ConfigureAwait(false);
+                },
                 ct).ConfigureAwait(false);
         }
         finally
@@ -106,6 +112,11 @@ internal sealed partial class ChatGateway
 
         await responder.CompleteAsync(message, result.Message, ct).ConfigureAwait(false);
     }
+
+    /// <summary>Whether <paramref name="text"/> is <paramref name="command"/> as its first word.</summary>
+    private static bool IsCommand(string text, string command) =>
+        text.StartsWith(command, StringComparison.OrdinalIgnoreCase)
+        && (text.Length == command.Length || char.IsWhiteSpace(text[command.Length]));
 
     private async Task StopAsync(InboundMessage message, IChatResponder responder, CancellationToken ct)
     {

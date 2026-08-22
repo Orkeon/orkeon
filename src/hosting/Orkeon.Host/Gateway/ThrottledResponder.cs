@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace Orkeon.Host.Gateway;
 
 /// <summary>
@@ -9,6 +11,12 @@ namespace Orkeon.Host.Gateway;
 /// those two carry meaning that cannot wait or be merged.
 /// </para>
 /// <para>
+/// The window is **per conversation**. One responder serves every thread, and a shared window
+/// would do two wrong things at once: starve all but one thread of progress, and — worse —
+/// flush thread A's suppressed line into thread B when B finishes first, a structural
+/// cross-conversation content leak in the very component the isolation story leans on.
+/// </para>
+/// <para>
 /// The last suppressed update is **flushed on completion**, so a run whose last progress line
 /// fell inside the window still ends with what it was doing rather than with silence.
 /// </para>
@@ -18,13 +26,16 @@ internal sealed class ThrottledResponder : IChatResponder
     /// <summary>How long a progress update waits before another may go out.</summary>
     public static readonly TimeSpan DefaultInterval = TimeSpan.FromSeconds(2);
 
+    private sealed class ConversationWindow
+    {
+        public DateTimeOffset LastSentAt = DateTimeOffset.MinValue;
+        public string? Suppressed;
+    }
+
     private readonly IChatResponder _inner;
     private readonly TimeSpan _interval;
     private readonly TimeProvider _time;
-    private readonly Lock _gate = new();
-
-    private DateTimeOffset _lastSentAt = DateTimeOffset.MinValue;
-    private string? _suppressed;
+    private readonly ConcurrentDictionary<string, ConversationWindow> _windows = new(StringComparer.Ordinal);
 
     /// <summary>Wraps <paramref name="inner"/>, spacing its progress updates out.</summary>
     public ThrottledResponder(IChatResponder inner, TimeSpan? interval = null, TimeProvider? timeProvider = null)
@@ -41,21 +52,25 @@ internal sealed class ThrottledResponder : IChatResponder
     /// <inheritdoc />
     public Task ProgressAsync(InboundMessage message, string text, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(message);
+
+        var window = _windows.GetOrAdd(message.ConversationId, _ => new ConversationWindow());
+
         bool send;
-        lock (_gate)
+        lock (window)
         {
             var now = _time.GetUtcNow();
-            send = now - _lastSentAt >= _interval;
+            send = now - window.LastSentAt >= _interval;
             if (send)
             {
-                _lastSentAt = now;
-                _suppressed = null;
+                window.LastSentAt = now;
+                window.Suppressed = null;
             }
             else
             {
                 // Keep only the newest: a user catching up wants where the run is now, not the
                 // three places it passed through while the window was closed.
-                _suppressed = text;
+                window.Suppressed = text;
             }
         }
 
@@ -65,11 +80,18 @@ internal sealed class ThrottledResponder : IChatResponder
     /// <inheritdoc />
     public async Task CompleteAsync(InboundMessage message, string text, CancellationToken ct)
     {
-        string? pending;
-        lock (_gate)
+        ArgumentNullException.ThrowIfNull(message);
+
+        // The window leaves with the conversation: a completed thread's state kept around
+        // would be one entry per conversation, forever — daemon arithmetic.
+        string? pending = null;
+        if (_windows.TryRemove(message.ConversationId, out var window))
         {
-            pending = _suppressed;
-            _suppressed = null;
+            lock (window)
+            {
+                pending = window.Suppressed;
+                window.Suppressed = null;
+            }
         }
 
         if (pending is not null)

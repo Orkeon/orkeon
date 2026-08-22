@@ -138,7 +138,16 @@ public record CrewOutput(
     string FinalOutput,
     IReadOnlyList<Orkeon.Application.Execution.TaskOutput> TaskOutputs,
     TimeSpan Duration,
-    TokenUsage? TokensUsed);
+    TokenUsage? TokensUsed)
+{
+    /// <summary>
+    /// Whether the crew actually ran to completion. KickoffAsync never throws — its fault
+    /// barrier converts every failure into an output — so without this flag a caller could
+    /// not tell "the crew answered" from "the crew died and here is the apology string",
+    /// and a hosted run reported every timeout as Completed.
+    /// </summary>
+    public bool Succeeded { get; init; } = true;
+}
 
 /// <summary>
 /// Output from batch execution.

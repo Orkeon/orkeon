@@ -163,6 +163,17 @@ public partial class MemoryService : IMemoryService, IDisposable
     /// <summary>
     /// Disposes all memory systems and their underlying resources.
     /// </summary>
+    /// <inheritdoc />
+    public void ReleaseMemorySystem(CrewId crewId)
+    {
+        ArgumentNullException.ThrowIfNull(crewId);
+        if (!_memorySystems.TryRemove(crewId, out var system))
+            return;
+
+        (system as IDisposable)?.Dispose();
+    }
+
+    /// <summary>Disposes every held memory system.</summary>
     public void Dispose()
     {
         Dispose(true);

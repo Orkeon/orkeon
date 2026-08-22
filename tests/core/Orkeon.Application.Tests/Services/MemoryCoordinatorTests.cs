@@ -504,6 +504,11 @@ public sealed class MemoryCoordinatorTests : IDisposable
 // Test double for IMemoryService
 internal class TestMemoryService : IMemoryService
 {
+    public void ReleaseMemorySystem(CrewId crewId)
+    {
+        // Nothing held per crew in this double.
+    }
+
     private List<MemoryItem> _searchResult = [];
     private TimeSpan _delay = TimeSpan.Zero;
 

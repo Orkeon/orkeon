@@ -100,4 +100,32 @@ public class DiscordChannelTests
             component.Components.OfType<Discord.ActionRowComponent>().SelectMany(row => row.Components),
             item => item is Discord.ButtonComponent button && button.CustomId == DiscordChannel.StopButtonId);
     }
+
+    [Fact]
+    public void Truncation_never_splits_a_surrogate_pair()
+    {
+        // An emoji astride the cut would leave a lone surrogate — invalid UTF-16 that Discord
+        // rejects outright, turning "too long" into "not sent at all".
+        var ellipsis = "\n…(truncated)";
+        var cut = 2000 - ellipsis.Length;
+        var text = new string('a', cut - 1) + "🚀" + new string('b', 100);
+
+        var truncated = DiscordResponder.Truncate(text);
+
+        Assert.True(truncated.Length <= 2000);
+        Assert.DoesNotContain('\uD83D'.ToString(), truncated[^ellipsis.Length..], StringComparison.Ordinal);
+        foreach (var (ch, i) in truncated.Select((c, i) => (c, i)))
+        {
+            if (char.IsHighSurrogate(ch))
+                Assert.True(i + 1 < truncated.Length && char.IsLowSurrogate(truncated[i + 1]), "lone high surrogate");
+        }
+    }
+
+    [Fact]
+    public void Whitespace_only_output_reads_as_no_output()
+    {
+        // Discord refuses a blank body: the send would fail and the user's only reading of
+        // "it finished" would be total silence — the worst possible one.
+        Assert.Equal("(no output)", DiscordResponder.Truncate("   \n\t  "));
+    }
 }

@@ -26,7 +26,7 @@ public class CrewHostRegistryTests
         var registry = Build(Crew("support"));
 
         Assert.Null(registry.Find("billing"));
-        Assert.Null(registry.TryStart("billing", "discord:thread-1", TestContext.Current.CancellationToken));
+        Assert.Null(registry.TryStart("billing", "discord:thread-1"));
     }
 
     [Fact]
@@ -45,9 +45,9 @@ public class CrewHostRegistryTests
         // "We are busy" is an answer a channel relays to a person. An invisible queue is not.
         var registry = Build(Crew("support", maxRuns: 2));
 
-        Assert.NotNull(registry.TryStart("support", "discord:thread-1", TestContext.Current.CancellationToken));
-        Assert.NotNull(registry.TryStart("support", "discord:thread-2", TestContext.Current.CancellationToken));
-        Assert.Null(registry.TryStart("support", "discord:thread-3", TestContext.Current.CancellationToken));
+        Assert.NotNull(registry.TryStart("support", "discord:thread-1"));
+        Assert.NotNull(registry.TryStart("support", "discord:thread-2"));
+        Assert.Null(registry.TryStart("support", "discord:thread-3"));
 
         Assert.Equal(2, registry.Running.Count);
     }
@@ -57,12 +57,12 @@ public class CrewHostRegistryTests
     {
         var registry = Build(Crew("support", maxRuns: 1));
 
-        var first = registry.TryStart("support", "discord:thread-1", TestContext.Current.CancellationToken)!;
-        Assert.Null(registry.TryStart("support", "discord:thread-2", TestContext.Current.CancellationToken));
+        var first = registry.TryStart("support", "discord:thread-1")!;
+        Assert.Null(registry.TryStart("support", "discord:thread-2"));
 
         registry.Finish(first.Id);
 
-        Assert.NotNull(registry.TryStart("support", "discord:thread-2", TestContext.Current.CancellationToken));
+        Assert.NotNull(registry.TryStart("support", "discord:thread-2"));
     }
 
     [Fact]
@@ -70,8 +70,8 @@ public class CrewHostRegistryTests
     {
         var registry = Build(Crew("support", maxRuns: 1), Crew("billing", maxRuns: 1));
 
-        Assert.NotNull(registry.TryStart("support", "discord:thread-1", TestContext.Current.CancellationToken));
-        Assert.NotNull(registry.TryStart("billing", "discord:thread-2", TestContext.Current.CancellationToken));
+        Assert.NotNull(registry.TryStart("support", "discord:thread-1"));
+        Assert.NotNull(registry.TryStart("billing", "discord:thread-2"));
     }
 
     [Fact]
@@ -79,8 +79,8 @@ public class CrewHostRegistryTests
     {
         var registry = Build(Crew("support", maxRuns: 3));
 
-        var first = registry.TryStart("support", "discord:thread-1", TestContext.Current.CancellationToken)!;
-        var second = registry.TryStart("support", "discord:thread-2", TestContext.Current.CancellationToken)!;
+        var first = registry.TryStart("support", "discord:thread-1")!;
+        var second = registry.TryStart("support", "discord:thread-2")!;
 
         Assert.True(registry.RequestStop(first.Id));
 
@@ -93,7 +93,7 @@ public class CrewHostRegistryTests
     {
         // A user pressing the stop button twice has not done anything wrong.
         var registry = Build(Crew("support"));
-        var run = registry.TryStart("support", "discord:thread-1", TestContext.Current.CancellationToken)!;
+        var run = registry.TryStart("support", "discord:thread-1")!;
 
         Assert.True(registry.RequestStop(run.Id));
         Assert.False(registry.RequestStop(run.Id));
@@ -104,24 +104,63 @@ public class CrewHostRegistryTests
     public void Stopping_everything_reports_how_many_were_asked()
     {
         var registry = Build(Crew("support", maxRuns: 3));
-        registry.TryStart("support", "discord:thread-1", TestContext.Current.CancellationToken);
-        registry.TryStart("support", "discord:thread-2", TestContext.Current.CancellationToken);
+        registry.TryStart("support", "discord:thread-1");
+        registry.TryStart("support", "discord:thread-2");
 
         Assert.Equal(2, registry.RequestStopAll());
         Assert.Equal(0, registry.RequestStopAll());   // nothing left to ask
     }
 
     [Fact]
-    public void A_run_is_cancelled_when_the_host_stops()
+    public void A_run_is_not_linked_to_any_caller_token()
     {
-        // The host's stopping token is linked into every run, which is how a shutdown reaches
-        // work in flight instead of abandoning it.
+        // The first version linked runs to the channel's stopping token — on SIGTERM every
+        // run died at t=0 and the shutdown grace period politely waited for corpses. Stopping
+        // a run is the registry's own gesture: RequestStop, or the drain after the grace.
         var registry = Build(Crew("support"));
-        using var hostStopping = new CancellationTokenSource();
+        var run = registry.TryStart("support", "discord:thread-1")!;
 
-        var run = registry.TryStart("support", "discord:thread-1", hostStopping.Token)!;
-        hostStopping.Cancel();
-
+        Assert.False(run.Cancellation.IsCancellationRequested);
+        Assert.Equal(1, registry.RequestStopAll());
         Assert.True(run.Cancellation.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void Stop_racing_a_finishing_run_reads_as_already_finished()
+    {
+        // Finish disposes the run's cancellation source. A Stop pressed the same instant a
+        // run ends must come back false — not throw ObjectDisposedException out of a Discord
+        // button handler, where nothing catches it and the user sees nothing at all.
+        var registry = Build(Crew("support"));
+        var run = registry.TryStart("support", "discord:thread-1")!;
+
+        // The narrow window: Finish has disposed the source but the stop request still holds
+        // a reference to the run (a snapshot in RequestStopAll, a TryGetValue in RequestStop).
+        run.Cancellation.Dispose();
+
+        Assert.False(registry.RequestStop(run.Id));
+        Assert.Equal(0, registry.RequestStopAll());
+
+        registry.Finish(run.Id);
+        Assert.False(registry.RequestStop(run.Id));
+    }
+
+    [Fact]
+    public async Task Simultaneous_admissions_cannot_overshoot_the_ceiling()
+    {
+        // Count-then-add let two callers both read Max-1 and both get in. Admission is
+        // atomic now; under a burst the ceiling holds exactly.
+        var registry = Build(Crew("support", maxRuns: 4));
+
+        var admitted = 0;
+        var tasks = Enumerable.Range(0, 32).Select(i => Task.Run(() =>
+        {
+            if (registry.TryStart("support", $"discord:thread-{i}") is not null)
+                Interlocked.Increment(ref admitted);
+        }));
+        await Task.WhenAll(tasks);
+
+        Assert.Equal(4, admitted);
+        Assert.Equal(4, registry.Running.Count);
     }
 }
