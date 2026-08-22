@@ -49,10 +49,16 @@ public sealed record OrkeonEvent
             ? value.GetBoolean()
             : null;
 
-    /// <summary>Integer property, null when absent or not a number.</summary>
+    /// <summary>
+    /// Integer property, null when absent or not an integral number. TryGetInt64, not
+    /// GetInt64: a fractional or out-of-range number throws FormatException — valid JSON the
+    /// tolerant-reader contract says must come back null, not explode on the reader thread.
+    /// </summary>
     public long? GetInt64(string name) =>
-        Root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
-            ? value.GetInt64()
+        Root.TryGetProperty(name, out var value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetInt64(out var number)
+            ? number
             : null;
 
     /// <summary>Floating-point property, null when absent or not a number.</summary>
@@ -121,10 +127,16 @@ public static class OrkeonEventParser
                 return false;
             }
 
+            // TryGet, not Get: {"v":2.5} or an out-of-range seq is valid JSON with the wrong
+            // numeric shape — GetInt32/GetInt64 throw FormatException there, which escaped the
+            // JsonException catch below and propagated onto the process-reader thread.
+            if (!version.TryGetInt32(out var versionNumber) || !seq.TryGetInt64(out var seqNumber))
+                return false;
+
             orkeonEvent = new OrkeonEvent
             {
-                Version = version.GetInt32(),
-                Seq = seq.GetInt64(),
+                Version = versionNumber,
+                Seq = seqNumber,
                 Kind = kind.GetString()!,
                 Root = root.Clone(),
             };

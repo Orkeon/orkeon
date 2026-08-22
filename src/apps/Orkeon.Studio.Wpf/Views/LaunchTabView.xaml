@@ -402,6 +402,20 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
+            <!-- The text the model is generating (the "stream" option). This is what the
+                 "stream token by token" checkbox buys: offering the option while showing
+                 nothing was paying for the flood without the view. -->
+            <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
+                    Background="{DynamicResource ConsoleBgBrush}"
+                    MaxHeight="160"
+                    Visibility="{Binding Progress.HasGeneratedText, Converter={StaticResource BooleanToVisibility}}">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBlock FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{DynamicResource InkBrush}"
+                           Text="{Binding Progress.GeneratedText}"/>
+              </ScrollViewer>
+            </Border>
+
             <!-- The question the run is waiting on. Before BUS-04 it was approved in the
                  user's back; it is now asked here, and silence is never consent. -->
             <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"

@@ -107,7 +107,7 @@ public sealed class RunProgressViewModel : ObservableObject
             CultureInfo.CurrentCulture,
             _strings[StudioStringKeys.RunProgressCost],
             cost.Tokens.ToString("N0", CultureInfo.CurrentCulture),
-            cost.Usd is { } usd ? usd.ToString("C4", CultureInfo.CurrentCulture) : "—")
+            cost.Model ?? "—")
         : string.Empty;
 
     /// <summary>
@@ -146,6 +146,9 @@ public sealed class RunProgressViewModel : ObservableObject
     /// <summary>Text generated so far, when the run was asked to stream it.</summary>
     public string GeneratedText => _model.GeneratedText;
 
+    /// <summary>Whether any generated text arrived — gates the stream panel's visibility.</summary>
+    public bool HasGeneratedText => _model.GeneratedText.Length > 0;
+
     /// <summary>
     /// Prepares the panel for a new run and takes the channel it will answer on. A null
     /// channel means "watch only" — the panel then shows questions without offering to
@@ -175,6 +178,16 @@ public sealed class RunProgressViewModel : ObservableObject
 
         for (var index = before; index < _model.Tasks.Count; index++)
             Tasks.Add(new RunTaskViewModel(_model.Tasks[index]));
+
+        // A delta arrives per token, on the UI thread. Re-raising the eleven labels plus the
+        // command state for each one is thousands of change notifications per response;
+        // generated text is the only thing a delta can move.
+        if (string.Equals(orkeonEvent!.Kind, RunEventKinds.LlmDelta, StringComparison.Ordinal))
+        {
+            OnPropertyChanged(nameof(GeneratedText));
+            OnPropertyChanged(nameof(HasGeneratedText));
+            return true;
+        }
 
         RaiseLabels();
         return true;
@@ -225,6 +238,7 @@ public sealed class RunProgressViewModel : ObservableObject
         OnPropertyChanged(nameof(LastError));
         OnPropertyChanged(nameof(HasError));
         OnPropertyChanged(nameof(GeneratedText));
+        OnPropertyChanged(nameof(HasGeneratedText));
         AnswerCommand.RaiseCanExecuteChanged();
     }
 }

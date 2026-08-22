@@ -12,7 +12,7 @@ public sealed record RunTaskProgress(
     int? ToolCalls);
 
 /// <summary>What the run has spent so far.</summary>
-public sealed record RunCost(long Tokens, double? Usd, long? BudgetRemaining);
+public sealed record RunCost(long Tokens, string? Model, string? Provider);
 
 /// <summary>A question a task is asking, waiting for this process to answer.</summary>
 public sealed record RunQuestion(
@@ -71,7 +71,9 @@ public sealed class RunProgressModel
     public RunCost? Cost { get; private set; }
 
     /// <summary>The question waiting for an answer, or null when nothing is being asked.</summary>
-    public RunQuestion? PendingQuestion { get; private set; }
+    public RunQuestion? PendingQuestion => _questions.Count > 0 ? _questions[0] : null;
+
+    private readonly List<RunQuestion> _questions = [];
 
     /// <summary>The last error reported, or null.</summary>
     public RunErrorInfo? LastError { get; private set; }
@@ -118,10 +120,14 @@ public sealed class RunProgressModel
                 break;
 
             case RunEventKinds.CostUpdated:
+                // tokens/model/provider are what the CLI actually emits. The first version
+                // read `usd` and `budgetRemaining` — fields the writer never produced (its own
+                // test pins their absence: the framework has no price table), so the screen
+                // was built against a fiction.
                 Cost = new RunCost(
                     orkeonEvent.GetInt64("tokens") ?? 0,
-                    orkeonEvent.GetDouble("usd"),
-                    orkeonEvent.GetInt64("budgetRemaining"));
+                    orkeonEvent.GetString("model"),
+                    orkeonEvent.GetString("provider"));
                 break;
 
             case RunEventKinds.LlmDelta:
@@ -129,12 +135,31 @@ public sealed class RunProgressModel
                 break;
 
             case RunEventKinds.InputNeeded:
-                PendingQuestion = ReadQuestion(orkeonEvent);
+                // Questions queue rather than overwrite: parallel tasks can ask concurrently,
+                // and the first version kept a single slot — the second question clobbered
+                // the first, which stayed unanswerable forever. A malformed question (no
+                // correlation id — no address to answer to) changes nothing at all: it used
+                // to CLEAR a legitimate question already on screen.
+                if (ReadQuestion(orkeonEvent) is { } question)
+                {
+                    _questions.RemoveAll(q => string.Equals(q.CorrelationId, question.CorrelationId, StringComparison.Ordinal));
+                    _questions.Add(question);
+                }
+                else
+                {
+                    return;
+                }
+
                 break;
 
             case RunEventKinds.InputGiven:
-                // The answer is echoed by whoever sent it; the question is no longer pending.
-                PendingQuestion = null;
+                // The answer is echoed by whoever sent it; that question is no longer pending.
+                // An echo naming a question removes it alone; one naming nobody removes the
+                // oldest — mirroring how the CLI pump spends an unnamed answer.
+                if (orkeonEvent.CorrelationId is { } answered)
+                    _questions.RemoveAll(q => string.Equals(q.CorrelationId, answered, StringComparison.Ordinal));
+                else if (_questions.Count > 0)
+                    _questions.RemoveAt(0);
                 break;
 
             case RunEventKinds.HubMessage:
@@ -156,7 +181,7 @@ public sealed class RunProgressModel
                 Finished = true;
                 Success = orkeonEvent.GetBool("success");
                 ExitCode = (int?)orkeonEvent.GetInt64("exitCode");
-                PendingQuestion = null;   // nobody is left to answer it
+                _questions.Clear();   // nobody is left to answer them
                 break;
 
             default:
@@ -173,10 +198,10 @@ public sealed class RunProgressModel
     /// </summary>
     public void AnswerAccepted()
     {
-        if (PendingQuestion is null)
+        if (_questions.Count == 0)
             return;
 
-        PendingQuestion = null;
+        _questions.RemoveAt(0);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 

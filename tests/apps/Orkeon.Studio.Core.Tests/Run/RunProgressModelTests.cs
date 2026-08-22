@@ -41,7 +41,7 @@ public class RunProgressModelTests
         var model = Fold(
             """{"v":2,"seq":1,"ts":"t","kind":"run.started","target":"/ws/crew.yaml","stream":true}""",
             """{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true,"durationMs":1200,"tokens":340,"toolCalls":2}""",
-            """{"v":2,"seq":3,"ts":"t","kind":"cost.updated","tokens":340,"usd":0.004,"budgetRemaining":9660}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"cost.updated","tokens":340,"model":"deepseek-chat","provider":"deepseek"}""",
             """{"v":2,"seq":4,"ts":"t","kind":"run.finished","success":true,"exitCode":0}""");
 
         Assert.Equal("/ws/crew.yaml", model.Target);
@@ -54,9 +54,12 @@ public class RunProgressModelTests
         Assert.Equal(340, task.Tokens);
         Assert.Equal(2, task.ToolCalls);
 
+        // tokens/model/provider are the fields the CLI emits; usd never existed on the wire
+        // (the framework has no price table) and reading it here was building a screen
+        // against a fiction.
         Assert.Equal(340, model.Cost!.Tokens);
-        Assert.Equal(0.004, model.Cost.Usd);
-        Assert.Equal(9660, model.Cost.BudgetRemaining);
+        Assert.Equal("deepseek-chat", model.Cost.Model);
+        Assert.Equal("deepseek", model.Cost.Provider);
 
         Assert.True(model.Finished);
         Assert.True(model.Success);
@@ -88,6 +91,49 @@ public class RunProgressModelTests
             """{"v":2,"seq":1,"ts":"t","kind":"input.needed","inputKind":"text","prompt":"Your name?"}""");
 
         Assert.Null(model.PendingQuestion);
+    }
+
+    [Fact]
+    public void A_malformed_question_does_not_clear_a_real_one_already_on_screen()
+    {
+        // The single-slot version of this model overwrote PendingQuestion on every
+        // input.needed — a malformed one (no correlation id) CLEARED a legitimate question,
+        // leaving the run blocked with nothing displayed.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","correlationId":"c-1","kind":"input.needed","inputKind":"text","prompt":"Real?"}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"input.needed","inputKind":"text","prompt":"No address"}""");
+
+        Assert.NotNull(model.PendingQuestion);
+        Assert.Equal("c-1", model.PendingQuestion!.CorrelationId);
+    }
+
+    [Fact]
+    public void Concurrent_questions_queue_instead_of_clobbering_each_other()
+    {
+        // Parallel tasks can ask concurrently. The single slot made the second question
+        // overwrite the first, which stayed unanswerable forever.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","correlationId":"c-1","kind":"input.needed","inputKind":"text","prompt":"First?"}""",
+            """{"v":2,"seq":2,"ts":"t","correlationId":"c-2","kind":"input.needed","inputKind":"text","prompt":"Second?"}""");
+
+        Assert.Equal("c-1", model.PendingQuestion!.CorrelationId);
+
+        model.AnswerAccepted();
+        Assert.Equal("c-2", model.PendingQuestion!.CorrelationId);
+
+        model.AnswerAccepted();
+        Assert.Null(model.PendingQuestion);
+    }
+
+    [Fact]
+    public void An_echoed_answer_removes_the_question_it_names_alone()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","correlationId":"c-1","kind":"input.needed","inputKind":"text","prompt":"First?"}""",
+            """{"v":2,"seq":2,"ts":"t","correlationId":"c-2","kind":"input.needed","inputKind":"text","prompt":"Second?"}""",
+            """{"v":2,"seq":3,"ts":"t","correlationId":"c-2","kind":"input.given","value":"oui"}""");
+
+        Assert.Equal("c-1", model.PendingQuestion!.CorrelationId);
     }
 
     [Fact]
