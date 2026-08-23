@@ -133,6 +133,7 @@ public sealed record PublishOptions
     public ImmutableDictionary<string, string>? Metadata { get; init; }
     public bool RetainAsLastValue { get; init; }                  // feeds the LastValueCache
     public string? LastValueKey { get; init; }
+    public string? SchemaId { get; init; }                        // engages the §12.3 validation stage
 }
 
 public abstract record WaitDescriptor;
@@ -226,7 +227,7 @@ public interface IEventSchemaRegistry
 
 ## 5. Tool surface for agents
 
-Seven tools, auto-registered as soon as `IEventHub` is in DI. All follow `ToolBase<TRequest, TResponse>` with sealed DTOs and snake_case JSON.
+Seven tools, registered by the explicit `AddOrkeonEventHubTools()` alongside the hub (`AddOrkeonInMemoryEventHub()` — the runner host pairs the two calls; nothing is automatic). All follow `ToolBase<TRequest, TResponse>` with sealed DTOs and snake_case JSON.
 
 | Tool | Pattern | Input | Output |
 |---|---|---|---|
@@ -236,7 +237,7 @@ Seven tools, auto-registered as soon as `IEventHub` is in DI. All follow `ToolBa
 | `reply_to` | Reply | `correlation_id`, `payload` | `replied_at` |
 | `receive_message` | (pull mailbox) | `timeout_ms` or `wait_forever:true`, `mailbox?` (default: current agent) | `message?` |
 | `wait_for_event` | Wait | `topic`, `timeout_ms` or `wait_forever:true`, `metadata_match?` | `message` or `timed_out:true` |
-| `get_last_value` | LastValueCache | `key`, `crew_scope?` (default: current crew) | `value`, `set_at` or null |
+| `get_last_value` | LastValueCache | `key`, `crew_scope?` (default: current crew) | `found`, `value`, `set_at` (`found` separates a cached null from an absent key) |
 
 ### 5.1 Validation rules
 
@@ -291,9 +292,10 @@ public sealed record Message
 agent://{crewId}/{agentId}      mailbox of a specific agent
 crew://{crewId}                  crew mailbox (internal router)
 topic://{topicName}              alias of a broadcast topic
+client://{name}                  a watching client process (see §10.2.1 and the run event bus)
 ```
 
-Validated by regex at the entry of the port, the C# builder, the YAML loader and the TS SDK. `TargetCrewId` is extracted automatically from the `TargetMailbox`; any inconsistency between the two is rejected by the middleware.
+Validated by regex in `MailboxAddress.Parse`, the port's single entry point (there is no crew-builder path for addresses, and the TS SDK of §13.4 is a not-built design). `TargetCrewId` is extracted automatically from the `TargetMailbox`; any inconsistency between the two is rejected by the middleware.
 
 ---
 
@@ -457,7 +459,7 @@ A first-class message type, delivered by the system (not by an agent) when a `Wa
 
 It appears in `processed_messages` for idempotence (otherwise a restart = re-delivery of the same timeout).
 
-The `_system.` prefix is reserved: an agent cannot publish on a topic starting with `_system.` — rejected by the validation middleware.
+The `_system.` prefix is reserved: an agent cannot publish on a topic starting with `_system.` — the **`publish_event` tool** throws `ReservedTopicException` before the hub is reached (the hub itself, and thus in-process callers, are not guarded; the validation middleware only checks `SchemaId`).
 
 ### 9.3 Send does not support Forever
 
@@ -651,7 +653,7 @@ The order below is not cosmetic: on the **publish path** logging comes first so 
 
 | # | Stage | Registration | What it does |
 |---|---|---|---|
-| 1 | `LoggingEventHubMiddleware` | `AddOrkeonEventHubObservability()` | structured logging: correlation id, source and target crew, topic, latency |
+| 1 | `LoggingEventHubMiddleware` | `AddOrkeonEventHubObservability()` | structured logging: path, topic, message id, elapsed ms |
 | 2 | `TelemetryEventHubMiddleware` | idem | OTel spans on the `Orkeon.EventHub` source, attributes `crew.source`, `crew.target`, `event.topic`, `event.pattern` |
 | 3 | `AclEventHubMiddleware` | `AddOrkeonEventHubAcl(policy?)` | checks `CrewLink` on publish; refuses with `EventAclException` (§10) |
 | 4 | `IdempotencyEventHubMiddleware` | `AddOrkeonEventHubIdempotency(capacity?)` | refuses a message a mailbox already consumed, on receive |
@@ -715,7 +717,9 @@ public sealed class CustomFlow(IEventHub hub)
 }
 ```
 
-### 13.3 YAML — declarative
+### 13.3 YAML — declarative (design shape, not the shipped grammar)
+
+The **shipped** grammar is the flat-root `links:` block (see [the YAML schema](./yaml-schema.md)); the `crew:`-rooted shape below, with `idle_timeout` and the `event:` blocks, belongs to this section's not-built toolchain design:
 
 ```yaml
 crew:
@@ -788,17 +792,22 @@ The YAML also uses `event:` (singular) for cross-paradigm consistency.
 
 ### 14.1 OTel spans — standard attributes
 
-Each message produces a span with these attributes:
+What `TelemetryEventHubMiddleware` sets **today** (four attributes):
 
-- `crew.source` (string)
-- `crew.target` (string, null if global)
 - `event.topic`
-- `event.pattern` (`publish` | `post` | `send` | `reply` | `subscribe` | `wait`)
-- `event.correlation_id` (if applicable)
-- `event.message_id`
-- `event.outcome` (`delivered` | `timeout` | `rejected_acl` | `failed`)
+- `event.pattern` (`publish` | `receive` — the only two values emitted)
+- `crew.source`
+- `crew.target` (only when non-null)
 
-### 14.2 Metrics
+Designed but **not built**: `event.correlation_id`, `event.message_id`,
+`event.outcome`, and the finer pattern vocabulary (`post`/`send`/`reply`/
+`subscribe`/`wait`).
+
+### 14.2 Metrics — **not built**
+
+No EventHub instrument exists yet (`OrkeonMetrics` covers `orkeon.llm.*`,
+`orkeon.tool.*`, `orkeon.task.*`, `orkeon.crew.*` only). The designed set, kept
+here as the target:
 
 - `orkeon_event_published_total{topic, source_crew, target_crew}` — counter
 - `orkeon_event_latency_seconds{pattern}` — histogram
@@ -810,7 +819,7 @@ Each message produces a span with these attributes:
 
 ## 15. Implementation roadmap
 
-**Built.** The `IEventHub` port and everything §3 describes, `InMemoryEventHub`, the seven agent tools, the `links:` grammar and the ACL (§10), and the whole middleware pipeline with its five stages (§12) — logging, telemetry, ACL, idempotency, validation.
+**Built.** The `IEventHub` port, `PublishOptions`/`WaitDescriptor`, `IEventSchemaRegistry`, `InMemoryEventHub`, the seven agent tools, the `links:` grammar and the ACL (§10), and the whole middleware pipeline with its five stages (§12) — logging, telemetry, ACL, idempotency, validation. (The §3.3 lifecycle interfaces — `ICrewLifecycleManager`, `ICrewStateStore`, `ICrewActivator`, `IIdleDetector`, `IWaitScheduler` — are design, listed as missing below.)
 
 **Not built**, each behind the same port so that building it changes no caller:
 
@@ -904,7 +913,7 @@ Two smaller inertias worth naming rather than discovering: `CrewBuilder.OnEvent`
 - **LastValueCache**: 1-key/1-value cache scopable per crew, fed via `PublishOptions.RetainAsLastValue`.
 - **Outbox**: SQLite buffer table for outgoing messages, guaranteeing publish+ack atomicity.
 - **Forever**: infinite timeout, allowed on `wait_for_event`, `receive_message` and `subscribe`. Wake-up exclusively on a matching message.
-- **MailboxAddress**: structured URI identifying a mailbox (`agent://`, `crew://`, `topic://`).
+- **MailboxAddress**: structured URI identifying a mailbox (`agent://`, `crew://`, `topic://`, `client://`).
 - **`WaitTimedOutMessage`**: system message delivered to a crew when its `WaitTimeout.Finite` expires while it sleeps. Reserved topic: `_system.wait_timed_out`.
 - **`CrewId.System`**: reserved constant representing the hub itself as the sender. Used as the `SourceCrewId` for all system messages (timeouts, lifecycle notifications). No user crew can take this ID.
 - **Reserved `_system.*` topic**: prefix forbidden to agents. Only the hub can publish on these topics. Any attempt is rejected by the validation middleware.

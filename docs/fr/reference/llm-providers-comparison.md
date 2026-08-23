@@ -10,7 +10,7 @@
 |---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | **OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Azure OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Anthropic** | HttpLlmProviderBase | ✓ natif | ✓ | ✓ | ✓ (natif, séparé) | ✓ | ✗ | ✓ schema | ✓ adaptive | ✓ | ✗ | ✓ explicite | ✗ | ✓ | ✓ |
+| **Anthropic** | HttpLlmProviderBase | ✓ natif | ✓ | ✓ | ✓ (natif, séparé) | ✓ | ✗ | ✓ schema | ✓ toggle | ✓ | ✗ | ✓ explicite | ✗ | ✓ | ✓ |
 | **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✗ | ✓ | ✓ métriques | ✗ | ✓ | ✓ |
 | **Z.AI (GLM)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ✓ métriques | ✗ | ✓ | ✓ |
 | **Groq** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✓ | ✓ | ✓ |
@@ -36,7 +36,9 @@ API parlent leur propre dialecte.
   sans schéma y est signalée plutôt qu'envoyée.
 - **`thinking`** — `effort` n'accepte qu'une indication de niveau ; `toggle` peut en plus activer
   et désactiver le raisonnement ; `budget` accepte en outre un budget de tokens explicite (Qwen
-  uniquement — Anthropic rejette `budget_tokens` avec un 400 sur la génération actuelle).
+  uniquement — Anthropic rejette `budget_tokens` avec un 400 sur la génération actuelle). Sur le
+  fil, le toggle d'Anthropic s'écrit `thinking: {type: adaptive|disabled}` — un détail de payload,
+  pas un niveau de capacité.
 - **Tout ce qu'un fournisseur ne supporte pas est signalé.** Une option déclarée en YAML sur un
   fournisseur qui ne peut pas l'honorer produit un avertissement actionnable nommant l'option, le
   fournisseur et le remède. C'était le vrai défaut relevé par l'audit du 2026-07-27 : pas le

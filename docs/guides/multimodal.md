@@ -118,16 +118,18 @@ Options (`Orkeon:MultiModal`): `Enabled`, `MaxImageSizeBytes` (20 MB by default)
 `SupportedAudioFormats`.
 
 > Sending vision payloads from the providers does **not** depend on the DI activation:
-> an `LlmMessage` carrying a `MultiModalContent` with images is always composed into a
-> structured payload by Anthropic/OpenAI. `AddOrkeonMultiModal` enables the validation
-> (`IContentValidationService`) and the VFS loader (`IMultiModalContentLoader`).
+> an `LlmMessage` carrying a `MultiModalContent` with images is composed into a
+> structured payload by every provider whose capabilities declare `Vision` (the shared
+> `OpenAICompatibleProviderBase` does the translation once). `AddOrkeonMultiModal`
+> enables the validation (`IContentValidationService`) and the VFS loader
+> (`IMultiModalContentLoader`).
 
 ## Supported providers and formats
 
 | Capability | Supported |
 |---|---|
-| Vision providers | `AnthropicLlmProvider`, `OpenAIProvider` |
-| Other providers (Groq, Mistral, DeepSeek, …) | Degradation to the `LlmMessage.Content` text fallback |
+| Vision providers (capability `Vision = true`) | 12 of the 13: Anthropic, OpenAI, Azure OpenAI, Gemini, Groq, HuggingFace, Kimi, Mistral, Ollama (native `images`), Qwen, TogetherAI, Z.AI |
+| Provider without the capability (DeepSeek) | Degradation to the `LlmMessage.Content` text fallback |
 | Image MIME types | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
 | Image sources | Raw bytes (base64), http(s) URL, base64 data URL |
 | Audio / files to the providers | Not supported — explicit `NotSupportedException` |

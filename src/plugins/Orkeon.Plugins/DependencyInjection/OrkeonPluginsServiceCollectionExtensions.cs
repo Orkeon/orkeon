@@ -68,7 +68,7 @@ public static class OrkeonPluginsServiceCollectionExtensions
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
-        Justification = "Ownership of the PluginRegistry (IDisposable) is transferred to the DI container via AddSingleton<IPluginRegistry>(registry); the container disposes the registered singleton instance when the ServiceProvider is disposed.")]
+        Justification = "The PluginRegistry (IDisposable) is registered as an instance singleton and deliberately lives for the whole process: it keeps the plugin AssemblyLoadContexts loaded (MS.DI never disposes instances it did not create). Disposing it early would unload assemblies still referenced by registered services.")]
     private static IServiceCollection AddOrkeonPluginsCore(
         this IServiceCollection services,
         IFileSystemService fileSystem,

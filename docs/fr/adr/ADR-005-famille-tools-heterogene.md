@@ -44,3 +44,15 @@ dépendent de `Application` (couche interne), et non l'inverse. Aucun cycle, auc
   trancher ce cas au coup par coup.
 - **Vigilance** : préférer dépendre de `Tools.Abstractions` seul tant qu'un outil n'a pas de besoin
   applicatif avéré ; ne remonter vers `Application` que sur nécessité documentée.
+
+## Amendement (2026-08-23)
+
+La répartition des packages du Contexte a dérivé — exactement la dérive que la
+clause de Vigilance existe pour consigner. État courant : seul `Tools.Code` colle
+encore au profil « abstractions seulement » parmi les quatre listés à l'origine.
+`Tools.Data`, `Tools.FileSystem` et `Tools.Rag` référencent désormais le concret
+`Orkeon.Rag` (pour les outils de recherche adossés au RAG), qui référence lui-même
+`Orkeon.Application` (amendement ADR-006 du 2026-07-25) — ils atteignent donc
+`Application` transitivement ; `Tools.Analysis` référence le concret
+`Orkeon.Analysis`. La décision elle-même est inchangée : monter est légitime quand
+c'est documenté, et l'ADR-006 documente les couplages RAG.

@@ -119,7 +119,7 @@ Un échange minimal :
 → {"v":2,"seq":1,"ts":"…","kind":"run.started","target":"crew.yaml","stream":false}
 → {"v":2,"seq":2,"ts":"…","correlationId":"c-1","kind":"input.needed","inputKind":"confirm","prompt":"Publier le rapport ?"}
 ← {"kind":"input.given","correlationId":"c-1","value":"yes"}
-→ {"v":2,"seq":3,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200}
+→ {"v":2,"seq":3,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
 → {"v":2,"seq":4,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840}
 ```
 
@@ -130,6 +130,6 @@ Deux règles à respecter en construisant votre client. **Ignorez un `kind` que 
 ## 7. Qui lit ceci aujourd'hui
 
 - **Orkeon Studio**, dont l'écran « Lancer » montre progression, coût et questions du run au lieu d'un défilement — voir [Studio](studio.md). L'écran « Lancer » occupe aussi le siège du hub : le `send` d'un agent vers `client://studio` (marqué `expectsReply`) apparaît comme un panneau de demande auquel l'utilisateur répond, et la réponse repart par stdin ; les posts du hub sont listés au lieu d'être perdus. Le silence au-delà du timeout propre à l'agent reste un refus — la règle que le silence suit partout sur ce bus — l'écran donne simplement à un humain la chance de parler avant.
-- `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence en ~380 lignes, sans aucune dépendance à Infrastructure ni à un LLM. `RunClient` est la forme à copier pour un pair qui prend le siège sans écran : subscribe, post, reply.
+- `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence en ~460 lignes, sans aucune dépendance à Infrastructure ni à un LLM. `RunClient` est la forme à copier pour un pair qui prend le siège sans écran : subscribe, post, reply.
 
 La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge), donc un client qui lit l'un lit l'autre.

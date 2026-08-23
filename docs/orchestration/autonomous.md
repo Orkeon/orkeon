@@ -45,7 +45,8 @@ The budget is thread-safe (`Interlocked` counters) and immutable after construct
 Task<CrewOutput> ExecuteAutonomousAsync(
     Crew crew,
     AgentExecutionBudget budget,
-    IReadOnlyDictionary<string, string>? inputVariables = null);
+    IReadOnlyDictionary<string, string>? inputVariables = null,
+    CancellationToken cancellationToken = default);
 ```
 
 ### Application layer — A2A communication
@@ -76,7 +77,7 @@ Task<CrewOutput> ExecuteAutonomousAsync(
 | Class | Change |
 |--------|-------------|
 | `ProcessStrategyFactory` | Added the `"Autonomous"` case → `AutonomousProcessStrategy` |
-| `SequentialCrewOrchestrator` | Added the `"Autonomous"` dispatch with `AgentExecutionBudget.Default` |
+| `SequentialCrewOrchestrator` | Added the `"Autonomous"` dispatch with `AgentExecutionBudget.Permissive` |
 | `DelegateWorkTool` | Added the optional `AgentExecutionBudget?` parameter, `RecordDelegation()` call before each delegation |
 
 ## Execution flow
@@ -235,28 +236,31 @@ All key events are logged via `LoggerMessage`:
 ## YAML configuration
 
 ```yaml
-crew:
-  name: research-team
-  process: autonomous      # ← enables the autonomous mode
-  goal: "Produce a complete research report"
+# Flat root — no crew: wrapper; agents: is a mapping keyed by agent id.
+name: research-team
+process: autonomous        # ← enables the autonomous mode
+goal: "Produce a complete research report"
 
-  agents:
-    - role: researcher
-      goal: "Find reliable sources"
-      allowDelegation: true
-      tools: [web_search, spawn_agent]  # ← spawn_agent for self-spawn
+agents:
+  researcher:
+    role: Researcher
+    goal: "Find reliable sources"
+    allowDelegation: true
+    tools: [web_search, spawn_agent]  # ← spawn_agent for self-spawn (host-registered)
 
-    - role: analyst
-      goal: "Analyze and synthesize the data"
-      allowDelegation: true
-      tools: [json_tool, csv_reader]
+  analyst:
+    role: Analyst
+    goal: "Analyze and synthesize the data"
+    allowDelegation: true
+    tools: [json_tool, csv_reader]
 
-    - role: writer
-      goal: "Write the final report"
-      allowDelegation: false
+  writer:
+    role: Writer
+    goal: "Write the final report"
+    allowDelegation: false
 ```
 
-> **Note**: there is no `autonomousBudget` YAML key — the loader does not parse one. In YAML crews the Autonomous mode always runs with `AgentExecutionBudget.Default`; a custom budget (presets `Strict`/`Default`/`Permissive` or custom values) is available through the C# API only.
+> **Note**: there is no `autonomousBudget` YAML key — the loader does not parse one. In YAML crews the Autonomous mode always runs with `AgentExecutionBudget.Permissive` (50 tool calls, depth 4, 15 min, 64 000 tokens, 10 spawns); a custom budget (presets `Strict`/`Default`/`Permissive` or custom values) is available through the C# API only.
 
 ## Complementarity with the other modes
 

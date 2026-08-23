@@ -118,12 +118,20 @@ Celles que vous utiliserez vraiment :
 | `<config>` (positionnel) | — | **Requis.** La définition de crew passée à `orkeon run <config>` — un fichier `.yaml` ou un fichier `.ork.ts` de [scripting](../architecture/scripting.md). Le runner `orkeon-trading` la prend en `--config <chemin>` / `-c`. |
 | `--settings <chemin>` | `-s` | Chemin de l'`appsettings.json` portant la config LLM. Optionnel — voir la [résolution des settings](#comment-les-settings-sont-résolus). |
 | `--verbose <0-2>` | `-v` | Verbosité. `0` (défaut) = silencieux, `1` = échanges LLM & outils, `2` = debug complet. |
-| `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro` ou `rw`. Répétable. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |
+| `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro` ou `rw`. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |
 | `--allow-external-mounts` | | Autorise des montages (et un `--config` / `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, les chemins externes sont refusés par garde-fou. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `orkeon-runners` l'embarque). |
-| `--var CLE=VALEUR` | `-V` | Injecte une variable dans l'entrée du crew. Les descriptions de tâches contenant `{CLE}` sont développées en `VALEUR`. Répétable. |
-| `--initial-context <texte>` | | Une chaîne de contexte libre passée à l'entrée du crew. |
+| `--var CLE=VALEUR` | `-V` | Injecte une variable dans l'entrée du crew. Les descriptions de tâches contenant `{CLE}` sont développées en `VALEUR`. Plusieurs variables se passent séparées par des espaces derrière un seul `-V` (un flag répété est rejeté). **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`, qui prennent `--inputs`. |
+| `--initial-context <texte>` | | Une chaîne de contexte libre passée à l'entrée du crew. **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`. |
+| `--inputs <json>` | | Entrées JSON inline transmises à un script comme variable globale `inputs` (voie `.ork.ts`). |
+| `--inputs-file <chemin>` | | Comme `--inputs`, lu depuis un fichier JSON. |
 | `--llm-log` | | Capture chaque échange HTTP LLM (requête + réponse, en-têtes + payload) en `.jsonl` sous `./llm-logs`. |
 | `--llm-log-path <dir>` | | Comme `--llm-log`, mais écrit dans `<dir>` (et implique `--llm-log`). |
+| `--validate` | | Dry-run : résout les settings, construit l'hôte et charge la crew (résolution stricte des outils) **sans** sonder le LLM ni rien exécuter. Imprime `VALIDATION OK/FAILED` et sort 0 / non-zéro. |
+| `--list-tools` | | Construit l'hôte et imprime les noms d'outils enregistrés, triés, un par ligne, puis sort — aucune crew requise. |
+| `--events jsonl` | | Émet le protocole d'événements JSONL versionné sur stdout au lieu du texte brut (c'est ainsi qu'Orkeon Studio pilote un run) — voir [le bus d'événements de run](../architecture/run-event-bus.md). |
+| `--stream` | | Avec `--events`, émet aussi les événements `llm.delta` token par token (verbeux par nature ; désactivé sauf demande). |
+| `--client <nom>` | | Avec `--events`, le nom du pair observateur sur le hub (`client://<nom>`, défaut `studio`). |
+| `--memory-limit-mb <n>` | | Plafond mémoire Jint pour un run `.ork.ts` (surcharge l'appsettings ; `0` le désactive). |
 
 ### Les montages et le VFS
 
@@ -149,9 +157,13 @@ ordre (premier trouvé gagne) :
 
 1. Le `--settings <chemin>` explicite, s'il est donné.
 2. L'`appsettings.json` voisin du fichier `--config`.
-3. En remontant l'arborescence depuis le config : la matrice de profils partagée
-   `examples/appsettings/appsettings.json`
+3. En remontant l'arborescence depuis le config, en cherchant à chaque niveau un
+   sous-répertoire `appsettings/appsettings.json` — c'est ainsi qu'est trouvée la
+   matrice de profils partagée `examples/appsettings/appsettings.json`
    (l'ancien `_shared/appsettings.json` reste un fallback pour une release).
+4. Le config global per-user écrit par `orkeon init`
+   (`%APPDATA%\Orkeon\appsettings.json` sous Windows,
+   `~/.config/Orkeon/appsettings.json` ailleurs).
 
 Si rien n'est trouvé, le runner se rabat sur les seules variables d'environnement
 et imprime un avertissement. Être explicite avec `--settings` reste l'option la

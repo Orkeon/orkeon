@@ -24,7 +24,7 @@ The dedicated CI workflow is `.github/workflows/rag-eval.yml` (floors in its
 `env:` block — keep them in sync with `RagEvalGoldenDatasetSlowTests`).
 
 The agent-facing surface is the `rag_eval` tool (`Orkeon.Tools.Rag`), and the
-programmatic one is `IRagEvaluator` / `IRagEvalHarness` (`Orkeon.Rag.Evaluation`).
+programmatic one is `IRagEvaluator` (a port in `Orkeon.Rag.Abstractions.Interfaces`) / `IRagEvalHarness` (`Orkeon.Rag.Evaluation`).
 
 > Note (default in-memory store): the ingestion manifest under `./.orkeon`
 > persists across CLI runs while the in-memory document store does not. If a

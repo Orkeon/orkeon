@@ -39,6 +39,9 @@ The numbered YAML crews live in nine thematic folders:
 | `crew-multifile/` | A crew described as a directory (`orkeon run <dir>`) |
 | `forge/promote-demo/` | The Atelier's offline half: a ready `orkeon forge` session bundled as a workspace — `forge list`, then `forge promote` into an ordinary folder (no LLM needed) |
 | `runners/` | The runner projects that execute the numbered examples, incl. two interactive dotnet tools |
+| `service-host/` | The `orkeon-host` daemon's example material: a README and `appsettings.host.json` |
+| `run-events/` | The `orkeon run --events jsonl` protocol: README, `sample-stream.jsonl`, `watch-run.py` |
+| `appsettings/`, `_shared/`, `others/` | The shared settings profile matrix, shared assets, and miscellaneous one-offs |
 
 ## Notable examples
 

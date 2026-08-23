@@ -33,8 +33,8 @@ Les composants du moteur se trouvent dans `Orkeon.Domain.Graph` :
 | `StateGraph<TState>` | Définition du graphe : nœuds, edges fixes et conditionnels, compilation |
 | `GraphNode<TState>` | Nœud de traitement : `Func<TState, CancellationToken, Task<TState>>` |
 | `IGraphEdge<TState>` | Interface pour le routage (fixe ou conditionnel) |
-| `FixedEdge<TState>` | Edge inconditionnel vers un nœud cible |
-| `ConditionalEdge<TState>` | Edge avec fonction de routage `Func<TState, string>` |
+| `FixedEdge<TState>` (internal) | Edge inconditionnel vers un nœud cible — construit via `AddEdge` |
+| `ConditionalEdge<TState>` (internal) | Edge avec fonction de routage `Func<TState, string>` |
 | `GraphRunner<TState>` | Moteur d'exécution avec circuit breaker et observabilité |
 | `GraphExecutionResult<TState>` | Résultat : état final, trace, transitions, durée |
 | `GraphCircuitBrokenException` | Exception quand le circuit breaker trip |
@@ -60,7 +60,7 @@ Le champ `GraphConfig?` est ajouté dans `CrewConfiguration` (`Orkeon.Domain.Con
 | Classe | Modification |
 |--------|-------------|
 | `ProcessStrategyFactory` | Ajout du case `"Graph"` → `GraphProcessStrategy` |
-| `YamlCrewDefinitionLoader` | Ajout de `GraphYamlConfig`, `MapGraphConfig()`, `"graph"` dans `ParseProcessType` |
+| Pipeline YAML (`YamlConfigModels` / `YamlCrewMapper`) | Ajout de `GraphYamlConfig`, `MapGraphConfig()`, `"graph"` dans `ParseProcessType` |
 | `ProcessType` | Ajout de `ProcessType.Graph` |
 
 ## Topologie du graphe
@@ -111,7 +111,7 @@ Les presets sont les mêmes que pour la FSM :
 
 Le `GraphRunner<TState>` expose deux événements :
 
-- `OnNodeCompleted` : émis après chaque nœud, avec `NodeCompletedEventArgs` (nom du nœud, état courant, ordinal, trace snapshot)
+- `OnNodeCompleted` : émis après chaque nœud, avec `NodeCompletedEventArgs<TState>` (nom du nœud, état courant, ordinal, trace snapshot)
 - `OnCircuitBroken` : émis quand le circuit trip, avec `GraphCircuitBrokenEventArgs` (raison, nœud, compteur, trace)
 
 Le `GraphProcessStrategy` s'abonne à ces événements pour le logging structuré via `ILogger` (source-generated `LoggerMessage`).
@@ -169,7 +169,7 @@ tasks:
 
 Le bloc `graphConfig` voyage jusqu'au graphe en cours d'exécution :
 
-1. `YamlCrewDefinitionLoader` mappe le YAML dans `CrewConfiguration.GraphConfig`.
+1. `YamlCrewMapper` mappe le YAML dans `CrewConfiguration.GraphConfig` (le loader désérialise et délègue).
 2. `CrewFactory` le reporte (ainsi que l'éventuel `circuitBreaker` niveau crew) sur l'agrégat
    Domain `Crew` (`Crew.GraphConfig` / `Crew.CircuitBreaker`), afin qu'il survive jusqu'à l'exécution.
 3. À l'exécution, `GraphProcessStrategy` lit la config **depuis l'argument crew** et résout la
@@ -185,9 +185,9 @@ par rapport à avant.
 
 | Modèle C# | Classe YAML | Fichier |
 |-----------|-------------|---------|
-| `GraphConfig` | `GraphYamlConfig` | `YamlCrewDefinitionLoader.cs` |
+| `GraphConfig` | `GraphYamlConfig` | `Configuration/Yaml/YamlConfigModels.cs` |
 
-Le mapping est effectué par `YamlCrewDefinitionLoader.MapGraphConfig()`.
+Le mapping est effectué par `YamlCrewMapper.MapGraphConfig()` (privé, `Configuration/Yaml/`).
 
 ## Utilisation en code C#
 
@@ -323,7 +323,9 @@ ProcessStrategyFactory.CreateStrategy(processType) switch
     "Sequential"   → SequentialProcessStrategy
     "Hierarchical" → HierarchicalProcessStrategy
     "Parallel"     → ParallelProcessStrategy
+    "Consensual"   → ConsensualProcessStrategy
     "Graph"        → GraphProcessStrategy
+    "Autonomous"   → AutonomousProcessStrategy
 }
 ```
 

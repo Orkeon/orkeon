@@ -158,7 +158,7 @@ orkeon init
 | **13 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Groq, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), and Google Gemini — all HTTP-based, extending `HttpLlmProviderBase`; local models via Docker Model Runner, Ollama, or embedded llama.cpp — see the [local models guide](docs/guides/local-models.md) |
 | **Vision / multimodal** | Image content flows end-to-end (`MultiModalContent` → Anthropic image blocks / OpenAI `image_url`) with a VFS-backed loader; opt-in via `AddOrkeonMultiModal(...)` — see the [multimodal guide](docs/guides/multimodal.md) |
 | **6 memory providers** | Redis (vector search), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (remote REST server) — all composable with the AES-256-GCM at-rest encryption decorator |
-| **6 orchestration strategies** | Sequential, Hierarchical, Parallel, Consensual (Majority / SuperMajority / Unanimity voting strategies), Graph (LangGraph-style), Autonomous (multi-dimensional execution budget) — see the [process-type guide](docs/orchestration/process-types.md) |
+| **6 orchestration strategies** | Sequential, Hierarchical, Parallel, Consensual (Majority / SuperMajority / Unanimity / WeightedConsensus / BordaCount voting strategies), Graph (LangGraph-style), Autonomous (multi-dimensional execution budget) — see the [process-type guide](docs/orchestration/process-types.md) |
 | **Plugin system** | Drop-in assemblies implementing `IOrkeonPlugin`, discovered in a plugin directory, loaded in isolated collectible `AssemblyLoadContext`s, activated explicitly via `AddOrkeonPlugins(...)` — see [plugins](docs/architecture/plugins.md) |
 | **Host bootstrap & scripting** | `Orkeon.Hosting` (`RunnerHost`) wires the full stack for runners/CLIs (appsettings, VFS mounts, providers, tools); the `orkeon` dotnet tool runs TypeScript-syntax `.ork.ts` crew scripts |
 | **Source generators** | `Orkeon.Generators` emits the `[TypedDictionary]` wrapper/builder plumbing, keeping the hand-written strongly typed APIs boilerplate-free |
@@ -201,7 +201,7 @@ Orkeon follows Clean Architecture with three concentric layers:
 - **Application**: Use cases and orchestration logic. Defines interfaces (ports) implemented by Infrastructure.
 - **Infrastructure**: LLM providers, memory stores, tool implementations, and all external integrations.
 
-Around the core, dedicated packages cover hosting (`Orkeon.Hosting`), plugins (`Orkeon.Plugins`), Roslyn source generators (`Orkeon.Generators`), the VFS-compliance analyzer (`Orkeon.Compliance.Vfs`), the TypeScript-syntax scripting DSL (`Orkeon.Scripting` plus the `orkeon` CLI tool), tool packs (`Orkeon.Tools.*`), and the RaggableTree semantic code-analysis engine (`Orkeon.Analysis`).
+Around the core, dedicated packages cover hosting (`Orkeon.Hosting`, plus the `orkeon-host` service daemon of `Orkeon.Host` and the `orkeon run --events jsonl` run event bus), plugins (`Orkeon.Plugins`), Roslyn source generators (`Orkeon.Generators`), the VFS-compliance analyzer (`Orkeon.Compliance.Vfs`), the TypeScript-syntax scripting DSL (`Orkeon.Scripting` plus the `orkeon` CLI tool), tool packs (`Orkeon.Tools.*`), and the RaggableTree semantic code-analysis engine (`Orkeon.Analysis`).
 
 ---
 

@@ -18,12 +18,13 @@ Each builder internally delegates to the factory methods `Agent.Create()`, `Crew
 
 Orkeon supports full crew configuration via YAML. The `YamlCrewDefinitionLoader` loader (`Orkeon.Infrastructure.Configuration`) converts YAML files into domain objects.
 
-### Complete configuration schema
+### Configuration schema (abridged)
 
 The YAML structure follows this schema:
 
 ```yaml
-# Complete CrewYamlConfig schema
+# CrewYamlConfig schema — most-used keys (see docs/architecture/yaml-schema.md for the full surface:
+# crew-level llm:/rag:/links:, agent knowledge:, task tools:/deliverable:/llm_override:, llm thinking/responseFormat/cache)
 name: string              # Crew identifier
 goal: string              # Goal (required)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
@@ -220,13 +221,10 @@ public async Task<Crew> CreateFromDirectoryAsync(
 
 ### Tool resolution
 
-The tool names specified in `agents[].tools[]` are resolved at construction time via `IToolRegistry.GetToolByNameAsync(toolName)`. If a tool does not exist in the registry, `CrewFactory` throws a validation exception with the list of missing tools.
+The tool names specified in `agents[].tools[]` are resolved at construction time via `IToolRegistry.GetToolByNameAsync(toolName)`. What happens when a tool is missing depends on `CrewFactoryOptions.StrictTools` (config key `Orkeon:CrewFactory:StrictTools`): the runners (`orkeon run`) default it to **true** and `CrewFactory` then throws with the list of missing tools; the **library default is false** — the tool is skipped with a Warning log and the crew loads without it.
 
-Example error:
+Example error (strict mode):
 
 ```
-CrewFactory Error: Tools not found in registry:
-  - web_scraper
-  - custom_analyzer
-Available tools: file_read, file_write, http_api, ...
+Crew configuration references unknown tool(s): web_scraper, custom_analyzer. Available tools: file_read, file_write, http_api, ...
 ```

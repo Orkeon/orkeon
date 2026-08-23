@@ -44,10 +44,12 @@ public static class RunArgumentsBuilder
 
         if (target.Dialect == RunTargetDialect.Yaml)
         {
-            foreach (var variable in effective.Variables)
+            // Single -V flag, like --mount below: the CLI parser rejects a repeated option.
+            if (effective.Variables.Count > 0)
             {
                 arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Variables));
-                arguments.Add(variable.ToToken());
+                foreach (var variable in effective.Variables)
+                    arguments.Add(variable.ToToken());
             }
 
             if (!string.IsNullOrWhiteSpace(effective.InitialContext))
@@ -71,10 +73,14 @@ public static class RunArgumentsBuilder
             }
         }
 
-        foreach (var mount in effective.Mounts)
+        // One --mount flag carrying every value: the CLI's CommandLineParser REJECTS a
+        // repeated option ("Option 'm, mount' is defined multiple times"), and sequence
+        // options consume the space-separated values that follow the single flag.
+        if (effective.Mounts.Count > 0)
         {
             arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Mounts));
-            arguments.Add(mount);
+            foreach (var mount in effective.Mounts)
+                arguments.Add(mount);
         }
 
         if (effective.AllowExternalMounts)

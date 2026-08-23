@@ -43,3 +43,14 @@ depend on `Application` (an inner layer), and not the other way around. No cycle
   one-off basis.
 - **Vigilance**: prefer depending on `Tools.Abstractions` alone as long as a tool has no proven
   application-level need; only reach up to `Application` out of documented necessity.
+
+## Amendment (2026-08-23)
+
+The Context's package split has drifted — exactly the drift the Vigilance clause
+exists to record. Current state: only `Tools.Code` still matches the
+"abstractions-only" profile among the four originally listed. `Tools.Data`,
+`Tools.FileSystem` and `Tools.Rag` now reference the concrete `Orkeon.Rag` (for the
+RAG-backed search tools), which itself references `Orkeon.Application` (ADR-006
+amendment of 2026-07-25) — so they reach `Application` transitively; `Tools.Analysis`
+references the concrete `Orkeon.Analysis`. The decision itself is unchanged: reaching
+up is legitimate when documented, and ADR-006 documents the RAG couplings.

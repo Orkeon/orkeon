@@ -94,4 +94,3 @@ executive summary, thematic sections, and a bibliography").
 - **Duration**: ~<n> min on <provider/model>
 - **Cost**: ~<n> LLM calls; rough token / \$ estimate if known (say "local model —
   no API cost" when applicable)
-</content>

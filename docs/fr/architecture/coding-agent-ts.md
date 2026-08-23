@@ -64,10 +64,14 @@ la gestion système native des providers (le `system` top-level d'Anthropic, `ca
 ne se déclenchait jamais. Un message système de niveau conversation l'emporte sur
 `LlmConfig.SystemMessage` chez tous les providers.
 
-Barrière de permissions (v1) : les outils de lecture sont toujours autorisés ; `file_write`
-et `shell_command` sont enveloppés (via `withAutonomousTool`) de sorte que **le mode `plan`
-les refuse** (lecture seule). La confirmation interactive à chaque écriture nécessite le
-canal de prompt du REPL (différée en v2). Budget : `process("autonomous")` + `.budget({...})`
+Barrière de permissions : un service DI de plein droit, `IPermissionGate`/`ModePermissionGate`
+(`Orkeon.Infrastructure.Security`), consulté à chaque appel d'outil dans `ctx.llm.act`.
+Quatre modes (`bypassPermissions`, `plan`, `acceptEdits`, `default`), classification
+lecture/écriture depuis la déclaration `IBaseTool.Access` de l'outil lui-même (avec une
+table d'outils de lecture et les préfixes `codebase_`/`symbol_`/`index_` en repli),
+fail-closed sur les outils inconnus, et un canal d'approbation interactif — le tout
+derrière `Orkeon:Security:PermissionGate:Enabled` / `:Interactive` (câblé par le REPL et
+`RunnerHost` ; no-op quand désactivé). Budget : `process("autonomous")` + `.budget({...})`
 (`AgentExecutionBudget`, 5 dimensions).
 
 ## Les primitives de session (Phase 2 / 6)
@@ -94,14 +98,14 @@ C'est ainsi que `/cost`, `/diff`, `/memory`, … appellent directement les outil
 ## Exécution
 
 ```bash
-# REPL (loads the 17 commands)
+# REPL (loads the 57 commands)
 DEEPSEEK_API_KEY=sk-... bash experiments/07-orkeon-coding-agent-ts/run-repl.sh
 
 # A single crew standalone (honours .body() + ctx.llm)
 bash experiments/07-orkeon-coding-agent-ts/run-crew.sh crews/git-commit/crew.ork.ts
 ```
 
-Le REPL a besoin d'une clé LLM pour les crews/la boucle. Les 17 commandes et le lancement de
-crew sont exercés par des tests automatisés (`Exp07CommandSurfaceTests`,
+Le REPL a besoin d'une clé LLM pour les crews/la boucle. Les 57 commandes et le lancement de
+crew sont exercés par des tests automatisés (la suite TypeScript `command-surface.test.ts`,
 `ScriptHostFacadeTests`) sans clé. Voir
 `experiments/07-orkeon-coding-agent-ts/RESULTS.md` pour la matrice d'acceptation.

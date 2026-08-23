@@ -30,15 +30,15 @@ The analyzer is applied to every project under `src/` except itself, so violatio
 
 | Code | Severity | Detects | Suggested fix |
 |---|---|---|---|
-| `ORKVFS001` | Error | Direct call to `System.IO.File.*` | Inject `IFileSystemService` and use `TryReadAllBytesAsync` / `WriteAllTextAsync` / `ExistsAsync` / … |
-| `ORKVFS002` | Error | Direct call to `System.IO.Directory.*` | Use `CreateDirectoryAsync`, `DeleteAsync`, `EnumerateFilesAsync` |
-| `ORKVFS003` | Error | `new FileStream(string …)`, `new FileInfo(string)`, `new DirectoryInfo(string)` | Use `OpenReadStreamAsync`, `OpenWriteStreamAsync`, `TryGetEntryAsync` |
-| `ORKVFS004` | Error | `Path.GetFullPath(…)` (may bypass mount validation) | For user-supplied input, call `ResolveAndValidate` |
-| `ORKVFS005` | Error | `new FileSystemWatcher(…)` | Use the VFS watcher abstraction |
-| `ORKVFS006` | Error | `new StreamReader(string)` / `new StreamWriter(string)` (path overloads) | Open via `OpenReadStreamAsync` / `OpenWriteStreamAsync` and wrap the returned `Stream` |
-| `ORKVFS007` | Error | A nullable `IFileSystemService?` field or parameter | Inject `IFileSystemService` as a required, non-nullable dependency |
+| <a id="ork-vfs-001"></a>`ORKVFS001` | Error | Direct call to `System.IO.File.*` | Inject `IFileSystemService` and use `TryReadAllBytesAsync` / `WriteAllTextAsync` / `ExistsAsync` / … |
+| <a id="ork-vfs-002"></a>`ORKVFS002` | Error | Direct call to `System.IO.Directory.*` | Use `CreateDirectoryAsync`, `DeleteAsync`, `EnumerateFilesAsync` |
+| <a id="ork-vfs-003"></a>`ORKVFS003` | Error | `new FileStream(string …)`, `new FileInfo(string)`, `new DirectoryInfo(string)` | Use `OpenReadStreamAsync`, `OpenWriteStreamAsync`, `TryGetEntryAsync` |
+| <a id="ork-vfs-004"></a>`ORKVFS004` | Error | `Path.GetFullPath(…)` (may bypass mount validation) | For user-supplied input, call `ResolveAndValidate` |
+| <a id="ork-vfs-005"></a>`ORKVFS005` | Error | `new FileSystemWatcher(…)` | Use the VFS watcher abstraction |
+| <a id="ork-vfs-006"></a>`ORKVFS006` | Error | `new StreamReader(string)` / `new StreamWriter(string)` (path overloads) | Open via `OpenReadStreamAsync` / `OpenWriteStreamAsync` and wrap the returned `Stream` |
+| <a id="ork-vfs-007"></a>`ORKVFS007` | Error | A nullable `IFileSystemService?` field or parameter | Inject `IFileSystemService` as a required, non-nullable dependency |
 
-All diagnostics are defined in `src/analyzers/Orkeon.Compliance.Vfs/DiagnosticDescriptors.cs` and emit a stable help link.
+All diagnostics are defined in `src/analyzers/Orkeon.Compliance.Vfs/DiagnosticDescriptors.cs` and emit a stable help link ending in `#ork-vfs-00N` — the anchors in the Code column above are those targets.
 
 ## Exempt scopes (path-based)
 

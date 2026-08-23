@@ -77,7 +77,7 @@ La documentation est organisée en 6 sections thématiques.
 | Fichier | Description |
 |---------|-------------|
 | [Catalogue des exemples](./reference/examples-catalog.md) | Carte éditoriale d'`examples/` (9 catégories métier + vitrines RAG/RaggableTree/scripting) ; l'`examples/INDEX.md` généré est l'inventaire faisant foi |
-| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `doctor`) avec options et exemples, plus `orkeon-repl` |
+| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `doctor`) avec options et exemples, plus `orkeon-repl` |
 | [Référence de configuration](./reference/configuration.md) | La carte unique des sections d'`appsettings.json` (`Llm`, `Orkeon:*`, `MCP`), sources et précédence, colonne opt-in |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante |
 | [Matrice de conformité A2A](./reference/a2a-conformance.md) | Position honnête face à la spec A2A v1.0 : opérations, modèle de données, bindings, sécurité — ce qui interopère et ce qui n'interopère pas |

@@ -18,9 +18,9 @@ Les solutions naïves disponibles (lecture fichier via `file_read`, `grep` plein
 
 ## Décision
 
-Construire un **graphe sémantique stratifié à 6 niveaux** alimenté par Tree-sitter, exposé aux agents via 13 tools structurels.
+Construire un **graphe sémantique stratifié — cinq `NodeLevel` plus la couche d'arêtes** — alimenté par Tree-sitter, exposé aux agents via 13 tools structurels.
 
-Les six niveaux (`NodeLevel`) :
+Les cinq niveaux (`NodeLevel`) et les arêtes :
 
 - **L0 Monorepo** — racine du projet indexé
 - **L1 Package** — unité de build détectée par marker (`package.json`, `*.csproj`, ...)

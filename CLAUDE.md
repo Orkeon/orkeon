@@ -218,7 +218,7 @@ Each provider declares an `LlmProviderCapabilities` (Domain value object, expose
 - `DelegateWorkTool` (Infrastructure) — Extended with optional `AgentExecutionBudget` for recursive depth control
 
 **RaggableTree** (semantic codebase graph, `src/analysis/`):
-- 6-level stratified graph (Monorepo → Package → Module → Symbol → Statement + Edges) built from Tree-sitter ASTs
+- 5-level stratified graph (Monorepo → Package → Module → Symbol → Statement) plus the edge layer built from Tree-sitter ASTs
 - 5 language adapters: TypeScript, C#, Python, Go, Rust (via `ILanguageAdapter`)
 - 15 agent tools in `Orkeon.Tools.Analysis`: `index_codebase`, `codebase_map`, `symbol_detail`, `flow_trace`, `impact_analysis`, `complexity_report`, `codebase_search`, etc.
 - Pipeline: discovery → parse/extract → resolve edges → fingerprint → embed → persist

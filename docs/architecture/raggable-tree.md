@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 15 tools. Replaces raw file reading with a structured index offering six zoom levels (monorepo → package → module → symbol → declaration → statement).
+Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 15 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
 
 ## Overview
 
@@ -45,36 +45,40 @@ services.AddRaggableTree(new RaggableTreeOptions
 });
 ```
 
-## YAML configuration
+## Configuration
 
-```yaml
-raggableTree:
-  enabled: true                    # false to disable the feature entirely
-  languages: [typescript, csharp]  # [] = auto-detection via the registered adapters
-  exclude: [node_modules, dist, .git, bin, obj]
-  indexMode: frozen                # frozen | live | breakOnChange (§31.3)
-  enrichWithLlm: false             # true to generate SemanticSummary via summarizer
-  includeStatements: false         # true to index L4 (per-statement CFG)
+The only configuration surface the shipped hosts bind is the **`RaggableTree`
+appsettings section** (read key-by-key by the runner host — there is no crew-YAML
+`raggableTree:` key):
 
-  embedding:
-    provider: openai               # none | openai | ollama | onnx
-    model: text-embedding-3-small
-    apiKey: ${OPENAI_API_KEY}
-    baseUrl: https://api.openai.com/
-    dimensions: 1536
-
-  summarizer:
-    provider: anthropic            # none | anthropic
-    model: claude-haiku-4-5
-    concurrency: 5
-
-  vectorStore:
-    provider: inMemory             # inMemory | redis | chromaDb | pinecone | lanceDb | sqlite
-
-  cache:
-    enabled: true
-    path: .orkeon/raggable-tree.json
+```jsonc
+{
+  "RaggableTree": {
+    "Enabled": true,                    // false disables the feature entirely (runner opt-out)
+    "Exclude": ["node_modules", "dist", ".git", "bin", "obj"],
+    "RootAlias": "",                    // shortens every FQN when set
+    "EnrichWithLlm": false,             // true generates SemanticSummary via the summarizer
+    "IncludeStatements": false,         // true indexes L4 (per-statement)
+    "IndexMode": "frozen",              // assigned but consumed by nothing — see the historical note below
+    "Embedding": {
+      "Provider": "LocalSmartComponents", // the default — or None | OpenAI | Ollama (Onnx is a reserved no-op arm)
+      "Model": "",                      // empty → the provider's own default
+      "ApiKey": null,
+      "BaseUrl": null,
+      "Dimensions": null,
+      "MaxTextChars": null
+    }
+  }
+}
 ```
+
+Languages are **never configured**: they are auto-detected from the codebase and
+scoped per `index_codebase` call. Everything else on `RaggableTreeOptions`
+(`Summarizer`, `ValidateCitations` — default `true`, gating the citation
+validators) is reachable from C# via `AddRaggableTree(options)`; the
+`VectorStore`/`Cache` option groups exist on the record but are consumed by
+nothing — the store is `InMemoryRaggableStore`, adapted onto an ambient
+`IVectorStoreProvider` when one is registered.
 
 All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.RaggableTreeOptions`.
 
@@ -85,7 +89,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.
 5. **Enrichment** — composition of the `EmbeddingText` (`IEmbeddingTextComposer`), optionally an LLM summary (`INodeSummarizer`), then batch embedding (`IEmbeddingProvider`).
-6. **Persistence** — `IVectorStoreProvider.IndexAsync` for the embeddings, serialized JSON cache of the full tree (`RaggableTreeCache`).
+6. **Persistence** — `IVectorStoreProvider.IndexAsync` for the embeddings; the tree itself stays in the in-memory store (the `RaggableTreeCache` JSON serializer exists but is wired by no shipped host).
 
 Incremental reindexing (`IncrementalReindexEngine`) restarts from phase 2 for the changed files only, reuses the nodes of unchanged files, and runs phases 4-6 only on the `newNodes`.
 
@@ -94,26 +98,26 @@ Incremental reindexing (`IncrementalReindexEngine`) restarts from phase 2 for th
 | Tool | Usage | Typical request |
 |------|-------|---------------|
 | `index_codebase` | Builds the initial index | `{ "root_path": "/src" }` |
-| `incremental_reindex` | Updates the index after file changes | `{ "changed_file_paths": ["src/a.ts"] }` |
+| `incremental_reindex` | Updates the index after file changes | `{ "changed_files": ["src/a.ts"] }` |
 | `index_status` | Lists every indexed virtual root (date, node/edge counts) | `{}` |
 | `is_path_indexed` | Checks whether a path is covered by an indexed root | `{ "virtual_path": "/src/app/main.ts" }` |
-| `codebase_map` | Overview: packages, file/symbol counts | `{ "depth": 2 }` |
-| `package_summary` | Summary of a package (modules, dependencies, key symbols) | `{ "package_fqn": "app::core" }` |
+| `codebase_map` | Overview: packages, file/symbol counts | `{ "level": "L2_Module" }` |
+| `package_summary` | Summary of a package (modules, dependencies, key symbols) | `{ "fqn": "app::core" }` |
 | `symbol_detail` | Detail of a symbol (signature, doc, callers, callees) | `{ "fqn": "app::UserService::create" }` |
 | `symbol_source` | Source code excerpt (signature, body, full span) | `{ "fqn": "...", "mode": "SignatureAndBody" }` |
 | `codebase_search` | Semantic search by embedding | `{ "query": "session expiration", "top_k": 10 }` |
-| `dependency_graph` | Incoming/outgoing edges of a node | `{ "fqn": "...", "kinds": ["Imports", "Calls"] }` |
-| `sub_graph` | BFS expansion around seeds | `{ "seeds": ["pkg::X"], "max_depth": 3 }` |
+| `dependency_graph` | Level-scoped dependency graph (L1/L2/L3), Mermaid/DOT rendering | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
+| `sub_graph` | BFS expansion around seeds | `{ "seeds": ["pkg::X"], "depth": 3 }` |
 | `flow_trace` | Call paths between two FQNs | `{ "from": "A", "to": "B", "max_paths": 5 }` |
-| `impact_analysis` | Transitive impacts of a change | `{ "fqn": "...", "direction": "Backward" }` |
+| `impact_analysis` | Transitive impacts of a change | `{ "target": "...", "direction": "Backward" }` |
 | `complexity_report` | Top-N by metric (Cyclomatic, LoC, Callers...) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
-| `statement_query` | L4 structural queries (if, try, return...) | `{ "parent_fqn": "...", "kinds": ["TryCatch"] }` |
+| `statement_query` | L4 structural queries (if, try, return...) | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
 
 The 15 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 ## Agent strategies
 
-The framework exposes `ICodebaseContextProvider`, which produces a compact summary of the codebase (packages, top complexity, top coupling, detected patterns) to inject into an agent's system prompt at startup. Three formats: `markdown` (default, ~300 tokens), `compact` (~150 tokens), `json` (~400 tokens). Injection only happens if an index is present and the agent owns at least one RaggableTree tool.
+The framework exposes `ICodebaseContextProvider`, which produces a compact summary of the codebase (packages, top complexity, top coupling, detected patterns) suitable for an agent's system prompt. Three formats: `markdown` (default, ~300 tokens), `compact` (~150 tokens), `json` (~400 tokens). **No framework component calls it automatically** — it is registered by `AddRaggableTree` and the host resolves it and injects the summary where it wishes.
 
 ## Hybrid search
 
@@ -167,15 +171,16 @@ Create an `IReadOnlyList<FingerprintRule>` listing the decorators/annotations to
 
 ### Adding an embedding provider
 
-Implement `IEmbeddingProvider.EmbedBatchAsync(texts, ct)` → `IReadOnlyList<ReadOnlyMemory<float>>`. Three reference implementations: `OpenAIEmbeddingProvider`, `OllamaEmbeddingProvider`, and `LocalEmbeddingProvider` (see the section below). The extension method `EmbedAsync(nodes, model, ct)` (`Orkeon.Analysis.Vectors`) fills `node.Embedding` from the composed `EmbeddingText`.
+Implement `IEmbeddingProvider.EmbedBatchAsync(texts, ct)` → `IReadOnlyList<ReadOnlyMemory<float>>`. Three reference implementations: `OpenAIEmbeddingProvider`, `OllamaEmbeddingProvider`, and `LocalEmbeddingProvider` (see the section below). The default interface method `EmbedAsync(nodes, model, ct)` (on `IEmbeddingProvider`, `Orkeon.Analysis.Abstractions.Interfaces`) fills `node.Embedding` from the composed `EmbeddingText`.
 
 ## Embedding providers
 
-Four options are available via `EmbeddingProviderKind`:
+Five members exist on `EmbeddingProviderKind`:
 
 | Provider | Network | API key | Dims | Notes |
 |----------|--------|---------|------|-------|
 | `None` | n/a | n/a | n/a | Pipeline without embeddings (phases 5-6 disabled) |
+| `Onnx` | no | no | — | **Reserved** — currently a no-op registration arm |
 | `OpenAI` | required | required | 1536 (`text-embedding-3-small`) | Maximum quality, MTEB ~62.3 |
 | `Ollama` | local (HTTP) | no | model-dependent | Local Ollama / llama.cpp daemon required |
 | `LocalSmartComponents` | no | no | 384 (BGE-micro-v2) | In-process, ONNX CPU, cold start ~200 ms |

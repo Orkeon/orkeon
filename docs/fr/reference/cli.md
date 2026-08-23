@@ -24,12 +24,12 @@ Exécute une définition de crew et imprime son résultat sur stdout. Le dispatc
 | Option | Description |
 |---|---|
 | `-s, --settings <chemin>` | Chemin vers `appsettings.json`. Sans elle, une chaîne de repli s'applique (ci-dessous). |
-| `-m, --mount <spec>` | Montage VFS, format Docker `<physique>:<virtuel>:<droits>[;sous-chemin:droits]`. Répétable. |
+| `-m, --mount <spec>` | Montage VFS, format Docker `<physique>:<virtuel>:<droits>[;sous-chemin:droits]`. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. |
 | `--allow-external-mounts` | Autorise les montages hors de la racine du workspace (ou `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`). |
 | `-v, --verbose <0-2>` | `0` silencieux, `1` échanges LLM & outils, `2` debug complet. |
 | `--llm-log` / `--llm-log-path <rép>` | Journalise les échanges LLM complets en JSONL (répertoire par défaut `./llm-logs`). |
 | `--inputs <json>` / `--inputs-file <chemin>` | Entrées structurées pour les **scripts** (variable globale `inputs`). |
-| `-V, --var CLE=VALEUR` | Variable pour le `CrewInput` d'un **crew YAML** (gabarits de tâche `{CLE}`). Répétable. |
+| `-V, --var CLE=VALEUR` | Variable pour le `CrewInput` d'un **crew YAML** (gabarits de tâche `{CLE}`). Plusieurs variables séparées par des espaces derrière un seul `-V` (un flag répété est rejeté). |
 | `--initial-context <texte>` | Contexte initial passé au `CrewInput` d'un **crew YAML**. |
 | `--memory-limit-mb <n>` | Plafond mémoire Jint pour cette exécution (`0` le désactive). |
 | `--validate` | Dry run : résout les settings, construit l'hôte, charge le crew avec résolution stricte des outils — aucun appel LLM, aucun kickoff. Imprime `VALIDATION OK/FAILED: …`. |
@@ -67,7 +67,7 @@ Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la for
 | `--auto` | Arbitre les verdicts non conformes sans humain, dans les limites du budget. |
 | `--dry` | S'arrête après la validation — génère et valide, n'exécute jamais. Reprenez sans `--dry` pour essayer. |
 | `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | Le budget (défaut 3 itérations ; `0` = jetons/temps illimités). Une reprise peut le relever ; la consommation est toujours reportée. |
-| `-s, --settings <path>` | Mêmes sémantiques qu'`orkeon run`. |
+| `--settings <path>` | Mêmes sémantiques qu'`orkeon run` — **forme longue uniquement** : le parseur du forge est artisanal et ne définit aucun alias court. |
 | `--pack <dir>` | Surcharge le pack de prompts embarqué. |
 | `--to <dir>` | *(promote)* Dossier de destination ; doit être inexistant ou vide. |
 | `--schedule daily@HH:mm\|hourly` | *(promote)* Génère les artefacts de planification sous `schedule/` — XML de tâche Windows, timer systemd, ligne cron. La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur. |
@@ -111,11 +111,11 @@ orkeon llm models -p ollama --filter 'llama*'
 
 Trois verbes sur le sous-système RAG (`ingest`, `search`, `eval`). Tous partagent les options d'hôte de `run` : `-s/--settings`, `-m/--mount`, `--allow-external-mounts`, `-v/--verbose`. Les sources relatives se résolvent contre un montage automatique `{cwd} → /workspace:ro` ; l'état atterrit dans `{cwd}/.orkeon → /output:rw`.
 
-**`orkeon rag ingest`** — ingestion incrémentale (les sources inchangées sont sautées) : `-c, --collection` (requis), `--source <chemin|glob>` (requis, répétable), `--chunking recursive|sentence|structural|semantic`, `--reindex` (réindexation complète — seule issue après un changement de modèle/dimension d'embedding).
+**`orkeon rag ingest`** — ingestion incrémentale (les sources inchangées sont sautées) : `-c, --collection` (requis), `--source <chemin|glob>` (requis ; plusieurs sources séparées par des espaces derrière un seul flag), `--chunking recursive|sentence|structural|semantic`, `--reindex` (réindexation complète — seule issue après un changement de modèle/dimension d'embedding).
 
 **`orkeon rag search`** — pose une question, imprime la réponse fondée avec citations et scores : `<question>` positionnelle, `-c, --collection` (requis), `--top-n` (défaut 5).
 
-**`orkeon rag eval`** — évalue une collection contre un jeu de données de référence (recall@k, MRR, groundedness) et écrit des rapports markdown/JSON : `-d, --dataset` (requis), `-c, --collection`, `--profile` ou `--compare fast,balanced,…`, `-k` (défaut 5), `--llm-judge`, `--offline` (zéro réseau : stub extractif déterministe, aucune clé LLM nécessaire), `--no-ingest`, `--reindex`, `--min-recall` / `--min-mrr` (portes anti-régression, sortie 1 sous le seuil), `--output` (défaut `/output/rag/eval`).
+**`orkeon rag eval`** — évalue une collection contre un jeu de données de référence (recall@k, MRR, groundedness) et écrit des rapports markdown/JSON : `-d, --dataset` (requis), `-c, --collection`, `--profile fast|balanced|quality|adaptive|corrective|default` (défaut `default` = le `Orkeon:Rag:Profile` configuré) ou `--compare fast,balanced,…`, `-k` (défaut 5), `--llm-judge`, `--offline` (zéro réseau : stub extractif déterministe, aucune clé LLM nécessaire), `--no-ingest`, `--reindex`, `--min-recall` / `--min-mrr` (portes anti-régression, sortie 1 sous le seuil), `--output` (défaut `/output/rag/eval`).
 
 ```bash
 orkeon rag eval --dataset examples/rag/eval/golden.yaml \
@@ -133,6 +133,17 @@ orkeon doctor --json
 ## `orkeon-repl` — la console interactive séparée
 
 `orkeon-repl` est un **outil distinct** construit depuis `src/apps/Orkeon.ConsoleApp` (commande dotnet tool `orkeon-repl`) : un REPL interactif complet pour piloter agents, crews et outils depuis une console Terminal.Gui à deux volets (logs + REPL), avec toute la pile du framework câblée — outils intégrés, RAG, analyse de code, embeddings locaux — et des commandes scriptées en TypeScript. Il ne partage volontairement pas le nom d'assembly `orkeon`. Voir [Commandes CLI en TypeScript](../architecture/cli-ts-commands.md).
+
+## Les autres binaires livrés
+
+Les archives de release portent plus de lanceurs que les deux documentés ici : `orkeon-slim`
+(la même CLI, framework-dependent), **`orkeon-host`** (le daemon de service longue durée —
+voir [le service host](../architecture/service-host.md)), les deux TUIs Studio
+(`orkeon-studio-config`, `orkeon-studio-run`) et l'app desktop Windows (`orkeon-studio`)
+— voir [Orkeon Studio](../architecture/studio.md) — plus les runners d'exemples. La
+[matrice de publication](./publication-matrix.md) et
+[Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md) listent
+exactement quelle archive porte quoi.
 
 ---
 

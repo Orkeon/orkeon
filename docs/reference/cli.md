@@ -24,12 +24,12 @@ Runs a crew definition and prints its result on stdout. Dispatch is by target ty
 | Option | Description |
 |---|---|
 | `-s, --settings <path>` | Path to `appsettings.json`. Without it, a fallback chain applies (below). |
-| `-m, --mount <spec>` | VFS mount, Docker-style `<physical>:<virtual>:<rights>[;sub:rights]`. Repeatable. |
+| `-m, --mount <spec>` | VFS mount, Docker-style `<physical>:<virtual>:<rights>[;sub:rights]`. Several mounts go **space-separated after one flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. |
 | `--allow-external-mounts` | Allow mounts outside the workspace root (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`). |
 | `-v, --verbose <0-2>` | `0` quiet, `1` LLM & tool exchanges, `2` full debug. |
 | `--llm-log` / `--llm-log-path <dir>` | Log full LLM exchanges as JSONL (default directory `./llm-logs`). |
 | `--inputs <json>` / `--inputs-file <path>` | Structured inputs for **scripts** (global `inputs` variable). |
-| `-V, --var KEY=VALUE` | Variable for a **YAML crew**'s `CrewInput` (task templates `{KEY}`). Repeatable. |
+| `-V, --var KEY=VALUE` | Variable for a **YAML crew**'s `CrewInput` (task templates `{KEY}`). Several variables go space-separated after one `-V` (a repeated flag is rejected). |
 | `--initial-context <text>` | Initial context string for a **YAML crew**'s `CrewInput`. |
 | `--memory-limit-mb <n>` | Jint memory limit override for this run (`0` disables it). |
 | `--validate` | Dry run: resolve settings, build the host, load the crew with strict tool resolution — no LLM call, no kickoff. Prints `VALIDATION OK/FAILED: …`. |
@@ -67,7 +67,7 @@ Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forg
 | `--auto` | Arbitrate non-conforming verdicts without a human, within the budget. |
 | `--dry` | Stop after validation — generate and validate, never execute. Resume without `--dry` to try it. |
 | `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | The budget (default 3 iterations; `0` = unlimited tokens/time). Resuming may raise it; consumption always carries over. |
-| `-s, --settings <path>` | Same semantics as `orkeon run`. |
+| `--settings <path>` | Same semantics as `orkeon run` — **long form only**: the forge parser is bespoke and defines no short aliases. |
 | `--pack <dir>` | Override the embedded prompt pack. |
 | `--to <dir>` | *(promote)* Destination folder; must not exist or be empty. |
 | `--schedule daily@HH:mm\|hourly` | *(promote)* Generate schedule artifacts under `schedule/` — Windows task XML, systemd timer, cron line. The install command is **displayed, never executed**: Orkeon has no scheduler. |
@@ -111,11 +111,11 @@ orkeon llm models -p ollama --filter 'llama*'
 
 Three verbs over the RAG subsystem (`ingest`, `search`, `eval`). All share the host options of `run`: `-s/--settings`, `-m/--mount`, `--allow-external-mounts`, `-v/--verbose`. Relative sources resolve against an automatic `{cwd} → /workspace:ro` mount; state lands in `{cwd}/.orkeon → /output:rw`.
 
-**`orkeon rag ingest`** — incremental ingestion (unchanged sources are skipped): `-c, --collection` (required), `--source <path|glob>` (required, repeatable), `--chunking recursive|sentence|structural|semantic`, `--reindex` (full reindex — the only way past an embedding model/dimension change).
+**`orkeon rag ingest`** — incremental ingestion (unchanged sources are skipped): `-c, --collection` (required), `--source <path|glob>` (required; several sources space-separated after one flag), `--chunking recursive|sentence|structural|semantic`, `--reindex` (full reindex — the only way past an embedding model/dimension change).
 
 **`orkeon rag search`** — asks a question, prints the grounded answer with citations and scores: positional `<question>`, `-c, --collection` (required), `--top-n` (default 5).
 
-**`orkeon rag eval`** — evaluates a collection against a golden dataset (recall@k, MRR, groundedness) and writes markdown/JSON reports: `-d, --dataset` (required), `-c, --collection`, `--profile` or `--compare fast,balanced,…`, `-k` (default 5), `--llm-judge`, `--offline` (zero-network: deterministic extractive stub, no LLM key needed), `--no-ingest`, `--reindex`, `--min-recall` / `--min-mrr` (anti-regression gates, exit 1 below threshold), `--output` (default `/output/rag/eval`).
+**`orkeon rag eval`** — evaluates a collection against a golden dataset (recall@k, MRR, groundedness) and writes markdown/JSON reports: `-d, --dataset` (required), `-c, --collection`, `--profile fast|balanced|quality|adaptive|corrective|default` (default `default` = the configured `Orkeon:Rag:Profile`) or `--compare fast,balanced,…`, `-k` (default 5), `--llm-judge`, `--offline` (zero-network: deterministic extractive stub, no LLM key needed), `--no-ingest`, `--reindex`, `--min-recall` / `--min-mrr` (anti-regression gates, exit 1 below threshold), `--output` (default `/output/rag/eval`).
 
 ```bash
 orkeon rag eval --dataset examples/rag/eval/golden.yaml \
@@ -133,6 +133,17 @@ orkeon doctor --json
 ## `orkeon-repl` — the separate interactive console
 
 `orkeon-repl` is a **different tool** built from `src/apps/Orkeon.ConsoleApp` (dotnet tool command `orkeon-repl`): a full interactive REPL that drives agents, crews and tools from a Terminal.Gui split-pane console (logs + REPL), with the full framework stack wired in — built-in tools, RAG, code analysis, local embeddings — and TypeScript-scripted commands. It deliberately does not share the `orkeon` assembly name. See [CLI TypeScript commands](../architecture/cli-ts-commands.md).
+
+## The other shipped binaries
+
+The release archives carry more launchers than the two documented here: `orkeon-slim`
+(the same CLI, framework-dependent), **`orkeon-host`** (the long-running service daemon —
+see [the service host](../architecture/service-host.md)), the two Studio TUIs
+(`orkeon-studio-config`, `orkeon-studio-run`) and the Windows desktop app (`orkeon-studio`)
+— see [Orkeon Studio](../architecture/studio.md) — plus the example runners. The
+[publication matrix](./publication-matrix.md) and
+[Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md) list exactly
+which archive carries what.
 
 ---
 

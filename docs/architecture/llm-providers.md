@@ -22,9 +22,22 @@ Implemented providers:
 | Z.AI (Zhipu GLM) | `ZaiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Google Gemini | `GeminiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
-Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`) are available in `Orkeon.Infrastructure.LLMs.Adapters` to integrate other providers compatible with the `IChatClient` interface.
+Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`, `ChatClientToBasicLlmProviderAdapter`) are available in `Orkeon.Infrastructure.LLMs.Adapters` to integrate other providers compatible with the `IChatClient` interface.
 
 `LlmProviderFactory` (`Orkeon.Infrastructure.LLMs`) automatically resolves the provider from the `LlmConfig` (detection by URL, model name, or API key).
+
+## Declared capabilities
+
+Every provider declares a `LlmProviderCapabilities` value object (Domain, exposed on
+`ILlmProvider`; the base defaults to `LlmProviderCapabilities.Unknown`): `ResponseFormat`
+(`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`),
+`Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`.
+`OpenAICompatibleProviderBase` translates the declaration into the OpenAI dialect once
+(vision payloads, `response_format`, thinking, the `CapabilityMismatchHint` diagnostics);
+Anthropic, Ollama and Qwen override the hook for their own dialects. An option a provider
+cannot honour produces a structured warning — never a silent drop. All 13 providers are
+`IStreamingLlmProvider`s, and `RateLimitedLlmProvider` decorates any of them. The
+per-provider matrix lives in [the provider comparison](../reference/llm-providers-comparison.md).
 
 ## Validating a provider against its real API
 

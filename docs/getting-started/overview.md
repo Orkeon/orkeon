@@ -79,7 +79,7 @@ graph TB
 
 An Agent is the intelligent unit of work of the framework. It is a DDD *Aggregate Root* identified by an `AgentId`. An agent is defined by three mandatory elements: a **role** (`AgentRole`), a **goal** (`AgentGoal`), and optionally a **backstory** (`AgentBackstory`) which contextualizes its personality for the LLM.
 
-Each agent has a list of tools (`IReadOnlyList<ITool> Tools`), a status (`AgentStatus`: Idle or Busy), execution constraints (`MaxIterations`, `MaxRpm`, `MaxExecutionTime`), and can be configured to delegate tasks (`AllowDelegation`).
+Each agent has a list of tools (`IReadOnlyList<ITool> Tools`), a status (`AgentStatus`: Created, Idle, Busy, Unavailable, Deactivated or Error), execution constraints (`MaxIterations`, `MaxRpm`, `MaxExecutionTime`), and can be configured to delegate tasks (`AllowDelegation`).
 
 There is only one `Agent` class — the manager behavior in hierarchical mode is handled by the `IManagerAgent` interface and its `LlmBasedManager` implementation.
 
@@ -188,7 +188,8 @@ tasks:
     agent: "report_writer"
     dependencies:
       - "analyze_sales"
-    outputFile: "/output/weekly-report.md"
+    deliverable:
+      path: "/output/weekly-report.md"   # the framework writes the file (outputFile is builder-only)
 ```
 
 ### Approach 2: Definition via Fluent Builder
@@ -264,7 +265,7 @@ Collaboration between agents is also supported at the domain level: `Agent.Colla
 
 ```
 Orkeon.sln
-├── src/                            # 33 projects, 11 zones
+├── src/                            # 34 projects, 11 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entities, value objects, interfaces, events
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
@@ -283,14 +284,14 @@ Orkeon.sln
 │   ├── analysis/                   # RaggableTree engine (Abstractions, Analysis)
 │   ├── scripting/                  # .ork.ts DSL (Orkeon.Scripting) + the `orkeon` CLI (Orkeon.Scripting.Cli)
 │   ├── cli/                        # CLI building blocks (Abstractions, Cli, Commands.Scripting, TerminalGui)
-│   ├── hosting/                    # Orkeon.Hosting (RunnerHost)
+│   ├── hosting/                    # Orkeon.Hosting (RunnerHost) + Orkeon.Host (`orkeon-host` service daemon)
 │   ├── plugins/                    # Orkeon.Plugins (runtime plugin loading)
 │   ├── generators/                 # Orkeon.Generators (source generators)
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (Roslyn analyzer)
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
 │       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)
-├── tests/                          # Mirrors src/ (33 projects) + e2e, examples, shared
+├── tests/                          # 34 projects (src mirrors + e2e, examples, shared)
 ├── examples/                       # 105 bundled examples (9 categories + showcases)
 └── docs/                           # Documentation (EN + docs/fr mirror)
 ```

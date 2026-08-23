@@ -79,7 +79,11 @@ services.AddOrkeonMcp(configuration);   // lit la section "MCP"
 `McpServerConfig` : `Transport` stdio/sse, `Command`/`Args` ou `Url`) et enregistre
 `McpToolProvider` en singleton ; `McpServer` (+ `McpServerOptions` depuis `MCP:Server` :
 `Name`, `Version`) n'est enregistré que si `MCP:EnableServer = true`. La surcharge
-`AddOrkeonInfrastructure(IConfiguration)` appelle elle-même `AddOrkeonMcp`.
+`AddOrkeonInfrastructure(IConfiguration)` appelle elle-même `AddOrkeonMcp` — mais
+**aucune racine de composition livrée n'utilise cette surcharge** (`orkeon run`,
+`orkeon-host` et le REPL appellent tous la version sans paramètre) : MCP est de fait
+une surface bibliothèque — un hôte qui embarque appelle lui-même
+`AddOrkeonMcp(configuration)` (ou la surcharge config).
 
 Il n'y a **pas de hosted service** : l'hôte résout `McpToolProvider` et appelle
 explicitement `ConnectServerAsync(serverId, config)` pour chaque serveur configuré (et

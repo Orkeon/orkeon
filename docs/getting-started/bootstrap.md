@@ -60,7 +60,15 @@ This approach guarantees consistent, testable dependency injection in line with 
 `AddOrkeonInfrastructure()` registers its overridable services via `TryAdd*`. To
 replace a default implementation (for example `IPathValidator` or
 `IComponentSerializer`), simply **register yours before** the call — it will be
-honored regardless of the order of subsequent calls:
+honored regardless of the order of subsequent calls.
+
+> **Caveat**: not every service is `TryAdd`-registered. `AddOrkeonApplication()`
+> registers `IAgentExecutionService` and `IAgentPlanner` unconditionally
+> (`AddScoped`), and `AddOrkeonInfrastructure()` does the same for a few services
+> it owns outright (`ILlmProviderFactory`, `ICrewOrchestrationService`, …). For
+> those, register your implementation **after** the Orkeon call — the last
+> registration wins at resolution time.
+
 
 ```csharp
 // Your implementation wins because TryAdd* does not re-register an already present service.
@@ -83,25 +91,29 @@ Two overloads exist and produce containers with **different** capabilities:
 | OpenTelemetry telemetry                   | ❌                          | ✅ (`Telemetry` section)                  |
 | MCP                                       | ❌                          | ✅                                        |
 | VectorSearch                              | ❌                          | ✅                                        |
-| Knowledge                                 | ❌                          | ✅                                        |
-| RAG (+ RAG validation)                    | ❌                          | ✅                                        |
+| Knowledge store (in-memory stub, warns on first use) | ✅            | ✅                                        |
+| RAG subsystem                             | ❌ (opt-in: `AddOrkeonRag` + `AddOrkeonRagTools`) | ❌ (same opt-in)     |
+| Durable execution-state persistence       | ❌                          | ✅ **only if** `Orkeon:ExecutionState:Persistence` exists (`Enabled=true` + an `IStateStore`) |
 | ChromaDB (vector store)                   | ❌                          | ✅ **only if** the `Orkeon:ChromaDb` section exists |
 | Pinecone (vector store)                   | ❌                          | ✅ **only if** the `Orkeon:Pinecone` section exists |
 
 > The overload without `IConfiguration` does **not** wire the interoperability
-> modules (MCP, VectorSearch, Knowledge, RAG) nor the external vector stores. Use
+> modules (MCP, VectorSearch) nor the external vector stores. Use
 > `AddOrkeonInfrastructure(configuration)` as soon as these capabilities are required.
 > ChromaDB and Pinecone are only activated if their respective configuration section
-> is present.
+> is present. The RAG subsystem is wired by **neither** overload — it is always the
+> explicit `AddOrkeonRag(configuration)` + `AddOrkeonRagTools()` pair.
 
 > **Opt-in subsystems (R4.9)**: A2A, monitoring backend, MultiModal, NIST, DLP,
 > tool rate-limiting, key rotation, benchmarking, kickoff hooks — and likewise
 > the **RAG subsystem** (`AddOrkeonRag` + `AddOrkeonRagTools`), **RaggableTree**
-> (`AddRaggableTree`), the **plugin system** (`AddOrkeonPlugins`), **MCP**
-> (`AddOrkeonMcp`), the **permission gate** and the checkpointing stores — are
-> registered by **neither** of the two overloads: each is enabled explicitly via
-> its `AddOrkeonXxx()` extension. Full catalog:
-> [Opt-in subsystems](../reference/opt-in-subsystems.md).
+> (`AddRaggableTree`), the **plugin system** (`AddOrkeonPlugins`) and the
+> **permission gate** (`AddOrkeonPermissionGate`) — are registered by **neither**
+> of the two overloads: each is enabled explicitly via its `AddOrkeonXxx()`
+> extension. MCP, by contrast, comes with the `IConfiguration` overload (or
+> standalone `AddOrkeonMcp(configuration)`), and the **in-memory** checkpointing
+> store is registered by both overloads — only its durable variant is opt-in.
+> Full catalog: [Opt-in subsystems](../reference/opt-in-subsystems.md).
 
 ## Running a Crew
 

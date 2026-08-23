@@ -76,7 +76,11 @@ services.AddOrkeonMcp(configuration);   // reads the "MCP" section
 `McpServerConfig`: `Transport` stdio/sse, `Command`/`Args` or `Url`) and registers
 `McpToolProvider` as a singleton; `McpServer` (+ `McpServerOptions` from `MCP:Server`:
 `Name`, `Version`) is registered only when `MCP:EnableServer = true`. The
-`AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself.
+`AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself —
+but **no shipped composition root uses that overload** (`orkeon run`, `orkeon-host`
+and the REPL all call the parameterless one), so MCP is effectively a library-only
+surface: an embedding host calls `AddOrkeonMcp(configuration)` (or the config
+overload) itself.
 
 There is **no hosted service**: the host resolves `McpToolProvider` and calls
 `ConnectServerAsync(serverId, config)` for each configured server (and

@@ -133,6 +133,7 @@ public sealed record PublishOptions
     public ImmutableDictionary<string, string>? Metadata { get; init; }
     public bool RetainAsLastValue { get; init; }                  // alimente LastValueCache
     public string? LastValueKey { get; init; }
+    public string? SchemaId { get; init; }                        // engage l'étage de validation du §12.3
 }
 
 public abstract record WaitDescriptor;
@@ -226,7 +227,7 @@ public interface IEventSchemaRegistry
 
 ## 5. Surface tools pour les agents
 
-Sept tools, auto-enregistrés dès que `IEventHub` est dans la DI. Tous suivent `ToolBase<TRequest, TResponse>` avec DTO scellés et JSON snake_case.
+Sept tools, enregistrés par l'appel explicite `AddOrkeonEventHubTools()` aux côtés du hub (`AddOrkeonInMemoryEventHub()` — le runner host apparie les deux appels ; rien n'est automatique). Tous suivent `ToolBase<TRequest, TResponse>` avec DTO scellés et JSON snake_case.
 
 | Tool | Pattern | Input | Output |
 |---|---|---|---|
@@ -236,7 +237,7 @@ Sept tools, auto-enregistrés dès que `IEventHub` est dans la DI. Tous suivent 
 | `reply_to` | Reply | `correlation_id`, `payload` | `replied_at` |
 | `receive_message` | (pull mailbox) | `timeout_ms` ou `wait_forever:true`, `mailbox?` (défaut : agent courant) | `message?` |
 | `wait_for_event` | Wait | `topic`, `timeout_ms` ou `wait_forever:true`, `metadata_match?` | `message` ou `timed_out:true` |
-| `get_last_value` | LastValueCache | `key`, `crew_scope?` (défaut : crew courante) | `value`, `set_at` ou null |
+| `get_last_value` | LastValueCache | `key`, `crew_scope?` (défaut : crew courante) | `found`, `value`, `set_at` (`found` distingue un null caché d'une clé absente) |
 
 ### 5.1 Règles de validation
 
@@ -291,9 +292,10 @@ public sealed record Message
 agent://{crewId}/{agentId}      boîte d'un agent précis
 crew://{crewId}                  boîte de la crew (router interne)
 topic://{topicName}              alias d'un topic broadcast
+client://{name}                  un processus client observateur (voir §10.2.1 et le bus d'événements de run)
 ```
 
-Validé par regex à l'entrée du port, du builder C#, du chargeur YAML et du SDK TS. `TargetCrewId` est extrait automatiquement du `TargetMailbox` ; toute incohérence entre les deux est rejetée par le middleware.
+Validé par regex dans `MailboxAddress.Parse`, l'unique point d'entrée du port (il n'existe pas de voie crew-builder pour les adresses, et le SDK TS du §13.4 est un design non construit). `TargetCrewId` est extrait automatiquement du `TargetMailbox` ; toute incohérence entre les deux est rejetée par le middleware.
 
 ---
 
@@ -457,7 +459,7 @@ Type de message de premier ordre, livré par le système (pas par un agent) lors
 
 Apparait dans `processed_messages` pour l'idempotence (sinon redémarrage = re-livraison du même timeout).
 
-Le préfixe `_system.` est réservé : un agent ne peut pas publier sur un topic commençant par `_system.` — rejet par le middleware de validation.
+Le préfixe `_system.` est réservé : un agent ne peut pas publier sur un topic commençant par `_system.` — c'est **l'outil `publish_event`** qui lève `ReservedTopicException` avant même d'atteindre le hub (le hub lui-même, donc les appelants in-process, n'est pas gardé ; le middleware de validation ne vérifie que `SchemaId`).
 
 ### 9.3 Send ne supporte pas Forever
 
@@ -651,7 +653,7 @@ L'ordre ci-dessous n'est pas cosmétique : sur le **chemin de publication**, la 
 
 | # | Étage | Enregistrement | Rôle |
 |---|---|---|---|
-| 1 | `LoggingEventHubMiddleware` | `AddOrkeonEventHubObservability()` | log structuré : correlation id, crew source et cible, topic, latence |
+| 1 | `LoggingEventHubMiddleware` | `AddOrkeonEventHubObservability()` | log structuré : path, topic, id de message, millisecondes écoulées |
 | 2 | `TelemetryEventHubMiddleware` | idem | spans OTel sur la source `Orkeon.EventHub`, attributs `crew.source`, `crew.target`, `event.topic`, `event.pattern` |
 | 3 | `AclEventHubMiddleware` | `AddOrkeonEventHubAcl(policy?)` | vérifie `CrewLink` à la publication ; refuse par `EventAclException` (§10) |
 | 4 | `IdempotencyEventHubMiddleware` | `AddOrkeonEventHubIdempotency(capacity?)` | refuse un message qu'une boîte aux lettres a déjà consommé, en réception |
@@ -715,7 +717,9 @@ public sealed class CustomFlow(IEventHub hub)
 }
 ```
 
-### 13.3 YAML — déclaratif
+### 13.3 YAML — déclaratif (forme de design, pas la grammaire livrée)
+
+La grammaire **livrée** est le bloc `links:` à racine plate (voir [le schéma YAML](./yaml-schema.md)) ; la forme à racine `crew:` ci-dessous, avec `idle_timeout` et les blocs `event:`, appartient au design non construit de cette section :
 
 ```yaml
 crew:
@@ -788,17 +792,22 @@ Le YAML utilise aussi `event:` (singulier) pour la cohérence cross-paradigme.
 
 ### 14.1 Spans OTel — attributs standards
 
-Chaque message produit un span avec ces attributs :
+Ce que `TelemetryEventHubMiddleware` pose **aujourd'hui** (quatre attributs) :
 
-- `crew.source` (string)
-- `crew.target` (string, null si global)
 - `event.topic`
-- `event.pattern` (`publish` | `post` | `send` | `reply` | `subscribe` | `wait`)
-- `event.correlation_id` (si applicable)
-- `event.message_id`
-- `event.outcome` (`delivered` | `timeout` | `rejected_acl` | `failed`)
+- `event.pattern` (`publish` | `receive` — les deux seules valeurs émises)
+- `crew.source`
+- `crew.target` (seulement quand non-null)
 
-### 14.2 Métriques
+Conçus mais **non construits** : `event.correlation_id`, `event.message_id`,
+`event.outcome`, et le vocabulaire de patterns plus fin (`post`/`send`/`reply`/
+`subscribe`/`wait`).
+
+### 14.2 Métriques — **non construites**
+
+Aucun instrument EventHub n'existe encore (`OrkeonMetrics` ne couvre que
+`orkeon.llm.*`, `orkeon.tool.*`, `orkeon.task.*`, `orkeon.crew.*`). Le jeu
+conçu, gardé ici comme cible :
 
 - `orkeon_event_published_total{topic, source_crew, target_crew}` — counter
 - `orkeon_event_latency_seconds{pattern}` — histogram
@@ -810,7 +819,7 @@ Chaque message produit un span avec ces attributs :
 
 ## 15. Roadmap d'implémentation
 
-**Construit.** Le port `IEventHub` et tout ce que décrit le §3, `InMemoryEventHub`, les sept outils d'agent, la grammaire `links:` et l'ACL (§10), et tout le pipeline de middlewares avec ses cinq étages (§12) — journalisation, télémétrie, ACL, idempotence, validation.
+**Construit.** Le port `IEventHub`, `PublishOptions`/`WaitDescriptor`, `IEventSchemaRegistry`, `InMemoryEventHub`, les sept outils d'agent, la grammaire `links:` et l'ACL (§10), et tout le pipeline de middlewares avec ses cinq étages (§12) — journalisation, télémétrie, ACL, idempotence, validation. (Les interfaces de cycle de vie du §3.3 — `ICrewLifecycleManager`, `ICrewStateStore`, `ICrewActivator`, `IIdleDetector`, `IWaitScheduler` — sont du design, listées comme manquantes plus bas.)
 
 **Non construit**, chacun derrière le même port pour que le construire ne change aucun appelant :
 
@@ -904,7 +913,7 @@ Deux inerties plus petites, à nommer plutôt qu'à laisser découvrir : `CrewBu
 - **LastValueCache** : cache 1-clé/1-valeur scopable par crew, alimenté via `PublishOptions.RetainAsLastValue`.
 - **Outbox** : table SQLite tampon des messages sortants pour garantir l'atomicité publish+ack.
 - **Forever** : timeout infini, autorisé sur `wait_for_event`, `receive_message` et `subscribe`. Réveil exclusif sur message matchant.
-- **MailboxAddress** : URI structuré identifiant une boîte (`agent://`, `crew://`, `topic://`).
+- **MailboxAddress** : URI structuré identifiant une boîte (`agent://`, `crew://`, `topic://`, `client://`).
 - **`WaitTimedOutMessage`** : message système livré à une crew lorsque son `WaitTimeout.Finite` expire pendant son sommeil. Topic réservé : `_system.wait_timed_out`.
 - **`CrewId.System`** : constante réservée représentant le hub lui-même comme émetteur. Utilisée comme `SourceCrewId` pour tous les messages système (timeouts, notifications de cycle de vie). Aucune crew utilisateur ne peut prendre cet ID.
 - **Topic réservé `_system.*`** : préfixe interdit aux agents. Seul le hub peut publier sur ces topics. Toute tentative est rejetée par le middleware de validation.

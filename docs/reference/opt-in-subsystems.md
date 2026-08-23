@@ -257,9 +257,11 @@ partial (flagged case by case below).
 - **Dependencies**: `IContentValidationService` only needs the options;
   `IMultiModalContentLoader` requires a resolvable `IFileSystemService`
   (`AddOrkeonFileSystem(configuration)` in real hosts).
-- **Known limits**: only the **Anthropic** and **OpenAI** providers compose
-  vision payloads; the other providers degrade multi-modal messages to their
-  text fallback (`LlmMessage.Content`). Supported image formats: png, jpeg, gif, webp.
+- **Known limits**: vision payload composition is capability-driven
+  (`LlmProviderCapabilities.Vision`, translated once by `OpenAICompatibleProviderBase`)
+  — **12 of the 13 providers** declare it (only DeepSeek does not); a provider
+  without the capability degrades multi-modal messages to their text fallback
+  (`LlmMessage.Content`). Supported image formats: png, jpeg, gif, webp.
   Audio/file parts are not sent by any provider and throw an explicit
   `NotSupportedException` if they reach a vision payload.
 
@@ -293,8 +295,10 @@ partial (flagged case by case below).
 
 - **Role**: `ICodebaseContextProvider` produces codebase summaries meant to be
   injected into the agents' context (RaggableTree feature).
-- **Activation**: already opt-in — it is registered by `AddRaggableTree(options)`
-  (`Orkeon.Analysis` project), which is never called by the core. See
+- **Activation**: registered by `AddRaggableTree(options)` (`Orkeon.Analysis`
+  project). The core library never calls it — but the **runner host does, by
+  default** (`orkeon run`/`orkeon-host`; opt out with `"RaggableTree:Enabled": false`),
+  consistent with this catalog's own entry above. See
   [raggable-tree.md](../architecture/raggable-tree.md).
 - **Known limits**: no framework component consumes it automatically —
   the host resolves it and injects the summaries wherever it wishes (system prompt,

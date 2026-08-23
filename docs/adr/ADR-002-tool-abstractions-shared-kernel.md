@@ -55,3 +55,11 @@ exception**, documented by this ADR, and flagged at the source by an inline comm
   exception into an actual violation (cycle). To be watched in reviews.
 - The inline comment in the `.csproj` must point to a real path (`docs/adr/`) — fixed in the same
   work item as this ADR.
+
+## Amendment (2026-08-23)
+
+The consumer count in the Consequences ("the six `Tools.*` packages") is historical:
+the family has since grown to **nine** `Tools.*` projects, eight of which consume
+`Tools.Abstractions` (only `Orkeon.Tools.Rag` implements `IBaseTool` directly). The
+invariant this ADR protects — `Tools.Abstractions` keeps `Domain` as its only
+dependency — still holds and remains the thing to watch in reviews.

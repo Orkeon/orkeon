@@ -173,9 +173,9 @@ Chaque champ individuel surcharge la valeur du preset. Par exemple, un preset "s
 
 | Modèle C# | Classe YAML | Fichier |
 |-----------|-------------|---------|
-| `CircuitBreakerConfig` | `CircuitBreakerYamlConfig` | `YamlCrewDefinitionLoader.cs` |
+| `CircuitBreakerConfig` | `CircuitBreakerYamlConfig` | `Configuration/Yaml/YamlConfigModels.cs` |
 
-Le mapping est effectué par `YamlCrewDefinitionLoader.MapCircuitBreaker()`. La conversion en `CircuitBreakerPolicy` exécutable est effectuée par `CircuitBreakerPolicyFactory.Resolve()`.
+Le mapping est effectué par `YamlCrewMapper.MapCircuitBreaker()` (privé, `Configuration/Yaml/`). La conversion en `CircuitBreakerPolicy` exécutable est effectuée par `CircuitBreakerPolicyFactory.Resolve()`.
 
 ## Utilisation en code C#
 

@@ -173,9 +173,9 @@ Each individual field overrides the preset value. For example, a "strict" preset
 
 | C# model | YAML class | File |
 |-----------|-------------|---------|
-| `CircuitBreakerConfig` | `CircuitBreakerYamlConfig` | `YamlCrewDefinitionLoader.cs` |
+| `CircuitBreakerConfig` | `CircuitBreakerYamlConfig` | `Configuration/Yaml/YamlConfigModels.cs` |
 
-The mapping is performed by `YamlCrewDefinitionLoader.MapCircuitBreaker()`. The conversion into an executable `CircuitBreakerPolicy` is performed by `CircuitBreakerPolicyFactory.Resolve()`.
+The mapping is performed by `YamlCrewMapper.MapCircuitBreaker()` (private, `Configuration/Yaml/`). The conversion into an executable `CircuitBreakerPolicy` is performed by `CircuitBreakerPolicyFactory.Resolve()`.
 
 ## Usage in C# code
 

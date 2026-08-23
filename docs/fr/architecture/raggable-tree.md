@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 15 tools. Remplace la lecture de fichiers brute par un index structuré à six niveaux de zoom (monorepo → package → module → symbole → déclaration → statement).
+Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 15 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
 
 ## Vue d'ensemble
 
@@ -45,36 +45,40 @@ services.AddRaggableTree(new RaggableTreeOptions
 });
 ```
 
-## Configuration YAML
+## Configuration
 
-```yaml
-raggableTree:
-  enabled: true                    # false pour désactiver entièrement la feature
-  languages: [typescript, csharp]  # [] = auto-détection via les adaptateurs enregistrés
-  exclude: [node_modules, dist, .git, bin, obj]
-  indexMode: frozen                # frozen | live | breakOnChange (§31.3)
-  enrichWithLlm: false             # true pour générer SemanticSummary via summarizer
-  includeStatements: false         # true pour indexer L4 (CFG par statement)
+La seule surface de configuration que les hôtes livrés lient est la **section
+appsettings `RaggableTree`** (lue clé par clé par le runner host — il n'existe pas de
+clé `raggableTree:` dans le YAML de crew) :
 
-  embedding:
-    provider: openai               # none | openai | ollama | onnx
-    model: text-embedding-3-small
-    apiKey: ${OPENAI_API_KEY}
-    baseUrl: https://api.openai.com/
-    dimensions: 1536
-
-  summarizer:
-    provider: anthropic            # none | anthropic
-    model: claude-haiku-4-5
-    concurrency: 5
-
-  vectorStore:
-    provider: inMemory             # inMemory | redis | chromaDb | pinecone | lanceDb | sqlite
-
-  cache:
-    enabled: true
-    path: .orkeon/raggable-tree.json
+```jsonc
+{
+  "RaggableTree": {
+    "Enabled": true,                    // false désactive entièrement la feature (opt-out du runner)
+    "Exclude": ["node_modules", "dist", ".git", "bin", "obj"],
+    "RootAlias": "",                    // raccourcit chaque FQN quand renseigné
+    "EnrichWithLlm": false,             // true génère SemanticSummary via le summarizer
+    "IncludeStatements": false,         // true indexe L4 (par statement)
+    "IndexMode": "frozen",              // assigné mais consommé par rien — voir la note historique plus bas
+    "Embedding": {
+      "Provider": "LocalSmartComponents", // le défaut — ou None | OpenAI | Ollama (Onnx est un bras no-op réservé)
+      "Model": "",                      // vide → le défaut du provider
+      "ApiKey": null,
+      "BaseUrl": null,
+      "Dimensions": null,
+      "MaxTextChars": null
+    }
+  }
+}
 ```
+
+Les langages ne se configurent **jamais** : ils sont auto-détectés depuis la codebase
+et scellés par appel `index_codebase`. Tout le reste de `RaggableTreeOptions`
+(`Summarizer`, `ValidateCitations` — défaut `true`, qui gate les validateurs de
+citations) est accessible en C# via `AddRaggableTree(options)` ; les groupes d'options
+`VectorStore`/`Cache` existent sur le record mais ne sont consommés par rien — le store
+est `InMemoryRaggableStore`, adapté sur un `IVectorStoreProvider` ambiant quand il y en
+a un d'enregistré.
 
 Tous les champs sont des `record` immuables dans `Orkeon.Analysis.DependencyInjection.RaggableTreeOptions`.
 
@@ -85,7 +89,7 @@ Tous les champs sont des `record` immuables dans `Orkeon.Analysis.DependencyInje
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — résolution des imports, appels, héritage, implémentations en arêtes (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Les FQN non résolus deviennent des `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application des règles par décorateur/annotation (NestJS, Angular, ASP.NET, Flask, FastAPI) : pose de tags comme `http-endpoint`, `guard`, `service` sur les nœuds concernés.
 5. **Enrichissement** — composition du `EmbeddingText` (`IEmbeddingTextComposer`), optionnellement résumé LLM (`INodeSummarizer`), puis embedding batch (`IEmbeddingProvider`).
-6. **Persistance** — `IVectorStoreProvider.IndexAsync` pour les embeddings, cache JSON sérialisé de l'arbre complet (`RaggableTreeCache`).
+6. **Persistance** — `IVectorStoreProvider.IndexAsync` pour les embeddings ; l'arbre lui-même reste dans le store en mémoire (le sérialiseur JSON `RaggableTreeCache` existe mais n'est câblé par aucun hôte livré).
 
 La réindexation incrémentale (`IncrementalReindexEngine`) repart de la phase 2 pour les fichiers changés uniquement, réutilise les nœuds des fichiers inchangés, et ne lance les phases 4-6 que sur les `newNodes`.
 
@@ -94,26 +98,26 @@ La réindexation incrémentale (`IncrementalReindexEngine`) repart de la phase 2
 | Tool | Usage | Requête type |
 |------|-------|---------------|
 | `index_codebase` | Construit l'index initial | `{ "root_path": "/src" }` |
-| `incremental_reindex` | Met à jour l'index après modif de fichiers | `{ "changed_file_paths": ["src/a.ts"] }` |
+| `incremental_reindex` | Met à jour l'index après modif de fichiers | `{ "changed_files": ["src/a.ts"] }` |
 | `index_status` | Liste les racines virtuelles indexées (date, comptes de nœuds/arêtes) | `{}` |
 | `is_path_indexed` | Vérifie si un chemin est couvert par une racine indexée | `{ "virtual_path": "/src/app/main.ts" }` |
-| `codebase_map` | Vue d'ensemble : packages, compte de fichiers/symboles | `{ "depth": 2 }` |
-| `package_summary` | Résumé d'un package (modules, dépendances, symboles clés) | `{ "package_fqn": "app::core" }` |
+| `codebase_map` | Vue d'ensemble : packages, compte de fichiers/symboles | `{ "level": "L2_Module" }` |
+| `package_summary` | Résumé d'un package (modules, dépendances, symboles clés) | `{ "fqn": "app::core" }` |
 | `symbol_detail` | Détail d'un symbole (signature, doc, callers, callees) | `{ "fqn": "app::UserService::create" }` |
 | `symbol_source` | Extrait du code source (signature, body, span complet) | `{ "fqn": "...", "mode": "SignatureAndBody" }` |
 | `codebase_search` | Recherche sémantique par embedding | `{ "query": "session expiration", "top_k": 10 }` |
-| `dependency_graph` | Arêtes entrantes/sortantes d'un nœud | `{ "fqn": "...", "kinds": ["Imports", "Calls"] }` |
-| `sub_graph` | Expansion BFS autour de seeds | `{ "seeds": ["pkg::X"], "max_depth": 3 }` |
+| `dependency_graph` | Graphe de dépendances à une portée (L1/L2/L3), rendu Mermaid/DOT | `{ "scope": "L2_Module", "edge_kinds": ["Imports", "Calls"] }` |
+| `sub_graph` | Expansion BFS autour de seeds | `{ "seeds": ["pkg::X"], "depth": 3 }` |
 | `flow_trace` | Chemins d'appel entre deux FQN | `{ "from": "A", "to": "B", "max_paths": 5 }` |
-| `impact_analysis` | Impacts transitifs d'un changement | `{ "fqn": "...", "direction": "Backward" }` |
+| `impact_analysis` | Impacts transitifs d'un changement | `{ "target": "...", "direction": "Backward" }` |
 | `complexity_report` | Top-N par métrique (Cyclomatic, LoC, Callers...) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
-| `statement_query` | Requêtes structurelles L4 (if, try, return...) | `{ "parent_fqn": "...", "kinds": ["TryCatch"] }` |
+| `statement_query` | Requêtes structurelles L4 (if, try, return...) | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
 
 Les 15 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 ## Stratégies d'agents
 
-Le framework expose `ICodebaseContextProvider` qui produit un résumé compact du codebase (packages, top complexité, top couplage, patterns détectés) à injecter dans le system prompt d'un agent au démarrage. Trois formats : `markdown` (défaut, ~300 tokens), `compact` (~150 tokens), `json` (~400 tokens). L'injection n'a lieu que si un index est présent et si l'agent possède au moins un tool RaggableTree.
+Le framework expose `ICodebaseContextProvider` qui produit un résumé compact du codebase (packages, top complexité, top couplage, patterns détectés) adapté au system prompt d'un agent. Trois formats : `markdown` (défaut, ~300 tokens), `compact` (~150 tokens), `json` (~400 tokens). **Aucun composant du framework ne l'appelle automatiquement** — il est enregistré par `AddRaggableTree` et l'hôte le résout et injecte le résumé là où il le souhaite.
 
 ## Recherche hybride
 
@@ -172,15 +176,16 @@ Créer un `IReadOnlyList<FingerprintRule>` listant les décorateurs/annotations 
 
 ### Ajouter un embedding provider
 
-Implémenter `IEmbeddingProvider.EmbedBatchAsync(texts, ct)` → `IReadOnlyList<ReadOnlyMemory<float>>`. Trois implémentations de référence : `OpenAIEmbeddingProvider`, `OllamaEmbeddingProvider`, et `LocalEmbeddingProvider` (cf. section ci-dessous). L'extension method `EmbedAsync(nodes, model, ct)` (`Orkeon.Analysis.Vectors`) remplit `node.Embedding` à partir du `EmbeddingText` composé.
+Implémenter `IEmbeddingProvider.EmbedBatchAsync(texts, ct)` → `IReadOnlyList<ReadOnlyMemory<float>>`. Trois implémentations de référence : `OpenAIEmbeddingProvider`, `OllamaEmbeddingProvider`, et `LocalEmbeddingProvider` (cf. section ci-dessous). La méthode d'interface par défaut `EmbedAsync(nodes, model, ct)` (sur `IEmbeddingProvider`, `Orkeon.Analysis.Abstractions.Interfaces`) remplit `node.Embedding` à partir du `EmbeddingText` composé.
 
 ## Embedding providers
 
-Quatre options sont disponibles via `EmbeddingProviderKind` :
+Cinq membres existent sur `EmbeddingProviderKind` :
 
 | Provider | Réseau | Clé API | Dims | Notes |
 |----------|--------|---------|------|-------|
 | `None` | n/a | n/a | n/a | Pipeline sans embedding (phases 5-6 désactivées) |
+| `Onnx` | non | non | — | **Réservé** — actuellement un bras d'enregistrement no-op |
 | `OpenAI` | requis | requis | 1536 (`text-embedding-3-small`) | Qualité maximale, MTEB ~62.3 |
 | `Ollama` | local (HTTP) | non | dépend du modèle | Daemon Ollama / llama.cpp local requis |
 | `LocalSmartComponents` | non | non | 384 (BGE-micro-v2) | In-process, ONNX CPU, démarrage à froid ~200 ms |

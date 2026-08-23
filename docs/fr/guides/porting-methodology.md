@@ -36,7 +36,10 @@ Orkeon supporte deux approches pour définir une crew. Le choix impacte le workf
 1. Écrire config.yaml (agents, tasks, process type)
 2. Identifier les outils manquants
 3. Coder les outils custom (ToolBase<TReq, TRes>)
-4. Enregistrer via DI (AddSingleton<IBaseTool, MonTool>())
+4. Enregistrer via DI (AddSingleton<IBaseTool, MonTool>()) — **et** un registre
+   adossé à la DI, sans lequel les noms YAML se résolvent contre le stub vide :
+   services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>()
+   (Orkeon.Hosting ; orkeon run le fait pour vous)
 5. Charger et exécuter :
    var crew = await crewFactory.CreateFromFileAsync("config.yaml");
    var output = await orchestrator.KickoffAsync(crew.Id, input);

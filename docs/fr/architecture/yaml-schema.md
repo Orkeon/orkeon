@@ -19,6 +19,15 @@ memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pine
 planning: bool            # default: false
 managerAgent: string      # Requis si process = "hierarchical"
 
+llm:                      # LLM par défaut de la crew, appliqué aux agents sans le leur (même forme que agents.<id>.llm)
+  model: string
+  temperature: float
+
+links:                    # ACL EventHub (optionnel) — qui peut parler à qui sur le hub
+  - to: string            # "agent:<id>" | "crew:<id>" | "topic:<nom>" | "client:<nom>"
+    direction: string     # "send" | "receive" | "both"
+    allowed_topics: [string]
+
 rag:                      # Configuration RAG au niveau crew (optionnel)
   provider: string        # Store mémoire/vectoriel des collections ("InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb")
   collections:
@@ -45,6 +54,20 @@ agents:
       model: string       # Modèle LLM ("gpt-4", "claude-3-opus", etc.)
       temperature: float  # Créativité (0.0-1.0)
       maxTokens: int      # Limite de tokens en sortie
+      topP: float         # Nucleus sampling
+      thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
+        enabled: bool
+        effort: string    # "low" | "medium" | "high"
+        budget_tokens: int
+      responseFormat: string # "json_object" | "json_schema" (gaté par capacité)
+      responseSchema:     # Avec responseFormat: json_schema
+        name: string
+        schema: {…}       # JSON Schema inline
+        strict: bool
+      cache:              # Prompt caching explicite (Anthropic)
+        system: bool
+        tools: bool
+        ttl: string
     guardrails:           # Règles opérationnelles injectées dans le system prompt de l'agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative"
       header: string      # En-tête de section (remplace l'en-tête du preset)
@@ -68,6 +91,21 @@ tasks:
     asyncExecution: bool  # default: false — exécution asynchrone
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
+    tools: [string]       # Noms d'outils propres à la tâche (ajoutés à ceux de l'agent pour celle-ci)
+    deliverable:          # Le framework écrit le fichier de sortie (l'agent ne touche jamais le disque)
+      path: string        # Chemin virtuel, p. ex. "/output/report.md"
+      source: string      # "final" (défaut) | "raw"
+      format: string      # "text" | "json" | "markdown"
+      sanitize: bool
+      schema_path: string # Fichier JSON Schema validant un livrable JSON
+      schema_inline: {…}  # Alternative schéma inline
+    llm_override:         # Surcharge LLM au niveau tâche (cascade crew → agent → tâche)
+      response_format: string
+      response_schema: {name, schema, strict}
+      temperature: float
+      max_tokens: int
+      top_p: float
+      thinking: {enabled, effort, budget_tokens}
     circuitBreaker:       # Configuration FSM / circuit breaker (optionnel)
       preset: string      # "strict" | "permissive" | "default"
       maxTransitions: int # Transitions max avant trip
@@ -189,7 +227,8 @@ circuitBreaker:
 > **⚠️ Non implémenté en YAML.** Il n'existe **aucune clé `autonomousBudget`**
 > dans le schéma YAML aujourd'hui : le loader n'en parse pas, et aucun modèle
 > YAML correspondant n'existe. Avec `process: "autonomous"`,
-> `AgentExecutionBudget.Default` est toujours utilisé. Le budget
+> `AgentExecutionBudget.Permissive` est toujours utilisé (50 appels d'outils,
+> profondeur 4, 15 min, 64 000 tokens, 10 spawns). Le budget
 > multi-dimensions se configure **uniquement via l'API C#** — presets
 > `AgentExecutionBudget.Strict` / `.Default` / `.Permissive` ou valeurs
 > personnalisées (voir le
@@ -202,13 +241,17 @@ circuitBreaker:
 ## Modèles YAML
 
 Les modèles YAML incluent :
-- `CrewYamlConfig` (définition complète d'une crew)
+- `CrewYamlConfig` (définition complète d'une crew) et `CrewSettingsYamlConfig` (la variante multi-fichiers `crew.yaml`)
 - `AgentYamlConfig` (rôle, objectif, backstory, outils, limites)
-- `TaskYamlConfig` (description, résultat attendu, dépendances, circuit breaker)
-- `LlmYamlConfig` (modèle, température, max tokens)
+- `TaskYamlConfig` (description, résultat attendu, dépendances, outils, livrable, circuit breaker)
+- `LlmYamlConfig` (modèle, température, max tokens, topP, thinking, responseFormat/responseSchema, cache) avec `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`
+- `LlmOverrideYamlConfig` (le bloc `llm_override:` de tâche)
+- `DeliverableYamlConfig` (le bloc `deliverable:` de tâche)
+- `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)
+- `LinkYamlConfig` (l'ACL `links:` de crew)
 - `CircuitBreakerYamlConfig` (preset, seuils, guards)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges)
-- `RagYamlConfig` (provider, collections + sources/chunking, défauts) → `RagCrewConfig`
+- `RagYamlConfig` (provider, collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`
 
 Des configurations prédéfinies sont disponibles via `OrkeonConfig` : `Default`, `Development` (debug activé, InMemory), `Production` (debug désactivé, Redis).

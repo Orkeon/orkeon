@@ -51,22 +51,27 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
 La CLI émet le résultat du script en JSON sur stdout ; les codes de sortie suivent la
 convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` annulé).
 
-Le même verbe `run` accepte aussi un **crew YAML** — l'extension du fichier sélectionne
-la voie (`.yaml`/`.yml` → runner de crew YAML, `.ork.ts`/`.js` → DSL de scripting) :
+Le même verbe `run` accepte aussi un **crew YAML** — la cible sélectionne
+la voie (`.yaml`/`.yml` **ou un dossier portant une crew multi-fichiers** → runner de crew YAML, `.ork.ts`/`.js` → DSL de scripting) :
 
 ```bash
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/09-experimental/llm-response-format/crew.yaml
 ```
 
-Pour les crews YAML, l'outil délègue au runner one-shot partagé (le même chemin de code
-que le `Orkeon.Examples.Runner` autonome), donc les drapeaux propres au YAML s'appliquent :
-`-V/--var KEY=VALUE`, `--initial-context`, plus les drapeaux partagés
-`--settings/--mount/--allow-external-mounts/--verbose/--llm-log[-path]`. Les drapeaux
-propres aux scripts (`--inputs`, `--inputs-file`, `--memory-limit-mb`) sont ignorés sur
-la voie YAML. Le runner YAML affiche la sortie du crew sous une bannière
+Pour les crews YAML, l'outil délègue au runner one-shot partagé (le `RunnerExecution`
+d'`Orkeon.Hosting` — le chemin de code exact d'`orkeon run`), donc les drapeaux propres
+au YAML s'appliquent : `-V/--var KEY=VALUE`, `--initial-context`, plus les drapeaux
+partagés `--settings/--mount/--allow-external-mounts/--verbose/--llm-log[-path]` et les
+drapeaux diagnostics/protocole (`--validate`, `--list-tools`, `--events jsonl`,
+`--stream`, `--client`). Les drapeaux propres aux scripts (`--inputs`, `--inputs-file`,
+`--memory-limit-mb`) sont ignorés sur la voie YAML. Le runner YAML affiche la sortie du crew sous une bannière
 `=== Crew Output ===` au lieu d'un `result` JSON.
 
 ## Récapitulatif de l'API
+
+Les pointeurs `chapters/NN` ci-dessous référencent l'archive de conception des
+mainteneurs (`features/scripting-dsl/chapters/` dans le sous-module privé
+`backstage`) — ils ne font pas partie de l'arbre de docs public.
 
 | Concept | Où regarder |
 |---------|---------------|
@@ -117,13 +122,14 @@ retourne un ticket immédiatement et livre le résumé du crew au callback
 
 - `concurrency(N)` plafonné à 1 (mutex). Le sémaphore à N détenteurs est prévu en V1.5.
 - Les locks n'ont pas de timeout. `LockTimeoutError` est prévu en V1.5.
-- Le streaming via `ctx.llm.stream` émet un chunk unique ; le streaming par token
-  suivra quand le provider sous-jacent le supportera.
+- Le streaming via `ctx.llm.stream` est **par token** dès que le provider est un
+  `IStreamingLlmProvider` (les 13 providers livrés le sont) ; le chunk unique en
+  texte plein n'est que le repli d'un provider custom non-streaming.
 - `ctx.llm.embed` renvoie un vecteur stub ; l'intégration avec de vrais embedders est
   un chantier ultérieur.
 - La composabilité hiérarchique FSM/Graph (sub-states, sub-graphs) est prévue en V1.5.
 - Les événements sont uniquement en mémoire (pas de persistance Redis/NATS).
-- Voir `chapters/12-roadmap-and-questions.md` pour le backlog complet.
+- Voir `chapters/12-roadmap-and-questions.md` (archive des mainteneurs, cf. ci-dessus) pour le backlog complet.
 
 ## Référence
 

@@ -265,20 +265,23 @@ public static class <NomType>PolicyFactory
 
 ## Step 5 — Infrastructure: YAML parsing
 
-**Modified file**: `src/core/Orkeon.Infrastructure/Configuration/YamlCrewDefinitionLoader.cs`
+**Modified files**: `src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`
+(the models) and `Configuration/Yaml/YamlCrewMapper.cs` (the mapping) — the loader
+(`YamlCrewDefinitionLoader.cs`) only deserializes and delegates.
 
 ### 5.1 Add the YAML class
 
+No `[YamlMember]` attributes — the existing models carry **none**: key resolution is
+by convention (`CamelCaseNamingConvention` plus the `CamelOrSnakeCaseTypeInspector`
+snake_case fallback in `YamlDotNetSerializer`). Follow the shape of the shipped
+models — public, non-sealed, in the shared `YamlConfigModels.cs`:
+
 ```csharp
-private sealed class <NomType>YamlConfig
+public class <NomType>YamlConfig
 {
-    [YamlMember(Alias = "preset")]
-    public string? Preset { get; set; }
-
-    [YamlMember(Alias = "maxTransitions")]
-    public int? MaxTransitions { get; set; }
-
-    // ... all fields with [YamlMember(Alias = "camelCase")]
+    public string? Preset { get; set; }         // reachable as preset:
+    public int? MaxTransitions { get; set; }    // reachable as maxTransitions: or max_transitions:
+    // ... plain properties, camelCase/snake_case both accepted by convention
 }
 ```
 
@@ -288,15 +291,12 @@ The `YamlCrewDefinitionLoader` uses different models for single-file and multi-f
 
 ```csharp
 // In CrewYamlConfig (single-file config.yaml loading):
-[YamlMember(Alias = "<nomType>")]     // e.g. "stateGraph", "agenticSwarm"
-public <NomType>YamlConfig? <NomType> { get; set; }
+public <NomType>YamlConfig? <NomType> { get; set; }   // key: <nomType> by convention
 
 // In CrewSettingsYamlConfig (multi-file loading: crew.yaml):
-[YamlMember(Alias = "<nomType>")]
 public <NomType>YamlConfig? <NomType> { get; set; }
 
 // In TaskYamlConfig (used in both modes):
-[YamlMember(Alias = "<nomType>")]
 public <NomType>YamlConfig? <NomType> { get; set; }
 ```
 
@@ -320,11 +320,12 @@ private static <NomType>Config? Map<NomType>(<NomType>YamlConfig? yaml)
 
 ### 5.4 Wire into the loading methods
 
-Add `<NomType> = Map<NomType>(...)` in:
+Add `<NomType> = Map<NomType>(...)`:
 
-- `MapTasks()` — for the task level
-- `LoadFromStringAsync()` — for the crew level (single-file)
-- `LoadFromDirectoryCoreAsync()` — for the crew level (multi-file)
+- in `YamlCrewMapper.MapTasks()` — for the task level;
+- crew-level values flow through `CrewMappingSettings`, which the loader populates in
+  `LoadFromStringAsync()` (single-file) and `LoadFromDirectoryCoreAsync()` (multi-file)
+  before delegating to the mapper.
 
 ---
 
@@ -383,11 +384,12 @@ Start from example 102 or 103 as the base, then:
   # ... type-specific fields
 
 agents:
-  - role: "..."
+  my_agent:               # mapping keyed by agent id — never a sequence
+    role: "..."
     # ...
 
 tasks:
-  - id: task_1
+  task_1:                 # the id IS the key (TaskYamlConfig has no id: field)
     description: "..."
     # === Task-level override ===
     <nomType>:

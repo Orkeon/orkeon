@@ -117,12 +117,20 @@ ones you will actually reach for:
 | `<config>` (positional) | — | **Required.** The crew definition passed to `orkeon run <config>` — a `.yaml` file or an `.ork.ts` [scripting](../architecture/scripting.md) file. The `orkeon-trading` runner takes it as `--config <path>` / `-c` instead. |
 | `--settings <path>` | `-s` | Path to the `appsettings.json` holding LLM config. Optional — see [settings resolution](#how-settings-are-resolved). |
 | `--verbose <0-2>` | `-v` | Verbosity. `0` (default) = quiet, `1` = LLM & tool exchanges, `2` = full debug. |
-| `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro` or `rw`. Repeatable. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |
+| `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro` or `rw`. Several mounts go **space-separated after a single flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |
 | `--allow-external-mounts` | | Permit mounts (and a `--config` / `--llm-log-path`) located **outside** the current working directory. Without it, external paths are refused as a safety guard. The env var `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` enables it for every invocation (the `orkeon-runners` container image bakes this in). |
-| `--var KEY=VALUE` | `-V` | Inject a variable into the crew input. Task descriptions that contain `{KEY}` are expanded to `VALUE`. Repeatable. |
-| `--initial-context <text>` | | A free-form context string passed to the crew input. |
+| `--var KEY=VALUE` | `-V` | Inject a variable into the crew input. Task descriptions that contain `{KEY}` are expanded to `VALUE`. Several variables go space-separated after a single `-V` (a repeated flag is rejected). **YAML crews only** — ignored for `.ork.ts` scripts, which take `--inputs`. |
+| `--initial-context <text>` | | A free-form context string passed to the crew input. **YAML crews only** — ignored for `.ork.ts` scripts. |
+| `--inputs <json>` | | Inline JSON inputs forwarded to a script as the global `inputs` variable (`.ork.ts` path). |
+| `--inputs-file <path>` | | Same as `--inputs`, read from a JSON file. |
 | `--llm-log` | | Capture every LLM HTTP exchange (request + response, headers + payload) as `.jsonl` under `./llm-logs`. |
 | `--llm-log-path <dir>` | | Same as `--llm-log`, but writes to `<dir>` (and implies `--llm-log`). |
+| `--validate` | | Dry-run: resolve settings, build the host and load the crew (strict tool resolution) **without** probing the LLM or running anything. Prints `VALIDATION OK/FAILED` and exits 0 / non-zero. |
+| `--list-tools` | | Build the host and print the sorted registered tool names, one per line, then exit — no crew required. |
+| `--events jsonl` | | Emit the versioned JSONL event protocol on stdout instead of plain text (how Orkeon Studio drives a run) — see [the run event bus](../architecture/run-event-bus.md). |
+| `--stream` | | With `--events`, also emit token-by-token `llm.delta` events (verbose by nature; off unless asked). |
+| `--client <name>` | | With `--events`, the observing peer's hub name (`client://<name>`, default `studio`). |
+| `--memory-limit-mb <n>` | | Jint memory ceiling for a `.ork.ts` run (overrides appsettings; `0` disables it). |
 
 ### Mounts and the VFS
 
@@ -147,9 +155,13 @@ order (first hit wins):
 
 1. The explicit `--settings <path>`, if given.
 2. `appsettings.json` sitting next to the `--config` file.
-3. Walking up the directory tree from the config: the shared
-   `examples/appsettings/appsettings.json` profile matrix
+3. Walking up the directory tree from the config, looking for an
+   `appsettings/appsettings.json` sub-directory at each level — that is how the
+   shared `examples/appsettings/appsettings.json` profile matrix is found
    (the legacy `_shared/appsettings.json` remains a fallback for one release).
+4. The global per-user config written by `orkeon init`
+   (`%APPDATA%\Orkeon\appsettings.json` on Windows,
+   `~/.config/Orkeon/appsettings.json` elsewhere).
 
 If none is found, the runner falls back to environment variables only and prints
 a warning. Being explicit with `--settings` is the most predictable option.
@@ -175,4 +187,3 @@ Symptoms you may hit on a fresh machine, with the exact message and fix:
 - [YAML, Builders and CrewFactory](./yaml-and-builders.md) — the schema behind every `config.yaml`.
 - [Catalog of examples](../reference/examples-catalog.md) — 100+ crews across 9 domains.
 - [Tool inventory](../tools/inventory.md) — what the agents can actually do.
-</content>

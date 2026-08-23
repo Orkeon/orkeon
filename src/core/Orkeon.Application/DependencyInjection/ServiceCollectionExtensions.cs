@@ -97,6 +97,7 @@ public static class ServiceCollectionExtensions
             opt.OpenAIEmbeddingModel = options.OpenAIEmbeddingModel;
             opt.AzureOpenAIEndpoint = options.AzureOpenAIEndpoint;
             opt.AzureOpenAIDeploymentName = options.AzureOpenAIDeploymentName;
+            opt.AgentSelectionStrategy = options.AgentSelectionStrategy;
         });
 
         // Configure planning based on options. Registered BEFORE the base overload so

@@ -20,11 +20,11 @@ public sealed class RunArgumentsBuilderTests
     [
         "run", "/crews/crew.yaml",
         "--settings", "/etc/orkeon/appsettings.json",
-        "-V", "TOPIC=quantum computing",
-        "-V", "DEPTH=3",
+        // One -V / one --mount flag with the values in sequence: the CLI parser
+        // rejects a repeated option, so the builder never emits the flag twice.
+        "-V", "TOPIC=quantum computing", "DEPTH=3",
         "--initial-context", "Focus on 2026 papers",
-        "--mount", "/srv/data:/workspace:ro",
-        "--mount", "/srv/out:/output:rw",
+        "--mount", "/srv/data:/workspace:ro", "/srv/out:/output:rw",
         "--allow-external-mounts",
         "--verbose", "2",
         "--llm-log",

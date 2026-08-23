@@ -56,3 +56,11 @@ documentée par cette ADR, et signalée à la source par un commentaire inline p
   transformerait l'exception en violation réelle (cycle). À surveiller en revue.
 - Le commentaire inline du `.csproj` doit pointer vers un chemin réel (`docs/adr/`) — corrigé dans le
   même chantier que cette ADR.
+
+## Amendement (2026-08-23)
+
+Le compte de consommateurs des Conséquences (« les six packages `Tools.*` ») est
+historique : la famille compte depuis **neuf** projets `Tools.*`, dont huit
+consomment `Tools.Abstractions` (seul `Orkeon.Tools.Rag` implémente `IBaseTool`
+directement). L'invariant que protège cet ADR — `Tools.Abstractions` garde `Domain`
+comme seule dépendance — tient toujours et reste le point de vigilance en revue.

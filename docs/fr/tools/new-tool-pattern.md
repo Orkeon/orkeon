@@ -13,7 +13,7 @@ Orkeon fournit trois classes de base dans `Orkeon.Tools.Abstractions.Base` :
 | Classe de base | Usage | Protection intégrée |
 |----------------|-------|-------------------|
 | `ToolBase<TRequest, TResponse>` | Outil générique | Aucune spécialisation |
-| `FileToolBase<TRequest, TResponse>` | Opérations sur fichiers | `IPathValidator` (protection path traversal) |
+| `FileToolBase<TRequest, TResponse>` | Opérations sur fichiers | `IFileSystemService` (le VFS — premier argument de ctor obligatoire) + `IPathValidator` (protection path traversal) |
 | `HttpToolBase<TRequest, TResponse>` | Opérations HTTP/API | `IUrlValidator` (protection SSRF), `HttpHeaderSanitizer` |
 
 La classe de base `ToolBase<TRequest, TResponse>` hérite de `ToolBase` (non-generic) qui implémente `IBaseTool` et `ITool` (`Orkeon.Domain.Tools`).
@@ -36,6 +36,7 @@ Propriétés disponibles :
     Enum = new[] { "a", "b" }, // Valeurs autorisées
     Example = "example",       // Exemple pour la documentation
     ItemsType = "string",      // Type des éléments si array
+    ItemsFormat = "...",       // Format des éléments si array
     TypeDefinitionRef = "..."  // Référence à un type défini
 )]
 ```
@@ -46,6 +47,10 @@ Propriétés disponibles :
 [ReturnSchema(
     Description = "...",       // Description du champ retourné
     Type = "boolean",          // Type JSON Schema (inféré si omis)
+    Format = "...",            // Indice de format JSON Schema
+    ItemsType = "...",         // Type des éléments si array
+    ItemsFormat = "...",       // Format des éléments si array
+    TypeDefinitionRef = "...", // Référence vers un type défini
     Example = true             // Exemple
 )]
 ```
@@ -88,17 +93,30 @@ public sealed record TranslateResponse
 
 ## Étape 3 — Implémenter la classe outil
 
-Hériter de la classe de base choisie, définir les propriétés `Name` et `Description`, et implémenter `ExecuteTypedAsync`.
+Hériter de la classe de base choisie, poser un **attribut `[ToolContract]`** sur la
+classe et implémenter `ExecuteTypedAsync`. Le premier argument positionnel du contrat
+est le **nom visible par les agents** (`UniqueName` — la chaîne exacte que les listes
+YAML `tools:` utilisent, celle que la porte CI des doc-claims vérifie contre
+`docs/tools/inventory.md`) ; `Name`, `Description` et `Category` voyagent sur le même
+attribut (`ToolBase` les lit : `Name => contract?.UniqueName ?? contract?.Name ??
+GetType().Name`). Un outil sans contrat se rabat sur une surcharge des propriétés
+`Name`/`Description` — chaque outil livré utilise l'attribut.
+
+```csharp
+[ToolContract("weather_lookup",
+    Description = "Météo courante d'une ville via l'API du fournisseur.")]
+public class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse> { … }
+```
 
 ### Pipeline automatique
 
 Le pipeline de `ToolBase<TRequest, TResponse>` est scellé (`sealed override ExecuteCoreAsync`) et effectue automatiquement :
 
 1. **Injection des défauts YAML** : les paramètres optionnels absents sont complétés par leurs valeurs `Default`
-2. **Désérialisation** : `Dictionary<string, object>` → `TRequest` via `ComponentBase<TRequest, TResponse>`
+2. **Désérialisation** : `Dictionary<string, object?>` → `TRequest` via `ComponentBase<TRequest, TResponse>`
 3. **Validation** : appel optionnel de `ValidateTypedRequest(TRequest)` — retourner `null` si valide, un message d'erreur sinon
 4. **Exécution** : appel de `ExecuteTypedAsync(TRequest, CancellationToken)` — votre logique métier
-5. **Sérialisation** : `TResponse` → `Dictionary<string, object>`
+5. **Sérialisation** : `TResponse` → `Dictionary<string, object?>`
 6. **Filtrage** : seuls les champs déclarés dans `[ReturnSchema]` sont inclus dans la réponse
 
 ### Exemple complet — Outil simple (sans dépendance externe)
@@ -298,7 +316,15 @@ services.AddSingleton<IBaseTool>(sp =>
 });
 ```
 
-L'outil sera alors disponible via `IEnumerable<IBaseTool>` ou résolu par le `IToolRegistry` (`Orkeon.Domain.Tools`).
+L'outil est alors disponible via `IEnumerable<IBaseTool>`. **La résolution par nom
+depuis le YAML exige un registre adossé à la DI** : le `AddOrkeonInfrastructure()`
+par défaut enregistre le stub *vide* `InMemoryToolRegistry`, qui ne voit jamais vos
+enregistrements `IBaseTool` — le runner host substitue `ServiceProviderToolRegistry`
+(`Orkeon.Hosting`), et un hôte qui embarque doit faire de même :
+
+```csharp
+services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+```
 
 ### Option C — Via IToolRegistry
 
@@ -383,7 +409,7 @@ public abstract partial class FileToolBase<TRequest, TResponse> : FileToolBase
 
 ### Sérialisation : snake_case et coercition de types
 
-Le `JsonComponentSerializer` (`Orkeon.Infrastructure.Serialization`) utilise `JsonNamingPolicy.SnakeCaseLower` et inclut 6 convertisseurs tolérants pour gérer les valeurs YAML qui arrivent sous forme de strings :
+Le `JsonComponentSerializer` (`Orkeon.Infrastructure.Serialization`) utilise `JsonNamingPolicy.SnakeCaseLower` et inclut 10 convertisseurs tolérants pour gérer les valeurs YAML qui arrivent sous forme de strings — les six ci-dessous plus `TolerantEnumConverterFactory`, `UriTolerantConverter`, `ImmutableArrayEnumTolerantConverter<EdgeKind>` et `ImmutableArrayStringTolerantConverter` :
 
 - `BoolTolerantConverter` : `"true"`, `"1"`, `"yes"` → `true`
 - `IntTolerantConverter` : `"42"` → `42`
@@ -409,12 +435,17 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddOrkeonMyPackageTools(
         this IServiceCollection services)
     {
-        // Enregistrer chaque outil comme IBaseTool
-        services.TryAddSingleton<IBaseTool, WeatherTool>();
-        services.TryAddSingleton<IBaseTool, TranslateTool>();
+        // Un enregistrement IBaseTool par outil. PAS TryAddSingleton<IBaseTool, …>
+        // deux fois : TryAdd est indexé sur le type de SERVICE, le second appel
+        // serait un no-op silencieux. Les outils à arguments de ctor hors-DI
+        // (l'apiKey de WeatherTool) exigent la forme factory.
+        services.AddSingleton<IBaseTool>(sp => new WeatherTool(
+            apiKey: sp.GetRequiredService<IConfiguration>()["Weather:ApiKey"]!,
+            logger: sp.GetService<ILogger<WeatherTool>>()));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, TranslateTool>());
 
-        // Les outils seront automatiquement disponibles dans IToolRegistry
-        // et utilisables par nom dans les fichiers YAML
+        // Utilisables par nom en YAML dès qu'un IToolRegistry adossé à la DI est
+        // enregistré (ServiceProviderToolRegistry — voir l'Option A plus haut).
         return services;
     }
 }

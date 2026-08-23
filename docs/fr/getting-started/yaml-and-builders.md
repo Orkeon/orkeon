@@ -18,12 +18,13 @@ Chaque builder délègue en interne aux méthodes factory `Agent.Create()`, `Cre
 
 Orkeon supporte la configuration complète des crews via YAML. Le loader `YamlCrewDefinitionLoader` (`Orkeon.Infrastructure.Configuration`) convertit les fichiers YAML en objets domaine.
 
-### Schéma de configuration complet
+### Schéma de configuration (abrégé)
 
 La structure YAML suit ce schéma :
 
 ```yaml
-# Schéma complet CrewYamlConfig
+# Schéma CrewYamlConfig — clés les plus utilisées (surface complète dans docs/architecture/yaml-schema.md :
+# llm:/rag:/links: au niveau crew, knowledge: agent, tools:/deliverable:/llm_override: tâche, llm thinking/responseFormat/cache)
 name: string              # Identifiant de la crew
 goal: string              # Objectif (requis)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
@@ -224,13 +225,10 @@ public async Task<Crew> CreateFromDirectoryAsync(
 
 ### Résolution des outils
 
-Les noms d'outils spécifiés dans `agents[].tools[]` sont résolus à la construction via `IToolRegistry.GetToolByNameAsync(toolName)`. Si un outil n'existe pas en registre, `CrewFactory` lève une exception de validation avec la liste des outils manquants.
+Les noms d'outils spécifiés dans `agents[].tools[]` sont résolus à la construction via `IToolRegistry.GetToolByNameAsync(toolName)`. Le sort d'un outil manquant dépend de `CrewFactoryOptions.StrictTools` (clé `Orkeon:CrewFactory:StrictTools`) : les runners (`orkeon run`) le mettent à **true** par défaut et `CrewFactory` lève alors une exception listant les outils manquants ; le **défaut bibliothèque est false** — l'outil est sauté avec un log Warning et la crew se charge sans lui.
 
-Exemple d'erreur :
+Exemple d'erreur (mode strict) :
 
 ```
-CrewFactory Error: Tools not found in registry:
-  - web_scraper
-  - custom_analyzer
-Available tools: file_read, file_write, http_api, ...
+Crew configuration references unknown tool(s): web_scraper, custom_analyzer. Available tools: file_read, file_write, http_api, ...
 ```

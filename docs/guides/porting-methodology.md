@@ -36,7 +36,10 @@ Orkeon supports two approaches for defining a crew. The choice impacts the porti
 1. Write config.yaml (agents, tasks, process type)
 2. Identify the missing tools
 3. Code the custom tools (ToolBase<TReq, TRes>)
-4. Register via DI (AddSingleton<IBaseTool, MonTool>())
+4. Register via DI (AddSingleton<IBaseTool, MonTool>()) — **and** a DI-backed
+   registry, without which YAML names resolve against the empty stub:
+   services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>()
+   (Orkeon.Hosting; orkeon run does this for you)
 5. Load and run:
    var crew = await crewFactory.CreateFromFileAsync("config.yaml");
    var output = await orchestrator.KickoffAsync(crew.Id, input);

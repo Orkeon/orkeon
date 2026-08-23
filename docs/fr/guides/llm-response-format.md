@@ -106,7 +106,7 @@ await provider.GenerateAsync(
 
 ## Le garde-fou du mot-clé "json"
 
-Le `response_format: json_object` de DeepSeek exige que le prompt (message system **ou** user) contienne le mot `"json"` quelque part — faute de quoi l'API peut émettre un **flux infini d'espaces blancs** jusqu'à épuisement de `max_tokens`. Le provider DeepSeek d'Orkeon logue un `Warning` structuré (event id `100`) s'il détecte la situation :
+Le `response_format: json_object` de DeepSeek exige que le prompt (message system **ou** user) contienne le mot `"json"` quelque part — faute de quoi l'API peut émettre un **flux infini d'espaces blancs** jusqu'à épuisement de `max_tokens`. La base partagée (`OpenAICompatibleProviderBase`, donc chaque provider compatible OpenAI qui déclare `RequiresJsonKeywordInPrompt`) logue un `Warning` structuré (event id `100`, `LogMissingJsonKeyword`) si elle détecte la situation — en substance :
 
 ```
 DeepSeek response_format=json_object is set but no system/user message
@@ -118,17 +118,22 @@ Nous ne mutons **pas** le prompt à votre place — l'appelant garde le contrôl
 
 ## Matrice de support des providers
 
-| Provider | Supporté en V1 | Notes |
+Le support est **piloté par capacité** (`LlmProviderCapabilities.ResponseFormat`,
+traduit une fois par `OpenAICompatibleProviderBase` — voir le
+[comparatif des providers](../reference/llm-providers-comparison.md)) :
+
+| Provider | Capacité déclarée | Notes |
 |---|---|---|
-| **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`) | ✅ | Câblé via `DeepSeekLlmProvider.ApplyProviderSpecificOptions`. |
+| OpenAI, Azure OpenAI, Groq, Mistral, TogetherAI | `JsonSchema` | Validation de schéma côté serveur. |
+| **Anthropic** | `JsonSchema` | Dialecte propre (`output_config`) — schema-only, pas de `json_object` nu. |
+| **Ollama** | `JsonSchema` | Dialecte propre (`format`). |
+| **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. |
 | `deepseek-reasoner` (R1) | ⚠️ | Peut refuser `response_format` avec un HTTP 400. Tester avant production. L'erreur remonte comme une `APIError` typée via le pipeline existant — pas de crash. |
-| OpenAI, Groq, Kimi, Qwen, HuggingFace, TogetherAi, AzureOpenAI | 🔜 V2 | Opt-in trivial — surcharger `ApplyProviderSpecificOptions` symétriquement. **Pas** actif par défaut. |
-| **Anthropic** | ❌ | Utilise un autre mécanisme de mise en forme de sortie (tool use). Non concerné. |
-| **Ollama** | ❌ | Routé via `LlmConfig.GrammarGbnf` à la place. Non concerné. |
+| **Gemini** | `None` | Un format de réponse déclaré produit l'avertissement structuré de capacité. |
 
 ## Comment ça circule dans l'orchestrateur
 
-`ExecutionOrchestrator` fusionne la cascade exactement une fois par tour, sur 3 sites d'appel :
+La cascade est fusionnée exactement une fois par tour (`LlmConfigResolver.Resolve`), sur 3 sites d'appel — dans les boucles d'agent et le coordinateur de validation (`LegacyTextAgentLoop`, `NativeToolCallingAgentLoop`, `OutputValidationCoordinator`), que pilote `ExecutionOrchestrator` :
 
 1. Boucle legacy `[TOOL_CALL]` basée texte — `_llmProvider.ChatAsync(prompt, effectiveConfig, …)`
 2. Boucle de tool-calling natif — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. Effet de bord de ce chantier : `BuildNativeLlmConfig` s'amorce désormais depuis `agent.LlmConfig` au lieu de `LlmConfig.Default()` — le nom du modèle et la config Thinking ne sont plus perdus à l'entrée du chemin natif.
@@ -143,8 +148,8 @@ Les 6 stratégies de process (Sequential, Hierarchical, Autonomous, Graph, Paral
 - Value object : `Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat`
 - Record de patch : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride`
 - Fusion : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve`
-- Câblage DeepSeek : `Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.ApplyProviderSpecificOptions`
-- Loader YAML : `Orkeon.Infrastructure.Configuration.YamlCrewDefinitionLoader.MapResponseFormat`
+- Traduction wire : `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtuelle — Qwen porte la seule surcharge ; DeepSeek opte déclarativement via `ResponseFormat = JsonObject`)
+- Mapping YAML : `Orkeon.Infrastructure.Configuration.Yaml.YamlCrewMapper.MapResponseFormat`
 - Extensions call-time : `Orkeon.Infrastructure.LLMs.Extensions.LlmProviderExtensions`
 - Plan / spec : l'archive des mainteneurs (plan LLM-RESPONSE-FORMAT)
 - Doc API DeepSeek : https://api-docs.deepseek.com/api/create-chat-completion

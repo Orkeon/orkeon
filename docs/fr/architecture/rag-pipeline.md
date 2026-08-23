@@ -39,9 +39,9 @@ Trois surfaces de consommation partagent les mêmes pipelines : les outils agent
 |---|---|---|
 | `Orkeon.Rag.Abstractions` | Contrats, DTOs, options (`IRagPipeline`, `RagAnswer`, `RagOptions`, `RagProfilePresets`…) | `Orkeon.Domain` uniquement |
 | `Orkeon.Rag` | Implémentations : loaders, chunkers, validation, stores, retrieval, reranking, routage, évaluation, DI | `Application`, `Analysis.Abstractions` (voir ADR-006) |
-| `Orkeon.Rag.Onnx` | Reranker cross-encoder ONNX opt-in (ms-marco-MiniLM-L-6-v2), `AddOrkeonOnnxReranker()` | `Orkeon.Rag.Abstractions` |
+| `Orkeon.Rag.Onnx` | Reranker cross-encoder ONNX opt-in (ms-marco-MiniLM-L-6-v2), `AddOrkeonOnnxReranker()` | `Orkeon.Rag` (concret) |
 | `Orkeon.Rag.Onnx.Model` | Package compagnon embarquant les poids int8 du modèle — offline garanti | — |
-| `Orkeon.Tools.Rag` | Outils agents `rag_search` / `rag_ingest` / `rag_eval`, `AddOrkeonRagTools()` | `Orkeon.Rag.Abstractions` |
+| `Orkeon.Tools.Rag` | Outils agents `rag_search` / `rag_ingest` / `rag_eval`, `AddOrkeonRagTools()` | `Orkeon.Rag.Abstractions`, `Orkeon.Rag` (concret — le couplage gardé par l'ADR-006), `Tools.Abstractions`, `Analysis.Abstractions` |
 
 `Orkeon.Rag.Abstractions` est un shared kernel secondaire (même statut que
 `Orkeon.Analysis.Abstractions`, [ADR-003](../adr/ADR-003-shared-kernels-secondaires.md)) :
@@ -109,6 +109,8 @@ Tous dans `Orkeon.Rag.Abstractions` (`Interfaces/`, `Models/`, `Options/`) :
 | `IKnowledgeContextAugmenter` | Pièces jointes de connaissance de l'agent → bloc de prompt cité |
 | `IRagCollectionsBootstrapper` | Bloc `rag:` de la crew → ingestion au kickoff |
 | `IRetrievalEvaluator`, `IGroundednessChecker` | Hooks correctifs (verdicts, contrôle d'hallucination — voir [RAG correctif](#rag-correctif-crag)) |
+| `IEphemeralCollectionSearch` | Collections in-memory jetables (`AddOrkeonEphemeralSearch`) |
+| `IDocumentStoreCollectionProbe` | Sonde de capacité sur laquelle s'appuient le décorateur hybride et `MemoryProviderDocumentStore` |
 | `IRagEvaluator`, `IRagEvalHarness`* | Évaluation offline (métriques, datasets golden) |
 
 \* le contrat du harnais et son runner vivent dans `Orkeon.Rag.Evaluation` ; le port

@@ -16,7 +16,7 @@ paquet. Cette page documente sa surface de bootstrap publique.
 | | |
 |---|---|
 | PackageId | `Orkeon.Hosting` |
-| Dépend de | toutes les bibliothèques `Orkeon.*` (Domain, Application, Infrastructure, Analysis, Scripting et les suites `Orkeon.Tools.*`) plus `CommandLineParser` et `Microsoft.Extensions.Hosting` |
+| Dépend de | les bibliothèques cœur `Orkeon.*` (Domain, Application, Infrastructure, Analysis, Scripting) et huit des neuf suites `Orkeon.Tools.*` (`Orkeon.Tools.Rag` est volontairement absente — le RAG reste opt-in), plus `CommandLineParser` et `Microsoft.Extensions.Hosting` |
 | Packagé par | `.github/workflows/publish.yml` (`dotnet pack Orkeon.sln`) — toute la solution est packagée sur un tag `v*`, `Orkeon.Hosting` est donc inclus automatiquement |
 
 Les références de projets `Orkeon.*` deviennent des dépendances de paquet dans le nuspec ; la référence
@@ -33,7 +33,8 @@ IHost host = RunnerHost.Build(
     allowExternalMounts: false,          // autoriser des bases de montage hors de la racine du workspace
     llmLogPath: null,                    // si renseigné, capture les échanges HTTP LLM en .jsonl
     configureLogging: null,              // personnalisation optionnelle de ILoggingBuilder
-    configureServices: null);            // hook optionnel pour enregistrer les services du runner
+    configureServices: null,             // hook optionnel pour enregistrer les services du runner
+    configureBuilder: null);             // hook IHostBuilder optionnel — orkeon-host s'en sert pour UseSystemd()/UseWindowsService()
 ```
 
 Il compose `Host.CreateDefaultBuilder()` avec :
@@ -60,13 +61,19 @@ L'ordre d'enregistrement est délibéré :
 4. **Outils stricts** — `CrewFactoryOptions.StrictTools` vaut `true` par défaut ici (un crew qui
    référence un outil inconnu échoue bruyamment avec `unknown tool(s): …; available: …`) ; opt-out via
    `"Orkeon:CrewFactory:StrictTools": false`. (Le défaut de la bibliothèque reste tolérant.)
-5. **Suites d'outils standard** — système de fichiers, data, web, code, abstractions, outils de
-   session ; l'EventHub en mémoire plus ses outils agents ; RaggableTree (outils de graphe sémantique,
-   opt-out via `"RaggableTree:Enabled": false`) ; les outils WebSearch et `cache_search` ; et l'outil de
-   recherche Brave quand `BRAVE_API_KEY` est présent.
-6. **Montages VFS** — `AddOrkeonFileSystem` quand `Orkeon:FileSystem:Mounts` est configuré.
-7. **Registre d'outils** — `ServiceProviderToolRegistry` est enregistré comme `IToolRegistry` singleton.
-8. **Services du runner** — le hook `configureServices` de l'appelant s'exécute en dernier.
+5. **Permission gate** — `AddOrkeonPermissionGate(configuration)` (opt-in par config
+   `Orkeon:Security:PermissionGate:Enabled` ; no-op sinon).
+6. **Suites d'outils cœur** — système de fichiers, data, web, code, abstractions, outils de
+   session ; puis l'EventHub en mémoire plus ses outils agents et l'ACL EventHub
+   (`AddOrkeonEventHubAcl`, défaut permissif : une crew sans bloc `links:` se comporte comme avant).
+7. **Montages VFS** — `AddOrkeonFileSystem` quand `Orkeon:FileSystem:Mounts` existe **et contient au
+   moins une entrée** (un tableau vide n'enregistre rien).
+8. **Suites d'outils tardives** — RaggableTree (outils de graphe sémantique, opt-out via
+   `"RaggableTree:Enabled": false` ; pré-enregistre les embeddings locaux quand ils sont le provider
+   choisi), les outils WebSearch et `cache_search`, et l'outil de recherche Brave quand
+   `BRAVE_API_KEY` est présent.
+9. **Registre d'outils** — `ServiceProviderToolRegistry` est enregistré comme `IToolRegistry` singleton.
+10. **Services du runner** — le hook `configureServices` de l'appelant s'exécute en dernier.
 
 ## `ServiceProviderToolRegistry`
 
@@ -89,12 +96,17 @@ settings/montages et retournent un code de sortie processus.
 | `RunOneShotAsync(opts, loggerCategory, configureServices?, externalCt?)` | Exécute un kickoff de crew de bout en bout. Codes de sortie : **0** succès, **1** erreur de config, **2** échec du crew, **130** annulé. |
 | `RunInteractiveLoopAsync(opts, loggerCategory, stopWords, kickoffPerInputAsync, onSessionStart, …)` | Boucle REPL ; chaque entrée déclenche un kickoff via le délégué fourni par l'appelant ; un mot d'arrêt termine la boucle (exit 0). |
 | `RunListToolsAsync(opts, loggerCategory, configureServices?)` | Construit l'hôte sans crew et imprime sur stdout les noms d'outils runtime triés et dédupliqués (logs sur stderr) — le contrat d'outils runtime consommé par l'outillage de packaging/lint. |
+| `RunValidateAsync(opts, loggerCategory, configureServices?)` | Le dry-run derrière `--validate` : construit l'hôte et charge la crew (résolution stricte des outils) sans sonder le LLM ni lancer de kickoff. |
+| `LoadCrewAsync(host, opts)` | Charge et mappe la définition de crew depuis la cible résolue — la brique que les flux ci-dessus partagent. |
 
-## Consommer depuis un hôte web
+## Consommer depuis un hôte longue durée
 
-Un hôte web longue durée n'utilise pas `RunnerHost.Build` — cette méthode possède un hôte générique
-entier. L'hôte **réplique l'ordre d'enregistrement de `ConfigureRunnerServices`** dans son propre
-`Program.cs` (la console l'enveloppe en `AddOrkeonRuntime(configuration)`) :
+Un service longue durée *peut* simplement envelopper `RunnerHost.Build` — c'est exactement ce que
+fait le daemon `orkeon-host` (`Orkeon.Host/Program.cs`), en passant `configureBuilder` pour
+`UseSystemd()`/`UseWindowsService()`. Un hôte qui possède déjà son `IHostBuilder` (une app ASP.NET,
+par exemple) **réplique l'ordre d'enregistrement de `ConfigureRunnerServices`** dans son propre
+`Program.cs` — il n'existe pas de raccourci packagé pour cela ; la console REPL inline la même
+séquence à la main :
 
 ```csharp
 // 1. Enregistrer le fournisseur LLM EN PREMIER (avant AddOrkeonInfrastructure, dont le fallback

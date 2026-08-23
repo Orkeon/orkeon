@@ -39,9 +39,9 @@ Three consumption surfaces share the same pipelines: agent tools (`rag_search`,
 |---|---|---|
 | `Orkeon.Rag.Abstractions` | Contracts, DTOs, options (`IRagPipeline`, `RagAnswer`, `RagOptions`, `RagProfilePresets`…) | `Orkeon.Domain` only |
 | `Orkeon.Rag` | Implementations: loaders, chunkers, validation, stores, retrieval, reranking, routing, evaluation, DI | `Application`, `Analysis.Abstractions` (see ADR-006) |
-| `Orkeon.Rag.Onnx` | Opt-in ONNX cross-encoder reranker (ms-marco-MiniLM-L-6-v2), `AddOrkeonOnnxReranker()` | `Orkeon.Rag.Abstractions` |
+| `Orkeon.Rag.Onnx` | Opt-in ONNX cross-encoder reranker (ms-marco-MiniLM-L-6-v2), `AddOrkeonOnnxReranker()` | `Orkeon.Rag` (concrete) |
 | `Orkeon.Rag.Onnx.Model` | Companion package embedding the int8 model weights — guaranteed offline | — |
-| `Orkeon.Tools.Rag` | Agent tools `rag_search` / `rag_ingest` / `rag_eval`, `AddOrkeonRagTools()` | `Orkeon.Rag.Abstractions` |
+| `Orkeon.Tools.Rag` | Agent tools `rag_search` / `rag_ingest` / `rag_eval`, `AddOrkeonRagTools()` | `Orkeon.Rag.Abstractions`, `Orkeon.Rag` (concrete — the ADR-006-guarded coupling), `Tools.Abstractions`, `Analysis.Abstractions` |
 
 `Orkeon.Rag.Abstractions` is a secondary shared kernel (same status as
 `Orkeon.Analysis.Abstractions`, [ADR-003](../adr/ADR-003-shared-kernels-secondaires.md)):
@@ -110,6 +110,8 @@ All in `Orkeon.Rag.Abstractions` (`Interfaces/`, `Models/`, `Options/`):
 | `IRagCollectionsBootstrapper` | Crew `rag:` block → kickoff ingestion |
 | `IRetrievalEvaluator`, `IGroundednessChecker` | Corrective hooks (verdicts, hallucination check — see [Corrective RAG](#corrective-rag-crag)) |
 | `IRagEvaluator`, `IRagEvalHarness`* | Offline evaluation (metrics, golden datasets) |
+| `IEphemeralCollectionSearch` | Throwaway in-memory collections (`AddOrkeonEphemeralSearch`) |
+| `IDocumentStoreCollectionProbe` | Capability probe the hybrid decorator and `MemoryProviderDocumentStore` key off |
 
 \* the harness contract and its runner live in `Orkeon.Rag.Evaluation`; the
 evaluator port is in the abstractions.

@@ -60,9 +60,13 @@ tool policy travelled with user-level authority, and the providers' native syste
 (Anthropic top-level `system`, `cache_control`) never fired. A conversation-level system
 message wins over `LlmConfig.SystemMessage` on every provider.
 
-Permission gate (v1): read tools are always allowed; `file_write` and `shell_command` are
-wrapped (via `withAutonomousTool`) so **`plan` mode refuses them** (read-only). Interactive
-per-write confirmation needs the REPL prompt channel (deferred to v2). Budget:
+Permission gate: a first-class DI service, `IPermissionGate`/`ModePermissionGate`
+(`Orkeon.Infrastructure.Security`), consulted per tool call inside `ctx.llm.act`. Four
+modes (`bypassPermissions`, `plan`, `acceptEdits`, `default`), read/write classification
+from the tool's own `IBaseTool.Access` declaration (with a curated read-tool table and
+`codebase_`/`symbol_`/`index_` prefixes as fallback), fail-closed on unknown tools, and
+an interactive approval channel — all behind `Orkeon:Security:PermissionGate:Enabled` /
+`:Interactive` (wired by the REPL and `RunnerHost`; no-op when disabled). Budget:
 `process("autonomous")` + `.budget({...})` (`AgentExecutionBudget`, 5 dimensions).
 
 ## The session primitives (Phase 2 / 6)
@@ -86,13 +90,13 @@ tools directly.
 ## Running it
 
 ```bash
-# REPL (loads the 17 commands)
+# REPL (loads the 57 commands)
 DEEPSEEK_API_KEY=sk-... bash experiments/07-orkeon-coding-agent-ts/run-repl.sh
 
 # A single crew standalone (honours .body() + ctx.llm)
 bash experiments/07-orkeon-coding-agent-ts/run-crew.sh crews/git-commit/crew.ork.ts
 ```
 
-The REPL needs an LLM key for the crews/loop. The 17 commands and the crew launching are
-exercised by automated tests (`Exp07CommandSurfaceTests`, `ScriptHostFacadeTests`) without a
+The REPL needs an LLM key for the crews/loop. The 57 commands and the crew launching are
+exercised by automated tests (the TypeScript `command-surface.test.ts` suite, `ScriptHostFacadeTests`) without a
 key. See `experiments/07-orkeon-coding-agent-ts/RESULTS.md` for the acceptance matrix.

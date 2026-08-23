@@ -81,15 +81,24 @@ Task 3 → Agent C → output₃ → résultat final
 ### Configuration YAML
 
 ```yaml
-crew:
-  process: sequential
-  tasks:
-    - description: "Collecter les données"
-      expected_output: "Données brutes"
-    - description: "Analyser les données"
-      expected_output: "Rapport d'analyse"
-    - description: "Générer les recommandations"
-      expected_output: "Plan d'action"
+# Racine plate — il n'existe pas de clé enveloppe crew:, et agents:/tasks: sont
+# des mappings indexés par id (un fichier enveloppé de crew: se charge
+# SILENCIEUSEMENT comme une crew vide).
+name: "pipeline"
+goal: "Démo séquentielle"
+process: sequential
+tasks:
+  collecte:
+    description: "Collecter les données"
+    expectedOutput: "Données brutes"
+  analyse:
+    description: "Analyser les données"
+    expectedOutput: "Rapport d'analyse"
+    dependencies: [collecte]
+  recommandations:
+    description: "Générer les recommandations"
+    expectedOutput: "Plan d'action"
+    dependencies: [analyse]
 ```
 
 ### Configuration Fluent Builder
@@ -166,18 +175,22 @@ Un **agent manager** (piloté par LLM) coordonne une équipe de workers. Pour ch
 ### Configuration YAML
 
 ```yaml
-crew:
-  process: hierarchical
-  manager_llm:
-    provider: openai
-    model: gpt-4o
-  agents:
-    - role: "Senior Developer"
-      goal: "Write production code"
-    - role: "QA Engineer"
-      goal: "Test and validate"
-    - role: "Tech Writer"
-      goal: "Document the code"
+name: "delivery-team"
+goal: "Démo hiérarchique"
+process: hierarchical
+managerAgent: lead          # l'id de l'agent manager (il n'existe pas de clé manager_llm)
+llm:                        # LLM par défaut de la crew, appliqué aux agents sans le leur
+  model: gpt-4o
+agents:
+  lead:
+    role: "Tech Lead"
+    goal: "Coordonner la livraison"
+  dev:
+    role: "Senior Developer"
+    goal: "Écrire le code de production"
+  qa:
+    role: "QA Engineer"
+    goal: "Tester et valider"
 ```
 
 ### Avantages
@@ -230,15 +243,19 @@ Start ──┼── Task 2 → Agent B → output₂ ──┼── Agrégati
 ### Configuration YAML
 
 ```yaml
-crew:
-  process: parallel
-  tasks:
-    - description: "Analyser le marché français"
-      expected_output: "Rapport France"
-    - description: "Analyser le marché allemand"
-      expected_output: "Rapport Allemagne"
-    - description: "Analyser le marché espagnol"
-      expected_output: "Rapport Espagne"
+name: "market-scan"
+goal: "Démo parallèle"
+process: parallel
+tasks:
+  france:
+    description: "Analyser le marché français"
+    expectedOutput: "Rapport France"
+  allemagne:
+    description: "Analyser le marché allemand"
+    expectedOutput: "Rapport Allemagne"
+  espagne:
+    description: "Analyser le marché espagnol"
+    expectedOutput: "Rapport Espagne"
 ```
 
 ### Avantages
@@ -315,11 +332,11 @@ le défaut reste `Majority` (rétro-compatible).
 {
   "Orkeon": {
     "Consensus": {
+      "MaxVotingRounds": 3,
       "VotingOptions": {
         "ConsensusType": "SuperMajority",
         "ConsensusThreshold": 75,
         "QuorumPercent": 60,
-        "MaxVotingRounds": 3,
         "UseWeightedVotes": true,
         "AllowAbstention": false
       },
@@ -396,11 +413,11 @@ START ──→ execute_task ──→ route ──┬── succès ──→ e
 
 | Propriété | Type | Description |
 |-----------|------|-------------|
-| `PendingTaskIds` | `Queue<string>` | Tâches restantes à exécuter |
-| `FailedTaskIds` | `Queue<string>` | Tâches éligibles au retry |
+| `PendingTaskIds` | `Queue<TaskId>` | Tâches restantes à exécuter |
+| `FailedTaskIds` | `Queue<TaskId>` | Tâches éligibles au retry |
 | `RetryCounts` | `Dict<string, int>` | Compteur de retries par tâche |
 | `MaxRetryCycles` | `int` | Nombre max de retries (défaut: 2) |
-| `ApplicationOutputs` | `Dict` | Sorties accumulées |
+| `ApplicationOutputs` | `IReadOnlyList<ApplicationTaskOutput>` | Sorties accumulées |
 | `TotalTokensUsed` | `int` | Compteur de tokens consommés (propagé aux métadonnées du `CrewOutput` sous `totalTokens`) |
 | `PromptTokensUsed` | `int` | Compteur de tokens côté prompt (0 si le provider ne fournit pas le split) |
 | `CompletionTokensUsed` | `int` | Compteur de tokens côté completion (0 si le provider ne fournit pas le split) |
@@ -417,14 +434,16 @@ START ──→ execute_task ──→ route ──┬── succès ──→ e
 ### Configuration YAML
 
 ```yaml
-crew:
-  process: graph
-  graph_config:
-    circuit_breaker: Strict    # ou Default, Permissive
-    max_retry_cycles: 3
-    # Surcharges individuelles possibles :
-    max_transitions: 75
-    state_timeout: "00:03:00"
+name: "review-loop"
+goal: "Démo graphe"
+process: graph
+graphConfig:
+  circuitBreakerPreset: "strict"   # ou "default", "permissive"
+  maxRetryCycles: 3
+  # Surcharges individuelles possibles :
+  maxTransitions: 75
+  maxStateVisits: 10
+  maxTotalDurationSeconds: 180
 ```
 
 ### Avantages
@@ -527,16 +546,13 @@ await channel.BroadcastAsync(analyst.Id, crew.Id, "Résultats disponibles", ct);
 ### Configuration YAML
 
 ```yaml
-crew:
-  process: autonomous
-  autonomous_budget:
-    preset: Default           # Strict, Default, ou Permissive
-    # Surcharges possibles :
-    max_tool_calls: 20
-    max_delegation_depth: 3
-    max_wall_time: "00:10:00"
-    max_tokens_consumed: 32000
-    max_spawned_agents: 5
+name: "research-team"
+goal: "Démo autonome"
+process: autonomous
+# Il n'existe AUCUNE clé de budget autonome en YAML : une crew autonome YAML
+# tourne toujours sous AgentExecutionBudget.Permissive (50 appels d'outils,
+# profondeur 4, 15 min, 64 000 tokens, 10 spawns). Le budget ne se configure
+# que par l'API C# — voir le guide Autonomous et yaml-schema.md.
 ```
 
 ### Avantages

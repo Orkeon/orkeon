@@ -78,6 +78,7 @@ The multi-app archive is the only one that carries more than the CLI:
 | `orkeon-claim-verify` | Interactive claim-verification runner | needs .NET 10 |
 | `orkeon-spec-forge` | Interactive interview / spec-forge runner | needs .NET 10 |
 | `orkeon-tui-keytest` | Terminal.Gui key-diagnostic utility | needs .NET 10 |
+| `orkeon-host` | The service host daemon — registers crews and serves them long-running (systemd / Windows service, chat gateway, Discord channel; see [the service host](../architecture/service-host.md)) | self-contained |
 | `orkeon-studio` | **Orkeon Studio**, the desktop app — Windows archives only (see [below](#orkeon-studio-the-graphical-way-in)) | self-contained |
 | `orkeon-studio-config` / `orkeon-studio-run` | **Orkeon Studio** in the terminal: settings editor and crew launcher | self-contained |
 
@@ -251,8 +252,10 @@ orkeon run path/to/config.yaml \
   --mount ./out:/output:rw
 ```
 
-Settings are resolved in order: `--settings`, then `appsettings.json` in the
-current directory, then the same walking up the parent directories, then the
+Settings are resolved in order: `--settings`, then `appsettings.json` sitting
+next to the config file, then — walking up the parent directories — an
+`appsettings/appsettings.json` sub-directory at each level (the shared examples
+profile matrix; `_shared/appsettings.json` stays a deprecated fallback), then the
 global per-user file written by `orkeon init`, then `ORKEON_*` environment
 variables alone.
 
@@ -369,7 +372,7 @@ it per model, e.g. 128K for Gemma 4:
 
 ```bash
 docker model configure --context-size 131072 gemma4:latest   # see: docker model configure --help
-docker model inspect gemma4:latest                           # verify the applied config
+docker model configure show gemma4:latest                    # verify — list/inspect only show packaging metadata
 ```
 
 A large KV cache is RAM-hungry (several extra GB at 128K) — size the host
@@ -480,4 +483,3 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
 
 Whichever you choose, the flags and the `appsettings` profile story are identical
 — read them once in [Run your first example](./run-your-first-example.md).
-</content>

@@ -10,7 +10,7 @@
 ## 1. Contexte
 
 Avant R5.4, le Quality Gate SonarQube était en **ERROR sur 3 conditions**
-(`new_coverage 71.3 < 80`, `new_reliability_rating 3 > 1`,
+(`new_coverage 71,3 < 80`, `new_reliability_rating 3 > 1`,
 `new_security_hotspots_reviewed 0.0 < 100` — rapport du 2026-05-31) mais
 **aucun pipeline ne consommait ce verdict** : l'analyse se terminait sans
 `sonar.qualitygate.wait=true` ni lecture du statut, et la CI restait verte.

@@ -119,7 +119,7 @@ A minimal exchange:
 → {"v":2,"seq":1,"ts":"…","kind":"run.started","target":"crew.yaml","stream":false}
 → {"v":2,"seq":2,"ts":"…","correlationId":"c-1","kind":"input.needed","inputKind":"confirm","prompt":"Publish the report?"}
 ← {"kind":"input.given","correlationId":"c-1","value":"yes"}
-→ {"v":2,"seq":3,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200}
+→ {"v":2,"seq":3,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
 → {"v":2,"seq":4,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840}
 ```
 
@@ -130,6 +130,6 @@ Two rules worth building against. **Ignore a `kind` you do not know** — a newe
 ## 7. What reads this today
 
 - **Orkeon Studio**, whose Launch screen shows progress, cost and the run's questions instead of scrollback — see [Studio](studio.md). The Launch screen also staffs the hub seat: an agent's `send` to `client://studio` (marked `expectsReply`) appears as a request panel the user answers, and the reply travels back down stdin; hub posts are listed rather than dropped. Silence past the agent's own timeout is still a refusal — the same rule silence follows everywhere on this bus — the screen just gives a human the chance to speak before it.
-- `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client in ~380 lines with no dependency on Infrastructure or any LLM. `RunClient` is the shape to copy for a peer that takes the seat headlessly: subscribe, post, and reply.
+- `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client in ~460 lines with no dependency on Infrastructure or any LLM. `RunClient` is the shape to copy for a peer that takes the seat headlessly: subscribe, post, and reply.
 
 The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream, so a client that reads one reads both.

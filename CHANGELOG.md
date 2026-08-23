@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Full documentation audit against the implementation (DOC-04)
+
+A five-domain adversarial audit (getting-started/README, architecture, RAG/RaggableTree/
+EventHub/ADRs, reference, orchestration/guides) verified every factual claim in the docs
+against the code and fixed ~140 confirmed discrepancies, in both languages. The heaviest
+classes: **phantom APIs** (`AddOrkeonRuntime`, `CodeSecurityAnalyzer`/`CodeSandbox`/
+`SensitiveDataDetector`/`ComplianceChecker`/`RetryPolicy`-family types, the
+`ValidateServerCertificate` opt-out, `manager_llm`/`autonomous_budget`/`state_timeout`/
+`json_search`/`csv_search` YAML keys, the `raggableTree:` crew-YAML section, the
+`Exp07CommandSurfaceTests` suite, `Orkeon.Examples.Runner`); **YAML samples teaching a
+shape the loader silently loads as an empty crew** (a `crew:` root wrapper and
+sequence-form `agents:`/`tasks:` — the schema is flat-rooted with id-keyed mappings, now
+taught correctly in process-types/autonomous/blueprint); **stale capability matrices**
+(response-format and vision are capability-driven across the 13 providers — not
+"DeepSeek only"/"Anthropic+OpenAI only"; Anthropic thinking is `toggle`, `adaptive` is
+its wire value); **wiring claims corrected to what composition roots actually do**
+(the `AddOrkeonInfrastructure` overload capability table, MCP being effectively
+library-only, the empty `InMemoryToolRegistry` stub vs `ServiceProviderToolRegistry`
+in both tool-authoring guides, StrictTools lenient library default, EventHub telemetry/
+metrics marked designed-not-built, the autonomous YAML budget being `Permissive` not
+`Default`); plus the settings-resolution chain, the complete `orkeon run` flag table,
+`yaml-schema.md` gaining the six shipped blocks it omitted (`llm:` full surface,
+`links:`, task `tools:`/`deliverable:`/`llm_override:`), `[ToolContract]` added to the
+new-tool guide, VFS diagnostic help-link anchors, and ADR-002/005 amendments recording
+their drifted counts.
+
+Four code fixes rode along: `RunArgumentsBuilder` now emits a **single** `--mount`/`-V`
+flag with space-separated values (the CLI parser rejects a repeated option — multi-mount
+and multi-variable Studio launches were broken); `AddOrkeonApplication(Action<…>)` no
+longer silently drops `AgentSelectionStrategy` from the options copy; the three
+`examples/runners` packables are re-aligned on `1.0.0-rc.2`; and the plugins CA2000
+suppression justification now states the real ownership contract.
+
 ### Changed — The tool inventory rebuilt against the implementation, and gated (DOC-03)
 
 `docs/tools/inventory.md` (and its French mirror) claimed 43 tool names out of the 79

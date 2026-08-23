@@ -59,6 +59,9 @@ scripted> exit
 | `--commands-dir <path>`           | Add a directory to scan (repeatable; mounted as `/cli-commands[-N]` in the VFS).    |
 | `--no-script-commands`            | Disable discovery entirely. Registry is empty.                                      |
 | `--strict-commands`               | Equivalent to `FailFastOnInvalidScript=true + ContinueOnConflict=false` (CI).       |
+| `--settings <path>`               | Explicit appsettings path (repeatable — later files override earlier ones).         |
+| `--mount <phys:virt:rights>`      | Add a VFS mount (repeatable) — e.g. to make a commands directory reachable.         |
+| `--crews-dir <path>`              | Add a crew-resolution directory (repeatable) — what makes `script-host` / `runCrewAsync("name")` resolvable. |
 
 ## appsettings.json
 
@@ -75,6 +78,7 @@ Same options under `Orkeon:Cli:ScriptCommands`:
         "EsbuildTranspile": true,
         "MaxScripts": 50,
         "ContinueOnConflict": true,
+        "FallbackCommandName": "assistant",
         "Limits": {
           "MemoryLimitBytes": 67108864,
           "RecursionLimit": 100,
@@ -88,6 +92,9 @@ Same options under `Orkeon:Cli:ScriptCommands`:
 
 Directories are **virtual paths** resolved through `IFileSystemService` — set up
 a `Orkeon:FileSystem:Mounts` entry if the directory isn't already mounted.
+`FallbackCommandName` (default `assistant`) routes any REPL line **not** prefixed
+with `/` to that scripted command — the switch that turns the REPL into a
+conversational agent.
 
 ## `defineCommand` reference
 
@@ -192,9 +199,10 @@ const tools = ctx.services.get<IBaseTool[]>("tools");
 ```
 
 The host whitelist drives what's reachable. Default keys: `fs`, `configuration`,
-`tools`, plus optional `llm`, `logger`, and `commands` (the dispatch façade —
-see below). Hosts add their own by passing a `Action<ScriptServiceWhitelist>`
-to `AddScriptCommands`.
+`tools`, plus optional `llm`, `logger`, `commands` (the dispatch façade — see
+below) and `script-host` (crew launching from a command — see
+[scripting](./scripting.md)). Hosts add their own by passing a
+`Action<ScriptServiceWhitelist>` to `AddScriptCommands`.
 
 ## Dispatching commands to agents
 

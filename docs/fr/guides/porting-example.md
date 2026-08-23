@@ -429,7 +429,7 @@ public class OrderProcessingService
 
             // 4. Exploiter les résultats
             _logger.LogInformation("Crew execution completed in {Duration}ms",
-                output.Duration.TotalMilliseconds);
+                output.ExecutionTime.TotalMilliseconds);
             _logger.LogInformation("Final output:\n{Output}", output.FinalOutput);
 
             // 5. Traiter les sorties de chaque task
@@ -524,17 +524,18 @@ public class OrderProcessingMessageConsumer : IMessageHandler
       "Default": "Information"
     }
   },
-  "OpenAI": {
-    "ApiKey": "${OPENAI_API_KEY}",
+  "Llm": {
+    "Provider": "openai",
     "Model": "gpt-4o-mini",
     "Temperature": 0.3
+    // La clé d'API n'est JAMAIS stockée ici — elle est lue depuis l'environnement
+    // (OPENAI_API_KEY / ORKEON_Llm__ApiKey).
   },
   "Memory": {
-    "Redis": {
-      "ConnectionString": "localhost:6379",
-      "VectorDimension": 1536,
-      "EncryptionKey": "${REDIS_ENCRYPTION_KEY}"
-    }
+    "Provider": "Redis",
+    "ConnectionString": "localhost:6379"
+    // La mémoire Redis exige aussi l'appel opt-in AddOrkeonRedisMemory(...) ;
+    // sans lui, la factory pilotée par la config retombe sur l'in-memory.
   }
 }
 ```

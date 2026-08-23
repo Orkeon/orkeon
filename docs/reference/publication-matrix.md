@@ -42,6 +42,7 @@ workflow yet.
 | `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` is the `orkeon` dotnet tool (`PackAsTool`); name kept by ADR-007 (the PackageId is the install command). |
 | `Orkeon.Hosting` | Packaging host (created by R1.5) — strong candidate to ship with the core bundle. |
 | `Orkeon.Plugins` | Plugin system. |
+| `Orkeon.ConsoleApp` | The `orkeon-repl` dotnet tool (`PackAsTool`) — ships via the release archives today. |
 
 ## Published to GitHub Packages for `experiments/` (dotnet tools)
 
@@ -71,7 +72,7 @@ scripting DSL).
 
 | Artifact | Built by | Contents | Runtime |
 |---|---|---|---|
-| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every CLI launcher + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild | mixed: `orkeon`, `orkeon-trading` and the Studio apps self-contained, the rest framework-dependent |
+| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every CLI launcher + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild | mixed: `orkeon`, `orkeon-trading`, `orkeon-host` and the Studio apps self-contained, the rest framework-dependent |
 | `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `orkeon-studio` (WPF Orkeon Studio) + `install.ps1` | self-contained |
 | `orkeon_<version>_amd64.deb` | `package-deb.sh` (reuses the `linux-x64` staging tree — one publish, two packages) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (libicu / libssl alternations), never on `dotnet-runtime-*` |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI + `orkeon-studio` (WPF, with an "Orkeon Studio" Start-menu shortcut), same pruned publish as the zip | self-contained |
@@ -160,6 +161,8 @@ print the runtime install commands rather than failing at first launch.
 |---|---|
 | `Orkeon.Generators` | Source generator — consumed at build time. |
 | `Orkeon.Compliance.Vfs` | Roslyn analyzer — consumed at build time. |
+| `Orkeon.Host` | `IsPackable=false` — ships only as the `orkeon-host` binary in the release archives. |
+| `Orkeon.Studio.{Core,Config,Run,Wpf}` | `IsPackable=false` — ship only through the release installers (see [Orkeon Studio](../architecture/studio.md)). |
 
 ## How publication is wired
 
@@ -182,4 +185,4 @@ print the runtime install commands rather than failing at first launch.
   Lesson from the 0.9.1-beta incident (see CHANGELOG 0.9.2-beta): the `v0.9.1-beta.rc*` tags
   re-packed the unchanged props version and `--skip-duplicate` silently skipped every push —
   a "release" that published nothing. The guard keeps `--skip-duplicate` honest.
-- Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.2`); the only projects overriding it are the three `examples/runners` packables (two dotnet tools plus the shared library), bumped in lockstep at each release.
+- Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.2`); the only projects overriding it are the three `examples/runners` packables (two dotnet tools plus the shared library), which must be bumped in lockstep at each release — the publish workflow's tag guard only checks the props file, so their bump is a release-checklist step, not an enforced one.

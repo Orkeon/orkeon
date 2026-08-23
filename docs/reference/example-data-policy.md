@@ -132,4 +132,3 @@ A `VALIDATION OK: … (agents=N, tasks=M, tools resolved=K)` line means success.
 > **Mount syntax gotcha.** Repeatable `--mount` values are passed **space-separated
 > under one flag** — `--mount a:/data:ro b:/output:rw` — not as two separate
 > `--mount` flags (the CLI parser rejects a repeated option).
-</content>

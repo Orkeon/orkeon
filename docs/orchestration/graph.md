@@ -33,8 +33,8 @@ The engine components live in `Orkeon.Domain.Graph`:
 | `StateGraph<TState>` | Graph definition: nodes, fixed and conditional edges, compilation |
 | `GraphNode<TState>` | Processing node: `Func<TState, CancellationToken, Task<TState>>` |
 | `IGraphEdge<TState>` | Interface for routing (fixed or conditional) |
-| `FixedEdge<TState>` | Unconditional edge to a target node |
-| `ConditionalEdge<TState>` | Edge with a routing function `Func<TState, string>` |
+| `FixedEdge<TState>` (internal) | Unconditional edge to a target node — built via `AddEdge` |
+| `ConditionalEdge<TState>` (internal) | Edge with a routing function `Func<TState, string>` |
 | `GraphRunner<TState>` | Execution engine with circuit breaker and observability |
 | `GraphExecutionResult<TState>` | Result: final state, trace, transitions, duration |
 | `GraphCircuitBrokenException` | Exception thrown when the circuit breaker trips |
@@ -60,7 +60,7 @@ The `GraphConfig?` field is added to `CrewConfiguration` (`Orkeon.Domain.Configu
 | Class | Change |
 |--------|-------------|
 | `ProcessStrategyFactory` | Added the `"Graph"` case → `GraphProcessStrategy` |
-| `YamlCrewDefinitionLoader` | Added `GraphYamlConfig`, `MapGraphConfig()`, `"graph"` in `ParseProcessType` |
+| YAML pipeline (`YamlConfigModels` / `YamlCrewMapper`) | Added `GraphYamlConfig`, `MapGraphConfig()`, `"graph"` in `ParseProcessType` |
 | `ProcessType` | Added `ProcessType.Graph` |
 
 ## Graph topology
@@ -111,7 +111,7 @@ The presets are the same as for the FSM:
 
 The `GraphRunner<TState>` exposes two events:
 
-- `OnNodeCompleted`: raised after each node, with `NodeCompletedEventArgs` (node name, current state, ordinal, trace snapshot)
+- `OnNodeCompleted`: raised after each node, with `NodeCompletedEventArgs<TState>` (node name, current state, ordinal, trace snapshot)
 - `OnCircuitBroken`: raised when the circuit trips, with `GraphCircuitBrokenEventArgs` (reason, node, counter, trace)
 
 The `GraphProcessStrategy` subscribes to these events for structured logging via `ILogger` (source-generated `LoggerMessage`).
@@ -169,7 +169,7 @@ tasks:
 
 The `graphConfig` block travels all the way to the running graph:
 
-1. `YamlCrewDefinitionLoader` maps the YAML into `CrewConfiguration.GraphConfig`.
+1. `YamlCrewMapper` maps the YAML into `CrewConfiguration.GraphConfig` (the loader deserializes and delegates).
 2. `CrewFactory` carries it (and any crew-level `circuitBreaker`) onto the domain `Crew`
    aggregate (`Crew.GraphConfig` / `Crew.CircuitBreaker`), so it survives to execution time.
 3. At execution, `GraphProcessStrategy` reads the config **off the crew argument** and resolves the
@@ -184,9 +184,9 @@ When the crew carries no `graphConfig`, the strategy falls back to its built-in 
 
 | C# model | YAML class | File |
 |-----------|-------------|---------|
-| `GraphConfig` | `GraphYamlConfig` | `YamlCrewDefinitionLoader.cs` |
+| `GraphConfig` | `GraphYamlConfig` | `Configuration/Yaml/YamlConfigModels.cs` |
 
-The mapping is performed by `YamlCrewDefinitionLoader.MapGraphConfig()`.
+The mapping is performed by `YamlCrewMapper.MapGraphConfig()` (private, `Configuration/Yaml/`).
 
 ## Usage in C# code
 
@@ -322,7 +322,9 @@ ProcessStrategyFactory.CreateStrategy(processType) switch
     "Sequential"   → SequentialProcessStrategy
     "Hierarchical" → HierarchicalProcessStrategy
     "Parallel"     → ParallelProcessStrategy
+    "Consensual"   → ConsensualProcessStrategy
     "Graph"        → GraphProcessStrategy
+    "Autonomous"   → AutonomousProcessStrategy
 }
 ```
 

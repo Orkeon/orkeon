@@ -13,7 +13,7 @@ Orkeon provides three base classes in `Orkeon.Tools.Abstractions.Base`:
 | Base class | Usage | Built-in protection |
 |----------------|-------|-------------------|
 | `ToolBase<TRequest, TResponse>` | Generic tool | No specialization |
-| `FileToolBase<TRequest, TResponse>` | File operations | `IPathValidator` (path traversal protection) |
+| `FileToolBase<TRequest, TResponse>` | File operations | `IFileSystemService` (the VFS — mandatory first ctor argument) + `IPathValidator` (path traversal protection) |
 | `HttpToolBase<TRequest, TResponse>` | HTTP/API operations | `IUrlValidator` (SSRF protection), `HttpHeaderSanitizer` |
 
 The `ToolBase<TRequest, TResponse>` base class inherits from `ToolBase` (non-generic), which implements `IBaseTool` and `ITool` (`Orkeon.Domain.Tools`).
@@ -36,6 +36,7 @@ Available properties:
     Enum = new[] { "a", "b" }, // Allowed values
     Example = "example",       // Example for the documentation
     ItemsType = "string",      // Element type when array
+    ItemsFormat = "...",       // Element format when array
     TypeDefinitionRef = "..."  // Reference to a defined type
 )]
 ```
@@ -46,7 +47,11 @@ Available properties:
 [ReturnSchema(
     Description = "...",       // Description of the returned field
     Type = "boolean",          // JSON Schema type (inferred when omitted)
-    Example = true             // Exemple
+    Format = "...",            // JSON Schema format hint
+    ItemsType = "...",         // Element type when array
+    ItemsFormat = "...",       // Element format when array
+    TypeDefinitionRef = "...", // Reference to a defined type
+    Example = true             // Example
 )]
 ```
 
@@ -88,17 +93,30 @@ public sealed record TranslateResponse
 
 ## Step 3 — Implement the tool class
 
-Inherit from the chosen base class, define the `Name` and `Description` properties, and implement `ExecuteTypedAsync`.
+Inherit from the chosen base class, put a **`[ToolContract]` attribute** on the class
+and implement `ExecuteTypedAsync`. The contract's first positional argument is the
+**agent-visible name** (`UniqueName` — the exact string YAML `tools:` lists use, and
+the one the doc-claims CI gate checks against `docs/tools/inventory.md`); `Name`,
+`Description` and `Category` ride on the same attribute (`ToolBase` reads them:
+`Name => contract?.UniqueName ?? contract?.Name ?? GetType().Name`). A tool without a
+contract falls back to a `Name`/`Description` property override — every shipped tool
+uses the attribute.
+
+```csharp
+[ToolContract("weather_lookup",
+    Description = "Current weather for a city via the provider API.")]
+public class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse> { … }
+```
 
 ### Automatic pipeline
 
 The `ToolBase<TRequest, TResponse>` pipeline is sealed (`sealed override ExecuteCoreAsync`) and automatically performs:
 
 1. **YAML defaults injection**: missing optional parameters are filled in with their `Default` values
-2. **Deserialization**: `Dictionary<string, object>` → `TRequest` via `ComponentBase<TRequest, TResponse>`
+2. **Deserialization**: `Dictionary<string, object?>` → `TRequest` via `ComponentBase<TRequest, TResponse>`
 3. **Validation**: optional call to `ValidateTypedRequest(TRequest)` — return `null` if valid, an error message otherwise
 4. **Execution**: call to `ExecuteTypedAsync(TRequest, CancellationToken)` — your business logic
-5. **Serialization**: `TResponse` → `Dictionary<string, object>`
+5. **Serialization**: `TResponse` → `Dictionary<string, object?>`
 6. **Filtering**: only the fields declared in `[ReturnSchema]` are included in the response
 
 ### Complete example — Simple tool (no external dependency)
@@ -298,7 +316,15 @@ services.AddSingleton<IBaseTool>(sp =>
 });
 ```
 
-The tool will then be available via `IEnumerable<IBaseTool>` or resolved by the `IToolRegistry` (`Orkeon.Domain.Tools`).
+The tool is then available via `IEnumerable<IBaseTool>`. **Name resolution from YAML
+needs a DI-backed registry**: the default `AddOrkeonInfrastructure()` registers the
+*empty* `InMemoryToolRegistry` stub, which never sees your `IBaseTool` registrations —
+the runner host swaps in `ServiceProviderToolRegistry` (`Orkeon.Hosting`), and an
+embedding host must do the same:
+
+```csharp
+services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+```
 
 ### Option C — Via IToolRegistry
 
@@ -383,7 +409,7 @@ public abstract partial class FileToolBase<TRequest, TResponse> : FileToolBase
 
 ### Serialization: snake_case and type coercion
 
-The `JsonComponentSerializer` (`Orkeon.Infrastructure.Serialization`) uses `JsonNamingPolicy.SnakeCaseLower` and includes 6 tolerant converters to handle YAML values arriving as strings:
+The `JsonComponentSerializer` (`Orkeon.Infrastructure.Serialization`) uses `JsonNamingPolicy.SnakeCaseLower` and includes 10 tolerant converters to handle YAML values arriving as strings — the six below plus `TolerantEnumConverterFactory`, `UriTolerantConverter`, `ImmutableArrayEnumTolerantConverter<EdgeKind>` and `ImmutableArrayStringTolerantConverter`:
 
 - `BoolTolerantConverter`: `"true"`, `"1"`, `"yes"` → `true`
 - `IntTolerantConverter`: `"42"` → `42`
@@ -409,12 +435,17 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddOrkeonMyPackageTools(
         this IServiceCollection services)
     {
-        // Register each tool as an IBaseTool
-        services.TryAddSingleton<IBaseTool, WeatherTool>();
-        services.TryAddSingleton<IBaseTool, TranslateTool>();
+        // One IBaseTool registration per tool. NOT TryAddSingleton<IBaseTool, …>
+        // twice: TryAdd keys on the SERVICE type, so the second call would be a
+        // silent no-op. Tools with non-DI ctor args (WeatherTool's apiKey) need
+        // the factory form.
+        services.AddSingleton<IBaseTool>(sp => new WeatherTool(
+            apiKey: sp.GetRequiredService<IConfiguration>()["Weather:ApiKey"]!,
+            logger: sp.GetService<ILogger<WeatherTool>>()));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, TranslateTool>());
 
-        // The tools become automatically available in IToolRegistry
-        // and usable by name in YAML files
+        // Usable by name in YAML once a DI-backed IToolRegistry is registered
+        // (ServiceProviderToolRegistry — see Option A above).
         return services;
     }
 }

@@ -45,7 +45,8 @@ Le budget est thread-safe (compteurs `Interlocked`) et immutable après construc
 Task<CrewOutput> ExecuteAutonomousAsync(
     Crew crew,
     AgentExecutionBudget budget,
-    IReadOnlyDictionary<string, string>? inputVariables = null);
+    IReadOnlyDictionary<string, string>? inputVariables = null,
+    CancellationToken cancellationToken = default);
 ```
 
 ### Couche Application — Communication A2A
@@ -76,7 +77,7 @@ Task<CrewOutput> ExecuteAutonomousAsync(
 | Classe | Modification |
 |--------|-------------|
 | `ProcessStrategyFactory` | Ajout du case `"Autonomous"` → `AutonomousProcessStrategy` |
-| `SequentialCrewOrchestrator` | Ajout du dispatch `"Autonomous"` avec `AgentExecutionBudget.Default` |
+| `SequentialCrewOrchestrator` | Ajout du dispatch `"Autonomous"` avec `AgentExecutionBudget.Permissive` |
 | `DelegateWorkTool` | Ajout du paramètre `AgentExecutionBudget?` optionnel, appel `RecordDelegation()` avant chaque délégation |
 
 ## Flux d'execution
@@ -236,28 +237,31 @@ Tous les événements clés sont loggés via `LoggerMessage` :
 ## Configuration YAML
 
 ```yaml
-crew:
-  name: research-team
-  process: autonomous      # ← active le mode autonome
-  goal: "Produire un rapport de recherche complet"
+# Racine plate — pas d'enveloppe crew: ; agents: est un mapping indexé par id.
+name: research-team
+process: autonomous        # ← active le mode autonome
+goal: "Produire un rapport de recherche complet"
 
-  agents:
-    - role: researcher
-      goal: "Trouver des sources fiables"
-      allowDelegation: true
-      tools: [web_search, spawn_agent]  # ← spawn_agent pour self-spawn
+agents:
+  researcher:
+    role: Chercheur
+    goal: "Trouver des sources fiables"
+    allowDelegation: true
+    tools: [web_search, spawn_agent]  # ← spawn_agent pour self-spawn (enregistré par l'hôte)
 
-    - role: analyst
-      goal: "Analyser et synthétiser les données"
-      allowDelegation: true
-      tools: [json_tool, csv_reader]
+  analyst:
+    role: Analyste
+    goal: "Analyser et synthétiser les données"
+    allowDelegation: true
+    tools: [json_tool, csv_reader]
 
-    - role: writer
-      goal: "Rédiger le rapport final"
-      allowDelegation: false
+  writer:
+    role: Rédacteur
+    goal: "Rédiger le rapport final"
+    allowDelegation: false
 ```
 
-> **Note** : il n'existe pas de clé YAML `autonomousBudget` — le loader n'en parse pas. Dans les crews YAML, le mode Autonomous s'exécute toujours avec `AgentExecutionBudget.Default` ; un budget personnalisé (presets `Strict`/`Default`/`Permissive` ou valeurs custom) n'est disponible que via l'API C#.
+> **Note** : il n'existe pas de clé YAML `autonomousBudget` — le loader n'en parse pas. Dans les crews YAML, le mode Autonomous s'exécute toujours avec `AgentExecutionBudget.Permissive` (50 appels d'outils, profondeur 4, 15 min, 64 000 tokens, 10 spawns) ; un budget personnalisé (presets `Strict`/`Default`/`Permissive` ou valeurs custom) n'est disponible que via l'API C#.
 
 ## Complémentarité avec les autres modes
 

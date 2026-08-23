@@ -18,9 +18,9 @@ The available naive solutions (file reading via `file_read`, full-text `grep`, R
 
 ## Decision
 
-Build a **6-level stratified semantic graph** fed by Tree-sitter, exposed to agents through 13 structural tools.
+Build a **stratified semantic graph — five `NodeLevel`s plus the edge layer** — fed by Tree-sitter, exposed to agents through 13 structural tools.
 
-The six levels (`NodeLevel`):
+The five levels (`NodeLevel`) and the edges:
 
 - **L0 Monorepo** — root of the indexed project
 - **L1 Package** — build unit detected by marker (`package.json`, `*.csproj`, ...)

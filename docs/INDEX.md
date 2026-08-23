@@ -77,7 +77,7 @@ The documentation is organized into 6 thematic sections.
 | File | Description |
 |------|-------------|
 | [Examples catalog](./reference/examples-catalog.md) | Editorial map of `examples/` (9 business categories + RAG/RaggableTree/scripting showcases); the generated `examples/INDEX.md` is the authoritative inventory |
-| [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `doctor`) with options and examples, plus `orkeon-repl` |
+| [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `doctor`) with options and examples, plus `orkeon-repl` |
 | [Configuration reference](./reference/configuration.md) | The single map of the `appsettings.json` sections (`Llm`, `Orkeon:*`, `MCP`), sources and precedence, opt-in column |
 | [Limits and constraints](./reference/limitations.md) | Known constraints of the current version |
 | [A2A conformance matrix](./reference/a2a-conformance.md) | Honest position vs the A2A v1.0 spec: operations, data model, bindings, security — what interoperates and what does not |

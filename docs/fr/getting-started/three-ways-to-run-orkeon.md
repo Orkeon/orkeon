@@ -80,6 +80,7 @@ L'archive multi-apps est la seule à embarquer plus que le CLI :
 | `orkeon-interactive` | Runner Terminal.Gui interactif | requiert .NET 10 |
 | `orkeon-claim-verify` | Runner interactif de vérification d'affirmations | requiert .NET 10 |
 | `orkeon-spec-forge` | Runner interactif d'interview / spec-forge | requiert .NET 10 |
+| `orkeon-host` | Le daemon d'hébergement — enregistre des crews et les sert en continu (systemd / service Windows, passerelle de chat, canal Discord ; voir [le service host](../architecture/service-host.md)) | autonome |
 | `orkeon-tui-keytest` | Utilitaire de diagnostic clavier Terminal.Gui | requiert .NET 10 |
 | `orkeon-studio` | **Orkeon Studio**, l'application de bureau — archives Windows uniquement (voir [plus bas](#orkeon-studio-la-voie-graphique)) | self-contained |
 | `orkeon-studio-config` / `orkeon-studio-run` | **Orkeon Studio** dans le terminal : éditeur de settings et lanceur de crew | self-contained |
@@ -265,10 +266,12 @@ orkeon run chemin/vers/config.yaml \
   --mount ./out:/output:rw
 ```
 
-Les settings sont résolus dans cet ordre : `--settings`, puis `appsettings.json`
-dans le répertoire courant, puis le même en remontant les répertoires parents,
-puis le fichier global per-user écrit par `orkeon init`, puis les variables
-d'environnement `ORKEON_*` seules.
+Les settings sont résolus dans cet ordre : `--settings`, puis l'`appsettings.json`
+voisin du fichier de config, puis — en remontant les répertoires parents — un
+sous-répertoire `appsettings/appsettings.json` à chaque niveau (la matrice de
+profils partagée des exemples ; `_shared/appsettings.json` reste un fallback
+déprécié), puis le fichier global per-user écrit par `orkeon init`, puis les
+variables d'environnement `ORKEON_*` seules.
 
 **Une crew peut aussi être un dossier**. Pointez
 `orkeon run` sur un répertoire contenant une crew multi-fichiers — `config.yaml`
@@ -387,7 +390,7 @@ Gemma 4 :
 
 ```bash
 docker model configure --context-size 131072 gemma4:latest   # voir : docker model configure --help
-docker model inspect gemma4:latest                           # vérifier la config appliquée
+docker model configure show gemma4:latest                    # vérifier — list/inspect ne montrent que le packaging
 ```
 
 Un gros cache KV est gourmand en RAM (plusieurs Go supplémentaires à 128K) —

@@ -95,7 +95,7 @@ Each plugin assembly is loaded into its own `PluginLoadContext`:
 - dependencies resolved by `AssemblyDependencyResolver` (the plugin's `.deps.json`) →
   each plugin can ship **its own versions** of dependencies;
 - assemblies whose simple name starts with a prefix from
-  `SharedAssemblyPrefixes` (`Orkeon.`, `Microsoft.Extensions.` by default) are
+  `SharedAssemblyPrefixes` (`Orkeon.`, `Orkeon.Rag.Abstractions`, `Microsoft.Extensions.` by default — the middle entry is explicit so RAG contract types keep inter-ALC identity even for hosts that narrow the defaults) are
   **never** resolved in the plugin context: they unify with the host
   context, guaranteeing a single identity for `IOrkeonPlugin`, `IBaseTool`,
   `IServiceCollection`, etc.

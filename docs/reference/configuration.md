@@ -52,6 +52,12 @@ runtime degrades to the echo provider and warns once. See
 | `MCP`, `MCP:Server` | MCP client connections + optional MCP server | — (`AddOrkeonMcp(configuration)` is called by `AddOrkeonInfrastructure(configuration)`; the `MCP` section gates it) — see [MCP integration](../architecture/mcp.md) |
 | `Evaluation` | Evaluation services | — (registered by `AddOrkeonInfrastructure()`; the section gates behavior) |
 | `RaggableTree` | Codebase indexing (embedding, excludes) | **opt-out in runner hosts**: `RunnerHost` registers it by default, `RaggableTree:Enabled = false` disables; library consumers call `AddRaggableTree(options)` explicitly |
+| `Resilience` | Retry/circuit-breaker/timeout policy knobs (`ResilienceOptions`) | bound by `AddOrkeonInfrastructure()` |
+| `Memory:Provider`, `Memory:ConnectionString` | Memory provider selection via `MemoryProviderFactory` (unset → in-memory) | `AddOrkeonInfrastructure()` |
+| `ToolRateLimiting`, `TokenBudget` | Per-tool rate limits and token budgets | opt-in `AddOrkeonToolRateLimiting(configuration)` (see [opt-in subsystems](./opt-in-subsystems.md)) |
+| `Security:Audit`, `Security:Prompt`, `Security:ToolResults`, `Security:Url`, `Security:Vault` | Audit sinks, prompt hardening, tool-result screening, URL validation, secret vault | Infrastructure (sections gate behavior) |
+| `Llm:AvailableModels` | The model list a scripted `/model` REPL command can offer | `AddOrkeonSessionTools(configuration)` |
+| `BRAVE_API_KEY` | Also read as a **configuration key** (not only an env var) to gate the Brave tool | `RunnerHost` |
 | `Plugins` | Plugin directory discovery | opt-in `AddOrkeonPlugins(fileSystem, configuration)` |
 
 ## `Orkeon:*` sections
@@ -88,6 +94,11 @@ requires the opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjecti
 |---|---|
 | `Orkeon:Rag:Profile` | Profile preset `fast` (default) / `balanced` / `quality` / `adaptive` / `corrective`; any `Orkeon:Rag` key overrides the preset key-by-key |
 | `Orkeon:Rag:Provider`, `Orkeon:Rag:ConnectionString` | Dedicated RAG document-store provider (`RagStoreOptions`); default is the ambient `IMemoryProvider` |
+| `Orkeon:Rag:Collection` | Default collection name |
+| `Orkeon:Rag:Retrieval` (`TopK`, `CandidateK`, `MinScore`) | Retrieval stage bounds |
+| `Orkeon:Rag:Rerank` (`Kind`, `TopN`) | Reranker selection and depth |
+| `Orkeon:Rag:Context` (`MaxTokens`, `Ordering`) | Context assembly (anti-Lost-in-the-Middle `edges` ordering) |
+| `Orkeon:Rag:Groundedness`, `Orkeon:Rag:Generation` (`Enabled`, `SystemPrompt`) | Groundedness hook and cited generation stage |
 | `Orkeon:Rag:Ingestion` | Ingestion pipeline (`RagIngestionOptions`) |
 | `Orkeon:Rag:Retrieval:Hybrid`, `Orkeon:Rag:Retrieval:Mmr` | Hybrid BM25+RRF retrieval, opt-in MMR |
 | `Orkeon:Rag:QueryTransform`, `Orkeon:Rag:QueryRouting` | Query transformers (`multi-query`/`rag-fusion`/`hyde`), Adaptive-RAG routing |

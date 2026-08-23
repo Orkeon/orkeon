@@ -51,22 +51,28 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
 The CLI emits the script result as JSON on stdout; exit codes follow the usual
 convention (`0` ok, `1` script error, `2` runtime error, `130` cancelled).
 
-The same `run` verb also accepts a **YAML crew** — the file extension selects the
-path (`.yaml`/`.yml` → YAML crew runner, `.ork.ts`/`.js` → Scripting DSL):
+The same `run` verb also accepts a **YAML crew** — the target selects the
+path (`.yaml`/`.yml` **or a directory holding a multi-file crew** → YAML crew
+runner, `.ork.ts`/`.js` → Scripting DSL):
 
 ```bash
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/09-experimental/llm-response-format/crew.yaml
 ```
 
-For YAML crews the tool delegates to the shared one-shot runner (the same code
-path as the standalone `Orkeon.Examples.Runner`), so the YAML-only flags apply:
-`-V/--var KEY=VALUE`, `--initial-context`, plus the shared
-`--settings/--mount/--allow-external-mounts/--verbose/--llm-log[-path]`. The
-script-only flags (`--inputs`, `--inputs-file`, `--memory-limit-mb`) are ignored
-on the YAML path. The YAML runner prints the crew output under a
+For YAML crews the tool delegates to the shared one-shot runner
+(`Orkeon.Hosting`'s `RunnerExecution` — the exact code path of `orkeon run`),
+so the YAML-only flags apply: `-V/--var KEY=VALUE`, `--initial-context`, plus
+the shared `--settings/--mount/--allow-external-mounts/--verbose/--llm-log[-path]`
+and the diagnostics/protocol flags (`--validate`, `--list-tools`, `--events jsonl`,
+`--stream`, `--client`). The script-only flags (`--inputs`, `--inputs-file`,
+`--memory-limit-mb`) are ignored on the YAML path. The YAML runner prints the crew output under a
 `=== Crew Output ===` banner instead of a JSON `result`.
 
 ## API recap
+
+The `chapters/NN` pointers below reference the maintainers' design archive
+(`features/scripting-dsl/chapters/` in the private `backstage` submodule) — they
+are not part of the public docs tree.
 
 | Concept | Where to look |
 |---------|---------------|
@@ -117,13 +123,14 @@ returns a ticket immediately and delivers the crew summary to a
 
 - `concurrency(N)` capped at 1 (mutex). N-holders semaphore is V1.5.
 - Locks have no timeout. `LockTimeoutError` is V1.5.
-- Streaming through `ctx.llm.stream` emits a single chunk; per-token streaming
-  follows when the underlying provider supports it.
+- Streaming through `ctx.llm.stream` is **per-token** when the provider is an
+  `IStreamingLlmProvider` (all 13 shipped providers are); the single full-text
+  chunk is only the fallback for a non-streaming custom provider.
 - `ctx.llm.embed` returns a stub vector; integration with real embedders is a
   follow-up.
 - FSM/Graph hierarchical composability (sub-states, sub-graphs) is V1.5.
 - Events are in-memory only (no Redis/NATS persistence).
-- See `chapters/12-roadmap-and-questions.md` for the full backlog.
+- See `chapters/12-roadmap-and-questions.md` (maintainers' archive, see above) for the full backlog.
 
 ## Reference
 

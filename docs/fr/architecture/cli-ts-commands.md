@@ -61,6 +61,9 @@ scripted> exit
 | `--commands-dir <path>`           | Ajoute un répertoire à scanner (répétable ; monté comme `/cli-commands[-N]` dans le VFS). |
 | `--no-script-commands`            | Désactive entièrement la découverte. Le registre est vide.                          |
 | `--strict-commands`               | Équivalent à `FailFastOnInvalidScript=true + ContinueOnConflict=false` (CI).        |
+| `--settings <chemin>`             | Chemin d'appsettings explicite (répétable — les fichiers suivants surchargent les précédents). |
+| `--mount <phys:virt:droits>`      | Ajoute un montage VFS (répétable) — p. ex. pour rendre un dossier de commandes accessible. |
+| `--crews-dir <chemin>`            | Ajoute un répertoire de résolution de crews (répétable) — ce qui rend `script-host` / `runCrewAsync("nom")` résoluble. |
 
 ## appsettings.json
 
@@ -77,6 +80,7 @@ Les mêmes options sous `Orkeon:Cli:ScriptCommands` :
         "EsbuildTranspile": true,
         "MaxScripts": 50,
         "ContinueOnConflict": true,
+        "FallbackCommandName": "assistant",
         "Limits": {
           "MemoryLimitBytes": 67108864,
           "RecursionLimit": 100,
@@ -90,7 +94,9 @@ Les mêmes options sous `Orkeon:Cli:ScriptCommands` :
 
 Les répertoires sont des **chemins virtuels** résolus via `IFileSystemService` —
 configurez une entrée `Orkeon:FileSystem:Mounts` si le répertoire n'est pas déjà
-monté.
+monté. `FallbackCommandName` (défaut `assistant`) route toute ligne REPL **non**
+préfixée de `/` vers cette commande scriptée — l'interrupteur qui fait du REPL un
+agent conversationnel.
 
 ## Référence `defineCommand`
 
@@ -195,9 +201,10 @@ const tools = ctx.services.get<IBaseTool[]>("tools");
 ```
 
 La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `fs`,
-`configuration`, `tools`, plus en option `llm`, `logger` et `commands` (la façade
-de dispatch — voir plus bas). Les hôtes ajoutent les leurs en passant une
-`Action<ScriptServiceWhitelist>` à `AddScriptCommands`.
+`configuration`, `tools`, plus en option `llm`, `logger`, `commands` (la façade
+de dispatch — voir plus bas) et `script-host` (lancement de crews depuis une
+commande — voir [scripting](./scripting.md)). Les hôtes ajoutent les leurs en
+passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands`.
 
 ## Dispatcher des commandes vers des agents
 

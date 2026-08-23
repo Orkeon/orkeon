@@ -38,6 +38,9 @@ Les crews YAML numérotés vivent dans neuf dossiers thématiques :
 | `local-embeddings/` | Embeddings locaux (sans clé API) branchés sur la mémoire et la sélection d'agents |
 | `crew-multifile/` | Un crew décrit comme un dossier (`orkeon run <dir>`) |
 | `forge/promote-demo/` | La moitié hors ligne de l'Atelier : une session `orkeon forge` prête, livrée comme workspace — `forge list`, puis `forge promote` vers un dossier ordinaire (aucun LLM requis) |
+| `service-host/` | Le matériel d'exemple du daemon `orkeon-host` : un README et `appsettings.host.json` |
+| `run-events/` | Le protocole `orkeon run --events jsonl` : README, `sample-stream.jsonl`, `watch-run.py` |
+| `appsettings/`, `_shared/`, `others/` | La matrice de profils de settings partagée, les assets partagés, et des one-offs divers |
 | `runners/` | Les projets runners qui exécutent les exemples numérotés, dont deux tools dotnet interactifs |
 
 ## Exemples notables

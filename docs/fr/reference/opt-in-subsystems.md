@@ -260,9 +260,11 @@ partiel (signalé au cas par cas ci-dessous).
 - **Dépendances** : `IContentValidationService` n'a besoin que des options ;
   `IMultiModalContentLoader` requiert un `IFileSystemService` résolvable
   (`AddOrkeonFileSystem(configuration)` dans les hôtes réels).
-- **Limites connues** : seuls les providers **Anthropic** et **OpenAI** composent des
-  payloads vision ; les autres providers dégradent les messages multi-modaux vers leur
-  repli texte (`LlmMessage.Content`). Formats image supportés : png, jpeg, gif, webp.
+- **Limites connues** : la composition des payloads vision est pilotée par capacité
+  (`LlmProviderCapabilities.Vision`, traduite une fois par `OpenAICompatibleProviderBase`)
+  — **12 des 13 providers** la déclarent (seul DeepSeek ne le fait pas) ; un provider
+  sans la capacité dégrade les messages multi-modaux vers leur repli texte
+  (`LlmMessage.Content`). Formats image supportés : png, jpeg, gif, webp.
   Les parts audio/fichier ne sont envoyées par aucun provider et lèvent une
   `NotSupportedException` explicite si elles atteignent un payload vision.
 
@@ -296,9 +298,11 @@ partiel (signalé au cas par cas ci-dessous).
 
 - **Rôle** : `ICodebaseContextProvider` produit des résumés de codebase destinés à
   être injectés dans le contexte des agents (fonctionnalité RaggableTree).
-- **Activation** : déjà opt-in — il est enregistré par `AddRaggableTree(options)`
-  (projet `Orkeon.Analysis`), qui n'est jamais appelé par le socle. Voir
-  [raggable-tree.md](../architecture/raggable-tree.md).
+- **Activation** : enregistré par `AddRaggableTree(options)` (projet
+  `Orkeon.Analysis`). La bibliothèque cœur ne l'appelle jamais — mais le **runner
+  host, lui, l'appelle par défaut** (`orkeon run`/`orkeon-host` ; opt-out via
+  `"RaggableTree:Enabled": false`), en cohérence avec l'entrée de ce catalogue plus
+  haut. Voir [raggable-tree.md](../architecture/raggable-tree.md).
 - **Limites connues** : aucun composant du framework ne le consomme automatiquement —
   l'hôte le résout et injecte les résumés là où il le souhaite (prompt système,
   contexte de tâche…).
