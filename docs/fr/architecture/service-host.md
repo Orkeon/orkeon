@@ -44,7 +44,8 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
         "Enabled": true,
         "TokenEnvironmentVariable": "ORKEON_DISCORD_TOKEN",
         "AllowedUserIds": ["123456789012345678"],
-        "ProgressInterval": "00:00:02"
+        "ProgressInterval": "00:00:02",
+        "GuildIds": []
       }
     }
   }
@@ -101,10 +102,14 @@ Un message devient un run dans un ordre fixe : **autoriser, router, accuser réc
 
 ### Commandes
 
+`/status` et `/stop` sont des **slash-commands enregistrées** — le client Discord les autocomplète, et la réponse est **éphémère** : un coup d'œil au statut ou un refus regarde celui qui invoque, pas une ligne de plus dans le thread de tout le monde. Elles sont enregistrées à la connexion : globalement quand `GuildIds` est vide (aucune configuration, mais Discord met les commandes globales en cache jusqu'à une heure), ou par serveur nommé (disponibles immédiatement — la boucle de dev). La passerelle ne parse pas le texte des messages pour elles : un `/stop` littéral tapé comme texte est un prompt comme un autre.
+
 | Commande | Effet |
 |---|---|
 | `/status` | Ce que cette conversation exécute, et depuis quand. |
-| `/stop` | Arrête le run de cette conversation. Le **bouton Stop** fait exactement la même chose — qui préfère cliquer ne doit pas obtenir un comportement différent de qui préfère taper. |
+| `/stop` | Arrête le run de cette conversation. Le **bouton Stop** est la même invocation avec un autre doigt — même contrôle d'allow-list, même réponse. |
+
+Les deux chemins sont gardés par `AllowedUserIds`. Bouton compris : un clic de quelqu'un hors liste est refusé en éphémère au lieu d'arrêter le run.
 
 ---
 
@@ -148,7 +153,7 @@ Start-Service -Name Orkeon
 
 ## 6. Ce qui est livré, et ce qui ne l'est pas
 
-**Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, et le canal Discord avec `/status`, `/stop` et le bouton d'arrêt.
+**Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, et le canal Discord avec les slash-commands enregistrées `/status` et `/stop` et le bouton d'arrêt — un seul chemin autorisé pour les trois.
 
 **Non livré**, et sous-entendu nulle part : un ordonnanceur, le rechargement à chaud de la configuration, l'hébergement multi-crew dynamique, et tout canal autre que Discord. Les ports sont écrits de sorte que le protocole JSONL du bus d'événements en soit une implémentation légitime — le modèle ne se referme pas sur le chat — mais ce canal-là n'est pas écrit.
 

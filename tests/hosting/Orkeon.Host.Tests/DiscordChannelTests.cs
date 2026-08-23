@@ -102,6 +102,42 @@ public class DiscordChannelTests
     }
 
     [Fact]
+    public void The_registered_commands_are_the_ones_the_handler_reads_back()
+    {
+        // Same argument as the button: a name registered under one spelling and read back
+        // under another is a command that does nothing. The builder enforces Discord's own
+        // limits (lowercase name, description length) at Build() time, so building here is
+        // also the test that both commands are registrable at all.
+        var commands = DiscordChannel.SlashCommands();
+
+        Assert.Equal(2, commands.Length);
+        Assert.Contains(commands, c => c.Name.Value == DiscordChannel.StatusCommandName);
+        Assert.Contains(commands, c => c.Name.Value == DiscordChannel.StopCommandName);
+        Assert.All(commands, c => Assert.False(string.IsNullOrWhiteSpace(c.Description.Value)));
+    }
+
+    [Fact]
+    public void An_interaction_maps_to_an_invocation_on_the_thread_it_was_used_in()
+    {
+        // ChannelId is the thread's id — the same conversation identity the message and
+        // button paths use, so /status finds the same run a message started.
+        var invocation = DiscordChannel.ToInvocation("status", channelId: 123456789UL, userId: 42UL);
+
+        Assert.NotNull(invocation);
+        Assert.Equal("status", invocation!.CommandName);
+        Assert.Equal("123456789", invocation.ConversationId);
+        Assert.Equal("42", invocation.SenderId);
+    }
+
+    [Fact]
+    public void An_interaction_with_no_channel_has_no_conversation_and_is_refused()
+    {
+        // A null channel id has nothing to act on; guessing a conversation would stop
+        // somebody else's run.
+        Assert.Null(DiscordChannel.ToInvocation("stop", channelId: null, userId: 42UL));
+    }
+
+    [Fact]
     public void Truncation_never_splits_a_surrogate_pair()
     {
         // An emoji astride the cut would leave a lone surrogate — invalid UTF-16 that Discord

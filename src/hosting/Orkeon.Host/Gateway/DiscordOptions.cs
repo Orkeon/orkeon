@@ -33,6 +33,13 @@ internal sealed record DiscordChannelOptions
     public TimeSpan ProgressInterval { get; init; } = TimeSpan.FromSeconds(2);
 
     /// <summary>
+    /// Guild (server) ids to register the slash commands in. **Empty registers them
+    /// globally**, which needs no configuration but is cached by Discord for up to an hour;
+    /// naming guilds makes `/status` and `/stop` available immediately — the dev loop.
+    /// </summary>
+    public IReadOnlyList<string> GuildIds { get; init; } = [];
+
+    /// <summary>
     /// Reads the token from the environment, or null when the variable is unset. Returning
     /// null rather than throwing lets the host say *which* variable is missing, which is the
     /// only actionable form of that error.

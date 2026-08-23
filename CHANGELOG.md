@@ -27,6 +27,27 @@ Launch screen shows the request and a human answers it.
   parsed and shown nowhere. Silence past the agent's own timeout remains a refusal — the
   screen just gives the human a chance to speak before it.
 
+### Added — Real Discord slash commands: `/status` and `/stop`, registered and gated
+
+The host's two commands stop being text parsing and become what Discord users expect:
+registered slash commands, autocompleted by the client, answered **ephemerally** — a status
+poke or a refusal is the invoker's business, not one more line in everyone's thread.
+
+- **Registration at connect**: globally when `Discord:GuildIds` is empty (zero configuration,
+  Discord caches global commands up to ~1 h), or per named guild for immediate availability
+  (the dev loop). A registration hiccup logs a warning and leaves the message channel alive —
+  it never kills the daemon. An unparseable guild id refuses the start (exit 78).
+- **The text parsing is removed** (nothing is deployed, no dual path): the platform's client
+  intercepts the slash, and a literal `/stop` arriving as plain message content is a prompt
+  like any other.
+- **Security fix along the way**: the Stop **button** used to bypass the allow list entirely —
+  `component.User` was never read, so anyone who could see the thread could kill a run while
+  typing `/stop` was gated. Button and slash commands now converge on one
+  `CommandInvocation` path checked against `AllowedUserIds`; an unauthorized click gets an
+  ephemeral refusal instead of a silent stop.
+- The privileged `MessageContent` intent stays: runs are started by plain thread messages,
+  which slash commands do not replace.
+
 ### Added — The Atelier: `orkeon forge`, from a need in plain words to a deployable crew (FORGE-01→08)
 
 The missing step between "I have a problem" and a running agent team. `orkeon forge

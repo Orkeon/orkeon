@@ -72,6 +72,13 @@ internal sealed partial class ChatChannelService : BackgroundService
                 throw new HostConfigurationException(
                     $"The Discord channel is enabled but the environment variable "
                     + $"'{_discord.TokenEnvironmentVariable}' is empty or unset.");
+
+            foreach (var guildId in _discord.GuildIds)
+            {
+                if (!ulong.TryParse(guildId, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out _))
+                    throw new HostConfigurationException(
+                        $"Discord:GuildIds contains '{guildId}', which is not a Discord guild id (a number).");
+            }
         }
 
         return base.StartAsync(cancellationToken);
@@ -90,16 +97,11 @@ internal sealed partial class ChatChannelService : BackgroundService
         var channel = new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>());
         await using var channelLifetime = channel.ConfigureAwait(false);
 
-        // The stop button and the /stop command reach the same place. A user who prefers
-        // clicking should not get a different behaviour from one who prefers typing.
-        channel.StopRequested += conversationId =>
-        {
-            var runId = router.FindRun(conversationId);
-            if (runId is not null)
-                _registry.RequestStop(runId);
-
-            return Task.CompletedTask;
-        };
+        // The stop button and the /stop command arrive as ONE invocation shape, and the
+        // allow list gates both: the first version checked it on the typed command only,
+        // and anyone who could see the thread could kill the run with a click.
+        channel.CommandInvoked += invocation =>
+            Task.FromResult(HandleCommand(gateway, authorizer, invocation));
 
         try
         {
@@ -134,6 +136,27 @@ internal sealed partial class ChatChannelService : BackgroundService
             Environment.ExitCode = 1;
             _lifetime.StopApplication();
         }
+    }
+
+    /// <summary>
+    /// One registered command, end to end: authorize, then act, then word the answer. The
+    /// text goes back ephemerally to the invoker alone.
+    /// </summary>
+    internal static string HandleCommand(ChatGateway gateway, IChatAuthorizer authorizer, CommandInvocation invocation)
+    {
+        ArgumentNullException.ThrowIfNull(gateway);
+        ArgumentNullException.ThrowIfNull(authorizer);
+        ArgumentNullException.ThrowIfNull(invocation);
+
+        if (!authorizer.IsAuthorized(invocation.SenderId))
+            return "You are not authorized to use this bot.";
+
+        return invocation.CommandName switch
+        {
+            DiscordChannel.StopCommandName => gateway.Stop(invocation.ConversationId),
+            DiscordChannel.StatusCommandName => gateway.Status(invocation.ConversationId),
+            _ => "Unknown command.",
+        };
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The Discord channel is enabled but its allow list is empty; it would answer nobody, so it will not start. Add Discord:AllowedUserIds.")]

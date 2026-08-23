@@ -73,7 +73,19 @@ internal interface IChatAuthorizer
 {
     /// <summary>Whether <paramref name="message"/>'s sender is allowed.</summary>
     bool IsAuthorized(InboundMessage message);
+
+    /// <summary>
+    /// Whether <paramref name="senderId"/> is allowed — the shape a command invocation
+    /// carries, where no full message exists.
+    /// </summary>
+    bool IsAuthorized(string senderId);
 }
+
+/// <summary>
+/// A registered command someone invoked — a slash command, or the stop button, which is the
+/// stop command with a different finger. The returned reply is shown only to the invoker.
+/// </summary>
+internal sealed record CommandInvocation(string CommandName, string ConversationId, string SenderId);
 
 /// <summary>
 /// The allow-list authorizer, and the only one rc.2 ships.
@@ -101,8 +113,11 @@ internal sealed class AllowListChatAuthorizer : IChatAuthorizer
     public bool IsAuthorized(InboundMessage message)
     {
         ArgumentNullException.ThrowIfNull(message);
-        return _allowed.Contains(message.SenderId);
+        return IsAuthorized(message.SenderId);
     }
+
+    /// <inheritdoc />
+    public bool IsAuthorized(string senderId) => _allowed.Contains(senderId);
 }
 
 /// <summary>

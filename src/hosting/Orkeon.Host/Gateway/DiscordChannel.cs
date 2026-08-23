@@ -61,8 +61,13 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     /// <inheritdoc />
     public IChatResponder Responder { get; }
 
-    /// <summary>Raised when someone presses the stop button, with the thread it was pressed in.</summary>
-    public event Func<string, Task>? StopRequested;
+    /// <summary>
+    /// Raised for a slash command or the stop button; the returned text is shown only to the
+    /// person who invoked it. One event for both on purpose: the button is `/stop` with a
+    /// different finger, and two paths would drift — the first version proved it by checking
+    /// the allow list on the typed command and not on the click.
+    /// </summary>
+    public event Func<CommandInvocation, Task<string>>? CommandInvoked;
 
     /// <inheritdoc />
     public async Task RunAsync(Func<InboundMessage, CancellationToken, Task> onMessage, CancellationToken ct)
@@ -102,6 +107,20 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         _client.ButtonExecuted += component =>
         {
             Dispatch(() => OnButtonAsync(component));
+            return Task.CompletedTask;
+        };
+        _client.SlashCommandExecuted += command =>
+        {
+            Dispatch(() => OnSlashCommandAsync(command));
+            return Task.CompletedTask;
+        };
+
+        // Registration needs the application id, which is only known once the gateway says
+        // Ready — and Ready fires again on every reconnect, which is harmless because a bulk
+        // overwrite is idempotent.
+        _client.Ready += () =>
+        {
+            Dispatch(RegisterCommandsAsync);
             return Task.CompletedTask;
         };
 
@@ -174,13 +193,103 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         if (!string.Equals(component.Data.CustomId, StopButtonId, StringComparison.Ordinal))
             return;
 
-        // Discord closes the interaction in three seconds. Deferring first is what keeps the
-        // button from showing "this interaction failed" while the stop actually works.
-        await component.DeferAsync().ConfigureAwait(false);
+        // The button is /stop with a different finger: same invocation, same authorization,
+        // same wording back. The first version deferred silently and skipped the allow list —
+        // anyone who could see the thread could kill the run, while typing /stop was gated.
+        await RespondToInvocationAsync(
+            ToInvocation(StopCommandName, component.ChannelId, component.User.Id),
+            text => component.RespondAsync(text, ephemeral: true)).ConfigureAwait(false);
+    }
 
-        var conversationId = component.Channel.Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        if (StopRequested is { } handler)
-            await handler(conversationId).ConfigureAwait(false);
+    private async Task OnSlashCommandAsync(SocketSlashCommand command)
+    {
+        // ChannelId over Channel: the interaction payload always carries the id, while the
+        // Channel object is null for an uncached channel — a fresh thread, typically.
+        await RespondToInvocationAsync(
+            ToInvocation(command.CommandName, command.ChannelId, command.User.Id),
+            text => command.RespondAsync(text, ephemeral: true)).ConfigureAwait(false);
+    }
+
+    private async Task RespondToInvocationAsync(CommandInvocation? invocation, Func<string, Task> respond)
+    {
+        if (invocation is null)
+            return;
+
+        // Discord closes the interaction in three seconds; both commands are registry
+        // lookups, so responding directly (no Defer) stays well inside the window. The
+        // response is ephemeral: a status poke or a refusal is the invoker's business, not
+        // one more line in everyone's thread.
+        var text = CommandInvoked is { } handler
+            ? await handler(invocation).ConfigureAwait(false)
+            : "The host is not listening to commands.";
+
+        await respond(text).ConfigureAwait(false);
+    }
+
+    /// <summary>The name of the registered stop command — the button reuses it.</summary>
+    internal const string StopCommandName = "stop";
+
+    /// <summary>The name of the registered status command.</summary>
+    internal const string StatusCommandName = "status";
+
+    /// <summary>
+    /// The slash commands this channel registers. Static and separate so a test can hold the
+    /// registered names to the ones the executed-command handler reads back — a mismatch here
+    /// is a command that does nothing.
+    /// </summary>
+    internal static SlashCommandProperties[] SlashCommands() =>
+    [
+        new SlashCommandBuilder()
+            .WithName(StatusCommandName)
+            .WithDescription("What this conversation is running, and since when.")
+            .Build(),
+        new SlashCommandBuilder()
+            .WithName(StopCommandName)
+            .WithDescription("Stops this conversation's run.")
+            .Build(),
+    ];
+
+    /// <summary>
+    /// Translates an interaction into the gateway's shape, on primitives because the socket
+    /// interaction types cannot be built in a test. A null channel id has no conversation to
+    /// act on, so the invocation is refused rather than guessed.
+    /// </summary>
+    internal static CommandInvocation? ToInvocation(string commandName, ulong? channelId, ulong userId) =>
+        channelId is { } id
+            ? new CommandInvocation(
+                commandName,
+                id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                userId.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            : null;
+
+    private async Task RegisterCommandsAsync()
+    {
+        try
+        {
+            // Guild registration propagates immediately (the dev loop); global registration
+            // needs no configuration but is cached by Discord for up to an hour.
+            if (_options.GuildIds.Count > 0)
+            {
+                foreach (var guildId in _options.GuildIds)
+                {
+                    await _client.Rest.BulkOverwriteGuildCommands(
+                        SlashCommands(),
+                        ulong.Parse(guildId, System.Globalization.CultureInfo.InvariantCulture)).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                await _client.BulkOverwriteGlobalApplicationCommandsAsync(SlashCommands()).ConfigureAwait(false);
+            }
+
+            LogCommandsRegistered(_options.GuildIds.Count);
+        }
+#pragma warning disable CA1031 // A registration hiccup must not kill the daemon: the message channel still works.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogCommandRegistrationFailed(ex);
+        }
     }
 
     /// <summary>The message component carrying the stop button.</summary>
@@ -203,6 +312,12 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
 
     [LoggerMessage(Level = LogLevel.Error, Message = "A Discord handler failed; the message it served gets no reply")]
     private partial void LogHandlerFailed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Slash commands registered ({GuildCount} guild(s); 0 means global)")]
+    private partial void LogCommandsRegistered(int guildCount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Slash command registration failed; /status and /stop will be unavailable until the next reconnect, the message channel still works")]
+    private partial void LogCommandRegistrationFailed(Exception ex);
 }
 
 /// <summary>

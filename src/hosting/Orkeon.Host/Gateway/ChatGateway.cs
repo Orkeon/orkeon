@@ -34,12 +34,6 @@ internal sealed partial class ChatGateway
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    /// <summary>The word that stops the run a conversation is running.</summary>
-    public const string StopCommand = "/stop";
-
-    /// <summary>The word that reports what a conversation is doing.</summary>
-    public const string StatusCommand = "/status";
-
     /// <summary>
     /// Handles one message end to end. Never throws for a reason the sender caused: a refusal,
     /// a busy crew and a failed run are all answers someone reads in a chat window.
@@ -58,20 +52,11 @@ internal sealed partial class ChatGateway
             return;
         }
 
+        // /stop and /status are REGISTERED slash commands (CommandInvoked on the channel),
+        // not text this gateway parses: the platform's client intercepts the slash, and one
+        // path means one authorization check. A literal "/stop" typed as plain text is a
+        // prompt like any other.
         var text = message.Text.Trim();
-
-        // First-token match, not StartsWith: "/stopwatch the build" is a prompt, not a stop.
-        if (IsCommand(text, StopCommand))
-        {
-            await StopAsync(message, responder, ct).ConfigureAwait(false);
-            return;
-        }
-
-        if (IsCommand(text, StatusCommand))
-        {
-            await StatusAsync(message, responder, ct).ConfigureAwait(false);
-            return;
-        }
 
         // One conversation, one run — claimed atomically. A FindRun check followed by an
         // await let two interleaving messages both pass and start two runs in one thread,
@@ -112,31 +97,28 @@ internal sealed partial class ChatGateway
         await responder.CompleteAsync(message, result.Message, ct).ConfigureAwait(false);
     }
 
-    /// <summary>Whether <paramref name="text"/> is <paramref name="command"/> as its first word.</summary>
-    private static bool IsCommand(string text, string command) =>
-        text.StartsWith(command, StringComparison.OrdinalIgnoreCase)
-        && (text.Length == command.Length || char.IsWhiteSpace(text[command.Length]));
-
-    private async Task StopAsync(InboundMessage message, IChatResponder responder, CancellationToken ct)
+    /// <summary>
+    /// Stops what this conversation is running and says so. Pure decision + wording — the
+    /// caller owns the delivery, because a slash command answers ephemerally while a chat
+    /// message would answer in the thread.
+    /// </summary>
+    public string Stop(string conversationId)
     {
-        var runId = _router.FindRun(message.ConversationId);
+        var runId = _router.FindRun(conversationId);
         var stopped = runId is not null && _registry.RequestStop(runId);
 
-        await responder
-            .CompleteAsync(message, stopped ? "Stopping." : "Nothing is running in this conversation.", ct)
-            .ConfigureAwait(false);
+        return stopped ? "Stopping." : "Nothing is running in this conversation.";
     }
 
-    private async Task StatusAsync(InboundMessage message, IChatResponder responder, CancellationToken ct)
+    /// <summary>What this conversation is running, and since when. Same split as Stop.</summary>
+    public string Status(string conversationId)
     {
-        var runId = _router.FindRun(message.ConversationId);
+        var runId = _router.FindRun(conversationId);
         var run = runId is null ? null : _registry.Running.FirstOrDefault(r => r.Id == runId);
 
-        var text = run is null
+        return run is null
             ? "Nothing is running in this conversation."
             : $"Running '{run.CrewName}' for {Elapsed(run.StartedAt)} (run {run.Id}).";
-
-        await responder.CompleteAsync(message, text, ct).ConfigureAwait(false);
     }
 
     /// <summary>"3m 12s", not an ISO timestamp: /status answers a person, not a parser.</summary>

@@ -108,15 +108,17 @@ public class ChatGatewayTests
     }
 
     [Fact]
-    public async Task A_word_starting_with_a_command_is_a_prompt_not_a_command()
+    public async Task A_literal_slash_command_typed_as_text_is_a_prompt_not_a_command()
     {
-        // "/stopwatch the build" is work to do, not a stop. First-token match only.
+        // /stop and /status are registered slash commands the platform's client intercepts;
+        // this gateway no longer parses text for them. A literal "/stop" that arrives as
+        // plain message content is therefore work to do, like "/stopwatch the build" was.
         var (gateway, runner, _, _) = Build();
         var responder = new RecordingResponder();
 
-        await gateway.HandleAsync(Message("/stopwatch the build"), responder, TestContext.Current.CancellationToken);
+        await gateway.HandleAsync(Message("/stop"), responder, TestContext.Current.CancellationToken);
 
-        Assert.Equal("support:/stopwatch the build", Assert.Single(runner.Ran));
+        Assert.Equal("support:/stop", Assert.Single(runner.Ran));
     }
 
     [Fact]
@@ -134,7 +136,7 @@ public class ChatGatewayTests
 
         // Whichever claimed the conversation runs; the other is refused without running.
         await second.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)
-            .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing | ConfigureAwaitOptions.ContinueOnCapturedContext);
         release.TrySetResult();
         await first;
         await second;
@@ -166,15 +168,16 @@ public class ChatGatewayTests
         var started = registry.TryStart("support", "test:thread-1")!;
         runner.Result = new HostedRunResult(HostedRunOutcome.Completed, started.Id, "done");
 
-        var stopping = new RecordingResponder();
-        runner.Behaviour = async (_, _) =>
+        string? stopping = null;
+        runner.Behaviour = (_, _) =>
         {
-            await gateway.HandleAsync(Message("/stop"), stopping, TestContext.Current.CancellationToken);
+            stopping = gateway.Stop("thread-1");
+            return Task.CompletedTask;
         };
 
         await gateway.HandleAsync(Message("do the thing"), new RecordingResponder(), TestContext.Current.CancellationToken);
 
-        Assert.Contains("Stopping", Assert.Single(stopping.Sent).Text, StringComparison.Ordinal);
+        Assert.Equal("Stopping.", stopping);
         Assert.True(started.Cancellation.IsCancellationRequested);
 
         // And the conversation is released once the run is over.
@@ -182,14 +185,11 @@ public class ChatGatewayTests
     }
 
     [Fact]
-    public async Task Stop_on_an_idle_conversation_says_so_rather_than_failing()
+    public void Stop_on_an_idle_conversation_says_so_rather_than_failing()
     {
         var (gateway, _, _, _) = Build();
-        var responder = new RecordingResponder();
 
-        await gateway.HandleAsync(Message("/stop"), responder, TestContext.Current.CancellationToken);
-
-        Assert.Contains("Nothing is running", Assert.Single(responder.Sent).Text, StringComparison.Ordinal);
+        Assert.Contains("Nothing is running", gateway.Stop("thread-1"), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -199,15 +199,16 @@ public class ChatGatewayTests
         var started = registry.TryStart("support", "test:thread-1")!;
         runner.Result = new HostedRunResult(HostedRunOutcome.Completed, started.Id, "done");
 
-        var status = new RecordingResponder();
-        runner.Behaviour = async (_, _) =>
+        string? reported = null;
+        runner.Behaviour = (_, _) =>
         {
-            await gateway.HandleAsync(Message("/status"), status, TestContext.Current.CancellationToken);
+            reported = gateway.Status("thread-1");
+            return Task.CompletedTask;
         };
 
         await gateway.HandleAsync(Message("do the thing"), new RecordingResponder(), TestContext.Current.CancellationToken);
 
-        var reply = Assert.Single(status.Sent).Text;
+        var reply = reported!;
         Assert.Contains("support", reply, StringComparison.Ordinal);
         // A duration a person reads ("for 0s"), not an ISO timestamp to parse.
         Assert.Contains(" for ", reply, StringComparison.Ordinal);

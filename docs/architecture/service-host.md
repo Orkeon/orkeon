@@ -44,7 +44,8 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
         "Enabled": true,
         "TokenEnvironmentVariable": "ORKEON_DISCORD_TOKEN",
         "AllowedUserIds": ["123456789012345678"],
-        "ProgressInterval": "00:00:02"
+        "ProgressInterval": "00:00:02",
+        "GuildIds": []
       }
     }
   }
@@ -100,10 +101,14 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 ### Commands
 
+`/status` and `/stop` are **registered slash commands** — Discord's client autocompletes them, and the reply is **ephemeral**: a status poke or a refusal is the invoker's business, not one more line in everyone's thread. They are registered at connect time: globally when `GuildIds` is empty (no configuration, but Discord caches global commands for up to an hour), or per named guild (immediately available — the dev loop). The gateway does not parse message text for them: a literal `/stop` typed as plain text is a prompt like any other.
+
 | Command | Effect |
 |---|---|
 | `/status` | What this conversation is running, and since when. |
-| `/stop` | Stops this conversation's run. The **Stop button** does exactly the same thing — someone who prefers clicking should not get different behaviour from someone who prefers typing. |
+| `/stop` | Stops this conversation's run. The **Stop button** is the same invocation with a different finger — same allow-list check, same wording back. |
+
+Both paths are gated by `AllowedUserIds`. That includes the button: a click from someone off the list is refused ephemerally instead of stopping the run.
 
 ---
 
@@ -147,7 +152,7 @@ Start-Service -Name Orkeon
 
 ## 6. What ships, and what does not
 
-**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, and the Discord channel with `/status`, `/stop` and the stop button.
+**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, and the Discord channel with registered `/status` and `/stop` slash commands and the stop button — one authorized path for all three.
 
 **Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, multi-crew dynamic hosting, and every channel other than Discord. The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
 

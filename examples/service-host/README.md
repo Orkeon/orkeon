@@ -57,8 +57,11 @@ journalctl -u orkeon-host -f
 ```
 
 From a Discord thread, say what you want; the bot acknowledges immediately with a **Stop**
-button, reports progress every couple of seconds, and delivers the answer. `/status` says what
-the thread is running; `/stop` and the button do the same thing.
+button, reports progress every couple of seconds, and delivers the answer. `/status` and
+`/stop` are registered slash commands (autocompleted, answered ephemerally); the button is
+the same stop with a different finger, allow-list check included. Commands registered
+globally can take up to an hour to appear on Discord's side — list your server in
+`Discord:GuildIds` to get them immediately.
 
 ## What this does not do
 
