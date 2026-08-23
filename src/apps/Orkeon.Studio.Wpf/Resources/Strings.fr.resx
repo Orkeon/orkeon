@@ -405,4 +405,18 @@
 <data name="Vm_Teams_OnDemand" xml:space="preserve"><value>À la demande</value></data>
 <data name="Vm_Teams_Daily" xml:space="preserve"><value>Chaque jour à {0}</value></data>
 <data name="Vm_Teams_Hourly" xml:space="preserve"><value>Chaque heure</value></data>
+<data name="Nav_Import" xml:space="preserve"><value>Importer</value></data>
+<data name="Nav_Test" xml:space="preserve"><value>Tester</value></data>
+<data name="Scr_Import_Title" xml:space="preserve"><value>Importer une équipe</value></data>
+<data name="Scr_Import_SubNovice" xml:space="preserve"><value>Quelqu'un vous a partagé une équipe ? Indiquez son dossier : Studio la vérifie avant de l'ajouter aux vôtres.</value></data>
+<data name="Scr_Import_SubExpert" xml:space="preserve"><value>Une définition YAML, un script .ork.ts, ou un dossier d'équipe complet. Rien n'est copié avant votre validation.</value></data>
+<data name="Import_Secrets_Title" xml:space="preserve"><value>Une clé d'API voyage dans cette définition</value></data>
+<data name="Import_Secrets_Body" xml:space="preserve"><value>Ces fichiers semblent porter un secret collé en clair. Les clés vivent dans l'environnement, jamais dans un dossier partagé — nettoyez-les avant d'importer.</value></data>
+<data name="Import_Add" xml:space="preserve"><value>Ajouter à mes équipes</value></data>
+<data name="Scr_Test_Title" xml:space="preserve"><value>Tester une équipe</value></data>
+<data name="Scr_Test_Sub" xml:space="preserve"><value>Validation à blanc puis essai réel. Les essais n'entrent jamais dans l'historique des lancements.</value></data>
+<data name="Test_Team_Label" xml:space="preserve"><value>Équipe</value></data>
+<data name="Test_Validate" xml:space="preserve"><value>Valider à blanc</value></data>
+<data name="Test_Run" xml:space="preserve"><value>Lancer l'essai</value></data>
+<data name="Test_Findings" xml:space="preserve"><value>CONSTATS DE VALIDATION</value></data>
 </root>

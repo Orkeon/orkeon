@@ -80,11 +80,20 @@ public sealed class MainWindowViewModel : ObservableObject
 
         Teams = new TeamsViewModel(teamsRoot, forgeWorkspace, strings: strings);
 
+        // The expert trial screen runs over its own launcher, with NO history store: a
+        // trial is a rehearsal, not a run to replay from the history.
+        Test = new TestTeamViewModel(
+            new LaunchTabViewModel(runner, targetProbe, directories, picker, null, settingsStore, dispatcher, strings),
+            teamsRoot);
+
+        Import = new ImportTeamViewModel(targetProbe, picker, strings, teamsRoot);
+
         // An adopted team is an ordinary folder: "Lancer" hands it to the launcher, the
-        // adoption refreshes the list, a stopped session resumes in the wizard.
+        // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
         Teams.LaunchRequested += (_, e) => Launch.Target.SelectedPath = e.Path;
         Teams.ResumeRequested += (_, e) => _ = CreateTeam.ResumeAsync(e.Session);
-        CreateTeam.TeamAdopted += (_, _) => Teams.Refresh();
+        CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
+        Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
     }
 
     /// <summary>The appsettings editor (spec §4).</summary>
@@ -101,6 +110,12 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>"Mes équipes" — the adopted team folders and the sessions underway.</summary>
     public TeamsViewModel Teams { get; }
+
+    /// <summary>The expert "Tester" screen — a trial launcher that never touches the history.</summary>
+    public TestTeamViewModel Test { get; }
+
+    /// <summary>The "Importer" screen.</summary>
+    public ImportTeamViewModel Import { get; }
 
     /// <summary>The window-wide Novice/Expert switch (design v3).</summary>
     public UiModeViewModel Mode { get; }

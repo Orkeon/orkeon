@@ -250,11 +250,24 @@
                            Text="{Binding DataContext.Teams.Count, RelativeSource={RelativeSource AncestorType=Window}}"/>
               </StackPanel>
             </RadioButton>
+            <RadioButton x:Name="NavImport" GroupName="Nav" Style="{StaticResource NavItem}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="file-json-2" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Import], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </RadioButton>
             </StackPanel>
 
             <StackPanel x:Name="NavGroupWork">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
                        Text="{Binding [Grp_Work], Source={x:Static services:I18n.Instance}}"/>
+            <RadioButton x:Name="NavTest" GroupName="Nav" Style="{StaticResource NavItem}"
+                         Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="badge-check" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Test], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </RadioButton>
             <RadioButton x:Name="NavRun" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="play" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
@@ -300,6 +313,14 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavTeams, Converter={StaticResource BooleanToVisibility}}">
           <views:TeamsView x:Name="TeamsPanel" MaxWidth="1000" DataContext="{Binding Teams}"/>
+        </ScrollViewer>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+                      Visibility="{Binding IsChecked, ElementName=NavImport, Converter={StaticResource BooleanToVisibility}}">
+          <views:ImportTeamView MaxWidth="880" DataContext="{Binding Import}"/>
+        </ScrollViewer>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+                      Visibility="{Binding IsChecked, ElementName=NavTest, Converter={StaticResource BooleanToVisibility}}">
+          <views:TestTeamView MaxWidth="1000" DataContext="{Binding Test}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">

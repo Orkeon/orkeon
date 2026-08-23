@@ -69,7 +69,7 @@ public sealed record TeamSummary
 [SuppressVfsCompliance(
     "EXCEPTION-BOOTSTRAP: Studio is a host application; the teams directory is user-owned " +
     "storage on the physical disk, addressed before any VFS mount exists.")]
-public static class TeamCatalog
+public static partial class TeamCatalog
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
@@ -182,6 +182,102 @@ public static class TeamCatalog
             return null;
         }
     }
+
+    /// <summary>
+    /// Copies an external team (a folder, or a single crew file) into the teams root under
+    /// a unique slug. Returns the new team folder, or null when the disk refused.
+    /// </summary>
+    public static string? Import(string sourcePath, string root)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(root);
+
+        try
+        {
+            var isDirectory = Directory.Exists(sourcePath);
+            if (!isDirectory && !File.Exists(sourcePath))
+                return null;
+
+            var name = isDirectory
+                ? Path.GetFileName(Path.TrimEndingDirectorySeparator(sourcePath))
+                : Path.GetFileNameWithoutExtension(sourcePath);
+            var destination = Path.Combine(root, Slugify(name));
+            for (var i = 2; Directory.Exists(destination); i++)
+                destination = Path.Combine(root, $"{Slugify(name)}-{i}");
+
+            if (isDirectory)
+            {
+                CopyTree(sourcePath, destination);
+            }
+            else
+            {
+                Directory.CreateDirectory(destination);
+                File.Copy(sourcePath, Path.Combine(destination, Path.GetFileName(sourcePath)));
+            }
+
+            return destination;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Scans an import candidate for inline secrets — an API key pasted into a definition
+    /// travels with the folder, which is exactly what the environment-variable rule exists
+    /// to prevent. Returns the offending files, relative to <paramref name="sourcePath"/>;
+    /// values that reference the environment (<c>${…}</c>, <c>ORKEON_…</c>) are fine.
+    /// </summary>
+    public static IReadOnlyList<string> FindInlineSecrets(string sourcePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+
+        try
+        {
+            var files = Directory.Exists(sourcePath)
+                ? Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories)
+                    .Where(f => ScannedExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase)
+                                || f.EndsWith(".ork.ts", StringComparison.OrdinalIgnoreCase))
+                : File.Exists(sourcePath) ? [sourcePath] : [];
+
+            var offending = new List<string>();
+            foreach (var file in files)
+            {
+                if (HasInlineSecret(File.ReadAllText(file)))
+                    offending.Add(Path.GetRelativePath(sourcePath, file));
+            }
+
+            return offending;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    private static readonly string[] ScannedExtensions = [".yaml", ".yml", ".json", ".ts", ".js"];
+
+    private static bool HasInlineSecret(string content)
+    {
+        foreach (System.Text.RegularExpressions.Match match in SecretPattern().Matches(content))
+        {
+            var value = match.Groups["value"].Value;
+            if (!value.StartsWith("${", StringComparison.Ordinal)
+                && !value.StartsWith("%", StringComparison.Ordinal)
+                && !value.StartsWith("ORKEON_", StringComparison.Ordinal)
+                && !value.StartsWith("env:", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(
+        """(?i)(api[_-]?key|secret|token)["']?\s*[:=]\s*["'](?<value>[^"'\s]{8,})["']""")]
+    private static partial System.Text.RegularExpressions.Regex SecretPattern();
 
     /// <summary>The slug a team name becomes on disk: lowercase ASCII, dashes between words.</summary>
     public static string Slugify(string name)

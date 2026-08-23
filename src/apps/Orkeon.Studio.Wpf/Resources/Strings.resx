@@ -405,4 +405,18 @@
 <data name="Vm_Teams_OnDemand" xml:space="preserve"><value>On demand</value></data>
 <data name="Vm_Teams_Daily" xml:space="preserve"><value>Every day at {0}</value></data>
 <data name="Vm_Teams_Hourly" xml:space="preserve"><value>Every hour</value></data>
+<data name="Nav_Import" xml:space="preserve"><value>Import</value></data>
+<data name="Nav_Test" xml:space="preserve"><value>Test</value></data>
+<data name="Scr_Import_Title" xml:space="preserve"><value>Import a team</value></data>
+<data name="Scr_Import_SubNovice" xml:space="preserve"><value>Someone shared a team with you? Point at its folder: Studio checks it before adding it to yours.</value></data>
+<data name="Scr_Import_SubExpert" xml:space="preserve"><value>A YAML definition, an .ork.ts script, or a whole team folder. Nothing is copied before you confirm.</value></data>
+<data name="Import_Secrets_Title" xml:space="preserve"><value>An API key travels inside this definition</value></data>
+<data name="Import_Secrets_Body" xml:space="preserve"><value>These files look like they carry a pasted secret. Keys belong in the environment, never inside a shared folder — clean them up before importing.</value></data>
+<data name="Import_Add" xml:space="preserve"><value>Add to my teams</value></data>
+<data name="Scr_Test_Title" xml:space="preserve"><value>Test a team</value></data>
+<data name="Scr_Test_Sub" xml:space="preserve"><value>Blank-run validation, then a real trial. Trials never enter the launch history.</value></data>
+<data name="Test_Team_Label" xml:space="preserve"><value>Team</value></data>
+<data name="Test_Validate" xml:space="preserve"><value>Validate (blank run)</value></data>
+<data name="Test_Run" xml:space="preserve"><value>Run the trial</value></data>
+<data name="Test_Findings" xml:space="preserve"><value>VALIDATION FINDINGS</value></data>
 </root>

@@ -100,13 +100,15 @@
 
     <Grid>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="380"/>
-        <ColumnDefinition Width="14"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
 
-      <!-- ══ Left card: options / launch mounts (§5.2) ══ -->
-      <Border Grid.Column="0" Style="{StaticResource Card}" Padding="20,14,20,18">
+      <!-- ══ Left card: options / launch mounts (§5.2) — the machinery, expert only (v3):
+           novice gets one button and the progress in plain language. ══ -->
+      <Border Grid.Column="0" Style="{StaticResource Card}" Padding="20,14,20,18" Width="380" Margin="0,0,14,0"
+              Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
         <TabControl Style="{StaticResource RunTabControl}">
 
           <TabItem Style="{StaticResource RunTab}">

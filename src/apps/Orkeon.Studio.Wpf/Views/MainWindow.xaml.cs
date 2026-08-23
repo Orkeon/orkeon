@@ -36,6 +36,17 @@ public partial class MainWindow : Window
         shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
+        shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;
+        shell.Mode.PropertyChanged += (_, e) =>
+        {
+            // The Tester entry is expert-only: a switch back to novice while it shows would
+            // leave a blank content area behind the hidden radio.
+            if (e.PropertyName == nameof(ViewModels.Shell.UiModeViewModel.IsNovice)
+                && shell.Mode.IsNovice && NavTest.IsChecked == true)
+            {
+                NavRun.IsChecked = true;
+            }
+        };
     }
 
     // ── window chrome ──
