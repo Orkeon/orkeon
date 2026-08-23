@@ -82,7 +82,7 @@ The promoted folder is ordinary — nothing about it is proprietary to the forge
 
 ## In Orkeon Studio
 
-The same engine drives the **Solve** screen of Orkeon Studio (Windows): a conversation on the left, the current card on the right — your success criteria, the proposal in plain words, the live try, the ✔/✘ checklist, then "what now?". Studio runs `orkeon forge --events jsonl` as a child process and never touches the LLM itself; every capability of the screen is a projection of the same event stream the terminal renders. See [Studio](../architecture/studio.md).
+The same engine drives the **Create a team** wizard of Orkeon Studio (Windows): four steps — Décrire ▸ Composer ▸ Essayer ▸ Adopter — where the stepper follows the engine's milestones, the proposal and the ✔/✘ checklist are its events rendered in cards, and adoption promotes straight into the teams directory. Studio runs `orkeon forge --events jsonl` as a child process and never touches the LLM itself; every capability of the screen is a projection of the same event stream the terminal renders. See [Studio](../architecture/studio.md).
 
 ## Honest limits
 

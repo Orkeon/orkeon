@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Orkeon Studio v3 "volets": the WPF app becomes a team-lifecycle product
+
+The Claude Design v3 handoff is implemented end to end. The window's sidebar now follows the
+life of a team — **Agent teams** (Create a team, My teams, Import), **Work** (Test, Run,
+History), **Environment** (Settings, Diagnostic) — under a global **Novice/Expert** switch
+persisted with the theme and language: Novice explains each step and shows contextual help,
+Expert shows the machinery (command lines, raw JSON, technical journal, the Test screen).
+The window opens on a startup screen (Kama, the mascot — click to skip) and carries an
+About overlay; the guided tour is rewritten to the five v3 stops.
+
+- **Settings, unified**: the former Start/Sections/Mounts/Raw screens fold into one
+  "Réglages" entry with four inner tabs (AI model, authorized folders, expert-only
+  limits & logs, expert-only raw file with its location and resolution chain). The model
+  tab introduces **named model profiles** (`studio-model-profiles.json`, next to
+  `studio-history.json`): reusable settings, a default election mirrored into the `Llm`
+  section through the ordinary save cycle, per-profile `ORKEON_Llm__*` environment
+  overrides, and the profile Studio's own assistant runs on. The API key never enters the
+  store. The preset picker retires; the profile editor offers the same `orkeon init`
+  catalogue with a live connection probe. The Diagnostic sidebar entry gains a warning dot.
+- **The creation wizard replaces the Atelier UI** (breaking for the screen, not the
+  engine): "Créer une équipe" walks Décrire ▸ Composer ▸ Essayer ▸ Adopter over the same
+  `orkeon forge --events jsonl` child — the stepper projects the engine's milestones, the
+  per-step "consigne + questions" blocks travel down `user.message`, arbitration buttons
+  come from `decision.needed`'s own options, "Fix and retry" carries the trial consigne,
+  and the wizard is gated until the assistant has a model profile (handed to the engine as
+  environment overrides). `ForgeClient`, the session model and the protocol are unchanged.
+- **My teams**: adoption promotes straight into `~/Orkeon/teams/<slug>` with the engine's
+  real schedule grammar (on demand, `daily@HH:mm`, `hourly`) and writes a
+  `studio-team.json` sidecar (name, need, profile, displayed schedule — never a key).
+  Team folders are listed as cards (launch, duplicate, delete), next to the wizard
+  sessions still underway, resumable where they stopped.
+- **Import and Test**: "Importer" recognizes a shared team with the launcher's own
+  detector, warns loudly when a definition carries a pasted secret, and copies into the
+  teams root only on confirmation, under a never-overwriting slug. The expert "Tester"
+  screen runs blank-run validations and real trials over a dedicated launcher with no
+  history store. In Novice, the run screen hides the options machinery entirely.
+
+The two Terminal.Gui apps (`orkeon-studio-config`, `orkeon-studio-run`) keep their current
+surface. Nothing is deployed, so the old WPF screens are removed without shims; the resx
+pair moves to 392 keys per language, still pinned by the drift and parity tests.
+
 ### Added — Studio staffs the `client://studio` seat: agent requests answered on screen
 
 An agent's `send_request` to the watching client no longer dies of a 30-second timeout: the

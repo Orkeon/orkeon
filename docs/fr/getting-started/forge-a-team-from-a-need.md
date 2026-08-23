@@ -82,7 +82,7 @@ Le dossier promu est ordinaire — rien n'y est propriétaire à la forge :
 
 ## Dans Orkeon Studio
 
-Le même moteur anime l'écran **Résoudre** d'Orkeon Studio (Windows) : la conversation à gauche, la carte du moment à droite — vos critères de réussite, la proposition en langage humain, l'essai en direct, la checklist ✔/✘, puis « et maintenant ? ». Studio lance `orkeon forge --events jsonl` en processus enfant et ne touche jamais au LLM lui-même ; chaque capacité de l'écran est une projection du même flux d'événements que le terminal rend. Voir [Studio](../architecture/studio.md).
+Le même moteur anime l'assistant **Créer une équipe** d'Orkeon Studio (Windows) : quatre étapes — Décrire ▸ Composer ▸ Essayer ▸ Adopter — où le stepper suit les jalons du moteur, où la proposition et la checklist ✔/✘ sont ses événements rendus en cartes, et où l'adoption promeut directement dans le dossier des équipes. Studio lance `orkeon forge --events jsonl` en processus enfant et ne touche jamais au LLM lui-même ; chaque capacité de l'écran est une projection du même flux d'événements que le terminal rend. Voir [Studio](../architecture/studio.md).
 
 ## Limites honnêtes
 
