@@ -54,7 +54,9 @@ public partial class App : System.Windows.Application
         _viewModel = MainWindowViewModel.CreateForCurrentMachine(
             new WindowPathPicker(),
             new WpfDispatcher(Dispatcher),
-            I18nStudioStrings.Instance);
+            I18nStudioStrings.Instance,
+            preferences.Mode,
+            mode => UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, mode));
 
         var window = new MainWindow { DataContext = _viewModel };
         MainWindow = window;

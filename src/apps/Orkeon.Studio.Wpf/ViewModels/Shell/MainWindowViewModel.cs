@@ -32,9 +32,14 @@ public sealed class MainWindowViewModel : ObservableObject
         string? globalPathOverride = null,
         IStudioStrings? strings = null,
         ForgeClient? forgeClient = null,
-        string? forgeWorkspace = null)
+        string? forgeWorkspace = null,
+        string? initialUiMode = null,
+        Action<string>? persistUiMode = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
+
+        Mode = new UiModeViewModel(initialUiMode, persistUiMode);
+        About = new AboutViewModel(runner, dispatcher);
 
         Config = new ConfigTabViewModel(
             settingsStore,
@@ -77,6 +82,12 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>The Atelier — the "Résoudre" screen (SPEC-ORKEON-FORGE §12).</summary>
     public Wpf.ViewModels.Forge.ForgeTabViewModel Forge { get; }
 
+    /// <summary>The window-wide Novice/Expert switch (design v3).</summary>
+    public UiModeViewModel Mode { get; }
+
+    /// <summary>The "À propos" overlay state.</summary>
+    public AboutViewModel About { get; }
+
     /// <summary>Which tab is showing.</summary>
     public int SelectedTabIndex
     {
@@ -95,7 +106,9 @@ public sealed class MainWindowViewModel : ObservableObject
     public static MainWindowViewModel CreateForCurrentMachine(
         IPathPicker picker,
         IUiDispatcher dispatcher,
-        IStudioStrings? strings = null)
+        IStudioStrings? strings = null,
+        string? initialUiMode = null,
+        Action<string>? persistUiMode = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -114,7 +127,11 @@ public sealed class MainWindowViewModel : ObservableObject
             historyStore,
             dispatcher,
             globalPathOverride: null,
-            strings);
+            strings,
+            forgeClient: null,
+            forgeWorkspace: null,
+            initialUiMode,
+            persistUiMode);
     }
 
     /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history.</summary>

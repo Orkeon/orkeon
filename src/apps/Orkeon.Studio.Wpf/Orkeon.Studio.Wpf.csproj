@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <Resource Include="Fonts\**\*.ttf" />
+    <Resource Include="Assets\**\*.png" />
     <EmbeddedResource Update="Resources\Strings.fr.resx">
       <DependentUpon>Strings.resx</DependentUpon>
     </EmbeddedResource>

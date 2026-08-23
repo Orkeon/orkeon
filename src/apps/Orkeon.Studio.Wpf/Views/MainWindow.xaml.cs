@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using Orkeon.Studio.Wpf.Controls;
 using Orkeon.Studio.Wpf.Services;
 
@@ -7,12 +9,15 @@ namespace Orkeon.Studio.Wpf.Views;
 
 public partial class MainWindow : Window
 {
+    private bool _splashDismissed;
+
     public MainWindow()
     {
         InitializeComponent();
         UpdateLangButtons();
         UpdateThemeButton();
         DataContextChanged += (_, _) => WireForgeNavigation();
+        BeginSplash();
     }
 
     /// <summary>
@@ -43,7 +48,7 @@ public partial class MainWindow : Window
     {
         ThemeManager.Apply(!ThemeManager.IsDark);
         UpdateThemeButton();
-        UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language);
+        UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, CurrentMode());
     }
 
     private void UpdateThemeButton()
@@ -61,8 +66,12 @@ public partial class MainWindow : Window
         I18n.Instance.SetLanguage(language);
         UpdateLangButtons();
         UpdateThemeButton();
-        UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language);
+        UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, CurrentMode());
     }
+
+    private string CurrentMode() =>
+        (DataContext as ViewModels.Shell.MainWindowViewModel)?.Mode.Mode
+        ?? ViewModels.Shell.UiModeViewModel.Novice;
 
     private void UpdateLangButtons()
     {
@@ -85,20 +94,62 @@ public partial class MainWindow : Window
         }
     }
 
-    // ── guided tour ──
+    // ── guided tour (v3: five stops — the mode, the three sidebar groups, the help column) ──
     private void OnStartTour(object sender, RoutedEventArgs e)
     {
         Tour.Start(
         [
-            new TourStep(null, "Tour1_Title", "Tour1_Body"),
-            new TourStep("Sidebar", "Tour2_Title", "Tour2_Body"),
-            new TourStep("SettingsCard", "Tour3_Title", "Tour3_Body"),
-            new TourStep("StartActions", "Tour4_Title", "Tour4_Body", () => NavStart.IsChecked = true),
-            new TourStep("PresetCard", "Tour5_Title", "Tour5_Body", () => NavStart.IsChecked = true),
-            new TourStep("ChainCard", "Tour6_Title", "Tour6_Body", () => NavStart.IsChecked = true),
-            new TourStep("MountsPanel", "Tour7_Title", "Tour7_Body", () => NavMounts.IsChecked = true),
-            new TourStep("RunPanel", "Tour8_Title", "Tour8_Body", () => NavRun.IsChecked = true),
-            new TourStep("DiagPanel", "Tour9_Title", "Tour9_Body", () => NavDiag.IsChecked = true),
+            new TourStep("ModeSwitch", "Tour1_Title", "Tour1_Body"),
+            new TourStep("NavGroupTeams", "Tour2_Title", "Tour2_Body"),
+            new TourStep("NavGroupWork", "Tour3_Title", "Tour3_Body"),
+            new TourStep("NavGroupEnv", "Tour4_Title", "Tour4_Body"),
+            new TourStep(null, "Tour5_Title", "Tour5_Body"),
         ]);
+    }
+
+    private void OnAboutBackdropClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (DataContext is ViewModels.Shell.MainWindowViewModel shell)
+            shell.About.CloseCommand.Execute(null);
+    }
+
+    private void OnSwallowClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+        // The card must not let the click bubble to the backdrop, whose click means "close".
+        e.Handled = true;
+
+    private void OnStartTourFromAbout(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is ViewModels.Shell.MainWindowViewModel shell)
+            shell.About.CloseCommand.Execute(null);
+
+        OnStartTour(sender, e);
+    }
+
+    // ── startup screen ──
+    // Five seconds, clickable through: the design's startup plate. The dismissal is animation
+    // only — nothing waits on it, and a smoke run closes the window regardless.
+    private void BeginSplash()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4.55) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            DismissSplash(TimeSpan.FromMilliseconds(450));
+        };
+        timer.Start();
+    }
+
+    private void OnSplashClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+        DismissSplash(TimeSpan.FromMilliseconds(150));
+
+    private void DismissSplash(TimeSpan fade)
+    {
+        if (_splashDismissed)
+            return;
+
+        _splashDismissed = true;
+        var animation = new DoubleAnimation(0, new Duration(fade));
+        animation.Completed += (_, _) => Splash.Visibility = Visibility.Collapsed;
+        Splash.BeginAnimation(OpacityProperty, animation);
     }
 }

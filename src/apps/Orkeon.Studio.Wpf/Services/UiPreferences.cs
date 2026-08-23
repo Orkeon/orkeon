@@ -5,7 +5,7 @@ using Orkeon.Compliance.Vfs;
 namespace Orkeon.Studio.Wpf.Services;
 
 /// <summary>
-/// Theme and language, persisted per user. Pure presentation state: nothing here exists in
+/// Theme, language and Novice/Expert mode, persisted per user. Pure presentation state: nothing here exists in
 /// Orkeon.Studio.Core, and no ViewModel knows this file exists. Every disk touch is tolerant —
 /// a missing, corrupt or unwritable file always degrades to the defaults, never to a crash.
 /// </summary>
@@ -19,6 +19,9 @@ public sealed record UiPreferences
 
     /// <summary>"en" or "fr"; anything else means the default (en).</summary>
     public string? Language { get; init; }
+
+    /// <summary>"novice" or "expert"; anything else means the default (novice).</summary>
+    public string? Mode { get; init; }
 
     /// <summary>Convenience view of <see cref="Theme"/>.</summary>
     public bool IsDark => string.Equals(Theme, "dark", StringComparison.OrdinalIgnoreCase);
@@ -43,7 +46,7 @@ public sealed record UiPreferences
     }
 
     /// <summary>Persists the current choices; a failure to write is silently accepted.</summary>
-    public static void Save(bool dark, string language)
+    public static void Save(bool dark, string language, string mode)
     {
         try
         {
@@ -53,7 +56,7 @@ public sealed record UiPreferences
                 Directory.CreateDirectory(directory);
             }
 
-            var prefs = new UiPreferences { Theme = dark ? "dark" : "light", Language = language };
+            var prefs = new UiPreferences { Theme = dark ? "dark" : "light", Language = language, Mode = mode };
             File.WriteAllText(FilePath, JsonSerializer.Serialize(prefs));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

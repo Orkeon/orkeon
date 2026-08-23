@@ -68,10 +68,84 @@
           <TextBlock Text="Orkeon" FontFamily="{StaticResource DisplayFont}" FontSize="16.5" FontWeight="Bold"
                      Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0" VerticalAlignment="Center"/>
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" Margin="9,2,0,0" VerticalAlignment="Center"/>
+          <!-- the discreet door to "À propos" (design v3: the "…" next to the brand) -->
+          <Button Command="{Binding About.OpenCommand}" Cursor="Hand" Margin="7,0,0,0" VerticalAlignment="Center"
+                  ToolTip="{Binding [About_Tip], Source={x:Static services:I18n.Instance}}"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True">
+            <Button.Template>
+              <ControlTemplate TargetType="Button">
+                <Border x:Name="Bg" Width="24" Height="24" CornerRadius="7" Background="Transparent">
+                  <TextBlock Text="…" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource InkFaintBrush}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,5"/>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Bg" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Button.Template>
+          </Button>
         </StackPanel>
 
         <!-- right cluster -->
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+          <!-- global mode switch: the single control that changes how much the app shows -->
+          <StackPanel x:Name="ModeSwitch" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
+            <TextBlock Style="{StaticResource Eyebrow}" VerticalAlignment="Center" Margin="0,0,9,0"
+                       Text="{Binding [Mode_Label], Source={x:Static services:I18n.Instance}}"/>
+            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="999"
+                    Background="{DynamicResource SurfaceBrush}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+              <StackPanel Orientation="Horizontal">
+                <StackPanel.Resources>
+                  <Style x:Key="ModeHalf" TargetType="Button">
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="FontSize" Value="11.5"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Padding" Value="13,6"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                    <Setter Property="Template">
+                      <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                          <Border Background="{TemplateBinding Background}" CornerRadius="999" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Border>
+                        </ControlTemplate>
+                      </Setter.Value>
+                    </Setter>
+                  </Style>
+                </StackPanel.Resources>
+                <Button Command="{Binding Mode.SetNoviceCommand}"
+                        Content="{Binding [Mode_Novice], Source={x:Static services:I18n.Instance}}">
+                  <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ModeHalf}">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Mode.IsNovice}" Value="True">
+                          <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
+                <Button Command="{Binding Mode.SetExpertCommand}"
+                        Content="{Binding [Mode_Expert], Source={x:Static services:I18n.Instance}}">
+                  <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ModeHalf}">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Mode.IsExpert}" Value="True">
+                          <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
+              </StackPanel>
+            </Border>
+          </StackPanel>
           <!-- EN / FR -->
           <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="999"
                   Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Center" Margin="0,0,10,0"
@@ -116,8 +190,25 @@
               BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
         <DockPanel Margin="10,14,10,12">
           <!-- settings-file card (bottom) -->
+          <!-- novice: a hand; expert: the settings file being edited (design v3 sidebar foot) -->
+          <Border x:Name="HelpCard" DockPanel.Dock="Bottom" Background="{DynamicResource SkyBrush}"
+                  BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="11"
+                  Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="circle-help" Size="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="7,0,0,0"
+                           Text="{Binding [Help_Title], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+              <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,6,0,8"
+                         Text="{Binding [Help_Body], Source={x:Static services:I18n.Instance}}"/>
+              <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Stretch" Click="OnStartTour"
+                      Content="{Binding [Btn_GuidedTour], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Border>
           <Border x:Name="SettingsCard" DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBrush}"
-                  BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="11,10">
+                  BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="11,10"
+                  Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel>
               <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [SettingsFile_Title], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,6,0,0"
@@ -141,6 +232,7 @@
 
           <StackPanel>
             <!-- "Résoudre" leads: the new user's door (SPEC-ORKEON-FORGE §12.1, UX study §5) -->
+            <StackPanel x:Name="NavGroupTeams">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,0,0,7"
                        Text="{Binding [Grp_Solve], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton x:Name="NavForgeNew" GroupName="Nav" Style="{StaticResource NavItem}">
@@ -156,6 +248,8 @@
               </StackPanel>
             </RadioButton>
 
+            </StackPanel>
+            <StackPanel x:Name="NavGroupEnv">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
                        Text="{Binding [Grp_Config], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton x:Name="NavStart" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True">
@@ -189,6 +283,8 @@
               </StackPanel>
             </RadioButton>
 
+            </StackPanel>
+            <StackPanel x:Name="NavGroupWork">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
                        Text="{Binding [Grp_Launch], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton x:Name="NavRun" GroupName="Nav" Style="{StaticResource NavItem}">
@@ -203,6 +299,7 @@
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_History], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
+            </StackPanel>
           </StackPanel>
         </DockPanel>
       </Border>
@@ -270,6 +367,102 @@
         </ScrollViewer>
       </Grid>
     </Grid>
+
+    <!-- ══════════ À PROPOS (overlay) ══════════ -->
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnAboutBackdropClick"
+          Visibility="{Binding About.IsOpen, Converter={StaticResource BooleanToVisibility}}">
+      <Border Width="660" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              CornerRadius="20" ClipToBounds="True">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <!-- illustration plate: fixed light background, the artwork is opaque -->
+          <Border Grid.Column="0" Background="#EFF3F3" CornerRadius="20,0,0,20">
+            <Image Source="/Assets/kama.png" Width="224" VerticalAlignment="Bottom" HorizontalAlignment="Center"/>
+          </Border>
+          <StackPanel Grid.Column="1" Margin="28,26">
+            <TextBlock Style="{StaticResource Eyebrow}"
+                       Text="{Binding [About_Eyebrow], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="Orkeon Studio" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
+                       Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="11" Margin="0,8,0,0" Text="{Binding About.VersionLine}"/>
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="21" Margin="0,16,0,0"
+                       Text="{Binding [About_Line], Source={x:Static services:I18n.Instance}}"/>
+            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                    CornerRadius="12" Padding="14,12" Margin="0,16,0,0">
+              <DockPanel>
+                <controls:LucideIcon DockPanel.Dock="Left" Kind="info" Size="15" Foreground="{DynamicResource MarkBrush}"
+                                     VerticalAlignment="Top" Margin="0,1,11,0"/>
+                <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+                           Text="{Binding [About_Kama], Source={x:Static services:I18n.Instance}}"/>
+              </DockPanel>
+            </Border>
+            <DockPanel Margin="0,20,0,0">
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding About.CloseCommand}"
+                      Content="{Binding [About_Close], Source={x:Static services:I18n.Instance}}"/>
+              <Button Style="{StaticResource BtnGhost}" Click="OnStartTourFromAbout" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [Btn_GuidedTour], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+            </DockPanel>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ══════════ DÉMARRAGE (overlay, 5 s, clic pour passer) ══════════ -->
+    <Border x:Name="Splash" Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource PaperBrush}" Cursor="Hand"
+            MouseLeftButtonDown="OnSplashClick"
+            ToolTip="{Binding [Splash_Skip], Source={x:Static services:I18n.Instance}}">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Border Background="#EFF3F3" CornerRadius="28" Padding="34,14,34,0" HorizontalAlignment="Center">
+          <Image Source="/Assets/kama.png" Width="280"/>
+        </Border>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,26,0,0">
+          <Viewbox Width="26" Height="26" VerticalAlignment="Center">
+            <Grid Width="96" Height="96">
+              <Grid.Resources>
+                <RotateTransform x:Key="SplashTilt" Angle="-52" CenterX="48" CenterY="48"/>
+              </Grid.Resources>
+              <Ellipse Width="38" Height="38" Stroke="{DynamicResource MarkBrush}" StrokeThickness="7"
+                       StrokeDashArray="12.27 4.79" StrokeDashCap="Round" RenderTransform="{StaticResource SplashTilt}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+              <Ellipse Width="62" Height="62" Stroke="{DynamicResource MarkBrush}" StrokeThickness="7"
+                       StrokeDashArray="20.03 7.8" StrokeDashCap="Round" RenderTransform="{StaticResource SplashTilt}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+              <Ellipse Width="86" Height="86" Stroke="{DynamicResource MarkBrush}" StrokeThickness="6"
+                       StrokeDashArray="32.42 12.62" StrokeDashCap="Round" RenderTransform="{StaticResource SplashTilt}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+              <Ellipse Width="16" Height="16" Fill="{DynamicResource MarkBrush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+          </Viewbox>
+          <TextBlock Text="Orkeon" FontFamily="{StaticResource DisplayFont}" FontSize="30" FontWeight="SemiBold"
+                     Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0" VerticalAlignment="Center"/>
+          <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" FontSize="12" Margin="11,10,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+        <Border Width="220" Height="3" CornerRadius="999" Background="{DynamicResource LineBrush}" Margin="0,24,0,0">
+          <Rectangle Height="3" HorizontalAlignment="Left" Fill="{DynamicResource AccentBrush}" RadiusX="1.5" RadiusY="1.5" Width="0">
+            <Rectangle.Triggers>
+              <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Width" From="0" To="220" Duration="0:0:5"/>
+                  </Storyboard>
+                </BeginStoryboard>
+              </EventTrigger>
+            </Rectangle.Triggers>
+          </Rectangle>
+        </Border>
+        <TextBlock FontSize="12" Foreground="{DynamicResource InkFaintBrush}" HorizontalAlignment="Center" Margin="0,14,0,0"
+                   Text="{Binding About.VersionLine}"/>
+      </StackPanel>
+    </Border>
 
     <!-- ══════════ GUIDED TOUR (last child = topmost) ══════════ -->
     <controls:TourOverlay x:Name="Tour" Grid.Row="0" Grid.RowSpan="2"/>

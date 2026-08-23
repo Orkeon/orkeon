@@ -57,25 +57,17 @@
   <data name="Tour_Next" xml:space="preserve"><value>Suivant</value></data>
   <data name="Tour_Finish" xml:space="preserve"><value>Terminer</value></data>
 
-  <data name="Tour1_Title" xml:space="preserve"><value>Bienvenue dans Orkeon Studio</value></data>
-  <data name="Tour1_Body" xml:space="preserve"><value>Studio est le compagnon bureau du CLI orkeon : éditez appsettings.json via des formulaires validés, puis lancez des crews et suivez le log streamé. Cette courte visite parcourt chaque partie.</value></data>
-  <data name="Tour2_Title" xml:space="preserve"><value>Deux espaces de travail</value></data>
-  <data name="Tour2_Body" xml:space="preserve"><value>Configuration couvre le fichier de réglages — presets, sections typées, montages, JSON brut et diagnostic doctor. Lancement sert à exécuter les crews et consulter l'historique.</value></data>
-  <data name="Tour3_Title" xml:space="preserve"><value>Le fichier de réglages, toujours visible</value></data>
-  <data name="Tour3_Body" xml:space="preserve"><value>Cette carte montre quel appsettings.json vous éditez et s'il est valide. Elle reste affichée sur chaque écran : vous savez toujours ce qu'un enregistrement touchera.</value></data>
-  <data name="Tour4_Title" xml:space="preserve"><value>Actions sur le fichier</value></data>
-  <data name="Tour4_Body" xml:space="preserve"><value>Nouveau, ouvrir, recharger, valider, enregistrer — les actions au niveau du fichier vivent ici sur chaque écran de configuration. La validation applique les mêmes contrôles que le runtime au chargement.</value></data>
-  <data name="Tour5_Title" xml:space="preserve"><value>Partir d'un preset</value></data>
-  <data name="Tour5_Body" xml:space="preserve"><value>Le même catalogue qu'orkeon init : Ollama, Docker Model Runner, OpenAI, tout endpoint compatible OpenAI, ou aucun. Appliquer ne fait que pré-remplir le formulaire Llm — vous relisez, puis enregistrez.</value></data>
-  <data name="Tour6_Title" xml:space="preserve"><value>Savoir quel fichier gagne</value></data>
-  <data name="Tour6_Body" xml:space="preserve"><value>Le runtime suit quatre étapes pour trouver ses réglages. Cette carte montre toute la chaîne et marque où se situe votre cible — plus de surprise silencieuse d'un fichier à côté du crew.</value></data>
-  <data name="Tour7_Title" xml:space="preserve"><value>Accès fichiers sandboxé</value></data>
-  <data name="Tour7_Body" xml:space="preserve"><value>Les montages sont les seuls dossiers que les agents voient. Choisissez le dossier physique, le chemin virtuel exposé aux agents, et les droits — lecture seule par défaut, avec overrides par sous-chemin.</value></data>
-  <data name="Tour8_Title" xml:space="preserve"><value>Lancer et observer</value></data>
-  <data name="Tour8_Body" xml:space="preserve"><value>La ligne de commande exacte se construit en direct depuis vos options. Le dry-run valide sans effet de bord ; Lancer streame le log ici, ligne à ligne, et se conclut par le code de sortie.</value></data>
-  <data name="Tour9_Title" xml:space="preserve"><value>Quand quelque chose cloche</value></data>
-  <data name="Tour9_Body" xml:space="preserve"><value>Le diagnostic exécute orkeon doctor : binaire, fichier de réglages, joignabilité du LLM, montages. Vert = tout va bien ; les alertes disent quoi corriger avant qu'un run n'échoue.</value></data>
-
+  <data name="Tour1_Title" xml:space="preserve"><value>Deux modes, un seul produit</value></data>
+  <data name="Tour1_Body" xml:space="preserve"><value>Novice explique chaque étape et cache la machinerie. Expert montre tout : ligne de commande, journal, JSON brut. Vous basculez quand vous voulez, sans rien perdre.</value></data>
+  <data name="Tour2_Title" xml:space="preserve"><value>Tout tourne autour des équipes</value></data>
+  <data name="Tour2_Body" xml:space="preserve"><value>Une équipe d'agents est l'objet central : vous la créez, vous la gardez, vous la lancez. Le reste de l'application ne fait que servir cet objet.</value></data>
+  <data name="Tour3_Title" xml:space="preserve"><value>Le travail quotidien</value></data>
+  <data name="Tour3_Body" xml:space="preserve"><value>Tester avant de lancer, exécuter, puis retrouver chaque exécution dans l'historique — avec son résultat et de quoi la rejouer à l'identique.</value></data>
+  <data name="Tour4_Title" xml:space="preserve"><value>L'environnement, une fois pour toutes</value></data>
+  <data name="Tour4_Body" xml:space="preserve"><value>Deux réglages seulement : le modèle d'IA et les dossiers que les agents peuvent voir. Le diagnostic vous prévient quand quelque chose bloque.</value></data>
+  <data name="Tour5_Title" xml:space="preserve"><value>L'aide est contextuelle</value></data>
+  <data name="Tour5_Body" xml:space="preserve"><value>En mode Novice, chaque écran porte une colonne d'explications à droite. Elle s'efface en mode Expert.</value></data>
+                
   <data name="Val_Title" xml:space="preserve"><value>Validation</value></data>
 
   <data name="Scr_Sections_Title" xml:space="preserve"><value>Sections</value></data>
@@ -318,4 +310,16 @@
   <data name="Vm_Forge_CheckUnverified" xml:space="preserve"><value>Je n&#x27;ai pas pu vérifier ce point automatiquement — jugez sur pièce.</value></data>
   <data name="Vm_Forge_ResultScore" xml:space="preserve"><value>L&#x27;essai est terminé (score {0}).</value></data>
   <data name="Vm_Forge_StorePickTitle" xml:space="preserve"><value>Choisissez où ranger la solution</value></data>
+<data name="Mode_Label" xml:space="preserve"><value>MODE</value></data>
+<data name="Mode_Novice" xml:space="preserve"><value>Novice</value></data>
+<data name="Mode_Expert" xml:space="preserve"><value>Expert</value></data>
+<data name="Help_Title" xml:space="preserve"><value>Besoin d'aide ?</value></data>
+<data name="Help_Body" xml:space="preserve"><value>Le mode Novice explique chaque étape. Passez en Expert quand vous voulez tout voir.</value></data>
+<data name="Btn_GuidedTour" xml:space="preserve"><value>Visite guidée</value></data>
+<data name="Splash_Skip" xml:space="preserve"><value>Cliquer pour passer</value></data>
+<data name="About_Tip" xml:space="preserve"><value>À propos d'Orkeon Studio</value></data>
+<data name="About_Eyebrow" xml:space="preserve"><value>À PROPOS</value></data>
+<data name="About_Line" xml:space="preserve"><value>Le compagnon bureau d'Orkeon : vous composez des équipes d'agents, Studio les fait travailler — chacun cantonné aux dossiers que vous avez ouverts, chaque exécution tracée.</value></data>
+<data name="About_Kama" xml:space="preserve"><value>Voici Kama, le caméléon d'Orkeon. Il s'adapte à ce qu'on lui demande — comme une équipe d'agents se compose autour de votre besoin, et pas l'inverse.</value></data>
+<data name="About_Close" xml:space="preserve"><value>Fermer</value></data>
 </root>
