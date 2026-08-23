@@ -234,8 +234,8 @@
             <!-- "Résoudre" leads: the new user's door (SPEC-ORKEON-FORGE §12.1, UX study §5) -->
             <StackPanel x:Name="NavGroupTeams">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,0,0,7"
-                       Text="{Binding [Grp_Solve], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton x:Name="NavForgeNew" GroupName="Nav" Style="{StaticResource NavItem}">
+                       Text="{Binding [Grp_Teams], Source={x:Static services:I18n.Instance}}"/>
+            <RadioButton x:Name="NavForgeNew" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="wand-2" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_ForgeNew], Source={x:Static services:I18n.Instance}}"/>
@@ -247,46 +247,11 @@
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_ForgeSolutions], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
-
             </StackPanel>
-            <StackPanel x:Name="NavGroupEnv">
-            <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
-                       Text="{Binding [Grp_Config], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton x:Name="NavStart" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="sparkles" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Start], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </RadioButton>
-            <RadioButton x:Name="NavSections" GroupName="Nav" Style="{StaticResource NavItem}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="sliders-horizontal" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Sections], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </RadioButton>
-            <RadioButton x:Name="NavMounts" GroupName="Nav" Style="{StaticResource NavItem}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="folder-tree" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Mounts], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </RadioButton>
-            <RadioButton x:Name="NavRaw" GroupName="Nav" Style="{StaticResource NavItem}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="braces" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Raw], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </RadioButton>
-            <RadioButton x:Name="NavDiag" GroupName="Nav" Style="{StaticResource NavItem}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="stethoscope" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Diag], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </RadioButton>
 
-            </StackPanel>
             <StackPanel x:Name="NavGroupWork">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
-                       Text="{Binding [Grp_Launch], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Grp_Work], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton x:Name="NavRun" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="play" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
@@ -297,6 +262,25 @@
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="history" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_History], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </RadioButton>
+            </StackPanel>
+
+            <StackPanel x:Name="NavGroupEnv">
+            <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
+                       Text="{Binding [Grp_Env], Source={x:Static services:I18n.Instance}}"/>
+            <RadioButton x:Name="NavSettings" GroupName="Nav" Style="{StaticResource NavItem}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="sliders-horizontal" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Settings], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton x:Name="NavDiag" GroupName="Nav" Style="{StaticResource NavItem}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="stethoscope" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Diag], Source={x:Static services:I18n.Instance}}"/>
+                <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" Margin="8,0,0,0" VerticalAlignment="Center"
+                         Visibility="{Binding DataContext.Config.Diagnostic.HasIssues, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
               </StackPanel>
             </RadioButton>
             </StackPanel>
@@ -314,45 +298,8 @@
           <views:ForgeSolutionsView MaxWidth="880" DataContext="{Binding Forge}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavStart, Converter={StaticResource BooleanToVisibility}}">
-          <views:StartView x:Name="StartPanel" MaxWidth="880" DataContext="{Binding Config}"/>
-        </ScrollViewer>
-
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavSections, Converter={StaticResource BooleanToVisibility}}">
-          <views:SectionsView MaxWidth="1080" DataContext="{Binding Config}"/>
-        </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavMounts, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel MaxWidth="880">
-            <DockPanel>
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                <Button Style="{StaticResource BtnGhost}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Act_Validate], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
-                <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                    <TextBlock Text="{Binding [Act_Save], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
-              </StackPanel>
-              <StackPanel>
-                <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Mounts_Title], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                           Text="{Binding [Scr_Mounts_Sub], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </DockPanel>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,22" Text="{Binding Config.StatusMessage}"/>
-            <views:MountsEditorView x:Name="MountsPanel" DataContext="{Binding Config.Mounts}"/>
-          </StackPanel>
-        </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavRaw, Converter={StaticResource BooleanToVisibility}}">
-          <views:RawJsonView MaxWidth="880" DataContext="{Binding Config}"/>
+                      Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">
+          <views:SettingsView x:Name="SettingsPanel" MaxWidth="1000" DataContext="{Binding Settings}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource BooleanToVisibility}}">
@@ -366,6 +313,105 @@
           <views:HistoryView MaxWidth="880" DataContext="{Binding Launch.History}"/>
         </ScrollViewer>
       </Grid>
+    </Grid>
+
+    <!-- ══════════ ÉDITEUR DE RÉGLAGE DE MODÈLE (overlay) ══════════ -->
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnProfileEditorBackdropClick"
+          Visibility="{Binding Settings.Profiles.IsEditorOpen, Converter={StaticResource BooleanToVisibility}}">
+      <Grid.Resources>
+        <views:IsEqualConverter x:Key="IsEqual"/>
+      </Grid.Resources>
+      <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              CornerRadius="18" DataContext="{Binding Settings.Profiles.Editor}">
+        <StackPanel>
+          <StackPanel Margin="22,20,22,0">
+            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource InkBrush}">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Text" Value="{Binding [Profile_EditTitle], Source={x:Static services:I18n.Instance}}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsNew}" Value="True">
+                      <Setter Property="Text" Value="{Binding [Profile_NewTitle], Source={x:Static services:I18n.Instance}}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
+                       Text="{Binding [Profile_EditSub], Source={x:Static services:I18n.Instance}}"/>
+
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
+                       Text="{Binding [Profile_NameLabel], Source={x:Static services:I18n.Instance}}"/>
+            <TextBox Style="{StaticResource Input}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
+                       Text="{Binding [Profile_ProviderLabel], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding Providers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <RadioButton Style="{StaticResource PickRow}" GroupName="ProfileProvider" Margin="0,0,0,7"
+                               Command="{Binding DataContext.Settings.Profiles.Editor.SelectProviderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                               CommandParameter="{Binding}">
+                    <RadioButton.IsChecked>
+                      <MultiBinding Converter="{StaticResource IsEqual}" Mode="OneWay">
+                        <Binding/>
+                        <Binding Path="DataContext.Settings.Profiles.Editor.SelectedProvider" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                      </MultiBinding>
+                    </RadioButton.IsChecked>
+                    <DockPanel LastChildFill="False">
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+                      <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" Text="{Binding Description}"/>
+                    </DockPanel>
+                  </RadioButton>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Grid Margin="0,7,0,0"
+                  Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Lbl_BaseUrl], Source={x:Static services:I18n.Instance}}"/>
+                <TextBox Style="{StaticResource InputMono}" Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Lbl_Model], Source={x:Static services:I18n.Instance}}"/>
+                <TextBox Style="{StaticResource InputMono}" Text="{Binding Model, UpdateSourceTrigger=PropertyChanged}"/>
+              </StackPanel>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+              <Button Style="{StaticResource BtnGhost}" Command="{Binding TestConnectionCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [Sec_TestConnection], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="12,0,0,0"
+                         Text="{Binding ConnectionTestResult}"
+                         Visibility="{Binding ConnectionTestResult, Converter={StaticResource StringPresentToVisibility}}"/>
+            </StackPanel>
+          </StackPanel>
+
+          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+            <DockPanel LastChildFill="False">
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                  <TextBlock Text="{Binding [Profile_Save], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </Border>
     </Grid>
 
     <!-- ══════════ À PROPOS (overlay) ══════════ -->

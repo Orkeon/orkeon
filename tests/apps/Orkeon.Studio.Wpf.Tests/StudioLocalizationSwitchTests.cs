@@ -27,6 +27,7 @@ public sealed class StudioLocalizationSwitchTests
             [StudioStringKeys.PresetNoneTitle] = "Aucun / hors ligne",
             [StudioStringKeys.PresetNoneDescription] = "Pas de LLM : provider écho.",
             [StudioStringKeys.MountsSummaryOk] = "{0} montage(s), aucune erreur.",
+            [StudioStringKeys.ProfileNewName] = "Nouveau réglage",
         };
 
         private bool _french;
@@ -97,20 +98,21 @@ public sealed class StudioLocalizationSwitchTests
     }
 
     [Fact]
-    public void PresetPicker_RebuildsItsCatalog_And_KeepsTheSelection_When_TheCultureChanges()
+    public void ProfileEditor_OpensWithTheCultureLabels_When_FrenchIsActive()
     {
+        // The provider catalogue and the seeded name go through the culture port: a French
+        // Studio proposes "Nouveau réglage" over French provider rows, not English ones.
         var strings = new SwitchableStrings();
-        var document = AppSettingsDocument.CreateEmpty();
-        var picker = new PresetSelectionViewModel(() => document, () => { }, strings)
-        {
-            SelectedPreset = LlmPresets.Catalog.First(p => p.Name == LlmPresets.None),
-        };
-
         strings.SwitchToFrench();
+        var document = AppSettingsDocument.CreateEmpty();
+        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe(), strings: strings);
+        var profiles = new ModelProfilesViewModel(null, llm, strings, new FakeLlmEndpointProbe());
 
-        Assert.Equal(LlmPresets.None, picker.SelectedPreset?.Name);
-        Assert.Equal("Aucun / hors ligne", picker.SelectedPreset?.Title);
-        Assert.Equal("Pas de LLM : provider écho.", picker.Description);
+        profiles.NewProfileCommand.Execute(null);
+
+        Assert.NotNull(profiles.Editor);
+        Assert.Equal("Nouveau réglage", profiles.Editor!.Name);
+        Assert.Contains(profiles.Editor.Providers, p => p.Title == "Aucun / hors ligne");
     }
 
     [Fact]

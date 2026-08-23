@@ -5,13 +5,7 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
 
-  <data name="Grp_Config" xml:space="preserve"><value>CONFIGURATION</value></data>
-  <data name="Grp_Launch" xml:space="preserve"><value>LANCEMENT</value></data>
-  <data name="Nav_Start" xml:space="preserve"><value>Démarrer</value></data>
-  <data name="Nav_Sections" xml:space="preserve"><value>Sections</value></data>
-  <data name="Nav_Mounts" xml:space="preserve"><value>Montages</value></data>
-  <data name="Nav_Raw" xml:space="preserve"><value>JSON brut</value></data>
-  <data name="Nav_Diag" xml:space="preserve"><value>Diagnostic</value></data>
+              <data name="Nav_Diag" xml:space="preserve"><value>Diagnostic</value></data>
   <data name="Nav_Run" xml:space="preserve"><value>Lancer un crew</value></data>
   <data name="Nav_History" xml:space="preserve"><value>Historique</value></data>
 
@@ -20,23 +14,17 @@
   <data name="Badge_Valid" xml:space="preserve"><value>valide</value></data>
 <data name="Badge_Invalid" xml:space="preserve"><value>invalide</value></data>
 
-  <data name="Scr_Start_Title" xml:space="preserve"><value>Démarrer</value></data>
-  <data name="Scr_Start_Sub" xml:space="preserve"><value>Appliquez un preset et choisissez où vit appsettings.json — rien n'est écrit avant l'enregistrement.</value></data>
-
+    
   <data name="Act_New" xml:space="preserve"><value>Nouveau</value></data>
   <data name="Act_Open" xml:space="preserve"><value>Ouvrir…</value></data>
   <data name="Act_Reload" xml:space="preserve"><value>Recharger</value></data>
   <data name="Act_Validate" xml:space="preserve"><value>Valider</value></data>
   <data name="Act_Save" xml:space="preserve"><value>Enregistrer</value></data>
 
-  <data name="Preset_Title" xml:space="preserve"><value>Preset</value></data>
-  <data name="Preset_Hint" xml:space="preserve"><value>Le même catalogue qu'orkeon init — appliquer pré-remplit la section Llm, rien n'est écrit avant l'enregistrement.</value></data>
-  <data name="Preset_Apply" xml:space="preserve"><value>Appliquer le preset</value></data>
-  <data name="Lbl_BaseUrl" xml:space="preserve"><value>URL de base</value></data>
+        <data name="Lbl_BaseUrl" xml:space="preserve"><value>URL de base</value></data>
   <data name="Lbl_Model" xml:space="preserve"><value>Modèle</value></data>
   <data name="Lbl_ApiKey" xml:space="preserve"><value>Clé API</value></data>
-  <data name="ApiKey_Hint" xml:space="preserve"><value>Vide est la voie recommandée — la clé reste hors du fichier et est lue depuis ORKEON_Llm__ApiKey.</value></data>
-
+  
   <data name="Loc_Title" xml:space="preserve"><value>Où le fichier est enregistré</value></data>
   <data name="Loc_Global" xml:space="preserve"><value>Fichier global par utilisateur</value></data>
   <data name="Loc_Default" xml:space="preserve"><value>DÉFAUT</value></data>
@@ -70,9 +58,7 @@
                 
   <data name="Val_Title" xml:space="preserve"><value>Validation</value></data>
 
-  <data name="Scr_Sections_Title" xml:space="preserve"><value>Sections</value></data>
-  <data name="Scr_Sections_Sub" xml:space="preserve"><value>Formulaires typés pour chaque section du appsettings — le JSON brut reste synchronisé.</value></data>
-  <data name="Sec_DetectedProvider" xml:space="preserve"><value>FOURNISSEUR DÉTECTÉ</value></data>
+      <data name="Sec_DetectedProvider" xml:space="preserve"><value>FOURNISSEUR DÉTECTÉ</value></data>
   <data name="Sec_Lbl_Temperature" xml:space="preserve"><value>Température</value></data>
   <data name="Sec_Lbl_MaxTokens" xml:space="preserve"><value>Tokens max</value></data>
   <data name="Sec_Lbl_TimeoutSeconds" xml:space="preserve"><value>Timeout (secondes)</value></data>
@@ -96,9 +82,7 @@
   <data name="Sec_LlmLog_Streaming" xml:space="preserve"><value>Journaliser les échanges en streaming</value></data>
   <data name="Sec_Lbl_MaxBodyLength" xml:space="preserve"><value>Longueur max du corps (caractères)</value></data>
 
-  <data name="Scr_Mounts_Title" xml:space="preserve"><value>Montages</value></data>
-  <data name="Scr_Mounts_Sub" xml:space="preserve"><value>Les seuls dossiers que voient les agents — chemin physique, chemin virtuel, droits.</value></data>
-  <data name="Mounts_Add" xml:space="preserve"><value>Ajouter</value></data>
+      <data name="Mounts_Add" xml:space="preserve"><value>Ajouter</value></data>
   <data name="Mounts_Remove" xml:space="preserve"><value>Retirer</value></data>
   <data name="Mounts_Unparsed" xml:space="preserve"><value>Cette entrée n'a pas pu être analysée. Elle est conservée telle quelle, rien n'est perdu.</value></data>
   <data name="Mounts_Lbl_Physical" xml:space="preserve"><value>Chemin physique (sur cette machine)</value></data>
@@ -110,9 +94,7 @@
   <data name="Mounts_AddOverride" xml:space="preserve"><value>Ajouter une exception</value></data>
   <data name="Mounts_Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
 
-  <data name="Scr_Raw_Title" xml:space="preserve"><value>JSON brut</value></data>
-  <data name="Scr_Raw_Sub" xml:space="preserve"><value>Le contenu exact du fichier — lecture seule : aucune modification ne contourne les formulaires ni la validation.</value></data>
-  <data name="Raw_ReadOnly" xml:space="preserve"><value>LECTURE SEULE</value></data>
+      <data name="Raw_ReadOnly" xml:space="preserve"><value>LECTURE SEULE</value></data>
   <data name="Raw_Copy" xml:space="preserve"><value>Copier</value></data>
 
   <data name="Scr_Diag_Title" xml:space="preserve"><value>Diagnostic</value></data>
@@ -262,8 +244,7 @@
   <data name="Vm_Dialog_FilterJson" xml:space="preserve"><value>Fichiers JSON|*.json|Tous les fichiers|*.*</value></data>
   <data name="Vm_Dialog_FilterCrew" xml:space="preserve"><value>Définitions de crew|*.yaml;*.yml;*.ts;*.js|Tous les fichiers|*.*</value></data>
   <data name="Vm_Dialog_FilterAll" xml:space="preserve"><value>Tous les fichiers|*.*</value></data>
-  <data name="Grp_Solve" xml:space="preserve"><value>Résoudre</value></data>
-  <data name="Nav_ForgeNew" xml:space="preserve"><value>Nouveau problème</value></data>
+    <data name="Nav_ForgeNew" xml:space="preserve"><value>Nouveau problème</value></data>
   <data name="Nav_ForgeSolutions" xml:space="preserve"><value>Mes solutions</value></data>
   <data name="Forge_Start_Title" xml:space="preserve"><value>Qu&#x27;est-ce qu&#x27;on résout aujourd&#x27;hui ?</value></data>
   <data name="Forge_Start_Hint" xml:space="preserve"><value>Décrivez votre problème, comme à un collègue…</value></data>
@@ -322,4 +303,38 @@
 <data name="About_Line" xml:space="preserve"><value>Le compagnon bureau d'Orkeon : vous composez des équipes d'agents, Studio les fait travailler — chacun cantonné aux dossiers que vous avez ouverts, chaque exécution tracée.</value></data>
 <data name="About_Kama" xml:space="preserve"><value>Voici Kama, le caméléon d'Orkeon. Il s'adapte à ce qu'on lui demande — comme une équipe d'agents se compose autour de votre besoin, et pas l'inverse.</value></data>
 <data name="About_Close" xml:space="preserve"><value>Fermer</value></data>
+<data name="Grp_Teams" xml:space="preserve"><value>ÉQUIPES D'AGENTS</value></data>
+<data name="Grp_Work" xml:space="preserve"><value>TRAVAIL</value></data>
+<data name="Grp_Env" xml:space="preserve"><value>ENVIRONNEMENT</value></data>
+<data name="Nav_Settings" xml:space="preserve"><value>Réglages</value></data>
+<data name="Scr_Settings_Title" xml:space="preserve"><value>Réglages</value></data>
+<data name="Scr_Settings_SubNovice" xml:space="preserve"><value>Deux choses à régler : quel modèle d'IA, et quels dossiers vos agents peuvent voir.</value></data>
+<data name="Scr_Settings_SubExpert" xml:space="preserve"><value>appsettings.json — formulaires typés, montages, limites de débit, et le fichier brut en lecture seule.</value></data>
+<data name="Tab_Model" xml:space="preserve"><value>Modèle d'IA</value></data>
+<data name="Tab_Folders" xml:space="preserve"><value>Dossiers autorisés</value></data>
+<data name="Tab_Limits" xml:space="preserve"><value>Limites &amp; journaux</value></data>
+<data name="Tab_Json" xml:space="preserve"><value>JSON brut</value></data>
+<data name="Studio_Model_Title" xml:space="preserve"><value>Modèle de l'assistant de Studio</value></data>
+<data name="Studio_Model_HintNovice" xml:space="preserve"><value>C'est lui qui compose vos équipes et rédige les verdicts d'essai.</value></data>
+<data name="Studio_Model_HintExpert" xml:space="preserve"><value>Utilisé par l'assistant de création, les verdicts et les réponses aux questions — indépendant des modèles des équipes.</value></data>
+<data name="Profile_Title" xml:space="preserve"><value>Quel modèle d'IA vos agents utilisent</value></data>
+<data name="Profile_HintNovice" xml:space="preserve"><value>Un réglage, c'est un modèle d'IA et son adresse. Créez-en autant que vous voulez et attribuez-le à chaque équipe.</value></data>
+<data name="Profile_HintExpert" xml:space="preserve"><value>Profils LLM nommés et réutilisables. Celui marqué par défaut s'applique aux nouvelles équipes et est reflété dans la section Llm ; la clé d'API reste lue depuis l'environnement.</value></data>
+<data name="Profile_New" xml:space="preserve"><value>Nouveau réglage</value></data>
+<data name="Profile_Empty" xml:space="preserve"><value>Aucun réglage pour l'instant — créez-en un pour donner un modèle à vos équipes.</value></data>
+<data name="Profile_DefaultBadge" xml:space="preserve"><value>par défaut</value></data>
+<data name="Profile_StudioBadge" xml:space="preserve"><value>assistant</value></data>
+<data name="Profile_UseDefault" xml:space="preserve"><value>Utiliser par défaut</value></data>
+<data name="Profile_Edit" xml:space="preserve"><value>Modifier</value></data>
+<data name="Profile_Duplicate" xml:space="preserve"><value>Dupliquer</value></data>
+<data name="Profile_Delete" xml:space="preserve"><value>Supprimer</value></data>
+<data name="Profile_NewTitle" xml:space="preserve"><value>Nouveau réglage</value></data>
+<data name="Profile_EditTitle" xml:space="preserve"><value>Modifier le réglage</value></data>
+<data name="Profile_EditSub" xml:space="preserve"><value>Un réglage porte un nom et peut servir à plusieurs équipes.</value></data>
+<data name="Profile_NameLabel" xml:space="preserve"><value>Nom du réglage</value></data>
+<data name="Profile_ProviderLabel" xml:space="preserve"><value>D'où vient le modèle</value></data>
+<data name="Profile_Save" xml:space="preserve"><value>Enregistrer le réglage</value></data>
+<data name="Btn_Cancel" xml:space="preserve"><value>Annuler</value></data>
+<data name="Vm_Profiles_NewName" xml:space="preserve"><value>Nouveau réglage</value></data>
+<data name="Vm_Profiles_CopySuffix" xml:space="preserve"><value>copie</value></data>
 </root>

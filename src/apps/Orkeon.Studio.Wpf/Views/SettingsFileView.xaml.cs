@@ -1,22 +1,13 @@
 using System.Windows;
 using System.Windows.Controls;
-using Orkeon.Studio.Core.Presets;
 
 namespace Orkeon.Studio.Wpf.Views;
 
-public partial class StartView : UserControl
+/// <summary>The "JSON brut" settings tab: the file, its location and its mirror.</summary>
+public partial class SettingsFileView : UserControl
 {
-    public StartView() => InitializeComponent();
-
-    /// <summary>Routes a preset PickRow check to Presets.SelectedPreset (the ItemsControl has no selection of its own).</summary>
-    private void OnPresetChecked(object sender, RoutedEventArgs e)
-    {
-        if (sender is RadioButton { Tag: LlmPresetInfo preset }
-            && DataContext is ViewModels.Config.ConfigTabViewModel vm)
-        {
-            vm.Presets.SelectedPreset = preset;
-        }
-    }
+    /// <summary>Loads the XAML.</summary>
+    public SettingsFileView() => InitializeComponent();
 
     /// <summary>
     /// Write-back for the custom-location PickRow: its IsChecked binding is OneWay (like the global

@@ -294,6 +294,15 @@ public static class StudioStringKeys
     public const string RunProgressHubMessages = "Vm_RunProgress_HubMessages";
 
 
+    // ---- Model profiles (Réglages, design v3) -------------------------------
+
+    /// <summary>"New setting" — the freshly created profile's placeholder name.</summary>
+    public const string ProfileNewName = "Vm_Profiles_NewName";
+
+    /// <summary>"copy" — suffix of a duplicated profile's name.</summary>
+    public const string ProfileCopySuffix = "Vm_Profiles_CopySuffix";
+
+
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
     /// <summary>"No target selected."</summary>
@@ -543,6 +552,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunProgressAgentAsks] = "An agent is asking:",
         [StudioStringKeys.RunProgressReply] = "Reply",
         [StudioStringKeys.RunProgressHubMessages] = "Hub messages",
+
+        [StudioStringKeys.ProfileNewName] = "New setting",
+        [StudioStringKeys.ProfileCopySuffix] = "copy",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",

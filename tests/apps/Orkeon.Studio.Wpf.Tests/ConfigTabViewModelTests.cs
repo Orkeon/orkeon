@@ -1,4 +1,3 @@
-using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.Tests.Doubles;
@@ -199,18 +198,6 @@ public sealed class ConfigTabViewModelTests
     /// <summary>The one mount a saveable settings file needs; the probe must know its path.</summary>
     private static void DeclareAMount(ConfigTabViewModel tab) =>
         tab.Mounts.AddMount().PhysicalPath = "/data";
-
-    [Fact]
-    public void Should_ApplyThePresetToTheDocument_When_TheCommandRuns()
-    {
-        var tab = Build();
-        tab.Presets.SelectedPreset = LlmPresets.Catalog.First(p => p.Name == "ollama");
-
-        tab.Presets.ApplyCommand.Execute(null);
-
-        Assert.True(tab.Llm.Exists);
-        Assert.False(tab.HasLlmWarning);
-    }
 
     [Fact]
     public async Task Should_ParseTheDoctorReport_When_TheDiagnosticRuns()

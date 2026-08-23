@@ -5,13 +5,7 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
 
-  <data name="Grp_Config" xml:space="preserve"><value>CONFIGURATION</value></data>
-  <data name="Grp_Launch" xml:space="preserve"><value>LAUNCH</value></data>
-  <data name="Nav_Start" xml:space="preserve"><value>Start</value></data>
-  <data name="Nav_Sections" xml:space="preserve"><value>Sections</value></data>
-  <data name="Nav_Mounts" xml:space="preserve"><value>Mounts</value></data>
-  <data name="Nav_Raw" xml:space="preserve"><value>Raw JSON</value></data>
-  <data name="Nav_Diag" xml:space="preserve"><value>Diagnostic</value></data>
+              <data name="Nav_Diag" xml:space="preserve"><value>Diagnostic</value></data>
   <data name="Nav_Run" xml:space="preserve"><value>Run a crew</value></data>
   <data name="Nav_History" xml:space="preserve"><value>History</value></data>
 
@@ -20,23 +14,17 @@
   <data name="Badge_Valid" xml:space="preserve"><value>valid</value></data>
 <data name="Badge_Invalid" xml:space="preserve"><value>invalid</value></data>
 
-  <data name="Scr_Start_Title" xml:space="preserve"><value>Start</value></data>
-  <data name="Scr_Start_Sub" xml:space="preserve"><value>Apply a preset and choose where appsettings.json lives — nothing is written until you save.</value></data>
-
+    
   <data name="Act_New" xml:space="preserve"><value>New</value></data>
   <data name="Act_Open" xml:space="preserve"><value>Open…</value></data>
   <data name="Act_Reload" xml:space="preserve"><value>Reload</value></data>
   <data name="Act_Validate" xml:space="preserve"><value>Validate</value></data>
   <data name="Act_Save" xml:space="preserve"><value>Save</value></data>
 
-  <data name="Preset_Title" xml:space="preserve"><value>Preset</value></data>
-  <data name="Preset_Hint" xml:space="preserve"><value>The same catalogue as orkeon init — applying pre-fills the Llm section, nothing is written until you save.</value></data>
-  <data name="Preset_Apply" xml:space="preserve"><value>Apply preset</value></data>
-  <data name="Lbl_BaseUrl" xml:space="preserve"><value>Base URL</value></data>
+        <data name="Lbl_BaseUrl" xml:space="preserve"><value>Base URL</value></data>
   <data name="Lbl_Model" xml:space="preserve"><value>Model</value></data>
   <data name="Lbl_ApiKey" xml:space="preserve"><value>API key</value></data>
-  <data name="ApiKey_Hint" xml:space="preserve"><value>Empty is the recommended path — the key stays out of the file and is read from ORKEON_Llm__ApiKey.</value></data>
-
+  
   <data name="Loc_Title" xml:space="preserve"><value>Where the file is saved</value></data>
   <data name="Loc_Global" xml:space="preserve"><value>Global per-user file</value></data>
   <data name="Loc_Default" xml:space="preserve"><value>DEFAULT</value></data>
@@ -70,9 +58,7 @@
                 
   <data name="Val_Title" xml:space="preserve"><value>Validation</value></data>
 
-  <data name="Scr_Sections_Title" xml:space="preserve"><value>Sections</value></data>
-  <data name="Scr_Sections_Sub" xml:space="preserve"><value>Typed forms for every appsettings section — the raw JSON stays in sync.</value></data>
-  <data name="Sec_DetectedProvider" xml:space="preserve"><value>DETECTED PROVIDER</value></data>
+      <data name="Sec_DetectedProvider" xml:space="preserve"><value>DETECTED PROVIDER</value></data>
   <data name="Sec_Lbl_Temperature" xml:space="preserve"><value>Temperature</value></data>
   <data name="Sec_Lbl_MaxTokens" xml:space="preserve"><value>Max tokens</value></data>
   <data name="Sec_Lbl_TimeoutSeconds" xml:space="preserve"><value>Timeout (seconds)</value></data>
@@ -96,9 +82,7 @@
   <data name="Sec_LlmLog_Streaming" xml:space="preserve"><value>Log streaming exchanges</value></data>
   <data name="Sec_Lbl_MaxBodyLength" xml:space="preserve"><value>Max body length (chars)</value></data>
 
-  <data name="Scr_Mounts_Title" xml:space="preserve"><value>Mounts</value></data>
-  <data name="Scr_Mounts_Sub" xml:space="preserve"><value>The only folders agents can see — physical path, virtual path, rights.</value></data>
-  <data name="Mounts_Add" xml:space="preserve"><value>Add</value></data>
+      <data name="Mounts_Add" xml:space="preserve"><value>Add</value></data>
   <data name="Mounts_Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Mounts_Unparsed" xml:space="preserve"><value>This entry could not be parsed. It is kept exactly as written so nothing is lost.</value></data>
   <data name="Mounts_Lbl_Physical" xml:space="preserve"><value>Physical path (on this machine)</value></data>
@@ -110,9 +94,7 @@
   <data name="Mounts_AddOverride" xml:space="preserve"><value>Add override</value></data>
   <data name="Mounts_Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
 
-  <data name="Scr_Raw_Title" xml:space="preserve"><value>Raw JSON</value></data>
-  <data name="Scr_Raw_Sub" xml:space="preserve"><value>The exact file content — read-only, so an edit can never bypass the forms and validation.</value></data>
-  <data name="Raw_ReadOnly" xml:space="preserve"><value>READ-ONLY</value></data>
+      <data name="Raw_ReadOnly" xml:space="preserve"><value>READ-ONLY</value></data>
   <data name="Raw_Copy" xml:space="preserve"><value>Copy</value></data>
 
   <data name="Scr_Diag_Title" xml:space="preserve"><value>Diagnostic</value></data>
@@ -262,8 +244,7 @@
   <data name="Vm_Dialog_FilterJson" xml:space="preserve"><value>JSON files|*.json|All files|*.*</value></data>
   <data name="Vm_Dialog_FilterCrew" xml:space="preserve"><value>Crew definitions|*.yaml;*.yml;*.ts;*.js|All files|*.*</value></data>
   <data name="Vm_Dialog_FilterAll" xml:space="preserve"><value>All files|*.*</value></data>
-  <data name="Grp_Solve" xml:space="preserve"><value>Solve</value></data>
-  <data name="Nav_ForgeNew" xml:space="preserve"><value>New problem</value></data>
+    <data name="Nav_ForgeNew" xml:space="preserve"><value>New problem</value></data>
   <data name="Nav_ForgeSolutions" xml:space="preserve"><value>My solutions</value></data>
   <data name="Forge_Start_Title" xml:space="preserve"><value>What are we solving today?</value></data>
   <data name="Forge_Start_Hint" xml:space="preserve"><value>Describe your problem, as you would to a colleague…</value></data>
@@ -322,4 +303,38 @@
 <data name="About_Line" xml:space="preserve"><value>Orkeon's desktop companion: you compose agent teams, Studio puts them to work — each confined to the folders you opened, every run traced.</value></data>
 <data name="About_Kama" xml:space="preserve"><value>Meet Kama, Orkeon's chameleon. He adapts to whatever he is asked — the way an agent team is composed around your need, and not the other way round.</value></data>
 <data name="About_Close" xml:space="preserve"><value>Close</value></data>
+<data name="Grp_Teams" xml:space="preserve"><value>AGENT TEAMS</value></data>
+<data name="Grp_Work" xml:space="preserve"><value>WORK</value></data>
+<data name="Grp_Env" xml:space="preserve"><value>ENVIRONMENT</value></data>
+<data name="Nav_Settings" xml:space="preserve"><value>Settings</value></data>
+<data name="Scr_Settings_Title" xml:space="preserve"><value>Settings</value></data>
+<data name="Scr_Settings_SubNovice" xml:space="preserve"><value>Two things to set: which AI model, and which folders your agents may see.</value></data>
+<data name="Scr_Settings_SubExpert" xml:space="preserve"><value>appsettings.json — typed forms, mounts, rate limits, and the raw file read-only.</value></data>
+<data name="Tab_Model" xml:space="preserve"><value>AI model</value></data>
+<data name="Tab_Folders" xml:space="preserve"><value>Authorized folders</value></data>
+<data name="Tab_Limits" xml:space="preserve"><value>Limits &amp; logs</value></data>
+<data name="Tab_Json" xml:space="preserve"><value>Raw JSON</value></data>
+<data name="Studio_Model_Title" xml:space="preserve"><value>Studio's assistant model</value></data>
+<data name="Studio_Model_HintNovice" xml:space="preserve"><value>It composes your teams and writes the trial verdicts.</value></data>
+<data name="Studio_Model_HintExpert" xml:space="preserve"><value>Used by the creation assistant, the verdicts and the answers to questions — independent from the teams' models.</value></data>
+<data name="Profile_Title" xml:space="preserve"><value>Which AI model your agents use</value></data>
+<data name="Profile_HintNovice" xml:space="preserve"><value>A setting is an AI model and its address. Create as many as you want and assign one to each team.</value></data>
+<data name="Profile_HintExpert" xml:space="preserve"><value>Named, reusable LLM profiles. The one marked default applies to new teams and is mirrored into the Llm section; the API key stays read from the environment.</value></data>
+<data name="Profile_New" xml:space="preserve"><value>New setting</value></data>
+<data name="Profile_Empty" xml:space="preserve"><value>No setting yet — create one to give your teams a model.</value></data>
+<data name="Profile_DefaultBadge" xml:space="preserve"><value>default</value></data>
+<data name="Profile_StudioBadge" xml:space="preserve"><value>assistant</value></data>
+<data name="Profile_UseDefault" xml:space="preserve"><value>Use as default</value></data>
+<data name="Profile_Edit" xml:space="preserve"><value>Edit</value></data>
+<data name="Profile_Duplicate" xml:space="preserve"><value>Duplicate</value></data>
+<data name="Profile_Delete" xml:space="preserve"><value>Delete</value></data>
+<data name="Profile_NewTitle" xml:space="preserve"><value>New setting</value></data>
+<data name="Profile_EditTitle" xml:space="preserve"><value>Edit the setting</value></data>
+<data name="Profile_EditSub" xml:space="preserve"><value>A setting has a name and can serve several teams.</value></data>
+<data name="Profile_NameLabel" xml:space="preserve"><value>Setting name</value></data>
+<data name="Profile_ProviderLabel" xml:space="preserve"><value>Where the model comes from</value></data>
+<data name="Profile_Save" xml:space="preserve"><value>Save the setting</value></data>
+<data name="Btn_Cancel" xml:space="preserve"><value>Cancel</value></data>
+<data name="Vm_Profiles_NewName" xml:space="preserve"><value>New setting</value></data>
+<data name="Vm_Profiles_CopySuffix" xml:space="preserve"><value>copy</value></data>
 </root>

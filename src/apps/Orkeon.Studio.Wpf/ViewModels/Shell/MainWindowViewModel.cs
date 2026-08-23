@@ -3,6 +3,7 @@ using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
@@ -34,7 +35,8 @@ public sealed class MainWindowViewModel : ObservableObject
         ForgeClient? forgeClient = null,
         string? forgeWorkspace = null,
         string? initialUiMode = null,
-        Action<string>? persistUiMode = null)
+        Action<string>? persistUiMode = null,
+        IModelProfileStore? profileStore = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
@@ -61,6 +63,11 @@ public sealed class MainWindowViewModel : ObservableObject
             dispatcher,
             strings);
 
+        Settings = new SettingsScreenViewModel(
+            Config,
+            new ModelProfilesViewModel(profileStore, Config.Llm, strings),
+            Mode);
+
         Forge = new Wpf.ViewModels.Forge.ForgeTabViewModel(
             forgeClient,
             picker,
@@ -75,6 +82,9 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>The appsettings editor (spec §4).</summary>
     public ConfigTabViewModel Config { get; }
+
+    /// <summary>The unified "Réglages" screen and its model profiles (design v3).</summary>
+    public SettingsScreenViewModel Settings { get; }
 
     /// <summary>The crew launcher (spec §5).</summary>
     public LaunchTabViewModel Launch { get; }
@@ -108,7 +118,8 @@ public sealed class MainWindowViewModel : ObservableObject
         IUiDispatcher dispatcher,
         IStudioStrings? strings = null,
         string? initialUiMode = null,
-        Action<string>? persistUiMode = null)
+        Action<string>? persistUiMode = null,
+        IModelProfileStore? profileStore = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -131,10 +142,15 @@ public sealed class MainWindowViewModel : ObservableObject
             forgeClient: null,
             forgeWorkspace: null,
             initialUiMode,
-            persistUiMode);
+            persistUiMode,
+            ModelProfileFileStore.TryGetDefaultPath(out var profilePath, out _) && profilePath is { Length: > 0 }
+                ? new ModelProfileFileStore(profilePath)
+                : null);
     }
 
-    /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history.</summary>
+    /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history, reading the model profiles.</summary>
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
-        Launch.InitializeAsync(cancellationToken);
+        Task.WhenAll(
+            Launch.InitializeAsync(cancellationToken),
+            Settings.Profiles.InitializeAsync(cancellationToken));
 }

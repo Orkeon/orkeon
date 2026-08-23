@@ -113,6 +113,12 @@ public partial class MainWindow : Window
             shell.About.CloseCommand.Execute(null);
     }
 
+    private void OnProfileEditorBackdropClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (DataContext is ViewModels.Shell.MainWindowViewModel shell)
+            shell.Settings.Profiles.Editor?.CancelCommand.Execute(null);
+    }
+
     private void OnSwallowClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
         // The card must not let the click bubble to the backdrop, whose click means "close".
         e.Handled = true;

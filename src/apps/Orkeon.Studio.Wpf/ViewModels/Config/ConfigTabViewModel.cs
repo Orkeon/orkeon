@@ -59,7 +59,6 @@ public sealed class ConfigTabViewModel : ObservableObject
         Mounts = new MountsEditorViewModel(directories, Picker, requireAtLeastOne: true, _strings);
         Mounts.Changed += OnMountsChanged;
 
-        Presets = new PresetSelectionViewModel(() => _document, OnPresetApplied, _strings);
         Location = new SettingsLocationViewModel(Picker, globalPathOverride, _strings);
         Diagnostic = new DiagnosticViewModel(
             processRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
@@ -101,8 +100,6 @@ public sealed class ConfigTabViewModel : ObservableObject
     /// <summary>The <c>Orkeon:FileSystem:Mounts</c> editor (spec §4.5).</summary>
     public MountsEditorViewModel Mounts { get; }
 
-    /// <summary>The preset picker (spec §4.2).</summary>
-    public PresetSelectionViewModel Presets { get; }
 
     /// <summary>The save-location picker and resolution chain (spec §4.3).</summary>
     public SettingsLocationViewModel Location { get; }
@@ -310,13 +307,6 @@ public sealed class ConfigTabViewModel : ObservableObject
                     CultureInfo.InvariantCulture,
                     _strings[StudioStringKeys.ConfigErrorsWarnings], errors, warnings);
         }
-    }
-
-    private void OnPresetApplied()
-    {
-        MarkDirty();
-        Llm.Refresh();
-        Validate();
     }
 
     private void OnMountsChanged(object? sender, EventArgs e)

@@ -110,6 +110,13 @@ public sealed class DiagnosticViewModel : ObservableObject
     /// <summary>Whether the diagnostic is still in flight.</summary>
     public bool IsRunning => RunCommand.IsRunning;
 
+    /// <summary>
+    /// True when the last run surfaced anything other than green — the sidebar shows a warn
+    /// dot on the Diagnostic entry so the operator learns before a team fails mid-run.
+    /// </summary>
+    public bool HasIssues =>
+        HasRun && (ErrorMessage is { Length: > 0 } || Checks.Any(c => c.Status != DoctorStatus.Ok));
+
     /// <summary>Runs <c>orkeon doctor --json</c> and republishes the panel.</summary>
     public async Task<DoctorReport> RunAsync(
         string? workingDirectory = null,
@@ -130,6 +137,7 @@ public sealed class DiagnosticViewModel : ObservableObject
             Summary = Describe(report);
             HasRun = true;
             OnPropertyChanged(nameof(IsRunning));
+            OnPropertyChanged(nameof(HasIssues));
         });
 
         return report;
