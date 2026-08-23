@@ -95,16 +95,26 @@ internal sealed class CrewHostRegistry
             if (inFlight >= crew.Profile.MaxConcurrentRuns)
                 return null;
 
-            var run = new HostedRun
+            // A 12-hex-char id can collide once in a blue moon; retrying costs nothing,
+            // while returning null here would report the collision to the user as "busy".
+            for (var attempt = 0; attempt < 4; attempt++)
             {
-                Id = Guid.NewGuid().ToString("N")[..12],
-                CrewName = crew.Name,
-                Origin = origin,
-                StartedAt = _time.GetUtcNow(),
-                Cancellation = new CancellationTokenSource(),
-            };
+                var run = new HostedRun
+                {
+                    Id = Guid.NewGuid().ToString("N")[..12],
+                    CrewName = crew.Name,
+                    Origin = origin,
+                    StartedAt = _time.GetUtcNow(),
+                    Cancellation = new CancellationTokenSource(),
+                };
 
-            return _runs.TryAdd(run.Id, run) ? run : null;
+                if (_runs.TryAdd(run.Id, run))
+                    return run;
+
+                run.Cancellation.Dispose();
+            }
+
+            return null;
         }
     }
 

@@ -134,9 +134,23 @@ internal sealed partial class ChatGateway
 
         var text = run is null
             ? "Nothing is running in this conversation."
-            : $"Running '{run.CrewName}' since {run.StartedAt:u} (run {run.Id}).";
+            : $"Running '{run.CrewName}' for {Elapsed(run.StartedAt)} (run {run.Id}).";
 
         await responder.CompleteAsync(message, text, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>"3m 12s", not an ISO timestamp: /status answers a person, not a parser.</summary>
+    private static string Elapsed(DateTimeOffset startedAt)
+    {
+        var elapsed = DateTimeOffset.UtcNow - startedAt;
+        if (elapsed < TimeSpan.Zero)
+            elapsed = TimeSpan.Zero;
+
+        return elapsed.TotalHours >= 1
+            ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m"
+            : elapsed.TotalMinutes >= 1
+                ? $"{(int)elapsed.TotalMinutes}m {elapsed.Seconds:00}s"
+                : $"{elapsed.Seconds}s";
     }
 
     private static void Report(InboundMessage message, IChatResponder responder, string text, CancellationToken ct)

@@ -16,6 +16,42 @@ using Orkeon.Hosting;
 // that should run every morning still needs the artifact `orkeon forge promote --schedule`
 // produces, installed by a person.
 
+// --help and --version answer and leave. Before this, `orkeon-host --help` silently
+// ignored the flag and started the daemon — the least helpful possible reading of a
+// question, from a binary whose whole documentation says "run it in a terminal first".
+if (args.Contains("--help", StringComparer.Ordinal) || args.Contains("-h", StringComparer.Ordinal))
+{
+    await Console.Out.WriteLineAsync("""
+orkeon-host — the Orkeon service host: hosts crews as a daemon and answers chat channels.
+
+Usage:
+  orkeon-host [--settings <file>] [--mount <physical:virtual[:rw|ro]>]... [--allow-external-mounts]
+
+Options:
+  -s, --settings <file>     Configuration file (JSON). Defaults to ./appsettings.json.
+  -m, --mount <spec>        Additional VFS mount. Hosted crew directories are mounted
+                            automatically, read-only.
+      --allow-external-mounts
+                            Allow mounts outside the working directory.
+  -h, --help                Show this help and exit.
+      --version             Show the version and exit.
+
+Configuration lives under Orkeon:Host (crews, RunTimeout, ShutdownGracePeriod) and
+Orkeon:Host:Discord. Secrets are named by environment variable, never written in files.
+Documentation: docs/architecture/service-host.md
+""").ConfigureAwait(false);
+    return 0;
+}
+
+if (args.Contains("--version", StringComparer.Ordinal))
+{
+    var version = typeof(OrkeonHostOptions).Assembly
+        .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), inherit: false)
+        is [System.Reflection.AssemblyInformationalVersionAttribute info, ..] ? info.InformationalVersion : "unknown";
+    await Console.Out.WriteLineAsync($"orkeon-host {version}").ConfigureAwait(false);
+    return 0;
+}
+
 var settingsPath = ArgumentValue(args, "--settings") ?? ArgumentValue(args, "-s");
 var mounts = ArgumentValues(args, "--mount").Concat(ArgumentValues(args, "-m")).ToList();
 

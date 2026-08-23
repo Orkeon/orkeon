@@ -20,17 +20,20 @@ internal sealed partial class CrewHostService : BackgroundService
     private readonly CrewHostRegistry _registry;
     private readonly OrkeonHostOptions _options;
     private readonly ILogger<CrewHostService> _logger;
+    private readonly TimeProvider _time;
 
     /// <summary>Builds the service over the registry and the host's options.</summary>
     public CrewHostService(
         CrewHostRegistry registry,
         IOptions<OrkeonHostOptions> options,
-        ILogger<CrewHostService> logger)
+        ILogger<CrewHostService> logger,
+        TimeProvider? timeProvider = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _time = timeProvider ?? TimeProvider.System;
     }
 
     /// <inheritdoc />
@@ -121,14 +124,14 @@ internal sealed partial class CrewHostService : BackgroundService
     /// </summary>
     private async Task DrainAsync()
     {
-        var deadline = DateTimeOffset.UtcNow + _options.ShutdownGracePeriod;
+        var deadline = _time.GetUtcNow() + _options.ShutdownGracePeriod;
         var inFlight = _registry.Running.Count;
         if (inFlight == 0)
             return;
 
         LogDraining(inFlight, _options.ShutdownGracePeriod);
 
-        while (_registry.Running.Count > 0 && DateTimeOffset.UtcNow < deadline)
+        while (_registry.Running.Count > 0 && _time.GetUtcNow() < deadline)
             await Task.Delay(TimeSpan.FromMilliseconds(200), CancellationToken.None).ConfigureAwait(false);
 
         var stopped = _registry.RequestStopAll();
@@ -137,8 +140,8 @@ internal sealed partial class CrewHostService : BackgroundService
 
         // Give the cancelled runs a moment to actually unwind and release their slots —
         // asking and immediately leaving would hand systemd a process still mid-teardown.
-        var teardown = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
-        while (_registry.Running.Count > 0 && DateTimeOffset.UtcNow < teardown)
+        var teardown = _time.GetUtcNow() + TimeSpan.FromSeconds(5);
+        while (_registry.Running.Count > 0 && _time.GetUtcNow() < teardown)
             await Task.Delay(TimeSpan.FromMilliseconds(200), CancellationToken.None).ConfigureAwait(false);
     }
 

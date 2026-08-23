@@ -232,6 +232,16 @@ internal static partial class RunCommand
                 "orkeon run: --client has no effect without --events jsonl.").ConfigureAwait(false);
         }
 
+        // And it must be a legal client:// name — validated here, where the message can name
+        // the flag, rather than deep in the bridge as an address-parse failure mid-run.
+        if (options.EmitsEvents
+            && (string.IsNullOrWhiteSpace(options.Client) || options.Client.Contains('/', StringComparison.Ordinal)))
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon run: --client '{options.Client}' is not a valid peer name (non-empty, no '/').").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
         // --list-tools dumps the runtime tool registry and needs no crew definition: it goes
         // straight to the shared runner (same host, same tool set as a real kickoff), so the
         // emitted manifest matches the standard runner byte-for-byte. Handled BEFORE the

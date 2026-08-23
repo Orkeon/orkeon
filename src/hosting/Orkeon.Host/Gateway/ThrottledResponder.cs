@@ -110,12 +110,18 @@ internal sealed class ThrottledResponder : IChatResponder
     /// per-reply teardown: one entry per idle conversation is daemon arithmetic, but tying the
     /// window's life to "any completed reply" tied it to the wrong clock.
     /// </summary>
+    /// <summary>Sweep only once this many conversations hold a window — below that, the map is noise-level.</summary>
+    internal const int SweepThreshold = 128;
+
+    /// <summary>A window idle for this many intervals belongs to a conversation that moved on.</summary>
+    internal const int IdleIntervals = 20;
+
     private void SweepIdleWindows()
     {
-        if (_windows.Count < 128)
+        if (_windows.Count < SweepThreshold)
             return;
 
-        var cutoff = _time.GetUtcNow() - (_interval * 20);
+        var cutoff = _time.GetUtcNow() - (_interval * IdleIntervals);
         foreach (var (conversationId, window) in _windows)
         {
             lock (window)

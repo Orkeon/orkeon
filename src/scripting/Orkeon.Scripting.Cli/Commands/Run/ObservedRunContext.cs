@@ -25,9 +25,17 @@ internal sealed class ObservedRunContext : IAsyncDisposable
 
     // Written once by the IEventHub singleton factory (whatever thread first resolves the
     // hub), read by the command worker: volatile so a command cannot observe a stale null
-    // after the bridge exists. A command arriving BEFORE the host has built the hub is
-    // dropped by design — there is no hub to project it onto yet.
+    // after the bridge exists.
     private volatile JsonLinesEventHubBridge? _bridge;
+
+    // Commands the peer sent BEFORE the host finished building its hub. A driving process
+    // legitimately writes its subscribe right after run.started, which precedes the host
+    // build by design — dropping those lines made "subscribe early" a race the peer could
+    // not see, let alone win. Bounded: a peer flooding a hub that does not exist yet is not
+    // a client to buffer forever.
+    private readonly object _earlyGate = new();
+    private List<string>? _earlyCommands = [];
+    private const int EarlyCommandCapacity = 64;
     private bool _finished;
 
     /// <summary>Builds the context and starts the single stdin reader immediately.</summary>
@@ -42,9 +50,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
 
         // One reader on stdin, routed by kind. Two would race, and BUS-04's channel dropped
         // every line that was not a human answer — including the hub commands.
-        Inbound = new InboundCommandPump(
-            Console.In,
-            (line, ct) => _bridge?.HandleCommandAsync(line, ct) ?? System.Threading.Tasks.Task.CompletedTask);
+        Inbound = new InboundCommandPump(Console.In, HandleCommandAsync);
 
         // Started unconditionally, not on the first human question: the peer's post/send/
         // subscribe lines arrive whenever the peer pleases, and a pump that only wakes up for
@@ -55,6 +61,46 @@ internal sealed class ObservedRunContext : IAsyncDisposable
 
     /// <summary>The single stdin reader; the human-input provider waits on it.</summary>
     public InboundCommandPump Inbound { get; }
+
+    private async System.Threading.Tasks.Task HandleCommandAsync(string line, CancellationToken ct)
+    {
+        if (_bridge is { } bridge)
+        {
+            await bridge.HandleCommandAsync(line, ct).ConfigureAwait(false);
+            return;
+        }
+
+        lock (_earlyGate)
+        {
+            if (_earlyCommands is { } early)
+            {
+                if (early.Count < EarlyCommandCapacity)
+                    early.Add(line);
+                return;
+            }
+        }
+
+        // The buffer closed between our null-check and the lock: the bridge exists now, and
+        // this command must not fall into the gap between the two.
+        if (_bridge is { } lateBridge)
+            await lateBridge.HandleCommandAsync(line, ct).ConfigureAwait(false);
+    }
+
+    private async System.Threading.Tasks.Task DrainEarlyCommandsAsync(JsonLinesEventHubBridge bridge)
+    {
+        List<string>? early;
+        lock (_earlyGate)
+        {
+            early = _earlyCommands;
+            _earlyCommands = null;   // from here on, commands go straight to the bridge
+        }
+
+        if (early is null)
+            return;
+
+        foreach (var line in early)
+            await bridge.HandleCommandAsync(line, CancellationToken.None).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Registers the observed seams on <paramref name="services"/>: every tool decorated
@@ -125,9 +171,14 @@ internal sealed class ObservedRunContext : IAsyncDisposable
             services.AddSingleton<IEventHub>(sp =>
             {
                 var inner = (IEventHub)Materialize(sp, hubDescriptor)!;
-                _bridge = new JsonLinesEventHubBridge(
+                var bridge = new JsonLinesEventHubBridge(
                     inner, _events, _clientName, sp.GetService<IEventHubCallerContext>());
-                return _bridge;
+                _bridge = bridge;
+
+                // Replay what the peer said while the hub was still being built — in order,
+                // before any command that arrives from now on.
+                DrainEarlyCommandsAsync(bridge).GetAwaiter().GetResult();
+                return bridge;
             });
         }
     }

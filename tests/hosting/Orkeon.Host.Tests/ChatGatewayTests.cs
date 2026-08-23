@@ -207,7 +207,10 @@ public class ChatGatewayTests
 
         await gateway.HandleAsync(Message("do the thing"), new RecordingResponder(), TestContext.Current.CancellationToken);
 
-        Assert.Contains("support", Assert.Single(status.Sent).Text, StringComparison.Ordinal);
+        var reply = Assert.Single(status.Sent).Text;
+        Assert.Contains("support", reply, StringComparison.Ordinal);
+        // A duration a person reads ("for 0s"), not an ISO timestamp to parse.
+        Assert.Contains(" for ", reply, StringComparison.Ordinal);
     }
 
     [Fact]
