@@ -345,11 +345,45 @@
           Visibility="{Binding Settings.Profiles.IsEditorOpen, Converter={StaticResource BooleanToVisibility}}">
       <Grid.Resources>
         <views:IsEqualConverter x:Key="IsEqual"/>
+        <!-- One provider card: compact title + description, accent border when picked. -->
+        <DataTemplate x:Key="ProviderCard">
+          <RadioButton GroupName="ProfileProvider" Margin="0,0,7,7" Cursor="Hand"
+                       Command="{Binding DataContext.Settings.Profiles.Editor.SelectProviderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                       CommandParameter="{Binding}">
+            <RadioButton.IsChecked>
+              <MultiBinding Converter="{StaticResource IsEqual}" Mode="OneWay">
+                <Binding/>
+                <Binding Path="DataContext.Settings.Profiles.Editor.SelectedProvider" RelativeSource="{RelativeSource AncestorType=Window}"/>
+              </MultiBinding>
+            </RadioButton.IsChecked>
+            <RadioButton.Template>
+              <ControlTemplate TargetType="RadioButton">
+                <Border x:Name="Card" Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                        CornerRadius="10" Padding="11,8">
+                  <StackPanel>
+                    <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                               TextTrimming="CharacterEllipsis" Text="{Binding Title}"/>
+                    <TextBlock FontSize="10.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,1,0,0"
+                               TextTrimming="CharacterEllipsis" Text="{Binding Description}"/>
+                  </StackPanel>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="Card" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                    <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </RadioButton.Template>
+          </RadioButton>
+        </DataTemplate>
       </Grid.Resources>
-      <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
+      <Border Width="680" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
               CornerRadius="18" DataContext="{Binding Settings.Profiles.Editor}">
         <StackPanel>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="560">
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}">
@@ -376,33 +410,54 @@
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
                        Text="{Binding [Profile_ProviderLabel], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding Providers}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <RadioButton Style="{StaticResource PickRow}" GroupName="ProfileProvider" Margin="0,0,0,7"
-                               Command="{Binding DataContext.Settings.Profiles.Editor.SelectProviderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                               CommandParameter="{Binding}">
-                    <RadioButton.IsChecked>
-                      <MultiBinding Converter="{StaticResource IsEqual}" Mode="OneWay">
-                        <Binding/>
-                        <Binding Path="DataContext.Settings.Profiles.Editor.SelectedProvider" RelativeSource="{RelativeSource AncestorType=Window}"/>
-                      </MultiBinding>
-                    </RadioButton.IsChecked>
-                    <DockPanel LastChildFill="False">
-                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
-                      <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" Text="{Binding Description}"/>
-                    </DockPanel>
-                  </RadioButton>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
+
+            <!-- Provider cards, grouped as the v3 rev.2 design: local (keyless), cloud
+                 (key required), then the catch-all and the echo fallback. -->
+            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" FontWeight="Medium"
+                       Foreground="{DynamicResource InkFaintBrush}" Margin="0,0,0,6"
+                       Text="{Binding [Profile_GroupLocal], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding LocalProviders}" ItemTemplate="{StaticResource ProviderCard}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <Grid Margin="0,7,0,0"
-                  Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" FontWeight="Medium"
+                       Foreground="{DynamicResource InkFaintBrush}" Margin="0,12,0,6"
+                       Text="{Binding [Profile_GroupCloud], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding CloudProviders}" ItemTemplate="{StaticResource ProviderCard}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+
+            <ItemsControl ItemsSource="{Binding OtherProviders}" ItemTemplate="{StaticResource ProviderCard}" Margin="0,7,0,0">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+
+            <!-- URL/model: pointless without a model; the URL is expert-only except for
+                 the catch-all card, where everyone must type it. -->
+            <Grid Margin="0,14,0,0"
+                  Visibility="{Binding ShowFields, Converter={StaticResource BooleanToVisibility}}">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/>
               </Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0">
+                <StackPanel.Style>
+                  <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding UrlAlwaysVisible}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </StackPanel.Style>
                 <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Lbl_BaseUrl], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMono}" Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}"/>
               </StackPanel>
@@ -412,7 +467,87 @@
               </StackPanel>
             </Grid>
 
-            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+            <!-- API key — novice-visible. The key goes into the user environment, never
+                 into a file; the status chip says whether one is already in place. -->
+            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="14,12" Margin="0,14,0,0"
+                    Visibility="{Binding RequiresApiKey, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <DockPanel LastChildFill="False">
+                  <controls:LucideIcon Kind="key-round" Size="14" Foreground="{DynamicResource AccentBrush}"
+                                       VerticalAlignment="Center"/>
+                  <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                             Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding KeyBlockTitle}"/>
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel.Style>
+                      <Style TargetType="StackPanel">
+                        <Setter Property="TextBlock.Foreground" Value="{DynamicResource WarningBrush}"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding HasStoredKey}" Value="True">
+                            <Setter Property="TextBlock.Foreground" Value="{DynamicResource SuccessBrush}"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </StackPanel.Style>
+                    <controls:LucideIcon Size="12" Margin="0,0,6,0" VerticalAlignment="Center">
+                      <controls:LucideIcon.Style>
+                        <Style TargetType="controls:LucideIcon">
+                          <Setter Property="Kind" Value="triangle-alert"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasStoredKey}" Value="True">
+                              <Setter Property="Kind" Value="circle-check"/>
+                              <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </controls:LucideIcon.Style>
+                    </controls:LucideIcon>
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding KeyStatusText}"/>
+                  </StackPanel>
+                </DockPanel>
+                <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap"
+                           Margin="0,7,0,9" Text="{Binding [Profile_KeyExplainer], Source={x:Static services:I18n.Instance}}"/>
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="7,0,0,0"
+                          Command="{Binding StoreKeyCommand}"
+                          Content="{Binding [Profile_KeyStore], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Style="{StaticResource InputMono}"
+                           ToolTip="{Binding [Profile_KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
+                           Text="{Binding ApiKeyInput, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}"
+                             Text="{Binding [Profile_KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5"
+                             Foreground="{DynamicResource AccentBrush}" Margin="7,0,0,0"
+                             Text="{Binding KeyConsoleUrl}"/>
+                </StackPanel>
+                <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="10,7" Margin="0,9,0,0"
+                        Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" TextWrapping="Wrap"
+                             Foreground="{DynamicResource InkFaintBrush}"
+                             Text="{Binding [Profile_KeyExpertHint], Source={x:Static services:I18n.Instance}}"/>
+                </Border>
+              </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
+                        Visibility="{Binding ShowLocalNote, Converter={StaticResource BooleanToVisibility}}">
+              <controls:LucideIcon Kind="circle-check" Size="13" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
+              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"
+                         Text="{Binding [Profile_LocalNote], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
+                        Visibility="{Binding ShowNoneNote, Converter={StaticResource BooleanToVisibility}}">
+              <controls:LucideIcon Kind="info" Size="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"/>
+              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"
+                         Text="{Binding [Profile_NoneNote], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,14,0,0"
+                        Visibility="{Binding ShowTestRow, Converter={StaticResource BooleanToVisibility}}">
               <Button Style="{StaticResource BtnGhost}" Command="{Binding TestConnectionCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
@@ -424,6 +559,7 @@
                          Visibility="{Binding ConnectionTestResult, Converter={StaticResource StringPresentToVisibility}}"/>
             </StackPanel>
           </StackPanel>
+          </ScrollViewer>
 
           <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
                   BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">

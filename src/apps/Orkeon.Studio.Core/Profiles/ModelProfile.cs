@@ -22,6 +22,15 @@ public sealed record ModelProfile
     /// <summary>Model identifier, as the endpoint expects it.</summary>
     public string? Model { get; init; }
 
+    /// <summary>
+    /// Name of the environment variable holding the API key — never the key itself. Studio
+    /// resolves it at probe and launch time and lays the value over the child process as
+    /// <c>ORKEON_Llm__ApiKey</c>; the store file only ever carries this name. (Named without
+    /// the "ApiKey" substring on purpose: the store round-trip test forbids it, as a tripwire
+    /// against a literal key ever landing in the file.)
+    /// </summary>
+    public string? KeyEnvName { get; init; }
+
     /// <summary>Endpoint base URL.</summary>
     [SuppressMessage("Design", "CA1056",
         Justification = "User-typed form value round-tripped verbatim into a JSON string field; " +
@@ -44,13 +53,31 @@ public sealed record ModelProfile
     /// of the settings file's <c>Llm</c> section — the standard .NET configuration variables,
     /// which the CLI's host already binds. Empty values are simply not overridden.
     /// </summary>
-    public IReadOnlyDictionary<string, string> EnvironmentOverrides()
+    public IReadOnlyDictionary<string, string> EnvironmentOverrides() =>
+        EnvironmentOverrides(static _ => null);
+
+    /// <summary>
+    /// Same overrides, plus <c>ORKEON_Llm__ApiKey</c> resolved from <see cref="KeyEnvName"/>
+    /// through <paramref name="environment"/> when the profile names a key variable and the
+    /// variable holds a value. The key transits only into the child process environment —
+    /// never into a file.
+    /// </summary>
+    /// <param name="environment">Reads an environment variable by name.</param>
+    public IReadOnlyDictionary<string, string> EnvironmentOverrides(Func<string, string?> environment)
     {
+        ArgumentNullException.ThrowIfNull(environment);
+
         var overrides = new Dictionary<string, string>(StringComparer.Ordinal);
         if (Model is { Length: > 0 })
             overrides["ORKEON_Llm__Model"] = Model;
         if (BaseUrl is { Length: > 0 })
             overrides["ORKEON_Llm__BaseUrl"] = BaseUrl;
+        if (KeyEnvName is { Length: > 0 } name
+            && environment(name) is { } key
+            && !string.IsNullOrWhiteSpace(key))
+        {
+            overrides["ORKEON_Llm__ApiKey"] = key.Trim();
+        }
         return overrides;
     }
 }

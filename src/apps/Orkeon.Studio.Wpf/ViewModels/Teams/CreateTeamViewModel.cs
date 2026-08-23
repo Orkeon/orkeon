@@ -642,7 +642,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     private IReadOnlyDictionary<string, string> AssistantEnvironment() =>
-        Profiles.Set.Studio?.EnvironmentOverrides()
+        Profiles.Set.Studio?.EnvironmentOverrides(Environment.GetEnvironmentVariable)
         ?? new Dictionary<string, string>(StringComparer.Ordinal);
 
     private async Task RunEngineAsync(ForgeStartRequest request)

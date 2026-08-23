@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Every provider one click away, the API key novice-proof, and a screenshot campaign
+
+The model-profile editor (design v3, "volets" rev. 2) now carries the **full provider
+catalogue**: the two local runtimes (Ollama, Docker Model Runner — free, keyless), one
+card per cloud the framework ships a provider for (OpenAI, Anthropic, DeepSeek, Mistral,
+Gemini, Groq, Together AI, Qwen, Kimi, HuggingFace, Z.AI — endpoint, default model and
+key variable pre-filled from the drift-pinned runtime constants; Azure OpenAI stays a
+"Compatible OpenAI" entry by design), the OpenAI-compatible catch-all and the echo
+fallback, grouped as the mock groups them. A novice clicks a card and pastes the API
+key **in the editor**: "Mémoriser la clé" stores it in a user environment variable
+(the vendor's conventional name — `DEEPSEEK_API_KEY`, `ANTHROPIC_API_KEY`, …), the
+status chip says whether one is in place, the vendor's key console is named, and the
+connection test refuses to probe into a guaranteed 401 when the key is missing. The
+profile store only ever carries the **name** of the variable (`ModelProfile.KeyEnvName`
+— the round-trip test forbids the `ApiKey` substring in the file as a tripwire);
+launches resolve it and lay the value over the child process as `ORKEON_Llm__ApiKey`
+(Run, Test, history replays, and the wizard's assistant alike).
+
+`orkeon-studio --capture-screens <dir>` walks every screen in both modes (plus the
+profile-editor and About overlays) and writes one PNG per stop — the
+fidelity-remediation reference collection against the design mock, one command on a
+Windows machine.
+
 ### Changed — Full documentation audit against the implementation (DOC-04)
 
 A five-domain adversarial audit (getting-started/README, architecture, RAG/RaggableTree/

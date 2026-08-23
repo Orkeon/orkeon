@@ -55,6 +55,41 @@ public sealed class ConstantDriftTests
     {
         Assert.Equal(OrkeonCliDefaults.OllamaDefaultModel, ProviderDefaults.ForProvider("ollama"));
         Assert.Equal(OrkeonCliDefaults.OpenAIDefaultModel, ProviderDefaults.ForProvider("openai"));
+        Assert.Equal(OrkeonCliDefaults.AnthropicDefaultModel, ProviderDefaults.ForProvider("anthropic"));
+        Assert.Equal(OrkeonCliDefaults.DeepSeekDefaultModel, ProviderDefaults.ForProvider("deepseek"));
+        Assert.Equal(OrkeonCliDefaults.GeminiDefaultModel, ProviderDefaults.ForProvider("gemini"));
+        Assert.Equal(OrkeonCliDefaults.GroqDefaultModel, ProviderDefaults.ForProvider("groq"));
+        Assert.Equal(OrkeonCliDefaults.HuggingFaceDefaultModel, ProviderDefaults.ForProvider("huggingface"));
+        Assert.Equal(OrkeonCliDefaults.KimiDefaultModel, ProviderDefaults.ForProvider("kimi"));
+        Assert.Equal(OrkeonCliDefaults.MistralDefaultModel, ProviderDefaults.ForProvider("mistral"));
+        Assert.Equal(OrkeonCliDefaults.QwenDefaultModel, ProviderDefaults.ForProvider("qwen"));
+        Assert.Equal(OrkeonCliDefaults.TogetherDefaultModel, ProviderDefaults.ForProvider("together"));
+        Assert.Equal(OrkeonCliDefaults.ZaiDefaultModel, ProviderDefaults.ForProvider("zai"));
+    }
+
+    [Fact]
+    public void The_provider_catalogue_serves_the_runtime_defaults_verbatim()
+    {
+        var catalogue = LlmPresets.ProviderCatalogFor(Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance);
+
+        foreach (var (id, endpoint) in new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [LlmPresets.Anthropic] = LlmEndpoints.Anthropic,
+            [LlmPresets.DeepSeek] = LlmEndpoints.DeepSeek,
+            [LlmPresets.Gemini] = LlmEndpoints.Gemini,
+            [LlmPresets.Groq] = LlmEndpoints.Groq,
+            [LlmPresets.HuggingFace] = LlmEndpoints.HuggingFace,
+            [LlmPresets.Kimi] = LlmEndpoints.Kimi,
+            [LlmPresets.Mistral] = LlmEndpoints.Mistral,
+            [LlmPresets.Qwen] = LlmEndpoints.Qwen,
+            [LlmPresets.Together] = LlmEndpoints.Together,
+            [LlmPresets.Zai] = LlmEndpoints.Zai,
+        })
+        {
+            var card = Assert.Single(catalogue, c => string.Equals(c.Name, id, StringComparison.Ordinal));
+            Assert.Equal(endpoint, card.DefaultBaseUrl);
+            Assert.Equal(ProviderDefaults.ForProvider(id), card.DefaultModel);
+        }
     }
 
     [Fact]

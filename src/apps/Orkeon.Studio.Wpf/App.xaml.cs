@@ -76,6 +76,37 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (arguments.CaptureScreensDirectory is { } captureDirectory)
+        {
+            // Screenshot campaign: initialize like a real session (teams, history, doctor all
+            // populated from this machine), then walk every screen and leave. Exit code 0 with
+            // the image count on stdout; any failure exits 1 with the reason on stderr.
+            _ = Dispatcher.BeginInvoke(() => RunCaptureCampaignAsync(window, _viewModel, captureDirectory));
+
+            return;
+        }
+
         _ = _viewModel.InitializeAsync();
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031",
+        Justification = "Top-level fault barrier of the headless campaign: any failure must " +
+                        "become exit code 1 with a message, never a dead window.")]
+    private async Task RunCaptureCampaignAsync(MainWindow window, MainWindowViewModel shell, string directory)
+    {
+        try
+        {
+            await shell.InitializeAsync();
+            var count = await ScreenCaptureRunner.RunAsync(window, shell, directory);
+            await Console.Out.WriteLineAsync($"capture-screens: {count} image(s) written to {directory}");
+            window.Close();
+            Shutdown(0);
+        }
+        catch (Exception exception)
+        {
+            await Console.Error.WriteLineAsync($"capture-screens failed: {exception.Message}");
+            window.Close();
+            Shutdown(1);
+        }
     }
 }

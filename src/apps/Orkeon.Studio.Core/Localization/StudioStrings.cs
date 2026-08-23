@@ -78,6 +78,75 @@ public static class StudioStringKeys
     /// <summary>"No LLM: runs use the &lt;undefined-llm&gt; echo provider."</summary>
     public const string PresetNoneDescription = "Core_Preset_None_Desc";
 
+    /// <summary>"Anthropic"</summary>
+    public const string ProviderAnthropicTitle = "Core_Provider_Anthropic_Title";
+
+    /// <summary>"Claude"</summary>
+    public const string ProviderAnthropicDescription = "Core_Provider_Anthropic_Desc";
+
+    /// <summary>"DeepSeek"</summary>
+    public const string ProviderDeepSeekTitle = "Core_Provider_DeepSeek_Title";
+
+    /// <summary>"budget-friendly, very capable"</summary>
+    public const string ProviderDeepSeekDescription = "Core_Provider_DeepSeek_Desc";
+
+    /// <summary>"Gemini"</summary>
+    public const string ProviderGeminiTitle = "Core_Provider_Gemini_Title";
+
+    /// <summary>"Google"</summary>
+    public const string ProviderGeminiDescription = "Core_Provider_Gemini_Desc";
+
+    /// <summary>"Groq"</summary>
+    public const string ProviderGroqTitle = "Core_Provider_Groq_Title";
+
+    /// <summary>"very fast responses"</summary>
+    public const string ProviderGroqDescription = "Core_Provider_Groq_Desc";
+
+    /// <summary>"HuggingFace"</summary>
+    public const string ProviderHuggingFaceTitle = "Core_Provider_HuggingFace_Title";
+
+    /// <summary>"multi-model router"</summary>
+    public const string ProviderHuggingFaceDescription = "Core_Provider_HuggingFace_Desc";
+
+    /// <summary>"Kimi"</summary>
+    public const string ProviderKimiTitle = "Core_Provider_Kimi_Title";
+
+    /// <summary>"Moonshot AI"</summary>
+    public const string ProviderKimiDescription = "Core_Provider_Kimi_Desc";
+
+    /// <summary>"Mistral"</summary>
+    public const string ProviderMistralTitle = "Core_Provider_Mistral_Title";
+
+    /// <summary>"European"</summary>
+    public const string ProviderMistralDescription = "Core_Provider_Mistral_Desc";
+
+    /// <summary>"Qwen"</summary>
+    public const string ProviderQwenTitle = "Core_Provider_Qwen_Title";
+
+    /// <summary>"Alibaba DashScope"</summary>
+    public const string ProviderQwenDescription = "Core_Provider_Qwen_Desc";
+
+    /// <summary>"Together AI"</summary>
+    public const string ProviderTogetherTitle = "Core_Provider_Together_Title";
+
+    /// <summary>"open models"</summary>
+    public const string ProviderTogetherDescription = "Core_Provider_Together_Desc";
+
+    /// <summary>"Z.AI (GLM)"</summary>
+    public const string ProviderZaiTitle = "Core_Provider_Zai_Title";
+
+    /// <summary>"Zhipu"</summary>
+    public const string ProviderZaiDescription = "Core_Provider_Zai_Desc";
+
+    /// <summary>"GPT"</summary>
+    public const string ProviderOpenAIShortDescription = "Core_Provider_OpenAI_ShortDesc";
+
+    /// <summary>"any endpoint: type the URL and the model"</summary>
+    public const string ProviderCustomShortDescription = "Core_Provider_Custom_ShortDesc";
+
+    /// <summary>"test the install, no model"</summary>
+    public const string ProviderNoneShortDescription = "Core_Provider_None_ShortDesc";
+
     /// <summary>"The custom preset requires both a base URL and a model."</summary>
     public const string PresetErrorCustomIncomplete = "Core_Preset_Error_CustomIncomplete";
 
@@ -298,6 +367,51 @@ public static class StudioStringKeys
 
     /// <summary>"New setting" — the freshly created profile's placeholder name.</summary>
     public const string ProfileNewName = "Vm_Profiles_NewName";
+
+    /// <summary>"ON YOUR MACHINE · FREE, NO KEY"</summary>
+    public const string ProfileGroupLocal = "Profile_GroupLocal";
+
+    /// <summary>"IN THE CLOUD · API KEY REQUIRED"</summary>
+    public const string ProfileGroupCloud = "Profile_GroupCloud";
+
+    /// <summary>"API key {0}"</summary>
+    public const string ProfileKeyTitleFor = "Profile_KeyTitleFor";
+
+    /// <summary>"The service's API key"</summary>
+    public const string ProfileKeyTitleService = "Profile_KeyTitleService";
+
+    /// <summary>"Studio keeps it in your Windows session — never in a file, never in a shared folder."</summary>
+    public const string ProfileKeyExplainer = "Profile_KeyExplainer";
+
+    /// <summary>"Paste your key here (sk-…)"</summary>
+    public const string ProfileKeyPlaceholder = "Profile_KeyPlaceholder";
+
+    /// <summary>"Remember the key"</summary>
+    public const string ProfileKeyStore = "Profile_KeyStore";
+
+    /// <summary>"key remembered"</summary>
+    public const string ProfileKeyStatusSet = "Profile_KeyStatusSet";
+
+    /// <summary>"no key detected"</summary>
+    public const string ProfileKeyStatusMissing = "Profile_KeyStatusMissing";
+
+    /// <summary>"No key yet?"</summary>
+    public const string ProfileKeyNoKeyYet = "Profile_KeyNoKeyYet";
+
+    /// <summary>"on the provider's site"</summary>
+    public const string ProfileKeyOnVendorSite = "Profile_KeyOnVendorSite";
+
+    /// <summary>The expert-only setx hint naming the runtime's native variable.</summary>
+    public const string ProfileKeyExpertHint = "Profile_KeyExpertHint";
+
+    /// <summary>"No key needed — the model runs on your machine, nothing leaves it."</summary>
+    public const string ProfileLocalNote = "Profile_LocalNote";
+
+    /// <summary>"Without a model, runs answer as an echo — useful to verify the install."</summary>
+    public const string ProfileNoneNote = "Profile_NoneNote";
+
+    /// <summary>"API key missing — remember it first"</summary>
+    public const string ProfileKeyMissingTest = "Profile_KeyMissingTest";
 
     /// <summary>"copy" — suffix of a duplicated profile's name.</summary>
     public const string ProfileCopySuffix = "Vm_Profiles_CopySuffix";
@@ -540,6 +654,29 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.PresetCustomDescription] = "DeepSeek, GLM, Mistral, … — base URL and model required.",
         [StudioStringKeys.PresetNoneTitle] = "None / offline",
         [StudioStringKeys.PresetNoneDescription] = "No LLM: runs use the <undefined-llm> echo provider.",
+        [StudioStringKeys.ProviderAnthropicTitle] = "Anthropic",
+        [StudioStringKeys.ProviderAnthropicDescription] = "Claude",
+        [StudioStringKeys.ProviderDeepSeekTitle] = "DeepSeek",
+        [StudioStringKeys.ProviderDeepSeekDescription] = "budget-friendly, very capable",
+        [StudioStringKeys.ProviderGeminiTitle] = "Gemini",
+        [StudioStringKeys.ProviderGeminiDescription] = "Google",
+        [StudioStringKeys.ProviderGroqTitle] = "Groq",
+        [StudioStringKeys.ProviderGroqDescription] = "very fast responses",
+        [StudioStringKeys.ProviderHuggingFaceTitle] = "HuggingFace",
+        [StudioStringKeys.ProviderHuggingFaceDescription] = "multi-model router",
+        [StudioStringKeys.ProviderKimiTitle] = "Kimi",
+        [StudioStringKeys.ProviderKimiDescription] = "Moonshot AI",
+        [StudioStringKeys.ProviderMistralTitle] = "Mistral",
+        [StudioStringKeys.ProviderMistralDescription] = "European",
+        [StudioStringKeys.ProviderQwenTitle] = "Qwen",
+        [StudioStringKeys.ProviderQwenDescription] = "Alibaba DashScope",
+        [StudioStringKeys.ProviderTogetherTitle] = "Together AI",
+        [StudioStringKeys.ProviderTogetherDescription] = "open models",
+        [StudioStringKeys.ProviderZaiTitle] = "Z.AI (GLM)",
+        [StudioStringKeys.ProviderZaiDescription] = "Zhipu",
+        [StudioStringKeys.ProviderOpenAIShortDescription] = "GPT",
+        [StudioStringKeys.ProviderCustomShortDescription] = "any endpoint: type the URL and the model",
+        [StudioStringKeys.ProviderNoneShortDescription] = "test the install, no model",
         [StudioStringKeys.PresetErrorCustomIncomplete] = "The custom preset requires both a base URL and a model.",
         [StudioStringKeys.PresetErrorUnknown] = "Unknown preset '{0}'. Supported: {1}.",
         [StudioStringKeys.PresetGuidanceNone] =
@@ -651,6 +788,21 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunProgressHubMessages] = "Hub messages",
 
         [StudioStringKeys.ProfileNewName] = "New setting",
+        [StudioStringKeys.ProfileGroupLocal] = "ON YOUR MACHINE · FREE, NO KEY",
+        [StudioStringKeys.ProfileGroupCloud] = "IN THE CLOUD · API KEY REQUIRED",
+        [StudioStringKeys.ProfileKeyTitleFor] = "API key {0}",
+        [StudioStringKeys.ProfileKeyTitleService] = "The service's API key",
+        [StudioStringKeys.ProfileKeyExplainer] = "Studio keeps it in your Windows session — never in a file, never in a shared folder.",
+        [StudioStringKeys.ProfileKeyPlaceholder] = "Paste your key here (sk-…)",
+        [StudioStringKeys.ProfileKeyStore] = "Remember the key",
+        [StudioStringKeys.ProfileKeyStatusSet] = "key remembered",
+        [StudioStringKeys.ProfileKeyStatusMissing] = "no key detected",
+        [StudioStringKeys.ProfileKeyNoKeyYet] = "No key yet?",
+        [StudioStringKeys.ProfileKeyOnVendorSite] = "on the provider's site",
+        [StudioStringKeys.ProfileKeyExpertHint] = "setx ORKEON_Llm__ApiKey \"sk-…\" — read natively by the runtime, wins over any file",
+        [StudioStringKeys.ProfileLocalNote] = "No key needed — the model runs on your machine, nothing leaves it.",
+        [StudioStringKeys.ProfileNoneNote] = "Without a model, runs answer as an echo — useful to verify the install.",
+        [StudioStringKeys.ProfileKeyMissingTest] = "API key missing — remember it first",
         [StudioStringKeys.ProfileCopySuffix] = "copy",
 
         [StudioStringKeys.WizardFreqOnce] = "Once",

@@ -65,7 +65,26 @@ public sealed record LlmPresetInfo(
     string Description,
     string? DefaultBaseUrl,
     string? DefaultModel,
-    bool RequiresApiKey);
+    bool RequiresApiKey,
+    string? DefaultApiKeyEnv = null,
+    LlmPresetKind Kind = LlmPresetKind.Other,
+    string? KeyConsoleUrl = null);
+
+/// <summary>How the profile editor groups a provider card (design v3, "volets" rev. 2).</summary>
+public enum LlmPresetKind
+{
+    /// <summary>Runs on this machine — free, keyless.</summary>
+    Local,
+
+    /// <summary>Cloud API — an API key is required.</summary>
+    Cloud,
+
+    /// <summary>The OpenAI-compatible catch-all: URL and model typed by hand.</summary>
+    Other,
+
+    /// <summary>No model: runs answer through the echo provider.</summary>
+    None,
+}
 
 /// <summary>
 /// The <c>orkeon init</c> presets, reproduced for Studio: same names, same defaults,
@@ -112,6 +131,43 @@ public static class LlmPresets
     /// <summary>Key holding <see cref="NoLlmComment"/>.</summary>
     public const string CommentKey = "_comment";
 
+    // ── Provider ids of the editor catalogue (ProviderCatalogFor) ─────────────────
+    // These are LlmProviderFactory keys; the runtime detects the dialect from the URL,
+    // so a profile only carries the endpoint and the model.
+
+    /// <summary>Anthropic cloud API.</summary>
+    public const string Anthropic = "anthropic";
+
+    /// <summary>Azure OpenAI (per-resource endpoint — no default URL exists).</summary>
+    public const string AzureOpenAI = "azure-openai";
+
+    /// <summary>DeepSeek cloud API (OpenAI-compatible).</summary>
+    public const string DeepSeek = "deepseek";
+
+    /// <summary>Google Gemini (OpenAI-compatible endpoint).</summary>
+    public const string Gemini = "gemini";
+
+    /// <summary>Groq cloud API (OpenAI-compatible).</summary>
+    public const string Groq = "groq";
+
+    /// <summary>HuggingFace Inference Providers router.</summary>
+    public const string HuggingFace = "huggingface";
+
+    /// <summary>Kimi (Moonshot AI) cloud API.</summary>
+    public const string Kimi = "kimi";
+
+    /// <summary>Mistral AI cloud API.</summary>
+    public const string Mistral = "mistral";
+
+    /// <summary>Qwen (Alibaba DashScope) cloud API.</summary>
+    public const string Qwen = "qwen";
+
+    /// <summary>Together AI cloud API.</summary>
+    public const string Together = "together";
+
+    /// <summary>Z.AI (Zhipu GLM) cloud API.</summary>
+    public const string Zai = "zai";
+
     /// <summary>Preset names, in the order the wizard lists them.</summary>
     public static IReadOnlyList<string> Names { get; } =
         [Ollama, DockerModelRunner, OpenAI, Custom, None];
@@ -136,6 +192,72 @@ public static class LlmPresets
                 null, null, RequiresApiKey: true),
             new(None, strings[StudioStringKeys.PresetNoneTitle], strings[StudioStringKeys.PresetNoneDescription],
                 null, null, RequiresApiKey: false),
+        ];
+    }
+
+    /// <summary>
+    /// The provider catalogue of the model-profile editor (design v3, "volets" rev. 2):
+    /// the clouds the framework ships a provider for, the two local runtimes, the
+    /// OpenAI-compatible catch-all and the echo fallback, grouped by
+    /// <see cref="LlmPresetKind"/>. Azure OpenAI has no card by design — its per-resource
+    /// endpoint makes it a "Compatible OpenAI" entry. Wider
+    /// than <see cref="Catalog"/> on purpose — <see cref="Catalog"/> stays the byte-for-byte
+    /// mirror of the five <c>orkeon init</c> presets, while a model profile may point at any
+    /// of the runtime's 13 providers (the runtime detects the dialect from the URL, so the
+    /// profile only needs the endpoint and the model). Clouds carry the vendor's conventional
+    /// key variable in <see cref="LlmPresetInfo.DefaultApiKeyEnv"/> — the key itself never
+    /// enters a file: Studio stores it in that user environment variable and lays it over
+    /// each launch as <c>ORKEON_Llm__ApiKey</c>.
+    /// </summary>
+    public static IReadOnlyList<LlmPresetInfo> ProviderCatalogFor(IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return
+        [
+            new(Ollama, strings[StudioStringKeys.PresetOllamaTitle], strings[StudioStringKeys.PresetOllamaDescription],
+                OrkeonCliDefaults.OllamaDefault, OrkeonCliDefaults.OllamaDefaultModel, RequiresApiKey: false,
+                Kind: LlmPresetKind.Local),
+            new(DockerModelRunner, strings[StudioStringKeys.PresetDmrTitle], strings[StudioStringKeys.PresetDmrDescription],
+                DockerModelRunnerBaseUrl, DockerModelRunnerDefaultModel, RequiresApiKey: false,
+                Kind: LlmPresetKind.Local),
+            new(OpenAI, strings[StudioStringKeys.PresetOpenAITitle], strings[StudioStringKeys.ProviderOpenAIShortDescription],
+                OrkeonCliDefaults.OpenAI, OrkeonCliDefaults.OpenAIDefaultModel, RequiresApiKey: true,
+                "OPENAI_API_KEY", LlmPresetKind.Cloud, "platform.openai.com/api-keys"),
+            new(Anthropic, strings[StudioStringKeys.ProviderAnthropicTitle], strings[StudioStringKeys.ProviderAnthropicDescription],
+                OrkeonCliDefaults.Anthropic, OrkeonCliDefaults.AnthropicDefaultModel, RequiresApiKey: true,
+                "ANTHROPIC_API_KEY", LlmPresetKind.Cloud, "console.anthropic.com"),
+            new(DeepSeek, strings[StudioStringKeys.ProviderDeepSeekTitle], strings[StudioStringKeys.ProviderDeepSeekDescription],
+                OrkeonCliDefaults.DeepSeek, OrkeonCliDefaults.DeepSeekDefaultModel, RequiresApiKey: true,
+                "DEEPSEEK_API_KEY", LlmPresetKind.Cloud, "platform.deepseek.com"),
+            new(Mistral, strings[StudioStringKeys.ProviderMistralTitle], strings[StudioStringKeys.ProviderMistralDescription],
+                OrkeonCliDefaults.Mistral, OrkeonCliDefaults.MistralDefaultModel, RequiresApiKey: true,
+                "MISTRAL_API_KEY", LlmPresetKind.Cloud, "console.mistral.ai"),
+            new(Gemini, strings[StudioStringKeys.ProviderGeminiTitle], strings[StudioStringKeys.ProviderGeminiDescription],
+                OrkeonCliDefaults.Gemini, OrkeonCliDefaults.GeminiDefaultModel, RequiresApiKey: true,
+                "GEMINI_API_KEY", LlmPresetKind.Cloud, "aistudio.google.com/apikey"),
+            new(Groq, strings[StudioStringKeys.ProviderGroqTitle], strings[StudioStringKeys.ProviderGroqDescription],
+                OrkeonCliDefaults.Groq, OrkeonCliDefaults.GroqDefaultModel, RequiresApiKey: true,
+                "GROQ_API_KEY", LlmPresetKind.Cloud, "console.groq.com/keys"),
+            new(Together, strings[StudioStringKeys.ProviderTogetherTitle], strings[StudioStringKeys.ProviderTogetherDescription],
+                OrkeonCliDefaults.Together, OrkeonCliDefaults.TogetherDefaultModel, RequiresApiKey: true,
+                "TOGETHER_API_KEY", LlmPresetKind.Cloud, "api.together.ai"),
+            new(Qwen, strings[StudioStringKeys.ProviderQwenTitle], strings[StudioStringKeys.ProviderQwenDescription],
+                OrkeonCliDefaults.Qwen, OrkeonCliDefaults.QwenDefaultModel, RequiresApiKey: true,
+                "DASHSCOPE_API_KEY", LlmPresetKind.Cloud, "dashscope.console.aliyun.com"),
+            new(Kimi, strings[StudioStringKeys.ProviderKimiTitle], strings[StudioStringKeys.ProviderKimiDescription],
+                OrkeonCliDefaults.Kimi, OrkeonCliDefaults.KimiDefaultModel, RequiresApiKey: true,
+                "MOONSHOT_API_KEY", LlmPresetKind.Cloud, "platform.moonshot.ai"),
+            new(HuggingFace, strings[StudioStringKeys.ProviderHuggingFaceTitle], strings[StudioStringKeys.ProviderHuggingFaceDescription],
+                OrkeonCliDefaults.HuggingFace, OrkeonCliDefaults.HuggingFaceDefaultModel, RequiresApiKey: true,
+                "HF_TOKEN", LlmPresetKind.Cloud, "huggingface.co/settings/tokens"),
+            new(Zai, strings[StudioStringKeys.ProviderZaiTitle], strings[StudioStringKeys.ProviderZaiDescription],
+                OrkeonCliDefaults.Zai, OrkeonCliDefaults.ZaiDefaultModel, RequiresApiKey: true,
+                "ZAI_API_KEY", LlmPresetKind.Cloud, "z.ai/manage-apikey"),
+            new(Custom, strings[StudioStringKeys.PresetCustomTitle], strings[StudioStringKeys.ProviderCustomShortDescription],
+                null, null, RequiresApiKey: true, DefaultApiKeyEnv, LlmPresetKind.Other),
+            new(None, strings[StudioStringKeys.PresetNoneTitle], strings[StudioStringKeys.ProviderNoneShortDescription],
+                null, null, RequiresApiKey: false, null, LlmPresetKind.None),
         ];
     }
 

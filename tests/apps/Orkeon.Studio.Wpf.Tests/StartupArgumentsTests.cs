@@ -67,4 +67,22 @@ public sealed class StartupArgumentsTests
     {
         Assert.Equal(2, StartupArguments.UnrecognizedArgumentExitCode);
     }
+    [Fact]
+    public void The_capture_switch_takes_its_directory_and_travels_with_the_smoke()
+    {
+        var arguments = StartupArguments.Parse(["--capture-screens", "C:/shots"]);
+
+        Assert.Equal("C:/shots", arguments.CaptureScreensDirectory);
+        Assert.Empty(arguments.Unrecognized);
+    }
+
+    [Fact]
+    public void A_capture_switch_without_a_directory_is_refused_not_ignored()
+    {
+        var arguments = StartupArguments.Parse(["--capture-screens"]);
+
+        Assert.Null(arguments.CaptureScreensDirectory);
+        Assert.Contains("--capture-screens", arguments.Unrecognized);
+    }
+
 }

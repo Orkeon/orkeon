@@ -75,10 +75,14 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 {
     private readonly ModelProfilesViewModel _owner;
     private readonly ILlmEndpointProbe _probe;
+    private readonly IApiKeyStore _keyStore;
+    private readonly IStudioStrings _strings;
     private LlmPresetInfo? _selectedProvider;
     private string _name;
     private string? _baseUrl;
     private string? _model;
+    private string? _apiKeyEnv;
+    private string _apiKeyInput = "";
     private string? _connectionTestResult;
 
     internal ModelProfileEditorViewModel(
@@ -86,21 +90,27 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         IReadOnlyList<LlmPresetInfo> providers,
         ModelProfile profile,
         string? previousName,
-        ILlmEndpointProbe probe)
+        ILlmEndpointProbe probe,
+        IApiKeyStore keyStore,
+        IStudioStrings strings)
     {
         _owner = owner;
         _probe = probe;
+        _keyStore = keyStore;
+        _strings = strings;
         Providers = providers;
         PreviousName = previousName;
         _name = profile.Name;
         _baseUrl = profile.BaseUrl;
         _model = profile.Model;
+        _apiKeyEnv = profile.KeyEnvName;
         _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Title, profile.Provider, StringComparison.Ordinal));
 
         SaveCommand = new RelayCommand(Save, () => CanSave);
         CancelCommand = new RelayCommand(() => _owner.CancelEdit());
         SelectProviderCommand = new RelayCommand(p => SelectedProvider = p as LlmPresetInfo);
         TestConnectionCommand = new AsyncRelayCommand(() => TestConnectionAsync(CancellationToken.None));
+        StoreKeyCommand = new RelayCommand(StoreKey, () => _apiKeyInput.Trim().Length > 0);
     }
 
     /// <summary>The provider choices — the same catalogue `orkeon init` offers.</summary>
@@ -138,6 +148,22 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
             BaseUrl = value.DefaultBaseUrl;
             Model = value.DefaultModel;
+            _apiKeyEnv = value.DefaultApiKeyEnv;
+            ConnectionTestResult = null;
+            OnPropertyChanged(nameof(RequiresApiKey));
+            OnPropertyChanged(nameof(ApiKeyEnvName));
+            OnPropertyChanged(nameof(HasStoredKey));
+            OnPropertyChanged(nameof(KeyStatusText));
+            OnPropertyChanged(nameof(KeyBlockTitle));
+            OnPropertyChanged(nameof(KeyConsoleUrl));
+            OnPropertyChanged(nameof(IsNone));
+            OnPropertyChanged(nameof(ShowFields));
+            OnPropertyChanged(nameof(UrlAlwaysVisible));
+            OnPropertyChanged(nameof(ShowLocalNote));
+            OnPropertyChanged(nameof(ShowNoneNote));
+            OnPropertyChanged(nameof(ShowTestRow));
+            OnPropertyChanged(nameof(CanSave));
+            SaveCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -158,8 +184,92 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         set => SetProperty(ref _model, value);
     }
 
-    /// <summary>A profile needs a name of its own; everything else may be filled in later.</summary>
-    public bool CanSave => _name.Trim().Length > 0 && !NameCollision;
+    /// <summary>True when the picked provider authenticates requests.</summary>
+    public bool RequiresApiKey => _selectedProvider?.RequiresApiKey == true;
+
+    /// <summary>
+    /// Name of the environment variable the key lives in — the profile's own when set,
+    /// else the provider's conventional one, else the runtime's native variable.
+    /// </summary>
+    public string ApiKeyEnvName =>
+        _apiKeyEnv is { Length: > 0 } explicitName
+            ? explicitName
+            : _selectedProvider?.DefaultApiKeyEnv ?? LlmPresets.DefaultApiKeyEnv;
+
+    /// <summary>
+    /// The pasted key, held only until it is remembered. Never pre-filled from the stored
+    /// value — the editor shows whether a key is in place, not what it is.
+    /// </summary>
+    public string ApiKeyInput
+    {
+        get => _apiKeyInput;
+        set
+        {
+            if (SetProperty(ref _apiKeyInput, value))
+                StoreKeyCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>The provider's card groups, for the three sections of the design.</summary>
+    public IEnumerable<LlmPresetInfo> LocalProviders => Providers.Where(p => p.Kind == LlmPresetKind.Local);
+
+    /// <inheritdoc cref="LocalProviders" />
+    public IEnumerable<LlmPresetInfo> CloudProviders => Providers.Where(p => p.Kind == LlmPresetKind.Cloud);
+
+    /// <inheritdoc cref="LocalProviders" />
+    public IEnumerable<LlmPresetInfo> OtherProviders =>
+        Providers.Where(p => p.Kind is LlmPresetKind.Other or LlmPresetKind.None);
+
+    /// <summary>True when the picked card is the echo fallback.</summary>
+    public bool IsNone => _selectedProvider?.Kind == LlmPresetKind.None;
+
+    /// <summary>URL/model fields are pointless without a model.</summary>
+    public bool ShowFields => !IsNone;
+
+    /// <summary>The catch-all card needs the URL from every user, not only experts.</summary>
+    public bool UrlAlwaysVisible => _selectedProvider?.Kind == LlmPresetKind.Other;
+
+    /// <summary>"No key needed — the model runs on your machine."</summary>
+    public bool ShowLocalNote => _selectedProvider?.Kind == LlmPresetKind.Local;
+
+    /// <summary>"Without a model, runs answer as an echo."</summary>
+    public bool ShowNoneNote => IsNone;
+
+    /// <summary>The probe row makes no sense for the echo fallback.</summary>
+    public bool ShowTestRow => _selectedProvider is not null && !IsNone;
+
+    /// <summary>True when a key is already in place under the profile's variable.</summary>
+    public bool HasStoredKey => _keyStore.Peek(ApiKeyEnvName) is not null;
+
+    /// <summary>Status chip of the key block: remembered, or not detected yet.</summary>
+    public string KeyStatusText =>
+        _strings[HasStoredKey ? StudioStringKeys.ProfileKeyStatusSet : StudioStringKeys.ProfileKeyStatusMissing];
+
+    /// <summary>"API key {provider}" — or the generic service wording for the catch-all.</summary>
+    public string KeyBlockTitle =>
+        _selectedProvider?.Kind == LlmPresetKind.Other
+            ? _strings[StudioStringKeys.ProfileKeyTitleService]
+            : string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.ProfileKeyTitleFor],
+                _selectedProvider?.Title ?? "");
+
+    /// <summary>Where to get a key, when the vendor has a console we can name.</summary>
+    [SuppressMessage("Design", "CA1056",
+        Justification = "Display text: a bare host/path shown as a hint, or a localized " +
+                        "'on the provider's site' fallback — not a navigable Uri.")]
+    public string KeyConsoleUrl =>
+        _selectedProvider?.KeyConsoleUrl ?? _strings[StudioStringKeys.ProfileKeyOnVendorSite];
+
+    /// <summary>
+    /// A profile needs a name of its own; the catch-all additionally needs the endpoint
+    /// and the model typed in.
+    /// </summary>
+    public bool CanSave =>
+        _name.Trim().Length > 0
+        && !NameCollision
+        && !(UrlAlwaysVisible
+             && (string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_model)));
 
     /// <summary>True while the typed name already belongs to another profile.</summary>
     public bool NameCollision => _owner.IsNameTaken(_name.Trim(), PreviousName);
@@ -183,10 +293,30 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>Probes the endpoint with the key resolved from the environment.</summary>
     public AsyncRelayCommand TestConnectionCommand { get; }
 
+    /// <summary>"Mémoriser la clé" — stores the draft under the profile's variable, now.</summary>
+    public RelayCommand StoreKeyCommand { get; }
+
+    private void StoreKey()
+    {
+        if (_apiKeyInput.Trim() is not { Length: > 0 } pastedKey)
+            return;
+
+        // The key goes into the user environment under the profile's variable —
+        // never into the profile store nor any settings file.
+        _keyStore.Save(ApiKeyEnvName, pastedKey);
+        ApiKeyInput = "";
+        ConnectionTestResult = null;
+        OnPropertyChanged(nameof(HasStoredKey));
+        OnPropertyChanged(nameof(KeyStatusText));
+    }
+
     private void Save()
     {
         if (!CanSave)
             return;
+
+        if (RequiresApiKey && _apiKeyInput.Trim().Length > 0)
+            StoreKey(); // a pasted-but-not-yet-remembered key must not be lost on save
 
         _owner.CommitEdit(new ModelProfile
         {
@@ -194,14 +324,26 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             Provider = _selectedProvider?.Title,
             Model = _model,
             BaseUrl = _baseUrl,
+            KeyEnvName = RequiresApiKey ? ApiKeyEnvName : null,
         }, PreviousName);
     }
 
     /// <summary>Probes the endpoint; public so tests can await it with a token.</summary>
     public async Task TestConnectionAsync(CancellationToken cancellationToken)
     {
+        var apiKey = _apiKeyInput.Trim() is { Length: > 0 } typed
+            ? typed
+            : _keyStore.Peek(ApiKeyEnvName) ?? LlmApiKeyResolver.Resolve(null);
+
+        if (RequiresApiKey && apiKey is null)
+        {
+            // The design refuses to probe into a guaranteed 401: name the missing step.
+            ConnectionTestResult = _strings[StudioStringKeys.ProfileKeyMissingTest];
+            return;
+        }
+
         var result = await _probe.ProbeAsync(
-            new LlmProbeRequest { BaseUrl = BaseUrl, ApiKey = LlmApiKeyResolver.Resolve(null) },
+            new LlmProbeRequest { BaseUrl = BaseUrl, ApiKey = apiKey },
             cancellationToken).ConfigureAwait(true);
 
         ConnectionTestResult = result.Message;
@@ -222,6 +364,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private readonly LlmSectionViewModel _llm;
     private readonly IStudioStrings _strings;
     private readonly ILlmEndpointProbe _probe;
+    private readonly IApiKeyStore _keyStore;
     private ModelProfileSet _set = ModelProfileSet.Empty;
     private ModelProfileEditorViewModel? _editor;
 
@@ -230,7 +373,8 @@ public sealed class ModelProfilesViewModel : ObservableObject
         IModelProfileStore? store,
         LlmSectionViewModel llm,
         IStudioStrings? strings = null,
-        ILlmEndpointProbe? probe = null)
+        ILlmEndpointProbe? probe = null,
+        IApiKeyStore? keyStore = null)
     {
         ArgumentNullException.ThrowIfNull(llm);
 
@@ -239,6 +383,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
         _strings = strings ?? EnglishStudioStrings.Instance;
         // Lives as long as the tab, which lives as long as the window.
         _probe = probe ?? HttpLlmEndpointProbe.ForCurrentMachine();
+        _keyStore = keyStore ?? new EnvironmentApiKeyStore();
         NewProfileCommand = new RelayCommand(BeginCreate);
     }
 
@@ -312,7 +457,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     }
 
     internal void BeginEdit(ModelProfile profile) =>
-        Editor = new ModelProfileEditorViewModel(this, ProviderCatalog(), profile, profile.Name, _probe);
+        Editor = new ModelProfileEditorViewModel(this, ProviderCatalog(), profile, profile.Name, _probe, _keyStore, _strings);
 
     internal void Duplicate(ModelProfile profile)
     {
@@ -366,10 +511,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 BaseUrl = seed?.DefaultBaseUrl,
             },
             previousName: null,
-            _probe);
+            _probe,
+            _keyStore,
+            _strings);
     }
 
-    private IReadOnlyList<LlmPresetInfo> ProviderCatalog() => LlmPresets.CatalogFor(_strings);
+    private IReadOnlyList<LlmPresetInfo> ProviderCatalog() => LlmPresets.ProviderCatalogFor(_strings);
 
     private void Mutate(ModelProfileSet set)
     {

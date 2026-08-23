@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
@@ -12,12 +13,16 @@ namespace Orkeon.Studio.Wpf.Tests;
 /// </summary>
 public sealed class SettingsScreenTests
 {
-    private static (ModelProfilesViewModel Profiles, LlmSectionViewModel Llm, InMemoryModelProfileStore Store, AppSettingsDocument Document) Build()
+    private static (ModelProfilesViewModel Profiles, LlmSectionViewModel Llm, InMemoryModelProfileStore Store, AppSettingsDocument Document) Build() =>
+        Build(new FakeApiKeyStore(), new FakeLlmEndpointProbe());
+
+    private static (ModelProfilesViewModel Profiles, LlmSectionViewModel Llm, InMemoryModelProfileStore Store, AppSettingsDocument Document) Build(
+        FakeApiKeyStore keyStore, FakeLlmEndpointProbe probe)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
         var store = new InMemoryModelProfileStore();
-        var profiles = new ModelProfilesViewModel(store, llm, probe: new FakeLlmEndpointProbe());
+        var profiles = new ModelProfilesViewModel(store, llm, probe: probe, keyStore: keyStore);
         return (profiles, llm, store, document);
     }
 
@@ -171,4 +176,83 @@ public sealed class SettingsScreenTests
 
         Assert.True(screen.IsFoldersTab);
     }
+    [Fact]
+    public void A_novice_creates_a_deepseek_setting_in_two_gestures_card_then_key()
+    {
+        var keyStore = new FakeApiKeyStore();
+        var (profiles, _, _, _) = Build(keyStore, new FakeLlmEndpointProbe());
+
+        profiles.NewProfileCommand.Execute(null);
+        var editor = profiles.Editor!;
+
+        // One click on the DeepSeek card: endpoint and model are filled, the key block opens.
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.DeepSeek);
+        Assert.Equal("https://api.deepseek.com", editor.BaseUrl);
+        Assert.Equal("deepseek-v4-flash", editor.Model);
+        Assert.True(editor.RequiresApiKey);
+        Assert.Equal("DEEPSEEK_API_KEY", editor.ApiKeyEnvName);
+        Assert.False(editor.HasStoredKey);
+
+        // Paste the key, remember it: it lands in the environment store, never in the profile.
+        editor.ApiKeyInput = " sk-novice ";
+        editor.StoreKeyCommand.Execute(null);
+        Assert.Equal("sk-novice", keyStore.Saved["DEEPSEEK_API_KEY"]);
+        Assert.True(editor.HasStoredKey);
+        Assert.Equal("", editor.ApiKeyInput);
+
+        editor.Name = "Mon DeepSeek";
+        Assert.True(editor.CanSave);
+        editor.SaveCommand.Execute(null);
+
+        var saved = profiles.Set.Profiles.Single(p => p.Name == "Mon DeepSeek");
+        Assert.Equal("DEEPSEEK_API_KEY", saved.KeyEnvName);
+        Assert.DoesNotContain("sk-novice", System.Text.Json.JsonSerializer.Serialize(saved), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_connection_test_refuses_to_probe_without_a_key_and_uses_the_stored_one_after()
+    {
+        var keyStore = new FakeApiKeyStore();
+        var probe = new FakeLlmEndpointProbe();
+        var (profiles, _, _, _) = Build(keyStore, probe);
+
+        profiles.NewProfileCommand.Execute(null);
+        var editor = profiles.Editor!;
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.DeepSeek);
+
+        await editor.TestConnectionAsync(CancellationToken.None);
+        Assert.Empty(probe.Requests); // no key → no doomed 401 probe
+        Assert.False(string.IsNullOrEmpty(editor.ConnectionTestResult));
+
+        editor.ApiKeyInput = "sk-now";
+        editor.StoreKeyCommand.Execute(null);
+        await editor.TestConnectionAsync(CancellationToken.None);
+        Assert.Equal("sk-now", probe.LastRequest.ApiKey);
+    }
+
+    [Fact]
+    public void The_catchall_card_demands_url_and_model_and_the_echo_card_needs_nothing()
+    {
+        var (profiles, _, _, _) = Build();
+
+        profiles.NewProfileCommand.Execute(null);
+        var editor = profiles.Editor!;
+        editor.Name = "Maison";
+
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.Custom);
+        Assert.True(editor.UrlAlwaysVisible);
+        Assert.False(editor.CanSave); // URL + model still blank
+
+        editor.BaseUrl = "http://localhost:8080/v1";
+        editor.Model = "local-model";
+        Assert.True(editor.CanSave);
+
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.None);
+        Assert.True(editor.IsNone);
+        Assert.False(editor.ShowFields);
+        Assert.False(editor.RequiresApiKey);
+        Assert.False(editor.ShowTestRow);
+        Assert.True(editor.CanSave);
+    }
+
 }

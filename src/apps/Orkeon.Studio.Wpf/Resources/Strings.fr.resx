@@ -156,6 +156,29 @@
   <data name="Core_Preset_Custom_Desc" xml:space="preserve"><value>DeepSeek, GLM, Mistral, … — URL de base et modèle requis.</value></data>
   <data name="Core_Preset_None_Title" xml:space="preserve"><value>Aucun / hors ligne</value></data>
   <data name="Core_Preset_None_Desc" xml:space="preserve"><value>Pas de LLM : les exécutions utilisent le provider écho &lt;undefined-llm&gt;.</value></data>
+  <data name="Core_Provider_Anthropic_Title" xml:space="preserve"><value>Anthropic</value></data>
+  <data name="Core_Provider_Anthropic_Desc" xml:space="preserve"><value>Claude</value></data>
+  <data name="Core_Provider_DeepSeek_Title" xml:space="preserve"><value>DeepSeek</value></data>
+  <data name="Core_Provider_DeepSeek_Desc" xml:space="preserve"><value>économique, très capable</value></data>
+  <data name="Core_Provider_Gemini_Title" xml:space="preserve"><value>Gemini</value></data>
+  <data name="Core_Provider_Gemini_Desc" xml:space="preserve"><value>Google</value></data>
+  <data name="Core_Provider_Groq_Title" xml:space="preserve"><value>Groq</value></data>
+  <data name="Core_Provider_Groq_Desc" xml:space="preserve"><value>réponses très rapides</value></data>
+  <data name="Core_Provider_HuggingFace_Title" xml:space="preserve"><value>HuggingFace</value></data>
+  <data name="Core_Provider_HuggingFace_Desc" xml:space="preserve"><value>routeur multi-modèles</value></data>
+  <data name="Core_Provider_Kimi_Title" xml:space="preserve"><value>Kimi</value></data>
+  <data name="Core_Provider_Kimi_Desc" xml:space="preserve"><value>Moonshot AI</value></data>
+  <data name="Core_Provider_Mistral_Title" xml:space="preserve"><value>Mistral</value></data>
+  <data name="Core_Provider_Mistral_Desc" xml:space="preserve"><value>européen</value></data>
+  <data name="Core_Provider_Qwen_Title" xml:space="preserve"><value>Qwen</value></data>
+  <data name="Core_Provider_Qwen_Desc" xml:space="preserve"><value>Alibaba DashScope</value></data>
+  <data name="Core_Provider_Together_Title" xml:space="preserve"><value>Together AI</value></data>
+  <data name="Core_Provider_Together_Desc" xml:space="preserve"><value>modèles ouverts</value></data>
+  <data name="Core_Provider_Zai_Title" xml:space="preserve"><value>Z.AI (GLM)</value></data>
+  <data name="Core_Provider_Zai_Desc" xml:space="preserve"><value>Zhipu</value></data>
+  <data name="Core_Provider_OpenAI_ShortDesc" xml:space="preserve"><value>GPT</value></data>
+  <data name="Core_Provider_Custom_ShortDesc" xml:space="preserve"><value>n'importe quel endpoint : URL + modèle à saisir</value></data>
+  <data name="Core_Provider_None_ShortDesc" xml:space="preserve"><value>tester l'installation, sans modèle</value></data>
   <data name="Core_Preset_Error_CustomIncomplete" xml:space="preserve"><value>Le preset custom exige à la fois une URL de base et un modèle.</value></data>
   <data name="Core_Preset_Error_Unknown" xml:space="preserve"><value>Preset inconnu « {0} ». Pris en charge : {1}.</value></data>
   <data name="Core_Preset_Guidance_None" xml:space="preserve"><value>Aucun LLM configuré : les exécutions utiliseront le provider écho &lt;undefined-llm&gt;. Configurez-en un quand vous serez prêt.</value></data>
@@ -304,6 +327,21 @@
 <data name="Profile_Save" xml:space="preserve"><value>Enregistrer le réglage</value></data>
 <data name="Btn_Cancel" xml:space="preserve"><value>Annuler</value></data>
 <data name="Vm_Profiles_NewName" xml:space="preserve"><value>Nouveau réglage</value></data>
+  <data name="Profile_GroupLocal" xml:space="preserve"><value>SUR VOTRE MACHINE · GRATUIT, SANS CLÉ</value></data>
+  <data name="Profile_GroupCloud" xml:space="preserve"><value>DANS LE NUAGE · CLÉ D'API REQUISE</value></data>
+  <data name="Profile_KeyTitleFor" xml:space="preserve"><value>Clé d'API {0}</value></data>
+  <data name="Profile_KeyTitleService" xml:space="preserve"><value>Clé d'API du service</value></data>
+  <data name="Profile_KeyExplainer" xml:space="preserve"><value>Studio la range dans votre session Windows — jamais dans un fichier, jamais dans un dossier partagé.</value></data>
+  <data name="Profile_KeyPlaceholder" xml:space="preserve"><value>Collez votre clé ici (sk-…)</value></data>
+  <data name="Profile_KeyStore" xml:space="preserve"><value>Mémoriser la clé</value></data>
+  <data name="Profile_KeyStatusSet" xml:space="preserve"><value>clé mémorisée</value></data>
+  <data name="Profile_KeyStatusMissing" xml:space="preserve"><value>aucune clé détectée</value></data>
+  <data name="Profile_KeyNoKeyYet" xml:space="preserve"><value>Pas encore de clé ?</value></data>
+  <data name="Profile_KeyOnVendorSite" xml:space="preserve"><value>sur le site du fournisseur</value></data>
+  <data name="Profile_KeyExpertHint" xml:space="preserve"><value>setx ORKEON_Llm__ApiKey &quot;sk-…&quot; — lue nativement par le runtime, prioritaire sur tout fichier</value></data>
+  <data name="Profile_LocalNote" xml:space="preserve"><value>Aucune clé nécessaire — le modèle tourne sur votre machine, rien n'en sort.</value></data>
+  <data name="Profile_NoneNote" xml:space="preserve"><value>Sans modèle, les exécutions répondent en écho — utile pour vérifier l'installation.</value></data>
+  <data name="Profile_KeyMissingTest" xml:space="preserve"><value>Clé d'API manquante — mémorisez-la d'abord</value></data>
 <data name="Vm_Profiles_CopySuffix" xml:space="preserve"><value>copie</value></data>
 <data name="Nav_Create" xml:space="preserve"><value>Créer une équipe</value></data>
 <data name="Nav_Teams" xml:space="preserve"><value>Mes équipes</value></data>

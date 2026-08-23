@@ -166,6 +166,9 @@ public partial class MainWindow : Window
     private void OnSplashClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
         DismissSplash(TimeSpan.FromMilliseconds(150));
 
+    /// <summary>The screenshot campaign needs the plate gone instantly, not animated away.</summary>
+    internal void SkipSplashForCapture() => DismissSplash(TimeSpan.Zero);
+
     private void DismissSplash(TimeSpan fade)
     {
         if (_splashDismissed)
