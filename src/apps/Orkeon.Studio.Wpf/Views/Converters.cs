@@ -21,9 +21,9 @@ public sealed class InverseBooleanToVisibilityConverter : IValueConverter
 }
 
 /// <summary>
-/// Checks a preset PickRow when its item is the ViewModel's current selection. The catalogue rows
+/// Checks a PickRow when its item is the ViewModel's current selection. The catalogue rows
 /// live in an ItemsControl (no selector), so each RadioButton compares its own item against
-/// Presets.SelectedPreset; the write direction goes through the Checked handler instead.
+/// the selection property; the write direction goes through a command or Checked handler.
 /// </summary>
 public sealed class IsEqualConverter : IMultiValueConverter
 {

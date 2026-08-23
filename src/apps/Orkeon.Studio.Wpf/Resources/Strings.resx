@@ -299,6 +299,7 @@
 <data name="Profile_EditTitle" xml:space="preserve"><value>Edit the setting</value></data>
 <data name="Profile_EditSub" xml:space="preserve"><value>A setting has a name and can serve several teams.</value></data>
 <data name="Profile_NameLabel" xml:space="preserve"><value>Setting name</value></data>
+<data name="Profile_NameTaken" xml:space="preserve"><value>Another setting already uses this name.</value></data>
 <data name="Profile_ProviderLabel" xml:space="preserve"><value>Where the model comes from</value></data>
 <data name="Profile_Save" xml:space="preserve"><value>Save the setting</value></data>
 <data name="Btn_Cancel" xml:space="preserve"><value>Cancel</value></data>
@@ -393,6 +394,8 @@
 <data name="Vm_Wizard_Brief_Shape" xml:space="preserve"><value>The result should look like: {0}</value></data>
 <data name="Vm_Wizard_Brief_Consigne" xml:space="preserve"><value>Standing instruction for every agent: {0}</value></data>
 <data name="Vm_Wizard_AgentFallback" xml:space="preserve"><value>Agent</value></data>
+<data name="Vm_Wizard_PromoteFailed" xml:space="preserve"><value>The save failed — the engine refused the promotion: {0}</value></data>
+<data name="Vm_Import_Failed" xml:space="preserve"><value>The import failed — nothing was copied. Check access to the source and try again.</value></data>
 <data name="Vm_Wizard_ActivityDone" xml:space="preserve"><value>{0} — done in {1} s</value></data>
 <data name="Vm_Wizard_ActivityFailed" xml:space="preserve"><value>{0} — failed</value></data>
 <data name="Vm_Wizard_Hint_Describe" xml:space="preserve"><value>Describe the work to continue.</value></data>

@@ -437,6 +437,30 @@ public sealed class LaunchTabViewModelTests
     }
 
     [Fact]
+    public async Task Should_LayTheTeamsProfileOverTheEnvironment_When_TheResolverNamesOne()
+    {
+        var probe = new FakeTargetProbe().WithFile("/teams/veille/crew.yaml");
+        var launcher = new FakeProcessLauncher();
+        var tab = new LaunchTabViewModel(
+            new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            probe,
+            new FakeDirectoryProbe(),
+            picker: null,
+            historyStore: null,
+            settingsStore: new FakeAppSettingsStore(),
+            environmentForTarget: _ => new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["ORKEON_Llm__Model"] = "qwen2.5:32b",
+            });
+        tab.Target.Select("/teams/veille/crew.yaml");
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        // The sidecar's profile rides the launch as ORKEON_Llm__*, never inside a file.
+        Assert.Equal("qwen2.5:32b", launcher.LastRequest!.Environment["ORKEON_Llm__Model"]);
+    }
+
+    [Fact]
     public async Task Should_KeepThePlainArgv_When_ProgressWatchingIsTurnedOff()
     {
         var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");

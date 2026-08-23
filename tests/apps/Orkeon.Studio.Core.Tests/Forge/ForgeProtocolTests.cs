@@ -210,6 +210,45 @@ public class ForgeSessionModelTests
     }
 
     [Fact]
+    public void A_closed_question_takes_the_assistants_turn_in_the_conversation()
+    {
+        var model = new ForgeSessionModel();
+        model.Feed(Event(
+            """{"v":2,"seq":1,"ts":"t","kind":"question.asked","id":"q1","text":"Quel est l'objectif ?","answerKind":"free"}"""));
+
+        var message = Assert.Single(model.Messages);
+        Assert.Equal(ForgeChatMessage.Assistant, message.Role);
+        Assert.Equal("Quel est l'objectif ?", message.Text);
+    }
+
+    [Fact]
+    public void Hydrated_artifacts_carry_the_milestone_without_any_stage_event()
+    {
+        // A resume seeds from files: blueprint.json and verdict.json arrive as their events
+        // with no stage.entered around them — the artifact itself proves the stage was reached.
+        var model = new ForgeSessionModel();
+        model.Feed(Event(
+            """{"v":2,"seq":1,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"v","goal":"g"},"agents":[],"tasks":[],"rationale":""},"iteration":1}"""));
+        Assert.Equal(ForgeMilestone.Propose, model.Milestone);
+
+        model.Feed(Event(
+            """{"v":2,"seq":2,"ts":"t","kind":"verdict.ready","score":0.9,"passing":true,"findings":[],"suggestions":[],"judge":"llm"}"""));
+        Assert.Equal(ForgeMilestone.Try, model.Milestone);
+    }
+
+    [Fact]
+    public void Acknowledging_a_decision_retires_the_options_until_the_engine_asks_again()
+    {
+        var model = FullCycle();
+        Assert.True(model.DecisionPending);
+
+        model.AcknowledgeDecision();
+
+        Assert.False(model.DecisionPending);
+        Assert.Empty(model.DecisionOptions);
+    }
+
+    [Fact]
     public void Promotion_and_errors_land_where_the_adopt_card_reads_them()
     {
         var model = new ForgeSessionModel();

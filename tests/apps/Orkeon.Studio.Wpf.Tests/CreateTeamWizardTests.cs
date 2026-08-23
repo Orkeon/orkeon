@@ -232,6 +232,86 @@ public class CreateTeamWizardTests
     }
 
     [Fact]
+    public async Task A_refused_promotion_says_so_and_saves_nothing()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: root);
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            FillStepOne(vm);
+            await vm.ComposeCommand.ExecuteAsync();
+            vm.TeamName = "Ma veille";
+
+            // The engine exits without a `promoted` event: nothing landed on disk.
+            processes.OutputToEmit.Clear();
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.False(vm.IsSaved);
+            Assert.NotNull(vm.StatusMessage);
+            Assert.Contains("refused the promotion", vm.StatusMessage, StringComparison.Ordinal);
+            Assert.False(Directory.Exists(root));   // no sidecar, no folder
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_daily_schedule_needs_a_time_the_engine_grammar_accepts()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+        vm.TeamName = "Ma veille";
+        Assert.True(vm.CanSaveTeam);
+
+        // `forge promote` speaks daily@HH:mm — a time it would refuse never leaves Studio.
+        vm.ScheduleChoice = 1;
+        vm.ScheduleTime = "7h30";
+        Assert.False(vm.CanSaveTeam);
+
+        vm.ScheduleTime = "07:30";
+        Assert.True(vm.CanSaveTeam);
+    }
+
+    [Fact]
+    public async Task Recomposing_after_a_finished_session_restarts_the_stepper_and_the_name()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+        Assert.Equal(4, vm.MaxStep);
+        vm.TeamName = "Ancien nom";
+
+        // A second composition is a new session: the stepper and the name start over.
+        processes.OutputToEmit.Clear();
+        processes.OutputToEmit.Add(
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"stage.entered","stage":"brief","iteration":1}"""));
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.Equal(1, vm.Step);
+        Assert.Equal(1, vm.MaxStep);
+        Assert.Equal("", vm.TeamName);
+    }
+
+    [Fact]
     public void The_teams_screen_lists_the_folders_and_hands_a_launch_to_the_shell()
     {
         var root = Path.Combine(Path.GetTempPath(), $"orkeon-teams-{Guid.NewGuid():N}");

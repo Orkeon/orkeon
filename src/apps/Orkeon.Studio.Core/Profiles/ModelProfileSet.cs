@@ -39,6 +39,8 @@ public sealed record ModelProfileSet
     /// <summary>
     /// Adds or replaces a profile. Replacing renames follow: when <paramref name="previousName"/>
     /// differs from the profile's new name, the elections that pointed at the old name move too.
+    /// A rename onto a name another profile already bears absorbs that profile — the name is
+    /// the identity teams reference, so the set never holds two entries with the same one.
     /// While no default is elected, the upserted profile becomes it — a machine with exactly
     /// one setting has exactly one answer to "which one".
     /// </summary>
@@ -49,7 +51,11 @@ public sealed record ModelProfileSet
         var target = previousName ?? profile.Name;
         var replaced = Find(target) is not null;
         var profiles = replaced
-            ? Profiles.Select(p => string.Equals(p.Name, target, StringComparison.Ordinal) ? profile : p).ToList()
+            ? Profiles
+                .Where(p => string.Equals(p.Name, target, StringComparison.Ordinal)
+                    || !string.Equals(p.Name, profile.Name, StringComparison.Ordinal))
+                .Select(p => string.Equals(p.Name, target, StringComparison.Ordinal) ? profile : p)
+                .ToList()
             : Profiles.Append(profile).ToList();
 
         return this with

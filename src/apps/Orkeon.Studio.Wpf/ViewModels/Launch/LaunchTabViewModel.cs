@@ -32,6 +32,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly IAppSettingsStore _settingsStore;
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
+    private readonly Func<string, IReadOnlyDictionary<string, string>?>? _environmentForTarget;
     private bool _isRunning;
     private string? _commandLinePreview;
     private string? _statusMessage;
@@ -47,8 +48,10 @@ public sealed class LaunchTabViewModel : ObservableObject
         ILaunchHistoryStore? historyStore = null,
         IAppSettingsStore? settingsStore = null,
         IUiDispatcher? dispatcher = null,
-        IStudioStrings? strings = null)
+        IStudioStrings? strings = null,
+        Func<string, IReadOnlyDictionary<string, string>?>? environmentForTarget = null)
     {
+        _environmentForTarget = environmentForTarget;
         _runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
         // The run lifecycle is the shared Core session, not a re-implementation: the terminal
         // launcher runs over the very same class, which is what keeps the two in step.
@@ -341,6 +344,7 @@ public sealed class LaunchTabViewModel : ObservableObject
                 // A dry run is not a launch: recording it would fill the replayable history with
                 // entries that never ran a crew. The terminal launcher makes the same exclusion.
                 RecordInHistory = !validate,
+                EnvironmentOverrides = EnvironmentFor(target.SelectedPath),
             },
             validate,
             cancellationToken);
@@ -375,10 +379,18 @@ public sealed class LaunchTabViewModel : ObservableObject
                 Arguments = entry.Arguments,
                 SettingsPath = entry.SettingsPath,
                 WorkingDirectory = entry.WorkingDirectory,
+                // The argv is replayed verbatim; the profile is resolved fresh — a team
+                // re-elected onto another model replays on what it runs on today.
+                EnvironmentOverrides = EnvironmentFor(entry.Target),
             },
             dryRun: false,
             cancellationToken);
     }
+
+    /// <summary>The environment an adopted team's model profile lays over the launch; empty otherwise.</summary>
+    private IReadOnlyDictionary<string, string> EnvironmentFor(string targetPath) =>
+        _environmentForTarget?.Invoke(targetPath)
+        ?? new Dictionary<string, string>(StringComparer.Ordinal);
 
     private async Task<ProcessRunResult> ExecuteAsync(
         RunLaunchRequest request,

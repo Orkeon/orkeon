@@ -18,6 +18,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 public sealed class ImportTeamViewModel : ObservableObject
 {
     private readonly string _teamsRoot;
+    private readonly IStudioStrings _strings;
     private readonly Func<string, IReadOnlyList<string>> _scanSecrets;
     private readonly Func<string, string, string?> _import;
     private string? _statusMessage;
@@ -32,6 +33,7 @@ public sealed class ImportTeamViewModel : ObservableObject
         Func<string, string, string?>? import = null)
     {
         _teamsRoot = teamsRoot ?? TeamCatalog.DefaultRoot();
+        _strings = strings ?? EnglishStudioStrings.Instance;
         _scanSecrets = scanSecrets ?? TeamCatalog.FindInlineSecrets;
         _import = import ?? TeamCatalog.Import;
 
@@ -84,7 +86,9 @@ public sealed class ImportTeamViewModel : ObservableObject
         var destination = _import(target.SelectedPath, _teamsRoot);
         if (destination is null)
         {
-            StatusMessage = null;
+            // A silent null would read as "nothing happened" — which is also what a
+            // successful click looks like to someone who missed the card refresh.
+            StatusMessage = _strings[StudioStringKeys.ImportFailed];
             return;
         }
 

@@ -23,6 +23,13 @@ public sealed record RunLaunchRequest
     /// kicks nothing off, so replaying it from the history would replay a check, not a run.
     /// </summary>
     public bool RecordInHistory { get; init; } = true;
+
+    /// <summary>
+    /// Environment variables laid over the child's inherited environment — an adopted
+    /// team's model profile travels here as <c>ORKEON_Llm__*</c>, never inside a file.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> EnvironmentOverrides { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 /// <summary>
@@ -112,6 +119,7 @@ public sealed class RunSession
                 onOutput,
                 gracePeriod: null,
                 onInputReady,
+                environment: request.EnvironmentOverrides,
                 cancellationToken: cancellation.Token).ConfigureAwait(false);
         }
         finally

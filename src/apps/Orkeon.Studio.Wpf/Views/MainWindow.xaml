@@ -370,6 +370,9 @@
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
                        Text="{Binding [Profile_NameLabel], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
+                       Text="{Binding [Profile_NameTaken], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding NameCollision, Converter={StaticResource BooleanToVisibility}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
                        Text="{Binding [Profile_ProviderLabel], Source={x:Static services:I18n.Instance}}"/>

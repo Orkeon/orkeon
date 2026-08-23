@@ -189,8 +189,8 @@ public sealed class TourOverlay : Grid
 
     /// <summary>
     /// Finds a step target by name. Window.FindName alone cannot see names registered in a
-    /// UserControl's own namescope (StartView declares StartActions/PresetCard/ChainCard), so a
-    /// visual-tree walk is the fallback that keeps every spotlight working.
+    /// UserControl's own namescope, so a visual-tree walk is the fallback that keeps every
+    /// spotlight working whatever view declares the anchor.
     /// </summary>
     private FrameworkElement? ResolveTarget(string name)
     {

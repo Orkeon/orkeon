@@ -299,6 +299,7 @@
 <data name="Profile_EditTitle" xml:space="preserve"><value>Modifier le réglage</value></data>
 <data name="Profile_EditSub" xml:space="preserve"><value>Un réglage porte un nom et peut servir à plusieurs équipes.</value></data>
 <data name="Profile_NameLabel" xml:space="preserve"><value>Nom du réglage</value></data>
+<data name="Profile_NameTaken" xml:space="preserve"><value>Un autre réglage porte déjà ce nom.</value></data>
 <data name="Profile_ProviderLabel" xml:space="preserve"><value>D'où vient le modèle</value></data>
 <data name="Profile_Save" xml:space="preserve"><value>Enregistrer le réglage</value></data>
 <data name="Btn_Cancel" xml:space="preserve"><value>Annuler</value></data>
@@ -393,6 +394,8 @@
 <data name="Vm_Wizard_Brief_Shape" xml:space="preserve"><value>Le résultat doit ressembler à : {0}</value></data>
 <data name="Vm_Wizard_Brief_Consigne" xml:space="preserve"><value>Consigne permanente pour tous les agents : {0}</value></data>
 <data name="Vm_Wizard_AgentFallback" xml:space="preserve"><value>Agent</value></data>
+<data name="Vm_Wizard_PromoteFailed" xml:space="preserve"><value>L'enregistrement a échoué — le moteur a refusé la promotion : {0}</value></data>
+<data name="Vm_Import_Failed" xml:space="preserve"><value>L'import a échoué — rien n'a été copié. Vérifiez l'accès à la source et réessayez.</value></data>
 <data name="Vm_Wizard_ActivityDone" xml:space="preserve"><value>{0} — terminé en {1} s</value></data>
 <data name="Vm_Wizard_ActivityFailed" xml:space="preserve"><value>{0} — en échec</value></data>
 <data name="Vm_Wizard_Hint_Describe" xml:space="preserve"><value>Décrivez le travail pour continuer.</value></data>

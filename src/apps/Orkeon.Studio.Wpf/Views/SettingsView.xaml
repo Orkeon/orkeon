@@ -37,14 +37,16 @@
 
     <!-- header -->
     <DockPanel Margin="0,0,0,4">
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top"
-                  Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-        <Button Style="{StaticResource BtnGhost}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+        <Button Style="{StaticResource BtnGhost}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0"
+                Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
             <TextBlock Text="{Binding [Act_Validate], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
+        <!-- Saving stays visible in novice mode: electing a default profile or editing the
+             folders marks the document dirty, and the cycle needs its visible ending there too. -->
         <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>

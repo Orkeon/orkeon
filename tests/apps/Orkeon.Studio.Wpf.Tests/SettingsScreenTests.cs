@@ -75,6 +75,29 @@ public sealed class SettingsScreenTests
     }
 
     [Fact]
+    public void The_editor_refuses_a_name_another_profile_already_bears()
+    {
+        var (profiles, _, _, _) = Build();
+        profiles.NewProfileCommand.Execute(null);
+        profiles.Editor!.Name = "Local";
+        profiles.Editor.SaveCommand.Execute(null);
+
+        // A second profile cannot take the same identity…
+        profiles.NewProfileCommand.Execute(null);
+        profiles.Editor!.Name = "Local";
+        Assert.True(profiles.Editor.NameCollision);
+        Assert.False(profiles.Editor.CanSave);
+        profiles.Editor.SaveCommand.Execute(null);
+        Assert.NotNull(profiles.Editor);   // still open: nothing was overwritten
+
+        // …but reopening a profile under its own name is not a collision.
+        profiles.CancelEdit();
+        profiles.Profiles[0].EditCommand.Execute(null);
+        Assert.False(profiles.Editor!.NameCollision);
+        Assert.True(profiles.Editor.CanSave);
+    }
+
+    [Fact]
     public void Deleting_is_refused_on_the_last_profile()
     {
         var (profiles, _, _, _) = Build();

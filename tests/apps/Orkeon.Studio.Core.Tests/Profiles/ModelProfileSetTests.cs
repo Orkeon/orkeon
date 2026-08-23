@@ -36,6 +36,26 @@ public sealed class ModelProfileSetTests
     }
 
     [Fact]
+    public void A_rename_onto_an_existing_name_absorbs_that_profile_instead_of_duplicating_it()
+    {
+        var set = ModelProfileSet.Empty
+            .Upsert(Profile("Local"))
+            .Upsert(Profile("Cloud", model: "gpt-5"))
+            .WithDefault("Cloud")
+            .Upsert(Profile("Cloud", model: "qwen2.5:32b"), previousName: "Local");
+
+        // The name is the identity teams reference: never two bearers at once.
+        var survivor = Assert.Single(set.Profiles);
+        Assert.Equal("Cloud", survivor.Name);
+        Assert.Equal("qwen2.5:32b", survivor.Model);
+        Assert.Equal("Cloud", set.DefaultProfile);
+        Assert.Equal("qwen2.5:32b", set.Default?.Model);
+
+        // And removing that name removes exactly one profile, not a homonym pile.
+        Assert.Empty(set.Remove("Cloud").Profiles);
+    }
+
+    [Fact]
     public void Removing_the_default_falls_back_to_the_first_remaining_profile()
     {
         var set = ModelProfileSet.Empty

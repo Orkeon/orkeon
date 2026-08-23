@@ -40,6 +40,10 @@ public sealed class OrkeonProcessRunner
     /// null; a screen that has to answer a question needs it, and a question asked after the
     /// writer would have been offered is a question nobody can answer.
     /// </param>
+    /// <param name="environment">
+    /// Variables laid over the child's inherited environment — a team's model profile
+    /// travels here as <c>ORKEON_Llm__*</c>; null adds nothing.
+    /// </param>
     /// <param name="cancellationToken">Stops the child.</param>
     public async Task<ProcessRunResult> RunAsync(
         IReadOnlyList<string> arguments,
@@ -47,6 +51,7 @@ public sealed class OrkeonProcessRunner
         Action<ProcessOutputLine>? onOutput = null,
         TimeSpan? gracePeriod = null,
         Action<IProcessInputWriter>? onInputReady = null,
+        IReadOnlyDictionary<string, string>? environment = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(arguments);
@@ -62,6 +67,7 @@ public sealed class OrkeonProcessRunner
             WorkingDirectory = workingDirectory,
             GracePeriod = gracePeriod ?? ProcessLaunchRequest.DefaultGracePeriod,
             OnInputReady = onInputReady,
+            Environment = environment ?? new Dictionary<string, string>(StringComparer.Ordinal),
         };
 
         return await _launcher.RunAsync(request, onOutput, cancellationToken).ConfigureAwait(false);
@@ -89,7 +95,7 @@ public sealed class OrkeonProcessRunner
             },
             gracePeriod: null,
             onInputReady: null,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var raw = stdout.ToString();
         if (run.Outcome == RunOutcome.NotStarted)

@@ -36,6 +36,8 @@ About overlay; the guided tour is rewritten to the five v3 stops.
 - **My teams**: adoption promotes straight into `~/Orkeon/teams/<slug>` with the engine's
   real schedule grammar (on demand, `daily@HH:mm`, `hourly`) and writes a
   `studio-team.json` sidecar (name, need, profile, displayed schedule — never a key).
+  The sidecar's profile rides every launch of the team — Run, Test, and history replays —
+  as `ORKEON_Llm__*` environment overrides resolved against the profile store.
   Team folders are listed as cards (launch, duplicate, delete), next to the wizard
   sessions still underway, resumable where they stopped.
 - **Import and Test**: "Importer" recognizes a shared team with the launcher's own
@@ -46,7 +48,7 @@ About overlay; the guided tour is rewritten to the five v3 stops.
 
 The two Terminal.Gui apps (`orkeon-studio-config`, `orkeon-studio-run`) keep their current
 surface. Nothing is deployed, so the old WPF screens are removed without shims; the resx
-pair moves to 392 keys per language, still pinned by the drift and parity tests.
+pair moves to 395 keys per language, still pinned by the drift and parity tests.
 
 ### Added — Studio staffs the `client://studio` seat: agent requests answered on screen
 

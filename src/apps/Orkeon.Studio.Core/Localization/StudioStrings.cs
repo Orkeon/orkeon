@@ -353,6 +353,12 @@ public static class StudioStringKeys
     /// <summary>"Agent" — the card name when the engine named no role.</summary>
     public const string WizardAgentFallback = "Vm_Wizard_AgentFallback";
 
+    /// <summary>"The save failed — the engine refused the promotion: {0}"</summary>
+    public const string WizardPromoteFailed = "Vm_Wizard_PromoteFailed";
+
+    /// <summary>"The import failed — nothing was copied. Check access to the source and try again."</summary>
+    public const string ImportFailed = "Vm_Import_Failed";
+
     /// <summary>"{0} — done in {1} s"</summary>
     public const string WizardActivityDone = "Vm_Wizard_ActivityDone";
 
@@ -663,6 +669,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardBriefShape] = "The result should look like: {0}",
         [StudioStringKeys.WizardBriefConsigne] = "Standing instruction for every agent: {0}",
         [StudioStringKeys.WizardAgentFallback] = "Agent",
+        [StudioStringKeys.WizardPromoteFailed] = "The save failed — the engine refused the promotion: {0}",
+        [StudioStringKeys.ImportFailed] = "The import failed — nothing was copied. Check access to the source and try again.",
         [StudioStringKeys.WizardActivityDone] = "{0} — done in {1} s",
         [StudioStringKeys.WizardActivityFailed] = "{0} — failed",
         [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",

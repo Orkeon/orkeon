@@ -120,6 +120,29 @@ public static partial class TeamCatalog
         };
     }
 
+    /// <summary>
+    /// Name of the model profile a launch target runs on, from the team sidecar next to it —
+    /// the target's own folder, or its parent when the target is a definition file. Null for
+    /// anything that is not an adopted team, which is most launches.
+    /// </summary>
+    public static string? ProfileFor(string targetPath)
+    {
+        if (string.IsNullOrWhiteSpace(targetPath))
+            return null;
+
+        try
+        {
+            var directory = Directory.Exists(targetPath)
+                ? targetPath
+                : Path.GetDirectoryName(Path.GetFullPath(targetPath));
+            return directory is { Length: > 0 } ? TryReadMetadata(directory)?.Profile : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Writes the sidecar; a failed write is silently accepted (the team folder itself is the value).</summary>
     public static void SaveMetadata(string teamDirectory, StudioTeamMetadata metadata)
     {
@@ -175,6 +198,18 @@ public static partial class TeamCatalog
                 destination = Path.Combine(parent, $"{slug}-copy-{i}");
 
             CopyTree(teamDirectory, destination);
+
+            // A verbatim sidecar would show two cards under the same display name — and in
+            // novice mode the slug that tells them apart is hidden. The copy names itself.
+            if (TryReadMetadata(destination) is { } metadata)
+            {
+                var copySlug = Path.GetFileName(destination);
+                SaveMetadata(destination, metadata with
+                {
+                    Name = metadata.Name is { Length: > 0 } name ? $"{name} ({copySlug[(slug.Length + 1)..]})" : copySlug,
+                });
+            }
+
             return destination;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -207,6 +242,16 @@ public static partial class TeamCatalog
 
             if (isDirectory)
             {
+                // Importing an ancestor of the teams root would copy the destination into
+                // itself while it fills — a tree that only ends in an I/O error.
+                var fullSource = Path.GetFullPath(sourcePath);
+                var fullDestination = Path.GetFullPath(destination);
+                if (string.Equals(fullDestination, fullSource, StringComparison.Ordinal)
+                    || fullDestination.StartsWith(fullSource + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                {
+                    return null;
+                }
+
                 CopyTree(sourcePath, destination);
             }
             else
@@ -241,11 +286,16 @@ public static partial class TeamCatalog
                                 || f.EndsWith(".ork.ts", StringComparison.OrdinalIgnoreCase))
                 : File.Exists(sourcePath) ? [sourcePath] : [];
 
+            // Relative to the folder for a directory candidate; a single-file candidate names
+            // itself (a path relative to itself would render as ".").
+            var baseDirectory = Directory.Exists(sourcePath)
+                ? sourcePath
+                : Path.GetDirectoryName(Path.GetFullPath(sourcePath)) ?? sourcePath;
             var offending = new List<string>();
             foreach (var file in files)
             {
                 if (HasInlineSecret(File.ReadAllText(file)))
-                    offending.Add(Path.GetRelativePath(sourcePath, file));
+                    offending.Add(Path.GetRelativePath(baseDirectory, file));
             }
 
             return offending;
@@ -264,7 +314,7 @@ public static partial class TeamCatalog
         {
             var value = match.Groups["value"].Value;
             if (!value.StartsWith("${", StringComparison.Ordinal)
-                && !value.StartsWith("%", StringComparison.Ordinal)
+                && !value.StartsWith('%')
                 && !value.StartsWith("ORKEON_", StringComparison.Ordinal)
                 && !value.StartsWith("env:", StringComparison.OrdinalIgnoreCase))
             {
@@ -275,8 +325,10 @@ public static partial class TeamCatalog
         return false;
     }
 
+    // The value may be quoted or bare — idiomatic YAML writes `api_key: sk-…` without quotes,
+    // and an unquoted paste is exactly as leaked as a quoted one.
     [System.Text.RegularExpressions.GeneratedRegex(
-        """(?i)(api[_-]?key|secret|token)["']?\s*[:=]\s*["'](?<value>[^"'\s]{8,})["']""")]
+        """(?i)(api[_-]?key|secret|token)["']?\s*[:=]\s*["']?(?<value>[^"'\s]{8,})["']?""")]
     private static partial System.Text.RegularExpressions.Regex SecretPattern();
 
     /// <summary>The slug a team name becomes on disk: lowercase ASCII, dashes between words.</summary>
@@ -330,6 +382,13 @@ public static partial class TeamCatalog
         foreach (var file in Directory.EnumerateFiles(source))
             File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
         foreach (var directory in Directory.EnumerateDirectories(source))
+        {
+            // A directory symlink is not followed: a link to an ancestor would recurse
+            // until the path length gives out, and a copy should carry files, not aliases.
+            if (File.GetAttributes(directory).HasFlag(FileAttributes.ReparsePoint))
+                continue;
+
             CopyTree(directory, Path.Combine(destination, Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))));
+        }
     }
 }

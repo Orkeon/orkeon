@@ -5,6 +5,7 @@ using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -63,7 +64,8 @@ public sealed class MainWindowViewModel : ObservableObject
             historyStore,
             settingsStore,
             dispatcher,
-            strings);
+            strings,
+            TeamEnvironment);
 
         Settings = new SettingsScreenViewModel(
             Config,
@@ -83,7 +85,7 @@ public sealed class MainWindowViewModel : ObservableObject
         // The expert trial screen runs over its own launcher, with NO history store: a
         // trial is a rehearsal, not a run to replay from the history.
         Test = new TestTeamViewModel(
-            new LaunchTabViewModel(runner, targetProbe, directories, picker, null, settingsStore, dispatcher, strings),
+            new LaunchTabViewModel(runner, targetProbe, directories, picker, null, settingsStore, dispatcher, strings, TeamEnvironment),
             teamsRoot);
 
         Import = new ImportTeamViewModel(targetProbe, picker, strings, teamsRoot);
@@ -171,12 +173,23 @@ public sealed class MainWindowViewModel : ObservableObject
             persistUiMode,
             ModelProfileFileStore.TryGetDefaultPath(out var profilePath, out _) && profilePath is { Length: > 0 }
                 ? new ModelProfileFileStore(profilePath)
-                : null);
+                : null,
+            teamsRoot);
     }
 
     /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history, reading the model profiles.</summary>
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
         Task.WhenAll(
             Launch.InitializeAsync(cancellationToken),
+            Test.Launcher.InitializeAsync(cancellationToken),
             Settings.Profiles.InitializeAsync(cancellationToken));
+
+    /// <summary>
+    /// The environment an adopted team lays over its launches: the sidecar names a model
+    /// profile, the profile store resolves it to <c>ORKEON_Llm__*</c> overrides. Null for a
+    /// target that is not a team or names no (or an unknown) profile — the launch then runs
+    /// on the settings file, like any other.
+    /// </summary>
+    private IReadOnlyDictionary<string, string>? TeamEnvironment(string targetPath) =>
+        Settings.Profiles.Set.Find(TeamCatalog.ProfileFor(targetPath))?.EnvironmentOverrides();
 }

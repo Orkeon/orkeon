@@ -91,7 +91,9 @@ public sealed class CreateTeamViewModel : ObservableObject
     private readonly string _workspace;
     private readonly string _teamsRoot;
     private ForgeSessionModel _model = new();
-    private StepNotesViewModel? _awaitingNotes;
+    private readonly Queue<StepNotesViewModel> _awaitingNotes = new();
+    private int _runGeneration;
+    private string? _saveError;
     private int _step = 1;
     private int _maxStep = 1;
     private string _need = "";
@@ -517,7 +519,14 @@ public sealed class CreateTeamViewModel : ObservableObject
     public string ScheduleTime
     {
         get => _scheduleTime;
-        set => SetProperty(ref _scheduleTime, value);
+        set
+        {
+            if (SetProperty(ref _scheduleTime, value))
+            {
+                OnPropertyChanged(nameof(CanSaveTeam));
+                SaveTeamCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     /// <summary>Name of the profile the team will run on; the machine default when null.</summary>
@@ -556,7 +565,13 @@ public sealed class CreateTeamViewModel : ObservableObject
         && !IsSaved
         && _model.Slug is not null
         && _teamName.Trim().Length > 0
+        && (_scheduleChoice != 1 || IsValidScheduleTime(_scheduleTime))
         && (_model.Stage is "ready" || string.Equals(_model.FinishedStatus, "ready", StringComparison.Ordinal));
+
+    /// <summary>The engine's daily grammar is <c>daily@HH:mm</c> — a time it would refuse never leaves Studio.</summary>
+    private static bool IsValidScheduleTime(string time) =>
+        TimeSpan.TryParseExact(time.Trim(), @"h\:mm", CultureInfo.InvariantCulture, out _)
+        || TimeSpan.TryParseExact(time.Trim(), @"hh\:mm", CultureInfo.InvariantCulture, out _);
 
     /// <summary>Promotes the session into the teams folder and writes the Studio sidecar.</summary>
     public AsyncRelayCommand SaveTeamCommand { get; }
@@ -663,6 +678,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         };
 
         IsEngineRunning = true;
+        _lastStderr = null;
+        _saveError = null;
         try
         {
             var result = await _client.PromoteAsync(slug, destination, schedule, _workspace, OnEvent, OnRaw)
@@ -681,6 +698,16 @@ public sealed class CreateTeamViewModel : ObservableObject
                     });
                     IsSaved = true;
                     TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));
+                }
+                else
+                {
+                    // No promoted event means no team on disk — a silent button would read
+                    // as success, so the refusal is said out loud with what the engine said.
+                    // Held in a field: the ordinary sync would repaint "ready" over it.
+                    _saveError = string.Format(
+                        CultureInfo.CurrentCulture,
+                        _strings[StudioStringKeys.WizardPromoteFailed],
+                        _lastStderr ?? string.Create(CultureInfo.InvariantCulture, $"exit {result.ExitCode}"));
                 }
             });
         }
@@ -708,21 +735,19 @@ public sealed class CreateTeamViewModel : ObservableObject
         ComposeNotes.Items.Clear();
         TryNotes.Items.Clear();
         AdoptNotes.Items.Clear();
-        TeamName = "";
         ScheduleChoice = 0;
         _adoptProfileName = null;
-        IsSaved = false;
-        Step = 1;
-        MaxStep = 1;
-        StatusMessage = "";
-        AssistantPrompt = null;
         SyncFromModel();
     }
 
     private void ResetProjection()
     {
+        // The generation bump orphans every event the dying child still has in flight:
+        // a straggler posted before the swap must not repopulate the fresh model.
+        _runGeneration++;
         _model = new ForgeSessionModel();
-        _awaitingNotes = null;
+        _awaitingNotes.Clear();
+        _saveError = null;
         RawLog.Clear();
         Activity.Clear();
         Checklist.Clear();
@@ -730,6 +755,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         Decisions.Clear();
         IsSaved = false;
         AssistantPrompt = null;
+        TeamName = "";
+        StatusMessage = "";
+        Step = 1;
+        MaxStep = 1;
     }
 
     private bool AskAssistant(StepNotesViewModel origin, string question)
@@ -738,7 +767,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             return false;
 
         _model.AddUserMessage(question);
-        _awaitingNotes = origin;
+        _awaitingNotes.Enqueue(origin);
         return true;
     }
 
@@ -765,33 +794,49 @@ public sealed class CreateTeamViewModel : ObservableObject
         }
 
         _client.SendDecision(value);
+        // The stream never echoes decision.made back: retire the buttons ourselves so the
+        // arbitration cannot be double-sent while the engine works toward its next stage.
+        _model.AcknowledgeDecision();
+        SyncFromModel();
     }
 
-    private void OnEvent(OrkeonEvent orkeonEvent) => _dispatcher.Post(() =>
+    private void OnEvent(OrkeonEvent orkeonEvent)
     {
-        var beforeMessages = _model.Messages.Count;
-        _model.Feed(orkeonEvent);
-        RawLog.AppendNotice(orkeonEvent.Root.GetRawText());
-
-        // A fresh assistant turn goes to the notes thread that asked, else to the bar.
-        if (_model.Messages.Count > beforeMessages
-            && _model.Messages[^1] is { Role: ForgeChatMessage.Assistant, Text: { } text })
+        var generation = _runGeneration;
+        _dispatcher.Post(() =>
         {
-            if (_awaitingNotes is { } notes && notes.TryDeliverAnswer(text))
-                _awaitingNotes = null;
-            else
+            if (generation != _runGeneration)
+                return;
+
+            var beforeMessages = _model.Messages.Count;
+            _model.Feed(orkeonEvent);
+            RawLog.AppendNotice(orkeonEvent.Root.GetRawText());
+
+            // A fresh assistant turn answers the oldest waiting notes thread, else the bar.
+            if (_model.Messages.Count > beforeMessages
+                && _model.Messages[^1] is { Role: ForgeChatMessage.Assistant, Text: { } text }
+                && !(_awaitingNotes.TryDequeue(out var notes) && notes.TryDeliverAnswer(text)))
+            {
                 AssistantPrompt = text;
-        }
+            }
 
-        SyncFromModel();
-    });
+            SyncFromModel();
+        });
+    }
 
-    private void OnRaw(ProcessOutputLine line) => _dispatcher.Post(() =>
+    private void OnRaw(ProcessOutputLine line)
     {
-        if (line.Channel == ProcessOutputChannel.StandardError && !string.IsNullOrWhiteSpace(line.Text))
-            _lastStderr = line.Text;
-        RawLog.Append(line);
-    });
+        var generation = _runGeneration;
+        _dispatcher.Post(() =>
+        {
+            if (generation != _runGeneration)
+                return;
+
+            if (line.Channel == ProcessOutputChannel.StandardError && !string.IsNullOrWhiteSpace(line.Text))
+                _lastStderr = line.Text;
+            RawLog.Append(line);
+        });
+    }
 
     private void FinishRun(ProcessRunResult result)
     {
@@ -835,7 +880,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (_teamName.Length == 0 && _model.Title is { Length: > 0 } title)
             TeamName = title;
 
-        StatusMessage = _model.FinishedStatus switch
+        StatusMessage = _saveError ?? _model.FinishedStatus switch
         {
             "ready" => _strings[StudioStringKeys.ForgeStatusReady],
             "failed" => _strings[StudioStringKeys.ForgeStatusFailed],

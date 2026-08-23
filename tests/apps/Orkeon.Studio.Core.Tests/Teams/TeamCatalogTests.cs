@@ -82,4 +82,66 @@ public sealed class TeamCatalogTests : IDisposable
         // Only the definition file formats are scanned, and only real values offend.
         Assert.Equal(["crew.yaml"], offending);
     }
+
+    [Fact]
+    public void The_secret_scan_catches_the_idiomatic_unquoted_yaml_paste_too()
+    {
+        var source = Path.Combine(_root, "shared");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "crew.yaml"), "api_key: sk-abcdef1234567890\n");
+        File.WriteAllText(Path.Combine(source, "clean.yaml"), "api_key: ${ORKEON_Llm__ApiKey}\n");
+
+        Assert.Equal(["crew.yaml"], TeamCatalog.FindInlineSecrets(source));
+    }
+
+    [Fact]
+    public void A_single_file_candidate_is_named_by_its_file_not_by_a_dot()
+    {
+        var source = Path.Combine(_root, "revue.yaml");
+        Directory.CreateDirectory(_root);
+        File.WriteAllText(source, """apiKey: "sk-abcdef1234567890" """);
+
+        Assert.Equal(["revue.yaml"], TeamCatalog.FindInlineSecrets(source));
+    }
+
+    [Fact]
+    public void Importing_an_ancestor_of_the_teams_root_is_refused_instead_of_recursing()
+    {
+        var source = Path.Combine(_root, "everything");
+        var teams = Path.Combine(source, "teams");
+        Directory.CreateDirectory(teams);
+        File.WriteAllText(Path.Combine(source, "crew.yaml"), "name: x");
+
+        Assert.Null(TeamCatalog.Import(source, teams));
+        Assert.Empty(Directory.EnumerateDirectories(teams));
+    }
+
+    [Fact]
+    public void A_duplicated_team_renames_its_sidecar_so_the_cards_stay_apart()
+    {
+        var team = Path.Combine(_root, "veille");
+        Directory.CreateDirectory(team);
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", Profile = "Local" });
+
+        var copy = TeamCatalog.Duplicate(team);
+
+        Assert.NotNull(copy);
+        var summary = TeamCatalog.Describe(copy!);
+        Assert.NotEqual("Veille", summary.Name);
+        Assert.StartsWith("Veille (", summary.Name, StringComparison.Ordinal);
+        Assert.Equal("Local", summary.Profile);   // everything else travels unchanged
+    }
+
+    [Fact]
+    public void The_profile_of_a_target_comes_from_the_sidecar_beside_it()
+    {
+        var team = Path.Combine(_root, "veille");
+        Directory.CreateDirectory(team);
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", Profile = "Cloud" });
+        File.WriteAllText(Path.Combine(team, "crew.yaml"), "name: veille");
+
+        Assert.Equal("Cloud", TeamCatalog.ProfileFor(team));                                  // the folder
+        Assert.Equal("Cloud", TeamCatalog.ProfileFor(Path.Combine(team, "crew.yaml")));       // a file inside it
+        Assert.Null(TeamCatalog.ProfileFor(Path.Combine(_root, "not-a-team")));               // anything else
+    }
 }

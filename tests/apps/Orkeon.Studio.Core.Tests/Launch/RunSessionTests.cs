@@ -71,6 +71,28 @@ public class RunSessionTests
     }
 
     [Fact]
+    public async Task Environment_overrides_travel_onto_the_spawned_process()
+    {
+        var fixture = new SessionFixture().WithInstalledCli();
+        var session = fixture.Build();
+
+        await session.RunAsync(
+            Request() with
+            {
+                EnvironmentOverrides = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["ORKEON_Llm__Model"] = "qwen2.5:32b",
+                    ["ORKEON_Llm__BaseUrl"] = "http://localhost:11434/v1",
+                },
+            },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var spawned = Assert.Single(fixture.Processes.Requests);
+        Assert.Equal("qwen2.5:32b", spawned.Environment["ORKEON_Llm__Model"]);
+        Assert.Equal("http://localhost:11434/v1", spawned.Environment["ORKEON_Llm__BaseUrl"]);
+    }
+
+    [Fact]
     public async Task Output_reaches_the_caller_line_by_line_while_the_process_runs()
     {
         var fixture = new SessionFixture().WithInstalledCli();

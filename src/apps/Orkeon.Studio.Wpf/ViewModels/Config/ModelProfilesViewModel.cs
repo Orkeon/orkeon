@@ -121,6 +121,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             if (SetProperty(ref _name, value))
             {
                 OnPropertyChanged(nameof(CanSave));
+                OnPropertyChanged(nameof(NameCollision));
                 SaveCommand.RaiseCanExecuteChanged();
             }
         }
@@ -157,8 +158,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         set => SetProperty(ref _model, value);
     }
 
-    /// <summary>A profile needs a name; everything else may be filled in later.</summary>
-    public bool CanSave => _name.Trim().Length > 0;
+    /// <summary>A profile needs a name of its own; everything else may be filled in later.</summary>
+    public bool CanSave => _name.Trim().Length > 0 && !NameCollision;
+
+    /// <summary>True while the typed name already belongs to another profile.</summary>
+    public bool NameCollision => _owner.IsNameTaken(_name.Trim(), PreviousName);
 
     /// <summary>Outcome line of the last connection probe.</summary>
     public string? ConnectionTestResult
@@ -340,6 +344,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
     }
 
     internal void CancelEdit() => Editor = null;
+
+    /// <summary>Whether <paramref name="name"/> already belongs to a profile other than the one being edited.</summary>
+    internal bool IsNameTaken(string name, string? previousName) =>
+        _set.Profiles.Any(p =>
+            string.Equals(p.Name, name, StringComparison.Ordinal)
+            && !string.Equals(p.Name, previousName, StringComparison.Ordinal));
 
     private void BeginCreate()
     {

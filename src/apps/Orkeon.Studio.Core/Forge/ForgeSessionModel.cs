@@ -155,6 +155,13 @@ public sealed class ForgeSessionModel
         _messages.Add(new ForgeChatMessage(ForgeChatMessage.User, text));
     }
 
+    /// <summary>
+    /// Clears the pending arbitration once the client sent its <c>decision.made</c> — the
+    /// stream never echoes it back, and the buttons must not invite a second click while
+    /// the engine works toward its next stage.
+    /// </summary>
+    public void AcknowledgeDecision() => _decisionOptions.Clear();
+
     /// <summary>Applies one event to the projection. Unknown kinds are ignored here — the client shows them raw at level 3.</summary>
     public void Feed(OrkeonEvent orkeonEvent)
     {
@@ -183,12 +190,23 @@ public sealed class ForgeSessionModel
                     _messages.Add(new ForgeChatMessage(ForgeChatMessage.Assistant, text));
                 break;
 
+            case ForgeEventKinds.QuestionAsked:
+                // A closed question is the assistant taking its turn: it must reach the
+                // conversation surface, not just the raw log, while the engine waits on stdin.
+                if (orkeonEvent.GetString("text") is { } question)
+                    _messages.Add(new ForgeChatMessage(ForgeChatMessage.Assistant, question));
+                break;
+
             case ForgeEventKinds.BriefReady:
                 ReadBrief(orkeonEvent);
                 break;
 
             case ForgeEventKinds.BlueprintReady:
                 ReadBlueprint(orkeonEvent);
+                // A blueprint proves the proposal was reached — the artifact carries the
+                // milestone when it seeds a resume, where no stage.entered ever replays.
+                if (Milestone < ForgeMilestone.Propose)
+                    Milestone = ForgeMilestone.Propose;
                 break;
 
             case ForgeEventKinds.FileWritten:
@@ -227,6 +245,8 @@ public sealed class ForgeSessionModel
 
             case ForgeEventKinds.VerdictReady:
                 ReadVerdict(orkeonEvent);
+                if (Milestone < ForgeMilestone.Try)
+                    Milestone = ForgeMilestone.Try;
                 break;
 
             case ForgeEventKinds.DecisionNeeded:

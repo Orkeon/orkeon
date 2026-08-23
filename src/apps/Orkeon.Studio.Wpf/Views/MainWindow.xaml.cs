@@ -37,6 +37,9 @@ public partial class MainWindow : Window
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;
+        // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
+        // by hand, shows up without waiting for an adopt or an app restart.
+        NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Test.RefreshTeams(); };
         shell.Mode.PropertyChanged += (_, e) =>
         {
             // The Tester entry is expert-only: a switch back to novice while it shows would
