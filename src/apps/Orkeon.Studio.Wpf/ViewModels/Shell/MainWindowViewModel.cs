@@ -7,6 +7,7 @@ using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
+using Orkeon.Studio.Wpf.ViewModels.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 
@@ -36,7 +37,8 @@ public sealed class MainWindowViewModel : ObservableObject
         string? forgeWorkspace = null,
         string? initialUiMode = null,
         Action<string>? persistUiMode = null,
-        IModelProfileStore? profileStore = null)
+        IModelProfileStore? profileStore = null,
+        string? teamsRoot = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
@@ -68,16 +70,21 @@ public sealed class MainWindowViewModel : ObservableObject
             new ModelProfilesViewModel(profileStore, Config.Llm, strings),
             Mode);
 
-        Forge = new Wpf.ViewModels.Forge.ForgeTabViewModel(
+        CreateTeam = new CreateTeamViewModel(
+            Settings.Profiles,
             forgeClient,
-            picker,
             dispatcher,
             strings,
-            forgeWorkspace);
+            forgeWorkspace,
+            teamsRoot);
 
-        // "Relancer" hands the adopted folder to the ordinary launcher — the promoted
-        // crew is not proprietary to the Atelier (SPEC §11).
-        Forge.RelaunchRequested += (_, e) => Launch.Target.SelectedPath = e.Path;
+        Teams = new TeamsViewModel(teamsRoot, forgeWorkspace, strings: strings);
+
+        // An adopted team is an ordinary folder: "Lancer" hands it to the launcher, the
+        // adoption refreshes the list, a stopped session resumes in the wizard.
+        Teams.LaunchRequested += (_, e) => Launch.Target.SelectedPath = e.Path;
+        Teams.ResumeRequested += (_, e) => _ = CreateTeam.ResumeAsync(e.Session);
+        CreateTeam.TeamAdopted += (_, _) => Teams.Refresh();
     }
 
     /// <summary>The appsettings editor (spec §4).</summary>
@@ -89,8 +96,11 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>The crew launcher (spec §5).</summary>
     public LaunchTabViewModel Launch { get; }
 
-    /// <summary>The Atelier — the "Résoudre" screen (SPEC-ORKEON-FORGE §12).</summary>
-    public Wpf.ViewModels.Forge.ForgeTabViewModel Forge { get; }
+    /// <summary>The "Créer une équipe" wizard, over the forge engine (design v3).</summary>
+    public CreateTeamViewModel CreateTeam { get; }
+
+    /// <summary>"Mes équipes" — the adopted team folders and the sessions underway.</summary>
+    public TeamsViewModel Teams { get; }
 
     /// <summary>The window-wide Novice/Expert switch (design v3).</summary>
     public UiModeViewModel Mode { get; }
@@ -119,7 +129,8 @@ public sealed class MainWindowViewModel : ObservableObject
         IStudioStrings? strings = null,
         string? initialUiMode = null,
         Action<string>? persistUiMode = null,
-        IModelProfileStore? profileStore = null)
+        IModelProfileStore? profileStore = null,
+        string? teamsRoot = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);

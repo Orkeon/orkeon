@@ -1,0 +1,239 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Orkeon.Compliance.Vfs;
+
+namespace Orkeon.Studio.Core.Teams;
+
+/// <summary>
+/// Studio's sidecar metadata for one adopted team — what the crew definition itself cannot
+/// say: the human description, the model profile the team runs on, and the displayed
+/// schedule. Written at adoption next to the promoted files; a team folder without it (one
+/// imported or built by hand) is still a team, just a quieter card.
+/// </summary>
+public sealed record StudioTeamMetadata
+{
+    /// <summary>File name of the sidecar inside the team folder.</summary>
+    public const string FileName = "studio-team.json";
+
+    /// <summary>Display name; the folder name when absent.</summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    /// <summary>The need, in the user's words.</summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    /// <summary>Name of the model profile this team runs on.</summary>
+    [JsonPropertyName("profile")]
+    public string? Profile { get; init; }
+
+    /// <summary>The engine schedule (<c>daily@HH:mm</c> / <c>hourly</c>), or null for on demand.</summary>
+    [JsonPropertyName("schedule")]
+    public string? Schedule { get; init; }
+}
+
+/// <summary>One team folder, as "Mes équipes" lists it.</summary>
+public sealed record TeamSummary
+{
+    /// <summary>Display name.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>Folder name — the identity on disk.</summary>
+    public required string Slug { get; init; }
+
+    /// <summary>Absolute path of the team folder — what <c>orkeon run</c> receives.</summary>
+    public required string Path { get; init; }
+
+    /// <summary>The sidecar, when the folder has one.</summary>
+    public StudioTeamMetadata? Metadata { get; init; }
+
+    /// <summary>True when the folder carries Studio's sidecar (adopted through the wizard).</summary>
+    public bool HasMetadata => Metadata is not null;
+
+    /// <summary>The engine schedule, or null for on demand.</summary>
+    public string? Schedule => Metadata?.Schedule;
+
+    /// <summary>Name of the team's model profile, when one was chosen.</summary>
+    public string? Profile => Metadata?.Profile;
+
+    /// <summary>The need, in the user's words, when recorded.</summary>
+    public string? Description => Metadata?.Description;
+}
+
+/// <summary>
+/// The teams directory: every adopted team is an ordinary folder under one root —
+/// copiable, shareable, deletable, runnable with <c>orkeon run &lt;folder&gt;</c> alone.
+/// All I/O is tolerant: an unreadable folder or sidecar degrades to a plain entry or to
+/// its absence, never to a crash.
+/// </summary>
+[SuppressVfsCompliance(
+    "EXCEPTION-BOOTSTRAP: Studio is a host application; the teams directory is user-owned " +
+    "storage on the physical disk, addressed before any VFS mount exists.")]
+public static class TeamCatalog
+{
+    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+
+    /// <summary>
+    /// The default root: <c>~/Orkeon/teams</c> — the user-profile home the design names,
+    /// not the config directory: teams are documents, not preferences.
+    /// </summary>
+    public static string DefaultRoot() =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.Create),
+            "Orkeon", "teams");
+
+    /// <summary>Lists the team folders under <paramref name="root"/>, sidecars read when present.</summary>
+    public static IReadOnlyList<TeamSummary> List(string root)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(root);
+
+        try
+        {
+            if (!Directory.Exists(root))
+                return [];
+
+            return Directory.EnumerateDirectories(root)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .Select(Describe)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Reads one team folder into its summary.</summary>
+    public static TeamSummary Describe(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var slug = Path.GetFileName(Path.TrimEndingDirectorySeparator(teamDirectory));
+        var metadata = TryReadMetadata(teamDirectory);
+
+        return new TeamSummary
+        {
+            Name = metadata?.Name is { Length: > 0 } name ? name : slug,
+            Slug = slug,
+            Path = teamDirectory,
+            Metadata = metadata,
+        };
+    }
+
+    /// <summary>Writes the sidecar; a failed write is silently accepted (the team folder itself is the value).</summary>
+    public static void SaveMetadata(string teamDirectory, StudioTeamMetadata metadata)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentNullException.ThrowIfNull(metadata);
+
+        try
+        {
+            Directory.CreateDirectory(teamDirectory);
+            File.WriteAllText(
+                Path.Combine(teamDirectory, StudioTeamMetadata.FileName),
+                JsonSerializer.Serialize(metadata, Options));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The promoted folder is the deliverable; losing the sidecar loses only comfort.
+        }
+    }
+
+    /// <summary>Deletes a team folder, recursively. Returns false when the disk refused.</summary>
+    public static bool Delete(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        try
+        {
+            Directory.Delete(teamDirectory, recursive: true);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Copies a team folder next to itself under a unique "-copy" slug. Returns the new
+    /// path, or null when the disk refused.
+    /// </summary>
+    public static string? Duplicate(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        try
+        {
+            var parent = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(teamDirectory));
+            var slug = Path.GetFileName(Path.TrimEndingDirectorySeparator(teamDirectory));
+            if (parent is null || slug.Length == 0)
+                return null;
+
+            var destination = Path.Combine(parent, slug + "-copy");
+            for (var i = 2; Directory.Exists(destination); i++)
+                destination = Path.Combine(parent, $"{slug}-copy-{i}");
+
+            CopyTree(teamDirectory, destination);
+            return destination;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The slug a team name becomes on disk: lowercase ASCII, dashes between words.</summary>
+    public static string Slugify(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        var normalized = name.Normalize(System.Text.NormalizationForm.FormD);
+        var builder = new System.Text.StringBuilder(normalized.Length);
+        var lastWasDash = true;
+        foreach (var ch in normalized)
+        {
+            var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+            if (category == System.Globalization.UnicodeCategory.NonSpacingMark)
+                continue;
+
+            if (char.IsAsciiLetterOrDigit(ch))
+            {
+                builder.Append(char.ToLowerInvariant(ch));
+                lastWasDash = false;
+            }
+            else if (!lastWasDash)
+            {
+                builder.Append('-');
+                lastWasDash = true;
+            }
+        }
+
+        var slug = builder.ToString().Trim('-');
+        return slug.Length > 0 ? slug : "equipe";
+    }
+
+    private static StudioTeamMetadata? TryReadMetadata(string teamDirectory)
+    {
+        try
+        {
+            var path = Path.Combine(teamDirectory, StudioTeamMetadata.FileName);
+            return File.Exists(path)
+                ? JsonSerializer.Deserialize<StudioTeamMetadata>(File.ReadAllText(path))
+                : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static void CopyTree(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source))
+            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
+        foreach (var directory in Directory.EnumerateDirectories(source))
+            CopyTree(directory, Path.Combine(destination, Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))));
+    }
+}

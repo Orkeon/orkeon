@@ -21,6 +21,14 @@ public sealed record ForgeStartRequest
 
     /// <summary>Arbitrate without a human — Studio keeps the human, so false by default.</summary>
     public bool Auto { get; init; }
+
+    /// <summary>
+    /// Environment variables added to the engine child — how Studio's assistant profile
+    /// reaches the engine (<c>ORKEON_Llm__Model</c>/<c>__BaseUrl</c>): the engine reads the
+    /// same settings file as every run, and these overrides sit on top, never inside it.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> EnvironmentOverrides { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 /// <summary>
@@ -145,6 +153,7 @@ public sealed class ForgeClient
                 FileName = location.Path!,
                 Arguments = ForgeArgumentsBuilder.Build(request),
                 WorkingDirectory = request.WorkingDirectory,
+                Environment = request.EnvironmentOverrides,
                 OnInputReady = writer => _input = writer,
             };
 

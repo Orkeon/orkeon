@@ -303,6 +303,97 @@ public static class StudioStringKeys
     public const string ProfileCopySuffix = "Vm_Profiles_CopySuffix";
 
 
+    // ---- Creation wizard (design v3) ----------------------------------------
+
+    /// <summary>"Once"</summary>
+    public const string WizardFreqOnce = "Vm_Wizard_Freq_Once";
+
+    /// <summary>"Every day"</summary>
+    public const string WizardFreqDaily = "Vm_Wizard_Freq_Daily";
+
+    /// <summary>"Every week"</summary>
+    public const string WizardFreqWeekly = "Vm_Wizard_Freq_Weekly";
+
+    /// <summary>"A folder on this PC"</summary>
+    public const string WizardSourceFolder = "Vm_Wizard_Source_Folder";
+
+    /// <summary>"A website"</summary>
+    public const string WizardSourceWeb = "Vm_Wizard_Source_Web";
+
+    /// <summary>"I don't know yet"</summary>
+    public const string WizardSourceUnknown = "Vm_Wizard_Source_Unknown";
+
+    /// <summary>"A document"</summary>
+    public const string WizardOutputDocument = "Vm_Wizard_Output_Document";
+
+    /// <summary>"A table"</summary>
+    public const string WizardOutputTable = "Vm_Wizard_Output_Table";
+
+    /// <summary>"A short message"</summary>
+    public const string WizardOutputMessage = "Vm_Wizard_Output_Message";
+
+    /// <summary>"Something else"</summary>
+    public const string WizardOutputOther = "Vm_Wizard_Output_Other";
+
+    /// <summary>"How often: {0}."</summary>
+    public const string WizardBriefFrequency = "Vm_Wizard_Brief_Frequency";
+
+    /// <summary>"Where the information lives: {0}."</summary>
+    public const string WizardBriefSource = "Vm_Wizard_Brief_Source";
+
+    /// <summary>"Expected result: {0}."</summary>
+    public const string WizardBriefOutput = "Vm_Wizard_Brief_Output";
+
+    /// <summary>"The result should look like: {0}"</summary>
+    public const string WizardBriefShape = "Vm_Wizard_Brief_Shape";
+
+    /// <summary>"Standing instruction for every agent: {0}"</summary>
+    public const string WizardBriefConsigne = "Vm_Wizard_Brief_Consigne";
+
+    /// <summary>"Agent" — the card name when the engine named no role.</summary>
+    public const string WizardAgentFallback = "Vm_Wizard_AgentFallback";
+
+    /// <summary>"{0} — done in {1} s"</summary>
+    public const string WizardActivityDone = "Vm_Wizard_ActivityDone";
+
+    /// <summary>"{0} — failed"</summary>
+    public const string WizardActivityFailed = "Vm_Wizard_ActivityFailed";
+
+    /// <summary>"Describe the work to continue."</summary>
+    public const string WizardHintDescribe = "Vm_Wizard_Hint_Describe";
+
+    /// <summary>"The format is free: describe the expected result."</summary>
+    public const string WizardHintOutcome = "Vm_Wizard_Hint_Outcome";
+
+    /// <summary>"Answer the three precisions."</summary>
+    public const string WizardHintAnswers = "Vm_Wizard_Hint_Answers";
+
+    /// <summary>"Everything is there — I can compose the team."</summary>
+    public const string WizardHintReady = "Vm_Wizard_Hint_Ready";
+
+
+    // ---- Mes équipes (design v3) --------------------------------------------
+
+    /// <summary>"Looks good to me"</summary>
+    public const string WizardDecisionAccept = "Vm_Wizard_Decision_Accept";
+
+    /// <summary>"Fix and retry"</summary>
+    public const string WizardDecisionRefine = "Vm_Wizard_Decision_Refine";
+
+    /// <summary>"Abandon"</summary>
+    public const string WizardDecisionAbort = "Vm_Wizard_Decision_Abort";
+
+
+    /// <summary>"On demand"</summary>
+    public const string TeamsOnDemand = "Vm_Teams_OnDemand";
+
+    /// <summary>"Every day at {0}"</summary>
+    public const string TeamsDaily = "Vm_Teams_Daily";
+
+    /// <summary>"Every hour"</summary>
+    public const string TeamsHourly = "Vm_Teams_Hourly";
+
+
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
     /// <summary>"No target selected."</summary>
@@ -555,6 +646,37 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         [StudioStringKeys.ProfileNewName] = "New setting",
         [StudioStringKeys.ProfileCopySuffix] = "copy",
+
+        [StudioStringKeys.WizardFreqOnce] = "Once",
+        [StudioStringKeys.WizardFreqDaily] = "Every day",
+        [StudioStringKeys.WizardFreqWeekly] = "Every week",
+        [StudioStringKeys.WizardSourceFolder] = "A folder on this PC",
+        [StudioStringKeys.WizardSourceWeb] = "A website",
+        [StudioStringKeys.WizardSourceUnknown] = "I don't know yet",
+        [StudioStringKeys.WizardOutputDocument] = "A document",
+        [StudioStringKeys.WizardOutputTable] = "A table",
+        [StudioStringKeys.WizardOutputMessage] = "A short message",
+        [StudioStringKeys.WizardOutputOther] = "Something else",
+        [StudioStringKeys.WizardBriefFrequency] = "How often: {0}.",
+        [StudioStringKeys.WizardBriefSource] = "Where the information lives: {0}.",
+        [StudioStringKeys.WizardBriefOutput] = "Expected result: {0}.",
+        [StudioStringKeys.WizardBriefShape] = "The result should look like: {0}",
+        [StudioStringKeys.WizardBriefConsigne] = "Standing instruction for every agent: {0}",
+        [StudioStringKeys.WizardAgentFallback] = "Agent",
+        [StudioStringKeys.WizardActivityDone] = "{0} — done in {1} s",
+        [StudioStringKeys.WizardActivityFailed] = "{0} — failed",
+        [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",
+        [StudioStringKeys.WizardHintOutcome] = "The format is free: describe the expected result.",
+        [StudioStringKeys.WizardHintAnswers] = "Answer the three precisions.",
+        [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
+
+        [StudioStringKeys.WizardDecisionAccept] = "Looks good to me",
+        [StudioStringKeys.WizardDecisionRefine] = "Fix and retry",
+        [StudioStringKeys.WizardDecisionAbort] = "Abandon",
+
+        [StudioStringKeys.TeamsOnDemand] = "On demand",
+        [StudioStringKeys.TeamsDaily] = "Every day at {0}",
+        [StudioStringKeys.TeamsHourly] = "Every hour",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",

@@ -244,40 +244,7 @@
   <data name="Vm_Dialog_FilterJson" xml:space="preserve"><value>JSON files|*.json|All files|*.*</value></data>
   <data name="Vm_Dialog_FilterCrew" xml:space="preserve"><value>Crew definitions|*.yaml;*.yml;*.ts;*.js|All files|*.*</value></data>
   <data name="Vm_Dialog_FilterAll" xml:space="preserve"><value>All files|*.*</value></data>
-    <data name="Nav_ForgeNew" xml:space="preserve"><value>New problem</value></data>
-  <data name="Nav_ForgeSolutions" xml:space="preserve"><value>My solutions</value></data>
-  <data name="Forge_Start_Title" xml:space="preserve"><value>What are we solving today?</value></data>
-  <data name="Forge_Start_Hint" xml:space="preserve"><value>Describe your problem, as you would to a colleague…</value></data>
-  <data name="Forge_Start_Examples" xml:space="preserve"><value>Or start from an example:</value></data>
-  <data name="Forge_Start_Action" xml:space="preserve"><value>Start</value></data>
-  <data name="Forge_Resume" xml:space="preserve"><value>Pick it up</value></data>
-  <data name="Forge_Relaunch" xml:space="preserve"><value>Run it again</value></data>
-  <data name="Forge_Milestone_Describe" xml:space="preserve"><value>Describe</value></data>
-  <data name="Forge_Milestone_Propose" xml:space="preserve"><value>Propose</value></data>
-  <data name="Forge_Milestone_Try" xml:space="preserve"><value>Try</value></data>
-  <data name="Forge_Milestone_Adopt" xml:space="preserve"><value>Adopt</value></data>
-  <data name="Forge_Card_Success_Title" xml:space="preserve"><value>What success looks like</value></data>
-  <data name="Forge_Card_Proposal_Title" xml:space="preserve"><value>Here is how I suggest we do it</value></data>
-  <data name="Forge_Card_Proposal_Why" xml:space="preserve"><value>Why this shape:</value></data>
-  <data name="Forge_Card_Proposal_Needs" xml:space="preserve"><value>What it may touch:</value></data>
-  <data name="Forge_Card_Result_Against" xml:space="preserve"><value>Compared to what you wanted:</value></data>
-  <data name="Forge_Act_Accept" xml:space="preserve"><value>Looks good</value></data>
-  <data name="Forge_Act_Refine" xml:space="preserve"><value>Fix and retry</value></data>
-  <data name="Forge_Act_Abort" xml:space="preserve"><value>Stop here</value></data>
-  <data name="Forge_Card_Adopt_Title" xml:space="preserve"><value>Your solution is ready. What now?</value></data>
-  <data name="Forge_Act_Store" xml:space="preserve"><value>Store it in a folder…</value></data>
-  <data name="Forge_Act_Schedule" xml:space="preserve"><value>Schedule it</value></data>
-  <data name="Forge_Schedule_At" xml:space="preserve"><value>every day at</value></data>
-  <data name="Forge_Adopt_Stored" xml:space="preserve"><value>Stored in</value></data>
-  <data name="Forge_Adopt_Install" xml:space="preserve"><value>To install the schedule (shown, never run for you):</value></data>
-  <data name="Forge_Input_Hint" xml:space="preserve"><value>Reply…</value></data>
-  <data name="Forge_Act_Send" xml:space="preserve"><value>Send</value></data>
-  <data name="Forge_Act_Stop" xml:space="preserve"><value>Stop</value></data>
-  <data name="Forge_Details" xml:space="preserve"><value>Details</value></data>
-  <data name="Forge_Card_Error_Title" xml:space="preserve"><value>Something needs your attention</value></data>
-  <data name="Forge_Solutions_Title" xml:space="preserve"><value>My solutions</value></data>
-  <data name="Forge_Solutions_Empty" xml:space="preserve"><value>Nothing yet — describe your first problem.</value></data>
-  <data name="Vm_Forge_Example1" xml:space="preserve"><value>Summarize a site&#x27;s news every morning</value></data>
+                                                                      <data name="Vm_Forge_Example1" xml:space="preserve"><value>Summarize a site&#x27;s news every morning</value></data>
   <data name="Vm_Forge_Example2" xml:space="preserve"><value>Produce a weekly summary from my files</value></data>
   <data name="Vm_Forge_Example3" xml:space="preserve"><value>Compare offers and flag the best one</value></data>
   <data name="Vm_Forge_Example4" xml:space="preserve"><value>Turn a folder of documents into a report</value></data>
@@ -337,4 +304,105 @@
 <data name="Btn_Cancel" xml:space="preserve"><value>Cancel</value></data>
 <data name="Vm_Profiles_NewName" xml:space="preserve"><value>New setting</value></data>
 <data name="Vm_Profiles_CopySuffix" xml:space="preserve"><value>copy</value></data>
+<data name="Nav_Create" xml:space="preserve"><value>Create a team</value></data>
+<data name="Nav_Teams" xml:space="preserve"><value>My teams</value></data>
+<data name="Scr_Create_Title" xml:space="preserve"><value>Create an agent team</value></data>
+<data name="Scr_Create_SubNovice" xml:space="preserve"><value>Four steps: describe the need, review the composition, try it, adopt it. Nothing is written before the last one.</value></data>
+<data name="Scr_Create_SubExpert" xml:space="preserve"><value>Composition assistant over the forge engine. The rendered definition lives in the session folder; the trial runs sandboxed.</value></data>
+<data name="Scr_Teams_Title" xml:space="preserve"><value>My agent teams</value></data>
+<data name="Scr_Teams_Sub" xml:space="preserve"><value>Each team is an autonomous folder on this machine — copiable, shareable, deletable.</value></data>
+<data name="Wiz_Restart" xml:space="preserve"><value>Start over</value></data>
+<data name="Wiz_Stop" xml:space="preserve"><value>Stop</value></data>
+<data name="Wiz_AssistantBy" xml:space="preserve"><value>Assistant powered by</value></data>
+<data name="Wiz_AssistantMissing" xml:space="preserve"><value>Assistant not configured — pick its model below.</value></data>
+<data name="Wiz_Gate_Title" xml:space="preserve"><value>The assistant needs an AI model</value></data>
+<data name="Wiz_Gate_Body" xml:space="preserve"><value>It is the one that will compose your team and write the trial verdicts. Pick a setting — creation opens right after, and you can change it any time in Settings.</value></data>
+<data name="Wiz_ManageSettings" xml:space="preserve"><value>Manage settings</value></data>
+<data name="Wiz_Step1" xml:space="preserve"><value>Describe</value></data>
+<data name="Wiz_Step2" xml:space="preserve"><value>Compose</value></data>
+<data name="Wiz_Step3" xml:space="preserve"><value>Try</value></data>
+<data name="Wiz_Step4" xml:space="preserve"><value>Adopt</value></data>
+<data name="Wiz_Reply" xml:space="preserve"><value>Reply</value></data>
+<data name="Wiz_Need_Title" xml:space="preserve"><value>What work do you want to hand to this team?</value></data>
+<data name="Wiz_Need_Sub" xml:space="preserve"><value>Write it the way you would explain it to a colleague. No technical words needed.</value></data>
+<data name="Wiz_Examples" xml:space="preserve"><value>OR START FROM AN EXAMPLE</value></data>
+<data name="Wiz_Precisions_Title" xml:space="preserve"><value>Three precisions</value></data>
+<data name="Wiz_Precisions_Sub" xml:space="preserve"><value>They shape the team's composition. You can change everything later.</value></data>
+<data name="Wiz_Q_Freq" xml:space="preserve"><value>How often must this work be done?</value></data>
+<data name="Wiz_Q_Source" xml:space="preserve"><value>Where is the information to process?</value></data>
+<data name="Wiz_Q_Output" xml:space="preserve"><value>What must the team produce?</value></data>
+<data name="Wiz_Outcome_Label" xml:space="preserve"><value>Describe that result</value></data>
+<data name="Wiz_Outcome_Hint" xml:space="preserve"><value>Expected sections, length, tone, what must not appear. Optional — but it is what changes the result the most.</value></data>
+<data name="Wiz_Compose" xml:space="preserve"><value>Compose the team</value></data>
+<data name="Wiz_Proposal_Title" xml:space="preserve"><value>Here is the team I propose</value></data>
+<data name="Wiz_Tools_Label" xml:space="preserve"><value>Can:</value></data>
+<data name="Wiz_Validation_Title" xml:space="preserve"><value>Validation findings</value></data>
+<data name="Wiz_Files_Title" xml:space="preserve"><value>Generated definition</value></data>
+<data name="Wiz_Try_Title" xml:space="preserve"><value>Trying the team on a real case</value></data>
+<data name="Wiz_Try_Sub" xml:space="preserve"><value>A trial changes nothing definitive: the result is written into a session folder you can throw away.</value></data>
+<data name="Wiz_Verdict_Title" xml:space="preserve"><value>The verdict</value></data>
+<data name="Wiz_Checklist_Label" xml:space="preserve"><value>Against what you asked for</value></data>
+<data name="Wiz_Adopt_Title" xml:space="preserve"><value>Your team is ready. How do you want to use it?</value></data>
+<data name="Wiz_TeamName" xml:space="preserve"><value>Team name</value></data>
+<data name="Wiz_AdoptProfile" xml:space="preserve"><value>Model setting</value></data>
+<data name="Wiz_Schedule_Label" xml:space="preserve"><value>When should it work?</value></data>
+<data name="Wiz_Sched_OnDemand" xml:space="preserve"><value>On demand</value></data>
+<data name="Wiz_Sched_OnDemand_Hint" xml:space="preserve"><value>I launch it myself</value></data>
+<data name="Wiz_Sched_Daily" xml:space="preserve"><value>Every day</value></data>
+<data name="Wiz_Sched_Daily_Hint" xml:space="preserve"><value>automatically, at a fixed time</value></data>
+<data name="Wiz_Sched_Hourly" xml:space="preserve"><value>Every hour</value></data>
+<data name="Wiz_Sched_Hourly_Hint" xml:space="preserve"><value>automatically, around the clock</value></data>
+<data name="Wiz_Sched_At" xml:space="preserve"><value>at</value></data>
+<data name="Wiz_Sched_LocalTime" xml:space="preserve"><value>local time of this machine</value></data>
+<data name="Wiz_Save" xml:space="preserve"><value>Save to my teams</value></data>
+<data name="Wiz_Saved_Title" xml:space="preserve"><value>Team saved</value></data>
+<data name="Wiz_Saved_Path" xml:space="preserve"><value>Stored in</value></data>
+<data name="Wiz_Saved_Install" xml:space="preserve"><value>Scheduling command (displayed, never executed for you)</value></data>
+<data name="Wiz_CreateAnother" xml:space="preserve"><value>Create another team</value></data>
+<data name="Wiz_Notes_Compose" xml:space="preserve"><value>Composition instruction</value></data>
+<data name="Wiz_Notes_Try" xml:space="preserve"><value>Trial instruction</value></data>
+<data name="Wiz_Notes_Adopt" xml:space="preserve"><value>Adoption instruction</value></data>
+<data name="Wiz_Tech_Title" xml:space="preserve"><value>Technical journal</value></data>
+<data name="Wiz_Tech_Toggle" xml:space="preserve"><value>Show / hide</value></data>
+<data name="Notes_Sub" xml:space="preserve"><value>An instruction applies to every agent, travels with the team, and becomes a point to check at trial time.</value></data>
+<data name="Notes_Taken" xml:space="preserve"><value>Instruction taken as written.</value></data>
+<data name="Notes_Ask_Toggle" xml:space="preserve"><value>Ask a question</value></data>
+<data name="Notes_Ask_Title" xml:space="preserve"><value>Ask the assistant</value></data>
+<data name="Notes_Ask_Hint" xml:space="preserve"><value>— changes nothing without your approval</value></data>
+<data name="Notes_Clear" xml:space="preserve"><value>Clear</value></data>
+<data name="Teams_Create" xml:space="preserve"><value>Create a team</value></data>
+<data name="Teams_Launch" xml:space="preserve"><value>Launch</value></data>
+<data name="Teams_Duplicate" xml:space="preserve"><value>Duplicate</value></data>
+<data name="Teams_Delete" xml:space="preserve"><value>Delete</value></data>
+<data name="Teams_Empty" xml:space="preserve"><value>No team yet — the wizard builds the first one with you.</value></data>
+<data name="Teams_InProgress" xml:space="preserve"><value>SESSIONS UNDERWAY</value></data>
+<data name="Teams_Resume" xml:space="preserve"><value>Resume</value></data>
+<data name="Vm_Wizard_Freq_Once" xml:space="preserve"><value>Once</value></data>
+<data name="Vm_Wizard_Freq_Daily" xml:space="preserve"><value>Every day</value></data>
+<data name="Vm_Wizard_Freq_Weekly" xml:space="preserve"><value>Every week</value></data>
+<data name="Vm_Wizard_Source_Folder" xml:space="preserve"><value>A folder on this PC</value></data>
+<data name="Vm_Wizard_Source_Web" xml:space="preserve"><value>A website</value></data>
+<data name="Vm_Wizard_Source_Unknown" xml:space="preserve"><value>I don't know yet</value></data>
+<data name="Vm_Wizard_Output_Document" xml:space="preserve"><value>A document</value></data>
+<data name="Vm_Wizard_Output_Table" xml:space="preserve"><value>A table</value></data>
+<data name="Vm_Wizard_Output_Message" xml:space="preserve"><value>A short message</value></data>
+<data name="Vm_Wizard_Output_Other" xml:space="preserve"><value>Something else</value></data>
+<data name="Vm_Wizard_Brief_Frequency" xml:space="preserve"><value>How often: {0}.</value></data>
+<data name="Vm_Wizard_Brief_Source" xml:space="preserve"><value>Where the information lives: {0}.</value></data>
+<data name="Vm_Wizard_Brief_Output" xml:space="preserve"><value>Expected result: {0}.</value></data>
+<data name="Vm_Wizard_Brief_Shape" xml:space="preserve"><value>The result should look like: {0}</value></data>
+<data name="Vm_Wizard_Brief_Consigne" xml:space="preserve"><value>Standing instruction for every agent: {0}</value></data>
+<data name="Vm_Wizard_AgentFallback" xml:space="preserve"><value>Agent</value></data>
+<data name="Vm_Wizard_ActivityDone" xml:space="preserve"><value>{0} — done in {1} s</value></data>
+<data name="Vm_Wizard_ActivityFailed" xml:space="preserve"><value>{0} — failed</value></data>
+<data name="Vm_Wizard_Hint_Describe" xml:space="preserve"><value>Describe the work to continue.</value></data>
+<data name="Vm_Wizard_Hint_Outcome" xml:space="preserve"><value>The format is free: describe the expected result.</value></data>
+<data name="Vm_Wizard_Hint_Answers" xml:space="preserve"><value>Answer the three precisions.</value></data>
+<data name="Vm_Wizard_Hint_Ready" xml:space="preserve"><value>Everything is there — I can compose the team.</value></data>
+<data name="Vm_Wizard_Decision_Accept" xml:space="preserve"><value>Looks good to me</value></data>
+<data name="Vm_Wizard_Decision_Refine" xml:space="preserve"><value>Fix and retry</value></data>
+<data name="Vm_Wizard_Decision_Abort" xml:space="preserve"><value>Abandon</value></data>
+<data name="Vm_Teams_OnDemand" xml:space="preserve"><value>On demand</value></data>
+<data name="Vm_Teams_Daily" xml:space="preserve"><value>Every day at {0}</value></data>
+<data name="Vm_Teams_Hourly" xml:space="preserve"><value>Every hour</value></data>
 </root>

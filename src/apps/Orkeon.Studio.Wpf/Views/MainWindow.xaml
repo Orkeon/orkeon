@@ -235,16 +235,19 @@
             <StackPanel x:Name="NavGroupTeams">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,0,0,7"
                        Text="{Binding [Grp_Teams], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton x:Name="NavForgeNew" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True">
+            <RadioButton x:Name="NavCreate" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="wand-2" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_ForgeNew], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
-            <RadioButton x:Name="NavForgeSolutions" GroupName="Nav" Style="{StaticResource NavItem}">
+            <RadioButton x:Name="NavTeams" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="compass" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_ForgeSolutions], Source={x:Static services:I18n.Instance}}"/>
+                <controls:LucideIcon Kind="brain-circuit" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Teams], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{DynamicResource InkFaintBrush}"
+                           Margin="8,0,0,0" VerticalAlignment="Center"
+                           Text="{Binding DataContext.Teams.Count, RelativeSource={RelativeSource AncestorType=Window}}"/>
               </StackPanel>
             </RadioButton>
             </StackPanel>
@@ -290,12 +293,13 @@
 
       <!-- CONTENT: one panel per nav item, visibility driven by the RadioButtons -->
       <Grid Grid.Column="1">
-        <Grid Visibility="{Binding IsChecked, ElementName=NavForgeNew, Converter={StaticResource BooleanToVisibility}}">
-          <views:ForgeView x:Name="ForgePanel" DataContext="{Binding Forge}" Margin="30,24,30,20"/>
-        </Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavForgeSolutions, Converter={StaticResource BooleanToVisibility}}">
-          <views:ForgeSolutionsView MaxWidth="880" DataContext="{Binding Forge}"/>
+                      Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
+          <views:CreateTeamView x:Name="CreatePanel" MaxWidth="1000" DataContext="{Binding CreateTeam}"/>
+        </ScrollViewer>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+                      Visibility="{Binding IsChecked, ElementName=NavTeams, Converter={StaticResource BooleanToVisibility}}">
+          <views:TeamsView x:Name="TeamsPanel" MaxWidth="1000" DataContext="{Binding Teams}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">

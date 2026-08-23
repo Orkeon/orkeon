@@ -21,17 +21,21 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The two Atelier gestures that move the navigation: an activated session brings the
-    /// "Nouveau problème" screen forward, a "Relancer" lands on the launcher (the target
-    /// path itself is wired in the ViewModel — this is only the visible panel).
+    /// The gestures that move the navigation: an activated wizard session brings "Créer une
+    /// équipe" forward, "Lancer" on a team lands on the launcher, the gate's "Gérer les
+    /// réglages" opens the settings screen (the targets themselves are wired in the
+    /// ViewModels — this is only the visible panel).
     /// </summary>
     private void WireForgeNavigation()
     {
         if (DataContext is not ViewModels.Shell.MainWindowViewModel shell)
             return;
 
-        shell.Forge.SessionActivated += (_, _) => NavForgeNew.IsChecked = true;
-        shell.Forge.RelaunchRequested += (_, _) => NavRun.IsChecked = true;
+        shell.CreateTeam.SessionActivated += (_, _) => NavCreate.IsChecked = true;
+        shell.CreateTeam.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
+        shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
+        shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
     }
 
     // ── window chrome ──
