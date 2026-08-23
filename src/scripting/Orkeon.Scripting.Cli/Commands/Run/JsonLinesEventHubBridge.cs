@@ -117,7 +117,7 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
 
         try
         {
-            Relay(topic: null, payload: request, correlationId: correlationId, from: DescribeAmbientCaller());
+            Relay(topic: null, payload: request, correlationId: correlationId, from: DescribeAmbientCaller(), expectsReply: true);
 
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
             linked.CancelAfter(timeout);
@@ -356,19 +356,22 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
 
-    private void Relay(string? topic, object? payload, string? correlationId, string? from)
+    private void Relay(string? topic, object? payload, string? correlationId, string? from, bool expectsReply = false)
     {
         var scope = correlationId is null
             ? OrkeonEventScope.None
             : new OrkeonEventScope { CorrelationId = correlationId };
 
         // Null entries are omitted by the writer — the contract's "absent key is omitted"
-        // holds for hub.message like for every other kind.
+        // holds for hub.message like for every other kind. expectsReply appears only on a
+        // send: a post and a topic relay carry nothing to answer, and the peer must not have
+        // to guess which correlated lines are questions.
         _events.Emit(HubCommandKinds.HubMessage, scope, new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["from"] = from,
             ["topic"] = topic,
             ["payload"] = payload,
+            ["expectsReply"] = expectsReply ? true : (object?)null,
         });
     }
 

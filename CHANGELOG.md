@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio staffs the `client://studio` seat: agent requests answered on screen
+
+An agent's `send_request` to the watching client no longer dies of a 30-second timeout: the
+Launch screen shows the request and a human answers it.
+
+- **Protocol**: `hub.message` gains an `expectsReply: true` field, emitted **only** on an
+  agent's `send`. The peer must not have to guess which correlated lines are questions — a
+  topic relay can carry a `correlationId` too, and the answer to the peer's own `send` pairs
+  by correlation as well. The field is additive; readers that ignore it lose nothing.
+- **Studio Core**: `RunProgressModel` folds marked sends into a `PendingAgentRequest` queue
+  (dedupe by correlation id, cleared at `run.finished`, `ReplyAccepted()` mirroring
+  `AnswerAccepted()`), alongside the untouched `HubMessages` journal.
+- **Studio WPF**: a request panel — asking agent's hub address, raw JSON payload, reply box —
+  in the Launch screen's progress card. The typed reply goes down stdin as the
+  `{"kind":"reply",…}` line the bridge requires; text that parses as JSON travels as that
+  JSON (an agent may await a shape), anything else as a plain JSON string. A refused write
+  keeps the request on screen. Hub posts are now listed in a compact panel instead of being
+  parsed and shown nowhere. Silence past the agent's own timeout remains a refusal — the
+  screen just gives the human a chance to speak before it.
+
 ### Added — The Atelier: `orkeon forge`, from a need in plain words to a deployable crew (FORGE-01→08)
 
 The missing step between "I have a problem" and a running agent team. `orkeon forge

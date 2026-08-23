@@ -121,13 +121,79 @@ public class RunProgressViewModelTests
     {
         var panel = Watching();
         panel.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"t1","success":true,"durationMs":10}""");
+        panel.TryApply("""{"v":2,"seq":2,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"payload":{}}""");
         Assert.Single(panel.Tasks);
+        Assert.True(panel.HasAgentRequest);
 
         panel.Reset((_, _) => true);
 
         Assert.Empty(panel.Tasks);
         Assert.Empty(panel.CostSummary);
         Assert.False(panel.IsAsking);
+        Assert.False(panel.HasAgentRequest);
+        Assert.Empty(panel.HubMessages);
+    }
+
+    [Fact]
+    public void An_agent_request_is_replied_on_screen_and_then_stops_waiting()
+    {
+        var sent = new List<(string Id, string Payload)>();
+        var panel = new RunProgressViewModel();
+        panel.Reset((_, _) => true, (id, payload) => { sent.Add((id, payload)); return true; });
+
+        panel.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"from":"agent://crew/worker","payload":{"question":"go?"}}""");
+
+        Assert.True(panel.HasAgentRequest);
+        Assert.Equal("agent://crew/worker", panel.AgentRequestFrom);
+        Assert.Contains("go?", panel.AgentRequestPayload, StringComparison.Ordinal);
+
+        panel.ReplyText = "yes, go";
+        panel.ReplyCommand.Execute(null);
+
+        Assert.Equal(("r-1", "yes, go"), Assert.Single(sent));
+        Assert.False(panel.HasAgentRequest);
+        Assert.Empty(panel.ReplyText);
+    }
+
+    [Fact]
+    public void A_reply_that_could_not_be_sent_leaves_the_request_open()
+    {
+        // Same rule as an unanswerable question: a write nobody read must not pretend.
+        var panel = new RunProgressViewModel();
+        panel.Reset((_, _) => true, (_, _) => false);
+
+        panel.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"payload":{}}""");
+        panel.ReplyCommand.Execute(null);
+
+        Assert.True(panel.HasAgentRequest);
+    }
+
+    [Fact]
+    public void Watch_only_shows_the_request_but_offers_no_reply()
+    {
+        // No reply channel: the request is visible (honesty) but the command is inert —
+        // accepting a reply that goes nowhere would be worse than refusing it.
+        var panel = Watching();   // Reset(answer) with no reply channel
+
+        panel.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"payload":{}}""");
+
+        Assert.True(panel.HasAgentRequest);
+        Assert.False(panel.ReplyCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void Hub_traffic_is_listed_instead_of_vanishing()
+    {
+        // A post used to be parsed and then shown nowhere — the agent believed it was read.
+        var panel = Watching();
+
+        panel.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"hub.message","from":"agent://crew/worker","payload":{"note":"fyi"}}""");
+        panel.TryApply("""{"v":2,"seq":2,"ts":"t","kind":"hub.message","topic":"news","from":"crew://crew","payload":{"n":1}}""");
+
+        Assert.True(panel.HasHubMessages);
+        Assert.Equal(2, panel.HubMessages.Count);
+        Assert.Contains("agent://crew/worker", panel.HubMessages[0], StringComparison.Ordinal);
+        Assert.StartsWith("[news] ", panel.HubMessages[1], StringComparison.Ordinal);
     }
 
     [Fact]

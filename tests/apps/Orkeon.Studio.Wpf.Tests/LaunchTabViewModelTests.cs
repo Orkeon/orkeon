@@ -488,6 +488,33 @@ public sealed class LaunchTabViewModelTests
     }
 
     [Fact]
+    public async Task A_reply_to_an_agent_goes_down_stdin_in_the_bridge_wire_form()
+    {
+        // The client://studio seat, taken: an agent's send is answered from the screen, and
+        // the line written is byte-for-byte what the bridge's ReplyFromPeer requires. Text
+        // that parses as JSON travels as that JSON; anything else as a plain JSON string.
+        var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
+        var (tab, launcher, _) = Build(probe);
+        tab.Target.Select("/crews/team.yaml");
+
+        launcher.WhileRunning = () =>
+        {
+            tab.Progress.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"payload":{"question":"shape?"}}""");
+            tab.Progress.ReplyText = """{"answer":42}""";
+            tab.Progress.ReplyCommand.Execute(null);
+
+            tab.Progress.TryApply("""{"v":2,"seq":2,"ts":"t","kind":"hub.message","correlationId":"r-2","expectsReply":true,"payload":{"question":"words?"}}""");
+            tab.Progress.ReplyText = "yes, go";
+            tab.Progress.ReplyCommand.Execute(null);
+        };
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Contains("""{"kind":"reply","correlationId":"r-1","payload":{"answer":42}}""", launcher.InputLines);
+        Assert.Contains("""{"kind":"reply","correlationId":"r-2","payload":"yes, go"}""", launcher.InputLines);
+    }
+
+    [Fact]
     public async Task Should_StreamTheOutput_Into_TheLogPanel()
     {
         var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");

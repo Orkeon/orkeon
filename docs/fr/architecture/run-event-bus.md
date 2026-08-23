@@ -52,7 +52,7 @@ Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriq
 | `cost.updated` | `tokens`, `model?`, `provider?` | Le compteur de jetons bouge. `tokens` est cumulatif ; `model` quand le fournisseur le rapporte ; `provider` seulement sur les appels de la façade de scripting. **Aucun champ de prix** : le framework n'a pas de table de prix, et en inventer une serait pire que l'omettre. |
 | `llm.delta` | `text` | Un fragment de texte généré. **Seulement sous `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?`, `defaultValue?`, `taskDescription?` | Une tâche déclarée `humanInput: true` pose une question. |
-| `hub.message` | `from?`, `topic?`, `payload?` | Le hub du run a relayé quelque chose à ce processus. `from` est l'adresse hub de l'expéditeur (`agent://{crew}/{agent}`, `crew://{crew}`), pour que le pair puisse attribuer et répondre ; absent quand le hub ne la connaît pas (la réponse à un `send`, appariée par `correlationId`). |
+| `hub.message` | `from?`, `topic?`, `payload?`, `expectsReply?` | Le hub du run a relayé quelque chose à ce processus. `from` est l'adresse hub de l'expéditeur (`agent://{crew}/{agent}`, `crew://{crew}`), pour que le pair puisse attribuer et répondre ; absent quand le hub ne la connaît pas (la réponse à un `send`, appariée par `correlationId`). `expectsReply: true` n'apparaît que sur le `send` d'un agent : l'expéditeur est bloqué en attente d'un `reply` sous son propre timeout, et le silence au-delà est un refus. Le pair n'a pas à deviner quelles lignes corrélées sont des questions — un relais de topic peut porter un `correlationId` lui aussi. |
 | `error` | `code`, `message`, `recoverable` | Quelque chose a échoué. Un run qui s'arrête — annulé ou en échec, dans n'importe quel mode — se termine par `code: crew_cancelled` ou `crew_failed` avant `run.finished`. |
 | `run.finished` | `success`, `exitCode`, `tokens` | Le run se termine. |
 
@@ -129,7 +129,7 @@ Deux règles à respecter en construisant votre client. **Ignorez un `kind` que 
 
 ## 7. Qui lit ceci aujourd'hui
 
-- **Orkeon Studio**, dont l'écran « Lancer » montre progression, coût et questions du run au lieu d'un défilement — voir [Studio](studio.md). Studio observe et répond aux questions ; il n'occupe pas le siège du hub : un agent qui fait `send` vers `client://studio` sans réponse expire, et un timeout est un refus — la règle que le silence suit partout sur ce bus.
-- `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence en ~380 lignes, sans aucune dépendance à Infrastructure ni à un LLM. `RunClient` est la forme à copier pour un pair qui, lui, prend le siège : subscribe, post, reply.
+- **Orkeon Studio**, dont l'écran « Lancer » montre progression, coût et questions du run au lieu d'un défilement — voir [Studio](studio.md). L'écran « Lancer » occupe aussi le siège du hub : le `send` d'un agent vers `client://studio` (marqué `expectsReply`) apparaît comme un panneau de demande auquel l'utilisateur répond, et la réponse repart par stdin ; les posts du hub sont listés au lieu d'être perdus. Le silence au-delà du timeout propre à l'agent reste un refus — la règle que le silence suit partout sur ce bus — l'écran donne simplement à un humain la chance de parler avant.
+- `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence en ~380 lignes, sans aucune dépendance à Infrastructure ni à un LLM. `RunClient` est la forme à copier pour un pair qui prend le siège sans écran : subscribe, post, reply.
 
 La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge), donc un client qui lit l'un lit l'autre.

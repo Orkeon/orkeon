@@ -284,6 +284,15 @@ public static class StudioStringKeys
     /// <summary>"Answer"</summary>
     public const string RunProgressAnswer = "Vm_RunProgress_Answer";
 
+    /// <summary>"An agent is asking:"</summary>
+    public const string RunProgressAgentAsks = "Vm_RunProgress_AgentAsks";
+
+    /// <summary>"Reply"</summary>
+    public const string RunProgressReply = "Vm_RunProgress_Reply";
+
+    /// <summary>"Hub messages"</summary>
+    public const string RunProgressHubMessages = "Vm_RunProgress_HubMessages";
+
 
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
@@ -531,6 +540,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunProgressWatch] = "Show progress instead of raw output",
         [StudioStringKeys.RunProgressStream] = "Stream generated text token by token",
         [StudioStringKeys.RunProgressAnswer] = "Answer",
+        [StudioStringKeys.RunProgressAgentAsks] = "An agent is asking:",
+        [StudioStringKeys.RunProgressReply] = "Reply",
+        [StudioStringKeys.RunProgressHubMessages] = "Hub messages",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",

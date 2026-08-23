@@ -246,6 +246,9 @@
   <data name="Vm_RunProgress_Watch" xml:space="preserve"><value>Show progress instead of raw output</value></data>
   <data name="Vm_RunProgress_Stream" xml:space="preserve"><value>Stream generated text token by token</value></data>
   <data name="Vm_RunProgress_Answer" xml:space="preserve"><value>Answer</value></data>
+  <data name="Vm_RunProgress_AgentAsks" xml:space="preserve"><value>An agent is asking:</value></data>
+  <data name="Vm_RunProgress_Reply" xml:space="preserve"><value>Reply</value></data>
+  <data name="Vm_RunProgress_HubMessages" xml:space="preserve"><value>Hub messages</value></data>
   <data name="Vm_Target_None" xml:space="preserve"><value>No target selected.</value></data>
   <data name="Vm_Target_Resolved" xml:space="preserve"><value>{0} — orkeon run {1}</value></data>
   <data name="Vm_Target_PickScript" xml:space="preserve"><value>{0} script(s) found: pick the one to run.</value></data>

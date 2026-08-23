@@ -181,6 +181,48 @@ public class EventHubBridgeTests
     }
 
     [Fact]
+    public async Task Only_a_send_announces_that_it_expects_a_reply()
+    {
+        // The peer must not have to guess which correlated lines are questions: a topic
+        // relay can carry a correlationId too, and a post carries nothing to answer.
+        await using var harness = new Harness();
+
+        var asking = harness.Bridge.SendAsync<object, JsonElement>(
+            Address("client://studio"),
+            new { question = "continue?" },
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+
+        var asked = await WaitForEmissionAsync(harness);
+        Assert.True(asked.GetProperty("expectsReply").GetBoolean());
+
+        await harness.Bridge.HandleCommandAsync(
+            $$$"""{"kind":"reply","correlationId":"{{{asked.GetProperty("correlationId").GetString()}}}","payload":{}}""",
+            TestContext.Current.CancellationToken);
+        await asking;
+    }
+
+    [Fact]
+    public async Task A_post_and_a_topic_relay_do_not_claim_to_expect_a_reply()
+    {
+        await using var harness = new Harness();
+
+        await harness.Bridge.PostAsync(
+            Address("client://studio"), new { hello = "world" }, TestContext.Current.CancellationToken);
+
+        await harness.Bridge.HandleCommandAsync("""{"kind":"subscribe","topic":"t"}""", TestContext.Current.CancellationToken);
+        await harness.Inner.PublishAsync("t", new { n = 1 }, null, TestContext.Current.CancellationToken);
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline && harness.Emitted().Count < 2)
+            await Task.Delay(20, TestContext.Current.CancellationToken);
+
+        var emitted = harness.Emitted();
+        Assert.Equal(2, emitted.Count);
+        Assert.All(emitted, e => Assert.False(e.TryGetProperty("expectsReply", out _)));
+    }
+
+    [Fact]
     public async Task A_peer_that_never_answers_times_out_rather_than_hanging()
     {
         await using var harness = new Harness();

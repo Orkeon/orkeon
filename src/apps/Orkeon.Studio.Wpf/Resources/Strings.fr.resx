@@ -246,6 +246,9 @@
   <data name="Vm_RunProgress_Watch" xml:space="preserve"><value>Afficher la progression plutôt que la sortie brute</value></data>
   <data name="Vm_RunProgress_Stream" xml:space="preserve"><value>Diffuser le texte généré jeton par jeton</value></data>
   <data name="Vm_RunProgress_Answer" xml:space="preserve"><value>Répondre</value></data>
+  <data name="Vm_RunProgress_AgentAsks" xml:space="preserve"><value>Un agent demande :</value></data>
+  <data name="Vm_RunProgress_Reply" xml:space="preserve"><value>Répondre</value></data>
+  <data name="Vm_RunProgress_HubMessages" xml:space="preserve"><value>Messages du hub</value></data>
   <data name="Vm_Target_None" xml:space="preserve"><value>Aucune cible sélectionnée.</value></data>
   <data name="Vm_Target_Resolved" xml:space="preserve"><value>{0} — orkeon run {1}</value></data>
   <data name="Vm_Target_PickScript" xml:space="preserve"><value>{0} script(s) trouvé(s) : choisissez celui à exécuter.</value></data>

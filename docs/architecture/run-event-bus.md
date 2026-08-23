@@ -52,7 +52,7 @@ Payload fields sit **flat** beside the envelope, not nested under a `payload` ke
 | `cost.updated` | `tokens`, `model?`, `provider?` | The token meter moves. `tokens` is cumulative; `model` when the provider reports it; `provider` only on the scripting facade's calls. There is **no price field**: the framework has no price table, and inventing one would be worse than omitting it. |
 | `llm.delta` | `text` | A fragment of generated text. **Only under `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?`, `defaultValue?`, `taskDescription?` | A task declared `humanInput: true` is asking. |
-| `hub.message` | `from?`, `topic?`, `payload?` | The run's hub relayed something to this process. `from` is the sender's own hub address (`agent://{crew}/{agent}`, `crew://{crew}`) so the peer can attribute and answer; it is absent when the hub does not know (the answer to a `send`, which pairs by `correlationId` instead). |
+| `hub.message` | `from?`, `topic?`, `payload?`, `expectsReply?` | The run's hub relayed something to this process. `from` is the sender's own hub address (`agent://{crew}/{agent}`, `crew://{crew}`) so the peer can attribute and answer; it is absent when the hub does not know (the answer to a `send`, which pairs by `correlationId` instead). `expectsReply: true` appears only on an agent's `send`: the sender is blocked awaiting a `reply` under its own timeout, and silence past it is a refusal. The peer must not have to guess which correlated lines are questions — a topic relay can carry a `correlationId` too. |
 | `error` | `code`, `message`, `recoverable` | Something went wrong. A run that stops — cancelled or failed, in any mode — ends with `code: crew_cancelled` or `crew_failed` before `run.finished`. |
 | `run.finished` | `success`, `exitCode`, `tokens` | The run ends. |
 
@@ -129,7 +129,7 @@ Two rules worth building against. **Ignore a `kind` you do not know** — a newe
 
 ## 7. What reads this today
 
-- **Orkeon Studio**, whose Launch screen shows progress, cost and the run's questions instead of scrollback — see [Studio](studio.md). Studio watches and answers questions; it does not staff the hub seat: an agent that `send`s to `client://studio` and gets no reply times out, and a timeout is a refusal — the same rule silence follows everywhere on this bus.
-- `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client in ~380 lines with no dependency on Infrastructure or any LLM. `RunClient` is the shape to copy for a peer that *does* take the seat: subscribe, post, and reply.
+- **Orkeon Studio**, whose Launch screen shows progress, cost and the run's questions instead of scrollback — see [Studio](studio.md). The Launch screen also staffs the hub seat: an agent's `send` to `client://studio` (marked `expectsReply`) appears as a request panel the user answers, and the reply travels back down stdin; hub posts are listed rather than dropped. Silence past the agent's own timeout is still a refusal — the same rule silence follows everywhere on this bus — the screen just gives a human the chance to speak before it.
+- `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client in ~380 lines with no dependency on Infrastructure or any LLM. `RunClient` is the shape to copy for a peer that takes the seat headlessly: subscribe, post, and reply.
 
 The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream, so a client that reads one reads both.

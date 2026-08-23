@@ -55,7 +55,9 @@ public sealed class RunProgressViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private RunProgressModel _model = new();
     private Func<string, string, bool>? _answer;
+    private Func<string, string, bool>? _reply;
     private string _answerText = string.Empty;
+    private string _replyText = string.Empty;
 
     /// <summary>Builds the panel over the localization port.</summary>
     public RunProgressViewModel(IStudioStrings? strings = null)
@@ -65,6 +67,7 @@ public sealed class RunProgressViewModel : ObservableObject
 
         AnswerCommand = new RelayCommand(Answer, () => PendingQuestion is not null);
         ChooseCommand = new RelayCommand(parameter => Choose(parameter as string), parameter => parameter is string);
+        ReplyCommand = new RelayCommand(Reply, () => PendingAgentRequest is not null && _reply is not null);
     }
 
     /// <summary>Tasks the run has finished, in the order it reported them.</summary>
@@ -75,6 +78,9 @@ public sealed class RunProgressViewModel : ObservableObject
 
     /// <summary>Sends one of the offered choices.</summary>
     public RelayCommand ChooseCommand { get; }
+
+    /// <summary>Sends the typed reply to the agent waiting on this process.</summary>
+    public RelayCommand ReplyCommand { get; }
 
     /// <summary>The question the run is waiting on, or null.</summary>
     public RunQuestion? PendingQuestion => _model.PendingQuestion;
@@ -100,6 +106,31 @@ public sealed class RunProgressViewModel : ObservableObject
         get => _answerText;
         set => SetProperty(ref _answerText, value);
     }
+
+    /// <summary>The agent request waiting for a reply, or null.</summary>
+    public RunAgentRequest? PendingAgentRequest => _model.PendingAgentRequest;
+
+    /// <summary>Whether an agent is waiting on this process — gates the request panel.</summary>
+    public bool HasAgentRequest => PendingAgentRequest is not null;
+
+    /// <summary>The asking agent's hub address, empty when the run did not say.</summary>
+    public string AgentRequestFrom => PendingAgentRequest?.From ?? string.Empty;
+
+    /// <summary>The request's payload, as the raw JSON the agent sent.</summary>
+    public string AgentRequestPayload => PendingAgentRequest?.Payload ?? string.Empty;
+
+    /// <summary>What the user typed as the reply.</summary>
+    public string ReplyText
+    {
+        get => _replyText;
+        set => SetProperty(ref _replyText, value);
+    }
+
+    /// <summary>Messages the run's hub relayed here, as one line each, oldest first.</summary>
+    public ObservableCollection<string> HubMessages { get; } = [];
+
+    /// <summary>Whether any hub message arrived — gates the hub panel's visibility.</summary>
+    public bool HasHubMessages => HubMessages.Count > 0;
 
     /// <summary>The cost line, empty until the meter moves.</summary>
     public string CostSummary => _model.Cost is { } cost
@@ -150,15 +181,19 @@ public sealed class RunProgressViewModel : ObservableObject
     public bool HasGeneratedText => _model.GeneratedText.Length > 0;
 
     /// <summary>
-    /// Prepares the panel for a new run and takes the channel it will answer on. A null
-    /// channel means "watch only" — the panel then shows questions without offering to
-    /// answer, which is honest, rather than accepting an answer that goes nowhere.
+    /// Prepares the panel for a new run and takes the channels it will answer on. A null
+    /// channel means "watch only" — the panel then shows questions (or agent requests)
+    /// without offering to answer, which is honest, rather than accepting an answer that
+    /// goes nowhere.
     /// </summary>
-    public void Reset(Func<string, string, bool>? answer)
+    public void Reset(Func<string, string, bool>? answer, Func<string, string, bool>? reply = null)
     {
         _answer = answer;
+        _reply = reply;
         Tasks.Clear();
+        HubMessages.Clear();
         AnswerText = string.Empty;
+        ReplyText = string.Empty;
         _model = new RunProgressModel();
         RaiseLabels();
     }
@@ -174,10 +209,14 @@ public sealed class RunProgressViewModel : ObservableObject
             return false;
 
         var before = _model.Tasks.Count;
+        var hubBefore = _model.HubMessages.Count;
         _model.Apply(orkeonEvent!);
 
         for (var index = before; index < _model.Tasks.Count; index++)
             Tasks.Add(new RunTaskViewModel(_model.Tasks[index]));
+
+        for (var index = hubBefore; index < _model.HubMessages.Count; index++)
+            HubMessages.Add(Describe(_model.HubMessages[index]));
 
         // A delta arrives per token, on the UI thread. Re-raising the eleven labels plus the
         // command state for each one is thousands of change notifications per response;
@@ -225,6 +264,30 @@ public sealed class RunProgressViewModel : ObservableObject
         RaiseLabels();
     }
 
+    private void Reply()
+    {
+        if (PendingAgentRequest is not { } request)
+            return;
+
+        // Same refusal rule as Send: a write nobody read must keep the request on screen.
+        if (_reply?.Invoke(request.CorrelationId, ReplyText) != true)
+            return;
+
+        ReplyText = string.Empty;
+        _model.ReplyAccepted();
+        RaiseLabels();
+    }
+
+    /// <summary>One hub message as the panel lists it: `[topic] from · payload`.</summary>
+    internal static string Describe(RunHubMessage message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        var topic = message.Topic is { Length: > 0 } t ? $"[{t}] " : string.Empty;
+        var from = message.From is { Length: > 0 } f ? $"{f} · " : string.Empty;
+        return $"{topic}{from}{message.Payload ?? string.Empty}";
+    }
+
     private void RaiseLabels()
     {
         OnPropertyChanged(nameof(Summary));
@@ -239,6 +302,12 @@ public sealed class RunProgressViewModel : ObservableObject
         OnPropertyChanged(nameof(HasError));
         OnPropertyChanged(nameof(GeneratedText));
         OnPropertyChanged(nameof(HasGeneratedText));
+        OnPropertyChanged(nameof(PendingAgentRequest));
+        OnPropertyChanged(nameof(HasAgentRequest));
+        OnPropertyChanged(nameof(AgentRequestFrom));
+        OnPropertyChanged(nameof(AgentRequestPayload));
+        OnPropertyChanged(nameof(HasHubMessages));
         AnswerCommand.RaiseCanExecuteChanged();
+        ReplyCommand.RaiseCanExecuteChanged();
     }
 }

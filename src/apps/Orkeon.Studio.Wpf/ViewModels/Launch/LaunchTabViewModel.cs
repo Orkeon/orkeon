@@ -392,7 +392,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             ? _strings[StudioStringKeys.LaunchValidating]
             : _strings[StudioStringKeys.LaunchRunning];
 
-        Progress.Reset(Answer);
+        Progress.Reset(Answer, Reply);
 
         try
         {
@@ -444,6 +444,31 @@ public sealed class LaunchTabViewModel : ObservableObject
         _input is { } writer
         && writer.TryWriteLine(JsonSerializer.Serialize(
             new { kind = RunEventKinds.InputGiven, correlationId, value }));
+
+    /// <summary>
+    /// Replies to an agent's <c>send</c> down the run's stdin — the seat at the hub the doc
+    /// used to say Studio does not take. Text that parses as JSON travels as that JSON (an
+    /// agent may expect a shape); anything else travels as a plain JSON string. The wire form
+    /// is the one <c>RunClient.ReplyToAgent</c> writes and the bridge's <c>ReplyFromPeer</c>
+    /// requires.
+    /// </summary>
+    private bool Reply(string correlationId, string text) =>
+        _input is { } writer
+        && writer.TryWriteLine(JsonSerializer.Serialize(
+            new { kind = "reply", correlationId, payload = AsJsonPayload(text) }));
+
+    private static object AsJsonPayload(string text)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+            return document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return text;
+        }
+    }
 
     private static string? GetWorkingDirectory(RunTarget target) =>
         target.Kind is RunTargetKind.MultiFileCrewDirectory or RunTargetKind.ScriptDirectory

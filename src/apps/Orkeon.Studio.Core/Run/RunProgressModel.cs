@@ -38,6 +38,12 @@ public sealed record RunErrorInfo(string Code, string Message, bool Recoverable)
 public sealed record RunHubMessage(string? From, string? Topic, string? CorrelationId, string? Payload);
 
 /// <summary>
+/// A <c>send</c> an agent addressed to this process, waiting for a <c>reply</c>. The agent
+/// is blocked on it until its own timeout; silence past that is a refusal.
+/// </summary>
+public sealed record RunAgentRequest(string CorrelationId, string? From, string? Payload);
+
+/// <summary>
 /// Folds a watched run's event stream into the state a screen shows (BUS-06).
 /// <para>
 /// It is deliberately a plain model rather than a view-model: the same folding serves the WPF
@@ -74,6 +80,11 @@ public sealed class RunProgressModel
     public RunQuestion? PendingQuestion => _questions.Count > 0 ? _questions[0] : null;
 
     private readonly List<RunQuestion> _questions = [];
+
+    /// <summary>The agent request waiting for a reply, or null when no agent is asking.</summary>
+    public RunAgentRequest? PendingAgentRequest => _agentRequests.Count > 0 ? _agentRequests[0] : null;
+
+    private readonly List<RunAgentRequest> _agentRequests = [];
 
     /// <summary>The last error reported, or null.</summary>
     public RunErrorInfo? LastError { get; private set; }
@@ -168,6 +179,22 @@ public sealed class RunProgressModel
                     orkeonEvent.GetString("topic"),
                     orkeonEvent.CorrelationId,
                     orkeonEvent.GetRawJson("payload")));
+
+                // A send says so explicitly (`expectsReply`): the peer must not guess which
+                // correlated lines are questions — a topic relay can carry a correlationId
+                // too. Requests queue like human questions do, and a line with no
+                // correlation id offers no address to reply to, so it stays journal-only.
+                if (orkeonEvent.GetBool("expectsReply") == true
+                    && orkeonEvent.CorrelationId is { } requestId
+                    && !string.IsNullOrWhiteSpace(requestId))
+                {
+                    _agentRequests.RemoveAll(r => string.Equals(r.CorrelationId, requestId, StringComparison.Ordinal));
+                    _agentRequests.Add(new RunAgentRequest(
+                        requestId,
+                        orkeonEvent.GetString("from"),
+                        orkeonEvent.GetRawJson("payload")));
+                }
+
                 break;
 
             case RunEventKinds.Error:
@@ -181,7 +208,8 @@ public sealed class RunProgressModel
                 Finished = true;
                 Success = orkeonEvent.GetBool("success");
                 ExitCode = (int?)orkeonEvent.GetInt64("exitCode");
-                _questions.Clear();   // nobody is left to answer them
+                _questions.Clear();       // nobody is left to answer them
+                _agentRequests.Clear();   // the asking agents are gone with the run
                 break;
 
             default:
@@ -202,6 +230,21 @@ public sealed class RunProgressModel
             return;
 
         _questions.RemoveAt(0);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Clears the pending agent request because the reply was accepted by the run's stdin.
+    /// The bridge does not echo replies back (it settles the agent's await directly), so —
+    /// like <see cref="AnswerAccepted"/> — waiting for an event would leave the request on
+    /// screen forever.
+    /// </summary>
+    public void ReplyAccepted()
+    {
+        if (_agentRequests.Count == 0)
+            return;
+
+        _agentRequests.RemoveAt(0);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 

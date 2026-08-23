@@ -160,6 +160,66 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    public void A_send_becomes_a_pending_agent_request_and_a_post_does_not()
+    {
+        // Only a line that says expectsReply is a question: a topic relay can carry a
+        // correlationId too, and treating it as a request would offer a reply nobody awaits.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"hub.message","from":"agent://crew/worker","payload":{"note":"fyi"}}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"hub.message","correlationId":"r-1","topic":"news","payload":{"n":1}}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"hub.message","correlationId":"r-2","expectsReply":true,"from":"agent://crew/worker","payload":{"question":"go?"}}""");
+
+        var request = model.PendingAgentRequest;
+        Assert.NotNull(request);
+        Assert.Equal("r-2", request!.CorrelationId);
+        Assert.Equal("agent://crew/worker", request.From);
+        Assert.Contains("go?", request.Payload!, StringComparison.Ordinal);
+
+        // The journal still received all three — the request queue is a view, not a filter.
+        Assert.Equal(3, model.HubMessages.Count);
+    }
+
+    [Fact]
+    public void Agent_requests_queue_and_a_resent_request_replaces_its_own_entry()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"payload":{"q":1}}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"hub.message","correlationId":"r-2","expectsReply":true,"payload":{"q":2}}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"payload":{"q":3}}""");
+
+        // r-1 was resent: its old entry is gone, its fresh one queues behind r-2.
+        Assert.Equal("r-2", model.PendingAgentRequest!.CorrelationId);
+
+        model.ReplyAccepted();
+        Assert.Equal("r-1", model.PendingAgentRequest!.CorrelationId);
+        Assert.Contains("\"q\":3", model.PendingAgentRequest.Payload!, StringComparison.Ordinal);
+
+        model.ReplyAccepted();
+        Assert.Null(model.PendingAgentRequest);
+    }
+
+    [Fact]
+    public void A_request_with_no_correlation_id_stays_journal_only()
+    {
+        // expectsReply without an address to answer to is a line the screen cannot serve.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"hub.message","expectsReply":true,"payload":{"q":1}}""");
+
+        Assert.Null(model.PendingAgentRequest);
+        Assert.Single(model.HubMessages);
+    }
+
+    [Fact]
+    public void The_end_of_the_run_clears_agent_requests_too()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"payload":{}}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"run.finished","success":true,"exitCode":0}""");
+
+        Assert.Null(model.PendingAgentRequest);
+    }
+
+    [Fact]
     public void Deltas_accumulate_and_errors_are_kept()
     {
         var model = Fold(
