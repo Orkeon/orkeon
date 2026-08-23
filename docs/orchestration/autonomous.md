@@ -179,7 +179,10 @@ The `InMemoryAgentChannel` implementation is in-process and lock-free. For a mul
 
 ## SpawnAgentTool — Agent self-spawn
 
-Tool injected into autonomous agents to create specialized sub-agents on the fly:
+Tool injected into autonomous agents to create specialized sub-agents on the fly.
+The class ships in `Orkeon.Infrastructure` but **no shipped composition root registers
+it**: a host that wants self-spawn registers `SpawnAgentTool` explicitly (it needs an
+`IAgentFactory`) — see the [tool inventory](../tools/inventory.md).
 
 ```csharp
 // The agent's LLM generates this tool call:
@@ -246,7 +249,7 @@ crew:
     - role: analyst
       goal: "Analyze and synthesize the data"
       allowDelegation: true
-      tools: [json_search, csv_search]
+      tools: [json_tool, csv_reader]
 
     - role: writer
       goal: "Write the final report"

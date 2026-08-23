@@ -45,16 +45,36 @@ def gt_llm_providers() -> int:
     return count
 
 
-def gt_tool_classes() -> int:
+def tool_files() -> list[Path]:
     # Skipped: interfaces, doubles, adapters and decorators that match the glob without
     # being built-in tools (ObservedTool is BUS-03's instrumentation decorator).
     skip = {"IBaseTool.cs", "MockTool.cs", "JsTool.cs", "ObservedTool.cs"}
-    files = [
+    return [
         f for f in (ROOT / "src").rglob("*Tool.cs")
         if not any(part in ("obj", "bin", "obj-linux") for part in f.parts)
         and f.name not in skip
     ]
-    return len(files)
+
+
+def gt_tool_classes() -> int:
+    return len(tool_files())
+
+
+def gt_tool_names() -> set[str]:
+    """The agent-visible name of every built-in tool: the positional UniqueName of the
+    [ToolContract("…")] attribute when the file carries one, else the literal of a
+    `Name => "…"` property (the two mechanisms ToolBase resolves, in that order)."""
+    names: set[str] = set()
+    for f in tool_files():
+        text = f.read_text(encoding="utf-8")
+        m = re.search(r'\[ToolContract\(\s*"([^"]+)"', text) or \
+            re.search(r'string Name\s*=>\s*"([^"]+)"', text)
+        if m:
+            names.add(m.group(1))
+        else:
+            fail(f"{f.relative_to(ROOT)}: cannot extract the tool name "
+                 f'(no [ToolContract("…")] and no Name => "…")')
+    return names
 
 
 def gt_examples() -> int:
@@ -116,6 +136,23 @@ def main() -> int:
     expect_contains("docs/INDEX.md", f"{providers} providers", "provider count")
     expect_contains("docs/fr/INDEX.md", f"{providers} providers", "provider count")
     expect_contains("README.fr.md", f"{providers} fournisseurs LLM", "provider count")
+
+    # Tool-name parity: docs/tools/inventory.md is the reference catalogue — every
+    # built-in tool must be named there (both languages), every name its tables list
+    # must exist in the code, and its summary total must match. This is the gate that
+    # keeps "shipped but undocumented" (xlsx_reader) and "documented but nonexistent"
+    # (bing_search) from ever coming back.
+    tool_names = gt_tool_names()
+    for path in ("docs/tools/inventory.md", "docs/fr/tools/inventory.md"):
+        text = read(path)
+        for name in sorted(tool_names):
+            if f"`{name}`" not in text:
+                fail(f"{path}: built-in tool `{name}` is not documented")
+        documented = set(re.findall(r"^\| `([a-z][a-z0-9_]*)` \|", text, flags=re.M))
+        for name in sorted(documented - tool_names):
+            fail(f"{path}: documents `{name}`, which matches no built-in tool class")
+        if f"**{tools}**" not in text:
+            fail(f"{path}: the per-package summary total must state {tools}")
 
     # Tool-class count: CLAUDE.md states it exactly; READMEs use a "N+" floor.
     expect_contains("CLAUDE.md", f"{tools} built-in tool classes", "count of *Tool.cs under src/")

@@ -179,7 +179,11 @@ L'implémentation `InMemoryAgentChannel` est in-process et lock-free. Pour un d�
 
 ## SpawnAgentTool — Self-spawn d'agents
 
-Outil injecté dans les agents autonomes pour créer des sous-agents spécialisés à la volée :
+Outil injecté dans les agents autonomes pour créer des sous-agents spécialisés à la
+volée. La classe est livrée dans `Orkeon.Infrastructure` mais **aucune racine de
+composition livrée ne l'enregistre** : un hôte qui veut le self-spawn enregistre
+`SpawnAgentTool` explicitement (il exige un `IAgentFactory`) — voir
+[l'inventaire des tools](../tools/inventory.md).
 
 ```csharp
 // Le LLM de l'agent génère cet appel d'outil :
@@ -246,7 +250,7 @@ crew:
     - role: analyst
       goal: "Analyser et synthétiser les données"
       allowDelegation: true
-      tools: [json_search, csv_search]
+      tools: [json_tool, csv_reader]
 
     - role: writer
       goal: "Rédiger le rapport final"

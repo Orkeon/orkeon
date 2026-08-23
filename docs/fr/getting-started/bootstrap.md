@@ -31,13 +31,14 @@ var host = Host.CreateDefaultBuilder(args)
         // FileSystem : FileRead, FileWrite, DirectoryRead, DirectorySearch, EmailParser, CountPattern
         services.AddOrkeonFileSystemTools();
 
-        // Data : CSV, PDF, JSON, DOCX, SQL queries, MongoDB queries, etc.
+        // Data : CSV, PDF, JSON, XML, DOCX, XLSX, requêtes SQL, requêtes MongoDB, etc.
         services.AddOrkeonDataTools();
 
-        // Web : WebSearch, WebScrape, HttpApi, GitHub, etc.
+        // Web : WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration
+        // (WebSearch/BraveSearch/Slack/CacheSearch ont leurs propres extensions opt-in)
         services.AddOrkeonWebTools();
 
-        // Code : ShellCommand, SecureCodeInterpreter
+        // Code : ShellCommand (SecureCodeInterpreter est câblé par le sandbox d'AddOrkeonInfrastructure)
         services.AddOrkeonCodeTools();
     })
     .Build();

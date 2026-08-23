@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — The tool inventory rebuilt against the implementation, and gated (DOC-03)
+
+`docs/tools/inventory.md` (and its French mirror) claimed 43 tool names out of the 79
+built-in tool classes, listed two tools that do not exist (`bing_search`,
+`google_search`), used registry names the code never had (`delegate_work` and
+`ask_question` — the real names are `delegate_work_to_coworker` and
+`ask_question_to_coworker`), and flatly denied XLSX support while `xlsx_reader` and
+`xlsx_writer` ship in `AddOrkeonDataTools()`. The page is rebuilt as the reference
+catalogue: every one of the 79 tools with its exact agent-visible name, class, owning
+DI extension and secrets policy; an availability matrix per composition root
+(`orkeon run` vs the REPL — they do not register the same suites); the complete
+alphabetical YAML mapping; an "outside the catalogue" section (forge-internal tools,
+`McpToolAdapter`, test doubles); and the counting rule stated so the number is true by
+definition. Secondary surfaces follow: `autonomous.md` no longer implies `spawn_agent`
+is wired (no shipped root registers it — now a documented limitation) and its YAML
+example stops citing the nonexistent `json_search`/`csv_search`; `bootstrap.md`'s suite
+comments match what each extension actually registers; the porting guide and the
+READMEs mention Office (DOCX & XLSX) explicitly.
+
+`scripts/check-doc-claims.py` gains the gate that makes the regression class
+impossible: it extracts every agent-visible tool name from the code (the
+`[ToolContract("…")]` positional or the `Name => "…"` literal of each counted file) and
+fails the build if a shipped tool is missing from the inventory (either language), if
+the inventory tables a name no tool bears, or if the summary total drifts.
+
 ### Changed — Orkeon Studio v3 "volets": the WPF app becomes a team-lifecycle product
 
 The Claude Design v3 handoff is implemented end to end. The window's sidebar now follows the

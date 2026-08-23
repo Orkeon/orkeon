@@ -141,6 +141,7 @@ Pour chaque agent défini en Étape 2, lister les opérations concrètes qu'il d
 | Lire un CSV | `CsvReaderTool` | `Orkeon.Tools.Data` |
 | Lire un PDF | `PdfReaderTool` | `Orkeon.Tools.Data` |
 | Lire un DOCX | `DocxReadTool` | `Orkeon.Tools.Data` |
+| Lire / écrire un Excel (.xlsx) | `XlsxReadTool` / `XlsxWriteTool` | `Orkeon.Tools.Data` |
 | Manipuler du JSON | `JsonTool` | `Orkeon.Tools.Data` |
 | Requête SQL | `RelationalDatabaseTool` | `Orkeon.Tools.Data` |
 | Requête MongoDB | `MongoDbTool` | `Orkeon.Tools.Data` |
