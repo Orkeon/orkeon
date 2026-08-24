@@ -117,16 +117,32 @@ public sealed class MountValidator
 
     private static IEnumerable<ValidationMessage> FindVirtualPathCollisions(IReadOnlyList<MountDefinition> mounts)
     {
-        return mounts
-            .Where(m => !string.IsNullOrWhiteSpace(m.VirtualPath))
-            .GroupBy(m => NormalizeVirtualPath(m.VirtualPath), StringComparer.OrdinalIgnoreCase)
+        var named = mounts.Where(m => !string.IsNullOrWhiteSpace(m.VirtualPath)).ToList();
+
+        // What the runtime actually refuses at boot (FileSystemRegistry): the exact same
+        // spelling, Ordinal. Only that is a blocking error — Studio must not refuse a save
+        // the engine would accept.
+        var exact = named
+            .GroupBy(m => m.VirtualPath, StringComparer.Ordinal)
             .Where(group => group.Count() > 1)
-            .Select(group => ValidationMessage.Error(
-                ValidationCodes.MountVirtualCollision,
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"Virtual path '{group.Key}' is claimed by {group.Count()} mounts; each virtual path must be unique."),
-                group.Key));
+            .Select(group => (Key: group.Key, Count: group.Count(), Blocking: true));
+
+        // Near-collisions ('/Data' vs '/data', '/data/' vs '/data') boot fine but read as
+        // one folder to a person — said as a warning, never as a refusal.
+        var near = named
+            .GroupBy(m => NormalizeVirtualPath(m.VirtualPath), StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1 && group.Select(m => m.VirtualPath).Distinct(StringComparer.Ordinal).Count() > 1)
+            .Select(group => (Key: group.Key, Count: group.Count(), Blocking: false));
+
+        foreach (var (key, count, blocking) in exact.Concat(near))
+        {
+            var text = string.Create(
+                CultureInfo.InvariantCulture,
+                $"Virtual path '{key}' is claimed by {count} mounts; each virtual path must be unique.");
+            yield return blocking
+                ? ValidationMessage.Error(ValidationCodes.MountVirtualCollision, text, key)
+                : ValidationMessage.Warning(ValidationCodes.MountVirtualCollision, text, key);
+        }
     }
 
     private static string NormalizeVirtualPath(string virtualPath)

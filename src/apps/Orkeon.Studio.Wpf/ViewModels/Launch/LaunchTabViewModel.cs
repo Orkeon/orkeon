@@ -204,7 +204,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _binaryLocation, value))
-                OnPropertiesChanged(nameof(IsBinaryAvailable), nameof(BinaryStatus));
+                OnPropertiesChanged(nameof(IsBinaryAvailable), nameof(BinaryStatus), nameof(CliBanner));
         }
     }
 
@@ -450,7 +450,12 @@ public sealed class LaunchTabViewModel : ObservableObject
 
             // The session already recorded the run; the panel only projects its list.
             if (request.RecordInHistory)
+            {
                 History.Publish(_session.History);
+                // The team cards' « dernière exécution » line reads the same history —
+                // the shell refreshes it now, not at the next app start (review D5).
+                RunRecorded?.Invoke(this, EventArgs.Empty);
+            }
 
             return result;
         }
@@ -512,6 +517,22 @@ public sealed class LaunchTabViewModel : ObservableObject
         target.Kind is RunTargetKind.MultiFileCrewDirectory or RunTargetKind.ScriptDirectory
             ? target.SelectedPath
             : System.IO.Path.GetDirectoryName(target.SelectedPath);
+
+    /// <summary>Raised after a real (non-dry) run landed in the history.</summary>
+    public event EventHandler? RunRecorded;
+
+    /// <summary>
+    /// Re-reads the selected target's sidecar — « Changer les dossiers » may have edited
+    /// the very team the launcher points at, and the run must lay the NEW mounts
+    /// (review D6: the chips and the command must not disagree, even for a minute).
+    /// </summary>
+    public void RefreshTeamDescription()
+    {
+        _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
+        Mounts.SetTeamMounts(_team.Mounts);
+        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard));
+        RefreshPreview();
+    }
 
     /// <summary>Display name of the selected team (sidecar-backed, file name otherwise).</summary>
     public string? TeamHeadline => _team.Name;

@@ -367,9 +367,24 @@ public sealed class TeamsViewModel : ObservableObject
 
     internal void Export(string path)
     {
-        if (_exportPicker?.Invoke() is { Length: > 0 } destination)
-            TeamCatalog.ExportTo(path, destination);
+        if (_exportPicker?.Invoke() is not { Length: > 0 } destination)
+            return;
+
+        // Said either way (review D10): a refused export (existing destination, disk)
+        // that looks identical to a successful one teaches the user nothing.
+        StatusMessage = TeamCatalog.ExportTo(path, destination) is { } exported
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsExportedTo], exported)
+            : _strings[StudioStringKeys.TeamsExportFailed];
     }
+
+    /// <summary>Outcome line of the screen's last action (export); empty when quiet.</summary>
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        private set => SetProperty(ref _statusMessage, value);
+    }
+
+    private string _statusMessage = "";
 
     /// <summary>The export destination chooser — wired by the shell to the OS folder browser.</summary>
     public Func<string?>? ExportDestinationPicker

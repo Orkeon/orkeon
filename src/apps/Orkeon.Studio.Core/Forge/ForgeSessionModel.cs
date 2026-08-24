@@ -314,7 +314,12 @@ public sealed class ForgeSessionModel
         var items = new List<ForgeChecklistItem>();
         foreach (var finding in verdict.Findings)
         {
-            if (string.IsNullOrWhiteSpace(finding.Acceptance))
+            // No acceptance (the mechanical findings) — and an acceptance that names no
+            // current criterion (a refine changed the ids, or an engine typo): both are
+            // failures the card must show, never drop.
+            var orphaned = string.IsNullOrWhiteSpace(finding.Acceptance)
+                || !_criteria.Any(c => string.Equals(c.Id, finding.Acceptance, StringComparison.OrdinalIgnoreCase));
+            if (orphaned)
                 items.Add(new ForgeChecklistItem(finding.Statement, false, null));
         }
 

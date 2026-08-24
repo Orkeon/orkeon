@@ -109,7 +109,9 @@ public sealed class MainWindowViewModel : ObservableObject
         FolderPicker = new FolderPickerViewModel(directories, picker, strings);
         TeamMounts = new TeamMountsDialogViewModel(strings);
         Teams.MountsRequested += (_, e) =>
-            TeamMounts.Open(e.Card.Summary.Path, e.Card.Name, e.Card.Mounts, onSaved: Teams.Refresh);
+            TeamMounts.Open(e.Card.Summary.Path, e.Card.Name, e.Card.Mounts,
+                onSaved: () => { Teams.Refresh(); Launch.RefreshTeamDescription(); });
+        Launch.RunRecorded += (_, _) => _ = Teams.LoadLastRunsAsync();
         Teams.TestRequested += (_, e) => { Test.Launcher.Target.Select(e.Path); TestRequested?.Invoke(this, EventArgs.Empty); };
         var effectiveStrings = strings ?? Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance;
         Teams.ExportDestinationPicker = () =>
@@ -124,7 +126,7 @@ public sealed class MainWindowViewModel : ObservableObject
         // An adopted team is an ordinary folder: "Lancer" hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
         Teams.LaunchRequested += (_, e) => Launch.Target.Select(e.Path);
-        Teams.ResumeRequested += (_, e) => _ = CreateTeam.ResumeAsync(e.Session);
+        Teams.ResumeRequested += (_, e) => _ = ResumeGuarded(e.Session);
         CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
     }
@@ -220,17 +222,50 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history, reading the model profiles.</summary>
-    public Task InitializeAsync(CancellationToken cancellationToken = default) =>
-        Task.WhenAll(
-            Launch.InitializeAsync(cancellationToken),
-            Test.Launcher.InitializeAsync(cancellationToken),
-            Settings.Profiles.InitializeAsync(cancellationToken),
-            // The silent doctor run (audit 09/20): the sidebar dot and the verdict card
-            // are honest from the first frame, without the user pressing anything.
-            Config.Diagnostic.InitializeAsync(cancellationToken),
-            // The team cards' "dernière exécution" line, from the same history the
-            // Historique screen reads.
-            Teams.LoadLastRunsAsync(cancellationToken));
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031",
+        Justification = "Startup fault barrier: the caller discards this task, so an unexpected " +
+                        "failure in one loader must land on a status line, never vanish or kill the window.")]
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await Task.WhenAll(
+                Launch.InitializeAsync(cancellationToken),
+                Test.Launcher.InitializeAsync(cancellationToken),
+                Settings.Profiles.InitializeAsync(cancellationToken),
+                // The silent doctor run (audit 09/20): the sidebar dot and the verdict card
+                // are honest from the first frame, without the user pressing anything.
+                Config.Diagnostic.InitializeAsync(cancellationToken),
+                // The team cards' "dernière exécution" line, from the same history the
+                // Historique screen reads.
+                Teams.LoadLastRunsAsync(cancellationToken)).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            // Shutdown mid-load: nothing to say.
+        }
+        catch (Exception ex)
+        {
+            CreateTeam.ReportStatus(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// A resume failure (a session directory gone unreadable) must land in the wizard's
+    /// status line, not in a discarded task — the screen would otherwise come forward
+    /// empty with no word of why.
+    /// </summary>
+    private async Task ResumeGuarded(Orkeon.Studio.Core.Forge.ForgeSolutionSummary session)
+    {
+        try
+        {
+            await CreateTeam.ResumeAsync(session).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            CreateTeam.ReportStatus(ex.Message);
+        }
+    }
 
     /// <summary>
     /// The per-user config directory as the forge home, falling back to the Orkeon user

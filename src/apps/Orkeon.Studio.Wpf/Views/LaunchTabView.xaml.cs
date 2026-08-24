@@ -10,6 +10,25 @@ public partial class LaunchTabView : UserControl
     /// <summary>Loads the XAML.</summary>
     public LaunchTabView() => InitializeComponent();
 
+    /// <summary>
+    /// The settings-mode radios bind OneWay (Browse forces ExplicitPath from the VM side),
+    /// so checking one must switch the mode explicitly — same rule as SettingsFileView's
+    /// custom-location row; without this the row looks selected while the run keeps the
+    /// other mode.
+    /// </summary>
+    private void OnSettingsAutomaticChecked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is LaunchTabViewModel tab)
+            tab.Options.SettingsMode = ViewModels.Launch.SettingsSelectionMode.Automatic;
+    }
+
+    /// <inheritdoc cref="OnSettingsAutomaticChecked" />
+    private void OnSettingsExplicitChecked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is LaunchTabViewModel tab)
+            tab.Options.SettingsMode = ViewModels.Launch.SettingsSelectionMode.ExplicitPath;
+    }
+
     /// <summary>"Changer d'équipe" — lands on My teams (navigation is a window concern).</summary>
     private void OnCopyJournal(object sender, RoutedEventArgs e)
     {

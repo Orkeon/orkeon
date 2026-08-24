@@ -24,6 +24,9 @@
       </StackPanel>
     </DockPanel>
 
+    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,-14,0,10" Text="{Binding StatusMessage}"
+               Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
+
     <TextBlock Style="{StaticResource Hint}"
                Text="{Binding [Teams_Empty], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>

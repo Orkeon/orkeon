@@ -330,6 +330,55 @@ public sealed class ForgeRunStagesTests : IDisposable
     }
 
     [Fact]
+    public async Task An_edit_with_no_iteration_left_is_refused_before_the_artifact_changes()
+    {
+        // Budget of exactly one iteration: the first cycle consumes it, so the edit's
+        // re-render has nothing left — it must be refused up-front (review D7), the
+        // blueprint artifact untouched, and the arbitration reopened.
+        var edited = ForgeDocuments.ValidBlueprint
+            .Replace("\"veille-fournisseur\"", "\"veille-matinale\"", StringComparison.Ordinal);
+        var bench = new FakeTestBench().Succeeds();
+        var judge = new FakeJudge().Approves();
+        var channel = new ScriptedUserChannel()
+            .Decides("edit").Edits(edited)
+            .Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille", budget: new ForgeBudget { MaxIterations = 1 });
+
+        var result = await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(ForgeEngineOutcome.Ready, result.Outcome);
+        Assert.Equal(1, bench.Executions);
+
+        var error = Events().Single(e => e.GetProperty("kind").GetString() == "error");
+        Assert.Equal("FORGE-BUDGET-EXHAUSTED", error.GetProperty("code").GetString());
+        Assert.True(error.GetProperty("recoverable").GetBoolean());
+
+        var saved = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
+        Assert.Equal("veille-fournisseur", saved!.Crew!.Name);   // untouched
+    }
+
+    [Fact]
+    public async Task The_edited_announcement_carries_the_iteration_the_rerender_runs_as()
+    {
+        var edited = ForgeDocuments.ValidBlueprint
+            .Replace("\"veille-fournisseur\"", "\"veille-matinale\"", StringComparison.Ordinal);
+        var bench = new FakeTestBench().Succeeds().Succeeds();
+        var judge = new FakeJudge().Approves().Approves();
+        var channel = new ScriptedUserChannel()
+            .Decides("edit").Edits(edited)
+            .Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var announcements = Events().Where(e => e.GetProperty("kind").GetString() == "blueprint.ready").ToList();
+        // The re-announcement says 2 — the number runs/2 actually ran as (review D8).
+        Assert.Equal(2, announcements[1].GetProperty("iteration").GetInt32());
+    }
+
+    [Fact]
     public async Task A_promised_deliverable_that_never_appeared_is_a_finding()
     {
         // The valid blueprint promises /output/resume.md; the fake bench writes nothing.

@@ -116,9 +116,6 @@ public static class StudioStringKeys
     /// <summary>"Off. Both switches must be turned on …"</summary>
     public const string RagWebFallbackOff = "Vm_Rag_WebFallbackOff";
 
-    // ---- LLM preset catalogue (Core Presets/LlmPresets) ------------------
-
-    /// <summary>"Ollama"</summary>
     /// <summary>"already allowed" — the folder picker's faint note on a mounted row.</summary>
     public const string PickerAlreadyMounted = "Vm_Picker_AlreadyMounted";
 
@@ -170,6 +167,12 @@ public static class StudioStringKeys
     /// <summary>"Setting: {0}" — the meta line's model-profile part.</summary>
     public const string TeamsSettingLabel = "Teams_SettingLabel";
 
+    /// <summary>"Team exported to {0}"</summary>
+    public const string TeamsExportedTo = "Vm_Teams_ExportedTo";
+
+    /// <summary>"Export refused — the destination already exists, or the disk said no."</summary>
+    public const string TeamsExportFailed = "Vm_Teams_ExportFailed";
+
     /// <summary>"Declared folders" — the import report's mounts row, when the sidecar has some.</summary>
     public const string ImportMountsDeclared = "Vm_Import_MountsDeclared";
 
@@ -188,6 +191,9 @@ public static class StudioStringKeys
     /// <summary>"writes to {0}" — a writable team mount, in the launcher's meta line.</summary>
     public const string RunMetaWrites = "Vm_Run_MetaWrites";
 
+    // ---- LLM preset catalogue (Core Presets/LlmPresets) ------------------
+
+    /// <summary>"Ollama"</summary>
     public const string PresetOllamaTitle = "Core_Preset_Ollama_Title";
 
     /// <summary>"Local Ollama server."</summary>
@@ -372,6 +378,9 @@ public static class StudioStringKeys
     public const string ConfigNotSavedErrors = "Vm_Config_NotSavedErrors";
 
     /// <summary>"Not saved: no destination selected."</summary>
+    /// <summary>"Not saved — the file could not be written: {0}"</summary>
+    public const string ConfigNotSavedWriteFailed = "Vm_Config_NotSavedWriteFailed";
+
     public const string ConfigNotSavedNoDestination = "Vm_Config_NotSavedNoDestination";
 
     /// <summary>"Not saved yet: authorize at least one folder…"</summary>
@@ -842,6 +851,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsRunFail] = "failed",
         [StudioStringKeys.TeamsNeverRan] = "Never ran",
         [StudioStringKeys.TeamsSettingLabel] = "Setting: {0}",
+        [StudioStringKeys.ConfigNotSavedWriteFailed] = "Not saved — the file could not be written: {0}",
+        [StudioStringKeys.TeamsExportedTo] = "Team exported to {0}",
+        [StudioStringKeys.TeamsExportFailed] = "Export refused — the destination already exists, or the disk said no.",
         [StudioStringKeys.ImportMountsDeclared] = "Declared folders",
         [StudioStringKeys.ImportMountsDeclaredDetail] = "{0} folder(s): {1}",
         [StudioStringKeys.ImportMountsNone] = "No declared folder",

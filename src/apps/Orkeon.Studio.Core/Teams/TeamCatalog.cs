@@ -185,16 +185,6 @@ public static partial class TeamCatalog
     }
 
     /// <summary>
-    /// Name of the model profile a launch target runs on, from the team sidecar next to it —
-    /// the target's own folder, or its parent when the target is a definition file. Null for
-    /// anything that is not an adopted team, which is most launches.
-    /// </summary>
-    /// <summary>
-    /// Everything a launch screen can honestly say about a target without a crew parser:
-    /// the sidecar's name/description/profile when one sits beside it, the file-system name
-    /// otherwise, and — for a multi-file team directory — the count of agent definitions.
-    /// </summary>
-    /// <summary>
     /// Ensures <paramref name="path"/> exists and hands it back — the lazy creation of
     /// the Orkeon user home the first time a forge session needs a working directory
     /// (Process.Start refuses a non-existent one). A creation failure degrades to
@@ -216,6 +206,11 @@ public static partial class TeamCatalog
         return path;
     }
 
+    /// <summary>
+    /// Everything a launch screen can honestly say about a target without a crew parser:
+    /// the sidecar's name/description/profile/mounts when one sits beside it, the
+    /// file-system name otherwise, and — for a team directory — the agent count.
+    /// </summary>
     public static TargetDescription DescribeTarget(string targetPath)
     {
         if (string.IsNullOrWhiteSpace(targetPath))
@@ -250,6 +245,11 @@ public static partial class TeamCatalog
         }
     }
 
+    /// <summary>
+    /// Name of the model profile a launch target runs on, from the team sidecar next to it —
+    /// the target's own folder, or its parent when the target is a definition file. Null for
+    /// anything that is not an adopted team, which is most launches.
+    /// </summary>
     public static string? ProfileFor(string targetPath)
     {
         if (string.IsNullOrWhiteSpace(targetPath))

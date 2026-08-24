@@ -276,11 +276,22 @@ public sealed class ForgeClient
     public bool RequestCancellation()
     {
         var cancellation = _cancellation;
-        if (cancellation is null || cancellation.IsCancellationRequested)
+        if (cancellation is null)
             return false;
 
-        cancellation.Cancel();
-        return true;
+        try
+        {
+            if (cancellation.IsCancellationRequested)
+                return false;
+
+            cancellation.Cancel();
+            return true;
+        }
+        catch (ObjectDisposedException)
+        {
+            // The run finished between the read and the cancel; nothing left to stop.
+            return false;
+        }
     }
 
     private bool WriteLine(object payload) =>

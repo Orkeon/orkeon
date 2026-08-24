@@ -666,11 +666,22 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
     private IReadOnlyList<LlmPresetInfo> ProviderCatalog() => LlmPresets.ProviderCatalogFor(_strings);
 
+    private Task _persist = Task.CompletedTask;
+
     private void Mutate(ModelProfileSet set)
     {
         _set = set;
         Rebuild();
-        _ = _store.SaveAsync(set);
+        // Writes are chained so two rapid mutations can never interleave on the file; the
+        // store itself is tolerant (a refused write is a lost convenience, said nowhere by
+        // design — the profile set lives on in memory for the session).
+        _persist = Persist(_persist, set);
+    }
+
+    private async Task Persist(Task previous, ModelProfileSet set)
+    {
+        await previous.ConfigureAwait(false);
+        await _store.SaveAsync(set).ConfigureAwait(false);
     }
 
     private void ApplyDefaultToSettings()

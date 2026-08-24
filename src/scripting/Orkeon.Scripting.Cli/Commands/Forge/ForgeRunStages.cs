@@ -364,6 +364,19 @@ internal sealed class VerdictStage : IForgeStageRunner
         var json = await _channel.ReadBlueprintAsync(cancellationToken).ConfigureAwait(false)
             ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
 
+        // The edit's re-render/re-test is a cycle: refuse it here, BEFORE the artifact is
+        // replaced, when no iteration remains — otherwise the disk would hold an edited
+        // blueprint over crew files rendered from the old one, and a raised-budget resume
+        // could promote the mismatch.
+        if (!session.Document.Budget.CanStartIteration)
+        {
+            events.Error(
+                ForgeEngine.CodeBudgetExhausted,
+                "No iteration remains in the budget for the edit's re-render; raise --max-iterations and resume, or accept/abort.",
+                recoverable: true);
+            return false;
+        }
+
         if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors))
         {
             events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", errors), recoverable: true);
@@ -379,7 +392,9 @@ internal sealed class VerdictStage : IForgeStageRunner
         }
 
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
-        events.Emit("blueprint.ready", new { blueprint, iteration = session.Document.Iteration });
+        // The engine registers the loop-back's iteration right after this stage returns:
+        // the announcement carries the number the re-render will actually run as.
+        events.Emit("blueprint.ready", new { blueprint, iteration = session.Document.Iteration + 1 });
         return true;
     }
 

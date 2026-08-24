@@ -100,11 +100,20 @@ public sealed class LaunchHistoryFileStore : ILaunchHistoryStore
     {
         ArgumentNullException.ThrowIfNull(history);
 
-        var directory = System.IO.Path.GetDirectoryName(FilePath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
+        try
+        {
+            var directory = System.IO.Path.GetDirectoryName(FilePath);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
 
-        await File.WriteAllTextAsync(FilePath, history.ToJson(), cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(FilePath, history.ToJson(), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // History is a convenience: a locked or full disk must never turn a finished
+            // run into an exception (the run already happened — losing its history line
+            // costs comfort, throwing here would cost the result).
+        }
     }
 
     /// <inheritdoc />

@@ -157,8 +157,8 @@ public sealed class AppSettingsDocument
             var segment = segments[i];
             if (!parent.TryGetPropertyValue(segment, out var child) || child is not JsonObject childObject)
             {
-                if (value is null && child is null)
-                    return; // nothing to remove — do not materialize the parent chain
+                if (value is null)
+                    return; // nothing to remove — never materialize (or overwrite a scalar on) the parent chain
 
                 childObject = new JsonObject();
                 parent[segment] = childObject;

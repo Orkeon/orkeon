@@ -33,6 +33,7 @@ public partial class MainWindow : Window
         shell.CreateTeam.SessionActivated += (_, _) => NavCreate.IsChecked = true;
         shell.CreateTeam.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
+        shell.TestRequested += (_, _) => NavTest.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;

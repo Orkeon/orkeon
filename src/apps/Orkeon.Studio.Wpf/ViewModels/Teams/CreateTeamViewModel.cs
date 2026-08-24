@@ -53,14 +53,14 @@ public sealed class WizardChoice : ObservableObject
 /// <summary>One agent card of the "Composer" step — a blueprint agent, or a step-group fallback.</summary>
 public sealed class WizardAgentCard
 {
-    internal WizardAgentCard(string? key, string name, string initial, string role, IReadOnlyList<string> tools, Action<string?>? edit)
+    internal WizardAgentCard(string? key, string name, string initial, string role, IReadOnlyList<string> tools, Action<string?>? edit, Func<bool> canEdit)
     {
         Key = key;
         Name = name;
         Initial = initial;
         Role = role;
         Tools = tools;
-        EditCommand = new RelayCommand(() => edit?.Invoke(key), () => edit is not null && key is not null);
+        EditCommand = new RelayCommand(() => edit?.Invoke(key), () => edit is not null && key is not null && canEdit());
     }
 
     /// <summary>The blueprint key — expert mono; null for a step-group fallback card.</summary>
@@ -202,7 +202,11 @@ public sealed class CreateTeamViewModel : ObservableObject
         Profiles.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(ModelProfilesViewModel.HasStudioProfile) or nameof(ModelProfilesViewModel.Set))
-                OnPropertiesChanged(nameof(HasAssistant), nameof(NeedsAssistant));
+            {
+                // CanCompose starts with HasAssistant: an election must wake the button too.
+                OnPropertiesChanged(nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint));
+                ComposeCommand.RaiseCanExecuteChanged();
+            }
         };
     }
 
@@ -389,6 +393,9 @@ public sealed class CreateTeamViewModel : ObservableObject
         private set => SetProperty(ref _statusMessage, value);
     }
 
+    /// <summary>The shell's way in: a resume failure must land on this screen's status line.</summary>
+    internal void ReportStatus(string message) => StatusMessage = message;
+
     /// <summary>
     /// The assistant's latest turn that belongs to no notes thread — the interview channel.
     /// Null when the assistant said nothing new.
@@ -498,9 +505,14 @@ public sealed class CreateTeamViewModel : ObservableObject
         AgentEditor.Open(blueprintJson, agentKey, [.. TeamMounts], amended =>
         {
             // The engine owns the truth: the decision goes first, the amended blueprint
-            // follows, and everything is re-validated on its side of the wire.
-            _client.SendDecision("edit");
-            _client.SendBlueprint(amended);
+            // follows, and everything is re-validated on its side of the wire. A dead
+            // engine must be SAID — closing the editor as if applied would lose the edit.
+            if (!_client.SendDecision("edit") || !_client.SendBlueprint(amended))
+            {
+                StatusMessage = _strings[StudioStringKeys.WizardAssistantNotRunning];
+                return;
+            }
+
             _model.AcknowledgeDecision();
             SyncFromModel();
         });
@@ -582,7 +594,12 @@ public sealed class CreateTeamViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _scheduleChoice, value))
-                OnPropertiesChanged(nameof(NeedsScheduleTime), nameof(IsOnDemand), nameof(IsDaily), nameof(IsHourly));
+            {
+                // CanSaveTeam tests the time only on the daily choice: leaving "daily" with
+                // an invalid time must wake the save button up again.
+                OnPropertiesChanged(nameof(NeedsScheduleTime), nameof(IsOnDemand), nameof(IsDaily), nameof(IsHourly), nameof(CanSaveTeam));
+                SaveTeamCommand.RaiseCanExecuteChanged();
+            }
         }
     }
 
@@ -846,6 +863,12 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     private void ResetProjection()
     {
+        // A new session starts from a clean slate: the previous team's folders were
+        // approved for THAT team, never for the next one; the old engine command lies.
+        TeamMounts.Clear();
+        OnPropertyChanged(nameof(HasTeamMounts));
+        EngineCommandLine = null;
+        OnPropertyChanged(nameof(EngineCommandLine));
         // The generation bump orphans every event the dying child still has in flight:
         // a straggler posted before the swap must not repopulate the fresh model.
         _runGeneration++;
@@ -966,8 +989,19 @@ public sealed class CreateTeamViewModel : ObservableObject
             Step = step;
     }
 
+    private ForgeErrorInfo? _surfacedError;
+
     private void SyncFromModel()
     {
+        // A fresh recoverable engine error must reach the status line (review D3): a
+        // refused blueprint edit (FORGE-BLUEPRINT-INVALID) is otherwise invisible in
+        // novice mode — the editor closes and nothing says why nothing changed.
+        if (_model.LastError is { Recoverable: true } error && !ReferenceEquals(error, _surfacedError))
+        {
+            _surfacedError = error;
+            StatusMessage = error.Message is { Length: > 0 } ? $"{error.Code}: {error.Message}" : error.Code;
+        }
+
         // The milestone drives the stepper; the user may look back, never skip ahead.
         var reached = _model.Milestone switch
         {
@@ -1030,7 +1064,8 @@ public sealed class CreateTeamViewModel : ObservableObject
                         ? goal
                         : string.Join(" ", proposal.Steps.Where(step => step.AgentRole == agent.Role).Select(step => step.Description)),
                     agent.Tools,
-                    EditAgent));
+                    EditAgent,
+                    () => CanEditAgents));
             }
 
             return;
@@ -1046,7 +1081,8 @@ public sealed class CreateTeamViewModel : ObservableObject
                 name.Length > 0 ? name[..1].ToUpperInvariant() : "?",
                 string.Join(" ", group.Select(s => s.Description)),
                 tools: [],
-                edit: null));
+                edit: null,
+                canEdit: static () => false));
         }
     }
 

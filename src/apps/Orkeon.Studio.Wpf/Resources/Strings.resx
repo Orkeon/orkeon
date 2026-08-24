@@ -625,4 +625,7 @@
   <data name="Wiz_Help_Step3" xml:space="preserve"><value>The team rehearses on a sample, in its own sandbox — nothing outside it is touched. The verdict tells you honestly whether the result meets what you asked at step 1.</value></data>
   <data name="Wiz_Help_Step4" xml:space="preserve"><value>Adopting stores the team as an ordinary folder under your profile. Scheduling is shown as a command, never run for you; the team then appears in Mes équipes.</value></data>
   <data name="Mounts_Novice_Empty" xml:space="preserve"><value>No folder is allowed yet. The agents will see nothing until you allow at least one.</value></data>
+  <data name="Vm_Config_NotSavedWriteFailed" xml:space="preserve"><value>Not saved — the file could not be written: {0}</value></data>
+  <data name="Vm_Teams_ExportedTo" xml:space="preserve"><value>Team exported to {0}</value></data>
+  <data name="Vm_Teams_ExportFailed" xml:space="preserve"><value>Export refused — the destination already exists, or the disk said no.</value></data>
 </root>

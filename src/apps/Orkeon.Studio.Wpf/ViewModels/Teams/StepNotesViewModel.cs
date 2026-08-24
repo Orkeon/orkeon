@@ -48,7 +48,9 @@ public sealed class StepNotesViewModel : ObservableObject
         _ask = ask;
         AskCommand = new RelayCommand(Ask, () => _questionDraft.Trim().Length > 0);
         ToggleThreadCommand = new RelayCommand(() => IsThreadOpen = !IsThreadOpen);
-        ClearCommand = new RelayCommand(() => Items.Clear(), () => Items.Count > 0);
+        ClearCommand = new RelayCommand(
+            () => { Items.Clear(); ClearCommand!.RaiseCanExecuteChanged(); },
+            () => Items.Count > 0);
     }
 
     /// <summary>The consigne, taken as typed. Empty means none.</summary>

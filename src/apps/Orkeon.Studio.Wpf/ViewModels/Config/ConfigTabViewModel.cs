@@ -73,6 +73,12 @@ public sealed class ConfigTabViewModel : ObservableObject
         OpenCommand = new AsyncRelayCommand(OpenAsync);
         LoadFromLocationCommand = new AsyncRelayCommand(() => LoadAsync(Location.EffectivePath ?? ""));
         SaveCommand = new AsyncRelayCommand(() => SaveAsync(), () => Location.CanSave);
+        // The guard reads Location.CanSave: a mode or path change there must wake the button.
+        Location.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(SettingsLocationViewModel.CanSave))
+                SaveCommand.RaiseCanExecuteChanged();
+        };
         // The explicit Validate lands its verdict in the status line (audit 07/16): the
         // novice screen has no validation card any more, the summary is the feedback.
         ValidateCommand = new RelayCommand(() => { Validate(); StatusMessage = ValidationSummary; });
@@ -292,7 +298,18 @@ public sealed class ConfigTabViewModel : ObservableObject
             return false;
         }
 
-        await _store.SaveAsync(_document, path, cancellationToken);
+        try
+        {
+            await _store.SaveAsync(_document, path, cancellationToken);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            // A read-only or locked file must be SAID, not swallowed — the novice auto-save
+            // has no Save button and no dirty flag to betray a silent loss.
+            StatusMessage = string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.ConfigNotSavedWriteFailed], ex.Message);
+            return false;
+        }
 
         LoadedPath = path;
         IsDirty = false;

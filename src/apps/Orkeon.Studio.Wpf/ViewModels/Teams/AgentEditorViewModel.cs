@@ -236,6 +236,8 @@ public sealed class AgentEditorViewModel : ObservableObject
         target["role"] = _name.Trim();
         if (_whatItDoes.Trim() is { Length: > 0 } goal)
             target["goal"] = goal;
+        else
+            target.Remove("goal");   // an emptied field is a removal, never a silent keep
         target["tools"] = tools;
 
         return blueprint.ToJsonString();

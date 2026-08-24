@@ -223,10 +223,10 @@
           <StackPanel Margin="13,4,0,4"
                       Visibility="{Binding IsChecked, ElementName=AdvancedFold, Converter={StaticResource BooleanToVisibility}}">
             <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Text="appsettings.json"/>
-            <RadioButton Margin="0,8,0,0" GroupName="RunSettings"
+            <RadioButton Margin="0,8,0,0" GroupName="RunSettings" Checked="OnSettingsAutomaticChecked"
                          IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
                          Content="{Binding [Run_Settings_Auto], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton Margin="0,5,0,0" GroupName="RunSettings"
+            <RadioButton Margin="0,5,0,0" GroupName="RunSettings" Checked="OnSettingsExplicitChecked"
                          IsChecked="{Binding Options.IsSettingsExplicit, Mode=OneWay}"
                          Content="{Binding [Run_Settings_Explicit], Source={x:Static services:I18n.Instance}}"/>
             <DockPanel Margin="0,7,0,0">

@@ -321,7 +321,11 @@ public sealed class LaunchOptionsViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _watchProgress, value))
+            {
                 OnPropertyChanged(nameof(CanStreamGeneratedText));
+                // The flag reaches the argv (--events jsonl): the COMMANDE preview must follow.
+                OnOptionEdited(this, EventArgs.Empty);
+            }
         }
     }
 
@@ -332,7 +336,12 @@ public sealed class LaunchOptionsViewModel : ObservableObject
     public bool StreamGeneratedText
     {
         get => _streamGeneratedText;
-        set => SetProperty(ref _streamGeneratedText, value);
+        set
+        {
+            // The flag reaches the argv (--stream): the COMMANDE preview must follow.
+            if (SetProperty(ref _streamGeneratedText, value))
+                OnOptionEdited(this, EventArgs.Empty);
+        }
     }
 
     /// <summary>Whether streaming can be asked for at all — it needs the protocol.</summary>
