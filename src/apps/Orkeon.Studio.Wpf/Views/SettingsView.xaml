@@ -280,6 +280,60 @@
         </StackPanel>
       </Border>
 
+      <!-- API keys: one row per environment variable the profiles resolve. The value goes
+           straight to the user environment (IApiKeyStore) — it never enters any file. -->
+      <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+              Visibility="{Binding Profiles.HasSecrets, Converter={StaticResource BooleanToVisibility}}">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <controls:LucideIcon Kind="key-round" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+            <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Secrets_Title], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+          <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"
+                     Text="{Binding [Secrets_Intro], Source={x:Static services:I18n.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding Profiles.Secrets}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border CornerRadius="10" Padding="13,10" Margin="0,0,0,7" BorderThickness="1"
+                        BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
+                  <DockPanel LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                      <TextBox Style="{StaticResource InputMono}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
+                               ToolTip="{Binding [Profile_KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
+                               Text="{Binding KeyInput, UpdateSourceTrigger=PropertyChanged}"/>
+                      <Button Style="{StaticResource BtnGhost}" Command="{Binding StoreCommand}"
+                              Content="{Binding [Profile_KeyStore], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                    <StackPanel VerticalAlignment="Center">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource InkBrush}" Text="{Binding EnvName}"/>
+                        <Border Margin="9,0,0,0" VerticalAlignment="Center">
+                          <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+                              <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+                              <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasKey}" Value="True">
+                                  <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                                  <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </Border.Style>
+                          <TextBlock Style="{StaticResource BadgeText}" FontSize="10" Text="{Binding StatusText}"/>
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
     </StackPanel>
 
     <!-- ══ DOSSIERS AUTORISÉS ══ -->

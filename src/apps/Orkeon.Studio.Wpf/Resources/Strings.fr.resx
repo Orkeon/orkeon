@@ -552,4 +552,6 @@
   <data name="Test_Empty" xml:space="preserve"><value>Choisissez une équipe pour préparer un essai.</value></data>
   <data name="Teams_Open" xml:space="preserve"><value>Ouvrir le dossier</value></data>
   <data name="Diag_LlmConfigHint" xml:space="preserve"><value>Ceci est la base commune (fichier de réglages + environnement de ce shell). Une équipe qui a élu son propre réglage de modèle le reçoit par-dessus, au lancement seulement — il n'apparaît pas ici.</value></data>
+  <data name="Secrets_Title" xml:space="preserve"><value>Clés API</value></data>
+  <data name="Secrets_Intro" xml:space="preserve"><value>Les clés vivent dans vos variables d'environnement utilisateur, jamais dans un fichier. Collez une clé puis mémorisez-la ; le champ se vide une fois la clé enregistrée.</value></data>
 </root>

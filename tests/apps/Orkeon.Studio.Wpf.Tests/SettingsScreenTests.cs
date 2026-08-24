@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
@@ -313,5 +314,51 @@ public sealed class SettingsRemediationTests
         var card = Assert.Single(profiles.Profiles);
         Assert.True(card.IsUsedByTeams);
         Assert.Equal(["Veille"], card.UsedByTeams);
+    }
+}
+
+/// <summary>The Réglages "Clés API" card: env-var rows, remember flow, no file ever.</summary>
+public sealed class SecretsCardTests
+{
+    private sealed class RecordingKeyStore : IApiKeyStore
+    {
+        public Dictionary<string, string> Saved { get; } = new(StringComparer.Ordinal);
+        public string? Peek(string envName) => Saved.TryGetValue(envName, out var v) ? v : null;
+        public void Save(string envName, string value) => Saved[envName] = value;
+    }
+
+    [Fact]
+    public async Task One_row_per_distinct_key_variable_and_storing_wipes_the_field()
+    {
+        var store = new InMemoryModelProfileStore();
+        await store.SaveAsync(new ModelProfileSet
+        {
+            Profiles =
+            [
+                new ModelProfile { Name = "DeepSeek rapide", Provider = "deepseek", BaseUrl = "https://api.deepseek.com", Model = "m", KeyEnvName = "DEEPSEEK_API_KEY" },
+                new ModelProfile { Name = "DeepSeek raisonneur", Provider = "deepseek", BaseUrl = "https://api.deepseek.com", Model = "r", KeyEnvName = "DEEPSEEK_API_KEY" },
+                new ModelProfile { Name = "Local", Provider = "ollama", BaseUrl = "http://localhost:11434", Model = "phi3" },
+            ],
+            DefaultProfile = "Local",
+        }, TestContext.Current.CancellationToken);
+
+        var keys = new RecordingKeyStore();
+        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var profiles = new ModelProfilesViewModel(store, config.Llm, keyStore: keys);
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        // The keyless local profile contributes no row; the two DeepSeek profiles share one.
+        var row = Assert.Single(profiles.Secrets);
+        Assert.Equal("DEEPSEEK_API_KEY", row.EnvName);
+        Assert.Contains("DeepSeek rapide", row.UsedBy, StringComparison.Ordinal);
+        Assert.False(row.HasKey);
+
+        row.KeyInput = "  sk-test-123  ";
+        Assert.True(row.StoreCommand.CanExecute(null));
+        row.StoreCommand.Execute(null);
+
+        Assert.Equal("sk-test-123", keys.Saved["DEEPSEEK_API_KEY"]);
+        Assert.Equal("", row.KeyInput);   // the pasted key does not linger on screen
+        Assert.True(row.HasKey);
     }
 }

@@ -36,6 +36,12 @@ drove a six-lot remediation of `orkeon-studio`:
   an error state and novice gets one card per folder plus an "Allow a folder"
   picker; Diagnostic opens on a verdict card fed by a silent first doctor run;
   the Create gate is a radio list.
+- **Startup & secrets** — the window opens at the mock's 1024×768 baseline
+  (still resizable up); the Réglages model tab gains an **"API keys" card**:
+  one row per environment variable the profiles resolve (status chip, paste
+  field, "Mémoriser la clé"), storing through the same `IApiKeyStore` as the
+  profile editor — the value lands in a user environment variable and the
+  field empties once stored; no key ever enters a file.
 - **Polish** — novice Settings auto-saves on every edit (Save/Validate stay
   expert; the validation card is expert-only, keeping the copyable report);
   profile cards carry "Utilisé par" team chips; Limits cards say when the

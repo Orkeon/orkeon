@@ -6,7 +6,7 @@
         xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
         xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
         Title="Orkeon Studio"
-        Height="900" Width="1440" MinHeight="768" MinWidth="1024"
+        Height="768" Width="1024" MinHeight="768" MinWidth="1024"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PaperBrush}"
         FontFamily="{StaticResource TextFont}"
