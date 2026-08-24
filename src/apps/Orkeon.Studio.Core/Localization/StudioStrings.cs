@@ -303,6 +303,45 @@ public static class StudioStringKeys
     /// <summary>"The orkeon CLI has not been located yet."</summary>
     public const string LaunchBinaryNotLocated = "Vm_Launch_BinaryNotLocated";
 
+    /// <summary>"Ready to work"</summary>
+    public const string RunStateIdle = "Vm_Run_StateIdle";
+
+    /// <summary>"Run in progress"</summary>
+    public const string RunStateRunning = "Vm_Run_StateRunning";
+
+    /// <summary>"Run finished"</summary>
+    public const string RunStateDone = "Vm_Run_StateDone";
+
+    /// <summary>"waiting"</summary>
+    public const string RunBadgeIdle = "Vm_Run_BadgeIdle";
+
+    /// <summary>"running"</summary>
+    public const string RunBadgeRunning = "Vm_Run_BadgeRunning";
+
+    /// <summary>"succeeded"</summary>
+    public const string RunBadgeDone = "Vm_Run_BadgeDone";
+
+    /// <summary>"failed"</summary>
+    public const string RunBadgeFailed = "Vm_Run_BadgeFailed";
+
+    /// <summary>"Launch now"</summary>
+    public const string RunButtonLaunch = "Vm_Run_BtnLaunch";
+
+    /// <summary>"Running…"</summary>
+    public const string RunButtonRunning = "Vm_Run_BtnRunning";
+
+    /// <summary>"Relaunch"</summary>
+    public const string RunButtonRelaunch = "Vm_Run_BtnRelaunch";
+
+    /// <summary>"The Orkeon engine was not found — run the Diagnostic."</summary>
+    public const string RunCliMissing = "Vm_Run_CliMissing";
+
+    /// <summary>"{0} agents"</summary>
+    public const string RunMetaAgents = "Vm_Run_MetaAgents";
+
+    /// <summary>"setting {0}"</summary>
+    public const string RunMetaProfile = "Vm_Run_MetaProfile";
+
     /// <summary>"The orkeon CLI was not found."</summary>
     public const string LaunchBinaryNotFound = "Vm_Launch_BinaryNotFound";
 
@@ -643,6 +682,19 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ValidationSummary] = "Validation: {0} error(s), {1} warning(s), {2} note(s).",
         [StudioStringKeys.LaunchNothingRan] = "Nothing ran — {0}",
         [StudioStringKeys.LaunchExitCode] = "Exit code {0} — {1}",
+        [StudioStringKeys.RunStateIdle] = "Ready to work",
+        [StudioStringKeys.RunStateRunning] = "Run in progress",
+        [StudioStringKeys.RunStateDone] = "Run finished",
+        [StudioStringKeys.RunBadgeIdle] = "waiting",
+        [StudioStringKeys.RunBadgeRunning] = "running",
+        [StudioStringKeys.RunBadgeDone] = "succeeded",
+        [StudioStringKeys.RunBadgeFailed] = "failed",
+        [StudioStringKeys.RunButtonLaunch] = "Launch now",
+        [StudioStringKeys.RunButtonRunning] = "Running…",
+        [StudioStringKeys.RunButtonRelaunch] = "Relaunch",
+        [StudioStringKeys.RunCliMissing] = "The Orkeon engine was not found — run the Diagnostic.",
+        [StudioStringKeys.RunMetaAgents] = "{0} agents",
+        [StudioStringKeys.RunMetaProfile] = "setting {0}",
 
         [StudioStringKeys.PresetOllamaTitle] = "Ollama",
         [StudioStringKeys.PresetOllamaDescription] = "Local Ollama server.",

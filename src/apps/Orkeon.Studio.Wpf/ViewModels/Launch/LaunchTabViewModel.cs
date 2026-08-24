@@ -7,6 +7,7 @@ using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -34,6 +35,9 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private readonly Func<string, IReadOnlyDictionary<string, string>?>? _environmentForTarget;
     private bool _isRunning;
+    private bool _isJournalOpen;
+    private readonly IShellOpener? _shellOpener;
+    private TargetDescription _team = new();
     private string? _commandLinePreview;
     private string? _statusMessage;
     private ProcessRunResult? _lastResult;
@@ -49,7 +53,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         IAppSettingsStore? settingsStore = null,
         IUiDispatcher? dispatcher = null,
         IStudioStrings? strings = null,
-        Func<string, IReadOnlyDictionary<string, string>?>? environmentForTarget = null)
+        Func<string, IReadOnlyDictionary<string, string>?>? environmentForTarget = null,
+        IShellOpener? shellOpener = null)
     {
         _environmentForTarget = environmentForTarget;
         _runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
@@ -60,7 +65,11 @@ public sealed class LaunchTabViewModel : ObservableObject
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings ?? EnglishStudioStrings.Instance;
         _strings.CultureChanged += (_, _) =>
-            OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary));
+        {
+            OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary),
+                nameof(CliBanner), nameof(TeamMetaLine));
+            RaiseRunStateChanged();
+        };
 
         Target = new TargetSelectionViewModel(targetProbe, picker, _strings);
         Options = new LaunchOptionsViewModel(picker, _strings);
@@ -81,6 +90,8 @@ public sealed class LaunchTabViewModel : ObservableObject
             _ => !IsRunning);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         ClearLogCommand = new RelayCommand(() => Log.Clear());
+        _shellOpener = shellOpener;
+        OpenResultCommand = new RelayCommand(OpenResult, () => CanOpenResult);
         CheckOptionsCommand = new RelayCommand(() => CheckOptions());
 
         RefreshPreview();
@@ -144,6 +155,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             ValidateCommand.RaiseCanExecuteChanged();
             ReplayCommand.RaiseCanExecuteChanged();
             CancelCommand.RaiseCanExecuteChanged();
+            RaiseRunStateChanged();
         }
     }
 
@@ -169,6 +181,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         {
             if (SetProperty(ref _lastResult, value))
                 OnPropertiesChanged(nameof(ExitCode), nameof(Outcome), nameof(ExitDescription), nameof(HasResult));
+            RaiseRunStateChanged();
         }
     }
 
@@ -487,9 +500,101 @@ public sealed class LaunchTabViewModel : ObservableObject
             ? target.SelectedPath
             : System.IO.Path.GetDirectoryName(target.SelectedPath);
 
+    /// <summary>Display name of the selected team (sidecar-backed, file name otherwise).</summary>
+    public string? TeamHeadline => _team.Name;
+
+    /// <summary>"3 agents · réglage X" — only the parts the catalog can honestly assert.</summary>
+    public string? TeamMetaLine
+    {
+        get
+        {
+            var parts = new List<string>(3);
+            if (_team.AgentCount is { } agents)
+                parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaAgents], agents));
+            if (_team.Description is { Length: > 0 } description)
+                parts.Add(description);
+            if (_team.Profile is { Length: > 0 } profile)
+                parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaProfile], profile));
+            return parts.Count > 0 ? string.Join(" · ", parts) : null;
+        }
+    }
+
+    /// <summary>The team card only exists once a target resolves.</summary>
+    public bool HasTeamCard => Target.IsResolved;
+
+    /// <summary>Plain-language state of the progress card: ready / running / finished.</summary>
+    public string RunStateTitle =>
+        _strings[IsRunning ? StudioStringKeys.RunStateRunning
+            : HasResult ? StudioStringKeys.RunStateDone
+            : StudioStringKeys.RunStateIdle];
+
+    /// <summary>The state badge next to the title.</summary>
+    public string RunBadgeText =>
+        _strings[IsRunning ? StudioStringKeys.RunBadgeRunning
+            : !HasResult ? StudioStringKeys.RunBadgeIdle
+            : Outcome == RunOutcome.Success ? StudioStringKeys.RunBadgeDone
+            : StudioStringKeys.RunBadgeFailed];
+
+    /// <summary>Tone key the view maps to colours: idle | running | ok | fail.</summary>
+    public string RunBadgeTone =>
+        IsRunning ? "running" : !HasResult ? "idle" : Outcome == RunOutcome.Success ? "ok" : "fail";
+
+    /// <summary>Launch now / Running… / Relaunch — the mock's single primary button.</summary>
+    public string RunButtonLabel =>
+        _strings[IsRunning ? StudioStringKeys.RunButtonRunning
+            : HasResult ? StudioStringKeys.RunButtonRelaunch
+            : StudioStringKeys.RunButtonLaunch];
+
+    /// <summary>Localized banner when the CLI is missing; the raw locator detail stays expert.</summary>
+    public string? CliBanner => IsBinaryAvailable ? null : _strings[StudioStringKeys.RunCliMissing];
+
+    /// <summary>Whether the technical journal is unfolded (novice folds it by default).</summary>
+    public bool IsJournalOpen
+    {
+        get => _isJournalOpen;
+        set => SetProperty(ref _isJournalOpen, value);
+    }
+
+    /// <summary>"Ouvrir le résultat" — the physical folder of the first writable mount.</summary>
+    public RelayCommand OpenResultCommand { get; private set; } = null!;
+
+    /// <summary>A result folder exists once the run finished and a writable mount is known.</summary>
+    public bool CanOpenResult => HasResult && _shellOpener is not null && ResultFolder() is not null;
+
+    /// <summary>The physical directory results land in, parsed from the mount strings.</summary>
+    internal string? ResultFolder()
+    {
+        foreach (var mountString in Mounts.SettingsMounts.Concat(
+                     Mounts.LaunchMounts.Mounts.Select(m => m.MountString)))
+        {
+            if (MountDefinition.TryParse(mountString, out var mount, out _)
+                && mount is { Rights: MountRights.ReadWrite, PhysicalPath.Length: > 0 })
+            {
+                return mount.PhysicalPath;
+            }
+        }
+
+        return null;
+    }
+
+    private void OpenResult()
+    {
+        if (ResultFolder() is { } folder)
+            _shellOpener?.Open(folder);
+    }
+
+    private void RaiseRunStateChanged()
+    {
+        OnPropertiesChanged(nameof(RunStateTitle), nameof(RunBadgeText), nameof(RunBadgeTone),
+            nameof(RunButtonLabel), nameof(CanOpenResult));
+        OpenResultCommand.RaiseCanExecuteChanged();
+    }
+
     private void OnTargetChanged(object? sender, EventArgs e)
     {
         Options.Target = Target.Target;
+        _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
+        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
         RefreshPreview();

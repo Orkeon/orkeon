@@ -773,3 +773,91 @@ public sealed class ValidationMessageViewModelTests
         Assert.False(message.IsError);
     }
 }
+
+/// <summary>
+/// The remediated Exécuter screen (audit 05/14): a team card, a plain-language progress
+/// card, a localized banner when the CLI is missing, and "Ouvrir le résultat".
+/// </summary>
+public sealed class LaunchScreenFacetsTests
+{
+    private static LaunchTabViewModel Build(
+        FakeTargetProbe? targetProbe = null,
+        FakeExecutableProbe? executables = null,
+        RecordingShellOpener? shellOpener = null)
+        => new(
+            new OrkeonProcessRunner(
+                new FakeProcessLauncher(),
+                new OrkeonBinaryLocator(executables ?? FakeExecutableProbe.WithOrkeonInstalled())),
+            targetProbe ?? new FakeTargetProbe(),
+            new FakeDirectoryProbe(),
+            picker: null,
+            historyStore: null,
+            settingsStore: new FakeAppSettingsStore(),
+            shellOpener: shellOpener);
+
+    [Fact]
+    public async Task The_progress_card_walks_from_ready_to_done_and_the_button_follows()
+    {
+        var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
+        var tab = Build(probe);
+        tab.Target.Select("/crews/team.yaml");
+
+        Assert.Equal("idle", tab.RunBadgeTone);
+        var launchLabel = tab.RunButtonLabel;
+        var idleTitle = tab.RunStateTitle;
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        // The fake launcher exits 0: the badge turns "ok" and the button becomes "Relaunch".
+        Assert.Equal("ok", tab.RunBadgeTone);
+        Assert.NotEqual(launchLabel, tab.RunButtonLabel);
+        Assert.NotEqual(idleTitle, tab.RunStateTitle);
+        Assert.NotEqual(tab.RunBadgeText, string.Empty);
+    }
+
+    [Fact]
+    public void The_team_card_appears_with_the_target_and_falls_back_to_the_file_name()
+    {
+        var probe = new FakeTargetProbe().WithFile("/crews/veille.yaml");
+        var tab = Build(probe);
+
+        Assert.False(tab.HasTeamCard);
+
+        tab.Target.Select("/crews/veille.yaml");
+
+        Assert.True(tab.HasTeamCard);
+        Assert.Equal("veille", tab.TeamHeadline);
+    }
+
+    [Fact]
+    public async Task The_missing_cli_raises_the_localized_banner_and_an_installed_one_does_not()
+    {
+        var missing = Build(executables: new FakeExecutableProbe());
+        await missing.InitializeAsync(TestContext.Current.CancellationToken);
+        Assert.NotNull(missing.CliBanner);
+
+        var installed = Build();
+        await installed.InitializeAsync(TestContext.Current.CancellationToken);
+        Assert.Null(installed.CliBanner);
+    }
+
+    [Fact]
+    public async Task Open_result_points_at_the_first_writable_mount_and_needs_a_finished_run()
+    {
+        var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
+        var opener = new RecordingShellOpener();
+        var tab = Build(probe, shellOpener: opener);
+        tab.Target.Select("/crews/team.yaml");
+        tab.Mounts.SetSettingsMounts(["/srv/docs:/workspace:ro", "/srv/out:/output:rw"]);
+
+        // No run yet: nothing to open.
+        Assert.False(tab.CanOpenResult);
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("/srv/out", tab.ResultFolder());
+        Assert.True(tab.CanOpenResult);
+        tab.OpenResultCommand.Execute(null);
+        Assert.Equal(["/srv/out"], opener.Opened);
+    }
+}

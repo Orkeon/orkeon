@@ -6,7 +6,7 @@
         xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
         xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
         Title="Orkeon Studio"
-        Height="900" Width="1440" MinHeight="640" MinWidth="1000"
+        Height="900" Width="1440" MinHeight="768" MinWidth="1024"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PaperBrush}"
         FontFamily="{StaticResource TextFont}"
@@ -330,9 +330,10 @@
                       Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource BooleanToVisibility}}">
           <views:DiagnosticView x:Name="DiagPanel" MaxWidth="880" DataContext="{Binding Config.Diagnostic}"/>
         </ScrollViewer>
-        <Grid Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource BooleanToVisibility}}">
-          <views:LaunchTabView x:Name="RunPanel" DataContext="{Binding Launch}" Margin="30,24,30,20"/>
-        </Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+                      Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource BooleanToVisibility}}">
+          <views:LaunchTabView x:Name="RunPanel" DataContext="{Binding Launch}"/>
+        </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource BooleanToVisibility}}">
           <views:HistoryView MaxWidth="880" DataContext="{Binding Launch.History}"/>
@@ -345,6 +346,7 @@
           Visibility="{Binding Settings.Profiles.IsEditorOpen, Converter={StaticResource BooleanToVisibility}}">
       <Grid.Resources>
         <views:IsEqualConverter x:Key="IsEqual"/>
+        <views:ModalBodyHeightConverter x:Key="ModalBodyHeight"/>
         <!-- One provider card: compact title + description, accent border when picked. -->
         <DataTemplate x:Key="ProviderCard">
           <RadioButton GroupName="ProfileProvider" Margin="0,0,7,7" Cursor="Hand"
@@ -383,7 +385,8 @@
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
               CornerRadius="18" DataContext="{Binding Settings.Profiles.Editor}">
         <StackPanel>
-          <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="560">
+          <ScrollViewer VerticalScrollBarVisibility="Auto"
+                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ModalBodyHeight}}">
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}">

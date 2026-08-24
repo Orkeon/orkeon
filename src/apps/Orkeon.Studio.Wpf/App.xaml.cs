@@ -60,7 +60,8 @@ public partial class App : System.Windows.Application
             new WpfDispatcher(Dispatcher),
             I18nStudioStrings.Instance,
             preferences.Mode,
-            mode => UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, mode));
+            mode => UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, mode),
+            shellOpener: ShellOpener.Instance);
 
         var window = new MainWindow { DataContext = _viewModel };
         MainWindow = window;

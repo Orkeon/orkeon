@@ -39,7 +39,8 @@ public sealed class MainWindowViewModel : ObservableObject
         string? initialUiMode = null,
         Action<string>? persistUiMode = null,
         IModelProfileStore? profileStore = null,
-        string? teamsRoot = null)
+        string? teamsRoot = null,
+        IShellOpener? shellOpener = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
@@ -65,7 +66,8 @@ public sealed class MainWindowViewModel : ObservableObject
             settingsStore,
             dispatcher,
             strings,
-            TeamEnvironment);
+            TeamEnvironment,
+            shellOpener);
 
         Settings = new SettingsScreenViewModel(
             Config,
@@ -85,7 +87,7 @@ public sealed class MainWindowViewModel : ObservableObject
         // The expert trial screen runs over its own launcher, with NO history store: a
         // trial is a rehearsal, not a run to replay from the history.
         Test = new TestTeamViewModel(
-            new LaunchTabViewModel(runner, targetProbe, directories, picker, null, settingsStore, dispatcher, strings, TeamEnvironment),
+            new LaunchTabViewModel(runner, targetProbe, directories, picker, null, settingsStore, dispatcher, strings, TeamEnvironment, shellOpener),
             teamsRoot);
 
         Import = new ImportTeamViewModel(targetProbe, picker, strings, teamsRoot);
@@ -147,7 +149,8 @@ public sealed class MainWindowViewModel : ObservableObject
         string? initialUiMode = null,
         Action<string>? persistUiMode = null,
         IModelProfileStore? profileStore = null,
-        string? teamsRoot = null)
+        string? teamsRoot = null,
+        IShellOpener? shellOpener = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -174,7 +177,8 @@ public sealed class MainWindowViewModel : ObservableObject
             ModelProfileFileStore.TryGetDefaultPath(out var profilePath, out _) && profilePath is { Length: > 0 }
                 ? new ModelProfileFileStore(profilePath)
                 : null,
-            teamsRoot);
+            teamsRoot,
+            shellOpener);
     }
 
     /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history, reading the model profiles.</summary>

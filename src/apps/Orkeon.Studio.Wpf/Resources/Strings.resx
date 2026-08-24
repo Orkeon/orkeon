@@ -105,6 +105,8 @@
 
   <data name="Scr_Run_Title" xml:space="preserve"><value>Run a crew</value></data>
   <data name="Scr_Run_Sub" xml:space="preserve"><value>Pick a target, tune the options, watch the log stream.</value></data>
+  <data name="Scr_Run_SubNovice" xml:space="preserve"><value>One team, one button. The technical detail stays available when you need it.</value></data>
+  <data name="Scr_Run_SubExpert" xml:space="preserve"><value>Target, options, the exact command and the streamed journal. The dry run validates with no side effects.</value></data>
   <data name="Run_Target_Title" xml:space="preserve"><value>Crew to run</value></data>
   <data name="Run_Detect" xml:space="preserve"><value>Detect</value></data>
   <data name="Run_File" xml:space="preserve"><value>File…</value></data>
@@ -130,6 +132,30 @@
   <data name="Run_Col_Effective" xml:space="preserve"><value>Effective mount</value></data>
   <data name="Run_Col_Origin" xml:space="preserve"><value>Origin</value></data>
   <data name="Run_Cmd_Title" xml:space="preserve"><value>COMMAND</value></data>
+  <data name="Vm_Run_StateIdle" xml:space="preserve"><value>Ready to work</value></data>
+  <data name="Vm_Run_StateRunning" xml:space="preserve"><value>Run in progress</value></data>
+  <data name="Vm_Run_StateDone" xml:space="preserve"><value>Run finished</value></data>
+  <data name="Vm_Run_BadgeIdle" xml:space="preserve"><value>waiting</value></data>
+  <data name="Vm_Run_BadgeRunning" xml:space="preserve"><value>running</value></data>
+  <data name="Vm_Run_BadgeDone" xml:space="preserve"><value>succeeded</value></data>
+  <data name="Vm_Run_BadgeFailed" xml:space="preserve"><value>failed</value></data>
+  <data name="Vm_Run_BtnLaunch" xml:space="preserve"><value>Launch now</value></data>
+  <data name="Vm_Run_BtnRunning" xml:space="preserve"><value>Running…</value></data>
+  <data name="Vm_Run_BtnRelaunch" xml:space="preserve"><value>Relaunch</value></data>
+  <data name="Vm_Run_CliMissing" xml:space="preserve"><value>The Orkeon engine was not found — run the Diagnostic.</value></data>
+  <data name="Vm_Run_MetaAgents" xml:space="preserve"><value>{0} agents</value></data>
+  <data name="Vm_Run_MetaProfile" xml:space="preserve"><value>setting {0}</value></data>
+  <data name="Run_ChangeTeam" xml:space="preserve"><value>Change team</value></data>
+  <data name="Run_Journal_Title" xml:space="preserve"><value>Technical journal</value></data>
+  <data name="Run_Journal_Show" xml:space="preserve"><value>Show</value></data>
+  <data name="Run_Journal_Hide" xml:space="preserve"><value>Hide</value></data>
+  <data name="Run_OpenResult" xml:space="preserve"><value>Open the result</value></data>
+  <data name="Run_Advanced" xml:space="preserve"><value>Advanced options</value></data>
+  <data name="Run_Verb_Normal" xml:space="preserve"><value>normal</value></data>
+  <data name="Run_Verb_Detailed" xml:space="preserve"><value>detailed</value></data>
+  <data name="Run_Verb_Diagnostic" xml:space="preserve"><value>diagnostic</value></data>
+  <data name="Run_Empty" xml:space="preserve"><value>Pick a team in “My teams” — its Launch button lands here.</value></data>
+  <data name="Run_Lines" xml:space="preserve"><value>lines</value></data>
   <data name="Run_Validate" xml:space="preserve"><value>Validate (dry-run)</value></data>
   <data name="Run_Run" xml:space="preserve"><value>Run</value></data>
   <data name="Run_Cancel" xml:space="preserve"><value>Cancel</value></data>

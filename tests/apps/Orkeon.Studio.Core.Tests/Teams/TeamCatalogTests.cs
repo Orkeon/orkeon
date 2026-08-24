@@ -145,3 +145,50 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.Null(TeamCatalog.ProfileFor(Path.Combine(_root, "not-a-team")));               // anything else
     }
 }
+
+/// <summary>What the Exécuter screen's team card can honestly say about a target (audit 05/14).</summary>
+public sealed class TeamCatalogDescribeTargetTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), $"orkeon-describe-{Guid.NewGuid():N}");
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_root))
+            Directory.Delete(_root, recursive: true);
+    }
+
+    [Fact]
+    public void A_team_folder_is_described_from_its_sidecar_and_its_agent_files()
+    {
+        var team = Path.Combine(_root, "veille");
+        Directory.CreateDirectory(Path.Combine(team, "agents"));
+        File.WriteAllText(Path.Combine(team, "agents", "analyste.yaml"), "role: analyste");
+        File.WriteAllText(Path.Combine(team, "agents", "redacteur.yml"), "role: redacteur");
+        File.WriteAllText(
+            Path.Combine(team, StudioTeamMetadata.FileName),
+            """{ "name": "Veille marché", "description": "Surveille le marché chaque matin", "profile": "Quotidien" }""");
+
+        var described = TeamCatalog.DescribeTarget(team);
+
+        Assert.Equal("Veille marché", described.Name);
+        Assert.Equal("Surveille le marché chaque matin", described.Description);
+        Assert.Equal("Quotidien", described.Profile);
+        Assert.Equal(2, described.AgentCount);
+    }
+
+    [Fact]
+    public void A_single_file_falls_back_to_its_name_and_nothing_ever_throws()
+    {
+        Assert.Null(TeamCatalog.DescribeTarget("").Name);
+        Assert.Null(TeamCatalog.DescribeTarget(Path.Combine(_root, "absent", "crew.yaml")).Description);
+
+        var file = Path.Combine(_root, "solo", "crew.yaml");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, "goal: x");
+
+        var described = TeamCatalog.DescribeTarget(file);
+
+        Assert.Equal("crew", described.Name);
+        Assert.Null(described.AgentCount);
+    }
+}

@@ -47,3 +47,36 @@ public sealed class StringPresentToVisibilityConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException("This converter is one-way: a Visibility carries no string.");
 }
+
+/// <summary>0/1/2 → the design's verbosity vocabulary (normal / detailed / diagnostic).</summary>
+/// <summary>
+/// The mock's modal body height — <c>min(560px, 62vh)</c> (T-13): fed the window's
+/// ActualHeight, hands back the bound the body's ScrollViewer may grow to.
+/// </summary>
+public sealed class ModalBodyHeightConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is double height && height > 0 ? Math.Min(560d, height * 0.62) : 560d;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class VerbosityLabelConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+        value is int level
+            ? Services.I18n.Instance[level switch
+            {
+                0 => "Run_Verb_Normal",
+                1 => "Run_Verb_Detailed",
+                _ => "Run_Verb_Diagnostic",
+            }]
+            : "";
+
+    /// <inheritdoc />
+    public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+

@@ -32,6 +32,23 @@ public sealed record StudioTeamMetadata
     public string? Schedule { get; init; }
 }
 
+/// <summary>What a launch screen shows about a target — sidecar-backed, best-effort.</summary>
+public sealed record TargetDescription
+{
+    /// <summary>Display name: the sidecar's, else the file-system name; empty when unknown.</summary>
+    public string? Name { get; init; }
+
+    /// <summary>The sidecar's one-line need, when present.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>The model profile recorded by adoption, when present.</summary>
+    public string? Profile { get; init; }
+
+    /// <summary>Agent definitions counted in a multi-file team directory; null when unknown.</summary>
+    public int? AgentCount { get; init; }
+}
+
+
 /// <summary>One team folder, as "Mes équipes" lists it.</summary>
 public sealed record TeamSummary
 {
@@ -125,6 +142,53 @@ public static partial class TeamCatalog
     /// the target's own folder, or its parent when the target is a definition file. Null for
     /// anything that is not an adopted team, which is most launches.
     /// </summary>
+    /// <summary>
+    /// Everything a launch screen can honestly say about a target without a crew parser:
+    /// the sidecar's name/description/profile when one sits beside it, the file-system name
+    /// otherwise, and — for a multi-file team directory — the count of agent definitions.
+    /// </summary>
+    public static TargetDescription DescribeTarget(string targetPath)
+    {
+        if (string.IsNullOrWhiteSpace(targetPath))
+            return new TargetDescription();
+
+        try
+        {
+            var isDirectory = Directory.Exists(targetPath);
+            var directory = isDirectory
+                ? targetPath
+                : Path.GetDirectoryName(Path.GetFullPath(targetPath));
+            var metadata = directory is { Length: > 0 } ? TryReadMetadata(directory) : null;
+
+            int? agentCount = null;
+            if (isDirectory)
+            {
+                var agentsDirectory = Path.Combine(targetPath, "agents");
+                if (Directory.Exists(agentsDirectory))
+                {
+                    agentCount = Directory.EnumerateFiles(agentsDirectory, "*.yaml").Count()
+                               + Directory.EnumerateFiles(agentsDirectory, "*.yml").Count();
+                }
+            }
+
+            var fallbackName = isDirectory
+                ? Path.GetFileName(targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                : Path.GetFileNameWithoutExtension(targetPath);
+
+            return new TargetDescription
+            {
+                Name = metadata?.Name is { Length: > 0 } name ? name : fallbackName,
+                Description = metadata?.Description,
+                Profile = metadata?.Profile,
+                AgentCount = agentCount is > 0 ? agentCount : null,
+            };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return new TargetDescription();
+        }
+    }
+
     public static string? ProfileFor(string targetPath)
     {
         if (string.IsNullOrWhiteSpace(targetPath))
