@@ -128,4 +128,45 @@ public sealed class OrkeonBinaryLocatorTests
         Assert.True(location.Found);
         Assert.Equal(BinarySource.SearchPath, location.Source);
     }
+    [Fact]
+    public void A_development_checkout_finds_the_cli_in_the_scripting_bin()
+    {
+        // Studio launched from the IDE: its base dir is deep inside the repo's own bin tree,
+        // nothing next to it, nothing on PATH — but the CLI was built in its own project.
+        var repo = Path.Combine("/", "home", "me", "orkeon");
+        var studioBin = Path.Combine(repo, "src", "apps", "Orkeon.Studio.Wpf", "bin", "Debug", "net10.0-windows");
+        var cli = Path.Combine(repo, "src", "scripting", "Orkeon.Scripting.Cli", "bin", "Debug", "net10.0", "orkeon");
+
+        var probe = new FakeExecutableProbe { BaseDirectory = studioBin }
+            .WithFile(Path.Combine(repo, "Orkeon.sln"))
+            .WithFile(cli);
+
+        var location = new OrkeonBinaryLocator(probe, UnixNames).Locate();
+
+        Assert.True(location.Found);
+        Assert.Equal(cli, location.Path);
+        Assert.Equal(BinarySource.DevelopmentTree, location.Source);
+    }
+
+    [Fact]
+    public void A_debug_studio_falls_back_to_a_release_cli_and_never_escapes_the_checkout()
+    {
+        var repo = Path.Combine("/", "home", "me", "orkeon");
+        var studioBin = Path.Combine(repo, "src", "apps", "Orkeon.Studio.Wpf", "bin", "Debug", "net10.0-windows");
+        var releaseCli = Path.Combine(repo, "src", "scripting", "Orkeon.Scripting.Cli", "bin", "Release", "net10.0", "orkeon");
+
+        var probe = new FakeExecutableProbe { BaseDirectory = studioBin }
+            .WithFile(Path.Combine(repo, "Orkeon.sln"))
+            .WithFile(releaseCli);
+
+        var location = new OrkeonBinaryLocator(probe, UnixNames).Locate();
+
+        Assert.Equal(releaseCli, location.Path);
+        Assert.Equal(BinarySource.DevelopmentTree, location.Source);
+
+        // Outside a checkout (no Orkeon.sln anywhere above), the fallback stays silent.
+        var installed = new FakeExecutableProbe { BaseDirectory = studioBin }.WithFile(releaseCli);
+        Assert.False(new OrkeonBinaryLocator(installed, UnixNames).Locate().Found);
+    }
+
 }

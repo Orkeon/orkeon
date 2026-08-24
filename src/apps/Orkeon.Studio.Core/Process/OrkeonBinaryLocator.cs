@@ -13,6 +13,13 @@ public enum BinarySource
 
     /// <summary>On <c>PATH</c> — a separately installed CLI.</summary>
     SearchPath,
+
+    /// <summary>
+    /// In the repository checkout Studio itself runs from — the F5-from-the-IDE layout,
+    /// where the CLI builds into <c>src/scripting/Orkeon.Scripting.Cli/bin/…</c> instead
+    /// of sitting next to Studio.
+    /// </summary>
+    DevelopmentTree,
 }
 
 /// <summary>
@@ -101,6 +108,12 @@ public sealed class OrkeonBinaryLocator
                 return new BinaryLocation { Path = found, Source = BinarySource.SearchPath, ProbedPaths = probed };
         }
 
+        foreach (var directory in DevelopmentTreeDirectories())
+        {
+            if (TryDirectory(directory, probed, out var found))
+                return new BinaryLocation { Path = found, Source = BinarySource.DevelopmentTree, ProbedPaths = probed };
+        }
+
         return new BinaryLocation
         {
             Source = BinarySource.NotFound,
@@ -109,7 +122,8 @@ public sealed class OrkeonBinaryLocator
                 $"The `{ExecutableBaseName}` command-line tool was not found. Studio runs crews by " +
                 $"invoking it, so nothing can be launched until it is installed. It normally sits next " +
                 $"to Studio ({_probe.BaseDirectory}); reinstall the Orkeon package to restore it, or " +
-                $"install the CLI separately and make sure its directory is on PATH.",
+                $"install the CLI separately and make sure its directory is on PATH. In a " +
+                $"development checkout, build it first: dotnet build src/scripting/Orkeon.Scripting.Cli.",
         };
     }
 
@@ -137,6 +151,63 @@ public sealed class OrkeonBinaryLocator
             if (!string.IsNullOrWhiteSpace(candidate) && seen.Add(candidate))
                 yield return candidate;
         }
+    }
+
+    /// <summary>
+    /// The dev-checkout fallback: when Studio runs from its own <c>bin/</c> inside a clone
+    /// of the repository (detected by walking up to <c>Orkeon.sln</c>), the CLI — if built —
+    /// sits in <c>src/scripting/Orkeon.Scripting.Cli/bin/&lt;Configuration&gt;/&lt;tfm&gt;/</c>.
+    /// Studio's own base path names the configuration (the segment after <c>bin</c>) and the
+    /// TFM (its own, minus the <c>-windows</c> suffix); the sibling configuration is probed
+    /// second so a Debug Studio can still find a Release CLI and vice versa.
+    /// </summary>
+    private IEnumerable<string> DevelopmentTreeDirectories()
+    {
+        var baseDirectory = _probe.BaseDirectory;
+        if (string.IsNullOrWhiteSpace(baseDirectory))
+            yield break;
+
+        var segments = baseDirectory
+            .Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
+            .Where(s => s.Length > 0)
+            .ToArray();
+
+        var binIndex = Array.FindLastIndex(segments, s => string.Equals(s, "bin", StringComparison.OrdinalIgnoreCase));
+        var configuration = binIndex >= 0 && binIndex + 1 < segments.Length ? segments[binIndex + 1] : "Debug";
+        var framework = segments.Length > 0 ? segments[^1] : "";
+        var suffix = framework.IndexOf('-', StringComparison.Ordinal);
+        if (suffix > 0)
+            framework = framework[..suffix];
+        if (framework.Length == 0 || !framework.StartsWith("net", StringComparison.OrdinalIgnoreCase))
+            yield break;
+
+        var root = FindRepositoryRoot(baseDirectory);
+        if (root is null)
+            yield break;
+
+        var cliBin = System.IO.Path.Combine(root, "src", "scripting", "Orkeon.Scripting.Cli", "bin");
+        var configurations = string.Equals(configuration, "Release", StringComparison.OrdinalIgnoreCase)
+            ? new[] { "Release", "Debug" }
+            : new[] { configuration, "Release" };
+
+        foreach (var candidate in configurations.Distinct(StringComparer.OrdinalIgnoreCase))
+            yield return System.IO.Path.Combine(cliBin, candidate, framework);
+    }
+
+    private string? FindRepositoryRoot(string startDirectory)
+    {
+        var directory = startDirectory.TrimEnd(
+            System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+
+        for (var depth = 0; depth < 10 && !string.IsNullOrEmpty(directory); depth++)
+        {
+            if (_probe.FileExists(System.IO.Path.Combine(directory, "Orkeon.sln")))
+                return directory;
+
+            directory = System.IO.Path.GetDirectoryName(directory);
+        }
+
+        return null;
     }
 
     private bool TryDirectory(string directory, List<string> probed, out string? found)

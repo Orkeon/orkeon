@@ -1,8 +1,7 @@
 {
   "profiles": {
     "Orkeon.Studio.Wpf": {
-      "commandName": "Project",
-      "commandLineArgs": "--capture-screens captures/"
+      "commandName": "Project"
     }
   }
 }
