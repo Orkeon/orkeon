@@ -399,3 +399,31 @@ public sealed class AssistantElectionTests
         Assert.Equal("DeepSeek", (await store.LoadAsync(TestContext.Current.CancellationToken)).StudioProfile);
     }
 }
+
+/// <summary>The editor's pinned-temperature field: tolerant parse, saved on the profile.</summary>
+public sealed class EditorTemperatureTests
+{
+    [Fact]
+    public async Task The_field_round_trips_and_tolerates_the_french_comma()
+    {
+        var store = new InMemoryModelProfileStore();
+        await store.SaveAsync(new ModelProfileSet
+        {
+            Profiles = [new ModelProfile { Name = "Kimi K3", Provider = "Kimi", BaseUrl = "https://api.moonshot.ai/v1", Model = "kimi-k3", Temperature = 1 }],
+            DefaultProfile = "Kimi K3",
+        }, TestContext.Current.CancellationToken);
+
+        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var profiles = new ModelProfilesViewModel(store, config.Llm);
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        profiles.BeginEdit(profiles.Set.Profiles[0]);
+        Assert.Equal("1", profiles.Editor!.TemperatureText);
+
+        profiles.Editor.TemperatureText = "0,7"; // a French keyboard types the comma
+        Assert.Equal(0.7, profiles.Editor.ParsedTemperature);
+
+        profiles.Editor.SaveCommand.Execute(null);
+        Assert.Equal(0.7, (await store.LoadAsync(TestContext.Current.CancellationToken)).Profiles[0].Temperature);
+    }
+}

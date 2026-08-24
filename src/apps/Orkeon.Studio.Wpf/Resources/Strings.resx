@@ -557,4 +557,6 @@
   <data name="Vm_Config_NotSavedNeedFolder" xml:space="preserve"><value>Not saved yet: authorize at least one folder (Dossiers autorisés tab) — your changes will be saved as soon as one is in place.</value></data>
   <data name="Vm_Wiz_AssistantNotRunning" xml:space="preserve"><value>The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.</value></data>
   <data name="Run_Journal_Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Profile_Lbl_Temperature" xml:space="preserve"><value>Temperature (optional)</value></data>
+  <data name="Profile_Temperature_Hint" xml:space="preserve"><value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
 </root>

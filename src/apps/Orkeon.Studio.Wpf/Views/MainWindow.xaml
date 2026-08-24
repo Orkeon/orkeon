@@ -473,6 +473,19 @@
               </StackPanel>
             </Grid>
 
+            <!-- pinned temperature: empty = the engine decides; some models mandate one
+                 (Kimi K3: 1) and pinning it here makes the first request right. -->
+            <StackPanel Margin="0,14,0,0"
+                        Visibility="{Binding ShowFields, Converter={StaticResource BooleanToVisibility}}">
+              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Profile_Lbl_Temperature], Source={x:Static services:I18n.Instance}}"/>
+              <DockPanel LastChildFill="False">
+                <TextBox Style="{StaticResource InputMono}" Width="90"
+                         Text="{Binding TemperatureText, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"
+                           Text="{Binding [Profile_Temperature_Hint], Source={x:Static services:I18n.Instance}}"/>
+              </DockPanel>
+            </StackPanel>
+
             <!-- API key — novice-visible. The key goes into the user environment, never
                  into a file; the status chip says whether one is already in place. -->
             <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}"

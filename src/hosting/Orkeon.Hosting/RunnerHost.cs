@@ -395,7 +395,10 @@ public static partial class RunnerHost
 #pragma warning disable CS0618
             ApiKey = llmSection["ApiKey"],
 #pragma warning restore CS0618
-            Temperature = double.TryParse(llmSection["Temperature"], out var t) ? t : 0.7,
+            // Invariant parse: configuration values are written invariant ("0.7"), and a
+            // culture-sensitive read turns that into 7 on a comma-decimal locale (fr-FR).
+            Temperature = double.TryParse(llmSection["Temperature"], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : 0.7,
             MaxTokens = int.TryParse(llmSection["MaxTokens"], out var m) ? m : 4096,
             TimeoutSeconds = int.TryParse(llmSection["TimeoutSeconds"], out var ts) ? ts : 30,
             Thinking = ReadThinkingConfig(llmSection),

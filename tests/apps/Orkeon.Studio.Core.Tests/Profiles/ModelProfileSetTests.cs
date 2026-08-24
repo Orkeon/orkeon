@@ -163,3 +163,59 @@ public sealed class ModelProfileSetTests
         Assert.DoesNotContain("\"Summary\"", json, StringComparison.Ordinal);
     }
 }
+
+/// <summary>
+/// A profile-pinned temperature (some vendors mandate one per model — Kimi K3 accepts
+/// only 1) rides the launch as an ORKEON_Llm__Temperature override, written invariant
+/// so a comma-decimal locale cannot corrupt it, and round-trips through the store.
+/// </summary>
+public sealed class ProfileTemperatureTests
+{
+    [Fact]
+    public void The_pinned_temperature_overrides_the_environment_invariantly()
+    {
+        var profile = new ModelProfile
+        {
+            Name = "Kimi K3",
+            Provider = "Kimi",
+            Model = "kimi-k3",
+            BaseUrl = "https://api.moonshot.ai/v1",
+            Temperature = 1,
+        };
+
+        var overrides = profile.EnvironmentOverrides();
+
+        Assert.Equal("1", overrides["ORKEON_Llm__Temperature"]);
+
+        // And a fractional pin never picks up a comma from the locale.
+        var fractional = profile with { Temperature = 0.7 };
+        Assert.Equal("0.7", fractional.EnvironmentOverrides()["ORKEON_Llm__Temperature"]);
+
+        // No pin, no override: the engine keeps its own default.
+        var unpinned = profile with { Temperature = null };
+        Assert.False(unpinned.EnvironmentOverrides().ContainsKey("ORKEON_Llm__Temperature"));
+    }
+
+    [Fact]
+    public async Task The_temperature_round_trips_through_the_file_store()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"orkeon-profiles-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new ModelProfileFileStore(path);
+            await store.SaveAsync(new ModelProfileSet
+            {
+                Profiles = [new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", Temperature = 1 }],
+            }, TestContext.Current.CancellationToken);
+
+            var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(1, loaded.Profiles[0].Temperature);
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+}

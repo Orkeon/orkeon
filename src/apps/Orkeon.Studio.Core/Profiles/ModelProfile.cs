@@ -31,6 +31,14 @@ public sealed record ModelProfile
     /// </summary>
     public string? KeyEnvName { get; init; }
 
+    /// <summary>
+    /// Sampling temperature this profile pins, or null to leave the engine's default.
+    /// Some vendors mandate a value per model (Moonshot's K3 family accepts only 1) —
+    /// pinning it here makes the first request right instead of relying on the
+    /// provider's one-shot adaptive retry.
+    /// </summary>
+    public double? Temperature { get; init; }
+
     /// <summary>Endpoint base URL.</summary>
     [SuppressMessage("Design", "CA1056",
         Justification = "User-typed form value round-tripped verbatim into a JSON string field; " +
@@ -72,6 +80,8 @@ public sealed record ModelProfile
             overrides["ORKEON_Llm__Model"] = Model;
         if (BaseUrl is { Length: > 0 })
             overrides["ORKEON_Llm__BaseUrl"] = BaseUrl;
+        if (Temperature is { } temperature)
+            overrides["ORKEON_Llm__Temperature"] = temperature.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (KeyEnvName is { Length: > 0 } name
             && environment(name) is { } key
             && !string.IsNullOrWhiteSpace(key))

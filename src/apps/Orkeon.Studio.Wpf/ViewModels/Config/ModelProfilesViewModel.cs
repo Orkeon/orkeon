@@ -6,6 +6,7 @@ using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
+using System.Globalization;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
@@ -93,6 +94,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string? _apiKeyEnv;
     private string _apiKeyInput = "";
     private string? _connectionTestResult;
+    private string _temperatureText = "";
 
     internal ModelProfileEditorViewModel(
         ModelProfilesViewModel owner,
@@ -113,6 +115,9 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         _baseUrl = profile.BaseUrl;
         _model = profile.Model;
         _apiKeyEnv = profile.KeyEnvName;
+        _temperatureText = profile.Temperature is { } temperature
+            ? temperature.ToString(CultureInfo.InvariantCulture)
+            : "";
         _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Title, profile.Provider, StringComparison.Ordinal));
 
         SaveCommand = new RelayCommand(Save, () => CanSave);
@@ -319,6 +324,25 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(KeyStatusText));
     }
 
+    /// <summary>
+    /// The pinned temperature as typed — empty for "let the engine decide". Tolerant of
+    /// both decimal separators; an unparseable text simply pins nothing. Some vendors
+    /// mandate a value per model (Kimi K3 accepts only 1): pinning it here makes the
+    /// first request right, instead of paying the provider's adaptive retry every call.
+    /// </summary>
+    public string TemperatureText
+    {
+        get => _temperatureText;
+        set => SetProperty(ref _temperatureText, value ?? "");
+    }
+
+    /// <summary>The typed temperature, or null when empty or unparseable.</summary>
+    public double? ParsedTemperature =>
+        double.TryParse(_temperatureText.Trim().Replace(',', '.'),
+            System.Globalization.NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : null;
+
     private void Save()
     {
         if (!CanSave)
@@ -333,6 +357,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             Provider = _selectedProvider?.Title,
             Model = _model,
             BaseUrl = _baseUrl,
+            Temperature = ParsedTemperature,
             KeyEnvName = RequiresApiKey ? ApiKeyEnvName : null,
         }, PreviousName);
     }
