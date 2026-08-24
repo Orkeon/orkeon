@@ -637,7 +637,6 @@ public sealed class ModelProfilesViewModel : ObservableObject
         }
 
         Profiles.Clear();
-        ProfileNames.Clear();
         foreach (var profile in _set.Profiles)
         {
             Profiles.Add(new ModelProfileItemViewModel(
@@ -646,7 +645,18 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 isStudio: string.Equals(profile.Name, _set.StudioProfile, StringComparison.Ordinal),
                 this,
                 usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : []));
-            ProfileNames.Add(profile.Name);
+        }
+
+        // ProfileNames feeds ComboBoxes with a TwoWay SelectedItem (the assistant picker,
+        // the wizard's adopt step). Electing a profile changes no name, and clearing the
+        // list mid-write makes WPF null the selection and swallow the correcting
+        // PropertyChanged (re-entrancy guard) — the election then LOOKS unsaved. So the
+        // list is only touched when the names actually changed.
+        if (!ProfileNames.SequenceEqual(_set.Profiles.Select(p => p.Name), StringComparer.Ordinal))
+        {
+            ProfileNames.Clear();
+            foreach (var profile in _set.Profiles)
+                ProfileNames.Add(profile.Name);
         }
 
         // The secrets card: one row per distinct key variable the profiles name. The value

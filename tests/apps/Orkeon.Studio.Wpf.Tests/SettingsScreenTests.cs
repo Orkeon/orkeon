@@ -362,3 +362,40 @@ public sealed class SecretsCardTests
         Assert.True(row.HasKey);
     }
 }
+
+/// <summary>
+/// Electing the assistant's profile must not rebuild the name list feeding the ComboBox:
+/// WPF nulls a TwoWay selection whose ItemsSource is cleared mid-write and swallows the
+/// correcting notification, so the election LOOKS unsaved (it was stored all along).
+/// </summary>
+public sealed class AssistantElectionTests
+{
+    [Fact]
+    public async Task Electing_the_assistant_stores_it_and_leaves_the_name_list_untouched()
+    {
+        var store = new InMemoryModelProfileStore();
+        await store.SaveAsync(new ModelProfileSet
+        {
+            Profiles =
+            [
+                new ModelProfile { Name = "Local", Provider = "ollama", BaseUrl = "http://localhost:11434", Model = "phi3" },
+                new ModelProfile { Name = "DeepSeek", Provider = "deepseek", BaseUrl = "https://api.deepseek.com", Model = "m" },
+            ],
+            DefaultProfile = "Local",
+        }, TestContext.Current.CancellationToken);
+
+        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var profiles = new ModelProfilesViewModel(store, config.Llm);
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        var resets = 0;
+        profiles.ProfileNames.CollectionChanged += (_, _) => resets++;
+
+        profiles.StudioProfileName = "DeepSeek";
+
+        Assert.Equal(0, resets); // the ComboBox's ItemsSource was never disturbed
+        Assert.Equal("DeepSeek", profiles.StudioProfileName);
+        Assert.True(profiles.HasStudioProfile);
+        Assert.Equal("DeepSeek", (await store.LoadAsync(TestContext.Current.CancellationToken)).StudioProfile);
+    }
+}

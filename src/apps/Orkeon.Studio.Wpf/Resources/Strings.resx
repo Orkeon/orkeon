@@ -554,4 +554,5 @@
   <data name="Diag_LlmConfigHint" xml:space="preserve"><value>This is the common base (settings file + this shell's environment). A team that elected its own model profile receives it on top, at launch only — it does not appear here.</value></data>
   <data name="Secrets_Title" xml:space="preserve"><value>API keys</value></data>
   <data name="Secrets_Intro" xml:space="preserve"><value>Keys live in your user environment variables, never in a file. Paste a key and remember it; the field empties once stored.</value></data>
+  <data name="Vm_Config_NotSavedNeedFolder" xml:space="preserve"><value>Not saved yet: authorize at least one folder (Dossiers autorisés tab) — your changes will be saved as soon as one is in place.</value></data>
 </root>

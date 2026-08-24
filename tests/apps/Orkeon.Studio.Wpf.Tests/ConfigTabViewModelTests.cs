@@ -2,6 +2,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
@@ -267,4 +268,25 @@ public sealed class ConfigTabViewModelTests
         }
     }
 
+}
+
+/// <summary>The one refusal a novice actually meets: no authorized folder yet.</summary>
+public sealed class MountsEmptyRefusalTests
+{
+    [Fact]
+    public async Task A_save_blocked_only_by_the_empty_folder_list_names_the_fix()
+    {
+        var tab = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe("/data"));
+        tab.Llm.Model = "phi3"; // dirty, but no mount declared
+
+        Assert.False(await tab.SaveAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            EnglishStudioStrings.Instance[StudioStringKeys.ConfigNotSavedNeedFolder],
+            tab.StatusMessage);
+
+        // Authorizing a folder heals it: the very same save now goes through.
+        tab.Mounts.AddMount().PhysicalPath = "/data";
+        Assert.True(await tab.SaveAsync(TestContext.Current.CancellationToken));
+    }
 }

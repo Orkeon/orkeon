@@ -300,6 +300,9 @@ public static class StudioStringKeys
     /// <summary>"Not saved: no destination selected."</summary>
     public const string ConfigNotSavedNoDestination = "Vm_Config_NotSavedNoDestination";
 
+    /// <summary>"Not saved yet: authorize at least one folder…"</summary>
+    public const string ConfigNotSavedNeedFolder = "Vm_Config_NotSavedNeedFolder";
+
     /// <summary>"Saved to {0}."</summary>
     public const string ConfigSaved = "Vm_Config_Saved";
 
@@ -755,6 +758,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagAllGood] = "Everything is in place.",
         [StudioStringKeys.DiagFixNeeded] = "One point to fix before launching a team.",
         [StudioStringKeys.DiagCounts] = "{0} checks passed, {1} warning(s), {2} failure(s).",
+        [StudioStringKeys.ConfigNotSavedNeedFolder] = "Not saved yet: authorize at least one folder (Dossiers autorisés tab) — your changes will be saved as soon as one is in place.",
         ["Vm_Doctor_appsettings"] = "The settings file is readable",
         ["Vm_Doctor_dotnet-runtime"] = "The .NET runtime",
         ["Vm_Doctor_esbuild"] = "The script compiler (esbuild)",

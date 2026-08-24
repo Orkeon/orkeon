@@ -273,10 +273,16 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         if (HasBlockingErrors)
         {
-            StatusMessage = string.Format(
-                CultureInfo.InvariantCulture,
-                _strings[StudioStringKeys.ConfigNotSavedErrors],
-                ValidationMessages.Count(m => m.IsError));
+            // The one refusal a novice will actually meet: nothing else is wrong, the file
+            // just has no authorized folder yet. Name the fix and where it lives — the
+            // generic "N errors" line points at nothing they can act on from this tab.
+            StatusMessage = ValidationMessages.Where(m => m.IsError)
+                    .All(m => m.Code == ValidationCodes.MountsEmpty)
+                ? _strings[StudioStringKeys.ConfigNotSavedNeedFolder]
+                : string.Format(
+                    CultureInfo.InvariantCulture,
+                    _strings[StudioStringKeys.ConfigNotSavedErrors],
+                    ValidationMessages.Count(m => m.IsError));
             return false;
         }
 
