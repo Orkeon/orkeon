@@ -94,6 +94,9 @@
               </TextBox.InputBindings>
             </TextBox>
           </DockPanel>
+          <TextBlock Style="{StaticResource Hint}" Margin="13,0,13,10" TextWrapping="Wrap"
+                     Foreground="{DynamicResource WarningBrush}" Text="{Binding Notice}"
+                     Visibility="{Binding Notice, Converter={StaticResource StringPresentToVisibility}}"/>
         </StackPanel>
       </Border>
     </StackPanel>

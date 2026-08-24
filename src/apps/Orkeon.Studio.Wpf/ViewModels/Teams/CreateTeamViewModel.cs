@@ -764,8 +764,14 @@ public sealed class CreateTeamViewModel : ObservableObject
     private bool AskAssistant(StepNotesViewModel origin, string question)
     {
         if (!_client.SendMessage(question))
+        {
+            // No child is listening: the engine never started, finished, or died. Silence
+            // here reads as a dead button — say so, and keep the draft for the retry.
+            origin.Notice = _strings[StudioStringKeys.WizardAssistantNotRunning];
             return false;
+        }
 
+        origin.Notice = null;
         _model.AddUserMessage(question);
         _awaitingNotes.Enqueue(origin);
         return true;

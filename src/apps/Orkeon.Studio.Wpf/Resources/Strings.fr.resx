@@ -555,4 +555,5 @@
   <data name="Secrets_Title" xml:space="preserve"><value>Clés API</value></data>
   <data name="Secrets_Intro" xml:space="preserve"><value>Les clés vivent dans vos variables d'environnement utilisateur, jamais dans un fichier. Collez une clé puis mémorisez-la ; le champ se vide une fois la clé enregistrée.</value></data>
   <data name="Vm_Config_NotSavedNeedFolder" xml:space="preserve"><value>Pas encore enregistré : autorisez au moins un dossier (onglet Dossiers autorisés) — vos modifications s'enregistreront dès qu'il sera en place.</value></data>
+  <data name="Vm_Wiz_AssistantNotRunning" xml:space="preserve"><value>L'assistant n'est pas en cours d'exécution — lancez la composition (étape 1, Composer) ou reprenez la session ; votre question a été conservée.</value></data>
 </root>

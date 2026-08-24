@@ -7,6 +7,7 @@ using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
+using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
@@ -368,5 +369,32 @@ public class CreateTeamWizardTests
 
         // The adopted folder is an ordinary target: the launcher receives it as-is.
         Assert.Equal("/teams/veille", shell.Launch.Target.SelectedPath);
+    }
+}
+
+/// <summary>A question asked while the engine is not listening must not vanish silently.</summary>
+public sealed class AskWithoutEngineTests
+{
+    [Fact]
+    public void The_panel_says_the_assistant_is_not_running_and_keeps_the_draft()
+    {
+        var notes = new StepNotesViewModel((origin, _) =>
+        {
+            // What CreateTeamViewModel.AskAssistant does when ForgeClient.SendMessage
+            // returns false: name the refusal, refuse the send.
+            origin.Notice = EnglishStudioStrings.Instance[StudioStringKeys.WizardAssistantNotRunning];
+            return false;
+        });
+
+        notes.QuestionDraft = "Peut-elle lire des PDF ?";
+        notes.AskCommand.Execute(null);
+
+        Assert.NotNull(notes.Notice);
+        Assert.Equal("Peut-elle lire des PDF ?", notes.QuestionDraft); // kept for the retry
+        Assert.Empty(notes.Items);                                     // nothing pretended sent
+
+        // Typing again clears the notice.
+        notes.QuestionDraft = "Peut-elle lire des PDF et des CSV ?";
+        Assert.Null(notes.Notice);
     }
 }

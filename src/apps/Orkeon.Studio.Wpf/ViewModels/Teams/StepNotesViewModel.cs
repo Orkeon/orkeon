@@ -41,6 +41,7 @@ public sealed class StepNotesViewModel : ObservableObject
     private string _consigne = "";
     private string _questionDraft = "";
     private bool _isThreadOpen;
+    private string? _notice;
 
     internal StepNotesViewModel(Func<StepNotesViewModel, string, bool> ask)
     {
@@ -71,8 +72,22 @@ public sealed class StepNotesViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _questionDraft, value))
+            {
                 AskCommand.RaiseCanExecuteChanged();
+                Notice = null;
+            }
         }
+    }
+
+    /// <summary>
+    /// Why the last question could not leave (the assistant is not running). Null while
+    /// everything is fine; cleared as soon as the user types again. A swallowed question
+    /// with no feedback reads as a dead button — this is the feedback.
+    /// </summary>
+    public string? Notice
+    {
+        get => _notice;
+        internal set => SetProperty(ref _notice, value);
     }
 
     /// <summary>Whether the question panel is unfolded.</summary>

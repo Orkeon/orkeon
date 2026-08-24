@@ -49,6 +49,11 @@ public static class StudioStringKeys
     /// <summary>"Exit code {0} — {1}"</summary>
     public const string LaunchExitCode = "Core_Launch_ExitCode";
 
+    // ---- Wizard ask feedback (Teams/CreateTeamViewModel) -----------------
+
+    /// <summary>"The assistant is not running any more — …"</summary>
+    public const string WizardAssistantNotRunning = "Vm_Wiz_AssistantNotRunning";
+
     // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
 
     /// <summary>"{0} — {1} agent(s)"</summary>
@@ -759,6 +764,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagFixNeeded] = "One point to fix before launching a team.",
         [StudioStringKeys.DiagCounts] = "{0} checks passed, {1} warning(s), {2} failure(s).",
         [StudioStringKeys.ConfigNotSavedNeedFolder] = "Not saved yet: authorize at least one folder (Dossiers autorisés tab) — your changes will be saved as soon as one is in place.",
+        [StudioStringKeys.WizardAssistantNotRunning] = "The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.",
         ["Vm_Doctor_appsettings"] = "The settings file is readable",
         ["Vm_Doctor_dotnet-runtime"] = "The .NET runtime",
         ["Vm_Doctor_esbuild"] = "The script compiler (esbuild)",
