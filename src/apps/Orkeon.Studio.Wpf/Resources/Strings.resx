@@ -617,4 +617,12 @@
   <data name="Vm_Import_MountsNone" xml:space="preserve"><value>No declared folder</value></data>
   <data name="Vm_Import_MountsNoneDetail" xml:space="preserve"><value>Allow its folders after adding — Mes équipes, Changer les dossiers.</value></data>
   <data name="Wiz_TrialCommand" xml:space="preserve"><value>TRIAL COMMAND</value></data>
+  <data name="Diag_Copied" xml:space="preserve"><value>Copied!</value></data>
+  <data name="Diag_Card_Novice" xml:space="preserve"><value>Installation check</value></data>
+  <data name="Wiz_Help_Title" xml:space="preserve"><value>What this step does</value></data>
+  <data name="Wiz_Help_Step1" xml:space="preserve"><value>Describe what you need in your own words — folders to read, the result you expect, how often. The assistant asks its questions until the brief is clear; nothing runs on your machine yet.</value></data>
+  <data name="Wiz_Help_Step2" xml:space="preserve"><value>The assistant proposes a team: one agent per job, each with only the capacities it needs. You can edit an agent, add one, and choose which folders the team may see once adopted.</value></data>
+  <data name="Wiz_Help_Step3" xml:space="preserve"><value>The team rehearses on a sample, in its own sandbox — nothing outside it is touched. The verdict tells you honestly whether the result meets what you asked at step 1.</value></data>
+  <data name="Wiz_Help_Step4" xml:space="preserve"><value>Adopting stores the team as an ordinary folder under your profile. Scheduling is shown as a command, never run for you; the team then appears in Mes équipes.</value></data>
+  <data name="Mounts_Novice_Empty" xml:space="preserve"><value>No folder is allowed yet. The agents will see nothing until you allow at least one.</value></data>
 </root>

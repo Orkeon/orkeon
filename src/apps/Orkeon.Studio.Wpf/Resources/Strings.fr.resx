@@ -617,4 +617,12 @@
   <data name="Vm_Import_MountsNone" xml:space="preserve"><value>Aucun dossier déclaré</value></data>
   <data name="Vm_Import_MountsNoneDetail" xml:space="preserve"><value>Autorisez ses dossiers après l'ajout — Mes équipes, Changer les dossiers.</value></data>
   <data name="Wiz_TrialCommand" xml:space="preserve"><value>COMMANDE DE L'ESSAI</value></data>
+  <data name="Diag_Copied" xml:space="preserve"><value>Copié !</value></data>
+  <data name="Diag_Card_Novice" xml:space="preserve"><value>Vérification de l'installation</value></data>
+  <data name="Wiz_Help_Title" xml:space="preserve"><value>Ce que fait cette étape</value></data>
+  <data name="Wiz_Help_Step1" xml:space="preserve"><value>Décrivez le besoin avec vos mots — les dossiers à lire, le résultat attendu, la fréquence. L'assistant pose ses questions jusqu'à ce que le brief soit clair ; rien ne s'exécute encore sur votre machine.</value></data>
+  <data name="Wiz_Help_Step2" xml:space="preserve"><value>L'assistant propose une équipe : un agent par tâche, chacun avec les seules capacités nécessaires. Vous pouvez modifier un agent, en ajouter un, et choisir les dossiers que l'équipe verra une fois adoptée.</value></data>
+  <data name="Wiz_Help_Step3" xml:space="preserve"><value>L'équipe répète sur un exemple, dans son bac à sable — rien d'autre n'est touché. Le verdict vous dit honnêtement si le résultat correspond à ce que vous avez demandé à l'étape 1.</value></data>
+  <data name="Wiz_Help_Step4" xml:space="preserve"><value>Adopter range l'équipe dans un dossier ordinaire de votre profil. La planification est affichée en commande, jamais exécutée à votre place ; l'équipe apparaît ensuite dans Mes équipes.</value></data>
+  <data name="Mounts_Novice_Empty" xml:space="preserve"><value>Aucun dossier n'est encore autorisé. Les agents ne verront rien tant que vous n'en autorisez pas au moins un.</value></data>
 </root>

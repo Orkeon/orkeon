@@ -7,42 +7,48 @@
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
   <StackPanel>
 
-    <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Diag_Title], Source={x:Static services:I18n.Instance}}"/>
-    <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-               Text="{Binding [Scr_Diag_SubNovice], Source={x:Static services:I18n.Instance}}"
-               Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-    <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-               Text="{Binding [Scr_Diag_SubExpert], Source={x:Static services:I18n.Instance}}"
-               Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-
-    <!-- summary card: run button + verdict line -->
-    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-          <controls:LucideIcon Kind="stethoscope" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-          <TextBlock Style="{StaticResource CardTitle}" Text="orkeon doctor"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <Button Style="{StaticResource BtnPrimary}" Command="{Binding RunCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="stethoscope" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Diag_Run], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnGhost}" Margin="10,0,0,0" Click="OnCopyReport"
-                  Visibility="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Diag_CopyReport], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="12,0,0,0" Text="{Binding Summary}"/>
-        </StackPanel>
-        <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,8,0,0"
-                   Text="{Binding ErrorMessage}"
-                   Visibility="{Binding ErrorMessage, Converter={StaticResource StringPresentToVisibility}}"/>
+    <!-- Header (mock §D-3): « Copier le rapport » sits left of « Relancer », both in the header. -->
+    <DockPanel Margin="0,0,0,22">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+        <Button Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Click="OnCopyReport"
+                Visibility="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
+            <TextBlock>
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Text" Value="{Binding [Diag_CopyReport], Source={x:Static services:I18n.Instance}}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding ReportCopied}" Value="True">
+                      <Setter Property="Text" Value="{Binding [Diag_Copied], Source={x:Static services:I18n.Instance}}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+          </StackPanel>
+        </Button>
+        <Button Style="{StaticResource BtnGhost}" Command="{Binding RunCommand}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="rotate-cw" Size="13" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Diag_Run], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
       </StackPanel>
-    </Border>
+      <StackPanel>
+        <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Diag_Title], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
+                   Text="{Binding [Scr_Diag_SubNovice], Source={x:Static services:I18n.Instance}}"
+                   Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+        <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
+                   Text="{Binding [Scr_Diag_SubExpert], Source={x:Static services:I18n.Instance}}"
+                   Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+      </StackPanel>
+    </DockPanel>
+
+    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,0,0,12"
+               Text="{Binding ErrorMessage}"
+               Visibility="{Binding ErrorMessage, Converter={StaticResource StringPresentToVisibility}}"/>
 
     <!-- verdict card (audit 09/20): headline, counts, one action -->
     <Border Style="{StaticResource Card}" Margin="0,0,0,16"
@@ -78,8 +84,19 @@
     <Border Style="{StaticResource Card}"
             Visibility="{Binding Checks.Count, Converter={StaticResource CountToVisibility}}">
       <StackPanel>
-        <TextBlock Style="{StaticResource CardTitle}" Margin="0,0,0,12"
-                   Text="{Binding [Diag_Checks_Title], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Margin="0,0,0,12">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource CardTitle}">
+              <Setter Property="Text" Value="{Binding [Diag_Checks_Title], Source={x:Static services:I18n.Instance}}"/>
+              <Style.Triggers>
+                <!-- Novice (F-13): plain words, not the tool's name. -->
+                <DataTrigger Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                  <Setter Property="Text" Value="{Binding [Diag_Card_Novice], Source={x:Static services:I18n.Instance}}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
         <ItemsControl ItemsSource="{Binding Checks}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>

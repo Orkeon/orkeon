@@ -67,54 +67,6 @@
     </DockPanel>
     <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding Config.StatusMessage}"/>
 
-    <!-- validation findings (expert only, audit 07/16 — novice reads the status line; the
-         copyable report stays: WPF text blocks are not selectable) -->
-    <StackPanel Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-    <Border Style="{StaticResource Card}" Margin="0,16,0,0"
-            Visibility="{Binding Config.ValidationMessages.Count, Converter={StaticResource CountToVisibility}}">
-      <StackPanel>
-        <DockPanel Margin="0,0,0,4" LastChildFill="False">
-          <controls:LucideIcon Kind="badge-check" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-          <TextBlock Style="{StaticResource CardTitle}" VerticalAlignment="Center" Text="{Binding [Val_Title], Source={x:Static services:I18n.Instance}}"/>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Click="OnCopyValidation">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
-              <TextBlock FontSize="11.5" Text="{Binding [Diag_CopyReport], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-        </DockPanel>
-        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" Text="{Binding Config.ValidationSummary}"/>
-        <ItemsControl ItemsSource="{Binding Config.ValidationMessages}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <DockPanel Margin="0,2">
-                <controls:LucideIcon Size="13" VerticalAlignment="Top" Margin="0,2,8,0">
-                  <controls:LucideIcon.Style>
-                    <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
-                      <Setter Property="Kind" Value="info"/>
-                      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding Severity}" Value="Warning">
-                          <Setter Property="Kind" Value="triangle-alert"/>
-                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding IsError}" Value="True">
-                          <Setter Property="Kind" Value="triangle-alert"/>
-                          <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </controls:LucideIcon.Style>
-                </controls:LucideIcon>
-                <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Text="{Binding FriendlyText}" ToolTip="{Binding Display}"/>
-              </DockPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </Border>
-    </StackPanel>
-
     <!-- tab strip -->
     <StackPanel Orientation="Horizontal" Margin="0,20,0,18">
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowModelCommand}"
@@ -241,8 +193,10 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                           <DataTemplate>
-                            <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="10.5" Padding="10,3" Margin="0,0,6,3">
-                              <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" Text="{Binding}"/>
+                            <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="10.5" Padding="10,3" Margin="0,0,6,3"
+                                    MaxWidth="260" ToolTip="{Binding}">
+                              <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}"
+                                         TextTrimming="CharacterEllipsis" Text="{Binding}"/>
                             </Border>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -345,6 +299,9 @@
         <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Mounts_Novice_Title], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,14" TextWrapping="Wrap"
                    Text="{Binding [Mounts_Novice_Intro], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
+                   Text="{Binding [Mounts_Novice_Empty], Source={x:Static services:I18n.Instance}}"
+                   Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
         <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
@@ -402,7 +359,10 @@
               Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
         <StackPanel>
           <TextBlock Style="{StaticResource Eyebrow}" Text="MOUNT STRINGS" Margin="0,0,0,5"/>
-          <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
+          <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
+                   Text="{Binding [Mounts_Novice_Empty], Source={x:Static services:I18n.Instance}}"
+                   Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
+        <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <TextBlock Style="{StaticResource MonoText}" FontSize="11" Text="{Binding MountString}"/>
