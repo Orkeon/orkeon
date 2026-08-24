@@ -70,13 +70,14 @@ public sealed class MainWindowViewModel : ObservableObject
             shellOpener);
 
         var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
-        // The forge workspace defaults to the Orkeon user home (~/Orkeon), never to the
-        // process working directory: launched from the installed app or a dev tree, that
-        // directory is the executable's bin folder — sessions would land in bin/.orkeon
-        // and vanish on the next clean, and the assistant's /workspace would show DLLs.
-        var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace
-            ?? System.IO.Path.GetDirectoryName(teamsHome)
-            ?? teamsHome);
+        // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
+        // on Windows — where the global appsettings, the model profiles and the history
+        // already live): sessions are resumable app state, not documents, unlike the
+        // adopted teams which stay under ~/Orkeon/teams. Never the process working
+        // directory: launched from the installed app or a dev tree, that is the
+        // executable's bin folder — sessions would land in bin/.orkeon and vanish on the
+        // next clean, and the assistant's /workspace would show DLLs.
+        var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace ?? DefaultForgeHome(teamsHome));
         Settings = new SettingsScreenViewModel(
             Config,
             new ModelProfilesViewModel(profileStore, Config.Llm, strings,
@@ -199,6 +200,16 @@ public sealed class MainWindowViewModel : ObservableObject
             // The silent doctor run (audit 09/20): the sidebar dot and the verdict card
             // are honest from the first frame, without the user pressing anything.
             Config.Diagnostic.InitializeAsync(cancellationToken));
+
+    /// <summary>
+    /// The per-user config directory as the forge home, falling back to the Orkeon user
+    /// home's parent when the platform yields no config directory (bare containers).
+    /// </summary>
+    private static string DefaultForgeHome(string teamsHome) =>
+        Orkeon.Studio.Core.Storage.SettingsLocations.TryGetGlobalSettingsPath(out var settingsPath, out _)
+            && System.IO.Path.GetDirectoryName(settingsPath) is { Length: > 0 } configDirectory
+            ? configDirectory
+            : System.IO.Path.GetDirectoryName(teamsHome) ?? teamsHome;
 
     /// <summary>
     /// The environment an adopted team lays over its launches: the sidecar names a model
