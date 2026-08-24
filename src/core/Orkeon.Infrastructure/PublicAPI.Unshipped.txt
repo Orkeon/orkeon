@@ -1,1 +1,3 @@
 #nullable enable
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody) -> bool
+override Orkeon.Infrastructure.LLMs.KimiLlmProvider.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody) -> bool

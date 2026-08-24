@@ -294,3 +294,83 @@ public class KimiLlmProviderTests
         Assert.Contains("error", result.Metadata.Keys);
     }
 }
+
+/// <summary>
+/// Moonshot's hard temperature constraint (400 "invalid temperature: only 1 is allowed
+/// for this model") self-heals: the request is re-sent once with the mandated value.
+/// Which models mandate it is decided server-side, so the constraint is read from the
+/// API's own rejection — no model list to drift.
+/// </summary>
+public sealed class KimiTemperatureConstraintTests
+{
+    private const string RejectionBody =
+        """{"error":{"message":"invalid temperature: only 1 is allowed for this model","type":"invalid_request_error"}}""";
+
+    private static (KimiLlmProvider Provider, TestHttpMessageHandler Handler) Build(
+        Func<HttpRequestMessage, HttpResponseMessage> responses)
+    {
+        var handler = new TestHttpMessageHandler(responses);
+        var factory = new TestHttpClientFactory();
+        factory.RegisterClient("KimiLlmProvider", new HttpClient(handler));
+        var provider = new KimiLlmProvider(
+            LlmConfig.Create("kimi-k2.6", TestApiKey),
+            factory,
+            resiliencePolicy: null,
+            new TestLogger<KimiLlmProvider>());
+        return (provider, handler);
+    }
+
+    private static string Success() => JsonSerializer.Serialize(new
+    {
+        choices = new[] { new { message = new { content = "ok" } } },
+        usage = new { total_tokens = 7 },
+    });
+
+    [Fact]
+    public async Task The_mandated_temperature_is_retried_once_and_the_second_request_carries_it()
+    {
+        var calls = 0;
+        var (provider, handler) = Build(_ => ++calls == 1
+            ? new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(RejectionBody) }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Success()) });
+        using var _ = provider;
+
+        var result = await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("ok", result.Content);
+        Assert.Equal(2, handler.CapturedRequests.Count);
+
+        var retried = await handler.CapturedRequests[1].Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(retried);
+        Assert.Equal(1d, doc.RootElement.GetProperty("temperature").GetDouble());
+    }
+
+    [Fact]
+    public async Task A_persistent_rejection_is_surfaced_after_exactly_one_adaptive_retry()
+    {
+        var (provider, handler) = Build(_ =>
+            new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(RejectionBody) });
+        using var _ = provider;
+
+        var result = await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Empty(result.Content);
+        Assert.Contains("Kimi API error", result.Metadata["error"].ToString());
+        Assert.Equal(2, handler.CapturedRequests.Count); // one adaptation, never a loop
+    }
+
+    [Fact]
+    public async Task An_unrelated_bad_request_is_not_retried()
+    {
+        var (provider, handler) = Build(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("""{"error":{"message":"context length exceeded","type":"invalid_request_error"}}"""),
+        });
+        using var _ = provider;
+
+        var result = await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Empty(result.Content);
+        Assert.Single(handler.CapturedRequests);
+    }
+}

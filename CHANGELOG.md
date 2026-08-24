@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Kimi's server-mandated temperature self-heals instead of killing the run
+
+Moonshot rejects some models' requests with `400 invalid temperature: only 1 is
+allowed for this model` — and which models mandate it is decided server-side.
+`KimiLlmProvider` now reads the constraint from the API's own rejection and
+re-sends the request **once** with the mandated value, logging a structured
+warning (never a silent substitution). The seam is a new overridable on
+`OpenAICompatibleProviderBase` (`TryAdaptRejectedPayload` — one adaptive retry
+on a 4xx, non-streaming paths only), available to any provider with a
+server-stated constraint. Before this, a Studio wizard run on a Kimi profile
+died at the brief stage after three identical rejections.
+
 ### Changed — The WPF screens remediated against the v3 mock (audit T-01…T-13, screens 01–22)
 
 A full-screen audit against the design mock (the mock is the source of truth)

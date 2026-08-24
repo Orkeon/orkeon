@@ -145,19 +145,29 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         var endpoint = BuildEndpoint(effectiveConfig);
         var requestPayload = BuildRequestPayload(prompt, effectiveConfig);
 
-        var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
-        using var content = new StringContent(json, Encoding.UTF8, HttpDefaults.JsonContentType);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
-        using var response = await ExecuteHttpRequestAsync(request, effectiveConfig, cancellationToken).ConfigureAwait(false);
-
-        if (!response.IsSuccessStatusCode)
+        for (var attempt = 0; ; attempt++)
         {
+            var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
+            using var content = new StringContent(json, Encoding.UTF8, HttpDefaults.JsonContentType);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
+            using var response = await ExecuteHttpRequestAsync(request, effectiveConfig, cancellationToken).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                return ParseSuccessResponse(responseJson, effectiveConfig);
+            }
+
+            if (attempt == 0 && (int)response.StatusCode is >= 400 and < 500)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                if (TryAdaptRejectedPayload(requestPayload, response.StatusCode, body))
+                    continue;
+            }
+
             return await CreateApiErrorResponseAsync(response, cancellationToken).ConfigureAwait(false);
         }
-
-        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return ParseSuccessResponse(responseJson, effectiveConfig);
     }
 
     /// <inheritdoc />
@@ -607,14 +617,27 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
         var payload = BuildChatRequestBody(messages, effectiveConfig);
 
-        var json = JsonSerializer.Serialize(payload, JsonOptions);
-        using var content = new StringContent(json, Encoding.UTF8, HttpDefaults.JsonContentType);
-        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
-        using var response = await ExecuteHttpRequestAsync(request, effectiveConfig, cancellationToken).ConfigureAwait(false);
-
-        if (!response.IsSuccessStatusCode)
+        for (var attempt = 0; ; attempt++)
         {
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
+            using var content = new StringContent(json, Encoding.UTF8, HttpDefaults.JsonContentType);
+            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
+            using var response = await ExecuteHttpRequestAsync(request, effectiveConfig, cancellationToken).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                return ParseSuccessResponse(responseJson, effectiveConfig);
+            }
+
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+            if (attempt == 0 && (int)response.StatusCode is >= 400 and < 500
+                && TryAdaptRejectedPayload(payload, response.StatusCode, body))
+            {
+                continue;
+            }
+
             // The request-aware hint is the sharper of the two; fall back on reading the
             // vendor's own wording, which also covers capabilities other than vision.
             var hint = VisionHintFor(messages, effectiveConfig, body) is { Length: > 0 } visionHint
@@ -623,9 +646,6 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
             return CreateApiErrorResponse(response.StatusCode, body, hint);
         }
-
-        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return ParseSuccessResponse(responseJson, effectiveConfig);
     }
 
     /// <summary>
@@ -826,6 +846,22 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         ApplyThinkingOptions(payload, effectiveConfig.Thinking);
         ApplyResponseFormatOption(payload, effectiveConfig.ResponseFormat);
     }
+
+    /// <summary>
+    /// One chance to adapt the payload after the API rejected it with a 4xx. Return
+    /// <see langword="true"/> to have the same logical request re-sent once with the
+    /// mutated <paramref name="payload"/>; <see langword="false"/> (the default) surfaces
+    /// the error unchanged. For constraints only the server can state — e.g. Moonshot's
+    /// <c>invalid temperature: only 1 is allowed for this model</c>, which depends on the
+    /// model actually resolved server-side. Called at most once per request; the override
+    /// must log a structured warning for whatever it changes (never a silent mutation),
+    /// and the streaming paths never retry.
+    /// </summary>
+    /// <param name="payload">The payload that was rejected, mutable in place.</param>
+    /// <param name="statusCode">The rejection's HTTP status.</param>
+    /// <param name="errorBody">The response body, exactly as the API wrote it.</param>
+    protected virtual bool TryAdaptRejectedPayload(
+        Dictionary<string, object> payload, HttpStatusCode statusCode, string errorBody) => false;
 
     /// <summary>
     /// Translates <see cref="LlmThinkingConfig"/> into the OpenAI dialect, bounded by the
