@@ -9,12 +9,30 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// <summary>One line of the <c>orkeon doctor --json</c> report.</summary>
 public sealed class DoctorCheckViewModel
 {
+    private readonly IStudioStrings _strings;
+
     /// <summary>Wraps a parsed check.</summary>
-    public DoctorCheckViewModel(DoctorCheck check)
+    public DoctorCheckViewModel(DoctorCheck check, IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(check);
 
         Check = check;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+    }
+
+    /// <summary>
+    /// The plain-language name of the check (audit 09/20), resolved per identifier from
+    /// the localization port; the raw identifier stays the expert detail. An unknown
+    /// check degrades to its own identifier, never to a blank.
+    /// </summary>
+    public string FriendlyName
+    {
+        get
+        {
+            var key = "Vm_Doctor_" + Name;
+            var localized = _strings[key];
+            return localized == key ? Name : localized;
+        }
     }
 
     /// <summary>The underlying Core record.</summary>
@@ -74,10 +92,31 @@ public sealed class DiagnosticViewModel : ObservableObject
         _strings.CultureChanged += (_, _) =>
         {
             if (_lastReport is { } report)
+            {
                 Summary = Describe(report);
+                OnPropertyChanged(nameof(VerdictHeadline));
+                OnPropertyChanged(nameof(VerdictDetail));
+            }
         };
 
         RunCommand = new AsyncRelayCommand(() => RunAsync());
+    }
+
+    /// <summary>
+    /// The silent first run (audit 09/20, T-09): the window triggers it once at startup so
+    /// the sidebar dot and the verdict card are honest before the user ever presses the
+    /// button. A missing CLI comes back as a NotStarted report, not an exception.
+    /// </summary>
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await RunAsync(null, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // The window is closing; nothing to surface.
+        }
     }
 
     /// <summary>Runs the diagnostic.</summary>
@@ -109,6 +148,25 @@ public sealed class DiagnosticViewModel : ObservableObject
 
     /// <summary>Whether the diagnostic is still in flight.</summary>
     public bool IsRunning => RunCommand.IsRunning;
+
+    /// <summary>How many checks came back green.</summary>
+    public int OkCount => Checks.Count(c => c.Status == DoctorStatus.Ok);
+
+    /// <summary>How many checks warned.</summary>
+    public int WarningCount => Checks.Count(c => c.Status == DoctorStatus.Warning);
+
+    /// <summary>How many checks failed (a parse error counts as one — the report is unusable).</summary>
+    public int FailureCount =>
+        Checks.Count(c => c.Status == DoctorStatus.Failure) + (ErrorMessage is { Length: > 0 } ? 1 : 0);
+
+    /// <summary>"Everything is in place." / "One point to fix…" — the verdict card's headline.</summary>
+    public string VerdictHeadline => _strings[
+        HasIssues ? StudioStringKeys.DiagFixNeeded : StudioStringKeys.DiagAllGood];
+
+    /// <summary>"{0} checks passed, {1} warning(s), {2} failure(s)." under the headline.</summary>
+    public string VerdictDetail => string.Format(
+        CultureInfo.CurrentCulture, _strings[StudioStringKeys.DiagCounts],
+        OkCount, WarningCount, FailureCount);
 
     /// <summary>There is something to copy once a run has produced checks or an error.</summary>
     public bool CanCopyReport => HasRun && (Checks.Count > 0 || ErrorMessage is { Length: > 0 });
@@ -160,7 +218,7 @@ public sealed class DiagnosticViewModel : ObservableObject
         {
             Checks.Clear();
             foreach (var check in report.Checks)
-                Checks.Add(new DoctorCheckViewModel(check));
+                Checks.Add(new DoctorCheckViewModel(check, _strings));
 
             _lastReport = report;
             ErrorMessage = report.ParseError;
@@ -169,6 +227,11 @@ public sealed class DiagnosticViewModel : ObservableObject
             OnPropertyChanged(nameof(IsRunning));
             OnPropertyChanged(nameof(HasIssues));
             OnPropertyChanged(nameof(CanCopyReport));
+            OnPropertyChanged(nameof(OkCount));
+            OnPropertyChanged(nameof(WarningCount));
+            OnPropertyChanged(nameof(FailureCount));
+            OnPropertyChanged(nameof(VerdictHeadline));
+            OnPropertyChanged(nameof(VerdictDetail));
         });
 
         return report;

@@ -510,4 +510,39 @@
   <data name="Limits_Card_Rag" xml:space="preserve"><value>Document index</value></data>
   <data name="Limits_Card_Logging" xml:space="preserve"><value>Logging</value></data>
   <data name="Limits_Card_LlmLog" xml:space="preserve"><value>LLM journal</value></data>
+  <data name="Vm_Hist_OutcomeSuccess" xml:space="preserve"><value>Finished without errors.</value></data>
+  <data name="Vm_Hist_OutcomeFailed" xml:space="preserve"><value>Failed (code {0}).</value></data>
+  <data name="Vm_Hist_OutcomeCancelled" xml:space="preserve"><value>Interrupted before the end.</value></data>
+  <data name="Vm_Hist_OutcomeNotStarted" xml:space="preserve"><value>Never started.</value></data>
+  <data name="Hist_Result" xml:space="preserve"><value>Open the result</value></data>
+  <data name="Vm_Doctor_appsettings" xml:space="preserve"><value>The settings file is readable</value></data>
+  <data name="Vm_Doctor_dotnet-runtime" xml:space="preserve"><value>The .NET runtime</value></data>
+  <data name="Vm_Doctor_esbuild" xml:space="preserve"><value>The script compiler (esbuild)</value></data>
+  <data name="Vm_Doctor_llm-config" xml:space="preserve"><value>The model configuration</value></data>
+  <data name="Vm_Doctor_llm-reachability" xml:space="preserve"><value>The connection to the model</value></data>
+  <data name="Vm_Doctor_local-embeddings" xml:space="preserve"><value>Local embeddings</value></data>
+  <data name="Vm_Doctor_onnx-reranker" xml:space="preserve"><value>The ONNX reranker</value></data>
+  <data name="Vm_Doctor_tree-sitter" xml:space="preserve"><value>The code parser (tree-sitter)</value></data>
+  <data name="Vm_Doctor_workspace-write" xml:space="preserve"><value>Write access to the workspace</value></data>
+  <data name="Vm_Diag_AllGood" xml:space="preserve"><value>Everything is in place.</value></data>
+  <data name="Vm_Diag_FixNeeded" xml:space="preserve"><value>One point to fix before launching a team.</value></data>
+  <data name="Vm_Diag_Counts" xml:space="preserve"><value>{0} checks passed, {1} warning(s), {2} failure(s).</value></data>
+  <data name="Diag_Fix" xml:space="preserve"><value>Fix in Settings</value></data>
+  <data name="Mounts_Novice_Title" xml:space="preserve"><value>Folders the agents can see</value></data>
+  <data name="Mounts_Novice_Intro" xml:space="preserve"><value>Everything else on your machine is invisible to them. A read-only folder can never be modified.</value></data>
+  <data name="Mounts_SeenAs" xml:space="preserve"><value>seen as</value></data>
+  <data name="Mounts_Allow" xml:space="preserve"><value>Allow a folder…</value></data>
+  <data name="Test_Inputs_Label" xml:space="preserve"><value>Sample inputs (JSON)</value></data>
+  <data name="Test_Inputs_Hint" xml:space="preserve"><value>Passed to the trial as --inputs; the real launches keep their own inputs.</value></data>
+  <data name="Vm_Import_RecognizedAgents" xml:space="preserve"><value>{0} — {1} agent(s)</value></data>
+  <data name="Vm_Import_SecretsClean" xml:space="preserve"><value>No secret in the files</value></data>
+  <data name="Vm_Import_SecretsCleanDetail" xml:space="preserve"><value>API keys travel through the environment, and these files carry none.</value></data>
+  <data name="Vm_Import_SecretsFound" xml:space="preserve"><value>Something looks like a pasted key</value></data>
+  <data name="Vm_Import_SecretsFoundDetail" xml:space="preserve"><value>{0} file(s) carry what looks like an inline secret — see the warning below.</value></data>
+  <data name="Vm_Import_ToolsLater" xml:space="preserve"><value>Tools</value></data>
+  <data name="Vm_Import_ToolsLaterDetail" xml:space="preserve"><value>The team's tools are checked at its first launch.</value></data>
+  <data name="Import_Drop_Hint" xml:space="preserve"><value>…or drop a folder / a .yaml or .ork.ts file here</value></data>
+  <data name="Import_Report_Title" xml:space="preserve"><value>RECOGNITION REPORT</value></data>
+  <data name="Import_TestFirst" xml:space="preserve"><value>Test it first</value></data>
+  <data name="Run_Browse" xml:space="preserve"><value>Browse…</value></data>
 </root>

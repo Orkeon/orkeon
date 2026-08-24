@@ -11,6 +11,12 @@ public partial class DiagnosticView : UserControl
     public DiagnosticView() => InitializeComponent();
 
     /// <summary>Copies the last report to the clipboard — presentation-only, no ViewModel involvement.</summary>
+    private void OnFixInSettings(object sender, RoutedEventArgs e)
+    {
+        if (Window.GetWindow(this) is MainWindow window)
+            window.NavSettings.IsChecked = true;
+    }
+
     private void OnCopyReport(object sender, RoutedEventArgs e)
     {
         if (DataContext is DiagnosticViewModel { CanCopyReport: true } diagnostic)

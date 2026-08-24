@@ -94,7 +94,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         // An adopted team is an ordinary folder: "Lancer" hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
-        Teams.LaunchRequested += (_, e) => Launch.Target.SelectedPath = e.Path;
+        Teams.LaunchRequested += (_, e) => Launch.Target.Select(e.Path);
         Teams.ResumeRequested += (_, e) => _ = CreateTeam.ResumeAsync(e.Session);
         CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
@@ -186,7 +186,10 @@ public sealed class MainWindowViewModel : ObservableObject
         Task.WhenAll(
             Launch.InitializeAsync(cancellationToken),
             Test.Launcher.InitializeAsync(cancellationToken),
-            Settings.Profiles.InitializeAsync(cancellationToken));
+            Settings.Profiles.InitializeAsync(cancellationToken),
+            // The silent doctor run (audit 09/20): the sidebar dot and the verdict card
+            // are honest from the first frame, without the user pressing anything.
+            Config.Diagnostic.InitializeAsync(cancellationToken));
 
     /// <summary>
     /// The environment an adopted team lays over its launches: the sidecar names a model

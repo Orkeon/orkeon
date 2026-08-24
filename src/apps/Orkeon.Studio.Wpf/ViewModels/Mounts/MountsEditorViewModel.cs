@@ -54,6 +54,10 @@ public sealed class MountsEditorViewModel : ObservableObject
         Mounts.CollectionChanged += OnMountsChanged;
 
         AddMountCommand = new RelayCommand(() => AddMount());
+        AllowFolderCommand = new RelayCommand(AllowFolder);
+        DropMountCommand = new RelayCommand(
+            parameter => { if (parameter is MountEditorViewModel mount) Remove(mount); },
+            parameter => parameter is MountEditorViewModel);
         RemoveMountCommand = new RelayCommand(RemoveSelected, () => SelectedMount is not null);
         BrowsePhysicalPathCommand = new RelayCommand(BrowsePhysicalPath, () => SelectedMount is { IsParsed: true });
         CreatePhysicalFolderCommand = new RelayCommand(
@@ -72,7 +76,8 @@ public sealed class MountsEditorViewModel : ObservableObject
             },
             parameter => parameter is SubPathOverrideViewModel);
 
-        Validate();
+        // No validation at construction (audit 08/17): an empty form must not open in an
+        // error state. The first Validate() runs on the first change, load, or save.
     }
 
     /// <summary>Whether an empty list is itself an error.</summary>
@@ -147,6 +152,47 @@ public sealed class MountsEditorViewModel : ObservableObject
 
     /// <summary>The serialized entries, unparsed rows included, in list order.</summary>
     public IReadOnlyList<string> ToRawEntries() => [.. Mounts.Select(m => m.MountString)];
+
+    /// <summary>"Autoriser un dossier…" — the novice add path (audit 08/17).</summary>
+    public RelayCommand AllowFolderCommand { get; }
+
+    /// <summary>Removes the mount passed as parameter — the novice card's discrete action.</summary>
+    public RelayCommand DropMountCommand { get; }
+
+    /// <summary>
+    /// The novice flow: pick a real folder, mount it read-only under a virtual name derived
+    /// from the folder itself (first free suggested path as fallback). Read-only is the safe
+    /// default — the expert form is where rights widen.
+    /// </summary>
+    private void AllowFolder()
+    {
+        var picked = _picker.PickFolder(_strings[StudioStringKeys.DialogSelectMountFolder]);
+        if (picked is not { Length: > 0 })
+            return;
+
+        var name = System.IO.Path.GetFileName(picked.TrimEnd('/', '\\'));
+        var candidate = "/" + (name is { Length: > 0 }
+#pragma warning disable CA1308 // virtual paths are lowercase by convention, not a normalization round-trip
+            ? name.ToLowerInvariant()
+#pragma warning restore CA1308
+            : "docs");
+        if (!MountDefinition.IsValidVirtualPath(candidate) || Mounts.Any(m => m.VirtualPath == candidate))
+        {
+            candidate = MountDefinition.SuggestedVirtualPaths
+                .FirstOrDefault(s => Mounts.All(m => m.VirtualPath != s)) ?? "/workspace";
+        }
+
+        var mount = new MountEditorViewModel(_strings)
+        {
+            PhysicalPath = picked,
+            VirtualPath = candidate,
+            Rights = MountRights.ReadOnly,
+        };
+
+        Mounts.Add(mount);
+        SelectedMount = mount;
+        Validate();
+    }
 
     /// <summary>Appends an empty mount row, pre-filled with the first suggested virtual path.</summary>
     public MountEditorViewModel AddMount()

@@ -37,6 +37,17 @@ public sealed record LaunchHistoryEntry
     [JsonPropertyName("outcome")]
     public RunOutcome Outcome { get; init; } = RunOutcome.NotStarted;
 
+    /// <summary>
+    /// How long the run took; null while in flight and for entries written before the
+    /// field existed (the JSON reader tolerates its absence — old history files load).
+    /// </summary>
+    [JsonPropertyName("duration_seconds")]
+    public double? DurationSeconds { get; init; }
+
+    /// <summary>Typed reading of <see cref="DurationSeconds"/>.</summary>
+    [JsonIgnore]
+    public TimeSpan? Duration => DurationSeconds is { } s ? TimeSpan.FromSeconds(s) : null;
+
     /// <summary>Starts an entry for a launch about to happen.</summary>
     public static LaunchHistoryEntry Starting(
         string target,
@@ -67,6 +78,7 @@ public sealed record LaunchHistoryEntry
         {
             ExitCode = result.Outcome == RunOutcome.NotStarted ? null : result.ExitCode,
             Outcome = result.Outcome,
+            DurationSeconds = result.Outcome == RunOutcome.NotStarted ? null : result.Duration.TotalSeconds,
         };
     }
 }

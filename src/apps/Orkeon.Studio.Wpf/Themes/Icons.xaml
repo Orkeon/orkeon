@@ -37,6 +37,8 @@
   <Geometry x:Key="Lucide.pencil">M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z M15 5 l4 4</Geometry>
   <Geometry x:Key="Lucide.lock">M5,11 h14 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-14 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 Z M7 11V7a5 5 0 0 1 10 0v4</Geometry>
   <Geometry x:Key="Lucide.copy">M10,8 h10 a2,2 0 0 1 2,2 v10 a2,2 0 0 1 -2,2 h-10 a2,2 0 0 1 -2,-2 v-10 a2,2 0 0 1 2,-2 Z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2</Geometry>
+  <Geometry x:Key="Lucide.circle">M2,12 a10,10 0 1 0 20,0 a10,10 0 1 0 -20,0</Geometry>
+  <Geometry x:Key="Lucide.circle-x">M2,12 a10,10 0 1 0 20,0 a10,10 0 1 0 -20,0 M15,9 L9,15 M9,9 L15,15</Geometry>
   <Geometry x:Key="Lucide.circle-check">M2,12 a10,10 0 1 0 20,0 a10,10 0 1 0 -20,0 M9 12 l2 2 4-4</Geometry>
   <Geometry x:Key="Lucide.triangle-alert">m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3 M12 9v4 M12 17h.01</Geometry>
   <Geometry x:Key="Lucide.scan-search">M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2 M9,12 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0 M16 16 l-1.9-1.9</Geometry>

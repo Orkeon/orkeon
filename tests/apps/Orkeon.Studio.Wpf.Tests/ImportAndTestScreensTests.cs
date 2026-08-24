@@ -77,3 +77,37 @@ public sealed class ImportAndTestScreensTests
         Assert.Equal("/teams/veille", launcher.Target.SelectedPath);
     }
 }
+
+/// <summary>The recognition report of the Importer screen (audit 04/12).</summary>
+public sealed class ImportRecognitionReportTests
+{
+    [Fact]
+    public void A_recognized_candidate_yields_a_three_line_report()
+    {
+        var probe = new FakeTargetProbe().WithFile("/incoming/veille.yaml");
+        var import = new ImportTeamViewModel(probe, scanSecrets: _ => []);
+
+        Assert.False(import.HasRecognitionReport);
+
+        import.Target.Select("/incoming/veille.yaml");
+
+        Assert.True(import.HasRecognitionReport);
+        Assert.Equal(3, import.RecognitionReport.Count);
+        Assert.Equal("ok", import.RecognitionReport[0].Tone);   // recognized shape
+        Assert.Equal("ok", import.RecognitionReport[1].Tone);   // no secrets
+        Assert.Equal("info", import.RecognitionReport[2].Tone); // tools checked later
+        Assert.Contains("veille", import.RecognitionReport[0].Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_pasted_key_turns_the_secret_line_into_a_warning()
+    {
+        var probe = new FakeTargetProbe().WithFile("/incoming/veille.yaml");
+        var import = new ImportTeamViewModel(probe, scanSecrets: _ => ["crew.yaml"]);
+
+        import.Target.Select("/incoming/veille.yaml");
+
+        Assert.Equal("warn", import.RecognitionReport[1].Tone);
+        Assert.Contains("1", import.RecognitionReport[1].Detail, StringComparison.Ordinal);
+    }
+}

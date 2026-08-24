@@ -49,3 +49,52 @@ public sealed class DiagnosticReportTests
         Assert.Contains(diagnostic.ErrorMessage!, diagnostic.BuildReport(), StringComparison.Ordinal);
     }
 }
+
+/// <summary>The verdict card and the silent first run (audit 09/20).</summary>
+public sealed class DiagnosticVerdictTests
+{
+    private static DiagnosticViewModel Create(FakeProcessLauncher launcher) =>
+        new(new OrkeonProcessRunner(
+            launcher,
+            new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled(), ["orkeon"])));
+
+    [Fact]
+    public async Task The_counts_and_the_headline_follow_the_report()
+    {
+        var launcher = new FakeProcessLauncher();
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(
+            ProcessOutputChannel.StandardOutput,
+            """[{"check":"appsettings","status":"ok","detail":"readable"},""" +
+            """{"check":"llm-config","status":"ok","detail":"anthropic"},""" +
+            """{"check":"llm-reachability","status":"warn","detail":"slow"}]"""));
+
+        var diagnostic = Create(launcher);
+        // The window's InitializeAsync path is the silent first run.
+        await diagnostic.InitializeAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, diagnostic.OkCount);
+        Assert.Equal(1, diagnostic.WarningCount);
+        Assert.Equal(0, diagnostic.FailureCount);
+        Assert.True(diagnostic.HasIssues);
+        Assert.Equal("One point to fix before launching a team.", diagnostic.VerdictHeadline);
+        Assert.Contains("2", diagnostic.VerdictDetail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_green_report_says_everything_is_in_place_and_checks_speak_plainly()
+    {
+        var launcher = new FakeProcessLauncher();
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(
+            ProcessOutputChannel.StandardOutput,
+            """[{"check":"appsettings","status":"ok","detail":"readable"}]"""));
+
+        var diagnostic = Create(launcher);
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(diagnostic.HasIssues);
+        Assert.Equal("Everything is in place.", diagnostic.VerdictHeadline);
+        // The plain-language overlay resolves per check id; the raw id stays for the expert.
+        Assert.Equal("The settings file is readable", diagnostic.Checks[0].FriendlyName);
+        Assert.Equal("appsettings", diagnostic.Checks[0].Name);
+    }
+}

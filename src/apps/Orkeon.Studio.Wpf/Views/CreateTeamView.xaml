@@ -122,28 +122,15 @@
         <ItemsControl ItemsSource="{Binding Profiles.Profiles}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Button Margin="0,0,0,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                      Command="{Binding DataContext.CreateTeam.PickAssistantCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                      CommandParameter="{Binding Name}">
-                <Button.Template>
-                  <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
-                            BorderThickness="1" CornerRadius="10" Padding="13,10" Cursor="Hand">
-                      <ContentPresenter/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                      <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                        <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-                      </Trigger>
-                    </ControlTemplate.Triggers>
-                  </ControlTemplate>
-                </Button.Template>
+              <!-- audit 02/10: the gate is a radio list (PickRow), not anonymous buttons -->
+              <RadioButton Style="{StaticResource PickRow}" GroupName="GateProfile" Margin="0,0,0,7"
+                           Command="{Binding DataContext.CreateTeam.PickAssistantCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                           CommandParameter="{Binding Name}">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
                   <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="11,0,0,0" Text="{Binding Summary}"/>
                 </StackPanel>
-              </Button>
+              </RadioButton>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

@@ -1,5 +1,6 @@
-<!-- The "History" screen (§5.3): replayable local run history.
-     DataContext: LaunchHistoryViewModel (bound as Launch.History in MainWindow). -->
+<!-- The "History" screen (§5.3, audit 06/15): the mock's card list — status icon, team name,
+     date · duration, a plain-language result sentence, and per-card actions. The exact
+     command line and exit code are expert detail. DataContext: LaunchHistoryViewModel. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.HistoryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -11,96 +12,115 @@
     <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
                Text="{Binding [Scr_Hist_Sub], Source={x:Static services:I18n.Instance}}"/>
 
-    <Border Style="{StaticResource Card}">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-          <Button Style="{StaticResource BtnPrimary}" Margin="0,0,8,0" Command="{Binding ReplayCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Hist_Replay], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnGhost}" Command="{Binding ReloadCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="rotate-cw" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Hist_Reload], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-        </StackPanel>
+    <ItemsControl ItemsSource="{Binding Entries}"
+                  VirtualizingPanel.IsVirtualizing="True"
+                  VirtualizingPanel.VirtualizationMode="Recycling">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <VirtualizingStackPanel/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.Template>
+        <ControlTemplate TargetType="ItemsControl">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <ItemsPresenter/>
+          </ScrollViewer>
+        </ControlTemplate>
+      </ItemsControl.Template>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Border CornerRadius="12" Padding="16,13" Margin="0,0,0,9"
+                  BorderThickness="1" BorderBrush="{DynamicResource LineFaintBrush}"
+                  Background="{DynamicResource SurfaceBrush}">
+            <DockPanel LastChildFill="True">
 
-        <ListBox ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}"
-                 Background="Transparent" BorderThickness="0"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 VirtualizingPanel.IsVirtualizing="True"
-                 VirtualizingPanel.VirtualizationMode="Recycling">
-          <ListBox.ItemContainerStyle>
-            <Style TargetType="ListBoxItem">
-              <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-              <Setter Property="Template">
-                <Setter.Value>
-                  <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="Row" CornerRadius="10" Padding="14,10" Margin="0,0,0,7"
-                            BorderThickness="1" BorderBrush="{DynamicResource LineFaintBrush}"
-                            Background="{DynamicResource SurfaceBrush}">
-                      <ContentPresenter/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                      <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource Surface2Brush}"/>
-                      </Trigger>
-                      <Trigger Property="IsSelected" Value="True">
-                        <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-                      </Trigger>
-                    </ControlTemplate.Triggers>
-                  </ControlTemplate>
-                </Setter.Value>
-              </Setter>
-            </Style>
-          </ListBox.ItemContainerStyle>
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <DockPanel LastChildFill="True">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="10,0,0,0">
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,8,0">
+              <!-- per-card actions -->
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                <Button Style="{StaticResource BtnGhost}" Margin="0,0,7,0" Command="{Binding OpenResultCommand}"
+                        Visibility="{Binding HasResultFolder, Converter={StaticResource BooleanToVisibility}}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Hist_Result], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnGhost}" Command="{Binding ReplayCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Hist_Replay], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+
+              <!-- status icon -->
+              <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10"
+                      VerticalAlignment="Top" Margin="0,1,13,0">
+                <Border.Style>
+                  <Style TargetType="Border">
+                    <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding OutcomeTone}" Value="ok">
+                        <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding OutcomeTone}" Value="warn">
+                        <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding OutcomeTone}" Value="idle">
+                        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Border.Style>
+                <controls:LucideIcon Size="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <controls:LucideIcon.Style>
+                    <Style TargetType="controls:LucideIcon">
+                      <Setter Property="Kind" Value="circle-x"/>
+                      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding OutcomeTone}" Value="ok">
+                          <Setter Property="Kind" Value="circle-check"/>
+                          <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding OutcomeTone}" Value="warn">
+                          <Setter Property="Kind" Value="triangle-alert"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding OutcomeTone}" Value="idle">
+                          <Setter Property="Kind" Value="circle"/>
+                          <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:LucideIcon.Style>
+                </controls:LucideIcon>
+              </Border>
+
+              <!-- team · date/duration · result sentence, plus the expert command line -->
+              <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                             Text="{Binding TeamName, Mode=OneWay}" ToolTip="{Binding Target}"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"
+                             Text="{Binding DateLine, Mode=OneWay}"/>
+                </StackPanel>
+                <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="0,3,0,0"
+                           Text="{Binding OutcomeSentence, Mode=OneWay}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0"
+                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" MaxWidth="520"
+                             TextTrimming="CharacterEllipsis" Text="{Binding CommandLine, Mode=OneWay}"
+                             ToolTip="{Binding CommandLine, Mode=OneWay}"/>
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="10,0,0,0"
+                             Foreground="{DynamicResource InkFaintBrush}">
                     <Run Text="exit"/><Run Text=" "/><Run Text="{Binding ExitCode, Mode=OneWay}"/>
                   </TextBlock>
-                  <Border>
-                    <Border.Style>
-                      <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                        <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
-                        <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerBrush}"/>
-                        <Style.Triggers>
-                          <DataTrigger Binding="{Binding Outcome}" Value="Success">
-                            <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                            <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
-                          </DataTrigger>
-                          <DataTrigger Binding="{Binding Outcome}" Value="Cancelled">
-                            <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                            <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
-                          </DataTrigger>
-                        </Style.Triggers>
-                      </Style>
-                    </Border.Style>
-                    <TextBlock Style="{StaticResource BadgeText}" FontSize="10" Text="{Binding Outcome, Mode=OneWay}"/>
-                  </Border>
                 </StackPanel>
-                <StackPanel>
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{DynamicResource InkBrush}" Text="{Binding Target, Mode=OneWay}"/>
-                    <TextBlock Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"
-                               Text="{Binding StartedAt, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
-                  </StackPanel>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,3,0,0"
-                             TextTrimming="CharacterEllipsis" Text="{Binding CommandLine, Mode=OneWay}"/>
-                </StackPanel>
-              </DockPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </StackPanel>
-    </Border>
+              </StackPanel>
+
+            </DockPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
 
   </StackPanel>
 </UserControl>

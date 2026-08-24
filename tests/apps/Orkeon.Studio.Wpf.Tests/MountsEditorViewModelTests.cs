@@ -95,6 +95,13 @@ public sealed class MountsEditorViewModelTests
     {
         var editor = new MountsEditorViewModel(new FakeDirectoryProbe(), requireAtLeastOne: true);
 
+        // Audit 08/17: no error state before any interaction — the form opens clean...
+        Assert.Empty(editor.ValidationMessages);
+        Assert.False(editor.HasErrors);
+
+        // ...and the first explicit validation says what is missing.
+        editor.Validate();
+
         Assert.Contains(editor.ValidationMessages, m => m.Code == ValidationCodes.MountsEmpty);
         Assert.True(editor.HasErrors);
     }

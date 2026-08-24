@@ -49,6 +49,54 @@ public static class StudioStringKeys
     /// <summary>"Exit code {0} — {1}"</summary>
     public const string LaunchExitCode = "Core_Launch_ExitCode";
 
+    // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
+
+    /// <summary>"{0} — {1} agent(s)"</summary>
+    public const string ImportRecognizedAgents = "Vm_Import_RecognizedAgents";
+
+    /// <summary>"No secret in the files"</summary>
+    public const string ImportSecretsClean = "Vm_Import_SecretsClean";
+
+    /// <summary>"API keys travel through the environment, and these files carry none."</summary>
+    public const string ImportSecretsCleanDetail = "Vm_Import_SecretsCleanDetail";
+
+    /// <summary>"Something looks like a pasted key"</summary>
+    public const string ImportSecretsFound = "Vm_Import_SecretsFound";
+
+    /// <summary>"{0} file(s) carry what looks like an inline secret — see the warning below."</summary>
+    public const string ImportSecretsFoundDetail = "Vm_Import_SecretsFoundDetail";
+
+    /// <summary>"Tools"</summary>
+    public const string ImportToolsLater = "Vm_Import_ToolsLater";
+
+    /// <summary>"The team's tools are checked at its first launch."</summary>
+    public const string ImportToolsLaterDetail = "Vm_Import_ToolsLaterDetail";
+
+    // ---- Diagnostic verdict card (Config/DiagnosticViewModel, audit 09/20) --
+
+    /// <summary>"Everything is in place."</summary>
+    public const string DiagAllGood = "Vm_Diag_AllGood";
+
+    /// <summary>"One point to fix before launching a team."</summary>
+    public const string DiagFixNeeded = "Vm_Diag_FixNeeded";
+
+    /// <summary>"{0} checks passed, {1} warning(s), {2} failure(s)."</summary>
+    public const string DiagCounts = "Vm_Diag_Counts";
+
+    // ---- History cards (Launch/LaunchHistoryViewModel, audit 06/15) ------
+
+    /// <summary>"Finished without errors."</summary>
+    public const string HistOutcomeSuccess = "Vm_Hist_OutcomeSuccess";
+
+    /// <summary>"Failed (code {0})."</summary>
+    public const string HistOutcomeFailed = "Vm_Hist_OutcomeFailed";
+
+    /// <summary>"Interrupted before the end."</summary>
+    public const string HistOutcomeCancelled = "Vm_Hist_OutcomeCancelled";
+
+    /// <summary>"Never started."</summary>
+    public const string HistOutcomeNotStarted = "Vm_Hist_OutcomeNotStarted";
+
     // ---- RAG web-fallback status (Config/RagSectionViewModel, T-08) ------
 
     /// <summary>"Web fallback active: the corrective loop may fetch pages, …"</summary>
@@ -700,6 +748,29 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RagWebFallbackTransportOff] = "Inactive: the corrective policy allows it, but the transport (Orkeon:Rag:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackPolicyOff] = "Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackOff] = "Off. Both switches must be turned on for the corrective loop to reach the web.",
+        [StudioStringKeys.HistOutcomeSuccess] = "Finished without errors.",
+        [StudioStringKeys.HistOutcomeFailed] = "Failed (code {0}).",
+        [StudioStringKeys.HistOutcomeCancelled] = "Interrupted before the end.",
+        [StudioStringKeys.HistOutcomeNotStarted] = "Never started.",
+        [StudioStringKeys.DiagAllGood] = "Everything is in place.",
+        [StudioStringKeys.DiagFixNeeded] = "One point to fix before launching a team.",
+        [StudioStringKeys.DiagCounts] = "{0} checks passed, {1} warning(s), {2} failure(s).",
+        ["Vm_Doctor_appsettings"] = "The settings file is readable",
+        ["Vm_Doctor_dotnet-runtime"] = "The .NET runtime",
+        ["Vm_Doctor_esbuild"] = "The script compiler (esbuild)",
+        ["Vm_Doctor_llm-config"] = "The model configuration",
+        ["Vm_Doctor_llm-reachability"] = "The connection to the model",
+        ["Vm_Doctor_local-embeddings"] = "Local embeddings",
+        ["Vm_Doctor_onnx-reranker"] = "The ONNX reranker",
+        ["Vm_Doctor_tree-sitter"] = "The code parser (tree-sitter)",
+        ["Vm_Doctor_workspace-write"] = "Write access to the workspace",
+        [StudioStringKeys.ImportRecognizedAgents] = "{0} — {1} agent(s)",
+        [StudioStringKeys.ImportSecretsClean] = "No secret in the files",
+        [StudioStringKeys.ImportSecretsCleanDetail] = "API keys travel through the environment, and these files carry none.",
+        [StudioStringKeys.ImportSecretsFound] = "Something looks like a pasted key",
+        [StudioStringKeys.ImportSecretsFoundDetail] = "{0} file(s) carry what looks like an inline secret — see the warning below.",
+        [StudioStringKeys.ImportToolsLater] = "Tools",
+        [StudioStringKeys.ImportToolsLaterDetail] = "The team's tools are checked at its first launch.",
         ["Vm_ValMsg_WIN-01"] = "No Llm section: the engine will start on its built-in defaults (Ollama, local).",
         ["Vm_ValMsg_STUDIO-JSON"] = "The settings file is not valid JSON.",
         ["Vm_ValMsg_STUDIO-TYPE"] = "A settings field has the wrong type.",

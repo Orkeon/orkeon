@@ -1,75 +1,110 @@
-<!-- The expert "Tester" screen (design v3): blank-run validation then a real trial, over a
-     dedicated launcher that never touches the history. DataContext: TestTeamViewModel. -->
+<!-- The expert "Tester" screen (design v3, audit 13): two columns — the form on the left,
+     the trial console on the right at the mock's clamp(280, 40%, 420) width, full height.
+     The launcher never touches the history. DataContext: TestTeamViewModel. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.TestTeamView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
-  <StackPanel>
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
 
-    <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Test_Title], Source={x:Static services:I18n.Instance}}"/>
-    <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-               Text="{Binding [Scr_Test_Sub], Source={x:Static services:I18n.Instance}}"/>
+    <StackPanel Grid.Row="0">
+      <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Test_Title], Source={x:Static services:I18n.Instance}}"/>
+      <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
+                 Text="{Binding [Scr_Test_Sub], Source={x:Static services:I18n.Instance}}"/>
+    </StackPanel>
 
-    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-      <StackPanel>
-        <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Test_Team_Label], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox ItemsSource="{Binding TeamChoices}" SelectedItem="{Binding SelectedTeam}"
-                  DisplayMemberPath="Name" Width="320" HorizontalAlignment="Left"/>
-        <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding Launcher.Target.SelectedPath}"/>
-        <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding Launcher.Target.StatusDisplay}"/>
-        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-          <Button Style="{StaticResource BtnGhost}" Command="{Binding Launcher.ValidateCommand}" Margin="0,0,8,0">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Test_Validate], Source={x:Static services:I18n.Instance}}"/>
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="3*"/>
+        <ColumnDefinition Width="20"/>
+        <ColumnDefinition Width="2*" MinWidth="280" MaxWidth="420"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- left: the trial form -->
+      <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Focusable="False">
+        <StackPanel>
+
+          <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+            <StackPanel>
+              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Test_Team_Label], Source={x:Static services:I18n.Instance}}"/>
+              <ComboBox ItemsSource="{Binding TeamChoices}" SelectedItem="{Binding SelectedTeam}"
+                        DisplayMemberPath="Name" Width="320" HorizontalAlignment="Left"/>
+              <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding Launcher.Target.SelectedPath}"/>
+              <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding Launcher.Target.StatusDisplay}"/>
+
+              <!-- sample inputs (script targets): rides the inputs flag on the trial run -->
+              <StackPanel Visibility="{Binding Launcher.Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
+                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0"
+                           Text="{Binding [Test_Inputs_Label], Source={x:Static services:I18n.Instance}}"/>
+                <TextBox AcceptsReturn="True" MinHeight="56" MaxHeight="120" VerticalScrollBarVisibility="Auto"
+                         FontFamily="{StaticResource MonoFont}" FontSize="11.5"
+                         Text="{Binding Launcher.Options.InputsJson, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
+                           Text="{Binding [Test_Inputs_Hint], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+
+              <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                <Button Style="{StaticResource BtnGhost}" Command="{Binding Launcher.ValidateCommand}" Margin="0,0,8,0">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Test_Validate], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnPrimary}" Command="{Binding Launcher.RunCommand}" Margin="0,0,8,0">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="play" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                    <TextBlock Text="{Binding [Test_Run], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnGhost}" Command="{Binding Launcher.CancelCommand}"
+                        Content="{Binding [Run_Cancel], Source={x:Static services:I18n.Instance}}"
+                        Visibility="{Binding Launcher.IsRunning, Converter={StaticResource BooleanToVisibility}}"/>
+              </StackPanel>
+              <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" Text="{Binding Launcher.StatusMessage}"
+                         Visibility="{Binding Launcher.StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
             </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnPrimary}" Command="{Binding Launcher.RunCommand}" Margin="0,0,8,0">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="play" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Test_Run], Source={x:Static services:I18n.Instance}}"/>
+          </Border>
+
+          <!-- validation findings -->
+          <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+                  Visibility="{Binding Launcher.ValidationMessages.Count, Converter={StaticResource CountToVisibility}}">
+            <StackPanel>
+              <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
+                         Text="{Binding [Test_Findings], Source={x:Static services:I18n.Instance}}"/>
+              <ItemsControl ItemsSource="{Binding Launcher.ValidationMessages}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,2"
+                               Text="{Binding FriendlyText}" ToolTip="{Binding Display}"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnGhost}" Command="{Binding Launcher.CancelCommand}"
-                  Content="{Binding [Run_Cancel], Source={x:Static services:I18n.Instance}}"
-                  Visibility="{Binding Launcher.IsRunning, Converter={StaticResource BooleanToVisibility}}"/>
+          </Border>
+
         </StackPanel>
-        <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" Text="{Binding Launcher.StatusMessage}"
-                   Visibility="{Binding Launcher.StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
-      </StackPanel>
-    </Border>
-
-    <!-- validation findings -->
-    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
-            Visibility="{Binding Launcher.ValidationMessages.Count, Converter={StaticResource CountToVisibility}}">
-      <StackPanel>
-        <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
-                   Text="{Binding [Test_Findings], Source={x:Static services:I18n.Instance}}"/>
-        <ItemsControl ItemsSource="{Binding Launcher.ValidationMessages}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,2"
-                         Text="{Binding Display}"/>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </Border>
-
-    <!-- the trial console: always console-navy, in both themes -->
-    <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="14" Padding="10" MinHeight="220" MaxHeight="440">
-      <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <ItemsControl ItemsSource="{Binding Launcher.Log.Lines}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Padding="6,1"
-                         Foreground="{DynamicResource ConsoleFgBrush}" TextWrapping="Wrap" Text="{Binding Text}"/>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
       </ScrollViewer>
-    </Border>
 
-  </StackPanel>
+      <!-- right: the trial console, full column height, always console-navy -->
+      <Border Grid.Column="2" Background="{DynamicResource ConsoleBgBrush}" CornerRadius="14" Padding="10"
+              MinHeight="280" VerticalAlignment="Stretch">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Launcher.Log.Lines}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Padding="6,1"
+                           Foreground="{DynamicResource ConsoleFgBrush}" TextWrapping="Wrap" Text="{Binding Text}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+
+    </Grid>
+  </Grid>
 </UserControl>

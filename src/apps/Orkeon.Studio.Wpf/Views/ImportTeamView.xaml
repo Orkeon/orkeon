@@ -23,10 +23,7 @@
         <DockPanel>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                   Command="{Binding Target.BrowseFolderCommand}"
-                  Content="{Binding [Run_Folder], Source={x:Static services:I18n.Instance}}"/>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
-                  Command="{Binding Target.BrowseFileCommand}"
-                  Content="{Binding [Run_File], Source={x:Static services:I18n.Instance}}"/>
+                  Content="{Binding [Run_Browse], Source={x:Static services:I18n.Instance}}"/>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                   Command="{Binding Target.DetectCommand}">
             <StackPanel Orientation="Horizontal">
@@ -36,6 +33,28 @@
           </Button>
           <TextBox Style="{StaticResource InputMono}" Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}"/>
         </DockPanel>
+
+        <!-- drop zone (audit 04): dashed, centred; files also arrive via the typed path -->
+        <Border Margin="0,12,0,0" CornerRadius="10" Padding="22" AllowDrop="True" Drop="OnDropCandidate"
+                DragOver="OnDragOverCandidate" Background="{DynamicResource PaperSunkBrush}">
+          <Border.BorderBrush>
+            <DrawingBrush Viewport="0,0,8,8" ViewportUnits="Absolute" TileMode="Tile">
+              <DrawingBrush.Drawing>
+                <GeometryDrawing Brush="{DynamicResource LineStrongBrush}">
+                  <GeometryDrawing.Geometry>
+                    <GeometryGroup>
+                      <RectangleGeometry Rect="0,0,4,1"/>
+                      <RectangleGeometry Rect="0,0,1,4"/>
+                    </GeometryGroup>
+                  </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+              </DrawingBrush.Drawing>
+            </DrawingBrush>
+          </Border.BorderBrush>
+          <Border.BorderThickness>1</Border.BorderThickness>
+          <TextBlock Style="{StaticResource Hint}" HorizontalAlignment="Center"
+                     Text="{Binding [Import_Drop_Hint], Source={x:Static services:I18n.Instance}}"/>
+        </Border>
         <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" Text="{Binding Target.StatusDisplay}"/>
         <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
           <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Text="{Binding Target.ErrorMessage}"/>
@@ -43,6 +62,45 @@
                     SelectedItem="{Binding Target.PreferredDirectoryKind}"
                     Width="280" HorizontalAlignment="Left" Margin="0,6,0,0"/>
         </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- recognition report (audit 04/12): what Studio established about the candidate -->
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+            Visibility="{Binding HasRecognitionReport, Converter={StaticResource BooleanToVisibility}}">
+      <StackPanel>
+        <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
+                   Text="{Binding [Import_Report_Title], Source={x:Static services:I18n.Instance}}"/>
+        <ItemsControl ItemsSource="{Binding RecognitionReport}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <DockPanel Margin="0,4">
+                <controls:LucideIcon Size="14" VerticalAlignment="Top" Margin="0,2,10,0">
+                  <controls:LucideIcon.Style>
+                    <Style TargetType="controls:LucideIcon">
+                      <Setter Property="Kind" Value="info"/>
+                      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Tone}" Value="ok">
+                          <Setter Property="Kind" Value="circle-check"/>
+                          <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Tone}" Value="warn">
+                          <Setter Property="Kind" Value="triangle-alert"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:LucideIcon.Style>
+                </controls:LucideIcon>
+                <StackPanel>
+                  <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding Detail}"/>
+                </StackPanel>
+              </DockPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </StackPanel>
     </Border>
 
@@ -72,6 +130,17 @@
         <StackPanel Orientation="Horizontal">
           <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
           <TextBlock Text="{Binding [Import_Add], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+      </Button>
+      <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Click="OnTestFirst"
+              IsEnabled="{Binding Target.IsResolved}">
+        <Button.Visibility>
+          <Binding Path="DataContext.Mode.IsExpert" RelativeSource="{RelativeSource AncestorType=Window}"
+                   Converter="{StaticResource BooleanToVisibility}"/>
+        </Button.Visibility>
+        <StackPanel Orientation="Horizontal">
+          <controls:LucideIcon Kind="play" Size="13" Margin="0,0,7,0"/>
+          <TextBlock Text="{Binding [Import_TestFirst], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </Button>
       <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" VerticalAlignment="Center" Margin="12,0,0,0"

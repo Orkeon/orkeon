@@ -142,3 +142,34 @@ public sealed class LaunchHistoryTests
         Assert.False(string.IsNullOrWhiteSpace(error));
     }
 }
+
+/// <summary>The duration recorded per run (audit 06/15) and its tolerant JSON migration.</summary>
+public sealed class LaunchHistoryDurationTests
+{
+    [Fact]
+    public void The_result_stamps_the_duration_and_an_unstarted_run_leaves_it_null()
+    {
+        var entry = LaunchHistoryEntry.Starting("crew.yaml", ["run", "crew.yaml"]);
+        Assert.Null(entry.Duration);
+
+        var done = entry.WithResult(ProcessRunResult.FromExitCode(0, TimeSpan.FromSeconds(125)));
+        Assert.Equal(TimeSpan.FromSeconds(125), done.Duration);
+    }
+
+    [Fact]
+    public void A_history_file_written_before_the_field_existed_still_loads()
+    {
+        // The pre-remediation shape: no duration_seconds anywhere.
+        const string json = """{"target":"crew.yaml","arguments":["run","crew.yaml"],"started_at":"2026-08-01T09:00:00+00:00","exit_code":0,"outcome":"Success"}""";
+
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
+        };
+        var entry = System.Text.Json.JsonSerializer.Deserialize<LaunchHistoryEntry>(json, options);
+
+        Assert.NotNull(entry);
+        Assert.Null(entry!.Duration);
+        Assert.Equal(RunOutcome.Success, entry.Outcome);
+    }
+}

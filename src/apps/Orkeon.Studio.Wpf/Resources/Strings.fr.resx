@@ -510,4 +510,39 @@
   <data name="Limits_Card_Rag" xml:space="preserve"><value>Index documentaire</value></data>
   <data name="Limits_Card_Logging" xml:space="preserve"><value>Journalisation</value></data>
   <data name="Limits_Card_LlmLog" xml:space="preserve"><value>Journal LLM</value></data>
+  <data name="Vm_Hist_OutcomeSuccess" xml:space="preserve"><value>Terminée sans erreur.</value></data>
+  <data name="Vm_Hist_OutcomeFailed" xml:space="preserve"><value>Échouée (code {0}).</value></data>
+  <data name="Vm_Hist_OutcomeCancelled" xml:space="preserve"><value>Interrompue avant la fin.</value></data>
+  <data name="Vm_Hist_OutcomeNotStarted" xml:space="preserve"><value>N'a jamais démarré.</value></data>
+  <data name="Hist_Result" xml:space="preserve"><value>Ouvrir le résultat</value></data>
+  <data name="Vm_Doctor_appsettings" xml:space="preserve"><value>Les réglages sont lisibles</value></data>
+  <data name="Vm_Doctor_dotnet-runtime" xml:space="preserve"><value>L'environnement .NET</value></data>
+  <data name="Vm_Doctor_esbuild" xml:space="preserve"><value>Le compilateur de scripts (esbuild)</value></data>
+  <data name="Vm_Doctor_llm-config" xml:space="preserve"><value>La configuration du modèle</value></data>
+  <data name="Vm_Doctor_llm-reachability" xml:space="preserve"><value>La connexion au modèle</value></data>
+  <data name="Vm_Doctor_local-embeddings" xml:space="preserve"><value>Les embeddings locaux</value></data>
+  <data name="Vm_Doctor_onnx-reranker" xml:space="preserve"><value>Le reclasseur ONNX</value></data>
+  <data name="Vm_Doctor_tree-sitter" xml:space="preserve"><value>L'analyseur de code (tree-sitter)</value></data>
+  <data name="Vm_Doctor_workspace-write" xml:space="preserve"><value>L'écriture dans le dossier de travail</value></data>
+  <data name="Vm_Diag_AllGood" xml:space="preserve"><value>Tout est en place.</value></data>
+  <data name="Vm_Diag_FixNeeded" xml:space="preserve"><value>Un point à corriger avant de lancer une équipe.</value></data>
+  <data name="Vm_Diag_Counts" xml:space="preserve"><value>{0} vérifications passées, {1} avertissement(s), {2} échec(s).</value></data>
+  <data name="Diag_Fix" xml:space="preserve"><value>Corriger dans les réglages</value></data>
+  <data name="Mounts_Novice_Title" xml:space="preserve"><value>Dossiers que les agents peuvent voir</value></data>
+  <data name="Mounts_Novice_Intro" xml:space="preserve"><value>Tout le reste de votre machine leur est invisible. Un dossier en lecture seule ne peut jamais être modifié.</value></data>
+  <data name="Mounts_SeenAs" xml:space="preserve"><value>vu comme</value></data>
+  <data name="Mounts_Allow" xml:space="preserve"><value>Autoriser un dossier…</value></data>
+  <data name="Test_Inputs_Label" xml:space="preserve"><value>Jeu d'exemple (JSON)</value></data>
+  <data name="Test_Inputs_Hint" xml:space="preserve"><value>Transmis à l'essai via --inputs ; les lancements réels gardent leurs propres entrées.</value></data>
+  <data name="Vm_Import_RecognizedAgents" xml:space="preserve"><value>{0} — {1} agent(s)</value></data>
+  <data name="Vm_Import_SecretsClean" xml:space="preserve"><value>Aucun secret dans les fichiers</value></data>
+  <data name="Vm_Import_SecretsCleanDetail" xml:space="preserve"><value>Les clés API voyagent par l'environnement, et ces fichiers n'en contiennent pas.</value></data>
+  <data name="Vm_Import_SecretsFound" xml:space="preserve"><value>Quelque chose ressemble à une clé collée</value></data>
+  <data name="Vm_Import_SecretsFoundDetail" xml:space="preserve"><value>{0} fichier(s) contiennent ce qui ressemble à un secret en clair — voir l'avertissement ci-dessous.</value></data>
+  <data name="Vm_Import_ToolsLater" xml:space="preserve"><value>Outils</value></data>
+  <data name="Vm_Import_ToolsLaterDetail" xml:space="preserve"><value>Les outils de l'équipe sont vérifiés à son premier lancement.</value></data>
+  <data name="Import_Drop_Hint" xml:space="preserve"><value>…ou déposez ici un dossier / un fichier .yaml ou .ork.ts</value></data>
+  <data name="Import_Report_Title" xml:space="preserve"><value>RAPPORT DE RECONNAISSANCE</value></data>
+  <data name="Import_TestFirst" xml:space="preserve"><value>Tester d'abord</value></data>
+  <data name="Run_Browse" xml:space="preserve"><value>Parcourir…</value></data>
 </root>

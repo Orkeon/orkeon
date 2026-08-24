@@ -71,12 +71,13 @@ public sealed class LaunchTabViewModel : ObservableObject
             RaiseRunStateChanged();
         };
 
+        _shellOpener = shellOpener;
         Target = new TargetSelectionViewModel(targetProbe, picker, _strings);
         Options = new LaunchOptionsViewModel(picker, _strings);
         Mounts = new LaunchMountsViewModel(directories, picker, _strings);
         Log = new RunLogViewModel(_strings);
         Progress = new RunProgressViewModel(_strings);
-        History = new LaunchHistoryViewModel(historyStore, _dispatcher);
+        History = new LaunchHistoryViewModel(historyStore, _dispatcher, _strings, _shellOpener);
 
         Target.TargetChanged += OnTargetChanged;
         Options.Changed += OnInputsChanged;
@@ -90,7 +91,6 @@ public sealed class LaunchTabViewModel : ObservableObject
             _ => !IsRunning);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         ClearLogCommand = new RelayCommand(() => Log.Clear());
-        _shellOpener = shellOpener;
         OpenResultCommand = new RelayCommand(OpenResult, () => CanOpenResult);
         CheckOptionsCommand = new RelayCommand(() => CheckOptions());
 

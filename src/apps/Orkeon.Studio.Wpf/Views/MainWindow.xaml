@@ -318,10 +318,11 @@
                       Visibility="{Binding IsChecked, ElementName=NavImport, Converter={StaticResource BooleanToVisibility}}">
           <views:ImportTeamView MaxWidth="880" DataContext="{Binding Import}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
-                      Visibility="{Binding IsChecked, ElementName=NavTest, Converter={StaticResource BooleanToVisibility}}">
-          <views:TestTeamView MaxWidth="1000" DataContext="{Binding Test}"/>
-        </ScrollViewer>
+        <!-- Tester is a two-column layout with a full-height console (audit 13): its host is
+             a Grid, not a ScrollViewer — an infinite vertical measure would collapse the console. -->
+        <Grid Visibility="{Binding IsChecked, ElementName=NavTest, Converter={StaticResource BooleanToVisibility}}">
+          <views:TestTeamView MaxWidth="1080" Margin="30,24,30,32" DataContext="{Binding Test}"/>
+        </Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">
           <views:SettingsView x:Name="SettingsPanel" MaxWidth="1000" DataContext="{Binding Settings}"/>

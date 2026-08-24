@@ -44,6 +44,36 @@
       </StackPanel>
     </Border>
 
+    <!-- verdict card (audit 09/20): headline, counts, one action -->
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+            Visibility="{Binding HasRun, Converter={StaticResource BooleanToVisibility}}">
+      <DockPanel LastChildFill="True">
+        <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Center"
+                Margin="12,0,0,0" Click="OnFixInSettings"
+                Visibility="{Binding HasIssues, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="sliders-horizontal" Size="13" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Diag_Fix], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+        <StackPanel>
+          <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding VerdictHeadline}">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasIssues}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+          <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding VerdictDetail}"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
     <!-- checks card -->
     <Border Style="{StaticResource Card}"
             Visibility="{Binding Checks.Count, Converter={StaticResource CountToVisibility}}">
@@ -77,8 +107,13 @@
                   </controls:LucideIcon.Style>
                 </controls:LucideIcon>
                 <StackPanel>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" Foreground="{DynamicResource InkBrush}"
-                             Text="{Binding Name, Mode=OneWay}"/>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                               Text="{Binding FriendlyName, Mode=OneWay}"/>
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="10" Margin="9,0,0,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Name, Mode=OneWay}"
+                               Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
                   <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding Detail, Mode=OneWay}"/>
                 </StackPanel>
               </DockPanel>

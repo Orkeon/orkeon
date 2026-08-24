@@ -862,3 +862,48 @@ public sealed class LaunchScreenFacetsTests
         Assert.Equal(["/srv/out"], opener.Opened);
     }
 }
+
+/// <summary>The history cards (audit 06/15): plain-language facets on each stored launch.</summary>
+public sealed class LaunchHistoryCardTests
+{
+    [Fact]
+    public void The_card_reads_team_name_duration_and_a_localized_outcome()
+    {
+        var entry = LaunchHistoryEntry
+            .Starting("/teams/veille/crew.yaml", ["run", "/teams/veille/crew.yaml"])
+            .WithResult(ProcessRunResult.FromExitCode(0, TimeSpan.FromSeconds(125)));
+
+        var card = new LaunchHistoryEntryViewModel(entry);
+
+        Assert.Equal("crew", card.TeamName);
+        Assert.Contains("2 min 05 s", card.DateLine, StringComparison.Ordinal);
+        Assert.Equal("Finished without errors.", card.OutcomeSentence);
+        Assert.Equal("ok", card.OutcomeTone);
+    }
+
+    [Fact]
+    public void A_failed_run_names_its_exit_code_and_the_result_folder_comes_from_the_argv()
+    {
+        var entry = LaunchHistoryEntry
+            .Starting("t.yaml", ["run", "t.yaml", "--mount", "/srv/docs:/workspace:ro", "/srv/out:/output:rw"])
+            .WithResult(ProcessRunResult.FromExitCode(3, TimeSpan.FromSeconds(4)));
+
+        var opener = new RecordingShellOpener();
+        var card = new LaunchHistoryEntryViewModel(entry, shellOpener: opener);
+
+        Assert.Contains("3", card.OutcomeSentence, StringComparison.Ordinal);
+        Assert.Equal("fail", card.OutcomeTone);
+        Assert.True(card.HasResultFolder);
+        card.OpenResultCommand.Execute(null);
+        Assert.Equal(["/srv/out"], opener.Opened);
+    }
+
+    [Fact]
+    public void An_entry_without_a_writable_mount_offers_no_result_button()
+    {
+        var entry = LaunchHistoryEntry.Starting("t.yaml", ["run", "t.yaml"]);
+        var card = new LaunchHistoryEntryViewModel(entry, shellOpener: new RecordingShellOpener());
+
+        Assert.False(card.HasResultFolder);
+    }
+}
