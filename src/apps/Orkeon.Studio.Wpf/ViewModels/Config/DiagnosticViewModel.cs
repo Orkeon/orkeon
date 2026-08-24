@@ -110,6 +110,36 @@ public sealed class DiagnosticViewModel : ObservableObject
     /// <summary>Whether the diagnostic is still in flight.</summary>
     public bool IsRunning => RunCommand.IsRunning;
 
+    /// <summary>There is something to copy once a run has produced checks or an error.</summary>
+    public bool CanCopyReport => HasRun && (Checks.Count > 0 || ErrorMessage is { Length: > 0 });
+
+    /// <summary>
+    /// The last report as plain text, for the clipboard: the verdict line, one line per
+    /// check (glyph, name, detail — the CLI's own untranslated output, STUDIO-11), and the
+    /// parse error when there is one. WPF text blocks are not selectable; this is how the
+    /// operator gets the result out of the window.
+    /// </summary>
+    public string BuildReport()
+    {
+        var lines = new List<string> { "orkeon doctor" };
+        if (Summary is { Length: > 0 } summary)
+            lines.Add(summary);
+
+        if (Checks.Count > 0)
+        {
+            lines.Add("");
+            lines.AddRange(Checks.Select(check => check.ToString()));
+        }
+
+        if (ErrorMessage is { Length: > 0 } error)
+        {
+            lines.Add("");
+            lines.Add(error);
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
     /// <summary>
     /// True when the last run surfaced anything other than green — the sidebar shows a warn
     /// dot on the Diagnostic entry so the operator learns before a team fails mid-run.
@@ -138,6 +168,7 @@ public sealed class DiagnosticViewModel : ObservableObject
             HasRun = true;
             OnPropertyChanged(nameof(IsRunning));
             OnPropertyChanged(nameof(HasIssues));
+            OnPropertyChanged(nameof(CanCopyReport));
         });
 
         return report;

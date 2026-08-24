@@ -30,6 +30,10 @@ profile-editor and About overlays) and writes one PNG per stop — the
 fidelity-remediation reference collection against the design mock, one command on a
 Windows machine.
 
+The Diagnostic screen gains **"Copier le rapport"**: WPF text blocks are not
+selectable, so the whole `orkeon doctor` result (verdict, every check verbatim, parse
+error if any) is now one click away from the clipboard.
+
 ### Changed — Full documentation audit against the implementation (DOC-04)
 
 A five-domain adversarial audit (getting-started/README, architecture, RAG/RaggableTree/

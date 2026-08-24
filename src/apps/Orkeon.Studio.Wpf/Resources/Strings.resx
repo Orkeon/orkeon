@@ -100,6 +100,7 @@
   <data name="Scr_Diag_Title" xml:space="preserve"><value>Diagnostic</value></data>
   <data name="Scr_Diag_Sub" xml:space="preserve"><value>Runs orkeon doctor: binary, settings file, LLM reachability, mounts.</value></data>
   <data name="Diag_Run" xml:space="preserve"><value>Run diagnostic</value></data>
+  <data name="Diag_CopyReport" xml:space="preserve"><value>Copy the report</value></data>
   <data name="Diag_Checks_Title" xml:space="preserve"><value>Checks</value></data>
 
   <data name="Scr_Run_Title" xml:space="preserve"><value>Run a crew</value></data>

@@ -25,6 +25,13 @@
               <TextBlock Text="{Binding [Diag_Run], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
+          <Button Style="{StaticResource BtnGhost}" Margin="10,0,0,0" Click="OnCopyReport"
+                  Visibility="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Diag_CopyReport], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
           <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="12,0,0,0" Text="{Binding Summary}"/>
         </StackPanel>
         <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,8,0,0"
