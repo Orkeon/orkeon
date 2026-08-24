@@ -70,6 +70,13 @@ public sealed class MainWindowViewModel : ObservableObject
             shellOpener);
 
         var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
+        // The forge workspace defaults to the Orkeon user home (~/Orkeon), never to the
+        // process working directory: launched from the installed app or a dev tree, that
+        // directory is the executable's bin folder — sessions would land in bin/.orkeon
+        // and vanish on the next clean, and the assistant's /workspace would show DLLs.
+        var forgeHome = forgeWorkspace
+            ?? System.IO.Path.GetDirectoryName(teamsHome)
+            ?? teamsHome;
         Settings = new SettingsScreenViewModel(
             Config,
             new ModelProfilesViewModel(profileStore, Config.Llm, strings,
@@ -81,10 +88,10 @@ public sealed class MainWindowViewModel : ObservableObject
             forgeClient,
             dispatcher,
             strings,
-            forgeWorkspace,
+            forgeHome,
             teamsRoot);
 
-        Teams = new TeamsViewModel(teamsRoot, forgeWorkspace, strings: strings, shellOpener: shellOpener);
+        Teams = new TeamsViewModel(teamsRoot, forgeHome, strings: strings, shellOpener: shellOpener);
 
         // The expert trial screen runs over its own launcher, with NO history store: a
         // trial is a rehearsal, not a run to replay from the history.

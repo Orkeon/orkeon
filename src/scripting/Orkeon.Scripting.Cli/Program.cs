@@ -22,6 +22,7 @@ internal static class Program
     public static async Task<int> Main(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
+        UseUtf8Console();
         // `orkeon rag ingest|search|eval` — RAG subsystem verbs (RAG-03/C3, RAG-04/C1)
         // get their own dispatch branch with their own verb parser.
         if (args.Length > 0 && string.Equals(args[0], "rag", StringComparison.OrdinalIgnoreCase))
@@ -60,5 +61,36 @@ internal static class Program
                 async (RunCommandOptions o) => await RunCommand.ExecuteAsync(o).ConfigureAwait(false),
                 _ => Task.FromResult(ExitScriptError))
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Speaks UTF-8 on every console stream. Without this, .NET encodes redirected
+    /// stdout/stderr with the Windows OEM codepage (850 on a French machine), and every
+    /// accented character in the event stream reaches the watching process as mojibake
+    /// ("déjà" → "d‚j…"). Stdin gets the mirror treatment so a typed reply with accents
+    /// survives the trip down. No BOM anywhere: the protocol is one JSON document per
+    /// line and a BOM would corrupt the first one.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
+        Justification = "The writers/readers become the process-lifetime console streams via " +
+                        "Console.SetOut/SetError/SetIn; disposing them here would close stdio.")]
+    private static void UseUtf8Console()
+    {
+        var utf8 = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        try
+        {
+            Console.OutputEncoding = utf8;
+        }
+        catch (IOException)
+        {
+            // No usable console handle (rare service contexts): writers below still cover it.
+        }
+
+        if (Console.IsOutputRedirected)
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), utf8) { AutoFlush = true });
+        if (Console.IsErrorRedirected)
+            Console.SetError(new StreamWriter(Console.OpenStandardError(), utf8) { AutoFlush = true });
+        if (Console.IsInputRedirected)
+            Console.SetIn(new StreamReader(Console.OpenStandardInput(), utf8));
     }
 }
