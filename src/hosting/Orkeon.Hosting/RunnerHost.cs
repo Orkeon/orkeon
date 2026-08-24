@@ -100,18 +100,37 @@ public static partial class RunnerHost
     private static void WarnIfLlmNotConfigured(IHost host)
     {
         var configuration = host.Services.GetRequiredService<IConfiguration>();
-        if (configuration.GetSection("Llm").Exists())
-            return;
-
-        Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
         var logger = host.Services
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger("Orkeon.Hosting.RunnerHost");
+
+        var llmSection = configuration.GetSection("Llm");
+        if (llmSection.Exists())
+        {
+            // One line of truth about what was actually resolved (file + ORKEON_ overlay):
+            // when a run behaves as if a setting never arrived — a timeout still at its
+            // default, a temperature the vendor rejects — this line settles where the
+            // chain broke. Never the API key.
+            LogLlmResolved(
+                logger,
+                llmSection["Model"] ?? "(default)",
+                llmSection["BaseUrl"] ?? "(provider default)",
+                llmSection["Temperature"] ?? "(default)",
+                llmSection["TimeoutSeconds"] ?? "(default 30)");
+            return;
+        }
+
+        Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
         LogLlmNotConfigured(logger);
     }
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = LlmNotConfiguredMessage)]
     private static partial void LogLlmNotConfigured(ILogger logger);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message =
+        "LLM resolved: model={Model} baseUrl={BaseUrl} temperature={Temperature} timeoutSeconds={TimeoutSeconds}")]
+    private static partial void LogLlmResolved(
+        ILogger logger, string model, string baseUrl, string temperature, string timeoutSeconds);
 
     private static void ConfigureAppConfiguration(
         IConfigurationBuilder builder,
