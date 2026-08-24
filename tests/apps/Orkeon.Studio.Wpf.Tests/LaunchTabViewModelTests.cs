@@ -5,6 +5,7 @@ using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
+using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
@@ -264,7 +265,7 @@ public sealed class LaunchMountsViewModelTests
 
         Assert.False(mounts.HasAutoInjection);
         Assert.Empty(mounts.EffectiveMounts);
-        Assert.Equal(LaunchMountsViewModel.AutoInjectionUnknownNotice, mounts.Summary);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.MountsSelectCrewFirst], mounts.Summary);
     }
 
     [Fact]

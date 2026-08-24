@@ -1,6 +1,6 @@
 <!-- The "Limites & journaux" settings tab (design v3, expert only): rate limits, the RAG
      index and the logging sections. DataContext: ConfigTabViewModel (bound as Settings.Config).
-     Card titles are the literal configuration keys (RateLimiting, Orkeon:Rag…) — technical
+     Card titles are plain language (T-08); the literal configuration key rides each title's tooltip — technical
      identifiers, identical in every language, hence not routed through I18n. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.LimitsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -24,7 +24,8 @@
         <StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
             <controls:LucideIcon Kind="gauge" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-            <TextBlock Style="{StaticResource CardTitle}" Text="RateLimiting"/>
+            <TextBlock Style="{StaticResource CardTitle}" ToolTip="RateLimiting"
+                     Text="{Binding [Limits_Card_Rate], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_MaxConcurrent], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.MaxConcurrentRequests, UpdateSourceTrigger=LostFocus}"/>
@@ -44,7 +45,8 @@
         <StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
             <controls:LucideIcon Kind="database" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-            <TextBlock Style="{StaticResource CardTitle}" Text="Orkeon:Rag"/>
+            <TextBlock Style="{StaticResource CardTitle}" ToolTip="Orkeon:Rag"
+                     Text="{Binding [Limits_Card_Rag], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_RagProfile], Source={x:Static services:I18n.Instance}}"/>
           <ComboBox ItemsSource="{x:Static config:RagSectionViewModel.KnownProfiles}" SelectedItem="{Binding Rag.Profile}"/>
@@ -72,7 +74,8 @@
         <StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
             <controls:LucideIcon Kind="scroll-text" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-            <TextBlock Style="{StaticResource CardTitle}" Text="Logging:LogLevel"/>
+            <TextBlock Style="{StaticResource CardTitle}" ToolTip="Logging:LogLevel"
+                     Text="{Binding [Limits_Card_Logging], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_DefaultLevel], Source={x:Static services:I18n.Instance}}"/>
           <ComboBox ItemsSource="{x:Static config:LoggingSectionViewModel.KnownLevels}" SelectedItem="{Binding Logging.DefaultLevel}"/>
@@ -110,7 +113,8 @@
         <StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
             <controls:LucideIcon Kind="logs" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-            <TextBlock Style="{StaticResource CardTitle}" Text="LlmLogging"/>
+            <TextBlock Style="{StaticResource CardTitle}" ToolTip="LlmLogging"
+                     Text="{Binding [Limits_Card_LlmLog], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <CheckBox IsChecked="{Binding LlmLogging.FullEmbeddingLog}"
                     Foreground="{DynamicResource InkBrush}"

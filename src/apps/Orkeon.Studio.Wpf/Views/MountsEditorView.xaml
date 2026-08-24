@@ -17,7 +17,7 @@
         <ItemsControl ItemsSource="{Binding ValidationMessages}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,1" Text="{Binding Display}">
+              <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,1" Text="{Binding FriendlyText}" ToolTip="{Binding Display}">
                 <TextBlock.Style>
                   <Style TargetType="TextBlock">
                     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>

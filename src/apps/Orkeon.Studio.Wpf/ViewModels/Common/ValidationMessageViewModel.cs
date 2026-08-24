@@ -1,5 +1,7 @@
 using Orkeon.Studio.Core.Validation;
 
+using Orkeon.Studio.Core.Localization;
+
 namespace Orkeon.Studio.Wpf.ViewModels.Common;
 
 /// <summary>
@@ -8,12 +10,15 @@ namespace Orkeon.Studio.Wpf.ViewModels.Common;
 /// </summary>
 public sealed class ValidationMessageViewModel
 {
+    private readonly IStudioStrings _strings;
+
     /// <summary>Wraps a Core validation message.</summary>
-    public ValidationMessageViewModel(ValidationMessage message)
+    public ValidationMessageViewModel(ValidationMessage message, IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(message);
 
         Message = message;
+        _strings = strings ?? EnglishStudioStrings.Instance;
     }
 
     /// <summary>The underlying Core message.</summary>
@@ -49,6 +54,25 @@ public sealed class ValidationMessageViewModel
     /// error, which is the one distinction the reader needs.
     /// </summary>
     public string Display => ValidationMessageFormatter.Format(Message);
+
+    /// <summary>
+    /// The plain-language reading of the finding (T-08): resolved per <see cref="Code"/>
+    /// from the localization port, falling back to <see cref="Display"/> for a code with
+    /// no overlay. The raw CLI-grade line stays available for the expert tooltip — the
+    /// stable code and the English remediation never leave the screen, they step back.
+    /// </summary>
+    public string FriendlyText
+    {
+        get
+        {
+            var key = FriendlyKeyPrefix + Code;
+            var localized = _strings[key];
+            return localized == key ? Display : localized;
+        }
+    }
+
+    /// <summary>Resx key prefix of the per-code overlay, e.g. <c>Vm_ValMsg_WIN-01</c>.</summary>
+    public const string FriendlyKeyPrefix = "Vm_ValMsg_";
 
     /// <inheritdoc />
     public override string ToString() => Display;

@@ -68,4 +68,18 @@ public sealed class I18nResourceParityTests
             Assert.True(duplicates.Count == 0, $"Duplicate keys in {fileName}: {string.Join(", ", duplicates)}");
         }
     }
+
+    [Fact]
+    public void Should_Speak_Of_Equipes_Not_Crews_When_Reading_The_French_Values()
+    {
+        // T-07: the mock's vocabulary is "équipe"; "crew" is the engine's word and stays
+        // out of every user-visible French string (key NAMES may keep it — identifiers).
+        var offenders = ReadEntries("Strings.fr.resx")
+            .Where(e => e.Value.Contains("crew", StringComparison.OrdinalIgnoreCase))
+            .Select(e => e.Key)
+            .Order()
+            .ToList();
+
+        Assert.True(offenders.Count == 0, $"French values still saying crew: {string.Join(", ", offenders)}");
+    }
 }

@@ -24,10 +24,13 @@ public interface IStudioStrings
 /// <para>
 /// Deliberately absent (kept English by policy, like the <c>VALIDATION OK/FAILED</c>
 /// verdicts): the bodies of diagnostics that carry a stable code and a remediation —
-/// <c>orkeon doctor</c> check names/details, validator message texts, target-detector
-/// errors, LLM probe results, and the exit-code descriptions mirroring the CLI table.
-/// They are CLI-grade output; translating Studio's copy would desynchronize it from
-/// the CLI the user sees in a terminal.
+/// <c>orkeon doctor</c> check names/details, target-detector errors, LLM probe results,
+/// and the exit-code descriptions mirroring the CLI table. They are CLI-grade output;
+/// translating Studio's copy would desynchronize it from the CLI the user sees in a
+/// terminal. Validator message texts follow a revised split (T-08): the raw English
+/// line keeps its role as the expert detail, and a per-code plain-language overlay
+/// (<c>Vm_ValMsg_&lt;code&gt;</c> keys, resolved by <c>ValidationMessageViewModel</c>)
+/// is what the lists show first.
 /// </para>
 /// </summary>
 public static class StudioStringKeys
@@ -45,6 +48,20 @@ public static class StudioStringKeys
 
     /// <summary>"Exit code {0} — {1}"</summary>
     public const string LaunchExitCode = "Core_Launch_ExitCode";
+
+    // ---- RAG web-fallback status (Config/RagSectionViewModel, T-08) ------
+
+    /// <summary>"Web fallback active: the corrective loop may fetch pages, …"</summary>
+    public const string RagWebFallbackActive = "Vm_Rag_WebFallbackActive";
+
+    /// <summary>"Inactive: the corrective policy allows it, but the transport … is still off."</summary>
+    public const string RagWebFallbackTransportOff = "Vm_Rag_WebFallbackTransportOff";
+
+    /// <summary>"Inactive: the transport is on, but the corrective policy … is still off."</summary>
+    public const string RagWebFallbackPolicyOff = "Vm_Rag_WebFallbackPolicyOff";
+
+    /// <summary>"Off. Both switches must be turned on …"</summary>
+    public const string RagWebFallbackOff = "Vm_Rag_WebFallbackOff";
 
     // ---- LLM preset catalogue (Core Presets/LlmPresets) ------------------
 
@@ -679,6 +696,24 @@ public sealed class EnglishStudioStrings : IStudioStrings
     private static readonly Dictionary<string, string> Strings = new(StringComparer.Ordinal)
     {
         [StudioStringKeys.ValidationNoFindings] = "Validation: no findings.",
+        [StudioStringKeys.RagWebFallbackActive] = "Web fallback active: the corrective loop may fetch pages, each one validated against prompt injection.",
+        [StudioStringKeys.RagWebFallbackTransportOff] = "Inactive: the corrective policy allows it, but the transport (Orkeon:Rag:WebFallback) is still off.",
+        [StudioStringKeys.RagWebFallbackPolicyOff] = "Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.",
+        [StudioStringKeys.RagWebFallbackOff] = "Off. Both switches must be turned on for the corrective loop to reach the web.",
+        ["Vm_ValMsg_WIN-01"] = "No Llm section: the engine will start on its built-in defaults (Ollama, local).",
+        ["Vm_ValMsg_STUDIO-JSON"] = "The settings file is not valid JSON.",
+        ["Vm_ValMsg_STUDIO-TYPE"] = "A settings field has the wrong type.",
+        ["Vm_ValMsg_STUDIO-LLM-APIKEY"] = "An API key is written inside the file — move it to an environment variable.",
+        ["Vm_ValMsg_STUDIO-RAG-PROFILE"] = "The document-index profile named here is unknown.",
+        ["Vm_ValMsg_STUDIO-MOUNT-EMPTY"] = "No folder is allowed yet: add at least one.",
+        ["Vm_ValMsg_STUDIO-MOUNT-FORMAT"] = "A folder entry is malformed.",
+        ["Vm_ValMsg_STUDIO-MOUNT-PATH"] = "An allowed folder does not exist on this machine.",
+        ["Vm_ValMsg_STUDIO-MOUNT-COLLISION"] = "Two folders share the same internal name.",
+        ["Vm_ValMsg_STUDIO-LAUNCH-OPTION"] = "This option does not apply to the selected team.",
+        ["Vm_ValMsg_STUDIO-LAUNCH-VERBOSE"] = "The verbosity level is not valid.",
+        ["Vm_ValMsg_STUDIO-LAUNCH-VAR"] = "A variable is malformed (expected name=value).",
+        ["Vm_ValMsg_STUDIO-LAUNCH-MOUNT"] = "An added folder line is empty.",
+        ["Vm_ValMsg_STUDIO-LAUNCH-INPUTS"] = "Two conflicting input sources are set — keep one.",
         [StudioStringKeys.ValidationSummary] = "Validation: {0} error(s), {1} warning(s), {2} note(s).",
         [StudioStringKeys.LaunchNothingRan] = "Nothing ran — {0}",
         [StudioStringKeys.LaunchExitCode] = "Exit code {0} — {1}",

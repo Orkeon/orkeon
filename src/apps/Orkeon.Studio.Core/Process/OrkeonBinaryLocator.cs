@@ -92,6 +92,8 @@ public sealed class OrkeonBinaryLocator
     /// Candidate file names, most specific first; defaults to the platform's
     /// (<c>orkeon.exe</c> then <c>orkeon</c> on Windows, <c>orkeon</c> elsewhere).
     /// </param>
+    /// <param name="explicitDirectory">The directory the caller was told the CLI lives in (<c>--cli-dir</c>); searched first.</param>
+    /// <param name="environment">Environment-variable reader (<c>ORKEON_CLI_DIR</c>); defaults to the process environment.</param>
     public OrkeonBinaryLocator(
         IExecutableProbe probe,
         IReadOnlyList<string>? fileNames = null,

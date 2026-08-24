@@ -186,7 +186,7 @@ public sealed class MountsEditorViewModel : ObservableObject
 
         ValidationMessages.Clear();
         foreach (var message in messages)
-            ValidationMessages.Add(new ValidationMessageViewModel(message));
+            ValidationMessages.Add(new ValidationMessageViewModel(message, _strings));
 
         OnPropertiesChanged(nameof(HasErrors), nameof(Summary));
         return messages;

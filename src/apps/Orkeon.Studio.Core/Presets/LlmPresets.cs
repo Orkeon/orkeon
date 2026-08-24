@@ -53,6 +53,9 @@ public sealed record LlmPresetPlan
 /// <param name="DefaultBaseUrl">Base URL applied when the user overrides nothing.</param>
 /// <param name="DefaultModel">Model applied when the user overrides nothing.</param>
 /// <param name="RequiresApiKey">True when the endpoint authenticates requests.</param>
+/// <param name="DefaultApiKeyEnv">Conventional environment-variable name holding the key (cloud cards).</param>
+/// <param name="Kind">Which group of the editor the card sits in (local, cloud, other, none).</param>
+/// <param name="KeyConsoleUrl">Where the provider hands out API keys, shown as plain help text.</param>
 [SuppressMessage("Design", "CA1054",
     Justification = "Presentation metadata: the default endpoint is shown in, and edited from, a " +
                     "text field before it becomes a JSON string field.")]

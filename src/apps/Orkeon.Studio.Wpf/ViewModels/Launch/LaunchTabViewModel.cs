@@ -256,7 +256,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         if (Target.Target is not { } target)
         {
             if (Target.Detection is { IsResolved: false, Error: { Length: > 0 } error, ErrorCode: { } code })
-                ValidationMessages.Add(new ValidationMessageViewModel(ValidationMessage.Error(code, error)));
+                ValidationMessages.Add(new ValidationMessageViewModel(ValidationMessage.Error(code, error), _strings));
 
             OnPropertiesChanged(nameof(HasBlockingErrors), nameof(ValidationSummary));
             return [];
@@ -266,7 +266,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         var messages = RunArgumentsBuilder.Validate(target, options);
 
         foreach (var message in messages)
-            ValidationMessages.Add(new ValidationMessageViewModel(message));
+            ValidationMessages.Add(new ValidationMessageViewModel(message, _strings));
 
         foreach (var message in Mounts.LaunchMounts.ValidationMessages)
             ValidationMessages.Add(message);

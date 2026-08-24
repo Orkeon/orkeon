@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
@@ -10,10 +11,13 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// </summary>
 public sealed class RagSectionViewModel : DocumentSectionViewModel
 {
+    private readonly IStudioStrings _strings;
+
     /// <summary>Binds the form to the <c>Orkeon:Rag</c> section of the document.</summary>
-    public RagSectionViewModel(Func<AppSettingsDocument> document, Action onChanged)
+    public RagSectionViewModel(Func<AppSettingsDocument> document, Action onChanged, IStudioStrings? strings = null)
         : base(document, onChanged)
     {
+        _strings = strings ?? EnglishStudioStrings.Instance;
     }
 
     private RagSection Section => Document.Rag;
@@ -73,16 +77,13 @@ public sealed class RagSectionViewModel : DocumentSectionViewModel
     public bool WebFallbackFullyEnabled => Section.WebFallbackFullyEnabled;
 
     /// <summary>The status line that makes the double opt-in explicit in the form.</summary>
-    public string WebFallbackStatus => (CorrectiveWebFallbackEnabled == true, WebFallbackEnabled == true) switch
+    public string WebFallbackStatus => _strings[(CorrectiveWebFallbackEnabled == true, WebFallbackEnabled == true) switch
     {
-        (true, true) => "Web fallback active: the corrective loop may fetch pages, each one validated "
-            + "against prompt injection.",
-        (true, false) => "Inactive: the corrective policy allows it, but the transport "
-            + "(Orkeon:Rag:WebFallback) is still off.",
-        (false, true) => "Inactive: the transport is on, but the corrective policy "
-            + "(Orkeon:Rag:Corrective:WebFallback) is still off.",
-        _ => "Off. Both switches must be turned on for the corrective loop to reach the web.",
-    };
+        (true, true) => StudioStringKeys.RagWebFallbackActive,
+        (true, false) => StudioStringKeys.RagWebFallbackTransportOff,
+        (false, true) => StudioStringKeys.RagWebFallbackPolicyOff,
+        _ => StudioStringKeys.RagWebFallbackOff,
+    }];
 
     /// <summary>Bound on the number of corrective iterations.</summary>
     public int? CorrectiveMaxIterations

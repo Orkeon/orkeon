@@ -52,7 +52,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         Llm = new LlmSectionViewModel(() => _document, MarkDirty, llmProbe, dispatcher, _strings);
         RateLimiting = new RateLimitingSectionViewModel(() => _document, MarkDirty);
-        Rag = new RagSectionViewModel(() => _document, MarkDirty);
+        Rag = new RagSectionViewModel(() => _document, MarkDirty, _strings);
         Logging = new LoggingSectionViewModel(() => _document, MarkDirty);
         LlmLogging = new LlmLoggingSectionViewModel(() => _document, MarkDirty);
 
@@ -312,7 +312,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         ValidationMessages.Clear();
         foreach (var message in messages)
-            ValidationMessages.Add(new ValidationMessageViewModel(message));
+            ValidationMessages.Add(new ValidationMessageViewModel(message, _strings));
 
         OnPropertiesChanged(nameof(HasBlockingErrors), nameof(HasLlmWarning), nameof(ValidationSummary));
         SaveCommand.RaiseCanExecuteChanged();

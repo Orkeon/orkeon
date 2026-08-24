@@ -9,7 +9,11 @@
 
     <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Diag_Title], Source={x:Static services:I18n.Instance}}"/>
     <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-               Text="{Binding [Scr_Diag_Sub], Source={x:Static services:I18n.Instance}}"/>
+               Text="{Binding [Scr_Diag_SubNovice], Source={x:Static services:I18n.Instance}}"
+               Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+    <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
+               Text="{Binding [Scr_Diag_SubExpert], Source={x:Static services:I18n.Instance}}"
+               Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
 
     <!-- summary card: run button + verdict line -->
     <Border Style="{StaticResource Card}" Margin="0,0,0,16">

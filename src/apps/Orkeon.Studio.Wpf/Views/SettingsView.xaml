@@ -103,7 +103,7 @@
                     </Style>
                   </controls:LucideIcon.Style>
                 </controls:LucideIcon>
-                <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Text="{Binding Display}"/>
+                <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Text="{Binding FriendlyText}" ToolTip="{Binding Display}"/>
               </DockPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

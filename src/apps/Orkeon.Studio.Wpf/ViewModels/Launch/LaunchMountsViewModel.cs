@@ -76,11 +76,6 @@ public sealed class EffectiveMountViewModel
 /// </summary>
 public sealed class LaunchMountsViewModel : ObservableObject
 {
-    /// <summary>Why the effective table is empty while no crew is selected.</summary>
-    public const string AutoInjectionUnknownNotice =
-        "Select a crew first: the runner injects its own mounts ahead of every --mount, so which "
-        + "configuration key each mount occupies depends on the crew being launched.";
-
     private readonly IStudioStrings _strings;
     private bool _allowExternalMounts;
     private MountAutoInjection? _autoInjection;
