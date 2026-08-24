@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — The WPF screens remediated against the v3 mock (audit T-01…T-13, screens 01–22)
+
+A full-screen audit against the design mock (the mock is the source of truth)
+drove a six-lot remediation of `orkeon-studio`:
+
+- **Foundations** — the logo's rings rotate as one group (they were skewed by
+  double rotation origins); MODE and EN/FR are real segmented controls; implicit
+  styles for TextBox/ComboBox/CheckBox/RadioButton/ScrollBar erase the native
+  Windows chrome; every raw `CornerRadius="999"` outside badges is bounded to
+  height/2; the splash mascot PNG is re-flattened so its corners land exactly on
+  the plate colour. The window holds a **1024×768 minimum**.
+- **Run** — rebuilt as the mock's vertical cards: a sidecar-backed team card, a
+  plain-language progress card (state title, tone badge, "Ouvrir le résultat" on
+  the first writable mount) and a technical journal folded by default in novice;
+  COMMANDE and the option rows are expert-only; a localized banner replaces the
+  raw locator message when the CLI is missing.
+- **Language** — every user-visible French string says « équipe » (pinned by a
+  resx test); mode-dependent subtitles carry the mock's wording; validator
+  findings and doctor checks show a per-code plain-language overlay first, the
+  raw CLI-grade line staying as expert detail; the Limits cards are titled in
+  plain language.
+- **Screens** — History becomes a card list with per-run duration
+  (`LaunchHistoryEntry.DurationSeconds`, tolerant migration) and per-card
+  Replay/Open-result; Test is two columns with a full-height console and a
+  sample-inputs field; Import gains a drop zone, a single Browse, a recognition
+  report and an expert "Test it first" hop; the mounts form no longer opens in
+  an error state and novice gets one card per folder plus an "Allow a folder"
+  picker; Diagnostic opens on a verdict card fed by a silent first doctor run;
+  the Create gate is a radio list.
+- **Polish** — novice Settings auto-saves on every edit (Save/Validate stay
+  expert; the validation card is expert-only, keeping the copyable report);
+  profile cards carry "Utilisé par" team chips; Limits cards say when the
+  engine's defaults apply; the raw-JSON viewer is bounded; the teams counter
+  is a quiet right-aligned figure; History/Test/Run have empty-state phrases;
+  team cards gain an "Ouvrir le dossier" explorer action.
+
 ### Added — Every provider one click away, the API key novice-proof, and a screenshot campaign
 
 The model-profile editor (design v3, "volets" rev. 2) now carries the **full provider
