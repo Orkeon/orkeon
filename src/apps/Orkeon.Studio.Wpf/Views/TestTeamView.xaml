@@ -34,6 +34,9 @@
               <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Test_Team_Label], Source={x:Static services:I18n.Instance}}"/>
               <ComboBox ItemsSource="{Binding TeamChoices}" SelectedItem="{Binding SelectedTeam}"
                         DisplayMemberPath="Name" Width="320" HorizontalAlignment="Left"/>
+              <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                         Text="{Binding [Test_Empty], Source={x:Static services:I18n.Instance}}"
+                         Visibility="{Binding Launcher.Target.IsResolved, Converter={StaticResource InverseBooleanToVisibility}}"/>
               <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding Launcher.Target.SelectedPath}"/>
               <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding Launcher.Target.StatusDisplay}"/>
 

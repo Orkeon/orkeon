@@ -73,7 +73,9 @@ public sealed class ConfigTabViewModel : ObservableObject
         OpenCommand = new AsyncRelayCommand(OpenAsync);
         LoadFromLocationCommand = new AsyncRelayCommand(() => LoadAsync(Location.EffectivePath ?? ""));
         SaveCommand = new AsyncRelayCommand(() => SaveAsync(), () => Location.CanSave);
-        ValidateCommand = new RelayCommand(() => Validate());
+        // The explicit Validate lands its verdict in the status line (audit 07/16): the
+        // novice screen has no validation card any more, the summary is the feedback.
+        ValidateCommand = new RelayCommand(() => { Validate(); StatusMessage = ValidationSummary; });
 
         RefreshRawJson();
         Validate();
@@ -352,10 +354,14 @@ public sealed class ConfigTabViewModel : ObservableObject
         RefreshRawJson();
     }
 
+    /// <summary>Raised on every edit, dirty or already dirty — the novice auto-save listens here.</summary>
+    public event EventHandler? DocumentEdited;
+
     private void MarkDirty()
     {
         IsDirty = true;
         RefreshRawJson();
+        DocumentEdited?.Invoke(this, EventArgs.Empty);
     }
 
     private void RefreshRawJson() => RawJson = _document.ToJson();

@@ -188,6 +188,9 @@ public sealed class LaunchHistoryViewModel : ObservableObject
     /// <summary>The stored launches, most recent first.</summary>
     public ObservableCollection<LaunchHistoryEntryViewModel> Entries { get; } = [];
 
+    /// <summary>Whether the empty-state phrase shows (T-12).</summary>
+    public bool IsEmpty => Entries.Count == 0;
+
     /// <summary>Raises <see cref="ReplayRequested"/> for the selected entry.</summary>
     public RelayCommand ReplayCommand { get; }
 
@@ -236,6 +239,7 @@ public sealed class LaunchHistoryViewModel : ObservableObject
                 entry, _strings, e => ReplayRequested?.Invoke(this, new LaunchReplayEventArgs(e)), _shellOpener));
 
         SelectedEntry = Entries.Count > 0 ? Entries[0] : null;
+        OnPropertyChanged(nameof(IsEmpty));
     }
 
     private void Replay()

@@ -241,14 +241,16 @@
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
-            <RadioButton x:Name="NavTeams" GroupName="Nav" Style="{StaticResource NavItem}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="brain-circuit" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Teams], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" Foreground="{DynamicResource InkFaintBrush}"
-                           Margin="8,0,0,0" VerticalAlignment="Center"
+            <RadioButton x:Name="NavTeams" GroupName="Nav" Style="{StaticResource NavItem}"
+                         HorizontalContentAlignment="Stretch">
+              <!-- T-10: the counter is pushed to the right edge, mono 10 faint, no chip -->
+              <DockPanel LastChildFill="False">
+                <controls:LucideIcon DockPanel.Dock="Left" Kind="brain-circuit" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Nav_Teams], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                           Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
                            Text="{Binding DataContext.Teams.Count, RelativeSource={RelativeSource AncestorType=Window}}"/>
-              </StackPanel>
+              </DockPanel>
             </RadioButton>
             <RadioButton x:Name="NavImport" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">

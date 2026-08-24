@@ -330,7 +330,7 @@
 <data name="Scr_Settings_SubExpert" xml:space="preserve"><value>appsettings.json — formulaires typés, montages, limites de débit, et le fichier brut en lecture seule.</value></data>
 <data name="Tab_Model" xml:space="preserve"><value>Modèle d'IA</value></data>
 <data name="Tab_Folders" xml:space="preserve"><value>Dossiers autorisés</value></data>
-<data name="Tab_Limits" xml:space="preserve"><value>Limites &amp; journaux</value></data>
+<data name="Tab_Limits" xml:space="preserve"><value>Limites &amp; index</value></data>
 <data name="Tab_Json" xml:space="preserve"><value>JSON brut</value></data>
 <data name="Studio_Model_Title" xml:space="preserve"><value>Modèle de l'assistant de Studio</value></data>
 <data name="Studio_Model_HintNovice" xml:space="preserve"><value>C'est lui qui compose vos équipes et rédige les verdicts d'essai.</value></data>
@@ -545,4 +545,10 @@
   <data name="Import_Report_Title" xml:space="preserve"><value>RAPPORT DE RECONNAISSANCE</value></data>
   <data name="Import_TestFirst" xml:space="preserve"><value>Tester d'abord</value></data>
   <data name="Run_Browse" xml:space="preserve"><value>Parcourir…</value></data>
+  <data name="Profile_UsedBy" xml:space="preserve"><value>Utilisé par</value></data>
+  <data name="Studio_Model_Placeholder" xml:space="preserve"><value>— à configurer —</value></data>
+  <data name="Limits_DefaultsApply" xml:space="preserve"><value>Section absente du fichier : le moteur applique ses valeurs par défaut.</value></data>
+  <data name="Hist_Empty" xml:space="preserve"><value>Aucune exécution pour l'instant. Le premier lancement d'une équipe apparaîtra ici.</value></data>
+  <data name="Test_Empty" xml:space="preserve"><value>Choisissez une équipe pour préparer un essai.</value></data>
+  <data name="Teams_Open" xml:space="preserve"><value>Ouvrir le dossier</value></data>
 </root>

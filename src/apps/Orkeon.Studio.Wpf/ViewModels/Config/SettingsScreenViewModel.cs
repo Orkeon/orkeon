@@ -39,6 +39,16 @@ public sealed class SettingsScreenViewModel : ObservableObject
         _mode = mode;
         _mode.PropertyChanged += OnModeChanged;
 
+        // Novice auto-save (audit 07/16): the novice screen shows no Save button, so every
+        // edit saves the document. Listening to each edit rather than the dirty transition
+        // matters: a save refused by validation leaves the flag up, and the next edit must
+        // still try again. The expert keeps the explicit cycle.
+        Config.DocumentEdited += (_, _) =>
+        {
+            if (_mode.IsNovice && Config.SaveCommand.CanExecute(null))
+                Config.SaveCommand.Execute(null);
+        };
+
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
         ShowFoldersCommand = new RelayCommand(() => ActiveTab = FoldersTab);
         ShowLimitsCommand = new RelayCommand(() => ActiveTab = LimitsTab);

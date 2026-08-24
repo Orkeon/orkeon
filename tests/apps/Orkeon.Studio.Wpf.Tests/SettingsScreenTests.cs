@@ -1,6 +1,7 @@
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
@@ -255,4 +256,62 @@ public sealed class SettingsScreenTests
         Assert.True(editor.CanSave);
     }
 
+}
+
+/// <summary>Novice auto-save and the profile usage chips (audit 07/16).</summary>
+public sealed class SettingsRemediationTests
+{
+    [Fact]
+    public void A_dirty_document_saves_itself_in_novice_mode_and_not_in_expert()
+    {
+        var store = new FakeAppSettingsStore();
+        var novice = new ConfigTabViewModel(store, new FakeDirectoryProbe("/data"));
+        _ = new SettingsScreenViewModel(
+            novice,
+            new ModelProfilesViewModel(new InMemoryModelProfileStore(), novice.Llm),
+            new UiModeViewModel("novice"));
+
+        novice.Mounts.AddMount().PhysicalPath = "/data";
+        novice.Llm.Model = "phi3";
+
+        // The edit marked the document dirty; the novice screen saved it by itself.
+        Assert.NotEmpty(store.SavedPaths);
+
+        var expertStore = new FakeAppSettingsStore();
+        var expert = new ConfigTabViewModel(expertStore, new FakeDirectoryProbe("/data"));
+        _ = new SettingsScreenViewModel(
+            expert,
+            new ModelProfilesViewModel(new InMemoryModelProfileStore(), expert.Llm),
+            new UiModeViewModel("expert"));
+
+        expert.Mounts.AddMount().PhysicalPath = "/data";
+        expert.Llm.Model = "phi3";
+
+        Assert.True(expert.IsDirty);
+        Assert.Empty(expertStore.SavedPaths);
+    }
+
+    [Fact]
+    public async Task The_profile_cards_carry_the_teams_that_name_them()
+    {
+        var store = new InMemoryModelProfileStore();
+        await store.SaveAsync(new ModelProfileSet
+        {
+            Profiles = [new ModelProfile { Name = "Local", Provider = "ollama", BaseUrl = "http://localhost:11434", Model = "phi3" }],
+            DefaultProfile = "Local",
+        }, TestContext.Current.CancellationToken);
+
+        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var profiles = new ModelProfilesViewModel(store, config.Llm, loadTeams: () =>
+        [
+            new TeamSummary { Name = "Veille", Slug = "veille", Path = "/teams/veille",
+                Metadata = new StudioTeamMetadata { Profile = "Local" } },
+            new TeamSummary { Name = "Contrats", Slug = "contrats", Path = "/teams/contrats" },
+        ]);
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        var card = Assert.Single(profiles.Profiles);
+        Assert.True(card.IsUsedByTeams);
+        Assert.Equal(["Veille"], card.UsedByTeams);
+    }
 }

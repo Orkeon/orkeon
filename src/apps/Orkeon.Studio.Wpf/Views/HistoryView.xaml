@@ -12,6 +12,10 @@
     <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
                Text="{Binding [Scr_Hist_Sub], Source={x:Static services:I18n.Instance}}"/>
 
+    <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
+               Text="{Binding [Hist_Empty], Source={x:Static services:I18n.Instance}}"
+               Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
+
     <ItemsControl ItemsSource="{Binding Entries}"
                   VirtualizingPanel.IsVirtualizing="True"
                   VirtualizingPanel.VirtualizationMode="Recycling">

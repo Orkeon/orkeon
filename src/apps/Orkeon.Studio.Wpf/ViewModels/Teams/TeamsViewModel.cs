@@ -38,7 +38,11 @@ public sealed class TeamCardViewModel
         LaunchCommand = new RelayCommand(() => owner.RequestLaunch(summary.Path));
         DuplicateCommand = new RelayCommand(() => owner.Duplicate(summary.Path));
         DeleteCommand = new RelayCommand(() => owner.Delete(summary.Path));
+        OpenCommand = new RelayCommand(() => owner.OpenInShell(summary.Path), () => owner.CanOpenInShell);
     }
+
+    /// <summary>"Ouvrir" — the team folder in the OS explorer (audit 03).</summary>
+    public RelayCommand OpenCommand { get; }
 
     /// <summary>The team folder, as the catalog read it.</summary>
     public TeamSummary Summary { get; }
@@ -110,6 +114,7 @@ public sealed class InProgressSessionViewModel
 public sealed class TeamsViewModel : ObservableObject
 {
     private readonly Func<IReadOnlyList<TeamSummary>> _loadTeams;
+    private readonly IShellOpener? _shellOpener;
     private readonly Func<IReadOnlyList<ForgeSolutionSummary>> _loadSessions;
     private readonly IStudioStrings _strings;
 
@@ -119,8 +124,10 @@ public sealed class TeamsViewModel : ObservableObject
         string? workspaceDirectory = null,
         Func<IReadOnlyList<TeamSummary>>? loadTeams = null,
         Func<IReadOnlyList<ForgeSolutionSummary>>? loadSessions = null,
-        IStudioStrings? strings = null)
+        IStudioStrings? strings = null,
+        IShellOpener? shellOpener = null)
     {
+        _shellOpener = shellOpener;
         var root = teamsRoot ?? TeamCatalog.DefaultRoot();
         var workspace = workspaceDirectory ?? Environment.CurrentDirectory;
         _loadTeams = loadTeams ?? (() => TeamCatalog.List(root));
@@ -147,6 +154,11 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>Number of teams — the sidebar count.</summary>
     public int Count => Teams.Count;
+
+    /// <summary>Whether the cards can offer "Ouvrir" at all (a shell opener was wired).</summary>
+    public bool CanOpenInShell => _shellOpener is not null;
+
+    internal void OpenInShell(string path) => _shellOpener?.Open(path);
 
     /// <summary>Whether any team exists.</summary>
     public bool IsEmpty => Teams.Count == 0;

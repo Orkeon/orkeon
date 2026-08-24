@@ -69,9 +69,11 @@ public sealed class MainWindowViewModel : ObservableObject
             TeamEnvironment,
             shellOpener);
 
+        var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
         Settings = new SettingsScreenViewModel(
             Config,
-            new ModelProfilesViewModel(profileStore, Config.Llm, strings),
+            new ModelProfilesViewModel(profileStore, Config.Llm, strings,
+                loadTeams: () => TeamCatalog.List(teamsHome)),
             Mode);
 
         CreateTeam = new CreateTeamViewModel(
@@ -82,7 +84,7 @@ public sealed class MainWindowViewModel : ObservableObject
             forgeWorkspace,
             teamsRoot);
 
-        Teams = new TeamsViewModel(teamsRoot, forgeWorkspace, strings: strings);
+        Teams = new TeamsViewModel(teamsRoot, forgeWorkspace, strings: strings, shellOpener: shellOpener);
 
         // The expert trial screen runs over its own launcher, with NO history store: a
         // trial is a rehearsal, not a run to replay from the history.

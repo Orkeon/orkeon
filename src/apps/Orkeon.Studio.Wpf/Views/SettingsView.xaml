@@ -45,9 +45,10 @@
             <TextBlock Text="{Binding [Act_Validate], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
-        <!-- Saving stays visible in novice mode: electing a default profile or editing the
-             folders marks the document dirty, and the cycle needs its visible ending there too. -->
-        <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}">
+        <!-- Novice saves automatically (audit 07/16); the explicit ending of the cycle is
+             the expert's. -->
+        <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}"
+                Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
             <TextBlock Text="{Binding [Act_Save], Source={x:Static services:I18n.Instance}}"/>
@@ -66,7 +67,9 @@
     </DockPanel>
     <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding Config.StatusMessage}"/>
 
-    <!-- validation card: verdict + messages from the last Validate/Save, whatever the tab -->
+    <!-- validation findings (expert only, audit 07/16 — novice reads the status line; the
+         copyable report stays: WPF text blocks are not selectable) -->
+    <StackPanel Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
     <Border Style="{StaticResource Card}" Margin="0,16,0,0"
             Visibility="{Binding Config.ValidationMessages.Count, Converter={StaticResource CountToVisibility}}">
       <StackPanel>
@@ -110,6 +113,7 @@
         </ItemsControl>
       </StackPanel>
     </Border>
+    </StackPanel>
 
     <!-- tab strip -->
     <StackPanel Orientation="Horizontal" Margin="0,20,0,18">
@@ -140,9 +144,14 @@
             <controls:LucideIcon Kind="wand-2" Size="15" Foreground="{DynamicResource AccentBrush}"
                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
-          <ComboBox DockPanel.Dock="Right" Width="210" VerticalAlignment="Center"
-                    ItemsSource="{Binding Profiles.ProfileNames}"
-                    SelectedItem="{Binding Profiles.StudioProfileName}"/>
+          <Grid DockPanel.Dock="Right" Width="210" VerticalAlignment="Center">
+            <ComboBox ItemsSource="{Binding Profiles.ProfileNames}"
+                      SelectedItem="{Binding Profiles.StudioProfileName}"/>
+            <TextBlock Style="{StaticResource Hint}" Margin="12,0,0,0" VerticalAlignment="Center"
+                       IsHitTestVisible="False"
+                       Text="{Binding [Studio_Model_Placeholder], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding Profiles.HasStudioProfile, Converter={StaticResource InverseBooleanToVisibility}}"/>
+          </Grid>
           <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
             <StackPanel Orientation="Horizontal">
               <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
@@ -195,13 +204,10 @@
               <DataTemplate>
                 <Border BorderThickness="1" CornerRadius="11" Padding="14,12" Margin="0,0,0,8">
                   <Border.Style>
+                    <!-- audit 07/16: the border stays quiet even for the default —
+                         the badge already carries that information. -->
                     <Style TargetType="Border">
-                      <Setter Property="BorderBrush" Value="{DynamicResource LineFaintBrush}"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsDefault}" Value="True">
-                          <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                        </DataTrigger>
-                      </Style.Triggers>
+                      <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
                     </Style>
                   </Border.Style>
                   <StackPanel>
@@ -225,6 +231,23 @@
                     <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,0" Text="{Binding Summary}"/>
                     <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,4,0,0" Text="{Binding Endpoint}"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
+                                Visibility="{Binding IsUsedByTeams, Converter={StaticResource BooleanToVisibility}}">
+                      <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                 Text="{Binding [Profile_UsedBy], Source={x:Static services:I18n.Instance}}"/>
+                      <ItemsControl ItemsSource="{Binding UsedByTeams}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="10.5" Padding="10,3" Margin="0,0,6,3">
+                              <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" Text="{Binding}"/>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
                       <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding SetDefaultCommand}" Margin="0,0,7,0"
                               Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"
@@ -257,78 +280,6 @@
         </StackPanel>
       </Border>
 
-      <!-- expert: the applied Llm section, as written to the file -->
-      <Border Style="{StaticResource Card}"
-              Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-        <StackPanel>
-          <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-            <controls:LucideIcon Kind="brain-circuit" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-            <TextBlock Style="{StaticResource CardTitle}" Text="Llm"/>
-          </StackPanel>
-
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Lbl_Model], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource InputMono}" Text="{Binding Config.Llm.Model, UpdateSourceTrigger=PropertyChanged}"/>
-            </StackPanel>
-            <StackPanel Grid.Column="2">
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Lbl_BaseUrl], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource InputMono}" Text="{Binding Config.Llm.BaseUrl, UpdateSourceTrigger=PropertyChanged}"/>
-            </StackPanel>
-          </Grid>
-
-          <!-- detected-provider chip: read-only, inferred from the host (§4.1 — no Provider key) -->
-          <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-            <TextBlock Style="{StaticResource Eyebrow}" VerticalAlignment="Center"
-                       Text="{Binding [Sec_DetectedProvider], Source={x:Static services:I18n.Instance}}"/>
-            <Border Style="{StaticResource Well}" Padding="8,3" Margin="8,0,0,0">
-              <TextBlock Style="{StaticResource MonoText}" FontSize="11" Text="{Binding Config.Llm.DetectedProviderDisplay, Mode=OneWay}"/>
-            </Border>
-          </StackPanel>
-
-          <StackPanel Margin="0,12,0,0">
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Lbl_ApiKey], Source={x:Static services:I18n.Instance}}"/>
-            <TextBox Style="{StaticResource InputMono}" Text="{Binding Config.Llm.ApiKey, UpdateSourceTrigger=PropertyChanged}"/>
-            <TextBlock Style="{StaticResource Hint}" Margin="0,5,0,0" Text="{Binding Config.Llm.ApiKeyRecommendation, Mode=OneWay}"/>
-          </StackPanel>
-
-          <Grid Margin="0,12,0,0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
-              <ColumnDefinition Width="*"/><ColumnDefinition Width="14"/>
-              <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_Temperature], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource Input}" Text="{Binding Config.Llm.Temperature, UpdateSourceTrigger=LostFocus}"/>
-            </StackPanel>
-            <StackPanel Grid.Column="2">
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_MaxTokens], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource Input}" Text="{Binding Config.Llm.MaxTokens, UpdateSourceTrigger=LostFocus}"/>
-            </StackPanel>
-            <StackPanel Grid.Column="4">
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_TimeoutSeconds], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource Input}" Text="{Binding Config.Llm.TimeoutSeconds, UpdateSourceTrigger=LostFocus}"/>
-            </StackPanel>
-          </Grid>
-
-          <!-- §4.2: optional connectivity probe. It reports, it never gates the save. -->
-          <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-            <Button Style="{StaticResource BtnGhost}" Command="{Binding Config.Llm.TestConnectionCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Sec_TestConnection], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
-            <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="12,0,0,0"
-                       Text="{Binding Config.Llm.ConnectionTestResult}"
-                       Visibility="{Binding Config.Llm.ConnectionTestResult, Converter={StaticResource StringPresentToVisibility}}"/>
-          </StackPanel>
-        </StackPanel>
-      </Border>
     </StackPanel>
 
     <!-- ══ DOSSIERS AUTORISÉS ══ -->

@@ -25,6 +25,7 @@
         <TextBox Text="{Binding RawJson, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
                  Background="{DynamicResource PaperSunkBrush}" Foreground="{DynamicResource InkMutedBrush}"
                  FontFamily="{StaticResource MonoFont}" FontSize="12" Padding="22,14,22,18" Margin="0,12,0,0"
+                 MaxHeight="420"
                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
       </StackPanel>
     </Border>

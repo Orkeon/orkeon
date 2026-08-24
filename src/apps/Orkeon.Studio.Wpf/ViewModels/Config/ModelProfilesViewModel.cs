@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
@@ -19,11 +20,13 @@ public sealed class ModelProfileItemViewModel
         ModelProfile profile,
         bool isDefault,
         bool isStudio,
-        ModelProfilesViewModel owner)
+        ModelProfilesViewModel owner,
+        IReadOnlyList<string>? usedByTeams = null)
     {
         Profile = profile;
         IsDefault = isDefault;
         IsStudio = isStudio;
+        UsedByTeams = usedByTeams ?? [];
         SetDefaultCommand = new RelayCommand(() => owner.SetDefault(profile.Name));
         EditCommand = new RelayCommand(() => owner.BeginEdit(profile));
         DuplicateCommand = new RelayCommand(() => owner.Duplicate(profile));
@@ -52,6 +55,12 @@ public sealed class ModelProfileItemViewModel
 
     /// <summary>True for the profile Studio's assistant uses.</summary>
     public bool IsStudio { get; }
+
+    /// <summary>The adopted teams whose sidecar names this profile (audit 07/16 chips).</summary>
+    public IReadOnlyList<string> UsedByTeams { get; }
+
+    /// <summary>Whether the "Utilisé par" row shows.</summary>
+    public bool IsUsedByTeams => UsedByTeams.Count > 0;
 
     /// <summary>Elects this profile as the machine default.</summary>
     public RelayCommand SetDefaultCommand { get; }
@@ -366,6 +375,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private readonly ILlmEndpointProbe _probe;
     private readonly IApiKeyStore _keyStore;
     private ModelProfileSet _set = ModelProfileSet.Empty;
+    private readonly Func<IReadOnlyList<TeamSummary>>? _loadTeams;
     private ModelProfileEditorViewModel? _editor;
 
     /// <summary>Builds the tab over its seams.</summary>
@@ -374,9 +384,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
         LlmSectionViewModel llm,
         IStudioStrings? strings = null,
         ILlmEndpointProbe? probe = null,
-        IApiKeyStore? keyStore = null)
+        IApiKeyStore? keyStore = null,
+        Func<IReadOnlyList<TeamSummary>>? loadTeams = null)
     {
         ArgumentNullException.ThrowIfNull(llm);
+
+        _loadTeams = loadTeams;
 
         _store = store ?? new InMemoryModelProfileStore();
         _llm = llm;
@@ -539,6 +552,22 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
     private void Rebuild()
     {
+        // "Utilisé par" chips (audit 07/16): which adopted teams name each profile in their
+        // sidecar. Best-effort — an unreadable teams root simply yields no chips.
+        var usage = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        if (_loadTeams is not null)
+        {
+            foreach (var team in _loadTeams())
+            {
+                if (team.Profile is { Length: > 0 } profileName)
+                {
+                    if (!usage.TryGetValue(profileName, out var teams))
+                        usage[profileName] = teams = [];
+                    teams.Add(team.Name);
+                }
+            }
+        }
+
         Profiles.Clear();
         ProfileNames.Clear();
         foreach (var profile in _set.Profiles)
@@ -547,7 +576,8 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 profile,
                 isDefault: string.Equals(profile.Name, _set.DefaultProfile, StringComparison.Ordinal),
                 isStudio: string.Equals(profile.Name, _set.StudioProfile, StringComparison.Ordinal),
-                this));
+                this,
+                usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : []));
             ProfileNames.Add(profile.Name);
         }
 
