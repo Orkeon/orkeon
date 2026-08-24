@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Remediation v2: team folders end to end, and the blueprint edited by hand
+
+The owner's second design pass (RC2-FEAT-05) closes the gap between the v3 mock
+and the app around one idea: **a team's folders are part of the team**. The
+adopted team's sidecar now records its mounts; the "Mes équipes" cards show them
+as chips with a three-tone badge (scheduled / to try / on demand), the agent
+count, the last run from the launch history and the model setting; « Changer les
+dossiers » opens the team-mounts modal, and every folder choice goes through the
+shared « Autoriser un dossier » picker (path + browse, one-level tree, rights in
+two radio rows, expert mount-string preview). Studio lays those mounts on each
+launch as `--mount` arguments — the chips and the command cannot disagree.
+
+The forge protocol's reserved `edit` arbitration is implemented: interactive
+mode now arbitrates every verdict (accepting a conforming one costs one click),
+and `decision.made {edit}` followed by `blueprint.edited {blueprint}` re-renders
+deterministically — zero LLM tokens — then re-earns its verdict through the
+unchanged validate/test/diagnose path. The wizard's Composer step shows one card
+per blueprint agent (its own goal and tools) with « Modifier » opening the agent
+editor (name ↔ role, one-sentence goal, togglable capability chips), plus
+« Ajouter un agent » and the « Dossiers de cette équipe » block written into the
+sidecar at adoption. A novice help rail explains each step in plain words.
+
+Also: « Validation à blanc d'abord » on the Exécuter screen (a failed dry pass
+stops the launch), the import report's folders row, the expert TRIAL COMMAND
+card, « Copier le rapport » in the Diagnostic header with its « Copié ! »
+feedback, the plain-words novice title on the checks card, the Limites cards'
+descriptions under their titles, the export action on team cards (never copies
+`appsettings.json`), and the removal of the settings validation card (the status
+line reports instead).
+
 ### Fixed — Kimi's server-mandated temperature self-heals instead of killing the run
 
 Moonshot rejects some models' requests with `400 invalid temperature: only 1 is

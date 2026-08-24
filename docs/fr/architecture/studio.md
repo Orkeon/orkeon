@@ -52,6 +52,38 @@ Le journal brut est **rétrogradé, pas supprimé**. Une ligne que le panneau ne
 
 Trois refus tiennent le panneau honnête, chacun épinglé par un test. Un run muet dit « rien de rapporté » plutôt qu'une progression implicite. Une question sans identifiant de corrélation n'est pas affichée comme en attente, car répondre exige une adresse. Et une réponse qui n'a pas pu partir laisse la question ouverte au lieu de prétendre qu'elle est arrivée.
 
+### Les dossiers d'équipe de bout en bout (remédiation v2)
+
+Les dossiers d'une équipe adoptée font partie de l'équipe : le sidecar
+`studio-team.json` les enregistre en mount-strings (`mounts`), à côté du nom,
+du réglage et de la programmation. Les cartes de « Mes équipes » les montrent en
+chips ; « Changer les dossiers » les édite dans la modale des dossiers d'équipe ;
+tout choix de dossier — là, dans le bloc « Dossiers de cette équipe » du wizard,
+ou sur la carte novice des réglages — passe par le sélecteur partagé
+« Autoriser un dossier » (chemin + Parcourir, arborescence à un niveau avec la
+note « déjà autorisé », droits en deux lignes radio, aperçu expert du
+mount-string exact). Au lancement, Studio pose les mounts du sidecar sur le run
+en arguments `--mount`, devant ceux du lancement — les chips et la commande ne
+peuvent pas diverger. Limite assumée : un `orkeon run` nu en terminal ne lit pas
+le sidecar — comme le champ `profile`, c'est le confort de Studio, pas le
+contrat du moteur.
+
+### Le blueprint, édité à la main
+
+L'arbitrage `edit` du protocole forge est réel : le mode interactif arbitre
+chaque verdict (un verdict conforme coûte un clic « accepter »), et
+`decision.made {edit}` suivi de `blueprint.edited {blueprint}` re-rend l'équipe
+de façon déterministe — zéro jeton LLM — puis regagne son verdict par le chemin
+inchangé validate/test/diagnose ; le moteur revalide tout ce qu'il reçoit
+(parse, compilation, catalogue d'outils) et répond à une édition invalide par un
+`FORGE-BLUEPRINT-INVALID` récupérable, en rouvrant l'arbitrage. Côté Studio,
+l'étape Composer affiche une carte par agent du blueprint avec « Modifier » qui
+ouvre l'éditeur d'agent — le nom correspond au `role` du blueprint, « ce qu'il
+fait » à son `goal`, les chips de capacités à ses `tools` ; « Retirer de
+l'équipe » et « Ajouter un agent » empruntent le même chemin. Les boutons sont
+actionnables exactement pendant que le moteur attend à son arbitrage — pendant
+un essai, ils attendent avec lui.
+
 ## Localisation : le port `IStudioStrings`
 
 `Orkeon.Studio.Core` définit un port de localisation, `IStudioStrings` (`Localization/StudioStrings.cs`) : un indexeur par clé plus un événement `CultureChanged` pour que les ViewModels ré-émettent leurs bindings au changement de langue. Les valeurs anglaises par défaut dans `EnglishStudioStrings` font office de registre de clés de référence. Chaque front choisit sa langue : l'application WPF ponte le port sur son service `I18n` adossé aux resx (`I18nStudioStrings`, `Strings.resx`/`Strings.fr.resx`) avec une **bascule EN/FR à chaud** relayée via `CultureChanged` ; les TUIs gardent l'anglais par défaut. Volontairement non traduits, par politique de contrat CLI : les détails des vérifications d'`orkeon doctor`, les résultats de sonde LLM, les descriptions de codes de sortie et les verdicts `VALIDATION OK/FAILED` — traduire la copie de Studio la désynchroniserait de ce que le CLI imprime dans un terminal. Les messages du validateur et les noms des vérifications doctor suivent une répartition révisée : la ligne anglaise brute reste le détail expert (infobulle ou libellé mono), et une surcouche en langage clair par code (clés `Vm_ValMsg_*`, `Vm_Doctor_*`) est ce que les listes montrent d'abord.

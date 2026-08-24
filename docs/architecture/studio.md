@@ -52,6 +52,36 @@ The raw log is **demoted, not removed**. A line the panel cannot read falls thro
 
 Three refusals keep the panel honest, and each is pinned by a test. A silent run says "nothing reported yet" rather than implying progress. A question arriving without a correlation id is not shown as pending, because answering needs an address. And an answer that could not be written leaves the question open instead of pretending it landed.
 
+### Team folders end to end (remediation v2)
+
+An adopted team's folders are part of the team: the sidecar `studio-team.json`
+records them as mount strings (`mounts`), next to the display name, profile and
+schedule. The "Mes équipes" cards show them as chips; « Changer les dossiers »
+edits them in the team-mounts modal; every folder choice — there, in the
+wizard's « Dossiers de cette équipe » block, or on the novice settings card —
+goes through the shared « Autoriser un dossier » picker (path + browse, a
+one-level tree with "already allowed" notes, rights as two radio rows, and an
+expert preview of the exact mount string). At launch, Studio lays the sidecar's
+mounts on the run as `--mount` arguments ahead of the per-launch ones, so the
+chips and the command cannot disagree. Deliberate limit: a bare `orkeon run` in
+a terminal does not read the sidecar — like the `profile` field, this is
+Studio's comfort, not the engine's contract.
+
+### The blueprint, edited by hand
+
+The forge protocol's `edit` arbitration is real: interactive mode arbitrates
+every verdict (a conforming one costs one "accept" click), and
+`decision.made {edit}` followed by `blueprint.edited {blueprint}` re-renders the
+crew deterministically — zero LLM tokens — then re-earns its verdict through the
+unchanged validate/test/diagnose path; the engine re-validates everything it
+receives (parse, compile, tool catalogue) and answers an invalid edit with a
+recoverable `FORGE-BLUEPRINT-INVALID`, reopening the arbitration. In Studio, the
+Composer step shows one card per blueprint agent with « Modifier » opening the
+agent editor — the name maps to the blueprint's `role`, "what it does" to its
+`goal`, the capability chips to its `tools`; « Retirer de l'équipe » and
+« Ajouter un agent » travel the same path. The buttons are actionable exactly
+while the engine waits at its arbitration — during a trial they wait with it.
+
 ## Localization: the `IStudioStrings` port
 
 `Orkeon.Studio.Core` defines a localization port, `IStudioStrings` (`Localization/StudioStrings.cs`): a key indexer plus a `CultureChanged` event so ViewModels can re-emit their bindings when the language switches. The English defaults in `EnglishStudioStrings` are the key registry of record. Each front decides the language: the WPF app bridges the port onto its resx-backed `I18n` service (`I18nStudioStrings`, `Strings.resx`/`Strings.fr.resx`) with a **hot EN/FR switch** relayed via `CultureChanged`; the TUIs keep the English default. Deliberately untranslated, by CLI-contract policy: `orkeon doctor` check details, LLM probe results, exit-code descriptions and the `VALIDATION OK/FAILED` verdicts — translating Studio's copy would desynchronize it from what the CLI prints in a terminal. Validator messages and doctor check names follow a revised split: the raw English line stays as the expert detail (tooltip or mono side label), and a per-code plain-language overlay (`Vm_ValMsg_*`, `Vm_Doctor_*` keys) is what the lists show first.
