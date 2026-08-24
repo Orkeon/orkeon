@@ -115,6 +115,21 @@
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                   <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding Detail, Mode=OneWay}"/>
+                  <!-- llm-config reads the base (file + shell env); a team's named profile
+                       is laid over its own launch only, so this check cannot see it. -->
+                  <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" FontStyle="Italic"
+                             Text="{Binding [Diag_LlmConfigHint], Source={x:Static services:I18n.Instance}}">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding Name}" Value="llm-config">
+                            <Setter Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
                 </StackPanel>
               </DockPanel>
             </DataTemplate>

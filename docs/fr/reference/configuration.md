@@ -29,6 +29,19 @@ empilent, au-dessus des sources standard de l'hôte .NET :
 Le même préfixe `ORKEON_` alimente aussi `EnvironmentSecretProvider` (résolution de
 secrets, p. ex. `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY`).
 
+**Ce que cela signifie en pratique.** Le fichier est la base durable et partagée ; tout
+ce qui se pose dessus est un calque éphémère qui vit et meurt avec un processus. La
+vérification `llm-config` d'`orkeon doctor` compose exactement comme un runner (même
+chaîne de résolution, même surcouche `ORKEON_`) : son verdict répond à la question
+*qu'utiliserait un run lancé depuis ce shell, sans calque propre au lancement ?* Les
+réglages nommés d'Orkeon Studio empruntent la couche 2 : le réglage élu par défaut est
+recopié dans la section `Llm` du fichier (un `orkeon run` manuel en terminal suit donc
+la même élection — c'est ce que `llm-config` reflète), tandis qu'une équipe qui a élu
+un autre réglage le reçoit en variables `ORKEON_Llm__*` sur son seul lancement —
+`llm-config` ne peut pas les voir, car elles n'existent nulle part tant que ce
+lancement n'a pas démarré. Aucun fichier n'est jamais généré : la composition est en
+mémoire.
+
 ## Provider LLM (section `Llm`)
 
 La section `Llm` est lue par `RunnerHost.RegisterLlmProvider` et transformée en

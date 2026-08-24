@@ -551,4 +551,5 @@
   <data name="Hist_Empty" xml:space="preserve"><value>No run yet. The first launch of a team will appear here.</value></data>
   <data name="Test_Empty" xml:space="preserve"><value>Pick a team to prepare a trial.</value></data>
   <data name="Teams_Open" xml:space="preserve"><value>Open the folder</value></data>
+  <data name="Diag_LlmConfigHint" xml:space="preserve"><value>This is the common base (settings file + this shell's environment). A team that elected its own model profile receives it on top, at launch only — it does not appear here.</value></data>
 </root>

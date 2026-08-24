@@ -26,6 +26,17 @@ of the standard .NET host sources:
 The same `ORKEON_` prefix also feeds `EnvironmentSecretProvider` (secret lookup, e.g.
 `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY`).
 
+**What this means in practice.** The file is the durable, shared base; everything laid
+over it is an ephemeral layer that lives and dies with one process. `orkeon doctor`'s
+`llm-config` check composes exactly like a runner (same resolution chain, same
+`ORKEON_` overlay), so its verdict answers: *what would a run launched from this shell
+use, absent any per-launch overlay?* Orkeon Studio's named model profiles ride layer 2:
+the profile elected as default is copied into the file's `Llm` section (so a manual
+terminal `orkeon run` follows the same election — that is what `llm-config` reflects),
+while a team that elected a different profile receives it as `ORKEON_Llm__*` variables
+on its own launch only — `llm-config` cannot see those, because they exist nowhere
+until that launch starts. No file is ever generated: the composition is in-memory.
+
 ## LLM provider (`Llm` section)
 
 The `Llm` section is read by `RunnerHost.RegisterLlmProvider` and turned into an
