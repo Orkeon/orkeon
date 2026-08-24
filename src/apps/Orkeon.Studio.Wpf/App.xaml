@@ -16,8 +16,10 @@
 
       <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
       <views:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibility" />
+    <views:LeftIndentConverter x:Key="LeftIndent" />
       <views:StringPresentToVisibilityConverter x:Key="StringPresentToVisibility" />
       <views:CountToVisibilityConverter x:Key="CountToVisibility" />
+      <views:ZeroToVisibilityConverter x:Key="ZeroToVisibility" />
 
     </ResourceDictionary>
   </Application.Resources>

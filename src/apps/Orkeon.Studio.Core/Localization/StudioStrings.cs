@@ -119,6 +119,63 @@ public static class StudioStringKeys
     // ---- LLM preset catalogue (Core Presets/LlmPresets) ------------------
 
     /// <summary>"Ollama"</summary>
+    /// <summary>"already allowed" — the folder picker's faint note on a mounted row.</summary>
+    public const string PickerAlreadyMounted = "Vm_Picker_AlreadyMounted";
+
+    /// <summary>"Folders of “{0}”" — the team-mounts modal title.</summary>
+    public const string TeamMountsTitle = "Vm_TeamMounts_Title";
+
+    /// <summary>"Without a folder, this team can neither read nor write any file."</summary>
+    public const string TeamMountsNone = "Vm_TeamMounts_None";
+
+    /// <summary>"{0} folders: {1}" — the team-mounts footer summary.</summary>
+    public const string TeamMountsSummary = "Vm_TeamMounts_Summary";
+
+    /// <summary>"Add an agent" — the agent editor in add mode.</summary>
+    public const string AgentEditorTitleAdd = "Vm_AgentEditor_TitleAdd";
+
+    /// <summary>"Edit the agent" — the agent editor in edit mode.</summary>
+    public const string AgentEditorTitleEdit = "Vm_AgentEditor_TitleEdit";
+
+    /// <summary>"Add to the team" — the agent editor's save label in add mode.</summary>
+    public const string AgentEditorAdd = "Vm_AgentEditor_Add";
+
+    /// <summary>"Save" — the shared action verb.</summary>
+    public const string ActSave = "Act_Save";
+
+    /// <summary>"Choose where to export the team" — the export destination browser's caption.</summary>
+    public const string DialogExportDestination = "Vm_Dialog_ExportDestination";
+
+    /// <summary>"{0} (read)" — a team card's read-only mount chip.</summary>
+    public const string TeamsMountRo = "Vm_Teams_MountRo";
+
+    /// <summary>"{0} (read, write)" — a team card's writable mount chip.</summary>
+    public const string TeamsMountRw = "Vm_Teams_MountRw";
+
+    /// <summary>"to try" — the badge of a team that never ran and has no schedule.</summary>
+    public const string TeamsToTest = "Vm_Teams_ToTest";
+
+    /// <summary>"Last run: {0}, {1}" — the meta line's history part.</summary>
+    public const string TeamsLastRun = "Vm_Teams_LastRun";
+
+    /// <summary>"succeeded" — the last run ended well.</summary>
+    public const string TeamsRunOk = "Vm_Teams_RunOk";
+
+    /// <summary>"failed" — the last run did not.</summary>
+    public const string TeamsRunFail = "Vm_Teams_RunFail";
+
+    /// <summary>"Never ran" — no history entry names this team.</summary>
+    public const string TeamsNeverRan = "Vm_Teams_NeverRan";
+
+    /// <summary>"Setting: {0}" — the meta line's model-profile part.</summary>
+    public const string TeamsSettingLabel = "Teams_SettingLabel";
+
+    /// <summary>"reads {0}" — a read-only team mount, in the launcher's meta line.</summary>
+    public const string RunMetaReads = "Vm_Run_MetaReads";
+
+    /// <summary>"writes to {0}" — a writable team mount, in the launcher's meta line.</summary>
+    public const string RunMetaWrites = "Vm_Run_MetaWrites";
+
     public const string PresetOllamaTitle = "Core_Preset_Ollama_Title";
 
     /// <summary>"Local Ollama server."</summary>
@@ -756,6 +813,25 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RagWebFallbackTransportOff] = "Inactive: the corrective policy allows it, but the transport (Orkeon:Rag:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackPolicyOff] = "Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackOff] = "Off. Both switches must be turned on for the corrective loop to reach the web.",
+        [StudioStringKeys.PickerAlreadyMounted] = "already allowed",
+        [StudioStringKeys.TeamMountsTitle] = "Folders of “{0}”",
+        [StudioStringKeys.TeamMountsNone] = "Without a folder, this team can neither read nor write any file.",
+        [StudioStringKeys.TeamMountsSummary] = "{0} folders: {1}",
+        [StudioStringKeys.AgentEditorTitleAdd] = "Add an agent",
+        [StudioStringKeys.AgentEditorTitleEdit] = "Edit the agent",
+        [StudioStringKeys.AgentEditorAdd] = "Add to the team",
+        [StudioStringKeys.ActSave] = "Save",
+        [StudioStringKeys.DialogExportDestination] = "Choose where to export the team",
+        [StudioStringKeys.TeamsMountRo] = "{0} (read)",
+        [StudioStringKeys.TeamsMountRw] = "{0} (read, write)",
+        [StudioStringKeys.TeamsToTest] = "to try",
+        [StudioStringKeys.TeamsLastRun] = "Last run: {0}, {1}",
+        [StudioStringKeys.TeamsRunOk] = "succeeded",
+        [StudioStringKeys.TeamsRunFail] = "failed",
+        [StudioStringKeys.TeamsNeverRan] = "Never ran",
+        [StudioStringKeys.TeamsSettingLabel] = "Setting: {0}",
+        [StudioStringKeys.RunMetaReads] = "reads {0}",
+        [StudioStringKeys.RunMetaWrites] = "writes to {0}",
         [StudioStringKeys.HistOutcomeSuccess] = "Finished without errors.",
         [StudioStringKeys.HistOutcomeFailed] = "Failed (code {0}).",
         [StudioStringKeys.HistOutcomeCancelled] = "Interrupted before the end.",

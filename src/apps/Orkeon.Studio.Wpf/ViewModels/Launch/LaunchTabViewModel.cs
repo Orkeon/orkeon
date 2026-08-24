@@ -297,9 +297,22 @@ public sealed class LaunchTabViewModel : ObservableObject
     public Task<ProcessRunResult?> ValidateAsync(CancellationToken cancellationToken = default) =>
         LaunchAsync(validate: true, cancellationToken);
 
-    /// <summary>Runs the crew for real (spec §5.3).</summary>
-    public Task<ProcessRunResult?> RunAsync(CancellationToken cancellationToken = default) =>
-        LaunchAsync(validate: false, cancellationToken);
+    /// <summary>
+    /// Runs the crew for real (spec §5.3). With « Validation à blanc d'abord » (mock,
+    /// expert options), a <c>--validate</c> pass runs first and a failed one stops here —
+    /// the dry run is exactly the protection it claims to be.
+    /// </summary>
+    public async Task<ProcessRunResult?> RunAsync(CancellationToken cancellationToken = default)
+    {
+        if (Options.ValidateFirst)
+        {
+            var validation = await LaunchAsync(validate: true, cancellationToken).ConfigureAwait(true);
+            if (validation is not { ExitCode: 0 })
+                return validation;
+        }
+
+        return await LaunchAsync(validate: false, cancellationToken).ConfigureAwait(true);
+    }
 
     /// <summary>Stops the running child process.</summary>
     public void Cancel()
@@ -508,9 +521,21 @@ public sealed class LaunchTabViewModel : ObservableObject
     {
         get
         {
-            var parts = new List<string>(3);
+            var parts = new List<string>(4);
             if (_team.AgentCount is { } agents)
                 parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaAgents], agents));
+            foreach (var mountString in _team.Mounts)
+            {
+                // « lit /docs · écrit dans /output » — the sidecar's mounts, in words.
+                if (MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null)
+                {
+                    parts.Add(string.Format(
+                        CultureInfo.CurrentCulture,
+                        _strings[mount.Rights == MountRights.ReadOnly ? StudioStringKeys.RunMetaReads : StudioStringKeys.RunMetaWrites],
+                        mount.VirtualPath));
+                }
+            }
+
             if (_team.Description is { Length: > 0 } description)
                 parts.Add(description);
             if (_team.Profile is { Length: > 0 } profile)

@@ -561,4 +561,55 @@
   <data name="Profile_Temperature_Hint" xml:space="preserve"><value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
   <data name="Profile_Lbl_Timeout" xml:space="preserve"><value>Response timeout (s, optional)</value></data>
   <data name="Profile_Timeout_Hint" xml:space="preserve"><value>Empty: 30 s. Reasoning models (Kimi K3, thinking modes) often need 120–300 s.</value></data>
+  <data name="Vm_Picker_AlreadyMounted" xml:space="preserve"><value>already allowed</value></data>
+  <data name="Vm_TeamMounts_Title" xml:space="preserve"><value>Folders of “{0}”</value></data>
+  <data name="Vm_TeamMounts_None" xml:space="preserve"><value>Without a folder, this team can neither read nor write any file.</value></data>
+  <data name="Vm_TeamMounts_Summary" xml:space="preserve"><value>{0} folders: {1}</value></data>
+  <data name="Vm_AgentEditor_TitleAdd" xml:space="preserve"><value>Add an agent</value></data>
+  <data name="Vm_AgentEditor_TitleEdit" xml:space="preserve"><value>Edit the agent</value></data>
+  <data name="Vm_AgentEditor_Add" xml:space="preserve"><value>Add to the team</value></data>
+  <data name="Picker_Title" xml:space="preserve"><value>Allow a folder</value></data>
+  <data name="Picker_Sub" xml:space="preserve"><value>Choose the folder, then what the agents may do with it.</value></data>
+  <data name="Picker_Browse" xml:space="preserve"><value>Browse…</value></data>
+  <data name="Picker_RightsLabel" xml:space="preserve"><value>What the agents will be able to do</value></data>
+  <data name="Picker_ReadOnly" xml:space="preserve"><value>Read only</value></data>
+  <data name="Picker_ReadOnly_Hint" xml:space="preserve"><value>agents read, never modify</value></data>
+  <data name="Picker_ReadWrite" xml:space="preserve"><value>Read and write</value></data>
+  <data name="Picker_ReadWrite_Hint" xml:space="preserve"><value>agents may write their results here</value></data>
+  <data name="Picker_WrittenAs" xml:space="preserve"><value>Will be written as</value></data>
+  <data name="Picker_Confirm" xml:space="preserve"><value>Allow this folder</value></data>
+  <data name="TeamMounts_Sub" xml:space="preserve"><value>Tick what this team may see. Any unticked folder becomes invisible to it, even if other teams use it.</value></data>
+  <data name="TeamMounts_AddAnother" xml:space="preserve"><value>Allow another folder…</value></data>
+  <data name="AgentEd_Sub" xml:space="preserve"><value>An agent does one thing. Describe it in one sentence, then open only the capacities it needs.</value></data>
+  <data name="AgentEd_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="AgentEd_Does" xml:space="preserve"><value>What it does</value></data>
+  <data name="AgentEd_Does_Placeholder" xml:space="preserve"><value>E.g. rereads the summary and checks every claim against a cited page</value></data>
+  <data name="AgentEd_Can" xml:space="preserve"><value>What it can do</value></data>
+  <data name="AgentEd_Scope" xml:space="preserve"><value>On which folder</value></data>
+  <data name="AgentEd_Remove" xml:space="preserve"><value>Remove from the team</value></data>
+  <data name="AgentEd_Wait" xml:space="preserve"><value>The current trial must finish first</value></data>
+  <data name="Vm_Dialog_ExportDestination" xml:space="preserve"><value>Choose where to export the team</value></data>
+  <data name="Wiz_TeamFolders" xml:space="preserve"><value>This team's folders</value></data>
+  <data name="Wiz_AllowFolder" xml:space="preserve"><value>Allow a folder</value></data>
+  <data name="Wiz_FoldersHint" xml:space="preserve"><value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value></data>
+  <data name="Wiz_AgentCan" xml:space="preserve"><value>Can:</value></data>
+  <data name="Wiz_Modify" xml:space="preserve"><value>Edit</value></data>
+  <data name="Wiz_AddAgent" xml:space="preserve"><value>Add an agent</value></data>
+  <data name="Vm_Teams_MountRo" xml:space="preserve"><value>{0} (read)</value></data>
+  <data name="Vm_Teams_MountRw" xml:space="preserve"><value>{0} (read, write)</value></data>
+  <data name="Vm_Teams_ToTest" xml:space="preserve"><value>to try</value></data>
+  <data name="Vm_Teams_LastRun" xml:space="preserve"><value>Last run: {0}, {1}</value></data>
+  <data name="Vm_Teams_RunOk" xml:space="preserve"><value>succeeded</value></data>
+  <data name="Vm_Teams_RunFail" xml:space="preserve"><value>failed</value></data>
+  <data name="Vm_Teams_NeverRan" xml:space="preserve"><value>Never ran</value></data>
+  <data name="Teams_MountsLabel" xml:space="preserve"><value>Folders:</value></data>
+  <data name="Teams_NoMounts" xml:space="preserve"><value>No folder associated —</value></data>
+  <data name="Teams_ChangeMounts" xml:space="preserve"><value>Change the folders</value></data>
+  <data name="Teams_Export" xml:space="preserve"><value>Export</value></data>
+  <data name="Teams_Test" xml:space="preserve"><value>Try out</value></data>
+  <data name="Teams_SettingLabel" xml:space="preserve"><value>Setting: {0}</value></data>
+  <data name="Vm_Run_MetaReads" xml:space="preserve"><value>reads {0}</value></data>
+  <data name="Vm_Run_MetaWrites" xml:space="preserve"><value>writes to {0}</value></data>
+  <data name="Run_ValidateFirst" xml:space="preserve"><value>Dry-run validation first</value></data>
+  <data name="Test_Console_Empty" xml:space="preserve"><value>Waiting for a trial…</value></data>
 </root>

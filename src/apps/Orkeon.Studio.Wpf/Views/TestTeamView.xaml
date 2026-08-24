@@ -93,19 +93,26 @@
         </StackPanel>
       </ScrollViewer>
 
-      <!-- right: the trial console, full column height, always console-navy -->
+      <!-- right: the trial console — mock: max 440 high, and a quiet line when empty
+           rather than a bare navy rectangle -->
       <Border Grid.Column="2" Background="{DynamicResource ConsoleBgBrush}" CornerRadius="14" Padding="10"
-              MinHeight="280" VerticalAlignment="Stretch">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <ItemsControl ItemsSource="{Binding Launcher.Log.Lines}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Padding="6,1"
-                           Foreground="{DynamicResource ConsoleFgBrush}" TextWrapping="Wrap" Text="{Binding Text}"/>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
+              MinHeight="120" MaxHeight="440" VerticalAlignment="Top">
+        <Grid>
+          <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Padding="6,1" Opacity="0.55"
+                     Foreground="{DynamicResource ConsoleFgBrush}"
+                     Text="{Binding [Test_Console_Empty], Source={x:Static services:I18n.Instance}}"
+                     Visibility="{Binding Launcher.Log.Lines.Count, Converter={StaticResource ZeroToVisibility}}"/>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Launcher.Log.Lines}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Padding="6,1"
+                             Foreground="{DynamicResource ConsoleFgBrush}" TextWrapping="Wrap" Text="{Binding Text}"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
       </Border>
 
     </Grid>

@@ -192,14 +192,24 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     public string? BaseUrl
     {
         get => _baseUrl;
-        set => SetProperty(ref _baseUrl, value);
+        set
+        {
+            // The catch-all provider gates Save on this field: the button must wake up
+            // as the URL is typed, not on the next unrelated notification.
+            if (SetProperty(ref _baseUrl, value))
+                SaveCommand.RaiseCanExecuteChanged();
+        }
     }
 
     /// <summary>Model identifier (expert field).</summary>
     public string? Model
     {
         get => _model;
-        set => SetProperty(ref _model, value);
+        set
+        {
+            if (SetProperty(ref _model, value))
+                SaveCommand.RaiseCanExecuteChanged();
+        }
     }
 
     /// <summary>True when the picked provider authenticates requests.</summary>
@@ -287,7 +297,10 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         _name.Trim().Length > 0
         && !NameCollision
         && !(UrlAlwaysVisible
-             && (string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_model)));
+             && (string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_model)))
+        // A typed tuning value that does not parse must block the save, not vanish silently.
+        && (_temperatureText.Trim().Length == 0 || ParsedTemperature is not null)
+        && (_timeoutText.Trim().Length == 0 || ParsedTimeoutSeconds is not null);
 
     /// <summary>True while the typed name already belongs to another profile.</summary>
     public bool NameCollision => _owner.IsNameTaken(_name.Trim(), PreviousName);
@@ -337,7 +350,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     public string TemperatureText
     {
         get => _temperatureText;
-        set => SetProperty(ref _temperatureText, value ?? "");
+        set
+        {
+            if (SetProperty(ref _temperatureText, value ?? ""))
+                SaveCommand.RaiseCanExecuteChanged();
+        }
     }
 
     /// <summary>
@@ -347,7 +364,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     public string TimeoutText
     {
         get => _timeoutText;
-        set => SetProperty(ref _timeoutText, value ?? "");
+        set
+        {
+            if (SetProperty(ref _timeoutText, value ?? ""))
+                SaveCommand.RaiseCanExecuteChanged();
+        }
     }
 
     /// <summary>The typed timeout, or null when empty, unparseable, or non-positive.</summary>

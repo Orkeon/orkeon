@@ -53,6 +53,16 @@ public sealed class StringPresentToVisibilityConverter : IValueConverter
 /// The mock's modal body height — <c>min(560px, 62vh)</c> (T-13): fed the window's
 /// ActualHeight, hands back the bound the body's ScrollViewer may grow to.
 /// </summary>
+/// <summary>A pixel count into a left-only margin — the folder tree's per-level indent.</summary>
+public sealed class LeftIndentConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        new Thickness(value is double left ? left : 0, 0, 0, 0);
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 public sealed class ModalBodyHeightConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>

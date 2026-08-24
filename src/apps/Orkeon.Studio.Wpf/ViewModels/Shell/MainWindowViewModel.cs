@@ -7,6 +7,7 @@ using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -94,6 +95,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         Teams = new TeamsViewModel(teamsRoot, forgeHome, strings: strings, shellOpener: shellOpener, historyStore: historyStore);
 
+
         // The expert trial screen runs over its own launcher, with NO history store: a
         // trial is a rehearsal, not a run to replay from the history.
         Test = new TestTeamViewModel(
@@ -101,6 +103,23 @@ public sealed class MainWindowViewModel : ObservableObject
             teamsRoot);
 
         Import = new ImportTeamViewModel(targetProbe, picker, strings, teamsRoot);
+
+        // The three v2 modals (RC2-FEAT-05): one shared folder picker serves the team-mounts
+        // modal, the wizard's "Dossiers de cette équipe" block and the novice mounts card.
+        FolderPicker = new FolderPickerViewModel(directories, picker, strings);
+        TeamMounts = new TeamMountsDialogViewModel(strings);
+        Teams.MountsRequested += (_, e) =>
+            TeamMounts.Open(e.Card.Summary.Path, e.Card.Name, e.Card.Mounts, onSaved: Teams.Refresh);
+        Teams.TestRequested += (_, e) => { Test.Launcher.Target.Select(e.Path); TestRequested?.Invoke(this, EventArgs.Empty); };
+        var effectiveStrings = strings ?? Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance;
+        Teams.ExportDestinationPicker = () =>
+            picker?.PickFolder(effectiveStrings[Orkeon.Studio.Core.Localization.StudioStringKeys.DialogExportDestination]);
+        TeamMounts.AddRequested += (_, _) =>
+            FolderPicker.Open([.. TeamMounts.Rows.Select(r => r.MountString)], TeamMounts.AddMount);
+        CreateTeam.AllowFolderRequested += (_, _) =>
+            FolderPicker.Open([.. CreateTeam.TeamMounts], CreateTeam.AddTeamMount);
+        Config.Mounts.FolderPickRequested += (_, _) =>
+            FolderPicker.Open(Config.Mounts.CurrentMountStrings, Config.Mounts.AddPickedMount);
 
         // An adopted team is an ordinary folder: "Lancer" hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
@@ -130,6 +149,15 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>The "Importer" screen.</summary>
     public ImportTeamViewModel Import { get; }
+
+    /// <summary>The shared « Autoriser un dossier » modal (remediation v2, F-03).</summary>
+    public FolderPickerViewModel FolderPicker { get; }
+
+    /// <summary>The « Dossiers de « X » » modal (remediation v2, F-03).</summary>
+    public TeamMountsDialogViewModel TeamMounts { get; }
+
+    /// <summary>Raised when a team card asks for the trial screen — the shell switches tabs.</summary>
+    public event EventHandler? TestRequested;
 
     /// <summary>The window-wide Novice/Expert switch (design v3).</summary>
     public UiModeViewModel Mode { get; }

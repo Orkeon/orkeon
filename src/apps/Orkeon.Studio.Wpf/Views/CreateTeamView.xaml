@@ -338,6 +338,54 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
+            <!-- Dossiers de cette équipe (F-01): the future sidecar mounts, editable here. -->
+            <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,1,0,0" Margin="0,13,0,0" Padding="0,12,0,0">
+              <StackPanel>
+                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,8"
+                           Text="{Binding [Wiz_TeamFolders], Source={x:Static services:I18n.Instance}}"/>
+                <WrapPanel>
+                  <ItemsControl ItemsSource="{Binding TeamMounts}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                                BorderThickness="1" CornerRadius="999" Padding="11,4" Margin="0,0,7,7">
+                          <StackPanel Orientation="Horizontal">
+                            <controls:LucideIcon Kind="folder-open" Size="11" Foreground="{DynamicResource InkMutedBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5"
+                                       Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Text="{Binding}"/>
+                            <Button Width="16" Height="16" Margin="6,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0"
+                                    Command="{Binding DataContext.RemoveTeamMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                                    CommandParameter="{Binding}">
+                              <controls:LucideIcon Kind="x" Size="10" Foreground="{DynamicResource InkFaintBrush}"/>
+                            </Button>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button Cursor="Hand" Command="{Binding AllowFolderCommand}">
+                    <Button.Template>
+                      <ControlTemplate TargetType="Button">
+                        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+                                BorderThickness="1" CornerRadius="999" Padding="11,4">
+                          <StackPanel Orientation="Horizontal">
+                            <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding [Wiz_AllowFolder], Source={x:Static services:I18n.Instance}}"/>
+                          </StackPanel>
+                        </Border>
+                      </ControlTemplate>
+                    </Button.Template>
+                  </Button>
+                </WrapPanel>
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
+                           Text="{Binding [Wiz_FoldersHint], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </Border>
 
@@ -352,16 +400,58 @@
                                Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                Text="{Binding Initial}"/>
                   </Border>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Top"
+                          Command="{Binding EditCommand}"
+                          ToolTip="{Binding [AgentEd_Wait], Source={x:Static services:I18n.Instance}}"
+                          ToolTipService.ShowOnDisabled="True">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="pencil" Size="12" Margin="0,0,7,0"/>
+                      <TextBlock Text="{Binding [Wiz_Modify], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
                   <StackPanel>
-                    <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
+                      <TextBlock Style="{StaticResource MonoText}" FontSize="9.5" Margin="10,0,0,0" VerticalAlignment="Center"
+                                 Text="{Binding Key}"
+                                 Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                    </StackPanel>
                     <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"
                                Text="{Binding Role}"/>
+                    <WrapPanel Margin="0,9,0,0"
+                               Visibility="{Binding HasTools, Converter={StaticResource BooleanToVisibility}}">
+                      <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0"
+                                 Text="{Binding [Wiz_AgentCan], Source={x:Static services:I18n.Instance}}"/>
+                      <ItemsControl ItemsSource="{Binding Tools}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                                    BorderThickness="1" CornerRadius="999" Padding="10,3" Margin="0,0,6,4">
+                              <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                         Foreground="{DynamicResource InkMutedBrush}" Text="{Binding}"/>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </WrapPanel>
                   </StackPanel>
                 </DockPanel>
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- Ajouter un agent (F-01) — actionable while the engine waits at its arbitration. -->
+        <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,0,0,16"
+                Command="{Binding AddAgentCommand}"
+                ToolTip="{Binding [AgentEd_Wait], Source={x:Static services:I18n.Instance}}"
+                ToolTipService.ShowOnDisabled="True">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Wiz_AddAgent], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
 
         <!-- validation of the rendered crew -->
         <Border Style="{StaticResource Card}" Margin="0,0,0,16"

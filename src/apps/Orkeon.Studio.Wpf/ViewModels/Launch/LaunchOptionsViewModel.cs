@@ -73,6 +73,7 @@ public sealed class LaunchOptionsViewModel : ObservableObject
     private string? _inputsFilePath;
     private int _verbosity;
     private bool _llmLogEnabled;
+    private bool _validateFirst;
     private bool _watchProgress = true;
     private bool _streamGeneratedText;
     private string? _llmLogPath;
@@ -244,6 +245,21 @@ public sealed class LaunchOptionsViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _verbosity, value))
+                OnOptionEdited(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// « Validation à blanc d'abord » (mock, expert options): the run is preceded by a
+    /// <c>--validate</c> pass, and a failed pass stops the launch. A UI-side sequencing
+    /// choice — it never appears in the command line itself.
+    /// </summary>
+    public bool ValidateFirst
+    {
+        get => _validateFirst;
+        set
+        {
+            if (SetProperty(ref _validateFirst, value))
                 OnOptionEdited(this, EventArgs.Empty);
         }
     }

@@ -45,15 +45,26 @@
                     <TextBlock Text="{Binding [Teams_Launch], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
+                <!-- « Ouvrir » is for everyone (mock F-02), not an expert privilege. -->
+                <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding OpenCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Teams_Open], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
                 <StackPanel Orientation="Horizontal" Margin="8,0,0,0"
                             Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                  <Button Style="{StaticResource IconBtn}" Command="{Binding OpenCommand}"
-                      ToolTip="{Binding [Teams_Open], Source={x:Static services:I18n.Instance}}">
-                <controls:LucideIcon Kind="folder-open" Size="14"/>
-              </Button>
-              <Button Style="{StaticResource IconBtn}" Command="{Binding DuplicateCommand}" Margin="0,0,6,0"
+                  <Button Style="{StaticResource IconBtn}" Command="{Binding TestCommand}" Margin="0,0,6,0"
+                          ToolTip="{Binding [Teams_Test], Source={x:Static services:I18n.Instance}}">
+                    <controls:LucideIcon Kind="badge-check" Size="13"/>
+                  </Button>
+                  <Button Style="{StaticResource IconBtn}" Command="{Binding DuplicateCommand}" Margin="0,0,6,0"
                           ToolTip="{Binding [Teams_Duplicate], Source={x:Static services:I18n.Instance}}">
                     <controls:LucideIcon Kind="copy" Size="13"/>
+                  </Button>
+                  <Button Style="{StaticResource IconBtn}" Command="{Binding ExportCommand}" Margin="0,0,6,0"
+                          ToolTip="{Binding [Teams_Export], Source={x:Static services:I18n.Instance}}">
+                    <controls:LucideIcon Kind="save" Size="13"/>
                   </Button>
                   <Button Style="{StaticResource IconBtn}" Command="{Binding DeleteCommand}"
                           ToolTip="{Binding [Teams_Delete], Source={x:Static services:I18n.Instance}}">
@@ -63,25 +74,32 @@
               </StackPanel>
               <StackPanel Margin="0,0,14,0">
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock FontSize="14" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
-                  <Border CornerRadius="10.5" Padding="10,3" Margin="10,0,0,0">
+                  <TextBlock FontSize="14" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                             MaxWidth="380" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Text="{Binding Name}"/>
+                  <Border CornerRadius="10.5" Padding="10,3" Margin="10,0,0,0" VerticalAlignment="Center">
                     <Border.Style>
                       <Style TargetType="Border">
                         <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
                         <Style.Triggers>
-                          <DataTrigger Binding="{Binding IsScheduled}" Value="True">
+                          <DataTrigger Binding="{Binding BadgeTone}" Value="ok">
                             <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding BadgeTone}" Value="warn">
+                            <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
                           </DataTrigger>
                         </Style.Triggers>
                       </Style>
                     </Border.Style>
-                    <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding ScheduleDisplay}">
+                    <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding BadgeText}">
                       <TextBlock.Style>
                         <Style TargetType="TextBlock">
                           <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                           <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsScheduled}" Value="True">
+                            <DataTrigger Binding="{Binding BadgeTone}" Value="ok">
                               <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding BadgeTone}" Value="warn">
+                              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>
@@ -95,11 +113,73 @@
                 <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"
                            Text="{Binding Description}"
                            Visibility="{Binding HasDescription, Converter={StaticResource BooleanToVisibility}}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
-                            Visibility="{Binding HasProfile, Converter={StaticResource BooleanToVisibility}}">
-                  <controls:LucideIcon Kind="sparkles" Size="11" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"/>
-                  <TextBlock Style="{StaticResource Hint}" Margin="5,0,0,0" Text="{Binding Profile}"/>
-                </StackPanel>
+                <!-- Dossiers : chips + « Changer les dossiers » (F-02) -->
+                <WrapPanel Margin="0,9,0,0">
+                  <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Margin="0,0,7,4">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="{Binding [Teams_MountsLabel], Source={x:Static services:I18n.Instance}}"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding HasMounts}" Value="False">
+                            <Setter Property="Text" Value="{Binding [Teams_NoMounts], Source={x:Static services:I18n.Instance}}"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                  <ItemsControl ItemsSource="{Binding MountChips}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                                BorderThickness="1" CornerRadius="999" Padding="10,3" Margin="0,0,7,4">
+                          <StackPanel Orientation="Horizontal">
+                            <controls:LucideIcon Size="11" Foreground="{DynamicResource InkMutedBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,6,0">
+                              <controls:LucideIcon.Style>
+                                <Style TargetType="controls:LucideIcon">
+                                  <Setter Property="Kind" Value="folder-open"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                                      <Setter Property="Kind" Value="pencil"/>
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </controls:LucideIcon.Style>
+                            </controls:LucideIcon>
+                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                       Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Text="{Binding Label}"/>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button Cursor="Hand" Command="{Binding ChangeMountsCommand}" Margin="0,0,0,4">
+                    <Button.Template>
+                      <ControlTemplate TargetType="Button">
+                        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+                                BorderThickness="1" CornerRadius="999" Padding="11,3">
+                          <StackPanel Orientation="Horizontal">
+                            <controls:LucideIcon Kind="folder-tree" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding [Teams_ChangeMounts], Source={x:Static services:I18n.Instance}}"/>
+                          </StackPanel>
+                        </Border>
+                      </ControlTemplate>
+                    </Button.Template>
+                  </Button>
+                </WrapPanel>
+                <!-- méta : n agents · programmation · dernière exécution · réglage -->
+                <WrapPanel Margin="0,7,0,0">
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,0,14,0" Text="{Binding AgentCountDisplay}"
+                             Visibility="{Binding HasAgentCount, Converter={StaticResource BooleanToVisibility}}"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,0,14,0" Text="{Binding ScheduleDisplay}"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,0,14,0" Text="{Binding LastRunDisplay}"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="{Binding ProfileDisplay}"
+                             Visibility="{Binding HasProfile, Converter={StaticResource BooleanToVisibility}}"/>
+                </WrapPanel>
               </StackPanel>
             </DockPanel>
           </Border>

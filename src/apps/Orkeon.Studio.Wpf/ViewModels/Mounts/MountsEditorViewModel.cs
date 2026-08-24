@@ -164,8 +164,38 @@ public sealed class MountsEditorViewModel : ObservableObject
     /// from the folder itself (first free suggested path as fallback). Read-only is the safe
     /// default — the expert form is where rights widen.
     /// </summary>
+    /// <summary>
+    /// Raised by « Autoriser un dossier… » when the shell wired the shared picker modal
+    /// (remediation v2, F-03): the rights choice then belongs to the modal. Without a
+    /// subscriber, the legacy OS browser opens and the mount lands read-only.
+    /// </summary>
+    public event EventHandler? FolderPickRequested;
+
+    /// <summary>The mount strings this editor currently holds — what the picker's notes show.</summary>
+    public IReadOnlyList<string> CurrentMountStrings => [.. Mounts.Select(m => m.MountString)];
+
+    /// <summary>Adds the picker modal's choice as a new mount row.</summary>
+    public void AddPickedMount(MountDefinition mount)
+    {
+        ArgumentNullException.ThrowIfNull(mount);
+
+        // The collection hook validates and raises Changed on its own.
+        Mounts.Add(new MountEditorViewModel(_strings)
+        {
+            PhysicalPath = mount.PhysicalPath,
+            VirtualPath = mount.VirtualPath,
+            Rights = mount.Rights,
+        });
+    }
+
     private void AllowFolder()
     {
+        if (FolderPickRequested is { } requested)
+        {
+            requested.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         var picked = _picker.PickFolder(_strings[StudioStringKeys.DialogSelectMountFolder]);
         if (picked is not { Length: > 0 })
             return;

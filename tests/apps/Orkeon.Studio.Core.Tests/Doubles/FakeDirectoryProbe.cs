@@ -26,4 +26,12 @@ public sealed class FakeDirectoryProbe : IDirectoryProbe
         Created.Add(path);
         _existing.Add(path);
     }
+
+    public IReadOnlyList<string> ListSubdirectories(string path)
+    {
+        var prefix = path.TrimEnd('/', '\\') + "/";
+        return [.. _existing
+            .Where(d => d.StartsWith(prefix, StringComparison.Ordinal) && !d[prefix.Length..].Contains('/', StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)];
+    }
 }

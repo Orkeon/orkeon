@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Localization;
@@ -16,6 +17,13 @@ public sealed class TeamActionEventArgs(string path) : EventArgs
     public string Path { get; } = path;
 }
 
+/// <summary>Payload of a « Changer les dossiers » request: the card whose mounts open.</summary>
+public sealed class TeamMountsRequestedEventArgs(TeamCardViewModel card) : EventArgs
+{
+    /// <summary>The team card.</summary>
+    public TeamCardViewModel Card { get; } = card;
+}
+
 /// <summary>Payload of a resume request: the stopped session to reopen.</summary>
 public sealed class SessionResumeEventArgs(ForgeSolutionSummary session) : EventArgs
 {
@@ -23,15 +31,41 @@ public sealed class SessionResumeEventArgs(ForgeSolutionSummary session) : Event
     public ForgeSolutionSummary Session { get; } = session;
 }
 
+/// <summary>One mount chip of a team card: virtual path plus its rights, in words.</summary>
+public sealed record TeamMountChip(string Label, bool IsReadWrite);
+
 /// <summary>One team card of "Mes équipes".</summary>
 public sealed class TeamCardViewModel : ObservableObject
 {
+    private readonly IStudioStrings _strings;
     private DateTimeOffset? _lastRun;
     private RunOutcome? _lastOutcome;
 
     internal TeamCardViewModel(TeamSummary summary, TeamsViewModel owner, IStudioStrings strings)
     {
+        _strings = strings;
         Summary = summary;
+
+        var chips = new List<TeamMountChip>();
+        foreach (var mountString in summary.Mounts)
+        {
+            if (MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null)
+            {
+                var readWrite = mount.Rights != MountRights.ReadOnly;
+                chips.Add(new TeamMountChip(
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        strings[readWrite ? StudioStringKeys.TeamsMountRw : StudioStringKeys.TeamsMountRo],
+                        mount.VirtualPath),
+                    readWrite));
+            }
+            else
+            {
+                chips.Add(new TeamMountChip(mountString, IsReadWrite: false));
+            }
+        }
+
+        MountChips = chips;
         ScheduleDisplay = summary.Schedule switch
         {
             null or "" => strings[StudioStringKeys.TeamsOnDemand],
@@ -44,7 +78,19 @@ public sealed class TeamCardViewModel : ObservableObject
         DuplicateCommand = new RelayCommand(() => owner.Duplicate(summary.Path));
         DeleteCommand = new RelayCommand(() => owner.Delete(summary.Path));
         OpenCommand = new RelayCommand(() => owner.OpenInShell(summary.Path), () => owner.CanOpenInShell);
+        ChangeMountsCommand = new RelayCommand(() => owner.RequestMounts(this));
+        ExportCommand = new RelayCommand(() => owner.Export(summary.Path));
+        TestCommand = new RelayCommand(() => owner.RequestTest(summary.Path));
     }
+
+    /// <summary>« Changer les dossiers » — the team-mounts modal (remediation v2, F-02).</summary>
+    public RelayCommand ChangeMountsCommand { get; }
+
+    /// <summary>Copies the team folder somewhere for sharing, settings file left behind.</summary>
+    public RelayCommand ExportCommand { get; }
+
+    /// <summary>Hands the team to the expert trial screen.</summary>
+    public RelayCommand TestCommand { get; }
 
     /// <summary>"Ouvrir" — the team folder in the OS explorer (audit 03).</summary>
     public RelayCommand OpenCommand { get; }
@@ -103,6 +149,43 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>How that last run ended; null when the team never ran.</summary>
     public RunOutcome? LastOutcome => _lastOutcome;
 
+    /// <summary>The mount chips, virtual path + rights in words.</summary>
+    public IReadOnlyList<TeamMountChip> MountChips { get; }
+
+    /// <summary>
+    /// The card badge (mock: programmée = green, à tester = amber, à la demande = accent).
+    /// A team that never ran and is not scheduled still has to earn its first run.
+    /// </summary>
+    public string BadgeText =>
+        IsScheduled || _lastRun is not null ? ScheduleDisplay : _strings[StudioStringKeys.TeamsToTest];
+
+    /// <summary>ok / warn / accent — the badge's tone name for the view's triggers.</summary>
+    public string BadgeTone => IsScheduled ? "ok" : _lastRun is null ? "warn" : "accent";
+
+    /// <summary>« Dernière exécution : … » / « Jamais exécutée » — the meta line's history part.</summary>
+    public string LastRunDisplay =>
+        _lastRun is { } startedAt
+            ? string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsLastRun],
+                startedAt.ToLocalTime().ToString("d", CultureInfo.CurrentCulture),
+                _strings[_lastOutcome == RunOutcome.Success ? StudioStringKeys.TeamsRunOk : StudioStringKeys.TeamsRunFail])
+            : _strings[StudioStringKeys.TeamsNeverRan];
+
+    /// <summary>« n agents » when the folder shows agent files.</summary>
+    public string? AgentCountDisplay =>
+        Summary.AgentCount is { } count
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaAgents], count)
+            : null;
+
+    /// <summary>Whether the agent-count meta part exists.</summary>
+    public bool HasAgentCount => Summary.AgentCount is not null;
+
+    /// <summary>« Réglage : X » — the meta line's model-profile part.</summary>
+    public string? ProfileDisplay =>
+        Summary.Profile is { Length: > 0 } profile
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSettingLabel], profile)
+            : null;
+
     internal void SetLastRun(DateTimeOffset? startedAt, RunOutcome? outcome)
     {
         if (_lastRun == startedAt && _lastOutcome == outcome)
@@ -110,7 +193,7 @@ public sealed class TeamCardViewModel : ObservableObject
 
         _lastRun = startedAt;
         _lastOutcome = outcome;
-        OnPropertiesChanged(nameof(LastRun), nameof(LastOutcome));
+        OnPropertiesChanged(nameof(LastRun), nameof(LastOutcome), nameof(LastRunDisplay), nameof(BadgeText), nameof(BadgeTone));
     }
 }
 
@@ -179,6 +262,12 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>Raised by "Créer une équipe" — the shell brings the wizard forward.</summary>
     public event EventHandler? CreateRequested;
+
+    /// <summary>Raised by « Changer les dossiers » — the shell opens the team-mounts modal.</summary>
+    public event EventHandler<TeamMountsRequestedEventArgs>? MountsRequested;
+
+    /// <summary>Raised by the card's Tester icon — the shell brings the trial screen forward.</summary>
+    public event EventHandler<TeamActionEventArgs>? TestRequested;
 
     /// <summary>The team cards.</summary>
     public ObservableCollection<TeamCardViewModel> Teams { get; } = [];
@@ -270,6 +359,26 @@ public sealed class TeamsViewModel : ObservableObject
 
     internal void RequestResume(ForgeSolutionSummary summary) =>
         ResumeRequested?.Invoke(this, new SessionResumeEventArgs(summary));
+
+    internal void RequestMounts(TeamCardViewModel card) =>
+        MountsRequested?.Invoke(this, new TeamMountsRequestedEventArgs(card));
+
+    internal void RequestTest(string path) => TestRequested?.Invoke(this, new TeamActionEventArgs(path));
+
+    internal void Export(string path)
+    {
+        if (_exportPicker?.Invoke() is { Length: > 0 } destination)
+            TeamCatalog.ExportTo(path, destination);
+    }
+
+    /// <summary>The export destination chooser — wired by the shell to the OS folder browser.</summary>
+    public Func<string?>? ExportDestinationPicker
+    {
+        get => _exportPicker;
+        set => _exportPicker = value;
+    }
+
+    private Func<string?>? _exportPicker;
 
     internal void Duplicate(string path)
     {

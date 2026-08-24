@@ -608,6 +608,334 @@
       </Border>
     </Grid>
 
+    <!-- ══════════ DOSSIERS DE L'ÉQUIPE (overlay, F-03) ══════════ -->
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnTeamMountsBackdropClick"
+          Visibility="{Binding TeamMounts.IsOpen, Converter={StaticResource BooleanToVisibility}}">
+      <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              CornerRadius="18" DataContext="{Binding TeamMounts}">
+        <StackPanel>
+          <StackPanel Margin="22,20,22,0">
+            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+                       Margin="0,6,0,0" Text="{Binding [TeamMounts_Sub], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <ToggleButton IsChecked="{Binding IsChecked}" Cursor="Hand" Margin="0,0,0,8">
+                    <ToggleButton.Template>
+                      <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Row" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                                CornerRadius="10" Padding="13,11">
+                          <DockPanel>
+                            <Border x:Name="Box" DockPanel.Dock="Left" Width="16" Height="16" CornerRadius="5"
+                                    BorderThickness="1.5" BorderBrush="{DynamicResource LineStrongBrush}"
+                                    Background="{DynamicResource PaperSunkBrush}" VerticalAlignment="Center" Margin="0,0,12,0">
+                              <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
+                                                   Foreground="{DynamicResource AccentFgBrush}" Visibility="Collapsed"/>
+                            </Border>
+                            <Border DockPanel.Dock="Right" CornerRadius="999" Padding="10,3" VerticalAlignment="Center"
+                                    Background="{DynamicResource PaperSunkBrush}">
+                              <Border.Style>
+                                <Style TargetType="Border">
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
+                                      <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Border.Style>
+                              <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding RightsLabel}">
+                                <TextBlock.Style>
+                                  <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                                    <Style.Triggers>
+                                      <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                      </DataTrigger>
+                                    </Style.Triggers>
+                                  </Style>
+                                </TextBlock.Style>
+                              </TextBlock>
+                            </Border>
+                            <StackPanel>
+                              <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}"
+                                         Text="{Binding VirtualPath}"/>
+                              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                                         TextTrimming="CharacterEllipsis" Text="{Binding PhysicalPath}"/>
+                            </StackPanel>
+                          </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                            <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="Tick" Property="Visibility" Value="Visible"/>
+                          </Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </ToggleButton.Template>
+                  </ToggleButton>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,4,0,0"
+                    Command="{Binding AddCommand}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [TeamMounts_AddAnother], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
+          </StackPanel>
+          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                  <TextBlock Text="{Binding [Act_Save], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}"/>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ══════════ ÉDITEUR D'AGENT (overlay, F-01) ══════════ -->
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnAgentEditorBackdropClick"
+          Visibility="{Binding CreateTeam.AgentEditor.IsOpen, Converter={StaticResource BooleanToVisibility}}">
+      <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              CornerRadius="18" DataContext="{Binding CreateTeam.AgentEditor}">
+        <StackPanel>
+          <StackPanel Margin="22,20,22,0">
+            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+                       Margin="0,6,0,0" Text="{Binding [AgentEd_Sub], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
+                       Text="{Binding [AgentEd_Name], Source={x:Static services:I18n.Instance}}"/>
+            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
+                       Text="{Binding [AgentEd_Does], Source={x:Static services:I18n.Instance}}"/>
+            <TextBox MinHeight="66" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                     Text="{Binding WhatItDoes, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
+                       Text="{Binding [AgentEd_Can], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding Chips}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Command="{Binding ToggleCommand}" Cursor="Hand" Margin="0,0,6,6">
+                    <Button.Template>
+                      <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chip" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                                CornerRadius="999" Padding="12,6">
+                          <TextBlock x:Name="Label" FontSize="12" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource InkMutedBrush}"
+                                     FontFamily="{StaticResource MonoFont}" Text="{Binding Tool}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                          <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter TargetName="Chip" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                            <Setter TargetName="Chip" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                          </DataTrigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Button.Template>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <DockPanel Margin="0,10,0,0">
+              <TextBlock DockPanel.Dock="Left" FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}"
+                         MinWidth="132" VerticalAlignment="Center"
+                         Text="{Binding [AgentEd_Scope], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" Text="{Binding ScopeInfo}"/>
+            </DockPanel>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Foreground="{DynamicResource InkFaintBrush}"
+                       Margin="0,9,0,0" TextTrimming="CharacterEllipsis" Text="{Binding KeyLine}"
+                       Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+          </StackPanel>
+          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                  <TextBlock Text="{Binding SaveLabel}"/>
+                </StackPanel>
+              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+              <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
+                      Visibility="{Binding IsNew, Converter={StaticResource InverseBooleanToVisibility}}">
+                <TextBlock Foreground="{DynamicResource DangerBrush}"
+                           Text="{Binding [AgentEd_Remove], Source={x:Static services:I18n.Instance}}"/>
+              </Button>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ══════════ AUTORISER UN DOSSIER (overlay, F-03 — au-dessus des deux autres) ══════════ -->
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnFolderPickerBackdropClick"
+          Visibility="{Binding FolderPicker.IsOpen, Converter={StaticResource BooleanToVisibility}}">
+      <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              CornerRadius="18" DataContext="{Binding FolderPicker}">
+        <StackPanel>
+          <StackPanel Margin="22,20,22,0">
+            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding [Picker_Title], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+                       Margin="0,6,0,0" Text="{Binding [Picker_Sub], Source={x:Static services:I18n.Instance}}"/>
+            <DockPanel Margin="0,14,0,0">
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding BrowseCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="hard-drive" Size="13" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [Picker_Browse], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <TextBox Style="{StaticResource InputMono}" Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"/>
+            </DockPanel>
+            <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="1" CornerRadius="11"
+                    MaxHeight="212" Margin="0,14,0,0">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Nodes}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Command="{Binding PickCommand}" Cursor="Hand">
+                        <Button.Template>
+                          <ControlTemplate TargetType="Button">
+                            <Border x:Name="Row" Background="Transparent"
+                                    BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,0,0,1"
+                                    Padding="12,8">
+                              <DockPanel Margin="{Binding Indent, Converter={StaticResource LeftIndent}}">
+                                <TextBlock DockPanel.Dock="Right" FontSize="11" Foreground="{DynamicResource InkFaintBrush}"
+                                           VerticalAlignment="Center" Text="{Binding Note}"
+                                           Visibility="{Binding HasNote, Converter={StaticResource BooleanToVisibility}}"/>
+                                <controls:LucideIcon DockPanel.Dock="Left" Kind="folder" Size="12"
+                                                     Foreground="{DynamicResource InkFaintBrush}" Margin="0,0,9,0"
+                                                     VerticalAlignment="Center"/>
+                                <TextBlock Style="{StaticResource MonoText}" FontSize="11.5"
+                                           Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" Text="{Binding Name}"/>
+                              </DockPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                              <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                              </DataTrigger>
+                              <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                              </Trigger>
+                            </ControlTemplate.Triggers>
+                          </ControlTemplate>
+                        </Button.Template>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
+                       Text="{Binding [Picker_RightsLabel], Source={x:Static services:I18n.Instance}}"/>
+            <Button Command="{Binding PickReadOnlyCommand}" Cursor="Hand" Margin="0,0,0,8">
+              <Button.Template>
+                <ControlTemplate TargetType="Button">
+                  <Border x:Name="Row" Background="{DynamicResource SurfaceBrush}"
+                          BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="13,10">
+                    <StackPanel Orientation="Horizontal">
+                      <Ellipse x:Name="Dot" Width="15" Height="15" StrokeThickness="1.5"
+                               Stroke="{DynamicResource LineStrongBrush}" Fill="{DynamicResource PaperSunkBrush}"
+                               VerticalAlignment="Center"/>
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0"
+                                 Text="{Binding [Picker_ReadOnly], Source={x:Static services:I18n.Instance}}"/>
+                      <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="11,0,0,0" VerticalAlignment="Center"
+                                 Text="{Binding [Picker_ReadOnly_Hint], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Border>
+                  <ControlTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsReadOnly}" Value="True">
+                      <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                      <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                      <Setter TargetName="Dot" Property="StrokeThickness" Value="4.5"/>
+                      <Setter TargetName="Dot" Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                      <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource SurfaceBrush}"/>
+                    </DataTrigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Button.Template>
+            </Button>
+            <Button Command="{Binding PickReadWriteCommand}" Cursor="Hand">
+              <Button.Template>
+                <ControlTemplate TargetType="Button">
+                  <Border x:Name="Row" Background="{DynamicResource SurfaceBrush}"
+                          BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="13,10">
+                    <StackPanel Orientation="Horizontal">
+                      <Ellipse x:Name="Dot" Width="15" Height="15" StrokeThickness="1.5"
+                               Stroke="{DynamicResource LineStrongBrush}" Fill="{DynamicResource PaperSunkBrush}"
+                               VerticalAlignment="Center"/>
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0"
+                                 Text="{Binding [Picker_ReadWrite], Source={x:Static services:I18n.Instance}}"/>
+                      <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="11,0,0,0" VerticalAlignment="Center"
+                                 Text="{Binding [Picker_ReadWrite_Hint], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Border>
+                  <ControlTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                      <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                      <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                      <Setter TargetName="Dot" Property="StrokeThickness" Value="4.5"/>
+                      <Setter TargetName="Dot" Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                      <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource SurfaceBrush}"/>
+                    </DataTrigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Button.Template>
+            </Button>
+          </StackPanel>
+          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                  <TextBlock Text="{Binding [Picker_Confirm], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                          Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
+                           Text="{Binding [Picker_WrittenAs], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="7,0,0,0" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" MaxWidth="260" Text="{Binding MountPreview}"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+    </Grid>
+
     <!-- ══════════ À PROPOS (overlay) ══════════ -->
     <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnAboutBackdropClick"
           Visibility="{Binding About.IsOpen, Converter={StaticResource BooleanToVisibility}}">

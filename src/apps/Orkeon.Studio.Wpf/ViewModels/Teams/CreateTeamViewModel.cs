@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Events;
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
@@ -49,8 +50,40 @@ public sealed class WizardChoice : ObservableObject
     public RelayCommand SelectCommand { get; }
 }
 
-/// <summary>One agent card of the "Composer" step, grouped from the proposal's steps.</summary>
-public sealed record WizardAgentCard(string Name, string Initial, string Role, int StepCount);
+/// <summary>One agent card of the "Composer" step — a blueprint agent, or a step-group fallback.</summary>
+public sealed class WizardAgentCard
+{
+    internal WizardAgentCard(string? key, string name, string initial, string role, IReadOnlyList<string> tools, Action<string?>? edit)
+    {
+        Key = key;
+        Name = name;
+        Initial = initial;
+        Role = role;
+        Tools = tools;
+        EditCommand = new RelayCommand(() => edit?.Invoke(key), () => edit is not null && key is not null);
+    }
+
+    /// <summary>The blueprint key — expert mono; null for a step-group fallback card.</summary>
+    public string? Key { get; }
+
+    /// <summary>Display name (the blueprint's role).</summary>
+    public string Name { get; }
+
+    /// <summary>The round avatar's letter.</summary>
+    public string Initial { get; }
+
+    /// <summary>What the agent does, in a sentence.</summary>
+    public string Role { get; }
+
+    /// <summary>The agent's own tools — the « Peut : » chips.</summary>
+    public IReadOnlyList<string> Tools { get; }
+
+    /// <summary>Whether the card carries tool chips.</summary>
+    public bool HasTools => Tools.Count > 0;
+
+    /// <summary>« Modifier » — the agent editor over this agent.</summary>
+    public RelayCommand EditCommand { get; }
+}
 
 /// <summary>One line of the trial checklist.</summary>
 public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail);
@@ -129,6 +162,12 @@ public sealed class CreateTeamViewModel : ObservableObject
         _teamsRoot = teamsRoot ?? TeamCatalog.DefaultRoot();
 
         RawLog = new RunLogViewModel(_strings);
+        AgentEditor = new AgentEditorViewModel(_strings);
+        AddAgentCommand = new RelayCommand(() => EditAgent(null), () => CanEditAgents);
+        AllowFolderCommand = new RelayCommand(() => AllowFolderRequested?.Invoke(this, EventArgs.Empty));
+        RemoveTeamMountCommand = new RelayCommand(
+            parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); OnPropertiesChanged(nameof(HasTeamMounts)); } },
+            parameter => parameter is string);
         ComposeNotes = new StepNotesViewModel(AskAssistant);
         TryNotes = new StepNotesViewModel(AskAssistant);
         AdoptNotes = new StepNotesViewModel(AskAssistant);
@@ -410,6 +449,62 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>The agent cards, grouped from the proposal's steps by role.</summary>
     public ObservableCollection<WizardAgentCard> Agents { get; } = [];
+
+    /// <summary>The agent editor modal (remediation v2, F-01).</summary>
+    public AgentEditorViewModel AgentEditor { get; }
+
+    /// <summary>
+    /// « Dossiers de cette équipe » — the mounts the adoption will record in the sidecar.
+    /// The trial itself runs on the forge bench's own sandbox mounts; these describe what
+    /// the adopted team will be allowed to see.
+    /// </summary>
+    public ObservableCollection<string> TeamMounts { get; } = [];
+
+    /// <summary>Whether any team mount is listed.</summary>
+    public bool HasTeamMounts => TeamMounts.Count > 0;
+
+    /// <summary>« Ajouter un agent ».</summary>
+    public RelayCommand AddAgentCommand { get; }
+
+    /// <summary>« Autoriser un dossier » — the shell opens the shared picker.</summary>
+    public RelayCommand AllowFolderCommand { get; }
+
+    /// <summary>Retires one mount chip.</summary>
+    public RelayCommand RemoveTeamMountCommand { get; }
+
+    /// <summary>Raised by « Autoriser un dossier » — the shell opens the shared folder picker.</summary>
+    public event EventHandler? AllowFolderRequested;
+
+    /// <summary>Adds the picker's choice to the team's future mounts.</summary>
+    public void AddTeamMount(MountDefinition mount)
+    {
+        ArgumentNullException.ThrowIfNull(mount);
+        TeamMounts.Add(mount.ToMountString());
+        OnPropertiesChanged(nameof(HasTeamMounts));
+    }
+
+    /// <summary>
+    /// « Modifier » is actionable only while the engine waits at its arbitration — that is
+    /// when the edit decision exists. During a trial the button waits with the engine.
+    /// </summary>
+    public bool CanEditAgents => _model.DecisionOptions.Contains("edit", StringComparer.Ordinal) && _model.BlueprintJson is not null;
+
+    /// <summary>Opens the agent editor — over an agent, or for a new one when null.</summary>
+    private void EditAgent(string? agentKey)
+    {
+        if (!CanEditAgents || _model.BlueprintJson is not { } blueprintJson)
+            return;
+
+        AgentEditor.Open(blueprintJson, agentKey, [.. TeamMounts], amended =>
+        {
+            // The engine owns the truth: the decision goes first, the amended blueprint
+            // follows, and everything is re-validated on its side of the wire.
+            _client.SendDecision("edit");
+            _client.SendBlueprint(amended);
+            _model.AcknowledgeDecision();
+            SyncFromModel();
+        });
+    }
 
     /// <summary>The proposal's plain-words rationale.</summary>
     public string? Rationale => _model.Proposal?.Rationale;
@@ -695,6 +790,7 @@ public sealed class CreateTeamViewModel : ObservableObject
                         Description = _need.Trim(),
                         Profile = AdoptProfileName,
                         Schedule = schedule,
+                        Mounts = TeamMounts.Count > 0 ? [.. TeamMounts] : null,
                     });
                     IsSaved = true;
                     TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));
@@ -901,8 +997,9 @@ public sealed class CreateTeamViewModel : ObservableObject
             nameof(VerdictScore), nameof(VerdictPassing), nameof(TokensSpent),
             nameof(SessionSlug), nameof(SessionDirectory),
             nameof(SavedPath), nameof(InstallCommand), nameof(HasInstallCommand),
-            nameof(CanSaveTeam), nameof(DecisionPending));
+            nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents));
         SaveTeamCommand.RaiseCanExecuteChanged();
+        AddAgentCommand.RaiseCanExecuteChanged();
     }
 
     private void SyncAgents()
@@ -911,15 +1008,37 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (_model.Proposal is not { } proposal)
             return;
 
+        if (proposal.Agents.Count > 0)
+        {
+            // The blueprint speaks for itself: one card per agent, its own goal and tools,
+            // and « Modifier » wired to the edit arbitration.
+            foreach (var agent in proposal.Agents)
+            {
+                Agents.Add(new WizardAgentCard(
+                    agent.Key,
+                    agent.Role,
+                    agent.Role.Length > 0 ? agent.Role[..1].ToUpperInvariant() : "?",
+                    agent.Goal is { Length: > 0 } goal
+                        ? goal
+                        : string.Join(" ", proposal.Steps.Where(step => step.AgentRole == agent.Role).Select(step => step.Description)),
+                    agent.Tools,
+                    EditAgent));
+            }
+
+            return;
+        }
+
         var fallback = _strings[StudioStringKeys.WizardAgentFallback];
         foreach (var group in proposal.Steps.GroupBy(s => s.AgentRole ?? fallback))
         {
             var name = group.Key;
             Agents.Add(new WizardAgentCard(
+                key: null,
                 name,
                 name.Length > 0 ? name[..1].ToUpperInvariant() : "?",
                 string.Join(" ", group.Select(s => s.Description)),
-                group.Count()));
+                tools: [],
+                edit: null));
         }
     }
 

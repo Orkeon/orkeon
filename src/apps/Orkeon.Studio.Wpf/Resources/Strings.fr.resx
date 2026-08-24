@@ -561,4 +561,55 @@
   <data name="Profile_Temperature_Hint" xml:space="preserve"><value>Vide : le moteur décide. Certains modèles imposent une valeur — Kimi K3 n'accepte que 1.</value></data>
   <data name="Profile_Lbl_Timeout" xml:space="preserve"><value>Délai de réponse (s, optionnel)</value></data>
   <data name="Profile_Timeout_Hint" xml:space="preserve"><value>Vide : 30 s. Les modèles raisonneurs (Kimi K3, modes thinking) demandent souvent 120–300 s.</value></data>
+  <data name="Vm_Picker_AlreadyMounted" xml:space="preserve"><value>déjà autorisé</value></data>
+  <data name="Vm_TeamMounts_Title" xml:space="preserve"><value>Dossiers de « {0} »</value></data>
+  <data name="Vm_TeamMounts_None" xml:space="preserve"><value>Sans dossier, cette équipe ne pourra ni lire ni écrire de fichier.</value></data>
+  <data name="Vm_TeamMounts_Summary" xml:space="preserve"><value>{0} dossiers : {1}</value></data>
+  <data name="Vm_AgentEditor_TitleAdd" xml:space="preserve"><value>Ajouter un agent</value></data>
+  <data name="Vm_AgentEditor_TitleEdit" xml:space="preserve"><value>Modifier l'agent</value></data>
+  <data name="Vm_AgentEditor_Add" xml:space="preserve"><value>Ajouter à l'équipe</value></data>
+  <data name="Picker_Title" xml:space="preserve"><value>Autoriser un dossier</value></data>
+  <data name="Picker_Sub" xml:space="preserve"><value>Choisissez le dossier, puis ce que les agents pourront en faire.</value></data>
+  <data name="Picker_Browse" xml:space="preserve"><value>Parcourir…</value></data>
+  <data name="Picker_RightsLabel" xml:space="preserve"><value>Ce que les agents pourront faire</value></data>
+  <data name="Picker_ReadOnly" xml:space="preserve"><value>Lecture seule</value></data>
+  <data name="Picker_ReadOnly_Hint" xml:space="preserve"><value>les agents lisent, ne modifient jamais</value></data>
+  <data name="Picker_ReadWrite" xml:space="preserve"><value>Lecture et écriture</value></data>
+  <data name="Picker_ReadWrite_Hint" xml:space="preserve"><value>les agents peuvent y écrire leurs résultats</value></data>
+  <data name="Picker_WrittenAs" xml:space="preserve"><value>Sera écrit comme</value></data>
+  <data name="Picker_Confirm" xml:space="preserve"><value>Autoriser ce dossier</value></data>
+  <data name="TeamMounts_Sub" xml:space="preserve"><value>Cochez ce que cette équipe peut voir. Tout dossier décoché lui devient invisible, même si d'autres équipes l'utilisent.</value></data>
+  <data name="TeamMounts_AddAnother" xml:space="preserve"><value>Autoriser un autre dossier…</value></data>
+  <data name="AgentEd_Sub" xml:space="preserve"><value>Un agent fait une seule chose. Décrivez-la en une phrase, puis n'ouvrez que les capacités nécessaires.</value></data>
+  <data name="AgentEd_Name" xml:space="preserve"><value>Nom</value></data>
+  <data name="AgentEd_Does" xml:space="preserve"><value>Ce qu'il fait</value></data>
+  <data name="AgentEd_Does_Placeholder" xml:space="preserve"><value>Ex. relit le résumé et vérifie que chaque affirmation vient d'une page citée</value></data>
+  <data name="AgentEd_Can" xml:space="preserve"><value>Ce qu'il peut faire</value></data>
+  <data name="AgentEd_Scope" xml:space="preserve"><value>Sur quel dossier</value></data>
+  <data name="AgentEd_Remove" xml:space="preserve"><value>Retirer de l'équipe</value></data>
+  <data name="AgentEd_Wait" xml:space="preserve"><value>L'essai en cours doit d'abord se terminer</value></data>
+  <data name="Vm_Dialog_ExportDestination" xml:space="preserve"><value>Choisissez où exporter l'équipe</value></data>
+  <data name="Wiz_TeamFolders" xml:space="preserve"><value>Dossiers de cette équipe</value></data>
+  <data name="Wiz_AllowFolder" xml:space="preserve"><value>Autoriser un dossier</value></data>
+  <data name="Wiz_FoldersHint" xml:space="preserve"><value>Ces dossiers seront enregistrés avec l'équipe au moment de l'adoption — l'essai, lui, tourne dans son bac à sable.</value></data>
+  <data name="Wiz_AgentCan" xml:space="preserve"><value>Peut :</value></data>
+  <data name="Wiz_Modify" xml:space="preserve"><value>Modifier</value></data>
+  <data name="Wiz_AddAgent" xml:space="preserve"><value>Ajouter un agent</value></data>
+  <data name="Vm_Teams_MountRo" xml:space="preserve"><value>{0} (lecture)</value></data>
+  <data name="Vm_Teams_MountRw" xml:space="preserve"><value>{0} (lecture, écriture)</value></data>
+  <data name="Vm_Teams_ToTest" xml:space="preserve"><value>à tester</value></data>
+  <data name="Vm_Teams_LastRun" xml:space="preserve"><value>Dernière exécution : {0}, {1}</value></data>
+  <data name="Vm_Teams_RunOk" xml:space="preserve"><value>réussie</value></data>
+  <data name="Vm_Teams_RunFail" xml:space="preserve"><value>échouée</value></data>
+  <data name="Vm_Teams_NeverRan" xml:space="preserve"><value>Jamais exécutée</value></data>
+  <data name="Teams_MountsLabel" xml:space="preserve"><value>Dossiers :</value></data>
+  <data name="Teams_NoMounts" xml:space="preserve"><value>Aucun dossier associé —</value></data>
+  <data name="Teams_ChangeMounts" xml:space="preserve"><value>Changer les dossiers</value></data>
+  <data name="Teams_Export" xml:space="preserve"><value>Exporter</value></data>
+  <data name="Teams_Test" xml:space="preserve"><value>Tester</value></data>
+  <data name="Teams_SettingLabel" xml:space="preserve"><value>Réglage : {0}</value></data>
+  <data name="Vm_Run_MetaReads" xml:space="preserve"><value>lit {0}</value></data>
+  <data name="Vm_Run_MetaWrites" xml:space="preserve"><value>écrit dans {0}</value></data>
+  <data name="Run_ValidateFirst" xml:space="preserve"><value>Validation à blanc d'abord</value></data>
+  <data name="Test_Console_Empty" xml:space="preserve"><value>En attente d'un essai…</value></data>
 </root>
