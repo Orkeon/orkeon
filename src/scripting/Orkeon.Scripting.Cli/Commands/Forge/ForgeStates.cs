@@ -70,6 +70,12 @@ internal enum ForgeTrigger
     /// <summary>The user (or <c>--auto</c>) asked for another cycle with the diagnosis folded in.</summary>
     RefineRequested,
 
+    /// <summary>
+    /// The user handed back an amended blueprint at the arbitration (<c>decision.made
+    /// {edit}</c> + <c>blueprint.edited</c>). Re-render without an LLM turn.
+    /// </summary>
+    BlueprintEdited,
+
     /// <summary>The user stopped the cycle.</summary>
     Abandon,
 

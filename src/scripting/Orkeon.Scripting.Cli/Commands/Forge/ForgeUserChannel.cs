@@ -18,6 +18,13 @@ internal interface IForgeUserChannel
     /// again; null means the channel closed.
     /// </summary>
     Task<string?> ReadDecisionAsync(IReadOnlyList<string> options, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads the amended blueprint that must follow a <c>decision.made {edit}</c>, as raw
+    /// JSON. The engine validates it in full — this only carries it. Null means the
+    /// channel closed.
+    /// </summary>
+    Task<string?> ReadBlueprintAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -109,6 +116,42 @@ internal sealed class JsonLinesUserChannel : IForgeUserChannel
             }
         }
     }
+
+    /// <inheritdoc />
+    public async Task<string?> ReadBlueprintAsync(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var line = await _input.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            if (line is null)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                var root = document.RootElement;
+
+                if (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("kind", out var kind)
+                    && kind.ValueKind == JsonValueKind.String
+                    && string.Equals(kind.GetString(), "blueprint.edited", StringComparison.Ordinal)
+                    && root.TryGetProperty("blueprint", out var blueprint)
+                    && blueprint.ValueKind == JsonValueKind.Object)
+                {
+                    return blueprint.GetRawText();
+                }
+            }
+            catch (JsonException)
+            {
+                // Same tolerance as messages: skip and keep reading.
+            }
+        }
+    }
 }
 
 /// <summary>
@@ -162,5 +205,16 @@ internal sealed class TerminalUserChannel : IForgeUserChannel
             if (options.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
                 return options.First(option => string.Equals(option, trimmed, StringComparison.OrdinalIgnoreCase));
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> ReadBlueprintAsync(CancellationToken cancellationToken)
+    {
+        // One pasted line of JSON. The terminal is the expert's channel: no editor is
+        // spawned, and a malformed paste comes back as the engine's validation error.
+        await _output.WriteAsync("blueprint json> ").ConfigureAwait(false);
+        await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+        return await _input.ReadLineAsync(cancellationToken).ConfigureAwait(false);
     }
 }

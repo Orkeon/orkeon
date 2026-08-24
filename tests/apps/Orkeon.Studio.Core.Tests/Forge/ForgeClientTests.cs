@@ -84,12 +84,18 @@ public class ForgeClientTests
         Assert.True(client.IsRunning);
         Assert.True(client.SendMessage("exemple.fr, chaque matin"));
         Assert.True(client.SendDecision("refine"));
+        // The edit path: the blueprint travels as a JSON object, never as a string —
+        // and what could never be a document at all is refused before the wire.
+        Assert.True(client.SendBlueprint("""{"crew":{"name":"veille"}}"""));
+        Assert.False(client.SendBlueprint("pas du json"));
+        Assert.False(client.SendBlueprint("""["un tableau"]"""));
         Assert.True(client.RequestCancellation());
         await run;
 
         Assert.Equal(
             ["""{"kind":"user.message","text":"exemple.fr, chaque matin"}""",
-             """{"kind":"decision.made","value":"refine"}"""],
+             """{"kind":"decision.made","value":"refine"}""",
+             """{"kind":"blueprint.edited","blueprint":{"crew":{"name":"veille"}}}"""],
             processes.InputLines);
         Assert.False(client.IsRunning);
         Assert.False(client.SendMessage("trop tard"));   // no child: said, not thrown

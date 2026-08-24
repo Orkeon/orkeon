@@ -950,6 +950,11 @@ public sealed class CreateTeamViewModel : ObservableObject
         Decisions.Clear();
         foreach (var option in _model.DecisionOptions)
         {
+            // "edit" is not a button: the agent editor's Save is its whole UI — it sends
+            // the decision and the amended blueprint itself.
+            if (string.Equals(option, "edit", StringComparison.Ordinal))
+                continue;
+
             var label = option switch
             {
                 "accept" => _strings[StudioStringKeys.WizardDecisionAccept],

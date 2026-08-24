@@ -402,7 +402,7 @@ internal static class ForgeCommand
                 new ValidateStage(knownTools),
                 new TestStage(new ForgeCrewTestBench(host.Services)),
                 new DiagnoseStage(new LlmForgeJudge(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
-                new VerdictStage(options.Auto, channel),
+                new VerdictStage(options.Auto, channel, knownTools),
             ]);
 
         var result = await engine

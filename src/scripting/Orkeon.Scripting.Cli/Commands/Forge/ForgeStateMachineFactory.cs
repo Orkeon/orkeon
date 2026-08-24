@@ -64,6 +64,11 @@ internal static class ForgeStateMachineFactory
             .AddTransition(ForgeState.Validate, ForgeTrigger.RepairNeeded, ForgeState.Blueprint)
             .AddTransition(ForgeState.Verdict, ForgeTrigger.RefineRequested, ForgeState.Blueprint)
 
+            // The user's own hand: an amended blueprint goes straight back to Render —
+            // deterministic, zero LLM tokens — and re-earns its verdict through the
+            // unchanged Validate/Test/Diagnose path.
+            .AddTransition(ForgeState.Verdict, ForgeTrigger.BlueprintEdited, ForgeState.Render)
+
             // The user may stop at the arbitration point.
             .AddTransition(ForgeState.Verdict, ForgeTrigger.Abandon, ForgeState.Abandoned);
 

@@ -119,7 +119,7 @@ public sealed class ForgeRunStagesTests : IDisposable
         new ValidateStage(ForgeDocuments.KnownTools),
         new TestStage(bench),
         new DiagnoseStage(judge),
-        new VerdictStage(auto, channel),
+        new VerdictStage(auto, channel, ForgeDocuments.KnownTools),
     ];
 
     private static ScriptedAssistant HappyAssistant() => new ScriptedAssistant()
@@ -133,7 +133,10 @@ public sealed class ForgeRunStagesTests : IDisposable
         var judge = new FakeJudge().Approves();
         var session = ForgeSession.Create(_workspace, "veille");
 
-        var result = await Engine(session, FullRunners(HappyAssistant(), new ScriptedUserChannel(), bench, judge))
+        // Interactive mode arbitrates even a passing verdict (remediation v2): the user
+        // may still amend an agent before adopting — accepting costs one click.
+        var channel = new ScriptedUserChannel().Decides("accept");
+        var result = await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
             .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(ForgeEngineOutcome.Ready, result.Outcome);
@@ -152,7 +155,7 @@ public sealed class ForgeRunStagesTests : IDisposable
             ["session.started", "stage.entered", "brief.ready", "stage.entered", "blueprint.ready",
              "stage.entered", "file.written", "file.written", "file.written", "file.written", "file.written",
              "stage.entered", "validation.result", "stage.entered", "run.started", "run.finished",
-             "cost.updated", "stage.entered", "verdict.ready", "stage.entered", "session.finished"],
+             "cost.updated", "stage.entered", "verdict.ready", "stage.entered", "decision.needed", "session.finished"],
             Kinds());
         Assert.Equal("ready", Events()[^1].GetProperty("status").GetString());
 
@@ -229,7 +232,7 @@ public sealed class ForgeRunStagesTests : IDisposable
         var judge = new FakeJudge();   // never queues anything: unavailable
         var session = ForgeSession.Create(_workspace, "veille");
 
-        var result = await Engine(session, FullRunners(assistant, new ScriptedUserChannel(), bench, judge))
+        var result = await Engine(session, FullRunners(assistant, new ScriptedUserChannel().Decides("accept"), bench, judge))
             .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Mechanically clean run → passing, at the threshold, announced as deterministic.
@@ -257,6 +260,73 @@ public sealed class ForgeRunStagesTests : IDisposable
         Assert.False(verdict.GetProperty("passing").GetBoolean());
         var finding = verdict.GetProperty("findings").EnumerateArray().First();
         Assert.Equal("blocking", finding.GetProperty("severity").GetString());
+    }
+
+    [Fact]
+    public async Task An_edited_blueprint_re_renders_re_tests_and_reaches_ready_without_an_llm_turn()
+    {
+        // The user renames the crew and drops the writer's file_write tool at the
+        // arbitration; the engine re-renders deterministically and re-earns its verdict.
+        var edited = ForgeDocuments.ValidBlueprint
+            .Replace("\"veille-fournisseur\"", "\"veille-matinale\"", StringComparison.Ordinal);
+        var bench = new FakeTestBench().Succeeds().Succeeds();
+        var judge = new FakeJudge().Approves().Approves();
+        var assistant = HappyAssistant();
+        var channel = new ScriptedUserChannel()
+            .Decides("edit").Edits(edited)
+            .Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        var result = await Engine(session, FullRunners(assistant, channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(ForgeEngineOutcome.Ready, result.Outcome);
+        // One brief turn + one blueprint turn: the edit consumed no assistant call.
+        Assert.Equal(2, assistant.Requests.Count);
+        // The edit re-rendered and re-tested: two bench runs, two snapshots.
+        Assert.Equal(2, bench.Executions);
+        Assert.True(Directory.Exists(Path.Combine(session.Directory, "runs", "2")));
+
+        // The amended blueprint was re-announced and persisted.
+        var announcements = Events().Where(e => e.GetProperty("kind").GetString() == "blueprint.ready").ToList();
+        Assert.Equal(2, announcements.Count);
+        Assert.Equal(
+            "veille-matinale",
+            announcements[1].GetProperty("blueprint").GetProperty("crew").GetProperty("name").GetString());
+        var saved = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
+        Assert.Equal("veille-matinale", saved!.Crew!.Name);
+    }
+
+    [Fact]
+    public async Task An_invalid_edit_is_refused_loudly_and_the_arbitration_reopens()
+    {
+        // First edit names a tool outside the catalogue; the engine refuses it with
+        // FORGE-BLUEPRINT-INVALID and asks again — the session never renders garbage.
+        var badTool = ForgeDocuments.ValidBlueprint
+            .Replace("\"web_scrape\"", "\"telepathy\"", StringComparison.Ordinal);
+        var bench = new FakeTestBench().Succeeds();
+        var judge = new FakeJudge().Approves();
+        var channel = new ScriptedUserChannel()
+            .Decides("edit").Edits(badTool)
+            .Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        var result = await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(ForgeEngineOutcome.Ready, result.Outcome);
+        Assert.Equal(1, bench.Executions);   // no re-render happened
+
+        var error = Events().Single(e => e.GetProperty("kind").GetString() == "error");
+        Assert.Equal("FORGE-BLUEPRINT-INVALID", error.GetProperty("code").GetString());
+        Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.Contains("telepathy", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+
+        // The arbitration was asked twice: once before the bad edit, once after.
+        Assert.Equal(2, Events().Count(e => e.GetProperty("kind").GetString() == "decision.needed"));
+        // The original blueprint survived untouched.
+        var saved = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
+        Assert.Equal("veille-fournisseur", saved!.Crew!.Name);
     }
 
     [Fact]

@@ -242,11 +242,34 @@ public sealed class ForgeClient
         return WriteLine(new { kind = ForgeEventKinds.UserMessage, text });
     }
 
-    /// <summary>Sends an arbitration (<c>accept</c>/<c>refine</c>/<c>abort</c>); false when no child is listening.</summary>
+    /// <summary>Sends an arbitration (<c>accept</c>/<c>refine</c>/<c>edit</c>/<c>abort</c>); false when no child is listening.</summary>
     public bool SendDecision(string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
         return WriteLine(new { kind = ForgeEventKinds.DecisionMade, value });
+    }
+
+    /// <summary>
+    /// Sends the amended blueprint that must follow <c>SendDecision("edit")</c>. The JSON
+    /// travels as an object, not a string — the engine re-validates it in full, so this
+    /// only refuses what could never be a document at all. False when no child listens.
+    /// </summary>
+    public bool SendBlueprint(string blueprintJson)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(blueprintJson);
+
+        JsonElement blueprint;
+        try
+        {
+            blueprint = JsonSerializer.Deserialize<JsonElement>(blueprintJson);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        return blueprint.ValueKind == JsonValueKind.Object
+            && WriteLine(new { kind = ForgeEventKinds.BlueprintEdited, blueprint });
     }
 
     /// <summary>Asks the running child to stop; false when nothing runs or it was already asked.</summary>

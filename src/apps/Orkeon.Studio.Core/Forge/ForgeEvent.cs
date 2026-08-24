@@ -67,4 +67,7 @@ public static class ForgeEventKinds
 
     /// <summary>Inbound: the user's arbitration (stdin).</summary>
     public const string DecisionMade = "decision.made";
+
+    /// <summary>Inbound: the amended blueprint that follows a <c>decision.made {edit}</c> (stdin).</summary>
+    public const string BlueprintEdited = "blueprint.edited";
 }

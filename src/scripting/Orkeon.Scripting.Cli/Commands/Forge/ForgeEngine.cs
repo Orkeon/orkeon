@@ -189,8 +189,10 @@ internal sealed class ForgeEngine
 
                 // Looping back is what iterations meter: the budget arbitrates before the
                 // machine moves, so a refused cycle costs nothing and the session stays
-                // exactly where it was — resumable with a raised budget.
-                if (outcome.Trigger is ForgeTrigger.RepairNeeded or ForgeTrigger.RefineRequested)
+                // exactly where it was — resumable with a raised budget. A user edit loops
+                // back too — no LLM turn, but its re-render/re-test is a cycle and its run
+                // needs its own number, or runs/N would be silently overwritten.
+                if (outcome.Trigger is ForgeTrigger.RepairNeeded or ForgeTrigger.RefineRequested or ForgeTrigger.BlueprintEdited)
                 {
                     if (!budget.CanStartIteration)
                         return FinishBudgetExhausted(ForgeBudgetDimension.Iterations);

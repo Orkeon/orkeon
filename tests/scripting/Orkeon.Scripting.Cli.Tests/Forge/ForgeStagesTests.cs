@@ -42,16 +42,24 @@ internal sealed class ScriptedAssistant : IForgeAssistant
     }
 }
 
-/// <summary>Scripted <see cref="IForgeUserChannel"/>: queued messages and decisions, then EOF.</summary>
+/// <summary>Scripted <see cref="IForgeUserChannel"/>: queued messages, decisions and blueprints, then EOF.</summary>
 internal sealed class ScriptedUserChannel(params string[] messages) : IForgeUserChannel
 {
     private readonly Queue<string> _messages = new(messages);
     private readonly Queue<string> _decisions = new();
+    private readonly Queue<string> _blueprints = new();
 
     /// <summary>Queues an arbitration answer.</summary>
     public ScriptedUserChannel Decides(string decision)
     {
         _decisions.Enqueue(decision);
+        return this;
+    }
+
+    /// <summary>Queues the blueprint an <c>edit</c> decision will hand back.</summary>
+    public ScriptedUserChannel Edits(string blueprintJson)
+    {
+        _blueprints.Enqueue(blueprintJson);
         return this;
     }
 
@@ -62,6 +70,10 @@ internal sealed class ScriptedUserChannel(params string[] messages) : IForgeUser
     /// <inheritdoc />
     public Task<string?> ReadDecisionAsync(IReadOnlyList<string> options, CancellationToken cancellationToken) =>
         Task.FromResult(_decisions.Count > 0 ? _decisions.Dequeue() : null);
+
+    /// <inheritdoc />
+    public Task<string?> ReadBlueprintAsync(CancellationToken cancellationToken) =>
+        Task.FromResult(_blueprints.Count > 0 ? _blueprints.Dequeue() : null);
 }
 
 /// <summary>

@@ -272,22 +272,26 @@ internal sealed class DiagnoseStage : IForgeStageRunner
 }
 
 /// <summary>
-/// The arbitration (SPEC-ORKEON-FORGE §10): conforming goes to Ready; anything else is the
-/// user's call — or <c>--auto</c>'s, which only ever refines within the budget. A refine
-/// folds the findings and suggestions back into the blueprint prompt, verbatim.
+/// The arbitration (SPEC-ORKEON-FORGE §10): in interactive mode every verdict is the
+/// user's call — <c>accept</c>, <c>refine</c>, <c>edit</c> (hand back an amended
+/// blueprint), or <c>abort</c>; <c>--auto</c> accepts a conforming verdict and only ever
+/// refines within the budget. A refine folds the findings and suggestions back into the
+/// blueprint prompt, verbatim; an edit re-renders deterministically, zero LLM tokens.
 /// </summary>
 internal sealed class VerdictStage : IForgeStageRunner
 {
-    private static readonly string[] DecisionOptions = ["accept", "refine", "abort"];
+    private static readonly string[] DecisionOptions = ["accept", "refine", "edit", "abort"];
 
     private readonly bool _auto;
     private readonly IForgeUserChannel _channel;
+    private readonly IReadOnlyCollection<string> _knownTools;
 
     /// <summary>Builds the stage; <paramref name="auto"/> arbitrates without a human.</summary>
-    public VerdictStage(bool auto, IForgeUserChannel channel)
+    public VerdictStage(bool auto, IForgeUserChannel channel, IReadOnlyCollection<string> knownTools)
     {
         _auto = auto;
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
+        _knownTools = knownTools ?? throw new ArgumentNullException(nameof(knownTools));
     }
 
     /// <inheritdoc />
@@ -308,33 +312,75 @@ internal sealed class VerdictStage : IForgeStageRunner
             };
         }
 
-        if (verdict.Passing)
-            return new ForgeStageOutcome { Trigger = ForgeTrigger.Accepted };
-
         if (_auto)
         {
+            if (verdict.Passing)
+                return new ForgeStageOutcome { Trigger = ForgeTrigger.Accepted };
+
             FeedRefine(session, verdict);
             return new ForgeStageOutcome { Trigger = ForgeTrigger.RefineRequested };
         }
 
-        events.Emit("decision.needed", new { options = DecisionOptions });
-        var decision = await _channel.ReadDecisionAsync(DecisionOptions, cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new OperationCanceledException("The user channel closed at the arbitration.");
-
-        switch (decision)
+        // Interactive mode asks even on a passing verdict (remediation v2): the user may
+        // still want to amend an agent before adopting, and "accept" costs one click.
+        while (true)
         {
-            case "accept":
-                // Keeping a non-conforming result is legitimate — the user judged on sight.
-                return new ForgeStageOutcome { Trigger = ForgeTrigger.Accepted };
+            events.Emit("decision.needed", new { options = DecisionOptions });
+            var decision = await _channel.ReadDecisionAsync(DecisionOptions, cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new OperationCanceledException("The user channel closed at the arbitration.");
 
-            case "refine":
-                FeedRefine(session, verdict);
-                return new ForgeStageOutcome { Trigger = ForgeTrigger.RefineRequested };
+            switch (decision)
+            {
+                case "accept":
+                    // Keeping a non-conforming result is legitimate — the user judged on sight.
+                    return new ForgeStageOutcome { Trigger = ForgeTrigger.Accepted };
 
-            default:
-                return new ForgeStageOutcome { Trigger = ForgeTrigger.Abandon };
+                case "refine":
+                    FeedRefine(session, verdict);
+                    return new ForgeStageOutcome { Trigger = ForgeTrigger.RefineRequested };
+
+                case "edit":
+                    if (await ReadEditedBlueprintAsync(session, events, cancellationToken).ConfigureAwait(false))
+                        return new ForgeStageOutcome { Trigger = ForgeTrigger.BlueprintEdited };
+                    // Invalid edit: the error is on the stream, the arbitration re-opens.
+                    continue;
+
+                default:
+                    return new ForgeStageOutcome { Trigger = ForgeTrigger.Abandon };
+            }
         }
+    }
+
+    /// <summary>
+    /// Reads and fully validates the amended blueprint — the same parse, compile and
+    /// tool-catalogue checks a generated one goes through. A valid edit replaces the
+    /// blueprint artifact and re-announces <c>blueprint.ready</c>; an invalid one is a
+    /// recoverable <c>FORGE-BLUEPRINT-INVALID</c> and the decision is asked again.
+    /// </summary>
+    private async Task<bool> ReadEditedBlueprintAsync(
+        ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
+    {
+        var json = await _channel.ReadBlueprintAsync(cancellationToken).ConfigureAwait(false)
+            ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
+
+        if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors))
+        {
+            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", errors), recoverable: true);
+            return false;
+        }
+
+        var compilation = ForgeBlueprintCompiler.Compile(blueprint!);
+        var validation = ForgeBlueprintCompiler.Validate(compilation, _knownTools);
+        if (validation.Errors.Count > 0)
+        {
+            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", validation.Errors), recoverable: true);
+            return false;
+        }
+
+        session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
+        events.Emit("blueprint.ready", new { blueprint, iteration = session.Document.Iteration });
+        return true;
     }
 
     /// <summary>The diagnosis becomes the next blueprint turn's error feed, verbatim (SPEC §4).</summary>
