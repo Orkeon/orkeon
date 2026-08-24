@@ -197,6 +197,18 @@ public sealed class ProfileTemperatureTests
     }
 
     [Fact]
+    public void The_pinned_timeout_rides_the_launch_and_a_non_positive_one_does_not()
+    {
+        var profile = new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", TimeoutSeconds = 180 };
+
+        Assert.Equal("180", profile.EnvironmentOverrides()["ORKEON_Llm__TimeoutSeconds"]);
+        Assert.False((profile with { TimeoutSeconds = null }).EnvironmentOverrides()
+            .ContainsKey("ORKEON_Llm__TimeoutSeconds"));
+        Assert.False((profile with { TimeoutSeconds = 0 }).EnvironmentOverrides()
+            .ContainsKey("ORKEON_Llm__TimeoutSeconds"));
+    }
+
+    [Fact]
     public async Task The_temperature_round_trips_through_the_file_store()
     {
         var path = Path.Combine(Path.GetTempPath(), $"orkeon-profiles-{Guid.NewGuid():N}.json");
@@ -205,12 +217,13 @@ public sealed class ProfileTemperatureTests
             var store = new ModelProfileFileStore(path);
             await store.SaveAsync(new ModelProfileSet
             {
-                Profiles = [new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", Temperature = 1 }],
+                Profiles = [new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", Temperature = 1, TimeoutSeconds = 180 }],
             }, TestContext.Current.CancellationToken);
 
             var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(1, loaded.Profiles[0].Temperature);
+            Assert.Equal(180, loaded.Profiles[0].TimeoutSeconds);
         }
         finally
         {

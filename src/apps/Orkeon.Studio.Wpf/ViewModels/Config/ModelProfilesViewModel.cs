@@ -95,6 +95,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string _apiKeyInput = "";
     private string? _connectionTestResult;
     private string _temperatureText = "";
+    private string _timeoutText = "";
 
     internal ModelProfileEditorViewModel(
         ModelProfilesViewModel owner,
@@ -117,6 +118,9 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         _apiKeyEnv = profile.KeyEnvName;
         _temperatureText = profile.Temperature is { } temperature
             ? temperature.ToString(CultureInfo.InvariantCulture)
+            : "";
+        _timeoutText = profile.TimeoutSeconds is { } timeout
+            ? timeout.ToString(CultureInfo.InvariantCulture)
             : "";
         _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Title, profile.Provider, StringComparison.Ordinal));
 
@@ -336,6 +340,22 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         set => SetProperty(ref _temperatureText, value ?? "");
     }
 
+    /// <summary>
+    /// The pinned HTTP timeout in seconds, as typed — empty for the engine's default (30 s).
+    /// Reasoning models (Kimi K3, thinking modes) need more than the default to answer.
+    /// </summary>
+    public string TimeoutText
+    {
+        get => _timeoutText;
+        set => SetProperty(ref _timeoutText, value ?? "");
+    }
+
+    /// <summary>The typed timeout, or null when empty, unparseable, or non-positive.</summary>
+    public int? ParsedTimeoutSeconds =>
+        int.TryParse(_timeoutText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
+            ? value
+            : null;
+
     /// <summary>The typed temperature, or null when empty or unparseable.</summary>
     public double? ParsedTemperature =>
         double.TryParse(_temperatureText.Trim().Replace(',', '.'),
@@ -358,6 +378,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             Model = _model,
             BaseUrl = _baseUrl,
             Temperature = ParsedTemperature,
+            TimeoutSeconds = ParsedTimeoutSeconds,
             KeyEnvName = RequiresApiKey ? ApiKeyEnvName : null,
         }, PreviousName);
     }

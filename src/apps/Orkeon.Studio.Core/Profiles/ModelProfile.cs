@@ -39,6 +39,13 @@ public sealed record ModelProfile
     /// </summary>
     public double? Temperature { get; init; }
 
+    /// <summary>
+    /// HTTP timeout in seconds this profile pins, or null for the engine's default (30 s).
+    /// Reasoning models (Kimi K3, thinking modes) routinely take longer than the default
+    /// to produce their first byte — pin a larger value here.
+    /// </summary>
+    public int? TimeoutSeconds { get; init; }
+
     /// <summary>Endpoint base URL.</summary>
     [SuppressMessage("Design", "CA1056",
         Justification = "User-typed form value round-tripped verbatim into a JSON string field; " +
@@ -82,6 +89,8 @@ public sealed record ModelProfile
             overrides["ORKEON_Llm__BaseUrl"] = BaseUrl;
         if (Temperature is { } temperature)
             overrides["ORKEON_Llm__Temperature"] = temperature.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (TimeoutSeconds is { } timeout and > 0)
+            overrides["ORKEON_Llm__TimeoutSeconds"] = timeout.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (KeyEnvName is { Length: > 0 } name
             && environment(name) is { } key
             && !string.IsNullOrWhiteSpace(key))

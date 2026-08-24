@@ -423,7 +423,12 @@ public sealed class EditorTemperatureTests
         profiles.Editor.TemperatureText = "0,7"; // a French keyboard types the comma
         Assert.Equal(0.7, profiles.Editor.ParsedTemperature);
 
+        profiles.Editor.TimeoutText = "180";
+        Assert.Equal(180, profiles.Editor.ParsedTimeoutSeconds);
+
         profiles.Editor.SaveCommand.Execute(null);
-        Assert.Equal(0.7, (await store.LoadAsync(TestContext.Current.CancellationToken)).Profiles[0].Temperature);
+        var saved = (await store.LoadAsync(TestContext.Current.CancellationToken)).Profiles[0];
+        Assert.Equal(0.7, saved.Temperature);
+        Assert.Equal(180, saved.TimeoutSeconds);
     }
 }

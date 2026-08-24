@@ -473,18 +473,29 @@
               </StackPanel>
             </Grid>
 
-            <!-- pinned temperature: empty = the engine decides; some models mandate one
-                 (Kimi K3: 1) and pinning it here makes the first request right. -->
-            <StackPanel Margin="0,14,0,0"
-                        Visibility="{Binding ShowFields, Converter={StaticResource BooleanToVisibility}}">
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Profile_Lbl_Temperature], Source={x:Static services:I18n.Instance}}"/>
-              <DockPanel LastChildFill="False">
-                <TextBox Style="{StaticResource InputMono}" Width="90"
+            <!-- pinned temperature & timeout: empty = the engine decides. Some models
+                 mandate a temperature (Kimi K3: 1); reasoning models need more than the
+                 default 30 s to answer. -->
+            <Grid Margin="0,14,0,0"
+                  Visibility="{Binding ShowFields, Converter={StaticResource BooleanToVisibility}}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Profile_Lbl_Temperature], Source={x:Static services:I18n.Instance}}"/>
+                <TextBox Style="{StaticResource InputMono}" Width="90" HorizontalAlignment="Left"
                          Text="{Binding TemperatureText, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
                            Text="{Binding [Profile_Temperature_Hint], Source={x:Static services:I18n.Instance}}"/>
-              </DockPanel>
-            </StackPanel>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Profile_Lbl_Timeout], Source={x:Static services:I18n.Instance}}"/>
+                <TextBox Style="{StaticResource InputMono}" Width="90" HorizontalAlignment="Left"
+                         Text="{Binding TimeoutText, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                           Text="{Binding [Profile_Timeout_Hint], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Grid>
 
             <!-- API key — novice-visible. The key goes into the user environment, never
                  into a file; the status chip says whether one is already in place. -->

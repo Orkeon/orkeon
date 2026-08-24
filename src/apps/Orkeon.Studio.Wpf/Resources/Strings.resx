@@ -559,4 +559,6 @@
   <data name="Run_Journal_Copy" xml:space="preserve"><value>Copy</value></data>
   <data name="Profile_Lbl_Temperature" xml:space="preserve"><value>Temperature (optional)</value></data>
   <data name="Profile_Temperature_Hint" xml:space="preserve"><value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
+  <data name="Profile_Lbl_Timeout" xml:space="preserve"><value>Response timeout (s, optional)</value></data>
+  <data name="Profile_Timeout_Hint" xml:space="preserve"><value>Empty: 30 s. Reasoning models (Kimi K3, thinking modes) often need 120–300 s.</value></data>
 </root>

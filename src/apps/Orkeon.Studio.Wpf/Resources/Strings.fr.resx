@@ -559,4 +559,6 @@
   <data name="Run_Journal_Copy" xml:space="preserve"><value>Copier</value></data>
   <data name="Profile_Lbl_Temperature" xml:space="preserve"><value>Température (optionnel)</value></data>
   <data name="Profile_Temperature_Hint" xml:space="preserve"><value>Vide : le moteur décide. Certains modèles imposent une valeur — Kimi K3 n'accepte que 1.</value></data>
+  <data name="Profile_Lbl_Timeout" xml:space="preserve"><value>Délai de réponse (s, optionnel)</value></data>
+  <data name="Profile_Timeout_Hint" xml:space="preserve"><value>Vide : 30 s. Les modèles raisonneurs (Kimi K3, modes thinking) demandent souvent 120–300 s.</value></data>
 </root>
