@@ -47,6 +47,10 @@ public partial class App : System.Windows.Application
             I18n.Instance.SetLanguage(preferences.Language);
         }
 
+        // The operator's CLI directory must be in force before any locator is built —
+        // the ViewModel below wires the runner, the forge client and the run client.
+        Orkeon.Studio.Core.Process.OrkeonBinaryLocator.DirectoryOverride = arguments.CliDirectory;
+
         // The ViewModel is built here, before the smoke switch is honoured — but building it only
         // wires the seams together. Everything that touches the machine (locating the co-installed
         // CLI, reading the history file) is deferred to InitializeAsync below, which a smoke run

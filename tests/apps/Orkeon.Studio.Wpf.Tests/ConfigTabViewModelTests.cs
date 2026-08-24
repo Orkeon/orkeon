@@ -250,4 +250,21 @@ public sealed class ConfigTabViewModelTests
         Assert.False(tab.Llm.Exists);
         Assert.False(tab.IsDirty);
     }
+    [Fact]
+    public void The_validation_findings_are_copyable_as_plain_text()
+    {
+        var tab = Build();
+        tab.ValidateCommand.Execute(null);
+
+        Assert.True(tab.CanCopyValidation == (tab.ValidationMessages.Count > 0));
+        if (tab.CanCopyValidation)
+        {
+            var report = tab.BuildValidationReport();
+            Assert.All(tab.ValidationMessages, m =>
+                Assert.Contains(m.Display, report, StringComparison.Ordinal));
+            if (tab.ValidationSummary is { Length: > 0 } summary)
+                Assert.Contains(summary, report, StringComparison.Ordinal);
+        }
+    }
+
 }

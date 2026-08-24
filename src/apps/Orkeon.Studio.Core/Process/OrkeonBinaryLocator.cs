@@ -8,8 +8,14 @@ public enum BinarySource
     /// <summary>Not found anywhere.</summary>
     NotFound,
 
+    /// <summary>In the directory the operator named (the <c>--cli-dir</c> argument).</summary>
+    ExplicitDirectory,
+
     /// <summary>Next to Studio — the co-installed binary the packages guarantee.</summary>
     InstallDirectory,
+
+    /// <summary>In the directory named by the <c>ORKEON_CLI_DIR</c> environment variable.</summary>
+    EnvironmentVariable,
 
     /// <summary>On <c>PATH</c> — a separately installed CLI.</summary>
     SearchPath,
@@ -63,8 +69,22 @@ public sealed class OrkeonBinaryLocator
     /// <summary>Name of the CLI executable, without extension.</summary>
     public const string ExecutableBaseName = "orkeon";
 
+    /// <summary>Environment variable naming the directory that holds the CLI.</summary>
+    public const string DirectoryEnvironmentVariable = "ORKEON_CLI_DIR";
+
+    /// <summary>
+    /// Process-wide directory override, set once at startup from the front-end's
+    /// <c>--cli-dir</c> argument. Ambient on purpose: the three CLI clients
+    /// (runner, forge, run) all build their default locator through
+    /// <see cref="ForCurrentMachine"/>, and the operator's choice must reach every one
+    /// of them without re-plumbing each seam.
+    /// </summary>
+    public static string? DirectoryOverride { get; set; }
+
     private readonly IExecutableProbe _probe;
     private readonly IReadOnlyList<string> _fileNames;
+    private readonly string? _explicitDirectory;
+    private readonly Func<string, string?> _environment;
 
     /// <summary>Creates a locator over <paramref name="probe"/>.</summary>
     /// <param name="probe">File-system and <c>PATH</c> access used for the lookup.</param>
@@ -72,14 +92,21 @@ public sealed class OrkeonBinaryLocator
     /// Candidate file names, most specific first; defaults to the platform's
     /// (<c>orkeon.exe</c> then <c>orkeon</c> on Windows, <c>orkeon</c> elsewhere).
     /// </param>
-    public OrkeonBinaryLocator(IExecutableProbe probe, IReadOnlyList<string>? fileNames = null)
+    public OrkeonBinaryLocator(
+        IExecutableProbe probe,
+        IReadOnlyList<string>? fileNames = null,
+        string? explicitDirectory = null,
+        Func<string, string?>? environment = null)
     {
         _probe = probe ?? throw new ArgumentNullException(nameof(probe));
         _fileNames = fileNames is { Count: > 0 } ? fileNames : DefaultFileNames();
+        _explicitDirectory = explicitDirectory;
+        _environment = environment ?? Environment.GetEnvironmentVariable;
     }
 
-    /// <summary>A locator over the real machine.</summary>
-    public static OrkeonBinaryLocator ForCurrentMachine() => new(PhysicalExecutableProbe.Instance);
+    /// <summary>A locator over the real machine, honouring <see cref="DirectoryOverride"/>.</summary>
+    public static OrkeonBinaryLocator ForCurrentMachine() =>
+        new(PhysicalExecutableProbe.Instance, explicitDirectory: DirectoryOverride);
 
     /// <summary>The executable names to try on the current platform.</summary>
     public static IReadOnlyList<string> DefaultFileNames() =>
@@ -96,12 +123,29 @@ public sealed class OrkeonBinaryLocator
     {
         var probed = new List<string>();
 
+        // 1. The directory the operator named beats everything: an explicit choice must
+        //    never lose to whatever happens to sit next to Studio.
+        if (_explicitDirectory is { Length: > 0 } explicitDirectory
+            && TryDirectory(explicitDirectory, probed, out var explicitFound))
+        {
+            return new BinaryLocation { Path = explicitFound, Source = BinarySource.ExplicitDirectory, ProbedPaths = probed };
+        }
+
+        // 2. Next to the executable — the layout every package guarantees.
         foreach (var directory in InstallDirectories())
         {
             if (TryDirectory(directory, probed, out var found))
                 return new BinaryLocation { Path = found, Source = BinarySource.InstallDirectory, ProbedPaths = probed };
         }
 
+        // 3. The environment variable — machine-wide configuration without a flag.
+        if (_environment(DirectoryEnvironmentVariable) is { Length: > 0 } environmentDirectory
+            && TryDirectory(environmentDirectory.Trim(), probed, out var environmentFound))
+        {
+            return new BinaryLocation { Path = environmentFound, Source = BinarySource.EnvironmentVariable, ProbedPaths = probed };
+        }
+
+        // 4. PATH, then 5. the development checkout.
         foreach (var directory in _probe.SearchPathDirectories)
         {
             if (TryDirectory(directory, probed, out var found))
@@ -120,10 +164,12 @@ public sealed class OrkeonBinaryLocator
             ProbedPaths = probed,
             Error =
                 $"The `{ExecutableBaseName}` command-line tool was not found. Studio runs crews by " +
-                $"invoking it, so nothing can be launched until it is installed. It normally sits next " +
-                $"to Studio ({_probe.BaseDirectory}); reinstall the Orkeon package to restore it, or " +
-                $"install the CLI separately and make sure its directory is on PATH. In a " +
-                $"development checkout, build it first: dotnet build src/scripting/Orkeon.Scripting.Cli.",
+                $"invoking it, so nothing can be launched until it is installed. Looked, in order: " +
+                $"the --cli-dir argument, next to Studio ({_probe.BaseDirectory}), the " +
+                $"{DirectoryEnvironmentVariable} environment variable, PATH, and the development " +
+                $"checkout. Reinstall the Orkeon package, point --cli-dir or " +
+                $"{DirectoryEnvironmentVariable} at the CLI's directory, or in a checkout build it " +
+                $"first: dotnet build src/scripting/Orkeon.Scripting.Cli.",
         };
     }
 

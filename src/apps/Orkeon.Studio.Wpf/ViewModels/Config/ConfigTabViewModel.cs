@@ -156,6 +156,32 @@ public sealed class ConfigTabViewModel : ObservableObject
     /// <summary>Whether a save must be refused: the validation found at least one error.</summary>
     public bool HasBlockingErrors => ValidationMessages.Any(m => m.IsError);
 
+    /// <summary>There is something to copy once a validation has produced messages.</summary>
+    public bool CanCopyValidation => ValidationMessages.Count > 0;
+
+    /// <summary>
+    /// The last validation as plain text, for the clipboard: the summary line then one line
+    /// per message (severity + the validator's own untranslated output). WPF text blocks are
+    /// not selectable; this is how the findings leave the window.
+    /// </summary>
+    public string BuildValidationReport()
+    {
+        var lines = new List<string>();
+        if (ValidationSummary is { Length: > 0 } summary)
+            lines.Add(summary);
+
+        if (ValidationMessages.Count > 0)
+        {
+            if (lines.Count > 0)
+                lines.Add("");
+            lines.AddRange(ValidationMessages.Select(m =>
+                string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                    $"[{m.Severity}] {m.Display}")));
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
     /// <summary>
     /// Whether the WIN-01 warning applies: no <c>Llm</c> section, so the runtime will silently
     /// degrade to the echo provider (spec §4.4).

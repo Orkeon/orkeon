@@ -169,4 +169,57 @@ public sealed class OrkeonBinaryLocatorTests
         Assert.False(new OrkeonBinaryLocator(installed, UnixNames).Locate().Found);
     }
 
+    [Fact]
+    public void The_operators_directory_beats_the_binary_next_to_studio()
+    {
+        var installDir = Path.Combine("/", "opt", "orkeon");
+        var chosenDir = Path.Combine("/", "srv", "cli");
+        var probe = new FakeExecutableProbe { BaseDirectory = installDir }
+            .WithFile(Path.Combine(installDir, "orkeon"))
+            .WithFile(Path.Combine(chosenDir, "orkeon"));
+
+        var location = new OrkeonBinaryLocator(probe, UnixNames, explicitDirectory: chosenDir).Locate();
+
+        Assert.Equal(Path.Combine(chosenDir, "orkeon"), location.Path);
+        Assert.Equal(BinarySource.ExplicitDirectory, location.Source);
+    }
+
+    [Fact]
+    public void The_environment_variable_is_read_after_the_install_directory_and_before_path()
+    {
+        var envDir = Path.Combine("/", "srv", "env-cli");
+        var pathDir = Path.Combine("/", "usr", "bin");
+        var probe = new FakeExecutableProbe { BaseDirectory = Path.Combine("/", "opt", "orkeon") }
+            .WithPathDirectories(pathDir)
+            .WithFile(Path.Combine(envDir, "orkeon"))
+            .WithFile(Path.Combine(pathDir, "orkeon"));
+
+        var location = new OrkeonBinaryLocator(
+            probe, UnixNames,
+            environment: name => name == OrkeonBinaryLocator.DirectoryEnvironmentVariable ? envDir : null).Locate();
+
+        Assert.Equal(Path.Combine(envDir, "orkeon"), location.Path);
+        Assert.Equal(BinarySource.EnvironmentVariable, location.Source);
+
+        // But the install directory still wins over the variable.
+        var installed = new FakeExecutableProbe { BaseDirectory = Path.Combine("/", "opt", "orkeon") }
+            .WithFile(Path.Combine("/", "opt", "orkeon", "orkeon"))
+            .WithFile(Path.Combine(envDir, "orkeon"));
+        var installedLocation = new OrkeonBinaryLocator(
+            installed, UnixNames,
+            environment: _ => envDir).Locate();
+        Assert.Equal(BinarySource.InstallDirectory, installedLocation.Source);
+    }
+
+    [Fact]
+    public void The_not_found_message_names_every_lookup_in_order()
+    {
+        var location = new OrkeonBinaryLocator(
+            new FakeExecutableProbe { BaseDirectory = "/opt/orkeon" }, UnixNames, environment: _ => null).Locate();
+
+        Assert.Contains("--cli-dir", location.Error, StringComparison.Ordinal);
+        Assert.Contains(OrkeonBinaryLocator.DirectoryEnvironmentVariable, location.Error, StringComparison.Ordinal);
+        Assert.Contains("PATH", location.Error, StringComparison.Ordinal);
+    }
+
 }

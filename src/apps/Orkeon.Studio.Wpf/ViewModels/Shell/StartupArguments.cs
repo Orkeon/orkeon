@@ -17,6 +17,9 @@ public sealed record StartupArguments
     /// </summary>
     public const string CaptureScreensSwitch = "--capture-screens";
 
+    /// <summary>Names the directory holding the `orkeon` CLI — beats every other lookup.</summary>
+    public const string CliDirectorySwitch = "--cli-dir";
+
     /// <summary>
     /// Exit code for an argument Studio does not accept — the same contract as the two terminal
     /// front-ends, so a typo in a shortcut or a script fails loudly instead of silently opening
@@ -34,6 +37,9 @@ public sealed record StartupArguments
     /// <summary>Directory the screenshot campaign writes into; null when not asked for.</summary>
     public string? CaptureScreensDirectory { get; init; }
 
+    /// <summary>Directory holding the `orkeon` CLI; null when not named.</summary>
+    public string? CliDirectory { get; init; }
+
     /// <summary>The arguments that were not recognised, kept so they can be reported rather than ignored.</summary>
     public IReadOnlyList<string> Unrecognized { get; init; } = [];
 
@@ -45,6 +51,7 @@ public sealed record StartupArguments
 
         var smokeExit = false;
         string? captureDirectory = null;
+        string? cliDirectory = null;
         var unrecognized = new List<string>();
 
         for (var i = 0; i < arguments.Count; i++)
@@ -62,6 +69,13 @@ public sealed record StartupArguments
                 else
                     unrecognized.Add(argument);
             }
+            else if (string.Equals(argument, CliDirectorySwitch, StringComparison.Ordinal))
+            {
+                if (i + 1 < arguments.Count && !string.IsNullOrWhiteSpace(arguments[i + 1]))
+                    cliDirectory = arguments[++i];
+                else
+                    unrecognized.Add(argument);
+            }
             else if (!string.IsNullOrWhiteSpace(argument))
             {
                 unrecognized.Add(argument);
@@ -72,6 +86,7 @@ public sealed record StartupArguments
         {
             SmokeExit = smokeExit,
             CaptureScreensDirectory = captureDirectory,
+            CliDirectory = cliDirectory,
             Unrecognized = unrecognized,
         };
     }
@@ -82,6 +97,7 @@ public sealed record StartupArguments
         ArgumentNullException.ThrowIfNull(unrecognized);
 
         return $"Unrecognized argument(s): {string.Join(", ", unrecognized)}. "
-            + $"Orkeon Studio accepts only {SmokeExitSwitch} and {CaptureScreensSwitch} <directory>.";
+            + $"Orkeon Studio accepts only {SmokeExitSwitch}, {CaptureScreensSwitch} <directory> "
+            + $"and {CliDirectorySwitch} <directory>.";
     }
 }

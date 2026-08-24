@@ -34,12 +34,19 @@ The Diagnostic screen gains **"Copier le rapport"**: WPF text blocks are not
 selectable, so the whole `orkeon doctor` result (verdict, every check verbatim, parse
 error if any) is now one click away from the clipboard.
 
+The Settings screen's validation card gains the same copy affordance as the
+diagnostic ("Copier le rapport"): summary line plus every finding with its severity,
+verbatim.
+
 `OrkeonBinaryLocator` learns the **development-checkout layout**: when Studio runs
 from its own `bin/` inside a clone (detected by walking up to `Orkeon.sln`), it probes
 `src/scripting/Orkeon.Scripting.Cli/bin/<Configuration>/<tfm>/` — same configuration
 first, the sibling second — so F5-from-the-IDE finds the CLI the repo just built
 instead of reporting it missing. The not-found message now names the dev gesture
-(`dotnet build src/scripting/Orkeon.Scripting.Cli`).
+(`dotnet build src/scripting/Orkeon.Scripting.Cli`) — and the whole lookup is now
+operator-steerable, in order: the **`--cli-dir <dir>`** argument (WPF app), **next to
+the executable**, the **`ORKEON_CLI_DIR`** environment variable, `PATH`, then the
+development checkout. The not-found message lists that exact order.
 
 ### Changed — Full documentation audit against the implementation (DOC-04)
 

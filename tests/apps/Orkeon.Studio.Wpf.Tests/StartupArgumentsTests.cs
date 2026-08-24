@@ -85,4 +85,14 @@ public sealed class StartupArgumentsTests
         Assert.Contains("--capture-screens", arguments.Unrecognized);
     }
 
+    [Fact]
+    public void The_cli_dir_switch_takes_its_directory_and_refuses_to_come_bare()
+    {
+        Assert.Equal(@"C:/tools/orkeon", StartupArguments.Parse(["--cli-dir", "C:/tools/orkeon"]).CliDirectory);
+
+        var bare = StartupArguments.Parse(["--cli-dir"]);
+        Assert.Null(bare.CliDirectory);
+        Assert.Contains("--cli-dir", bare.Unrecognized);
+    }
+
 }

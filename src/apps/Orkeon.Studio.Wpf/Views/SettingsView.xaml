@@ -70,10 +70,16 @@
     <Border Style="{StaticResource Card}" Margin="0,16,0,0"
             Visibility="{Binding Config.ValidationMessages.Count, Converter={StaticResource CountToVisibility}}">
       <StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-          <controls:LucideIcon Kind="badge-check" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-          <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Val_Title], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
+        <DockPanel Margin="0,0,0,4" LastChildFill="False">
+          <controls:LucideIcon Kind="badge-check" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+          <TextBlock Style="{StaticResource CardTitle}" VerticalAlignment="Center" Text="{Binding [Val_Title], Source={x:Static services:I18n.Instance}}"/>
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Click="OnCopyValidation">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
+              <TextBlock FontSize="11.5" Text="{Binding [Diag_CopyReport], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+        </DockPanel>
         <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" Text="{Binding Config.ValidationSummary}"/>
         <ItemsControl ItemsSource="{Binding Config.ValidationMessages}">
           <ItemsControl.ItemTemplate>
