@@ -345,6 +345,15 @@ public sealed class ForgeSessionModel
         if (!orkeonEvent.Root.TryGetProperty("blueprint", out var blueprint) || blueprint.ValueKind != JsonValueKind.Object)
             return;
 
+        // The crew's short name ("veille-matinale") supersedes the brief's goal sentence
+        // as the display title: the adoption slug derives from it, and a goal-length slug
+        // makes a 200-character folder name (the owner met one).
+        if (blueprint.TryGetProperty("crew", out var crew) && crew.ValueKind == JsonValueKind.Object
+            && ReadString(crew, "name") is { Length: > 0 } crewName)
+        {
+            Title = crewName;
+        }
+
         // agent key → role, so the steps can speak in roles, not keys.
         var roles = new Dictionary<string, string>(StringComparer.Ordinal);
         var tools = new List<string>();

@@ -253,6 +253,14 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         sb.AppendLine(CultureInfo.InvariantCulture, $"Task: {task.Description}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"Expected output: {task.ExpectedOutput}");
 
+        // ToolCall deliverables are written by the agent itself: name the path, or the
+        // agent guesses one (see AgentPromptComposer.AppendDeliverableInstruction).
+        if (task.Deliverable is { Source: Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall, Path.Length: > 0 } deliverable)
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"Deliverable: write the final result to '{deliverable.Path}' using the file_write tool.");
+        }
+
         if (context.PreviousOutputs.Count > 0)
         {
             sb.AppendLine("\nContext from previous tasks:");

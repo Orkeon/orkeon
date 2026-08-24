@@ -444,8 +444,21 @@ public static partial class TeamCatalog
         }
 
         var slug = builder.ToString().Trim('-');
+
+        // Hard cap (64): a slug is a folder name, and Windows' MAX_PATH is a shared
+        // budget — a goal-length sentence must never become a 200-character directory.
+        // Cut at the last dash inside the window when one is reasonably close.
+        if (slug.Length > MaxSlugLength)
+        {
+            var cut = slug.LastIndexOf('-', MaxSlugLength);
+            slug = slug[..(cut >= MaxSlugLength / 2 ? cut : MaxSlugLength)].Trim('-');
+        }
+
         return slug.Length > 0 ? slug : "equipe";
     }
+
+    /// <summary>Longest slug <see cref="Slugify"/> produces.</summary>
+    public const int MaxSlugLength = 64;
 
     private static StudioTeamMetadata? TryReadMetadata(string teamDirectory)
     {

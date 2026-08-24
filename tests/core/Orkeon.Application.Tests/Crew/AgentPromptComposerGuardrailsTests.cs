@@ -1,3 +1,4 @@
+using Orkeon.Application.Context;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
@@ -123,5 +124,68 @@ public class AgentPromptComposerGuardrailsTests
             => System.Threading.Tasks.Task.FromResult(ToolResult.CreateSuccess("stub result"));
 
         public bool ValidateInput(string input) => true;
+    }
+}
+
+/// <summary>
+/// A ToolCall deliverable is written by the agent itself, so the prompt must name the
+/// path — without it the agent guesses (the forge trial burned three denied file_write
+/// calls before finding /output). Framework-persisted sources stay out of the prompt.
+/// </summary>
+public class AgentPromptComposerDeliverableTests
+{
+    private static SimpleExecutionContext Context() => new(
+        CrewId.From(Guid.NewGuid()),
+        new Dictionary<string, string>(),
+        NullMemoryScope.Instance,
+        [],
+        CancellationToken.None);
+
+    private static CrewTask Task(Orkeon.Domain.Task.ValueObjects.TaskDeliverable? deliverable)
+    {
+        var task = new CrewTaskBuilder()
+            .Description("Write the summary")
+            .ExpectedOutput("A markdown document")
+            .Build();
+        task.SetDeliverable(deliverable);
+        return task;
+    }
+
+    [Fact]
+    public void BuildUserPrompt_ShouldNameThePath_WhenTheAgentWritesTheDeliverable()
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/synthese_nouveautes.md",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(task, Context());
+
+        Assert.Contains("/output/synthese_nouveautes.md", prompt, StringComparison.Ordinal);
+        Assert.Contains("file_write", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildUserPrompt_ShouldStaySilent_WhenTheFrameworkPersistsTheDeliverable()
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/report.md",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.FinalMessage,
+        });
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(task, Context());
+
+        Assert.DoesNotContain("file_write", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("/output/report.md", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildUserPrompt_ShouldStaySilent_WhenThereIsNoDeliverable()
+    {
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), Context());
+
+        Assert.DoesNotContain("Deliverable:", prompt, StringComparison.Ordinal);
     }
 }

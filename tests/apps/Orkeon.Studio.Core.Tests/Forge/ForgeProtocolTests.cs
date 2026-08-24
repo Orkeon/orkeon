@@ -140,7 +140,9 @@ public class ForgeSessionModelTests
         var model = FullCycle();
 
         Assert.Equal("veille", model.Slug);
-        Assert.Equal("Résumer chaque matin les offres", model.Title);
+        // The blueprint's short crew name supersedes the brief's goal sentence as the
+        // title: the adoption slug derives from it (a goal-length slug made 200-char folders).
+        Assert.Equal("veille", model.Title);
         Assert.Equal(ForgeMilestone.Try, model.Milestone);
 
         // The conversation, the success card, the narrative proposal.

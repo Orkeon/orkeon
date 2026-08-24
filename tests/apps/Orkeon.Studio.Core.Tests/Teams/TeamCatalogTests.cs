@@ -216,3 +216,27 @@ public sealed class EnsureDirectoryTests
         }
     }
 }
+
+/// <summary>A slug is a folder name: goal-length sentences must not become 200-char directories.</summary>
+public sealed class SlugLengthTests
+{
+    [Fact]
+    public void A_goal_length_sentence_is_capped_at_a_word_boundary()
+    {
+        var goal = "Résumer en une seule exécution les nouveautés d'un site web dont les "
+            + "fichiers sont sauvegardés dans le sous-dossier new de c:\\documents sur le PC "
+            + "de l'utilisateur et produire un document de synthèse clair et lisible";
+
+        var slug = TeamCatalog.Slugify(goal);
+
+        Assert.True(slug.Length <= TeamCatalog.MaxSlugLength, $"slug too long: {slug.Length}");
+        Assert.False(slug.EndsWith('-'));
+        Assert.StartsWith("resumer-en-une-seule-execution", slug, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_short_name_is_untouched()
+    {
+        Assert.Equal("veille-matinale", TeamCatalog.Slugify("Veille matinale"));
+    }
+}

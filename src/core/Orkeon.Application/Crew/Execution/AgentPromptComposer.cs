@@ -3,6 +3,7 @@ using System.Text;
 using Orkeon.Application.Context;
 using Orkeon.Application.Constants.Orchestration;
 using Orkeon.Domain.Task;
+using Orkeon.Domain.Task.ValueObjects;
 
 namespace Orkeon.Application.Crew.Execution;
 
@@ -133,12 +134,30 @@ internal static class AgentPromptComposer
         prompt.AppendLine(description);
         prompt.AppendLine();
         prompt.AppendLine(FormattableString.Invariant($"{PromptDefaults.ExpectedOutputPrefix}{expectedOutput}"));
+        AppendDeliverableInstruction(prompt, task);
 
         AppendContextVariables(prompt, context);
         AppendPreviousOutputs(prompt, context);
         AppendKnowledgeContext(prompt, knowledgeContext);
 
         return prompt.ToString();
+    }
+
+    /// <summary>
+    /// Names the deliverable path when the task's contract says the agent writes it
+    /// itself (<see cref="DeliverableSource.ToolCall"/>). Without this line the agent
+    /// only sees the prose description and guesses paths — the owner's forge trial
+    /// showed a writer burning three denied file_write calls before finding /output.
+    /// The other sources are persisted by the framework, so naming a path there would
+    /// invite a redundant (and possibly conflicting) manual write.
+    /// </summary>
+    private static void AppendDeliverableInstruction(StringBuilder prompt, CrewTask task)
+    {
+        if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable)
+            return;
+
+        prompt.AppendLine(FormattableString.Invariant(
+            $"Deliverable: write the final result to '{deliverable.Path}' using the file_write tool."));
     }
 
     /// <summary>

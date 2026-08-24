@@ -151,7 +151,8 @@ public sealed class ForgeSessionHydratorTests : IDisposable
         ForgeSessionHydrator.Hydrate(model, _directory);
 
         Assert.Equal(["user", "assistant"], model.Messages.Select(m => m.Role));
-        Assert.Equal("Veille fournisseurs", model.Title);
+        // The hydrated blueprint's crew name supersedes the brief goal, like the live stream.
+        Assert.Equal("veille", model.Title);
         Assert.Equal("Cite ses sources", Assert.Single(model.Criteria).Statement);
         Assert.Equal("Collecter", Assert.Single(model.Proposal!.Steps).Description);
         Assert.Equal("Web Researcher", model.Proposal.Steps[0].AgentRole);
