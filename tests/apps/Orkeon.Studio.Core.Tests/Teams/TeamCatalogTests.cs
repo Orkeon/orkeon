@@ -192,3 +192,27 @@ public sealed class TeamCatalogDescribeTargetTests : IDisposable
         Assert.Null(described.AgentCount);
     }
 }
+
+/// <summary>The forge working directory must exist before Process.Start refuses it.</summary>
+public sealed class EnsureDirectoryTests
+{
+    [Fact]
+    public void The_home_is_created_on_first_use_and_an_existing_one_is_untouched()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"orkeon-home-{Guid.NewGuid():N}");
+        try
+        {
+            Assert.False(Directory.Exists(path));
+            Assert.Equal(path, TeamCatalog.EnsureDirectory(path));
+            Assert.True(Directory.Exists(path));
+
+            // Idempotent: calling again neither throws nor recreates.
+            Assert.Equal(path, TeamCatalog.EnsureDirectory(path));
+        }
+        finally
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path);
+        }
+    }
+}

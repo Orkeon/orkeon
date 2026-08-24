@@ -74,9 +74,9 @@ public sealed class MainWindowViewModel : ObservableObject
         // process working directory: launched from the installed app or a dev tree, that
         // directory is the executable's bin folder — sessions would land in bin/.orkeon
         // and vanish on the next clean, and the assistant's /workspace would show DLLs.
-        var forgeHome = forgeWorkspace
+        var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace
             ?? System.IO.Path.GetDirectoryName(teamsHome)
-            ?? teamsHome;
+            ?? teamsHome);
         Settings = new SettingsScreenViewModel(
             Config,
             new ModelProfilesViewModel(profileStore, Config.Llm, strings,

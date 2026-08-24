@@ -147,6 +147,28 @@ public static partial class TeamCatalog
     /// the sidecar's name/description/profile when one sits beside it, the file-system name
     /// otherwise, and — for a multi-file team directory — the count of agent definitions.
     /// </summary>
+    /// <summary>
+    /// Ensures <paramref name="path"/> exists and hands it back — the lazy creation of
+    /// the Orkeon user home the first time a forge session needs a working directory
+    /// (Process.Start refuses a non-existent one). A creation failure degrades to
+    /// returning the path unchanged: the caller's launch then surfaces the real error.
+    /// </summary>
+    public static string EnsureDirectory(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        try
+        {
+            Directory.CreateDirectory(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            // Tolerant by design, like every other I/O in this catalog.
+        }
+
+        return path;
+    }
+
     public static TargetDescription DescribeTarget(string targetPath)
     {
         if (string.IsNullOrWhiteSpace(targetPath))
