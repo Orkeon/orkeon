@@ -61,6 +61,22 @@ public sealed class RunLogViewModel : ObservableObject
     /// <summary>The lines currently held, oldest first.</summary>
     public ObservableCollection<LogLineViewModel> Lines { get; } = [];
 
+    /// <summary>There is something to copy once the journal holds at least one line.</summary>
+    public bool CanCopy => Lines.Count > 0;
+
+    /// <summary>
+    /// The whole journal as plain text for the clipboard, oldest first, exactly as the
+    /// CLI printed it. WPF text blocks are not selectable; this is how the operator gets
+    /// the log out of the window. A truncation note leads when lines were dropped.
+    /// </summary>
+    public string BuildText()
+    {
+        var lines = Lines.Select(l => l.Text);
+        return DroppedLines > 0
+            ? string.Join(Environment.NewLine, lines.Prepend(Summary))
+            : string.Join(Environment.NewLine, lines);
+    }
+
     /// <summary>Whether the view should follow the tail.</summary>
     public bool AutoScroll
     {

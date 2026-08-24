@@ -631,6 +631,14 @@
             Visibility="{Binding HasTeamCard, Converter={StaticResource BooleanToVisibility}}">
       <StackPanel>
         <DockPanel>
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5"
+                  Margin="0,0,8,0" Click="OnCopyJournal"
+                  Visibility="{Binding Log.Lines.Count, Converter={StaticResource CountToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
+              <TextBlock Text="{Binding [Run_Journal_Copy], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
           <ToggleButton DockPanel.Dock="Right" Style="{StaticResource FoldToggle}"
                         IsChecked="{Binding IsJournalOpen}">
             <StackPanel Orientation="Horizontal">

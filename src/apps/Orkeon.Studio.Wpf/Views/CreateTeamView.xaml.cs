@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using Orkeon.Studio.Wpf.ViewModels.Teams;
 
 namespace Orkeon.Studio.Wpf.Views;
 
@@ -10,6 +11,23 @@ public partial class CreateTeamView : UserControl
     public CreateTeamView() => InitializeComponent();
 
     /// <summary>Folds/unfolds the technical journal (pure presentation state on the VM).</summary>
+    private void OnCopyTechJournal(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is CreateTeamViewModel { RawLog.CanCopy: true } wizard)
+        {
+            try
+            {
+                // SetDataObject(copy: false) skips the flush that makes SetText throw when another
+                // process (RDP, clipboard managers, VM tools) is holding the Win32 clipboard open.
+                Clipboard.SetDataObject(wizard.RawLog.BuildText(), copy: false);
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                // The clipboard stayed busy: nothing to surface, the button can be pressed again.
+            }
+        }
+    }
+
     private void OnToggleTech(object sender, RoutedEventArgs e)
     {
         if (DataContext is ViewModels.Teams.CreateTeamViewModel vm)

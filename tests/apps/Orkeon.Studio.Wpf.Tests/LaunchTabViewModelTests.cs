@@ -907,3 +907,20 @@ public sealed class LaunchHistoryCardTests
         Assert.False(card.HasResultFolder);
     }
 }
+
+/// <summary>The technical journal must leave the window: WPF text blocks are not selectable.</summary>
+public sealed class JournalCopyTests
+{
+    [Fact]
+    public void The_journal_copies_as_plain_text_and_leads_with_the_truncation_note()
+    {
+        var log = new RunLogViewModel();
+        Assert.False(log.CanCopy);
+
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, "task 1 done"));
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "WARN something"));
+
+        Assert.True(log.CanCopy);
+        Assert.Equal($"task 1 done{Environment.NewLine}WARN something", log.BuildText());
+    }
+}

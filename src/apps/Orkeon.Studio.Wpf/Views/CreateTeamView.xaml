@@ -617,6 +617,14 @@
                 <TextBlock Text="{Binding [Wiz_Tech_Toggle], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5"
+                    Margin="0,0,8,0" Click="OnCopyTechJournal"
+                    Visibility="{Binding RawLog.Lines.Count, Converter={StaticResource CountToVisibility}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
+                <TextBlock Text="{Binding [Run_Journal_Copy], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
             <StackPanel Orientation="Horizontal">
               <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
                          Text="{Binding [Wiz_Tech_Title], Source={x:Static services:I18n.Instance}}"/>
