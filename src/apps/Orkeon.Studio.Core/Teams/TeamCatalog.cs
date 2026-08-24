@@ -30,6 +30,14 @@ public sealed record StudioTeamMetadata
     /// <summary>The engine schedule (<c>daily@HH:mm</c> / <c>hourly</c>), or null for on demand.</summary>
     [JsonPropertyName("schedule")]
     public string? Schedule { get; init; }
+
+    /// <summary>
+    /// The folders this team may see, as mount strings (<c>physical:virtual:rights</c>).
+    /// A Studio-side concept, like <see cref="Profile"/>: Studio lays them on its launches
+    /// as <c>--mount</c> arguments; a bare <c>orkeon run</c> in a terminal does not read them.
+    /// </summary>
+    [JsonPropertyName("mounts")]
+    public IReadOnlyList<string>? Mounts { get; init; }
 }
 
 /// <summary>What a launch screen shows about a target — sidecar-backed, best-effort.</summary>
@@ -46,6 +54,9 @@ public sealed record TargetDescription
 
     /// <summary>Agent definitions counted in a multi-file team directory; null when unknown.</summary>
     public int? AgentCount { get; init; }
+
+    /// <summary>The team's sidecar mount strings; empty for anything that is not an adopted team.</summary>
+    public IReadOnlyList<string> Mounts { get; init; } = [];
 }
 
 
@@ -75,6 +86,12 @@ public sealed record TeamSummary
 
     /// <summary>The need, in the user's words, when recorded.</summary>
     public string? Description => Metadata?.Description;
+
+    /// <summary>The team's mount strings; empty when none are recorded.</summary>
+    public IReadOnlyList<string> Mounts => Metadata?.Mounts ?? [];
+
+    /// <summary>Agent definitions counted on disk; null when the folder shows none.</summary>
+    public int? AgentCount { get; init; }
 }
 
 /// <summary>
@@ -134,7 +151,37 @@ public static partial class TeamCatalog
             Slug = slug,
             Path = teamDirectory,
             Metadata = metadata,
+            AgentCount = CountAgents(teamDirectory),
         };
+    }
+
+    /// <summary>
+    /// Counts agent definition files under <c>agents/</c> — and <c>crew/agents/</c>, the
+    /// layout <c>forge promote</c> produces. Null when neither folder yields any.
+    /// </summary>
+    private static int? CountAgents(string teamDirectory)
+    {
+        try
+        {
+            var count = 0;
+            foreach (var agentsDirectory in new[]
+            {
+                Path.Combine(teamDirectory, "agents"),
+                Path.Combine(teamDirectory, "crew", "agents"),
+            })
+            {
+                if (!Directory.Exists(agentsDirectory))
+                    continue;
+                count += Directory.EnumerateFiles(agentsDirectory, "*.yaml").Count()
+                       + Directory.EnumerateFiles(agentsDirectory, "*.yml").Count();
+            }
+
+            return count > 0 ? count : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -182,16 +229,7 @@ public static partial class TeamCatalog
                 : Path.GetDirectoryName(Path.GetFullPath(targetPath));
             var metadata = directory is { Length: > 0 } ? TryReadMetadata(directory) : null;
 
-            int? agentCount = null;
-            if (isDirectory)
-            {
-                var agentsDirectory = Path.Combine(targetPath, "agents");
-                if (Directory.Exists(agentsDirectory))
-                {
-                    agentCount = Directory.EnumerateFiles(agentsDirectory, "*.yaml").Count()
-                               + Directory.EnumerateFiles(agentsDirectory, "*.yml").Count();
-                }
-            }
+            var agentCount = isDirectory ? CountAgents(targetPath) : null;
 
             var fallbackName = isDirectory
                 ? Path.GetFileName(targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
@@ -202,7 +240,8 @@ public static partial class TeamCatalog
                 Name = metadata?.Name is { Length: > 0 } name ? name : fallbackName,
                 Description = metadata?.Description,
                 Profile = metadata?.Profile,
-                AgentCount = agentCount is > 0 ? agentCount : null,
+                AgentCount = agentCount,
+                Mounts = metadata?.Mounts ?? [],
             };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
@@ -246,6 +285,20 @@ public static partial class TeamCatalog
         {
             // The promoted folder is the deliverable; losing the sidecar loses only comfort.
         }
+    }
+
+    /// <summary>
+    /// Records the team's mount strings in the sidecar, preserving everything else it says.
+    /// A folder without a sidecar gains a minimal one — the mounts are worth remembering
+    /// even for a hand-built team.
+    /// </summary>
+    public static void SaveMounts(string teamDirectory, IReadOnlyList<string> mounts)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentNullException.ThrowIfNull(mounts);
+
+        var metadata = TryReadMetadata(teamDirectory) ?? new StudioTeamMetadata();
+        SaveMetadata(teamDirectory, metadata with { Mounts = mounts.Count > 0 ? mounts : null });
     }
 
     /// <summary>Deletes a team folder, recursively. Returns false when the disk refused.</summary>
@@ -294,6 +347,51 @@ public static partial class TeamCatalog
                 {
                     Name = metadata.Name is { Length: > 0 } name ? $"{name} ({copySlug[(slug.Length + 1)..]})" : copySlug,
                 });
+            }
+
+            return destination;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Copies a team folder under <paramref name="destinationParent"/> for sharing. The
+    /// destination keeps the slug and must not already exist (the promote-time rule: never
+    /// merge into what is already there). The root <c>appsettings.json</c> is left behind —
+    /// a resolved settings copy can carry provider endpoints the recipient should not
+    /// inherit, and never travels. Returns the destination, or null when the disk refused.
+    /// </summary>
+    public static string? ExportTo(string teamDirectory, string destinationParent)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationParent);
+
+        try
+        {
+            var slug = Path.GetFileName(Path.TrimEndingDirectorySeparator(teamDirectory));
+            if (slug.Length == 0)
+                return null;
+
+            var destination = Path.Combine(destinationParent, slug);
+            if (Directory.Exists(destination) || File.Exists(destination))
+                return null;
+
+            Directory.CreateDirectory(destination);
+            foreach (var file in Directory.EnumerateFiles(teamDirectory))
+            {
+                if (string.Equals(Path.GetFileName(file), "appsettings.json", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
+            }
+
+            foreach (var directory in Directory.EnumerateDirectories(teamDirectory))
+            {
+                if (File.GetAttributes(directory).HasFlag(FileAttributes.ReparsePoint))
+                    continue;
+                CopyTree(directory, Path.Combine(destination, Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))));
             }
 
             return destination;
@@ -459,6 +557,26 @@ public static partial class TeamCatalog
 
     /// <summary>Longest slug <see cref="Slugify"/> produces.</summary>
     public const int MaxSlugLength = 64;
+
+    /// <summary>
+    /// One canonical spelling for a path used as a dictionary key (matching a history
+    /// entry's target to a team folder): absolute, no trailing separator. Degrades to the
+    /// input on an unparsable path — a stable key matters more than a pretty one.
+    /// </summary>
+    public static string NormalizePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return "";
+
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return path;
+        }
+    }
 
     private static StudioTeamMetadata? TryReadMetadata(string teamDirectory)
     {

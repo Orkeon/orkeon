@@ -564,8 +564,9 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>The physical directory results land in, parsed from the mount strings.</summary>
     internal string? ResultFolder()
     {
-        foreach (var mountString in Mounts.SettingsMounts.Concat(
-                     Mounts.LaunchMounts.Mounts.Select(m => m.MountString)))
+        foreach (var mountString in Mounts.TeamMounts
+                     .Concat(Mounts.SettingsMounts)
+                     .Concat(Mounts.LaunchMounts.Mounts.Select(m => m.MountString)))
         {
             if (MountDefinition.TryParse(mountString, out var mount, out _)
                 && mount is { Rights: MountRights.ReadWrite, PhysicalPath.Length: > 0 })
@@ -594,6 +595,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     {
         Options.Target = Target.Target;
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
+        Mounts.SetTeamMounts(_team.Mounts);
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();

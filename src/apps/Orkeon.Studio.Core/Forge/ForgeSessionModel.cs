@@ -19,11 +19,20 @@ public sealed record ForgeCriterion(string Id, string Statement, bool Must);
 /// <summary>One numbered step of the narrative proposal (a task, told as an action).</summary>
 public sealed record ForgeProposalStep(string Description, string? AgentRole);
 
-/// <summary>The proposal card: steps, the plain-words rationale, and what the team may touch.</summary>
+/// <summary>One agent of the blueprint, as the Composer step shows and edits it.</summary>
+public sealed record ForgeAgentView(
+    string Key,
+    string Role,
+    string? Goal,
+    string? Backstory,
+    IReadOnlyList<string> Tools);
+
+/// <summary>The proposal card: steps, the plain-words rationale, the agents, and what the team may touch.</summary>
 public sealed record ForgeProposal(
     IReadOnlyList<ForgeProposalStep> Steps,
     string? Rationale,
-    IReadOnlyList<string> Tools);
+    IReadOnlyList<string> Tools,
+    IReadOnlyList<ForgeAgentView> Agents);
 
 /// <summary>One completed task of the running try.</summary>
 public sealed record ForgeTaskProgress(string? TaskId, string? AgentRole, bool Success, long DurationMs);
@@ -105,6 +114,13 @@ public sealed class ForgeSessionModel
 
     /// <summary>The proposal card, once a blueprint was proposed.</summary>
     public ForgeProposal? Proposal { get; private set; }
+
+    /// <summary>
+    /// The last <c>blueprint.ready</c> payload's <c>blueprint</c> node, verbatim. The agent
+    /// editor mutates this JSON and sends it back over the <c>edit</c> decision — the engine
+    /// re-validates everything it receives, so Studio never has to keep it consistent itself.
+    /// </summary>
+    public string? BlueprintJson { get; private set; }
 
     /// <summary>Crew files written by the render, session-relative (level 3).</summary>
     public IReadOnlyList<string> Files => _files;
@@ -354,27 +370,38 @@ public sealed class ForgeSessionModel
             Title = crewName;
         }
 
-        // agent key → role, so the steps can speak in roles, not keys.
+        BlueprintJson = blueprint.GetRawText();
+
+        // agent key → role, so the steps can speak in roles, not keys; the full per-agent
+        // view feeds the Composer cards and the agent editor.
         var roles = new Dictionary<string, string>(StringComparer.Ordinal);
         var tools = new List<string>();
+        var agentViews = new List<ForgeAgentView>();
         if (blueprint.TryGetProperty("agents", out var agents) && agents.ValueKind == JsonValueKind.Array)
         {
             foreach (var agent in agents.EnumerateArray())
             {
                 if (agent.ValueKind != JsonValueKind.Object)
                     continue;
-                if (ReadString(agent, "key") is { } key && ReadString(agent, "role") is { } role)
-                    roles[key] = role;
-                if (agent.TryGetProperty("tools", out var agentTools) && agentTools.ValueKind == JsonValueKind.Array)
+                var agentTools = new List<string>();
+                if (agent.TryGetProperty("tools", out var toolsNode) && toolsNode.ValueKind == JsonValueKind.Array)
                 {
-                    foreach (var tool in agentTools.EnumerateArray())
+                    foreach (var tool in toolsNode.EnumerateArray())
                     {
-                        if (tool.ValueKind == JsonValueKind.String && tool.GetString() is { } name
-                            && !tools.Contains(name, StringComparer.Ordinal))
+                        if (tool.ValueKind == JsonValueKind.String && tool.GetString() is { } name)
                         {
-                            tools.Add(name);
+                            if (!agentTools.Contains(name, StringComparer.Ordinal))
+                                agentTools.Add(name);
+                            if (!tools.Contains(name, StringComparer.Ordinal))
+                                tools.Add(name);
                         }
                     }
+                }
+                if (ReadString(agent, "key") is { } key && ReadString(agent, "role") is { } role)
+                {
+                    roles[key] = role;
+                    agentViews.Add(new ForgeAgentView(
+                        key, role, ReadString(agent, "goal"), ReadString(agent, "backstory"), agentTools));
                 }
             }
         }
@@ -393,7 +420,7 @@ public sealed class ForgeSessionModel
             }
         }
 
-        Proposal = new ForgeProposal(steps, ReadString(blueprint, "rationale"), tools);
+        Proposal = new ForgeProposal(steps, ReadString(blueprint, "rationale"), tools, agentViews);
     }
 
     private void ReadVerdict(OrkeonEvent orkeonEvent)

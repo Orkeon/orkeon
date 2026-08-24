@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.History;
+using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -22,8 +24,11 @@ public sealed class SessionResumeEventArgs(ForgeSolutionSummary session) : Event
 }
 
 /// <summary>One team card of "Mes équipes".</summary>
-public sealed class TeamCardViewModel
+public sealed class TeamCardViewModel : ObservableObject
 {
+    private DateTimeOffset? _lastRun;
+    private RunOutcome? _lastOutcome;
+
     internal TeamCardViewModel(TeamSummary summary, TeamsViewModel owner, IStudioStrings strings)
     {
         Summary = summary;
@@ -82,6 +87,31 @@ public sealed class TeamCardViewModel
 
     /// <summary>Deletes the folder, recursively.</summary>
     public RelayCommand DeleteCommand { get; }
+
+    /// <summary>The team's mount strings, straight from the sidecar.</summary>
+    public IReadOnlyList<string> Mounts => Summary.Mounts;
+
+    /// <summary>Whether any mount is recorded — the card's "Dossiers :" line.</summary>
+    public bool HasMounts => Summary.Mounts.Count > 0;
+
+    /// <summary>Agent definitions counted on disk; null when the folder shows none.</summary>
+    public int? AgentCount => Summary.AgentCount;
+
+    /// <summary>When this team last ran, from the launch history; null when it never did.</summary>
+    public DateTimeOffset? LastRun => _lastRun;
+
+    /// <summary>How that last run ended; null when the team never ran.</summary>
+    public RunOutcome? LastOutcome => _lastOutcome;
+
+    internal void SetLastRun(DateTimeOffset? startedAt, RunOutcome? outcome)
+    {
+        if (_lastRun == startedAt && _lastOutcome == outcome)
+            return;
+
+        _lastRun = startedAt;
+        _lastOutcome = outcome;
+        OnPropertiesChanged(nameof(LastRun), nameof(LastOutcome));
+    }
 }
 
 /// <summary>One resumable wizard session, listed under the teams.</summary>
@@ -117,6 +147,8 @@ public sealed class TeamsViewModel : ObservableObject
     private readonly IShellOpener? _shellOpener;
     private readonly Func<IReadOnlyList<ForgeSolutionSummary>> _loadSessions;
     private readonly IStudioStrings _strings;
+    private readonly ILaunchHistoryStore? _historyStore;
+    private Dictionary<string, (DateTimeOffset StartedAt, RunOutcome Outcome)> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Builds the screen over its seams; the loaders default to the real catalogs.</summary>
     public TeamsViewModel(
@@ -125,9 +157,11 @@ public sealed class TeamsViewModel : ObservableObject
         Func<IReadOnlyList<TeamSummary>>? loadTeams = null,
         Func<IReadOnlyList<ForgeSolutionSummary>>? loadSessions = null,
         IStudioStrings? strings = null,
-        IShellOpener? shellOpener = null)
+        IShellOpener? shellOpener = null,
+        ILaunchHistoryStore? historyStore = null)
     {
         _shellOpener = shellOpener;
+        _historyStore = historyStore;
         var root = teamsRoot ?? TeamCatalog.DefaultRoot();
         var workspace = workspaceDirectory ?? Environment.CurrentDirectory;
         _loadTeams = loadTeams ?? (() => TeamCatalog.List(root));
@@ -183,8 +217,54 @@ public sealed class TeamsViewModel : ObservableObject
                 InProgress.Add(new InProgressSessionViewModel(session, this));
         }
 
+        ApplyLastRuns();
         OnPropertiesChanged(nameof(Count), nameof(IsEmpty), nameof(HasInProgress));
     }
+
+    /// <summary>
+    /// Reads the launch history once and stamps each card with its latest run. Refresh()
+    /// stays synchronous and re-applies the cached map; the shell calls this at startup
+    /// and after a run finishes. A missing store or an unreadable file degrades to cards
+    /// that simply say nothing about past runs.
+    /// </summary>
+    public async Task LoadLastRunsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_historyStore is null)
+            return;
+
+        try
+        {
+            var history = await _historyStore.LoadAsync(cancellationToken).ConfigureAwait(true);
+            var map = new Dictionary<string, (DateTimeOffset, RunOutcome)>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in history.Entries)
+            {
+                var key = NormalizePath(entry.Target);
+                if (key.Length == 0)
+                    continue;
+                if (!map.TryGetValue(key, out var known) || entry.StartedAt > known.Item1)
+                    map[key] = (entry.StartedAt, entry.Outcome);
+            }
+
+            _lastRuns = map;
+            ApplyLastRuns();
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            // History is comfort, not truth; the cards stay silent about past runs.
+        }
+    }
+
+    private void ApplyLastRuns()
+    {
+        foreach (var card in Teams)
+        {
+            card.SetLastRun(
+                _lastRuns.TryGetValue(NormalizePath(card.Summary.Path), out var run) ? run.StartedAt : null,
+                _lastRuns.TryGetValue(NormalizePath(card.Summary.Path), out var known) ? known.Outcome : null);
+        }
+    }
+
+    private static string NormalizePath(string path) => TeamCatalog.NormalizePath(path);
 
     internal void RequestLaunch(string path) => LaunchRequested?.Invoke(this, new TeamActionEventArgs(path));
 

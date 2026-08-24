@@ -108,6 +108,13 @@ public sealed class LaunchMountsViewModel : ObservableObject
     /// <summary>The mounts already in the selected appsettings — informational, not editable here.</summary>
     public ObservableCollection<string> SettingsMounts { get; } = [];
 
+    /// <summary>
+    /// The adopted team's own mounts, from its sidecar — laid on the launch ahead of the
+    /// per-launch entries, through the same single <c>--mount</c> flag. What the team card's
+    /// chips show is exactly this list, so the display and the run cannot disagree.
+    /// </summary>
+    public ObservableCollection<string> TeamMounts { get; } = [];
+
     /// <summary>The per-launch mounts, edited with the same form as the appsettings editor.</summary>
     public MountsEditorViewModel LaunchMounts { get; }
 
@@ -134,8 +141,23 @@ public sealed class LaunchMountsViewModel : ObservableObject
         }
     }
 
-    /// <summary>The <c>--mount</c> arguments this panel contributes.</summary>
-    public IReadOnlyList<string> ToMountArguments() => LaunchMounts.ToRawEntries();
+    /// <summary>The <c>--mount</c> arguments this panel contributes: team mounts first, then the per-launch ones.</summary>
+    public IReadOnlyList<string> ToMountArguments() => [.. TeamMounts, .. LaunchMounts.ToRawEntries()];
+
+    /// <summary>Publishes the selected team's sidecar mounts (empty for a non-team target).</summary>
+    public void SetTeamMounts(IReadOnlyList<string> mounts)
+    {
+        ArgumentNullException.ThrowIfNull(mounts);
+
+        if (TeamMounts.SequenceEqual(mounts, StringComparer.Ordinal))
+            return;
+
+        TeamMounts.Clear();
+        foreach (var mount in mounts)
+            TeamMounts.Add(mount);
+
+        RecomputeEffectiveMounts();
+    }
 
     /// <summary>Publishes the mounts read from the appsettings the launch will use.</summary>
     public void SetSettingsMounts(IReadOnlyList<string> mounts)

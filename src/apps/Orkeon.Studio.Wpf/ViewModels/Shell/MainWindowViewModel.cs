@@ -92,7 +92,7 @@ public sealed class MainWindowViewModel : ObservableObject
             forgeHome,
             teamsRoot);
 
-        Teams = new TeamsViewModel(teamsRoot, forgeHome, strings: strings, shellOpener: shellOpener);
+        Teams = new TeamsViewModel(teamsRoot, forgeHome, strings: strings, shellOpener: shellOpener, historyStore: historyStore);
 
         // The expert trial screen runs over its own launcher, with NO history store: a
         // trial is a rehearsal, not a run to replay from the history.
@@ -199,7 +199,10 @@ public sealed class MainWindowViewModel : ObservableObject
             Settings.Profiles.InitializeAsync(cancellationToken),
             // The silent doctor run (audit 09/20): the sidebar dot and the verdict card
             // are honest from the first frame, without the user pressing anything.
-            Config.Diagnostic.InitializeAsync(cancellationToken));
+            Config.Diagnostic.InitializeAsync(cancellationToken),
+            // The team cards' "dernière exécution" line, from the same history the
+            // Historique screen reads.
+            Teams.LoadLastRunsAsync(cancellationToken));
 
     /// <summary>
     /// The per-user config directory as the forge home, falling back to the Orkeon user
