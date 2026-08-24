@@ -645,6 +645,9 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>The pre-save card's visibility.</summary>
     public bool NotSaved => !_isSaved;
 
+    /// <summary>The engine invocation of the running (or last) cycle — expert step 3.</summary>
+    public string? EngineCommandLine { get; private set; }
+
     /// <summary>Where the team landed.</summary>
     public string? SavedPath => _model.Promotion?.Path;
 
@@ -744,6 +747,11 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         IsEngineRunning = true;
         _lastStderr = null;
+        // « COMMANDE DE L'ESSAI » (F-09, expert): the engine invocation, replayable in a
+        // terminal — the honest equivalent of a command preview for a forge-driven trial.
+        EngineCommandLine = Orkeon.Studio.Core.Launch.CommandLineDisplay.Format(
+            ForgeArgumentsBuilder.Build(request));
+        OnPropertyChanged(nameof(EngineCommandLine));
         try
         {
             var result = await _client.RunAsync(request, OnEvent, OnRaw, CancellationToken.None).ConfigureAwait(false);

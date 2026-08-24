@@ -591,6 +591,20 @@
           </StackPanel>
         </Border>
 
+        <!-- expert: the engine invocation behind the trial — replayable in a terminal (F-09) -->
+        <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+          <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+                  Visibility="{Binding EngineCommandLine, Converter={StaticResource StringPresentToVisibility}}">
+            <StackPanel>
+              <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
+                         Text="{Binding [Wiz_TrialCommand], Source={x:Static services:I18n.Instance}}"/>
+              <Border Style="{StaticResource Well}">
+                <TextBlock Style="{StaticResource MonoText}" FontSize="11" TextWrapping="Wrap" Text="{Binding EngineCommandLine}"/>
+              </Border>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
         <views:StepNotesView DataContext="{Binding TryNotes}"
                              Title="{Binding [Wiz_Notes_Try], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>

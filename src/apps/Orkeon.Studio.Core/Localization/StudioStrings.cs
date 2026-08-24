@@ -170,6 +170,18 @@ public static class StudioStringKeys
     /// <summary>"Setting: {0}" — the meta line's model-profile part.</summary>
     public const string TeamsSettingLabel = "Teams_SettingLabel";
 
+    /// <summary>"Declared folders" — the import report's mounts row, when the sidecar has some.</summary>
+    public const string ImportMountsDeclared = "Vm_Import_MountsDeclared";
+
+    /// <summary>"{0} folder(s): {1}" — its detail.</summary>
+    public const string ImportMountsDeclaredDetail = "Vm_Import_MountsDeclaredDetail";
+
+    /// <summary>"No declared folder" — the sidecar names none (or there is no sidecar).</summary>
+    public const string ImportMountsNone = "Vm_Import_MountsNone";
+
+    /// <summary>"Allow its folders after adding — Mes équipes, Changer les dossiers."</summary>
+    public const string ImportMountsNoneDetail = "Vm_Import_MountsNoneDetail";
+
     /// <summary>"reads {0}" — a read-only team mount, in the launcher's meta line.</summary>
     public const string RunMetaReads = "Vm_Run_MetaReads";
 
@@ -830,6 +842,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsRunFail] = "failed",
         [StudioStringKeys.TeamsNeverRan] = "Never ran",
         [StudioStringKeys.TeamsSettingLabel] = "Setting: {0}",
+        [StudioStringKeys.ImportMountsDeclared] = "Declared folders",
+        [StudioStringKeys.ImportMountsDeclaredDetail] = "{0} folder(s): {1}",
+        [StudioStringKeys.ImportMountsNone] = "No declared folder",
+        [StudioStringKeys.ImportMountsNoneDetail] = "Allow its folders after adding — Mes équipes, Changer les dossiers.",
         [StudioStringKeys.RunMetaReads] = "reads {0}",
         [StudioStringKeys.RunMetaWrites] = "writes to {0}",
         [StudioStringKeys.HistOutcomeSuccess] = "Finished without errors.",

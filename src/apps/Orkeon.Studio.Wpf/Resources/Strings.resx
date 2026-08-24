@@ -612,4 +612,9 @@
   <data name="Vm_Run_MetaWrites" xml:space="preserve"><value>writes to {0}</value></data>
   <data name="Run_ValidateFirst" xml:space="preserve"><value>Dry-run validation first</value></data>
   <data name="Test_Console_Empty" xml:space="preserve"><value>Waiting for a trial…</value></data>
+  <data name="Vm_Import_MountsDeclared" xml:space="preserve"><value>Declared folders</value></data>
+  <data name="Vm_Import_MountsDeclaredDetail" xml:space="preserve"><value>{0} folder(s): {1}</value></data>
+  <data name="Vm_Import_MountsNone" xml:space="preserve"><value>No declared folder</value></data>
+  <data name="Vm_Import_MountsNoneDetail" xml:space="preserve"><value>Allow its folders after adding — Mes équipes, Changer les dossiers.</value></data>
+  <data name="Wiz_TrialCommand" xml:space="preserve"><value>TRIAL COMMAND</value></data>
 </root>

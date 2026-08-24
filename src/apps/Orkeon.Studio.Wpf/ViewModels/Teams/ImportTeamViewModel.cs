@@ -124,6 +124,23 @@ public sealed class ImportTeamViewModel : ObservableObject
                 string.Format(CultureInfo.CurrentCulture,
                     _strings[StudioStringKeys.ImportSecretsFoundDetail], SecretWarnings.Count), "warn"));
 
+        // The imported sidecar's declared folders, when it carries any (F-08): a crew
+        // parser is still out of scope, but a Studio-adopted team travels with its list.
+        if (described.Mounts.Count > 0)
+        {
+            RecognitionReport.Add(new ImportCheckViewModel(
+                _strings[StudioStringKeys.ImportMountsDeclared],
+                string.Format(CultureInfo.CurrentCulture,
+                    _strings[StudioStringKeys.ImportMountsDeclaredDetail],
+                    described.Mounts.Count, string.Join(", ", described.Mounts)), "ok"));
+        }
+        else
+        {
+            RecognitionReport.Add(new ImportCheckViewModel(
+                _strings[StudioStringKeys.ImportMountsNone],
+                _strings[StudioStringKeys.ImportMountsNoneDetail], "info"));
+        }
+
         RecognitionReport.Add(new ImportCheckViewModel(
             _strings[StudioStringKeys.ImportToolsLater],
             _strings[StudioStringKeys.ImportToolsLaterDetail], "info"));

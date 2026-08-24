@@ -82,7 +82,7 @@ public sealed class ImportAndTestScreensTests
 public sealed class ImportRecognitionReportTests
 {
     [Fact]
-    public void A_recognized_candidate_yields_a_three_line_report()
+    public void A_recognized_candidate_yields_a_four_line_report()
     {
         var probe = new FakeTargetProbe().WithFile("/incoming/veille.yaml");
         var import = new ImportTeamViewModel(probe, scanSecrets: _ => []);
@@ -92,10 +92,11 @@ public sealed class ImportRecognitionReportTests
         import.Target.Select("/incoming/veille.yaml");
 
         Assert.True(import.HasRecognitionReport);
-        Assert.Equal(3, import.RecognitionReport.Count);
+        Assert.Equal(4, import.RecognitionReport.Count);
         Assert.Equal("ok", import.RecognitionReport[0].Tone);   // recognized shape
         Assert.Equal("ok", import.RecognitionReport[1].Tone);   // no secrets
-        Assert.Equal("info", import.RecognitionReport[2].Tone); // tools checked later
+        Assert.Equal("info", import.RecognitionReport[2].Tone); // no declared folder (F-08)
+        Assert.Equal("info", import.RecognitionReport[3].Tone); // tools checked later
         Assert.Contains("veille", import.RecognitionReport[0].Detail, StringComparison.Ordinal);
     }
 
