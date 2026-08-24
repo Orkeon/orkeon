@@ -14,7 +14,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        UpdateLangButtons();
         UpdateThemeButton();
         DataContextChanged += (_, _) => WireForgeNavigation();
         BeginSplash();
@@ -82,7 +81,6 @@ public partial class MainWindow : Window
     private void SetLanguage(string language)
     {
         I18n.Instance.SetLanguage(language);
-        UpdateLangButtons();
         UpdateThemeButton();
         UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, CurrentMode());
     }
@@ -91,26 +89,7 @@ public partial class MainWindow : Window
         (DataContext as ViewModels.Shell.MainWindowViewModel)?.Mode.Mode
         ?? ViewModels.Shell.UiModeViewModel.Novice;
 
-    private void UpdateLangButtons()
-    {
-        var fr = I18n.Instance.Language == "fr";
-        StyleLang(LangEnBtn, !fr);
-        StyleLang(LangFrBtn, fr);
-    }
 
-    private static void StyleLang(System.Windows.Controls.Button b, bool on)
-    {
-        if (on)
-        {
-            b.SetResourceReference(BackgroundProperty, "AccentBrush");
-            b.SetResourceReference(ForegroundProperty, "AccentFgBrush");
-        }
-        else
-        {
-            b.Background = Brushes.Transparent;
-            b.SetResourceReference(ForegroundProperty, "InkMutedBrush");
-        }
-    }
 
     // ── guided tour (v3: five stops — the mode, the three sidebar groups, the help column) ──
     private void OnStartTour(object sender, RoutedEventArgs e)

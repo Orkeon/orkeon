@@ -207,16 +207,16 @@
                   <StackPanel>
                     <StackPanel Orientation="Horizontal">
                       <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
-                      <Border Background="{DynamicResource AccentWeakBrush}" CornerRadius="999" Padding="10,3" Margin="10,0,0,0"
+                      <Border Background="{DynamicResource AccentWeakBrush}" CornerRadius="10.5" Padding="10,3" Margin="10,0,0,0"
                               Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibility}}">
                         <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
                                    Text="{Binding [Profile_DefaultBadge], Source={x:Static services:I18n.Instance}}"/>
                       </Border>
-                      <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="999" Padding="10,3" Margin="10,0,0,0"
+                      <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="10.5" Padding="10,3" Margin="10,0,0,0"
                               Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}">
                         <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Provider}"/>
                       </Border>
-                      <Border Background="{DynamicResource SkyBrush}" CornerRadius="999" Padding="10,3" Margin="10,0,0,0"
+                      <Border Background="{DynamicResource SkyBrush}" CornerRadius="10.5" Padding="10,3" Margin="10,0,0,0"
                               Visibility="{Binding IsStudio, Converter={StaticResource BooleanToVisibility}}">
                         <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource MarkBrush}"
                                    Text="{Binding [Profile_StudioBadge], Source={x:Static services:I18n.Instance}}"/>

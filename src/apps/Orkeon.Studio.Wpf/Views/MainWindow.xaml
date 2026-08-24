@@ -48,19 +48,21 @@
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
           <!-- Orkeon mark: 3 dashed arcs + node (assets/orkeon-mark.svg transcribed; WPF dashes are in units of stroke width) -->
           <Viewbox Width="23" Height="23">
-            <Grid Width="96" Height="96">
-              <Grid.Resources>
-                <RotateTransform x:Key="Tilt" Angle="-52" CenterX="48" CenterY="48"/>
-              </Grid.Resources>
+            <!-- The mock rotates the GROUP once around its own center (rotate(-52 48 48));
+                 rotating each ring separately around a foreign center is what skewed the mark. -->
+            <Grid Width="96" Height="96" RenderTransformOrigin="0.5,0.5">
+              <Grid.RenderTransform>
+                <RotateTransform Angle="-52"/>
+              </Grid.RenderTransform>
               <Ellipse Width="38" Height="38" Stroke="{DynamicResource MarkBrush}" StrokeThickness="7"
-                       StrokeDashArray="12.27 4.79" StrokeDashCap="Round" RenderTransform="{StaticResource Tilt}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+                       StrokeDashArray="12.27 4.79" StrokeDashCap="Round"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
               <Ellipse Width="62" Height="62" Stroke="{DynamicResource MarkBrush}" StrokeThickness="7"
-                       StrokeDashArray="20.03 7.8" StrokeDashCap="Round" RenderTransform="{StaticResource Tilt}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+                       StrokeDashArray="20.03 7.8" StrokeDashCap="Round"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
               <Ellipse Width="86" Height="86" Stroke="{DynamicResource MarkBrush}" StrokeThickness="6"
-                       StrokeDashArray="32.42 12.62" StrokeDashCap="Round" RenderTransform="{StaticResource Tilt}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+                       StrokeDashArray="32.42 12.62" StrokeDashCap="Round"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
               <Ellipse Width="16" Height="16" Fill="{DynamicResource MarkBrush}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>
@@ -94,33 +96,12 @@
           <StackPanel x:Name="ModeSwitch" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
             <TextBlock Style="{StaticResource Eyebrow}" VerticalAlignment="Center" Margin="0,0,9,0"
                        Text="{Binding [Mode_Label], Source={x:Static services:I18n.Instance}}"/>
-            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="999"
-                    Background="{DynamicResource SurfaceBrush}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+            <Border Style="{StaticResource SegmentedGroup}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
               <StackPanel Orientation="Horizontal">
-                <StackPanel.Resources>
-                  <Style x:Key="ModeHalf" TargetType="Button">
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="FontSize" Value="11.5"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                    <Setter Property="Padding" Value="13,6"/>
-                    <Setter Property="Cursor" Value="Hand"/>
-                    <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                    <Setter Property="Template">
-                      <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                          <Border Background="{TemplateBinding Background}" CornerRadius="999" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                          </Border>
-                        </ControlTemplate>
-                      </Setter.Value>
-                    </Setter>
-                  </Style>
-                </StackPanel.Resources>
                 <Button Command="{Binding Mode.SetNoviceCommand}"
                         Content="{Binding [Mode_Novice], Source={x:Static services:I18n.Instance}}">
                   <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource ModeHalf}">
+                    <Style TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding Mode.IsNovice}" Value="True">
                           <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
@@ -133,7 +114,7 @@
                 <Button Command="{Binding Mode.SetExpertCommand}"
                         Content="{Binding [Mode_Expert], Source={x:Static services:I18n.Instance}}">
                   <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource ModeHalf}">
+                    <Style TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding Mode.IsExpert}" Value="True">
                           <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
@@ -147,14 +128,33 @@
             </Border>
           </StackPanel>
           <!-- EN / FR -->
-          <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="999"
-                  Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Center" Margin="0,0,10,0"
+          <Border Style="{StaticResource SegmentedGroup}" VerticalAlignment="Center" Margin="0,0,10,0"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <StackPanel Orientation="Horizontal">
-              <Button x:Name="LangEnBtn" Content="EN" Click="OnLangEn" Style="{x:Null}" BorderThickness="0"
-                      FontFamily="{StaticResource MonoFont}" FontSize="10.5" FontWeight="SemiBold" Padding="10,6" Cursor="Hand"/>
-              <Button x:Name="LangFrBtn" Content="FR" Click="OnLangFr" Style="{x:Null}" BorderThickness="0"
-                      FontFamily="{StaticResource MonoFont}" FontSize="10.5" FontWeight="SemiBold" Padding="10,6" Cursor="Hand"/>
+              <Button Content="EN" Click="OnLangEn">
+                <Button.Style>
+                  <Style TargetType="Button" BasedOn="{StaticResource SegmentBtnMono}">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Language, Source={x:Static services:I18n.Instance}}" Value="en">
+                        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Button.Style>
+              </Button>
+              <Button Content="FR" Click="OnLangFr">
+                <Button.Style>
+                  <Style TargetType="Button" BasedOn="{StaticResource SegmentBtnMono}">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding Language, Source={x:Static services:I18n.Instance}}" Value="fr">
+                        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Button.Style>
+              </Button>
             </StackPanel>
           </Border>
           <Button Style="{StaticResource IconBtn}" Click="OnStartTour" Margin="0,0,10,0" VerticalAlignment="Center"
@@ -635,19 +635,19 @@
         </Border>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,26,0,0">
           <Viewbox Width="26" Height="26" VerticalAlignment="Center">
-            <Grid Width="96" Height="96">
-              <Grid.Resources>
-                <RotateTransform x:Key="SplashTilt" Angle="-52" CenterX="48" CenterY="48"/>
-              </Grid.Resources>
+            <Grid Width="96" Height="96" RenderTransformOrigin="0.5,0.5">
+              <Grid.RenderTransform>
+                <RotateTransform Angle="-52"/>
+              </Grid.RenderTransform>
               <Ellipse Width="38" Height="38" Stroke="{DynamicResource MarkBrush}" StrokeThickness="7"
-                       StrokeDashArray="12.27 4.79" StrokeDashCap="Round" RenderTransform="{StaticResource SplashTilt}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+                       StrokeDashArray="12.27 4.79" StrokeDashCap="Round"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
               <Ellipse Width="62" Height="62" Stroke="{DynamicResource MarkBrush}" StrokeThickness="7"
-                       StrokeDashArray="20.03 7.8" StrokeDashCap="Round" RenderTransform="{StaticResource SplashTilt}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+                       StrokeDashArray="20.03 7.8" StrokeDashCap="Round"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
               <Ellipse Width="86" Height="86" Stroke="{DynamicResource MarkBrush}" StrokeThickness="6"
-                       StrokeDashArray="32.42 12.62" StrokeDashCap="Round" RenderTransform="{StaticResource SplashTilt}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+                       StrokeDashArray="32.42 12.62" StrokeDashCap="Round"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
               <Ellipse Width="16" Height="16" Fill="{DynamicResource MarkBrush}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>
@@ -656,7 +656,7 @@
                      Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0" VerticalAlignment="Center"/>
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" FontSize="12" Margin="11,10,0,0" VerticalAlignment="Center"/>
         </StackPanel>
-        <Border Width="220" Height="3" CornerRadius="999" Background="{DynamicResource LineBrush}" Margin="0,24,0,0">
+        <Border Width="220" Height="3" CornerRadius="1.5" Background="{DynamicResource LineBrush}" Margin="0,24,0,0">
           <Rectangle Height="3" HorizontalAlignment="Left" Fill="{DynamicResource AccentBrush}" RadiusX="1.5" RadiusY="1.5" Width="0">
             <Rectangle.Triggers>
               <EventTrigger RoutedEvent="FrameworkElement.Loaded">

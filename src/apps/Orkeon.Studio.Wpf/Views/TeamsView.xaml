@@ -60,7 +60,7 @@
               <StackPanel Margin="0,0,14,0">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock FontSize="14" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
-                  <Border CornerRadius="999" Padding="10,3" Margin="10,0,0,0">
+                  <Border CornerRadius="10.5" Padding="10,3" Margin="10,0,0,0">
                     <Border.Style>
                       <Style TargetType="Border">
                         <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
