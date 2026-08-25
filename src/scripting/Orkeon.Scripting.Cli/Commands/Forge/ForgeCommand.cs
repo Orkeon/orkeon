@@ -47,6 +47,15 @@ internal sealed record ForgeCommandOptions
     /// <summary><c>--dry</c>: stop after Validate.</summary>
     public bool Dry { get; init; }
 
+    /// <summary>
+    /// <c>--edit</c> (resume only): amend the blueprint of a session paused before its
+    /// trial. The client sends the amended blueprint over the channel; the engine
+    /// validates it in full, re-renders deterministically, and the cycle continues —
+    /// with <c>--dry</c>, it pauses again at the same boundary. Zero LLM tokens, same
+    /// iteration: the current one's trial has not run yet.
+    /// </summary>
+    public bool Edit { get; init; }
+
     /// <summary><c>--max-iterations</c>.</summary>
     public int? MaxIterations { get; init; }
 
@@ -133,6 +142,10 @@ internal sealed record ForgeCommandOptions
                     options = options with { Dry = true };
                     continue;
 
+                case "--edit":
+                    options = options with { Edit = true };
+                    continue;
+
                 case "--max-iterations":
                     if (!TryTakeValue(args, ref i, out var iterations)
                         || !int.TryParse(iterations, NumberStyles.None, CultureInfo.InvariantCulture, out var maxIterations)
@@ -179,6 +192,8 @@ internal sealed record ForgeCommandOptions
             return options with { Error = "promote needs --to <directory>." };
         if (options.PromoteSlug is null && (options.Destination is not null || options.Schedule is not null || options.WithSettings))
             return options with { Error = "--to, --schedule and --with-settings only apply to `forge promote`." };
+        if (options.Edit && options.ResumeSlug is null)
+            return options with { Error = "--edit only applies to `forge resume`." };
 
         return options with { Need = needWords.Count > 0 ? string.Join(' ', needWords) : null };
     }
@@ -396,6 +411,43 @@ internal static class ForgeCommand
             ? new JsonLinesUserChannel(Console.In)
             : new TerminalUserChannel(Console.In, Console.Out);
 
+        // The dry-pause edit (v3 W-10): the wizard's Composer step shows the proposed
+        // agents while the engine is off — amending one is a resume that carries the
+        // blueprint over the channel, validated in full, then a deterministic re-render.
+        // The arbitration keeps its own edit decision; this path only exists BEFORE the
+        // first trial of the current iteration, so it charges none.
+        var announce = true;
+        if (options.Edit)
+        {
+            if (session.State != ForgeState.Test)
+            {
+                await Console.Error.WriteLineAsync(
+                    $"orkeon forge: --edit amends a session paused before its trial; session '{session.Document.Slug}'"
+                    + $" is at '{ForgeEventWriter.Spell(session.State)}' — at the arbitration, use the edit decision instead.")
+                    .ConfigureAwait(false);
+                return ExitError;
+            }
+
+            events.SessionStarted(session, resumed: true);
+            announce = false;
+
+            var json = await channel.ReadBlueprintAsync(CancellationToken.None).ConfigureAwait(false)
+                ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
+            if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events) is not { } edited)
+            {
+                // The session has not moved: it waits at the same pause, resumable again.
+                events.SessionFinished("paused", ExitError);
+                return ExitError;
+            }
+
+            session.SaveArtifact(ForgeSession.BlueprintFileName, edited);
+            events.Emit("blueprint.ready", new { blueprint = edited, iteration = session.Document.Iteration });
+            var now = DateTimeOffset.UtcNow;
+            session.AppendHistory(ForgeState.Test, ForgeTrigger.BlueprintEdited, ForgeState.Render, now);
+            session.SetState(ForgeState.Render);
+            session.Save(now);
+        }
+
         var engine = new ForgeEngine(
             session,
             events,
@@ -413,7 +465,7 @@ internal static class ForgeCommand
             ]);
 
         var result = await engine
-            .RunAsync(resumed, stopBefore: options.Dry ? ForgeState.Test : null)
+            .RunAsync(resumed, stopBefore: options.Dry ? ForgeState.Test : null, announce: announce)
             .ConfigureAwait(false);
 
         if (!options.Events && options.Dry && result.Outcome == ForgeEngineOutcome.Paused)

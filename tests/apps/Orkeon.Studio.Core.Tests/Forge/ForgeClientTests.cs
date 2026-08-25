@@ -103,6 +103,38 @@ public class ForgeClientTests
     }
 
     [Fact]
+    public async Task The_dry_pause_edit_rides_the_launch_itself()
+    {
+        var (client, processes) = Build();
+
+        // The amended blueprint: `--edit` on the argv, and the blueprint.edited line
+        // queued on stdin at launch — before any event can come back, no race.
+        await client.RunAsync(
+            new ForgeStartRequest
+            {
+                ResumeSlug = "veille",
+                Dry = true,
+                EditedBlueprintJson = """{"crew":{"name":"veille"}}""",
+            },
+            _ => { },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(processes.Requests);
+        Assert.Equal(["forge", "resume", "veille", "--events", "jsonl", "--dry", "--edit"], request.Arguments);
+        Assert.Equal(
+            """{"kind":"blueprint.edited","blueprint":{"crew":{"name":"veille"}}}""",
+            Assert.Single(processes.InputLines));
+
+        // What could never be a document at all is refused before any child starts.
+        var refused = await client.RunAsync(
+            new ForgeStartRequest { ResumeSlug = "veille", EditedBlueprintJson = "pas du json" },
+            _ => { },
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(RunOutcome.NotStarted, refused.Outcome);
+        Assert.Single(processes.Requests);   // still just the first launch
+    }
+
+    [Fact]
     public async Task A_missing_binary_comes_back_as_not_started_and_a_second_run_is_refused_while_one_lives()
     {
         var (absent, _) = Build(installed: false);

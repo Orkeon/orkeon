@@ -81,8 +81,15 @@ l'étape Composer affiche une carte par agent du blueprint avec « Modifier » q
 ouvre l'éditeur d'agent — le nom correspond au `role` du blueprint, « ce qu'il
 fait » à son `goal`, les chips de capacités à ses `tools` ; « Retirer de
 l'équipe » et « Ajouter un agent » empruntent le même chemin. Les boutons sont
-actionnables exactement pendant que le moteur attend à son arbitrage — pendant
-un essai, ils attendent avec lui.
+actionnables aux deux points d'édition du moteur : pendant qu'il attend à son
+arbitrage (le canal vivant — décision `edit`, puis le blueprint amendé), et à la
+pause `--dry` de l'étape Composer, où le moteur est éteint — là, l'application
+est un processus enfant `forge resume --edit --dry` qui porte le blueprint
+amendé en première ligne stdin : le moteur le valide intégralement, re-rend de
+façon déterministe (zéro jeton LLM, même itération) et se remet en pause à la
+même frontière, si bien que le Composer se repeint avec l'équipe amendée.
+Pendant que l'assistant compose ou qu'un essai tourne, les boutons attendent
+avec le moteur.
 
 ### Ce qu'un run a coûté, à l'écran (remédiation v3)
 

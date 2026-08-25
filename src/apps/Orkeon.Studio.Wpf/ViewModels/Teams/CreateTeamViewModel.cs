@@ -526,10 +526,14 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>
-    /// « Modifier » is actionable only while the engine waits at its arbitration — that is
-    /// when the edit decision exists. During a trial the button waits with the engine.
+    /// « Modifier » is actionable at the engine's two edit points: while it waits at its
+    /// arbitration (the edit decision exists), and at the dry pause of the Composer step
+    /// (v3 W-10 — the engine is off, and the apply is a <c>resume --edit</c>). While the
+    /// assistant composes or a trial runs, the button waits with the engine.
     /// </summary>
-    public bool CanEditAgents => _model.DecisionOptions.Contains("edit", StringComparer.Ordinal) && _model.BlueprintJson is not null;
+    public bool CanEditAgents =>
+        _model.BlueprintJson is not null
+        && (_model.DecisionOptions.Contains("edit", StringComparer.Ordinal) || CanTryTeam);
 
     /// <summary>Opens the agent editor — over an agent, or for a new one when null.</summary>
     private void EditAgent(string? agentKey)
@@ -539,18 +543,55 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         AgentEditor.Open(blueprintJson, agentKey, [.. TeamMounts], amended =>
         {
-            // The engine owns the truth: the decision goes first, the amended blueprint
-            // follows, and everything is re-validated on its side of the wire. A dead
-            // engine must be SAID — closing the editor as if applied would lose the edit.
-            if (!_client.SendDecision("edit") || !_client.SendBlueprint(amended))
+            // The engine owns the truth: at the arbitration the decision goes first, the
+            // amended blueprint follows, and everything is re-validated on its side of
+            // the wire. A dead engine must be SAID — closing the editor as if applied
+            // would lose the edit.
+            if (_model.DecisionOptions.Contains("edit", StringComparer.Ordinal))
             {
-                StatusMessage = _strings[StudioStringKeys.WizardAssistantNotRunning];
+                if (!_client.SendDecision("edit") || !_client.SendBlueprint(amended))
+                {
+                    StatusMessage = _strings[StudioStringKeys.WizardAssistantNotRunning];
+                    return;
+                }
+
+                _model.AcknowledgeDecision();
+                SyncFromModel();
                 return;
             }
 
-            _model.AcknowledgeDecision();
-            SyncFromModel();
+            // At the dry pause the engine is off (W-10): a `resume --edit` carries the
+            // amended blueprint as the child's first stdin line, re-renders
+            // deterministically — zero LLM tokens, same iteration — and pauses again at
+            // the same boundary, so the Composer repaints with the amended team.
+            if (CanTryTeam && _model.Slug is { } slug)
+            {
+                _ = EditAtPauseAsync(slug, amended);
+                return;
+            }
+
+            StatusMessage = _strings[StudioStringKeys.WizardAssistantNotRunning];
         });
+    }
+
+    /// <summary>The dry-pause edit's engine run; the race with another launch is said, never thrown.</summary>
+    private async Task EditAtPauseAsync(string slug, string amendedBlueprintJson)
+    {
+        try
+        {
+            await RunEngineAsync(new ForgeStartRequest
+            {
+                ResumeSlug = slug,
+                WorkingDirectory = _workspace,
+                Dry = true,
+                EditedBlueprintJson = amendedBlueprintJson,
+                EnvironmentOverrides = AssistantEnvironment(),
+            }).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            _dispatcher.Post(() => StatusMessage = _strings[StudioStringKeys.WizardAssistantNotRunning]);
+        }
     }
 
     /// <summary>The proposal's plain-words rationale.</summary>

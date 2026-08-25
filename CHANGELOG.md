@@ -38,6 +38,18 @@ pinned to the original folder; the saved card offers « Modifier l'équipe » an
 « Refaire un essai ». The blueprint's `crew.name` must now be a short display
 name (≤ 60 chars, repairable error) — it becomes the team's folder name.
 
+**Edit at the dry pause (W-10).** `forge resume <slug> --edit` amends the
+blueprint of a session paused before its trial: the amended JSON travels as the
+channel's first inbound line, is validated in full (parse, compile, tool
+catalogue), re-announced `blueprint.ready` on the **current** iteration — no
+charge: that iteration's trial has not run yet — then re-rendered
+deterministically; with `--dry` the session pauses again at the same boundary,
+and an invalid edit leaves it exactly where it was (recoverable
+`FORGE-BLUEPRINT-INVALID`). This wires Studio's « Modifier » on the Composer
+step's agent cards, which was greyed out at the pause: the agent editor now
+applies through a `resume --edit --dry` child run and the Composer repaints with
+the amended team. At the arbitration, the `edit` decision remains the path.
+
 Conformity (mock v3 volets): the stepper pills centre number and label; the
 verdict buttons live in the verdict card (accept primary); one shared chip
 recipe (`ToolChip`/`ChipAction`) across every tool, mount and metric chip; card

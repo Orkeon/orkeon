@@ -592,7 +592,7 @@
   <data name="AgentEd_Can" xml:space="preserve"><value>Ce qu'il peut faire</value></data>
   <data name="AgentEd_Scope" xml:space="preserve"><value>Sur quel dossier</value></data>
   <data name="AgentEd_Remove" xml:space="preserve"><value>Retirer de l'équipe</value></data>
-  <data name="AgentEd_Wait" xml:space="preserve"><value>L'essai en cours doit d'abord se terminer</value></data>
+  <data name="AgentEd_Wait" xml:space="preserve"><value>L'étape en cours doit d'abord se terminer</value></data>
   <data name="Vm_Dialog_ExportDestination" xml:space="preserve"><value>Choisissez où exporter l'équipe</value></data>
   <data name="Wiz_TeamFolders" xml:space="preserve"><value>Dossiers de cette équipe</value></data>
   <data name="Wiz_AllowFolder" xml:space="preserve"><value>Autoriser un dossier</value></data>

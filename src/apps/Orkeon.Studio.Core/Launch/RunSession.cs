@@ -98,8 +98,8 @@ public sealed class RunSession
         RunLaunchRequest request,
         Action<ProcessOutputLine>? onOutput = null,
         Action<IProcessInputWriter>? onInputReady = null,
-        CancellationToken cancellationToken = default,
-        Func<LaunchHistoryEntry, LaunchHistoryEntry>? enrichEntry = null)
+        Func<LaunchHistoryEntry, LaunchHistoryEntry>? enrichEntry = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 

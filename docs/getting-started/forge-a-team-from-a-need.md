@@ -58,7 +58,10 @@ Each cycle lives under `.orkeon/forge/<slug>/` in your working directory:
 orkeon forge list                      # what is in progress, what is ready
 orkeon forge resume supplier-watch     # pick up exactly where it stopped
 orkeon forge "..." --dry               # generate and validate only — never execute
+orkeon forge resume supplier-watch --edit --dry   # amend the plan at the pause, re-render, pause again
 ```
+
+At the `--dry` pause you can amend the plan before ever trying it: `resume --edit` reads the amended blueprint from the channel, validates it in full, re-renders deterministically — zero LLM tokens, same iteration — and with `--dry` pauses again at the same boundary. This is what Studio's « Modifier » does on the Composer step's agent cards.
 
 ## Two formats, one generation
 

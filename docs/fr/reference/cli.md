@@ -66,6 +66,7 @@ Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la for
 | `--events jsonl` | Émet le protocole d'événements versionné sur stdout au lieu du rendu terminal ; les réponses descendent sur stdin (c'est ainsi qu'Orkeon Studio pilote la forge). |
 | `--auto` | Arbitre les verdicts non conformes sans humain, dans les limites du budget. |
 | `--dry` | S'arrête après la validation — génère et valide, n'exécute jamais. Reprenez sans `--dry` pour essayer. |
+| `--edit` | *(resume)* Amende le blueprint d'une session en pause avant son essai : le JSON amendé passe par le canal (`blueprint.edited` sur stdin en mode `--events`, une ligne collée dans le terminal), est validé intégralement, puis re-rendu de façon déterministe — zéro token LLM, même itération. Avec `--dry`, la session se remet en pause à la même frontière. À l'arbitrage, utilisez plutôt la décision `edit`. |
 | `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | Le budget (défaut 3 itérations ; `0` = jetons/temps illimités). Une reprise peut le relever ; la consommation est toujours reportée. |
 | `--settings <path>` | Mêmes sémantiques qu'`orkeon run` — **forme longue uniquement** : le parseur du forge est artisanal et ne définit aucun alias court. |
 | `--pack <dir>` | Surcharge le pack de prompts embarqué. |

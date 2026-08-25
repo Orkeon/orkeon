@@ -79,8 +79,15 @@ recoverable `FORGE-BLUEPRINT-INVALID`, reopening the arbitration. In Studio, the
 Composer step shows one card per blueprint agent with « Modifier » opening the
 agent editor — the name maps to the blueprint's `role`, "what it does" to its
 `goal`, the capability chips to its `tools`; « Retirer de l'équipe » and
-« Ajouter un agent » travel the same path. The buttons are actionable exactly
-while the engine waits at its arbitration — during a trial they wait with it.
+« Ajouter un agent » travel the same path. The buttons are actionable at the
+engine's two edit points: while it waits at its arbitration (the live channel —
+decision `edit`, then the amended blueprint), and at the Composer step's dry
+pause, where the engine is off — there the apply is a `forge resume --edit --dry`
+child run carrying the amended blueprint as its first stdin line: the engine
+validates it in full, re-renders deterministically (zero LLM tokens, same
+iteration) and pauses again at the same boundary, so the Composer repaints with
+the amended team. While the assistant composes or a trial runs, the buttons wait
+with the engine.
 
 ### What a run costs, on screen (remediation v3)
 

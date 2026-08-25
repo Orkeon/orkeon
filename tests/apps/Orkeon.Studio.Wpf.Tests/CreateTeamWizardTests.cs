@@ -135,6 +135,50 @@ public class CreateTeamWizardTests
     }
 
     [Fact]
+    public async Task At_the_dry_pause_an_agent_edit_relaunches_the_engine_with_the_amended_blueprint()
+    {
+        // The user's own scenario (W-10): the Composer shows the proposed team, the
+        // engine is off at the dry pause — « Modifier » must not be greyed out.
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"Scanner","tools":["file_read"]}],"tasks":[{"key":"t","description":"d","agent":"a"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.True(vm.CanEditAgents);
+        Assert.True(vm.Agents[0].EditCommand.CanExecute(null));
+
+        // The apply is a `resume --edit --dry`: the amended blueprint rides the launch's
+        // stdin, the engine re-renders deterministically and pauses again — the Composer
+        // repaints with the amended team, still ready to try.
+        processes.OutputToEmit.Clear();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":true}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"Chercheur","tools":["file_read"]}],"tasks":[{"key":"t","description":"d","agent":"a"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        vm.Agents[0].EditCommand.Execute(null);
+        Assert.True(vm.AgentEditor.IsOpen);
+        vm.AgentEditor.Name = "Chercheur";
+        vm.AgentEditor.SaveCommand.Execute(null);
+
+        Assert.Equal(
+            ["forge", "resume", "veille", "--events", "jsonl", "--dry", "--edit"],
+            processes.Requests[1].Arguments);
+        var line = Assert.Single(processes.InputLines);
+        Assert.StartsWith("""{"kind":"blueprint.edited","blueprint":""", line, StringComparison.Ordinal);
+        Assert.Contains("Chercheur", line, StringComparison.Ordinal);
+        Assert.Equal("Chercheur", Assert.Single(vm.Agents).Name);
+        Assert.True(vm.CanTryTeam);
+        Assert.True(vm.CanEditAgents);
+    }
+
+    [Fact]
     public async Task A_cold_resume_of_the_dry_pause_restores_the_identity_and_the_trial_button()
     {
         // Regression (W-09 exploration): the hydrate-only branch never set the model's

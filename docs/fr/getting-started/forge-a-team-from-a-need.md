@@ -58,7 +58,10 @@ Chaque cycle vit sous `.orkeon/forge/<slug>/` dans votre répertoire de travail 
 orkeon forge list                        # ce qui est en cours, ce qui est prêt
 orkeon forge resume veille-fournisseur   # reprendre exactement là où c'était
 orkeon forge "..." --dry                 # générer et valider seulement — jamais exécuter
+orkeon forge resume supplier-watch --edit --dry   # amender le plan à la pause, re-rendre, re-pauser
 ```
+
+À la pause `--dry`, vous pouvez amender le plan avant même de l'essayer : `resume --edit` lit le blueprint amendé sur le canal, le valide intégralement, re-rend de façon déterministe — zéro jeton LLM, même itération — et avec `--dry` se remet en pause à la même frontière. C'est ce que fait le « Modifier » de Studio sur les cartes d'agent de l'étape Composer.
 
 ## Deux formats, une seule génération
 

@@ -592,7 +592,7 @@
   <data name="AgentEd_Can" xml:space="preserve"><value>What it can do</value></data>
   <data name="AgentEd_Scope" xml:space="preserve"><value>On which folder</value></data>
   <data name="AgentEd_Remove" xml:space="preserve"><value>Remove from the team</value></data>
-  <data name="AgentEd_Wait" xml:space="preserve"><value>The current trial must finish first</value></data>
+  <data name="AgentEd_Wait" xml:space="preserve"><value>The step in progress must finish first</value></data>
   <data name="Vm_Dialog_ExportDestination" xml:space="preserve"><value>Choose where to export the team</value></data>
   <data name="Wiz_TeamFolders" xml:space="preserve"><value>This team's folders</value></data>
   <data name="Wiz_AllowFolder" xml:space="preserve"><value>Allow a folder</value></data>

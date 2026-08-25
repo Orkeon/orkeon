@@ -36,6 +36,14 @@ public sealed record ForgeStartRequest
     /// </summary>
     public IReadOnlyDictionary<string, string> EnvironmentOverrides { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The amended blueprint to apply at the dry pause (v3 W-10): the argv gains
+    /// <c>--edit</c> and the JSON travels as the child's first stdin line — the engine
+    /// validates it in full, re-renders deterministically, and with <see cref="Dry"/>
+    /// pauses again at the same boundary. Only meaningful with <see cref="ResumeSlug"/>.
+    /// </summary>
+    public string? EditedBlueprintJson { get; init; }
 }
 
 /// <summary>
@@ -100,6 +108,9 @@ public static class ForgeArgumentsBuilder
         if (request.Dry)
             arguments.Add("--dry");
 
+        if (!string.IsNullOrWhiteSpace(request.EditedBlueprintJson))
+            arguments.Add("--edit");
+
         return arguments;
     }
 }
@@ -153,6 +164,17 @@ public sealed class ForgeClient
         if (!location.Found)
             return ProcessRunResult.NotStarted(location.Error ?? $"`{OrkeonBinaryLocator.ExecutableBaseName}` was not found.");
 
+        // The dry-pause edit rides the launch itself: the engine's `--edit` reads the
+        // amended blueprint as its first inbound line, so it is queued on stdin before
+        // any event comes back — no race with the reader.
+        string? blueprintLine = null;
+        if (!string.IsNullOrWhiteSpace(request.EditedBlueprintJson))
+        {
+            blueprintLine = TryBuildBlueprintLine(request.EditedBlueprintJson);
+            if (blueprintLine is null)
+                return ProcessRunResult.NotStarted("The amended blueprint is not a JSON object.");
+        }
+
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _cancellation = linked;
         IsRunning = true;
@@ -164,7 +186,12 @@ public sealed class ForgeClient
                 Arguments = ForgeArgumentsBuilder.Build(request),
                 WorkingDirectory = request.WorkingDirectory,
                 Environment = request.EnvironmentOverrides,
-                OnInputReady = writer => _input = writer,
+                OnInputReady = writer =>
+                {
+                    _input = writer;
+                    if (blueprintLine is not null)
+                        writer.TryWriteLine(blueprintLine);
+                },
             };
 
             return await _launcher.RunAsync(
@@ -267,19 +294,24 @@ public sealed class ForgeClient
     public bool SendBlueprint(string blueprintJson)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blueprintJson);
+        return TryBuildBlueprintLine(blueprintJson) is { } line
+            && _input is { } writer && writer.TryWriteLine(line);
+    }
 
-        JsonElement blueprint;
+    /// <summary>The <c>blueprint.edited</c> stdin line, or null when the JSON could never be a document.</summary>
+    private static string? TryBuildBlueprintLine(string blueprintJson)
+    {
         try
         {
-            blueprint = JsonSerializer.Deserialize<JsonElement>(blueprintJson);
+            var blueprint = JsonSerializer.Deserialize<JsonElement>(blueprintJson);
+            return blueprint.ValueKind == JsonValueKind.Object
+                ? JsonSerializer.Serialize(new { kind = ForgeEventKinds.BlueprintEdited, blueprint })
+                : null;
         }
         catch (JsonException)
         {
-            return false;
+            return null;
         }
-
-        return blueprint.ValueKind == JsonValueKind.Object
-            && WriteLine(new { kind = ForgeEventKinds.BlueprintEdited, blueprint });
     }
 
     /// <summary>Asks the running child to stop; false when nothing runs or it was already asked.</summary>

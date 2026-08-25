@@ -107,10 +107,14 @@ internal sealed class ForgeEngine
     /// the deliberate boundary of <c>--dry</c> (generate and validate, never execute):
     /// the session pauses there, resumable, and the run exits 0. Cancellation saves the
     /// session first and then propagates — the CLI's 130 contract is the caller's business.
+    /// <paramref name="announce"/> false skips the <c>session.started</c> emission — for
+    /// the one caller (<c>resume --edit</c>) that already announced the session before its
+    /// own pre-engine exchange; the protocol still opens with exactly one announcement.
     /// </summary>
     public async Task<ForgeEngineResult> RunAsync(
         bool resumed = false,
         ForgeState? stopBefore = null,
+        bool announce = true,
         CancellationToken cancellationToken = default)
     {
         var machine = ForgeStateMachineFactory.Create(_session.State);
@@ -121,7 +125,8 @@ internal sealed class ForgeEngine
             budget.RegisterIteration();
         _session.Document.Iteration = budget.ConsumedIterations;
 
-        _events.SessionStarted(_session, resumed);
+        if (announce)
+            _events.SessionStarted(_session, resumed);
 
         // Wall time is charged as an absolute delta from the run's start on top of what
         // earlier runs consumed: per-checkpoint deltas would truncate sub-second stages

@@ -438,25 +438,41 @@ internal sealed class VerdictStage : IForgeStageRunner
             return false;
         }
 
-        if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors))
-        {
-            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", errors), recoverable: true);
+        if (ValidateEditedBlueprint(json, _knownTools, events) is not { } blueprint)
             return false;
-        }
 
-        var compilation = ForgeBlueprintCompiler.Compile(blueprint!);
-        var validation = ForgeBlueprintCompiler.Validate(compilation, _knownTools);
-        if (validation.Errors.Count > 0)
-        {
-            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", validation.Errors), recoverable: true);
-            return false;
-        }
-
-        session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
+        session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
         // The engine registers the loop-back's iteration right after this stage returns:
         // the announcement carries the number the re-render will actually run as.
         events.Emit("blueprint.ready", new { blueprint, iteration = session.Document.Iteration + 1 });
         return true;
+    }
+
+    /// <summary>
+    /// Validates one amended blueprint in full — the same parse, compile and
+    /// tool-catalogue checks a generated one goes through. Returns null when it is
+    /// invalid, with the recoverable <c>FORGE-BLUEPRINT-INVALID</c> already on the
+    /// stream. Shared between the arbitration's edit decision and
+    /// <c>forge resume --edit</c> at the dry pause.
+    /// </summary>
+    internal static ForgeBlueprint? ValidateEditedBlueprint(
+        string json, IReadOnlyCollection<string> knownTools, ForgeEventWriter events)
+    {
+        if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors))
+        {
+            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", errors), recoverable: true);
+            return null;
+        }
+
+        var compilation = ForgeBlueprintCompiler.Compile(blueprint!);
+        var validation = ForgeBlueprintCompiler.Validate(compilation, knownTools);
+        if (validation.Errors.Count > 0)
+        {
+            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", validation.Errors), recoverable: true);
+            return null;
+        }
+
+        return blueprint;
     }
 
     /// <summary>The diagnosis becomes the next blueprint turn's error feed, verbatim (SPEC §4).</summary>
