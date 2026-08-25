@@ -230,16 +230,30 @@
     <Setter Property="FontSize" Value="12"/>
   </Style>
 
-  <!-- ══ Badge: <Border Style="Badge*"><TextBlock .../></Border> ══ -->
+  <!-- ══ Badge: <Border Style="Badge*"><TextBlock .../></Border> ══
+       WPF rule (unlike CSS): CornerRadius is NOT clamped to height/2 — an oversized
+       value deforms the corners into ogives. Every pill therefore carries a fixed
+       Height and CornerRadius = Height / 2, exactly. -->
   <Style x:Key="BadgeText" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="10.5"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
   <Style x:Key="BadgeBase" TargetType="Border">
-    <Setter Property="CornerRadius" Value="999"/>
-    <Setter Property="Padding" Value="10,3"/>
+    <Setter Property="Height" Value="20"/>
+    <Setter Property="CornerRadius" Value="10"/>
+    <Setter Property="Padding" Value="10,0"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+  </Style>
+  <Style x:Key="BadgeNeutral" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource InkMutedBrush}"/>
+  </Style>
+  <Style x:Key="BadgeSky" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+    <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource MarkBrush}"/>
   </Style>
   <Style x:Key="BadgeOk" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
@@ -258,15 +272,16 @@
     <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
   </Style>
 
-  <!-- ══ Tool / mount / metric chip — THE one chip recipe (v3 W-03): mono 11.5,
-       paper-sunk, line-faint hairline, pill. Usage:
-       <Border Style="ToolChip"><TextBlock Style="ToolChipText" .../></Border> ══ -->
+  <!-- ══ Tool / mount chip — THE one chip recipe (v3 W-03): mono 11.5, paper-sunk,
+       line-faint hairline, pill (Height 22, radius exactly 11 — the h/2 rule above).
+       Usage: <Border Style="ToolChip"><TextBlock Style="ToolChipText" .../></Border> ══ -->
   <Style x:Key="ToolChip" TargetType="Border">
     <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource LineFaintBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="CornerRadius" Value="999"/>
-    <Setter Property="Padding" Value="10,3"/>
+    <Setter Property="Height" Value="22"/>
+    <Setter Property="CornerRadius" Value="11"/>
+    <Setter Property="Padding" Value="10,0"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
   </Style>
@@ -277,9 +292,20 @@
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
 
-  <!-- Pill-shaped ACTION («Autoriser un dossier», «Changer les dossiers», toggleable
-       tool chips): surface fill, accent text, real hover/pressed/disabled states —
-       the inline-template pills had none (v3 D-02). -->
+  <!-- Metric chip (tokens, cache, wall time) — same recipe, one size down:
+       Height 20, radius exactly 10, mono 11. -->
+  <Style x:Key="MetricChip" TargetType="Border" BasedOn="{StaticResource ToolChip}">
+    <Setter Property="Height" Value="20"/>
+    <Setter Property="CornerRadius" Value="10"/>
+  </Style>
+  <Style x:Key="MetricChipText" TargetType="TextBlock" BasedOn="{StaticResource ToolChipText}">
+    <Setter Property="FontSize" Value="11"/>
+  </Style>
+
+  <!-- Small ACTION button next to chips («Autoriser un dossier», «Changer les dossiers»):
+       surface fill, accent text, real hover/pressed/disabled states — the inline-template
+       pills had none (v3 D-02). Radius 10, not a pill: the pill shape is reserved for
+       chips; action buttons cap at CornerRadius 10. -->
   <Style x:Key="ChipAction" TargetType="Button">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="11.5"/>
@@ -297,7 +323,7 @@
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="12.5" Padding="{TemplateBinding Padding}">
+                  CornerRadius="10" Padding="{TemplateBinding Padding}">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
           <ControlTemplate.Triggers>

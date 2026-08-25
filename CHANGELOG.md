@@ -60,6 +60,16 @@ shows the mounts the agents imply (deliverable roots + the sandbox read mount).
 Also fixed: a cold resume of the Composer pause left « Essayer l'équipe » dead
 (the hydrator now restores the session identity from `session.json`).
 
+**True half-circle pills (W-11).** WPF, unlike CSS, does not clamp
+`CornerRadius` to half the element's height — the `999` reflex deformed every
+chip's ends into ogives. Every pill now carries a fixed height with a radius of
+exactly half of it: `ToolChip` 22/11, new `MetricChip` 20/10 (tokens, cache,
+wall time), `BadgeBase` 20/10 (plus `BadgeNeutral`/`BadgeSky` variants), and no
+chip border hard-codes a radius in a view any more. Action buttons are not
+pills: `ChipAction` drops from 12.5 to the 10 cap. A conformity test sweeps the
+XAML (no oversized radius anywhere) and pins radius == height/2 on the pill
+styles.
+
 ### Added — Remediation v2: team folders end to end, and the blueprint edited by hand
 
 The owner's second design pass (RC2-FEAT-05) closes the gap between the v3 mock

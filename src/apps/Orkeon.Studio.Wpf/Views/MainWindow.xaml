@@ -636,10 +636,10 @@
                               <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
                                                    Foreground="{DynamicResource AccentFgBrush}" Visibility="Collapsed"/>
                             </Border>
-                            <Border DockPanel.Dock="Right" CornerRadius="999" Padding="10,3" VerticalAlignment="Center"
-                                    Background="{DynamicResource PaperSunkBrush}">
+                            <Border DockPanel.Dock="Right">
                               <Border.Style>
-                                <Style TargetType="Border">
+                                <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+                                  <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
                                   <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
                                       <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
@@ -647,9 +647,9 @@
                                   </Style.Triggers>
                                 </Style>
                               </Border.Style>
-                              <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding RightsLabel}">
+                              <TextBlock Text="{Binding RightsLabel}">
                                 <TextBlock.Style>
-                                  <Style TargetType="TextBlock">
+                                  <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
                                     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
                                     <Style.Triggers>
                                       <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
@@ -742,9 +742,9 @@
                   <Button Command="{Binding ToggleCommand}" Cursor="Hand" Margin="0,0,6,6">
                     <Button.Template>
                       <ControlTemplate TargetType="Button">
-                        <Border x:Name="Chip" Background="{DynamicResource SurfaceBrush}"
-                                BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-                                CornerRadius="12.5" Padding="10,4">
+                        <Border x:Name="Chip" Style="{StaticResource ToolChip}"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource LineBrush}">
                           <TextBlock x:Name="Label" FontSize="11.5"
                                      Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
                                      FontFamily="{StaticResource MonoFont}" Text="{Binding Tool}"/>
