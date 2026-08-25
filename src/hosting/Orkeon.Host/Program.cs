@@ -89,18 +89,22 @@ var bootConfiguration = new ConfigurationBuilder()
     .AddEnvironmentVariables("ORKEON_")
     .Build();
 var bootOptions = bootConfiguration.GetSection(OrkeonHostOptions.SectionName).Get<OrkeonHostOptions>() ?? new OrkeonHostOptions();
-var crewMounts = HostCrewMounts.For(bootOptions.Crews);
-mounts.AddRange(crewMounts);
+var crewPlan = HostCrewMounts.For(bootOptions.Crews);
+mounts.AddRange(crewPlan.Mounts);
 
 using var host = RunnerHost.Build(
     settingsPath,
     mounts,
-    allowExternalMounts: crewMounts.Count > 0 || args.Contains("--allow-external-mounts", StringComparer.Ordinal),
-    llmLogPath: null,
+    allowExternalMounts: crewPlan.Mounts.Count > 0 || args.Contains("--allow-external-mounts", StringComparer.Ordinal),
+    llmLogVirtualPath: null,
     configureLogging: null,
     configureServices: (context, services) =>
     {
         services.Configure<OrkeonHostOptions>(context.Configuration.GetSection(OrkeonHostOptions.SectionName));
+
+        // The crew→virtual-path map travels with the mounts that made it true: CrewRunner
+        // loads a hosted crew by its virtual spelling, never by the operator's disk path.
+        services.AddSingleton(crewPlan);
 
         // The generic host caps the WHOLE stop sequence at HostOptions.ShutdownTimeout
         // (default 30 s). Left alone, an operator raising ShutdownGracePeriod past ~25 s

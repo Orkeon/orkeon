@@ -75,13 +75,21 @@ internal sealed partial class CrewRunner : ICrewRunner
     private readonly OrkeonHostOptions _options;
     private readonly ILogger<CrewRunner> _logger;
 
+    /// <summary>
+    /// Maps a hosted crew's name to the virtual path its directory was mounted under.
+    /// Optional so a test can compose a runner without the boot-time plan; absent, the
+    /// configured path is used verbatim, which is what a caller mounting its own crews wants.
+    /// </summary>
+    private readonly HostCrewMountPlan? _mountPlan;
+
     /// <summary>Builds the runner over the host's services and its registry.</summary>
     public CrewRunner(
         IServiceScopeFactory scopes,
         CrewHostRegistry registry,
         IHost host,
         IOptions<OrkeonHostOptions> options,
-        ILogger<CrewRunner> logger)
+        ILogger<CrewRunner> logger,
+        HostCrewMountPlan? mountPlan = null)
     {
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
@@ -89,6 +97,7 @@ internal sealed partial class CrewRunner : ICrewRunner
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _mountPlan = mountPlan;
     }
 
     /// <summary>
@@ -157,8 +166,12 @@ internal sealed partial class CrewRunner : ICrewRunner
             if (onProgress is not null && scope.ServiceProvider.GetService<RunProgressHook>() is { } progressHook)
                 progressHook.OnProgress = onProgress;
 
+            var crewPath =
+                _mountPlan?.VirtualPaths.TryGetValue(hosted.Name, out var virtualPath) == true
+                    ? virtualPath
+                    : hosted.Path;
             var crew = await RunnerExecution
-                .LoadCrewAsync(_host, factory, hosted.Path, _logger, run.Cancellation.Token)
+                .LoadCrewAsync(_host, factory, crewPath, _logger, run.Cancellation.Token)
                 .ConfigureAwait(false);
             crewId = crew.Id;
 

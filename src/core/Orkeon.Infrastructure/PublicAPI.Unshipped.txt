@@ -11,3 +11,4 @@ Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheHitTokens.get -> lo
 Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheHitTokens.init -> void
 Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheMissTokens.get -> long?
 Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheMissTokens.init -> void
+Orkeon.Infrastructure.Configuration.FileSystemOptions.InternalMounts.get -> System.Collections.ObjectModel.Collection<string!>!

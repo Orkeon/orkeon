@@ -32,10 +32,22 @@ public static partial class RunnerExecution
     /// <see cref="RunInteractiveLoopAsync"/>: a fully built host plus the
     /// runner-level metadata both flows need.
     /// </summary>
+    /// <param name="Host">The built host.</param>
+    /// <param name="Logger">The runner-level logger.</param>
+    /// <param name="ConfigPath">
+    /// The crew target as the operator typed it, resolved to an absolute physical path.
+    /// Diagnostics and esbuild's import resolution only — never handed to the VFS.
+    /// </param>
+    /// <param name="VirtualConfigPath">
+    /// The same target spelled for the VFS: <c>/crew</c> for a multi-file crew directory,
+    /// <c>/crew/&lt;file&gt;</c> otherwise. This is what the loader is given.
+    /// </param>
+    /// <param name="CliMounts">The mount strings the host was built with.</param>
     internal sealed record HostBootstrap(
         IHost Host,
         ILogger Logger,
         string ConfigPath,
+        string VirtualConfigPath,
         IReadOnlyList<string> CliMounts);
 
     /// <summary>
@@ -100,22 +112,30 @@ public static partial class RunnerExecution
         var llmLogPath = opts.ResolvedLlmLogPath;
 
         // The crew-config loader (YamlCrewDefinitionLoader) reads the YAML through
-        // IFileSystemService, so configDir must be visible to the VFS registry.
-        // Same rationale applies to the LLM log directory (AppendAllTextAsync) when
-        // --llm-log[-path] is set. We inject 1:1 mounts (physical = virtual) so the
-        // VFS resolves the absolute paths that framework code already computes.
-        if (!EnsureExternalMountsAllowed(opts, configDir, llmLogPath))
+        // IFileSystemService, so configDir must be visible to the VFS registry — under a
+        // NAME (ADR-008), never identity-mapped. An agent asking `list_mounts`, or reading
+        // an access-denied message, must never be handed an absolute disk path.
+        if (!EnsureExternalMountsAllowed(opts, configDir, llmLogPath)
+            || !EnsureReservedRootsAreFree(
+                cliMounts, RunnerMounts.CrewVirtualRoot, RunnerMounts.LlmLogVirtualRoot))
         {
             errorCode = 1;
             return false;
         }
-        cliMounts.Insert(0, $"{configDir}:{configDir}:ro");
+        cliMounts.Insert(0, $"{configDir}:{RunnerMounts.CrewVirtualRoot}:ro");
+        var virtualConfigPath = inspection.IsCrewDirectory
+            ? RunnerMounts.CrewVirtualRoot
+            : $"{RunnerMounts.CrewVirtualRoot}/{Path.GetFileName(configPath)}";
+
+        // The LLM exchange log is infrastructure: the VFS must reach it (AppendAllTextAsync),
+        // no agent has any business addressing it — hence the internal-mount list.
+        var internalMounts = new List<string>();
         if (llmLogPath != null)
         {
             // Mount base paths must exist before FileSystemRegistry is built
             // (FileSystemServiceRegistration throws DirectoryNotFoundException otherwise).
             Directory.CreateDirectory(llmLogPath);
-            cliMounts.Insert(1, $"{llmLogPath}:{llmLogPath}:rw");
+            internalMounts.Add($"{llmLogPath}:{RunnerMounts.LlmLogVirtualRoot}:rw");
         }
 
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
@@ -124,7 +144,8 @@ public static partial class RunnerExecution
         var host = RunnerHost.Build(
             settingsPath, cliMounts,
             allowExternalMounts: opts.EffectiveAllowExternalMounts,
-            llmLogPath: llmLogPath,
+            llmLogVirtualPath: llmLogPath != null ? RunnerMounts.LlmLogVirtualRoot : null,
+            internalMounts: internalMounts,
             configureLogging: verbosity > 0
                 ? (_, b) => ConfigureVerboseLogging(b, verbosity)
                 : null,
@@ -151,7 +172,7 @@ public static partial class RunnerExecution
         if (llmLogPath != null)
             LogLlmExchangeLoggingEnabled(logger, llmLogPath);
 
-        bootstrap = new HostBootstrap(host, logger, configPath, cliMounts);
+        bootstrap = new HostBootstrap(host, logger, configPath, virtualConfigPath, cliMounts);
         return true;
     }
 
@@ -180,6 +201,44 @@ public static partial class RunnerExecution
             Console.Error.WriteLine($"       llmLogPath  : {llmLogPath}");
         Console.Error.WriteLine($"       cwd         : {cwd}");
         return false;
+    }
+
+    /// <summary>
+    /// Refuses a user <c>--mount</c> that claims a virtual root the runner needs for itself.
+    /// Without this the collision surfaces as a raw <see cref="InvalidOperationException"/>
+    /// ("Duplicate virtual paths") thrown out of a DI factory, which reads as a crash rather
+    /// than as the configuration mistake it is.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    private static bool EnsureReservedRootsAreFree(IEnumerable<string> userMounts, params string[] reserved)
+    {
+        foreach (var mountString in userMounts)
+        {
+            string virtualPath;
+            try
+            {
+                virtualPath = FileSystemMount.Parse(mountString).VirtualPath;
+            }
+            catch (FormatException)
+            {
+                // Malformed strings are reported by the mount parser at host build time,
+                // with its own precise message. Not this guard's business.
+                continue;
+            }
+
+            var clash = reserved.FirstOrDefault(r =>
+                string.Equals(virtualPath.TrimEnd('/'), r, StringComparison.Ordinal));
+            if (clash is null)
+                continue;
+
+            Console.Error.WriteLine(
+                $"ERROR: '{clash}' is reserved by the runner (it is where the crew definition "
+                + "and the LLM exchange logs are mounted). Give this mount another virtual name.");
+            Console.Error.WriteLine($"       mount       : {mountString}");
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -221,7 +280,8 @@ public static partial class RunnerExecution
         if (!TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out var errorCode))
             return errorCode;
 
-        var (host, logger, configPath, cliMounts) = (bootstrap!.Host, bootstrap.Logger, bootstrap.ConfigPath, bootstrap.CliMounts);
+        var (host, logger, configPath, virtualConfigPath, cliMounts) =
+            (bootstrap!.Host, bootstrap.Logger, bootstrap.ConfigPath, bootstrap.VirtualConfigPath, bootstrap.CliMounts);
 
         // Internal CTS linked to the external one (if any). Cancelling either path stops
         // the crew: SIGINT/SIGTERM via RegisterGracefulShutdown, OR caller's externalCt.
@@ -239,7 +299,7 @@ public static partial class RunnerExecution
             Domain.Crew.Crew crew;
             try
             {
-                crew = await LoadCrewAsync(host, factory, configPath, logger, cts.Token).ConfigureAwait(false);
+                crew = await LoadCrewAsync(host, factory, virtualConfigPath, logger, cts.Token).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException && !IsConnectionRefused(ex))
             {
@@ -819,10 +879,14 @@ public static partial class RunnerExecution
             engineFactory,
             loggerFactory.CreateLogger<ScriptHost>());
 
-        // configDir is already mounted 1:1 in TryBuildHost so virtualPath == physical path
-        // resolves through the VFS without any prefix gymnastics.
-        var physicalPath = configPath;
+        // The script is addressed virtually like everything else; esbuild is the one consumer
+        // that genuinely needs a disk path (it resolves the script's relative imports itself,
+        // outside the VFS). Asking the VFS to resolve it is the sanctioned way to obtain one —
+        // same stance as SqliteStateStore's Data Source. A denial leaves it null, and
+        // ScriptHost documents that as "imports will not resolve".
         var virtualPath = configPath;
+        var resolved = fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read);
+        var physicalPath = resolved.IsAllowed ? resolved.ResolvedPath : null;
 
         LogScriptedCrewDetected(logger);
         var jsCrew = await scriptHost.LoadCrewFromFileAsync(physicalPath, virtualPath, ct).ConfigureAwait(false);

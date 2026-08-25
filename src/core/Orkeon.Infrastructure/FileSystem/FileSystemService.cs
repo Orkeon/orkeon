@@ -54,9 +54,13 @@ public sealed partial class FileSystemService : IFileSystemService
     // Collects mount base paths for redaction (normalize to full paths).
     // Uses GetAllMountsInternal to include internal mounts (e.g. sandbox) in redaction,
     // so physical paths are never leaked regardless of mount visibility.
-    // 1:1 mounts (physical == virtual, e.g. the container convention /output:/output)
-    // are excluded: their "physical" path IS the public virtual name, and redacting it
-    // strips the only actionable hint from denial messages ("Available mounts: [REDACTED]").
+    // Identity mounts (physical == virtual) are excluded: their "physical" path IS the
+    // public virtual name, and redacting it strips the only actionable hint from denial
+    // messages ("Available mounts: [REDACTED]"). Since ADR-008 this covers ONE case — the
+    // container convention where a Unix mount point is spelled the same on both sides
+    // (`/output:/output:rw`, see docker/orkeon-example). It no longer covers runner
+    // auto-injection: the crew directory and the exchange-log directory are mounted under
+    // names now, so both are redacted like any other physical path.
     private static List<string> CollectBasePaths(FileSystemRegistry registry)
     {
         return registry.GetAllMountsInternal()

@@ -1,6 +1,18 @@
 namespace Orkeon.Host;
 
 /// <summary>
+/// The mounts a set of hosted crews needs, plus the virtual spelling of each crew.
+/// </summary>
+/// <param name="Mounts">Mount strings, one per distinct crew directory.</param>
+/// <param name="VirtualPaths">
+/// Virtual path of each crew, keyed by the crew's configured <c>Name</c> — what
+/// <c>RunnerExecution.LoadCrewAsync</c> is given.
+/// </param>
+internal sealed record HostCrewMountPlan(
+    IReadOnlyList<string> Mounts,
+    IReadOnlyDictionary<string, string> VirtualPaths);
+
+/// <summary>
 /// Derives the VFS mounts a hosted crew needs from its configured path (GATE-02).
 /// <para>
 /// The crew loader reads through <c>IFileSystemService</c>, never the raw disk — the same
@@ -13,16 +25,23 @@ namespace Orkeon.Host;
 [Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: classifies operator-supplied crew paths on the physical disk to provision the mounts, before the VFS exists.")]
 internal static class HostCrewMounts
 {
+    /// <summary>The first crew directory's virtual root; further ones get a numeric suffix.</summary>
+    public const string VirtualPathPrefix = "/crews";
+
     /// <summary>
-    /// One read-only 1:1 mount per distinct crew directory: physical and virtual coincide,
-    /// so the configured <c>Path</c> works verbatim on both sides of the abstraction.
+    /// One read-only mount per distinct crew directory, each under a <b>name</b>
+    /// (<c>/crews</c>, <c>/crews-1</c>, …) — never identity-mapped (ADR-008), so an agent
+    /// hosted by the daemon is never handed the operator's disk layout. The naming rule is
+    /// the one <c>CliCrewMountBootstrapper</c> already uses, so the repo has one convention.
     /// </summary>
-    public static IReadOnlyList<string> For(IEnumerable<HostedCrewOptions> crews)
+    public static HostCrewMountPlan For(IEnumerable<HostedCrewOptions> crews)
     {
         ArgumentNullException.ThrowIfNull(crews);
 
+        var materialized = crews.ToList();
+
         var directories = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (var crew in crews)
+        foreach (var crew in materialized)
         {
             if (string.IsNullOrWhiteSpace(crew.Path))
                 continue;
@@ -33,6 +52,32 @@ internal static class HostCrewMounts
                 directories.Add(directory);
         }
 
-        return [.. directories.Select(d => $"{d}:{d}:ro")];
+        var roots = new Dictionary<string, string>(StringComparer.Ordinal);
+        var mounts = new List<string>();
+        var index = 0;
+        foreach (var directory in directories)
+        {
+            var root = index == 0 ? VirtualPathPrefix : $"{VirtualPathPrefix}-{index}";
+            roots[directory] = root;
+            mounts.Add($"{directory}:{root}:ro");
+            index++;
+        }
+
+        var virtualPaths = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var crew in materialized)
+        {
+            if (string.IsNullOrWhiteSpace(crew.Path) || string.IsNullOrWhiteSpace(crew.Name))
+                continue;
+
+            var full = Path.GetFullPath(crew.Path);
+            var isDirectory = Directory.Exists(full);
+            var directory = isDirectory ? full : Path.GetDirectoryName(full);
+            if (string.IsNullOrEmpty(directory) || !roots.TryGetValue(directory, out var root))
+                continue;
+
+            virtualPaths[crew.Name] = isDirectory ? root : $"{root}/{Path.GetFileName(full)}";
+        }
+
+        return new HostCrewMountPlan(mounts, virtualPaths);
     }
 }

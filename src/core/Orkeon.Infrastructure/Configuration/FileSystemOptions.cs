@@ -12,4 +12,15 @@ public class FileSystemOptions
     /// Mount definitions in the format "physical:virtual:rights[;subpath:rights;...]".
     /// </summary>
     public Collection<string> Mounts { get; } = [];
+
+    /// <summary>
+    /// Infrastructure mounts, same grammar as <see cref="Mounts"/>, registered with
+    /// <see cref="Orkeon.Domain.FileSystem.MountVisibility.Internal"/>: resolvable, but
+    /// absent from <c>GetAvailableMounts()</c> and therefore from <c>list_mounts</c>, the
+    /// agent prompt's mount table and access-denied messages. This is where a runner puts
+    /// what it needs the VFS to reach but no agent has any business addressing — the LLM
+    /// exchange log directory, for one. The mount-string grammar has no room for a
+    /// visibility token, which is why this is a separate list rather than a fourth field.
+    /// </summary>
+    public Collection<string> InternalMounts { get; } = [];
 }

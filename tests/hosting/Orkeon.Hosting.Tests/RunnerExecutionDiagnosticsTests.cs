@@ -1,4 +1,6 @@
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Hosting.Tests;
 
@@ -256,5 +258,74 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         // Names are emitted sorted (ordinal).
         var sorted = lines.OrderBy(l => l, StringComparer.Ordinal).ToList();
         Assert.Equal(sorted, lines);
+    }
+
+    /// <summary>
+    /// ADR-008, the regression this change exists for. The runner used to mount its own
+    /// directories 1:1 (<c>C:\x:C:\x:ro</c>) so the absolute paths it had already computed
+    /// resolved unchanged. Those mounts were agent-facing, so an agent calling
+    /// <c>list_mounts</c> — or reading any access-denied message, which names the available
+    /// mounts — was handed the operator's disk layout, right under a sentence telling it
+    /// absolute paths are not allowed. Nothing an agent can see may be a disk path.
+    /// </summary>
+    [Fact]
+    public void No_mount_an_agent_can_see_is_a_disk_path()
+    {
+        var configPath = WriteConfig("config.yaml", OkCrewYaml);
+        var opts = new TestOptions
+        {
+            ConfigPath = configPath,
+            AllowExternalMounts = true,
+            LlmLogEnabled = true,
+            LlmLogPath = Path.Combine(_tempDir, "llm-logs"),
+        };
+
+        Assert.True(RunnerExecution.TryBuildHost(opts, "Orkeon.Hosting.Tests", null, out var bootstrap, out _));
+        using var host = bootstrap!.Host;
+        var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+
+        var visible = fileSystem.GetAvailableMounts();
+        Assert.All(visible, mount =>
+        {
+            Assert.StartsWith("/", mount.VirtualPath, StringComparison.Ordinal);
+            Assert.DoesNotContain(_tempDir, mount.VirtualPath, StringComparison.Ordinal);
+        });
+
+        // The crew's own directory is mounted, under a name.
+        Assert.Contains(visible, m => m.VirtualPath == RunnerMounts.CrewVirtualRoot);
+
+        // The exchange log is reachable by the VFS and invisible to agents.
+        Assert.DoesNotContain(visible, m => m.VirtualPath == RunnerMounts.LlmLogVirtualRoot);
+        Assert.True(
+            fileSystem.ResolveAndValidate(RunnerMounts.LlmLogVirtualRoot, FileAccessRights.Write).IsAllowed);
+
+        // And a refusal names only virtual paths — the redaction carve-out that used to
+        // exempt identity mounts has nothing left to exempt.
+        var denied = fileSystem.ResolveAndValidate("/nowhere/at/all.txt", FileAccessRights.Read);
+        Assert.False(denied.IsAllowed);
+        Assert.DoesNotContain(_tempDir, denied.DenialReason!, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A user mount claiming a root the runner needs is a configuration mistake, and must
+    /// read as one — not as a duplicate-virtual-path exception thrown out of a DI factory.
+    /// </summary>
+    [Fact]
+    public async Task A_user_mount_claiming_the_crew_root_is_refused_with_an_actionable_line()
+    {
+        var configPath = WriteConfig("config.yaml", OkCrewYaml);
+        var opts = new TestOptions
+        {
+            ConfigPath = configPath,
+            AllowExternalMounts = true,
+            Mounts = [$"{_tempDir}:{RunnerMounts.CrewVirtualRoot}:ro"],
+        };
+
+        var (exit, _, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(1, exit);
+        Assert.Contains(RunnerMounts.CrewVirtualRoot, stderr, StringComparison.Ordinal);
+        Assert.Contains("reserved by the runner", stderr, StringComparison.Ordinal);
     }
 }

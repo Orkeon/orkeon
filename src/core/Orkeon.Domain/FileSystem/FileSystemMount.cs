@@ -27,7 +27,7 @@ public sealed record FileSystemMount
 
         if (!IsValidVirtualPath(virtualPath))
             throw new FormatException(
-                $"Virtual path must start with '/' (Unix) or be a Windows drive path: '{virtualPath}'");
+                $"Virtual path must start with '/': '{virtualPath}'. A physical path is never a virtual path — mount it under a name, e.g. '{virtualPath}:/workspace:ro'.");
 
         BasePath = basePath;
         VirtualPath = virtualPath;
@@ -62,7 +62,7 @@ public sealed record FileSystemMount
 
         if (!IsValidVirtualPath(virtualPath))
             throw new FormatException(
-                $"Virtual path must start with '/' (Unix) or be a Windows drive path: '{virtualPath}'");
+                $"Virtual path must start with '/': '{virtualPath}'. A physical path is never a virtual path — mount it under a name, e.g. '{basePath}:/workspace:ro'.");
 
         // Parse overrides
         var overrides = new List<SubPathOverride>();
@@ -100,31 +100,23 @@ public sealed record FileSystemMount
     }
 
     /// <summary>
-    /// True for Unix-style virtual paths (<c>/foo</c>) and Windows drive-letter
-    /// paths (<c>C:\foo</c> or <c>C:/foo</c>). The latter is required when
-    /// physical and virtual paths are identity-mapped on Windows
-    /// (e.g. RunnerExecution auto-injection of the runner's own config dir).
+    /// True only for Unix-style virtual paths (<c>/foo</c>). A physical path is never a
+    /// virtual path (ADR-008): the drive-letter form used to be accepted so runners could
+    /// identity-map their own directories, and that is exactly how absolute disk paths
+    /// reached agents through <c>list_mounts</c> and access-denied messages. Runners now
+    /// mount under a name (<c>/crew</c>, <c>/crews</c>, <c>/script</c>).
     /// </summary>
     private static bool IsValidVirtualPath(string virtualPath)
-    {
-        if (string.IsNullOrEmpty(virtualPath))
-            return false;
-        if (virtualPath.StartsWith('/'))
-            return true;
-        return virtualPath.Length >= 3
-            && char.IsLetter(virtualPath[0])
-            && virtualPath[1] == ':'
-            && (virtualPath[2] == '\\' || virtualPath[2] == '/');
-    }
+        => virtualPath.StartsWith('/');
 
     private static string[] SplitMainPart(string mainPart)
     {
         // Iteratively peel off path/rights segments. At each step, detect a
         // Windows drive-letter prefix ("X:\" or "X:/") so its embedded ':' is
-        // NOT treated as a segment separator. This covers single-Windows-path
-        // mounts ("C:\src:/virtual:ro") AND identity-mapped Windows mounts
-        // where both physical and virtual paths carry drive letters
-        // ("C:\src:C:\src:ro" — emitted by RunnerExecution auto-injection).
+        // NOT treated as a segment separator ("C:\src:/virtual:ro"). The scan
+        // stays segment-agnostic: a drive letter on the virtual side splits
+        // cleanly and is then rejected by IsValidVirtualPath with a precise
+        // message, rather than failing here as a malformed mount string.
         var parts = new List<string>();
         var rest = mainPart;
 

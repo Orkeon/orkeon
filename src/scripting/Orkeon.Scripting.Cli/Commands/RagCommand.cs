@@ -473,7 +473,7 @@ internal static class RagCommand
             settingsPath,
             cliMounts,
             allowExternalMounts: implicitlyAllow,
-            llmLogPath: null,
+            llmLogVirtualPath: null,
             configureLogging: verbosity > 0
                 ? (_, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity)
                 : null,

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
 
@@ -51,7 +52,10 @@ public static partial class RunnerExecution
                 return errorCode;
 
             using var host = bootstrap!.Host;
-            var (logger, configPath, cliMounts) = (bootstrap.Logger, bootstrap.ConfigPath, bootstrap.CliMounts);
+            // configPath is the operator's own spelling — it is what the VALIDATION OK/FAILED
+            // lines echo. The load itself goes through the virtual spelling.
+            var (logger, configPath, virtualConfigPath, cliMounts) =
+                (bootstrap.Logger, bootstrap.ConfigPath, bootstrap.VirtualConfigPath, bootstrap.CliMounts);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
             using var shutdown = RegisterGracefulShutdown(cts, logger);
@@ -62,7 +66,7 @@ public static partial class RunnerExecution
                 LogValidatingCrew(logger, configPath);
 
                 var factory = host.Services.GetRequiredService<ICrewFactory>();
-                var crew = await LoadCrewAsync(host, factory, configPath, logger, cts.Token).ConfigureAwait(false);
+                var crew = await LoadCrewAsync(host, factory, virtualConfigPath, logger, cts.Token).ConfigureAwait(false);
 
                 // Tools live on the agents, not the crew aggregate (which holds only ids).
                 // Re-hydrate the agents and count the distinct tool names actually resolved.
@@ -114,15 +118,20 @@ public static partial class RunnerExecution
             var cwd = Directory.GetCurrentDirectory();
             var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, cwd);
 
-            // Mount the cwd 1:1 (read-only) so the FileSystem section is non-empty and
-            // IFileSystemService is registered — otherwise the filesystem-backed tools cannot
-            // be constructed when the registry enumerates the DI-provided IBaseTool set.
+            // The manifest lists tools, it never runs one, so this host needs a non-empty
+            // FileSystem section for one reason only: without it IFileSystemService is not
+            // registered and the filesystem-backed tools cannot even be constructed when the
+            // registry enumerates the DI-provided IBaseTool set. An internal mount of the cwd
+            // satisfies that without putting a directory on the agent-facing surface.
             var cliMounts = opts.Mounts.ToList();
-            cliMounts.Insert(0, $"{cwd}:{cwd}:ro");
+            if (!EnsureReservedRootsAreFree(cliMounts, RunnerMounts.CrewVirtualRoot))
+                return 1;
+            var internalMounts = new[] { $"{cwd}:{RunnerMounts.CrewVirtualRoot}:ro" };
 
             using var host = RunnerHost.Build(
                 settingsPath, cliMounts,
                 allowExternalMounts: opts.EffectiveAllowExternalMounts,
+                internalMounts: internalMounts,
                 configureLogging: (_, b) => ConfigureStderrOnlyLogging(b),
                 configureServices: (ctx, services) =>
                 {
@@ -161,11 +170,16 @@ public static partial class RunnerExecution
     /// </para>
     /// </summary>
     /// <param name="host">The built host, for the services a scripted crew needs.</param>
+    /// <param name="configPath">
+    /// The crew target as a <b>virtual</b> path — a <c>.ork.ts</c> source, a crew directory, or a
+    /// YAML file, under whatever root the caller mounted it (the runners use
+    /// <see cref="RunnerMounts.CrewVirtualRoot"/>). Since ADR-008 this is never a disk path:
+    /// the directory-or-file question is asked of the VFS, not of <c>System.IO</c>.
+    /// </param>
     /// <param name="factory">The crew factory.</param>
-    /// <param name="configPath">A <c>.ork.ts</c> source, a crew directory, or a YAML file.</param>
     /// <param name="logger">Logger for the loading trace.</param>
     /// <param name="ct">Cancellation token.</param>
-    public static Task<Domain.Crew.Crew> LoadCrewAsync(
+    public static async Task<Domain.Crew.Crew> LoadCrewAsync(
         IHost host,
         ICrewFactory factory,
         string configPath,
@@ -177,11 +191,14 @@ public static partial class RunnerExecution
         ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
 
         if (IsScriptedCrewDefinition(configPath))
-            return LoadCrewFromScriptAsync(host, factory, configPath, logger, ct);
+            return await LoadCrewFromScriptAsync(host, factory, configPath, logger, ct).ConfigureAwait(false);
 
-        return Directory.Exists(configPath)
-            ? factory.CreateFromDirectoryAsync(configPath, ct)
-            : factory.CreateFromFileAsync(configPath, ct);
+        var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+        var kind = await fileSystem.GetEntryKindAsync(configPath, ct).ConfigureAwait(false);
+
+        return kind == VirtualEntryKind.Directory
+            ? await factory.CreateFromDirectoryAsync(configPath, ct).ConfigureAwait(false)
+            : await factory.CreateFromFileAsync(configPath, ct).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -32,24 +32,34 @@ public static class FileSystemServiceRegistration
         {
             var options = sp.GetRequiredService<IOptions<FileSystemOptions>>().Value;
 
-            if (options.Mounts.Count == 0)
+            if (options.Mounts.Count == 0 && options.InternalMounts.Count == 0)
                 throw new InvalidOperationException(
                     "At least one file system mount must be configured in 'Orkeon:FileSystem:Mounts'.");
 
             var mounts = new List<FileSystemMount>();
             foreach (var mountStr in options.Mounts)
-            {
-                var mount = FileSystemMount.Parse(mountStr);
+                mounts.Add(ParseAndCheck(mountStr, MountVisibility.AgentFacing));
 
-                // Validate base path exists (Infrastructure responsibility)
-                if (!Directory.Exists(mount.BasePath))
-                    throw new DirectoryNotFoundException(
-                        $"Mount base path does not exist for virtual path '{mount.VirtualPath}'.");
-
-                mounts.Add(mount);
-            }
+            // Infrastructure mounts: resolvable, never listed to an agent (ADR-008).
+            foreach (var mountStr in options.InternalMounts)
+                mounts.Add(ParseAndCheck(mountStr, MountVisibility.Internal));
 
             return new FileSystemRegistry(mounts);
+
+            static FileSystemMount ParseAndCheck(string mountStr, MountVisibility visibility)
+            {
+                var parsed = FileSystemMount.Parse(mountStr);
+
+                // Validate base path exists (Infrastructure responsibility)
+                if (!Directory.Exists(parsed.BasePath))
+                    throw new DirectoryNotFoundException(
+                        $"Mount base path does not exist for virtual path '{parsed.VirtualPath}'.");
+
+                return visibility == MountVisibility.AgentFacing
+                    ? parsed
+                    : new FileSystemMount(
+                        parsed.BasePath, parsed.VirtualPath, parsed.DefaultRights, parsed.Overrides, visibility);
+            }
         });
 
         // 3. Register the ambient per-execution mount scope (P2-O-05). Singleton so the host that
