@@ -628,4 +628,6 @@
   <data name="Vm_Config_NotSavedWriteFailed" xml:space="preserve"><value>Non enregistré — le fichier n'a pas pu être écrit : {0}</value></data>
   <data name="Vm_Teams_ExportedTo" xml:space="preserve"><value>Équipe exportée vers {0}</value></data>
   <data name="Vm_Teams_ExportFailed" xml:space="preserve"><value>Export refusé — la destination existe déjà, ou le disque a refusé.</value></data>
+  <data name="Wiz_TryTeam" xml:space="preserve"><value>Essayer l'équipe</value></data>
+  <data name="Wiz_Paused_Hint" xml:space="preserve"><value>Composée et validée — rien n'a encore tourné.</value></data>
 </root>

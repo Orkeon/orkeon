@@ -23,6 +23,13 @@ public sealed record ForgeStartRequest
     public bool Auto { get; init; }
 
     /// <summary>
+    /// <c>--dry</c>: generate and validate, then pause before the trial. The wizard's
+    /// Composer step is exactly this boundary — the user reviews the team and decides to
+    /// try it; a later resume (without dry) runs the trial.
+    /// </summary>
+    public bool Dry { get; init; }
+
+    /// <summary>
     /// Environment variables added to the engine child — how Studio's assistant profile
     /// reaches the engine (<c>ORKEON_Llm__Model</c>/<c>__BaseUrl</c>): the engine reads the
     /// same settings file as every run, and these overrides sit on top, never inside it.
@@ -89,6 +96,9 @@ public static class ForgeArgumentsBuilder
 
         if (request.Auto)
             arguments.Add("--auto");
+
+        if (request.Dry)
+            arguments.Add("--dry");
 
         return arguments;
     }

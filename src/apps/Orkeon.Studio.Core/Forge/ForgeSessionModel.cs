@@ -158,6 +158,13 @@ public sealed class ForgeSessionModel
     /// <summary>The promotion, once one happened.</summary>
     public ForgePromotion? Promotion { get; private set; }
 
+    /// <summary>
+    /// Marks a hydrated session as sitting at the <c>--dry</c> pause (saved state: Test,
+    /// nothing run yet) — a resume reopens the Composer review without an engine, and the
+    /// « Essayer l'équipe » gate reads the same status a live pause would have streamed.
+    /// </summary>
+    public void MarkPaused() => FinishedStatus = "paused";
+
     /// <summary>Wire status of <c>session.finished</c>; null while the run is alive.</summary>
     public string? FinishedStatus { get; private set; }
 

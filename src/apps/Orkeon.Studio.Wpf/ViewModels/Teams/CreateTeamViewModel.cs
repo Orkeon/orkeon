@@ -187,6 +187,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             (StudioStringKeys.WizardOutputOther, "other"));
 
         ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
+        TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeam);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
         RestartCommand = new RelayCommand(Restart, () => MaxStep > 1 || IsEngineRunning);
         StopCommand = new RelayCommand(() => _client.RequestCancellation(), () => IsEngineRunning);
@@ -688,6 +689,9 @@ public sealed class CreateTeamViewModel : ObservableObject
         TimeSpan.TryParseExact(time.Trim(), @"h\:mm", CultureInfo.InvariantCulture, out _)
         || TimeSpan.TryParseExact(time.Trim(), @"hh\:mm", CultureInfo.InvariantCulture, out _);
 
+    /// <summary>« Essayer l'équipe » — the trial, as an explicit click at the Composer pause.</summary>
+    public AsyncRelayCommand TryTeamCommand { get; }
+
     /// <summary>Promotes the session into the teams folder and writes the Studio sidecar.</summary>
     public AsyncRelayCommand SaveTeamCommand { get; }
 
@@ -710,6 +714,16 @@ public sealed class CreateTeamViewModel : ObservableObject
         ForgeSessionHydrator.Hydrate(_model, solution.Directory);
         SessionActivated?.Invoke(this, EventArgs.Empty);
         SyncFromModel();
+
+        // A session parked at the --dry pause (saved state: Test, not yet run) reopens on
+        // the Composer review — running the trial stays the user's click, on a resume as
+        // on a fresh compose. Every other state genuinely needs the engine back.
+        if (string.Equals(solution.State, "Test", StringComparison.OrdinalIgnoreCase))
+        {
+            _model.MarkPaused();
+            SyncFromModel();
+            return;
+        }
 
         await RunEngineAsync(new ForgeStartRequest
         {
@@ -735,8 +749,39 @@ public sealed class CreateTeamViewModel : ObservableObject
             Need = brief,
             WorkingDirectory = _workspace,
             EnvironmentOverrides = AssistantEnvironment(),
+            // The Composer pause (owner, 2026-08-24): generate and validate, then STOP.
+            // The trial is the user's click (« Essayer l'équipe »), never a side effect
+            // of composing — the engine's --dry boundary is exactly this.
+            Dry = true,
         }).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// « Essayer l'équipe » — resumes the paused session without --dry: the engine picks
+    /// up exactly at the trial, then waits at its arbitration.
+    /// </summary>
+    private async Task TryTeamAsync()
+    {
+        if (!CanTryTeam || _model.Slug is not { } slug)
+            return;
+
+        await RunEngineAsync(new ForgeStartRequest
+        {
+            ResumeSlug = slug,
+            WorkingDirectory = _workspace,
+            EnvironmentOverrides = AssistantEnvironment(),
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The trial can start when the session sits at the --dry pause: composed, rendered,
+    /// validated, nothing run yet.
+    /// </summary>
+    public bool CanTryTeam =>
+        !IsEngineRunning
+        && !IsSaved
+        && _model.Slug is not null
+        && string.Equals(_model.FinishedStatus, "paused", StringComparison.OrdinalIgnoreCase);
 
     private string ComposeBrief()
     {
@@ -1039,9 +1084,10 @@ public sealed class CreateTeamViewModel : ObservableObject
             nameof(VerdictScore), nameof(VerdictPassing), nameof(TokensSpent),
             nameof(SessionSlug), nameof(SessionDirectory),
             nameof(SavedPath), nameof(InstallCommand), nameof(HasInstallCommand),
-            nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents));
+            nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam));
         SaveTeamCommand.RaiseCanExecuteChanged();
         AddAgentCommand.RaiseCanExecuteChanged();
+        TryTeamCommand.RaiseCanExecuteChanged();
     }
 
     private void SyncAgents()

@@ -101,6 +101,40 @@ public class CreateTeamWizardTests
     }
 
     [Fact]
+    public async Task Composing_pauses_at_the_dry_boundary_and_the_trial_is_an_explicit_resume()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":[]}],"tasks":[{"key":"t","description":"d","agent":"a"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+
+        // Composing asked the engine for the dry boundary: generate, validate, stop.
+        Assert.Contains("--dry", processes.Requests[0].Arguments);
+        // The pause is the Composer step, and the trial waits for the user's click.
+        Assert.True(vm.CanTryTeam);
+        Assert.True(vm.TryTeamCommand.CanExecute(null));
+
+        processes.OutputToEmit.Clear();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":true}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"stage.entered","stage":"test","iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"run.started","run":1,"target":"crew"}"""),
+        ]);
+        await vm.TryTeamCommand.ExecuteAsync();
+
+        // « Essayer l'équipe » resumes WITHOUT dry: the engine picks up at the trial.
+        Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[1].Arguments);
+        Assert.Equal(3, vm.MaxStep);   // the run advanced the stepper to Essayer
+    }
+
+    [Fact]
     public async Task A_notes_question_travels_down_stdin_and_the_reply_lands_in_its_thread()
     {
         var (vm, processes, _) = Build();

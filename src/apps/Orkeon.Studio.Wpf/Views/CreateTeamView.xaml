@@ -451,15 +451,30 @@
         </ItemsControl>
 
         <!-- Ajouter un agent (F-01) — actionable while the engine waits at its arbitration. -->
-        <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,0,0,16"
-                Command="{Binding AddAgentCommand}"
-                ToolTip="{Binding [AgentEd_Wait], Source={x:Static services:I18n.Instance}}"
-                ToolTipService.ShowOnDisabled="True">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Wiz_AddAgent], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
+        <DockPanel Margin="0,0,0,16" LastChildFill="False">
+          <Button DockPanel.Dock="Left" Style="{StaticResource BtnGhost}"
+                  Command="{Binding AddAgentCommand}"
+                  ToolTip="{Binding [AgentEd_Wait], Source={x:Static services:I18n.Instance}}"
+                  ToolTipService.ShowOnDisabled="True">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Wiz_AddAgent], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+          <!-- The Composer pause: composing stops the engine before the trial (dry mode);
+               the trial is THIS click, never a side effect. -->
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}"
+                  Command="{Binding TryTeamCommand}"
+                  Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{Binding [Wiz_TryTeam], Source={x:Static services:I18n.Instance}}"/>
+              <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
+            </StackPanel>
+          </Button>
+          <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,12,0"
+                     Text="{Binding [Wiz_Paused_Hint], Source={x:Static services:I18n.Instance}}"
+                     Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"/>
+        </DockPanel>
 
         <!-- validation of the rendered crew -->
         <Border Style="{StaticResource Card}" Margin="0,0,0,16"
