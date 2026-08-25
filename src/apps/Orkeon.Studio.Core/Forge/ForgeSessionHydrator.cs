@@ -24,10 +24,71 @@ public static class ForgeSessionHydrator
         ArgumentNullException.ThrowIfNull(model);
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionDirectory);
 
+        // Identity first (review of the dry-pause resume, W-09): a hydrate-only reopen
+        // has no live session.started, and every downstream gate — «Essayer l'équipe»,
+        // «Enregistrer» — keys on the model's Slug.
+        HydrateIdentity(model, sessionDirectory);
         HydrateTranscript(model, Path.Combine(sessionDirectory, "transcript.jsonl"));
         FeedWrapped(model, Path.Combine(sessionDirectory, "brief.json"), ForgeEventKinds.BriefReady, "brief");
         FeedWrapped(model, Path.Combine(sessionDirectory, "blueprint.json"), ForgeEventKinds.BlueprintReady, "blueprint");
-        FeedFlat(model, Path.Combine(sessionDirectory, "verdict.json"), ForgeEventKinds.VerdictReady);
+        HydrateVerdict(model, sessionDirectory);
+    }
+
+    /// <summary>
+    /// Wraps <c>session.json</c> into the <c>session.started</c> the live stream would
+    /// have opened with, so Slug/Directory/Format have exactly one reading.
+    /// </summary>
+    private static void HydrateIdentity(ForgeSessionModel model, string sessionDirectory)
+    {
+        if (ReadObject(Path.Combine(sessionDirectory, "session.json")) is not { } session)
+            return;
+
+        var envelope = new JsonObject
+        {
+            ["v"] = 2,
+            ["seq"] = 0,
+            ["ts"] = "",
+            ["kind"] = ForgeEventKinds.SessionStarted,
+            ["slug"] = session["slug"]?.DeepClone(),
+            ["dir"] = sessionDirectory,
+            ["format"] = session["format"]?.DeepClone(),
+            ["resumed"] = true,
+        };
+        Feed(model, envelope.ToJsonString());
+    }
+
+    /// <summary>
+    /// The verdict, with the last trial's metrics folded in the way the live
+    /// <c>verdict.ready</c> now carries them (W-08) — the recalled screen shows the same
+    /// chips as the live one.
+    /// </summary>
+    private static void HydrateVerdict(ForgeSessionModel model, string sessionDirectory)
+    {
+        var verdictPath = Path.Combine(sessionDirectory, "verdict.json");
+        if (ReadObject(Path.Combine(sessionDirectory, "last-run.json")) is not { } lastRun)
+        {
+            FeedFlat(model, verdictPath, ForgeEventKinds.VerdictReady);
+            return;
+        }
+
+        if (ReadObject(verdictPath) is not { } verdict)
+            return;
+
+        foreach (var metric in new[] { "durationMs", "tokens", "cacheHitTokens", "cacheMissTokens" })
+        {
+            if (!verdict.ContainsKey(metric) && lastRun[metric] is { } value)
+                verdict[metric] = value.DeepClone();
+        }
+
+        var envelope = new JsonObject { ["v"] = 2, ["seq"] = 0, ["ts"] = "", ["kind"] = ForgeEventKinds.VerdictReady };
+        foreach (var property in verdict.ToList())
+        {
+            verdict.Remove(property.Key);
+            if (!envelope.ContainsKey(property.Key))
+                envelope[property.Key] = property.Value;
+        }
+
+        Feed(model, envelope.ToJsonString());
     }
 
     private static void HydrateTranscript(ForgeSessionModel model, string path)

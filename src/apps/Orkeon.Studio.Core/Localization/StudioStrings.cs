@@ -701,6 +701,9 @@ public static class StudioStringKeys
     /// <summary>"Looks good to me"</summary>
     public const string WizardDecisionAccept = "Vm_Wizard_Decision_Accept";
 
+    /// <summary>"Run the trial again"</summary>
+    public const string WizardDecisionRetry = "Vm_Wizard_Decision_Retry";
+
     /// <summary>"Fix and retry"</summary>
     public const string WizardDecisionRefine = "Vm_Wizard_Decision_Refine";
 
@@ -1121,6 +1124,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
 
         [StudioStringKeys.WizardDecisionAccept] = "Looks good to me",
+        [StudioStringKeys.WizardDecisionRetry] = "Run the trial again",
         [StudioStringKeys.WizardDecisionRefine] = "Fix and retry",
         [StudioStringKeys.WizardDecisionAbort] = "Abandon",
 

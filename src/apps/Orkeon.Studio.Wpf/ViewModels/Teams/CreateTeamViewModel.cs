@@ -143,6 +143,8 @@ public sealed class CreateTeamViewModel : ObservableObject
     private string? _adoptProfileName;
     private bool _isAdoptProfilePickerOpen;
     private bool _isSaved;
+    private string? _reopenedTeamPath;
+    private bool _autoRetryPending;
     private string? _lastStderr;
 
     /// <summary>Builds the wizard; every collaborator is optional so tests inject doubles.</summary>
@@ -199,6 +201,8 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
         TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeam);
+        ReopenComposeCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 2, autoRetry: false), () => IsSaved);
+        RetryTrialCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 3, autoRetry: true), () => IsSaved);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
         RestartCommand = new RelayCommand(Restart, () => MaxStep > 1 || IsEngineRunning);
         StopCommand = new RelayCommand(() => _client.RequestCancellation(), () => IsEngineRunning);
@@ -739,7 +743,11 @@ public sealed class CreateTeamViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _isSaved, value))
+            {
                 OnPropertyChanged(nameof(NotSaved));
+                ReopenComposeCommand?.RaiseCanExecuteChanged();
+                RetryTrialCommand?.RaiseCanExecuteChanged();
+            }
         }
     }
 
@@ -814,6 +822,100 @@ public sealed class CreateTeamViewModel : ObservableObject
             WorkingDirectory = _workspace,
             EnvironmentOverrides = AssistantEnvironment(),
         }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// «Modifier» on a team card (v3 W-09): reopens the wizard on the adopted team — the
+    /// session re-enters at its arbitration (the engine's reopen), the wizard shows step
+    /// 2 with the whole stepper reachable, and the adoption fields are seeded from the
+    /// sidecar. Re-adoption then updates the SAME folder: the destination is pinned,
+    /// renaming only changes the display name.
+    /// </summary>
+    public async Task ReopenTeamAsync(TeamSummary team, ForgeSolutionSummary session)
+    {
+        ArgumentNullException.ThrowIfNull(team);
+        ArgumentNullException.ThrowIfNull(session);
+        if (IsEngineRunning)
+            return;
+
+        ResetProjection();
+        _reopenedTeamPath = team.Path;
+        ForgeSessionHydrator.Hydrate(_model, session.Directory);
+
+        TeamName = team.Name;
+        if (team.Profile is { Length: > 0 } profile)
+            AdoptProfileName = profile;
+        SeedSchedule(team.Schedule);
+        foreach (var mount in team.Mounts)
+            TeamMounts.Add(mount);
+        OnPropertyChanged(nameof(HasTeamMounts));
+
+        MaxStep = 4;
+        Step = 2;
+        SessionActivated?.Invoke(this, EventArgs.Empty);
+        SyncFromModel();
+
+        await RunEngineAsync(new ForgeStartRequest
+        {
+            ResumeSlug = session.Slug,
+            WorkingDirectory = _workspace,
+            EnvironmentOverrides = AssistantEnvironment(),
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>«Modifier l'équipe» on the saved card — back to step 2, state intact.</summary>
+    public AsyncRelayCommand ReopenComposeCommand { get; }
+
+    /// <summary>«Refaire un essai» on the saved card — back to step 3, the trial re-runs.</summary>
+    public AsyncRelayCommand RetryTrialCommand { get; }
+
+    /// <summary>
+    /// Reopens the just-adopted session (the engine's reopen re-enters at the
+    /// arbitration); <paramref name="autoRetry"/> answers it with <c>retry</c> the moment
+    /// it arrives — «Refaire un essai» means the trial runs, not "go find a button".
+    /// </summary>
+    private async Task ReopenAdoptedAsync(int step, bool autoRetry)
+    {
+        if (IsEngineRunning || _model.Slug is not { } slug || SavedPath is not { } savedPath)
+            return;
+
+        _reopenedTeamPath = savedPath;
+        _autoRetryPending = autoRetry;
+        IsSaved = false;
+        MaxStep = 4;
+        Step = step;
+        SyncFromModel();
+
+        await RunEngineAsync(new ForgeStartRequest
+        {
+            ResumeSlug = slug,
+            WorkingDirectory = _workspace,
+            EnvironmentOverrides = AssistantEnvironment(),
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>Projects the sidecar's schedule string back onto the step-4 radios.</summary>
+    private void SeedSchedule(string? schedule)
+    {
+        if (string.IsNullOrWhiteSpace(schedule))
+        {
+            ScheduleChoice = 0;
+            return;
+        }
+
+        if (schedule.StartsWith("daily@", StringComparison.OrdinalIgnoreCase))
+        {
+            ScheduleChoice = 1;
+            ScheduleTime = schedule["daily@".Length..];
+        }
+        else if (string.Equals(schedule, "hourly", StringComparison.OrdinalIgnoreCase))
+        {
+            ScheduleChoice = 2;
+        }
+        else
+        {
+            ScheduleChoice = 0;
+        }
     }
 
     private async Task ComposeAsync()
@@ -917,7 +1019,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (!CanSaveTeam || _model.Slug is not { } slug)
             return;
 
-        var destination = System.IO.Path.Combine(_teamsRoot, TeamCatalog.Slugify(_teamName));
+        // In reopened mode the destination is PINNED to the original team folder (W-09):
+        // re-adoption updates, never duplicates — renaming only changes the display name.
+        var destination = _reopenedTeamPath
+            ?? System.IO.Path.Combine(_teamsRoot, TeamCatalog.Slugify(_teamName));
         var schedule = _scheduleChoice switch
         {
             1 => $"daily@{_scheduleTime.Trim()}",
@@ -937,10 +1042,15 @@ public sealed class CreateTeamViewModel : ObservableObject
                 FinishRun(result);
                 if (_model.Promotion is { } promotion)
                 {
+                    // A re-adoption has no step-1 need: the sidecar's description must
+                    // survive the rewrite, not be blanked by it.
+                    var description = _need.Trim() is { Length: > 0 } need
+                        ? need
+                        : TeamCatalog.Describe(promotion.Path).Description ?? "";
                     TeamCatalog.SaveMetadata(promotion.Path, new StudioTeamMetadata
                     {
                         Name = _teamName.Trim(),
-                        Description = _need.Trim(),
+                        Description = description,
                         Profile = AdoptProfileName,
                         Schedule = schedule,
                         Mounts = TeamMounts.Count > 0 ? [.. TeamMounts] : null,
@@ -995,6 +1105,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         // approved for THAT team, never for the next one; the old engine command lies.
         TeamMounts.Clear();
         OnPropertyChanged(nameof(HasTeamMounts));
+        _reopenedTeamPath = null;
+        _autoRetryPending = false;
         EngineCommandLine = null;
         OnPropertyChanged(nameof(EngineCommandLine));
         // The generation bump orphans every event the dying child still has in flight:
@@ -1149,6 +1261,16 @@ public sealed class CreateTeamViewModel : ObservableObject
         SyncChecklist();
         SyncDecisions();
 
+        // «Refaire un essai» answers the reopened arbitration itself (W-09): the flag is
+        // cleared BEFORE deciding — Decide re-enters this sync.
+        if (_autoRetryPending && DecisionPending
+            && _model.DecisionOptions.Contains("retry", StringComparer.Ordinal))
+        {
+            _autoRetryPending = false;
+            Decide("retry");
+            return;
+        }
+
         if (_teamName.Length == 0 && _model.Title is { Length: > 0 } title)
             TeamName = ShortName(title);
 
@@ -1253,6 +1375,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             var label = option switch
             {
                 "accept" => _strings[StudioStringKeys.WizardDecisionAccept],
+                "retry" => _strings[StudioStringKeys.WizardDecisionRetry],
                 "refine" => _strings[StudioStringKeys.WizardDecisionRefine],
                 "abort" => _strings[StudioStringKeys.WizardDecisionAbort],
                 _ => option,

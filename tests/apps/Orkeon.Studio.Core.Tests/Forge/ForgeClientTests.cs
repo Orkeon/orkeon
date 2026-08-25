@@ -240,4 +240,24 @@ public sealed class ForgeSessionCatalogTests : IDisposable
         Directory.CreateDirectory(_workspace);
         Assert.Empty(ForgeSessionCatalog.List(_workspace));
     }
+
+    [Fact]
+    public void The_reverse_lookup_finds_the_session_that_adopted_a_team()
+    {
+        // W-09 «Modifier»: the sidecar records no session; promotedTo is the only link.
+        var teamDirectory = Path.Combine(_workspace, "teams", "veille-docs");
+        Directory.CreateDirectory(teamDirectory);
+        WriteSession("veille", $$"""
+            {"v":2,"slug":"veille","title":"Veille","format":"yaml","state":"Promoted","status":"Promoted",
+             "promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDirectory + Path.DirectorySeparatorChar)}},
+             "updatedAt":"2026-08-19T08:00:00Z"}
+            """);
+        WriteSession("autre", """
+            {"v":2,"slug":"autre","format":"yaml","state":"Test","status":"Active","updatedAt":"2026-08-19T09:00:00Z"}
+            """);
+
+        // Trailing separators do not defeat the match; an unadopted folder finds nothing.
+        Assert.Equal("veille", ForgeSessionCatalog.FindByPromotedTo(_workspace, teamDirectory)?.Slug);
+        Assert.Null(ForgeSessionCatalog.FindByPromotedTo(_workspace, Path.Combine(_workspace, "teams", "inconnue")));
+    }
 }

@@ -473,6 +473,7 @@
 <data name="Vm_Wizard_Hint_Answers" xml:space="preserve"><value>Répondez aux trois précisions.</value></data>
 <data name="Vm_Wizard_Hint_Ready" xml:space="preserve"><value>Tout est là — je peux composer l'équipe.</value></data>
 <data name="Vm_Wizard_Decision_Accept" xml:space="preserve"><value>Ça me va</value></data>
+  <data name="Vm_Wizard_Decision_Retry" xml:space="preserve"><value>Refaire un essai</value></data>
 <data name="Vm_Wizard_Decision_Refine" xml:space="preserve"><value>Corriger et réessayer</value></data>
 <data name="Vm_Wizard_Decision_Abort" xml:space="preserve"><value>Abandonner</value></data>
 <data name="Vm_Teams_OnDemand" xml:space="preserve"><value>À la demande</value></data>
@@ -597,6 +598,13 @@
   <data name="Wiz_AllowFolder" xml:space="preserve"><value>Autoriser un dossier</value></data>
   <data name="Wiz_FoldersHint" xml:space="preserve"><value>Ces dossiers seront enregistrés avec l'équipe au moment de l'adoption — l'essai, lui, tourne dans son bac à sable.</value></data>
   <data name="Wiz_DerivedHint" xml:space="preserve"><value>Ils viennent des agents : c'est en modifiant un agent que vous changez ce qu'il voit.</value></data>
+  <data name="Teams_Modify" xml:space="preserve"><value>Modifier</value></data>
+  <data name="Teams_Modify_Tip" xml:space="preserve"><value>Rouvrir l'assistant sur cette équipe</value></data>
+  <data name="Teams_Modify_NoSession" xml:space="preserve"><value>Aucune session d'atelier ne pointe vers cette équipe (importée, ou session supprimée).</value></data>
+  <data name="Wiz_Saved_ModifyTeam" xml:space="preserve"><value>Modifier l'équipe</value></data>
+  <data name="Wiz_Saved_Retry" xml:space="preserve"><value>Refaire un essai</value></data>
+  <data name="Wiz_Saved_NotFrozen" xml:space="preserve"><value>Rien n'est figé : vous pouvez encore modifier un agent, refaire un essai et adopter à nouveau — l'équipe enregistrée sera mise à jour, pas dupliquée.</value></data>
+  <data name="Wiz_Reopened_Note" xml:space="preserve"><value>La ré-adoption régénère les fichiers produits — run.sh et la définition YAML — les modifications faites à la main dedans seront perdues.</value></data>
   <data name="Wiz_Adopt_Change" xml:space="preserve"><value>Changer</value></data>
   <data name="Wiz_AgentCan" xml:space="preserve"><value>Peut :</value></data>
   <data name="Wiz_Modify" xml:space="preserve"><value>Modifier</value></data>

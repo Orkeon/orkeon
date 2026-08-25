@@ -135,6 +135,106 @@ public class CreateTeamWizardTests
     }
 
     [Fact]
+    public async Task A_cold_resume_of_the_dry_pause_restores_the_identity_and_the_trial_button()
+    {
+        // Regression (W-09 exploration): the hydrate-only branch never set the model's
+        // Slug — « Essayer l'équipe » and « Enregistrer » stayed dead on a cold resume.
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-wiz-resume-" + Guid.NewGuid().ToString("N"));
+        var sessionDir = Path.Combine(root, ".orkeon", "forge", "veille");
+        Directory.CreateDirectory(sessionDir);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "session.json"),
+            """{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"Test","status":"Active"}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "blueprint.json"),
+            """{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":[]}],"tasks":[{"key":"t","description":"d","agent":"a"}]}""", TestContext.Current.CancellationToken);
+        try
+        {
+            var (vm, processes, _) = Build();
+            await vm.ResumeAsync(new ForgeSolutionSummary
+            {
+                Slug = "veille", State = "Test", Status = "Active", Directory = sessionDir,
+            });
+
+            // No engine ran — the pause is a review — and yet the identity is whole.
+            Assert.Empty(processes.Requests);
+            Assert.Equal("veille", vm.SessionSlug);
+            Assert.True(vm.CanTryTeam);
+            Assert.True(vm.TryTeamCommand.CanExecute(null));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Modifier_reopens_the_wizard_on_the_adopted_team_and_readopts_the_same_folder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-wiz-reopen-" + Guid.NewGuid().ToString("N"));
+        var sessionDir = Path.Combine(root, ".orkeon", "forge", "veille");
+        var teamDir = Path.Combine(root, "teams", "veille-docs");
+        Directory.CreateDirectory(sessionDir);
+        Directory.CreateDirectory(teamDir);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "session.json"),
+            $$"""{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "blueprint.json"),
+            """{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read"]}],"tasks":[{"key":"t","description":"d","agent":"a"}]}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(teamDir, "studio-team.json"),
+            """{"name":"Veille docs","description":"le besoin d'origine","profile":"Local","schedule":"daily@07:30","mounts":["/data/docs:/docs:ro"]}""", TestContext.Current.CancellationToken);
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"SESSION","format":"yaml","resumed":true}""".Replace("SESSION", System.Text.Json.JsonSerializer.Serialize(sessionDir).Trim('"'), StringComparison.Ordinal)),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"stage.entered","stage":"ready","iteration":1}"""),
+                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+
+            var team = TeamCatalog.Describe(teamDir);
+            var session = new ForgeSolutionSummary
+            {
+                Slug = "veille", State = "Promoted", Status = "Promoted",
+                Directory = sessionDir, PromotedTo = teamDir,
+            };
+            await vm.ReopenTeamAsync(team, session);
+
+            // The wizard reopened at Composer with the whole stepper reachable and the
+            // adoption fields seeded from the sidecar.
+            Assert.Equal(2, vm.Step);
+            Assert.Equal(4, vm.MaxStep);
+            Assert.Equal("Veille docs", vm.TeamName);
+            Assert.Equal("Local", vm.AdoptProfileName);
+            Assert.Equal(1, vm.ScheduleChoice);
+            Assert.Equal("07:30", vm.ScheduleTime);
+            Assert.Contains("/data/docs:/docs:ro", vm.TeamMounts);
+            Assert.False(vm.IsSaved);
+            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[0].Arguments);
+
+            // Re-adoption is pinned to the ORIGINAL folder: renaming only renames.
+            vm.TeamName = "Veille renommée";
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.Add(Out(
+                """{"v":2,"seq":1,"ts":"t","kind":"promoted","path":PATH,"launcher":"run.sh","updated":true}"""
+                    .Replace("PATH", System.Text.Json.JsonSerializer.Serialize(teamDir), StringComparison.Ordinal)));
+            Assert.True(vm.SaveTeamCommand.CanExecute(null));
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            var promote = processes.Requests[1].Arguments.ToList();
+            Assert.Equal(teamDir, promote[promote.IndexOf("--to") + 1]);
+
+            // The sidecar kept its description (no step-1 need on a reopen) and took the
+            // new display name.
+            var updated = TeamCatalog.Describe(teamDir);
+            Assert.Equal("Veille renommée", updated.Name);
+            Assert.Equal("le besoin d'origine", updated.Description);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task A_notes_question_travels_down_stdin_and_the_reply_lands_in_its_thread()
     {
         var (vm, processes, _) = Build();

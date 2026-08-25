@@ -83,6 +83,32 @@ public static class ForgeSessionCatalog
         return [.. summaries.OrderByDescending(s => s.UpdatedAt, StringComparer.Ordinal)];
     }
 
+    /// <summary>
+    /// The session that adopted <paramref name="teamDirectory"/>, or null — the reverse
+    /// lookup «Modifier» rests on (W-09): the sidecar records no session, but every
+    /// session records its <c>promotedTo</c>. Path comparison is full-path,
+    /// trailing-separator-blind, and case-blind on Windows.
+    /// </summary>
+    public static ForgeSolutionSummary? FindByPromotedTo(string workspaceDirectory, string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        string target;
+        try
+        {
+            target = Path.TrimEndingDirectorySeparator(Path.GetFullPath(teamDirectory));
+        }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        {
+            return null;
+        }
+
+        return List(workspaceDirectory).FirstOrDefault(summary =>
+            summary.PromotedTo is { Length: > 0 } promoted
+            && string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(promoted)), target, comparison));
+    }
+
     private static bool TryRead(string directory, out ForgeSolutionSummary? summary)
     {
         summary = null;

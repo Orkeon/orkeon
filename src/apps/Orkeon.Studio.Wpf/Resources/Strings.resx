@@ -473,6 +473,7 @@
 <data name="Vm_Wizard_Hint_Answers" xml:space="preserve"><value>Answer the three precisions.</value></data>
 <data name="Vm_Wizard_Hint_Ready" xml:space="preserve"><value>Everything is there — I can compose the team.</value></data>
 <data name="Vm_Wizard_Decision_Accept" xml:space="preserve"><value>Looks good to me</value></data>
+  <data name="Vm_Wizard_Decision_Retry" xml:space="preserve"><value>Run the trial again</value></data>
 <data name="Vm_Wizard_Decision_Refine" xml:space="preserve"><value>Fix and retry</value></data>
 <data name="Vm_Wizard_Decision_Abort" xml:space="preserve"><value>Abandon</value></data>
 <data name="Vm_Teams_OnDemand" xml:space="preserve"><value>On demand</value></data>
@@ -597,6 +598,13 @@
   <data name="Wiz_AllowFolder" xml:space="preserve"><value>Allow a folder</value></data>
   <data name="Wiz_FoldersHint" xml:space="preserve"><value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value></data>
   <data name="Wiz_DerivedHint" xml:space="preserve"><value>They come from the agents: editing an agent is what changes what it sees.</value></data>
+  <data name="Teams_Modify" xml:space="preserve"><value>Modify</value></data>
+  <data name="Teams_Modify_Tip" xml:space="preserve"><value>Reopen the assistant on this team</value></data>
+  <data name="Teams_Modify_NoSession" xml:space="preserve"><value>No workshop session points at this team (imported, or its session was deleted).</value></data>
+  <data name="Wiz_Saved_ModifyTeam" xml:space="preserve"><value>Modify the team</value></data>
+  <data name="Wiz_Saved_Retry" xml:space="preserve"><value>Run the trial again</value></data>
+  <data name="Wiz_Saved_NotFrozen" xml:space="preserve"><value>Nothing is frozen: you can still modify an agent, run the trial again and adopt anew — the saved team will be updated, not duplicated.</value></data>
+  <data name="Wiz_Reopened_Note" xml:space="preserve"><value>Re-adopting regenerates run.sh and crew/ — hand edits inside those files will be lost.</value></data>
   <data name="Wiz_Adopt_Change" xml:space="preserve"><value>Change</value></data>
   <data name="Wiz_AgentCan" xml:space="preserve"><value>Can:</value></data>
   <data name="Wiz_Modify" xml:space="preserve"><value>Edit</value></data>

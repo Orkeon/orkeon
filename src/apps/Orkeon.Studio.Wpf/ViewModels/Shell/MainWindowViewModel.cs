@@ -127,6 +127,7 @@ public sealed class MainWindowViewModel : ObservableObject
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
         Teams.LaunchRequested += (_, e) => Launch.Target.Select(e.Path);
         Teams.ResumeRequested += (_, e) => _ = ResumeGuarded(e.Session);
+        Teams.ModifyRequested += (_, e) => _ = ModifyGuarded(e);
         CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
     }
@@ -260,6 +261,19 @@ public sealed class MainWindowViewModel : ObservableObject
         try
         {
             await CreateTeam.ResumeAsync(session).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            CreateTeam.ReportStatus(ex.Message);
+        }
+    }
+
+    /// <summary>«Modifier» on a team card — same fault barrier as a resume (W-09).</summary>
+    private async Task ModifyGuarded(ViewModels.Teams.TeamModifyEventArgs request)
+    {
+        try
+        {
+            await CreateTeam.ReopenTeamAsync(request.Team, request.Session).ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {

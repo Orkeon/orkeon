@@ -31,6 +31,16 @@ public sealed class SessionResumeEventArgs(ForgeSolutionSummary session) : Event
     public ForgeSolutionSummary Session { get; } = session;
 }
 
+/// <summary>Payload of a «Modifier» request (W-09): the team and the session that adopted it.</summary>
+public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary session) : EventArgs
+{
+    /// <summary>The adopted team, as the catalog listed it.</summary>
+    public TeamSummary Team { get; } = team;
+
+    /// <summary>The forge session whose <c>promotedTo</c> is the team folder.</summary>
+    public ForgeSolutionSummary Session { get; } = session;
+}
+
 /// <summary>One mount chip of a team card: virtual path plus its rights, in words.</summary>
 public sealed record TeamMountChip(string Label, bool IsReadWrite);
 
@@ -81,7 +91,18 @@ public sealed class TeamCardViewModel : ObservableObject
         ChangeMountsCommand = new RelayCommand(() => owner.RequestMounts(this));
         ExportCommand = new RelayCommand(() => owner.Export(summary.Path));
         TestCommand = new RelayCommand(() => owner.RequestTest(summary.Path));
+        // «Modifier» (W-09): only a team some session promoted can reopen the wizard —
+        // an imported team, or one whose session is gone, keeps the button disabled with
+        // the tooltip saying why. Resolved at card build; Refresh() rebuilds the cards.
+        CanModify = owner.FindSessionFor(summary) is not null;
+        ModifyCommand = new RelayCommand(() => owner.RequestModify(summary), () => CanModify);
     }
+
+    /// <summary>« Modifier » — reopens the wizard at step 2 on this team (W-09).</summary>
+    public RelayCommand ModifyCommand { get; }
+
+    /// <summary>Whether a forge session points at this team folder.</summary>
+    public bool CanModify { get; }
 
     /// <summary>« Changer les dossiers » — the team-mounts modal (remediation v2, F-02).</summary>
     public RelayCommand ChangeMountsCommand { get; }
@@ -268,6 +289,31 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>Raised by the card's Tester icon — the shell brings the trial screen forward.</summary>
     public event EventHandler<TeamActionEventArgs>? TestRequested;
+
+    /// <summary>Raised by «Modifier» — the shell reopens the wizard on the team (W-09).</summary>
+    public event EventHandler<TeamModifyEventArgs>? ModifyRequested;
+
+    /// <summary>
+    /// The session that adopted <paramref name="team"/>, or null — the reverse lookup by
+    /// <c>promotedTo</c>, over the same session loader the in-progress list reads.
+    /// </summary>
+    internal ForgeSolutionSummary? FindSessionFor(TeamSummary team)
+    {
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var target = NormalizePath(team.Path);
+        if (target.Length == 0)
+            return null;
+
+        return _loadSessions().FirstOrDefault(session =>
+            session.PromotedTo is { Length: > 0 } promoted
+            && string.Equals(NormalizePath(promoted), target, comparison));
+    }
+
+    internal void RequestModify(TeamSummary team)
+    {
+        if (FindSessionFor(team) is { } session)
+            ModifyRequested?.Invoke(this, new TeamModifyEventArgs(team, session));
+    }
 
     /// <summary>The team cards.</summary>
     public ObservableCollection<TeamCardViewModel> Teams { get; } = [];
