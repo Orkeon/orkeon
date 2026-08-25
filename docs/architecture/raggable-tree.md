@@ -234,7 +234,7 @@ To point to an ONNX model other than the embedded BGE-micro-v2, declare a read-o
   "Orkeon": {
     "FileSystem": {
       "Mounts": [
-        "/models:r=C:\\data\\embedding-models"     // read-only mount (r=)
+        "C:\\data\\embedding-models:/models:ro"     // <physical>:<virtual>:<rights>
       ]
     }
   },

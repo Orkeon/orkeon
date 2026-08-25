@@ -580,6 +580,45 @@ public class CreateTeamWizardTests
         // The adopted folder is an ordinary target: the launcher receives it as-is.
         Assert.Equal("/teams/veille", shell.Launch.Target.SelectedPath);
     }
+
+    /// <summary>
+    /// Studio launches an adopted team with its own --mount arguments, not through run.sh.
+    /// Recording only the folders the user picked left the team without the /output its own
+    /// agents were told to write to: the trial passed, the launch then reported success and
+    /// wrote nothing. The write roots the blueprint addresses are bound to folders inside
+    /// the team; a folder the user allowed for the same root wins.
+    /// </summary>
+    [Fact]
+    public async Task Adoption_records_the_write_folders_the_blueprint_addresses()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"/output/rapport.md"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.Contains(vm.DerivedMounts, m => m.VirtualPath == "/output" && m.IsReadWrite);
+
+        var teamDirectory = Path.Combine("/teams", "veille");
+        var bound = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
+        Assert.EndsWith(":/output:rw", bound, StringComparison.Ordinal);
+        Assert.StartsWith(Path.Combine(teamDirectory, "output"), bound, StringComparison.Ordinal);
+
+        // An explicit choice for the same root beats the derived binding.
+        vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = Path.Combine("/data", "sorties"),
+            VirtualPath = "/output",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite,
+        });
+
+        var chosen = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
+        Assert.StartsWith(Path.Combine("/data", "sorties"), chosen, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>A question asked while the engine is not listening must not vanish silently.</summary>

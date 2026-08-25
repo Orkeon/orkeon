@@ -538,6 +538,43 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Raised by « Autoriser un dossier » — the shell opens the shared folder picker.</summary>
     public event EventHandler? AllowFolderRequested;
 
+    /// <summary>
+    /// The mount strings the sidecar records: the folders the user allowed, plus the write
+    /// roots the blueprint itself addresses, bound to folders inside the team.
+    /// <para>
+    /// Studio launches an adopted team with its own <c>--mount</c> arguments rather than
+    /// through <c>run.sh</c>, so recording only what the user picked left the team without
+    /// the very <c>/output</c> its agents were told to write to: the trial passed, the run
+    /// then reported success and produced nothing. A folder the user allowed for the same
+    /// virtual root wins — an explicit choice beats a derived one.
+    /// </para>
+    /// </summary>
+    internal List<string> WithDerivedWriteMounts(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var mounts = new List<string>(TeamMounts);
+        var claimed = mounts
+            .Select(m => MountDefinition.TryParse(m, out var parsed, out _) ? parsed?.VirtualPath : null)
+            .Where(virtualPath => virtualPath is not null)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var derived in DerivedMounts.Where(d => d.IsReadWrite))
+        {
+            if (!claimed.Add(derived.VirtualPath))
+                continue;
+
+            mounts.Add(new MountDefinition
+            {
+                PhysicalPath = System.IO.Path.Combine(teamDirectory, derived.VirtualPath.TrimStart('/')),
+                VirtualPath = derived.VirtualPath,
+                Rights = MountRights.ReadWrite,
+            }.ToMountString());
+        }
+
+        return mounts;
+    }
+
     /// <summary>Adds the picker's choice to the team's future mounts.</summary>
     public void AddTeamMount(MountDefinition mount)
     {
@@ -1112,13 +1149,14 @@ public sealed class CreateTeamViewModel : ObservableObject
                     var description = _need.Trim() is { Length: > 0 } need
                         ? need
                         : TeamCatalog.Describe(promotion.Path).Description ?? "";
+                    var mounts = WithDerivedWriteMounts(promotion.Path);
                     TeamCatalog.SaveMetadata(promotion.Path, new StudioTeamMetadata
                     {
                         Name = _teamName.Trim(),
                         Description = description,
                         Profile = AdoptProfileName,
                         Schedule = schedule,
-                        Mounts = TeamMounts.Count > 0 ? [.. TeamMounts] : null,
+                        Mounts = mounts.Count > 0 ? mounts : null,
                     });
                     IsSaved = true;
                     TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));

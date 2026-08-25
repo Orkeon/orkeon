@@ -239,7 +239,7 @@ Pour pointer vers un autre modèle ONNX que le BGE-micro-v2 embarqué, déclarer
   "Orkeon": {
     "FileSystem": {
       "Mounts": [
-        "/models:r=C:\\data\\embedding-models"     // mount lecture seule (r=)
+        "C:\\data\\embedding-models:/models:ro"     // <physique>:<virtuel>:<droits>
       ]
     }
   },

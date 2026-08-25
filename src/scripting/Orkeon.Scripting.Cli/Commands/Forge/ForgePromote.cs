@@ -186,8 +186,16 @@ internal static class ForgePromoter
         var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName);
         var verdict = session.TryLoadArtifact<ForgeVerdict>("verdict.json");
 
-        WritePosixLauncher(destination, session, brief, settingsReference, settingsIsRelative);
-        WriteWindowsLauncher(destination, session, brief, settingsReference, settingsIsRelative);
+        // The folders the crew writes to. The trial bench mounted /output; nothing else did,
+        // so a promoted team used to run "successfully" and write nothing at all. The
+        // launchers now carry the mounts the blueprint asks for, and the folders exist
+        // before the first launch — an absent mount base path is fatal at host build.
+        var writeMounts = DeliverableMounts(session);
+        foreach (var mount in writeMounts)
+            Directory.CreateDirectory(Path.Combine(destination, mount.Folder));
+
+        WritePosixLauncher(destination, session, brief, settingsReference, settingsIsRelative, writeMounts);
+        WriteWindowsLauncher(destination, session, brief, settingsReference, settingsIsRelative, writeMounts);
 
         string? installCommand = null;
         string? scheduleDirectory = null;
@@ -197,7 +205,7 @@ internal static class ForgePromoter
             installCommand = WriteScheduleArtifacts(destination, session, schedule, platform, now);
         }
 
-        WriteCard(destination, session, brief, verdict, schedule, installCommand, now);
+        WriteCard(destination, session, brief, verdict, schedule, installCommand, now, writeMounts);
 
         return new ForgePromotionResult
         {
@@ -240,7 +248,12 @@ internal static class ForgePromoter
     /// anchor; literal values get the shell's literal quoting.
     /// </summary>
     private static List<string> RunArguments(
-        ForgeSession session, ForgeBrief? brief, string? settingsReference, bool settingsIsRelative, bool posix)
+        ForgeSession session,
+        ForgeBrief? brief,
+        string? settingsReference,
+        bool settingsIsRelative,
+        bool posix,
+        IReadOnlyList<DeliverableMount> writeMounts)
     {
         string Anchored(string relative) => posix ? $"\"$DIR/{relative}\"" : $"\"%~dp0{relative}\"";
         string Literal(string value) => posix ? ShQuote(value) : CmdQuote(value);
@@ -253,6 +266,14 @@ internal static class ForgePromoter
 
         if (settingsReference is not null)
             segments.Add($"--settings {(settingsIsRelative ? Anchored(settingsReference) : Literal(settingsReference))}");
+
+        // Several mounts go space-separated after ONE --mount: the CLI's parser rejects a
+        // repeated option. The anchor keeps the folder relocatable with the team.
+        if (writeMounts.Count > 0)
+        {
+            var specs = writeMounts.Select(m => $"{Anchored(m.Folder)}:{m.VirtualRoot}:rw");
+            segments.Add($"--mount {string.Join(' ', specs)}");
+        }
 
         // The sample inputs only exist on the YAML path: `orkeon run` documents
         // --var/--initial-context as ignored for .ork.ts crews, and spelling ignored
@@ -269,6 +290,52 @@ internal static class ForgePromoter
         return segments;
     }
 
+    /// <summary>
+    /// One writable mount the promoted folder carries: a virtual root the blueprint writes
+    /// to, backed by a folder inside the team.
+    /// </summary>
+    /// <param name="VirtualRoot">The root the agents address, e.g. <c>/output</c>.</param>
+    /// <param name="Folder">Its folder inside the promoted directory, e.g. <c>output</c>.</param>
+    private sealed record DeliverableMount(string VirtualRoot, string Folder);
+
+    /// <summary>
+    /// The virtual roots the blueprint's deliverables are written to — the same derivation
+    /// the Composer shows as chips, applied where it becomes true: the launcher.
+    /// <para>
+    /// Without this, a team that passed its trial (where the bench mounts <c>/output</c>)
+    /// had no <c>/output</c> at all once adopted: the deliverable resolver caught the access
+    /// denial, logged a warning and reported the run as finished, so the folder stayed empty
+    /// and nothing on screen said why.
+    /// </para>
+    /// </summary>
+    private static List<DeliverableMount> DeliverableMounts(ForgeSession session)
+    {
+        var blueprint = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
+        var roots = new List<DeliverableMount>();
+
+        foreach (var task in blueprint?.Tasks ?? [])
+        {
+            if (task.Deliverable is not { Length: > 1 } deliverable || deliverable[0] != '/')
+                continue;
+
+            var slash = deliverable.IndexOf('/', 1);
+            var root = slash > 1 ? deliverable[..slash] : deliverable;
+            if (root.Length <= 1)
+                continue;
+
+            var folder = root[1..];
+            // A deliverable root is a single segment by construction; anything else would
+            // put the team's own files outside its folder.
+            if (folder.Contains('/', StringComparison.Ordinal) || folder.Contains('\\', StringComparison.Ordinal))
+                continue;
+
+            if (!roots.Any(m => string.Equals(m.VirtualRoot, root, StringComparison.Ordinal)))
+                roots.Add(new DeliverableMount(root, folder));
+        }
+
+        return roots;
+    }
+
     /// <summary>What `orkeon run` targets, relative to the promoted folder.</summary>
     private static string RunTarget(ForgeSession session) =>
         ForgeSession.IsScriptFormat(session.Document.Format)
@@ -277,7 +344,8 @@ internal static class ForgePromoter
 
     private static void WritePosixLauncher(
         string destination, ForgeSession session, ForgeBrief? brief,
-        string? settingsReference, bool settingsIsRelative)
+        string? settingsReference, bool settingsIsRelative,
+        IReadOnlyList<DeliverableMount> writeMounts)
     {
         var builder = new StringBuilder();
         builder.Append("#!/usr/bin/env sh\n");
@@ -289,7 +357,7 @@ internal static class ForgePromoter
         builder.Append("DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\n");
         builder.Append("exec orkeon");
 
-        foreach (var segment in RunArguments(session, brief, settingsReference, settingsIsRelative, posix: true))
+        foreach (var segment in RunArguments(session, brief, settingsReference, settingsIsRelative, posix: true, writeMounts))
             builder.Append(" \\\n  ").Append(segment);
 
         builder.Append('\n');
@@ -307,7 +375,8 @@ internal static class ForgePromoter
 
     private static void WriteWindowsLauncher(
         string destination, ForgeSession session, ForgeBrief? brief,
-        string? settingsReference, bool settingsIsRelative)
+        string? settingsReference, bool settingsIsRelative,
+        IReadOnlyList<DeliverableMount> writeMounts)
     {
         var builder = new StringBuilder();
         builder.Append("@echo off\r\n");
@@ -318,7 +387,7 @@ internal static class ForgePromoter
             : "rem The --var/--initial-context values below are the test sample: adapt them to the real run.\r\n");
         builder.Append("orkeon");
 
-        foreach (var segment in RunArguments(session, brief, settingsReference, settingsIsRelative, posix: false))
+        foreach (var segment in RunArguments(session, brief, settingsReference, settingsIsRelative, posix: false, writeMounts))
             builder.Append(' ').Append(segment);
 
         builder.Append("\r\n");
@@ -403,7 +472,8 @@ internal static class ForgePromoter
     /// </summary>
     private static void WriteCard(
         string destination, ForgeSession session, ForgeBrief? brief, ForgeVerdict? verdict,
-        ForgeSchedule? schedule, string? installCommand, DateTimeOffset now)
+        ForgeSchedule? schedule, string? installCommand, DateTimeOffset now,
+        IReadOnlyList<DeliverableMount> writeMounts)
     {
         var fr = string.Equals(brief?.Language, "fr", StringComparison.OrdinalIgnoreCase);
         string L(string french, string english) => fr ? french : english;
@@ -479,6 +549,20 @@ internal static class ForgePromoter
         card.AppendLine(fr
             ? $"`./{PosixLauncherName}` (Linux/macOS) ou `{WindowsLauncherName}` (Windows) — les entrées d'exemple y sont à adapter. Le dossier est ordinaire : `orkeon run {RunTarget(session)}` le lance aussi, et Orkeon Studio le détecte."
             : $"`./{PosixLauncherName}` (Linux/macOS) or `{WindowsLauncherName}` (Windows) — adapt the sample inputs inside. The folder is ordinary: `orkeon run {RunTarget(session)}` launches it too, and Orkeon Studio detects it.");
+
+        if (writeMounts.Count > 0)
+        {
+            card.AppendLine();
+            card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Les dossiers de cette équipe", "This team's folders")}");
+            card.AppendLine();
+            card.AppendLine(fr
+                ? "Les agents n'adressent que des points de montage. Les lanceurs relient ceux-ci à des dossiers de l'équipe — déplacez le dossier, les liens suivent :"
+                : "Agents only ever address mount points. The launchers bind these to folders inside the team — move the folder and the bindings follow:");
+            card.AppendLine();
+            foreach (var mount in writeMounts)
+                card.AppendLine(CultureInfo.InvariantCulture,
+                    $"- `{mount.VirtualRoot}` {L("écriture", "write")} → `{mount.Folder}/`");
+        }
 
         if (schedule is not null)
         {

@@ -369,4 +369,65 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Contains("daily@HH:mm", console.Stderr, StringComparison.Ordinal);
         Assert.Contains("only apply to `forge promote`", console.Stderr, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The promise the trial makes must survive adoption. The bench mounts /output and the
+    /// test stage refuses a run that did not write its promised deliverable — but the
+    /// promoted launchers carried no --mount at all, so the same team, launched from its own
+    /// folder, was denied /output, logged a warning and reported success with nothing
+    /// written. The launcher now carries the mounts the blueprint asks for, anchored on the
+    /// folder so the team stays movable, and the folders exist before the first launch (an
+    /// absent mount base path is fatal at host build).
+    /// </summary>
+    [Fact]
+    public void The_launchers_carry_the_folders_the_blueprint_writes_to()
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
+            """
+            {"crew":{"name":"veille"},
+             "agents":[{"key":"collecteur","role":"Collecteur","goal":"Trouver","tools":["file_write"]}],
+             "tasks":[{"key":"t1","description":"d","expectedOutput":"e","agent":"collecteur","deliverable":"/output/rapport.md"},
+                      {"key":"t2","description":"d","expectedOutput":"e","agent":"collecteur","deliverable":"/output/annexe.md"}]}
+            """));
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        // The folder exists before anything runs.
+        Assert.True(Directory.Exists(Path.Combine(Destination, "output")));
+
+        // One --mount flag, one spec per root, deduplicated, anchored on the script's dir.
+        var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
+        Assert.Contains("--mount \"$DIR/output\":/output:rw", posix, StringComparison.Ordinal);
+        Assert.Equal(1, posix.Split("--mount").Length - 1);
+
+        var windows = File.ReadAllText(Path.Combine(Destination, ForgePromoter.WindowsLauncherName));
+        Assert.Contains("--mount \"%~dp0output\":/output:rw", windows, StringComparison.Ordinal);
+
+        // And the card says where the mounts land, so the folder explains itself.
+        var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
+        Assert.Contains("/output", card, StringComparison.Ordinal);
+        Assert.Contains("output/", card, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_blueprint_without_deliverables_carries_no_mount()
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
+            """
+            {"crew":{"name":"veille"},
+             "agents":[{"key":"collecteur","role":"Collecteur","goal":"Trouver","tools":["web_scrape"]}],
+             "tasks":[{"key":"t1","description":"d","expectedOutput":"e","agent":"collecteur"}]}
+            """));
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
+        Assert.DoesNotContain("--mount", posix, StringComparison.Ordinal);
+    }
 }
