@@ -134,8 +134,7 @@
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                                BorderThickness="1" CornerRadius="999" Padding="10,3" Margin="0,0,7,4">
+                        <Border Style="{StaticResource ToolChip}" Margin="0,0,7,4">
                           <StackPanel Orientation="Horizontal">
                             <controls:LucideIcon Size="11" Foreground="{DynamicResource InkMutedBrush}"
                                                  VerticalAlignment="Center" Margin="0,0,6,0">
@@ -150,28 +149,19 @@
                                 </Style>
                               </controls:LucideIcon.Style>
                             </controls:LucideIcon>
-                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11"
-                                       Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Text="{Binding Label}"/>
+                            <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding Label}"/>
                           </StackPanel>
                         </Border>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <Button Cursor="Hand" Command="{Binding ChangeMountsCommand}" Margin="0,0,0,4">
-                    <Button.Template>
-                      <ControlTemplate TargetType="Button">
-                        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                BorderThickness="1" CornerRadius="999" Padding="11,3">
-                          <StackPanel Orientation="Horizontal">
-                            <controls:LucideIcon Kind="folder-tree" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBlock FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"
-                                       VerticalAlignment="Center"
-                                       Text="{Binding [Teams_ChangeMounts], Source={x:Static services:I18n.Instance}}"/>
-                          </StackPanel>
-                        </Border>
-                      </ControlTemplate>
-                    </Button.Template>
+                  <Button Style="{StaticResource ChipAction}" Command="{Binding ChangeMountsCommand}" Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="folder-tree" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                      <TextBlock VerticalAlignment="Center"
+                                 Text="{Binding [Teams_ChangeMounts], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
                   </Button>
                 </WrapPanel>
                 <!-- méta : n agents · programmation · dernière exécution · réglage -->

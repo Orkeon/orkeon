@@ -28,6 +28,22 @@ public partial class CreateTeamView : UserControl
         }
     }
 
+    /// <summary>Copies the rendered crew YAML of the «Définition générée» card.</summary>
+    private void OnCopyDefinition(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is CreateTeamViewModel { HasCrewDefinition: true } wizard)
+        {
+            try
+            {
+                Clipboard.SetDataObject(wizard.CrewDefinitionYaml, copy: false);
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                // The clipboard stayed busy: nothing to surface, the button can be pressed again.
+            }
+        }
+    }
+
     private void OnToggleTech(object sender, RoutedEventArgs e)
     {
         if (DataContext is ViewModels.Teams.CreateTeamViewModel vm)

@@ -258,6 +258,76 @@
     <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
   </Style>
 
+  <!-- ══ Tool / mount / metric chip — THE one chip recipe (v3 W-03): mono 11.5,
+       paper-sunk, line-faint hairline, pill. Usage:
+       <Border Style="ToolChip"><TextBlock Style="ToolChipText" .../></Border> ══ -->
+  <Style x:Key="ToolChip" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineFaintBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="999"/>
+    <Setter Property="Padding" Value="10,3"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+  </Style>
+  <Style x:Key="ToolChipText" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+  <!-- Pill-shaped ACTION («Autoriser un dossier», «Changer les dossiers», toggleable
+       tool chips): surface fill, accent text, real hover/pressed/disabled states —
+       the inline-template pills had none (v3 D-02). -->
+  <Style x:Key="ChipAction" TargetType="Button">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Padding" Value="11,4"/>
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="bd" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="12.5" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Card-header mono meta (slug, file name) sitting on the title's centre line —
+       the one recipe for «titre + slug + actions» headers (v3 W-05). -->
+  <Style x:Key="CardHeaderMeta" TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+    <Setter Property="FontSize" Value="10"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Margin" Value="8,0,0,0"/>
+    <Setter Property="TextWrapping" Value="NoWrap"/>
+    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+  </Style>
+
   <!-- ══ Selectable "pick row" (presets, radio cards) — RadioButton ══ -->
   <Style x:Key="PickRow" TargetType="RadioButton">
     <Setter Property="Cursor" Value="Hand"/>
@@ -372,6 +442,7 @@
     <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
     <Setter Property="Padding" Value="10,7"/>
+    <Setter Property="MinHeight" Value="38"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
     <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
     <Setter Property="Template">

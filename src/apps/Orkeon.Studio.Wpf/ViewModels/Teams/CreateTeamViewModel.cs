@@ -453,6 +453,16 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Session directory — expert only.</summary>
     public string? SessionDirectory => _model.Directory;
 
+    /// <summary>
+    /// The rendered crew YAML, concatenated for the «Définition générée» card (v3 W-06:
+    /// the card shows the definition itself; the path retreats to a tooltip).
+    /// </summary>
+    public string CrewDefinitionYaml =>
+        _model.Directory is { Length: > 0 } directory ? ForgeRenderReader.ReadDefinition(directory) : "";
+
+    /// <summary>Whether the render produced anything to show.</summary>
+    public bool HasCrewDefinition => CrewDefinitionYaml.Length > 0;
+
     // ── step 2 : Composer ──
 
     /// <summary>The agent cards, grouped from the proposal's steps by role.</summary>
@@ -1083,6 +1093,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             nameof(RunInProgress), nameof(Attempt), nameof(Verdict), nameof(HasVerdict),
             nameof(VerdictScore), nameof(VerdictPassing), nameof(TokensSpent),
             nameof(SessionSlug), nameof(SessionDirectory),
+            nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(SavedPath), nameof(InstallCommand), nameof(HasInstallCommand),
             nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam));
         SaveTeamCommand.RaiseCanExecuteChanged();
