@@ -277,13 +277,17 @@ internal static class ForgeCommand
             }
 
             session = loaded!;
-            if (session.Status is ForgeSessionStatus.Promoted or ForgeSessionStatus.Failed)
+            if (session.Status is ForgeSessionStatus.Failed)
             {
                 await Console.Error.WriteLineAsync(
                     $"orkeon forge: session '{slug}' is {session.Document.Status} and cannot be resumed.")
                     .ConfigureAwait(false);
                 return ExitError;
             }
+
+            // The reopen (W-09): anything that reached a verdict re-enters at the
+            // arbitration — modify / re-try / re-adopt. No-op on an ordinary resume.
+            session.TryReopen(DateTimeOffset.UtcNow);
 
             // The session's format is a fact of its artifacts: resuming cannot change it.
             if (options.Format is { } requestedFormat
@@ -402,7 +406,10 @@ internal static class ForgeCommand
                 new ValidateStage(knownTools),
                 new TestStage(new ForgeCrewTestBench(host.Services)),
                 new DiagnoseStage(new LlmForgeJudge(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
-                new VerdictStage(options.Auto, channel, knownTools),
+                // A resume that lands AT the arbitration (a reopen, or an interruption
+                // there) re-announces the stored verdict before asking again.
+                new VerdictStage(options.Auto, channel, knownTools,
+                    recallVerdict: resumed && session.State == ForgeState.Verdict),
             ]);
 
         var result = await engine
@@ -470,13 +477,14 @@ internal static class ForgeCommand
             session.Save(now);
 
             events.Emit("promoted", result.ScheduleDirectory is null
-                ? new { path = result.Destination, launcher = result.Launcher }
+                ? new { path = result.Destination, launcher = result.Launcher, updated = result.Updated }
                 : (object)new
                 {
                     path = result.Destination,
                     launcher = result.Launcher,
                     schedule = result.ScheduleDirectory,
                     install = result.InstallCommand,
+                    updated = result.Updated,
                 });
             events.SessionFinished("ready", 0);
             return 0;

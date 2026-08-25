@@ -433,6 +433,75 @@ public sealed class ForgeRunStagesTests : IDisposable
     }
 
     [Fact]
+    public async Task A_retry_reruns_the_trial_without_an_llm_turn()
+    {
+        // W-09 «Refaire un essai»: same blueprint, a fresh run under its own number,
+        // a fresh verdict — and not one extra compose turn on the assistant.
+        var assistant = HappyAssistant();
+        var bench = new FakeTestBench().Succeeds().Succeeds();
+        var judge = new FakeJudge().Approves().Approves();
+        var channel = new ScriptedUserChannel().Decides("retry").Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        var result = await Engine(session, FullRunners(assistant, channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(ForgeEngineOutcome.Ready, result.Outcome);
+        Assert.Equal(2, bench.Executions);
+        Assert.Equal(2, assistant.Requests.Count);   // brief + blueprint, nothing more
+        Assert.Equal(2, session.Document.Budget.ConsumedIterations);
+        Assert.True(Directory.Exists(Path.Combine(session.Directory, "runs", "2")));
+    }
+
+    [Fact]
+    public async Task A_retry_with_no_iteration_left_is_refused_and_the_arbitration_reopens()
+    {
+        var bench = new FakeTestBench().Succeeds();
+        var judge = new FakeJudge().Approves();
+        var channel = new ScriptedUserChannel().Decides("retry").Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille", budget: new ForgeBudget { MaxIterations = 1 });
+
+        var result = await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        // The refusal is recoverable and the user could still accept — never the
+        // stream-closing FinishBudgetExhausted mid-arbitration.
+        Assert.Equal(ForgeEngineOutcome.Ready, result.Outcome);
+        Assert.Equal(1, bench.Executions);
+        var error = Events().Single(e => e.GetProperty("kind").GetString() == "error");
+        Assert.Equal("FORGE-BUDGET-EXHAUSTED", error.GetProperty("code").GetString());
+        Assert.True(error.GetProperty("recoverable").GetBoolean());
+    }
+
+    [Fact]
+    public async Task A_resume_at_the_arbitration_recalls_the_stored_verdict_first()
+    {
+        // A reopened (or interrupted-at-Verdict) session must not stream a naked
+        // decision.needed: the recall re-announces the verdict, last-run metrics included.
+        var session = ForgeSession.Create(_workspace, "veille");
+        session.SaveArtifact("verdict.json", new ForgeVerdict { Score = 0.9, Passing = true, Judge = ForgeVerdict.JudgeLlm });
+        session.SaveArtifact(TestStage.LastRunFileName, new ForgeTestRun
+        {
+            Run = 1, Success = true, Output = "ok", DurationMs = 40, Tokens = 500,
+        });
+        session.SetState(ForgeState.Verdict);
+        session.Save();
+
+        var channel = new ScriptedUserChannel().Decides("accept");
+        var result = await Engine(
+                session,
+                new VerdictStage(auto: false, channel, ForgeDocuments.KnownTools, recallVerdict: true))
+            .RunAsync(resumed: true, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(ForgeEngineOutcome.Ready, result.Outcome);
+        var kinds = Kinds().ToList();
+        Assert.True(kinds.IndexOf("verdict.ready") < kinds.IndexOf("decision.needed"));
+        var verdict = Events().Single(e => e.GetProperty("kind").GetString() == "verdict.ready");
+        Assert.Equal(500, verdict.GetProperty("tokens").GetInt64());
+        Assert.Equal(40, verdict.GetProperty("durationMs").GetInt64());
+    }
+
+    [Fact]
     public async Task A_promised_deliverable_that_never_appeared_is_a_finding()
     {
         // The valid blueprint promises /output/resume.md; the fake bench writes nothing.

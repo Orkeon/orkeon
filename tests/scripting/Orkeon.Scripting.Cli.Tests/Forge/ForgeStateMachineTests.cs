@@ -61,6 +61,16 @@ public class ForgeStateMachineTests
     }
 
     [Fact]
+    public void A_retry_goes_straight_back_to_the_test()
+    {
+        // W-09: «Refaire un essai» — same blueprint, same render, a fresh run.
+        var machine = ForgeStateMachineFactory.Create(ForgeState.Verdict);
+
+        Assert.True(machine.TryFire(ForgeTrigger.RetryRequested, out _));
+        Assert.Equal(ForgeState.Test, machine.CurrentState);
+    }
+
+    [Fact]
     public void A_resumed_machine_starts_at_the_saved_state()
     {
         var machine = ForgeStateMachineFactory.Create(ForgeState.Test);

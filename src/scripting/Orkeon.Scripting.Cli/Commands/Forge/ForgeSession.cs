@@ -408,6 +408,28 @@ internal sealed class ForgeSession
     /// <summary>Adopts a state transition into the document (the caller saves when ready).</summary>
     public void SetState(ForgeState state) => Document.State = state.ToString();
 
+    /// <summary>
+    /// The reopen (W-09): anything that reached a verdict can be re-arbitrated — a
+    /// promoted session for the modify / re-try / re-adopt cycle, and an abandoned one so
+    /// a single abort after a reopen does not strand the team forever. Coerces the session
+    /// back to the arbitration and saves; false when this session has nothing to reopen.
+    /// The coercion lives here, at the command level's disposal — the state machine keeps
+    /// its terminal states terminal, exactly like promote's own transition.
+    /// </summary>
+    public bool TryReopen(DateTimeOffset now)
+    {
+        var eligible = Status == ForgeSessionStatus.Promoted
+            || (Status == ForgeSessionStatus.Abandoned && File.Exists(Path.Combine(Directory, "verdict.json")));
+        if (!eligible)
+            return false;
+
+        AppendHistory(State, ForgeTrigger.Reopen, ForgeState.Verdict, now);
+        SetState(ForgeState.Verdict);
+        SetStatus(ForgeSessionStatus.Active);
+        Save(now);
+        return true;
+    }
+
     /// <summary>Adopts a lifecycle change into the document (the caller saves when ready).</summary>
     public void SetStatus(ForgeSessionStatus status) => Document.Status = status.ToString();
 

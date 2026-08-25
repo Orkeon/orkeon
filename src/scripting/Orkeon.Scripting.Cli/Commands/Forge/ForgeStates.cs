@@ -71,6 +71,19 @@ internal enum ForgeTrigger
     RefineRequested,
 
     /// <summary>
+    /// The user asked to re-run the trial as-is (<c>decision.made {retry}</c>) — same
+    /// blueprint, same render, a fresh run and a fresh verdict. Zero LLM compose.
+    /// </summary>
+    RetryRequested,
+
+    /// <summary>
+    /// A promoted (or abandoned-with-verdict) session was resumed for the modify /
+    /// re-try / re-adopt cycle (W-09). Applied at the command level — the machine keeps
+    /// its terminal states terminal; this trigger only names the history entry.
+    /// </summary>
+    Reopen,
+
+    /// <summary>
     /// The user handed back an amended blueprint at the arbitration (<c>decision.made
     /// {edit}</c> + <c>blueprint.edited</c>). Re-render without an LLM turn.
     /// </summary>

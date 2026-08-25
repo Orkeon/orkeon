@@ -256,6 +256,47 @@ public sealed class ForgePromoteTests : IDisposable
     }
 
     [Fact]
+    public void Re_adoption_updates_the_same_folder_in_place()
+    {
+        // W-09: the one exception to the fresh-directory rule is the folder THIS session
+        // already promoted to. Generated artifacts are regenerated; the user's own files
+        // — the Studio sidecar, outputs — survive; a dropped schedule is removed.
+        var session = ReadySession();
+        Assert.True(ForgeSchedule.TryParse("daily@07:30", out var daily, out _));
+        var first = ForgePromoter.Promote(
+            session, Destination, daily, null, false, ForgePromotePlatform.Linux, Now);
+        Assert.False(first.Updated);
+        Assert.True(Directory.Exists(Path.Combine(Destination, ForgePromoter.ScheduleDirectoryName)));
+
+        session.Document.PromotedTo = Destination;
+        File.WriteAllText(Path.Combine(Destination, "studio-team.json"), """{"name":"Veille"}""");
+        File.WriteAllText(Path.Combine(Destination, "note.txt"), "mine");
+
+        var second = ForgePromoter.Promote(
+            session, Destination, schedule: null, null, false, ForgePromotePlatform.Linux, Now);
+
+        Assert.True(second.Updated);
+        Assert.False(Directory.Exists(Path.Combine(Destination, ForgePromoter.ScheduleDirectoryName)));
+        Assert.True(File.Exists(Path.Combine(Destination, "crew", "config.yaml")));
+        Assert.Equal("""{"name":"Veille"}""", File.ReadAllText(Path.Combine(Destination, "studio-team.json")));
+        Assert.Equal("mine", File.ReadAllText(Path.Combine(Destination, "note.txt")));
+    }
+
+    [Fact]
+    public void A_foreign_non_empty_destination_stays_refused_even_after_a_promotion()
+    {
+        var session = ReadySession();
+        session.Document.PromotedTo = Path.Combine(_workspace, "elsewhere");
+
+        Directory.CreateDirectory(Destination);
+        File.WriteAllText(Path.Combine(Destination, "keep.txt"), "mine");
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ForgePromoter.Promote(session, Destination, null, null, false, ForgePromotePlatform.Linux, Now));
+        Assert.Contains("not empty", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task The_promote_verb_ships_the_session_and_records_the_transition()
     {
         ReadySession();

@@ -138,4 +138,38 @@ public sealed class ForgeSessionTests : IDisposable
         Assert.Empty(ForgeSession.List(_workspace));
         Assert.False(Directory.Exists(ForgeSession.RootFor(_workspace)));
     }
+
+    [Fact]
+    public void Anything_that_reached_a_verdict_can_be_reopened_at_the_arbitration()
+    {
+        // W-09: a promoted session reopens; an abandoned one only if it has a verdict —
+        // one abort after a reopen must never strand the team forever.
+        var promoted = ForgeSession.Create(_workspace, "promue");
+        promoted.SetState(ForgeState.Promoted);
+        promoted.SetStatus(ForgeSessionStatus.Promoted);
+        promoted.Save(FixedNow);
+
+        Assert.True(promoted.TryReopen(FixedNow));
+        Assert.Equal(ForgeState.Verdict, promoted.State);
+        Assert.Equal(ForgeSessionStatus.Active, promoted.Status);
+        Assert.Contains("\"trigger\":\"Reopen\"",
+            File.ReadAllText(Path.Combine(promoted.Directory, ForgeSession.HistoryFileName)),
+            StringComparison.OrdinalIgnoreCase);
+
+        var abandonedWithVerdict = ForgeSession.Create(_workspace, "avec-verdict");
+        abandonedWithVerdict.SaveArtifact("verdict.json", new ForgeVerdict { Score = 0.5, Judge = ForgeVerdict.JudgeDeterministic });
+        abandonedWithVerdict.SetState(ForgeState.Abandoned);
+        abandonedWithVerdict.SetStatus(ForgeSessionStatus.Abandoned);
+        abandonedWithVerdict.Save(FixedNow);
+        Assert.True(abandonedWithVerdict.TryReopen(FixedNow));
+
+        var abandonedBlind = ForgeSession.Create(_workspace, "sans-verdict");
+        abandonedBlind.SetState(ForgeState.Abandoned);
+        abandonedBlind.SetStatus(ForgeSessionStatus.Abandoned);
+        abandonedBlind.Save(FixedNow);
+        Assert.False(abandonedBlind.TryReopen(FixedNow));
+
+        var active = ForgeSession.Create(_workspace, "active");
+        Assert.False(active.TryReopen(FixedNow));
+    }
 }

@@ -305,18 +305,29 @@ internal sealed class DiagnoseStage : IForgeStageRunner
 /// </summary>
 internal sealed class VerdictStage : IForgeStageRunner
 {
-    private static readonly string[] DecisionOptions = ["accept", "refine", "edit", "abort"];
+    private static readonly string[] DecisionOptions = ["accept", "retry", "refine", "edit", "abort"];
 
     private readonly bool _auto;
     private readonly IForgeUserChannel _channel;
     private readonly IReadOnlyCollection<string> _knownTools;
+    private bool _recallVerdict;
 
-    /// <summary>Builds the stage; <paramref name="auto"/> arbitrates without a human.</summary>
-    public VerdictStage(bool auto, IForgeUserChannel channel, IReadOnlyCollection<string> knownTools)
+    /// <summary>
+    /// Builds the stage; <paramref name="auto"/> arbitrates without a human;
+    /// <paramref name="recallVerdict"/> re-emits the stored verdict before the first
+    /// arbitration — a session resumed AT the arbitration (a reopen, or an interruption)
+    /// would otherwise stream a <c>decision.needed</c> with no verdict on the wire.
+    /// </summary>
+    public VerdictStage(
+        bool auto,
+        IForgeUserChannel channel,
+        IReadOnlyCollection<string> knownTools,
+        bool recallVerdict = false)
     {
         _auto = auto;
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
         _knownTools = knownTools ?? throw new ArgumentNullException(nameof(knownTools));
+        _recallVerdict = recallVerdict;
     }
 
     /// <inheritdoc />
@@ -335,6 +346,15 @@ internal sealed class VerdictStage : IForgeStageRunner
                 FailureCode = ForgeErrorCodes.SessionCorrupt,
                 Detail = "The arbitration needs a verdict, and none is saved.",
             };
+        }
+
+        if (_recallVerdict)
+        {
+            // One recall per process: the loop-backs below re-earn their verdict through
+            // Diagnose, which emits its own.
+            _recallVerdict = false;
+            DiagnoseStage.EmitVerdictReady(
+                events, verdict, session.TryLoadArtifact<ForgeTestRun>(TestStage.LastRunFileName));
         }
 
         if (_auto)
@@ -360,6 +380,22 @@ internal sealed class VerdictStage : IForgeStageRunner
                 case "accept":
                     // Keeping a non-conforming result is legitimate — the user judged on sight.
                     return new ForgeStageOutcome { Trigger = ForgeTrigger.Accepted };
+
+                case "retry":
+                    // Same blueprint, same render, a fresh run and a fresh verdict. The
+                    // re-run is a cycle: refuse it BEFORE the trigger when no iteration
+                    // remains — FinishBudgetExhausted mid-arbitration would close the
+                    // stream and take accept/abort away from the user.
+                    if (!session.Document.Budget.CanStartIteration)
+                    {
+                        events.Error(
+                            ForgeEngine.CodeBudgetExhausted,
+                            "No iteration remains in the budget for the re-run; raise --max-iterations and resume, or accept/abort.",
+                            recoverable: true);
+                        continue;
+                    }
+
+                    return new ForgeStageOutcome { Trigger = ForgeTrigger.RetryRequested };
 
                 case "refine":
                     FeedRefine(session, verdict);

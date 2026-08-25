@@ -192,7 +192,8 @@ internal sealed class ForgeEngine
                 // exactly where it was — resumable with a raised budget. A user edit loops
                 // back too — no LLM turn, but its re-render/re-test is a cycle and its run
                 // needs its own number, or runs/N would be silently overwritten.
-                if (outcome.Trigger is ForgeTrigger.RepairNeeded or ForgeTrigger.RefineRequested or ForgeTrigger.BlueprintEdited)
+                if (outcome.Trigger is ForgeTrigger.RepairNeeded or ForgeTrigger.RefineRequested
+                    or ForgeTrigger.BlueprintEdited or ForgeTrigger.RetryRequested)
                 {
                     if (!budget.CanStartIteration)
                         return FinishBudgetExhausted(ForgeBudgetDimension.Iterations);

@@ -79,6 +79,12 @@ internal sealed record ForgePromotionResult
 
     /// <summary>The host platform's install command — displayed, never executed (§3.4).</summary>
     public string? InstallCommand { get; init; }
+
+    /// <summary>
+    /// Whether an existing promotion of the same session was updated in place (W-09) —
+    /// clients warn that regenerated files (run.sh, crew/) lost any hand edits.
+    /// </summary>
+    public bool Updated { get; init; }
 }
 
 /// <summary>
@@ -134,8 +140,21 @@ internal static class ForgePromoter
         if (!Directory.Exists(crewSource))
             throw new InvalidOperationException($"The session holds no rendered crew under '{ForgeYamlRenderer.CrewDirectoryName}/'.");
 
+        // A non-empty destination is refused — with ONE exception (W-09): the folder this
+        // very session already promoted to. Re-adoption then UPDATES it in place: the
+        // generated artifacts (crew/, schedule/, launchers, FORGE.md) are regenerated,
+        // everything else — sidecar, user files, outputs — is preserved. Omitting the
+        // schedule on a re-adoption removes schedule/: the folder says what is true.
+        var updating = false;
         if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
-            throw new InvalidOperationException($"'{destination}' is not empty — promote into a fresh directory.");
+        {
+            if (!IsSameDirectory(session.Document.PromotedTo, destination))
+                throw new InvalidOperationException($"'{destination}' is not empty — promote into a fresh directory.");
+
+            updating = true;
+            DeleteIfExists(Path.Combine(destination, ForgeYamlRenderer.CrewDirectoryName));
+            DeleteIfExists(Path.Combine(destination, ScheduleDirectoryName));
+        }
 
         Directory.CreateDirectory(destination);
         CopyDirectory(crewSource, Path.Combine(destination, ForgeYamlRenderer.CrewDirectoryName));
@@ -148,7 +167,8 @@ internal static class ForgePromoter
         var settingsIsRelative = false;
         if (settingsPath is not null && copySettings)
         {
-            File.Copy(settingsPath, Path.Combine(destination, SettingsFileName));
+            // overwrite: a re-adoption may find the previous promote's copy in place.
+            File.Copy(settingsPath, Path.Combine(destination, SettingsFileName), overwrite: true);
             settingsReference = SettingsFileName;
             settingsIsRelative = true;
         }
@@ -179,7 +199,30 @@ internal static class ForgePromoter
             Launcher = platform == ForgePromotePlatform.Windows ? WindowsLauncherName : PosixLauncherName,
             ScheduleDirectory = scheduleDirectory,
             InstallCommand = installCommand,
+            Updated = updating,
         };
+    }
+
+    /// <summary>
+    /// Whether <paramref name="candidate"/> is the very folder this session already
+    /// promoted to — full-path, trailing-separator-blind, case-blind on Windows.
+    /// </summary>
+    private static bool IsSameDirectory(string? promotedTo, string candidate)
+    {
+        if (string.IsNullOrWhiteSpace(promotedTo))
+            return false;
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(promotedTo)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate)),
+            comparison);
+    }
+
+    private static void DeleteIfExists(string directory)
+    {
+        if (Directory.Exists(directory))
+            Directory.Delete(directory, recursive: true);
     }
 
     /// <summary>
