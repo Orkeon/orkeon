@@ -157,6 +157,8 @@ internal sealed record ForgeBlueprint
 
         if (string.IsNullOrWhiteSpace(Crew?.Name))
             errors.Add("'crew.name' is required.");
+        else if (Crew.Name.Trim().Length > 60)
+            errors.Add("'crew.name' must be a short display name (60 characters max), never the goal sentence.");
         if (string.IsNullOrWhiteSpace(Crew?.Goal))
             errors.Add("'crew.goal' is required.");
 

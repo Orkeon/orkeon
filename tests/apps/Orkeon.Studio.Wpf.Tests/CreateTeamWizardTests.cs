@@ -384,6 +384,38 @@ public class CreateTeamWizardTests
     }
 
     [Fact]
+    public void A_goal_length_title_is_cut_to_a_display_name_at_a_word_boundary()
+    {
+        // v3 W-07: the engine now demands a short crew.name, but an older session's
+        // title may still be the goal sentence — never mid-word, never trailing comma.
+        Assert.Equal("Veille documentaire", CreateTeamViewModel.ShortName("  Veille documentaire  "));
+        Assert.Equal(
+            "Résumer en un seul passage les nouveautés d'un",
+            CreateTeamViewModel.ShortName(
+                "Résumer en un seul passage les nouveautés d'un site, à partir des fichiers enregistrés"));
+    }
+
+    [Fact]
+    public void The_adopt_profile_card_unfolds_picks_and_folds_back()
+    {
+        var (vm, _, profiles) = Build();
+        profiles.CommitEdit(
+            new ModelProfile { Name = "Cloud", Provider = "Kimi", Model = "kimi-k2", BaseUrl = "https://api.moonshot.ai/v1" },
+            previousName: null);
+
+        Assert.False(vm.IsAdoptProfilePickerOpen);
+        vm.ToggleAdoptProfilePickerCommand.Execute(null);
+        Assert.True(vm.IsAdoptProfilePickerOpen);
+
+        vm.PickAdoptProfileCommand.Execute("Cloud");
+
+        // The pick lands on the card — name, origin line — and the rows fold back.
+        Assert.Equal("Cloud", vm.AdoptProfileName);
+        Assert.False(vm.IsAdoptProfilePickerOpen);
+        Assert.Contains("Kimi", vm.AdoptProfileSummary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void The_shell_routes_a_team_launch_into_the_ordinary_launcher()
     {
         var shell = new MainWindowViewModel(

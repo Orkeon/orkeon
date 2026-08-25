@@ -696,11 +696,50 @@
                        Text="{Binding [Wiz_TeamName], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding TeamName, UpdateSourceTrigger=PropertyChanged}"/>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,7"
                        Text="{Binding [Wiz_AdoptProfile], Source={x:Static services:I18n.Instance}}"/>
-            <ComboBox Width="260" HorizontalAlignment="Left"
-                      ItemsSource="{Binding Profiles.ProfileNames}"
-                      SelectedItem="{Binding AdoptProfileName}"/>
+            <!-- W-07: the selected model profile as a card — «Changer» unfolds the radio
+                 rows; no select at all, exactly the mock's shape. -->
+            <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                    BorderThickness="1" CornerRadius="10" Padding="13,11" MaxWidth="480" HorizontalAlignment="Left">
+              <DockPanel>
+                <controls:LucideIcon DockPanel.Dock="Left" Kind="sparkles" Size="15"
+                                     Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,11,0"/>
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5" Padding="10,5"
+                        VerticalAlignment="Center" Command="{Binding ToggleAdoptProfilePickerCommand}"
+                        Content="{Binding [Wiz_Adopt_Change], Source={x:Static services:I18n.Instance}}"/>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                             Text="{Binding AdoptProfileName}"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding AdoptProfileSummary}"
+                             Visibility="{Binding AdoptProfileSummary, Converter={StaticResource StringPresentToVisibility}}"/>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <StackPanel Margin="0,7,0,0" MaxWidth="480" HorizontalAlignment="Left"
+                        Visibility="{Binding IsAdoptProfilePickerOpen, Converter={StaticResource BooleanToVisibility}}">
+              <ItemsControl ItemsSource="{Binding Profiles.Profiles}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <RadioButton Style="{StaticResource PickRow}" GroupName="AdoptProfile" Margin="0,0,0,7"
+                                 Command="{Binding DataContext.CreateTeam.PickAdoptProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                 CommandParameter="{Binding Name}">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
+                        <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="11,0,0,0" Text="{Binding Summary}"/>
+                      </StackPanel>
+                    </RadioButton>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" FontSize="11.5" Padding="10,5"
+                      Command="{Binding OpenSettingsCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [Wiz_ManageSettings], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,7"
                        Text="{Binding [Wiz_Schedule_Label], Source={x:Static services:I18n.Instance}}"/>

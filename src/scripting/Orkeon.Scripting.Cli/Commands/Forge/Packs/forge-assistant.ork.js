@@ -59,6 +59,8 @@ function stableHeader() {
     lines.push("  the rationale must say why in plain words the user understands.");
     lines.push("- Keys: short kebab-case, unique; every task names an existing agent key;");
     lines.push("  dependencies name existing task keys.");
+    lines.push("- crew.name is a short display name (3 to 5 words, 60 characters max) —");
+    lines.push("  never the goal sentence. It becomes the team's folder name.");
     lines.push("- Small is right: two or three agents solve most problems. One clear role");
     lines.push("  and goal per agent; tasks phrased as work, not as prompts.");
     lines.push("- If errors are listed below, fix exactly those — change nothing else —");

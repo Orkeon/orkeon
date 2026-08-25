@@ -117,6 +117,24 @@ public class ForgeBlueprintTests
     }
 
     [Fact]
+    public void A_goal_length_crew_name_is_refused_as_a_display_name()
+    {
+        // v3 W-07: crew.name becomes the team's display name and folder slug — a
+        // sentence-long name gets the plan rejected with a repairable error.
+        var longName = new string('x', 61);
+        var json = $$"""
+            {
+              "crew": { "name": "{{longName}}", "goal": "g" },
+              "agents": [ { "key": "a", "role": "r", "goal": "g" } ],
+              "tasks": [ { "key": "t", "description": "d", "expectedOutput": "o", "agent": "a" } ]
+            }
+            """;
+
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        Assert.Contains(errors, e => e.Contains("short display name", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Duplicate_keys_are_refused()
     {
         var json = """

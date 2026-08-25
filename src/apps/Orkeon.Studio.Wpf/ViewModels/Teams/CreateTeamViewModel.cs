@@ -140,6 +140,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     private int _scheduleChoice;
     private string _scheduleTime = "07:30";
     private string? _adoptProfileName;
+    private bool _isAdoptProfilePickerOpen;
     private bool _isSaved;
     private string? _lastStderr;
 
@@ -165,6 +166,15 @@ public sealed class CreateTeamViewModel : ObservableObject
         AgentEditor = new AgentEditorViewModel(_strings);
         AddAgentCommand = new RelayCommand(() => EditAgent(null), () => CanEditAgents);
         AllowFolderCommand = new RelayCommand(() => AllowFolderRequested?.Invoke(this, EventArgs.Empty));
+        ToggleAdoptProfilePickerCommand = new RelayCommand(() => IsAdoptProfilePickerOpen = !IsAdoptProfilePickerOpen);
+        PickAdoptProfileCommand = new RelayCommand(parameter =>
+        {
+            if (parameter is string profileName)
+            {
+                AdoptProfileName = profileName;
+                IsAdoptProfilePickerOpen = false;
+            }
+        });
         RemoveTeamMountCommand = new RelayCommand(
             parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); OnPropertiesChanged(nameof(HasTeamMounts)); } },
             parameter => parameter is string);
@@ -665,8 +675,46 @@ public sealed class CreateTeamViewModel : ObservableObject
     public string? AdoptProfileName
     {
         get => _adoptProfileName ?? Profiles.DefaultProfileName;
-        set => SetProperty(ref _adoptProfileName, value);
+        set
+        {
+            if (SetProperty(ref _adoptProfileName, value))
+                OnPropertyChanged(nameof(AdoptProfileSummary));
+        }
     }
+
+    /// <summary>
+    /// A goal-length title cut to a display name (v3 W-07): the engine now demands a
+    /// short <c>crew.name</c>, but an older session's title may still be the goal
+    /// sentence — trim at a word boundary, never mid-word.
+    /// </summary>
+    internal static string ShortName(string title)
+    {
+        const int MaxLength = 48;
+        var trimmed = title.Trim();
+        if (trimmed.Length <= MaxLength)
+            return trimmed;
+
+        var cut = trimmed.LastIndexOf(' ', MaxLength);
+        return (cut > 0 ? trimmed[..cut] : trimmed[..MaxLength]).TrimEnd(',', ';', ':', '.');
+    }
+
+    /// <summary>The selected profile's one-line origin, for the step-4 card (v3 W-07).</summary>
+    public string AdoptProfileSummary =>
+        Profiles.Profiles.FirstOrDefault(p => string.Equals(p.Name, AdoptProfileName, StringComparison.Ordinal))
+            ?.Summary ?? "";
+
+    /// <summary>Whether the «Changer» rows of the step-4 profile card are unfolded.</summary>
+    public bool IsAdoptProfilePickerOpen
+    {
+        get => _isAdoptProfilePickerOpen;
+        set => SetProperty(ref _isAdoptProfilePickerOpen, value);
+    }
+
+    /// <summary>«Changer» — unfolds/folds the profile rows.</summary>
+    public RelayCommand ToggleAdoptProfilePickerCommand { get; }
+
+    /// <summary>Picks the team's profile from the unfolded rows and folds them back.</summary>
+    public RelayCommand PickAdoptProfileCommand { get; }
 
     /// <summary>True once the team landed in the teams folder.</summary>
     public bool IsSaved
@@ -1086,7 +1134,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         SyncDecisions();
 
         if (_teamName.Length == 0 && _model.Title is { Length: > 0 } title)
-            TeamName = title;
+            TeamName = ShortName(title);
 
         StatusMessage = _saveError ?? _model.FinishedStatus switch
         {

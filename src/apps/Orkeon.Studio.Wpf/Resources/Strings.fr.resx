@@ -593,6 +593,7 @@
   <data name="Wiz_AllowFolder" xml:space="preserve"><value>Autoriser un dossier</value></data>
   <data name="Wiz_FoldersHint" xml:space="preserve"><value>Ces dossiers seront enregistrés avec l'équipe au moment de l'adoption — l'essai, lui, tourne dans son bac à sable.</value></data>
   <data name="Wiz_DerivedHint" xml:space="preserve"><value>Ils viennent des agents : c'est en modifiant un agent que vous changez ce qu'il voit.</value></data>
+  <data name="Wiz_Adopt_Change" xml:space="preserve"><value>Changer</value></data>
   <data name="Wiz_AgentCan" xml:space="preserve"><value>Peut :</value></data>
   <data name="Wiz_Modify" xml:space="preserve"><value>Modifier</value></data>
   <data name="Wiz_AddAgent" xml:space="preserve"><value>Ajouter un agent</value></data>
