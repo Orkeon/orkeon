@@ -82,6 +82,34 @@ agent editor — the name maps to the blueprint's `role`, "what it does" to its
 « Ajouter un agent » travel the same path. The buttons are actionable exactly
 while the engine waits at its arbitration — during a trial they wait with it.
 
+### What a run costs, on screen (remediation v3)
+
+Wherever a trial or a run finishes, Studio shows what it cost — as mono chips in
+one shared recipe (`UsageMetricsFormatter`): total tokens, the prompt-cache hit
+(`cache 62 % · 7 980 tokens` — the hit/miss pair is a *partition* of the prompt
+tokens, never an addition), and the wall time. The wizard's verdict card reads
+them off the enriched `verdict.ready` (the last trial's own figures, distinct
+from the session-cumulative `cost.updated` meter); the launcher's finish line
+reads the enriched `run.finished`; the history records tokens and the cache pair
+per entry (tolerant schema — old files load) and shows them in the meta line.
+A metric the providers did not measure produces **no chip** — never a zero.
+
+### Modify, re-try, re-adopt (remediation v3)
+
+Adoption is no longer a one-way door. « Modifier » on a team card — resolved by
+the reverse lookup from the team folder to the forge session that promoted it
+(`promotedTo`) — reopens the wizard at the Composer step with the whole stepper
+reachable: the engine resumes the promoted session into a reopened arbitration
+(the stored verdict is re-announced first), so agents are editable again, a new
+`retry` decision re-runs the trial as-is (zero compose tokens, one budget
+iteration), and re-adoption **updates the same team folder** — generated files
+(`crew/`, launchers, `FORGE.md`, `schedule/`) are regenerated, the sidecar and
+the user's own files survive, and renaming the team only changes its display
+name. After a fresh adoption the saved card says so («Rien n'est figé…») and
+offers « Modifier l'équipe » and « Refaire un essai » directly. Teams without a
+session — imported, or whose session was deleted — keep « Modifier » disabled,
+with the reason in the tooltip.
+
 ## Localization: the `IStudioStrings` port
 
 `Orkeon.Studio.Core` defines a localization port, `IStudioStrings` (`Localization/StudioStrings.cs`): a key indexer plus a `CultureChanged` event so ViewModels can re-emit their bindings when the language switches. The English defaults in `EnglishStudioStrings` are the key registry of record. Each front decides the language: the WPF app bridges the port onto its resx-backed `I18n` service (`I18nStudioStrings`, `Strings.resx`/`Strings.fr.resx`) with a **hot EN/FR switch** relayed via `CultureChanged`; the TUIs keep the English default. Deliberately untranslated, by CLI-contract policy: `orkeon doctor` check details, LLM probe results, exit-code descriptions and the `VALIDATION OK/FAILED` verdicts — translating Studio's copy would desynchronize it from what the CLI prints in a terminal. Validator messages and doctor check names follow a revised split: the raw English line stays as the expert detail (tooltip or mono side label), and a per-code plain-language overlay (`Vm_ValMsg_*`, `Vm_Doctor_*` keys) is what the lists show first.

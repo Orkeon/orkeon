@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Remediation v3: what a run costs, and adoption that is no longer a one-way door
+
+The owner's third design pass (RC2-FEAT-06) lands two engine-backed features and
+a conformity sweep of the wizard.
+
+**Usage metrics on the wire (W-08).** The cache dimension joins the token
+telemetry end to end: `TokenUsage` carries the prompt-cache hit/miss pair (a
+*partition* of the prompt tokens, never an addition) with a computed hit ratio;
+every orchestration strategy stamps tokens+cache on its per-task snapshots; the
+`CostUsageEvent` sink channel carries the same pair. `orkeon run`'s
+`run.finished` now says what the run cost (`durationMs`, prompt/completion
+split, cache pair), and the forge trial's `run.finished` and `verdict.ready`
+carry the trial's own figures — distinct from the session-cumulative
+`cost.updated`. Studio shows them as one chip recipe («12 840 tokens» ·
+«cache 62 % · 7 980 tokens» · «59 s») on the verdict card, the launcher's finish
+line and the history entries (tolerant schema). Not measured = no chip, never a
+zero.
+
+**Modify, re-try, re-adopt (W-09).** `forge resume` of a promoted session (or an
+abandoned one that reached a verdict) reopens it at the arbitration — the stored
+verdict re-announced first; a new `retry` decision re-runs the trial as-is (zero
+compose tokens, one budget iteration, refused recoverably on an exhausted
+budget); `forge promote` to the session's own `promotedTo` updates the team
+folder in place (generated files regenerated, user files preserved, a dropped
+schedule removed) — any other non-empty destination stays refused. In Studio,
+« Modifier » on a team card reopens the wizard at Composer with the stepper
+fully reachable and the adoption fields seeded from the sidecar; re-adoption is
+pinned to the original folder; the saved card offers « Modifier l'équipe » and
+« Refaire un essai ». The blueprint's `crew.name` must now be a short display
+name (≤ 60 chars, repairable error) — it becomes the team's folder name.
+
+Conformity (mock v3 volets): the stepper pills centre number and label; the
+verdict buttons live in the verdict card (accept primary); one shared chip
+recipe (`ToolChip`/`ChipAction`) across every tool, mount and metric chip; card
+headers align title and mono meta; the « Définition générée » card shows the
+rendered YAML itself with a Copy action; the Adopt step's model setting is a
+profile card with unfoldable radio rows (no ComboBox); the Composer folder row
+shows the mounts the agents imply (deliverable roots + the sandbox read mount).
+Also fixed: a cold resume of the Composer pause left « Essayer l'équipe » dead
+(the hydrator now restores the session identity from `session.json`).
+
 ### Added — Remediation v2: team folders end to end, and the blueprint edited by hand
 
 The owner's second design pass (RC2-FEAT-05) closes the gap between the v3 mock

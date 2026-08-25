@@ -84,6 +84,36 @@ l'équipe » et « Ajouter un agent » empruntent le même chemin. Les boutons s
 actionnables exactement pendant que le moteur attend à son arbitrage — pendant
 un essai, ils attendent avec lui.
 
+### Ce qu'un run a coûté, à l'écran (remédiation v3)
+
+Partout où un essai ou une exécution se termine, Studio affiche ce que cela a
+coûté — en chips mono, une seule recette (`UsageMetricsFormatter`) : le total de
+tokens, le cache de prompt (`cache 62 % · 7 980 tokens` — la paire hit/miss est
+une *partition* des tokens de prompt, jamais une addition), et le temps mur. La
+carte verdict du wizard lit le `verdict.ready` enrichi (les chiffres du dernier
+essai lui-même, distincts du compteur cumulatif `cost.updated`) ; la ligne de
+fin d'Exécuter lit le `run.finished` enrichi ; l'historique enregistre tokens et
+paire de cache par entrée (schéma tolérant — les anciens fichiers se chargent)
+et les montre dans la ligne méta. Une métrique non mesurée ne produit **aucune
+chip** — jamais un zéro.
+
+### Modifier, ré-essayer, ré-adopter (remédiation v3)
+
+L'adoption n'est plus une porte à sens unique. « Modifier » sur une carte
+d'équipe — résolu par la recherche inverse du dossier d'équipe vers la session
+forge qui l'a promue (`promotedTo`) — rouvre le wizard à l'étape Composer avec
+tout le stepper accessible : le moteur reprend la session promue dans un
+arbitrage rouvert (le verdict stocké est ré-annoncé d'abord), les agents sont
+donc à nouveau éditables, une nouvelle décision `retry` re-exécute l'essai tel
+quel (zéro jeton de composition, une itération de budget), et la ré-adoption
+**met à jour le même dossier d'équipe** — les fichiers générés (`crew/`,
+lanceurs, `FORGE.md`, `schedule/`) sont régénérés, le sidecar et les fichiers de
+l'utilisateur survivent, renommer l'équipe ne change que son nom d'affichage.
+Après une adoption, la carte le dit (« Rien n'est figé… ») et offre « Modifier
+l'équipe » et « Refaire un essai » directement. Une équipe sans session —
+importée, ou session supprimée — garde « Modifier » désactivé, la raison en
+infobulle.
+
 ## Localisation : le port `IStudioStrings`
 
 `Orkeon.Studio.Core` définit un port de localisation, `IStudioStrings` (`Localization/StudioStrings.cs`) : un indexeur par clé plus un événement `CultureChanged` pour que les ViewModels ré-émettent leurs bindings au changement de langue. Les valeurs anglaises par défaut dans `EnglishStudioStrings` font office de registre de clés de référence. Chaque front choisit sa langue : l'application WPF ponte le port sur son service `I18n` adossé aux resx (`I18nStudioStrings`, `Strings.resx`/`Strings.fr.resx`) avec une **bascule EN/FR à chaud** relayée via `CultureChanged` ; les TUIs gardent l'anglais par défaut. Volontairement non traduits, par politique de contrat CLI : les détails des vérifications d'`orkeon doctor`, les résultats de sonde LLM, les descriptions de codes de sortie et les verdicts `VALIDATION OK/FAILED` — traduire la copie de Studio la désynchroniserait de ce que le CLI imprime dans un terminal. Les messages du validateur et les noms des vérifications doctor suivent une répartition révisée : la ligne anglaise brute reste le détail expert (infobulle ou libellé mono), et une surcouche en langage clair par code (clés `Vm_ValMsg_*`, `Vm_Doctor_*`) est ce que les listes montrent d'abord.

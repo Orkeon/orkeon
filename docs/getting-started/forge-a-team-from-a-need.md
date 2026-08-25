@@ -33,7 +33,9 @@ orkeon forge "summarize my supplier's new offers every morning"
 2. **The proposal.** From the brief, the assistant plans a team: who does what, in which order, with which tools — drawn from the real tool catalogue only; it cannot invent one. The plan is rendered as ordinary crew files and validated mechanically (unknown tools, unassigned tasks, dependency cycles). Validation errors go back to the assistant for repair — twice, then they surface to you.
 3. **The try.** The crew runs in a sandbox, in-process, on your sample input: writes are confined to the session's output folder, and `shell_command`/`code_interpreter` are removed from the catalogue outright.
 4. **The verdict.** A judge grades the output against your acceptance criteria, one by one, and states findings and concrete suggestions. A missed *must* criterion blocks regardless of the score. If no judge can run, the verdict says so (`judge: deterministic`) — it never invents a ✔.
-5. **Your call.** Conforming → the crew is ready. Otherwise: accept it as-is (you judge on the result), refine (the diagnosis is fed back into the plan, verbatim), or stop. `--auto` arbitrates alone, within the budget.
+5. **Your call.** Interactive mode arbitrates every verdict, conforming ones included: accept (a conforming crew becomes ready; accepting a non-conforming one is your judgement on sight), re-run the trial as-is (`retry` — zero compose tokens, one budget iteration), refine (the diagnosis is fed back into the plan, verbatim), hand back an edited plan (`edit`), or stop. `--auto` arbitrates alone, within the budget.
+
+Adoption itself is not a one-way door: `forge resume` of a **promoted** session reopens it at the arbitration (the stored verdict is re-announced), and a second `forge promote` to the **same** destination updates the folder in place — generated files regenerated, your own files preserved. Any other non-empty destination stays refused.
 
 Everything is bounded: 3 iterations by default (`--max-iterations`), optional token and wall-time ceilings (`--max-tokens`, `--max-seconds`). An exhausted budget stops the cycle cleanly; resuming may raise it — consumption always carries over.
 
