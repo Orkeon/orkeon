@@ -88,6 +88,30 @@ un essai, ils attendent avec lui.
 
 `Orkeon.Studio.Core` définit un port de localisation, `IStudioStrings` (`Localization/StudioStrings.cs`) : un indexeur par clé plus un événement `CultureChanged` pour que les ViewModels ré-émettent leurs bindings au changement de langue. Les valeurs anglaises par défaut dans `EnglishStudioStrings` font office de registre de clés de référence. Chaque front choisit sa langue : l'application WPF ponte le port sur son service `I18n` adossé aux resx (`I18nStudioStrings`, `Strings.resx`/`Strings.fr.resx`) avec une **bascule EN/FR à chaud** relayée via `CultureChanged` ; les TUIs gardent l'anglais par défaut. Volontairement non traduits, par politique de contrat CLI : les détails des vérifications d'`orkeon doctor`, les résultats de sonde LLM, les descriptions de codes de sortie et les verdicts `VALIDATION OK/FAILED` — traduire la copie de Studio la désynchroniserait de ce que le CLI imprime dans un terminal. Les messages du validateur et les noms des vérifications doctor suivent une répartition révisée : la ligne anglaise brute reste le détail expert (infobulle ou libellé mono), et une surcouche en langage clair par code (clés `Vm_ValMsg_*`, `Vm_Doctor_*`) est ce que les listes montrent d'abord.
 
+## Où Studio range les choses
+
+Deux racines, une règle : **l'état applicatif** vit dans le répertoire de configuration
+par utilisateur, **les documents** vivent dans le profil utilisateur. Rien n'est jamais
+généré dans le répertoire courant, et les clés d'API ne vivent dans aucun des deux —
+elles restent dans les variables d'environnement de l'utilisateur, jamais dans un fichier.
+
+**`%APPDATA%\Orkeon\`** (`$XDG_CONFIG_HOME/Orkeon/` ailleurs) — l'état applicatif :
+
+| Entrée | Ce que c'est |
+|---|---|
+| `appsettings.json` | les réglages globaux par utilisateur — la base durable sur laquelle chaque lancement compose |
+| `studio-model-profiles.json` | les réglages de modèles nommés (fournisseur, modèle, URL, température, timeout, **nom de variable d'environnement de la clé seulement**) |
+| `studio-history.json` | l'historique des lancements que lisent l'écran Historique et les cartes d'équipe |
+| `Studio\ui-preferences.json` | le confort de la fenêtre : mode, langue, thème |
+| `.orkeon\forge\<slug>\` | les **sessions d'atelier** — des chantiers reprenables (brief, blueprint, rendu `crew/` provisoire, `runs/` d'essai), pas les crews adoptées. Le nom à point est la convention d'état de workspace du moteur (SPEC §4.1, comme `.git`) : Studio donne `%APPDATA%\Orkeon` au moteur comme workspace de forge, donc `forge resume <slug>` fonctionne à l'identique depuis un terminal et depuis Studio |
+
+**`%USERPROFILE%\Orkeon\teams\<slug>\`** — les documents : les équipes adoptées.
+Chacune est un dossier ordinaire et autonome (définition de la crew, `run.cmd`/`run.sh`,
+le sidecar `studio-team.json` avec nom, besoin, réglage, programmation et dossiers) —
+copiable, partageable, supprimable, exécutable avec `orkeon run <dossier>` seul.
+L'adoption *déplace* le résultat d'une session de la racine d'état vers la racine des
+documents ; c'est la frontière entre un brouillon et un livrable.
+
 ## Comment Studio est livré
 
 Studio s'installe **à côté du CLI** via les paquets de release — voir la [matrice de publication](../reference/publication-matrix.md) pour les artefacts exacts et [Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md) pour le pas-à-pas :

@@ -86,6 +86,30 @@ while the engine waits at its arbitration — during a trial they wait with it.
 
 `Orkeon.Studio.Core` defines a localization port, `IStudioStrings` (`Localization/StudioStrings.cs`): a key indexer plus a `CultureChanged` event so ViewModels can re-emit their bindings when the language switches. The English defaults in `EnglishStudioStrings` are the key registry of record. Each front decides the language: the WPF app bridges the port onto its resx-backed `I18n` service (`I18nStudioStrings`, `Strings.resx`/`Strings.fr.resx`) with a **hot EN/FR switch** relayed via `CultureChanged`; the TUIs keep the English default. Deliberately untranslated, by CLI-contract policy: `orkeon doctor` check details, LLM probe results, exit-code descriptions and the `VALIDATION OK/FAILED` verdicts — translating Studio's copy would desynchronize it from what the CLI prints in a terminal. Validator messages and doctor check names follow a revised split: the raw English line stays as the expert detail (tooltip or mono side label), and a per-code plain-language overlay (`Vm_ValMsg_*`, `Vm_Doctor_*` keys) is what the lists show first.
 
+## Where Studio keeps things
+
+Two roots, one rule: **application state** lives in the per-user config directory,
+**documents** live in the user profile. Nothing is ever generated into the working
+directory, and API keys live in neither — they stay in the user's environment
+variables, never in a file.
+
+**`%APPDATA%\Orkeon\`** (`$XDG_CONFIG_HOME/Orkeon/` elsewhere) — application state:
+
+| Entry | What it is |
+|---|---|
+| `appsettings.json` | the per-user global settings — the durable base every launch composes on |
+| `studio-model-profiles.json` | the named model profiles (provider, model, URL, temperature, timeout, **key env-var name only**) |
+| `studio-history.json` | the launch history the Historique screen and the team cards read |
+| `Studio\ui-preferences.json` | window comfort: mode, language, theme |
+| `.orkeon\forge\<slug>\` | the **atelier sessions** — resumable works-in-progress (brief, blueprint, provisional `crew/` render, trial `runs/`), not adopted crews. The dot-name is the engine's workspace-state convention (SPEC §4.1, like `.git`): Studio hands `%APPDATA%\Orkeon` to the engine as its forge workspace, so `forge resume <slug>` works identically from a terminal and from Studio |
+
+**`%USERPROFILE%\Orkeon\teams\<slug>\`** — documents: the adopted teams. Each is an
+ordinary, self-contained folder (crew definition, `run.cmd`/`run.sh`, the
+`studio-team.json` sidecar with name, need, profile, schedule and mounts) — copiable,
+shareable, deletable, runnable with `orkeon run <folder>` alone. Adoption *moves* a
+session's result from the state root to the documents root; that is the boundary
+between a draft and a deliverable.
+
 ## How Studio ships
 
 Studio is installed **next to the CLI** by the release packages — see the [publication matrix](../reference/publication-matrix.md) for the exact artifacts and [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md) for the walkthrough:
