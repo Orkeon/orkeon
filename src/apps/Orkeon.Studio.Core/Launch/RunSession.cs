@@ -89,11 +89,17 @@ public sealed class RunSession
     /// only watching it.
     /// </param>
     /// <param name="cancellationToken">Stops the run.</param>
+    /// <param name="enrichEntry">
+    /// Last touch on the history entry before it is recorded — how the caller joins what
+    /// only IT knows (the event stream's usage metrics, W-08) onto what this session
+    /// knows (the process outcome). Null leaves the entry as built.
+    /// </param>
     public async Task<ProcessRunResult> RunAsync(
         RunLaunchRequest request,
         Action<ProcessOutputLine>? onOutput = null,
         Action<IProcessInputWriter>? onInputReady = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<LaunchHistoryEntry, LaunchHistoryEntry>? enrichEntry = null)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -133,6 +139,8 @@ public sealed class RunSession
         if (request.RecordInHistory)
         {
             var completed = entry.WithResult(result);
+            if (enrichEntry is not null)
+                completed = enrichEntry(completed);
 
             // Not the run's token: a cancelled run must still be recorded with its 130.
             // Without a store the list still accumulates in memory, so a session-only

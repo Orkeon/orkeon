@@ -49,6 +49,20 @@ public static class StudioStringKeys
     /// <summary>"Exit code {0} — {1}"</summary>
     public const string LaunchExitCode = "Core_Launch_ExitCode";
 
+    // ---- Usage metric chips (Launch/UsageMetricsFormatter, W-08) ---------
+
+    /// <summary>"{0} tokens"</summary>
+    public const string UsageTokens = "Core_Usage_Tokens";
+
+    /// <summary>"cache {0} % · {1} tokens"</summary>
+    public const string UsageCache = "Core_Usage_Cache";
+
+    /// <summary>"{0} s"</summary>
+    public const string UsageSeconds = "Core_Usage_Seconds";
+
+    /// <summary>"{0} min {1} s"</summary>
+    public const string UsageMinutesSeconds = "Core_Usage_MinutesSeconds";
+
     // ---- Wizard ask feedback (Teams/CreateTeamViewModel) -----------------
 
     /// <summary>"The assistant is not running any more — …"</summary>
@@ -902,6 +916,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ValidationSummary] = "Validation: {0} error(s), {1} warning(s), {2} note(s).",
         [StudioStringKeys.LaunchNothingRan] = "Nothing ran — {0}",
         [StudioStringKeys.LaunchExitCode] = "Exit code {0} — {1}",
+        [StudioStringKeys.UsageTokens] = "{0} tokens",
+        [StudioStringKeys.UsageCache] = "cache {0} % · {1} tokens",
+        [StudioStringKeys.UsageSeconds] = "{0} s",
+        [StudioStringKeys.UsageMinutesSeconds] = "{0} min {1} s",
         [StudioStringKeys.RunStateIdle] = "Ready to work",
         [StudioStringKeys.RunStateRunning] = "Run in progress",
         [StudioStringKeys.RunStateDone] = "Run finished",

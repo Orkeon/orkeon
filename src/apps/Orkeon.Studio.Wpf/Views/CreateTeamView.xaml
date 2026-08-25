@@ -604,6 +604,18 @@
                 </TextBlock>
               </Border>
             </StackPanel>
+            <!-- W-08: what the trial itself cost — tokens, cache hit, wall time -->
+            <ItemsControl ItemsSource="{Binding VerdictMetricChips}" Margin="0,11,0,0"
+                          Visibility="{Binding HasVerdictMetrics, Converter={StaticResource BooleanToVisibility}}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Style="{StaticResource ToolChip}" Margin="0,0,7,4">
+                    <TextBlock Style="{StaticResource ToolChipText}" FontSize="11" Text="{Binding}"/>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,8"
                        Text="{Binding [Wiz_Checklist_Label], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Checklist}">

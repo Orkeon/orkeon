@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Events;
+using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Run;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -143,7 +144,8 @@ public sealed class RunProgressViewModel : ObservableObject
 
     /// <summary>
     /// The one-line state of the run. Deliberately says "nothing reported yet" rather than
-    /// implying progress: no news is not the same as going well.
+    /// implying progress: no news is not the same as going well. A finished run appends
+    /// what it cost — tokens, cache hit, duration — when the stream measured it (W-08).
     /// </summary>
     public string Summary
     {
@@ -151,9 +153,17 @@ public sealed class RunProgressViewModel : ObservableObject
         {
             if (_model.Finished)
             {
-                return _strings[_model.Success == true
+                var verdict = _strings[_model.Success == true
                     ? StudioStringKeys.RunProgressSucceeded
                     : StudioStringKeys.RunProgressFailed];
+                var chips = UsageMetricsFormatter.Chips(
+                    _model.FinalTokens is > 0 ? _model.FinalTokens : null,
+                    _model.FinalCacheHitTokens,
+                    _model.FinalCacheMissTokens,
+                    _model.FinalDurationMs,
+                    _strings,
+                    CultureInfo.CurrentCulture);
+                return chips.Count > 0 ? $"{verdict} {string.Join(" · ", chips)}" : verdict;
             }
 
             if (Tasks.Count == 0)

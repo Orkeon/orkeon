@@ -98,6 +98,18 @@ public sealed class RunProgressModel
     /// <summary>The exit code, once the run reported it.</summary>
     public int? ExitCode { get; private set; }
 
+    /// <summary>Total tokens the run reported at its close; null before, or on an older CLI (W-08).</summary>
+    public long? FinalTokens { get; private set; }
+
+    /// <summary>Wall time the run reported at its close, milliseconds; null when unsaid.</summary>
+    public long? FinalDurationMs { get; private set; }
+
+    /// <summary>Cache-served prompt tokens at the close — a partition of the prompt side; null when unmeasured.</summary>
+    public long? FinalCacheHitTokens { get; private set; }
+
+    /// <summary>Cache-missed prompt tokens at the close; null when unmeasured.</summary>
+    public long? FinalCacheMissTokens { get; private set; }
+
     /// <summary>Generated text accumulated from <c>llm.delta</c>, empty without <c>--stream</c>.</summary>
     public string GeneratedText => _generated.ToString();
 
@@ -208,6 +220,10 @@ public sealed class RunProgressModel
                 Finished = true;
                 Success = orkeonEvent.GetBool("success");
                 ExitCode = (int?)orkeonEvent.GetInt64("exitCode");
+                FinalTokens = orkeonEvent.GetInt64("tokens");
+                FinalDurationMs = orkeonEvent.GetInt64("durationMs");
+                FinalCacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens");
+                FinalCacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens");
                 _questions.Clear();       // nobody is left to answer them
                 _agentRequests.Clear();   // the asking agents are gone with the run
                 break;

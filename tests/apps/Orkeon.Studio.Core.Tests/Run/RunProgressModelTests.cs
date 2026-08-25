@@ -36,6 +36,20 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    public void The_enriched_close_carries_the_runs_own_cost()
+    {
+        // W-08: run.finished now says what the run cost; an older CLI's leaner close
+        // (next test) still folds — the extra fields simply stay null.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"run.finished","success":true,"exitCode":0,"tokens":12840,"durationMs":59000,"promptTokens":12000,"completionTokens":840,"cacheHitTokens":7980,"cacheMissTokens":4020}""");
+
+        Assert.Equal(12_840, model.FinalTokens);
+        Assert.Equal(59_000, model.FinalDurationMs);
+        Assert.Equal(7_980, model.FinalCacheHitTokens);
+        Assert.Equal(4_020, model.FinalCacheMissTokens);
+    }
+
+    [Fact]
     public void The_stream_becomes_progress_cost_and_an_outcome()
     {
         var model = Fold(

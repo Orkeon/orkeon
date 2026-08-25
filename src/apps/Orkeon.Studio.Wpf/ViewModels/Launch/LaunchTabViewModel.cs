@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.Run;
 using System.Text.Json;
 using Orkeon.Studio.Core.FileSystem;
@@ -30,6 +31,13 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly OrkeonProcessRunner _runner;
     private readonly RunSession _session;
     private volatile IProcessInputWriter? _input;
+
+    // The last run.finished usage, captured on the process thread (W-08): the history
+    // entry is recorded before the dispatcher drains, so it cannot read the progress
+    // model — this capture is the join between the event stream and the history.
+    private long? _finalTokens;
+    private long? _finalCacheHitTokens;
+    private long? _finalCacheMissTokens;
     private readonly IAppSettingsStore _settingsStore;
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
@@ -431,14 +439,20 @@ public sealed class LaunchTabViewModel : ObservableObject
             : _strings[StudioStringKeys.LaunchRunning];
 
         Progress.Reset(Answer, Reply);
+        _finalTokens = _finalCacheHitTokens = _finalCacheMissTokens = null;
 
         try
         {
             var result = await _session.RunAsync(
                 request,
-                line => _dispatcher.Post(() => Receive(line)),
+                line =>
+                {
+                    CaptureFinalUsage(line);
+                    _dispatcher.Post(() => Receive(line));
+                },
                 writer => _input = writer,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken,
+                enrichEntry: entry => entry.WithUsage(_finalTokens, _finalCacheHitTokens, _finalCacheMissTokens));
 
             LastResult = result;
 
@@ -477,6 +491,25 @@ public sealed class LaunchTabViewModel : ObservableObject
             return;
 
         Log.Append(line);
+    }
+
+    /// <summary>
+    /// Reads the run's closing usage off the raw line, on the process thread — before the
+    /// dispatcher, because the history entry is recorded the moment the process exits.
+    /// </summary>
+    private void CaptureFinalUsage(ProcessOutputLine line)
+    {
+        if (line.Channel != ProcessOutputChannel.StandardOutput
+            || !OrkeonEventParser.TryParse(line.Text, out var orkeonEvent)
+            || orkeonEvent!.Kind != RunEventKinds.RunFinished)
+        {
+            return;
+        }
+
+        var tokens = orkeonEvent.GetInt64("tokens");
+        _finalTokens = tokens is > 0 ? tokens : null;
+        _finalCacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens");
+        _finalCacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens");
     }
 
     /// <summary>

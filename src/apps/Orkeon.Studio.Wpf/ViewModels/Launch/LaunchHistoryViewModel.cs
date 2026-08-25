@@ -92,13 +92,20 @@ public sealed class LaunchHistoryEntryViewModel
         }
     }
 
-    /// <summary>"12/08/2026 09:41 · 2 min 05 s" — date plus duration, when one was recorded.</summary>
+    /// <summary>
+    /// "12/08/2026 09:41 · 2 min 05 s · 12 840 tokens · cache 62 % · 7 980 tokens" —
+    /// date, duration, then the usage chips when the run measured them (W-08).
+    /// </summary>
     public string DateLine
     {
         get
         {
             var date = StartedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
-            return Entry.Duration is { } d ? $"{date} · {FormatDuration(d)}" : date;
+            var line = Entry.Duration is { } d ? $"{date} · {FormatDuration(d)}" : date;
+            var chips = Orkeon.Studio.Core.Launch.UsageMetricsFormatter.Chips(
+                Entry.Tokens, Entry.CacheHitTokens, Entry.CacheMissTokens, durationMs: null,
+                _strings, CultureInfo.CurrentCulture);
+            return chips.Count > 0 ? $"{line} · {string.Join(" · ", chips)}" : line;
         }
     }
 

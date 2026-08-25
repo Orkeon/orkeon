@@ -60,6 +60,18 @@ public sealed record ForgeVerdictView(
 {
     /// <summary>Wire spelling of the LLM judge.</summary>
     public const string JudgeLlm = "llm";
+
+    /// <summary>Wall time of the last trial, milliseconds; null when unmeasured (W-08).</summary>
+    public long? DurationMs { get; init; }
+
+    /// <summary>Tokens the last trial consumed; null when unmeasured (W-08).</summary>
+    public long? Tokens { get; init; }
+
+    /// <summary>Cache-served prompt tokens of the last trial — a partition, never additive.</summary>
+    public long? CacheHitTokens { get; init; }
+
+    /// <summary>Cache-missed prompt tokens of the last trial.</summary>
+    public long? CacheMissTokens { get; init; }
 }
 
 /// <summary>
@@ -519,7 +531,15 @@ public sealed class ForgeSessionModel
             orkeonEvent.GetBool("passing") ?? false,
             orkeonEvent.GetString("judge") ?? "",
             findings,
-            suggestions);
+            suggestions)
+        {
+            // The last trial's own cost (W-08) — absent on older engines, and honest
+            // about it: null shows no chip, never a zero.
+            DurationMs = orkeonEvent.GetInt64("durationMs"),
+            Tokens = orkeonEvent.GetInt64("tokens"),
+            CacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens"),
+            CacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens"),
+        };
     }
 
     private static string? ReadString(JsonElement element, string name) =>

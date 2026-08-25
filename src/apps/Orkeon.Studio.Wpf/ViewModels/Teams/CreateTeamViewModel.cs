@@ -3,6 +3,7 @@ using System.Globalization;
 using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
@@ -598,6 +599,21 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Whether the verdict passed.</summary>
     public bool VerdictPassing => _model.Verdict?.Passing ?? false;
 
+    /// <summary>
+    /// The trial's own cost as mono chips under the verdict title (v3 W-08):
+    /// «12 840 tokens» · «cache 62 % · 7 980 tokens» · «59 s». Empty when the engine
+    /// did not measure — no chip is ever a fabricated zero.
+    /// </summary>
+    public IReadOnlyList<string> VerdictMetricChips =>
+        _model.Verdict is { } verdict
+            ? UsageMetricsFormatter.Chips(
+                verdict.Tokens, verdict.CacheHitTokens, verdict.CacheMissTokens, verdict.DurationMs,
+                _strings, CultureInfo.CurrentCulture)
+            : [];
+
+    /// <summary>Whether any metric chip exists to show.</summary>
+    public bool HasVerdictMetrics => VerdictMetricChips.Count > 0;
+
     /// <summary>Cumulative tokens spent by the session.</summary>
     public long TokensSpent => _model.TokensSpent;
 
@@ -1150,6 +1166,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             nameof(Files), nameof(HasFiles), nameof(ValidationOk), nameof(ValidationErrors),
             nameof(RunInProgress), nameof(Attempt), nameof(Verdict), nameof(HasVerdict),
             nameof(VerdictScore), nameof(VerdictPassing), nameof(TokensSpent),
+            nameof(VerdictMetricChips), nameof(HasVerdictMetrics),
             nameof(SessionSlug), nameof(SessionDirectory),
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(SavedPath), nameof(InstallCommand), nameof(HasInstallCommand),

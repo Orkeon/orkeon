@@ -124,7 +124,7 @@ public class ForgeSessionModelTests
             """{"v":2,"seq":14,"ts":"t","kind":"run.finished","run":1,"success":true,"outputPath":"runs/1/output.md"}""",
             """{"v":2,"seq":15,"ts":"t","kind":"cost.updated","tokens":500,"budgetRemaining":null}""",
             """{"v":2,"seq":16,"ts":"t","kind":"stage.entered","stage":"diagnose","iteration":1}""",
-            """{"v":2,"seq":17,"ts":"t","kind":"verdict.ready","score":0.4,"passing":false,"findings":[{"id":"F1","severity":"major","acceptance":"A1","statement":"Les sources ne sont pas citées"}],"suggestions":[{"target":"agent:redacteur","change":"citer chaque source","reason":"critère A1"}],"judge":"llm"}""",
+            """{"v":2,"seq":17,"ts":"t","kind":"verdict.ready","score":0.4,"passing":false,"findings":[{"id":"F1","severity":"major","acceptance":"A1","statement":"Les sources ne sont pas citées"}],"suggestions":[{"target":"agent:redacteur","change":"citer chaque source","reason":"critère A1"}],"judge":"llm","durationMs":59000,"tokens":12840,"cacheHitTokens":7980,"cacheMissTokens":4020}""",
             """{"v":2,"seq":18,"ts":"t","kind":"stage.entered","stage":"verdict","iteration":1}""",
             """{"v":2,"seq":19,"ts":"t","kind":"decision.needed","options":["accept","refine","abort"]}""",
         ];
@@ -163,6 +163,12 @@ public class ForgeSessionModelTests
         Assert.False(model.Verdict!.Passing);
         Assert.True(model.DecisionPending);
         Assert.Equal(["accept", "refine", "abort"], model.DecisionOptions);
+
+        // W-08: the verdict carries the trial's own cost, distinct from the session meter.
+        Assert.Equal(59_000, model.Verdict.DurationMs);
+        Assert.Equal(12_840, model.Verdict.Tokens);
+        Assert.Equal(7_980, model.Verdict.CacheHitTokens);
+        Assert.Equal(4_020, model.Verdict.CacheMissTokens);
     }
 
     [Fact]

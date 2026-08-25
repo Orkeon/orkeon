@@ -48,6 +48,29 @@ public sealed record LaunchHistoryEntry
     [JsonIgnore]
     public TimeSpan? Duration => DurationSeconds is { } s ? TimeSpan.FromSeconds(s) : null;
 
+    /// <summary>
+    /// Total tokens the run reported at its close (W-08); null for unmetered runs and
+    /// for entries written before the field existed — old history files load unchanged.
+    /// </summary>
+    [JsonPropertyName("tokens")]
+    public long? Tokens { get; init; }
+
+    /// <summary>Cache-served prompt tokens — a partition of the prompt side; null when unmeasured.</summary>
+    [JsonPropertyName("cache_hit_tokens")]
+    public long? CacheHitTokens { get; init; }
+
+    /// <summary>Cache-missed prompt tokens; null when unmeasured.</summary>
+    [JsonPropertyName("cache_miss_tokens")]
+    public long? CacheMissTokens { get; init; }
+
+    /// <summary>
+    /// Completes the entry with the usage the event stream reported (W-08). Separate from
+    /// <see cref="WithResult"/> on purpose: the launcher knows the process, only the
+    /// progress model knows the meter — and a run without a meter stays honest nulls.
+    /// </summary>
+    public LaunchHistoryEntry WithUsage(long? tokens, long? cacheHitTokens, long? cacheMissTokens) =>
+        this with { Tokens = tokens, CacheHitTokens = cacheHitTokens, CacheMissTokens = cacheMissTokens };
+
     /// <summary>Starts an entry for a launch about to happen.</summary>
     public static LaunchHistoryEntry Starting(
         string target,
