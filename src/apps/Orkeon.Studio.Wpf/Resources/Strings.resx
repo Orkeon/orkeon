@@ -592,6 +592,7 @@
   <data name="Wiz_TeamFolders" xml:space="preserve"><value>This team's folders</value></data>
   <data name="Wiz_AllowFolder" xml:space="preserve"><value>Allow a folder</value></data>
   <data name="Wiz_FoldersHint" xml:space="preserve"><value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value></data>
+  <data name="Wiz_DerivedHint" xml:space="preserve"><value>They come from the agents: editing an agent is what changes what it sees.</value></data>
   <data name="Wiz_AgentCan" xml:space="preserve"><value>Can:</value></data>
   <data name="Wiz_Modify" xml:space="preserve"><value>Edit</value></data>
   <data name="Wiz_AddAgent" xml:space="preserve"><value>Add an agent</value></data>

@@ -481,6 +481,15 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Whether any team mount is listed.</summary>
     public bool HasTeamMounts => TeamMounts.Count > 0;
 
+    /// <summary>
+    /// The mounts the blueprint itself implies (v3 W-04) — informative chips, not
+    /// removable: they change by editing an agent, and the sidecar never records them.
+    /// </summary>
+    public IReadOnlyList<ForgeDerivedMount> DerivedMounts => _model.DerivedMounts;
+
+    /// <summary>Whether the blueprint implies any mount.</summary>
+    public bool HasDerivedMounts => _model.DerivedMounts.Count > 0;
+
     /// <summary>« Ajouter un agent ».</summary>
     public RelayCommand AddAgentCommand { get; }
 
@@ -1089,6 +1098,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         OnPropertiesChanged(
             nameof(Rationale), nameof(Tools), nameof(HasTools),
+            nameof(DerivedMounts), nameof(HasDerivedMounts),
             nameof(Files), nameof(HasFiles), nameof(ValidationOk), nameof(ValidationErrors),
             nameof(RunInProgress), nameof(Attempt), nameof(Verdict), nameof(HasVerdict),
             nameof(VerdictScore), nameof(VerdictPassing), nameof(TokensSpent),

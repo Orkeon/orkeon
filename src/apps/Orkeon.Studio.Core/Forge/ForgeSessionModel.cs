@@ -34,6 +34,13 @@ public sealed record ForgeProposal(
     IReadOnlyList<string> Tools,
     IReadOnlyList<ForgeAgentView> Agents);
 
+/// <summary>
+/// A mount the agents themselves imply (v3 W-04): the write side comes from the tasks'
+/// deliverable roots, the read side from the reading tools — exactly what the trial
+/// sandbox mounts. Informative, not removable: editing an agent is what changes it.
+/// </summary>
+public sealed record ForgeDerivedMount(string VirtualPath, bool IsReadWrite);
+
 /// <summary>One completed task of the running try.</summary>
 public sealed record ForgeTaskProgress(string? TaskId, string? AgentRole, bool Success, long DurationMs);
 
@@ -121,6 +128,12 @@ public sealed class ForgeSessionModel
     /// re-validates everything it receives, so Studio never has to keep it consistent itself.
     /// </summary>
     public string? BlueprintJson { get; private set; }
+
+    /// <summary>
+    /// The mounts the blueprint implies (v3 W-04): read chips before write chips,
+    /// recomputed on every <c>blueprint.ready</c> — an agent edit updates them.
+    /// </summary>
+    public IReadOnlyList<ForgeDerivedMount> DerivedMounts { get; private set; } = [];
 
     /// <summary>Crew files written by the render, session-relative (level 3).</summary>
     public IReadOnlyList<string> Files => _files;
@@ -433,6 +446,41 @@ public sealed class ForgeSessionModel
         }
 
         Proposal = new ForgeProposal(steps, ReadString(blueprint, "rationale"), tools, agentViews);
+        DerivedMounts = DeriveMounts(tools, blueprint);
+    }
+
+    /// <summary>
+    /// «Ils viennent des agents» made literal: any reading tool implies the sandbox's
+    /// read mount (<c>/workspace</c>); each task deliverable implies its root as a write
+    /// mount (<c>/output/x.md</c> → <c>/output</c>). Nothing is invented beyond what the
+    /// trial bench itself mounts.
+    /// </summary>
+    private static List<ForgeDerivedMount> DeriveMounts(IReadOnlyList<string> tools, JsonElement blueprint)
+    {
+        var mounts = new List<ForgeDerivedMount>();
+
+        if (tools.Contains("file_read", StringComparer.Ordinal) || tools.Contains("directory_read", StringComparer.Ordinal))
+            mounts.Add(new ForgeDerivedMount("/workspace", IsReadWrite: false));
+
+        if (blueprint.TryGetProperty("tasks", out var tasks) && tasks.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var task in tasks.EnumerateArray())
+            {
+                if (task.ValueKind != JsonValueKind.Object
+                    || ReadString(task, "deliverable") is not { Length: > 1 } deliverable
+                    || deliverable[0] != '/')
+                {
+                    continue;
+                }
+
+                var slash = deliverable.IndexOf('/', 1);
+                var root = slash > 1 ? deliverable[..slash] : deliverable;
+                if (root.Length > 1 && !mounts.Any(m => m.IsReadWrite && string.Equals(m.VirtualPath, root, StringComparison.Ordinal)))
+                    mounts.Add(new ForgeDerivedMount(root, IsReadWrite: true));
+            }
+        }
+
+        return mounts;
     }
 
     private void ReadVerdict(OrkeonEvent orkeonEvent)

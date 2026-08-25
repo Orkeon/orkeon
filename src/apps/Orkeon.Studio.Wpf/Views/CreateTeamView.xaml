@@ -340,6 +340,33 @@
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,8"
                            Text="{Binding [Wiz_TeamFolders], Source={x:Static services:I18n.Instance}}"/>
                 <WrapPanel>
+                  <!-- W-04: chips the blueprint implies — read (folder-open) then write
+                       (pencil); informative, no ✕ — editing an agent is what changes them. -->
+                  <ItemsControl ItemsSource="{Binding DerivedMounts}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Style="{StaticResource ToolChip}" Margin="0,0,7,7">
+                          <StackPanel Orientation="Horizontal">
+                            <controls:LucideIcon Size="11" Foreground="{DynamicResource InkMutedBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,6,0">
+                              <controls:LucideIcon.Style>
+                                <Style TargetType="controls:LucideIcon">
+                                  <Setter Property="Kind" Value="folder-open"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                                      <Setter Property="Kind" Value="pencil"/>
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </controls:LucideIcon.Style>
+                            </controls:LucideIcon>
+                            <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding VirtualPath}"/>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
                   <ItemsControl ItemsSource="{Binding TeamMounts}">
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
@@ -369,6 +396,9 @@
                   </Button>
                 </WrapPanel>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
+                           Text="{Binding [Wiz_DerivedHint], Source={x:Static services:I18n.Instance}}"
+                           Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}"/>
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
                            Text="{Binding [Wiz_FoldersHint], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Border>

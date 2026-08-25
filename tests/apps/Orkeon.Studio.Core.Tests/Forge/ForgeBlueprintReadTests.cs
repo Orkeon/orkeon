@@ -51,6 +51,35 @@ public sealed class ForgeBlueprintReadTests
     }
 
     [Fact]
+    public void Derived_mounts_come_from_reading_tools_and_deliverable_roots()
+    {
+        // file_read on board → /workspace read chip; two deliverables under /output →
+        // ONE /output write chip; a rootless deliverable derives nothing.
+        var model = Feed(
+            """{"v":2,"seq":1,"ts":"t","kind":"blueprint.ready","blueprint":{"agents":[{"key":"a","role":"R","tools":["file_read","file_write"]}],"tasks":[{"key":"t1","agent":"a","deliverable":"/output/rapport.md"},{"key":"t2","agent":"a","deliverable":"/output/annexe.md"},{"key":"t3","agent":"a","deliverable":"sans-racine.md"}]},"iteration":1}""");
+
+        Assert.Equal(
+            [new ForgeDerivedMount("/workspace", false), new ForgeDerivedMount("/output", true)],
+            model.DerivedMounts);
+    }
+
+    [Fact]
+    public void An_edited_blueprint_recomputes_the_derived_mounts()
+    {
+        var model = Feed(Blueprint);
+        Assert.Equal([new ForgeDerivedMount("/workspace", false)], model.DerivedMounts);
+
+        // The re-emitted blueprint (after an edit) drops every reading tool and gains a
+        // deliverable: the chips follow the agents, they are never sticky.
+        Assert.True(OrkeonEventParser.TryParse(
+            """{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"agents":[{"key":"a","role":"R","tools":["file_write"]}],"tasks":[{"key":"t1","agent":"a","deliverable":"/sortie/doc.md"}]},"iteration":2}""",
+            out var edited));
+        model.Feed(edited!);
+
+        Assert.Equal([new ForgeDerivedMount("/sortie", true)], model.DerivedMounts);
+    }
+
+    [Fact]
     public void The_blueprint_json_is_kept_verbatim_for_the_edit_round_trip()
     {
         var model = Feed(Blueprint);
