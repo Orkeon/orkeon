@@ -106,7 +106,20 @@ public static class ForgeSessionCatalog
 
         return List(workspaceDirectory).FirstOrDefault(summary =>
             summary.PromotedTo is { Length: > 0 } promoted
-            && string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(promoted)), target, comparison));
+            && string.Equals(NormalizeOrNull(promoted), target, comparison));
+    }
+
+    /// <summary>A corrupt <c>promotedTo</c> must not take the lookup down — it just never matches.</summary>
+    private static string? NormalizeOrNull(string path)
+    {
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        {
+            return null;
+        }
     }
 
     private static bool TryRead(string directory, out ForgeSolutionSummary? summary)

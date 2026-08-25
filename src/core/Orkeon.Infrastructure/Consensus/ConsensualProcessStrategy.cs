@@ -181,6 +181,13 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
 
             LogStartingConsensualExecutionForTask(taskId);
 
+            // The loop is sequential, so the tally's delta around one task IS what the
+            // whole vote cost — every agent, every round — not just the winning
+            // execution the task result carries (review, RC2-FEAT-06 lot 7).
+            var tokensBefore = tokenTally.TotalTokens;
+            var cacheHitBefore = tokenTally.CacheHitTokens;
+            var cacheMissBefore = tokenTally.CacheMissTokens;
+
             var taskResult = await ExecuteTaskWithConsensusAsync(
                 crew, task, agents, applicationOutputs, tokenTally, ct).ConfigureAwait(false);
 
@@ -236,9 +243,9 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
                 Duration = taskResult.ExecutionTime,
                 CompletedAt = DateTimeOffset.UtcNow,
                 ToolCallCount = taskResult.ToolsUsed?.Count ?? 0,
-                TokensUsed = taskResult.TokensUsed,
-                CacheHitTokens = taskResult.CacheHitTokens,
-                CacheMissTokens = taskResult.CacheMissTokens,
+                TokensUsed = tokenTally.TotalTokens - tokensBefore,
+                CacheHitTokens = tokenTally.CacheHitTokens - cacheHitBefore,
+                CacheMissTokens = tokenTally.CacheMissTokens - cacheMissBefore,
             };
             taskSnapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);

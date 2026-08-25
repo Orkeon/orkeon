@@ -5,7 +5,8 @@ Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.get -> l
 Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.set -> void
 Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.get -> long
 Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.set -> void
-Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.TaskUsage.get -> System.Collections.Generic.Dictionary<string!, (int Tokens, long CacheHit, long CacheMiss)>!
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.ResultUsage.get -> System.Collections.Generic.IReadOnlyList<(int Tokens, long CacheHit, long CacheMiss)>!
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.AddResultUsage(int tokens, long cacheHit, long cacheMiss) -> void
 Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheHitTokens.get -> long?
 Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheHitTokens.init -> void
 Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheMissTokens.get -> long?

@@ -248,10 +248,11 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         CrewGraphState state)
     {
         var snapshots = new List<TaskExecutionSnapshot>(results.Count);
-        foreach (var result in results)
+        for (var index = 0; index < results.Count; index++)
         {
+            var result = results[index];
             var taskId = result.TaskId?.Value.ToString() ?? string.Empty;
-            var usage = state.TaskUsage.TryGetValue(taskId, out var measured) ? measured : default;
+            var usage = index < state.ResultUsage.Count ? state.ResultUsage[index] : default;
             var snapshot = new TaskExecutionSnapshot
             {
                 TaskId = taskId,
@@ -388,14 +389,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         state.CacheHitTokensUsed += executionResult.CacheHitTokens;
         state.CacheMissTokensUsed += executionResult.CacheMissTokens;
 
-        // Retries of the same task accumulate onto the same key: the snapshot tells what
-        // the task cost in total, not what its last attempt cost.
-        var usageKey = task.Id.Value.ToString();
-        var usage = state.TaskUsage.TryGetValue(usageKey, out var previous) ? previous : default;
-        state.TaskUsage[usageKey] = (
-            usage.Tokens + executionResult.TokensUsed,
-            usage.CacheHit + executionResult.CacheHitTokens,
-            usage.CacheMiss + executionResult.CacheMissTokens);
+        // One usage entry per attempt, in DomainResults order: the snapshots below zip
+        // the two lists, so a retry costs what ITS attempt cost — never a running total.
+        state.AddResultUsage(executionResult.TokensUsed, executionResult.CacheHitTokens, executionResult.CacheMissTokens);
 
         var appOutput = new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
@@ -624,8 +620,18 @@ public sealed class CrewGraphState
     /// <summary>Running total of cache-missed prompt tokens (0 when unreported) (W-08).</summary>
     public long CacheMissTokensUsed { get; set; }
 
-    /// <summary>Per-task usage (taskId string → counters), for the per-task hook snapshots.</summary>
-    public Dictionary<string, (int Tokens, long CacheHit, long CacheMiss)> TaskUsage { get; } = new(StringComparer.Ordinal);
+    private readonly List<(int Tokens, long CacheHit, long CacheMiss)> _resultUsage = [];
+
+    /// <summary>
+    /// Per-ATTEMPT usage, aligned index-for-index with <see cref="DomainResults"/> — a
+    /// retried task appends one result per attempt, so keying usage by task would stamp
+    /// the cumulative cost on every attempt's snapshot and double-count the totals.
+    /// </summary>
+    public IReadOnlyList<(int Tokens, long CacheHit, long CacheMiss)> ResultUsage => _resultUsage;
+
+    /// <summary>Appends one attempt's usage, in <see cref="DomainResults"/> order.</summary>
+    public void AddResultUsage(int tokens, long cacheHit, long cacheMiss) =>
+        _resultUsage.Add((tokens, cacheHit, cacheMiss));
 
     /// <summary>Round-robin agent index.</summary>
     public int AgentIndex { get; set; }

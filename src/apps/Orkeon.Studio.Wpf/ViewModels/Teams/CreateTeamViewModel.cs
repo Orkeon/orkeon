@@ -1009,6 +1009,9 @@ public sealed class CreateTeamViewModel : ObservableObject
             _dispatcher.Post(() =>
             {
                 IsEngineRunning = false;
+                // An unconsumed auto-retry must die with its run: a crashed or stopped
+                // engine must never leave a pending decision to fire on a later one.
+                _autoRetryPending = false;
                 SyncFromModel();
             });
         }
@@ -1094,8 +1097,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         ComposeNotes.Items.Clear();
         TryNotes.Items.Clear();
         AdoptNotes.Items.Clear();
-        ScheduleChoice = 0;
-        _adoptProfileName = null;
         SyncFromModel();
     }
 
@@ -1123,6 +1124,13 @@ public sealed class CreateTeamViewModel : ObservableObject
         IsSaved = false;
         AssistantPrompt = null;
         TeamName = "";
+        // The adoption fields too (review, lot 7): a reopened team seeds profile and
+        // schedule — without this reset they would leak into the NEXT session's sidecar.
+        _adoptProfileName = null;
+        OnPropertiesChanged(nameof(AdoptProfileName), nameof(AdoptProfileSummary));
+        ScheduleChoice = 0;
+        ScheduleTime = "07:30";
+        IsAdoptProfilePickerOpen = false;
         StatusMessage = "";
         Step = 1;
         MaxStep = 1;

@@ -154,6 +154,12 @@ internal static class ForgePromoter
             updating = true;
             DeleteIfExists(Path.Combine(destination, ForgeYamlRenderer.CrewDirectoryName));
             DeleteIfExists(Path.Combine(destination, ScheduleDirectoryName));
+
+            // A previous promote's settings copy usually carries API keys: when this
+            // re-adoption does not ask for one, a stale unreferenced copy must not
+            // linger in a folder FORGE.md invites sharing.
+            if (!copySettings)
+                File.Delete(Path.Combine(destination, SettingsFileName));
         }
 
         Directory.CreateDirectory(destination);
