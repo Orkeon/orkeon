@@ -59,8 +59,11 @@ jobs:
       # Unit + fast tests only (see header for what's excluded and why).
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow&FullyQualifiedName!~Orkeon.Tools.Embeddings.Local"
       # Embeddings assembly alone: only the known crash-after-green teardown
-      # SIGSEGV (exit 139 with a clean "Passed!" summary) is tolerated; real
-      # failures block the release (PUB-17 T3 — same guard as ci.yml).
+      # SIGSEGV is tolerated; real failures block the release (PUB-17 T3 —
+      # same guard as ci.yml). The 139 surfaces either as dotnet test's own
+      # exit code or wrapped by VSTest ("Test process crashed with exit code
+      # 139", dotnet test exiting 1) — both shapes are accepted, always
+      # requiring a clean "Passed!" summary with zero failures.
       - name: Test Embeddings.Local (tolerate teardown SIGSEGV only after green results)
         run: |
           set +e
@@ -68,7 +71,8 @@ jobs:
           rc=$?
           echo "$out"
           if [ $rc -eq 0 ]; then exit 0; fi
-          if [ $rc -eq 139 ] && echo "$out" | grep -q "Passed!" && ! echo "$out" | grep -qE "Failed:[[:space:]]*[1-9]"; then
+          if echo "$out" | grep -q "Passed!" && ! echo "$out" | grep -qE "Failed:[[:space:]]*[1-9]" \
+             && { [ $rc -eq 139 ] || echo "$out" | grep -q "crashed with exit code 139"; }; then
             echo "::warning::Embeddings.Local: all tests passed; ONNX teardown SIGSEGV tolerated (known issue)."
             exit 0
           fi

@@ -60,8 +60,11 @@ jobs:
       # runtime SIGSEGVs the host at TEARDOWN — exit 139 — after every test has
       # passed). PUB-17 T3: no blanket continue-on-error anymore — the step
       # inspects the results: a genuine test failure fails CI; only the known
-      # crash-after-green teardown (exit 139 with a clean "Passed!" summary) is
-      # tolerated, explicitly and loudly.
+      # crash-after-green teardown is tolerated, explicitly and loudly. The 139
+      # surfaces either as dotnet test's own exit code or wrapped by VSTest
+      # ("Test process crashed with exit code 139", dotnet test exiting 1) —
+      # both shapes are accepted, always requiring a clean "Passed!" summary
+      # with zero failures.
       - name: Test Embeddings.Local (tolerate teardown SIGSEGV only after green results)
         run: |
           set +e
@@ -69,7 +72,8 @@ jobs:
           rc=$?
           echo "$out"
           if [ $rc -eq 0 ]; then exit 0; fi
-          if [ $rc -eq 139 ] && echo "$out" | grep -q "Passed!" && ! echo "$out" | grep -qE "Failed:[[:space:]]*[1-9]"; then
+          if echo "$out" | grep -q "Passed!" && ! echo "$out" | grep -qE "Failed:[[:space:]]*[1-9]" \
+             && { [ $rc -eq 139 ] || echo "$out" | grep -q "crashed with exit code 139"; }; then
             echo "::warning::Embeddings.Local: all tests passed; the ONNX native runtime crashed the test host at teardown (exit 139 — known issue, tracked in PUB-17/SONAR-14). Treated as green."
             exit 0
           fi
