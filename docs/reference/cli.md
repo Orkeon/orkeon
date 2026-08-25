@@ -24,7 +24,7 @@ Runs a crew definition and prints its result on stdout. Dispatch is by target ty
 | Option | Description |
 |---|---|
 | `-s, --settings <path>` | Path to `appsettings.json`. Without it, a fallback chain applies (below). |
-| `-m, --mount <spec>` | VFS mount, Docker-style `<physical>:<virtual>:<rights>[;sub:rights]`. Several mounts go **space-separated after one flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. |
+| `-m, --mount <spec>` | VFS mount, Docker-style `<physical>:<virtual>:<rights>[;sub:rights]`. Several mounts go **space-separated after one flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A Windows drive letter needs nothing special (`C:\src:/workspace:ro`); any other `:` or `;` inside a path is escaped with a backslash (`/data/odd\:name:/data:ro`), and a path ending in a backslash doubles it (`C:\src\\:/workspace:ro`). The virtual path is always a name starting with `/` — never a disk path ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). |
 | `--allow-external-mounts` | Allow mounts outside the workspace root (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`). |
 | `-v, --verbose <0-2>` | `0` quiet, `1` LLM & tool exchanges, `2` full debug. |
 | `--llm-log` / `--llm-log-path <dir>` | Log full LLM exchanges as JSONL (default directory `./llm-logs`). |

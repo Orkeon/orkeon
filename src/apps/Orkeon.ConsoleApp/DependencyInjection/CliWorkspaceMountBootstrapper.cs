@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.Configuration;
 
 namespace Orkeon.ConsoleApp.DependencyInjection;
@@ -50,20 +51,21 @@ internal static class CliWorkspaceMountBootstrapper
     }
 
     /// <summary>
-    /// Resolves the physical path segment (everything before the first <c>:</c>) of a mount spec
-    /// to an absolute path, leaving the <c>:virtual:rights[;...]</c> remainder untouched. A spec
-    /// without a separating colon is returned verbatim so <c>FileSystemMount.Parse</c> can surface
-    /// a precise format error.
+    /// Resolves a spec's physical segment to an absolute path, leaving everything else alone. A
+    /// spec the grammar cannot read is returned verbatim so <c>FileSystemMount.Parse</c> can
+    /// surface its own precise format error.
+    /// <para>
+    /// Where the segment ends is the domain type's business. Splitting on the first <c>':'</c> —
+    /// what this method used to do — makes <c>C:\src:/workspace:ro</c> resolve the physical path
+    /// <c>"C"</c> against the working directory and emit a corrupt mount string.
+    /// </para>
     /// </summary>
     [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: resolves a user-supplied --mount physical path to absolute for the VFS mount parser, before any VFS mount exists.")]
     private static string ResolvePhysicalSegment(string spec)
     {
-        var firstColon = spec.IndexOf(':', StringComparison.Ordinal);
-        if (firstColon <= 0)
+        if (FileSystemMount.TryGetBasePath(spec) is not { } physical)
             return spec;
 
-        var physical = spec[..firstColon];
-        var remainder = spec[firstColon..];
-        return Path.GetFullPath(physical) + remainder;
+        return FileSystemMount.WithBasePath(spec, Path.GetFullPath(physical));
     }
 }

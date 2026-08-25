@@ -24,7 +24,7 @@ Exécute une définition de crew et imprime son résultat sur stdout. Le dispatc
 | Option | Description |
 |---|---|
 | `-s, --settings <chemin>` | Chemin vers `appsettings.json`. Sans elle, une chaîne de repli s'applique (ci-dessous). |
-| `-m, --mount <spec>` | Montage VFS, format Docker `<physique>:<virtuel>:<droits>[;sous-chemin:droits]`. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. |
+| `-m, --mount <spec>` | Montage VFS, format Docker `<physique>:<virtuel>:<droits>[;sous-chemin:droits]`. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Une lettre de lecteur Windows ne demande rien de particulier (`C:\src:/workspace:ro`) ; tout autre `:` ou `;` dans un chemin s'échappe par une barre oblique inverse (`/data/odd\:name:/data:ro`), et un chemin finissant par une barre oblique inverse la double (`C:\src\\:/workspace:ro`). Le chemin virtuel est toujours un nom commençant par `/` — jamais un chemin disque ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). |
 | `--allow-external-mounts` | Autorise les montages hors de la racine du workspace (ou `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`). |
 | `-v, --verbose <0-2>` | `0` silencieux, `1` échanges LLM & outils, `2` debug complet. |
 | `--llm-log` / `--llm-log-path <rép>` | Journalise les échanges LLM complets en JSONL (répertoire par défaut `./llm-logs`). |

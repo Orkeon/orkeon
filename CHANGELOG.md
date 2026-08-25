@@ -49,6 +49,18 @@ roots into the sidecar at adoption.
 `RunnerHost.Build`'s `llmLogPath` parameter becomes `llmLogVirtualPath` and
 takes a virtual path; a new optional `internalMounts` parameter follows it.
 
+**The mount-string grammar gains an escape character.** Three call sites split a
+spec on `:` with three different heuristics, and the one in
+`CliWorkspaceMountBootstrapper` had none: on Windows it read
+`C:\src:/workspace:ro` as the physical path `"C"`, resolved it against the
+working directory and emitted a corrupt mount string. `\:` is now a literal
+colon, `\;` a literal semicolon and `\\` a literal backslash; a backslash
+before anything else stays literal, so ordinary Windows paths need no escaping
+and the drive-letter form is unchanged. The split lives once, in the domain
+type: `FileSystemMount.TryGetBasePath`, `WithBasePath` and `Escape` are new, and
+both duplicate heuristics are gone. Only behaviour change: a path ending in a
+backslash right before a separator now doubles it (`C:\src\\:/workspace:ro`).
+
 Also fixed: `examples/service-host/appsettings.host.json` declared its mounts as
 objects, a shape `FileSystemOptions.Mounts` cannot bind, and the RaggableTree
 pages documented a mount syntax that does not exist.

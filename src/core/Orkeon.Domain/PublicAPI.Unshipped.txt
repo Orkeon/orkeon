@@ -3,3 +3,7 @@ const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CacheHitTokensKey = "cacheHit
 const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CacheMissTokensKey = "cacheMissTokens" -> string!
 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCacheHitTokens(long tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCacheMissTokens(long tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
+const Orkeon.Domain.FileSystem.FileSystemMount.EscapeCharacter = '\\' -> char
+static Orkeon.Domain.FileSystem.FileSystemMount.TryGetBasePath(string! mountString) -> string?
+static Orkeon.Domain.FileSystem.FileSystemMount.WithBasePath(string! mountString, string! basePath) -> string!
+static Orkeon.Domain.FileSystem.FileSystemMount.Escape(string! segment) -> string!

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.EventHub.DependencyInjection;
@@ -337,30 +338,13 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// Extracts the physical base path from a mount string in Docker-style format.
-    /// Handles Windows drive letters (e.g. <c>C:\Temp\src:/src:ro</c>).
+    /// The absolute physical base path a mount string declares. The grammar (drive letters,
+    /// escaped separators) is the domain type's business, not this file's.
     /// </summary>
-    private static string? ExtractMountBasePath(string mountString)
-    {
-        // Docker-style: <physical>:<virtual>:<rights>
-        // Windows drive letter: first colon at index 1 is the drive letter (e.g. C:)
-        var parts = mountString.Split(':');
-
-        // Windows: C:\path:/virtual:ro → parts = ["C", "\path", "/virtual", "ro"]
-        if (parts.Length >= 3 && parts[0].Length == 1 && char.IsLetter(parts[0][0]))
-        {
-            var physicalPath = parts[0] + ":" + parts[1]; // Rejoin drive letter
-            return Path.GetFullPath(physicalPath);
-        }
-
-        // Unix: /physical/path:/virtual:ro → parts = ["/physical/path", "/virtual", "ro"]
-        if (parts.Length >= 2)
-        {
-            return Path.GetFullPath(parts[0]);
-        }
-
-        return null;
-    }
+    private static string? ExtractMountBasePath(string mountString) =>
+        FileSystemMount.TryGetBasePath(mountString) is { } basePath
+            ? Path.GetFullPath(basePath)
+            : null;
 
     private static void RegisterRaggableTree(
         HostBuilderContext context,
