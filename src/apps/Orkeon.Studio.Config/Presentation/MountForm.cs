@@ -141,7 +141,7 @@ internal sealed class MountForm
         {
             problems.Add(string.Create(
                 CultureInfo.InvariantCulture,
-                $"Virtual path '{virtualPath}' must start with '/' or be a Windows drive path."));
+                $"Virtual path '{virtualPath}' must start with '/'."));
         }
 
         if (problems.Count > 0)

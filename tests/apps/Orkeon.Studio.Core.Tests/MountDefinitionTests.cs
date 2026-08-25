@@ -94,8 +94,13 @@ public sealed class MountDefinitionTests
         Assert.Equal(FileAccessRights.ReadWriteNoDelete, mount.DefaultRights);
     }
 
+    /// <summary>
+    /// ADR-008: a physical path is not a virtual path. The editor refuses an identity-mapped
+    /// mount for the same reason the runtime does — by asking the domain type, so the two
+    /// cannot drift apart.
+    /// </summary>
     [Fact]
-    public void An_identity_mapped_windows_mount_round_trips()
+    public void An_identity_mapped_windows_mount_is_refused()
     {
         var definition = new MountDefinition
         {
@@ -104,9 +109,7 @@ public sealed class MountDefinitionTests
             Rights = MountRights.ReadOnly,
         };
 
-        var mount = definition.ToDomainMount();
-
-        Assert.Equal(@"C:\src", mount.VirtualPath);
+        Assert.Throws<FormatException>(() => definition.ToDomainMount());
     }
 
     [Theory]
@@ -141,8 +144,8 @@ public sealed class MountDefinitionTests
     [Theory]
     [InlineData("/workspace", true)]
     [InlineData("/", true)]
-    [InlineData(@"C:\src", true)]
-    [InlineData("C:/src", true)]
+    [InlineData(@"C:\src", false)]
+    [InlineData("C:/src", false)]
     [InlineData("workspace", false)]
     [InlineData("", false)]
     [InlineData(null, false)]

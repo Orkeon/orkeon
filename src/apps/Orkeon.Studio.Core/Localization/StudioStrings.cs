@@ -163,6 +163,13 @@ public static class StudioStringKeys
     /// <summary>"{0} (read, write)" — a team card's writable mount chip.</summary>
     public const string TeamsMountRw = "Vm_Teams_MountRw";
 
+    /// <summary>
+    /// "unreadable folder" — a mount string the parser refused. Shown instead of the string
+    /// itself: the raw form carries the physical folder, which has no place on an
+    /// agent-facing screen.
+    /// </summary>
+    public const string TeamsMountUnreadable = "Vm_Teams_MountUnreadable";
+
     /// <summary>"to try" — the badge of a team that never ran and has no schedule.</summary>
     public const string TeamsToTest = "Vm_Teams_ToTest";
 
@@ -862,6 +869,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DialogExportDestination] = "Choose where to export the team",
         [StudioStringKeys.TeamsMountRo] = "{0} (read)",
         [StudioStringKeys.TeamsMountRw] = "{0} (read, write)",
+        [StudioStringKeys.TeamsMountUnreadable] = "unreadable folder",
         [StudioStringKeys.TeamsToTest] = "to try",
         [StudioStringKeys.TeamsLastRun] = "Last run: {0}, {1}",
         [StudioStringKeys.TeamsRunOk] = "succeeded",
@@ -1009,13 +1017,13 @@ public sealed class EnglishStudioStrings : IStudioStrings
             "requires Orkeon >= {0}. The CLI installed alongside Studio supports this.",
 
         [StudioStringKeys.MountSemanticsExplanation] =
-            "The runner injects its own mounts first — the crew's configuration directory (the " +
-            "script's directory as '/script' for a .ork.ts crew), plus the log directory when LLM " +
-            "logging is on — then appends each --mount argument, and writes the whole list as " +
-            "'Orkeon:FileSystem:Mounts:{index}'. So the appsettings mount at index 0 is always " +
-            "replaced by the auto-injected one, the first --mount replaces the appsettings mount at " +
-            "index 1 (index 2 with --llm-log), and the two lists are never merged. Appsettings " +
-            "entries past the last written index stay in force.",
+            "The runner injects its own mount first — the crew's configuration directory as " +
+            "'/crew' (the script's directory as '/script' for a .ork.ts crew) — then appends each " +
+            "--mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So " +
+            "the appsettings mount at index 0 is always replaced by the auto-injected one, the " +
+            "first --mount replaces the appsettings mount at index 1, and the two lists are never " +
+            "merged. Appsettings entries past the last written index stay in force. The LLM log " +
+            "directory is mounted separately, hidden from agents, and shifts nothing.",
         [StudioStringKeys.MountSemanticsExternalMounts] =
             "--allow-external-mounts additionally whitelists each --mount base path under " +
             "'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working " +

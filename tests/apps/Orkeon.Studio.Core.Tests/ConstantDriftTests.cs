@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Storage;
 using Orkeon.Studio.Core.Targets;
@@ -125,6 +126,20 @@ public sealed class ConstantDriftTests
         // Both read the same environment; if the copied resolution ever diverges, Studio would
         // edit a file `orkeon run` never loads.
         Assert.Equal(RunnerSettings.GetGlobalSettingsPath(), SettingsLocations.GetGlobalSettingsPath());
+    }
+
+    /// <summary>
+    /// Studio predicts the mounts the runner will inject so it can tell the user which
+    /// configuration key each <c>--mount</c> occupies. If the virtual roots drift apart, that
+    /// prediction becomes a confident lie — and, since ADR-008, the names are also the only
+    /// thing standing between an agent and the operator's disk layout.
+    /// </summary>
+    [Fact]
+    public void The_predicted_mount_roots_are_the_runner_s_own()
+    {
+        Assert.Equal(RunnerMounts.CrewVirtualRoot, MountAutoInjection.CrewVirtualRoot);
+        Assert.Equal(RunnerMounts.ScriptVirtualRoot, MountAutoInjection.ScriptVirtualRoot);
+        Assert.Equal(RunnerMounts.LlmLogVirtualRoot, MountAutoInjection.LlmLogVirtualRoot);
     }
 
     [Fact]

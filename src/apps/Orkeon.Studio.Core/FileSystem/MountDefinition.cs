@@ -22,7 +22,7 @@ public sealed record MountDefinition
     /// <summary>Physical directory on disk, picked from a folder browser.</summary>
     public required string PhysicalPath { get; init; }
 
-    /// <summary>Virtual path the mount is exposed under (starts with <c>/</c>, or a Windows drive path).</summary>
+    /// <summary>Virtual path the mount is exposed under — a name, always starting with <c>/</c>.</summary>
     public required string VirtualPath { get; init; }
 
     /// <summary>Default rights of the mount.</summary>
@@ -135,8 +135,8 @@ public sealed record MountDefinition
     public FileSystemMount ToDomainMount() => FileSystemMount.Parse(ToMountString());
 
     /// <summary>
-    /// True when the virtual path satisfies the domain rule (starts with <c>/</c>, or is a
-    /// Windows drive path). Asks the domain type rather than restating the rule.
+    /// True when the virtual path satisfies the domain rule (starts with <c>/</c>). Asks the
+    /// domain type rather than restating the rule.
     /// </summary>
     public static bool IsValidVirtualPath(string? virtualPath)
     {

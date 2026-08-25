@@ -52,20 +52,29 @@ public sealed class MountOverrideSemanticsTests
         Assert.EndsWith(":/script:ro", mount, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Since ADR-008 the exchange log is an INTERNAL mount under its own configuration key:
+    /// it is named, hidden from agents, and — the part the UI depends on — it no longer
+    /// shifts the indices of anything the user wrote.
+    /// </summary>
     [Fact]
-    public void Llm_logging_adds_a_second_injected_mount()
+    public void Llm_logging_adds_an_internal_mount_that_shifts_nothing()
     {
         var injection = Injection(new RunLaunchOptions { LlmLogEnabled = true, LlmLogPath = "/var/log/orkeon" });
 
-        Assert.Equal(2, injection.Count);
-        Assert.Equal($"{Path.GetFullPath("/var/log/orkeon")}:{Path.GetFullPath("/var/log/orkeon")}:rw", injection.Mounts[1]);
+        Assert.Equal(1, injection.Count);
+        var internalMount = Assert.Single(injection.InternalMounts);
+        Assert.Equal(
+            $"{Path.GetFullPath("/var/log/orkeon")}:{MountAutoInjection.LlmLogVirtualRoot}:rw",
+            internalMount);
     }
 
     [Fact]
     public void A_bare_llm_log_path_implies_logging_just_as_the_cli_does()
     {
-        Assert.Equal(2, Injection(new RunLaunchOptions { LlmLogPath = "/var/log/orkeon" }).Count);
-        Assert.Equal(1, Injection(new RunLaunchOptions()).Count);
+        Assert.Single(Injection(new RunLaunchOptions { LlmLogPath = "/var/log/orkeon" }).InternalMounts);
+        Assert.Empty(Injection(new RunLaunchOptions()).InternalMounts);
+        Assert.Equal(1, Injection(new RunLaunchOptions { LlmLogPath = "/var/log/orkeon" }).Count);
     }
 
     [Fact]
@@ -104,18 +113,17 @@ public sealed class MountOverrideSemanticsTests
     }
 
     [Fact]
-    public void With_llm_logging_the_first_command_line_mount_shifts_to_index_two()
+    public void With_llm_logging_the_first_command_line_mount_stays_at_index_one()
     {
         var effective = MountOverrideSemantics.ComputeEffectiveMounts(
             ["/srv/run:/workspace:rw"],
             NoMounts,
             Injection(new RunLaunchOptions { LlmLogEnabled = true }));
 
-        Assert.Equal(3, effective.Count);
+        Assert.Equal(2, effective.Count);
         Assert.Equal(MountOrigin.AutoInjected, effective[0].Origin);
-        Assert.Equal(MountOrigin.AutoInjected, effective[1].Origin);
-        Assert.Equal(MountOrigin.CommandLine, effective[2].Origin);
-        Assert.Equal("Orkeon:FileSystem:Mounts:2", effective[2].ConfigurationKey);
+        Assert.Equal(MountOrigin.CommandLine, effective[1].Origin);
+        Assert.Equal("Orkeon:FileSystem:Mounts:1", effective[1].ConfigurationKey);
     }
 
     [Fact]
@@ -177,7 +185,7 @@ public sealed class MountOverrideSemanticsTests
         var text = MountOverrideSemantics.Explain(
             Injection(new RunLaunchOptions { LlmLogEnabled = true }));
 
-        Assert.Contains("Orkeon:FileSystem:Mounts:2", text, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:FileSystem:Mounts:1", text, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -75,7 +75,7 @@ public sealed class MountValidator
                     ValidationCodes.MountFormat,
                     string.Create(
                         CultureInfo.InvariantCulture,
-                        $"Virtual path '{mount.VirtualPath}' must start with '/' or be a Windows drive path."),
+                        $"Virtual path '{mount.VirtualPath}' must start with '/'."),
                     serialized));
                 continue;
             }

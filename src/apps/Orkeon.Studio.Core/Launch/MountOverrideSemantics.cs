@@ -44,11 +44,14 @@ public sealed record EffectiveMount(
 
 /// <summary>
 /// The mounts the runner inserts <em>ahead of</em> every <c>--mount</c> argument, in the order
-/// it inserts them. There is always at least one: the runner mounts the crew's configuration
-/// directory 1:1 read-only (<c>RunnerExecution.TryBuildHost</c>), and the scripting path mounts
-/// the script's directory as <c>/script:ro</c> instead (<c>RunCommand</c>). A second one is
-/// inserted when LLM exchange logging is on. This offset is why the user's first <c>--mount</c>
-/// does not land on <c>Orkeon:FileSystem:Mounts:0</c>.
+/// it inserts them. There is exactly one: the crew's configuration directory as <c>/crew:ro</c>
+/// (<c>RunnerExecution.TryBuildHost</c>), or the script's directory as <c>/script:ro</c> on the
+/// scripting path (<c>RunCommand</c>). This offset is why the user's first <c>--mount</c> does
+/// not land on <c>Orkeon:FileSystem:Mounts:0</c>.
+/// <para>
+/// The LLM exchange log is <em>not</em> here: since ADR-008 it is registered as an internal
+/// mount under its own configuration key, so it no longer shifts anything the user wrote.
+/// </para>
 /// </summary>
 [SuppressVfsCompliance(
     "OUT-OF-SCOPE: predicts the mount strings the CLI will build for a path the user picked " +
@@ -56,8 +59,27 @@ public sealed record EffectiveMount(
     "the user which configuration key each --mount will occupy.")]
 public sealed record MountAutoInjection
 {
+    /// <summary>
+    /// The crew's virtual root on the engine side. Mirrors <c>RunnerMounts.CrewVirtualRoot</c>;
+    /// Studio.Core cannot reference Orkeon.Hosting, so a drift test pins the pair.
+    /// </summary>
+    public const string CrewVirtualRoot = "/crew";
+
+    /// <summary>Mirrors <c>RunnerMounts.ScriptVirtualRoot</c>. Same drift test.</summary>
+    public const string ScriptVirtualRoot = "/script";
+
+    /// <summary>Mirrors <c>RunnerMounts.LlmLogVirtualRoot</c>. Same drift test.</summary>
+    public const string LlmLogVirtualRoot = "/llm-logs";
+
     /// <summary>The injected mount strings, in the order the runner inserts them.</summary>
     public required IReadOnlyList<string> Mounts { get; init; }
+
+    /// <summary>
+    /// The mounts the runner registers with <c>MountVisibility.Internal</c> — reachable by
+    /// the VFS, invisible to agents. They ride their own configuration key, so they shift
+    /// nothing and are excluded from <see cref="Count"/>.
+    /// </summary>
+    public IReadOnlyList<string> InternalMounts { get; init; } = [];
 
     /// <summary>How many entries the user's own mounts are shifted by.</summary>
     public int Count => Mounts.Count;
@@ -83,27 +105,28 @@ public sealed record MountAutoInjection
 
         var effective = options ?? new RunLaunchOptions();
         var mounts = new List<string> { DescribeTargetMount(target) };
+        var internalMounts = ResolveLlmLogDirectory(effective) is { } logDirectory
+            ? new[] { $"{logDirectory}:{LlmLogVirtualRoot}:rw" }
+            : [];
 
-        if (ResolveLlmLogDirectory(effective) is { } logDirectory)
-            mounts.Add($"{logDirectory}:{logDirectory}:rw");
-
-        return new MountAutoInjection { Mounts = mounts };
+        return new MountAutoInjection { Mounts = mounts, InternalMounts = internalMounts };
     }
 
     /// <summary>
-    /// The runner's own mount for the target: the crew directory 1:1 for a YAML crew, the
-    /// script's directory as <c>/script</c> for the scripting DSL.
+    /// The runner's own mount for the target: the crew's directory as <c>/crew</c>, a
+    /// script's directory as <c>/script</c>. Both are names, never the folder's own path —
+    /// mirrors <c>RunnerMounts</c> on the engine side, pinned by a drift test.
     /// </summary>
     private static string DescribeTargetMount(RunTarget target)
     {
         if (target.Dialect == RunTargetDialect.Script)
-            return $"{DirectoryOf(target.RunPath)}:/script:ro";
+            return $"{DirectoryOf(target.RunPath)}:{ScriptVirtualRoot}:ro";
 
         var configDirectory = target.Kind == RunTargetKind.MultiFileCrewDirectory
             ? Path.TrimEndingDirectorySeparator(FullPath(target.RunPath))
             : DirectoryOf(target.RunPath);
 
-        return $"{configDirectory}:{configDirectory}:ro";
+        return $"{configDirectory}:{CrewVirtualRoot}:ro";
     }
 
     /// <summary>
@@ -144,8 +167,8 @@ public sealed record MountAutoInjection
 /// whole list as the configuration overrides <c>Orkeon:FileSystem:Mounts:{i}</c>
 /// (<c>RunnerHost.ConfigureAppConfiguration</c>). Two consequences a UI must not hide: the
 /// appsettings entry at index 0 is <em>always</em> masked by the auto-injected mount, and the
-/// user's first <c>--mount</c> lands at index 1 (index 2 when LLM logging is on), replacing
-/// whatever the appsettings array held there. The lists are never merged.
+/// user's first <c>--mount</c> lands at index 1, replacing whatever the appsettings array held
+/// there. The lists are never merged.
 /// </summary>
 public static class MountOverrideSemantics
 {
@@ -157,13 +180,13 @@ public static class MountOverrideSemantics
 
     /// <summary>UI-ready statement of the override rule, independent of any one launch.</summary>
     public const string Explanation =
-        "The runner injects its own mounts first — the crew's configuration directory (the " +
-        "script's directory as '/script' for a .ork.ts crew), plus the log directory when LLM " +
-        "logging is on — then appends each --mount argument, and writes the whole list as " +
-        "'Orkeon:FileSystem:Mounts:{index}'. So the appsettings mount at index 0 is always " +
-        "replaced by the auto-injected one, the first --mount replaces the appsettings mount at " +
-        "index 1 (index 2 with --llm-log), and the two lists are never merged. Appsettings " +
-        "entries past the last written index stay in force.";
+        "The runner injects its own mount first — the crew's configuration directory as " +
+        "'/crew' (the script's directory as '/script' for a .ork.ts crew) — then appends each " +
+        "--mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So " +
+        "the appsettings mount at index 0 is always replaced by the auto-injected one, the " +
+        "first --mount replaces the appsettings mount at index 1, and the two lists are never " +
+        "merged. Appsettings entries past the last written index stay in force. The LLM log " +
+        "directory is mounted separately, hidden from agents, and shifts nothing.";
 
     /// <summary>UI-ready statement of what <c>--allow-external-mounts</c> adds.</summary>
     public const string ExternalMountsExplanation =

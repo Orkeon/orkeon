@@ -69,17 +69,28 @@ public sealed class I18nResourceParityTests
         }
     }
 
+    /// <summary>
+    /// The virtual mount roots the runner uses. They are code literals an expert screen
+    /// quotes verbatim — the same category as <c>--mount</c> or
+    /// <c>Orkeon:FileSystem:Mounts:{index}</c>, which the French strings already carry.
+    /// Translating <c>/crew</c> would name a mount that does not exist.
+    /// </summary>
+    private static readonly string[] MountPathLiterals = ["/crew"];
+
     [Fact]
     public void Should_Speak_Of_Equipes_Not_Crews_When_Reading_The_French_Values()
     {
         // T-07: the mock's vocabulary is "équipe"; "crew" is the engine's word and stays
         // out of every user-visible French string (key NAMES may keep it — identifiers).
         var offenders = ReadEntries("Strings.fr.resx")
-            .Where(e => e.Value.Contains("crew", StringComparison.OrdinalIgnoreCase))
+            .Where(e => StripMountLiterals(e.Value).Contains("crew", StringComparison.OrdinalIgnoreCase))
             .Select(e => e.Key)
             .Order()
             .ToList();
 
         Assert.True(offenders.Count == 0, $"French values still saying crew: {string.Join(", ", offenders)}");
+
+        static string StripMountLiterals(string value) =>
+            MountPathLiterals.Aggregate(value, (text, literal) => text.Replace(literal, "", StringComparison.Ordinal));
     }
 }

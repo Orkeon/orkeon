@@ -53,7 +53,7 @@ internal sealed class MountDialog : Window
         _virtualPath = FormLayout.AddField(this, 3, "Virtual path", _form.VirtualPath);
         FormLayout.AddNote(this, 4, string.Create(
             CultureInfo.InvariantCulture,
-            $"Must start with '/' (or be a Windows drive path). Suggestions: {string.Join(", ", MountForm.VirtualPathSuggestions)}"));
+            $"Must start with '/'. Suggestions: {string.Join(", ", MountForm.VirtualPathSuggestions)}"));
 
         _rights = FormLayout.AddChoiceList(
             this, 5, MountForm.RightsChoices.Count, "Rights", MountForm.RightsChoices, _form.RightsChoiceIndex);

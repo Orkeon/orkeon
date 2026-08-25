@@ -192,4 +192,46 @@ public sealed class ModalDialogsTests
         editor.Name = "  ";
         Assert.False(editor.CanSave);
     }
+
+    /// <summary>
+    /// The symptom the owner reported: the agent editor's « Sur quel dossier » line showed
+    /// raw mount strings, so a novice editing an agent read <c>C:\Users\…</c> where only a
+    /// VFS mount point belongs. The line names what the agent addresses, and its rights.
+    /// </summary>
+    [Fact]
+    public void The_agent_editor_names_mounts_the_way_agents_address_them()
+    {
+        var editor = new AgentEditorViewModel();
+        editor.Open(
+            Blueprint,
+            "collecteur",
+            [@"C:\Users\cyril\Factures:/factures:ro", @"C:\Users\cyril\Sorties:/output:rw"],
+            _ => { });
+
+        Assert.DoesNotContain(@"C:\", editor.ScopeInfo, StringComparison.Ordinal);
+        Assert.Contains("/factures", editor.ScopeInfo, StringComparison.Ordinal);
+        Assert.Contains("/output", editor.ScopeInfo, StringComparison.Ordinal);
+        // Rights travel with the path — read-only and writable read differently.
+        Assert.NotEqual(
+            editor.ScopeInfo.Split(" · ")[0],
+            editor.ScopeInfo.Split(" · ")[1]);
+    }
+
+    [Fact]
+    public void An_unreadable_mount_is_named_as_such_rather_than_dumped()
+    {
+        var editor = new AgentEditorViewModel();
+        editor.Open(Blueprint, "collecteur", [@"C:\Users\cyril\Factures"], _ => { });
+
+        Assert.DoesNotContain(@"C:\", editor.ScopeInfo, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void No_folder_reads_as_a_dash()
+    {
+        var editor = new AgentEditorViewModel();
+        editor.Open(Blueprint, "collecteur", [], _ => { });
+
+        Assert.Equal("—", editor.ScopeInfo);
+    }
 }

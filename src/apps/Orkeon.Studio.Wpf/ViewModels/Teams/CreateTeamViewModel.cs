@@ -179,7 +179,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             }
         });
         RemoveTeamMountCommand = new RelayCommand(
-            parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); OnPropertiesChanged(nameof(HasTeamMounts)); } },
+            parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips)); } },
             parameter => parameter is string);
         ComposeNotes = new StepNotesViewModel(AskAssistant);
         TryNotes = new StepNotesViewModel(AskAssistant);
@@ -493,6 +493,27 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// </summary>
     public ObservableCollection<string> TeamMounts { get; } = [];
 
+    /// <summary>
+    /// The same list, spelled for the screen: virtual path plus rights, exactly as the team
+    /// cards and the agent editor say it. The mount strings stay the serialization shape —
+    /// they carry the physical folder, which belongs in the picker and the sidecar, not on a
+    /// chip next to « Ils viennent des agents » (ADR-008).
+    /// </summary>
+    public IReadOnlyList<TeamMountChip> TeamMountChips =>
+        [.. TeamMounts.Select(mountString =>
+            MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null
+                ? new TeamMountChip(
+                    string.Format(
+                        CultureInfo.CurrentCulture,
+                        _strings[mount.Rights == MountRights.ReadOnly
+                            ? StudioStringKeys.TeamsMountRo
+                            : StudioStringKeys.TeamsMountRw],
+                        mount.VirtualPath),
+                    mount.Rights != MountRights.ReadOnly,
+                    mountString)
+                : new TeamMountChip(
+                    _strings[StudioStringKeys.TeamsMountUnreadable], IsReadWrite: false, mountString))];
+
     /// <summary>Whether any team mount is listed.</summary>
     public bool HasTeamMounts => TeamMounts.Count > 0;
 
@@ -522,7 +543,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(mount);
         TeamMounts.Add(mount.ToMountString());
-        OnPropertiesChanged(nameof(HasTeamMounts));
+        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips));
     }
 
     /// <summary>
@@ -889,7 +910,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         SeedSchedule(team.Schedule);
         foreach (var mount in team.Mounts)
             TeamMounts.Add(mount);
-        OnPropertyChanged(nameof(HasTeamMounts));
+        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips));
 
         MaxStep = 4;
         Step = 2;
@@ -1146,7 +1167,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         // A new session starts from a clean slate: the previous team's folders were
         // approved for THAT team, never for the next one; the old engine command lies.
         TeamMounts.Clear();
-        OnPropertyChanged(nameof(HasTeamMounts));
+        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips));
         _reopenedTeamPath = null;
         _autoRetryPending = false;
         EngineCommandLine = null;

@@ -211,8 +211,13 @@ public class LaunchOptionsModelTests
         Assert.Equal("/out:/workspace:rw", effective[1].ReplacedSettingsMount);
     }
 
+    /// <summary>
+    /// The exchange log is an internal mount on its own configuration key since ADR-008, so
+    /// turning logging on no longer moves the user's mounts out from under the indices the
+    /// screen just told them about.
+    /// </summary>
     [Fact]
-    public void Turning_on_llm_logging_shifts_the_launch_mounts_by_one_more_index()
+    public void Turning_on_llm_logging_leaves_the_launch_mount_indices_alone()
     {
         var model = new LaunchOptionsModel(new MountValidator(new FakeDirectoryProbe("/data")))
         {
@@ -222,10 +227,9 @@ public class LaunchOptionsModelTests
 
         var effective = model.ComputeEffectiveMounts(YamlTarget(), []);
 
-        Assert.Equal(3, effective.Count);
+        Assert.Equal(2, effective.Count);
         Assert.Equal(MountOrigin.AutoInjected, effective[0].Origin);
-        Assert.Equal(MountOrigin.AutoInjected, effective[1].Origin);
-        Assert.Equal(MountOrigin.CommandLine, effective[2].Origin);
+        Assert.Equal(MountOrigin.CommandLine, effective[1].Origin);
     }
 
     [Fact]

@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Text.Json.Nodes;
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
@@ -74,6 +76,11 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// <paramref name="agentKey"/>, or a new one when null. <paramref name="teamMounts"/>
     /// feeds the informative "sur quel dossier" line (rights live per mount, not per
     /// agent); <paramref name="apply"/> receives the amended blueprint JSON.
+    /// <para>
+    /// The line names the mounts the way the agent addresses them — <c>/output (lecture,
+    /// écriture)</c> — never the folder on this machine. An agent-facing screen showing
+    /// <c>C:\Users\…</c> is the same category of leak as an agent prompt showing it.
+    /// </para>
     /// </summary>
     public void Open(string blueprintJson, string? agentKey, IReadOnlyList<string> teamMounts, Action<string> apply)
     {
@@ -84,7 +91,7 @@ public sealed class AgentEditorViewModel : ObservableObject
         _blueprintJson = blueprintJson;
         _agentKey = agentKey;
         _apply = apply;
-        _scopeInfo = teamMounts.Count > 0 ? string.Join(" · ", teamMounts) : "—";
+        _scopeInfo = DescribeScope(teamMounts, _strings);
 
         var agents = ReadAgents(blueprintJson);
         var current = agentKey is null
@@ -142,6 +149,32 @@ public sealed class AgentEditorViewModel : ObservableObject
 
     /// <summary>The team's folders, informative — rights are per mount, never per agent.</summary>
     public string ScopeInfo => _scopeInfo;
+
+    /// <summary>
+    /// The team's mounts as the agents see them: virtual path plus rights, joined. An
+    /// unparsable entry is named as such rather than dumped verbatim — the raw mount string
+    /// carries the physical folder, which is exactly what must not appear here.
+    /// </summary>
+    internal static string DescribeScope(IReadOnlyList<string> mountStrings, IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(mountStrings);
+        ArgumentNullException.ThrowIfNull(strings);
+
+        if (mountStrings.Count == 0)
+            return "—";
+
+        var labels = mountStrings.Select(mountString =>
+            MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null
+                ? string.Format(
+                    CultureInfo.CurrentCulture,
+                    strings[mount.Rights == MountRights.ReadOnly
+                        ? StudioStringKeys.TeamsMountRo
+                        : StudioStringKeys.TeamsMountRw],
+                    mount.VirtualPath)
+                : strings[StudioStringKeys.TeamsMountUnreadable]);
+
+        return string.Join(" · ", labels);
+    }
 
     /// <summary>The expert mono line: <c>id: key · tools: […]</c>.</summary>
     public string KeyLine =>

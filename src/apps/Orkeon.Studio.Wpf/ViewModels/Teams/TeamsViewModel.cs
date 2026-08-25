@@ -42,7 +42,13 @@ public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary s
 }
 
 /// <summary>One mount chip of a team card: virtual path plus its rights, in words.</summary>
-public sealed record TeamMountChip(string Label, bool IsReadWrite);
+/// <param name="Label">What the screen shows: the virtual path and its rights, never a folder.</param>
+/// <param name="IsReadWrite">Drives the folder-open / pencil icon.</param>
+/// <param name="MountString">
+/// The entry this chip stands for, verbatim — the command parameter a "remove" button needs.
+/// Empty where nothing removes chips.
+/// </param>
+public sealed record TeamMountChip(string Label, bool IsReadWrite, string MountString = "");
 
 /// <summary>One team card of "Mes équipes".</summary>
 public sealed class TeamCardViewModel : ObservableObject
@@ -71,7 +77,9 @@ public sealed class TeamCardViewModel : ObservableObject
             }
             else
             {
-                chips.Add(new TeamMountChip(mountString, IsReadWrite: false));
+                // Never the raw string: it carries the physical folder, and a team card is
+                // an agent-facing surface like any other (ADR-008).
+                chips.Add(new TeamMountChip(strings[StudioStringKeys.TeamsMountUnreadable], IsReadWrite: false));
             }
         }
 

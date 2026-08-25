@@ -88,7 +88,7 @@
   <data name="Mounts_Lbl_Physical" xml:space="preserve"><value>Physical path (on this machine)</value></data>
   <data name="Mounts_CreateFolder" xml:space="preserve"><value>Create folder</value></data>
   <data name="Mounts_Lbl_Virtual" xml:space="preserve"><value>Virtual path (what the agents see)</value></data>
-  <data name="Mounts_VirtualInvalid" xml:space="preserve"><value>Must start with '/' or be a Windows drive path.</value></data>
+  <data name="Mounts_VirtualInvalid" xml:space="preserve"><value>Must start with '/'.</value></data>
   <data name="Mounts_Lbl_Rights" xml:space="preserve"><value>Rights</value></data>
   <data name="Mounts_Overrides_Title" xml:space="preserve"><value>Sub-path rights overrides</value></data>
   <data name="Mounts_AddOverride" xml:space="preserve"><value>Add override</value></data>
@@ -229,7 +229,7 @@
   <data name="Core_Rights_ReadWrite" xml:space="preserve"><value>Read / write (create and delete allowed)</value></data>
   <data name="Core_Rights_ReadWriteNoDelete" xml:space="preserve"><value>Read / write without delete</value></data>
   <data name="Core_Target_DirectoryRunNotice" xml:space="preserve"><value>This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;', which requires Orkeon &gt;= {0}. The CLI installed alongside Studio supports this.</value></data>
-  <data name="Core_MountSemantics_Explanation" xml:space="preserve"><value>The runner injects its own mounts first — the crew's configuration directory (the script's directory as '/script' for a .ork.ts crew), plus the log directory when LLM logging is on — then appends each --mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So the appsettings mount at index 0 is always replaced by the auto-injected one, the first --mount replaces the appsettings mount at index 1 (index 2 with --llm-log), and the two lists are never merged. Appsettings entries past the last written index stay in force.</value></data>
+  <data name="Core_MountSemantics_Explanation" xml:space="preserve"><value>The runner injects its own mount first — the crew's configuration directory as '/crew' (the script's directory as '/script' for a .ork.ts crew) — then appends each --mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So the appsettings mount at index 0 is always replaced by the auto-injected one, the first --mount replaces the appsettings mount at index 1, and the two lists are never merged. Appsettings entries past the last written index stay in force. The LLM log directory is mounted separately, hidden from agents, and shifts nothing.</value></data>
   <data name="Core_MountSemantics_ExternalMounts" xml:space="preserve"><value>--allow-external-mounts additionally whitelists each --mount base path under 'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working directory (same effect as ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
   <data name="Core_MountSemantics_ThisLaunch" xml:space="preserve"><value> For this launch the runner injects {0} mount(s) ({1}), so the first --mount occupies '{2}'.</value></data>
 
@@ -611,6 +611,7 @@
   <data name="Wiz_AddAgent" xml:space="preserve"><value>Add an agent</value></data>
   <data name="Vm_Teams_MountRo" xml:space="preserve"><value>{0} (read)</value></data>
   <data name="Vm_Teams_MountRw" xml:space="preserve"><value>{0} (read, write)</value></data>
+  <data name="Vm_Teams_MountUnreadable" xml:space="preserve"><value>unreadable folder</value></data>
   <data name="Vm_Teams_ToTest" xml:space="preserve"><value>to try</value></data>
   <data name="Vm_Teams_LastRun" xml:space="preserve"><value>Last run: {0}, {1}</value></data>
   <data name="Vm_Teams_RunOk" xml:space="preserve"><value>succeeded</value></data>

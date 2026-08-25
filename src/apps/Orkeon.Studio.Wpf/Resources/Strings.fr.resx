@@ -88,7 +88,7 @@
   <data name="Mounts_Lbl_Physical" xml:space="preserve"><value>Chemin physique (sur cette machine)</value></data>
   <data name="Mounts_CreateFolder" xml:space="preserve"><value>Créer le dossier</value></data>
   <data name="Mounts_Lbl_Virtual" xml:space="preserve"><value>Chemin virtuel (ce que voient les agents)</value></data>
-  <data name="Mounts_VirtualInvalid" xml:space="preserve"><value>Doit commencer par « / » ou être un chemin de lecteur Windows.</value></data>
+  <data name="Mounts_VirtualInvalid" xml:space="preserve"><value>Doit commencer par « / ».</value></data>
   <data name="Mounts_Lbl_Rights" xml:space="preserve"><value>Droits</value></data>
   <data name="Mounts_Overrides_Title" xml:space="preserve"><value>Droits par sous-chemin</value></data>
   <data name="Mounts_AddOverride" xml:space="preserve"><value>Ajouter une exception</value></data>
@@ -229,7 +229,7 @@
   <data name="Core_Rights_ReadWrite" xml:space="preserve"><value>Lecture / écriture (création et suppression autorisées)</value></data>
   <data name="Core_Rights_ReadWriteNoDelete" xml:space="preserve"><value>Lecture / écriture sans suppression</value></data>
   <data name="Core_Target_DirectoryRunNotice" xml:space="preserve"><value>Ceci est un dossier d'équipe multi-fichiers : son exécution passe par « orkeon run &lt;dossier&gt; », qui requiert Orkeon &gt;= {0}. Le CLI installé avec Studio le prend en charge.</value></data>
-  <data name="Core_MountSemantics_Explanation" xml:space="preserve"><value>Le runner injecte d'abord ses propres montages — le dossier de définition de l'équipe (le dossier du script en « /script » pour une équipe .ork.ts), plus le dossier de logs quand la journalisation LLM est active — puis ajoute chaque argument --mount, et écrit la liste entière sous « Orkeon:FileSystem:Mounts:{index} ». Le montage appsettings d'index 0 est donc toujours remplacé par le montage auto-injecté, le premier --mount remplace le montage appsettings d'index 1 (index 2 avec --llm-log), et les deux listes ne sont jamais fusionnées. Les entrées appsettings au-delà du dernier index écrit restent en vigueur.</value></data>
+  <data name="Core_MountSemantics_Explanation" xml:space="preserve"><value>Le runner injecte d'abord son propre montage — le dossier de définition de l'équipe en « /crew » (le dossier du script en « /script » pour une équipe .ork.ts) — puis ajoute chaque argument --mount, et écrit la liste entière sous « Orkeon:FileSystem:Mounts:{index} ». Le montage appsettings d'index 0 est donc toujours remplacé par le montage auto-injecté, le premier --mount remplace le montage appsettings d'index 1, et les deux listes ne sont jamais fusionnées. Les entrées appsettings au-delà du dernier index écrit restent en vigueur. Le dossier de logs LLM est monté à part, invisible pour les agents, et ne décale rien.</value></data>
   <data name="Core_MountSemantics_ExternalMounts" xml:space="preserve"><value>--allow-external-mounts ajoute en plus chaque chemin de base --mount à la liste blanche « PathSecurity:AdditionalAllowedDirectories », permettant aux montages de pointer hors du répertoire de travail (même effet que ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
   <data name="Core_MountSemantics_ThisLaunch" xml:space="preserve"><value> Pour ce lancement le runner injecte {0} montage(s) ({1}), donc le premier --mount occupe « {2} ».</value></data>
 
@@ -611,6 +611,7 @@
   <data name="Wiz_AddAgent" xml:space="preserve"><value>Ajouter un agent</value></data>
   <data name="Vm_Teams_MountRo" xml:space="preserve"><value>{0} (lecture)</value></data>
   <data name="Vm_Teams_MountRw" xml:space="preserve"><value>{0} (lecture, écriture)</value></data>
+  <data name="Vm_Teams_MountUnreadable" xml:space="preserve"><value>dossier illisible</value></data>
   <data name="Vm_Teams_ToTest" xml:space="preserve"><value>à tester</value></data>
   <data name="Vm_Teams_LastRun" xml:space="preserve"><value>Dernière exécution : {0}, {1}</value></data>
   <data name="Vm_Teams_RunOk" xml:space="preserve"><value>réussie</value></data>
