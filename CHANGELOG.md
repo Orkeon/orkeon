@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed — Virtual paths are the only currency agents are paid in (ADR-008)
+
+The owner found absolute disk folders in Orkeon Studio where only VFS mount
+points belong. The leak was in the engine, not the UI.
+
+Runners used to mount their own directories **1:1** (`C:\x:C:\x:ro`) so the
+absolute paths framework code had already computed resolved unchanged, and
+`FileSystemMount.IsValidVirtualPath` had been widened to accept a Windows drive
+path as a *virtual* path to let those strings parse. Mounts parsed from a mount
+string are agent-facing, so `list_mounts`, `ShellCommandTool`'s path checks and
+every access-denied message — which names the available mounts — handed agents
+the operator's disk layout; redaction was explicitly disarmed for exactly those
+mounts. The crew directory is now `/crew`, a hosted daemon's crews `/crews`,
+`/crews-1`, …, and the loader receives the virtual spelling, so it asks the VFS
+whether its target is a directory instead of probing the disk.
+
+`Orkeon:FileSystem:InternalMounts` is new: mounts registered with
+`MountVisibility.Internal` — reachable by the VFS, absent from
+`GetAvailableMounts()`. The `--llm-log` directory moves there; it holds full
+prompts and API payloads and was being advertised to every agent as a writable
+mount. As a result, turning `--llm-log` on no longer shifts
+`Orkeon:FileSystem:Mounts:{i}`.
+
+In Studio, the agent editor's « Sur quel dossier » line and the Composer's
+folder chips now name mounts the way agents address them (`/output (lecture,
+écriture)`) instead of joining raw `physical:virtual:rights` strings. Expert
+surfaces — the effective-mounts table, the picker's preview — still show the
+exact command line.
+
+**An adopted team now writes where its own agents write.** The trial bench
+mounts `/output` and refuses a run that did not produce its promised
+deliverable; nothing carried that mount further, so the same team launched from
+its own folder was denied `/output`, logged a warning and reported success with
+nothing written. `forge promote` derives the write roots from the blueprint,
+creates their folders, and spells them in both launchers; Studio binds the same
+roots into the sidecar at adoption.
+
+**Breaking**: `--mount` no longer accepts a drive-letter virtual path, and a
+`--mount` claiming `/crew` or `/llm-logs` is refused with an actionable line.
+`RunnerHost.Build`'s `llmLogPath` parameter becomes `llmLogVirtualPath` and
+takes a virtual path; a new optional `internalMounts` parameter follows it.
+
+Also fixed: `examples/service-host/appsettings.host.json` declared its mounts as
+objects, a shape `FileSystemOptions.Mounts` cannot bind, and the RaggableTree
+pages documented a mount syntax that does not exist.
+
 ## [1.0.0-rc.2] - 2026-08-25
 
 ### Added — Remediation v3: what a run costs, and adoption that is no longer a one-way door
