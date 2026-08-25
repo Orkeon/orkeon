@@ -105,7 +105,8 @@
         </StackPanel>
       </StackPanel>
     </DockPanel>
-    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding StatusMessage}"/>
+    <!-- §F.5: «Votre solution est prête.» and friends as a faint 12px line, not raw mono -->
+    <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,6,0,0" Text="{Binding StatusMessage}"/>
 
     <!-- before anything: the assistant must have a model — the wizard is gated until then -->
     <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"

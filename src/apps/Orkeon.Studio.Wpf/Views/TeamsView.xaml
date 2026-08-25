@@ -185,15 +185,10 @@
                     </StackPanel>
                   </Button>
                 </WrapPanel>
-                <!-- méta : n agents · programmation · dernière exécution · réglage -->
-                <WrapPanel Margin="0,7,0,0">
-                  <TextBlock Style="{StaticResource Hint}" Margin="0,0,14,0" Text="{Binding AgentCountDisplay}"
-                             Visibility="{Binding HasAgentCount, Converter={StaticResource BooleanToVisibility}}"/>
-                  <TextBlock Style="{StaticResource Hint}" Margin="0,0,14,0" Text="{Binding ScheduleDisplay}"/>
-                  <TextBlock Style="{StaticResource Hint}" Margin="0,0,14,0" Text="{Binding LastRunDisplay}"/>
-                  <TextBlock Style="{StaticResource Hint}" Text="{Binding ProfileDisplay}"
-                             Visibility="{Binding HasProfile, Converter={StaticResource BooleanToVisibility}}"/>
-                </WrapPanel>
+                <!-- méta : n agents · programmation · dernière exécution · réglage —
+                     ONE « · »-joined line, the launcher's recipe (v3 F-02) -->
+                <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" TextWrapping="Wrap"
+                           Text="{Binding MetaLine}"/>
               </StackPanel>
             </DockPanel>
           </Border>

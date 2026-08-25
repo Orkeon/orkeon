@@ -207,6 +207,15 @@ public sealed class TeamCardViewModel : ObservableObject
             ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSettingLabel], profile)
             : null;
 
+    /// <summary>
+    /// The card's one meta line, « · »-joined like the launcher's (v3 F-02):
+    /// « 3 agents · Chaque jour à 07:30 · Dernière exécution : … · Réglage : X ».
+    /// </summary>
+    public string MetaLine => string.Join(
+        " · ",
+        new[] { AgentCountDisplay, ScheduleDisplay, LastRunDisplay, ProfileDisplay }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+
     internal void SetLastRun(DateTimeOffset? startedAt, RunOutcome? outcome)
     {
         if (_lastRun == startedAt && _lastOutcome == outcome)
@@ -214,7 +223,9 @@ public sealed class TeamCardViewModel : ObservableObject
 
         _lastRun = startedAt;
         _lastOutcome = outcome;
-        OnPropertiesChanged(nameof(LastRun), nameof(LastOutcome), nameof(LastRunDisplay), nameof(BadgeText), nameof(BadgeTone));
+        OnPropertiesChanged(
+            nameof(LastRun), nameof(LastOutcome), nameof(LastRunDisplay),
+            nameof(BadgeText), nameof(BadgeTone), nameof(MetaLine));
     }
 }
 
