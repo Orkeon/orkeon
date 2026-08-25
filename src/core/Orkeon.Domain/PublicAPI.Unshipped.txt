@@ -1,1 +1,5 @@
 #nullable enable
+const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CacheHitTokensKey = "cacheHitTokens" -> string!
+const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CacheMissTokensKey = "cacheMissTokens" -> string!
+Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCacheHitTokens(long tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
+Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCacheMissTokens(long tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!

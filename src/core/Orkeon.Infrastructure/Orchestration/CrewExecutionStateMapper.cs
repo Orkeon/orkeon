@@ -222,6 +222,8 @@ public static class CrewExecutionStateMapper
             PromptTokens = output.TokensUsed?.PromptTokens ?? 0,
             CompletionTokens = output.TokensUsed?.CompletionTokens ?? 0,
             TotalTokens = output.TokensUsed?.TotalTokens ?? 0,
+            CacheHitTokens = output.TokensUsed?.CacheHitTokens,
+            CacheMissTokens = output.TokensUsed?.CacheMissTokens,
             TaskOutputs = (output.TaskOutputs ?? []).Select(t => new PersistedTaskOutput
             {
                 TaskId = t.TaskId,
@@ -255,6 +257,10 @@ public static class CrewExecutionStateMapper
             Duration: persisted.Duration,
             TokensUsed: persisted.TokensMeasured
                 ? new TokenUsage(persisted.PromptTokens, persisted.CompletionTokens, persisted.TotalTokens)
+                {
+                    CacheHitTokens = persisted.CacheHitTokens,
+                    CacheMissTokens = persisted.CacheMissTokens,
+                }
                 : null);
     }
 }
@@ -332,6 +338,12 @@ public sealed record PersistedCrewOutput
 
     /// <summary>Total token count.</summary>
     public int TotalTokens { get; init; }
+
+    /// <summary>Cache-served prompt tokens; null when unmeasured (W-08) — a partition of the prompt side.</summary>
+    public long? CacheHitTokens { get; init; }
+
+    /// <summary>Cache-missed prompt tokens; null when unmeasured (W-08).</summary>
+    public long? CacheMissTokens { get; init; }
 }
 
 /// <summary>

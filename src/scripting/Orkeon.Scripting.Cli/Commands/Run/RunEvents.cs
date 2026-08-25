@@ -70,6 +70,11 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     private readonly bool _stream;
     private readonly Lock _gate = new();
     private long _tokens;
+    private long _promptTokens;
+    private long _completionTokens;
+    private long _cacheHitTokens;
+    private long _cacheMissTokens;
+    private bool _cacheMeasured;
 
     /// <summary>Builds the observer over the stream, the hook it must not displace, and the streaming flag.</summary>
     public RunEventObserver(OrkeonEventWriter events, ICrewExecutionHook? inner, bool stream)
@@ -83,6 +88,33 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     public long TokensUsed
     {
         get { lock (_gate) { return _tokens; } }
+    }
+
+    /// <summary>Cumulative prompt-side tokens, for the closing event (W-08).</summary>
+    public long PromptTokens
+    {
+        get { lock (_gate) { return _promptTokens; } }
+    }
+
+    /// <summary>Cumulative completion-side tokens, for the closing event (W-08).</summary>
+    public long CompletionTokens
+    {
+        get { lock (_gate) { return _completionTokens; } }
+    }
+
+    /// <summary>
+    /// Cumulative cache-served prompt tokens, or null when no provider reported cache
+    /// telemetry — "not measured" is never presented as a zero (W-08).
+    /// </summary>
+    public long? CacheHitTokens
+    {
+        get { lock (_gate) { return _cacheMeasured ? _cacheHitTokens : null; } }
+    }
+
+    /// <summary>Cumulative cache-missed prompt tokens, null when unmeasured (W-08).</summary>
+    public long? CacheMissTokens
+    {
+        get { lock (_gate) { return _cacheMeasured ? _cacheMissTokens : null; } }
     }
 
     /// <inheritdoc />
@@ -141,6 +173,22 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         lock (_gate)
         {
             _tokens += usage.PromptTokens + usage.CompletionTokens;
+            _promptTokens += usage.PromptTokens;
+            _completionTokens += usage.CompletionTokens;
+
+            // The cache pair partitions the prompt tokens (never additive); one measured
+            // call is enough to call the run "measured".
+            if (usage.CacheHitTokens is { } hit)
+            {
+                _cacheHitTokens += hit;
+                _cacheMeasured = true;
+            }
+            if (usage.CacheMissTokens is { } miss)
+            {
+                _cacheMissTokens += miss;
+                _cacheMeasured = true;
+            }
+
             total = _tokens;
         }
 

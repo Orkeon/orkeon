@@ -174,7 +174,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
             // A graph's nodes are not tasks, so there is no per-task moment to hook into
             // mid-run: the results are reported when the graph joins.
-            var snapshots = await NotifyResultsAsync(domainResults).ConfigureAwait(false);
+            var snapshots = await NotifyResultsAsync(domainResults, finalState).ConfigureAwait(false);
             await _hooks.CrewCompletedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, snapshots, CrewHookStatus.Completed),
@@ -194,7 +194,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
             // The graph nodes mutate the state instance in place, so initialState carries
             // the tokens consumed up to the break — propagate them, they were paid for.
-            var brokenSnapshots = await NotifyResultsAsync(initialState.DomainResults).ConfigureAwait(false);
+            var brokenSnapshots = await NotifyResultsAsync(initialState.DomainResults, initialState).ConfigureAwait(false);
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.ToString(), startTime, brokenSnapshots, CrewHookStatus.Failed, ex.Message),
@@ -244,18 +244,24 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// crew-level event carries exactly what the per-task events announced.
     /// </summary>
     private async Task<List<TaskExecutionSnapshot>> NotifyResultsAsync(
-        IReadOnlyList<DomainTaskOutput> results)
+        IReadOnlyList<DomainTaskOutput> results,
+        CrewGraphState state)
     {
         var snapshots = new List<TaskExecutionSnapshot>(results.Count);
         foreach (var result in results)
         {
+            var taskId = result.TaskId?.Value.ToString() ?? string.Empty;
+            var usage = state.TaskUsage.TryGetValue(taskId, out var measured) ? measured : default;
             var snapshot = new TaskExecutionSnapshot
             {
-                TaskId = result.TaskId?.Value.ToString() ?? string.Empty,
+                TaskId = taskId,
                 AgentRole = "graph",
                 Success = result.Success,
                 Duration = result.ExecutionTime,
                 CompletedAt = DateTimeOffset.UtcNow,
+                TokensUsed = usage.Tokens,
+                CacheHitTokens = usage.CacheHit,
+                CacheMissTokens = usage.CacheMiss,
             };
             snapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
@@ -269,7 +275,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder(),
                 state.TotalTokensUsed,
                 state.PromptTokensUsed,
-                state.CompletionTokensUsed)
+                state.CompletionTokensUsed,
+                state.CacheHitTokensUsed,
+                state.CacheMissTokensUsed)
             .Build();
 
     /// <summary>
@@ -377,6 +385,17 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         state.TotalTokensUsed += executionResult.TokensUsed;
         state.PromptTokensUsed += executionResult.PromptTokens;
         state.CompletionTokensUsed += executionResult.CompletionTokens;
+        state.CacheHitTokensUsed += executionResult.CacheHitTokens;
+        state.CacheMissTokensUsed += executionResult.CacheMissTokens;
+
+        // Retries of the same task accumulate onto the same key: the snapshot tells what
+        // the task cost in total, not what its last attempt cost.
+        var usageKey = task.Id.Value.ToString();
+        var usage = state.TaskUsage.TryGetValue(usageKey, out var previous) ? previous : default;
+        state.TaskUsage[usageKey] = (
+            usage.Tokens + executionResult.TokensUsed,
+            usage.CacheHit + executionResult.CacheHitTokens,
+            usage.CacheMiss + executionResult.CacheMissTokens);
 
         var appOutput = new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
@@ -598,6 +617,15 @@ public sealed class CrewGraphState
 
     /// <summary>Running total of completion-side tokens (0 when the provider does not report the split).</summary>
     public int CompletionTokensUsed { get; set; }
+
+    /// <summary>Running total of cache-served prompt tokens (0 when unreported) (W-08).</summary>
+    public long CacheHitTokensUsed { get; set; }
+
+    /// <summary>Running total of cache-missed prompt tokens (0 when unreported) (W-08).</summary>
+    public long CacheMissTokensUsed { get; set; }
+
+    /// <summary>Per-task usage (taskId string → counters), for the per-task hook snapshots.</summary>
+    public Dictionary<string, (int Tokens, long CacheHit, long CacheMiss)> TaskUsage { get; } = new(StringComparer.Ordinal);
 
     /// <summary>Round-robin agent index.</summary>
     public int AgentIndex { get; set; }

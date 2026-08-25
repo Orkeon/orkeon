@@ -106,7 +106,18 @@ internal sealed class TestStage : IForgeStageRunner
         // deliverables never leak from one cycle into the next one's diagnosis.
         SnapshotOutputs(session.Directory, runDirectory);
 
-        events.Emit("run.finished", new { run = runNumber, success = run.Success, outputPath = relativeOutput });
+        // W-08: the closing event carries what the trial itself cost — distinct from the
+        // session-cumulative cost.updated, which folds in assistant and judge usage.
+        events.Emit("run.finished", new
+        {
+            run = runNumber,
+            success = run.Success,
+            outputPath = relativeOutput,
+            durationMs = run.DurationMs,
+            tokens = run.Tokens,
+            cacheHitTokens = run.CacheHitTokens,
+            cacheMissTokens = run.CacheMissTokens,
+        });
 
         return new ForgeStageOutcome
         {
@@ -199,6 +210,18 @@ internal sealed class DiagnoseStage : IForgeStageRunner
         session.SaveArtifact(Path.Combine(runDirectory, "verdict.json"), verdict);
         session.SaveArtifact("verdict.json", verdict);
 
+        EmitVerdictReady(events, verdict, run);
+
+        return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, TokensConsumed = judgement.Tokens };
+    }
+
+    /// <summary>
+    /// The one <c>verdict.ready</c> payload builder — the diagnosis and the Verdict
+    /// stage's recall (a resumed arbitration) must never drift apart. The metrics are the
+    /// LAST TRIAL's own (W-08), null when the run left them unmeasured.
+    /// </summary>
+    internal static void EmitVerdictReady(ForgeEventWriter events, ForgeVerdict verdict, ForgeTestRun? run)
+    {
         events.Emit("verdict.ready", new
         {
             score = verdict.Score,
@@ -206,9 +229,11 @@ internal sealed class DiagnoseStage : IForgeStageRunner
             findings = verdict.Findings,
             suggestions = verdict.Suggestions,
             judge = verdict.Judge,
+            durationMs = run?.DurationMs,
+            tokens = run?.Tokens,
+            cacheHitTokens = run?.CacheHitTokens,
+            cacheMissTokens = run?.CacheMissTokens,
         });
-
-        return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, TokensConsumed = judgement.Tokens };
     }
 
     /// <summary>What no judge is needed to see; blocking when the run itself went wrong.</summary>

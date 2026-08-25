@@ -102,6 +102,9 @@ public sealed partial class JsLlmFacade
                 // never too late), but an overestimate for cost REPORTING on
                 // split-less providers.
                 CompletionTokens = response.CompletionTokens ?? Math.Max(0, response.TokensUsed - prompt),
+                // A partition of PromptTokens (never additive) — null when unreported.
+                CacheHitTokens = response.CacheHitTokens,
+                CacheMissTokens = response.CacheMissTokens,
                 OperationType = method,
             });
         }

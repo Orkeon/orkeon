@@ -314,10 +314,23 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             ? metadata.Get<int>(Domain.Crew.ValueObjects.CrewMetadata.CompletionTokensKey)
             : 0;
 
+        // Cache telemetry (W-08): present only when a provider reported it — a missing
+        // pair stays null, never a measured zero.
+        long? cacheHit = metadata.Contains(Domain.Crew.ValueObjects.CrewMetadata.CacheHitTokensKey)
+            ? metadata.Get<long>(Domain.Crew.ValueObjects.CrewMetadata.CacheHitTokensKey)
+            : null;
+        long? cacheMiss = metadata.Contains(Domain.Crew.ValueObjects.CrewMetadata.CacheMissTokensKey)
+            ? metadata.Get<long>(Domain.Crew.ValueObjects.CrewMetadata.CacheMissTokensKey)
+            : null;
+
         return new TokenUsage(
             PromptTokens: promptTokens,
             CompletionTokens: completionTokens,
-            TotalTokens: totalTokens);
+            TotalTokens: totalTokens)
+        {
+            CacheHitTokens = cacheHit,
+            CacheMissTokens = cacheMiss,
+        };
     }
 
     /// <summary>

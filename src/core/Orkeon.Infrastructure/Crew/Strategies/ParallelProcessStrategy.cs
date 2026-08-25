@@ -203,6 +203,8 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                     CompletedAt = DateTimeOffset.UtcNow,
                     ToolCallCount = result.ToolsUsed?.Count ?? 0,
                     TokensUsed = result.TokensUsed,
+                    CacheHitTokens = result.CacheHitTokens,
+                    CacheMissTokens = result.CacheMissTokens,
                 };
                 taskSnapshots.Add(snapshot);
                 await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);

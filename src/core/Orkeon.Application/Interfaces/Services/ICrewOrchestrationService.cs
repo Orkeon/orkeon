@@ -159,12 +159,28 @@ public record BatchOutput(
     TimeSpan TotalDuration);
 
 /// <summary>
-/// Token usage metrics.
+/// Token usage metrics. The cache pair is a partition of <paramref name="PromptTokens"/>
+/// — tokens served from the provider's prompt cache versus computed — never an addition
+/// to the totals; <see langword="null"/> means "not measured" (a provider without cache
+/// telemetry), never a fabricated zero (W-08).
 /// </summary>
 public record TokenUsage(
     int PromptTokens,
     int CompletionTokens,
-    int TotalTokens) : ITokenUsage;
+    int TotalTokens) : ITokenUsage
+{
+    /// <summary>Prompt tokens served from the provider's cache; null when unmeasured.</summary>
+    public long? CacheHitTokens { get; init; }
+
+    /// <summary>Prompt tokens the provider had to compute; null when unmeasured.</summary>
+    public long? CacheMissTokens { get; init; }
+
+    /// <summary>Cache hits over measured prompt tokens, in [0,1]; null when unmeasured.</summary>
+    public double? CacheHitRatio =>
+        CacheHitTokens is { } hit && CacheMissTokens is { } miss && hit + miss > 0
+            ? (double)hit / (hit + miss)
+            : null;
+}
 
 
 

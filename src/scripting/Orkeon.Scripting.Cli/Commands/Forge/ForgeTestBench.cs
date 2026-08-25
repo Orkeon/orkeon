@@ -32,6 +32,17 @@ internal sealed record ForgeTestRun
     [JsonPropertyName("tokens")]
     public long? Tokens { get; init; }
 
+    /// <summary>
+    /// Prompt tokens served from the provider's cache — a partition of the prompt side,
+    /// never additive to <see cref="Tokens"/>; null when unmeasured (W-08).
+    /// </summary>
+    [JsonPropertyName("cacheHitTokens")]
+    public long? CacheHitTokens { get; init; }
+
+    /// <summary>Prompt tokens the provider computed; null when unmeasured (W-08).</summary>
+    [JsonPropertyName("cacheMissTokens")]
+    public long? CacheMissTokens { get; init; }
+
     /// <summary>Why the run failed, when it did.</summary>
     [JsonPropertyName("error")]
     public string? Error { get; init; }
@@ -114,6 +125,8 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
             TaskCount = output.TaskOutputs.Count,
             DurationMs = (long)output.Duration.TotalMilliseconds,
             Tokens = output.TokensUsed?.TotalTokens,
+            CacheHitTokens = output.TokensUsed?.CacheHitTokens,
+            CacheMissTokens = output.TokensUsed?.CacheMissTokens,
             Error = failed ? output.FinalOutput : null,
         };
     }

@@ -24,6 +24,17 @@ public record CostUsageEvent
     public int CompletionTokens { get; init; }
 
     /// <summary>
+    /// Prompt tokens served from the provider's cache. The hit/miss pair is a PARTITION
+    /// of <see cref="PromptTokens"/> — never additive to it: cost and budget consumers
+    /// must not count cache tokens twice. Null when the provider reported no cache
+    /// telemetry (W-08).
+    /// </summary>
+    public long? CacheHitTokens { get; init; }
+
+    /// <summary>Prompt tokens the provider had to compute; null when unmeasured.</summary>
+    public long? CacheMissTokens { get; init; }
+
+    /// <summary>
     /// Pre-calculated cost in USD. If zero, the manager will auto-calculate from the pricing registry.
     /// </summary>
     public decimal Cost { get; init; }

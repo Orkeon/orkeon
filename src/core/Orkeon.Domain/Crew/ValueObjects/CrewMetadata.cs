@@ -29,6 +29,19 @@ public sealed partial record CrewMetadata
     /// </summary>
     public const string CompletionTokensKey = "completionTokens";
 
+    /// <summary>
+    /// Canonical metadata key carrying the prompt tokens served from the provider's
+    /// cache, when cache telemetry was reported. The hit/miss pair partitions the
+    /// prompt tokens — it is never additive to the totals (W-08).
+    /// </summary>
+    public const string CacheHitTokensKey = "cacheHitTokens";
+
+    /// <summary>
+    /// Canonical metadata key carrying the prompt tokens the provider had to compute,
+    /// when cache telemetry was reported.
+    /// </summary>
+    public const string CacheMissTokensKey = "cacheMissTokens";
+
     /// <summary>Gets a metadata value by key.</summary>
     /// <typeparam name="T">The expected value type.</typeparam>
     /// <param name="key">The metadata key.</param>
@@ -168,6 +181,18 @@ public sealed partial record CrewMetadata
         /// <returns>This builder for chaining.</returns>
         [DictionaryEntry(CompletionTokensKey)]
         public partial Builder AddCompletionTokens(int tokens);
+
+        /// <summary>Sets the cache-served prompt token count (provider-reported).</summary>
+        /// <param name="tokens">The number of prompt tokens served from cache.</param>
+        /// <returns>This builder for chaining.</returns>
+        [DictionaryEntry(CacheHitTokensKey)]
+        public partial Builder AddCacheHitTokens(long tokens);
+
+        /// <summary>Sets the cache-missed prompt token count (provider-reported).</summary>
+        /// <param name="tokens">The number of prompt tokens the provider computed.</param>
+        /// <returns>This builder for chaining.</returns>
+        [DictionaryEntry(CacheMissTokensKey)]
+        public partial Builder AddCacheMissTokens(long tokens);
 
         /// <summary>Sets the total cost.</summary>
         /// <param name="cost">The total cost of the execution.</param>

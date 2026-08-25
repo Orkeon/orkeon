@@ -1,3 +1,12 @@
 #nullable enable
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody) -> bool
 override Orkeon.Infrastructure.LLMs.KimiLlmProvider.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody) -> bool
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.get -> long
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheHitTokensUsed.set -> void
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.get -> long
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.CacheMissTokensUsed.set -> void
+Orkeon.Infrastructure.Crew.Strategies.CrewGraphState.TaskUsage.get -> System.Collections.Generic.Dictionary<string!, (int Tokens, long CacheHit, long CacheMiss)>!
+Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheHitTokens.get -> long?
+Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheHitTokens.init -> void
+Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheMissTokens.get -> long?
+Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.CacheMissTokens.init -> void

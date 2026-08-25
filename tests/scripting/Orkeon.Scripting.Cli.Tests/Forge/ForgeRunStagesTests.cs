@@ -12,9 +12,22 @@ internal sealed class FakeTestBench : IForgeTestBench
     public int Executions { get; private set; }
 
     /// <summary>Queues a successful run.</summary>
-    public FakeTestBench Succeeds(string output = "Le résumé, sources citées.", long tokens = 500)
+    public FakeTestBench Succeeds(
+        string output = "Le résumé, sources citées.",
+        long tokens = 500,
+        long? cacheHit = null,
+        long? cacheMiss = null)
     {
-        _runs.Enqueue(new ForgeTestRun { Success = true, Output = output, TaskCount = 2, DurationMs = 40, Tokens = tokens });
+        _runs.Enqueue(new ForgeTestRun
+        {
+            Success = true,
+            Output = output,
+            TaskCount = 2,
+            DurationMs = 40,
+            Tokens = tokens,
+            CacheHitTokens = cacheHit,
+            CacheMissTokens = cacheMiss,
+        });
         return this;
     }
 
@@ -164,6 +177,47 @@ public sealed class ForgeRunStagesTests : IDisposable
         var cost = Events().Single(e => e.GetProperty("kind").GetString() == "cost.updated");
         Assert.Equal(500, cost.GetProperty("tokens").GetInt64());
         Assert.False(cost.TryGetProperty("budgetRemaining", out _));
+    }
+
+    [Fact]
+    public async Task The_trial_metrics_travel_on_run_finished_and_verdict_ready()
+    {
+        // W-08: the chips show the RUN's own cost — duration, tokens, the cache partition
+        // — distinct from the session-cumulative cost.updated meter.
+        var bench = new FakeTestBench().Succeeds(tokens: 12_840, cacheHit: 7_980, cacheMiss: 4_020);
+        var judge = new FakeJudge().Approves();
+        var channel = new ScriptedUserChannel().Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var finished = Events().Single(e => e.GetProperty("kind").GetString() == "run.finished");
+        Assert.Equal(40, finished.GetProperty("durationMs").GetInt64());
+        Assert.Equal(12_840, finished.GetProperty("tokens").GetInt64());
+        Assert.Equal(7_980, finished.GetProperty("cacheHitTokens").GetInt64());
+        Assert.Equal(4_020, finished.GetProperty("cacheMissTokens").GetInt64());
+
+        var verdict = Events().Single(e => e.GetProperty("kind").GetString() == "verdict.ready");
+        Assert.Equal(40, verdict.GetProperty("durationMs").GetInt64());
+        Assert.Equal(12_840, verdict.GetProperty("tokens").GetInt64());
+        Assert.Equal(7_980, verdict.GetProperty("cacheHitTokens").GetInt64());
+        Assert.Equal(4_020, verdict.GetProperty("cacheMissTokens").GetInt64());
+    }
+
+    [Fact]
+    public async Task An_unmeasured_cache_stays_null_on_the_wire_never_zero()
+    {
+        var bench = new FakeTestBench().Succeeds(tokens: 500);
+        var judge = new FakeJudge().Approves();
+        var channel = new ScriptedUserChannel().Decides("accept");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, FullRunners(HappyAssistant(), channel, bench, judge))
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var verdict = Events().Single(e => e.GetProperty("kind").GetString() == "verdict.ready");
+        Assert.True(!verdict.TryGetProperty("cacheHitTokens", out var hit) || hit.ValueKind == JsonValueKind.Null);
     }
 
     [Fact]

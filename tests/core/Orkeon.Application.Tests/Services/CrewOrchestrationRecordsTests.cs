@@ -256,6 +256,31 @@ public class CrewOrchestrationRecordsTests
         Assert.Null(status.Error);
     }
 
+    // ══════════════ TokenUsage cache dimension (W-08) ══════════════
+
+    [Fact]
+    public void CacheHitRatio_IsComputedFromTheMeasuredPartition()
+    {
+        var usage = new TokenUsage(PromptTokens: 12_000, CompletionTokens: 840, TotalTokens: 12_840)
+        {
+            CacheHitTokens = 7_980,
+            CacheMissTokens = 4_020,
+        };
+
+        Assert.Equal(0.665, usage.CacheHitRatio!.Value, precision: 3);
+    }
+
+    [Fact]
+    public void CacheHitRatio_IsNullWhenUnmeasured_NeverAFabricatedZero()
+    {
+        var unmeasured = new TokenUsage(100, 50, 150);
+        Assert.Null(unmeasured.CacheHitRatio);
+
+        // A measured pair summing to zero is equally "nothing to ratio".
+        var empty = new TokenUsage(100, 50, 150) { CacheHitTokens = 0, CacheMissTokens = 0 };
+        Assert.Null(empty.CacheHitRatio);
+    }
+
     // ══════════════ ExecutionState enum ══════════════
 
     [Theory]

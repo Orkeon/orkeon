@@ -236,6 +236,9 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
                 Duration = taskResult.ExecutionTime,
                 CompletedAt = DateTimeOffset.UtcNow,
                 ToolCallCount = taskResult.ToolsUsed?.Count ?? 0,
+                TokensUsed = taskResult.TokensUsed,
+                CacheHitTokens = taskResult.CacheHitTokens,
+                CacheMissTokens = taskResult.CacheMissTokens,
             };
             taskSnapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);

@@ -17,6 +17,8 @@ internal sealed class TokenUsageTally
     private int _totalTokens;
     private int _promptTokens;
     private int _completionTokens;
+    private long _cacheHitTokens;
+    private long _cacheMissTokens;
 
     /// <summary>Gets the accumulated total token count.</summary>
     public int TotalTokens => Volatile.Read(ref _totalTokens);
@@ -26,6 +28,12 @@ internal sealed class TokenUsageTally
 
     /// <summary>Gets the accumulated completion-side token count (0 when no provider reported the split).</summary>
     public int CompletionTokens => Volatile.Read(ref _completionTokens);
+
+    /// <summary>Gets the accumulated cache-served prompt tokens (0 when no provider reported cache telemetry).</summary>
+    public long CacheHitTokens => Volatile.Read(ref _cacheHitTokens);
+
+    /// <summary>Gets the accumulated cache-missed prompt tokens (0 when no provider reported cache telemetry).</summary>
+    public long CacheMissTokens => Volatile.Read(ref _cacheMissTokens);
 
     /// <summary>
     /// Records the token telemetry of a single task execution. Safe to call concurrently
@@ -43,6 +51,10 @@ internal sealed class TokenUsageTally
             Interlocked.Add(ref _promptTokens, result.PromptTokens);
         if (result.CompletionTokens > 0)
             Interlocked.Add(ref _completionTokens, result.CompletionTokens);
+        if (result.CacheHitTokens > 0)
+            Interlocked.Add(ref _cacheHitTokens, result.CacheHitTokens);
+        if (result.CacheMissTokens > 0)
+            Interlocked.Add(ref _cacheMissTokens, result.CacheMissTokens);
     }
 
     /// <summary>
@@ -55,7 +67,7 @@ internal sealed class TokenUsageTally
     public CrewMetadata.Builder WriteTo(CrewMetadata.Builder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        return WriteTo(builder, TotalTokens, PromptTokens, CompletionTokens);
+        return WriteTo(builder, TotalTokens, PromptTokens, CompletionTokens, CacheHitTokens, CacheMissTokens);
     }
 
     /// <summary>
@@ -68,11 +80,15 @@ internal sealed class TokenUsageTally
     /// <param name="promptTokens">The measured prompt-side token count (0 = split unavailable).</param>
     /// <param name="completionTokens">The measured completion-side token count (0 = split unavailable).</param>
     /// <returns>The same builder for chaining.</returns>
+    /// <param name="cacheHitTokens">The measured cache-served prompt tokens (0 = cache telemetry unavailable).</param>
+    /// <param name="cacheMissTokens">The measured cache-missed prompt tokens (0 = cache telemetry unavailable).</param>
     public static CrewMetadata.Builder WriteTo(
         CrewMetadata.Builder builder,
         int totalTokens,
         int promptTokens,
-        int completionTokens)
+        int completionTokens,
+        long cacheHitTokens = 0,
+        long cacheMissTokens = 0)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -81,6 +97,14 @@ internal sealed class TokenUsageTally
         {
             builder.AddPromptTokens(promptTokens);
             builder.AddCompletionTokens(completionTokens);
+        }
+
+        // The cache pair partitions the prompt tokens; absent telemetry stays absent —
+        // never written as a measured zero.
+        if (cacheHitTokens > 0 || cacheMissTokens > 0)
+        {
+            builder.AddCacheHitTokens(cacheHitTokens);
+            builder.AddCacheMissTokens(cacheMissTokens);
         }
 
         return builder;

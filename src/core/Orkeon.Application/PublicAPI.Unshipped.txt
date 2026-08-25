@@ -1,1 +1,10 @@
 #nullable enable
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheHitTokens.get -> long?
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheHitTokens.init -> void
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheMissTokens.get -> long?
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheMissTokens.init -> void
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitTokens.get -> long?
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitTokens.init -> void
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheMissTokens.get -> long?
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheMissTokens.init -> void
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitRatio.get -> double?

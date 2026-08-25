@@ -22,6 +22,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
     private readonly bool _stream;
     private readonly string _clientName;
     private RunEventObserver? _observer;
+    private readonly System.Diagnostics.Stopwatch _clock;
 
     // Written once by the IEventHub singleton factory (whatever thread first resolves the
     // hub), read by the command worker: volatile so a command cannot observe a stale null
@@ -47,6 +48,10 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _stream = stream;
         _clientName = clientName;
+
+        // Both call sites construct this right after run.started, so the stopwatch is the
+        // run's wall clock — nothing else measures it for the event stream (W-08).
+        _clock = System.Diagnostics.Stopwatch.StartNew();
 
         // One reader on stdin, routed by kind. Two would race, and BUS-04's channel dropped
         // every line that was not a human answer — including the hub commands.
@@ -196,11 +201,18 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         _finished = true;
         await DisposeCoreAsync().ConfigureAwait(false);
 
+        // W-08: the closing event carries what the run cost — duration, the token split,
+        // and the cache partition of the prompt side (null = not measured, never zero).
         _events.Emit(RunEventKinds.RunFinished, new
         {
             success = exitCode == 0,
             exitCode,
             tokens = _observer?.TokensUsed ?? 0,
+            durationMs = _clock.ElapsedMilliseconds,
+            promptTokens = _observer?.PromptTokens ?? 0,
+            completionTokens = _observer?.CompletionTokens ?? 0,
+            cacheHitTokens = _observer?.CacheHitTokens,
+            cacheMissTokens = _observer?.CacheMissTokens,
         });
 
         return exitCode;

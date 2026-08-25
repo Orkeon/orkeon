@@ -125,6 +125,13 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             foreach (var taskId in crew.Tasks)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                // The loop is sequential, so the tally's delta around one task IS that
+                // task's usage — revision re-executions included (W-08).
+                var tokensBefore = tokenTally.TotalTokens;
+                var cacheHitBefore = tokenTally.CacheHitTokens;
+                var cacheMissBefore = tokenTally.CacheMissTokens;
+
                 var (domainOutput, appOutput, updatedContext) = await ProcessSingleTaskAsync(
                     taskId, workerAgents, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
 
@@ -143,6 +150,9 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                     Duration = domainOutput.ExecutionTime,
                     CompletedAt = DateTimeOffset.UtcNow,
                     ToolCallCount = appOutput.ToolsUsed?.Count ?? 0,
+                    TokensUsed = tokenTally.TotalTokens - tokensBefore,
+                    CacheHitTokens = tokenTally.CacheHitTokens - cacheHitBefore,
+                    CacheMissTokens = tokenTally.CacheMissTokens - cacheMissBefore,
                 };
                 taskSnapshots.Add(snapshot);
                 await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);

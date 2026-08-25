@@ -127,12 +127,23 @@ internal sealed class ChatClientAgentLoop
             // crew run reported zero tokens no matter what it spent.
             if (_usageSink is not null && chatResponse.Usage is { } usage)
             {
+                var counts = usage.AdditionalCounts;
+                long? callHit = counts is not null
+                    && counts.TryGetValue(Application.Common.DTOs.LlmUsageMetadataKeys.CacheHitTokens, out var hitCount)
+                        ? hitCount : null;
+                long? callMiss = counts is not null
+                    && counts.TryGetValue(Application.Common.DTOs.LlmUsageMetadataKeys.CacheMissTokens, out var missCount)
+                        ? missCount : null;
+
                 _usageSink.Record(new Interfaces.Ports.CostUsageEvent
                 {
                     AgentId = agent.Role,
                     Model = chatResponse.ModelId ?? string.Empty,
                     PromptTokens = (int)(usage.InputTokenCount ?? 0),
                     CompletionTokens = (int)(usage.OutputTokenCount ?? 0),
+                    // A partition of PromptTokens — the sink must never add these to totals.
+                    CacheHitTokens = callHit,
+                    CacheMissTokens = callMiss,
                 });
             }
 
