@@ -71,6 +71,31 @@ public sealed record RunTarget
     /// <see cref="RunTargetRequirements.DirectoryRunNotice"/>.
     /// </summary>
     public bool RequiresDirectoryRunSupport => Kind == RunTargetKind.MultiFileCrewDirectory;
+
+    /// <summary>
+    /// The directory the CLI is launched from — always derived from <see cref="SelectedPath"/>,
+    /// never from <see cref="RunPath"/>.
+    /// <para>
+    /// The two are not the same folder any more. Since ADR-008 the detector descends into a
+    /// promoted team's <c>crew/</c>, so <see cref="RunPath"/> points one level below the folder
+    /// the user picked — the folder that holds the sidecar, the <c>appsettings.json</c> and the
+    /// <c>output/</c> the team writes to. Deriving the working directory from
+    /// <see cref="RunPath"/> put the CLI inside <c>crew/</c>, where it found none of them. The
+    /// WPF launcher was corrected and the TUI one was not; one implementation now, so they
+    /// cannot disagree again.
+    /// </para>
+    /// </summary>
+    public string? WorkingDirectory
+    {
+        get
+        {
+            if (Kind is RunTargetKind.MultiFileCrewDirectory or RunTargetKind.ScriptDirectory)
+                return SelectedPath;
+
+            var directory = Path.GetDirectoryName(SelectedPath);
+            return string.IsNullOrEmpty(directory) ? null : directory;
+        }
+    }
 }
 
 /// <summary>Framework prerequisites a detected target may carry, as UI-ready text.</summary>

@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Presets;
@@ -50,6 +51,41 @@ public sealed class ConstantDriftTests
 
         Assert.All(runtime, endpoint =>
             Assert.True(copied.Contains(endpoint), $"LlmEndpoints value '{endpoint}' has no OrkeonCliDefaults copy."));
+    }
+
+    /// <summary>
+    /// Every cloud endpoint Studio copies is one the detector recognises.
+    /// <para>
+    /// The neighbouring test asserts the constant was <i>copied</i>, and its own comment says
+    /// a missing copy "would silently be detected as 'custom'". That is the property one step
+    /// away from the one that matters: <c>OrkeonCliDefaults.Gemini</c> was copied, was pinned
+    /// by that test, and <c>LlmProviderDetector</c> never registered it — so Studio reported
+    /// "custom" for the endpoint its own preset catalogue writes, with a green drift suite.
+    /// Ask the detector.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Every_copied_cloud_endpoint_is_recognised_by_the_detector()
+    {
+        // Local endpoints are told apart by port and path, not by host, and are covered by
+        // LlmProviderDetectorTests; vector stores are not LLM endpoints at all.
+        string[] notCloudLlmEndpoints =
+        [
+            LlmEndpoints.ChromaDbDefault,
+            LlmEndpoints.RedisDefault,
+            LlmEndpoints.OllamaDefault,
+        ];
+
+        var cloudEndpoints = ConstantValuesOf(typeof(LlmEndpoints))
+            .Except(notCloudLlmEndpoints, StringComparer.Ordinal)
+            .Where(value => Uri.TryCreate(value, UriKind.Absolute, out var uri) && !uri.IsLoopback)
+            .ToList();
+
+        Assert.NotEmpty(cloudEndpoints);
+        Assert.All(cloudEndpoints, endpoint =>
+            Assert.True(
+                LlmProviderDetector.Detect(endpoint) != LlmProviderDetector.Custom,
+                $"LlmProviderDetector reports 'custom' for '{endpoint}' — an endpoint Orkeon itself writes."));
     }
 
     [Fact]

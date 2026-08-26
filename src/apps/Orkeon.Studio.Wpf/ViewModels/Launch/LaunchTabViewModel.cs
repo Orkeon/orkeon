@@ -546,10 +546,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         }
     }
 
-    private static string? GetWorkingDirectory(RunTarget target) =>
-        target.Kind is RunTargetKind.MultiFileCrewDirectory or RunTargetKind.ScriptDirectory
-            ? target.SelectedPath
-            : System.IO.Path.GetDirectoryName(target.SelectedPath);
+    private static string? GetWorkingDirectory(RunTarget target) => target.WorkingDirectory;
 
     /// <summary>Raised after a real (non-dry) run landed in the history.</summary>
     public event EventHandler? RunRecorded;

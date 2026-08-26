@@ -415,6 +415,70 @@ public sealed class ForgePromoteTests : IDisposable
     }
 
     /// <summary>
+    /// A team whose agents read files carries a folder to read from.
+    /// <para>
+    /// The trial bench mounts the CLI's working directory as <c>/workspace:ro</c>, the
+    /// Composer shows the chip, and nothing carried it into adoption: a <c>file_read</c> team
+    /// passed its trial and could then read nothing — the mirror of the missing
+    /// <c>/output</c>. It is a folder INSIDE the team, not the team's root, because
+    /// <c>--with-settings</c> puts an <c>appsettings.json</c> holding API keys at that root.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_reading_team_carries_an_input_folder_mounted_read_only()
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
+            """
+            {"crew":{"name":"veille"},
+             "agents":[{"key":"l","role":"Lecteur","goal":"Lire","tools":["file_read","file_write"]}],
+             "tasks":[{"key":"t1","description":"d","expectedOutput":"e","agent":"l","deliverable":"/output/r.md"}]}
+            """));
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        Assert.True(Directory.Exists(Path.Combine(Destination, "input")));
+
+        var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
+        Assert.Contains("\\\"$DIR/input\\\":/workspace:ro", posix, StringComparison.Ordinal);
+        Assert.Contains("\\\"$DIR/output\\\":/output:rw", posix, StringComparison.Ordinal);
+        Assert.Equal(1, posix.Split("--mount").Length - 1);
+
+        // The team's own root is NOT mounted: an appsettings.json there holds API keys.
+        Assert.DoesNotContain(":/workspace:ro\"\n", posix.Replace("$DIR/input", "X", StringComparison.Ordinal), StringComparison.Ordinal);
+
+        var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
+        // The brief of this fixture is French, so the card is too.
+        Assert.Contains("`/workspace` lecture → `input/`", card, StringComparison.Ordinal);
+        Assert.Contains("hors de portée des agents", card, StringComparison.Ordinal);
+    }
+
+    /// <summary>A team that reads nothing carries no input folder and no read mount.</summary>
+    [Fact]
+    public void A_team_that_reads_nothing_carries_no_input_folder()
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
+            """
+            {"crew":{"name":"veille"},
+             "agents":[{"key":"w","role":"Writer","goal":"Écrire","tools":["file_write"]}],
+             "tasks":[{"key":"t1","description":"d","expectedOutput":"e","agent":"w","deliverable":"/output/r.md"}]}
+            """));
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        Assert.False(Directory.Exists(Path.Combine(Destination, "input")));
+        Assert.DoesNotContain(
+            "/workspace",
+            File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName)),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The launcher's <c>--mount</c>, run through a real shell and parsed by the grammar that
     /// receives it, from a folder whose name carries the separator.
     /// <para>

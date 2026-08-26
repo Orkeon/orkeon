@@ -619,6 +619,89 @@ public class CreateTeamWizardTests
         var chosen = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
         Assert.StartsWith(Path.Combine("/data", "sorties"), chosen, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// A team whose agents read files is adopted with somewhere to read from.
+    /// <para>
+    /// The Composer shows a <c>/workspace</c> (read) chip for any blueprint naming
+    /// <c>file_read</c> — the trial bench really does mount it — and adoption dropped it:
+    /// only the write roots were bound. So a reading team passed its trial and could then
+    /// read nothing, the exact mirror of the missing <c>/output</c>. It binds to
+    /// <c>input/</c> inside the team rather than to the team's root, because
+    /// <c>--with-settings</c> puts an <c>appsettings.json</c> holding API keys at that root.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Adoption_records_a_read_folder_when_the_blueprint_reads()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read","file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"/output/rapport.md"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.Contains(vm.DerivedMounts, m => m.VirtualPath == "/workspace" && !m.IsReadWrite);
+
+        var teamDirectory = Path.Combine("/teams", "veille");
+        var mounts = vm.WithDerivedWriteMounts(teamDirectory);
+
+        var read = Assert.Single(mounts, m => m.EndsWith(":/workspace:ro", StringComparison.Ordinal));
+        Assert.StartsWith(Path.Combine(teamDirectory, "input"), read, StringComparison.Ordinal);
+        Assert.Contains(mounts, m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// One chip per virtual root: a root the user allowed a folder for is shown as the
+    /// removable chip that wins at save, not also as an informative derived chip.
+    /// <para>
+    /// Both lists used to render <c>/output</c>, so the same root appeared twice — and
+    /// removing the removable one changed nothing at save, because the derived binding took
+    /// its place silently. The screen now says what the save will do: remove the explicit
+    /// chip and the derived one comes back, visibly.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_root_the_user_claimed_is_shown_once_and_its_removal_is_visible()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"/output/rapport.md"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+
+        // Nothing claimed yet: the derived chip carries the information.
+        Assert.Contains(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/output");
+        Assert.Empty(vm.TeamMountChips);
+
+        var chosen = new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = Path.Combine("/data", "sorties"),
+            VirtualPath = "/output",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite,
+        };
+        vm.AddTeamMount(chosen);
+
+        // Claimed: one chip, the removable one.
+        Assert.Single(vm.TeamMountChips);
+        Assert.DoesNotContain(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/output");
+
+        vm.RemoveTeamMountCommand.Execute(chosen.ToMountString());
+
+        // Removed: the derived chip is back on screen, which is exactly what the save records.
+        Assert.Empty(vm.TeamMountChips);
+        Assert.Contains(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/output");
+        Assert.Contains(
+            vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille")),
+            m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
+    }
 }
 
 /// <summary>A question asked while the engine is not listening must not vanish silently.</summary>

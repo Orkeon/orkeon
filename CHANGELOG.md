@@ -231,6 +231,42 @@ they are an opt-in toolkit a host applies, as
 too. And `asyncExecution:` is documented for what it is: recorded on the task,
 honoured by no orchestration mode.
 
+### Fixed — Studio, and the team it hands over
+
+**An adopted team can now read, too.** The trial bench mounts `/workspace` and
+the Composer shows the chip; nothing carried it into adoption, so a team whose
+agents use `file_read` passed its trial and could then read nothing — the exact
+mirror of the missing `/output`. `forge promote` and Studio now bind it to an
+`input/` folder **inside** the team, and FORGE.md says to drop the readable
+files there. Not the team's own root: `--with-settings` puts an
+`appsettings.json` holding API keys at that root, and a read mount over it would
+hand them to any agent with a file tool.
+
+**One chip per virtual root.** A root the user allowed a folder for was rendered
+twice — once as a removable chip, once as an informative derived one — and
+removing the removable one changed nothing at save, because the derived binding
+silently took its place. The derived list now shows only the roots no explicit
+choice claims, so removing a chip brings the derived one visibly back: the
+screen says what the save will do. The `DerivedMounts` documentation claimed
+"the sidecar never records them", which was false and was the root of the
+confusion.
+
+**Studio's TUI launcher started the CLI in the wrong folder.** It derived the
+working directory from `RunPath`, correct only while that path's parent was the
+folder the user picked — and the ADR-008 detector change made `RunPath` descend
+into a promoted team's `crew/`. The fix had landed in the WPF launcher alone.
+Both now read `RunTarget.WorkingDirectory`.
+
+**Studio reported "custom" for Gemini** — the endpoint its own preset catalogue
+writes. The drift test guarding the pair asserted the constant had been *copied*,
+not that the detector recognised it; it now asks the detector.
+
+**Studio's blueprint→mount derivation gained the guards the CLI's copy has.** A
+deliverable naming a reserved root (`/crew`, `/script`, `/llm-logs`) or a
+traversal segment reached an adopted team's sidecar through Studio and nowhere
+else, producing a team Studio could launch and the runner refused at start.
+`ForgeDerivedMountTests` pins the pair.
+
 ## [1.0.0-rc.2] - 2026-08-25
 
 ### Added — Remediation v3: what a run costs, and adoption that is no longer a one-way door

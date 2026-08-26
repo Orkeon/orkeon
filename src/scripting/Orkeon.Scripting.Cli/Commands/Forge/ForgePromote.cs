@@ -187,10 +187,11 @@ internal static class ForgePromoter
         var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName);
         var verdict = session.TryLoadArtifact<ForgeVerdict>("verdict.json");
 
-        // The folders the crew writes to. The trial bench mounted /output; nothing else did,
-        // so a promoted team used to run "successfully" and write nothing at all. The
-        // launchers now carry the mounts the blueprint asks for, and the folders exist
-        // before the first launch — an absent mount base path is fatal at host build.
+        // The folders the crew reads and writes. The trial bench mounted /output and
+        // /workspace; nothing else did, so a promoted team used to run "successfully",
+        // write nothing at all and read nothing at all. The launchers now carry the mounts
+        // the blueprint asks for, and the folders exist before the first launch — an absent
+        // mount base path is fatal at host build.
         var writeMounts = DeliverableMounts(session);
         foreach (var mount in writeMounts)
             Directory.CreateDirectory(Path.Combine(destination, mount.Folder));
@@ -259,9 +260,13 @@ internal static class ForgePromoter
         string Anchored(string relative) => posix ? $"\"$DIR/{relative}\"" : $"\"%~dp0{relative}\"";
         // One shell-quoted token carrying the whole spec, with the mount grammar's own
         // quotes (\" survives both shells as a literal '"') around the physical segment.
-        string GrammarQuotedMount(string relative, string virtualRoot) => posix
-            ? $"\"\\\"$DIR/{relative}\\\":{virtualRoot}:rw\""
-            : $"\"\\\"%~dp0{relative}\\\":{virtualRoot}:rw\"";
+        string GrammarQuotedMount(string relative, string virtualRoot, bool readOnly)
+        {
+            var rights = readOnly ? "ro" : "rw";
+            return posix
+                ? $"\"\\\"$DIR/{relative}\\\":{virtualRoot}:{rights}\""
+                : $"\"\\\"%~dp0{relative}\\\":{virtualRoot}:{rights}\"";
+        }
         string Literal(string value) => posix ? ShQuote(value) : CmdQuote(value);
 
         var script = ForgeSession.IsScriptFormat(session.Document.Format);
@@ -285,7 +290,7 @@ internal static class ForgePromoter
         // own --mount handles it.
         if (writeMounts.Count > 0)
         {
-            var specs = writeMounts.Select(m => GrammarQuotedMount(m.Folder, m.VirtualRoot));
+            var specs = writeMounts.Select(m => GrammarQuotedMount(m.Folder, m.VirtualRoot, m.ReadOnly));
             segments.Add($"--mount {string.Join(' ', specs)}");
         }
 
@@ -316,7 +321,28 @@ internal static class ForgePromoter
     /// </summary>
     /// <param name="VirtualRoot">The root the agents address, e.g. <c>/output</c>.</param>
     /// <param name="Folder">Its folder inside the promoted directory, e.g. <c>output</c>.</param>
-    private sealed record DeliverableMount(string VirtualRoot, string Folder);
+    /// <param name="ReadOnly">Whether the team only reads it (the <c>/workspace</c> input folder).</param>
+    private sealed record DeliverableMount(string VirtualRoot, string Folder, bool ReadOnly = false);
+
+    /// <summary>
+    /// The virtual root a reading team reads from, and the folder inside the team that backs it.
+    /// <para>
+    /// The trial bench mounts the CLI's working directory as <c>/workspace:ro</c>, and nothing
+    /// carried that into adoption: a team whose agents use <c>file_read</c> passed its trial
+    /// and then could read nothing at all — the same shape as the missing <c>/output</c>, on
+    /// the other side. The same rule, evaluated where the team now lives, would be the team's
+    /// own folder; it is a folder INSIDE it instead, because <c>--with-settings</c> puts an
+    /// <c>appsettings.json</c> holding API keys at that root and a read mount over it would
+    /// hand them to any agent with a file tool.
+    /// </para>
+    /// </summary>
+    private const string ReadVirtualRoot = "/workspace";
+
+    /// <summary>Folder inside the promoted team backing <see cref="ReadVirtualRoot"/>.</summary>
+    private const string ReadFolderName = "input";
+
+    /// <summary>Tools whose presence means the team expects something to read.</summary>
+    private static readonly string[] ReadingTools = ["file_read", "directory_read"];
 
     /// <summary>The virtual roots the runners mount for themselves — never a deliverable's.</summary>
     private static readonly string[] ReservedVirtualRoots =
@@ -336,6 +362,10 @@ internal static class ForgePromoter
     {
         var blueprint = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
         var roots = new List<DeliverableMount>();
+
+        // Read first, so the chips and the command line list it the way the Composer does.
+        if ((blueprint?.Agents ?? []).Any(a => (a.Tools ?? []).Intersect(ReadingTools, StringComparer.Ordinal).Any()))
+            roots.Add(new DeliverableMount(ReadVirtualRoot, ReadFolderName, ReadOnly: true));
 
         foreach (var task in blueprint?.Tasks ?? [])
         {
@@ -602,7 +632,15 @@ internal static class ForgePromoter
             card.AppendLine();
             foreach (var mount in writeMounts)
                 card.AppendLine(CultureInfo.InvariantCulture,
-                    $"- `{mount.VirtualRoot}` {L("écriture", "write")} → `{mount.Folder}/`");
+                    $"- `{mount.VirtualRoot}` {(mount.ReadOnly ? L("lecture", "read") : L("écriture", "write"))} → `{mount.Folder}/`");
+
+            if (writeMounts.Any(m => m.ReadOnly))
+            {
+                card.AppendLine();
+                card.AppendLine(fr
+                    ? $"Déposez dans `{ReadFolderName}/` ce que l'équipe doit lire. C'est le seul dossier qu'elle lit : la racine de l'équipe n'est pas montée, pour que l'`{SettingsFileName}` qui peut s'y trouver reste hors de portée des agents."
+                    : $"Drop what the team should read into `{ReadFolderName}/`. It is the only folder it reads: the team's root is not mounted, so the `{SettingsFileName}` that may sit there stays out of the agents' reach.");
+            }
         }
 
         if (schedule is not null)

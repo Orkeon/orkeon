@@ -180,7 +180,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             }
         });
         RemoveTeamMountCommand = new RelayCommand(
-            parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips)); } },
+            parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips), nameof(UnclaimedDerivedMounts), nameof(HasDerivedMounts)); } },
             parameter => parameter is string);
         ComposeNotes = new StepNotesViewModel(AskAssistant);
         TryNotes = new StepNotesViewModel(AskAssistant);
@@ -511,13 +511,35 @@ public sealed class CreateTeamViewModel : ObservableObject
     public bool HasTeamMounts => TeamMounts.Count > 0;
 
     /// <summary>
-    /// The mounts the blueprint itself implies (v3 W-04) — informative chips, not
-    /// removable: they change by editing an agent, and the sidecar never records them.
+    /// The mounts the blueprint itself implies (v3 W-04) — not removable: they change by
+    /// editing an agent. They ARE recorded in the sidecar at adoption
+    /// (<see cref="WithDerivedWriteMounts"/>), bound to folders inside the team: this doc
+    /// used to say the opposite, which is how removing an explicit <c>/output</c> chip could
+    /// look like a choice and be undone at save without a word.
     /// </summary>
     public IReadOnlyList<ForgeDerivedMount> DerivedMounts => _model.DerivedMounts;
 
-    /// <summary>Whether the blueprint implies any mount.</summary>
-    public bool HasDerivedMounts => _model.DerivedMounts.Count > 0;
+    /// <summary>
+    /// The derived mounts the screen still has something to say about: the ones no explicit
+    /// « Autoriser un dossier » already claims. A root claimed by the user is shown once, as
+    /// the removable chip that will win at save — showing it twice invited the user to
+    /// remove one of the two and watch the other quietly take its place.
+    /// </summary>
+    public IReadOnlyList<ForgeDerivedMount> UnclaimedDerivedMounts
+    {
+        get
+        {
+            var claimed = TeamMounts
+                .Select(m => MountDefinition.TryParse(m, out var parsed, out _) ? parsed?.VirtualPath : null)
+                .Where(virtualPath => virtualPath is not null)
+                .ToHashSet(StringComparer.Ordinal);
+
+            return [.. _model.DerivedMounts.Where(d => !claimed.Contains(d.VirtualPath))];
+        }
+    }
+
+    /// <summary>Whether the blueprint implies any mount the user has not claimed itself.</summary>
+    public bool HasDerivedMounts => UnclaimedDerivedMounts.Count > 0;
 
     /// <summary>« Ajouter un agent ».</summary>
     public RelayCommand AddAgentCommand { get; }
@@ -542,6 +564,14 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// virtual root wins — an explicit choice beats a derived one.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Folder inside an adopted team backing the derived read mount. It is the folder
+    /// <c>forge promote</c> creates — Studio adopts by running that very command, so the
+    /// name has to match it, and Studio.Wpf cannot reference the CLI to prove it: both
+    /// suites assert the literal instead (<c>ForgePromoteTests</c>, <c>CreateTeamWizardTests</c>).
+    /// </summary>
+    internal const string ReadFolderName = "input";
+
     internal List<string> WithDerivedWriteMounts(string teamDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
@@ -552,16 +582,22 @@ public sealed class CreateTeamViewModel : ObservableObject
             .Where(virtualPath => virtualPath is not null)
             .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var derived in DerivedMounts.Where(d => d.IsReadWrite))
+        foreach (var derived in DerivedMounts)
         {
             if (!claimed.Add(derived.VirtualPath))
                 continue;
 
+            // The read mount lands on `input/`, not on the team's root — `forge promote`
+            // binds it the same way, and for the same reason: an appsettings.json copied
+            // into the team holds API keys, and a read mount over the root would hand them
+            // to any agent with a file tool.
+            var folder = derived.IsReadWrite ? derived.VirtualPath.TrimStart('/') : ReadFolderName;
+
             mounts.Add(new MountDefinition
             {
-                PhysicalPath = System.IO.Path.Combine(teamDirectory, derived.VirtualPath.TrimStart('/')),
+                PhysicalPath = System.IO.Path.Combine(teamDirectory, folder),
                 VirtualPath = derived.VirtualPath,
-                Rights = MountRights.ReadWrite,
+                Rights = derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly,
             }.ToMountString());
         }
 
@@ -573,7 +609,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(mount);
         TeamMounts.Add(mount.ToMountString());
-        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips));
+        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips), nameof(UnclaimedDerivedMounts), nameof(HasDerivedMounts));
     }
 
     /// <summary>
@@ -940,7 +976,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         SeedSchedule(team.Schedule);
         foreach (var mount in team.Mounts)
             TeamMounts.Add(mount);
-        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips));
+        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips), nameof(UnclaimedDerivedMounts), nameof(HasDerivedMounts));
 
         MaxStep = 4;
         Step = 2;
@@ -1198,7 +1234,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         // A new session starts from a clean slate: the previous team's folders were
         // approved for THAT team, never for the next one; the old engine command lies.
         TeamMounts.Clear();
-        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips));
+        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips), nameof(UnclaimedDerivedMounts), nameof(HasDerivedMounts));
         _reopenedTeamPath = null;
         _autoRetryPending = false;
         EngineCommandLine = null;

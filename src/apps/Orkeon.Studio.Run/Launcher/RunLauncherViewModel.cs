@@ -257,19 +257,18 @@ internal sealed class RunLauncherViewModel
         Target.Target ?? throw new InvalidOperationException(
             "No crew is selected: pick a .yaml/.ork.ts file or a crew directory first.");
 
-    private static string? DirectoryOf(RunTarget? target)
-    {
-        if (target is null)
-            return null;
-
-        // A directory target runs from itself; a file target runs from the directory holding it,
-        // which is also where the CLI starts looking for an appsettings.json.
-        if (target.RunPath == target.SelectedPath && target.Kind is RunTargetKind.MultiFileCrewDirectory)
-            return target.RunPath;
-
-        var directory = Path.GetDirectoryName(target.RunPath);
-        return string.IsNullOrEmpty(directory) ? null : directory;
-    }
+    /// <summary>
+    /// The directory the CLI is launched from — <see cref="RunTarget.WorkingDirectory"/>, the
+    /// same rule the WPF launcher uses.
+    /// <para>
+    /// This used to derive it from <c>RunPath</c>, which was correct only while the run path's
+    /// parent was the folder the user picked. The ADR-008 detector change made <c>RunPath</c>
+    /// descend into a promoted team's <c>crew/</c>, and the fix landed in the WPF launcher
+    /// alone: the TUI kept starting the CLI inside <c>crew/</c>, where the sidecar, the
+    /// appsettings and the team's own output folder are not.
+    /// </para>
+    /// </summary>
+    private static string? DirectoryOf(RunTarget? target) => target?.WorkingDirectory;
 
     private static LaunchHistoryFileStore? TryCreateHistoryStore() =>
         LaunchHistoryFileStore.TryGetDefaultPath(out var path, out _)

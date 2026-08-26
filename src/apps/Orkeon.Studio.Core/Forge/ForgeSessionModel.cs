@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.Events;
+using Orkeon.Studio.Core.FileSystem;
 using System.Text.Json;
 
 namespace Orkeon.Studio.Core.Forge;
@@ -466,6 +467,13 @@ public sealed class ForgeSessionModel
     /// read mount (<c>/workspace</c>); each task deliverable implies its root as a write
     /// mount (<c>/output/x.md</c> → <c>/output</c>). Nothing is invented beyond what the
     /// trial bench itself mounts.
+    /// <para>
+    /// The same derivation as <c>ForgePromoter.DeliverableMounts</c> on the CLI side, and it
+    /// has to stay the same: these mounts are not only chips — <c>WithDerivedWriteMounts</c>
+    /// writes them into an adopted team's sidecar, so a root refused by the CLI's copy and
+    /// accepted here produces a team Studio can launch and the runner refuses. The guards
+    /// below arrived on the CLI copy alone; <c>ForgeDerivedMountTests</c> now pins the pair.
+    /// </para>
     /// </summary>
     private static List<ForgeDerivedMount> DeriveMounts(IReadOnlyList<string> tools, JsonElement blueprint)
     {
@@ -487,7 +495,26 @@ public sealed class ForgeSessionModel
 
                 var slash = deliverable.IndexOf('/', 1);
                 var root = slash > 1 ? deliverable[..slash] : deliverable;
-                if (root.Length > 1 && !mounts.Any(m => m.IsReadWrite && string.Equals(m.VirtualPath, root, StringComparison.Ordinal)))
+                if (root.Length <= 1)
+                    continue;
+
+                // A deliverable root is a single segment by construction; anything else would
+                // put the team's own files outside its folder. The blueprint is LLM-authored,
+                // so '..' and '.' are refused explicitly rather than trusted to be absent.
+                var folder = root[1..];
+                if (folder.Contains('/', StringComparison.Ordinal)
+                    || folder.Contains('\\', StringComparison.Ordinal)
+                    || folder is "." or "..")
+                {
+                    continue;
+                }
+
+                // A root the runner keeps for itself would make the adopted team unlaunchable:
+                // the very --mount Studio spells is refused at start (ADR-008, decision 5).
+                if (MountDefinition.IsReservedVirtualPath(root))
+                    continue;
+
+                if (!mounts.Any(m => m.IsReadWrite && string.Equals(m.VirtualPath, root, StringComparison.Ordinal)))
                     mounts.Add(new ForgeDerivedMount(root, IsReadWrite: true));
             }
         }

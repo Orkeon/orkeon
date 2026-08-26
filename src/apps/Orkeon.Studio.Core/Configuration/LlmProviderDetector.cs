@@ -88,6 +88,9 @@ public static class LlmProviderDetector
         Add(OrkeonCliDefaults.HuggingFace, "huggingface");
         Add(OrkeonCliDefaults.Mistral, "mistral");
         Add(OrkeonCliDefaults.Zai, "zai");
+        // Gemini's OpenAI-compatible host. Missing until now, so Studio reported "custom" for
+        // the endpoint its own preset catalogue writes — the runtime maps it to "gemini".
+        Add(OrkeonCliDefaults.Gemini, "gemini");
 
         // The mainland-China Moonshot twin, documented on LlmEndpoints.Kimi.
         hosts[OrkeonCliDefaults.KimiChinaHost] = "kimi";
