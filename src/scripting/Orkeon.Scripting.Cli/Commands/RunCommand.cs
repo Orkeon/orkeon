@@ -37,9 +37,13 @@ internal sealed class RunCommandOptions
             HelpText = "Path to appsettings.json (defaults to same dir as script).")]
         public string? SettingsPath { get; set; }
 
-        /// <summary>Repeatable mount strings in Docker-style format.</summary>
+        /// <summary>
+        /// Mount strings in Docker-style format. Several go space-separated after ONE flag —
+        /// the parser answers RepeatedOptionError to a repeated option (OptionGrammarTests).
+        /// </summary>
         [Option('m', "mount", Required = false,
-            HelpText = "File system mount(s) in Docker-style format: <physical>:<virtual>:<rights>[;sub:rights]. Repeatable.")]
+            HelpText = "File system mount(s) in Docker-style format: <physical>:<virtual>:<rights>[;sub:rights]. "
+                       + "Several mounts go space-separated after ONE --mount (the flag cannot be repeated).")]
         public IEnumerable<string> Mounts { get; set; } = [];
 
         /// <summary>Allow mounts whose base path is outside the cwd.</summary>
@@ -94,7 +98,9 @@ internal sealed class RunCommandOptions
         /// which receives structured inputs via <c>--inputs</c>/<c>--inputs-file</c> instead.
         /// </summary>
         [Option('V', "var", Required = false,
-            HelpText = "Variable for a YAML crew's CrewInput (KEY=VALUE). Repeatable. Used by task templates: {KEY} → VALUE. Ignored for .ork.ts scripts.")]
+            HelpText = "Variable for a YAML crew's CrewInput (KEY=VALUE). Several variables go space-separated "
+                       + "after ONE --var (the flag cannot be repeated). Used by task templates: {KEY} → VALUE. "
+                       + "Ignored for .ork.ts scripts.")]
         public IEnumerable<string> Variables { get; set; } = [];
 
         /// <summary>Initial context string passed to <c>CrewInput</c> — YAML crews only.</summary>

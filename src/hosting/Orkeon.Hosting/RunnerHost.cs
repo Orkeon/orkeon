@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
@@ -421,8 +422,11 @@ public static partial class RunnerHost
         // host build by WarnIfLlmNotConfigured (no logger exists yet at this point).
         if (!llmSection.Exists()) return;
 
+        // The one default, not a literal: LlmConfig, AgentBuilder and Studio's presets all
+        // read LlmDefaults.DefaultModelName, so a hardcoded model here gave an appsettings
+        // whose Llm section omits Model a different model from every other entry point.
         var llmConfig = LlmConfig.Create(
-            llmSection["Model"] ?? "gpt-4") with
+            llmSection["Model"] ?? LlmDefaults.DefaultModelName) with
         {
             BaseUrl = llmSection["BaseUrl"] is { } llmBaseUrl ? new Uri(llmBaseUrl) : null,
 #pragma warning disable CS0618

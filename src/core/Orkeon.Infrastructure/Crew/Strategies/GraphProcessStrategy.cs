@@ -339,7 +339,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             return state;
         }
 
-        var agent = SelectAgent(task, state.Agents, state.AgentIndex);
+        var agent = TaskAgentSelection.ForTask(task, state.Agents, state.AgentIndex);
         state.AgentIndex++;
 
         var executionResult = await RunTaskAsync(state, task, agent, ct).ConfigureAwait(false);
@@ -484,16 +484,6 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         return plannedTasks.Count > 0
             ? plannedTasks.Select(pt => pt.TaskId)
             : crew.Tasks;
-    }
-
-    private static DomainAgent SelectAgent(
-        Orkeon.Domain.Task.CrewTask task,
-        IReadOnlyList<DomainAgent> agents,
-        int agentIndex)
-    {
-        return task.AssignedAgent != null
-            ? agents.FirstOrDefault(a => a.Id == task.AssignedAgent) ?? agents[agentIndex % agents.Count]
-            : agents[agentIndex % agents.Count];
     }
 
     private static string GetRawOutput(TaskResult result)

@@ -307,11 +307,27 @@ public sealed class ParallelProcessStrategyTests : IDisposable
             description: Orkeon.Domain.Task.ValueObjects.TaskDescription.From("Task 3"),
             expectedOutput: ExpectedOutput.From("Output 3"));
 
+        // The assignments are deliberately the OPPOSITE of what round-robin produces
+        // (which would be task1→agent1, task2→agent2, task3→agent1): otherwise the
+        // assertion below cannot tell an honoured `agent:` from a lucky loop index.
+        // The agents' OWN ids — the dictionary keys above are the repository's lookup keys and
+        // are not the ids AgentBuilder generated, so assigning by key would silently miss and
+        // fall through to round-robin, which is precisely what this test must be able to see.
+        task1.AssignTo(agent2.Id);
+        task2.AssignTo(agent1.Id);
+
         var taskRepo = new TaskRepositoryWithData(new Dictionary<TaskId, Orkeon.Domain.Task.CrewTask>
         {
             [task1Id] = task1,
             [task2Id] = task2,
             [task3Id] = task3
+        });
+
+        var ran = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+        _mockExecutionService.SetExecuteFunc((agent, task, _, _) =>
+        {
+            ran[task.Description.Value] = agent.Role;
+            return new TaskResult(true, "ok", null, Array.Empty<Orkeon.Domain.Tools.ToolUsage>(), TimeSpan.FromMilliseconds(1));
         });
 
         var agentRepo = new AgentRepositoryWithData(new Dictionary<AgentId, DomainAgent>
@@ -343,6 +359,14 @@ public sealed class ParallelProcessStrategyTests : IDisposable
         Assert.Equal(3, result.TaskOutputs.Count);
         Assert.True(_logger.HasLoggedDebug("Starting parallel execution of task"));
         Assert.True(_logger.HasLoggedDebug("Completed parallel execution of task"));
+
+        // The assertion this test's NAME always promised: who ran what. Without it the test
+        // passed while Parallel — alone among the five modes — ignored `agent:` entirely and
+        // handed every task to whichever agent the loop index landed on.
+        Assert.Equal(agent2.Role, ran["Task 1"]);
+        Assert.Equal(agent1.Role, ran["Task 2"]);
+        // Task 3 declares nothing, so it keeps its round-robin slot.
+        Assert.Equal(agent1.Role, ran["Task 3"]);
     }
 
     [Fact]

@@ -139,9 +139,10 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 continue;
             }
 
-            // Assign agent round-robin
-            var agent = agents[taskIndex % agents.Count];
-            taskIndex++;
+            // The agent the crew declared, round-robin only when it declared none — the same
+            // choice Sequential and Graph make. This mode used to take loop order alone, so a
+            // YAML `agent:` was silently ignored in parallel mode and nowhere else.
+            var agent = TaskAgentSelection.ForTask(task, agents, ref taskIndex);
 
             cancellationToken.ThrowIfCancellationRequested();
 

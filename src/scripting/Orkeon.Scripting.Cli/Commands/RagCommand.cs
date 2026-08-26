@@ -24,9 +24,10 @@ internal abstract class RagCommandOptionsBase
         HelpText = "Path to appsettings.json (defaults to the current directory's resolution chain).")]
     public string? SettingsPath { get; set; }
 
-    /// <summary>Repeatable mount strings in Docker-style format.</summary>
+    /// <summary>Mount strings in Docker-style format; several go space-separated after ONE flag.</summary>
     [Option('m', "mount", Required = false,
-        HelpText = "File system mount(s) in Docker-style format: <physical>:<virtual>:<rights>. Repeatable. " +
+        HelpText = "File system mount(s) in Docker-style format: <physical>:<virtual>:<rights>. " +
+                   "Several mounts go space-separated after ONE --mount (the flag cannot be repeated). " +
                    "The current directory is auto-mounted at /workspace (ro) and ./.orkeon at /output (rw) unless overridden.")]
     public IEnumerable<string> Mounts { get; set; } = [];
 
@@ -62,9 +63,10 @@ internal sealed class RagIngestCommandOptions : RagCommandOptionsBase
     [Option('c', "collection", Required = true, HelpText = "Target collection in the document store.")]
     public string Collection { get; set; } = string.Empty;
 
-    /// <summary>Repeatable source paths and/or glob patterns.</summary>
+    /// <summary>Source paths and/or glob patterns; several go space-separated after ONE flag.</summary>
     [Option("source", Required = true,
-        HelpText = "Source path or glob pattern (e.g. \"./docs/**/*.md\"). Repeatable. Globs are resolved through the virtual file system.")]
+        HelpText = "Source path or glob pattern (e.g. \"./docs/**/*.md\"). Several sources go space-separated " +
+                   "after ONE --source (the flag cannot be repeated). Globs are resolved through the virtual file system.")]
     public IEnumerable<string> Sources { get; set; } = [];
 
     /// <summary>Optional chunking strategy name.</summary>

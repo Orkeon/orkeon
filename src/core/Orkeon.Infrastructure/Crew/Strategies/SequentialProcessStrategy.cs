@@ -142,7 +142,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     continue;
                 }
 
-                var agent = SelectAgent(task, agents, ref agentIndex);
+                var agent = TaskAgentSelection.ForTask(task, agents, ref agentIndex);
 
                 Orkeon.Application.Interfaces.Services.TaskResult taskResult;
                 (context, var taskSnapshot, taskResult) = await ExecuteSingleTaskAsync(
@@ -286,18 +286,6 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         return plannedTasks.Count > 0
             ? plannedTasks.Select(pt => pt.TaskId)
             : crew.Tasks;
-    }
-
-    private static DomainAgent SelectAgent(
-        Orkeon.Domain.Task.CrewTask task,
-        List<DomainAgent> agents,
-        ref int agentIndex)
-    {
-        var agent = task.AssignedAgent != null
-            ? agents.FirstOrDefault(a => a.Id == task.AssignedAgent) ?? agents[agentIndex % agents.Count]
-            : agents[agentIndex % agents.Count];
-        agentIndex++;
-        return agent;
     }
 
     private static string GetRawOutput(Orkeon.Application.Interfaces.Services.TaskResult result)
