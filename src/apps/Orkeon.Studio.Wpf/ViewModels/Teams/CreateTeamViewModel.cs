@@ -9,6 +9,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
+using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -501,18 +502,10 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// </summary>
     public IReadOnlyList<TeamMountChip> TeamMountChips =>
         [.. TeamMounts.Select(mountString =>
-            MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null
-                ? new TeamMountChip(
-                    string.Format(
-                        CultureInfo.CurrentCulture,
-                        _strings[mount.Rights == MountRights.ReadOnly
-                            ? StudioStringKeys.TeamsMountRo
-                            : StudioStringKeys.TeamsMountRw],
-                        mount.VirtualPath),
-                    mount.Rights != MountRights.ReadOnly,
-                    mountString)
-                : new TeamMountChip(
-                    _strings[StudioStringKeys.TeamsMountUnreadable], IsReadWrite: false, mountString))];
+        {
+            var (label, readWrite) = MountLabels.Describe(mountString, _strings);
+            return new TeamMountChip(label, readWrite, mountString);
+        })];
 
     /// <summary>Whether any team mount is listed.</summary>
     public bool HasTeamMounts => TeamMounts.Count > 0;

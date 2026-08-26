@@ -166,12 +166,17 @@ internal sealed partial class CrewRunner : ICrewRunner
             if (onProgress is not null && scope.ServiceProvider.GetService<RunProgressHook>() is { } progressHook)
                 progressHook.OnProgress = onProgress;
 
-            var crewPath =
-                _mountPlan?.VirtualPaths.TryGetValue(hosted.Name, out var virtualPath) == true
-                    ? virtualPath
-                    : hosted.Path;
+            var mapped = _mountPlan?.VirtualPaths.TryGetValue(hosted.Name, out var virtualPath) == true
+                ? virtualPath
+                : null;
+            // A crew DIRECTORY is mounted as the root itself; a crew FILE is addressed inside
+            // one. So the plan already answers "directory?", and answering it here rather than
+            // asking the VFS again is what keeps a symlinked crew directory loading.
+            var isDirectory = mapped is not null
+                ? _mountPlan!.Roots.Contains(mapped, StringComparer.Ordinal)
+                : (bool?)null;
             var crew = await RunnerExecution
-                .LoadCrewAsync(_host, factory, crewPath, _logger, run.Cancellation.Token)
+                .LoadCrewAsync(_host, factory, mapped ?? hosted.Path, _logger, run.Cancellation.Token, isDirectory)
                 .ConfigureAwait(false);
             crewId = crew.Id;
 

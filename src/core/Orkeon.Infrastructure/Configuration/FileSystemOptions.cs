@@ -21,6 +21,12 @@ public class FileSystemOptions
     /// what it needs the VFS to reach but no agent has any business addressing — the LLM
     /// exchange log directory, for one. The mount-string grammar has no room for a
     /// visibility token, which is why this is a separate list rather than a fourth field.
+    /// <para>
+    /// <b>Visibility, not isolation.</b> The mount stays resolvable, and
+    /// <c>IFileSystemService</c> does not know who is calling — the exchange logger writes
+    /// through the very API the agent tools use. An agent that knows the name can still
+    /// address it. Put nothing here that an agent knowing its name must not read.
+    /// </para>
     /// </summary>
     public Collection<string> InternalMounts { get; } = [];
 }

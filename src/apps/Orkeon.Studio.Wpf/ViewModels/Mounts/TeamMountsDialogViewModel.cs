@@ -17,7 +17,9 @@ public sealed class TeamMountRowViewModel : ObservableObject
     {
         _owner = owner;
         MountString = mountString;
-        VirtualPath = mount?.VirtualPath ?? mountString;
+        // An entry the parser refuses has no virtual spelling — say so, rather than falling
+        // back to the raw string, which carries the physical folder (ADR-008).
+        VirtualPath = mount?.VirtualPath ?? MountLabels.Unreadable(strings);
         PhysicalPath = mount?.PhysicalPath ?? "";
         IsReadOnly = mount is null or { Rights: MountRights.ReadOnly };
         RightsLabel = strings[mount is { Rights: MountRights.ReadWrite }

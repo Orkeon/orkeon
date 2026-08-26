@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Security;
 using System.Text;
+using Orkeon.Hosting;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
@@ -280,8 +281,14 @@ internal static class ForgePromoter
         // flags would be a lie in a file people copy from.
         if (!script)
         {
-            foreach (var (key, value) in brief?.Sample?.Variables ?? [])
-                segments.Add($"--var {Literal($"{key}={value}")}");
+            // Same single-flag rule as --mount: several values go space-separated after ONE
+            // --var. Emitting the flag per variable made any brief with two sample inputs
+            // promote to a team the parser refuses ("option repeated").
+            var variables = (brief?.Sample?.Variables ?? [])
+                .Select(pair => Literal($"{pair.Key}={pair.Value}"))
+                .ToList();
+            if (variables.Count > 0)
+                segments.Add($"--var {string.Join(' ', variables)}");
 
             if (!string.IsNullOrWhiteSpace(brief?.Sample?.InitialContext))
                 segments.Add($"--initial-context {Literal(brief.Sample.InitialContext)}");
@@ -297,6 +304,10 @@ internal static class ForgePromoter
     /// <param name="VirtualRoot">The root the agents address, e.g. <c>/output</c>.</param>
     /// <param name="Folder">Its folder inside the promoted directory, e.g. <c>output</c>.</param>
     private sealed record DeliverableMount(string VirtualRoot, string Folder);
+
+    /// <summary>The virtual roots the runners mount for themselves — never a deliverable's.</summary>
+    private static readonly string[] ReservedVirtualRoots =
+        [RunnerMounts.CrewVirtualRoot, RunnerMounts.ScriptVirtualRoot, RunnerMounts.LlmLogVirtualRoot];
 
     /// <summary>
     /// The virtual roots the blueprint's deliverables are written to — the same derivation
@@ -325,8 +336,18 @@ internal static class ForgePromoter
 
             var folder = root[1..];
             // A deliverable root is a single segment by construction; anything else would
-            // put the team's own files outside its folder.
-            if (folder.Contains('/', StringComparison.Ordinal) || folder.Contains('\\', StringComparison.Ordinal))
+            // put the team's own files outside its folder. The blueprint is LLM-authored, so
+            // '..' and '.' are refused explicitly rather than trusted to be absent.
+            if (folder.Contains('/', StringComparison.Ordinal)
+                || folder.Contains('\\', StringComparison.Ordinal)
+                || folder is "." or "..")
+            {
+                continue;
+            }
+
+            // A root the runner keeps for itself would make the promoted team unlaunchable:
+            // the very --mount the launcher spells is refused at start (ADR-008, decision 5).
+            if (ReservedVirtualRoots.Contains(root, StringComparer.Ordinal))
                 continue;
 
             if (!roots.Any(m => string.Equals(m.VirtualRoot, root, StringComparison.Ordinal)))
@@ -355,6 +376,11 @@ internal static class ForgePromoter
             ? "# The crew lives in crew/crew.ork.ts — edit it there, this script only launches it.\n"
             : "# The --var/--initial-context lines below are the test sample: adapt them to the real run.\n");
         builder.Append("DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\n");
+        // Run FROM the team's folder. The runner refuses to read a crew outside the working
+        // directory without --allow-external-mounts, and the security whitelist is rooted on
+        // the working directory too — so a launch from anywhere else (a scheduled task starts
+        // in the system directory) was refused outright, or wrote nothing into /output.
+        builder.Append("cd \"$DIR\" || exit 1\n");
         builder.Append("exec orkeon");
 
         foreach (var segment in RunArguments(session, brief, settingsReference, settingsIsRelative, posix: true, writeMounts))
@@ -385,6 +411,8 @@ internal static class ForgePromoter
         builder.Append(ForgeSession.IsScriptFormat(session.Document.Format)
             ? "rem The crew lives in crew\\crew.ork.ts — edit it there, this script only launches it.\r\n"
             : "rem The --var/--initial-context values below are the test sample: adapt them to the real run.\r\n");
+        // Run FROM the team's folder — see WritePosixLauncher for why.
+        builder.Append("cd /d \"%~dp0\" || exit /b 1\r\n");
         builder.Append("orkeon");
 
         foreach (var segment in RunArguments(session, brief, settingsReference, settingsIsRelative, posix: false, writeMounts))

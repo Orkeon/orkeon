@@ -1,3 +1,5 @@
+using Orkeon.Domain.FileSystem;
+
 namespace Orkeon.Host.Tests;
 
 /// <summary>
@@ -91,5 +93,66 @@ public sealed class HostCrewMountsTests : IDisposable
             Assert.StartsWith("/", virtualPath, StringComparison.Ordinal);
             Assert.DoesNotContain(_dir, virtualPath, StringComparison.Ordinal);
         });
+    }
+
+    /// <summary>
+    /// Nothing rejects two crews sharing a Name, and <c>CrewHostRegistry.Find</c> answers with
+    /// the FIRST match (case-insensitively). The plan has to agree, or a run started on the
+    /// first declaration would load the second one's definition.
+    /// </summary>
+    [Fact]
+    public void Two_crews_sharing_a_name_resolve_to_the_first_declaration()
+    {
+        var plan = HostCrewMounts.For(
+        [
+            new HostedCrewOptions { Name = "support", Path = Path.Combine(_dir, "a", "support.yaml") },
+            new HostedCrewOptions { Name = "Support", Path = Path.Combine(_dir, "b", "support.yaml") },
+        ]);
+
+        var first = Path.GetFullPath(Path.Combine(_dir, "a"));
+        var firstRoot = FileSystemMount.Parse(
+            plan.Mounts.Single(m => FileSystemMount.TryGetBasePath(m) == first)).VirtualPath;
+
+        Assert.Equal($"{firstRoot}/support.yaml", plan.VirtualPaths["support"]);
+        Assert.Equal($"{firstRoot}/support.yaml", plan.VirtualPaths["Support"]);
+    }
+
+    /// <summary>
+    /// The roots the daemon refuses an operator <c>--mount</c> on: one per mount, and exactly
+    /// the virtual path each mount claims.
+    /// </summary>
+    [Fact]
+    public void The_plan_names_the_roots_it_reserves()
+    {
+        var plan = HostCrewMounts.For(
+        [
+            new HostedCrewOptions { Name = "billing", Path = Path.Combine(_dir, "crews", "billing.yaml") },
+            new HostedCrewOptions { Name = "support", Path = Path.Combine(_dir, "crews", "support") },
+        ]);
+
+        Assert.Equal(
+            [.. plan.Mounts.Select(m => FileSystemMount.Parse(m).VirtualPath)],
+            plan.Roots);
+    }
+
+    /// <summary>
+    /// A crew directory holding a ';' or a ':' is legal on the operator's disk; the spec that
+    /// mounts it has to survive its own parser, which is what <c>FileSystemMount.Quote</c> is
+    /// for. Built bare, the ';' split the spec into an override clause and the daemon refused
+    /// to start.
+    /// </summary>
+    [Fact]
+    public void A_crew_directory_needing_quotes_still_produces_a_parsable_mount()
+    {
+        var odd = Path.Combine(_dir, "crews;2026");
+        Directory.CreateDirectory(odd);
+
+        var plan = HostCrewMounts.For(
+            [new HostedCrewOptions { Name = "a", Path = Path.Combine(odd, "a.yaml") }]);
+
+        var mount = FileSystemMount.Parse(Assert.Single(plan.Mounts));
+        Assert.Equal(Path.GetFullPath(odd), mount.BasePath);
+        Assert.Equal(HostCrewMounts.VirtualPathPrefix, mount.VirtualPath);
+        Assert.Empty(mount.Overrides);
     }
 }

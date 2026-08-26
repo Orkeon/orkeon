@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Storage;
@@ -140,6 +141,17 @@ public sealed class ConstantDriftTests
         Assert.Equal(RunnerMounts.CrewVirtualRoot, MountAutoInjection.CrewVirtualRoot);
         Assert.Equal(RunnerMounts.ScriptVirtualRoot, MountAutoInjection.ScriptVirtualRoot);
         Assert.Equal(RunnerMounts.LlmLogVirtualRoot, MountAutoInjection.LlmLogVirtualRoot);
+    }
+
+    /// <summary>
+    /// The sub-folder a promoted team keeps its definition in. The detector descends into it
+    /// so a team card can be launched; if the name drifted from what the forge renderer
+    /// writes, adopted teams would stop resolving again.
+    /// </summary>
+    [Fact]
+    public void The_promoted_crew_folder_is_the_one_the_forge_writes()
+    {
+        Assert.Equal(ForgeRenderReader.CrewDirectoryName, RunTargetDetector.PromotedCrewDirectoryName);
     }
 
     [Fact]

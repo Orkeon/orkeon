@@ -152,6 +152,35 @@ public sealed class MountDefinitionTests
     public void Virtual_path_validity_follows_the_domain_rule(string? virtualPath, bool expected) =>
         Assert.Equal(expected, MountDefinition.IsValidVirtualPath(virtualPath));
 
+    /// <summary>
+    /// The engine refuses a <c>--mount</c> claiming one of its own roots (ADR-008, decision 5),
+    /// so the editor must too — otherwise a user allowing a folder that happens to be named
+    /// <c>crew</c> gets <c>/crew</c> derived for them, saved, and refused at every launch.
+    /// </summary>
+    [Theory]
+    [InlineData("/crew")]
+    [InlineData("/script")]
+    [InlineData("/llm-logs")]
+    [InlineData("/crew/")]
+    public void A_virtual_path_the_runner_reserves_is_refused(string virtualPath)
+    {
+        Assert.True(MountDefinition.IsReservedVirtualPath(virtualPath));
+        // The editor refuses it. The DOMAIN parser does not, and must not: the runner mounts
+        // /crew itself — reservation is about who may claim the name, not about the grammar.
+        Assert.False(MountDefinition.IsValidVirtualPath(virtualPath));
+        Assert.True(MountDefinition.TryParse($"/srv:{virtualPath}:ro", out _, out _));
+    }
+
+    [Theory]
+    [InlineData("/crews")]
+    [InlineData("/crew-notes")]
+    [InlineData("/output")]
+    public void A_neighbouring_name_is_not_reserved(string virtualPath)
+    {
+        Assert.False(MountDefinition.IsReservedVirtualPath(virtualPath));
+        Assert.True(MountDefinition.IsValidVirtualPath(virtualPath));
+    }
+
     [Fact]
     public void Suggested_virtual_paths_are_the_documented_ones()
     {

@@ -35,20 +35,25 @@ public sealed record MountDefinition
     public static IReadOnlyList<string> SuggestedVirtualPaths { get; } =
         ["/workspace", "/output", "/tmp"];
 
-    /// <summary>Serializes to the mount string format the runtime parses.</summary>
+    /// <summary>
+    /// Serializes to the mount string format the runtime parses. Each path segment goes through
+    /// <see cref="FileSystemMount.Quote"/> — a folder holding a <c>:</c> or a <c>;</c> is legal on
+    /// every OS the picker browses, and writing it bare produced a spec this type's own
+    /// <see cref="Parse"/> then refused.
+    /// </summary>
     public string ToMountString()
     {
         var builder = new StringBuilder()
-            .Append(PhysicalPath)
+            .Append(FileSystemMount.Quote(PhysicalPath))
             .Append(':')
-            .Append(VirtualPath)
+            .Append(FileSystemMount.Quote(VirtualPath))
             .Append(':')
             .Append(MountRightsTokens.ToToken(Rights));
 
         foreach (var item in Overrides)
         {
             builder.Append(';')
-                .Append(item.RelativePath)
+                .Append(FileSystemMount.Quote(item.RelativePath))
                 .Append(':')
                 .Append(MountRightsTokens.ToToken(item.Rights));
         }
@@ -143,6 +148,9 @@ public sealed record MountDefinition
         if (string.IsNullOrWhiteSpace(virtualPath))
             return false;
 
+        if (IsReservedVirtualPath(virtualPath))
+            return false;
+
         try
         {
             _ = new FileSystemMount("/", virtualPath, FileAccessRights.ReadOnly);
@@ -153,4 +161,15 @@ public sealed record MountDefinition
             return false;
         }
     }
+
+    /// <summary>
+    /// The virtual roots a runner mounts for itself (<c>/crew</c>, <c>/script</c>,
+    /// <c>/llm-logs</c>). A user mount claiming one is refused by the engine at launch, so
+    /// the editor and the folder picker refuse it here rather than letting a folder happening
+    /// to be named <c>crew</c> produce a team that will not start.
+    /// </summary>
+    public static bool IsReservedVirtualPath(string? virtualPath) =>
+        virtualPath is not null
+        && Launch.MountAutoInjection.ReservedVirtualRoots.Contains(
+            virtualPath.TrimEnd('/'), StringComparer.Ordinal);
 }

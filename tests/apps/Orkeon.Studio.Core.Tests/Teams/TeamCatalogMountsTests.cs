@@ -97,6 +97,55 @@ public sealed class TeamCatalogMountsTests : IDisposable
         Assert.Null(TeamCatalog.ExportTo(team, destinationParent));
     }
 
+    /// <summary>
+    /// A team's write roots are bound to folders INSIDE it (`&lt;team&gt;/output:/output:rw`,
+    /// derived from the blueprint at adoption). Copied verbatim, the duplicate would write
+    /// into the ORIGINAL team's folder — two teams silently sharing one output. The mounts
+    /// move with the folder; the ones pointing outside it are the user's own and stay.
+    /// </summary>
+    [Fact]
+    public void A_duplicated_team_writes_into_its_own_folder()
+    {
+        var team = NewTeam("veille");
+        Directory.CreateDirectory(Path.Combine(team, "output"));
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+        {
+            Name = "Veille",
+            Mounts =
+            [
+                $"{Path.Combine(team, "output")}:/output:rw",
+                $"{Path.Combine(_root, "documents")}:/docs:ro",
+            ],
+        });
+
+        var copy = TeamCatalog.Duplicate(team);
+
+        Assert.NotNull(copy);
+        var mounts = TeamCatalog.Describe(copy).Mounts;
+        Assert.Contains(mounts, m => m.StartsWith(Path.Combine(copy, "output"), StringComparison.Ordinal));
+        Assert.DoesNotContain(mounts, m => m.StartsWith(Path.Combine(team, "output"), StringComparison.Ordinal));
+        // A folder the user allowed elsewhere is their choice, not the team's layout.
+        Assert.Contains(mounts, m => m.StartsWith(Path.Combine(_root, "documents"), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void An_exported_team_carries_its_own_folders_too()
+    {
+        var team = NewTeam("partagee");
+        Directory.CreateDirectory(Path.Combine(team, "output"));
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+        {
+            Name = "Partagée",
+            Mounts = [$"{Path.Combine(team, "output")}:/output:rw"],
+        });
+
+        var destination = TeamCatalog.ExportTo(team, Path.Combine(_root, "partage"));
+
+        Assert.NotNull(destination);
+        var mount = Assert.Single(TeamCatalog.Describe(destination).Mounts);
+        Assert.StartsWith(Path.Combine(destination, "output"), mount, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void NormalizePath_strips_the_trailing_separator_and_survives_garbage()
     {

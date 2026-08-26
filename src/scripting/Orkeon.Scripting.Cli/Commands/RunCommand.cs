@@ -531,14 +531,27 @@ internal static partial class RunCommand
             return Program.ExitScriptError;
         }
 
+        // Same guard as the YAML runner's TryBuildHost: a user mount claiming a root this
+        // runner needs would otherwise surface as a duplicate-virtual-path exception thrown
+        // out of a DI factory, not as the configuration mistake it is.
+        if (!RunnerExecution.EnsureReservedRootsAreFree(
+                cliMounts, RunnerMounts.ScriptVirtualRoot, RunnerMounts.LlmLogVirtualRoot))
+            return Program.ExitScriptError;
+
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
         // the source through the same IFileSystemService the tools will see. We add it as
         // an "allowed-external" mount regardless of cwd because the script is the input.
-        cliMounts.Insert(0, $"{scriptDir}:{RunnerMounts.ScriptVirtualRoot}:ro");
+        cliMounts.Insert(0, $"{FileSystemMount.Quote(scriptDir)}:{RunnerMounts.ScriptVirtualRoot}:ro");
         // The exchange log is infrastructure — reachable by the VFS, invisible to agents.
-        var internalMounts = llmLogPath != null
-            ? new[] { $"{llmLogPath}:{RunnerMounts.LlmLogVirtualRoot}:rw" }
-            : [];
+        var internalMounts = Array.Empty<string>();
+        if (llmLogPath != null)
+        {
+            // A mount base path must exist before the registry is built, or
+            // FileSystemServiceRegistration throws DirectoryNotFoundException — the YAML
+            // runner has done this since the flag existed.
+            Directory.CreateDirectory(llmLogPath);
+            internalMounts = [$"{FileSystemMount.Quote(llmLogPath)}:{RunnerMounts.LlmLogVirtualRoot}:rw"];
+        }
         // The script directory always needs to be on the security whitelist so the VFS
         // can resolve /script/* even when the user didn't pass --allow-external-mounts.
         var implicitlyAllow = options.EffectiveAllowExternalMounts

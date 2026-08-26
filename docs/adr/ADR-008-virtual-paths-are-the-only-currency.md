@@ -68,10 +68,18 @@ loader is path-agnostic: it reads whatever path it is handed through `IFileSyste
 3. **Infrastructure mounts are invisible.** `Orkeon:FileSystem:InternalMounts` carries mounts
    registered with `MountVisibility.Internal`: resolvable by the VFS, absent from
    `GetAvailableMounts()` and therefore from `list_mounts`, from prompt mount tables and from
-   denial messages. The LLM exchange log lives there — the VFS must reach it, no agent has any
+   denial messages — a denial message is read by the LLM, so `FileSystemRegistry` builds its
+   "Available mounts" and "Mounts granting …" lists from the agent-facing set, not from all
+   mounts. The LLM exchange log lives there — the VFS must reach it, no agent has any
    business addressing it. It is a configuration key rather than a hosted service because the
    runners never start the host: an `IHostedService` would silently never fire under
    `--validate` or `--list-tools`.
+
+   **`Internal` is visibility, not isolation.** The mount stays *resolvable*, and
+   `IFileSystemService` has no notion of who is calling — the exchange logger writes through the
+   very API the agent tools use. So an agent that knows the name can still address it. Nothing
+   goes behind an internal mount that an agent knowing its name must not read; making that a
+   real boundary needs a privileged accessor, which is left to the item below.
 4. **The rule for screens is scoped, not absolute.** No physical path in an **agent-facing or
    novice** context. Expert surfaces — the effective-mounts table, the picker's mount-string
    preview — keep showing the real strings: their job is to state the exact command line.
@@ -108,3 +116,10 @@ Declaring filesystem needs on the crew — on the model of the existing `links:`
 by `orkeon run --validate` rather than failing at the first tool call — changes the YAML grammar,
 the scripting DSL, the forge blueprint and public API in two assemblies. It belongs to a version
 that is allowed to move the grammar, not to a release candidate. This ADR reserves the place.
+
+Nor does it give the VFS a **privileged caller**. `IFileSystemService` is one surface for the
+framework and for the agent tools alike, so `MountVisibility.Internal` can withhold a mount from
+every listing but cannot refuse an agent that addresses it by name. Closing that needs a second
+accessor — a scoped handle the runner holds and the tool registry never sees — which touches the
+Domain contract and every implementation of it. Until then the rule is a discipline, stated on
+`FileSystemOptions.InternalMounts`: an internal mount hides a directory, it does not protect it.

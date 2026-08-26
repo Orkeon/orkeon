@@ -6,6 +6,7 @@ using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Teams;
+using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -62,28 +63,13 @@ public sealed class TeamCardViewModel : ObservableObject
         _strings = strings;
         Summary = summary;
 
-        var chips = new List<TeamMountChip>();
-        foreach (var mountString in summary.Mounts)
+        // Never the raw string: it carries the physical folder, and a team card is an
+        // agent-facing surface like any other (ADR-008).
+        MountChips = [.. summary.Mounts.Select(mountString =>
         {
-            if (MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null)
-            {
-                var readWrite = mount.Rights != MountRights.ReadOnly;
-                chips.Add(new TeamMountChip(
-                    string.Format(
-                        CultureInfo.CurrentCulture,
-                        strings[readWrite ? StudioStringKeys.TeamsMountRw : StudioStringKeys.TeamsMountRo],
-                        mount.VirtualPath),
-                    readWrite));
-            }
-            else
-            {
-                // Never the raw string: it carries the physical folder, and a team card is
-                // an agent-facing surface like any other (ADR-008).
-                chips.Add(new TeamMountChip(strings[StudioStringKeys.TeamsMountUnreadable], IsReadWrite: false));
-            }
-        }
-
-        MountChips = chips;
+            var (label, readWrite) = MountLabels.Describe(mountString, strings);
+            return new TeamMountChip(label, readWrite);
+        })];
         ScheduleDisplay = summary.Schedule switch
         {
             null or "" => strings[StudioStringKeys.TeamsOnDemand],

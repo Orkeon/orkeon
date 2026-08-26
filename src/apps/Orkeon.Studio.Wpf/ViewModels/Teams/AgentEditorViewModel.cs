@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -155,26 +156,8 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// unparsable entry is named as such rather than dumped verbatim — the raw mount string
     /// carries the physical folder, which is exactly what must not appear here.
     /// </summary>
-    internal static string DescribeScope(IReadOnlyList<string> mountStrings, IStudioStrings strings)
-    {
-        ArgumentNullException.ThrowIfNull(mountStrings);
-        ArgumentNullException.ThrowIfNull(strings);
-
-        if (mountStrings.Count == 0)
-            return "—";
-
-        var labels = mountStrings.Select(mountString =>
-            MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null
-                ? string.Format(
-                    CultureInfo.CurrentCulture,
-                    strings[mount.Rights == MountRights.ReadOnly
-                        ? StudioStringKeys.TeamsMountRo
-                        : StudioStringKeys.TeamsMountRw],
-                    mount.VirtualPath)
-                : strings[StudioStringKeys.TeamsMountUnreadable]);
-
-        return string.Join(" · ", labels);
-    }
+    internal static string DescribeScope(IReadOnlyList<string> mountStrings, IStudioStrings strings) =>
+        MountLabels.DescribeAll(mountStrings, strings);
 
     /// <summary>The expert mono line: <c>id: key · tools: […]</c>.</summary>
     public string KeyLine =>

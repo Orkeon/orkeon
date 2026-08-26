@@ -42,12 +42,18 @@ public static partial class RunnerExecution
     /// The same target spelled for the VFS: <c>/crew</c> for a multi-file crew directory,
     /// <c>/crew/&lt;file&gt;</c> otherwise. This is what the loader is given.
     /// </param>
+    /// <param name="IsCrewDirectory">
+    /// Whether the target is a multi-file crew directory. Decided once, by
+    /// <c>CrewDirectoryLayout.Inspect</c>, and carried rather than re-derived: asking the VFS
+    /// again cannot see through a symlinked crew directory.
+    /// </param>
     /// <param name="CliMounts">The mount strings the host was built with.</param>
     internal sealed record HostBootstrap(
         IHost Host,
         ILogger Logger,
         string ConfigPath,
         string VirtualConfigPath,
+        bool IsCrewDirectory,
         IReadOnlyList<string> CliMounts);
 
     /// <summary>
@@ -122,7 +128,7 @@ public static partial class RunnerExecution
             errorCode = 1;
             return false;
         }
-        cliMounts.Insert(0, $"{configDir}:{RunnerMounts.CrewVirtualRoot}:ro");
+        cliMounts.Insert(0, $"{FileSystemMount.Quote(configDir)}:{RunnerMounts.CrewVirtualRoot}:ro");
         var virtualConfigPath = inspection.IsCrewDirectory
             ? RunnerMounts.CrewVirtualRoot
             : $"{RunnerMounts.CrewVirtualRoot}/{Path.GetFileName(configPath)}";
@@ -135,7 +141,7 @@ public static partial class RunnerExecution
             // Mount base paths must exist before FileSystemRegistry is built
             // (FileSystemServiceRegistration throws DirectoryNotFoundException otherwise).
             Directory.CreateDirectory(llmLogPath);
-            internalMounts.Add($"{llmLogPath}:{RunnerMounts.LlmLogVirtualRoot}:rw");
+            internalMounts.Add($"{FileSystemMount.Quote(llmLogPath)}:{RunnerMounts.LlmLogVirtualRoot}:rw");
         }
 
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
@@ -172,7 +178,7 @@ public static partial class RunnerExecution
         if (llmLogPath != null)
             LogLlmExchangeLoggingEnabled(logger, llmLogPath);
 
-        bootstrap = new HostBootstrap(host, logger, configPath, virtualConfigPath, cliMounts);
+        bootstrap = new HostBootstrap(host, logger, configPath, virtualConfigPath, inspection.IsCrewDirectory, cliMounts);
         return true;
     }
 
@@ -207,11 +213,19 @@ public static partial class RunnerExecution
     /// Refuses a user <c>--mount</c> that claims a virtual root the runner needs for itself.
     /// Without this the collision surfaces as a raw <see cref="InvalidOperationException"/>
     /// ("Duplicate virtual paths") thrown out of a DI factory, which reads as a crash rather
-    /// than as the configuration mistake it is.
+    /// than as the configuration mistake it is. Every runner entry point guards its own
+    /// roots: the YAML runner <see cref="RunnerMounts.CrewVirtualRoot"/>, the scripting
+    /// runner <see cref="RunnerMounts.ScriptVirtualRoot"/>, both
+    /// <see cref="RunnerMounts.LlmLogVirtualRoot"/>.
     /// </summary>
+    /// <param name="userMounts">The user-supplied mount strings.</param>
+    /// <param name="reserved">The virtual roots this runner keeps for itself.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static bool EnsureReservedRootsAreFree(IEnumerable<string> userMounts, params string[] reserved)
+    public static bool EnsureReservedRootsAreFree(IEnumerable<string> userMounts, params string[] reserved)
     {
+        ArgumentNullException.ThrowIfNull(userMounts);
+        ArgumentNullException.ThrowIfNull(reserved);
+
         foreach (var mountString in userMounts)
         {
             string virtualPath;
@@ -219,10 +233,11 @@ public static partial class RunnerExecution
             {
                 virtualPath = FileSystemMount.Parse(mountString).VirtualPath;
             }
-            catch (FormatException)
+            catch (Exception ex) when (ex is FormatException or ArgumentException)
             {
-                // Malformed strings are reported by the mount parser at host build time,
-                // with its own precise message. Not this guard's business.
+                // Malformed strings — including a blank one, which Parse rejects with an
+                // ArgumentException rather than a FormatException — are reported by the mount
+                // parser at host build time, with its own precise message. Not this guard's.
                 continue;
             }
 
@@ -232,8 +247,9 @@ public static partial class RunnerExecution
                 continue;
 
             Console.Error.WriteLine(
-                $"ERROR: '{clash}' is reserved by the runner (it is where the crew definition "
-                + "and the LLM exchange logs are mounted). Give this mount another virtual name.");
+                $"ERROR: '{clash}' is a virtual root reserved by the runner (it is where Orkéon "
+                + "mounts the crew or script definition, the hosted crews, and the LLM exchange "
+                + "logs). Give this mount another virtual name.");
             Console.Error.WriteLine($"       mount       : {mountString}");
             return false;
         }
@@ -282,6 +298,7 @@ public static partial class RunnerExecution
 
         var (host, logger, configPath, virtualConfigPath, cliMounts) =
             (bootstrap!.Host, bootstrap.Logger, bootstrap.ConfigPath, bootstrap.VirtualConfigPath, bootstrap.CliMounts);
+        var isCrewDirectory = bootstrap.IsCrewDirectory;
 
         // Internal CTS linked to the external one (if any). Cancelling either path stops
         // the crew: SIGINT/SIGTERM via RegisterGracefulShutdown, OR caller's externalCt.
@@ -299,7 +316,7 @@ public static partial class RunnerExecution
             Domain.Crew.Crew crew;
             try
             {
-                crew = await LoadCrewAsync(host, factory, virtualConfigPath, logger, cts.Token).ConfigureAwait(false);
+                crew = await LoadCrewAsync(host, factory, virtualConfigPath, logger, cts.Token, isCrewDirectory).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException && !IsConnectionRefused(ex))
             {

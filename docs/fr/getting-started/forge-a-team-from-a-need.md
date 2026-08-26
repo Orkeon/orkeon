@@ -79,11 +79,12 @@ orkeon forge promote veille-fournisseur --to ~/solutions/veille-fournisseur \
 Le dossier promu est ordinaire — rien n'y est propriétaire à la forge :
 
 - `crew/` — l'équipe, telle qu'essayée ;
-- `run.sh` / `run.cmd` — des scripts de lancement avec vos entrées d'exemple pré-remplies (à adapter au vrai usage) ;
+- un dossier par racine de livrable où l'équipe écrit (`output/` quand ses tâches déclarent `deliverable: /output/…`) — créé vide, pour que le premier lancement ait où écrire ;
+- `run.sh` / `run.cmd` — des scripts de lancement qui se placent (`cd`) dans le dossier, portent les montages liant ces racines (`--mount "$DIR/output":/output:rw`) et ont vos entrées d'exemple pré-remplies (à adapter au vrai usage) ;
 - `FORGE.md` — la carte d'identité de l'équipe : objectif, critères d'acceptation, verdict, date et version de génération — ce qu'un collègue lit en récupérant le dossier ;
 - `schedule/` (avec `--schedule`) — un XML de tâche Windows, un timer systemd, une ligne cron. La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur, et prétendre le contraire promettrait une supervision qu'il ne peut pas donner.
 
-`orkeon run ~/solutions/veille-fournisseur/crew` la lance comme n'importe quelle crew, et le lanceur d'Orkeon Studio la détecte.
+Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh` — ou pointez Orkeon Studio sur le dossier, qu'il détecte. Un `orkeon run ~/solutions/veille-fournisseur/crew` nu la lance aussi, mais sans les arguments `--mount` que porte le lanceur : l'équipe n'a alors aucun `/output` et n'écrit rien.
 
 ## Dans Orkeon Studio
 

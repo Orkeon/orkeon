@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Studio.Core.FileSystem;
 
 namespace Orkeon.Studio.Core.Teams;
 
@@ -343,7 +344,7 @@ public static partial class TeamCatalog
             if (TryReadMetadata(destination) is { } metadata)
             {
                 var copySlug = Path.GetFileName(destination);
-                SaveMetadata(destination, metadata with
+                SaveMetadata(destination, RebaseMounts(metadata, teamDirectory, destination) with
                 {
                     Name = metadata.Name is { Length: > 0 } name ? $"{name} ({copySlug[(slug.Length + 1)..]})" : copySlug,
                 });
@@ -394,6 +395,9 @@ public static partial class TeamCatalog
                 CopyTree(directory, Path.Combine(destination, Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))));
             }
 
+            if (TryReadMetadata(destination) is { } exported)
+                SaveMetadata(destination, RebaseMounts(exported, teamDirectory, destination));
+
             return destination;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -437,6 +441,9 @@ public static partial class TeamCatalog
                 }
 
                 CopyTree(sourcePath, destination);
+
+                if (TryReadMetadata(destination) is { } imported)
+                    SaveMetadata(destination, RebaseMounts(imported, sourcePath, destination));
             }
             else
             {
@@ -591,6 +598,51 @@ public static partial class TeamCatalog
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Moves the sidecar's own folders with the folder. A team's write roots are bound to
+    /// directories INSIDE it (<c>&lt;team&gt;/output:/output:rw</c>, derived from the blueprint at
+    /// adoption), so a copy that kept them verbatim would have the new team writing into the
+    /// old one — or, once exported to another machine, pointing at a path that does not exist.
+    /// Mounts outside the folder are the user's own choices and are left alone.
+    /// </summary>
+    private static StudioTeamMetadata RebaseMounts(
+        StudioTeamMetadata metadata, string sourceDirectory, string destinationDirectory)
+    {
+        if (metadata.Mounts is not { Count: > 0 } mounts)
+            return metadata;
+
+        var source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourceDirectory));
+        var destination = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destinationDirectory));
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+        var rebased = new List<string>(mounts.Count);
+        var changed = false;
+        foreach (var mountString in mounts)
+        {
+            if (!MountDefinition.TryParse(mountString, out var mount, out _)
+                || mount.PhysicalPath is not { Length: > 0 } physical)
+            {
+                rebased.Add(mountString);
+                continue;
+            }
+
+            var full = Path.GetFullPath(physical);
+            if (!full.StartsWith(source + Path.DirectorySeparatorChar, comparison))
+            {
+                rebased.Add(mountString);
+                continue;
+            }
+
+            rebased.Add((mount with
+            {
+                PhysicalPath = Path.Combine(destination, full[(source.Length + 1)..]),
+            }).ToMountString());
+            changed = true;
+        }
+
+        return changed ? metadata with { Mounts = rebased } : metadata;
     }
 
     private static void CopyTree(string source, string destination)

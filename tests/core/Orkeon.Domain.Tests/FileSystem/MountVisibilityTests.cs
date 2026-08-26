@@ -124,6 +124,55 @@ public sealed class MountVisibilityTests : IDisposable
         Assert.Equal(expected, physicalPath);
     }
 
+    /// <summary>
+    /// A denial message is read by the LLM, so it is an agent-facing surface like
+    /// <c>list_mounts</c>. It used to enumerate <em>every</em> mount, which handed an agent the
+    /// name of the one mount visibility exists to withhold — and annotated it "(writable)". The
+    /// exchange-log directory is mounted that way and holds every prompt and API payload.
+    /// </summary>
+    [Fact]
+    public void FileSystemRegistry_UnmountedPathDenial_NamesAgentFacingMountsOnly()
+    {
+        var wsDir = CreateSubDir("ws");
+        var logsDir = CreateSubDir("logs");
+
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(wsDir, "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(logsDir, "/llm-logs", FileAccessRights.ReadWrite,
+                visibility: MountVisibility.Internal)
+        ]);
+
+        var ex = Assert.Throws<FileAccessDeniedException>(() =>
+            registry.ResolveAndCheckRights("/nowhere/at/all.txt", FileAccessRights.Read));
+
+        Assert.Contains("/workspace", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("/llm-logs", ex.Message, StringComparison.Ordinal);
+        Assert.NotNull(ex.AlternativeMounts);
+        Assert.DoesNotContain("/llm-logs", ex.AlternativeMounts);
+    }
+
+    /// <summary>The same rule for the "which mount would have granted this?" hint.</summary>
+    [Fact]
+    public void FileSystemRegistry_RightsDenial_NamesAgentFacingMountsOnly()
+    {
+        var docsDir = CreateSubDir("docs");
+        var logsDir = CreateSubDir("logs");
+
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(docsDir, "/docs", FileAccessRights.ReadOnly),
+            new FileSystemMount(logsDir, "/llm-logs", FileAccessRights.ReadWrite,
+                visibility: MountVisibility.Internal)
+        ]);
+
+        var ex = Assert.Throws<FileAccessDeniedException>(() =>
+            registry.ResolveAndCheckRights("/docs/report.md", FileAccessRights.Write));
+
+        Assert.DoesNotContain("/llm-logs", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("(none)", ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void FileSystemMount_Parse_DefaultsToAgentFacing()
     {

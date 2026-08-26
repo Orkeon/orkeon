@@ -139,9 +139,13 @@ internal sealed class MountForm
         }
         else if (!MountDefinition.IsValidVirtualPath(virtualPath))
         {
-            problems.Add(string.Create(
-                CultureInfo.InvariantCulture,
-                $"Virtual path '{virtualPath}' must start with '/'."));
+            problems.Add(MountDefinition.IsReservedVirtualPath(virtualPath)
+                ? string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"Virtual path '{virtualPath}' is reserved by the runner — choose another name.")
+                : string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"Virtual path '{virtualPath}' must start with '/'."));
         }
 
         if (problems.Count > 0)

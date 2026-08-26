@@ -16,8 +16,9 @@ public enum MountOrigin
 
     /// <summary>
     /// Inserted by the runner itself before any <c>--mount</c> argument: the crew's
-    /// configuration directory (or the script directory as <c>/script</c>), and the LLM log
-    /// directory when <c>--llm-log</c>/<c>--llm-log-path</c> is set.
+    /// configuration directory as <c>/crew</c> (the script's directory as <c>/script</c> on the
+    /// scripting path). Exactly one entry — the LLM log directory rides its own configuration
+    /// key since ADR-008 and shifts nothing.
     /// </summary>
     AutoInjected,
 }
@@ -70,6 +71,13 @@ public sealed record MountAutoInjection
 
     /// <summary>Mirrors <c>RunnerMounts.LlmLogVirtualRoot</c>. Same drift test.</summary>
     public const string LlmLogVirtualRoot = "/llm-logs";
+
+    /// <summary>
+    /// The three together: a user <c>--mount</c> claiming one is refused by the engine at
+    /// launch, so Studio refuses it in the editor rather than building a command that fails.
+    /// </summary>
+    public static IReadOnlyList<string> ReservedVirtualRoots { get; } =
+        [CrewVirtualRoot, ScriptVirtualRoot, LlmLogVirtualRoot];
 
     /// <summary>The injected mount strings, in the order the runner inserts them.</summary>
     public required IReadOnlyList<string> Mounts { get; init; }

@@ -111,4 +111,37 @@ public sealed class ImportRecognitionReportTests
         Assert.Equal("warn", import.RecognitionReport[1].Tone);
         Assert.Contains("1", import.RecognitionReport[1].Detail, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The report is read by whoever RECEIVED the team, so the sidecar's mounts are named the
+    /// way the agents address them — the exporting machine's folder layout has no business
+    /// here (ADR-008). This line used to join the raw mount strings.
+    /// </summary>
+    [Fact]
+    public void The_declared_folders_line_names_mounts_not_the_exporter_s_disk()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"orkeon-import-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(directory, "agents"));
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(directory, StudioTeamMetadata.FileName),
+                """{"name":"veille","mounts":["C:\\Users\\cyril\\Factures:/factures:ro"]}""");
+
+            var probe = new FakeTargetProbe()
+                .WithDirectory(directory)
+                .WithDirectory(Path.Combine(directory, "agents"));
+            var import = new ImportTeamViewModel(probe, scanSecrets: _ => []);
+
+            import.Target.Select(directory);
+
+            var line = import.RecognitionReport.Single(c => c.Detail.Contains("/factures", StringComparison.Ordinal));
+            Assert.DoesNotContain(@"C:\", line.Detail, StringComparison.Ordinal);
+            Assert.DoesNotContain("Factures:", line.Detail, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

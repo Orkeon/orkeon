@@ -145,7 +145,10 @@ passe par le [système de fichiers virtuel](../architecture/vfs-compliance.md).
 ```
 
 Le runner monte automatiquement en lecture seule le répertoire du config lui-même,
-si bien que le YAML et ses fichiers voisins sont toujours visibles. Les chemins
+**sous le nom `/crew`**, si bien que le YAML et ses fichiers voisins sont toujours
+visibles — un `data.csv` à côté de `config.yaml` se lit en `/crew/data.csv`, jamais
+par son chemin sur votre disque
+([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les chemins
 hors du répertoire de travail exigent `--allow-external-mounts` (ou
 `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` dans l'environnement — le défaut de l'image
 conteneur).

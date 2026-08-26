@@ -248,7 +248,16 @@ public sealed class RagCommandTests
     public void ClaimsVirtualRoot_MatchesExactVirtualSegmentsOnly()
     {
         Assert.True(RagCommand.ClaimsVirtualRoot("/x:/output:rw", "/output"));
-        Assert.True(RagCommand.ClaimsVirtualRoot("/x:/output", "/output"));
+        Assert.True(RagCommand.ClaimsVirtualRoot("/x:/output/:rw", "/output"));
         Assert.False(RagCommand.ClaimsVirtualRoot("/x:/output-archive:rw", "/output"));
+
+        // The question is asked of the grammar, not of a substring: a physical path may
+        // legally carry ':' when quoted, and reading the spec by hand saw an /output claim
+        // that is not there — suppressing the auto-mount the command needs.
+        Assert.False(RagCommand.ClaimsVirtualRoot(@"""/mnt/x:/output:y"":/corpus:ro", "/output"));
+
+        // A spec the grammar cannot read claims nothing; the parser reports it at host build.
+        Assert.False(RagCommand.ClaimsVirtualRoot("/x:/output", "/output"));
+        Assert.False(RagCommand.ClaimsVirtualRoot("", "/output"));
     }
 }

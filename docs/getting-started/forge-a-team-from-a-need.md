@@ -79,11 +79,12 @@ orkeon forge promote supplier-watch --to ~/solutions/supplier-watch \
 The promoted folder is ordinary — nothing about it is proprietary to the forge:
 
 - `crew/` — the team, as tried;
-- `run.sh` / `run.cmd` — launch scripts with your sample inputs pre-filled (adapt them to the real run);
+- one folder per deliverable root the team writes to (`output/` when its tasks declare `deliverable: /output/…`) — created empty, so the first launch has somewhere to write;
+- `run.sh` / `run.cmd` — launch scripts that `cd` into the folder, carry the mounts binding those roots (`--mount "$DIR/output":/output:rw`) and have your sample inputs pre-filled (adapt them to the real run);
 - `FORGE.md` — the crew's identity card: goal, acceptance criteria, verdict, generation date and version — what a colleague reads when picking up the folder;
 - `schedule/` (with `--schedule`) — a Windows task XML, a systemd timer, a cron line. The install command is **displayed, never executed**: Orkeon has no scheduler, and pretending otherwise would promise supervision it cannot give.
 
-`orkeon run ~/solutions/supplier-watch/crew` launches it like any crew, and the Orkeon Studio launcher detects it.
+Run it with its own launcher — `~/solutions/supplier-watch/run.sh` — or point Orkeon Studio at the folder, which detects it. A bare `orkeon run ~/solutions/supplier-watch/crew` also launches it, but without the `--mount` arguments the launcher carries: the team then has no `/output` and writes nothing.
 
 ## In Orkeon Studio
 

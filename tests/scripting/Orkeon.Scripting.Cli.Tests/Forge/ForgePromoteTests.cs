@@ -430,4 +430,82 @@ public sealed class ForgePromoteTests : IDisposable
         var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
         Assert.DoesNotContain("--mount", posix, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The launcher must run FROM the team's folder. The runner refuses to read a crew outside
+    /// the working directory without <c>--allow-external-mounts</c>, and the security whitelist
+    /// is rooted on the working directory too — so a launch from anywhere else (a scheduled task
+    /// starts in the system directory, which is exactly what the schedule artifacts invoke) was
+    /// refused outright, or ran and wrote nothing into <c>/output</c>.
+    /// </summary>
+    [Fact]
+    public void Both_launchers_run_from_the_team_folder()
+    {
+        ForgePromoter.Promote(
+            ReadySession(), Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
+        Assert.Contains("cd \"$DIR\"", posix, StringComparison.Ordinal);
+        Assert.True(
+            posix.IndexOf("cd \"$DIR\"", StringComparison.Ordinal) < posix.IndexOf("exec orkeon", StringComparison.Ordinal),
+            "the launcher must change directory before invoking orkeon");
+
+        var windows = File.ReadAllText(Path.Combine(Destination, ForgePromoter.WindowsLauncherName));
+        Assert.Contains("cd /d \"%~dp0\"", windows, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// `--var` obeys the same single-flag rule as `--mount`: several values go space-separated
+    /// after ONE flag. Spelled once per variable, a brief with two sample inputs promoted to a
+    /// team the CLI's own parser refused with "option repeated".
+    /// </summary>
+    [Fact]
+    public void Several_sample_variables_go_after_one_var_flag()
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BriefFileName, JsonSerializer.Deserialize<JsonElement>(
+            """
+            {"need":"n","language":"fr",
+             "sample":{"variables":{"supplier_url":"https://exemple.fr/offres","date":"2026-08-26"}}}
+            """));
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        // "--var" also appears in the header comment, so count the argument lines themselves.
+        var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
+        Assert.Equal(1, posix.Split("\n  --var ").Length - 1);
+        Assert.Contains("supplier_url=https://exemple.fr/offres", posix, StringComparison.Ordinal);
+        Assert.Contains("date=2026-08-26", posix, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A blueprint is LLM-authored: a deliverable under a root the runner reserves would make
+    /// the promoted launcher spell a `--mount` the CLI refuses at start, and `/..` would mount
+    /// the team's parent read-write.
+    /// </summary>
+    [Theory]
+    [InlineData("/crew/summary.md")]
+    [InlineData("/script/summary.md")]
+    [InlineData("/llm-logs/summary.md")]
+    [InlineData("/../summary.md")]
+    public void A_deliverable_root_the_runner_reserves_is_not_mounted(string deliverable)
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
+            $$"""
+            {"crew":{"name":"veille"},
+             "agents":[{"key":"a","role":"A","goal":"g","tools":["file_write"]}],
+             "tasks":[{"key":"t1","description":"d","expectedOutput":"e","agent":"a","deliverable":"{{deliverable}}"}]}
+            """));
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
+        Assert.DoesNotContain("--mount", posix, StringComparison.Ordinal);
+    }
 }

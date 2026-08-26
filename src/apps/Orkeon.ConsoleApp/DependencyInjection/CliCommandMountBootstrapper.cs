@@ -1,3 +1,4 @@
+using Orkeon.Domain.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Cli.Commands.Scripting.Configuration;
 using Orkeon.Compliance.Vfs;
@@ -59,7 +60,7 @@ internal static class CliCommandMountBootstrapper
         {
             foreach (var m in resolved)
             {
-                var entry = $"{m.PhysicalPath}:{m.VirtualPath}:ro";
+                var entry = $"{FileSystemMount.Quote(m.PhysicalPath)}:{m.VirtualPath}:ro";
                 if (!opts.Mounts.Contains(entry, StringComparer.Ordinal))
                     opts.Mounts.Add(entry);
             }

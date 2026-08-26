@@ -49,4 +49,29 @@ public sealed class RunCommandErrorTests
         Assert.Contains("unexpected error", console.Stderr, StringComparison.Ordinal);
         Assert.Contains("boom from script", console.Stderr, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// ADR-008, decision 5, on the scripting path: a user mount claiming a root the runner
+    /// needs (/script here, /llm-logs likewise) is a configuration mistake and must read as
+    /// one — not as a duplicate-virtual-path exception thrown out of a DI factory.
+    /// </summary>
+    [Fact]
+    public async Task A_user_mount_claiming_the_script_root_is_refused_with_an_actionable_line()
+    {
+        using var scratch = new ScriptScratch();
+        var script = scratch.WriteScript("ok.ork.ts", """
+            /// <reference orkeon-script="1.0" />
+            """);
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = script,
+            Mounts = [$"{scratch.OutDir}:/script:rw"],
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("reserved by the runner", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("/script", console.Stderr, StringComparison.Ordinal);
+    }
 }

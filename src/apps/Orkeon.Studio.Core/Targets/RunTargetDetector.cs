@@ -30,6 +30,13 @@ public sealed class RunTargetDetector
     /// <summary>Per-entity tasks sub-folder of the multi-file crew layout.</summary>
     public const string TasksDirectoryName = "tasks";
 
+    /// <summary>
+    /// Sub-folder holding the crew definition inside a promoted team folder — the layout
+    /// <c>forge promote</c> writes (mirrors its <c>ForgeYamlRenderer.CrewDirectoryName</c>,
+    /// and the one <c>TeamCatalog</c> already counts agents in).
+    /// </summary>
+    public const string PromotedCrewDirectoryName = "crew";
+
     /// <summary>Suffix of a scripting-DSL crew file.</summary>
     public const string ScriptSuffix = ".ork.ts";
 
@@ -131,7 +138,8 @@ public sealed class RunTargetDetector
                 $"'{filePath}' is not a crew definition the CLI runs: expected one of {SupportedFileExtensions}."));
     }
 
-    private RunTargetDetection DetectDirectory(string directory, RunTargetKind? preferredKind)
+    private RunTargetDetection DetectDirectory(
+        string directory, RunTargetKind? preferredKind, bool allowPromotedLayout = true)
     {
         var markers = FindYamlLayoutMarkers(directory);
         var scripts = ListScripts(directory);
@@ -148,6 +156,21 @@ public sealed class RunTargetDetector
 
         if (scripts.Count > 0)
             return RunTargetDetection.NeedsSelection(directory, scripts);
+
+        // An adopted team: `forge promote` keeps the definition in a `crew/` sub-folder and
+        // puts the launchers, the card, the deliverable folders and Studio's sidecar beside
+        // it. The folder the user picks — and the one a team card hands over — is the team,
+        // so the run path descends while the SELECTED path stays put: the sidecar is read
+        // next to it, and the launch runs from the team folder, which is what makes the
+        // team's own /output land inside the security root.
+        if (allowPromotedLayout && _probe.DirectoryExists(Path.Combine(directory, PromotedCrewDirectoryName)))
+        {
+            var nested = DetectDirectory(
+                Path.Combine(directory, PromotedCrewDirectoryName), preferredKind, allowPromotedLayout: false);
+
+            if (nested is { Status: RunTargetDetectionStatus.Resolved, Target: { } inner })
+                return RunTargetDetection.Resolved(directory, inner with { SelectedPath = directory });
+        }
 
         return RunTargetDetection.Failed(
             directory,

@@ -5,9 +5,10 @@ namespace Orkeon.Studio.Core.Tests;
 
 /// <summary>
 /// What a launch really does to the mount list. The runner writes ONE array — its own
-/// auto-injected mounts first, then the <c>--mount</c> arguments — as
+/// auto-injected mount first, then the <c>--mount</c> arguments — as
 /// <c>Orkeon:FileSystem:Mounts:{i}</c>. So index 0 is never the user's, the first
-/// <c>--mount</c> lands at index 1 (2 with <c>--llm-log</c>), and nothing is ever merged.
+/// <c>--mount</c> lands at index 1, and nothing is ever merged. Since ADR-008 the exchange
+/// log is an internal mount on its own key, so <c>--llm-log</c> no longer shifts anything.
 /// </summary>
 public sealed class MountOverrideSemanticsTests
 {
@@ -15,7 +16,7 @@ public sealed class MountOverrideSemanticsTests
 
     private static readonly string[] YamlArguments = ["/srv/crew.yaml"];
 
-    /// <summary>A YAML file target, whose auto-injected mount is its own directory, 1:1 read-only.</summary>
+    /// <summary>A YAML file target, whose auto-injected mount is its own directory as <c>/crew</c>, read-only.</summary>
     private static RunTarget YamlTarget() => new()
     {
         Kind = RunTargetKind.YamlFile,

@@ -66,7 +66,9 @@ public static partial class RunnerExecution
                 LogValidatingCrew(logger, configPath);
 
                 var factory = host.Services.GetRequiredService<ICrewFactory>();
-                var crew = await LoadCrewAsync(host, factory, virtualConfigPath, logger, cts.Token).ConfigureAwait(false);
+                var crew = await LoadCrewAsync(
+                    host, factory, virtualConfigPath, logger, cts.Token, bootstrap.IsCrewDirectory)
+                    .ConfigureAwait(false);
 
                 // Tools live on the agents, not the crew aggregate (which holds only ids).
                 // Re-hydrate the agents and count the distinct tool names actually resolved.
@@ -126,7 +128,7 @@ public static partial class RunnerExecution
             var cliMounts = opts.Mounts.ToList();
             if (!EnsureReservedRootsAreFree(cliMounts, RunnerMounts.CrewVirtualRoot))
                 return 1;
-            var internalMounts = new[] { $"{cwd}:{RunnerMounts.CrewVirtualRoot}:ro" };
+            var internalMounts = new[] { $"{FileSystemMount.Quote(cwd)}:{RunnerMounts.CrewVirtualRoot}:ro" };
 
             using var host = RunnerHost.Build(
                 settingsPath, cliMounts,
@@ -179,12 +181,20 @@ public static partial class RunnerExecution
     /// <param name="factory">The crew factory.</param>
     /// <param name="logger">Logger for the loading trace.</param>
     /// <param name="ct">Cancellation token.</param>
+    /// <param name="targetIsDirectory">
+    /// Whether the target is a crew directory, when the caller already knows — every runner in
+    /// this repository does, because it is the same answer that decided the virtual spelling.
+    /// Left null, the VFS is asked, which cannot see through a symlink: a crew directory reached
+    /// by a link (<c>deploy/current → deploy/release-42</c>) reports as
+    /// <see cref="VirtualEntryKind.SymLink"/> and would be read as a single file.
+    /// </param>
     public static async Task<Domain.Crew.Crew> LoadCrewAsync(
         IHost host,
         ICrewFactory factory,
         string configPath,
         ILogger logger,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool? targetIsDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(host);
         ArgumentNullException.ThrowIfNull(factory);
@@ -193,10 +203,15 @@ public static partial class RunnerExecution
         if (IsScriptedCrewDefinition(configPath))
             return await LoadCrewFromScriptAsync(host, factory, configPath, logger, ct).ConfigureAwait(false);
 
-        var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
-        var kind = await fileSystem.GetEntryKindAsync(configPath, ct).ConfigureAwait(false);
+        var isDirectory = targetIsDirectory;
+        if (isDirectory is null)
+        {
+            var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
+            isDirectory = await fileSystem.GetEntryKindAsync(configPath, ct).ConfigureAwait(false)
+                == VirtualEntryKind.Directory;
+        }
 
-        return kind == VirtualEntryKind.Directory
+        return isDirectory.Value
             ? await factory.CreateFromDirectoryAsync(configPath, ct).ConfigureAwait(false)
             : await factory.CreateFromFileAsync(configPath, ct).ConfigureAwait(false);
     }

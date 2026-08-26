@@ -8,9 +8,15 @@ namespace Orkeon.Host;
 /// Virtual path of each crew, keyed by the crew's configured <c>Name</c> — what
 /// <c>RunnerExecution.LoadCrewAsync</c> is given.
 /// </param>
+/// <param name="Roots">
+/// The virtual roots those mounts claim (<c>/crews</c>, <c>/crews-1</c>, …). The daemon
+/// refuses an operator <c>--mount</c> claiming one of them, so it needs them without
+/// re-parsing the specs it just built.
+/// </param>
 internal sealed record HostCrewMountPlan(
     IReadOnlyList<string> Mounts,
-    IReadOnlyDictionary<string, string> VirtualPaths);
+    IReadOnlyDictionary<string, string> VirtualPaths,
+    IReadOnlyList<string> Roots);
 
 /// <summary>
 /// Derives the VFS mounts a hosted crew needs from its configured path (GATE-02).
@@ -59,14 +65,18 @@ internal static class HostCrewMounts
         {
             var root = index == 0 ? VirtualPathPrefix : $"{VirtualPathPrefix}-{index}";
             roots[directory] = root;
-            mounts.Add($"{directory}:{root}:ro");
+            mounts.Add($"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(directory)}:{root}:ro");
             index++;
         }
 
-        var virtualPaths = new Dictionary<string, string>(StringComparer.Ordinal);
+        // First declaration wins, matching CrewHostRegistry.Find (FirstOrDefault by name): two
+        // crews sharing a Name must not resolve to different definitions on the two paths.
+        var virtualPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var crew in materialized)
         {
             if (string.IsNullOrWhiteSpace(crew.Path) || string.IsNullOrWhiteSpace(crew.Name))
+                continue;
+            if (virtualPaths.ContainsKey(crew.Name))
                 continue;
 
             var full = Path.GetFullPath(crew.Path);
@@ -78,6 +88,6 @@ internal static class HostCrewMounts
             virtualPaths[crew.Name] = isDirectory ? root : $"{root}/{Path.GetFileName(full)}";
         }
 
-        return new HostCrewMountPlan(mounts, virtualPaths);
+        return new HostCrewMountPlan(mounts, virtualPaths, [.. roots.Values]);
     }
 }

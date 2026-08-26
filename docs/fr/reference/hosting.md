@@ -31,11 +31,24 @@ IHost host = RunnerHost.Build(
     settingsPath: "appsettings.json",   // chemin d'appsettings résolu (nullable)
     cliMounts: ["/data:/data:ro"],       // arguments --mount de la CLI (« physique:virtuel:droits »)
     allowExternalMounts: false,          // autoriser des bases de montage hors de la racine du workspace
-    llmLogPath: null,                    // si renseigné, capture les échanges HTTP LLM en .jsonl
+    llmLogVirtualPath: null,             // si renseigné, un répertoire VIRTUEL que l'appelant a monté :
+                                         // les échanges HTTP LLM y sont capturés en .jsonl
+    internalMounts: null,                // montages enregistrés en MountVisibility.Internal — résolubles
+                                         // par le VFS, jamais listés à un agent (ADR-008)
     configureLogging: null,              // personnalisation optionnelle de ILoggingBuilder
     configureServices: null,             // hook optionnel pour enregistrer les services du runner
     configureBuilder: null);             // hook IHostBuilder optionnel — orkeon-host s'en sert pour UseSystemd()/UseWindowsService()
 ```
+
+Un chemin virtuel est toujours un nom commençant par `/` — jamais un chemin disque
+([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). `RunnerMounts` nomme les
+racines que les runners livrés se réservent : `/crew` (le dossier de définition du crew),
+`/script` (le dossier d'un point d'entrée scripté) et `/llm-logs`. Un appelant qui active la
+journalisation des échanges monte son répertoire de logs en interne et passe ici
+`RunnerMounts.LlmLogVirtualRoot` — c'est ce que fait la CLI.
+
+`LoadCrewAsync` prend de même sa cible en chemin **virtuel** : elle demande au VFS si la cible est
+un répertoire au lieu de sonder le disque, donc un chemin physique qu'on lui passe est refusé.
 
 Il compose `Host.CreateDefaultBuilder()` avec :
 
@@ -51,8 +64,8 @@ fournis par l'utilisateur et provisionne les montages VFS *avant* que le contene
 
 L'ordre d'enregistrement est délibéré :
 
-1. **Logging** — le logging du runner (Console + Information par défaut) et, quand `llmLogPath` est
-   renseigné, le `DelegatingHandler` de capture des échanges LLM.
+1. **Logging** — le logging du runner (Console + Information par défaut) et, quand
+   `llmLogVirtualPath` est renseigné, le `DelegatingHandler` de capture des échanges LLM.
 2. **Le fournisseur LLM d'abord** — `RegisterLlmProvider` lit la section de config `Llm` et enregistre
    le fournisseur (et son `IChatClient`) **avant** `AddOrkeonApplication` / `AddOrkeonInfrastructure`.
    Cet ordre compte : l'infrastructure Orkeon enregistre ses fallbacks LLM/`IChatClient` en `TryAdd`,
@@ -66,8 +79,10 @@ L'ordre d'enregistrement est délibéré :
 6. **Suites d'outils cœur** — système de fichiers, data, web, code, abstractions, outils de
    session ; puis l'EventHub en mémoire plus ses outils agents et l'ACL EventHub
    (`AddOrkeonEventHubAcl`, défaut permissif : une crew sans bloc `links:` se comporte comme avant).
-7. **Montages VFS** — `AddOrkeonFileSystem` quand `Orkeon:FileSystem:Mounts` existe **et contient au
-   moins une entrée** (un tableau vide n'enregistre rien).
+7. **Montages VFS** — `AddOrkeonFileSystem` quand `Orkeon:FileSystem:Mounts` **ou**
+   `Orkeon:FileSystem:InternalMounts` existe **et contient au moins une entrée** (deux tableaux
+   vides n'enregistrent rien). L'une ou l'autre liste suffit à rendre le VFS réel : `--list-tools`
+   n'a que la seconde.
 8. **Suites d'outils tardives** — RaggableTree (outils de graphe sémantique, opt-out via
    `"RaggableTree:Enabled": false` ; pré-enregistre les embeddings locaux quand ils sont le provider
    choisi), les outils WebSearch et `cache_search`, et l'outil de recherche Brave quand

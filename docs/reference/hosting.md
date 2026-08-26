@@ -29,11 +29,24 @@ IHost host = RunnerHost.Build(
     settingsPath: "appsettings.json",   // resolved appsettings path (nullable)
     cliMounts: ["/data:/data:ro"],       // CLI --mount args ("physical:virtual:rights")
     allowExternalMounts: false,          // whitelist mount base paths outside the workspace root
-    llmLogPath: null,                    // when set, captures LLM HTTP exchanges as .jsonl
+    llmLogVirtualPath: null,             // when set, a VIRTUAL directory the caller has mounted:
+                                         // LLM HTTP exchanges are captured there as .jsonl
+    internalMounts: null,                // mounts registered MountVisibility.Internal — resolvable
+                                         // by the VFS, never listed to an agent (ADR-008)
     configureLogging: null,              // optional ILoggingBuilder customization
     configureServices: null,             // optional hook to register runner-specific services
     configureBuilder: null);             // optional IHostBuilder hook — orkeon-host uses it for UseSystemd()/UseWindowsService()
 ```
+
+A virtual path is always a name starting with `/` — never a disk path
+([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). `RunnerMounts` names the
+roots the shipped runners take for themselves: `/crew` (the crew definition's directory),
+`/script` (a scripting entry point's directory) and `/llm-logs`. A caller that enables exchange
+logging mounts its log directory internally and passes `RunnerMounts.LlmLogVirtualRoot` here —
+that is what the CLI does.
+
+`LoadCrewAsync` likewise takes the crew target as a **virtual** path: it asks the VFS whether the
+target is a directory rather than probing the disk, so a physical path handed to it is denied.
 
 It composes `Host.CreateDefaultBuilder()` with:
 
@@ -47,8 +60,8 @@ settings paths and provisions VFS mounts *before* the DI container (and thus `IF
 
 The registration order is deliberate:
 
-1. **Logging** — runner logging (Console + Information by default) and, when `llmLogPath` is set, the LLM
-   exchange logging `DelegatingHandler`.
+1. **Logging** — runner logging (Console + Information by default) and, when `llmLogVirtualPath` is set,
+   the LLM exchange logging `DelegatingHandler`.
 2. **LLM provider first** — `RegisterLlmProvider` reads the `Llm` config section and registers the
    provider (and its `IChatClient`) **before** `AddOrkeonApplication` / `AddOrkeonInfrastructure`. This
    ordering matters: Orkeon infrastructure registers its LLM/`IChatClient` fallbacks with `TryAdd`, so a
@@ -62,8 +75,9 @@ The registration order is deliberate:
 6. **Core tool suites** — file system, data, web, code, abstractions, session tools; then the
    in-memory EventHub plus its agent tools and the EventHub ACL (`AddOrkeonEventHubAcl`,
    permissive default so a crew without a `links:` block behaves as before).
-7. **VFS mounts** — `AddOrkeonFileSystem` when `Orkeon:FileSystem:Mounts` exists **and holds at
-   least one entry** (an empty array registers nothing).
+7. **VFS mounts** — `AddOrkeonFileSystem` when `Orkeon:FileSystem:Mounts` **or**
+   `Orkeon:FileSystem:InternalMounts` exists **and holds at least one entry** (two empty arrays
+   register nothing). Either list alone makes the VFS real: `--list-tools` has only the second.
 8. **Late tool suites** — RaggableTree (semantic-graph tools, opt out with
    `"RaggableTree:Enabled": false`; pre-registers local embeddings when they are the selected
    provider), the WebSearch and `cache_search` tools, and the Brave search tool when

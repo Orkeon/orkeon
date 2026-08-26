@@ -28,9 +28,13 @@ public abstract class RunnerOptionsBase
         HelpText = "Path to appsettings.json (defaults to same dir as config).")]
     public string? SettingsPath { get; set; }
 
-    /// <summary>Repeatable mount strings in Docker-style format.</summary>
+    /// <summary>
+    /// Mount strings in Docker-style format. Several go space-separated after ONE flag —
+    /// the parser refuses a repeated option, so "--mount a --mount b" is a usage error.
+    /// </summary>
     [Option('m', "mount", Required = false,
-        HelpText = "File system mount(s) in Docker-style format: <physical>:<virtual>:<rights>[;sub:rights]. Repeatable.")]
+        HelpText = "File system mount(s) in Docker-style format: <physical>:<virtual>:<rights>[;sub:rights]. "
+                   + "Several mounts go space-separated after ONE --mount (the flag cannot be repeated).")]
     public IEnumerable<string> Mounts { get; set; } = [];
 
     /// <summary>Allow mounts whose base path is outside the cwd.</summary>
@@ -64,10 +68,14 @@ public abstract class RunnerOptionsBase
                    "Defaults to './llm-logs' when --llm-log is used without --llm-log-path.")]
     public string? LlmLogPath { get; set; }
 
-    /// <summary>Repeatable KEY=VALUE variables forwarded to CrewInput.</summary>
+    /// <summary>
+    /// KEY=VALUE variables forwarded to CrewInput. Several go space-separated after ONE flag,
+    /// like <see cref="Mounts"/> — the parser refuses a repeated option.
+    /// </summary>
     [Option('V', "var", Required = false,
-        HelpText = "Variable for CrewInput (KEY=VALUE format). Repeatable. " +
-                   "Used by task description templates: {KEY} → VALUE.")]
+        HelpText = "Variable for CrewInput (KEY=VALUE format). Several variables go space-separated "
+                   + "after ONE --var (the flag cannot be repeated). "
+                   + "Used by task description templates: {KEY} → VALUE.")]
     public IEnumerable<string> Variables { get; set; } = [];
 
     /// <summary>Initial context string passed to CrewInput.</summary>

@@ -331,4 +331,62 @@ public sealed class RunTargetDetectorTests
         Assert.True(RunTargetDetector.IsScriptFile("bundle.JS"));
         Assert.False(RunTargetDetector.IsScriptFile("crew.yaml"));
     }
+
+    /// <summary>
+    /// The folder `forge promote` writes, and the one a team card hands to the launcher:
+    /// definition in <c>crew/</c>, launchers and deliverable folders and Studio's sidecar
+    /// beside it. Refusing it made an adopted team unlaunchable from its own card ("holds no
+    /// crew definition… pick a file inside it instead"), and picking <c>crew/</c> by hand
+    /// found no sidecar, so the team's mounts never reached the command line.
+    /// </summary>
+    [Fact]
+    public void A_promoted_team_folder_resolves_to_its_crew_sub_folder()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/veille", "/teams/veille/crew", "/teams/veille/crew/agents", "/teams/veille/output")
+            .WithFiles("/teams/veille/crew/config.yaml", "/teams/veille/run.sh", "/teams/veille/studio-team.json");
+
+        var detection = new RunTargetDetector(probe).Detect("/teams/veille");
+
+        Assert.NotNull(detection.Target);
+        var target = detection.Target;
+        Assert.Equal(RunTargetKind.MultiFileCrewDirectory, target.Kind);
+        // The run descends, the selection does not: the sidecar sits next to the picked
+        // folder, and running from it puts the team's own /output inside the security root.
+        Assert.Equal("/teams/veille/crew", target.RunPath);
+        Assert.Equal("/teams/veille", target.SelectedPath);
+    }
+
+    /// <summary>The same for a scripted team, whose entry point is <c>crew/crew.ork.ts</c>.</summary>
+    [Fact]
+    public void A_promoted_script_team_folder_resolves_to_its_entry_point()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/veille", "/teams/veille/crew")
+            .WithFiles("/teams/veille/crew/crew.ork.ts", "/teams/veille/run.sh");
+
+        var target = new RunTargetDetector(probe).Detect("/teams/veille").Target;
+
+        Assert.NotNull(target);
+        Assert.Equal(RunTargetKind.ScriptDirectory, target.Kind);
+        Assert.Equal("/teams/veille/crew/crew.ork.ts", target.RunPath);
+        Assert.Equal("/teams/veille", target.SelectedPath);
+    }
+
+    /// <summary>
+    /// The descent is one level and only into <c>crew/</c>: a folder holding neither its own
+    /// definition nor that sub-folder still fails, with the message that names what it looked
+    /// for. Nor does a <c>crew/</c> that is itself empty rescue it.
+    /// </summary>
+    [Fact]
+    public void The_descent_does_not_turn_any_folder_into_a_target()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/veille", "/teams/veille/crew", "/teams/veille/crew/nested", "/teams/veille/crew/nested/agents");
+
+        var detection = new RunTargetDetector(probe).Detect("/teams/veille");
+
+        Assert.Equal(RunTargetDetectionStatus.Failed, detection.Status);
+        Assert.Equal(RunTargetCodes.NoCandidate, detection.ErrorCode);
+    }
 }

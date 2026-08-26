@@ -71,12 +71,14 @@ public sealed class MountValidator
 
             if (!MountDefinition.IsValidVirtualPath(mount.VirtualPath))
             {
-                messages.Add(ValidationMessage.Error(
-                    ValidationCodes.MountFormat,
-                    string.Create(
+                var reason = MountDefinition.IsReservedVirtualPath(mount.VirtualPath)
+                    ? string.Create(
                         CultureInfo.InvariantCulture,
-                        $"Virtual path '{mount.VirtualPath}' must start with '/'."),
-                    serialized));
+                        $"Virtual path '{mount.VirtualPath}' is reserved by the runner — choose another name.")
+                    : string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"Virtual path '{mount.VirtualPath}' must start with '/'.");
+                messages.Add(ValidationMessage.Error(ValidationCodes.MountFormat, reason, serialized));
                 continue;
             }
 

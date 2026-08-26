@@ -30,6 +30,14 @@ prompts and API payloads and was being advertised to every agent as a writable
 mount. As a result, turning `--llm-log` on no longer shifts
 `Orkeon:FileSystem:Mounts:{i}`.
 
+A denial message is read by the LLM, so it is an agent-facing surface like
+`list_mounts`: `FileSystemRegistry` now builds its "Available mounts" and
+"Mounts granting Write" lists from the agent-facing mounts only. It used to
+enumerate *every* mount, which named `/llm-logs` to any agent that touched an
+unmounted path — and annotated it `(writable)`. Note the scope: `Internal`
+withholds a mount from every listing, it does not make it unaddressable, so a
+runner must not put behind it anything an agent knowing the name must not read.
+
 In Studio, the agent editor's « Sur quel dossier » line and the Composer's
 folder chips now name mounts the way agents address them (`/output (lecture,
 écriture)`) instead of joining raw `physical:virtual:rights` strings. Expert
@@ -42,12 +50,33 @@ deliverable; nothing carried that mount further, so the same team launched from
 its own folder was denied `/output`, logged a warning and reported success with
 nothing written. `forge promote` derives the write roots from the blueprint,
 creates their folders, and spells them in both launchers; Studio binds the same
-roots into the sidecar at adoption.
+roots into the sidecar at adoption. A deliverable root the runner reserves —
+`/crew`, `/script`, `/llm-logs` — and the traversal spellings `/..` and `/.` are
+skipped rather than mounted.
+
+**And the promoted launchers now run from the team's own folder.** Neither
+`run.sh` nor `run.cmd` changed directory, while both address the crew by an
+absolute anchored path: the runner refuses to read a crew outside the working
+directory without `--allow-external-mounts`, and the security whitelist is
+rooted on the working directory too. Launched from anywhere else — which is
+every scheduled run the generated `schedule/` artifacts install, since a service
+starts in the system directory — the team was refused outright, or ran and wrote
+nothing. Both launchers now `cd` into their folder first. In the same file,
+`--var` was spelled once per sample variable, which the CLI's parser rejects as
+a repeated option: several values now go space-separated after one flag, the
+rule `--mount` already followed.
 
 **Breaking**: `--mount` no longer accepts a drive-letter virtual path, and a
-`--mount` claiming `/crew` or `/llm-logs` is refused with an actionable line.
+`--mount` claiming a root a runner reserves for itself — `/crew` and
+`/llm-logs` on the YAML path, `/script` and `/llm-logs` on the scripting path,
+`/crews*` on the `orkeon-host` daemon (exit 78) — is refused with an actionable
+line.
 `RunnerHost.Build`'s `llmLogPath` parameter becomes `llmLogVirtualPath` and
 takes a virtual path; a new optional `internalMounts` parameter follows it.
+`RunnerExecution.LoadCrewAsync` keeps its signature but changes contract: its
+`configPath` is now a **virtual** path, so a host passing a physical one is
+denied by the VFS instead of loading. `RunnerExecution.EnsureReservedRootsAreFree`
+is public, for hosts that inject mounts of their own.
 
 **A mount string can quote its physical path.** Three call sites split a spec
 on `:` with three different heuristics, and the one in
@@ -63,11 +92,39 @@ Quoting rather than backslash-escaping, because a backslash escape would collide
 with the Windows path separator, which is exactly what has to survive here.
 Backslashes are ordinary characters, so every existing mount string is
 unchanged, and two folders that had no spelling at all now have one: a drive
-root (`"C:\":/workspace:ro`) and any path ending in a separator.
+root (`"C:\":/workspace:ro`) and any path ending in a separator. Those quotes
+belong to the mount grammar, so a shell must be told to leave them alone — the
+CLI reference spells the bash and PowerShell forms.
 
-Also fixed: `examples/service-host/appsettings.host.json` declared its mounts as
-objects, a shape `FileSystemOptions.Mounts` cannot bind, and the RaggableTree
-pages documented a mount syntax that does not exist.
+Every producer goes through `FileSystemMount.Quote`, not just the parsers
+through the split: the runners' own crew / script / exchange-log mounts, the
+daemon's crew mounts, the two `orkeon-repl` bootstrappers and Studio's
+`MountDefinition.ToMountString`. A folder whose name holds a `;` is legal on
+every OS Studio's picker browses, and each of those sites used to emit a spec
+its own parser then refused.
+
+**And an adopted team can be launched from its own card again.** Studio's target
+detector looked for a crew definition at the root of the folder it was handed,
+while `forge promote` keeps it in `crew/` — so « Lancer » on a team card
+answered *"holds no crew definition… pick a file inside it instead"*, and
+picking `crew/` by hand found no sidecar beside it, so the team's mounts never
+reached the command line. The detector now descends into `crew/`: the run path
+goes to the definition, the *selected* path stays the team folder, which is what
+puts the sidecar in view and the team's own `/output` inside the security root.
+
+Two more Studio screens stopped showing folders: the « Importer une équipe »
+recognition report joined the sidecar's raw mount strings — read by whoever
+*received* the team, so it disclosed the exporter's disk layout — and the
+team-mounts modal fell back to the raw string in a field documented as "the
+virtual spelling the agents see". All four renderers now share one
+`MountLabels`.
+
+Also fixed: two hosted crews sharing a `Name` resolved to different definitions
+(the plan kept the last, `CrewHostRegistry.Find` answers with the first);
+`examples/service-host/appsettings.host.json` declared its mounts as objects, a
+shape `FileSystemOptions.Mounts` cannot bind; the RaggableTree pages documented
+a mount syntax that does not exist; and the `--mount` / `--var` help text said
+"Repeatable." of options the parser refuses to see twice.
 
 ## [1.0.0-rc.2] - 2026-08-25
 

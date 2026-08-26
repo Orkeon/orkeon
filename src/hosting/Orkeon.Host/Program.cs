@@ -77,11 +77,12 @@ if (settingsPath is not null && !StartupProbes.SettingsFileExists(settingsPath))
     return HostConfigurationException.ExitCode;
 }
 
-// Each hosted crew's directory is mounted read-only, 1:1: the loader reads through the VFS,
-// and a crew path that only exists on the physical disk would pass the startup probe and
-// then fail on every message. The crew definitions are the host's primary input — declared
-// by the operator in the configuration — so their mounts do not require the external-mounts
-// opt-in any more than the CLI's own config directory does.
+// Each hosted crew's directory is mounted read-only under a NAME — /crews, /crews-1, …
+// (ADR-008), never identity-mapped: the loader reads through the VFS, and a crew path that
+// only exists on the physical disk would pass the startup probe and then fail on every
+// message. The crew definitions are the host's primary input — declared by the operator in
+// the configuration — so their mounts do not require the external-mounts opt-in any more
+// than the CLI's own config directory does.
 var bootConfiguration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: true)
     .AddJsonFile(settingsPath ?? "appsettings.json", optional: true)
@@ -90,6 +91,16 @@ var bootConfiguration = new ConfigurationBuilder()
     .Build();
 var bootOptions = bootConfiguration.GetSection(OrkeonHostOptions.SectionName).Get<OrkeonHostOptions>() ?? new OrkeonHostOptions();
 var crewPlan = HostCrewMounts.For(bootOptions.Crews);
+
+// An operator --mount claiming a root the daemon needs for its own crews would otherwise
+// surface as a raw "Duplicate virtual paths" exception thrown out of a DI factory, which
+// reads as a crash rather than as the configuration mistake it is (ADR-008, decision 5).
+if (crewPlan.Roots.Count > 0
+    && !RunnerExecution.EnsureReservedRootsAreFree(mounts, [.. crewPlan.Roots]))
+{
+    return HostConfigurationException.ExitCode;
+}
+
 mounts.AddRange(crewPlan.Mounts);
 
 using var host = RunnerHost.Build(

@@ -183,6 +183,10 @@ public class FileSystemMountParseTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("no-separator-at-all")]
+    // A blank physical segment names no folder: callers resolve the answer against the working
+    // directory, and Path.GetFullPath("") throws where null sends them to the parser's message.
+    [InlineData(":/workspace:ro")]
+    [InlineData("  :/workspace:ro")]
     public void TryGetBasePath_returns_null_for_anything_it_cannot_read(string spec) =>
         Assert.Null(FileSystemMount.TryGetBasePath(spec));
 

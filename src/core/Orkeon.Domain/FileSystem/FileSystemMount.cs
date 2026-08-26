@@ -106,7 +106,14 @@ public sealed record FileSystemMount
 
         var mainPart = SplitOutsideQuotes(mountString, ';')[0];
         var parts = SplitMainPart(mainPart);
-        return parts.Count >= 2 ? Unquote(parts[0]) : null;
+        if (parts.Count < 2)
+            return null;
+
+        // A blank physical segment (":/workspace:ro") is not a folder this can name: callers
+        // resolve what comes back against the working directory, and Path.GetFullPath("")
+        // throws. Null sends them down their "the parser will explain it" path instead.
+        var basePath = Unquote(parts[0]);
+        return string.IsNullOrWhiteSpace(basePath) ? null : basePath;
     }
 
     /// <summary>

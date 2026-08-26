@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
+using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 
@@ -132,7 +133,10 @@ public sealed class ImportTeamViewModel : ObservableObject
                 _strings[StudioStringKeys.ImportMountsDeclared],
                 string.Format(CultureInfo.CurrentCulture,
                     _strings[StudioStringKeys.ImportMountsDeclaredDetail],
-                    described.Mounts.Count, string.Join(", ", described.Mounts)), "ok"));
+                    described.Mounts.Count,
+                    // The way the agents address them, never the exporting machine's folders
+                    // — an import report is read by whoever received the team (ADR-008).
+                    MountLabels.DescribeAll(described.Mounts, _strings, ", ")), "ok"));
         }
         else
         {

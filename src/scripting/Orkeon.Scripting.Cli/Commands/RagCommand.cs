@@ -449,7 +449,7 @@ internal static class RagCommand
         var cliMounts = options.Mounts.Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
 
         if (!cliMounts.Any(m => ClaimsVirtualRoot(m, "/workspace")))
-            cliMounts.Insert(0, $"{cwd}:/workspace:ro");
+            cliMounts.Insert(0, $"{FileSystemMount.Quote(cwd)}:/workspace:ro");
 
         if (!cliMounts.Any(m => ClaimsVirtualRoot(m, "/output")))
         {
@@ -457,7 +457,7 @@ internal static class RagCommand
             // EXCEPTION-BOOTSTRAP: provisions the manifest mount's physical directory
             // before the DI container (and thus IFileSystemService) exists.
             Directory.CreateDirectory(stateDir);
-            cliMounts.Add($"{stateDir}:/output:rw");
+            cliMounts.Add($"{FileSystemMount.Quote(stateDir)}:/output:rw");
         }
 
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
@@ -494,10 +494,21 @@ internal static class RagCommand
     /// <summary>True when the Docker-style mount string claims <paramref name="virtualRoot"/>.</summary>
     internal static bool ClaimsVirtualRoot(string mount, string virtualRoot)
     {
-        // <physical>:<virtual>[:<rights>] — match the virtual segment exactly
-        // (":/output" must not match ":/output-archive").
-        return mount.Contains($":{virtualRoot}:", StringComparison.Ordinal)
-            || mount.EndsWith($":{virtualRoot}", StringComparison.Ordinal);
+        // Ask the grammar, never the substring: a physical path may legally carry ':' when
+        // quoted ("/mnt/x:/output:y":/corpus:ro), and reading the spec by hand would see an
+        // /output claim that is not there. A malformed spec claims nothing — the parser
+        // reports it, with its own message, when the host is built.
+        try
+        {
+            return string.Equals(
+                FileSystemMount.Parse(mount).VirtualPath.TrimEnd('/'),
+                virtualRoot.TrimEnd('/'),
+                StringComparison.Ordinal);
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            return false;
+        }
     }
 
     /// <summary>

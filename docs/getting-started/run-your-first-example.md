@@ -143,9 +143,11 @@ bridge a host directory into that virtual space:
 --mount ./data:/data:ro         # host ./data ->  virtual /data    (read-only)
 ```
 
-The runner automatically mounts the config's own directory read-only, so the
-YAML and any sibling data files are always visible. Paths outside the working
-directory require `--allow-external-mounts` (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`
+The runner automatically mounts the config's own directory read-only, **under the
+name `/crew`**, so the YAML and any sibling data files are always visible — a
+`data.csv` next to `config.yaml` is read as `/crew/data.csv`, never by its path on
+your disk ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Paths
+outside the working directory require `--allow-external-mounts` (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`
 in the environment — the container image's default).
 
 ### How settings are resolved
