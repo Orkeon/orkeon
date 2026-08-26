@@ -266,8 +266,19 @@ public class YamlCrewDefinitionTests
         Assert.True(task2.HumanInput);
     }
 
+    /// <summary>
+    /// An unknown <c>process:</c> is a typo, and a typo is refused with the list of what was
+    /// expected.
+    /// <para>
+    /// It used to fall through to Sequential, silently — so <c>process: graf</c> ran a
+    /// pipeline the author never asked for, and the author's only clue was that the crew
+    /// behaved oddly. This very test asserted the fallback, which is how it survived: the
+    /// neighbouring <c>deliverable:</c> parser refuses an unknown value, and the scripting
+    /// authoring path refuses one.
+    /// </para>
+    /// </summary>
     [Fact]
-    public async Task ShouldDefaultToSequential_WhenLoadFromStringAsyncUnknownProcessType()
+    public async Task ShouldRefuseAnUnknownProcessType_AndNameTheValidOnes()
     {
         var crewYaml = new CrewYamlConfig
         {
@@ -279,8 +290,12 @@ public class YamlCrewDefinitionTests
         };
         _yamlSerializer.SetDeserializeResult(crewYaml);
 
-        var config = await _loader.LoadFromStringAsync("yaml", TestContext.Current.CancellationToken);
-        Assert.Equal(ProcessType.Sequential, config.Process);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _loader.LoadFromStringAsync("yaml", TestContext.Current.CancellationToken));
+
+        Assert.Contains("unknown_process", ex.Message, StringComparison.Ordinal);
+        foreach (var process in ProcessType.All)
+            Assert.Contains(process.Value, ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

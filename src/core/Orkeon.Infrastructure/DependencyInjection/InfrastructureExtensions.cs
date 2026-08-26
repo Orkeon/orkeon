@@ -331,6 +331,12 @@ public static class InfrastructureExtensions
         // Agent delegation provider (scoped — one instance per crew execution)
         services.AddScoped<AgentDelegationToolsProvider>();
 
+        // Who runs a task that declares no agent. This is the call site
+        // OrkeonApplicationOptions.AgentSelectionStrategy was missing: the option, the two
+        // real strategies and IAgentSelectionService all existed, and nothing in the engine
+        // ever asked them anything.
+        services.TryAddSingleton<Crew.Strategies.TaskAgentSelector>();
+
         // Add Process Strategies
         services.AddScoped<SequentialProcessStrategy>();
         services.AddScoped<HierarchicalProcessStrategy>();

@@ -42,6 +42,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private readonly CrewHookDispatcher _hooks;
     private readonly AgentDelegationToolsProvider _delegationProvider;
     private readonly ILogger<GraphProcessStrategy> _logger;
+    private readonly TaskAgentSelector _agentSelector;
 
     /// <summary>
     /// Fallback circuit breaker policy used when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>
@@ -67,7 +68,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         IMemoryScope memoryScope,
         AgentDelegationToolsProvider delegationProvider,
         ILogger<GraphProcessStrategy> logger,
-        ICrewExecutionHook? hook = null)
+        ICrewExecutionHook? hook = null,
+        TaskAgentSelector? agentSelector = null)
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -82,6 +84,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);
+        _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
     }
 
     /// <inheritdoc />
@@ -339,8 +342,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             return state;
         }
 
-        var agent = TaskAgentSelection.ForTask(task, state.Agents, state.AgentIndex);
-        state.AgentIndex++;
+        var agent = await _agentSelector
+            .ForTaskAsync(task, state.Agents, state.AgentIndex++, ct)
+            .ConfigureAwait(false);
 
         var executionResult = await RunTaskAsync(state, task, agent, ct).ConfigureAwait(false);
 

@@ -72,7 +72,14 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     public DateTime? CompletedAt { get; private set; }
 
     /// <summary>
-    /// Gets whether asynchronous execution is enabled.
+    /// Gets whether the author asked for asynchronous execution.
+    /// <para>
+    /// <b>Recorded, not yet honoured.</b> The YAML <c>asyncExecution:</c> field is parsed,
+    /// mapped and stored here, and no orchestration strategy reads it: concurrency comes from
+    /// <c>ProcessType.Parallel</c>, which now runs dependency waves. Kept because the field is
+    /// already in shipped crew files and dropping it would fail them at load; stated here
+    /// because "asynchronous execution" reads as a promise the engine does not keep.
+    /// </para>
     /// </summary>
     public bool AsyncExecution { get; private set; }
 

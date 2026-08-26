@@ -685,24 +685,29 @@ public sealed partial class YamlCrewMapper
         return agentNameMap.TryGetValue(name, out var id) ? id : null;
     }
 
-    /// <summary>Parses a process-type string (case-insensitive) into the domain value object.</summary>
+    /// <summary>
+    /// Parses a process-type string (case-insensitive) into the domain value object. Absent
+    /// means <see cref="ProcessType.Sequential"/>; anything the domain does not know is an
+    /// error naming what it does.
+    /// <para>
+    /// A hand-rolled switch used to fall through to Sequential, so <c>process: graf</c> — or
+    /// <c>process: paralell</c>, or a mode added to the domain and not to this list — ran a
+    /// pipeline the author did not ask for and never said so. The neighbouring
+    /// <c>deliverable:</c> parser refuses an unknown value; the scripting authoring path
+    /// refuses one; only the YAML entry point guessed.
+    /// </para>
+    /// </summary>
     public static ProcessType ParseProcessType(string? processStr)
     {
         if (string.IsNullOrWhiteSpace(processStr))
             return ProcessType.Sequential;
 
-#pragma warning disable CA1308 // lowercase is the normalized switch subject the YAML keys are matched against
-        return processStr.ToLowerInvariant() switch
-#pragma warning restore CA1308
-        {
-            "sequential" => ProcessType.Sequential,
-            "hierarchical" => ProcessType.Hierarchical,
-            "consensual" => ProcessType.Consensual,
-            "parallel" => ProcessType.Parallel,
-            "graph" => ProcessType.Graph,
-            "autonomous" => ProcessType.Autonomous,
-            _ => ProcessType.Sequential,
-        };
+        if (ProcessType.TryFrom(processStr.Trim(), out var process))
+            return process!;
+
+        throw new InvalidOperationException(
+            $"Unknown crew process '{processStr}'. Expected one of: "
+            + string.Join(", ", ProcessType.All.Select(p => p.Value)) + ".");
     }
 }
 

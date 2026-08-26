@@ -369,6 +369,131 @@ public sealed class ParallelProcessStrategyTests : IDisposable
         Assert.Equal(agent1.Role, ran["Task 3"]);
     }
 
+    /// <summary>
+    /// A task that declares <c>dependencies:</c> waits for them, and reads what they produced.
+    /// <para>
+    /// This mode used to ignore the field: all five tasks of a shipped competitive-intelligence
+    /// example started at the same instant, so its synthesis task ran against an empty context
+    /// and reported success on the nothing it had. Twenty-three of the thirty shipped
+    /// <c>process: parallel</c> examples declare dependencies.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ShouldRunDependentTasksAfterTheirDependencies_AndPassTheirOutputs()
+    {
+        var agentId = AgentId.From(Guid.NewGuid());
+        var collectAId = TaskId.From(Guid.NewGuid());
+        var collectBId = TaskId.From(Guid.NewGuid());
+        var synthesizeId = TaskId.From(Guid.NewGuid());
+
+        var agent = new AgentBuilder().Role("worker").Goal("Execute tasks").Backstory("b").Build();
+
+        var collectA = Orkeon.Domain.Task.CrewTask.Create(
+            description: Orkeon.Domain.Task.ValueObjects.TaskDescription.From("Collect A"),
+            expectedOutput: ExpectedOutput.From("a"));
+        var collectB = Orkeon.Domain.Task.CrewTask.Create(
+            description: Orkeon.Domain.Task.ValueObjects.TaskDescription.From("Collect B"),
+            expectedOutput: ExpectedOutput.From("b"));
+        var synthesize = Orkeon.Domain.Task.CrewTask.Create(
+            description: Orkeon.Domain.Task.ValueObjects.TaskDescription.From("Synthesize"),
+            expectedOutput: ExpectedOutput.From("report"));
+
+        synthesize.AddDependency(collectA.Id);
+        synthesize.AddDependency(collectB.Id);
+
+        var taskRepo = new TaskRepositoryWithData(new Dictionary<TaskId, Orkeon.Domain.Task.CrewTask>
+        {
+            [collectAId] = collectA,
+            [collectBId] = collectB,
+            [synthesizeId] = synthesize,
+        });
+        var agentRepo = new AgentRepositoryWithData(new Dictionary<AgentId, DomainAgent> { [agentId] = agent });
+
+        // A rendezvous rather than a sleep: each collector signals and waits for the other, so
+        // "they ran together" is proven by both waits completing, not by winning a race. A
+        // sequential implementation deadlocks the first one until the timeout and the
+        // assertion fails — deterministically, under any machine load.
+        using var bothCollectorsInFlight = new CountdownEvent(2);
+        var collectorsMet = 0;
+        var contextAtSynthesis = new List<string>();
+
+        _mockExecutionService.SetExecuteFunc((_, task, context, _) =>
+        {
+            if (task.Description.Value.StartsWith("Collect", StringComparison.Ordinal))
+            {
+                bothCollectorsInFlight.Signal();
+                if (bothCollectorsInFlight.Wait(TimeSpan.FromSeconds(30), CancellationToken.None))
+                    Interlocked.Increment(ref collectorsMet);
+            }
+            else
+            {
+                contextAtSynthesis.AddRange(context.PreviousOutputs.Select(o => o.Content));
+            }
+
+            return new TaskResult(true, $"out:{task.Description.Value}", null,
+                Array.Empty<Orkeon.Domain.Tools.ToolUsage>(), TimeSpan.FromMilliseconds(1));
+        });
+
+        var strategy = new ParallelProcessStrategy(taskRepo, agentRepo, _mockExecutionService, _mockMemoryScope, _logger);
+
+        var crew = new CrewBuilder().Goal("Test Crew").Process(ProcessType.Parallel).Build();
+        crew.AddAgent(agentId);
+        crew.AddTask(collectAId);
+        crew.AddTask(collectBId);
+        crew.AddTask(synthesizeId);
+
+        var result = await strategy.ExecuteParallelAsync(
+            crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(3, result.TaskOutputs.Count);
+        Assert.Equal(2, collectorsMet);   // the independent tasks must still run concurrently
+        Assert.Equal(
+            ["out:Collect A", "out:Collect B"],
+            contextAtSynthesis.Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>A cycle has no order that satisfies it, and is refused naming the tasks.</summary>
+    [Fact]
+    public async Task ShouldRefuseCircularDependencies_NamingTheTasks()
+    {
+        var agentId = AgentId.From(Guid.NewGuid());
+        var firstId = TaskId.From(Guid.NewGuid());
+        var secondId = TaskId.From(Guid.NewGuid());
+
+        var agent = new AgentBuilder().Role("worker").Goal("Execute tasks").Backstory("b").Build();
+        var first = Orkeon.Domain.Task.CrewTask.Create(
+            description: Orkeon.Domain.Task.ValueObjects.TaskDescription.From("Chicken"),
+            expectedOutput: ExpectedOutput.From("x"));
+        var second = Orkeon.Domain.Task.CrewTask.Create(
+            description: Orkeon.Domain.Task.ValueObjects.TaskDescription.From("Egg"),
+            expectedOutput: ExpectedOutput.From("y"));
+
+        first.AddDependency(second.Id);
+        second.AddDependency(first.Id);
+
+        var taskRepo = new TaskRepositoryWithData(new Dictionary<TaskId, Orkeon.Domain.Task.CrewTask>
+        {
+            [firstId] = first,
+            [secondId] = second,
+        });
+        var agentRepo = new AgentRepositoryWithData(new Dictionary<AgentId, DomainAgent> { [agentId] = agent });
+
+        var strategy = new ParallelProcessStrategy(taskRepo, agentRepo, _mockExecutionService, _mockMemoryScope, _logger);
+
+        var crew = new CrewBuilder().Goal("Test Crew").Process(ProcessType.Parallel).Build();
+        crew.AddAgent(agentId);
+        crew.AddTask(firstId);
+        crew.AddTask(secondId);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            strategy.ExecuteParallelAsync(
+                crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("Chicken", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Egg", ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ShouldLogWarningAndContinue_WhenExecuteParallelAsyncWithTaskNotFound()
     {

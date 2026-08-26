@@ -183,6 +183,54 @@ segments, `ro|rw|rwnd`, quoting).
 `appsettings.json` declares there, while its own documentation says it
 *additionally* whitelists. It now appends.
 
+### Fixed — configuration that decided nothing
+
+**`process: parallel` now honours `dependencies:`.** The mode ignored them: every
+task started at once, so a final synthesis task ran against an empty context and
+reported success on the nothing it had. The documentation said to use Sequential
+or Graph instead — and **23 of the 30 shipped `parallel` examples declare
+dependencies anyway**, which is the clearest possible statement of what the mode
+is for. Tasks are now grouped into waves: everything whose dependencies are
+satisfied runs concurrently, the next wave starts when they are done and reads
+their outputs. A crew declaring no dependency is one wave — the previous
+behaviour, unchanged. A cycle is refused, naming the tasks caught in it.
+
+**`AgentSelectionStrategy` now selects something.** The option, its two real
+strategies, `StrategyAgentSelectionService` and their DI wiring all existed —
+and `IAgentSelectionService.SelectBestAgentAsync` had no caller anywhere in
+`src/`, so setting `Embedding` changed nothing at runtime. `TaskAgentSelector` is
+that call site: consulted for a task declaring no `agent:`, never overriding one
+that does, degrading to round-robin with a warning when the embedding backend
+fails. `FirstFit` — the default — keeps round-robin exactly as before.
+
+**An unknown `process:` is refused instead of guessed.** A hand-rolled switch
+fell through to Sequential, so `process: graf` ran a pipeline the author never
+asked for. Both the YAML and the scripting paths now use `ProcessType.TryFrom`
+and name the valid values. **Breaking**: a crew file with a typo'd `process:`
+now fails to load instead of running as Sequential.
+
+**A Graph or Autonomous crew is no longer reported as Sequential.** Three
+hand-written `MapProcessType` switches restated the six-mode value object with
+four arms each and mapped every other mode to `"Sequential"`. They are gone; the
+DTOs carry the value object's own spelling.
+
+**`LogStreamingExchanges` is honoured.** It was bound from configuration, offered
+as a checkbox in both Studio surfaces, pinned by Studio's settings validator —
+and read by no code, so turning it off still captured every streaming exchange.
+
+**Removed**: `OrkeonConfig` and `OrkeonFeatureFlags`. Four documentation pages
+presented them as the framework's predefined configurations (`Default`,
+`Development`, `Production`); no production code read either, and no DI entry
+point accepted one. A host composes its settings through
+`AddOrkeonInfrastructure` / `AddOrkeonApplication` and its `appsettings.json`.
+
+Also: the five DLP interceptors' summaries read as descriptions of what the
+framework does ("ensure PII never appears in logs") when nothing invokes them —
+they are an opt-in toolkit a host applies, as
+`docs/reference/opt-in-subsystems.md` already said, and each class now says so
+too. And `asyncExecution:` is documented for what it is: recorded on the task,
+honoured by no orchestration mode.
+
 ## [1.0.0-rc.2] - 2026-08-25
 
 ### Added — Remediation v3: what a run costs, and adoption that is no longer a one-way door

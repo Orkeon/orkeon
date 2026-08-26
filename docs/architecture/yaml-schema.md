@@ -88,7 +88,7 @@ tasks:
     expectedOutput: string # Expected result format/content (required)
     agent: string         # ID of the agent assigned to the task
     dependencies: [string] # IDs of prerequisite tasks (guarantees ordering)
-    asyncExecution: bool  # default: false — asynchronous execution
+    asyncExecution: bool  # default: false — RECORDED, honoured by no mode yet (use process: parallel)
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data
     tools: [string]       # Task-scoped tool names (added to the agent's for this task)
@@ -247,7 +247,7 @@ The YAML models include:
 - `RagYamlConfig` (provider, collections + sources/chunking, defaults — with `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (short/long form entries) → `KnowledgeAttachment`
 
-Predefined configurations are available via `OrkeonConfig`: `Default`, `Development` (debug enabled, InMemory), `Production` (debug disabled, Redis).
+There is no framework-level "predefined configuration" object: a host composes its own settings through `AddOrkeonInfrastructure` / `AddOrkeonApplication` and its `appsettings.json`.
 
 ---
 

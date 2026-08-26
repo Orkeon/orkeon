@@ -10,6 +10,7 @@ using Orkeon.Application.Context;
 using Orkeon.Domain.Autonomous;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
+using DomainTask = Orkeon.Domain.Task.CrewTask;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using ApplicationTaskOutput = Orkeon.Application.Execution.TaskOutput;
@@ -18,8 +19,21 @@ using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
 namespace Orkeon.Infrastructure.Crew.Strategies;
 
 /// <summary>
-/// Parallel process strategy implementation.
-/// Executes independent tasks concurrently.
+/// Parallel process strategy: everything that can run at once, does.
+/// <para>
+/// Tasks are grouped into dependency waves. A wave holds every task whose declared
+/// <c>dependencies:</c> are already satisfied; they run concurrently, and the next wave starts
+/// when they are all done, reading their outputs. A crew declaring no dependency is a single
+/// wave — one flat fan-out, as before.
+/// </para>
+/// <para>
+/// This mode used to ignore <c>dependencies:</c> outright. Twenty-three of the thirty shipped
+/// <c>process: parallel</c> examples declare them, and in every one of those a final synthesis
+/// task started at the same instant as the tasks it consumes, ran against an empty context and
+/// reported success on the nothing it had. The documentation said to use Sequential or Graph
+/// instead; twenty-three example authors disagreed with the documentation, and they were
+/// describing the mode people actually want.
+/// </para>
 /// </summary>
 public sealed partial class ParallelProcessStrategy : IProcessStrategy
 {
@@ -28,6 +42,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     private readonly IAgentExecutionService _executionService;
     private readonly IMemoryScope _memoryScope;
     private readonly CrewHookDispatcher _hooks;
+    private readonly TaskAgentSelector _agentSelector;
     private readonly ILogger<ParallelProcessStrategy> _logger;
 
     /// <summary>Initializes a new instance of <see cref="ParallelProcessStrategy"/>.</summary>
@@ -36,6 +51,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// <param name="executionService">The agent execution service.</param>
     /// <param name="memoryScope">The memory scope.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="agentSelector">Who runs a task that names no agent. Null means round-robin.</param>
     /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
     public ParallelProcessStrategy(
         ITaskRepository taskRepository,
@@ -43,7 +59,8 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         IAgentExecutionService executionService,
         IMemoryScope memoryScope,
         ILogger<ParallelProcessStrategy> logger,
-        ICrewExecutionHook? hook = null)
+        ICrewExecutionHook? hook = null,
+        TaskAgentSelector? agentSelector = null)
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -56,6 +73,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);
+        _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
     }
 
     /// <inheritdoc />
@@ -108,7 +126,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         // The barrier covers setup AND the fan-out loop, not only the WhenAll: a cancellation
         // firing mid-fan-out used to escape with tasks 1..n-1 already launched — no terminal
         // event, and orphans still emitting task.completed after the strategy had returned.
-        (DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)[] results;
+        var results = new List<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>();
         try
         {
         // Load all agents
@@ -130,35 +148,58 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             ? plannedTasks.Select(pt => pt.TaskId)
             : crew.Tasks;
 
+        var tasks = new List<DomainTask>();
         foreach (var taskId in taskIds)
         {
-            var task = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
-            if (task == null)
+            var loaded = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
+            if (loaded == null)
             {
                 LogTaskNotFoundSkipping(taskId);
                 continue;
             }
 
-            // The agent the crew declared, round-robin only when it declared none — the same
-            // choice Sequential and Graph make. This mode used to take loop order alone, so a
-            // YAML `agent:` was silently ignored in parallel mode and nowhere else.
-            var agent = TaskAgentSelection.ForTask(task, agents, ref taskIndex);
+            tasks.Add(loaded);
+        }
 
-            cancellationToken.ThrowIfCancellationRequested();
+        // Waves, not one flat fan-out. A crew declaring `dependencies:` used to have them
+        // ignored here: every task started at once, so a synthesis task ran against an empty
+        // context while the tasks it consumes were still running, and reported success on the
+        // nothing it had. Tasks with no unmet dependency go together; the next wave starts
+        // when they are done, with their outputs in context. A crew declaring no dependency
+        // is one wave — exactly the previous behaviour.
+        var completedOutputs = new List<ApplicationTaskOutput>();
 
-            // Create context with input variables for parallel tasks (no shared previous outputs)
-            var context = new SimpleExecutionContext(
-                crew.Id,
-                variables,
-                _memoryScope,
-                [],
-                cancellationToken);
+        foreach (var wave in DependencyWaves(tasks))
+        {
+            executionTasks.Clear();
 
-            var capturedTask = task;
-            var capturedAgent = agent;
+            // Snapshot what the previous waves produced: every task in this wave reads the
+            // same context, and the list must not be mutated while they run.
+            var previousOutputs = completedOutputs.ToList();
 
-            executionTasks.Add(System.Threading.Tasks.Task.Run(async () =>
+            foreach (var task in wave)
             {
+                // The agent the crew declared, round-robin only when it declared none — the same
+                // choice Sequential and Graph make. This mode used to take loop order alone, so a
+                // YAML `agent:` was silently ignored in parallel mode and nowhere else.
+                var agent = await _agentSelector
+                    .ForTaskAsync(task, agents, taskIndex++, cancellationToken)
+                    .ConfigureAwait(false);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var context = new SimpleExecutionContext(
+                    crew.Id,
+                    variables,
+                    _memoryScope,
+                    previousOutputs,
+                    cancellationToken);
+
+                var capturedTask = task;
+                var capturedAgent = agent;
+
+                executionTasks.Add(System.Threading.Tasks.Task.Run(async () =>
+                {
                 LogStartingParallelExecutionOfTask(capturedTask.Id, capturedAgent.Id);
 
                 var result = await _executionService.ExecuteTaskAsync(
@@ -211,12 +252,16 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
                 return (domainOutput, appOutput);
-            }));
-        }
+                }));
+            }
 
-        // Wait for all tasks. One faulted task means WhenAll throws — the terminal event
-        // must still go out, or a watcher sees a run frozen at its last completed sibling.
-        results = await System.Threading.Tasks.Task.WhenAll(executionTasks).ConfigureAwait(false);
+            // Wait for this wave. One faulted task means WhenAll throws — the terminal event
+            // must still go out, or a watcher sees a run frozen at its last completed sibling.
+            var waveResults = await System.Threading.Tasks.Task.WhenAll(executionTasks).ConfigureAwait(false);
+
+            results.AddRange(waveResults);
+            completedOutputs.AddRange(waveResults.Select(r => r.appOutput));
+        }
         }
         catch (OperationCanceledException)
         {
@@ -261,6 +306,49 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             metadata: tokenTally
                 .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
                 .Build());
+    }
+
+    /// <summary>
+    /// The tasks grouped into dependency waves: everything in a wave can run at once, and a
+    /// wave starts only once every wave before it is done.
+    /// <para>
+    /// A dependency naming a task this crew does not carry is treated as already satisfied —
+    /// the crew cannot wait for something it will never run, and refusing the whole crew over
+    /// a stale id would be worse than running it. A genuine cycle is refused, naming the tasks
+    /// caught in it: there is no order that satisfies it, and running them concurrently is the
+    /// silence this change exists to remove.
+    /// </para>
+    /// </summary>
+    private static List<List<DomainTask>> DependencyWaves(List<DomainTask> tasks)
+    {
+        var present = tasks.Select(t => t.Id).ToHashSet();
+        var satisfied = new HashSet<TaskId>();
+        var remaining = new List<DomainTask>(tasks);
+        var waves = new List<List<DomainTask>>();
+
+        while (remaining.Count > 0)
+        {
+            var wave = remaining
+                .Where(t => t.Dependencies.All(d => !present.Contains(d) || satisfied.Contains(d)))
+                .ToList();
+
+            if (wave.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "Circular task dependencies in this crew: "
+                    + string.Join(", ", remaining.Select(t => t.Description.Value))
+                    + ". No execution order satisfies them.");
+            }
+
+            waves.Add(wave);
+            foreach (var task in wave)
+            {
+                satisfied.Add(task.Id);
+                remaining.Remove(task);
+            }
+        }
+
+        return waves;
     }
 
     /// <summary>

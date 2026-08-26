@@ -38,6 +38,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// implementations drifting apart is how the other modes shipped without one.
     /// </summary>
     private readonly CrewHookDispatcher _hooks;
+    private readonly TaskAgentSelector _agentSelector;
 
     /// <summary>Initializes a new instance of <see cref="SequentialProcessStrategy"/>.</summary>
     /// <param name="taskRepository">The task repository.</param>
@@ -47,6 +48,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// <param name="delegationProvider">The agent delegation tools provider.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="hook">Optional crew execution hook (e.g. <see cref="AutoSummaryWriter"/>). May be null.</param>
+    /// <param name="agentSelector">Who runs a task that names no agent. Null means round-robin.</param>
     public SequentialProcessStrategy(
         ITaskRepository taskRepository,
         IAgentRepository agentRepository,
@@ -54,7 +56,8 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         IMemoryScope memoryScope,
         AgentDelegationToolsProvider delegationProvider,
         ILogger<SequentialProcessStrategy> logger,
-        ICrewExecutionHook? hook = null)
+        ICrewExecutionHook? hook = null,
+        TaskAgentSelector? agentSelector = null)
     {
         ArgumentNullException.ThrowIfNull(taskRepository);
         _taskRepository = taskRepository;
@@ -69,6 +72,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);
+        _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
     }
 
     /// <inheritdoc />
@@ -142,7 +146,9 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     continue;
                 }
 
-                var agent = TaskAgentSelection.ForTask(task, agents, ref agentIndex);
+                var agent = await _agentSelector
+                    .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
+                    .ConfigureAwait(false);
 
                 Orkeon.Application.Interfaces.Services.TaskResult taskResult;
                 (context, var taskSnapshot, taskResult) = await ExecuteSingleTaskAsync(

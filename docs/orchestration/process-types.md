@@ -49,7 +49,7 @@ The `ProcessStrategyFactory` resolves the appropriate strategy via a switch on `
 |---------|-----------|-------------|---------|-----------|-------|-----------|
 | **Execution model** | Linear | Linear + review | Concurrent | Parallel + vote | State machine | Self-organized |
 | **Coordination** | Round-robin | Manager LLM | Round-robin | LLM consensus | Round-robin + routing | LLM + A2A channel |
-| **Task dependencies** | Yes (chained) | Yes (via manager) | No | No | Yes (edges) | Yes (delegation) |
+| **Task dependencies** | Yes (chained) | Yes (via manager) | Yes (waves) | No | Yes (edges) | Yes (delegation) |
 | **Circuit breaker** | — | — | — | — | ✅ 4 mechanisms | — |
 | **Execution budget** | — | — | — | — | — | ✅ 5 dimensions |
 | **Automatic retry** | — | Revisions (max 3) | — | Voting rounds | ✅ configurable | Via delegation |
@@ -262,11 +262,11 @@ tasks:
 - **Maximum speed**: total time = duration of the longest task
 - **Simplicity**: no complex coordination
 - **Scalability**: adding tasks has no impact on the total time
-- **Isolation**: one task's failure does not impact the others
+- **Isolation**: one task's failure does not impact its wave siblings
 
 ### Drawbacks
 
-- **No dependencies**: impossible to chain results between tasks
+- **Coarse ordering**: dependencies are honoured as waves, not per-task — a task waits for its whole wave, not only for what it declared
 - **API consumption spikes**: all LLM requests fire at the same time (rate limiting)
 - **Basic aggregation**: results are simply concatenated
 - **No retry**: no automatic recovery
@@ -276,11 +276,11 @@ tasks:
 - Independent multi-market or multi-source analyses
 - Batch content generation (one article per market, per language)
 - Parallel classification tasks
-- Any scenario where the tasks have no mutual dependency
+- A fan-out followed by a synthesis: the collectors run together, the synthesis reads them
 
 ### When not to use it
 
-- Tasks with dependencies (use Sequential or Graph)
+- Conditional routing or cycles between tasks (use Graph)
 - APIs with strict rate limiting (simultaneous calls may be throttled)
 - Scenarios requiring progressive synthesis
 

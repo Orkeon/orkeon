@@ -270,6 +270,88 @@ public sealed class LlmLoggingDelegatingHandlerTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// <see cref="LlmLoggingOptions.LogStreamingExchanges"/> is honoured.
+    /// <para>
+    /// It was bound from configuration in <c>RunnerHost</c>, offered as a checkbox in both
+    /// Studio surfaces and pinned by Studio's settings validator — and read by no code at all,
+    /// so turning it off still captured every streaming exchange. Nothing failed; the switch
+    /// simply had no wire behind it.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public async Task SendAsync_HonoursLogStreamingExchanges(bool logStreaming, bool expectCaptured)
+    {
+        var logger = new StubExchangeLogger();
+        using var inner = new FakeHttpMessageHandler();
+        using var handler = new LlmLoggingDelegatingHandler(
+            logger,
+            NullLogger<LlmLoggingDelegatingHandler>.Instance,
+            new LlmLoggingOptions { LogStreamingExchanges = logStreaming })
+        {
+            InnerHandler = inner,
+        };
+        using var invoker = new HttpMessageInvoker(handler);
+
+        inner.SetResponse(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("data: [DONE]", Encoding.UTF8, "text/event-stream"),
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
+        {
+            Content = new StringContent(
+                """{"model":"gpt-4","stream":true,"messages":[]}""", Encoding.UTF8, "application/json"),
+        };
+
+        await invoker.SendAsync(request, TestContext.Current.CancellationToken);
+
+        if (expectCaptured)
+        {
+            await Polling.WaitUntilAsync(() => logger.Captured is not null);
+            Assert.True(logger.Captured!.IsStreaming);
+        }
+        else
+        {
+            // Nothing to wait for: prove the record never arrives rather than that it is late.
+            await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+            Assert.Null(logger.Captured);
+        }
+    }
+
+    /// <summary>A non-streaming exchange is logged whatever the streaming switch says.</summary>
+    [Fact]
+    public async Task SendAsync_StillLogsNonStreamingExchanges_WhenStreamingLoggingIsOff()
+    {
+        var logger = new StubExchangeLogger();
+        using var inner = new FakeHttpMessageHandler();
+        using var handler = new LlmLoggingDelegatingHandler(
+            logger,
+            NullLogger<LlmLoggingDelegatingHandler>.Instance,
+            new LlmLoggingOptions { LogStreamingExchanges = false })
+        {
+            InnerHandler = inner,
+        };
+        using var invoker = new HttpMessageInvoker(handler);
+
+        inner.SetResponse(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
+        {
+            Content = new StringContent("""{"model":"gpt-4","messages":[]}""", Encoding.UTF8, "application/json"),
+        };
+
+        await invoker.SendAsync(request, TestContext.Current.CancellationToken);
+        await Polling.WaitUntilAsync(() => logger.Captured is not null);
+
+        Assert.False(logger.Captured!.IsStreaming);
+    }
+
     /// <summary>Hand-rolled <see cref="ILlmExchangeLogger"/> stub.</summary>
     private sealed class StubExchangeLogger : ILlmExchangeLogger
     {

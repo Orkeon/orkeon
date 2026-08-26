@@ -339,22 +339,21 @@ public static class JsCrewConfigurationAdapter
         return $"Execute crew '{crew.name}'";
     }
 
+    /// <summary>
+    /// Absent means <see cref="ProcessType.Sequential"/>; anything the domain does not know is
+    /// an error naming what it does. One list, in the value object — a second copy here is how
+    /// a sixth mode gets added to the domain and silently ignored by a script.
+    /// </summary>
     private static ProcessType ParseProcessType(string? processStr)
     {
         if (string.IsNullOrWhiteSpace(processStr))
             return ProcessType.Sequential;
 
-#pragma warning disable CA1308 // normalized key for a switch; lowercase is the required form, not a comparison normalization
-        return processStr.ToLowerInvariant() switch
-        {
-            "sequential" => ProcessType.Sequential,
-            "hierarchical" => ProcessType.Hierarchical,
-            "consensual" => ProcessType.Consensual,
-            "parallel" => ProcessType.Parallel,
-            "graph" => ProcessType.Graph,
-            "autonomous" => ProcessType.Autonomous,
-            _ => ProcessType.Sequential,
-        };
-#pragma warning restore CA1308
+        if (ProcessType.TryFrom(processStr.Trim(), out var process))
+            return process!;
+
+        throw new InvalidOperationException(
+            $"Unknown crew process '{processStr}'. Expected one of: "
+            + string.Join(", ", ProcessType.All.Select(p => p.Value)) + ".");
     }
 }

@@ -55,7 +55,7 @@ tasks:
     expectedOutput: string # Format/contenu attendu en résultat (requis)
     agent: string         # ID de l'agent assigné à la tâche
     dependencies: [string] # IDs des tâches prérequises (garantit l'ordre)
-    asyncExecution: bool  # default: false — exécution asynchrone
+    asyncExecution: bool  # default: false — ENREGISTRÉ, honoré par aucun mode (utiliser process: parallel)
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
     circuitBreaker:       # Configuration FSM / circuit breaker (optionnel)
@@ -106,7 +106,7 @@ Les modèles YAML incluent :
 - `CircuitBreakerYamlConfig` (preset, seuils, guards — voir [Orchestration FSM](../orchestration/fsm.md))
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges — voir [Orchestration Graph](../orchestration/graph.md))
 
-Des configurations prédéfinies sont disponibles via `OrkeonConfig` : `Default`, `Development` (debug activé, InMemory), `Production` (debug désactivé, Redis).
+Il n'existe pas d'objet « configuration prédéfinie » au niveau du framework : un hôte compose ses réglages via `AddOrkeonInfrastructure` / `AddOrkeonApplication` et son `appsettings.json`.
 
 ### Modes de chargement
 

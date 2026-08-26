@@ -8,3 +8,67 @@ Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitTokens.init -> void
 Orkeon.Application.Interfaces.Services.TokenUsage.CacheMissTokens.get -> long?
 Orkeon.Application.Interfaces.Services.TokenUsage.CacheMissTokens.init -> void
 Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitRatio.get -> double?
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.<Clone>$() -> Orkeon.Application.Configuration.OrkeonConfig!
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.CreatedAt.get -> System.DateTime
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.CreatedAt.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.CustomSettings.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.CustomSettings.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Equals(Orkeon.Application.Configuration.OrkeonConfig? other) -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Execution.get -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig!
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Execution.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.FeatureFlags.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.FeatureFlags.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Memory.get -> Orkeon.Domain.Memory.MemoryConfig!
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Memory.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.OrkeonConfig() -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Telemetry.get -> Orkeon.Domain.Memory.TelemetryConfig!
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Telemetry.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.UpdatedAt.get -> System.DateTime?
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.UpdatedAt.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Version.get -> string!
+*REMOVED*Orkeon.Application.Configuration.OrkeonConfig.Version.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.<Clone>$() -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.DefaultTimeoutSeconds.get -> int
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.DefaultTimeoutSeconds.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableAdvancedDelegation.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableAdvancedDelegation.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableAsyncExecution.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableAsyncExecution.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableEvents.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableEvents.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableExperimentalFeatures.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableExperimentalFeatures.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableHumanInTheLoop.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableHumanInTheLoop.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableKnowledgeAugmentation.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableKnowledgeAugmentation.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableMemoryPersistence.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableMemoryPersistence.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnablePerformanceMetrics.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnablePerformanceMetrics.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableTelemetry.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableTelemetry.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableToolValidation.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableToolValidation.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.Equals(Orkeon.Application.Configuration.OrkeonFeatureFlags? other) -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.MaxConcurrentOperations.get -> int
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.MaxConcurrentOperations.init -> void
+*REMOVED*Orkeon.Application.Configuration.OrkeonFeatureFlags.OrkeonFeatureFlags() -> void
+*REMOVED*override Orkeon.Application.Configuration.OrkeonConfig.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Configuration.OrkeonConfig.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Configuration.OrkeonConfig.ToString() -> string!
+*REMOVED*override Orkeon.Application.Configuration.OrkeonFeatureFlags.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Configuration.OrkeonFeatureFlags.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Configuration.OrkeonFeatureFlags.ToString() -> string!
+*REMOVED*static Orkeon.Application.Configuration.OrkeonConfig.Default.get -> Orkeon.Application.Configuration.OrkeonConfig!
+*REMOVED*static Orkeon.Application.Configuration.OrkeonConfig.Development.get -> Orkeon.Application.Configuration.OrkeonConfig!
+*REMOVED*static Orkeon.Application.Configuration.OrkeonConfig.Production.get -> Orkeon.Application.Configuration.OrkeonConfig!
+*REMOVED*static Orkeon.Application.Configuration.OrkeonConfig.operator !=(Orkeon.Application.Configuration.OrkeonConfig? left, Orkeon.Application.Configuration.OrkeonConfig? right) -> bool
+*REMOVED*static Orkeon.Application.Configuration.OrkeonConfig.operator ==(Orkeon.Application.Configuration.OrkeonConfig? left, Orkeon.Application.Configuration.OrkeonConfig? right) -> bool
+*REMOVED*static Orkeon.Application.Configuration.OrkeonFeatureFlags.Default.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
+*REMOVED*static Orkeon.Application.Configuration.OrkeonFeatureFlags.Development.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
+*REMOVED*static Orkeon.Application.Configuration.OrkeonFeatureFlags.Production.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
+*REMOVED*static Orkeon.Application.Configuration.OrkeonFeatureFlags.operator !=(Orkeon.Application.Configuration.OrkeonFeatureFlags? left, Orkeon.Application.Configuration.OrkeonFeatureFlags? right) -> bool
+*REMOVED*static Orkeon.Application.Configuration.OrkeonFeatureFlags.operator ==(Orkeon.Application.Configuration.OrkeonFeatureFlags? left, Orkeon.Application.Configuration.OrkeonFeatureFlags? right) -> bool

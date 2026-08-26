@@ -3,8 +3,14 @@ using Orkeon.Application.Interfaces.Security;
 namespace Orkeon.Infrastructure.Security.Dlp;
 
 /// <summary>
-/// DLP interceptor for memory storage.
-/// Scans content before storing in memory providers to prevent PII from persisting.
+/// Scans content for PII, for a host that applies it before storing in a memory provider.
+/// <para>
+/// <b>Nothing invokes this on its own.</b> The DLP interceptors are an opt-in toolkit, not a
+/// pipeline stage: <c>AddOrkeonDlp()</c> registers them and a host that wants the channel
+/// protected resolves <c>GetServices&lt;IDlpInterceptor&gt;()</c> and applies them itself.
+/// The one-line summaries used to read as descriptions of what the framework does, which is
+/// the opposite of true for a security control. See <c>docs/reference/opt-in-subsystems.md</c>.
+/// </para>
 /// </summary>
 public sealed class MemoryDlpInterceptor : BaseDlpInterceptor
 {

@@ -378,17 +378,30 @@ public class CrewMapperTests
         Assert.Equal("Normal", task.Priority);
     }
 
+    /// <summary>
+    /// Every mode the domain carries, reported as itself.
+    /// <para>
+    /// The mapper used to be a switch naming four of the six and mapping each to itself, so a
+    /// Graph or Autonomous crew was reported to every reader of the DTO as "Sequential" — and
+    /// this test asserted exactly that, under a name that made it read as a decision. It was
+    /// not: an identity map with a hole in it is a wrong answer, and the hole grows every
+    /// time the domain gains a mode. The source of truth is <see cref="DomainProcessType.All"/>,
+    /// so the test cannot go stale the same way.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void ToDto_MapsHierarchical_AndFallsBackToSequentialForUnlistedModes()
+    public void ToDto_ReportsEveryProcessTypeTheDomainCarries()
     {
         var hierarchical = DomainCrew.Create(
             "Managed goal", DomainProcessType.Hierarchical,
             managerAgentId: Orkeon.Domain.Common.AgentId.Create());
         Assert.Equal("Hierarchical", CrewMapper.ToDto(hierarchical).ProcessType);
 
-        // Graph is not part of the DTO vocabulary — the mapper degrades to Sequential.
-        var graph = DomainCrew.Create("Graph goal", DomainProcessType.Graph);
-        Assert.Equal("Sequential", CrewMapper.ToDto(graph).ProcessType);
+        foreach (var process in DomainProcessType.All.Where(p => p != DomainProcessType.Hierarchical))
+        {
+            var crew = DomainCrew.Create($"{process.Value} goal", process);
+            Assert.Equal(process.Value, CrewMapper.ToDto(crew).ProcessType);
+        }
     }
 
     [Fact]

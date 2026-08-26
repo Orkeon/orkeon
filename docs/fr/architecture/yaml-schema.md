@@ -88,7 +88,7 @@ tasks:
     expectedOutput: string # Format/contenu attendu en résultat (requis)
     agent: string         # ID de l'agent assigné à la tâche
     dependencies: [string] # IDs des tâches prérequises (garantit l'ordre)
-    asyncExecution: bool  # default: false — exécution asynchrone
+    asyncExecution: bool  # default: false — ENREGISTRÉ, honoré par aucun mode (utiliser process: parallel)
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
     tools: [string]       # Noms d'outils propres à la tâche (ajoutés à ceux de l'agent pour celle-ci)
@@ -254,7 +254,7 @@ Les modèles YAML incluent :
 - `RagYamlConfig` (provider, collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`
 
-Des configurations prédéfinies sont disponibles via `OrkeonConfig` : `Default`, `Development` (debug activé, InMemory), `Production` (debug désactivé, Redis).
+Il n'existe pas d'objet « configuration prédéfinie » au niveau du framework : un hôte compose ses réglages via `AddOrkeonInfrastructure` / `AddOrkeonApplication` et son `appsettings.json`.
 
 ---
 

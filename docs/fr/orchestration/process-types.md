@@ -49,7 +49,7 @@ Le `ProcessStrategyFactory` résout la stratégie appropriée via un switch sur 
 |---------|-----------|-------------|---------|-----------|-------|-----------|
 | **Modèle d'exécution** | Linéaire | Linéaire + revue | Concurrent | Parallèle + vote | Machine à états | Auto-organisé |
 | **Coordination** | Round-robin | Manager LLM | Round-robin | Consensus LLM | Round-robin + routing | LLM + canal A2A |
-| **Dépendances entre tâches** | Oui (chaînées) | Oui (via manager) | Non | Non | Oui (edges) | Oui (délégation) |
+| **Dépendances entre tâches** | Oui (chaînées) | Oui (via manager) | Oui (vagues) | Non | Oui (edges) | Oui (délégation) |
 | **Circuit breaker** | — | — | — | — | ✅ 4 mécanismes | — |
 | **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions |
 | **Retry automatique** | — | Révisions (max 3) | — | Rounds de vote | ✅ configurable | Via délégation |
@@ -263,11 +263,11 @@ tasks:
 - **Vitesse maximale** : temps total = durée de la tâche la plus longue
 - **Simplicité** : pas de coordination complexe
 - **Scalabilité** : ajout de tâches sans impact sur le temps total
-- **Isolation** : un échec d'une tâche n'impacte pas les autres
+- **Isolation** : un échec d'une tâche n'impacte pas ses sœurs de vague
 
 ### Inconvénients
 
-- **Pas de dépendances** : impossible de chaîner les résultats entre tâches
+- **Ordonnancement grossier** : les dépendances sont honorées par vagues, pas tâche par tâche — une tâche attend toute sa vague, pas seulement ce qu'elle a déclaré
 - **Consommation API en pic** : toutes les requêtes LLM partent en même temps (rate limiting)
 - **Agrégation basique** : les résultats sont simplement concaténés
 - **Pas de retry** : aucune reprise automatique
@@ -277,11 +277,11 @@ tasks:
 - Analyses multi-marchés ou multi-sources indépendantes
 - Génération de contenu en batch (un article par marché, par langue)
 - Tâches de classification parallèles
-- Tout scénario où les tâches n'ont aucune dépendance mutuelle
+- Un fan-out suivi d'une synthèse : les collecteurs tournent ensemble, la synthèse les lit
 
 ### Quand ne pas l'utiliser
 
-- Tâches avec dépendances (utiliser Sequential ou Graph)
+- Routage conditionnel ou cycles entre tâches (utiliser Graph)
 - APIs avec rate limiting strict (les appels simultanés peuvent être throttled)
 - Scénarios nécessitant une synthèse progressive
 

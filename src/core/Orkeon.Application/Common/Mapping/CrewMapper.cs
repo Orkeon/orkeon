@@ -177,17 +177,17 @@ public static class CrewMapper
             metadata.Get<int>(Domain.Crew.ValueObjects.CrewMetadata.TotalTokensKey));
     }
 
-    private static string MapProcessTypeToString(Domain.SharedKernel.ValueObjects.ProcessType processType)
-    {
-        return processType.Value switch
-        {
-            "Sequential" => "Sequential",
-            "Parallel" => "Parallel",
-            "Hierarchical" => "Hierarchical",
-            "Consensual" => "Consensual",
-            _ => "Sequential"
-        };
-    }
+    /// <summary>
+    /// The process type as callers read it — the value object's own spelling.
+    /// <para>
+    /// This was a switch restating four of the six modes and mapping each to itself, with
+    /// the other two falling through: a Graph or Autonomous crew was reported as
+    /// "Sequential" to every reader of the DTO. An identity map that can be wrong is worse
+    /// than no map.
+    /// </para>
+    /// </summary>
+    private static string MapProcessTypeToString(Domain.SharedKernel.ValueObjects.ProcessType processType) =>
+        processType.Value;
 
     /// <summary>
     /// Converts DTO ProcessType enum to domain ProcessType.

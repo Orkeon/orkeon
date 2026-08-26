@@ -115,8 +115,20 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
                     requestBody, statusCode, response, responseBody,
                     stopwatch.Elapsed, errorMessage));
 
-                // Fire-and-forget logging — never block the HTTP pipeline
-                _ = LogExchangeSafeAsync(exchange, cancellationToken);
+                // The option, honoured. LogStreamingExchanges was bound from configuration,
+                // offered as a checkbox in both Studio surfaces and read by nothing: turning
+                // it off still captured every streaming exchange. Streaming records are the
+                // ones that carry a request and no usable response body, so an operator
+                // silencing them is asking for something the writer can actually deliver.
+                if (exchange.IsStreaming && !_options.LogStreamingExchanges)
+                {
+                    LogStreamingExchangeSkipped(exchangeId);
+                }
+                else
+                {
+                    // Fire-and-forget logging — never block the HTTP pipeline
+                    _ = LogExchangeSafeAsync(exchange, cancellationToken);
+                }
             }
             catch (Exception ex)
             {
@@ -407,6 +419,9 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to build LLM exchange record {ExchangeId}")]
     private partial void LogBuildRecordFailed(string exchangeId, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Skipped streaming LLM exchange {ExchangeId} (LogStreamingExchanges is off)")]
+    private partial void LogStreamingExchangeSkipped(string exchangeId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to persist LLM exchange {ExchangeId}")]
     private partial void LogPersistFailed(string exchangeId, Exception ex);

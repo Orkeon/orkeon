@@ -186,32 +186,6 @@ public static class ConfigurationFixtures
         };
     }
 
-    /// <summary>
-    /// Creates a default OrkeonConfig.
-    /// </summary>
-    public static OrkeonConfig CreateDefaultOrkeonConfig()
-    {
-        return new OrkeonConfig();
-    }
-
-    /// <summary>
-    /// Creates a fully configured OrkeonConfig.
-    /// </summary>
-    public static OrkeonConfig CreateFullyConfiguredOrkeonConfig()
-    {
-        return new OrkeonConfig
-        {
-            Version = ConfigurationVersionId.Create(),
-            Memory = CreateEnabledMemoryConfig(),
-            Telemetry = CreateEnabledTelemetryConfig(),
-            Execution = CreateCustomExecutionConfig(),
-            FeatureFlags = new OrkeonFeatureFlags(),
-            CustomSettings = new Dictionary<string, object>
-            {
-                ["defaultLlm"] = ModelClaude3
-            }
-        };
-    }
 
     /// <summary>
     /// Test data for configuration validation.

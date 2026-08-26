@@ -76,23 +76,13 @@ public partial class CreateCrewHandler : ICommandHandler<CreateCrewCommand, Crew
                 Id = crew.Id.ToString(),
                 Name = command.Name,
                 Description = command.Goal,
-                ProcessType = MapProcessType(command.ProcessType),
+                ProcessType = command.ProcessType.Value,
                 Status = "Idle",
                 Verbosity = crew.Verbose ? "verbose" : "normal",
                 CreatedAt = crew.CreatedAt
             };
         }
     }
-
-    private static string MapProcessType(DomainProcessType domainType) =>
-        domainType.Value switch
-        {
-            "Sequential" => "Sequential",
-            "Parallel" => "Parallel",
-            "Hierarchical" => "Hierarchical",
-            "Consensual" => "Consensual",
-            _ => "Sequential"
-        };
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Creating crew with name {Name} and goal {Goal}")]
     private partial void LogCreatingCrew(string name, string goal);

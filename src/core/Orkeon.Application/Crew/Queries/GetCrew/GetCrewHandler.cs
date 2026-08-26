@@ -54,23 +54,13 @@ public partial class GetCrewHandler : IQueryHandler<GetCrewQuery, CrewDto?>
                 Id = crew.Id.ToString(),
                 Name = string.Empty,
                 Description = crew.Goal.Value,
-                ProcessType = MapProcessType(crew.ProcessType),
+                ProcessType = crew.ProcessType.Value,
                 Status = MapCrewStatus(crew.Status),
                 Verbosity = crew.Verbose ? "verbose" : "normal",
                 CreatedAt = crew.CreatedAt
             };
         }
     }
-
-    private static string MapProcessType(Domain.SharedKernel.ValueObjects.ProcessType domainType) =>
-        domainType.Value switch
-        {
-            "Sequential" => "Sequential",
-            "Parallel" => "Parallel",
-            "Hierarchical" => "Hierarchical",
-            "Consensual" => "Consensual",
-            _ => "Sequential"
-        };
 
     private static string MapCrewStatus(Domain.Crew.ValueObjects.CrewStatus domainStatus) =>
         domainStatus.Value switch
