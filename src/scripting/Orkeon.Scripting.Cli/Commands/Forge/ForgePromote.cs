@@ -257,6 +257,11 @@ internal static class ForgePromoter
         IReadOnlyList<DeliverableMount> writeMounts)
     {
         string Anchored(string relative) => posix ? $"\"$DIR/{relative}\"" : $"\"%~dp0{relative}\"";
+        // One shell-quoted token carrying the whole spec, with the mount grammar's own
+        // quotes (\" survives both shells as a literal '"') around the physical segment.
+        string GrammarQuotedMount(string relative, string virtualRoot) => posix
+            ? $"\"\\\"$DIR/{relative}\\\":{virtualRoot}:rw\""
+            : $"\"\\\"%~dp0{relative}\\\":{virtualRoot}:rw\"";
         string Literal(string value) => posix ? ShQuote(value) : CmdQuote(value);
 
         var script = ForgeSession.IsScriptFormat(session.Document.Format);
@@ -270,9 +275,17 @@ internal static class ForgePromoter
 
         // Several mounts go space-separated after ONE --mount: the CLI's parser rejects a
         // repeated option. The anchor keeps the folder relocatable with the team.
+        //
+        // The physical segment carries the mount grammar's own quotes (\" survives both
+        // shells as a literal '"'), because the anchor expands to a path nobody controls at
+        // generation time. On Windows it always contains a ':' — %~dp0 is C:\… — so the
+        // unquoted spec split into four segments and EVERY promoted team died at start with
+        // a grammar error naming a path the user never typed. A destination path containing
+        // a literal '"' is the one case no launcher can escape from the outside; the CLI's
+        // own --mount handles it.
         if (writeMounts.Count > 0)
         {
-            var specs = writeMounts.Select(m => $"{Anchored(m.Folder)}:{m.VirtualRoot}:rw");
+            var specs = writeMounts.Select(m => GrammarQuotedMount(m.Folder, m.VirtualRoot));
             segments.Add($"--mount {string.Join(' ', specs)}");
         }
 

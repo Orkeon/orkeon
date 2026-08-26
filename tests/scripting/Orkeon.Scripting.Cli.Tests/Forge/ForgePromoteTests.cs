@@ -399,17 +399,94 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(Destination, "output")));
 
         // One --mount flag, one spec per root, deduplicated, anchored on the script's dir.
+        // The physical segment carries the mount grammar's own quotes: the anchor expands to
+        // a path the generator does not know, and on Windows it always contains a ':'.
         var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
-        Assert.Contains("--mount \"$DIR/output\":/output:rw", posix, StringComparison.Ordinal);
+        Assert.Contains("--mount \"\\\"$DIR/output\\\":/output:rw\"", posix, StringComparison.Ordinal);
         Assert.Equal(1, posix.Split("--mount").Length - 1);
 
         var windows = File.ReadAllText(Path.Combine(Destination, ForgePromoter.WindowsLauncherName));
-        Assert.Contains("--mount \"%~dp0output\":/output:rw", windows, StringComparison.Ordinal);
+        Assert.Contains("--mount \"\\\"%~dp0output\\\":/output:rw\"", windows, StringComparison.Ordinal);
 
         // And the card says where the mounts land, so the folder explains itself.
         var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
         Assert.Contains("/output", card, StringComparison.Ordinal);
         Assert.Contains("output/", card, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The launcher's <c>--mount</c>, run through a real shell and parsed by the grammar that
+    /// receives it, from a folder whose name carries the separator.
+    /// <para>
+    /// This is the assertion the string comparison above could never make. The spec was built
+    /// by concatenation, so its physical segment inherited whatever the anchor expanded to —
+    /// and on Windows that is always <c>C:\…</c>. Four segments, <c>FormatException</c>, every
+    /// promoted team dead at start on the platform the <c>.cmd</c> launcher exists for. The
+    /// suite proved the flag was present and never that it could be read.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_launcher_mount_survives_the_shell_and_the_grammar()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "The POSIX launcher needs a POSIX shell.");
+
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
+            """
+            {"crew":{"name":"veille"},
+             "agents":[{"key":"c","role":"C","goal":"G","tools":["file_write"]}],
+             "tasks":[{"key":"t1","description":"d","expectedOutput":"e","agent":"c","deliverable":"/output/r.md"}]}
+            """));
+
+        // A destination the mount grammar has to be told about: ':' is its own separator.
+        var awkward = Path.Combine(_workspace, "te:am");
+        ForgePromoter.Promote(
+            session, awkward, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var launcher = Path.Combine(awkward, ForgePromoter.PosixLauncherName);
+        var argv = RunThroughShell(launcher);
+
+        var mountIndex = argv.IndexOf("--mount");
+        Assert.True(mountIndex >= 0, $"the launcher passed no --mount: {string.Join(' ', argv)}");
+
+        var spec = argv[mountIndex + 1];
+        var mount = Orkeon.Domain.FileSystem.FileSystemMount.Parse(spec);
+
+        Assert.Equal("/output", mount.VirtualPath);
+        Assert.Equal(Path.Combine(awkward, "output"), Path.TrimEndingDirectorySeparator(mount.BasePath));
+        Assert.Equal(Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, mount.DefaultRights);
+    }
+
+    /// <summary>
+    /// Runs a generated <c>run.sh</c> with a stub <c>orkeon</c> on PATH that prints one
+    /// argument per line, and returns the argument vector the real CLI would have received.
+    /// </summary>
+    private List<string> RunThroughShell(string launcherPath)
+    {
+        var binDir = Path.Combine(_workspace, "stub-bin");
+        Directory.CreateDirectory(binDir);
+        var stub = Path.Combine(binDir, "orkeon");
+        File.WriteAllText(stub, "#!/usr/bin/env sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done\n");
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(stub, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        var startInfo = new System.Diagnostics.ProcessStartInfo("/bin/sh")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add(launcherPath);
+        startInfo.Environment["PATH"] = binDir + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
+
+        using var process = System.Diagnostics.Process.Start(startInfo)!;
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        Assert.True(process.ExitCode == 0, $"launcher exited {process.ExitCode}: {stderr}");
+        return [.. stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)];
     }
 
     [Fact]

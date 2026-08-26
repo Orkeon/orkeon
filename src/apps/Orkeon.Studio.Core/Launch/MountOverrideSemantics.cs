@@ -1,5 +1,6 @@
 using System.Globalization;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Targets;
 
@@ -114,7 +115,7 @@ public sealed record MountAutoInjection
         var effective = options ?? new RunLaunchOptions();
         var mounts = new List<string> { DescribeTargetMount(target) };
         var internalMounts = ResolveLlmLogDirectory(effective) is { } logDirectory
-            ? new[] { $"{logDirectory}:{LlmLogVirtualRoot}:rw" }
+            ? new[] { $"{FileSystemMount.Quote(logDirectory)}:{LlmLogVirtualRoot}:rw" }
             : [];
 
         return new MountAutoInjection { Mounts = mounts, InternalMounts = internalMounts };
@@ -128,13 +129,16 @@ public sealed record MountAutoInjection
     private static string DescribeTargetMount(RunTarget target)
     {
         if (target.Dialect == RunTargetDialect.Script)
-            return $"{DirectoryOf(target.RunPath)}:{ScriptVirtualRoot}:ro";
+            return $"{FileSystemMount.Quote(DirectoryOf(target.RunPath))}:{ScriptVirtualRoot}:ro";
 
         var configDirectory = target.Kind == RunTargetKind.MultiFileCrewDirectory
             ? Path.TrimEndingDirectorySeparator(FullPath(target.RunPath))
             : DirectoryOf(target.RunPath);
 
-        return $"{configDirectory}:{CrewVirtualRoot}:ro";
+        // Quoted the way the runner quotes it: Studio predicts the CLI's own command line,
+        // and a prediction that spells a path differently from the thing it predicts is not
+        // a prediction. The drift test pins the pair.
+        return $"{FileSystemMount.Quote(configDirectory)}:{CrewVirtualRoot}:ro";
     }
 
     /// <summary>

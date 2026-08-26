@@ -126,26 +126,40 @@ public sealed class FileSystemRegistry : IDisposable
         _lock.EnterReadLock();
         try
         {
+            // _mounts is ordered by VIRTUAL path length, which is what FindMountUnsafe needs
+            // going the other way. Coming back, the specificity that decides is the PHYSICAL
+            // one, and the two orderings are unrelated: mount /host at /workspace and
+            // /host/data at /data, and taking the first list hit hands /host/data/x.md back
+            // as "/workspace/data/x.md" — a spelling that re-resolves under a different
+            // mount's rights. Pick the longest matching base path, so a nested mount always
+            // wins over the mount it sits inside.
+            FileSystemMount? best = null;
+            var bestBase = string.Empty;
+
             foreach (var mount in _mounts)
             {
                 var normalizedBase = Path.GetFullPath(mount.BasePath);
-                var sep = Path.DirectorySeparatorChar;
+                if (normalizedBase.Length <= bestBase.Length)
+                    continue;
 
-                if (string.Equals(normalized, normalizedBase, StringComparison.Ordinal))
-                    return mount.VirtualPath;
-
-                if (normalized.StartsWith(normalizedBase + sep, StringComparison.Ordinal))
+                if (PhysicalPathContainment.IsUnder(normalized, normalizedBase))
                 {
-                    var relative = normalized[(normalizedBase.Length + 1)..];
-                    var virtualRelative = relative.Replace(sep, '/');
-                    var vp = mount.VirtualPath.TrimEnd('/');
-                    return $"{vp}/{virtualRelative}";
+                    best = mount;
+                    bestBase = normalizedBase;
                 }
             }
+
+            if (best is null)
+                return null;
+
+            var trimmedBase = bestBase.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (normalized.Length <= trimmedBase.Length)
+                return best.VirtualPath;
+
+            var relative = normalized[(trimmedBase.Length + 1)..].Replace(Path.DirectorySeparatorChar, '/');
+            return $"{best.VirtualPath.TrimEnd('/')}/{relative}";
         }
         finally { _lock.ExitReadLock(); }
-
-        return null;
     }
 
     /// <summary>Returns AgentFacing mounts only — Internal mounts are hidden from agents.</summary>

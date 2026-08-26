@@ -7,3 +7,6 @@ const Orkeon.Domain.FileSystem.FileSystemMount.QuoteCharacter = '"' -> char
 static Orkeon.Domain.FileSystem.FileSystemMount.TryGetBasePath(string! mountString) -> string?
 static Orkeon.Domain.FileSystem.FileSystemMount.WithBasePath(string! mountString, string! basePath) -> string!
 static Orkeon.Domain.FileSystem.FileSystemMount.Quote(string! segment) -> string!
+Orkeon.Domain.FileSystem.PhysicalPathContainment
+static Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(string! path, string! directory) -> bool
+static Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison.get -> System.StringComparison

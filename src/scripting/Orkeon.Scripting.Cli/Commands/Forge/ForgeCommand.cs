@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Hosting;
 
@@ -369,9 +370,13 @@ internal static class ForgeCommand
             settingsPath,
             cliMounts:
             [
-                $"{workspace}:/workspace:ro",
-                $"{session.Directory}:/forge:rw",
-                $"{outputDirectory}:/output:rw",
+                // Quoted, like every other spec the framework builds: a session or
+                // workspace path carrying a ':' or ';' would otherwise split into the wrong
+                // segments and the forge would die at host build with a grammar error about
+                // a path the user never typed.
+                $"{FileSystemMount.Quote(workspace)}:/workspace:ro",
+                $"{FileSystemMount.Quote(session.Directory)}:/forge:rw",
+                $"{FileSystemMount.Quote(outputDirectory)}:/output:rw",
             ],
             configureServices: (_, services) =>
             {

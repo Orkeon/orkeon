@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Infrastructure.Configuration;
 
@@ -219,10 +220,10 @@ public partial class PathValidator : IPathValidator
 
     private bool IsPathUnderAllowedDirectory(string resolvedPath, string resolvedWorkspaceRoot)
     {
-        var comparison = GetPathComparison();
-
-        // CRITICAL: Normalize with trailing separator to prevent /workspace-evil/ matching /workspace/
-        if (IsPathUnderDirectory(resolvedPath, resolvedWorkspaceRoot, comparison))
+        // CRITICAL: the boundary is a separator, not a prefix — /workspace-evil must not
+        // match /workspace. PhysicalPathContainment holds that rule for the whole framework;
+        // the runners' --allow-external-mounts guard asks it the same question.
+        if (PhysicalPathContainment.IsUnder(resolvedPath, resolvedWorkspaceRoot))
             return true;
 
         // Check additional allowed directories
@@ -231,7 +232,7 @@ public partial class PathValidator : IPathValidator
             try
             {
                 var resolvedAllowedDir = Path.GetFullPath(allowedDir);
-                if (IsPathUnderDirectory(resolvedPath, resolvedAllowedDir, comparison))
+                if (PhysicalPathContainment.IsUnder(resolvedPath, resolvedAllowedDir))
                     return true;
             }
             catch (Exception ex) when (ex is ArgumentException or System.Security.SecurityException or PathTooLongException or NotSupportedException)
@@ -243,25 +244,6 @@ public partial class PathValidator : IPathValidator
         return false;
     }
 
-    private static bool IsPathUnderDirectory(string path, string directory, StringComparison comparison)
-    {
-        // Normalize directory with trailing separator
-        var normalizedDir = directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            + Path.DirectorySeparatorChar;
-
-        // The path is under the directory if it starts with the normalized directory path
-        // OR if it equals the directory itself (exact match)
-        return path.StartsWith(normalizedDir, comparison) ||
-               path.Equals(directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), comparison);
-    }
-
-    private static StringComparison GetPathComparison()
-    {
-        // Windows is case-insensitive, Linux/Mac are case-sensitive
-        return OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
-    }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Path validation denied: null or empty path")]
     private partial void LogPathValidationDeniedNullOr();

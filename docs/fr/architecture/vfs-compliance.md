@@ -53,7 +53,7 @@ Exemptions par dossier (`s_exemptFolderSegments`) :
 - `/examples/` — hors périmètre de conformité du framework
 
 Exemptions par fichier (`s_exemptFileSuffixes`) — chacune porte un marqueur inline `EXCEPTION-…` / `OUT-OF-SCOPE` :
-- `Sandbox/SandboxMountBootstrapper.cs` — mounts enregistrés avant la DI (`EXCEPTION-BOOTSTRAP`)
+- `Sandbox/SandboxSession.cs` — mounts enregistrés avant la DI (`EXCEPTION-BOOTSTRAP`)
 - `Sandbox/ProcessIsolationSandbox.cs`, `Sandbox/DockerSandbox.cs` — sondage de binaires hôte (`OUT-OF-SCOPE`)
 - `Security/PathValidator.cs` — la résolution symlink/realpath est son rôle
 
@@ -65,7 +65,7 @@ Pour les exceptions documentées qui ne correspondent à aucune exemption par ch
 
 ```csharp
 [Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: mount registration runs before DI")]
-public sealed class SandboxMountBootstrapper { … }
+public sealed class SandboxSession { … }
 
 [Obsolete("Use ReadAsync(…) instead")]
 [Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-OBSOLETE: transitional API; callers should migrate")]
@@ -96,7 +96,7 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 | Domaine | Emplacement | Catégorie | Justification |
 |---|---|---|---|
 | Implémentation VFS | `Domain/FileSystem/*`, `Infrastructure/FileSystem/*`, `Scripting.Cli/CliFileSystemService.cs` | (l'abstraction) | C'*est* le VFS |
-| Bootstrap (pré-DI) | `SandboxMountBootstrapper`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*` | `EXCEPTION-BOOTSTRAP` | Lisent appsettings + montent avant que le VFS existe. Couvre le *provisionnement* d'un montage, jamais l'exposition d'un chemin physique comme chemin virtuel — voir [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
+| Bootstrap (pré-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*` | `EXCEPTION-BOOTSTRAP` | Lisent appsettings + montent avant que le VFS existe. Couvre le *provisionnement* d'un montage, jamais l'exposition d'un chemin physique comme chemin virtuel — voir [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
 | Sondage hôte | `DockerSandbox`, `ProcessIsolationSandbox`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Découvrent `docker`/`dotnet`/`git` sur le PATH, jamais un mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Localise le binaire `esbuild` + fichiers temp de transpilation ; chaîne d'outils hôte |
 | Primitive sécurité | `Security/PathValidator.cs` | (allowlist) | résolution symlink/realpath = son rôle |
@@ -155,7 +155,7 @@ Les sept diagnostics (`ORKVFS001`–`ORKVFS007`) sont tous des **erreurs**, donc
 
 - [x] `VIOLATION-HISTORIC == 0` — les 23 violations historiques ont été éliminées dans P5-VFS-50.
 - [x] `VIOLATION-NEW` réduit aux exceptions documentées derrière des gardes `[Obsolete]` / `if (_fs is null)`, toutes couvertes par `[SuppressVfsCompliance]`.
-- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — actuellement 7, toutes légitimes (`SandboxMountBootstrapper`).
+- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — actuellement 7, toutes légitimes (`SandboxSession`).
 - [x] Analyseur Roslyn `Orkeon.Compliance.Vfs` en place et câblé dans `src/Directory.Build.props`.
 - [x] Le build passe proprement ; un test négatif confirme qu'un `File.ReadAllText` délibéré dans le code du framework déclenche `ORKVFS001`.
 - [x] Éliminer les suppressions `EXCEPTION-BACKCOMPAT` résiduelles en migrant tous les appelants d'outils vers la DI — **fait dans VFS-70** : 0 `EXCEPTION-BACKCOMPAT` et 0 `EXCEPTION-OBSOLETE` lié au FS ne subsistent dans `src/` ; tous les outils fichier + le chemin d'ingestion de connaissances (désormais les loaders `Orkeon.Rag`, RAG-02) exigent un `IFileSystemService` non-nullable ; SQLite gouverné via `ResolveAndValidate` ; `ORKVFS004` promu en erreur et `ORKVFS006`/`ORKVFS007` ajoutés pour fermer les angles morts `StreamReader/Writer(string)` et `IFileSystemService` nullable.

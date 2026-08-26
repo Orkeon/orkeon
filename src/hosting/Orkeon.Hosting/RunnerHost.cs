@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -172,9 +173,13 @@ public static partial class RunnerHost
 
         // When --allow-external-mounts is set, whitelist each mount's base path
         // in PathSecurity:AdditionalAllowedDirectories so PathValidator accepts them.
+        // The flag "additionally whitelists" (its own documented wording), so the entries
+        // continue AFTER whatever appsettings.json declares: this in-memory source is added
+        // last and wins on an identical key, so starting the count at 0 silently REPLACED
+        // the operator's first allowed directory instead of adding to it.
         if (allowExternalMounts)
         {
-            var whitelisted = 0;
+            var whitelisted = CountDeclaredAllowedDirectories(builder);
             foreach (var mount in cliMounts.Concat(internalMounts))
             {
                 var basePath = ExtractMountBasePath(mount);
@@ -346,6 +351,40 @@ public static partial class RunnerHost
         FileSystemMount.TryGetBasePath(mountString) is { } basePath
             ? Path.GetFullPath(basePath)
             : null;
+
+    /// <summary>
+    /// How many <c>PathSecurity:AdditionalAllowedDirectories</c> entries the sources added so
+    /// far already declare, so the mount whitelist appends rather than overwrites. Reads the
+    /// highest index rather than the count: configuration is a sparse key/value space and an
+    /// operator may legitimately have declared 0 and 2.
+    /// </summary>
+    private static int CountDeclaredAllowedDirectories(IConfigurationBuilder builder)
+    {
+        IConfigurationRoot? snapshot = null;
+        try
+        {
+            snapshot = builder.Build();
+            var highest = -1;
+            foreach (var child in snapshot.GetSection("PathSecurity:AdditionalAllowedDirectories").GetChildren())
+            {
+                if (int.TryParse(child.Key, CultureInfo.InvariantCulture, out var index) && index > highest)
+                    highest = index;
+            }
+
+            return highest + 1;
+        }
+        catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException)
+        {
+            // An unreadable settings file: the real Build() a few lines later reports it
+            // properly. Whitelisting from 0 is what this code did before and stays correct
+            // whenever nothing was declared — which is the case that just failed to parse.
+            return 0;
+        }
+        finally
+        {
+            (snapshot as IDisposable)?.Dispose();
+        }
+    }
 
     private static void RegisterRaggableTree(
         HostBuilderContext context,

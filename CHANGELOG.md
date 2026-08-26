@@ -126,6 +126,63 @@ shape `FileSystemOptions.Mounts` cannot bind; the RaggableTree pages documented
 a mount syntax that does not exist; and the `--mount` / `--var` help text said
 "Repeatable." of options the parser refuses to see twice.
 
+### Fixed — the VFS boundary, asked the same question everywhere
+
+A sweep over the code the ADR-008 diff did not touch, looking for the same
+shapes it had just corrected.
+
+**One containment predicate.** "Is this path inside that directory?" was
+answered in three places with three rules. `PathValidator`'s was boundary-safe;
+the runners' `--allow-external-mounts` guard was a bare `StartsWith`, and the
+two disagreed exactly where it hurts: a crew in a sibling folder whose name
+extends the working directory's (`~/proj` vs `~/proj-old`) read as *inside*, so
+the opt-in was never demanded, its base path never whitelisted, and the
+boundary-safe validator then refused every file the crew touched — never naming
+the flag that would have fixed it. `PhysicalPathContainment` now holds the rule,
+including the part about case: Windows paths are the same path in any casing.
+
+**`ToVirtualPath` answered with the wrong mount.** The registry orders its
+mounts by *virtual* path length, which is what the virtual→physical direction
+needs; coming back, it returned the first mount whose *base* path matched. With
+nested mounts the two orderings disagree, and a file was handed back under a
+parent mount's spelling — a name that re-resolves with different rights. The
+most specific physical base now wins.
+
+**`/sandbox` existed in one host out of all of them.** The mount the code
+sandboxes write under was provisioned by an `IHostedService`, and the runners
+build a host they never start — so every shipped CLI registered `ICodeSandbox`,
+`DockerSandbox` and `SecureCodeInterpreterTool` over a virtual root that did not
+exist. It is now built with the registry, in every host, started or not.
+**Breaking**: `AddSandboxMount` is removed; `AddOrkeonFileSystem` does it.
+
+**`shell_command` could not use its own default.** `working_directory` declared
+`"."` — and since ADR-008 a virtual path starts with `/`, so no registry can
+resolve it and every call that omitted the field, the shape a model writes for
+an optional one, was refused. It now runs in the first readable mount, or in the
+parent's directory when nothing is mounted.
+
+**Every promoted team was dead on arrival on Windows.** The launcher built its
+`--mount` by concatenation, so the physical segment inherited whatever the
+anchor expanded to — and `%~dp0` is always `C:\…`. Four segments, a grammar
+error naming a path the user never typed. The generated spec now carries the
+grammar's own quotes, and a test runs a real shell against a folder whose name
+holds the separator. The forge trial bench and Studio's mount prediction went
+through the same concatenation; both now go through `FileSystemMount.Quote`.
+
+**The daemon read its crew list from a file it never told anyone about.**
+`orkeon-host` resolved a relative `appsettings.json` against the executable's
+directory, while `--help` promises `./appsettings.json` and the host built
+moments later reads the working directory — so the mounts came from one file and
+everything else from another. It also accepted a malformed `--mount` at startup,
+logged READY, and then failed every message; that is now a configuration error
+with exit 78, and `--help` states the grammar the parser enforces (three
+segments, `ro|rw|rwnd`, quoting).
+
+**`--allow-external-mounts` overwrote the operator's whitelist.** It wrote
+`PathSecurity:AdditionalAllowedDirectories:0`, replacing the entry an
+`appsettings.json` declares there, while its own documentation says it
+*additionally* whitelists. It now appends.
+
 ## [1.0.0-rc.2] - 2026-08-25
 
 ### Added — Remediation v3: what a run costs, and adoption that is no longer a one-way door

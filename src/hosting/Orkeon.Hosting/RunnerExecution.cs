@@ -187,13 +187,23 @@ public static partial class RunnerExecution
     /// require an explicit opt-in (<c>--allow-external-mounts</c>). Conservative by design —
     /// avoids silently widening the VFS surface for users who expect workspace-relative
     /// execution. Returns <see langword="false"/> (after printing the diagnostic) when blocked.
+    /// <para>
+    /// "Outside" is asked of <see cref="PhysicalPathContainment"/>, the same predicate
+    /// <c>PathValidator</c> enforces the rule with. A bare <c>StartsWith</c> answered a
+    /// different question here and the two answers only ever differed in the direction that
+    /// hurts: a crew in a sibling directory whose name extends the cwd's
+    /// (<c>~/proj</c> vs <c>~/proj-old</c>) read as <i>inside</i>, so the opt-in was never
+    /// demanded, its base path never whitelisted, and the boundary-safe validator then
+    /// refused every file the crew touched — with no mention of the flag that would have
+    /// fixed it.
+    /// </para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
     private static bool EnsureExternalMountsAllowed(RunnerOptionsBase opts, string configDir, string? llmLogPath)
     {
         var cwd = Directory.GetCurrentDirectory();
-        var configOutsideCwd = !configDir.StartsWith(cwd, StringComparison.Ordinal);
-        var llmLogOutsideCwd = llmLogPath != null && !llmLogPath.StartsWith(cwd, StringComparison.Ordinal);
+        var configOutsideCwd = !PhysicalPathContainment.IsUnder(configDir, cwd);
+        var llmLogOutsideCwd = llmLogPath != null && !PhysicalPathContainment.IsUnder(llmLogPath, cwd);
         if (!(configOutsideCwd || llmLogOutsideCwd) || opts.EffectiveAllowExternalMounts)
             return true;
 

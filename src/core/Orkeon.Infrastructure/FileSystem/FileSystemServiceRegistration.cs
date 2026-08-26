@@ -27,6 +27,13 @@ public static class FileSystemServiceRegistration
         // 1. Bind FileSystemOptions from configuration section "Orkeon:FileSystem"
         services.Configure<FileSystemOptions>(configuration.GetSection("Orkeon:FileSystem"));
 
+        // 1b. The sandbox mount travels with the file system, not with a hosted service: the
+        //     runners build a host and never start it, so a hosted service provisioned
+        //     /sandbox in the daemon alone while every CLI registered the code-execution
+        //     subsystem over a virtual root that did not exist.
+        services.Configure<SandboxFileSystemOptions>(configuration.GetSection("Orkeon:Sandbox"));
+        services.TryAddSingleton<SandboxSession>();
+
         // 2. Register FileSystemRegistry as singleton (built from parsed mounts)
         services.AddSingleton<FileSystemRegistry>(sp =>
         {
@@ -43,6 +50,10 @@ public static class FileSystemServiceRegistration
             // Infrastructure mounts: resolvable, never listed to an agent (ADR-008).
             foreach (var mountStr in options.InternalMounts)
                 mounts.Add(ParseAndCheck(mountStr, MountVisibility.Internal));
+
+            // The per-process sandbox: also Internal, and provisioned by the session object
+            // itself so the directory exists before the registry validates it.
+            mounts.Add(sp.GetRequiredService<SandboxSession>().Mount);
 
             return new FileSystemRegistry(mounts);
 
@@ -76,29 +87,4 @@ public static class FileSystemServiceRegistration
         return services;
     }
 
-    /// <summary>
-    /// Registers the sandbox mount bootstrapper, which provisions a per-session
-    /// <c>/sandbox</c> directory with <see cref="MountVisibility.Internal"/> visibility
-    /// and runs a janitor sweep on startup.
-    /// Reads sandbox options from the "Orkeon:Sandbox" configuration section.
-    /// </summary>
-    /// <remarks>
-    /// Call this after <see cref="AddOrkeonFileSystem"/> so that <see cref="FileSystemRegistry"/>
-    /// is already registered before the bootstrapper resolves it.
-    /// </remarks>
-    public static IServiceCollection AddSandboxMount(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        // Bind SandboxFileSystemOptions from "Orkeon:Sandbox"
-        services.Configure<SandboxFileSystemOptions>(configuration.GetSection("Orkeon:Sandbox"));
-
-        // Register the hosted service that provisions the sandbox mount at startup
-        services.AddHostedService<SandboxMountBootstrapper>();
-
-        return services;
-    }
 }

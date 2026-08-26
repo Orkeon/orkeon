@@ -17,9 +17,21 @@ public sealed record ShellCommandRequest
     [FieldSchema(Description = "Shell command to execute", IsRequired = true, Example = "echo hello")]
     public string Command { get; init; } = "";
 
-    /// <summary>Gets the working directory for command execution.</summary>
-    [FieldSchema(Description = "Working directory for command execution", IsRequired = false, Default = ".")]
-    public string WorkingDirectory { get; init; } = ".";
+    /// <summary>
+    /// Gets the virtual working directory for command execution. Left empty, the command runs
+    /// in the first mounted directory the agent can read.
+    /// <para>
+    /// This used to default to <c>"."</c>, which no VFS registry can resolve: since ADR-008 a
+    /// virtual path starts with '/', so the lookup found no mount and every call that omitted
+    /// the field — the shape an LLM writes when the schema says the field is optional — was
+    /// refused with "No mount found for virtual path '.'".
+    /// </para>
+    /// </summary>
+    [FieldSchema(
+        Description = "Virtual working directory for command execution, e.g. /workspace. Defaults to the first mounted directory.",
+        IsRequired = false,
+        Example = "/workspace")]
+    public string WorkingDirectory { get; init; } = "";
 
     /// <summary>Gets the timeout in seconds.</summary>
     [FieldSchema(Description = "Timeout in seconds", IsRequired = false, Default = "30")]
@@ -334,16 +346,15 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             };
         arguments = rewrittenArguments;
 
-        var wdValidation = _fileSystem.ResolveAndValidate(request.WorkingDirectory, FileAccessRights.Read);
-        if (!wdValidation.IsAllowed)
+        var (workingDirectory, workingDirectoryDenial) = ResolveWorkingDirectory(request.WorkingDirectory);
+        if (workingDirectoryDenial is not null)
             return new ShellCommandResponse
             {
                 ExitCode = -1,
                 Stdout = "",
-                Stderr = $"WorkingDirectory refusé: {wdValidation.DenialReason}",
+                Stderr = $"WorkingDirectory refusé: {workingDirectoryDenial}",
                 Completed = false
             };
-        var workingDirectory = wdValidation.ResolvedPath!;
 
         var startInfo = new ProcessStartInfo
         {
@@ -546,6 +557,42 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// original array untouched together with the (already redacted) denial reason when
     /// the file system refuses one of them. No mounts ⇒ exact no-op.
     /// </summary>
+    /// <summary>
+    /// The physical directory the child process starts in, or the denial to report.
+    /// <para>
+    /// A named directory is resolved and rights-checked like any other path. Named nothing,
+    /// the command runs in the first agent-facing mount that grants Read — deterministic
+    /// (the registry orders its mounts) and a place the caller was already told about, since
+    /// it comes from the list the tool schema and every denial message are built from. With
+    /// no mounts at all the process inherits its parent's directory, the same "no mounts ⇒
+    /// exact no-op" stance the argument rewriting takes.
+    /// </para>
+    /// <para>
+    /// The default used to be the literal <c>"."</c>, which no registry can resolve: a mount's
+    /// virtual path starts with '/' (ADR-008), so the lookup found nothing and every call that
+    /// omitted the field — the shape a model writes for an optional field — was refused.
+    /// </para>
+    /// </summary>
+    private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(string requested)
+    {
+        if (!string.IsNullOrWhiteSpace(requested))
+        {
+            var named = _fileSystem.ResolveAndValidate(requested, FileAccessRights.Read);
+            return named.IsAllowed ? (named.ResolvedPath!, null) : ("", named.DenialReason);
+        }
+
+        var mounts = _fileSystem.GetAvailableMounts();
+        if (mounts.Count == 0)
+            return ("", null);
+
+        var readable = mounts.FirstOrDefault(m => m.DefaultRights.HasFlag(FileAccessRights.Read));
+        if (readable is null)
+            return ("", "aucun montage lisible n'est disponible pour servir de répertoire de travail.");
+
+        var resolved = _fileSystem.ResolveAndValidate(readable.VirtualPath, FileAccessRights.Read);
+        return resolved.IsAllowed ? (resolved.ResolvedPath!, null) : ("", resolved.DenialReason);
+    }
+
     private (string[] Arguments, string? DenialReason) RewriteInboundArguments(string[] arguments)
     {
         var mounts = _fileSystem.GetAvailableMounts();

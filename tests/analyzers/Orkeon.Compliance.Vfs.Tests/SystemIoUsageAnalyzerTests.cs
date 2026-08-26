@@ -257,7 +257,7 @@ public class SystemIoUsageAnalyzerTests
 
         var diagnostics = await AnalyzerHarness<SystemIoUsageAnalyzer>.RunAsync(
             source,
-            "/workspace/src/core/Orkeon.Infrastructure/Sandbox/SandboxMountBootstrapper.cs");
+            "/workspace/src/core/Orkeon.Infrastructure/Sandbox/SandboxSession.cs");
 
         Assert.Empty(diagnostics);
     }

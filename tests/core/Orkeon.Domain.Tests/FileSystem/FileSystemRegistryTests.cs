@@ -162,6 +162,47 @@ public sealed class FileSystemRegistryTests : IDisposable
         Assert.Equal("/workspace", virtualPath);
     }
 
+    /// <summary>
+    /// Coming back from a physical path, the mount that wins is the one whose BASE PATH is
+    /// most specific. The registry orders its list by virtual-path length — the ordering the
+    /// other direction needs — and taking the first list hit answered with whichever mount
+    /// happened to have the longer virtual spelling. Here the nested mount has the shorter
+    /// one, so the two orderings disagree and only the physical answer is right: a file in
+    /// the vendor directory named "/workspace/vendor/lib.dll" re-resolves through the
+    /// read-write parent instead of the read-only mount it actually lives in.
+    /// </summary>
+    [Fact]
+    public void ToVirtualPath_NestedBasePaths_PrefersTheMostSpecificMount()
+    {
+        var wsDir = CreateSubDir("ws");
+        var vendorDir = Path.Combine(wsDir, "vendor");
+        Directory.CreateDirectory(vendorDir);
+
+        var mounts = new[]
+        {
+            new FileSystemMount(wsDir, "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(vendorDir, "/vd", FileAccessRights.ReadOnly),
+        };
+        using var registry = new FileSystemRegistry(mounts);
+
+        Assert.Equal("/vd/lib.dll", registry.ToVirtualPath(Path.Combine(vendorDir, "lib.dll")));
+        Assert.Equal("/vd", registry.ToVirtualPath(vendorDir));
+        Assert.Equal("/workspace/src/a.cs", registry.ToVirtualPath(Path.Combine(wsDir, "src", "a.cs")));
+    }
+
+    /// <summary>The boundary is a separator, in this direction too.</summary>
+    [Fact]
+    public void ToVirtualPath_SiblingWhoseNameExtendsTheMount_IsUnmapped()
+    {
+        var wsDir = CreateSubDir("ws");
+        CreateSubDir("ws-old");
+
+        using var registry = new FileSystemRegistry(
+            [new FileSystemMount(wsDir, "/workspace", FileAccessRights.ReadWrite)]);
+
+        Assert.Null(registry.ToVirtualPath(Path.Combine(_tempDir, "ws-old", "a.cs")));
+    }
+
     [Fact]
     public void ToVirtualPath_UnmappedPath_ReturnsNull()
     {

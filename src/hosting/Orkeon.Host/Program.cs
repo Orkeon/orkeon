@@ -25,12 +25,16 @@ if (args.Contains("--help", StringComparer.Ordinal) || args.Contains("-h", Strin
 orkeon-host — the Orkeon service host: hosts crews as a daemon and answers chat channels.
 
 Usage:
-  orkeon-host [--settings <file>] [--mount <physical:virtual[:rw|ro]>]... [--allow-external-mounts]
+  orkeon-host [--settings <file>] [--mount <physical>:<virtual>:<ro|rw|rwnd>]... [--allow-external-mounts]
 
 Options:
-  -s, --settings <file>     Configuration file (JSON). Defaults to ./appsettings.json.
-  -m, --mount <spec>        Additional VFS mount. Hosted crew directories are mounted
-                            automatically, read-only.
+  -s, --settings <file>     Configuration file (JSON). Defaults to ./appsettings.json,
+                            resolved against the working directory.
+  -m, --mount <spec>        Additional VFS mount, '<physical>:<virtual>:<rights>'. All three
+                            segments are required; rights are ro, rw or rwnd. The virtual
+                            path starts with '/' — a physical path is never a virtual path.
+                            Quote a segment containing ':' or ';': "C:\src":/workspace:ro.
+                            Hosted crew directories are mounted automatically, read-only.
       --allow-external-mounts
                             Allow mounts outside the working directory.
   -h, --help                Show this help and exit.
@@ -83,14 +87,26 @@ if (settingsPath is not null && !StartupProbes.SettingsFileExists(settingsPath))
 // message. The crew definitions are the host's primary input — declared by the operator in
 // the configuration — so their mounts do not require the external-mounts opt-in any more
 // than the CLI's own config directory does.
-var bootConfiguration = new ConfigurationBuilder()
-    .AddJsonFile("appsettings.json", optional: true)
-    .AddJsonFile(settingsPath ?? "appsettings.json", optional: true)
-    .AddEnvironmentVariables()
-    .AddEnvironmentVariables("ORKEON_")
-    .Build();
+var bootConfiguration = StartupProbes.BuildBootConfiguration(settingsPath);
 var bootOptions = bootConfiguration.GetSection(OrkeonHostOptions.SectionName).Get<OrkeonHostOptions>() ?? new OrkeonHostOptions();
 var crewPlan = HostCrewMounts.For(bootOptions.Crews);
+
+// A malformed operator --mount is a configuration error, refused here rather than at the
+// first message. The registry is built lazily inside DI, so an unparseable spec used to let
+// the daemon log READY, pass its health check, and then fail every crew run it was started
+// for — the one failure mode a service is least able to report.
+foreach (var mount in mounts)
+{
+    try
+    {
+        _ = Orkeon.Domain.FileSystem.FileSystemMount.Parse(mount);
+    }
+    catch (Exception ex) when (ex is FormatException or ArgumentException)
+    {
+        await Console.Error.WriteLineAsync($"orkeon-host: invalid --mount '{mount}': {ex.Message}").ConfigureAwait(false);
+        return HostConfigurationException.ExitCode;
+    }
+}
 
 // An operator --mount claiming a root the daemon needs for its own crews would otherwise
 // surface as a raw "Duplicate virtual paths" exception thrown out of a DI factory, which
@@ -189,4 +205,28 @@ internal static class StartupProbes
 {
     /// <summary>Whether the operator-supplied settings file exists on the physical disk.</summary>
     public static bool SettingsFileExists(string path) => File.Exists(path);
+
+    /// <summary>
+    /// The configuration the daemon boots from — the one that decides which crew directories
+    /// become VFS mounts, read before the host exists.
+    /// <para>
+    /// The base path is the working directory, explicitly. A bare
+    /// <see cref="ConfigurationBuilder"/> resolves a relative file against
+    /// <see cref="AppContext.BaseDirectory"/> — the executable's own folder — while
+    /// <c>--help</c> promises <c>./appsettings.json</c>, <see cref="SettingsFileExists"/>
+    /// probes the working directory, and the real host built a few lines later reads the
+    /// working directory too. The daemon therefore took its crew list from one file and
+    /// everything else from another, and an operator running
+    /// <c>orkeon-host</c> from their crews folder got a daemon hosting nothing with no
+    /// diagnostic — the file they were looking at had simply never been read.
+    /// </para>
+    /// </summary>
+    public static IConfigurationRoot BuildBootConfiguration(string? settingsPath) =>
+        new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile(settingsPath ?? "appsettings.json", optional: true)
+            .AddEnvironmentVariables()
+            .AddEnvironmentVariables("ORKEON_")
+            .Build();
 }

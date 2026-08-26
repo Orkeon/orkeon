@@ -278,7 +278,7 @@ Framework code MUST NOT call `System.IO.File.*`, `System.IO.Directory.*`, `new F
 
 Allowed exceptions:
 - **VFS implementation** (`src/core/Orkeon.Domain/FileSystem/`, `src/core/Orkeon.Infrastructure/FileSystem/`) — where the abstraction itself lives.
-- **Bootstrap code** that provisions mounts before DI (e.g., `SandboxMountBootstrapper`). Must carry an inline `// EXCEPTION-BOOTSTRAP` comment.
+- **Bootstrap code** that provisions mounts before DI (e.g., `SandboxSession`). Must carry an inline `// EXCEPTION-BOOTSTRAP` comment.
 - **OUT-OF-SCOPE system probing** (e.g., discovering the `docker` binary on PATH or the .NET SDK install path). Must carry an inline `// OUT-OF-SCOPE` comment.
 - **Tests** — may use real disk via `DiskBackedFileSystemService` fixtures.
 

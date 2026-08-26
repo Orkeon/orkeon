@@ -32,13 +32,22 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         try { Directory.Delete(_tempDir, recursive: true); } catch (IOException) { /* best-effort */ }
     }
 
+    /// <summary>
+    /// The virtual working directory these tests run in. Named explicitly, because the tool
+    /// has no lenient fallback to hide behind: a mount's virtual path starts with '/'
+    /// (ADR-008), so there is no spelling of "wherever the process happens to be".
+    /// </summary>
+    private const string WorkingDirectoryPath = "/cwd";
+
     private static ToolCallRequest Request(string command, int? timeoutSeconds = null, string? workingDirectory = null)
     {
-        var parameters = new Dictionary<string, object?> { ["command"] = command };
+        var parameters = new Dictionary<string, object?>
+        {
+            ["command"] = command,
+            ["working_directory"] = workingDirectory ?? WorkingDirectoryPath,
+        };
         if (timeoutSeconds is not null)
             parameters["timeout_seconds"] = timeoutSeconds;
-        if (workingDirectory is not null)
-            parameters["working_directory"] = workingDirectory;
         return new ToolCallRequest(ToolName: "shell_command", Parameters: parameters);
     }
 
@@ -58,7 +67,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         // Root resolution disabled ⇒ empty outbound table ⇒ echo shows the raw
         // physical argument, proving the INBOUND rewrite alone.
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService().AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
 
         var dict = Unpack(await tool.CallAsync(Request("echo /ws/dist"), TestContext.Current.CancellationToken));
 
@@ -69,7 +78,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRewriteEmbeddedVirtualArgument_WhenTokenContainsEquals()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService().AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
 
         var dict = Unpack(await tool.CallAsync(Request("echo --out=/ws/dist"), TestContext.Current.CancellationToken));
 
@@ -80,7 +89,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRewriteOnlyFirstEquals_WhenTokenHasMultipleEquals()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService().AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
 
         var dict = Unpack(await tool.CallAsync(Request("echo --out=/ws/a=b"), TestContext.Current.CancellationToken));
 
@@ -92,7 +101,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldNotRewriteArgument_WhenPrefixBoundaryDoesNotMatch()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService().AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
 
         var dict = Unpack(await tool.CallAsync(Request("echo /wsx/dist"), TestContext.Current.CancellationToken));
 
@@ -104,7 +113,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldFailToolCall_WhenVirtualArgumentIsDenied()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService().AddMount("/ws", "/phys/root").Deny("/ws/secret"));
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").Deny("/ws/secret"));
 
         var result = await tool.CallAsync(Request("echo /ws/secret"), TestContext.Current.CancellationToken);
 
@@ -118,7 +127,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldFailToolCall_WhenEmbeddedVirtualArgumentIsDenied()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService().AddMount("/ws", "/phys/root").Deny("/ws/secret"));
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").Deny("/ws/secret"));
 
         var result = await tool.CallAsync(Request("echo --out=/ws/secret"), TestContext.Current.CancellationToken);
 
@@ -130,12 +139,39 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldKeepArgumentsVerbatim_WhenNoMountsConfigured()
     {
         // Regression guard for every pre-existing test: the zero-mount fake makes
-        // both rewrite passes exact no-ops.
+        // both rewrite passes exact no-ops — and, naming no working directory, the child
+        // inherits this process's own. Nothing is mounted, so there is nothing to confine to.
         using var tool = new ShellCommandTool(new FakeFileSystemService());
 
-        var dict = Unpack(await tool.CallAsync(Request("echo /workspace/x"), TestContext.Current.CancellationToken));
+        var dict = Unpack(await tool.CallAsync(
+            Request("echo /workspace/x", workingDirectory: ""),
+            TestContext.Current.CancellationToken));
 
         Assert.Contains("/workspace/x", dict["stdout"]!.ToString());
+    }
+
+    /// <summary>
+    /// The shape a model writes for an optional field: no <c>working_directory</c> at all.
+    /// The declared default used to be the literal <c>"."</c>, which no registry can resolve
+    /// — a mount's virtual path starts with '/' (ADR-008) — so this call was refused with
+    /// "No mount found for virtual path '.'" against every real host. It now runs in the
+    /// first readable mount.
+    /// </summary>
+    [Fact]
+    public async Task ShouldRunInTheFirstMount_WhenNoWorkingDirectoryIsNamed()
+    {
+        await File.WriteAllTextAsync(
+            Path.Combine(_tempDir, "hello.txt"), "hello", TestContext.Current.CancellationToken);
+        using var tool = new ShellCommandTool(
+            new DiskBackedFileSystemService(_tempDir, "/src"),
+            allowedCommands: ["ls", "dir"]);
+
+        var command = s_isWindows ? "dir" : "ls";
+        var dict = Unpack(await tool.CallAsync(
+            Request(command, workingDirectory: ""), TestContext.Current.CancellationToken));
+
+        Assert.Equal(0, (int)dict["exit_code"]!);
+        Assert.Contains("hello.txt", dict["stdout"]!.ToString());
     }
 
     [Fact]
@@ -211,7 +247,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldSkipMount_WhenRootResolutionDenied()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService().AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
 
         // '/phys/root/file' is not mount-prefixed (inbound verbatim); with the root
         // resolution failing, the outbound table is empty, so it stays physical.
@@ -226,7 +262,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         // An identity mount (virtual IS the resolved path, like the in-memory fakes)
         // must not enter the outbound table.
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService().AddMount("/data", "/data"));
+            new StubMappingFileSystemService(_tempDir).AddMount("/data", "/data"));
 
         var dict = Unpack(await tool.CallAsync(Request("echo /data/x"), TestContext.Current.CancellationToken));
 
@@ -332,7 +368,19 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     {
         private readonly List<(string VirtualPrefix, string PhysicalBase)> _mounts = [];
         private readonly HashSet<string> _denied = new(StringComparer.Ordinal);
+        private readonly string _workingDirectory;
         private bool _failRootResolution;
+
+        /// <param name="workingDirectory">
+        /// A real directory the child process can start in, reached through
+        /// <see cref="WorkingDirectoryPath"/>. It is deliberately NOT a listed mount: these
+        /// tests are about argument rewriting, and a second mount would change the very
+        /// tables they assert on.
+        /// </param>
+        public StubMappingFileSystemService(string workingDirectory)
+        {
+            _workingDirectory = workingDirectory;
+        }
 
         public StubMappingFileSystemService AddMount(string virtualPrefix, string physicalBase)
         {
@@ -354,10 +402,8 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
 
         public PathValidationResult ResolveAndValidate(string virtualPath, FileAccessRights requiredRight)
         {
-            // Working-directory pass-through ('.'), like the zero-mount fake: these
-            // tests exercise ARGUMENT rewriting, not working-directory validation.
-            if (virtualPath == ".")
-                return PathValidationResult.Allowed(".");
+            if (virtualPath == WorkingDirectoryPath)
+                return PathValidationResult.Allowed(_workingDirectory);
 
             if (_denied.Contains(virtualPath))
                 return PathValidationResult.Denied($"Access denied for '{virtualPath}'.");
