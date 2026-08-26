@@ -51,9 +51,9 @@ public sealed class CliWorkspaceMountBootstrapperTests
     }
 
     [Fact]
-    public void An_escaped_colon_in_the_path_survives_the_resolution()
+    public void A_quoted_path_survives_the_resolution()
     {
-        var mount = FileSystemMount.Parse(Assert.Single(Resolve(@"./odd\:name:/data:ro")));
+        var mount = FileSystemMount.Parse(Assert.Single(Resolve(@"""./odd:name"":/data:ro")));
 
         Assert.Equal(Path.GetFullPath("./odd:name"), mount.BasePath);
         Assert.Equal("/data", mount.VirtualPath);

@@ -115,13 +115,13 @@ public class FileSystemMountParseTests
     }
 
     /// <summary>
-    /// A ':' inside a path is escaped rather than guessed at. The drive-letter form keeps
-    /// working unescaped — it is the common case and carries no ambiguity in practice.
+    /// A path the bare grammar cannot express is quoted, not escaped: a backslash escape would
+    /// collide with the Windows path separator, which is the very thing that has to survive.
     /// </summary>
     [Fact]
-    public void Parse_EscapedColonInPhysicalPath_IsLiteral()
+    public void Parse_QuotedPhysicalPath_IsTakenLiterally()
     {
-        var mount = FileSystemMount.Parse(@"/data/odd\:name:/data:ro");
+        var mount = FileSystemMount.Parse(@"""/data/odd:name"":/data:ro");
 
         Assert.Equal("/data/odd:name", mount.BasePath);
         Assert.Equal("/data", mount.VirtualPath);
@@ -129,9 +129,9 @@ public class FileSystemMountParseTests
     }
 
     [Fact]
-    public void Parse_EscapedSemicolonIsNotAnOverrideSeparator()
+    public void Parse_QuotedSemicolonIsNotAnOverrideSeparator()
     {
-        var mount = FileSystemMount.Parse(@"/data/a\;b:/data:ro;sub:rw");
+        var mount = FileSystemMount.Parse(@"""/data/a;b"":/data:ro;sub:rw");
 
         Assert.Equal("/data/a;b", mount.BasePath);
         var over = Assert.Single(mount.Overrides);
@@ -139,17 +139,29 @@ public class FileSystemMountParseTests
     }
 
     /// <summary>
-    /// A backslash is only special before a separator, so ordinary Windows paths need no
-    /// escaping — and a path that really ends in a backslash writes it doubled.
+    /// The cases the previous backslash-escape grammar could not express at all: a drive root
+    /// and a path ending in the Windows separator. Both are ordinary folders.
     /// </summary>
-    [Fact]
-    public void Parse_BackslashesInWindowsPathsAreLiteral()
-    {
-        var plain = FileSystemMount.Parse(@"C:\src\sub:/workspace:ro");
-        Assert.Equal(@"C:\src\sub", plain.BasePath);
+    [Theory]
+    [InlineData(@"""C:\"":/workspace:ro", @"C:\")]
+    [InlineData(@"""C:\src\"":/workspace:ro", @"C:\src\")]
+    [InlineData(@"""C:\src"":/workspace:ro", @"C:\src")]
+    public void Parse_QuotedWindowsPaths(string spec, string expected) =>
+        Assert.Equal(expected, FileSystemMount.Parse(spec).BasePath);
 
-        var trailing = FileSystemMount.Parse(@"C:\src\\:/workspace:ro");
-        Assert.Equal(@"C:\src\", trailing.BasePath);
+    /// <summary>Backslashes are ordinary characters again — nothing to escape, ever.</summary>
+    [Fact]
+    public void Parse_BackslashesAreLiteral()
+    {
+        Assert.Equal(@"C:\src\sub", FileSystemMount.Parse(@"C:\src\sub:/workspace:ro").BasePath);
+        Assert.Equal(@"/data\odd", FileSystemMount.Parse(@"/data\odd:/data:ro").BasePath);
+    }
+
+    [Fact]
+    public void Parse_UnterminatedQuote_ThrowsWithTheRemedy()
+    {
+        var ex = Assert.Throws<FormatException>(() => FileSystemMount.Parse(@"""C:\src:/workspace:ro"));
+        Assert.Contains("quoted", ex.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -161,7 +173,8 @@ public class FileSystemMountParseTests
     [InlineData(@"C:\src:/workspace:ro", @"C:\src")]
     [InlineData("C:/src:/workspace:ro", "C:/src")]
     [InlineData("/data/src:/workspace:rw", "/data/src")]
-    [InlineData(@"/data/odd\:name:/data:ro", "/data/odd:name")]
+    [InlineData(@"""/data/odd:name"":/data:ro", "/data/odd:name")]
+    [InlineData(@"""C:\src\"":/workspace:ro", @"C:\src\")]
     [InlineData("/data:/ws:rw;sub:ro", "/data")]
     public void TryGetBasePath_reads_the_physical_segment(string spec, string expected) =>
         Assert.Equal(expected, FileSystemMount.TryGetBasePath(spec));
@@ -174,14 +187,16 @@ public class FileSystemMountParseTests
         Assert.Null(FileSystemMount.TryGetBasePath(spec));
 
     [Fact]
-    public void WithBasePath_replaces_the_folder_and_escapes_it()
+    public void WithBasePath_replaces_the_folder_and_quotes_it_only_when_needed()
     {
+        // A plain Windows path stays exactly as it reads.
         Assert.Equal(
             @"C:\elsewhere:/workspace:ro",
             FileSystemMount.WithBasePath(@"C:\src:/workspace:ro", @"C:\elsewhere"));
 
-        // The replacement is escaped, so the result survives a round trip.
+        // One that cannot be written bare is quoted, and survives a round trip.
         var rewritten = FileSystemMount.WithBasePath("/a:/workspace:ro", "/odd:name");
+        Assert.Equal(@"""/odd:name"":/workspace:ro", rewritten);
         Assert.Equal("/odd:name", FileSystemMount.Parse(rewritten).BasePath);
 
         // Overrides are preserved.
@@ -190,12 +205,22 @@ public class FileSystemMountParseTests
             FileSystemMount.WithBasePath("/a:/ws:rw;sub:ro", "/b"));
     }
 
-    [Fact]
-    public void Escape_round_trips_every_separator()
-    {
-        const string awkward = @"/a:b;c\d";
-        var mount = FileSystemMount.Parse($"{FileSystemMount.Escape(awkward)}:/data:ro");
+    [Theory]
+    [InlineData(@"C:\src", @"C:\src")]                     // bare: nothing to do
+    [InlineData("/data/src", "/data/src")]                 // bare
+    [InlineData("/odd:name", @"""/odd:name""")]            // separator inside
+    [InlineData("/a;b", @"""/a;b""")]                      // override separator inside
+    [InlineData(@"C:\src\", @"""C:\src\""")]               // trailing separator
+    public void Quote_only_wraps_what_the_grammar_cannot_read_bare(string path, string expected) =>
+        Assert.Equal(expected, FileSystemMount.Quote(path));
 
-        Assert.Equal(awkward, mount.BasePath);
+    [Fact]
+    public void Quote_round_trips_every_awkward_path()
+    {
+        foreach (var awkward in new[] { @"/a:b;c\d", @"C:\src\", @"C:\", "/plain" })
+        {
+            var mount = FileSystemMount.Parse($"{FileSystemMount.Quote(awkward)}:/data:ro");
+            Assert.Equal(awkward, mount.BasePath);
+        }
     }
 }

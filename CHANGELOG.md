@@ -49,17 +49,21 @@ roots into the sidecar at adoption.
 `RunnerHost.Build`'s `llmLogPath` parameter becomes `llmLogVirtualPath` and
 takes a virtual path; a new optional `internalMounts` parameter follows it.
 
-**The mount-string grammar gains an escape character.** Three call sites split a
-spec on `:` with three different heuristics, and the one in
+**A mount string can quote its physical path.** Three call sites split a spec
+on `:` with three different heuristics, and the one in
 `CliWorkspaceMountBootstrapper` had none: on Windows it read
 `C:\src:/workspace:ro` as the physical path `"C"`, resolved it against the
-working directory and emitted a corrupt mount string. `\:` is now a literal
-colon, `\;` a literal semicolon and `\\` a literal backslash; a backslash
-before anything else stays literal, so ordinary Windows paths need no escaping
-and the drive-letter form is unchanged. The split lives once, in the domain
-type: `FileSystemMount.TryGetBasePath`, `WithBasePath` and `Escape` are new, and
-both duplicate heuristics are gone. Only behaviour change: a path ending in a
-backslash right before a separator now doubles it (`C:\src\\:/workspace:ro`).
+working directory and emitted a corrupt mount string. The split now lives once,
+in the domain type — `FileSystemMount.TryGetBasePath`, `WithBasePath` and
+`Quote` are new, and both duplicate heuristics are gone.
+
+A path the bare form cannot carry — one holding a `:` or a `;`, or ending with a
+backslash — is **quoted**: `"/data/odd:name":/data:ro`, `"C:\src\":/workspace:ro`.
+Quoting rather than backslash-escaping, because a backslash escape would collide
+with the Windows path separator, which is exactly what has to survive here.
+Backslashes are ordinary characters, so every existing mount string is
+unchanged, and two folders that had no spelling at all now have one: a drive
+root (`"C:\":/workspace:ro`) and any path ending in a separator.
 
 Also fixed: `examples/service-host/appsettings.host.json` declared its mounts as
 objects, a shape `FileSystemOptions.Mounts` cannot bind, and the RaggableTree

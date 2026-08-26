@@ -42,12 +42,12 @@ public sealed record FileSystemMount
     }
 
     /// <summary>
-    /// The escape character of the mount-string grammar. <c>\:</c> is a literal colon,
-    /// <c>\;</c> a literal semicolon, <c>\\</c> a literal backslash; a backslash before
-    /// anything else is itself literal, so ordinary Windows paths (<c>C:\src\sub</c>) need no
-    /// escaping at all.
+    /// Wraps a segment of a mount string so its content is taken literally. A path that
+    /// contains a <c>:</c> or a <c>;</c>, or that ends with a backslash, is quoted rather than
+    /// escaped — a backslash escape would collide with the Windows path separator, which is the
+    /// very thing that has to survive here. A literal quote inside a quoted segment is doubled.
     /// </summary>
-    public const char EscapeCharacter = '\\';
+    public const char QuoteCharacter = '"';
 
     /// <summary>Parses a mount definition string into a <see cref="FileSystemMount"/> instance.</summary>
     public static FileSystemMount Parse(string mountString)
@@ -55,7 +55,7 @@ public sealed record FileSystemMount
         ArgumentException.ThrowIfNullOrWhiteSpace(mountString);
 
         // Split into main part and override parts (separated by ';')
-        var segments = SplitUnescaped(mountString, ';');
+        var segments = SplitOutsideQuotes(mountString, ';');
         var mainPart = segments[0];
 
         // Split main part into basePath, virtualPath, rights
@@ -63,33 +63,34 @@ public sealed record FileSystemMount
         if (parts.Count != 3)
             throw new FormatException(
                 $"Invalid mount format. Expected '<physical>:<virtual>:<rights>', got: '{mainPart}'. "
-                + $"A path containing a ':' or a ';' escapes it as '{EscapeCharacter}:' / '{EscapeCharacter};'.");
+                + "A path that contains a ':' or a ';', or ends with a backslash, is quoted: "
+                + "\"C:\\src\\\":/workspace:ro.");
 
-        var basePath = Unescape(parts[0]);
-        var virtualPath = Unescape(parts[1]);
+        var basePath = Unquote(parts[0]);
+        var virtualPath = Unquote(parts[1]);
         var defaultRights = ParseRights(parts[2]);
 
         if (!IsValidVirtualPath(virtualPath))
             throw new FormatException(
-                $"Virtual path must start with '/': '{virtualPath}'. A physical path is never a virtual path — mount it under a name, e.g. '{Escape(basePath)}:/workspace:ro'.");
+                $"Virtual path must start with '/': '{virtualPath}'. A physical path is never a virtual path — mount it under a name, e.g. '{Quote(basePath)}:/workspace:ro'.");
 
         // Parse overrides
         var overrides = new List<SubPathOverride>();
         for (var i = 1; i < segments.Count; i++)
         {
-            var overrideParts = SplitUnescaped(segments[i], ':');
+            var overrideParts = SplitOutsideQuotes(segments[i], ':');
             if (overrideParts.Count != 2)
                 throw new FormatException(
                     $"Invalid override format. Expected '<subpath>:<rights>', got: '{segments[i]}'");
 
-            overrides.Add(new SubPathOverride(Unescape(overrideParts[0]), ParseRights(overrideParts[1])));
+            overrides.Add(new SubPathOverride(Unquote(overrideParts[0]), ParseRights(overrideParts[1])));
         }
 
         return new FileSystemMount(basePath, virtualPath, defaultRights, overrides);
     }
 
     /// <summary>
-    /// The physical base path a mount string declares, unescaped — or <see langword="null"/>
+    /// The physical base path a mount string declares, unquoted — or <see langword="null"/>
     /// when the string is not a well-formed mount.
     /// <para>
     /// The one place that answers "which folder does this spec mount?". Splitting a spec on its
@@ -103,14 +104,14 @@ public sealed record FileSystemMount
         if (string.IsNullOrWhiteSpace(mountString))
             return null;
 
-        var mainPart = SplitUnescaped(mountString, ';')[0];
+        var mainPart = SplitOutsideQuotes(mountString, ';')[0];
         var parts = SplitMainPart(mainPart);
-        return parts.Count >= 2 ? Unescape(parts[0]) : null;
+        return parts.Count >= 2 ? Unquote(parts[0]) : null;
     }
 
     /// <summary>
     /// The same mount string with its physical segment replaced by <paramref name="basePath"/>,
-    /// escaped as the grammar requires. Used by the bootstrappers that resolve a user-supplied
+    /// quoted if the grammar requires it. Used by the bootstrappers that resolve a user-supplied
     /// relative mount to an absolute one before handing it to <see cref="Parse"/>.
     /// </summary>
     /// <exception cref="FormatException">The string is not a well-formed mount.</exception>
@@ -119,46 +120,48 @@ public sealed record FileSystemMount
         ArgumentException.ThrowIfNullOrWhiteSpace(mountString);
         ArgumentException.ThrowIfNullOrWhiteSpace(basePath);
 
-        var segments = SplitUnescaped(mountString, ';');
+        var segments = SplitOutsideQuotes(mountString, ';');
         var parts = SplitMainPart(segments[0]);
         if (parts.Count < 2)
             throw new FormatException(
                 $"Invalid mount format. Expected '<physical>:<virtual>:<rights>', got: '{segments[0]}'.");
 
-        parts[0] = Escape(basePath);
+        parts[0] = Quote(basePath);
         segments[0] = string.Join(':', parts);
         return string.Join(';', segments);
     }
 
     /// <summary>
-    /// Escapes the separators of the mount-string grammar in a path so it survives a round trip
-    /// through <see cref="Parse"/>. A backslash is only escaped when it would otherwise turn the
-    /// following separator into a literal one.
+    /// Quotes a path only when the grammar needs it: a bare <c>C:\src</c> is left exactly as it
+    /// reads, because the parser recognises the drive letter on its own.
     /// </summary>
-    public static string Escape(string segment)
+    public static string Quote(string segment)
     {
         ArgumentNullException.ThrowIfNull(segment);
 
-        var builder = new System.Text.StringBuilder(segment.Length);
+        if (!NeedsQuoting(segment))
+            return segment;
 
-        // A leading drive letter is left as it reads: the parser recognises "X:\" and "X:/"
-        // natively, so escaping it would only make the common Windows spec harder to read.
-        var start = HasDriveLetterPrefix(segment) ? 2 : 0;
-        if (start == 2)
-            builder.Append(segment[0]).Append(':');
+        var body = segment.Replace("\"", "\"\"", StringComparison.Ordinal);
+        return QuoteCharacter + body + QuoteCharacter;
+    }
 
-        for (var i = start; i < segment.Length; i++)
-        {
-            var current = segment[i];
-            var needsEscape = current is ':' or ';'
-                || (current == EscapeCharacter && i + 1 < segment.Length && IsEscapable(segment[i + 1]));
+    /// <summary>
+    /// True when a segment cannot be written bare: it carries a separator, a quote, or a
+    /// trailing backslash that would otherwise glue itself to the separator.
+    /// </summary>
+    private static bool NeedsQuoting(string segment)
+    {
+        if (segment.Length == 0)
+            return false;
+        if (segment.EndsWith('\\') || segment.Contains(QuoteCharacter, StringComparison.Ordinal))
+            return true;
+        if (segment.Contains(';', StringComparison.Ordinal))
+            return true;
 
-            if (needsEscape)
-                builder.Append(EscapeCharacter);
-            builder.Append(current);
-        }
-
-        return builder.ToString();
+        // A drive-letter colon is read natively; any other colon is a separator.
+        var from = HasDriveLetterPrefix(segment) ? 2 : 0;
+        return segment.IndexOf(':', from) >= 0;
     }
 
     private static bool HasDriveLetterPrefix(string value) =>
@@ -167,28 +170,36 @@ public sealed record FileSystemMount
         && value[1] == ':'
         && (value[2] == '\\' || value[2] == '/');
 
-    private static bool IsEscapable(char c) => c is ':' or ';' or EscapeCharacter;
-
     /// <summary>
-    /// Splits on unescaped occurrences of <paramref name="separator"/>. Escape sequences are
-    /// carried through verbatim — unescaping happens once, per segment, after every split.
+    /// Splits on occurrences of <paramref name="separator"/> that sit outside a quoted segment.
+    /// Quotes are carried through verbatim — unquoting happens once, per segment, after the split.
     /// </summary>
-    private static List<string> SplitUnescaped(string value, char separator)
+    private static List<string> SplitOutsideQuotes(string value, char separator)
     {
         var parts = new List<string>();
         var builder = new System.Text.StringBuilder(value.Length);
+        var inQuotes = false;
 
         for (var i = 0; i < value.Length; i++)
         {
             var current = value[i];
-            if (current == EscapeCharacter && i + 1 < value.Length && IsEscapable(value[i + 1]))
+
+            if (current == QuoteCharacter)
             {
-                builder.Append(current).Append(value[i + 1]);
-                i++;
+                // A doubled quote inside a quoted segment is a literal one, not a terminator.
+                if (inQuotes && i + 1 < value.Length && value[i + 1] == QuoteCharacter)
+                {
+                    builder.Append(current).Append(current);
+                    i++;
+                    continue;
+                }
+
+                inQuotes = !inQuotes;
+                builder.Append(current);
                 continue;
             }
 
-            if (current == separator)
+            if (!inQuotes && current == separator)
             {
                 parts.Add(builder.ToString());
                 builder.Clear();
@@ -202,26 +213,13 @@ public sealed record FileSystemMount
         return parts;
     }
 
-    /// <summary>Resolves the escape sequences of one already-split segment.</summary>
-    private static string Unescape(string segment)
+    /// <summary>Strips the quotes of one already-split segment, if it carries any.</summary>
+    private static string Unquote(string segment)
     {
-        if (!segment.Contains(EscapeCharacter, StringComparison.Ordinal))
+        if (segment.Length < 2 || segment[0] != QuoteCharacter || segment[^1] != QuoteCharacter)
             return segment;
 
-        var builder = new System.Text.StringBuilder(segment.Length);
-        for (var i = 0; i < segment.Length; i++)
-        {
-            if (segment[i] == EscapeCharacter && i + 1 < segment.Length && IsEscapable(segment[i + 1]))
-            {
-                builder.Append(segment[i + 1]);
-                i++;
-                continue;
-            }
-
-            builder.Append(segment[i]);
-        }
-
-        return builder.ToString();
+        return segment[1..^1].Replace("\"\"", "\"", StringComparison.Ordinal);
     }
 
     /// <summary>Resolves the effective access rights for a relative path within this mount.</summary>
@@ -256,10 +254,10 @@ public sealed record FileSystemMount
 
     private static List<string> SplitMainPart(string mainPart)
     {
-        // Iteratively peel off path/rights segments, skipping escaped separators. At each step,
-        // a Windows drive-letter prefix ("X:\" or "X:/") is also recognised so its embedded ':'
-        // is not treated as a separator — that convenience is why "C:\src:/virtual:ro" needs no
-        // escaping. Anything else ambiguous is the author's to disambiguate with '\:'.
+        // Iteratively peel off path/rights segments. A quoted segment is taken whole, so a path
+        // carrying a ':' or ending in a backslash survives verbatim. Outside quotes, a Windows
+        // drive-letter prefix ("X:\" or "X:/") is recognised so its embedded ':' is not a
+        // separator — that convenience is why "C:\src:/virtual:ro" needs no quoting at all.
         // The scan stays segment-agnostic: a drive letter on the virtual side splits cleanly and
         // is then rejected by IsValidVirtualPath with a precise message, rather than failing
         // here as a malformed mount string.
@@ -268,8 +266,25 @@ public sealed record FileSystemMount
 
         while (rest.Length > 0)
         {
-            // For a Windows-path segment, start looking after the drive-letter colon.
-            var nextColon = IndexOfUnescaped(rest, ':', HasDriveLetterPrefix(rest) ? 2 : 0);
+            int nextColon;
+            if (rest[0] == QuoteCharacter)
+            {
+                var close = IndexOfClosingQuote(rest);
+                // An unterminated quote is a malformed spec: keep the remainder as one segment
+                // so the caller reports the format error rather than splitting nonsense.
+                if (close < 0)
+                {
+                    parts.Add(rest);
+                    break;
+                }
+
+                nextColon = close + 1 < rest.Length && rest[close + 1] == ':' ? close + 1 : -1;
+            }
+            else
+            {
+                // For a Windows-path segment, start looking after the drive-letter colon.
+                nextColon = rest.IndexOf(':', HasDriveLetterPrefix(rest) ? 2 : 0);
+            }
 
             if (nextColon < 0)
             {
@@ -284,19 +299,21 @@ public sealed record FileSystemMount
         return parts;
     }
 
-    /// <summary>Index of the first unescaped <paramref name="separator"/> at or after <paramref name="startIndex"/>.</summary>
-    private static int IndexOfUnescaped(string value, char separator, int startIndex)
+    /// <summary>Index of the quote closing the one at position 0, honouring doubled quotes.</summary>
+    private static int IndexOfClosingQuote(string value)
     {
-        for (var i = startIndex; i < value.Length; i++)
+        for (var i = 1; i < value.Length; i++)
         {
-            if (value[i] == EscapeCharacter && i + 1 < value.Length && IsEscapable(value[i + 1]))
+            if (value[i] != QuoteCharacter)
+                continue;
+
+            if (i + 1 < value.Length && value[i + 1] == QuoteCharacter)
             {
                 i++;
                 continue;
             }
 
-            if (value[i] == separator)
-                return i;
+            return i;
         }
 
         return -1;
