@@ -264,8 +264,12 @@ public class PipelineOnMailboxTrafficTests
         // §10.4 promises FIFO by PublishedAt. The stamp used to be taken before the pipeline
         // await: two posters whose middlewares completed out of order delivered in stamp-
         // inverted order. The stamp now happens under the write gate, at the write.
+        //
+        // The assertion compares two instants, not an elapsed duration against a threshold.
+        // "PublishedAt - before >= 45 ms" was measuring the timer, not the contract: under a
+        // full-suite load Task.Delay(50) can hand back at 44 ms of wall clock and the test
+        // failed for a property it was not about.
         var caller = new DefaultEventHubCallerContext();
-        var before = DateTimeOffset.UtcNow;
         var slow = new DelayingMiddleware(TimeSpan.FromMilliseconds(50));
         using var hub = Build(caller, slow);
 
@@ -276,16 +280,20 @@ public class PipelineOnMailboxTrafficTests
         var delivered = await hub.WaitForAsync(
             new WaitOnMailbox(mailbox), new FiniteWaitTimeout(TimeSpan.FromSeconds(2)), TestContext.Current.CancellationToken);
 
-        // Stamped after the 50 ms pipeline, not before it.
-        Assert.True(delivered.PublishedAt - before >= TimeSpan.FromMilliseconds(45),
-            $"stamp {delivered.PublishedAt:O} predates the pipeline (started {before:O})");
+        Assert.NotNull(slow.LeftTheDelayAt);
+        Assert.True(delivered.PublishedAt >= slow.LeftTheDelayAt,
+            $"stamp {delivered.PublishedAt:O} predates the end of the pipeline ({slow.LeftTheDelayAt:O})");
     }
 
     private sealed class DelayingMiddleware(TimeSpan delay) : IEventHubMiddleware
     {
+        /// <summary>When the pipeline stage finished — everything the hub stamps must follow it.</summary>
+        public DateTimeOffset? LeftTheDelayAt { get; private set; }
+
         public async Task<Message> OnPublishAsync(Message message, Func<Message, Task<Message>> nextHandler, CancellationToken ct)
         {
             await Task.Delay(delay, ct).ConfigureAwait(false);
+            LeftTheDelayAt = DateTimeOffset.UtcNow;
             return await nextHandler(message).ConfigureAwait(false);
         }
 

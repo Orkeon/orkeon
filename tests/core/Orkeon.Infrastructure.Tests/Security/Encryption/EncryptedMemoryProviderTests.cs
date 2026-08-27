@@ -133,4 +133,50 @@ public class EncryptedMemoryProviderTests
         Assert.Equal(originalContent, retrieved!.Content);
         Assert.Equal(0.7f, retrieved.Importance);
     }
+
+    /// <summary>
+    /// Everything but the content survives the round trip — the class's own contract is
+    /// "metadata and embeddings are NOT encrypted (needed for search/indexing)".
+    /// <para>
+    /// Four paths rebuilt the item inline with five of its seven fields, so
+    /// <c>CustomProperties</c> and <c>CreatedBy</c> were silently dropped on the ordinary
+    /// store/get/search — RAG's <c>rag.kind</c>/<c>meta.lang</c> among them, which is what
+    /// makes a chunk findable. The collection-scoped paths kept them and had the test that
+    /// said so; the primary ones had tests asserting content, embedding, score and key.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task RoundTrip_PreservesMetadataTheDecoratorPromisesNotToTouch()
+    {
+        var inner = new FakeMemoryProvider();
+        var encryption = CreateEncryption();
+        var provider = new EncryptedMemoryProviderDecorator(
+            inner, encryption, NullLogger<EncryptedMemoryProviderDecorator>.Instance);
+
+        var author = Orkeon.Domain.Common.AgentId.Create();
+        var item = MemoryItem.Create(
+            "confidential",
+            importance: 0.4f,
+            source: "rag",
+            tags: Tag1Tag2,
+            createdBy: author,
+            customProperties: new Dictionary<string, string> { ["rag.kind"] = "chunk", ["meta.lang"] = "fr" });
+
+        await provider.StoreAsync("meta-key", item, TestContext.Current.CancellationToken);
+
+        // Stored encrypted, metadata in clear — that is the whole point of the decorator.
+        var stored = inner.Store["meta-key"];
+        Assert.NotEqual("confidential", stored.Content);
+        Assert.Equal("chunk", stored.Metadata.CustomProperties?["rag.kind"]);
+        Assert.Equal(author, stored.Metadata.CreatedBy);
+
+        var retrieved = await provider.GetAsync("meta-key", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(retrieved);
+        Assert.Equal("confidential", retrieved!.Content);
+        Assert.Equal("chunk", retrieved.Metadata.CustomProperties?["rag.kind"]);
+        Assert.Equal("fr", retrieved.Metadata.CustomProperties?["meta.lang"]);
+        Assert.Equal(author, retrieved.Metadata.CreatedBy);
+        Assert.Equal("rag", retrieved.Metadata.Source);
+    }
 }

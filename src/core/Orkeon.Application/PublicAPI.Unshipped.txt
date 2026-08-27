@@ -72,3 +72,30 @@ Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitRatio.get -> double?
 *REMOVED*static Orkeon.Application.Configuration.OrkeonFeatureFlags.Production.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
 *REMOVED*static Orkeon.Application.Configuration.OrkeonFeatureFlags.operator !=(Orkeon.Application.Configuration.OrkeonFeatureFlags? left, Orkeon.Application.Configuration.OrkeonFeatureFlags? right) -> bool
 *REMOVED*static Orkeon.Application.Configuration.OrkeonFeatureFlags.operator ==(Orkeon.Application.Configuration.OrkeonFeatureFlags? left, Orkeon.Application.Configuration.OrkeonFeatureFlags? right) -> bool
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.AllowDdl.get -> bool
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.AllowDdl.init -> void
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.AllowDestructiveDeletes.get -> bool
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.AllowDestructiveDeletes.init -> void
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.DatabaseQueryOptions() -> void
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.DatabaseQueryOptions(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions! original) -> void
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.MaxRows.get -> int
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.MaxRows.init -> void
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.TimeoutSeconds.get -> int
+*REMOVED*Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.TimeoutSeconds.init -> void
+*REMOVED*Orkeon.Application.Abstractions.Data.IDatabaseProviderFactory
+*REMOVED*Orkeon.Application.Abstractions.Data.IDatabaseProviderFactory.GetProvider(string! providerName) -> System.Data.Common.DbProviderFactory!
+*REMOVED*Orkeon.Application.Abstractions.Data.IDatabaseProviderFactory.IsSupported(string! providerName) -> bool
+*REMOVED*Orkeon.Application.Abstractions.Data.IDatabaseProviderFactory.SupportedProviders.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy
+*REMOVED*Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy.IsDestructiveOperation(string! query) -> bool
+*REMOVED*Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy.ValidateQuery(string! query, Orkeon.Application.Abstractions.Data.DatabaseQueryOptions! options) -> Orkeon.Domain.SharedKernel.ValidationResult!
+*REMOVED*override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.ToString() -> string!
+*REMOVED*static Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.operator !=(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? right) -> bool
+*REMOVED*static Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.operator ==(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? right) -> bool
+*REMOVED*virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.<Clone>$() -> Orkeon.Application.Abstractions.Data.DatabaseQueryOptions!
+*REMOVED*virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.Equals(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? other) -> bool
+*REMOVED*virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.PrintMembers(System.Text.StringBuilder! builder) -> bool

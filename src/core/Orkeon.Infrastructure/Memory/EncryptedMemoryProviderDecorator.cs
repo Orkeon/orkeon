@@ -70,13 +70,7 @@ public sealed partial class EncryptedMemoryProviderDecorator
                 return;
             }
 
-            var encryptedContent = await _encryption.EncryptStringAsync(item.Content, cancellationToken).ConfigureAwait(false);
-            var encryptedItem = MemoryItem.Create(
-                encryptedContent,
-                item.Embedding,
-                item.Importance,
-                item.Source,
-                item.Tags);
+            var encryptedItem = await EncryptItemAsync(item, cancellationToken).ConfigureAwait(false);
 
             await _inner.StoreAsync(key, encryptedItem, cancellationToken).ConfigureAwait(false);
             LogStoredEncryptedMemoryItemWith(key);
@@ -90,13 +84,7 @@ public sealed partial class EncryptedMemoryProviderDecorator
         if (item == null || !_encryption.IsEnabled)
             return item;
 
-        var decryptedContent = await _encryption.DecryptStringAsync(item.Content, cancellationToken).ConfigureAwait(false);
-        var decryptedItem = MemoryItem.Create(
-            decryptedContent,
-            item.Embedding,
-            item.Importance,
-            item.Source,
-            item.Tags);
+        var decryptedItem = await DecryptItemAsync(item, cancellationToken).ConfigureAwait(false);
 
         LogRetrievedAndDecryptedMemoryItem(key);
         return decryptedItem;
@@ -115,13 +103,7 @@ public sealed partial class EncryptedMemoryProviderDecorator
         {
             try
             {
-                var decryptedContent = await _encryption.DecryptStringAsync(item.Content, cancellationToken).ConfigureAwait(false);
-                decryptedItems.Add(MemoryItem.Create(
-                    decryptedContent,
-                    item.Embedding,
-                    item.Importance,
-                    item.Source,
-                    item.Tags));
+                decryptedItems.Add(await DecryptItemAsync(item, cancellationToken).ConfigureAwait(false));
             }
             catch (Exception ex)
             {
@@ -167,13 +149,7 @@ public sealed partial class EncryptedMemoryProviderDecorator
                 return;
             }
 
-            var encryptedContent = await _encryption.EncryptStringAsync(item.Content, cancellationToken).ConfigureAwait(false);
-            var encryptedItem = MemoryItem.Create(
-                encryptedContent,
-                item.Embedding,
-                item.Importance,
-                item.Source,
-                item.Tags);
+            var encryptedItem = await EncryptItemAsync(item, cancellationToken).ConfigureAwait(false);
 
             await _inner.StoreWithEmbeddingAsync(key, encryptedItem, embedding, cancellationToken).ConfigureAwait(false);
             LogStoredEncryptedMemoryItemWith(key);
@@ -286,13 +262,7 @@ public sealed partial class EncryptedMemoryProviderDecorator
             ArgumentNullException.ThrowIfNull(entry);
             ArgumentNullException.ThrowIfNull(entry.Item);
 
-            var encryptedContent = await _encryption.EncryptStringAsync(entry.Item.Content, cancellationToken).ConfigureAwait(false);
-            var encryptedItem = MemoryItem.Create(
-                encryptedContent,
-                entry.Item.Embedding,
-                entry.Item.Importance,
-                entry.Item.Source,
-                entry.Item.Tags);
+            var encryptedItem = await EncryptItemAsync(entry.Item, cancellationToken).ConfigureAwait(false);
 
             encryptedEntries.Add(entry with { Item = encryptedItem });
         }
@@ -394,19 +364,34 @@ public sealed partial class EncryptedMemoryProviderDecorator
 
     /// <summary>
     /// Returns a copy of <paramref name="item"/> whose content is encrypted, preserving
-    /// embedding, importance, source, tags and custom metadata properties.
+    /// everything else — embedding, importance, source, tags, author and custom metadata.
+    /// <para>
+    /// Every path goes through this and its decrypting twin. Four of them used to rebuild the
+    /// item inline with five of the seven fields, so <c>Metadata.CustomProperties</c> and
+    /// <c>CreatedBy</c> were dropped on the ordinary store/get/search — against a class whose
+    /// own contract is "metadata remains in clear text". The collection-scoped paths did keep
+    /// them, and had the test that said so.
+    /// </para>
     /// </summary>
-    private async Task<MemoryItem> EncryptItemAsync(MemoryItem item, CancellationToken cancellationToken)
-    {
-        var encryptedContent = await _encryption.EncryptStringAsync(item.Content, cancellationToken).ConfigureAwait(false);
-        return MemoryItem.Create(
-            encryptedContent,
+    private async Task<MemoryItem> EncryptItemAsync(MemoryItem item, CancellationToken cancellationToken) =>
+        Rebuild(item, await _encryption.EncryptStringAsync(item.Content, cancellationToken).ConfigureAwait(false));
+
+    /// <summary>The decrypting twin of <see cref="EncryptItemAsync"/>.</summary>
+    private async Task<MemoryItem> DecryptItemAsync(MemoryItem item, CancellationToken cancellationToken) =>
+        Rebuild(item, await _encryption.DecryptStringAsync(item.Content, cancellationToken).ConfigureAwait(false));
+
+    /// <summary>Same item, other content — the one place the field list is written down.</summary>
+    private static MemoryItem Rebuild(MemoryItem item, string content) =>
+        MemoryItem.Create(
+            content,
             item.Embedding,
             item.Importance,
             item.Source,
             item.Tags,
-            customProperties: item.Metadata.CustomProperties is { } custom ? new Dictionary<string, string>(custom) : null);
-    }
+            createdBy: item.Metadata.CreatedBy,
+            customProperties: item.Metadata.CustomProperties is { } custom
+                ? new Dictionary<string, string>(custom)
+                : null);
 
     /// <summary>
     /// Resolves the requested capability on the wrapped provider or throws a
@@ -440,16 +425,7 @@ public sealed partial class EncryptedMemoryProviderDecorator
         {
             try
             {
-                var decryptedContent = await _encryption.DecryptStringAsync(scored.Item.Content, cancellationToken).ConfigureAwait(false);
-                var decryptedItem = MemoryItem.Create(
-                    decryptedContent,
-                    scored.Item.Embedding,
-                    scored.Item.Importance,
-                    scored.Item.Source,
-                    scored.Item.Tags,
-                    customProperties: scored.Item.Metadata.CustomProperties is { } custom
-                        ? new Dictionary<string, string>(custom)
-                        : null);
+                var decryptedItem = await DecryptItemAsync(scored.Item, cancellationToken).ConfigureAwait(false);
                 decrypted.Add(scored with { Item = decryptedItem });
             }
             catch (Exception ex)

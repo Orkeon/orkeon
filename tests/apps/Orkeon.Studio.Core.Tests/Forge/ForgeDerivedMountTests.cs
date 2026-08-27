@@ -83,7 +83,7 @@ public sealed class ForgeDerivedMountTests
     {
         var mounts = Derive("[]", Tasks("/output/a.md", "/output/b.md"));
 
-        Assert.Single(mounts.Where(m => m.IsReadWrite));
+        Assert.Single(mounts, m => m.IsReadWrite);
     }
 
     [Fact]

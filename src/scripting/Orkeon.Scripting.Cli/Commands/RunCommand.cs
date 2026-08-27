@@ -524,8 +524,12 @@ internal static partial class RunCommand
         // input, not a user-declared mount — so we don't gate it behind
         // --allow-external-mounts. Only LLM log directories outside the cwd require
         // explicit opt-in (parity with the YAML runner's safety stance for writes).
+        // "Outside" asked of the same predicate PathValidator enforces the rule with: a bare
+        // StartsWith reads ~/proj-old as inside ~/proj and skips the opt-in the validator then
+        // needs (see PhysicalPathContainment).
         var cwd = Directory.GetCurrentDirectory();
-        var llmLogOutsideCwd = llmLogPath != null && !llmLogPath.StartsWith(cwd, StringComparison.Ordinal);
+        var llmLogOutsideCwd = llmLogPath != null
+            && !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(llmLogPath, cwd);
         if (llmLogOutsideCwd && !options.EffectiveAllowExternalMounts)
         {
             await Console.Error.WriteLineAsync(

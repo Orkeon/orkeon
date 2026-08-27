@@ -121,17 +121,29 @@ public static partial class RunnerExecution
         // IFileSystemService, so configDir must be visible to the VFS registry — under a
         // NAME (ADR-008), never identity-mapped. An agent asking `list_mounts`, or reading
         // an access-denied message, must never be handed an absolute disk path.
-        if (!EnsureExternalMountsAllowed(opts, configDir, llmLogPath)
+        // A scripting entry point gets /script, a YAML crew gets /crew — the two roots exist
+        // because a script's relative imports resolve against its own directory. And a
+        // script's directory is the CLI's primary input rather than a user-declared mount, so
+        // it is not gated behind --allow-external-mounts, exactly as `orkeon run` argues on
+        // its own script path. Both rules used to live only there: `--validate` on a .ork.ts
+        // came through here instead, took a /crew topology the real run never uses, and was
+        // refused for a script outside the working directory that runs perfectly well. A
+        // validation that answers about a different arrangement than the run is worse than no
+        // validation.
+        var isScript = !inspection.IsCrewDirectory && IsScriptedCrewDefinition(configPath);
+        var targetVirtualRoot = isScript ? RunnerMounts.ScriptVirtualRoot : RunnerMounts.CrewVirtualRoot;
+
+        if (!EnsureExternalMountsAllowed(opts, isScript ? null : configDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
-                cliMounts, RunnerMounts.CrewVirtualRoot, RunnerMounts.LlmLogVirtualRoot))
+                cliMounts, targetVirtualRoot, RunnerMounts.LlmLogVirtualRoot))
         {
             errorCode = 1;
             return false;
         }
-        cliMounts.Insert(0, $"{FileSystemMount.Quote(configDir)}:{RunnerMounts.CrewVirtualRoot}:ro");
+        cliMounts.Insert(0, $"{FileSystemMount.Quote(configDir)}:{targetVirtualRoot}:ro");
         var virtualConfigPath = inspection.IsCrewDirectory
-            ? RunnerMounts.CrewVirtualRoot
-            : $"{RunnerMounts.CrewVirtualRoot}/{Path.GetFileName(configPath)}";
+            ? targetVirtualRoot
+            : $"{targetVirtualRoot}/{Path.GetFileName(configPath)}";
 
         // The LLM exchange log is infrastructure: the VFS must reach it (AppendAllTextAsync),
         // no agent has any business addressing it — hence the internal-mount list.
@@ -199,10 +211,10 @@ public static partial class RunnerExecution
     /// </para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static bool EnsureExternalMountsAllowed(RunnerOptionsBase opts, string configDir, string? llmLogPath)
+    private static bool EnsureExternalMountsAllowed(RunnerOptionsBase opts, string? configDir, string? llmLogPath)
     {
         var cwd = Directory.GetCurrentDirectory();
-        var configOutsideCwd = !PhysicalPathContainment.IsUnder(configDir, cwd);
+        var configOutsideCwd = configDir is not null && !PhysicalPathContainment.IsUnder(configDir, cwd);
         var llmLogOutsideCwd = llmLogPath != null && !PhysicalPathContainment.IsUnder(llmLogPath, cwd);
         if (!(configOutsideCwd || llmLogOutsideCwd) || opts.EffectiveAllowExternalMounts)
             return true;
