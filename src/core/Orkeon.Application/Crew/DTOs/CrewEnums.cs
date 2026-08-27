@@ -15,7 +15,13 @@ public enum ProcessType
     Hierarchical,
 
     /// <summary>Tasks require consensus between agents.</summary>
-    Consensual
+    Consensual,
+
+    /// <summary>Tasks run as a state graph with conditional edges and controlled cycles.</summary>
+    Graph,
+
+    /// <summary>Agents self-organize under an execution budget, delegating and spawning.</summary>
+    Autonomous
 }
 
 /// <summary>

@@ -434,8 +434,7 @@ public static partial class TeamCatalog
                 // itself while it fills — a tree that only ends in an I/O error.
                 var fullSource = Path.GetFullPath(sourcePath);
                 var fullDestination = Path.GetFullPath(destination);
-                if (string.Equals(fullDestination, fullSource, StringComparison.Ordinal)
-                    || fullDestination.StartsWith(fullSource + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                if (Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(fullDestination, fullSource))
                 {
                     return null;
                 }
@@ -615,7 +614,6 @@ public static partial class TeamCatalog
 
         var source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourceDirectory));
         var destination = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destinationDirectory));
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
         var rebased = new List<string>(mounts.Count);
         var changed = false;
@@ -629,7 +627,10 @@ public static partial class TeamCatalog
             }
 
             var full = Path.GetFullPath(physical);
-            if (!full.StartsWith(source + Path.DirectorySeparatorChar, comparison))
+            // Strictly under, via the one containment predicate: the local copy hardcoded a
+            // per-OS comparison of its own and knew nothing of AltDirectorySeparatorChar.
+            if (full.Length <= source.Length
+                || !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(full, source))
             {
                 rebased.Add(mountString);
                 continue;

@@ -191,7 +191,16 @@ public static class CrewMapper
 
     /// <summary>
     /// Converts DTO ProcessType enum to domain ProcessType.
+    /// <para>
+    /// The outbound direction was fixed to stop collapsing unlisted modes into
+    /// <c>Sequential</c>; this one kept doing it, and the DTO enum itself stopped four modes
+    /// short of the six the domain carries — so a crew created through this mapper could not
+    /// be Graph or Autonomous at all, and asking for one silently produced a Sequential crew.
+    /// An identity map that can be wrong is worse than no map: an out-of-range value is now an
+    /// argument error rather than a quiet substitution.
+    /// </para>
     /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not a declared member.</exception>
     private static Domain.SharedKernel.ValueObjects.ProcessType ToProcessTypeDomain(ProcessType processType)
     {
         return processType switch
@@ -200,7 +209,9 @@ public static class CrewMapper
             ProcessType.Parallel => Domain.SharedKernel.ValueObjects.ProcessType.Parallel,
             ProcessType.Hierarchical => Domain.SharedKernel.ValueObjects.ProcessType.Hierarchical,
             ProcessType.Consensual => Domain.SharedKernel.ValueObjects.ProcessType.Consensual,
-            _ => Domain.SharedKernel.ValueObjects.ProcessType.Sequential
+            ProcessType.Graph => Domain.SharedKernel.ValueObjects.ProcessType.Graph,
+            ProcessType.Autonomous => Domain.SharedKernel.ValueObjects.ProcessType.Autonomous,
+            _ => throw new ArgumentOutOfRangeException(nameof(processType), processType, "Unknown process type.")
         };
     }
 

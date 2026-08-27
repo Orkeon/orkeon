@@ -38,9 +38,11 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <!-- Security pin (NU1903 / CVE-2025-6965): force the patched native SQLite 3.50.3. See Directory.Packages.props. -->
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
+    <!-- Npgsql alone: Checkpointing/PostgresStateStore is Infrastructure's only relational
+         client. The SQL Server and MySQL drivers lived here for Data/DatabaseProviderFactory,
+         which was removed as a weaker duplicate of Orkeon.Tools.Data.Relational; that package
+         still references them, and it is where they belong. -->
     <PackageReference Include="Npgsql" />
-    <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="MySqlConnector" />
     <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="Polly" />
 

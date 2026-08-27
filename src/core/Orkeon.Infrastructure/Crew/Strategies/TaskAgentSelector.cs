@@ -103,7 +103,13 @@ public sealed partial class TaskAgentSelector
 
             LogNoSelection(_logger, _kind.ToString(), result.Reason ?? "no agent matched");
         }
-        catch (OperationCanceledException)
+        // Only the CALLER's cancellation is a cancellation. An HTTP timeout inside the
+        // embedding backend also surfaces as TaskCanceledException — and definitionally is not
+        // the crew's token, since the adapter passes CancellationToken.None down to the
+        // provider. Rethrowing it unconditionally sent a stalled endpoint straight past the
+        // degradation below, killing the crew and dispatching CrewHookStatus.Canceled, which
+        // tells the operator the user cancelled a run the user never touched.
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }

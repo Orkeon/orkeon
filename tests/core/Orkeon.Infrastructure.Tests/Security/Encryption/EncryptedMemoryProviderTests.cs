@@ -64,6 +64,43 @@ public class EncryptedMemoryProviderTests
             Options.Create(new AesEncryptionOptions { Enabled = enabled }));
     }
 
+    /// <summary>
+    /// A round trip through the decorator changes the content and nothing else. The identifier
+    /// is what a caller deletes, updates and correlates by; the creation time and access count
+    /// are what ageing and recency-ordering read.
+    /// <para>
+    /// Rebuilding via <c>MemoryItem.Create</c> minted a fresh id and stamped
+    /// <c>CreatedAt = UtcNow</c> on every decrypt, so wrapping a provider that carefully
+    /// restores them from storage — <c>SqliteMemoryProvider</c> does — silently undid it.
+    /// Asserting on the content alone, as the tests here did, cannot see that.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task RoundTrip_PreservesIdentityAndTimestamps()
+    {
+        var inner = new FakeMemoryProvider();
+        var encryption = CreateEncryption();
+        var provider = new EncryptedMemoryProviderDecorator(
+            inner, encryption, NullLogger<EncryptedMemoryProviderDecorator>.Instance);
+
+        var item = MemoryItem.Create("dated secret", importance: 0.7f, source: "test", tags: Tag1Tag2);
+        await provider.StoreAsync("key1", item, TestContext.Current.CancellationToken);
+
+        // Encrypting on the way in must not re-identify the caller's item either.
+        Assert.Equal(item.Id, inner.Store["key1"].Id);
+        Assert.Equal(item.Timestamp, inner.Store["key1"].Timestamp);
+
+        var retrieved = await provider.GetAsync("key1", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(retrieved);
+        Assert.Equal(item.Id, retrieved!.Id);
+        Assert.Equal(item.Timestamp, retrieved.Timestamp);
+        Assert.Equal(item.Metadata.AccessCount, retrieved.Metadata.AccessCount);
+        Assert.Equal(item.Metadata.LastAccessedAt, retrieved.Metadata.LastAccessedAt);
+        Assert.Equal(item.Source, retrieved.Source);
+        Assert.Equal(item.Tags, retrieved.Tags);
+    }
+
     [Fact]
     public async Task Store_EncryptsContent_BeforeStoring()
     {

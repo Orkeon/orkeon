@@ -97,6 +97,49 @@ public sealed class ContainerLifetimeTests : IDisposable
     }
 
     /// <summary>
+    /// The sandbox virtual root is not merely mounted — it RESOLVES, against the real
+    /// <c>IPathValidator</c>, for the write that every code execution starts with.
+    /// <para>
+    /// Resolving a virtual path is two steps: the registry answers WHERE, then
+    /// <c>IPathValidator</c> answers WHETHER. Mounting <c>/sandbox</c> in every registry
+    /// fixed step one and left step two denying it — the session directory lives under the
+    /// temp directory while the validator's workspace root defaults to the current one — so
+    /// <c>DockerSandbox.CreateDirectoryAsync</c> and <c>ProcessIsolationSandbox</c>, whose
+    /// run directory is the first thing they create, kept failing on the first
+    /// agent-generated snippet. Only the message changed: "No mount found for virtual path
+    /// '/sandbox/…'" became "Path is outside the allowed workspace directory".
+    /// </para>
+    /// <para>
+    /// Every other test touching this mount stubs the validator away, which is precisely why
+    /// none of them could see it. This one does not.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_sandbox_root_clears_the_real_path_validator()
+    {
+        var services = BuildRunnerServices();
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        });
+
+        // The real one, not a double: assert that before relying on the result.
+        var validator = provider.GetRequiredService<Orkeon.Domain.Tools.Security.IPathValidator>();
+        Assert.IsType<Orkeon.Infrastructure.Security.PathValidator>(validator);
+
+        var session = provider.GetRequiredService<Orkeon.Infrastructure.Sandbox.SandboxSession>();
+        var privileged = provider.GetRequiredService<PrivilegedFileSystemAccess>();
+
+        var result = privileged.FileSystem.ResolveAndValidate(
+            $"{session.Mount.VirtualPath}/docker/run-1/Program.cs",
+            FileAccessRights.Write | FileAccessRights.Create);
+
+        Assert.True(result.IsAllowed, result.DenialReason);
+        Assert.StartsWith(session.Root, result.ResolvedPath!, PhysicalPathContainment.Comparison);
+    }
+
+    /// <summary>
     /// With no embedding generator registered, the port resolves to the provider whose whole
     /// job is to say so — and throws at the first embed, not at container build.
     /// <para>

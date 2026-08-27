@@ -354,6 +354,139 @@ matches its mounts (the session directory, not the `/output` folder inside it),
 reference carries the caveat both getting-started pages already had about
 `orkeon run <dir>/crew`.
 
+### Fixed — the adversarial pass, turned on the sweep's own work
+
+The sweep that produced the sections above was reviewed by agents briefed to
+refute it rather than confirm it. The deletions held: nothing removed was
+reachable, and the database security policy the removal was accused of dropping
+was in fact the weaker of two copies — the surviving
+`Orkeon.Tools.Data.Relational.DefaultDatabaseSecurityPolicy` blocks stacked DDL
+after a benign `SELECT`, neutralises comment prefixes and gates `UPDATE` without
+a `WHERE`, none of which the deleted one did. What did not hold was the work
+*around* the deletions.
+
+**An encrypted memory item kept its content and lost its identity.** The
+decorator rebuilt every item through `MemoryItem.Create`, which mints a fresh
+`MemoryItemId` and stamps `CreatedAt = UtcNow`, `AccessCount = 0`,
+`LastAccessedAt = null` — fields no caller can pass. `SqliteMemoryRecord`
+restores exactly those from storage on purpose; wrapping that provider in
+`EncryptedMemoryProviderDecorator` threw the work away again, so an encrypted
+long-term memory reported the moment it was decrypted as its creation time and
+never accumulated an access count. Ageing and recency-ordering read wrong
+values, and only with encryption switched on. The rebuild goes through
+`MemoryItem.Restore` now, which carries identity and metadata over whole rather
+than enumerating fields that can be forgotten. Consolidating the six inline
+rebuilds into one place had fixed the two dropped metadata fields and asserted
+completeness without checking identity.
+
+**Removed**: `FeatureFlags` (`Orkeon.Application.Configuration`). Its twin
+`OrkeonFeatureFlags` was removed above for having no production reader; this one
+sat in the same folder with the same profile, and was the more misleading of the
+two — `ShouldUseForAgent` / `ShouldUseForCrew` implement hash-bucketed gradual
+rollout over `TrafficPercentage`, so its public surface offers to canary a
+percentage of crews onto `UseSequentialCrewOrchestrator`. Nothing called it. Its
+only consumer was its own test file.
+
+**Removed** (breaking, packages): `Orkeon.Application.Abstractions.Data`
+(`DatabaseQueryOptions`, `IDatabaseProviderFactory`, `IDatabaseSecurityPolicy`)
+and `Orkeon.Infrastructure.Data` (`DatabaseProviderFactory`,
+`DefaultDatabaseSecurityPolicy`) — recorded in the public-API files but not
+here. The migration is a namespace change, not a rewrite: the surviving types
+carry the same names under `Orkeon.Tools.Abstractions.Data` and
+`Orkeon.Tools.Data.Relational`, so a consumer sees "type or namespace not found"
+and needs one `using` changed. `docs/architecture/security.md` names the
+namespace now instead of the bare interface.
+
+**`Orkeon.Infrastructure` no longer drags in two database drivers it does not
+use.** `Microsoft.Data.SqlClient` (with its `Azure.Identity` /
+`Microsoft.Identity.Client` chain) and `MySqlConnector` were referenced for the
+removed `DatabaseProviderFactory` alone. `Orkeon.Tools.Data` references them and
+is where they belong; every consumer of the Infrastructure package was carrying
+their restore weight and CVE surface for code that no longer exists. `Npgsql`
+stays — `Checkpointing/PostgresStateStore` uses it.
+
+**An internal mount was a boundary in the virtual namespace only.** The commit above
+refuses the name `/llm-logs`; it refused nothing to the bytes. With the log
+directory nested inside an agent-facing mount — the ordinary arrangement, since
+`--llm-log ./logs` needs no `--allow-external-mounts` precisely because it stays
+under the working directory, and the working directory is what gets mounted for
+the agents — `/workspace/logs/llm-exchanges-….jsonl` returned the very file that
+`/llm-logs/llm-exchanges-….jsonl` was refused for, and `ToVirtualPath` handed
+that address out. Both directions enforce physical containment now. Its own test
+suite mounted the two directories as siblings.
+
+**`/sandbox` was mounted in every host and usable in none.** Resolving a virtual
+path is two steps: the registry answers *where*, then `IPathValidator` answers
+*whether*. Moving the sandbox mount into the registry fixed the first and left
+the second denying it — the session directory lives under the temp directory
+while the validator's workspace root defaults to the current one — so the first
+call of every code execution kept failing, saying "Path is outside the allowed
+workspace directory" instead of "No mount found". No flag rescued it:
+`--allow-external-mounts` whitelists the CLI and internal mount lists, and the
+sandbox root is in neither, because it is injected rather than configured. The
+session root is registered as an allowed directory, and the test exercises the
+real validator instead of stubbing it.
+
+**The sandbox janitor deleted directories it had not created.** It swept every
+subdirectory of `EphemeralRoot` older than the threshold, recursively, checking
+neither the name nor whether the owning process was alive — and it now runs in
+every process that builds a VFS rather than only in a started host. A directory's
+mtime freezes once its direct children exist, so a daemon idle past the threshold
+looked exactly like an orphan and a CLI invocation would delete its sandbox
+mid-run; and since `EphemeralRoot` is a free-form string whose directory this
+code creates, pointing it at an existing folder made the sweep a recursive delete
+of user data. Both guards are in place. Runner flows also dispose their host now,
+so the session directory goes at the end of the run rather than waiting for a
+later sweep, and `/sandbox` joins the reserved virtual roots — a user `--mount`
+claiming it was crashing a DI factory instead of printing the one-line refusal.
+
+**A stalled embedding endpoint killed the crew and blamed the user.**
+`TaskAgentSelector` rethrew every `OperationCanceledException`, but an HTTP
+timeout inside the embedding backend surfaces as one too — and definitionally is
+not the crew's token, since the adapter passes `CancellationToken.None` down. It
+went straight past the degrade-to-round-robin path the class exists for, and the
+terminal event reported a cancellation nobody requested. The guard is conditioned
+on the caller's token.
+
+**The scripting typings did not compile, in a new way.** `tools.d.ts` traded an
+index signature a namespace cannot carry for a `namespace tools` beside a `const
+tools`, which do not merge (TS2300/TS2395); `llm.d.ts` introduced a second
+`LlmConfig` colliding with the one in `agent.d.ts` (TS2687 on all six members,
+TS2717 on `model`) — a net-new break in a file that pass never opened. Both
+passed the new typings test, because it runs esbuild: a transpiler strips types
+and reports neither. `tools` is one interface with one `const` now, `LlmConfig`
+is declared once, and the suite gained a check for the duplicate-declaration
+shapes a transpiler structurally cannot see. The removed `agent.d.ts` copy also
+documented a literal the runtime discards — `ExtractLlmConfig` returns null for
+anything that is not a `JsLlmConfig`.
+
+**The inbound process-type map still collapsed unlisted modes into Sequential**,
+and the DTO enum stopped four modes short of the six the domain carries, so a
+crew created through `CrewMapper` could not be Graph or Autonomous at all and
+asking for one produced a Sequential crew that ran to completion. The enum
+carries all six; an out-of-range value is an argument error. The test that
+asserted the fallback asserted it by name.
+
+**A command that is not installed put a disk path in front of the model.**
+`ShellCommandTool` now hands `ProcessStartInfo` a resolved physical working
+directory, and `process.Start()` sat outside the outbound rewrite — so any
+allowlisted-but-missing binary returned "…with working directory '/tmp/…'" to
+the LLM. The start is redacted like every other outbound string.
+
+**Two containment copies survived the pass that claimed to unify them.** The
+registry's own anti-traversal check — inside the very method the boundary suite
+exercises — and both guards in Studio's `TeamCatalog` hardcoded `Ordinal` and
+knew nothing of `AltDirectorySeparatorChar`. All five call sites route through
+`PhysicalPathContainment` now, and the type's own doc says five rather than
+three.
+
+**The VFS exception table pointed at a file that was deleted in the same pass.**
+`docs/architecture/vfs-compliance.md` and its French mirror still listed
+`Scripting.Cli/CliFileSystemService.cs` as a ratified permanent exception —
+doubly wrong, since that file was never in the analyzer's allowlist to begin
+with; it carried an inline suppression. The neighbouring bootstrap row was
+updated for `SandboxSession` in the same edit, so the row was read and left.
+
 ## [1.0.0-rc.2] - 2026-08-25
 
 ### Added — Remediation v3: what a run costs, and adoption that is no longer a one-way door

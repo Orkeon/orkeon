@@ -129,12 +129,26 @@ public sealed class FileSystemRegistry : IDisposable
             var physicalPath = Path.GetFullPath(Path.Combine(mount.BasePath, relativePath));
 
             // 5. Containment check
-            var normalizedBase = Path.GetFullPath(mount.BasePath);
-            if (!string.Equals(physicalPath, normalizedBase, StringComparison.Ordinal) &&
-                !physicalPath.StartsWith(normalizedBase + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            if (!PhysicalPathContainment.IsUnder(physicalPath, Path.GetFullPath(mount.BasePath)))
             {
                 throw new FileAccessDeniedException(
                     $"Access denied for '{virtualPath}': path traversal detected.",
+                    virtualPath,
+                    requiredRight);
+            }
+
+            // 6. An Internal mount is a boundary in PHYSICAL space, not only in the virtual
+            // namespace. Refusing the name `/llm-logs` is worth nothing while the same bytes
+            // keep a second address through whatever agent-facing mount contains them — and
+            // that arrangement is the ordinary one, not a corner case: `--llm-log ./logs`
+            // needs no `--allow-external-mounts` precisely because it stays under the working
+            // directory, and the working directory is what gets mounted for the agents. The
+            // boundary has to be enforced where the physical path is produced, since the
+            // physical path is what the caller then opens.
+            if (!includeInternal && IsUnderInternalMountUnsafe(physicalPath))
+            {
+                throw new FileAccessDeniedException(
+                    $"Access denied for '{virtualPath}': this path is reserved by the runtime.",
                     virtualPath,
                     requiredRight);
             }
@@ -188,6 +202,13 @@ public sealed class FileSystemRegistry : IDisposable
             if (best is null)
                 return null;
 
+            // The same boundary, going the other way. Skipping Internal mounts in the loop
+            // above only stops this from ANSWERING "/llm-logs/x"; the parent mount still
+            // matches, so it would hand back "/workspace/logs/x" — a spelling that used to
+            // resolve. An unprivileged caller gets no address at all for those bytes.
+            if (!includeInternal && IsUnderInternalMountUnsafe(normalized))
+                return null;
+
             var trimmedBase = bestBase.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             if (normalized.Length <= trimmedBase.Length)
                 return best.VirtualPath;
@@ -196,6 +217,24 @@ public sealed class FileSystemRegistry : IDisposable
             return $"{best.VirtualPath.TrimEnd('/')}/{relative}";
         }
         finally { _lock.ExitReadLock(); }
+    }
+
+    /// <summary>
+    /// Is this normalized physical path inside any <see cref="MountVisibility.Internal"/>
+    /// mount? Call under the read lock.
+    /// </summary>
+    private bool IsUnderInternalMountUnsafe(string normalizedPhysicalPath)
+    {
+        foreach (var mount in _mounts)
+        {
+            if (mount.Visibility != MountVisibility.Internal)
+                continue;
+
+            if (PhysicalPathContainment.IsUnder(normalizedPhysicalPath, Path.GetFullPath(mount.BasePath)))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>Returns AgentFacing mounts only — Internal mounts are hidden from agents.</summary>

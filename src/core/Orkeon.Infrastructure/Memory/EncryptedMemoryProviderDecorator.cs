@@ -363,14 +363,25 @@ public sealed partial class EncryptedMemoryProviderDecorator
         => RequireCapability<ICollectionAwareMemory>().DropCollectionAsync(collection, cancellationToken);
 
     /// <summary>
-    /// Returns a copy of <paramref name="item"/> whose content is encrypted, preserving
-    /// everything else — embedding, importance, source, tags, author and custom metadata.
+    /// Returns a copy of <paramref name="item"/> whose content is encrypted. Content is the
+    /// only thing that changes: identifier, embedding, importance and the whole metadata
+    /// record travel through untouched.
     /// <para>
     /// Every path goes through this and its decrypting twin. Four of them used to rebuild the
     /// item inline with five of the seven fields, so <c>Metadata.CustomProperties</c> and
     /// <c>CreatedBy</c> were dropped on the ordinary store/get/search — against a class whose
-    /// own contract is "metadata remains in clear text". The collection-scoped paths did keep
-    /// them, and had the test that said so.
+    /// own contract is "metadata remains in clear text".
+    /// </para>
+    /// <para>
+    /// Naming the fields was still the wrong shape, because a rebuild via
+    /// <c>MemoryItem.Create</c> mints a fresh <c>MemoryItemId</c> and stamps
+    /// <c>CreatedAt = UtcNow</c>, <c>AccessCount = 0</c>, <c>LastAccessedAt = null</c> — fields
+    /// no caller can pass. <c>SqliteMemoryRecord.ToMemoryItem</c> goes out of its way to
+    /// restore exactly those from storage; wrapping that provider in this decorator threw the
+    /// work away again, so an encrypted long-term memory reported the moment it was decrypted
+    /// as its creation time and never accumulated an access count. Ageing and
+    /// recency-ordering read wrong values, and only with encryption switched on.
+    /// <c>Restore</c> is the factory for "same item, other content" and is what this uses.
     /// </para>
     /// </summary>
     private async Task<MemoryItem> EncryptItemAsync(MemoryItem item, CancellationToken cancellationToken) =>
@@ -380,18 +391,12 @@ public sealed partial class EncryptedMemoryProviderDecorator
     private async Task<MemoryItem> DecryptItemAsync(MemoryItem item, CancellationToken cancellationToken) =>
         Rebuild(item, await _encryption.DecryptStringAsync(item.Content, cancellationToken).ConfigureAwait(false));
 
-    /// <summary>Same item, other content — the one place the field list is written down.</summary>
+    /// <summary>
+    /// Same item, other content. Nothing is enumerated, so nothing can be forgotten: the
+    /// identity and the metadata record are carried over whole.
+    /// </summary>
     private static MemoryItem Rebuild(MemoryItem item, string content) =>
-        MemoryItem.Create(
-            content,
-            item.Embedding,
-            item.Importance,
-            item.Source,
-            item.Tags,
-            createdBy: item.Metadata.CreatedBy,
-            customProperties: item.Metadata.CustomProperties is { } custom
-                ? new Dictionary<string, string>(custom)
-                : null);
+        MemoryItem.Restore(item.Id, content, item.Embedding, item.Importance, item.Metadata);
 
     /// <summary>
     /// Resolves the requested capability on the wrapped provider or throws a

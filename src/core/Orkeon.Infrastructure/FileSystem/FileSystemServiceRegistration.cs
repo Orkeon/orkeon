@@ -36,6 +36,24 @@ public static class FileSystemServiceRegistration
         services.Configure<SandboxFileSystemOptions>(configuration.GetSection("Orkeon:Sandbox"));
         services.TryAddSingleton<SandboxSession>();
 
+        // 1c. …and the session directory has to clear PathValidator too. Resolving a virtual
+        //     path is two steps: the registry answers WHERE, then IPathValidator answers
+        //     WHETHER — and its workspace root defaults to the current directory, while the
+        //     session root lives under the temp directory. Mounting /sandbox without this
+        //     moved the failure rather than fixing it: the first call of every code execution
+        //     (DockerSandbox and ProcessIsolationSandbox both create their run directory
+        //     before anything else) stopped saying "No mount found for '/sandbox/…'" and
+        //     started saying "Path is outside the allowed workspace directory". No flag could
+        //     rescue it either — --allow-external-mounts whitelists the CLI and internal mount
+        //     lists, and the sandbox root is in neither, because it is injected here rather
+        //     than configured.
+        services.AddOptions<PathSecurityOptions>()
+            .Configure<SandboxSession>((options, session) =>
+            {
+                if (!options.AdditionalAllowedDirectories.Contains(session.Root))
+                    options.AdditionalAllowedDirectories.Add(session.Root);
+            });
+
         // 2. Register FileSystemRegistry as singleton (built from parsed mounts)
         services.AddSingleton<FileSystemRegistry>(sp =>
         {

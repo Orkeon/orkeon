@@ -398,7 +398,19 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(request.TimeoutSeconds));
 
-        process.Start();
+        try
+        {
+            process.Start();
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            // The message names the working directory, and the working directory is now a
+            // RESOLVED PHYSICAL path — so a command that is simply not installed on the host
+            // (npm, dotnet, git) put a disk path in front of the model, through the one field
+            // the outbound rewrite below never touched. Ordinary trigger, ADR-008 violation.
+            throw new InvalidOperationException(
+                RewriteOutboundPaths(ex.Message, outboundReplacements), ex);
+        }
 
         // Read stdout and stderr concurrently to avoid deadlocks
         var stdoutTask = process.StandardOutput.ReadToEndAsync(timeoutCts.Token);

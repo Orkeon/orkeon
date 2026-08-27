@@ -2,8 +2,13 @@ namespace Orkeon.Domain.FileSystem;
 
 /// <summary>
 /// Is a physical path inside a physical directory? One implementation, because the question
-/// was answered in three places with three different rules and the disagreements were all
-/// bugs.
+/// was answered in five places with five different rules and the disagreements were all bugs.
+/// <para>
+/// Three were unified when this type was introduced; the claim that it was then "the single
+/// containment predicate" was not yet true. Two survived it — the registry's own anti-traversal
+/// check, in the very method whose boundary suite cites this class, and the two guards in
+/// Studio's <c>TeamCatalog</c>. All five route here now.
+/// </para>
 /// <para>
 /// The rule has two parts and both matter. <b>Boundary</b>: a directory only contains what
 /// sits under it followed by a separator — <c>/home/u/proj-old</c> is not inside

@@ -93,7 +93,7 @@ These accesses cannot go through the VFS by nature and are **permanently** allow
 
 | Area | Location | Category | Why |
 |---|---|---|---|
-| VFS implementation | `Domain/FileSystem/*`, `Infrastructure/FileSystem/*`, `Scripting.Cli/CliFileSystemService.cs` | (the abstraction) | It *is* the VFS |
+| VFS implementation | `Domain/FileSystem/*`, `Infrastructure/FileSystem/*` | (the abstraction) | It *is* the VFS |
 | Bootstrap (pre-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*` | `EXCEPTION-BOOTSTRAP` | Read appsettings + mount before the VFS exists. Covers *provisioning* a mount, never exposing a physical path as a virtual one — see [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
 | Host probing | `DockerSandbox`, `ProcessIsolationSandbox`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Discover `docker`/`dotnet`/`git` on PATH, never a mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Locates the `esbuild` binary + transpile temp files; host toolchain |

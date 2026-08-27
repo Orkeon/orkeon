@@ -99,3 +99,27 @@ Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitRatio.get -> double?
 *REMOVED*virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.Equals(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? other) -> bool
 *REMOVED*virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.AgentIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.AgentIds.init -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.CrewIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.CrewIds.init -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.EnableDetailedLogging.get -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.EnableDetailedLogging.set -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.EnableFallback.get -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.EnableFallback.set -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.FeatureFlags() -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.ShouldUseForAgent(string! agentId) -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.ShouldUseForCrew(string! crewId) -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.TrafficPercentage.get -> int
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.TrafficPercentage.set -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.UseAgentExecutionService.get -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.UseAgentExecutionService.set -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.UseCrewCompositionService.get -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.UseCrewCompositionService.set -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.UseNewDomainModels.get -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.UseNewDomainModels.set -> void
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.UseSequentialCrewOrchestrator.get -> bool
+*REMOVED*Orkeon.Application.Configuration.FeatureFlags.UseSequentialCrewOrchestrator.set -> void
+Orkeon.Application.Crew.DTOs.ProcessType.Graph = 4 -> Orkeon.Application.Crew.DTOs.ProcessType
+Orkeon.Application.Crew.DTOs.ProcessType.Autonomous = 5 -> Orkeon.Application.Crew.DTOs.ProcessType

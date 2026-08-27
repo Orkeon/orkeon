@@ -23,7 +23,10 @@ public sealed class RollupDtsTests
         Assert.Contains("LlmProvider", content);
         Assert.Contains("ExecutionContext", content);
         Assert.Contains("AgentContext", content);
-        Assert.Contains("namespace tools", content);
+        // Not "namespace tools": a namespace cannot carry the index signature the tools object
+        // needs, which is why that spelling was the broken one. This asserts the declaration
+        // the file actually ships — and TypingsParseTests asserts it compiles.
+        Assert.Contains("const tools: OrkeonTools", content, StringComparison.Ordinal);
         Assert.Contains("namespace rag", content);
         Assert.Contains("RagIngestReport", content);
     }

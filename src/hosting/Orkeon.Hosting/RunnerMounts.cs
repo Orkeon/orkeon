@@ -32,4 +32,15 @@ public static class RunnerMounts
     /// business addressing it.
     /// </summary>
     public const string LlmLogVirtualRoot = "/llm-logs";
+
+    /// <summary>
+    /// Where the code sandboxes stage the snippets they run. Registered as an <b>internal</b>
+    /// mount by <c>AddOrkeonFileSystem</c>, so it is present in every registry a runner builds
+    /// — which is why it belongs in the reserved list: a user <c>--mount</c> claiming
+    /// <c>/sandbox</c> used to reach the registry's duplicate-virtual-path check and surface as
+    /// an unhandled exception out of a DI factory, instead of the one-line diagnostic the other
+    /// reserved roots get.
+    /// <para>Mirrors <c>SandboxFileSystemOptions.VirtualPath</c>; the drift test pins them.</para>
+    /// </summary>
+    public const string SandboxVirtualRoot = "/sandbox";
 }

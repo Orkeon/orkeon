@@ -135,7 +135,7 @@ public static partial class RunnerExecution
 
         if (!EnsureExternalMountsAllowed(opts, isScript ? null : configDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
-                cliMounts, targetVirtualRoot, RunnerMounts.LlmLogVirtualRoot))
+                cliMounts, targetVirtualRoot, RunnerMounts.LlmLogVirtualRoot, RunnerMounts.SandboxVirtualRoot))
         {
             errorCode = 1;
             return false;
@@ -318,8 +318,13 @@ public static partial class RunnerExecution
         if (!TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out var errorCode))
             return errorCode;
 
-        var (host, logger, configPath, virtualConfigPath, cliMounts) =
-            (bootstrap!.Host, bootstrap.Logger, bootstrap.ConfigPath, bootstrap.VirtualConfigPath, bootstrap.CliMounts);
+        // `using`, because the sandbox session directory is deleted by SandboxSession.Dispose,
+        // which the container runs on host disposal. Without it every `orkeon run` left a
+        // directory under the ephemeral root for a later process's janitor to collect — and
+        // the diagnostics flows next door already dispose theirs.
+        using var host = bootstrap!.Host;
+        var (logger, configPath, virtualConfigPath, cliMounts) =
+            (bootstrap.Logger, bootstrap.ConfigPath, bootstrap.VirtualConfigPath, bootstrap.CliMounts);
         var isCrewDirectory = bootstrap.IsCrewDirectory;
 
         // Internal CTS linked to the external one (if any). Cancelling either path stops
@@ -567,7 +572,8 @@ public static partial class RunnerExecution
             if (!TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out var errorCode))
                 return errorCode;
 
-            var (host, logger, _, cliMounts) = (bootstrap!.Host, bootstrap.Logger, bootstrap.ConfigPath, bootstrap.CliMounts);
+            using var host = bootstrap!.Host;
+            var (logger, cliMounts) = (bootstrap.Logger, bootstrap.CliMounts);
 
             using var sessionCts = new CancellationTokenSource();
             using var shutdown = RegisterGracefulShutdown(sessionCts, logger);

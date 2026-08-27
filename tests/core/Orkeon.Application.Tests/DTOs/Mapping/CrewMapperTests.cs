@@ -453,8 +453,19 @@ public class CrewMapperTests
         Assert.Throws<ArgumentException>(() => CrewMapper.FromCreateRequest(request));
     }
 
+    /// <summary>
+    /// An out-of-range cast is refused, not absorbed.
+    /// <para>
+    /// This used to assert the opposite, under the name <c>…_FallsBackToSequential</c>. The
+    /// fallback was not a kindness: the DTO enum stopped four modes short of the six the
+    /// domain carries, so asking for Graph or Autonomous through this mapper produced a
+    /// Sequential crew that ran to completion and reported success — the same silent
+    /// substitution the outbound direction was fixed for. The enum carries all six now, and
+    /// a value that is none of them is a caller error.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void FromCreateRequest_UnknownEnumValue_FallsBackToSequential()
+    public void FromCreateRequest_UnknownEnumValue_IsRefused()
     {
         var request = new CreateCrewRequest
         {
@@ -465,9 +476,38 @@ public class CrewMapperTests
             Planning = false
         };
 
+        Assert.Throws<ArgumentOutOfRangeException>(() => CrewMapper.FromCreateRequest(request));
+    }
+
+    /// <summary>
+    /// Every mode the domain carries survives the inbound mapping.
+    /// <para>
+    /// Hierarchical is absent because a request alone cannot produce one: <c>Crew.Create</c>
+    /// refuses it without a manager agent or manager LLM, and <c>CreateCrewRequest</c> carries
+    /// neither. That is the domain's invariant, not a mapping gap — and it was invisible while
+    /// an unmapped value quietly became Sequential.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(ProcessType.Sequential)]
+    [InlineData(ProcessType.Parallel)]
+    [InlineData(ProcessType.Consensual)]
+    [InlineData(ProcessType.Graph)]
+    [InlineData(ProcessType.Autonomous)]
+    public void FromCreateRequest_CarriesEveryProcessType(ProcessType process)
+    {
+        var request = new CreateCrewRequest
+        {
+            Name = "Any",
+            Description = "A goal",
+            Process = process,
+            Verbose = false,
+            Planning = false
+        };
+
         var crew = CrewMapper.FromCreateRequest(request);
 
-        Assert.Equal(DomainProcessType.Sequential, crew.ProcessType);
+        Assert.Equal(process.ToString(), crew.ProcessType.Value);
     }
 
     [Fact]

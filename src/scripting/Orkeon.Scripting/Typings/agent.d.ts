@@ -60,14 +60,13 @@ declare global {
         | { success?: boolean; payload?: string; error?: string }
         | Promise<string | { success?: boolean; payload?: string; error?: string }>;
 
-    interface LlmConfig {
-        provider: string;
-        model?: string;
-        temperature?: number;
-        maxTokens?: number;
-        baseUrl?: string;
-        apiKey?: string;
-    }
+    // LlmConfig is declared once, in llm.d.ts, as what the `llm.*` factories return. A
+    // second copy lived here — mutable where the other is readonly, `model` optional where
+    // the other requires it — so the two merged into a global interface TypeScript refuses
+    // (TS2687 on all six members, TS2717 on `model`). It also documented a shape the runtime
+    // discards: JsCrewConfigurationAdapter.ExtractLlmConfig returns null for anything that is
+    // not a JsLlmConfig, so a hand-written `{ provider: "openai", model: "x" }` literal was
+    // silently ignored while this declaration promised it worked.
 
     interface ErrorContext {
         readonly error: Error;

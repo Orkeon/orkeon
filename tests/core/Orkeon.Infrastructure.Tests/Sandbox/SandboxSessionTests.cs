@@ -77,10 +77,56 @@ public sealed class SandboxSessionTests : IDisposable
         Assert.Equal("hi", await fs.TryReadAllTextAsync("/sandbox/test.txt", TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// A directory under <c>EphemeralRoot</c> that this class did not mint is never touched,
+    /// however old it is.
+    /// <para>
+    /// <c>EphemeralRoot</c> is a free-form configuration string and the ctor CREATES the
+    /// directory it names, so pointing it at an existing folder is a two-word edit. The sweep
+    /// used to delete every subdirectory older than the threshold, recursively, with no check
+    /// that the directory was a sandbox at all — and it now runs in every process that builds
+    /// a VFS, not only in a started host.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void NeverTouchesADirectoryItDidNotMint()
+    {
+        var userData = Path.Combine(_ephemeralRoot, "Photos 2019");
+        Directory.CreateDirectory(userData);
+        File.WriteAllText(Path.Combine(userData, "holiday.jpg"), "not a sandbox");
+        Directory.SetLastWriteTimeUtc(userData, DateTime.UtcNow.AddDays(-400));
+
+        using var session = BuildSession(cleanupOlderThan: TimeSpan.FromHours(24));
+
+        Assert.True(
+            File.Exists(Path.Combine(userData, "holiday.jpg")),
+            "A directory whose name is not <pid>-<timestamp> is none of the janitor's business.");
+    }
+
+    /// <summary>
+    /// A session whose owning process is still running survives, however old its directory
+    /// looks. A directory's mtime only moves when its DIRECT children change, so once
+    /// <c>&lt;Root&gt;/docker</c> exists the root's timestamp is frozen no matter how busy the
+    /// session is — an idle daemon was indistinguishable from an orphan.
+    /// </summary>
+    [Fact]
+    public void KeepsASessionWhoseProcessIsStillAlive()
+    {
+        var liveDir = Path.Combine(_ephemeralRoot, $"{Environment.ProcessId}-20200101000000000");
+        Directory.CreateDirectory(liveDir);
+        Directory.SetLastWriteTimeUtc(liveDir, DateTime.UtcNow.AddDays(-30));
+
+        using var session = BuildSession(cleanupOlderThan: TimeSpan.FromHours(24));
+
+        Assert.True(
+            Directory.Exists(liveDir),
+            "A live process's sandbox must survive another process's janitor sweep, however stale its mtime.");
+    }
+
     [Fact]
     public void CleansOrphansOlderThanThreshold()
     {
-        var oldSessionDir = Path.Combine(_ephemeralRoot, "99999-20200101000000");
+        var oldSessionDir = Path.Combine(_ephemeralRoot, "99999-20200101000000000");
         Directory.CreateDirectory(oldSessionDir);
         Directory.SetLastWriteTimeUtc(oldSessionDir, DateTime.UtcNow.AddHours(-25));
 
@@ -94,7 +140,7 @@ public sealed class SandboxSessionTests : IDisposable
     [Fact]
     public void KeepsOrphansYoungerThanThreshold()
     {
-        var recentSessionDir = Path.Combine(_ephemeralRoot, "99998-20990101000000");
+        var recentSessionDir = Path.Combine(_ephemeralRoot, "99998-20990101000000000");
         Directory.CreateDirectory(recentSessionDir);
 
         using var session = BuildSession(cleanupOlderThan: TimeSpan.FromHours(24));
