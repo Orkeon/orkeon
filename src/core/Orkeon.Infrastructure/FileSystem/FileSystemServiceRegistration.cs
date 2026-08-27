@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools.Security;
 using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.Sandbox;
 
@@ -78,8 +80,24 @@ public static class FileSystemServiceRegistration
         //    same AsyncLocal slot. A host that never enters a scope keeps the boot mounts unchanged.
         services.TryAddSingleton<IFileSystemScope, AsyncLocalFileSystemScope>();
 
-        // 4. Register FileSystemService as the IFileSystemService implementation
-        services.AddSingleton<IFileSystemService, FileSystemService>();
+        // 4. Register FileSystemService as the IFileSystemService implementation. This is the
+        //    instance every tool and every agent reaches, so it does NOT resolve Internal
+        //    mounts: /llm-logs and /sandbox are refused to it exactly as if they did not exist.
+        services.AddSingleton<IFileSystemService>(sp => new FileSystemService(
+            sp.GetRequiredService<FileSystemRegistry>(),
+            sp.GetRequiredService<IPathValidator>(),
+            sp.GetRequiredService<ILogger<FileSystemService>>(),
+            sp.GetService<IFileSystemScope>()));
+
+        // 4b. The privileged view, for the components that write to an internal root — the LLM
+        //     exchange logger and the code sandboxes. Asked for by name, never injected as
+        //     IFileSystemService, so nothing reaches it by accident.
+        services.TryAddSingleton(sp => new PrivilegedFileSystemAccess(new FileSystemService(
+            sp.GetRequiredService<FileSystemRegistry>(),
+            sp.GetRequiredService<IPathValidator>(),
+            sp.GetRequiredService<ILogger<FileSystemService>>(),
+            sp.GetService<IFileSystemScope>(),
+            internalAccess: true)));
 
         // 5. Register VirtualFileSystemWatcher (transient: each caller owns one watcher lifetime)
         services.AddTransient<IVirtualFileSystemWatcher, VirtualFileSystemWatcher>();

@@ -128,6 +128,16 @@ public static class InfrastructureExtensions
         return services;
     }
 
+    /// <summary>
+    /// The file system a component that writes to an INTERNAL mount must use. Falls back to
+    /// the plain service when no privileged view is registered — a host that wires its own
+    /// <see cref="IFileSystemService"/> instead of calling <c>AddOrkeonFileSystem</c> keeps
+    /// exactly the behaviour it had.
+    /// </summary>
+    private static IFileSystemService PrivilegedFileSystem(IServiceProvider sp) =>
+        sp.GetService<FileSystem.PrivilegedFileSystemAccess>()?.FileSystem
+        ?? sp.GetRequiredService<IFileSystemService>();
+
     private static IServiceCollection AddOrkeonCorePlumbing(this IServiceCollection services)
     {
         // Add path security options (configurable via appsettings.json "PathSecurity" section)
@@ -705,9 +715,19 @@ public static class InfrastructureExtensions
 
         services.TryAddSingleton<ICodeSecurityAnalyzer, RoslynCodeSecurityAnalyzer>();
 
-        // Concrete sandboxes are registered so the lazy ICodeSandbox selector can route between them.
-        services.TryAddSingleton<DockerSandbox>();
-        services.TryAddSingleton<HostProcessRunner>();
+        // Concrete sandboxes are registered so the lazy ICodeSandbox selector can route between
+        // them. Both write their run directories under /sandbox, an Internal mount the plain
+        // IFileSystemService no longer resolves — so they are built with the privileged view
+        // rather than injected with the one every tool holds.
+        services.TryAddSingleton(sp => new DockerSandbox(
+            sp.GetRequiredService<ILogger<DockerSandbox>>(),
+            sp.GetRequiredService<IOptions<SandboxOptions>>(),
+            sp.GetRequiredService<IOptions<DockerSandboxOptions>>(),
+            PrivilegedFileSystem(sp)));
+        services.TryAddSingleton(sp => new HostProcessRunner(
+            sp.GetRequiredService<ILogger<HostProcessRunner>>(),
+            sp.GetRequiredService<IOptions<SandboxOptions>>(),
+            PrivilegedFileSystem(sp)));
 
         // ICodeSandbox default: prefer the OS-isolating DockerSandbox when available.
         // R10.3 (ORG-012): this factory is pure synchronous wiring — the Docker availability

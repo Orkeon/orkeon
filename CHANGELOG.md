@@ -34,9 +34,7 @@ A denial message is read by the LLM, so it is an agent-facing surface like
 `list_mounts`: `FileSystemRegistry` now builds its "Available mounts" and
 "Mounts granting Write" lists from the agent-facing mounts only. It used to
 enumerate *every* mount, which named `/llm-logs` to any agent that touched an
-unmounted path — and annotated it `(writable)`. Note the scope: `Internal`
-withholds a mount from every listing, it does not make it unaddressable, so a
-runner must not put behind it anything an agent knowing the name must not read.
+unmounted path — and annotated it `(writable)`.
 
 In Studio, the agent editor's « Sur quel dossier » line and the Composer's
 folder chips now name mounts the way agents address them (`/output (lecture,
@@ -266,6 +264,32 @@ deliverable naming a reserved root (`/crew`, `/script`, `/llm-logs`) or a
 traversal segment reached an adopted team's sidecar through Studio and nowhere
 else, producing a team Studio could launch and the runner refused at start.
 `ForgeDerivedMountTests` pins the pair.
+
+### Fixed — an internal mount is a boundary now, not a hiding place
+
+ADR-008 introduced `MountVisibility.Internal` and said the limitation out loud:
+the mount is withheld from every listing and stays **resolvable**, so an agent
+that knows the name can address it. The names are documented. `/llm-logs` holds
+every prompt and every API response of the run — one
+`file_read /llm-logs/llm-exchanges-….jsonl` was the whole exchange history.
+
+`FileSystemRegistry` now refuses an Internal mount by default, in both
+directions: `ToVirtualPath` will not name one either, so a tool's
+physical→virtual output rewrite cannot leak it. A refused internal mount is
+reported exactly like a path that does not exist, and a nested one does not fall
+back to its agent-facing parent.
+
+The two components that legitimately write to an internal root — the LLM
+exchange logger and the code sandboxes — ask for the new
+`PrivilegedFileSystemAccess` by name. A distinct DI registration rather than a
+flag on the interface everyone already holds: a tool cannot obtain it by
+accident, and every holder is findable by searching for the type. A host that
+wires its own `IFileSystemService` instead of calling `AddOrkeonFileSystem`
+keeps exactly the behaviour it had.
+
+**Breaking**: `FileSystemRegistry.ResolveAndCheckRights` and `ToVirtualPath`
+take an optional `includeInternal` (default `false`), and `FileSystemService`'s
+constructor an optional `internalAccess` (default `false`).
 
 ### Fixed — what the tests were not asking
 

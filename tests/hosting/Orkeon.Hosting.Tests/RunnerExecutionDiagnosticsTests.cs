@@ -294,10 +294,16 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         // The crew's own directory is mounted, under a name.
         Assert.Contains(visible, m => m.VirtualPath == RunnerMounts.CrewVirtualRoot);
 
-        // The exchange log is reachable by the VFS and invisible to agents.
+        // The exchange log is invisible to agents AND unreachable through the file system they
+        // hold. It used to be merely invisible — and the name is documented, so one
+        // file_read /llm-logs/… handed an agent every prompt and response of the run. The
+        // logger that writes there asks for the privileged view by name.
         Assert.DoesNotContain(visible, m => m.VirtualPath == RunnerMounts.LlmLogVirtualRoot);
-        Assert.True(
+        Assert.False(
             fileSystem.ResolveAndValidate(RunnerMounts.LlmLogVirtualRoot, FileAccessRights.Write).IsAllowed);
+        Assert.True(
+            host.Services.GetRequiredService<Orkeon.Infrastructure.FileSystem.PrivilegedFileSystemAccess>()
+                .FileSystem.ResolveAndValidate(RunnerMounts.LlmLogVirtualRoot, FileAccessRights.Write).IsAllowed);
 
         // And a refusal names only virtual paths — the redaction carve-out that used to
         // exempt identity mounts has nothing left to exempt.

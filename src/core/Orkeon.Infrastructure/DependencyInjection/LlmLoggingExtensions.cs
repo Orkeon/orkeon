@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Logging;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Infrastructure.Logging;
 
 namespace Orkeon.Infrastructure.DependencyInjection;
@@ -50,8 +51,10 @@ public static class LlmLoggingExtensions
 
         // Register JSON file logger as singleton (manages file locks)
         services.TryAddSingleton(sp =>
+            // The privileged view: /llm-logs is an Internal mount and the plain
+            // IFileSystemService no longer resolves it — that is the whole point.
             new LlmExchangeJsonLogger(
-                sp.GetRequiredService<IFileSystemService>(),
+                sp.GetService<PrivilegedFileSystemAccess>()?.FileSystem ?? sp.GetRequiredService<IFileSystemService>(),
                 logDirectory,
                 sp.GetRequiredService<ILogger<LlmExchangeJsonLogger>>()));
 
@@ -112,8 +115,10 @@ public static class LlmLoggingExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(logDirectory);
 
         services.TryAddSingleton<ILlmExchangeLogger>(sp =>
+            // The privileged view: /llm-logs is an Internal mount and the plain
+            // IFileSystemService no longer resolves it — that is the whole point.
             new LlmExchangeJsonLogger(
-                sp.GetRequiredService<IFileSystemService>(),
+                sp.GetService<PrivilegedFileSystemAccess>()?.FileSystem ?? sp.GetRequiredService<IFileSystemService>(),
                 logDirectory,
                 sp.GetRequiredService<ILogger<LlmExchangeJsonLogger>>()));
 

@@ -62,10 +62,14 @@ public sealed class SandboxSessionTests : IDisposable
         var pathValidator = new StubPathValidator()
             .RespondWith((_, _) => PathValidationResult.Allowed("/irrelevant"));
 
+        // The privileged view: /sandbox is Internal, and the file system every tool holds
+        // does not resolve it — that is the boundary, and the sandboxes are on the other side.
         var fs = new FileSystemService(
             registry,
             pathValidator,
-            NullLogger<FileSystemService>.Instance);
+            NullLogger<FileSystemService>.Instance,
+            scope: null,
+            internalAccess: true);
 
         var bytesWritten = await fs.WriteAllTextAsync("/sandbox/test.txt", "hi", TestContext.Current.CancellationToken);
 
@@ -133,6 +137,10 @@ public sealed class SandboxSessionTests : IDisposable
 
         var services = new ServiceCollection();
         services.AddLogging();
+        // AddOrkeonFileSystem's services need IPathValidator; AddOrkeonInfrastructure supplies
+        // it in production, and this container is deliberately only the file-system half.
+        services.AddSingleton<IPathValidator>(
+            new StubPathValidator().RespondWith((path, _) => PathValidationResult.Allowed(path)));
         services.AddOrkeonFileSystem(configuration);
         using var provider = services.BuildServiceProvider();
 
@@ -142,9 +150,19 @@ public sealed class SandboxSessionTests : IDisposable
         Assert.DoesNotContain(registry.GetAvailableMounts(), m => m.VirtualPath == "/sandbox");
 
         // The code sandboxes write under /sandbox/docker and /sandbox/process: the root has to
-        // resolve, not merely be listed.
-        var physical = registry.ResolveAndCheckRights("/sandbox/docker/run-1", FileAccessRights.Write);
+        // resolve for them, not merely be listed — and NOT for anyone else.
+        var physical = registry.ResolveAndCheckRights(
+            "/sandbox/docker/run-1", FileAccessRights.Write, includeInternal: true);
         Assert.StartsWith(_ephemeralRoot, physical, StringComparison.Ordinal);
+
+        Assert.Throws<FileAccessDeniedException>(() =>
+            registry.ResolveAndCheckRights("/sandbox/docker/run-1", FileAccessRights.Write));
+
+        // And the container hands the sandboxes exactly that privileged view.
+        var privileged = provider.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem;
+        Assert.True(privileged.ResolveAndValidate("/sandbox/docker/run-1", FileAccessRights.Write).IsAllowed);
+        Assert.False(provider.GetRequiredService<IFileSystemService>()
+            .ResolveAndValidate("/sandbox/docker/run-1", FileAccessRights.Write).IsAllowed);
     }
 
     private SandboxSession BuildSession(string virtualPath = "/sandbox", TimeSpan? cleanupOlderThan = null) =>

@@ -75,11 +75,18 @@ loader is path-agnostic: it reads whatever path it is handed through `IFileSyste
    runners never start the host: an `IHostedService` would silently never fire under
    `--validate` or `--list-tools`.
 
-   **`Internal` is visibility, not isolation.** The mount stays *resolvable*, and
-   `IFileSystemService` has no notion of who is calling — the exchange logger writes through the
-   very API the agent tools use. So an agent that knows the name can still address it. Nothing
-   goes behind an internal mount that an agent knowing its name must not read; making that a
-   real boundary needs a privileged accessor, which is left to the item below.
+   **`Internal` is a boundary, and it took a second accessor to make it one.** `Parse` had no
+   way to say "hidden", so the first version of this decision only removed the mount from every
+   *listing*: it stayed resolvable, and `IFileSystemService` had no notion of who was calling.
+   The names are documented — `/llm-logs` holds every prompt and every API response of the run
+   — so a single `file_read /llm-logs/llm-exchanges-….jsonl` handed an agent the whole exchange
+   history. `FileSystemRegistry.ResolveAndCheckRights` now refuses an Internal mount by default,
+   in both directions (`ToVirtualPath` will not name one either, so a tool's physical→virtual
+   output rewrite cannot leak it), and reports it exactly like a path that does not exist. The
+   two components that legitimately write to an internal root — the exchange logger and the
+   code sandboxes — ask for `PrivilegedFileSystemAccess` by name: a distinct DI registration
+   rather than a flag on the interface everyone already holds, so a tool cannot obtain it by
+   accident and a reviewer can find every holder by searching for the type.
 4. **The rule for screens is scoped, not absolute.** No physical path in an **agent-facing or
    novice** context. Expert surfaces — the effective-mounts table, the picker's mount-string
    preview — keep showing the real strings: their job is to state the exact command line.
@@ -117,9 +124,8 @@ by `orkeon run --validate` rather than failing at the first tool call — change
 the scripting DSL, the forge blueprint and public API in two assemblies. It belongs to a version
 that is allowed to move the grammar, not to a release candidate. This ADR reserves the place.
 
-Nor does it give the VFS a **privileged caller**. `IFileSystemService` is one surface for the
-framework and for the agent tools alike, so `MountVisibility.Internal` can withhold a mount from
-every listing but cannot refuse an agent that addresses it by name. Closing that needs a second
-accessor — a scoped handle the runner holds and the tool registry never sees — which touches the
-Domain contract and every implementation of it. Until then the rule is a discipline, stated on
-`FileSystemOptions.InternalMounts`: an internal mount hides a directory, it does not protect it.
+The **privileged caller** this ADR left open has since been built: `PrivilegedFileSystemAccess`
+is the second accessor, and `MountVisibility.Internal` refuses an agent that addresses the mount
+by name instead of merely omitting it from the listings. What remains out of scope is finer
+grain than one bit — per-caller rights, a capability handed to a specific tool — which would
+touch the Domain contract far more deeply than one boolean on the registry does.

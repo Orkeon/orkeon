@@ -14,6 +14,7 @@ public sealed partial class FileSystemService : IFileSystemService
     private readonly IFileSystemScope? _scope;
     private readonly IPathValidator _pathValidator;
     private readonly ILogger<FileSystemService> _logger;
+    private readonly bool _internalAccess;
 
     /// <summary>Boot mount base paths, used to redact physical paths from error messages.</summary>
     private readonly IReadOnlyList<string> _basePaths;
@@ -26,11 +27,18 @@ public sealed partial class FileSystemService : IFileSystemService
     /// Optional ambient scope override (P2-O-05). When an execution flow has entered a scoped
     /// registry, operations resolve against it; otherwise they use the boot registry (unchanged).
     /// </param>
+    /// <param name="internalAccess">
+    /// Whether this instance may resolve <see cref="MountVisibility.Internal"/> mounts. Default
+    /// <see langword="false"/> — the instance registered as <see cref="IFileSystemService"/>,
+    /// the one every tool and every agent reaches, must not. Infrastructure that writes to an
+    /// internal root asks for <see cref="PrivilegedFileSystemAccess"/> instead.
+    /// </param>
     public FileSystemService(
         FileSystemRegistry registry,
         IPathValidator pathValidator,
         ILogger<FileSystemService> logger,
-        IFileSystemScope? scope = null)
+        IFileSystemScope? scope = null,
+        bool internalAccess = false)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(pathValidator);
@@ -41,6 +49,7 @@ public sealed partial class FileSystemService : IFileSystemService
         _pathValidator = pathValidator;
         _logger = logger;
 
+        _internalAccess = internalAccess;
         _basePaths = CollectBasePaths(registry);
     }
 
@@ -79,7 +88,7 @@ public sealed partial class FileSystemService : IFileSystemService
         string physicalPath;
         try
         {
-            physicalPath = ActiveRegistry.ResolveAndCheckRights(virtualPath, requiredRight);
+            physicalPath = ActiveRegistry.ResolveAndCheckRights(virtualPath, requiredRight, _internalAccess);
         }
         catch (FileAccessDeniedException ex)
         {
@@ -104,7 +113,7 @@ public sealed partial class FileSystemService : IFileSystemService
     /// <inheritdoc />
     public string? ToVirtualPath(string physicalPath)
     {
-        return ActiveRegistry.ToVirtualPath(physicalPath);
+        return ActiveRegistry.ToVirtualPath(physicalPath, _internalAccess);
     }
 
     /// <inheritdoc />
@@ -144,7 +153,9 @@ public sealed partial class FileSystemService : IFileSystemService
         try
         {
             // Resolve the mount root to discover the physical base path
-            var physicalRoot = registry.ResolveAndCheckRights(virtualPath, FileAccessRights.Read);
+            // Redaction only: the base paths of EVERY mount must be redactable from a denial
+            // message, internal ones included, or the message leaks what the boundary hides.
+            var physicalRoot = registry.ResolveAndCheckRights(virtualPath, FileAccessRights.Read, includeInternal: true);
             // The basePath is the directory of the resolved root (or the root itself)
             return Path.GetFullPath(physicalRoot);
         }

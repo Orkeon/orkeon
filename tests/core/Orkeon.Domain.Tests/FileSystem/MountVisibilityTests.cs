@@ -103,8 +103,18 @@ public sealed class MountVisibilityTests : IDisposable
         Assert.Contains("/workspace", ex.Message);
     }
 
+    /// <summary>
+    /// An Internal mount resolves for a caller that asks for it, and only for that caller.
+    /// <para>
+    /// This test used to assert the first half alone, under the comment "should resolve
+    /// without throwing even though /sandbox is Internal" — which is exactly what made
+    /// <c>Internal</c> a hiding place rather than a boundary. The names are documented, so
+    /// "hidden from the listing, resolvable by anyone who types it" meant one
+    /// <c>file_read /llm-logs/…</c> away from every prompt of the run.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void FileSystemRegistry_ResolveAndValidate_ResolvesInternalMount()
+    public void FileSystemRegistry_ResolvesInternalMount_ForAPrivilegedCallerOnly()
     {
         var wsDir = CreateSubDir("ws");
         var sandboxDir = CreateSubDir("sandbox");
@@ -117,11 +127,13 @@ public sealed class MountVisibilityTests : IDisposable
         };
         using var registry = new FileSystemRegistry(mounts);
 
-        // Should resolve without throwing even though /sandbox is Internal
-        var physicalPath = registry.ResolveAndCheckRights("/sandbox/output.txt", FileAccessRights.Write);
+        var physicalPath = registry.ResolveAndCheckRights(
+            "/sandbox/output.txt", FileAccessRights.Write, includeInternal: true);
 
-        var expected = Path.GetFullPath(Path.Combine(sandboxDir, "output.txt"));
-        Assert.Equal(expected, physicalPath);
+        Assert.Equal(Path.GetFullPath(Path.Combine(sandboxDir, "output.txt")), physicalPath);
+
+        Assert.Throws<FileAccessDeniedException>(() =>
+            registry.ResolveAndCheckRights("/sandbox/output.txt", FileAccessRights.Write));
     }
 
     /// <summary>

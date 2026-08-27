@@ -47,7 +47,29 @@ public sealed class FileSystemRegistry : IDisposable
     }
 
     /// <summary>Resolves a virtual path to a physical path after verifying access rights.</summary>
-    public string ResolveAndCheckRights(string virtualPath, FileAccessRights requiredRight)
+    /// <param name="virtualPath">The virtual path to resolve.</param>
+    /// <param name="requiredRight">The right the caller needs.</param>
+    /// <param name="includeInternal">
+    /// Whether <see cref="MountVisibility.Internal"/> mounts may be resolved. <b>Default
+    /// <see langword="false"/>: Internal is a boundary, not a hiding place.</b>
+    /// <para>
+    /// It used to be a hiding place. An Internal mount was absent from
+    /// <see cref="GetAvailableMounts"/> and resolved for anyone who typed its name — and the
+    /// names are documented: <c>/llm-logs</c> holds every prompt and every API response of the
+    /// run, so one <c>file_read /llm-logs/llm-exchanges-….jsonl</c> handed an agent the whole
+    /// exchange history. Infrastructure that legitimately writes there asks for it explicitly
+    /// (<c>PrivilegedFileSystemAccess</c>); everything an agent can reach goes through the
+    /// default.
+    /// </para>
+    /// <para>
+    /// A hidden mount that is refused is reported exactly like one that does not exist: saying
+    /// "this exists but is not yours" gives away the name the visibility exists to withhold.
+    /// </para>
+    /// </param>
+    public string ResolveAndCheckRights(
+        string virtualPath,
+        FileAccessRights requiredRight,
+        bool includeInternal = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
 
@@ -56,6 +78,12 @@ public sealed class FileSystemRegistry : IDisposable
         {
             // 1. Find matching mount (longest virtual path prefix with boundary check) — all mounts
             var mount = FindMountUnsafe(virtualPath);
+
+            // An Internal mount is invisible to an unprivileged caller in both directions: it is
+            // not listed, and it does not resolve. Falling back to a parent mount here would
+            // punch the hole straight back open for a nested Internal mount.
+            if (mount is not null && mount.Visibility == MountVisibility.Internal && !includeInternal)
+                mount = null;
 
             if (mount is null)
             {
@@ -116,8 +144,13 @@ public sealed class FileSystemRegistry : IDisposable
         finally { _lock.ExitReadLock(); }
     }
 
-    /// <summary>Converts a physical path back to its virtual path, or null if unmapped.</summary>
-    public string? ToVirtualPath(string physicalPath)
+    /// <summary>
+    /// Converts a physical path back to its virtual path, or null if unmapped.
+    /// <paramref name="includeInternal"/> follows <see cref="ResolveAndCheckRights"/>: an
+    /// unprivileged caller must not learn an Internal mount's name from a path rewrite either
+    /// — the shell tool rewrites physical→virtual in everything it hands back to the model.
+    /// </summary>
+    public string? ToVirtualPath(string physicalPath, bool includeInternal = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(physicalPath);
 
@@ -138,6 +171,9 @@ public sealed class FileSystemRegistry : IDisposable
 
             foreach (var mount in _mounts)
             {
+                if (mount.Visibility == MountVisibility.Internal && !includeInternal)
+                    continue;
+
                 var normalizedBase = Path.GetFullPath(mount.BasePath);
                 if (normalizedBase.Length <= bestBase.Length)
                     continue;

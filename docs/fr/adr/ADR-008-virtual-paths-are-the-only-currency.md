@@ -77,11 +77,20 @@ crew est agnostique : il lit le chemin qu'on lui donne via `IFileSystemService`.
    runners ne démarrent jamais l'hôte : un `IHostedService` ne se déclencherait jamais sous
    `--validate` ou `--list-tools`.
 
-   **`Internal` est une visibilité, pas un isolement.** Le montage reste *résoluble*, et
-   `IFileSystemService` n'a aucune notion de qui appelle — le journal d'échanges écrit par l'API
-   même qu'utilisent les outils agents. Un agent qui connaît le nom peut donc toujours l'adresser.
-   Rien ne va derrière un montage interne qu'un agent connaissant son nom ne doit pas lire ; en
-   faire une vraie frontière demande un accesseur privilégié, ce que la section ci-dessous réserve.
+   **`Internal` est une frontière, et il a fallu un second accesseur pour que ce soit vrai.**
+   `Parse` n'avait aucun moyen de dire « caché », si bien que la première version de cette
+   décision retirait seulement le montage de toutes les *listes* : il restait résoluble, et
+   `IFileSystemService` ne sait pas qui l'appelle. Les noms sont documentés — `/llm-logs`
+   contient chaque prompt et chaque réponse de l'exécution — donc un seul
+   `file_read /llm-logs/llm-exchanges-….jsonl` remettait tout l'historique des échanges à un
+   agent. `FileSystemRegistry.ResolveAndCheckRights` refuse désormais un montage Internal par
+   défaut, dans les deux sens (`ToVirtualPath` ne le nomme pas davantage, pour qu'une réécriture
+   physique→virtuel d'un outil ne le fuite pas), et le signale exactement comme un chemin
+   inexistant. Les deux composants qui écrivent légitimement sous une racine interne — le
+   journal d'échanges et les bacs à sable de code — demandent `PrivilegedFileSystemAccess` par
+   son nom : un enregistrement DI distinct plutôt qu'un drapeau sur l'interface que tout le
+   monde tient déjà, de sorte qu'un outil ne peut pas l'obtenir par accident et qu'un relecteur
+   trouve chaque détenteur en cherchant le type.
 4. **La règle des écrans est délimitée, pas absolue.** Aucun chemin physique dans un contexte
    **agent ou novice**. Les surfaces **expertes** — la table des montages effectifs, l'aperçu de
    mount-string du sélecteur — continuent d'afficher les chaînes réelles : leur raison d'être est
@@ -123,10 +132,9 @@ le DSL scripté, le blueprint de la forge et l'API publique de deux assemblies. 
 une version autorisée à bouger la grammaire, pas à une release candidate. Cet ADR en réserve la
 place.
 
-Il ne donne pas non plus au VFS d'**appelant privilégié**. `IFileSystemService` est une seule
-surface pour le framework comme pour les outils agents, donc `MountVisibility.Internal` peut
-retirer un montage de tous les listages mais ne peut pas refuser un agent qui l'adresse par son
-nom. Fermer cela demande un second accesseur — une poignée scopée que le runner détient et que le
-registre d'outils ne voit jamais — qui touche le contrat du Domain et toutes ses implémentations.
-D'ici là la règle est une discipline, énoncée sur `FileSystemOptions.InternalMounts` : un montage
-interne cache un répertoire, il ne le protège pas.
+L'**appelant privilégié** que cet ADR laissait ouvert a depuis été construit :
+`PrivilegedFileSystemAccess` est ce second accesseur, et `MountVisibility.Internal` refuse
+désormais un agent qui adresse le montage par son nom au lieu de simplement l'omettre des
+listages. Ce qui reste hors périmètre, c'est une granularité plus fine qu'un bit — des droits
+par appelant, une capacité remise à un outil précis — qui toucherait le contrat du Domain bien
+plus profondément qu'un booléen sur le registre.
