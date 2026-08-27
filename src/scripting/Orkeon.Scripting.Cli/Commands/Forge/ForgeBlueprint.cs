@@ -162,6 +162,24 @@ internal sealed record ForgeBlueprint
         if (string.IsNullOrWhiteSpace(Crew?.Goal))
             errors.Add("'crew.goal' is required.");
 
+        // An unknown `process` is a recoverable LLM slip and has to be reported HERE, where
+        // blueprint_submit answers the model and the stage's repair loop can act on it.
+        // Unknown values are refused at compilation rather than silently becoming Sequential —
+        // correct, but ForgeBlueprintCompiler.Compile is called un-guarded from the validate
+        // stage, the render stage and ValidateEditedBlueprint, none of which turn a throw into
+        // a validation error. So a blueprint carrying `process: pipeline` was accepted, the
+        // interview and blueprint turns were paid for, and the session died at the CLI
+        // boundary — and `forge resume` reloaded the same artifact and died at the same point.
+        if (!string.IsNullOrWhiteSpace(Crew?.Process)
+            && !Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.All.Any(
+                p => string.Equals(p.Value, Crew.Process.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            errors.Add(
+                $"'crew.process' is '{Crew.Process}', which is not an orchestration mode. Use one of: "
+                + string.Join(", ", Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.All.Select(p => p.Value).Order(StringComparer.Ordinal))
+                + ".");
+        }
+
         ValidateEntities(errors, Agents, "agents", static a => a.Key, (list, i, agent) =>
         {
             if (string.IsNullOrWhiteSpace(agent.Role))

@@ -111,8 +111,11 @@ foreach (var mount in mounts)
 // An operator --mount claiming a root the daemon needs for its own crews would otherwise
 // surface as a raw "Duplicate virtual paths" exception thrown out of a DI factory, which
 // reads as a crash rather than as the configuration mistake it is (ADR-008, decision 5).
-if (crewPlan.Roots.Count > 0
-    && !RunnerExecution.EnsureReservedRootsAreFree(mounts, [.. crewPlan.Roots]))
+// /sandbox is in this list because AddOrkeonFileSystem mounts it unconditionally, in every
+// host — so the guard has to run even when the daemon hosts no crew of its own, which is why
+// the Roots.Count check is gone.
+if (!RunnerExecution.EnsureReservedRootsAreFree(
+        mounts, [.. crewPlan.Roots, RunnerMounts.SandboxVirtualRoot]))
 {
     return HostConfigurationException.ExitCode;
 }

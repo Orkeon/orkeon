@@ -161,15 +161,20 @@ public static partial class RunnerHost
             return;
 
         var mountOverrides = new Dictionary<string, string?>();
+
+        // Every one of these three keys appends. See HighestDeclaredIndex: this source wins on
+        // an identical key, so starting at 0 does not add a mount, it REPLACES one.
+        var declaredMounts = HighestDeclaredIndex(builder, "Orkeon:FileSystem:Mounts");
         for (var i = 0; i < cliMounts.Count; i++)
-            mountOverrides[$"Orkeon:FileSystem:Mounts:{i}"] = cliMounts[i];
+            mountOverrides[$"Orkeon:FileSystem:Mounts:{declaredMounts + i}"] = cliMounts[i];
 
         // Infrastructure mounts ride their own key so they can carry Internal visibility
         // (the mount-string grammar has no room for it). Configuration rather than a hosted
         // service: the runners never start the host, so an IHostedService would silently
         // never fire under --validate or --list-tools.
+        var declaredInternal = HighestDeclaredIndex(builder, "Orkeon:FileSystem:InternalMounts");
         for (var i = 0; i < internalMounts.Count; i++)
-            mountOverrides[$"Orkeon:FileSystem:InternalMounts:{i}"] = internalMounts[i];
+            mountOverrides[$"Orkeon:FileSystem:InternalMounts:{declaredInternal + i}"] = internalMounts[i];
 
         // When --allow-external-mounts is set, whitelist each mount's base path
         // in PathSecurity:AdditionalAllowedDirectories so PathValidator accepts them.
@@ -179,7 +184,7 @@ public static partial class RunnerHost
         // the operator's first allowed directory instead of adding to it.
         if (allowExternalMounts)
         {
-            var whitelisted = CountDeclaredAllowedDirectories(builder);
+            var whitelisted = HighestDeclaredIndex(builder, "PathSecurity:AdditionalAllowedDirectories");
             foreach (var mount in cliMounts.Concat(internalMounts))
             {
                 var basePath = ExtractMountBasePath(mount);
@@ -353,19 +358,29 @@ public static partial class RunnerHost
             : null;
 
     /// <summary>
-    /// How many <c>PathSecurity:AdditionalAllowedDirectories</c> entries the sources added so
-    /// far already declare, so the mount whitelist appends rather than overwrites. Reads the
-    /// highest index rather than the count: configuration is a sparse key/value space and an
-    /// operator may legitimately have declared 0 and 2.
+    /// How many entries the sources added so far already declare under
+    /// <paramref name="section"/>, so what this class adds APPENDS rather than overwrites.
+    /// Reads the highest index rather than the count: configuration is a sparse key/value
+    /// space and an operator may legitimately have declared 0 and 2.
+    /// <para>
+    /// The in-memory source below is added last and wins on an identical key, so writing
+    /// <c>…:0</c> silently replaces the operator's first entry. That was fixed for the
+    /// path-security whitelist and left in place for the two mount lists, where it is worse:
+    /// <c>cliMounts</c> is never empty after the runner inserts the crew mount at index 0, so
+    /// an <c>appsettings.json</c> declaring <c>Orkeon:FileSystem:Mounts</c> lost its first
+    /// entry on EVERY run, and every tool touching that mount then failed "path not found"
+    /// with nothing saying the mount had been dropped. <c>orkeon-host</c> lost one per crew
+    /// directory. The brand-new <c>InternalMounts</c> key had inherited the same shape.
+    /// </para>
     /// </summary>
-    private static int CountDeclaredAllowedDirectories(IConfigurationBuilder builder)
+    private static int HighestDeclaredIndex(IConfigurationBuilder builder, string section)
     {
         IConfigurationRoot? snapshot = null;
         try
         {
             snapshot = builder.Build();
             var highest = -1;
-            foreach (var child in snapshot.GetSection("PathSecurity:AdditionalAllowedDirectories").GetChildren())
+            foreach (var child in snapshot.GetSection(section).GetChildren())
             {
                 if (int.TryParse(child.Key, CultureInfo.InvariantCulture, out var index) && index > highest)
                     highest = index;

@@ -2,12 +2,16 @@ namespace Orkeon.Domain.FileSystem;
 
 /// <summary>
 /// Is a physical path inside a physical directory? One implementation, because the question
-/// was answered in five places with five different rules and the disagreements were all bugs.
+/// was answered in seven places with seven different rules and the disagreements were all
+/// bugs.
 /// <para>
 /// Three were unified when this type was introduced; the claim that it was then "the single
-/// containment predicate" was not yet true. Two survived it — the registry's own anti-traversal
-/// check, in the very method whose boundary suite cites this class, and the two guards in
-/// Studio's <c>TeamCatalog</c>. All five route here now.
+/// containment predicate" was not yet true, and neither was the second attempt at it. Four
+/// survived the first pass — the registry's own anti-traversal check, inside the very method
+/// whose boundary suite cites this class; both guards in Studio's <c>TeamCatalog</c>; and the
+/// script-directory whitelist decisions in <c>orkeon run</c> and <c>orkeon rag</c>, which is
+/// the <c>~/proj</c> versus <c>~/proj-old</c> case this type was written for, left standing in
+/// the two commands most likely to meet it. All seven route here now.
 /// </para>
 /// <para>
 /// The rule has two parts and both matter. <b>Boundary</b>: a directory only contains what

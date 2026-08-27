@@ -405,6 +405,40 @@ is where they belong; every consumer of the Infrastructure package was carrying
 their restore weight and CVE surface for code that no longer exists. `Npgsql`
 stays — `Checkpointing/PostgresStateStore` uses it.
 
+**An `appsettings.json` mount was silently dropped on every single run.** The
+runner writes its own mounts into `Orkeon:FileSystem:Mounts:0`, `:1`, … from an
+in-memory source added last — which wins on an identical key. So index 0 did not
+add a mount, it replaced the operator's first one; and `cliMounts` is never empty
+in a real run, since the crew mount is inserted at index 0 before this code sees
+it. Every tool touching that mount then failed "no mount found", with nothing
+anywhere saying a mount had been dropped, and `orkeon-host` lost one per hosted
+crew directory. The overwrite had already been found and fixed for the sibling
+key `PathSecurity:AdditionalAllowedDirectories` — in the same pass that left it
+standing here, and then copied its shape into the brand-new `InternalMounts` key.
+All three append now, and the regression test asserts it on the merged registry
+rather than on the mount strings, which is what the existing suites looked at.
+
+**`docker build .` did not build.** `src/Directory.Build.props` imports the file
+above it with an unconditional `<Import>`, so with the root `Directory.Build.props`
+absent the expression evaluates to `""` and MSBuild refuses it (MSB4020) —
+`restore` tolerates the empty import, `publish` does not, which is why the layer
+that fails is not the layer that looks wrong. Replacing the hand-written project
+list with `COPY src/` did not fix the Dockerfile, and nothing in CI builds this
+file, so the claimed fix was never executed once. It is copied now, and the image
+builds.
+
+**`crew.process` was validated where nothing could recover from it.** Unknown
+values are refused rather than silently becoming Sequential — but
+`ForgeBlueprint.Validate` never checked the field, so `blueprint_submit` accepted
+`process: pipeline` and answered "Blueprint submitted", and the throw landed in
+`ForgeBlueprintCompiler.Compile`, called un-guarded from the validate stage, the
+render stage and `ValidateEditedBlueprint`. None of them turns it into a
+validation error, so it never reached the two-attempt repair loop built for
+exactly this: the session died at the CLI boundary with the interview and
+blueprint turns already paid for, and `forge resume` reloaded the same artifact
+and died at the same point. The check now runs at submit time, where the model
+can act on it.
+
 **An internal mount was a boundary in the virtual namespace only.** The commit above
 refuses the name `/llm-logs`; it refused nothing to the bytes. With the log
 directory nested inside an agent-facing mount — the ordinary arrangement, since

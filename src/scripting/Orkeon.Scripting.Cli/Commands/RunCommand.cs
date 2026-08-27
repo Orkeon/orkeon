@@ -564,8 +564,11 @@ internal static partial class RunCommand
         }
         // The script directory always needs to be on the security whitelist so the VFS
         // can resolve /script/* even when the user didn't pass --allow-external-mounts.
+        // Containment, not spelling: a bare StartsWith reads ~/proj-old as inside ~/proj, so
+        // the sibling directory never reached the whitelist and PathValidator — which does ask
+        // the boundary-correct question — then refused every read under /script.
         var implicitlyAllow = options.EffectiveAllowExternalMounts
-            || !scriptDir.StartsWith(cwd, StringComparison.Ordinal);
+            || !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(scriptDir, cwd);
 
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 

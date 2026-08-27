@@ -12,7 +12,11 @@ WORKDIR /src
 # longer does — so `docker build .` failed at the restore step and nothing in CI built this
 # file to notice. A Dockerfile that does not build is worth less than a slower one: the
 # graph is now read from the tree instead of restated beside it.
-COPY Orkeon.sln global.json Directory.Packages.props ./
+# Directory.Build.props is not optional: src/Directory.Build.props imports the file above it
+# with an UNCONDITIONAL <Import>, so when the root one is missing the expression evaluates to
+# "" and MSBuild refuses it (MSB4020). `dotnet restore` tolerates the empty import; `publish`
+# does not — which is why omitting it produced a green restore layer and a failing publish.
+COPY Orkeon.sln global.json Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
 
 RUN dotnet restore src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj

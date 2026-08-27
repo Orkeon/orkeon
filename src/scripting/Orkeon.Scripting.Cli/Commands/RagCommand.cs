@@ -468,8 +468,9 @@ internal static class RagCommand
         // /script mount): when it lives outside the process cwd (tests, `--mount`
         // scenarios), it must be whitelisted regardless of --allow-external-mounts.
         var processCwd = Directory.GetCurrentDirectory();
+        // Containment, not spelling — see RunCommand: ~/proj-old is not inside ~/proj.
         var implicitlyAllow = options.EffectiveAllowExternalMounts
-            || !cwd.StartsWith(processCwd, StringComparison.Ordinal);
+            || !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(cwd, processCwd);
 
         return RunnerHost.Build(
             settingsPath,
