@@ -315,6 +315,12 @@ was a UTC timestamp truncated to the second, against a class claiming "each
 logger instance creates a unique file scoped to that run" — and its per-file
 lock serializes writers inside one process, never across two.
 
+**`orkeon doctor`'s `onnx-reranker` check now looks.** It was a hard-coded `ok`
+with a hard-coded detail, on the reasoning that the weights are embedded
+resources of a package the CLI always references — true, and still not a check:
+a trimmed publish or a renamed resource leaves the reranker broken and the
+doctor cheerful. It opens the streams and reports the size.
+
 **Removed**: `ImageHelper` (`Orkeon.Tools.Abstractions`) — no production caller,
 and where it disagreed with the live `ContentConverter` it was the wrong one:
 it declared SVG a supported image type, which no vision API accepts.

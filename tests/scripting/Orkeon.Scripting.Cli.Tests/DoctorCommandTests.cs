@@ -55,6 +55,35 @@ public sealed class DoctorCommandTests : IDisposable
             Assert.Contains(check, console.Stdout, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The reranker check reads the weights instead of asserting they exist.
+    /// <para>
+    /// It was a hard-coded <c>ok</c> with a hard-coded detail, on the reasoning that the
+    /// weights are embedded resources of a package the CLI always references — true, and
+    /// still not a check: a trimmed publish or a renamed resource leaves the reranker broken
+    /// and the doctor cheerful. The measured size is the proof it looked.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task TheOnnxRerankerCheck_ReadsTheWeights()
+    {
+        using var scratch = new ScriptScratch();
+        using var console = new TestConsole();
+
+        await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        {
+            Json = true,
+            WorkingDirectoryOverride = scratch.Root,
+        });
+
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var reranker = doc.RootElement.EnumerateArray()
+            .Single(e => e.GetProperty("check").GetString() == "onnx-reranker");
+
+        Assert.Equal("ok", reranker.GetProperty("status").GetString());
+        Assert.Contains("MB", reranker.GetProperty("detail").GetString()!, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task JsonOutput_HasTheStableSchema()
     {

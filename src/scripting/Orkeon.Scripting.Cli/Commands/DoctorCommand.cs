@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.LLMs;
+using Orkeon.Rag.Onnx.Model;
 using Orkeon.Scripting.Toolchain;
 
 namespace Orkeon.Scripting.Cli.Commands;
@@ -466,12 +467,44 @@ internal static class DoctorCommand
         };
     }
 
-    private static DoctorCheckResult CheckOnnxReranker() => new()
+    /// <summary>
+    /// The reranker weights, actually opened.
+    /// <para>
+    /// This used to be a hard-coded <c>ok</c> with a hard-coded detail, on the reasoning that
+    /// the weights are embedded resources of a package the CLI always references — true, and
+    /// still not a check: a trimmed self-contained publish, or a renamed resource, leaves the
+    /// reranker broken and the doctor cheerful. Every neighbouring check probes; this one
+    /// opens the stream and reports its size.
+    /// </para>
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Diagnostic probe: any failure opening the embedded weights is the answer the check exists to give, whatever its type.")]
+    private static DoctorCheckResult CheckOnnxReranker()
     {
-        Check = "onnx-reranker",
-        Status = StatusOk,
-        Detail = "weights embedded in Orkeon.Rag.Onnx.Model (ms-marco-MiniLM-L-6-v2, offline)",
-    };
+        try
+        {
+            using var model = MsMarcoMiniLmModel.OpenModelStream();
+            using var vocab = MsMarcoMiniLmModel.OpenVocabStream();
+
+            return new DoctorCheckResult
+            {
+                Check = "onnx-reranker",
+                Status = StatusOk,
+                Detail = string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"ms-marco-MiniLM-L-6-v2 weights readable ({model.Length / (1024 * 1024)} MB, offline)"),
+            };
+        }
+        catch (Exception ex)
+        {
+            return new DoctorCheckResult
+            {
+                Check = "onnx-reranker",
+                Status = StatusWarn,
+                Detail = $"embedded weights unreadable ({ex.GetType().Name}) — the `balanced` and "
+                    + "`quality` RAG profiles fall back to the LLM listwise reranker",
+            };
+        }
+    }
 
     private static DoctorCheckResult CheckTreeSitterGrammars()
     {
