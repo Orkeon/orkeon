@@ -514,8 +514,16 @@ public sealed class ForgeSessionModel
                 if (MountDefinition.IsReservedVirtualPath(root))
                     continue;
 
-                if (!mounts.Any(m => m.IsReadWrite && string.Equals(m.VirtualPath, root, StringComparison.Ordinal)))
+                // Deduping only against read-WRITE entries let a read-only /workspace stand
+                // beside a read-write one: two chips for one root, and WithDerivedWriteMounts
+                // keeps the read-only one, so the chip promising a write was a lie. The CLI
+                // deduped on the name alone and lost the write entirely. Both now hold the
+                // same rule — one root, one mount, write wins.
+                var existing = mounts.FindIndex(m => string.Equals(m.VirtualPath, root, StringComparison.Ordinal));
+                if (existing < 0)
                     mounts.Add(new ForgeDerivedMount(root, IsReadWrite: true));
+                else if (!mounts[existing].IsReadWrite)
+                    mounts[existing] = mounts[existing] with { IsReadWrite = true };
             }
         }
 

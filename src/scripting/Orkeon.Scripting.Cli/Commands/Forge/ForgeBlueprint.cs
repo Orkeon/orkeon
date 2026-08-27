@@ -150,6 +150,20 @@ internal sealed record ForgeBlueprint
         return errors.Count == 0;
     }
 
+    /// <summary>
+    /// The first path segment of a deliverable — the folder that becomes a mount root — or
+    /// <see langword="null"/> when the value is not a rooted path.
+    /// </summary>
+    private static string? DeliverableRoot(string? deliverable)
+    {
+        if (deliverable is not { Length: > 1 } value || value[0] != '/')
+            return null;
+
+        var slash = value.IndexOf('/', 1);
+        var root = slash > 1 ? value[..slash] : value;
+        return root.Length > 1 ? root[1..] : null;
+    }
+
     /// <summary>The structural rules a blueprint must satisfy before compilation.</summary>
     public IReadOnlyList<string> Validate()
     {
@@ -196,6 +210,22 @@ internal sealed record ForgeBlueprint
                 list.Add($"tasks[{i}] ('{task.Key}'): 'expectedOutput' is required.");
             if (string.IsNullOrWhiteSpace(task.Agent))
                 list.Add($"tasks[{i}] ('{task.Key}'): 'agent' is required.");
+
+            // A deliverable's first segment becomes a virtual mount root that the promoted
+            // team's launcher spells on its command line, and the mount grammar splits on ':'
+            // outside quotes while the override list splits on ';'. A root carrying either
+            // produced a run.sh that died at EVERY launch with a FormatException — after
+            // ForgePromoter had already created the folder, so the team looked complete. The
+            // blueprint is LLM-authored, and renaming a folder is exactly what a repair turn
+            // is for.
+            if (DeliverableRoot(task.Deliverable) is { } root
+                && root.AsSpan().ContainsAny(':', ';'))
+            {
+                list.Add(
+                    $"tasks[{i}] ('{task.Key}'): 'deliverable' starts with '{root}', and a "
+                    + "deliverable's first folder cannot contain ':' or ';' — those separate "
+                    + "the parts of a mount. Rename the folder.");
+            }
         });
 
         return errors;

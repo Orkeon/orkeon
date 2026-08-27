@@ -40,6 +40,29 @@ public sealed class ForgeDerivedMountTests
         Assert.Equal(["/output", "/archive"], mounts.Where(m => m.IsReadWrite).Select(m => m.VirtualPath));
     }
 
+    /// <summary>
+    /// A reading tool and a deliverable that land on the SAME root yield ONE mount, and it is
+    /// writable — a read-only one would leave the team unable to write the deliverable it was
+    /// built to produce.
+    /// <para>
+    /// Neither implementation got this right and they failed differently. Studio deduped only
+    /// against read-WRITE entries, so a read-only <c>/workspace</c> stood beside a read-write
+    /// one: two chips for one root, and <c>WithDerivedWriteMounts</c> keeps the read-only
+    /// one — the chip promising a write was a lie. The CLI deduped on the name alone and
+    /// dropped the write entirely, so the run reported success and produced nothing. Every
+    /// case here used either a reading tool OR a deliverable under a different root; none
+    /// combined them.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_reading_tool_and_a_deliverable_on_one_root_yield_one_writable_mount()
+    {
+        var mounts = Derive("""["file_read"]""", Tasks("/workspace/rapport.md"));
+
+        var workspace = Assert.Single(mounts, m => m.VirtualPath == "/workspace");
+        Assert.True(workspace.IsReadWrite, "A deliverable under /workspace makes the mount writable.");
+    }
+
     [Fact]
     public void A_reading_tool_implies_the_workspace_read_mount()
     {

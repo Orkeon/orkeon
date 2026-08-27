@@ -85,6 +85,47 @@ public sealed class ForgePromoteTests : IDisposable
         return session;
     }
 
+    /// <summary>
+    /// A reading tool and a deliverable landing on the SAME virtual root yield ONE
+    /// <c>--mount</c>, and it is writable.
+    /// <para>
+    /// The read mount is derived first, so a deliverable under <c>/workspace</c> met a
+    /// read-only entry and was skipped on the name alone: the promoted team launched with
+    /// <c>/workspace:ro</c> and could never write the deliverable it was built to produce —
+    /// the resolver logged a warning and the run reported that it had finished. Studio's
+    /// sibling derivation deduped the other way and showed two chips for one root. Both hold
+    /// the same rule now.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_reading_tool_and_a_deliverable_on_one_root_yield_one_writable_mount()
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, new ForgeBlueprint
+        {
+            Crew = new ForgeBlueprintCrew { Name = "veille", Goal = "g" },
+            Agents = [new ForgeBlueprintAgent { Key = "a", Role = "A", Goal = "G", Tools = ["file_read", "file_write"] }],
+            Tasks = [new ForgeBlueprintTask
+            {
+                Key = "t", Description = "d", ExpectedOutput = "e", Agent = "a",
+                Deliverable = "/workspace/rapport.md",
+            }],
+        });
+
+        var result = ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var launcher = File.ReadAllText(Path.Combine(result.Destination, result.Launcher));
+        var workspaceMounts = launcher
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(t => t.Contains(":/workspace:", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.Single(workspaceMounts);
+        Assert.EndsWith(":/workspace:rw\"", workspaceMounts[0], StringComparison.Ordinal);
+    }
+
     [Fact]
     public void The_promoted_folder_is_complete_and_its_scripts_carry_the_sample_inputs()
     {

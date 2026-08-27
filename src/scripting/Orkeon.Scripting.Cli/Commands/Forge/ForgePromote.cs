@@ -381,8 +381,14 @@ internal static class ForgePromoter
             // A deliverable root is a single segment by construction; anything else would
             // put the team's own files outside its folder. The blueprint is LLM-authored, so
             // '..' and '.' are refused explicitly rather than trusted to be absent.
+            // ':' and ';' are refused for the same reason, one level down: they are the mount
+            // grammar's own separators, so a root carrying either spells a --mount the runner
+            // cannot parse and the promoted team dies at every launch. ForgeBlueprint.Validate
+            // reports it to the model, where a repair turn can rename the folder; this is the
+            // guard for a blueprint that reached here anyway.
             if (folder.Contains('/', StringComparison.Ordinal)
                 || folder.Contains('\\', StringComparison.Ordinal)
+                || folder.AsSpan().ContainsAny(':', ';')
                 || folder is "." or "..")
             {
                 continue;
@@ -393,8 +399,17 @@ internal static class ForgePromoter
             if (ReservedVirtualRoots.Contains(root, StringComparer.Ordinal))
                 continue;
 
-            if (!roots.Any(m => string.Equals(m.VirtualRoot, root, StringComparison.Ordinal)))
+            // The read mount is derived first, so a deliverable landing under the SAME root
+            // meets a read-only entry. Skipping on the name alone left the team with
+            // `/workspace:ro` and a deliverable it could never write — the run reports success
+            // and produces nothing. Studio deduped the other way and showed two /workspace
+            // chips, one promising a write that was then silently dropped. One root, one
+            // mount, and a write requirement wins over a read one.
+            var existing = roots.FindIndex(m => string.Equals(m.VirtualRoot, root, StringComparison.Ordinal));
+            if (existing < 0)
                 roots.Add(new DeliverableMount(root, folder));
+            else if (roots[existing].ReadOnly)
+                roots[existing] = roots[existing] with { ReadOnly = false };
         }
 
         return roots;
@@ -418,7 +433,20 @@ internal static class ForgePromoter
         builder.Append(ForgeSession.IsScriptFormat(session.Document.Format)
             ? "# The crew lives in crew/crew.ork.ts — edit it there, this script only launches it.\n"
             : "# The --var/--initial-context lines below are the test sample: adapt them to the real run.\n");
-        builder.Append("DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\n");
+        // Resolve symlinks before taking the directory. Symlinking "run this team" onto PATH is
+        // normal for a folder the card calls ordinary, and `dirname "$0"` on the LINK gives
+        // ~/bin — so the launcher mounted ~/bin/output and died naming folders the user never
+        // created. Plain `readlink` (no -f) is portable where GNU's -f is not. The `|| exit`
+        // matters too: without it a failed cd left the script running in the caller's cwd.
+        builder.Append("SELF=\"$0\"\n");
+        builder.Append("while [ -L \"$SELF\" ]; do\n");
+        builder.Append("  LINK=\"$(readlink \"$SELF\")\"\n");
+        builder.Append("  case \"$LINK\" in\n");
+        builder.Append("    /*) SELF=\"$LINK\" ;;\n");
+        builder.Append("    *) SELF=\"$(dirname \"$SELF\")/$LINK\" ;;\n");
+        builder.Append("  esac\n");
+        builder.Append("done\n");
+        builder.Append("DIR=\"$(cd \"$(dirname \"$SELF\")\" && pwd)\" || exit 1\n");
         // Run FROM the team's folder. The runner refuses to read a crew outside the working
         // directory without --allow-external-mounts, and the security whitelist is rooted on
         // the working directory too — so a launch from anywhere else (a scheduled task starts
@@ -617,9 +645,23 @@ internal static class ForgePromoter
         card.AppendLine();
         card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Lancer l'équipe", "Run the crew")}");
         card.AppendLine();
+        // The launchers, and only the launchers. `orkeon run <dir>/crew` does start the crew,
+        // but WITHOUT the --mount arguments run.sh supplies — so a team that writes
+        // deliverables writes nothing that way, and reports success. The CLI reference and both
+        // getting-started pages carry that caveat; this card is what the colleague receiving
+        // the folder reads, and it was the one surface still recommending the bare command.
+        var deliverableCaveat = writeMounts.Count > 0;
         card.AppendLine(fr
-            ? $"`./{PosixLauncherName}` (Linux/macOS) ou `{WindowsLauncherName}` (Windows) — les entrées d'exemple y sont à adapter. Le dossier est ordinaire : `orkeon run {RunTarget(session)}` le lance aussi, et Orkeon Studio le détecte."
-            : $"`./{PosixLauncherName}` (Linux/macOS) or `{WindowsLauncherName}` (Windows) — adapt the sample inputs inside. The folder is ordinary: `orkeon run {RunTarget(session)}` launches it too, and Orkeon Studio detects it.");
+            ? $"`./{PosixLauncherName}` (Linux/macOS) ou `{WindowsLauncherName}` (Windows) — les entrées d'exemple y sont à adapter."
+              + (deliverableCaveat
+                  ? $" Passez par eux : `orkeon run {RunTarget(session)}` démarre bien l'équipe, mais sans les `--mount` que les lanceurs fournissent, donc les livrables ne sont écrits nulle part et l'exécution se déclare réussie."
+                  : $" Le dossier est ordinaire : `orkeon run {RunTarget(session)}` le lance aussi.")
+              + " Orkeon Studio détecte le dossier."
+            : $"`./{PosixLauncherName}` (Linux/macOS) or `{WindowsLauncherName}` (Windows) — adapt the sample inputs inside."
+              + (deliverableCaveat
+                  ? $" Use them: `orkeon run {RunTarget(session)}` does start the crew, but without the `--mount` arguments the launchers supply, so the deliverables are written nowhere and the run reports success."
+                  : $" The folder is ordinary: `orkeon run {RunTarget(session)}` launches it too.")
+              + " Orkeon Studio detects the folder.");
 
         if (writeMounts.Count > 0)
         {

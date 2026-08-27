@@ -405,6 +405,36 @@ is where they belong; every consumer of the Infrastructure package was carrying
 their restore weight and CVE surface for code that no longer exists. `Npgsql`
 stays — `Checkpointing/PostgresStateStore` uses it.
 
+**A promoted team could not write the deliverable it was built to produce.** The
+read mount is derived first, so a deliverable landing under `/workspace` met a
+read-only entry and was skipped on the name alone: the launcher spelled
+`/workspace:ro`, the deliverable resolver logged a warning, and the run reported
+that it had finished. Studio's sibling derivation deduped the other way and left
+a read-only `/workspace` beside a read-write one — two chips for one root, the
+one promising a write being the one silently dropped. Both hold the same rule
+now: one root, one mount, and a write requirement wins over a read one.
+
+**A deliverable folder named with a `:` or a `;` produced a launcher that died at
+every start.** Those are the mount grammar's own separators — the launcher quotes
+the physical segment and spells the virtual one bare — so `--mount
+"…/rapports:2026":/rapports:2026:rw` reached `FileSystemMount.Parse` as four
+parts, after `ForgePromoter` had already created the folder, so the team looked
+complete. `ForgeBlueprint.Validate` refuses the root at submit time, where a
+repair turn can rename the folder, and the derivation refuses it again.
+
+**`FORGE.md` recommended the command the docs warn about.** The card said "the
+folder is ordinary: `orkeon run <dir>/crew` launches it too" — which is true, and
+launches it *without* the `--mount` arguments the launchers supply, so a team
+with deliverables writes nothing and reports success. Both getting-started pages
+and the CLI reference carry that caveat; the card is what the colleague receiving
+the folder reads, and it was the last surface still giving the bare command.
+
+**The launcher followed a symlink to the wrong folder.** `dirname "$0"` on a
+symlink gives the *link's* directory, so symlinking "run this team" onto `PATH` —
+normal for a folder the card calls ordinary — made the launcher mount `~/bin/output`
+and die naming folders the user never created. It resolves the link chain first,
+with plain `readlink` rather than GNU's `-f`, and the `cd` now carries `|| exit 1`.
+
 **An `appsettings.json` mount was silently dropped on every single run.** The
 runner writes its own mounts into `Orkeon:FileSystem:Mounts:0`, `:1`, … from an
 in-memory source added last — which wins on an identical key. So index 0 did not
