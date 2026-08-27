@@ -315,6 +315,20 @@ was a UTC timestamp truncated to the second, against a class claiming "each
 logger instance creates a unique file scoped to that run" — and its per-file
 lock serializes writers inside one process, never across two.
 
+**The embedding port blew up at startup instead of saying what was missing.**
+`AddOrkeonVectorSearch` — which `AddOrkeonInfrastructure(configuration)` calls
+unconditionally — registered `OpenAIEmbeddingProvider` **by type**, and its
+constructor needs an M.E.AI `IEmbeddingGenerator<string, Embedding<float>>` that
+only a host choosing local embeddings ever registers. MS.DI throws when a
+registered service's own dependencies cannot be resolved, so
+`GetService<OpenAIEmbeddingProvider>()` threw rather than returning null — which
+put **both** graceful fallbacks (this one and
+`DefaultEmbeddingProviderResolver`'s) behind an exception naming an interface no
+operator has heard of, at container build rather than at first embed.
+`UnconfiguredEmbeddingProvider` exists precisely to give an actionable message
+deferred to first use; it is now reachable. The provider is built from the
+generator when one is present and absent otherwise.
+
 **`orkeon doctor`'s `onnx-reranker` check now looks.** It was a hard-coded `ok`
 with a hard-coded detail, on the reasoning that the weights are embedded
 resources of a package the CLI always references — true, and still not a check:

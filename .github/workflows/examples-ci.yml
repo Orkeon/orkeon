@@ -1,5 +1,11 @@
 # Examples CI — validates the numbered example catalog (config.yaml + README.md) and
-# their hosting/runner wiring on every change under examples/, src/hosting/ or scripts/.
+# their wiring on every change under examples/, src/ or scripts/.
+#
+# The trigger covers src/** and not just src/hosting/**: an example exercises the whole
+# engine, so a change to the Domain, the Application or a strategy can break the catalog
+# while leaving every unit test green. It did — `process: parallel` ignored `dependencies:`
+# in 23 of the 30 examples that declare them, and tightening the `process:` parser could
+# have failed any config with a typo — and neither change would have run this job.
 #
 # Two of the three jobs are pure-Python static lints (no dotnet build, no PyYAML): the
 # tool manifests they check against are committed under scripts/data/ and regenerated
@@ -12,14 +18,14 @@ on:
     branches: [ main ]
     paths:
       - 'examples/**'
-      - 'src/hosting/**'
+      - 'src/**'
       - 'scripts/**'
       - '.github/workflows/examples-ci.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'examples/**'
-      - 'src/hosting/**'
+      - 'src/**'
       - 'scripts/**'
       - '.github/workflows/examples-ci.yml'
 permissions:
