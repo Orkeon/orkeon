@@ -74,9 +74,9 @@ Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la for
 | `--schedule daily@HH:mm\|hourly` | *(promote)* Génère les artefacts de planification sous `schedule/` — XML de tâche Windows, timer systemd, ligne cron. La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur. |
 | `--with-settings` | *(promote)* Copie le fichier de settings résolu dans le dossier. Off par défaut — un settings porte souvent des clés API et le dossier est fait pour être partagé. |
 
-Le bac à sable : l'essai tourne in-process avec les écritures confinées au montage `/output` de la session, et `shell_command`/`code_interpreter` retirés du catalogue d'outils — le plan d'équipe ne peut nommer que des outils que la validation acceptera.
+Le bac à sable : l'essai tourne in-process avec les écritures confinées au dossier de la session (`/output` pour les livrables, `/forge` pour ses fichiers de travail), l'espace de travail monté en lecture seule, et `shell_command`/`code_interpreter` retirés du catalogue d'outils — le plan d'équipe ne peut nommer que des outils que la validation acceptera.
 
-Le dossier promu est ordinaire : `crew/` (ou `crew/crew.ork.ts`), `run.sh`/`run.cmd` composés contre la grammaire d'`orkeon run` avec vos entrées d'exemple pré-remplies, et `FORGE.md` — la carte d'identité de l'équipe (objectif, critères d'acceptation, verdict, version), écrite dans la langue de l'entretien. `orkeon run <dir>/crew` le lance ; le lanceur Studio le détecte.
+Le dossier promu est ordinaire : `crew/` (ou `crew/crew.ork.ts`), `run.sh`/`run.cmd` composés contre la grammaire d'`orkeon run` avec vos entrées d'exemple pré-remplies, et `FORGE.md` — la carte d'identité de l'équipe (objectif, critères d'acceptation, verdict, version), écrite dans la langue de l'entretien. `orkeon run <dir>/crew` le lance — depuis l'intérieur de `<dir>`, et sans les `--mount` que fournit `run.sh`, si bien qu'une équipe qui produit des livrables n'écrit rien par cette voie ; le lanceur Studio détecte le dossier et pose les montages lui-même.
 
 ## `orkeon init`
 

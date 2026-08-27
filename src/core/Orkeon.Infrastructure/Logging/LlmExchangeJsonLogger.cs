@@ -14,9 +14,14 @@ namespace Orkeon.Infrastructure.Logging;
 /// Each line is a self-contained JSON object representing one exchange.
 /// <para>
 /// Each logger instance creates a unique file scoped to that run:
-/// <c>llm-exchanges-2026-04-12T14-30-05.jsonl</c>.
-/// Thread-safe via a per-file <see cref="SemaphoreSlim"/> lock.
+/// <c>llm-exchanges-2026-04-12T14-30-05-a3f9c1.jsonl</c>. The trailing token is what makes
+/// that sentence true: the id used to be a UTC timestamp truncated to the second, so two runs
+/// started in the same second wrote to one file — and the per-file
+/// <see cref="SemaphoreSlim"/> serializes writers inside ONE process, never across two.
+/// Interleaved lines from two runs in a file named after one of them is the shape of an
+/// exchange log nobody can read back.
 /// </para>
+/// <para>Thread-safe via a per-file <see cref="SemaphoreSlim"/> lock.</para>
 /// </summary>
 public sealed partial class LlmExchangeJsonLogger : ILlmExchangeLogger, IDisposable
 {
@@ -43,7 +48,9 @@ public sealed partial class LlmExchangeJsonLogger : ILlmExchangeLogger, IDisposa
         ArgumentException.ThrowIfNullOrWhiteSpace(logVirtualDir);
         _fs = fs;
         _logDirectory = logVirtualDir;
-        _runId = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss", CultureInfo.InvariantCulture);
+        _runId = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{DateTime.UtcNow:yyyy-MM-ddTHH-mm-ss}-{Guid.NewGuid().ToString("N")[..6]}");
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<LlmExchangeJsonLogger>.Instance;
 
         _jsonOptions = new JsonSerializerOptions

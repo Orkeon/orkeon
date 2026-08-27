@@ -38,7 +38,7 @@ public sealed record CrewConfiguration
     /// <summary>
     /// Gets the crew-level RAG configuration (<c>rag:</c> block — provider, declared collections
     /// with their ingestion sources, retrieval defaults), or null when the crew declares none.
-    /// Parsing-only for now: kickoff-time ingestion consumes it in a later lot (RAG-03/C4).
+    /// Consumed at kickoff by the ingestion path (RAG-03/C4, shipped).
     /// </summary>
     public RagCrewConfig? Rag { get; init; }
     /// <summary>

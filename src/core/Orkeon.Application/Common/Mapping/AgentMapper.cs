@@ -11,8 +11,14 @@ using Orkeon.Application.Constants.Execution;
 namespace Orkeon.Application.Common.Mapping;
 
 /// <summary>
-/// Simplified mapper for converting between DomainAgent domain entities and DTOs.
-/// Uses only the properties that actually exist in the current Domain implementation.
+/// The one place a domain <c>Agent</c> becomes an <c>AgentDto</c>. Uses only the properties
+/// that actually exist in the current Domain implementation.
+/// <para>
+/// It was that in name only: nothing called it, the two handlers that do the mapping wrote
+/// it out by hand, and this copy — the "declared" one — hardcoded <c>Status = "Active"</c>
+/// while theirs read <c>agent.Status</c>. A public mapper that answers differently from the
+/// framework's own mapping is a trap for anyone who reaches for it. The handlers call it now.
+/// </para>
 /// </summary>
 public static class AgentMapper
 {
@@ -30,7 +36,7 @@ public static class AgentMapper
             Goal = agent.Goal,
             Backstory = agent.Backstory?.Value ?? string.Empty,
             Type = "standard",
-            Status = "Active",
+            Status = agent.Status.ToString(),
             Verbose = agent.Verbose,
             AllowDelegation = agent.AllowDelegation,
             MaxExecutionTime = ExecutionDefaults.DefaultMaxExecutionSeconds,
@@ -92,7 +98,7 @@ public static class AgentMapper
             Goal = agent.Goal,
             Backstory = agent.Backstory?.Value ?? string.Empty,
             Type = "standard",
-            Status = "Active",
+            Status = agent.Status.ToString(),
             Verbose = agent.Verbose,
             AllowDelegation = agent.AllowDelegation,
             CreatedAt = agent.CreatedAt,

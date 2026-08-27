@@ -9,31 +9,19 @@ using Orkeon.Domain.Task.ValueObjects;
 
 namespace Orkeon.Application.Tests.Services.EventHandlers;
 
+/// <summary>
+/// The domain-event handlers, asked what they do: each writes a log line, and that line is
+/// the whole of its observable behaviour.
+/// <para>
+/// Four <c>*_ShouldHandleEvent</c> tests used to sit beside these, with the same arrange, the
+/// same act and <c>Assert.True(true)</c> for an assertion — four green tests that could not
+/// fail. Their siblings below already prove the call goes through, by looking at what it
+/// produced.
+/// </para>
+/// </summary>
 public class AgentEventHandlerTests
 {
     // ─── AgentCompletedTaskHandler ────────────────────────────────────
-
-    [Fact]
-    public async System.Threading.Tasks.Task AgentCompletedTaskHandler_ShouldHandleEvent()
-    {
-        // Arrange
-        var logger = new TestLogger<AgentCompletedTaskHandler>();
-        var handler = new AgentCompletedTaskHandler(logger);
-        var agentId = AgentId.Create();
-        var taskId = TaskId.Create();
-        var domainEvent = new AgentCompletedTaskEvent
-        {
-            AgentId = agentId,
-            TaskId = taskId,
-            Output = TaskOutput.Text("Task completed successfully")
-        };
-
-        // Act
-        await handler.HandleAsync(domainEvent, CancellationToken.None);
-
-        // Assert — handler completes without throwing
-        Assert.True(true);
-    }
 
     [Fact]
     public async System.Threading.Tasks.Task AgentCompletedTaskHandler_ShouldLogCompletion()
@@ -68,28 +56,6 @@ public class AgentEventHandlerTests
     }
 
     // ─── AgentFailedTaskHandler ──────────────────────────────────────
-
-    [Fact]
-    public async System.Threading.Tasks.Task AgentFailedTaskHandler_ShouldHandleEvent()
-    {
-        // Arrange
-        var logger = new TestLogger<AgentFailedTaskHandler>();
-        var handler = new AgentFailedTaskHandler(logger);
-        var agentId = AgentId.Create();
-        var taskId = TaskId.Create();
-        var domainEvent = new AgentFailedTaskEvent
-        {
-            AgentId = agentId,
-            TaskId = taskId,
-            Reason = "Connection timeout"
-        };
-
-        // Act
-        await handler.HandleAsync(domainEvent, CancellationToken.None);
-
-        // Assert — handler completes without throwing
-        Assert.True(true);
-    }
 
     [Fact]
     public async System.Threading.Tasks.Task AgentFailedTaskHandler_ShouldLogFailure()
@@ -127,30 +93,6 @@ public class AgentEventHandlerTests
     // ─── CrewExecutionCompletedHandler ───────────────────────────────
 
     [Fact]
-    public async System.Threading.Tasks.Task CrewExecutionCompletedHandler_ShouldHandleEvent()
-    {
-        // Arrange
-        var logger = new TestLogger<CrewExecutionCompletedHandler>();
-        var handler = new CrewExecutionCompletedHandler(logger);
-        var crewId = CrewId.Create();
-        var processId = ProcessId.Create();
-        var domainEvent = new CrewExecutionCompletedEvent
-        {
-            CrewId = crewId,
-            ProcessId = processId,
-            Duration = TimeSpan.FromSeconds(42),
-            CompletedTasks = 5,
-            FailedTasks = 1
-        };
-
-        // Act
-        await handler.HandleAsync(domainEvent, CancellationToken.None);
-
-        // Assert — handler completes without throwing
-        Assert.True(true);
-    }
-
-    [Fact]
     public async System.Threading.Tasks.Task CrewExecutionCompletedHandler_ShouldLogCompletion()
     {
         // Arrange
@@ -185,28 +127,6 @@ public class AgentEventHandlerTests
     }
 
     // ─── CrewExecutionFailedHandler ──────────────────────────────────
-
-    [Fact]
-    public async System.Threading.Tasks.Task CrewExecutionFailedHandler_ShouldHandleEvent()
-    {
-        // Arrange
-        var logger = new TestLogger<CrewExecutionFailedHandler>();
-        var handler = new CrewExecutionFailedHandler(logger);
-        var crewId = CrewId.Create();
-        var processId = ProcessId.Create();
-        var domainEvent = new CrewExecutionFailedEvent
-        {
-            CrewId = crewId,
-            ProcessId = processId,
-            Reason = "Agent unresponsive"
-        };
-
-        // Act
-        await handler.HandleAsync(domainEvent, CancellationToken.None);
-
-        // Assert — handler completes without throwing
-        Assert.True(true);
-    }
 
     [Fact]
     public async System.Threading.Tasks.Task CrewExecutionFailedHandler_ShouldLogFailure()

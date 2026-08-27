@@ -267,6 +267,49 @@ traversal segment reached an adopted team's sidecar through Studio and nowhere
 else, producing a team Studio could launch and the runner refused at start.
 `ForgeDerivedMountTests` pins the pair.
 
+### Fixed — what the tests were not asking
+
+**The shipped scripting typings did not parse.** `tools.d.ts` declared an index
+signature as `const [name: string]: …`, which a TypeScript namespace cannot
+carry and which is not a declaration at all — so the `tools` namespace this
+package advertises was unavailable to every editor that loaded it. The only
+guard over the typings asserted that certain substrings were present in the
+rolled-up bundle, which cannot fail for that. Every `.d.ts` is now handed to
+esbuild, the same front end that reads user scripts. `llm.d.ts` went with it:
+it typed `llm.openai`/`anthropic`/`ollama`/`azureOpenai`/`groq` as non-callable
+objects with a `name` property, while the runtime exposes them as factories
+returning a config whose field is `provider` — every script typed against those
+declarations got an error on the correct code.
+
+**`docker build .` failed at restore.** The Dockerfile restated
+`Orkeon.ConsoleApp`'s project graph as a hand-written COPY list that had drifted
+to 10 of its 22 projects, plus one it no longer references. The list is gone;
+the graph is read from the tree.
+
+**Two runs started in the same second shared one exchange-log file.** The run id
+was a UTC timestamp truncated to the second, against a class claiming "each
+logger instance creates a unique file scoped to that run" — and its per-file
+lock serializes writers inside one process, never across two.
+
+**Removed**: `ImageHelper` (`Orkeon.Tools.Abstractions`) — no production caller,
+and where it disagreed with the live `ContentConverter` it was the wrong one:
+it declared SVG a supported image type, which no vision API accepts.
+`CliFileSystemService` (`orkeon`) — no production instantiation, a
+`ResolveAndValidate` that ignored its `requiredRight` argument entirely, and
+prefix compares with no separator boundary.
+
+Also: `AgentMapper` hardcoded `Status = "Active"` while the two handlers that
+actually map an agent read `agent.Status` and never called it — it reports the
+real status now, and the handlers go through it. The `Orkeon.Tools.FileSystem`
+layering guard was a denylist of two names under a doc describing an allowlist
+that was already false; it is an allowlist. Four `*_ShouldHandleEvent` tests
+whose only assertion was `Assert.True(true)` are gone — their siblings assert
+what the handlers produce. And the forge sandbox's stated write boundary now
+matches its mounts (the session directory, not the `/output` folder inside it),
+`asyncExecution:` and the crew `rag:` block say what they do, and the CLI
+reference carries the caveat both getting-started pages already had about
+`orkeon run <dir>/crew`.
+
 ## [1.0.0-rc.2] - 2026-08-25
 
 ### Added — Remediation v3: what a run costs, and adoption that is no longer a one-way door

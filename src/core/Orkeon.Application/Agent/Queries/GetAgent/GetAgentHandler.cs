@@ -50,23 +50,7 @@ public partial class GetAgentHandler : IQueryHandler<GetAgentQuery, AgentDto?>
                 return null;
             }
 
-            // Map to DTO and return
-            return new AgentDto
-            {
-                Id = agent.Id.ToString(),
-                Name = agent.Role.Value,
-                Role = agent.Role.Value,
-                Goal = agent.Goal.Value,
-                Backstory = agent.Backstory?.Value ?? string.Empty,
-                Type = "standard",
-                Status = agent.Status.ToString(),
-                Verbose = agent.Verbose,
-                AllowDelegation = agent.AllowDelegation,
-                MaxExecutionTime = ExecutionDefaults.DefaultMaxExecutionSeconds,
-                Tools = agent.Tools?.Select(t => t.Name).ToImmutableList() ?? [],
-                CreatedAt = agent.CreatedAt,
-                UpdatedAt = agent.UpdatedAt
-            };
+            return Common.Mapping.AgentMapper.ToDto(agent);
         }
     }
 

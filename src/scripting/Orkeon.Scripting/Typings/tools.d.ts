@@ -13,10 +13,20 @@ declare global {
         function databaseQuery(input: { connection: string; sql: string; params?: readonly unknown[] }, ctx?: ExecutionContext): Promise<{ rows: readonly Record<string, unknown>[] }>;
         function delegateWork(input: { agent: string; task: string }, ctx?: ExecutionContext): Promise<{ output: unknown }>;
         function askQuestion(input: { question: string }, ctx?: ExecutionContext): Promise<{ answer: string }>;
-
-        /** Placeholder for tools not enumerated above — typed signatures land in SCR-11. */
-        const [name: string]: (input: unknown, ctx?: ExecutionContext) => Promise<unknown>;
     }
+
+    /**
+     * Tools not enumerated above are still reachable at runtime — the `tools` object carries
+     * every registered `IBaseTool` — but they are untyped here.
+     *
+     * There used to be an index signature in the namespace above, written as
+     * `const [name: string]: …`. A TypeScript namespace cannot carry an index signature and
+     * that is not a declaration at all: the file did not parse, so the whole `tools` namespace
+     * this package advertises was unavailable to every editor that loaded it. Nothing noticed,
+     * because the only test over the shipped typings asserted that certain substrings were
+     * present in them.
+     */
+    const tools: Record<string, (input: unknown, ctx?: ExecutionContext) => Promise<unknown>>;
 }
 
 export { };

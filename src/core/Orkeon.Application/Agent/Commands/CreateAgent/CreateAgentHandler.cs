@@ -68,22 +68,12 @@ public partial class CreateAgentHandler : ICommandHandler<CreateAgentCommand, Ag
             // Save the agent
             await _agentRepository.AddAsync(agent, cancellationToken).ConfigureAwait(false);
 
-            // Map to DTO and return
-            return new AgentDto
+            // The requested tool NAMES, not the agent's resolved tools: this handler logs
+            // "tool would be added" rather than resolving them, so the DTO reports what the
+            // caller asked for.
+            return Common.Mapping.AgentMapper.ToDto(agent) with
             {
-                Id = agent.Id.ToString(),
-                Name = agent.Role.Value,
-                Role = agent.Role.Value,
-                Goal = agent.Goal.Value,
-                Backstory = agent.Backstory?.Value ?? string.Empty,
-                Type = "standard",
-                Status = agent.Status.ToString(),
-                Verbose = agent.Verbose,
-                AllowDelegation = agent.AllowDelegation,
-                MaxExecutionTime = ExecutionDefaults.DefaultMaxExecutionSeconds,
                 Tools = (command.Tools ?? []).ToImmutableList(),
-                CreatedAt = agent.CreatedAt,
-                UpdatedAt = agent.UpdatedAt
             };
         }
     }

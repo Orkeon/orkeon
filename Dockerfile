@@ -4,27 +4,18 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy solution and project files first (layer caching)
-COPY Orkeon.sln .
-COPY global.json .
-COPY Directory.Packages.props .
-COPY src/Directory.Build.props src/
-COPY src/core/Orkeon.Domain/Orkeon.Domain.csproj src/core/Orkeon.Domain/
-COPY src/core/Orkeon.Application/Orkeon.Application.csproj src/core/Orkeon.Application/
-COPY src/core/Orkeon.Infrastructure/Orkeon.Infrastructure.csproj src/core/Orkeon.Infrastructure/
-COPY src/tools/Orkeon.Tools.Abstractions/Orkeon.Tools.Abstractions.csproj src/tools/Orkeon.Tools.Abstractions/
-COPY src/tools/Orkeon.Tools.Code/Orkeon.Tools.Code.csproj src/tools/Orkeon.Tools.Code/
-COPY src/tools/Orkeon.Tools.Data/Orkeon.Tools.Data.csproj src/tools/Orkeon.Tools.Data/
-COPY src/tools/Orkeon.Tools.FileSystem/Orkeon.Tools.FileSystem.csproj src/tools/Orkeon.Tools.FileSystem/
-COPY src/tools/Orkeon.Tools.Web/Orkeon.Tools.Web.csproj src/tools/Orkeon.Tools.Web/
-COPY src/plugins/Orkeon.Plugins/Orkeon.Plugins.csproj src/plugins/Orkeon.Plugins/
-COPY src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj src/apps/Orkeon.ConsoleApp/
-
-# Restore
-RUN dotnet restore src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj
-
-# Copy source files and build
+# The whole source tree in one layer, restore against it, publish.
+#
+# This used to hand-write the project graph as a list of per-csproj COPY lines, so the
+# restore layer would only be invalidated when a .csproj changed. The list drifted — it
+# named 10 of the 22 projects Orkeon.ConsoleApp actually references, and carried one it no
+# longer does — so `docker build .` failed at the restore step and nothing in CI built this
+# file to notice. A Dockerfile that does not build is worth less than a slower one: the
+# graph is now read from the tree instead of restated beside it.
+COPY Orkeon.sln global.json Directory.Packages.props ./
 COPY src/ src/
+
+RUN dotnet restore src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj
 RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj -c Release -o /app/publish --no-restore
 
 # Stage 2: Runtime

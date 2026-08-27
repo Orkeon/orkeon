@@ -45,7 +45,7 @@ public class AgentMapperTests
         Assert.True(dto.AllowDelegation);
         Assert.Single(dto.Tools);
         Assert.Contains("TestTool", dto.Tools);
-        Assert.Equal(Active, dto.Status);
+        Assert.Equal(agent.Status.ToString(), dto.Status);
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public class AgentMapperTests
         Assert.Equal(agent.Id, dto.Id);
         Assert.Equal(RoleAnalyst, dto.Role);
         Assert.Equal(GoalAnalyzeData, dto.Goal);
-        Assert.Equal(Active, dto.Status);
+        Assert.Equal(agent.Status.ToString(), dto.Status);
         Assert.True(dto.Verbose);
         Assert.False(dto.AllowDelegation);
 
@@ -443,7 +443,7 @@ public class AgentMapperTests
         Assert.Equal(agent.Id, dto.Id);
         Assert.Equal("Security Expert", dto.Role);
         Assert.Equal("Ensure security", dto.Goal);
-        Assert.Equal(Active, dto.Status);
+        Assert.Equal(agent.Status.ToString(), dto.Status);
 
         // Backstory is now included (required property on sealed record)
         Assert.Equal("Former security consultant with extensive experience", dto.Backstory);

@@ -74,9 +74,9 @@ Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forg
 | `--schedule daily@HH:mm\|hourly` | *(promote)* Generate schedule artifacts under `schedule/` — Windows task XML, systemd timer, cron line. The install command is **displayed, never executed**: Orkeon has no scheduler. |
 | `--with-settings` | *(promote)* Copy the resolved settings file into the folder. Off by default — a settings file usually carries API keys and the folder is made to be shared. |
 
-The sandbox: the try runs in-process with writes confined to the session's `/output` mount, and `shell_command`/`code_interpreter` removed from the tool catalogue — the team plan can only name tools the validation will accept.
+The sandbox: the try runs in-process with writes confined to the session's own directory (`/output` for deliverables, `/forge` for its working files), the workspace mounted read-only, and `shell_command`/`code_interpreter` removed from the tool catalogue — the team plan can only name tools the validation will accept.
 
-The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.cmd` composed against the `orkeon run` grammar with your sample inputs pre-filled, and `FORGE.md` — the crew's identity card (goal, acceptance criteria, verdict, version), written in the interview's language. `orkeon run <dir>/crew` launches it; the Studio launcher detects it.
+The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.cmd` composed against the `orkeon run` grammar with your sample inputs pre-filled, and `FORGE.md` — the crew's identity card (goal, acceptance criteria, verdict, version), written in the interview's language. `orkeon run <dir>/crew` launches it — from inside `<dir>`, and without the `--mount` arguments `run.sh` supplies, so a team that writes deliverables writes nothing that way; the Studio launcher detects the folder and lays the mounts itself.
 
 ## `orkeon init`
 

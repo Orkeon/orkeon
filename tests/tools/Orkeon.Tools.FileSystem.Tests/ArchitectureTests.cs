@@ -3,24 +3,62 @@ using System.Reflection;
 namespace Orkeon.Tools.FileSystem.Tests;
 
 /// <summary>
-/// Tests that verify Tools.FileSystem follows Clean Architecture layering:
-/// it should only depend on Domain and Tools.Abstractions, NOT on Application.
+/// Guards the layering rule for <c>Orkeon.Tools.FileSystem</c>: Domain-side assemblies only,
+/// never <c>Orkeon.Application</c> or <c>Orkeon.Infrastructure</c>.
+/// <para>
+/// Written as an ALLOWLIST, because that is what the rule is. It used to be a denylist of two
+/// names under a doc claiming "only Domain and Tools.Abstractions" — a claim already false
+/// (this project also references the Analysis and RAG abstractions and the RAG
+/// implementation), and a shape that says nothing about the next reference someone adds. The
+/// sibling suite in <c>Orkeon.Rag.Abstractions.Tests</c> has the right form.
+/// </para>
 /// </summary>
 public class ArchitectureTests
 {
+    /// <summary>
+    /// The allowlist. Adding a reference outside it is a layering decision, so it should cost
+    /// a deliberate edit here rather than pass silently.
+    /// </summary>
+    private static readonly string[] AllowedOrkeonReferences =
+    [
+        "Orkeon.Domain",
+        "Orkeon.Tools.Abstractions",
+        "Orkeon.Analysis.Abstractions",
+        "Orkeon.Rag.Abstractions",
+        "Orkeon.Rag",
+        "Orkeon.Compliance.Vfs",
+    ];
+
     [Fact]
-    public void ToolsFileSystem_ShouldNotReference_ApplicationAssembly()
+    public void ToolsFileSystem_ReferencesNothingOutsideTheAllowlist()
     {
-        // Arrange
-        var assembly = typeof(DirectorySearchTool).Assembly;
+        var referenced = typeof(DirectorySearchTool).Assembly.GetReferencedAssemblies();
 
-        // Act
-        var referencedAssemblies = assembly.GetReferencedAssemblies();
+        var offenders = referenced
+            .Select(a => a.Name ?? string.Empty)
+            .Where(name => name.StartsWith("Orkeon.", StringComparison.Ordinal))
+            .Where(name => !AllowedOrkeonReferences.Contains(name, StringComparer.Ordinal))
+            .ToList();
 
-        // Assert — Tools.FileSystem must NOT depend on Orkeon.Application
-        Assert.DoesNotContain(
-            referencedAssemblies,
-            a => a.Name == "Orkeon.Application");
+        Assert.True(
+            offenders.Count == 0,
+            "Orkeon.Tools.FileSystem references " + string.Join(", ", offenders)
+            + " — outside the layering allowlist. Add it deliberately, or route through an abstraction.");
+    }
+
+    /// <summary>
+    /// The two the allowlist exists to keep out, named explicitly: the compiler prunes unused
+    /// references from metadata, so an allowlist alone would pass for the wrong reason if this
+    /// project ever referenced Application without using a type from it.
+    /// </summary>
+    [Theory]
+    [InlineData("Orkeon.Application")]
+    [InlineData("Orkeon.Infrastructure")]
+    public void ToolsFileSystem_ShouldNotReference(string forbidden)
+    {
+        var referenced = typeof(DirectorySearchTool).Assembly.GetReferencedAssemblies();
+
+        Assert.DoesNotContain(referenced, a => a.Name == forbidden);
     }
 
     [Fact]
