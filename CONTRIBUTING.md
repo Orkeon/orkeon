@@ -68,7 +68,7 @@ dotnet test Orkeon.sln
 
 ## Project Structure
 
-The solution has **38 src projects across 12 zones**, each mirrored by a test
+The solution has **39 src projects across 12 zones**, each mirrored by a test
 project (plus `tests/e2e`, `tests/examples`, `tests/shared`):
 
 ### Comments are English, and never accented
@@ -93,7 +93,7 @@ src/
 ├── scripting/   # Orkeon.Scripting (.ork.ts DSL) + Orkeon.Scripting.Cli (the `orkeon` tool)
 ├── cli/         # Cli.Abstractions, Cli, Cli.Commands.Scripting, Cli.TerminalGui
 ├── constants/   # Zero-dependency satellites of SHARED constants (ADR-009):
-│                #   Constants.Llm, Constants.FileSystem, Constants.Configuration, Constants.Protocol
+│                #   Constants.Llm, Constants.FileSystem, Constants.Configuration, Constants.Protocol, Constants.Cli
 ├── hosting/     # Orkeon.Hosting (RunnerHost) + Orkeon.Host (the `orkeon-host` daemon)
 ├── plugins/     # Orkeon.Plugins (runtime plugin loading)
 ├── generators/  # Orkeon.Generators (source generators)

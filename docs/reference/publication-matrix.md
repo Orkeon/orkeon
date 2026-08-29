@@ -21,7 +21,7 @@ never drift again (OSS-011 / R8.3).
 | PackageId | Why |
 |---|---|
 | `Orkeon.Domain` | Core entities and interfaces. Since ADR-009 it carries one runtime reference, to `Orkeon.Constants.Llm`, so that satellite must be pushed first — `publish.yml` orders them explicitly. |
-| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration`, `Orkeon.Constants.Protocol` | Satellites of SHARED constants (ADR-009): the vocabulary two projects must agree on, declared once, with zero runtime dependency. Published in v1 **and necessarily so** — `Orkeon.Domain` depends on `Orkeon.Constants.Llm`, so deferring them would publish a core package whose dependency cannot be restored. |
+| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration`, `Orkeon.Constants.Protocol`, `Orkeon.Constants.Cli` | Satellites of SHARED constants (ADR-009): the vocabulary two projects must agree on, declared once, with zero runtime dependency. Published in v1 **and necessarily so** — `Orkeon.Domain` depends on `Orkeon.Constants.Llm`, so deferring them would publish a core package whose dependency cannot be restored. |
 | `Orkeon.Application` | Use cases, ports, orchestration. |
 | `Orkeon.Infrastructure` | Adapters (LLMs, memory, strategies). Documented as installable in the README; this is why `release.yml` was fixed to pack it. |
 

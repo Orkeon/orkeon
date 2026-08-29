@@ -1,3 +1,4 @@
+using Orkeon.Constants.Cli;
 using CommandLine;
 using Orkeon.Compliance.Vfs;
 
@@ -38,7 +39,7 @@ public abstract class RunnerOptionsBase
     public IEnumerable<string> Mounts { get; set; } = [];
 
     /// <summary>Allow mounts whose base path is outside the cwd.</summary>
-    [Option("allow-external-mounts", Required = false, Default = false,
+    [Option(RunOptionNames.AllowExternalMounts, Required = false, Default = false,
         HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist. " +
                    "Can also be enabled for every invocation via ORKEON_ALLOW_EXTERNAL_MOUNTS=1.")]
     public bool AllowExternalMounts { get; set; }
@@ -57,13 +58,13 @@ public abstract class RunnerOptionsBase
     public int Verbose { get; set; }
 
     /// <summary>Enable LLM exchange logging to JSONL files.</summary>
-    [Option("llm-log", Required = false, Default = false,
+    [Option(RunOptionNames.LlmLog, Required = false, Default = false,
         HelpText = "Enable LLM exchange logging to files (request/response headers + payload). " +
                    "Logs are written to './llm-logs' or the path specified by --llm-log-path.")]
     public bool LlmLogEnabled { get; set; }
 
     /// <summary>Custom directory for LLM exchange logs (implies --llm-log).</summary>
-    [Option("llm-log-path", Required = false, Default = null,
+    [Option(RunOptionNames.LlmLogPath, Required = false, Default = null,
         HelpText = "Directory for LLM exchange log files (.jsonl). Implies --llm-log. " +
                    "Defaults to './llm-logs' when --llm-log is used without --llm-log-path.")]
     public string? LlmLogPath { get; set; }
@@ -79,7 +80,7 @@ public abstract class RunnerOptionsBase
     public IEnumerable<string> Variables { get; set; } = [];
 
     /// <summary>Initial context string passed to CrewInput.</summary>
-    [Option("initial-context", Required = false, Default = null,
+    [Option(RunOptionNames.InitialContext, Required = false, Default = null,
         HelpText = "Initial context string passed to CrewInput.")]
     public string? InitialContext { get; set; }
 
@@ -87,7 +88,7 @@ public abstract class RunnerOptionsBase
     /// Dry-run: resolve settings, build the host and load the crew (strict tool
     /// resolution), without probing the LLM endpoint or running any kickoff.
     /// </summary>
-    [Option("validate", Required = false, Default = false,
+    [Option(RunOptionNames.Validate, Required = false, Default = false,
         HelpText = "Dry-run: resolve settings, build the host and load the crew (strict " +
                    "tool resolution) WITHOUT probing the LLM endpoint or running a kickoff. " +
                    "Prints 'VALIDATION OK: <config> (agents=N, tasks=M, tools resolved=K)' " +
@@ -106,7 +107,7 @@ public abstract class RunnerOptionsBase
     /// Build the host and print the sorted registry tool names (one per line) to stdout,
     /// then exit. The runtime tool manifest consumed by tooling/linting.
     /// </summary>
-    [Option("list-tools", Required = false, Default = false,
+    [Option(RunOptionNames.ListTools, Required = false, Default = false,
         HelpText = "Build the host and print the sorted list of registered tool names " +
                    "(one per line) to stdout, then exit 0. Logs stay on stderr; no crew " +
                    "is loaded, so --config is not required.")]

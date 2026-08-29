@@ -53,14 +53,26 @@ utilisateur alors que tous les runners le refusaient.
 **Une valeur sur laquelle deux projets doivent s'accorder est déclarée une fois, dans un projet
 satellite qui ne dépend de rien, et les deux côtés la référencent.**
 
-Quatre satellites sous `src/constants/`, un par famille de vocabulaire :
+Satellites sous `src/constants/`, un par famille de vocabulaire :
 
 ```
-Orkeon.Constants.Llm             endpoints, modèles par défaut, ids de providers, champs de wire
+Orkeon.Constants.Llm             endpoints, modeles par defaut, ids de providers
 Orkeon.Constants.FileSystem      racines virtuelles, noms conventionnels de dossiers et fichiers
-Orkeon.Constants.Configuration   clés Orkeon:*, chemins de réglages, messages partagés
-Orkeon.Constants.Cli             verbes et noms d'options
+Orkeon.Constants.Configuration   cles Orkeon:*, chemins de settings, messages partages
+Orkeon.Constants.Cli             noms d'options de run
+Orkeon.Constants.Protocol        types d'evenements de run
 ```
+
+**Tel que construit, deux corrections a la liste ci-dessus.** `Orkeon.Constants.Protocol` n'etait
+pas prevu : le flux d'evenements de run s'est avere etre un protocole de fil entre deux processus
+dont les copies avaient deja diverge, et l'appeler configuration aurait invite le suivant a y
+deposer une cle de reglage. Et `Orkeon.Constants.Llm` ne contient **pas** les noms de champs de
+fil, contrairement a ce que cet ADR annoncait d'abord : la mesure a montre que les candidats
+etaient des homographes (`"tools"` est une propriete de YAML de crew dans Studio et un champ de
+requete OpenAI chez un provider ; `"temperature"` est un parametre d'echantillonnage dans un projet
+et une temperature corporelle dans une fixture de test), et la seule famille reellement partagee de
+part et d'autre de la frontiere est deja modelisee par `LlmResponseFormat` dans le Domain. Unifier
+des chaines sans rapport parce qu'elles s'ecrivent pareil est pire que la duplication supprimee.
 
 Trois règles les bornent :
 

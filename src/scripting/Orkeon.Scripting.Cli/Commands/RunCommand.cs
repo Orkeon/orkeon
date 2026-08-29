@@ -1,3 +1,4 @@
+using Orkeon.Constants.Cli;
 using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using CommandLine;
@@ -48,7 +49,7 @@ internal sealed class RunCommandOptions
         public IEnumerable<string> Mounts { get; set; } = [];
 
         /// <summary>Allow mounts whose base path is outside the cwd.</summary>
-        [Option("allow-external-mounts", Required = false, Default = false,
+        [Option(RunOptionNames.AllowExternalMounts, Required = false, Default = false,
             HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist. " +
                        "Can also be enabled for every invocation via ORKEON_ALLOW_EXTERNAL_MOUNTS=1.")]
         public bool AllowExternalMounts { get; set; }
@@ -66,21 +67,21 @@ internal sealed class RunCommandOptions
         public int Verbose { get; set; }
 
         /// <summary>Enable LLM exchange logging to JSONL files.</summary>
-        [Option("llm-log", Required = false, Default = false,
+        [Option(RunOptionNames.LlmLog, Required = false, Default = false,
             HelpText = "Enable LLM exchange logging (writes JSONL to ./llm-logs unless --llm-log-path overrides).")]
         public bool LlmLogEnabled { get; set; }
 
         /// <summary>Custom directory for LLM exchange logs (implies --llm-log).</summary>
-        [Option("llm-log-path", Required = false, Default = null,
+        [Option(RunOptionNames.LlmLogPath, Required = false, Default = null,
             HelpText = "Directory for LLM exchange log files (.jsonl). Implies --llm-log.")]
         public string? LlmLogPath { get; set; }
 
         /// <summary>Inline JSON inputs forwarded to the script (assigned as global <c>inputs</c>).</summary>
-        [Option("inputs", HelpText = "Inline JSON inputs forwarded as a global `inputs` variable.")]
+        [Option(RunOptionNames.Inputs, HelpText = "Inline JSON inputs forwarded as a global `inputs` variable.")]
         public string? InputsJson { get; set; }
 
         /// <summary>Path to a JSON file holding the inputs.</summary>
-        [Option("inputs-file", HelpText = "Path to a JSON file holding the inputs.")]
+        [Option(RunOptionNames.InputsFile, HelpText = "Path to a JSON file holding the inputs.")]
         public string? InputsFilePath { get; set; }
 
         /// <summary>
@@ -89,7 +90,7 @@ internal sealed class RunCommandOptions
         /// default ceiling is too tight. Set to 0 to disable the limit
         /// (use with care — runaway scripts will then OOM the host).
         /// </summary>
-        [Option("memory-limit-mb", Required = false,
+        [Option(RunOptionNames.MemoryLimitMb, Required = false,
             HelpText = "Jint memory limit in megabytes for this run (overrides appsettings). Set 0 to disable; default comes from Orkeon:Scripting:Limits:MemoryLimitBytes.")]
         public long? MemoryLimitMb { get; set; }
 
@@ -105,7 +106,7 @@ internal sealed class RunCommandOptions
         public IEnumerable<string> Variables { get; set; } = [];
 
         /// <summary>Initial context string passed to <c>CrewInput</c> — YAML crews only.</summary>
-        [Option("initial-context", Required = false, Default = null,
+        [Option(RunOptionNames.InitialContext, Required = false, Default = null,
             HelpText = "Initial context string passed to a YAML crew's CrewInput. Ignored for .ork.ts scripts.")]
         public string? InitialContext { get; set; }
 
@@ -114,7 +115,7 @@ internal sealed class RunCommandOptions
         /// The value is accepted for the spec's spelling (<c>--events jsonl</c>) and for
         /// forward compatibility; <c>jsonl</c> is the only stream format there is.
         /// </summary>
-        [Option("events", Required = false, Default = null,
+        [Option(RunOptionNames.Events, Required = false, Default = null,
             HelpText = "Emit the versioned JSONL event protocol on stdout (task progress, cost, " +
                        "run outcome) instead of plain text. This is how Orkeon Studio drives a run.")]
         public string? Events { get; set; }
@@ -123,7 +124,7 @@ internal sealed class RunCommandOptions
         /// Includes token-by-token <c>llm.delta</c> events in the stream. Opt-in: a delta per
         /// token saturates both the pipe and any UI reading it.
         /// </summary>
-        [Option("stream", Required = false, Default = false,
+        [Option(RunOptionNames.Stream, Required = false, Default = false,
             HelpText = "With --events, also emit llm.delta events token by token. Verbose by " +
                        "nature: off unless asked for.")]
         public bool Stream { get; set; }
@@ -133,7 +134,7 @@ internal sealed class RunCommandOptions
         /// Agents post to that address to reach it, and a crew authorizes the exchange by
         /// declaring <c>to: "client:{name}"</c> in its <c>links:</c> block.
         /// </summary>
-        [Option("client", Required = false, Default = "studio",
+        [Option(RunOptionNames.Client, Required = false, Default = "studio",
             HelpText = "With --events, the name of the observing peer on the hub (client://<name>). " +
                        "Agents can post and send to that address; a crew's links: block authorizes it.")]
         public string Client { get; set; } = "studio";
@@ -145,7 +146,7 @@ internal sealed class RunCommandOptions
         /// Dry-run: build the host and load the crew (strict tool resolution) without probing the
         /// LLM endpoint or running a kickoff. Mirrors the standard runner's <c>--validate</c>.
         /// </summary>
-        [Option("validate", Required = false, Default = false,
+        [Option(RunOptionNames.Validate, Required = false, Default = false,
             HelpText = "Dry-run: resolve settings, build the host and load the crew (strict tool " +
                        "resolution) WITHOUT probing the LLM endpoint or running a kickoff. Prints " +
                        "'VALIDATION OK/FAILED: <config> ...' and exits 0 (ok) or non-zero (failed).")]
@@ -156,7 +157,7 @@ internal sealed class RunCommandOptions
         /// Mirrors the standard runner's <c>--list-tools</c>; no crew is loaded, so the crew path
         /// is not required.
         /// </summary>
-        [Option("list-tools", Required = false, Default = false,
+        [Option(RunOptionNames.ListTools, Required = false, Default = false,
             HelpText = "Build the host and print the sorted list of registered tool names (one per " +
                        "line) to stdout, then exit 0. No crew is loaded, so the crew path is not " +
                        "required.")]

@@ -1,3 +1,4 @@
+using Orkeon.Constants.Cli;
 using Orkeon.Studio.Core.Targets;
 
 namespace Orkeon.Studio.Core.Launch;
@@ -97,20 +98,20 @@ public static class RunOptionAvailability
     public static string ToCommandLineName(RunOption option) =>
         option switch
         {
-            RunOption.Settings => "--settings",
+            RunOption.Settings => RunOptionNames.Flag(RunOptionNames.Settings),
             RunOption.Variables => "-V",
-            RunOption.InitialContext => "--initial-context",
-            RunOption.Inputs => "--inputs",
-            RunOption.InputsFile => "--inputs-file",
-            RunOption.Mounts => "--mount",
-            RunOption.AllowExternalMounts => "--allow-external-mounts",
-            RunOption.Verbose => "--verbose",
-            RunOption.LlmLog => "--llm-log",
-            RunOption.LlmLogPath => "--llm-log-path",
-            RunOption.Validate => "--validate",
-            RunOption.Events => "--events",
-            RunOption.Stream => "--stream",
-            RunOption.Client => "--client",
+            RunOption.InitialContext => RunOptionNames.Flag(RunOptionNames.InitialContext),
+            RunOption.Inputs => RunOptionNames.Flag(RunOptionNames.Inputs),
+            RunOption.InputsFile => RunOptionNames.Flag(RunOptionNames.InputsFile),
+            RunOption.Mounts => RunOptionNames.Flag(RunOptionNames.Mount),
+            RunOption.AllowExternalMounts => RunOptionNames.Flag(RunOptionNames.AllowExternalMounts),
+            RunOption.Verbose => RunOptionNames.Flag(RunOptionNames.Verbose),
+            RunOption.LlmLog => RunOptionNames.Flag(RunOptionNames.LlmLog),
+            RunOption.LlmLogPath => RunOptionNames.Flag(RunOptionNames.LlmLogPath),
+            RunOption.Validate => RunOptionNames.Flag(RunOptionNames.Validate),
+            RunOption.Events => RunOptionNames.Flag(RunOptionNames.Events),
+            RunOption.Stream => RunOptionNames.Flag(RunOptionNames.Stream),
+            RunOption.Client => RunOptionNames.Flag(RunOptionNames.Client),
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, "Unknown run option."),
         };
 }

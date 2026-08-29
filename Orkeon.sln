@@ -225,6 +225,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Constants.Configurat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Constants.Protocol", "src\constants\Orkeon.Constants.Protocol\Orkeon.Constants.Protocol.csproj", "{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Constants.Cli", "src\constants\Orkeon.Constants.Cli\Orkeon.Constants.Cli.csproj", "{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1159,6 +1161,18 @@ Global
 		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|x64.Build.0 = Release|Any CPU
 		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|x86.ActiveCfg = Release|Any CPU
 		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|x86.Build.0 = Release|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Debug|x64.Build.0 = Debug|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Debug|x86.Build.0 = Debug|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Release|x64.ActiveCfg = Release|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Release|x64.Build.0 = Release|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Release|x86.ActiveCfg = Release|Any CPU
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -1271,6 +1285,7 @@ Global
 		{98FBE965-2729-4083-9CA1-3497BB496533} = {AFBC87FA-5609-7EC0-2A8C-7033878AC25B}
 		{A0144BEF-5CD0-4754-8E90-0B17F91FBF03} = {AFBC87FA-5609-7EC0-2A8C-7033878AC25B}
 		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0} = {AFBC87FA-5609-7EC0-2A8C-7033878AC25B}
+		{03C54C45-B4F5-43BB-ADA5-77E01B2164DA} = {AFBC87FA-5609-7EC0-2A8C-7033878AC25B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {07D2740A-4DC3-407A-8060-8CD6F87F73FC}

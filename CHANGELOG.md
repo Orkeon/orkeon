@@ -15,10 +15,17 @@ tree-sitter grammars, the local embedding model — into every published app, fo
 each"*. So Studio copied the values it needed by hand, and `ConstantDriftTests` existed to stop
 the copies diverging.
 
-Three new packages hold them instead, each with **no runtime dependency**, which is what lets
-both sides reference one declaration: `Orkeon.Constants.Llm` (provider endpoints, default
-models), `Orkeon.Constants.FileSystem` (the virtual roots a runner mounts for itself),
-`Orkeon.Constants.Configuration` (shared operator wording).
+Five new packages hold them instead, each with **no runtime dependency**, which is what lets
+both sides reference one declaration: `Orkeon.Constants.Llm` (provider endpoints, default models,
+provider keys), `Orkeon.Constants.FileSystem` (the virtual roots a runner mounts for itself, and
+the conventional file names one component writes and another looks for),
+`Orkeon.Constants.Configuration` (`Orkeon:*` keys and shared operator wording),
+`Orkeon.Constants.Protocol` (the run event kinds a runner emits and Studio reads) and
+`Orkeon.Constants.Cli` (the run option names the runners accept and Studio predicts).
+
+Two of those closed drift that had already happened rather than drift that might: Studio's copy of
+the run event vocabulary was missing four kinds the runner emits, and an unknown kind is ignored
+rather than reported — so tool activity and delegations simply never reached the screen.
 
 `Orkeon.Domain` gains its first runtime project reference, to `Orkeon.Constants.Llm` — its
 default model name is the same string as OpenAI's provider default. A project that depends on
@@ -35,6 +42,24 @@ against the committed `appsettings.json` template, and check the declared minimu
 
 Publication order matters now: `.github/workflows/publish.yml` pushes the satellites before
 `Orkeon.Domain`, or Domain would ship with a dependency that cannot be restored.
+
+### Changed — build toolchain
+
+- **Roslyn pinned to 5.9.0 repo-wide.** The analyzer and the source generator reference
+  `Microsoft.CodeAnalysis` 5.9.0, and a Roslyn component that references a newer compiler than the
+  one running it is *silently refused* — a warning (CS9057), not an error, after which analysis and
+  generation simply do not happen. `Microsoft.Net.Compilers.Toolset` now replaces the SDK's `csc`
+  so both are actually loaded. It is `PrivateAssets="all"`, so it never flows into a package;
+  a consumer on an older SDK still gets the CS9057 behaviour, which is why the components declare
+  the floor they need rather than the newest compiler available.
+- **xunit v3 → v4.** Test projects move to Microsoft.Testing.Platform. `dotnet test` in its VSTest
+  mode no longer drives them.
+- **Jint interop pinned to `ArrayConversionMode.Copy`.** Jint 4.14 changed the default for CLR
+  arrays to `LiveView`, under which `Array.isArray` on a returned array is **false**. The scripting
+  DSL's typings promise `readonly number[][]` from `llm.embed()`, so a script branching on
+  `Array.isArray` silently took the wrong path. The pin restores the behaviour the typings
+  describe. Note the scope honestly: this governs CLR *arrays*, so a binding returning
+  `IReadOnlyList<T>` is host-wrapped under either mode and `Array.isArray` stays false for it.
 
 ### Fixed — a team associates a folder, it does not declare one
 

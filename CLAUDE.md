@@ -437,7 +437,7 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **38 src projects** and **34 test projects**, plus two solutions:
+The repository contains **39 src projects** and **34 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
@@ -461,7 +461,8 @@ The repository contains **38 src projects** and **34 test projects**, plus two s
 │   │   ├── Orkeon.Constants.Llm/           # endpoints, default models, provider ids, wire fields
 │   │   ├── Orkeon.Constants.FileSystem/    # virtual mount roots, conventional folder/file names
 │   │   ├── Orkeon.Constants.Configuration/ # Orkeon:* keys, settings locations, shared messages
-│   │   └── Orkeon.Constants.Protocol/    # Run event kinds: the wire vocabulary CLI <-> Studio
+│   │   ├── Orkeon.Constants.Protocol/    # Run event kinds: the wire vocabulary CLI <-> Studio
+│   │   └── Orkeon.Constants.Cli/         # Run option names the runners accept and Studio predicts
 │   ├── analyzers/
 │   │   └── Orkeon.Compliance.Vfs/      # Roslyn analyzer forbidding direct System.IO in framework code (routes via IFileSystemService)
 │   ├── tools/

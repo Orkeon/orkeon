@@ -52,14 +52,25 @@ The editor accepted `/sandbox` as a user mount while every runner refused it.
 **A value that two projects must agree on is declared once, in a satellite project that depends
 on nothing, and both sides reference it.**
 
-Four satellites under `src/constants/`, one per family of vocabulary:
+Satellites under `src/constants/`, one per family of vocabulary:
 
 ```
-Orkeon.Constants.Llm             endpoints, default models, provider ids, wire field names
+Orkeon.Constants.Llm             endpoints, default models, provider ids
 Orkeon.Constants.FileSystem      virtual roots, conventional folder and file names
 Orkeon.Constants.Configuration   Orkeon:* keys, settings paths, shared messages
-Orkeon.Constants.Cli             verbs and option names
+Orkeon.Constants.Cli             run option names
+Orkeon.Constants.Protocol        run event kinds
 ```
+
+**As built, two corrections to the list above.** `Orkeon.Constants.Protocol` was not foreseen: the
+run event stream turned out to be a wire protocol between two processes whose copies had already
+drifted, and calling it configuration would have invited the next person to file a setting key
+there. And `Orkeon.Constants.Llm` does **not** hold wire field names, though this ADR first said
+it would — measurement showed the candidates were homographs (`"tools"` is a crew-YAML property in
+Studio and an OpenAI request field in a provider; `"temperature"` is a sampling parameter in one
+project and a body temperature in a test fixture), and the one family genuinely shared across the
+boundary is already modelled by `LlmResponseFormat` in the Domain. Unifying unrelated strings
+because they are spelled alike is worse than the duplication it removes.
 
 Three rules bound them:
 

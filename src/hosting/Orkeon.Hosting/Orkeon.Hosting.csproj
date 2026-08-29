@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <!-- ADR-009: the WIN-01 wording Studio has to reproduce verbatim. -->
+    <!-- ADR-009: the run option grammar, shared with the tooling that predicts it. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Cli\Orkeon.Constants.Cli.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.FileSystem\Orkeon.Constants.FileSystem.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
