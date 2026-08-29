@@ -10,8 +10,12 @@ scripts qui lancent les campagnes, et le rapport archivé de chacune.
 > qu'on croit ; il ne prouve pas que le fournisseur l'accepte. C'est la seconde preuve qui
 > se construit ici.
 >
-> Référence du protocole : [`backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md`](../backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md)
-> (§5 modes, §7 journal) · chantier : [`backstage/tasks/LLM-08-campagnes-test-reel.md`](../backstage/tasks/LLM-08-campagnes-test-reel.md)
+> **Référence du protocole.** Les modes M1–M14 et le journal des campagnes sont définis par
+> `LLM-PROVIDERS-TEST-MATRIX.md` (§5 et §7) et la fiche de chantier `LLM-08`, deux documents
+> du suivi interne des mainteneurs qui ne sont **pas publiés** — d'où l'absence de lien.
+> Ce fichier est autosuffisant : les modes sont rappelés plus bas, et chaque rapport se
+> termine par les fragments prêts à coller dans la matrice. Elle ne sert qu'à consolider,
+> côté mainteneurs, ce que les rapports de ce dossier établissent déjà.
 
 ## Prérequis
 
@@ -54,7 +58,7 @@ Sous Windows, `run-campaign.ps1` expose exactement les mêmes options.
 
 | Option | Rôle |
 |---|---|
-| `--provider <clés>` | Une clé, ou plusieurs séparées par des virgules — `openai`, `anthropic`, `ollama`, `azure`, `groq`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai` |
+| `--provider <clés>` | Une clé, ou plusieurs séparées par des virgules — `openai`, `anthropic`, `ollama`, `azure`, `groq`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini` |
 | `--all` | Tous les providers déclarés dans le JSON |
 | `--parallel` | Lance les providers sélectionnés simultanément (voir plus bas) |
 | `--model <id\|glob>` | Un identifiant, ou un motif (`gpt-5.6-*`, `*flash*`) |
@@ -135,10 +139,11 @@ fournisseur, déclarée dans `lib/catalog.json` :
 | `groq` | `GROQ_API_KEY` | `mistral` | `MISTRAL_API_KEY` |
 | `together` · `togetherai` | `TOGETHER_API_KEY` | `huggingface` · `hf` | `HF_TOKEN` |
 | `ollama` | *aucune* | `zai` · `glm` · `zhipu` | `ZAI_API_KEY` |
+| `gemini` · `google` | `GEMINI_API_KEY` | | |
 
 `--api-key-env` l'emporte, puis le champ `apiKeyEnv` de la configuration, puis cette
 table, et enfin `ORKEON_LLM_API_KEY`. Le défaut était auparavant `ORKEON_LLM_API_KEY`
-pour les douze : toute campagne lancée sans `--config` cherchait une variable que
+pour les treize : toute campagne lancée sans `--config` cherchait une variable que
 personne n'exporte.
 
 ## Le modèle choisi pour vous
@@ -161,10 +166,17 @@ campagne > le `defaultModel` du catalogue.
 | `mistral` | `mistral-large-latest` | |
 | `huggingface` | `openai/gpt-oss-120b` | |
 | `zai` | `glm-5.2` | `glm-4.6v-flash` |
+| `gemini` | `gemini-3.7-flash` | *(le défaut voit)* |
 
 Ces identifiants viennent des sections §6.x de la matrice, **pas des défauts compilés dans
 les providers** : six d'entre eux y sont signalés retirés ou faux (G-01 à G-04, G-07, G-08).
 En hériter aurait envoyé une campagne sur deux vers un modèle que l'API ne sert plus.
+
+**Gemini est la seule exception, et pour une raison qui ne se reproduira pas** : il est
+arrivé après l'audit du 2026-07-27, aucune §6.x ne le couvrait, et sa fiche §6.13 a donc été
+ouverte à partir de son défaut compilé — `gemini-3.7-flash`, vérifié le 2026-08-18 contre la
+documentation de compatibilité OpenAI de Google. C'est un défaut daté, pas un défaut hérité
+d'une génération périmée ; la campagne reste ce qui le confirme.
 
 **Azure n'en déclare aucun, volontairement.** Les déploiements sont propres à un compte, il
 n'existe pas de catalogue portable, et en inventer un enverrait chaque campagne vers un

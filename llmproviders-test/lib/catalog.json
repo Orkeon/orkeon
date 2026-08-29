@@ -161,6 +161,20 @@
       ]
     },
     "glm": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
-    "zhipu": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" }
+    "zhipu": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
+    "gemini": {
+      "label": "Google Gemini",
+      "matrix": "§6.13",
+      "apiKeyEnv": "GEMINI_API_KEY",
+      "defaultModel": "gemini-3.7-flash",
+      "notes": [
+        "Arrivé **après** l'audit du 2026-07-27 : il ne porte aucun gap G-xx hérité, et sa fiche §6.13 a été ouverte sans campagne. Celle-ci est sa première preuve d'exécution réelle.",
+        "Endpoint de **compatibilité OpenAI** (`generativelanguage.googleapis.com/v1beta/openai`) — ni l'API Gemini native, ni Vertex AI. L'hôte porté par l'en-tête du rapport est ce qui le confirme.",
+        "**M8 est légitimement ➖** : `response_format` n'est pas documenté sur la surface de compatibilité, le provider déclare donc `ResponseFormat = None`. Ce que M8 observe ici, c'est l'avertissement de capacité — jamais un abandon silencieux.",
+        "M7 est **effort seul** (`reasoning_effort` traduit en `thinking_level`) : ni bascule, ni budget de tokens, contrairement à Qwen.",
+        "Le modèle par défaut voit : M9 s'exerce sur lui, sans campagne vision compagnon."
+      ]
+    },
+    "google": { "label": "Google Gemini", "matrix": "§6.13", "aliasOf": "gemini" }
   }
 }

@@ -84,6 +84,12 @@
     "zai": {
       "apiKeyEnv": "ZAI_API_KEY",
       "models": ["glm-5.2"]
+    },
+
+    "gemini": {
+      "_comment": "Endpoint de compatibilite OpenAI de Google, pas Vertex AI. M8 y est legitimement non applicable.",
+      "apiKeyEnv": "GEMINI_API_KEY",
+      "models": ["gemini-3.7-flash"]
     }
   }
 }

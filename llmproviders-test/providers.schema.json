@@ -31,7 +31,8 @@
         "enum": [
           "openai", "anthropic", "ollama", "azure", "azure-openai", "groq",
           "together", "togetherai", "qwen", "deepseek", "kimi", "moonshot",
-          "mistral", "huggingface", "hf", "zai", "glm", "zhipu"
+          "mistral", "huggingface", "hf", "zai", "glm", "zhipu",
+          "gemini", "google"
         ]
       },
       "additionalProperties": { "$ref": "#/$defs/provider" }
