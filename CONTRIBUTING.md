@@ -92,7 +92,9 @@ src/
 ├── analysis/    # RaggableTree engine: Analysis.Abstractions, Analysis
 ├── scripting/   # Orkeon.Scripting (.ork.ts DSL) + Orkeon.Scripting.Cli (the `orkeon` tool)
 ├── cli/         # Cli.Abstractions, Cli, Cli.Commands.Scripting, Cli.TerminalGui
-├── hosting/     # Orkeon.Hosting (RunnerHost)
+├── constants/   # Zero-dependency satellites of SHARED constants (ADR-009):
+│                #   Constants.Llm, Constants.FileSystem, Constants.Configuration
+├── hosting/     # Orkeon.Hosting (RunnerHost) + Orkeon.Host (the `orkeon-host` daemon)
 ├── plugins/     # Orkeon.Plugins (runtime plugin loading)
 ├── generators/  # Orkeon.Generators (source generators)
 ├── analyzers/   # Orkeon.Compliance.Vfs (VFS-only Roslyn analyzer)

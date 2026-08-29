@@ -337,7 +337,7 @@ internal static class ForgePromoter
     /// hand them to any agent with a file tool.
     /// </para>
     /// </summary>
-    private const string ReadVirtualRoot = "/workspace";
+    private const string ReadVirtualRoot = RunnerVirtualRoots.Workspace;
 
     /// <summary>Folder inside the promoted team backing <see cref="ReadVirtualRoot"/>.</summary>
     private const string ReadFolderName = "input";
@@ -345,9 +345,13 @@ internal static class ForgePromoter
     /// <summary>Tools whose presence means the team expects something to read.</summary>
     private static readonly string[] ReadingTools = ["file_read", "directory_read"];
 
-    /// <summary>The virtual roots the runners mount for themselves — never a deliverable's.</summary>
-    private static readonly string[] ReservedVirtualRoots =
-        [RunnerVirtualRoots.Crew, RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs];
+    /// <summary>
+    /// The virtual roots the runners mount for themselves - never a deliverable's. The satellite
+    /// set, not a third hand-written copy of it: this one predated <c>All</c> and never gained
+    /// <c>/sandbox</c>, so a promoted team could declare a deliverable at a root every runner
+    /// refuses.
+    /// </summary>
+    private static readonly IReadOnlyList<string> ReservedVirtualRoots = RunnerVirtualRoots.All;
 
     /// <summary>
     /// The virtual roots the blueprint's deliverables are written to — the same derivation

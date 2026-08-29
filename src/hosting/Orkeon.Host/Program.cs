@@ -115,8 +115,11 @@ foreach (var mount in mounts)
 // /sandbox is in this list because AddOrkeonFileSystem mounts it unconditionally, in every
 // host — so the guard has to run even when the daemon hosts no crew of its own, which is why
 // the Roots.Count check is gone.
+// settingsPath, not just --mount: the daemon is the most settings-driven entry point in the
+// repo and was the one the guard could not see, so a /crews claimed in appsettings.json met the
+// host's own crew mount and came back as "Duplicate virtual paths" out of a DI factory.
 if (!RunnerExecution.EnsureReservedRootsAreFree(
-        mounts, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]))
+        mounts, settingsPath, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]))
 {
     return HostConfigurationException.ExitCode;
 }

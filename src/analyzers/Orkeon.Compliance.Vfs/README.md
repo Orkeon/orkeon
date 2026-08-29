@@ -2,7 +2,7 @@
 
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
 
-**Orkeon.Compliance.Vfs** is a Roslyn analyzer that forbids direct `System.IO` usage in framework code, routing all I/O through Orkeon's mount-aware, rights-audited virtual file system (`IFileSystemService`). 5 diagnostics, path-based exemptions, per-symbol opt-out attribute.
+**Orkeon.Compliance.Vfs** is a Roslyn analyzer that forbids direct `System.IO` usage in framework code, routing all I/O through Orkeon's mount-aware, rights-audited virtual file system (`IFileSystemService`). 7 diagnostics (ORKVFS001-ORKVFS007), path-based exemptions, per-symbol opt-out attribute.
 
 ## Install
 

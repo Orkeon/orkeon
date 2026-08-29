@@ -20,7 +20,8 @@ never drift again (OSS-011 / R8.3).
 
 | PackageId | Why |
 |---|---|
-| `Orkeon.Domain` | Core entities and interfaces — the dependency root. |
+| `Orkeon.Domain` | Core entities and interfaces. Since ADR-009 it carries one runtime reference, to `Orkeon.Constants.Llm`, so that satellite must be pushed first — `publish.yml` orders them explicitly. |
+| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration` | Satellites of SHARED constants (ADR-009): the vocabulary two projects must agree on, declared once, with zero runtime dependency. Published in v1 **and necessarily so** — `Orkeon.Domain` depends on `Orkeon.Constants.Llm`, so deferring them would publish a core package whose dependency cannot be restored. |
 | `Orkeon.Application` | Use cases, ports, orchestration. |
 | `Orkeon.Infrastructure` | Adapters (LLMs, memory, strategies). Documented as installable in the README; this is why `release.yml` was fixed to pack it. |
 
@@ -37,7 +38,6 @@ workflow yet.
 | `Orkeon.Tools.Abstractions`, `Orkeon.Tools.Analysis`, `Orkeon.Tools.Code`, `Orkeon.Tools.Data`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Tools.EventHub`, `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Rag`, `Orkeon.Tools.Web` | Tools family — publish as a set once core is stable. |
 | `Orkeon.Rag.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | RAG subsystem (RAG-02…06, ADR-006). `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` are the opt-in cross-encoder pair (runtime + embedded int8 weights) — publish the two together. |
 | `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions` | RaggableTree. |
-| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration` | Satellites of SHARED constants (ADR-009): the vocabulary two projects must agree on, declared once. Zero runtime dependency, so they publish alone and can be referenced from any layer. |
 | `Orkeon.Cli`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui` | CLI libraries. |
 | `Orkeon.Cli.Commands.Scripting` | Renamed from `Orkeon.Cli.Scripting` (D3 resolved — ADR-007, 2026-08-17) before any publish. |
 | `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` is the `orkeon` dotnet tool (`PackAsTool`); name kept by ADR-007 (the PackageId is the install command). |

@@ -156,14 +156,17 @@ public sealed class ScopedFileSystemMountsTests : IDisposable
     }
 
     /// <summary>
-    /// A per-execution registry is a REPLACEMENT, not a delta: <c>ActiveRegistry</c> is
-    /// <c>_scope?.Current ?? _bootRegistry</c>. So a registry built from one crew's own mounts
-    /// alone takes the boot Internal mounts down with it for the length of that crew's run —
-    /// the LLM exchange log and the sandbox both resolve through the SAME ambient scope, and
-    /// <c>IsUnderInternalMountUnsafe</c>, the check that stops <c>/llm-logs</c> gaining a second
-    /// address through a parent agent-facing mount, is computed against whatever registry is
-    /// active. Losing them is a correctness failure that degrades silently, and a
-    /// confidentiality one: exchange logs would regain an agent-reachable address.
+    /// Entering a scope REPLACES the mount set: <c>FileSystemService.ActiveRegistry</c> is
+    /// <c>_scope?.Current ?? _bootRegistry</c>, never a union. So a registry built from one
+    /// crew's own mounts alone takes the WHOLE boot set down with it for the length of that
+    /// crew's run.
+    /// <para>
+    /// The Internal half is a confidentiality failure that degrades silently: the LLM exchange
+    /// log and the sandbox resolve through the SAME ambient scope, and
+    /// <c>IsUnderInternalMountUnsafe</c> - the check that stops <c>/llm-logs</c> gaining a
+    /// second address through a parent agent-facing mount - is computed against whatever
+    /// registry is active.
+    /// </para>
     /// </summary>
     [Fact]
     public void ComposingForAnExecution_ShouldCarryTheBootInternalMountsForward()
@@ -185,12 +188,66 @@ public sealed class ScopedFileSystemMountsTests : IDisposable
         var all = composed.GetAllMountsInternal().Select(m => m.VirtualPath).ToList();
         var agentFacing = composed.GetAvailableMounts().Select(m => m.VirtualPath).ToList();
 
-        // The crew's own namespace, and nothing of the boot's agent-facing surface.
         Assert.Contains("/output", agentFacing, StringComparer.Ordinal);
-        Assert.DoesNotContain("/work", agentFacing, StringComparer.Ordinal);
-
-        // …but the infrastructure the run still needs, carried forward and still invisible.
         Assert.Contains("/llm-logs", all, StringComparer.Ordinal);
         Assert.DoesNotContain("/llm-logs", agentFacing, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The boot AGENT-FACING mounts are carried forward too, and this is not symmetry for its
+    /// own sake: <c>orkeon-host</c> mounts each hosted crew's directory under <c>/crews</c>
+    /// (agent-facing, from <c>Orkeon:FileSystem:Mounts</c>) and then loads the crew BY that
+    /// virtual path, from INSIDE the scope it just entered.
+    /// <para>
+    /// Composing only the crew's own mounts plus the Internal ones therefore made
+    /// <c>Orkeon:Host:Crews:*:Mounts</c> - the feature's own configuration key - unable to load
+    /// the crew it was set on. The load failed through <c>ExistsAsync</c>, which swallows the
+    /// denial, so the operator saw the generic run-failed barrier and nothing else.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void ComposingForAnExecution_ShouldKeepTheRootTheRunnerLoadsTheCrewFrom()
+    {
+        var crewsDir = Path.Combine(_root, "crews");
+        var outDir = Path.Combine(_root, "out-a");
+        Directory.CreateDirectory(crewsDir);
+        Directory.CreateDirectory(outDir);
+
+        using var boot = new FileSystemRegistry(
+            [new FileSystemMount(crewsDir, "/crews", FileAccessRights.Read)]);
+
+        using var composed = ScopedMountComposition.ForExecution(
+            boot, [new FileSystemMount(outDir, "/output", FileAccessRights.ReadWrite)]);
+
+        var agentFacing = composed.GetAvailableMounts().Select(m => m.VirtualPath).ToList();
+
+        Assert.Contains("/crews", agentFacing, StringComparer.Ordinal);
+        Assert.Contains("/output", agentFacing, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// An execution mount SHADOWS a boot mount claiming the same virtual path, rather than
+    /// colliding with it. This is the whole reason the mechanism exists: two hosted crews may
+    /// each be granted <c>/output</c> over two different physical folders, which one flat boot
+    /// registry - where a virtual path is globally unique - cannot express. Adding rather than
+    /// substituting would throw "Duplicate virtual paths" out of the composition instead.
+    /// </summary>
+    [Fact]
+    public void AnExecutionMount_ShouldShadowTheBootMountClaimingTheSamePath()
+    {
+        var bootOut = Path.Combine(_root, "boot-out");
+        var crewOut = Path.Combine(_root, "crew-out");
+        Directory.CreateDirectory(bootOut);
+        Directory.CreateDirectory(crewOut);
+
+        using var boot = new FileSystemRegistry(
+            [new FileSystemMount(bootOut, "/output", FileAccessRights.Read)]);
+
+        using var composed = ScopedMountComposition.ForExecution(
+            boot, [new FileSystemMount(crewOut, "/output", FileAccessRights.ReadWrite)]);
+
+        var output = Assert.Single(composed.GetMounts(), m => string.Equals(m.VirtualPath, "/output", StringComparison.Ordinal));
+        Assert.Equal(crewOut, output.BasePath);
+        Assert.Equal(FileAccessRights.ReadWrite, output.DefaultRights);
     }
 }

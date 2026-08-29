@@ -2,7 +2,7 @@
 
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
 
-**Orkeon.Domain** is the dependency root of the framework: entities and aggregates (Agent, Crew, CrewTask), value objects (`ProcessType` with its 6 orchestration modes, `LlmParameters`, `AgentExecutionBudget`), domain events, and the core interfaces (tools, LLM providers, memory, FSM/graph orchestration). Pure business logic, no external dependencies.
+**Orkeon.Domain** is the dependency root of the framework: entities and aggregates (Agent, Crew, CrewTask), value objects (`ProcessType` with its 6 orchestration modes, `LlmParameters`, `AgentExecutionBudget`), domain events, and the core interfaces (tools, LLM providers, memory, FSM/graph orchestration). Pure business logic, with a single reference: `Orkeon.Constants.Llm`, a satellite of shared constants that itself depends on nothing (ADR-009).
 
 ## Install
 

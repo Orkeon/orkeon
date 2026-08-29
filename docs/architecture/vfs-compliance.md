@@ -137,13 +137,21 @@ using var _ = fileSystemScope.Enter(registry);          // restored on dispose (
 
 **Compose, never hand-build.** Entering a scope REPLACES the mount set — `ActiveRegistry` is
 `scope?.Current ?? boot`, never a union — so a registry built from one execution's own folders
-alone takes the boot **Internal** mounts down with it for the length of that flow. `/llm-logs` and
-`/sandbox` stop resolving, which breaks exchange logging and both code sandboxes; worse, so does
-`IsUnderInternalMountUnsafe`, the check that stops either of them gaining a second, agent-reachable
-address through one of the execution's own mounts. That makes carrying them forward a
-confidentiality requirement rather than a convenience, which is why
-`ScopedMountComposition.ForExecution` exists and why the snippet above calls it instead of
-`new FileSystemRegistry(...)`.
+alone takes the **whole** boot set down with it for the length of that flow. `ForExecution`
+therefore carries the boot mounts forward and lets the execution's own **shadow** them at the
+virtual paths they claim; substitution rather than addition is the point of the mechanism, since
+two crews each granted `/output` over different folders is exactly what one flat registry cannot
+express.
+
+Both halves of the boot set have to survive, for different reasons. The **Internal** ones —
+`/llm-logs`, `/sandbox` — are a confidentiality matter: dropping them stops exchange logging and
+both code sandboxes resolving, and it drops `IsUnderInternalMountUnsafe`, the check that stops
+either of them gaining a second, agent-reachable address through one of the execution's own
+mounts. The **agent-facing** ones are just as load-bearing: `orkeon-host` mounts each hosted
+crew's directory under `/crews` and then loads the crew *by that virtual path, from inside the
+scope*. Composing only the execution's own mounts made `Orkeon:Host:Crews:*:Mounts` — the
+feature's own configuration key — unable to load the crew it was set on, and the failure came back
+as a generic run-failed message because `ExistsAsync` swallows the denial.
 
 **Who enters one today.** `orkeon-host` is the one shipped composition root that does, once per
 hosted crew, from `Orkeon:Host:Crews:*:Mounts` — so two hosted crews may each address their own
@@ -154,7 +162,9 @@ The guards apply to scoped mounts exactly as to boot mounts, because they run pe
 whichever registry is active: the registry enforces mount rights + path-traversal containment, and
 `IPathValidator` independently enforces the workspace-root / blocked-path / extension checks
 (`PathSecurity:DefaultWorkspaceRoot`, `AdditionalAllowedDirectories`). A scoped mount whose physical
-base sits outside the allowed workspace root is denied just like a boot mount would be. The caller owns
+base sits outside the allowed workspace root is denied just like a boot mount would be — granting
+a folder in `Orkeon:Host:Crews:*:Mounts` is therefore not sufficient on its own, and
+`PathSecurity:AdditionalAllowedDirectories` is where an operator widens the second gate. The caller owns
 the scoped `FileSystemRegistry`'s lifetime (`Enter` does not dispose it — dispose it yourself, as above).
 
 ## CI behaviour

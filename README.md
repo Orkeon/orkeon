@@ -191,7 +191,7 @@ Orkeon follows Clean Architecture with three concentric layers:
 |  |  +----------------------------------------+   |      |
 |  |  |  Domain  (inner)                       |   |      |
 |  |  |  Agents, Crews, Tasks, Tools, LLMs     |   |      |
-|  |  |  Pure business logic, no dependencies  |   |      |
+|  |  |  Pure business logic, one satellite of constants  |   |      |
 |  |  +----------------------------------------+   |      |
 |  +------------------------------------------------+      |
 +----------------------------------------------------------+

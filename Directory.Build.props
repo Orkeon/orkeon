@@ -11,11 +11,18 @@
     <AnalysisMode>All</AnalysisMode>
     <AnalysisLevel>latest-all</AnalysisLevel>
   </PropertyGroup>
-  <ItemGroup>
-    <!-- Build-only: replaces the SDK's csc with the pinned Roslyn so the repo's own
-         analyzer and source generator, which reference Microsoft.CodeAnalysis 5.9.0,
-         can be loaded by the compiler that runs them. Repo-wide because every project
-         loads them, and a project left on the SDK compiler would silently lose both. -->
+  <!-- Build-only: replaces the SDK's csc with the pinned Roslyn so the repo's own analyzer and
+       source generator, which reference Microsoft.CodeAnalysis 5.9.0, can be loaded by the
+       compiler that runs them. Repo-wide because every project loads them, and a project left
+       on the SDK compiler would silently lose both.
+
+       Conditioned on central package management, because this file is inherited by the
+       `experiments/` submodule, whose own Directory.Packages.props turns CPM OFF on purpose.
+       A versionless PackageReference with no central version is NU1015, and it broke restore
+       there outright; giving it a version here instead would be NU1008 in this repo, where CPM
+       is on. The condition is the only form that is correct on both sides. Experiments carry no
+       Orkeon analyzer, so the SDK compiler is the right one for them. -->
+  <ItemGroup Condition="'$(ManagePackageVersionsCentrally)' == 'true'">
     <PackageReference Include="Microsoft.Net.Compilers.Toolset" PrivateAssets="all" />
   </ItemGroup>
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">

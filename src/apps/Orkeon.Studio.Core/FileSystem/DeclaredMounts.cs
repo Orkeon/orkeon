@@ -38,8 +38,11 @@ public static class DeclaredMounts
 
         foreach (var entry in declaredMounts)
         {
+            // Platform comparison, not a blanket OrdinalIgnoreCase: on Linux /home/u/docs and
+            // /home/u/Docs are two different directories, and vouching for one because the
+            // other is declared grants an undeclared folder.
             if (MountDefinition.TryParse(entry, out var declared, out _) && declared is not null
-                && string.Equals(Normalize(declared.PhysicalPath), folder, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(Normalize(declared.PhysicalPath), folder, Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison))
             {
                 return true;
             }

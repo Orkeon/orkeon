@@ -138,15 +138,24 @@ using var _ = fileSystemScope.Enter(registry);          // restauré au dispose 
 // les autres runs concurrents continuent de voir les mounts de démarrage.
 ```
 
-**Composer, jamais construire à la main.** Entrer un scope **remplace** le jeu de mounts —
-`ActiveRegistry` vaut `scope?.Current ?? boot`, jamais une union — donc un registre bâti des seuls
-dossiers d'une exécution emporte avec lui les mounts **internes** du boot pour toute la durée du
-flux. `/llm-logs` et `/sandbox` cessent de résoudre, ce qui casse la journalisation des échanges et
-les deux bacs à sable de code ; pire, `IsUnderInternalMountUnsafe` tombe aussi — le contrôle qui
-les empêche de gagner une seconde adresse joignable par l'agent via l'un des mounts de l'exécution.
-Les reporter est donc une exigence de **confidentialité**, pas un confort : c'est la raison d'être
-de `ScopedMountComposition.ForExecution`, et pourquoi l'extrait ci-dessus l'appelle au lieu de
-`new FileSystemRegistry(...)`.
+**Composer, jamais construire à la main.** Entrer dans un scope REMPLACE le jeu de mounts —
+`ActiveRegistry` vaut `scope?.Current ?? boot`, jamais une union — donc un registre bâti sur les
+seuls dossiers d'une exécution emporte **tout** le jeu de boot avec lui pour la durée de ce flux.
+`ForExecution` reporte donc les mounts de boot et laisse ceux de l'exécution les **masquer** aux
+chemins virtuels qu'ils revendiquent ; la substitution plutôt que l'addition est la raison d'être
+du mécanisme, puisque deux crews recevant chacun `/output` sur des dossiers différents est
+précisément ce qu'un registre plat ne sait pas exprimer.
+
+Les deux moitiés du jeu de boot doivent survivre, pour des raisons différentes. Les mounts
+**internes** — `/llm-logs`, `/sandbox` — relèvent de la confidentialité : les perdre arrête la
+journalisation des échanges et les deux sandboxes de code, et fait tomber
+`IsUnderInternalMountUnsafe`, le contrôle qui empêche l'un d'eux de gagner une seconde adresse
+atteignable par un agent via un mount de l'exécution. Les mounts **agent-facing** portent tout
+autant : `orkeon-host` monte le dossier de chaque crew hébergé sous `/crews` puis charge le crew
+*par ce chemin virtuel, depuis l'intérieur du scope*. Ne composer que les mounts de l'exécution
+rendait `Orkeon:Host:Crews:*:Mounts` — la clé de configuration de la fonctionnalité elle-même —
+incapable de charger le crew sur lequel elle était posée, et l'échec revenait sous forme d'un
+message générique parce qu'`ExistsAsync` avale le refus.
 
 **Qui en entre un aujourd'hui.** `orkeon-host` est la seule racine de composition livrée qui le
 fasse, une fois par crew hébergé, depuis `Orkeon:Host:Crews:*:Mounts` — deux crews hébergés peuvent
@@ -159,7 +168,10 @@ s'exécutent à chaque opération sur le registre actif : le registre applique l
 confinement contre la traversée de chemin, et `IPathValidator` applique indépendamment les contrôles
 racine-workspace / chemins bloqués / extensions (`PathSecurity:DefaultWorkspaceRoot`,
 `AdditionalAllowedDirectories`). Un mount scopé dont la base physique se situe hors de la racine
-workspace autorisée est refusé exactement comme le serait un mount de démarrage. L'appelant possède
+workspace autorisée est refusé exactement comme le serait un mount de démarrage — accorder un
+dossier dans `Orkeon:Host:Crews:*:Mounts` ne suffit donc pas à soi seul, et
+`PathSecurity:AdditionalAllowedDirectories` est l'endroit où un opérateur élargit ce second
+portail. L'appelant possède
 la durée de vie du `FileSystemRegistry` scopé (`Enter` ne le dispose pas — le disposer soi-même,
 comme ci-dessus).
 

@@ -21,7 +21,8 @@ ne divergent plus jamais (OSS-011 / R8.3).
 
 | PackageId | Pourquoi |
 |---|---|
-| `Orkeon.Domain` | Entités et interfaces cœur — la racine des dépendances. |
+| `Orkeon.Domain` | Entités et interfaces cœur. Depuis ADR-009 il porte une référence runtime, vers `Orkeon.Constants.Llm`, qui doit donc être poussé avant lui — `publish.yml` ordonne les pushes explicitement. |
+| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration` | Satellites de constantes PARTAGÉES (ADR-009) : le vocabulaire sur lequel deux projets doivent s'accorder, déclaré une seule fois, sans aucune dépendance runtime. Publiés en v1 **et nécessairement** — `Orkeon.Domain` dépend d'`Orkeon.Constants.Llm`, donc les différer publierait un paquet cœur dont la dépendance ne se restaure pas. |
 | `Orkeon.Application` | Cas d'usage, ports, orchestration. |
 | `Orkeon.Infrastructure` | Adaptateurs (LLM, mémoire, stratégies). Documenté comme installable dans le README ; c'est pourquoi `release.yml` a été corrigé pour le packager. |
 
@@ -38,7 +39,6 @@ NuGet.org par un workflow pour l'instant.
 | `Orkeon.Tools.Abstractions`, `Orkeon.Tools.Analysis`, `Orkeon.Tools.Code`, `Orkeon.Tools.Data`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Tools.EventHub`, `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Rag`, `Orkeon.Tools.Web` | Famille d'outils — publier en lot une fois le cœur stabilisé. |
 | `Orkeon.Rag.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Sous-système RAG (RAG-02…06, ADR-006). `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` forment la paire cross-encoder opt-in (runtime + poids int8 embarqués) — publier les deux ensemble. |
 | `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions` | RaggableTree. |
-| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration` | Satellites de constantes PARTAGEES (ADR-009) : le vocabulaire sur lequel deux projets doivent s'accorder, declare une seule fois. Aucune dependance d'execution, donc ils se publient seuls et sont referencables depuis n'importe quelle couche. |
 | `Orkeon.Cli`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui` | Bibliothèques CLI. |
 | `Orkeon.Cli.Commands.Scripting` | Renommé depuis `Orkeon.Cli.Scripting` (D3 tranchée — ADR-007, 2026-08-17) avant toute publication. |
 | `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` est le tool dotnet `orkeon` (`PackAsTool`) ; nom conservé par l'ADR-007 (le PackageId est la commande d'installation). |

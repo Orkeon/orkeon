@@ -267,26 +267,27 @@ public sealed class FileSystemRegistry : IDisposable
     }
 
     /// <summary>
-    /// The Internal mounts themselves — base paths included — so a host composing a
-    /// per-execution registry can carry them forward.
+    /// The mounts themselves - base paths included - so a host composing a per-execution
+    /// registry can carry the boot set forward.
     /// <para>
     /// <see cref="GetAllMountsInternal"/> answers a different question: it describes mounts for
-    /// diagnostics and deliberately drops the base path. Entering a scope REPLACES the mount
-    /// set, so an execution built from its own mounts alone loses the exchange log and the
-    /// sandbox — and, worse, loses the overlap check that stops them gaining a second address
-    /// through one of its own mounts. This is the accessor that lets a caller not do that.
+    /// diagnostics and deliberately drops the base path, which makes it useless for rebuilding
+    /// a registry. This is the accessor that is not.
+    /// </para>
+    /// <para>
+    /// Entering a scope REPLACES the mount set, so an execution built from its own mounts alone
+    /// loses every boot mount: the exchange log and the sandbox, the overlap check that stops
+    /// them gaining a second agent-reachable address, and the agent-facing roots the runner
+    /// needs to load the execution's own definition through the VFS.
     /// </para>
     /// </summary>
-    /// <returns>The Internal mounts, in registration order.</returns>
-    public IReadOnlyList<FileSystemMount> GetInternalMounts()
+    /// <returns>Every mount, in registration order.</returns>
+    public IReadOnlyList<FileSystemMount> GetMounts()
     {
         _lock.EnterReadLock();
         try
         {
-            return _mounts
-                .Where(m => m.Visibility == MountVisibility.Internal)
-                .ToList()
-                .AsReadOnly();
+            return _mounts.ToList().AsReadOnly();
         }
         finally { _lock.ExitReadLock(); }
     }

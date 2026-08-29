@@ -204,6 +204,8 @@ internal static class RagCommand
         {
             var cwd = ResolveCwd(options);
             using var host = BuildHost(options, cwd);
+            if (host is null)
+                return Program.ExitScriptError;
 
             var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
             var mounts = fileSystem.GetAvailableMounts();
@@ -254,6 +256,8 @@ internal static class RagCommand
 
             var cwd = ResolveCwd(options);
             using var host = BuildHost(options, cwd);
+            if (host is null)
+                return Program.ExitScriptError;
 
             var pipeline = host.Services.GetRequiredService<IRagPipeline>();
             var answer = await pipeline.QueryAsync(new RagQuery
@@ -318,6 +322,8 @@ internal static class RagCommand
 
             var cwd = ResolveCwd(options);
             using var host = BuildHost(options, cwd);
+            if (host is null)
+                return Program.ExitScriptError;
 
             var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
             var datasetPath = ToVirtualSource(options.Dataset, cwd, fileSystem.GetAvailableMounts());
@@ -438,12 +444,13 @@ internal static class RagCommand
         => Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
 
     /// <summary>
-    /// Builds the shared runner host with the RAG subsystem on top: default mounts
+    /// Builds the shared runner host with the RAG subsystem on top, or <see langword="null"/>
+    /// when the mount configuration was refused (the guard has already said why): default mounts
     /// (<c>{cwd} → /workspace:ro</c> for corpus reads, <c>{cwd}/.orkeon → /output:rw</c>
     /// for ingestion manifests) are injected unless the caller already claimed those
     /// virtual roots via <c>--mount</c>.
     /// </summary>
-    private static IHost BuildHost(RagCommandOptionsBase options, string cwd)
+    private static IHost? BuildHost(RagCommandOptionsBase options, string cwd)
     {
         var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd);
         if (settingsPath != null)
@@ -457,6 +464,14 @@ internal static class RagCommand
         // the root is this command's existing policy for --mount; it just never saw the other
         // half of the list it was reasoning about.
         var claimed = cliMounts.Concat(RunnerSettings.ReadDeclaredMounts(settingsPath)).ToList();
+
+        // /workspace and /output are YIELDED, not reserved: this command injects them only when
+        // nobody claimed them. /sandbox is different - AddOrkeonFileSystem mounts it
+        // unconditionally, so claiming it is always a collision, and rag was the one verb that
+        // never asked the guard about anything. `--mount x:/sandbox:rw` reached the registry and
+        // came back as the raw duplicate-path exception this guard exists to replace.
+        if (!RunnerExecution.EnsureReservedRootsAreFree(cliMounts, settingsPath, RunnerVirtualRoots.Sandbox))
+            return null;
 
         if (!claimed.Any(m => ClaimsVirtualRoot(m, "/workspace")))
             cliMounts.Insert(0, $"{FileSystemMount.Quote(cwd)}:/workspace:ro");

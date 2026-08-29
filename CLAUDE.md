@@ -405,7 +405,7 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 ## Clean Architecture Layers
 
 ### Domain Layer (Inner Circle)
-- Pure business logic, no external dependencies
+- Pure business logic; the only reference is `Orkeon.Constants.Llm`, a zero-dependency satellite of shared constants (ADR-009)
 - Entities: Agent, Crew, Task, Tool interfaces
 - Value Objects: LlmParameters, TypedParameters, ProcessType (6 modes)
 - `Autonomous/` folder: `AgentExecutionBudget`, `BudgetSnapshot`, `BudgetExhaustedException`, `BudgetDimension`

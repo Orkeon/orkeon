@@ -163,18 +163,30 @@ public static class RunnerSettings
     }
 
     /// <summary>
-    /// The mount strings a settings file declares under <c>Orkeon:FileSystem:Mounts</c>.
+    /// The mount strings a settings file declares under <c>Orkeon:FileSystem:Mounts</c> and
+    /// <c>Orkeon:FileSystem:InternalMounts</c>.
     /// <para>
     /// The reserved-root guard used to see only the <c>--mount</c> arguments, so the same
     /// collision written in <c>appsettings.json</c> reached <c>FileSystemRegistry</c> and came
     /// back as "Duplicate virtual paths" out of a DI factory. A mount claims a root the same
-    /// way whichever of the two it was written in, so the guard has to be shown both.
+    /// way whichever of the two it was written in, so the guard has to be shown both. Both
+    /// SECTIONS too: the registry's duplicate check spans them, so a root claimed under
+    /// InternalMounts collides exactly as loudly.
     /// </para>
     /// <para>
     /// Read with the JSON reader rather than a configuration builder on purpose: this runs
     /// before the host exists, it must not apply environment or command-line overlays, and a
-    /// malformed file is not this method's business to report — the host build says it better,
-    /// with the path and the parse position. Anything it cannot read is no mounts, never a throw.
+    /// malformed file is not this method's business to report - the host build says it better,
+    /// with the path and the parse position. Anything it cannot read is no mounts, never a
+    /// throw.
+    /// </para>
+    /// <para>
+    /// The reader is deliberately configured to accept what
+    /// <c>JsonConfigurationFileParser</c> accepts - comments and trailing commas - and to match
+    /// property names the way the binder does, case-insensitively. This method shadows that
+    /// binder: every dialect difference between them is a file whose mounts the host will
+    /// register and this guard will not see, which fails OPEN. That is the failure direction a
+    /// guard must not have.
     /// </para>
     /// </summary>
     /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
@@ -186,23 +198,78 @@ public static class RunnerSettings
 
         try
         {
-            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settingsPath));
-            if (!document.RootElement.TryGetProperty("Orkeon", out var orkeon)
-                || !orkeon.TryGetProperty("FileSystem", out var fileSystem)
-                || !fileSystem.TryGetProperty("Mounts", out var mounts)
-                || mounts.ValueKind != System.Text.Json.JsonValueKind.Array)
+            using var document = System.Text.Json.JsonDocument.Parse(
+                File.ReadAllText(settingsPath),
+                new System.Text.Json.JsonDocumentOptions
+                {
+                    AllowTrailingCommas = true,
+                    CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                });
+
+            if (!TryGetSection(document.RootElement, "Orkeon", out var orkeon)
+                || !TryGetSection(orkeon, "FileSystem", out var fileSystem))
             {
                 return [];
             }
 
-            return [.. mounts.EnumerateArray()
-                .Where(e => e.ValueKind == System.Text.Json.JsonValueKind.String)
-                .Select(e => e.GetString()!)
-                .Where(s => s.Length > 0)];
+            return
+            [
+                .. ReadMountArray(fileSystem, "Mounts"),
+                .. ReadMountArray(fileSystem, "InternalMounts"),
+            ];
         }
         catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
         {
             return [];
         }
+    }
+
+    /// <summary>
+    /// A child object by name, case-insensitively, and only when both it and its parent really
+    /// are objects.
+    /// <para>
+    /// <c>JsonElement.TryGetProperty</c> THROWS <see cref="InvalidOperationException"/> on an
+    /// element that is not an object - it does not return false. So <c>{"Orkeon": null}</c>, a
+    /// file the configuration binder accepts without complaint, used to take the whole process
+    /// down with a raw stack trace from a method documented as "never a throw", at a call site
+    /// outside any try.
+    /// </para>
+    /// </summary>
+    private static bool TryGetSection(System.Text.Json.JsonElement parent, string name, out System.Text.Json.JsonElement section)
+    {
+        section = default;
+        if (parent.ValueKind != System.Text.Json.JsonValueKind.Object)
+            return false;
+
+        foreach (var property in parent.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (property.Value.ValueKind != System.Text.Json.JsonValueKind.Object)
+                return false;
+            section = property.Value;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>The non-empty strings in a named array property, case-insensitively.</summary>
+    private static IReadOnlyList<string> ReadMountArray(System.Text.Json.JsonElement parent, string name)
+    {
+        foreach (var property in parent.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (property.Value.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return [];
+
+            return [.. property.Value.EnumerateArray()
+                .Where(e => e.ValueKind == System.Text.Json.JsonValueKind.String)
+                .Select(e => e.GetString()!)
+                .Where(s => s.Length > 0)];
+        }
+
+        return [];
     }
 }

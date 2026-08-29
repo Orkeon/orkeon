@@ -136,7 +136,7 @@ public static partial class RunnerExecution
 
         if (!EnsureExternalMountsAllowed(opts, isScript ? null : configDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
-                [.. cliMounts, .. RunnerSettings.ReadDeclaredMounts(settingsPath)],
+                cliMounts, settingsPath,
                 targetVirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
         {
             errorCode = 1;
@@ -234,23 +234,34 @@ public static partial class RunnerExecution
     }
 
     /// <summary>
-    /// Refuses a user <c>--mount</c> that claims a virtual root the runner needs for itself.
-    /// Without this the collision surfaces as a raw <see cref="InvalidOperationException"/>
-    /// ("Duplicate virtual paths") thrown out of a DI factory, which reads as a crash rather
-    /// than as the configuration mistake it is. Every runner entry point guards its own
-    /// roots: the YAML runner <see cref="RunnerVirtualRoots.Crew"/>, the scripting
-    /// runner <see cref="RunnerVirtualRoots.Script"/>, both
-    /// <see cref="RunnerVirtualRoots.LlmLogs"/>.
+    /// Refuses a mount that claims a virtual root the runner needs for itself, whether it was
+    /// written as a <c>--mount</c> argument or declared in the settings file. Without this the
+    /// collision surfaces as a raw <see cref="InvalidOperationException"/> ("Duplicate virtual
+    /// paths") thrown out of a DI factory, which reads as a crash rather than as the
+    /// configuration mistake it is.
+    /// <para>
+    /// The settings file is read HERE, from <paramref name="settingsPath"/>, rather than
+    /// concatenated by each caller. It was a caller's job briefly, and three of the six
+    /// mount-building entry points did not do it - including <c>orkeon-host</c>, the most
+    /// settings-driven of them all. A guard whose completeness depends on every future caller
+    /// remembering an argument is a guard that will be incomplete again; this signature cannot
+    /// be called wrongly.
+    /// </para>
     /// </summary>
-    /// <param name="userMounts">The user-supplied mount strings.</param>
+    /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
+    /// <param name="settingsPath">Resolved settings file whose declared mounts also count, or
+    /// <see langword="null"/> when the command resolves none.</param>
     /// <param name="reserved">The virtual roots this runner keeps for itself.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    public static bool EnsureReservedRootsAreFree(IEnumerable<string> userMounts, params string[] reserved)
+    public static bool EnsureReservedRootsAreFree(
+        IEnumerable<string> userMounts,
+        string? settingsPath,
+        params string[] reserved)
     {
         ArgumentNullException.ThrowIfNull(userMounts);
         ArgumentNullException.ThrowIfNull(reserved);
 
-        foreach (var mountString in userMounts)
+        foreach (var mountString in userMounts.Concat(RunnerSettings.ReadDeclaredMounts(settingsPath)))
         {
             string virtualPath;
             try

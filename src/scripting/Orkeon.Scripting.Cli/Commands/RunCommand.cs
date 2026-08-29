@@ -546,7 +546,8 @@ internal static partial class RunCommand
         // runner needs would otherwise surface as a duplicate-virtual-path exception thrown
         // out of a DI factory, not as the configuration mistake it is.
         if (!RunnerExecution.EnsureReservedRootsAreFree(
-                cliMounts, RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs))
+                cliMounts, settingsPath,
+                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
             return Program.ExitScriptError;
 
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve

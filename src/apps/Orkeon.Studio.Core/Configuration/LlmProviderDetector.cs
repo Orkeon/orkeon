@@ -32,8 +32,8 @@ public static class LlmProviderDetector
     private const string AzureOpenAIHostSuffix = ".openai.azure.com";
 
     /// <summary>
-    /// Known cloud hosts, derived from <see cref="OrkeonCliDefaults"/> — the pinned copy of
-    /// the endpoint constants the providers themselves use.
+    /// Known cloud hosts, derived from <see cref="LlmProviderEndpoints"/> - the satellite the
+    /// providers themselves read, so there is no copy left to pin.
     /// </summary>
     private static readonly Dictionary<string, string> KnownHosts = BuildKnownHosts();
 
