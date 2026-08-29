@@ -37,6 +37,7 @@ workflow yet.
 | `Orkeon.Tools.Abstractions`, `Orkeon.Tools.Analysis`, `Orkeon.Tools.Code`, `Orkeon.Tools.Data`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Tools.EventHub`, `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Rag`, `Orkeon.Tools.Web` | Tools family — publish as a set once core is stable. |
 | `Orkeon.Rag.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | RAG subsystem (RAG-02…06, ADR-006). `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` are the opt-in cross-encoder pair (runtime + embedded int8 weights) — publish the two together. |
 | `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions` | RaggableTree. |
+| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration` | Satellites of SHARED constants (ADR-009): the vocabulary two projects must agree on, declared once. Zero runtime dependency, so they publish alone and can be referenced from any layer. |
 | `Orkeon.Cli`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui` | CLI libraries. |
 | `Orkeon.Cli.Commands.Scripting` | Renamed from `Orkeon.Cli.Scripting` (D3 resolved — ADR-007, 2026-08-17) before any publish. |
 | `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` is the `orkeon` dotnet tool (`PackAsTool`); name kept by ADR-007 (the PackageId is the install command). |

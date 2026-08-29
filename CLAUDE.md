@@ -437,13 +437,13 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **34 src projects** and **34 test projects**, plus two solutions:
+The repository contains **37 src projects** and **34 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
 /workspace/
 ├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 34 projects
+├── src/                          # 37 projects
 │   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
 │   ├── core/
 │   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
@@ -457,6 +457,10 @@ The repository contains **34 src projects** and **34 test projects**, plus two s
 │   ├── scripting/
 │   │   ├── Orkeon.Scripting/           # TypeScript-syntax scripting DSL (.ork.ts) — Jint runtime + esbuild transpile
 │   │   └── Orkeon.Scripting.Cli/       # CLI entrypoint of the scripting DSL — packs as dotnet tool `orkeon` (`orkeon run script.ork.ts`)
+│   ├── constants/                # Satellites of SHARED constants, zero runtime dependency (ADR-009)
+│   │   ├── Orkeon.Constants.Llm/           # endpoints, default models, provider ids, wire fields
+│   │   ├── Orkeon.Constants.FileSystem/    # virtual mount roots, conventional folder/file names
+│   │   └── Orkeon.Constants.Configuration/ # Orkeon:* keys, settings locations, shared messages
 │   ├── analyzers/
 │   │   └── Orkeon.Compliance.Vfs/      # Roslyn analyzer forbidding direct System.IO in framework code (routes via IFileSystemService)
 │   ├── tools/
