@@ -111,6 +111,15 @@ public sealed class WizardDecision
 }
 
 /// <summary>
+/// One chip of « Dossiers de cette équipe » standing for a folder the blueprint itself implies.
+/// It always reads as undeclared: the folder behind it is created inside the team at adoption,
+/// so it is by construction not one of the settings' authorized folders.
+/// </summary>
+/// <param name="VirtualPath">The root the agents address, and the remove command's parameter.</param>
+/// <param name="IsReadWrite">Drives the pencil / folder-open icon.</param>
+public sealed record DerivedMountChip(string VirtualPath, bool IsReadWrite);
+
+/// <summary>
 /// The "Créer une équipe" wizard (design v3): four steps — Décrire, Composer, Essayer,
 /// Adopter — over the forge engine's event stream. The engine owns the cycle; the stepper
 /// is a projection of its milestones, and every gesture here is one of the engine's own
@@ -121,6 +130,9 @@ public sealed class WizardDecision
 public sealed class CreateTeamViewModel : ObservableObject
 {
     private readonly ForgeClient _client;
+    private readonly Func<IReadOnlyList<string>> _declaredMounts;
+    /// <summary>Agent-addressed roots the user dropped; nothing will be bound to them at save.</summary>
+    private readonly HashSet<string> _droppedDerivedRoots = new(StringComparer.Ordinal);
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
     private readonly string _workspace;
@@ -155,11 +167,13 @@ public sealed class CreateTeamViewModel : ObservableObject
         IUiDispatcher? dispatcher = null,
         IStudioStrings? strings = null,
         string? workspaceDirectory = null,
-        string? teamsRoot = null)
+        string? teamsRoot = null,
+        Func<IReadOnlyList<string>>? declaredMounts = null)
     {
         ArgumentNullException.ThrowIfNull(profiles);
 
         Profiles = profiles;
+        _declaredMounts = declaredMounts ?? (() => []);
         _client = client ?? ForgeClient.ForCurrentMachine();
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings ?? EnglishStudioStrings.Instance;
@@ -180,8 +194,14 @@ public sealed class CreateTeamViewModel : ObservableObject
             }
         });
         RemoveTeamMountCommand = new RelayCommand(
-            parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips), nameof(UnclaimedDerivedMounts), nameof(HasDerivedMounts)); } },
+            parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); RefreshMountSurfaces(); } },
             parameter => parameter is string);
+        RemoveDerivedMountCommand = new RelayCommand(
+            parameter => { if (parameter is string virtualPath && _droppedDerivedRoots.Add(virtualPath)) RefreshMountSurfaces(); },
+            parameter => parameter is string);
+        RestoreDerivedMountsCommand = new RelayCommand(
+            () => { _droppedDerivedRoots.Clear(); RefreshMountSurfaces(); },
+            () => _droppedDerivedRoots.Count > 0);
         ComposeNotes = new StepNotesViewModel(AskAssistant);
         TryNotes = new StepNotesViewModel(AskAssistant);
         AdoptNotes = new StepNotesViewModel(AskAssistant);
@@ -500,32 +520,42 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// they carry the physical folder, which belongs in the picker and the sidecar, not on a
     /// chip next to « Ils viennent des agents » (ADR-008).
     /// </summary>
-    public IReadOnlyList<TeamMountChip> TeamMountChips =>
-        [.. TeamMounts.Select(mountString =>
+    public IReadOnlyList<TeamMountChip> TeamMountChips
+    {
+        get
         {
-            var (label, readWrite) = MountLabels.Describe(mountString, _strings);
-            return new TeamMountChip(label, readWrite, mountString);
-        })];
+            var declared = _declaredMounts();
+            return [.. TeamMounts.Select(mountString =>
+            {
+                var (label, readWrite) = MountLabels.Describe(mountString, _strings);
+                return new TeamMountChip(
+                    label, readWrite, mountString, IsUndeclared: !MountLabels.IsDeclared(mountString, declared));
+            })];
+        }
+    }
 
     /// <summary>Whether any team mount is listed.</summary>
     public bool HasTeamMounts => TeamMounts.Count > 0;
 
     /// <summary>
-    /// The mounts the blueprint itself implies (v3 W-04) — not removable: they change by
-    /// editing an agent. They ARE recorded in the sidecar at adoption
-    /// (<see cref="WithDerivedWriteMounts"/>), bound to folders inside the team: this doc
-    /// used to say the opposite, which is how removing an explicit <c>/output</c> chip could
-    /// look like a choice and be undone at save without a word.
+    /// The mounts the blueprint itself implies (v3 W-04). They ARE recorded in the sidecar at
+    /// adoption (<see cref="WithDerivedWriteMounts"/>), bound to folders inside the team: this
+    /// doc used to say the opposite, which is how removing an explicit <c>/output</c> chip
+    /// could look like a choice and be undone at save without a word.
     /// </summary>
     public IReadOnlyList<ForgeDerivedMount> DerivedMounts => _model.DerivedMounts;
 
     /// <summary>
     /// The derived mounts the screen still has something to say about: the ones no explicit
-    /// « Autoriser un dossier » already claims. A root claimed by the user is shown once, as
-    /// the removable chip that will win at save — showing it twice invited the user to
-    /// remove one of the two and watch the other quietly take its place.
+    /// « Autoriser un dossier » already claims, minus the ones the user dropped. A root claimed
+    /// by the user is shown once, as the chip that will win at save — showing it twice invited
+    /// the user to remove one of the two and watch the other quietly take its place.
+    /// <para>
+    /// They always read as undeclared: the folder behind them is created inside the team at
+    /// adoption, so it is by construction not one of the settings' authorized folders.
+    /// </para>
     /// </summary>
-    public IReadOnlyList<ForgeDerivedMount> UnclaimedDerivedMounts
+    public IReadOnlyList<DerivedMountChip> UnclaimedDerivedMounts
     {
         get
         {
@@ -534,12 +564,37 @@ public sealed class CreateTeamViewModel : ObservableObject
                 .Where(virtualPath => virtualPath is not null)
                 .ToHashSet(StringComparer.Ordinal);
 
-            return [.. _model.DerivedMounts.Where(d => !claimed.Contains(d.VirtualPath))];
+            return
+            [
+                .. _model.DerivedMounts
+                    .Where(d => !claimed.Contains(d.VirtualPath) && !_droppedDerivedRoots.Contains(d.VirtualPath))
+                    .Select(d => new DerivedMountChip(d.VirtualPath, d.IsReadWrite)),
+            ];
         }
     }
 
-    /// <summary>Whether the blueprint implies any mount the user has not claimed itself.</summary>
+    /// <summary>Whether the blueprint implies any mount the user has not claimed or dropped.</summary>
     public bool HasDerivedMounts => UnclaimedDerivedMounts.Count > 0;
+
+    /// <summary>
+    /// The virtual roots the blueprint addresses and the user dropped anyway. Nothing will be
+    /// bound to them at adoption, so the agents told to write there will fail — the screen says
+    /// which ones rather than letting the run report success and produce nothing.
+    /// </summary>
+    public IReadOnlyList<string> DroppedDerivedRoots =>
+        [.. _model.DerivedMounts.Select(d => d.VirtualPath).Where(_droppedDerivedRoots.Contains)];
+
+    /// <summary>Whether any agent-addressed root was dropped — drives the warning line.</summary>
+    public bool HasDroppedDerivedRoots => DroppedDerivedRoots.Count > 0;
+
+    /// <summary>The warning naming the roots the agents address and nothing will back.</summary>
+    public string DroppedDerivedWarning =>
+        HasDroppedDerivedRoots
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.WizardDroppedDerived],
+                string.Join(", ", DroppedDerivedRoots))
+            : "";
 
     /// <summary>« Ajouter un agent ».</summary>
     public RelayCommand AddAgentCommand { get; }
@@ -549,6 +604,15 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>Retires one mount chip.</summary>
     public RelayCommand RemoveTeamMountCommand { get; }
+
+    /// <summary>
+    /// Drops one of the folders the agents imply. The command parameter is the virtual root:
+    /// nothing is bound to it at adoption afterwards, and the warning line says so.
+    /// </summary>
+    public RelayCommand RemoveDerivedMountCommand { get; }
+
+    /// <summary>Puts every dropped agent-addressed root back — the way out of a wrong ✕.</summary>
+    public RelayCommand RestoreDerivedMountsCommand { get; }
 
     /// <summary>Raised by « Autoriser un dossier » — the shell opens the shared folder picker.</summary>
     public event EventHandler? AllowFolderRequested;
@@ -577,6 +641,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
         var mounts = new List<string>(TeamMounts);
+        // A root the user dropped stays dropped. Re-adding it here is exactly the silent undo
+        // this method was written to stop doing to an explicit choice.
         var claimed = mounts
             .Select(m => MountDefinition.TryParse(m, out var parsed, out _) ? parsed?.VirtualPath : null)
             .Where(virtualPath => virtualPath is not null)
@@ -584,7 +650,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         foreach (var derived in DerivedMounts)
         {
-            if (!claimed.Add(derived.VirtualPath))
+            if (_droppedDerivedRoots.Contains(derived.VirtualPath) || !claimed.Add(derived.VirtualPath))
                 continue;
 
             // The read mount lands on `input/`, not on the team's root — `forge promote`
@@ -604,12 +670,30 @@ public sealed class CreateTeamViewModel : ObservableObject
         return mounts;
     }
 
+    /// <summary>
+    /// Republishes every folder surface of the Composer step at once. They are all projections
+    /// of the same two lists (the allowed mounts and the dropped roots), so they refresh
+    /// together or they disagree.
+    /// </summary>
+    private void RefreshMountSurfaces()
+    {
+        RestoreDerivedMountsCommand.RaiseCanExecuteChanged();
+        OnPropertiesChanged(
+            nameof(HasTeamMounts),
+            nameof(TeamMountChips),
+            nameof(UnclaimedDerivedMounts),
+            nameof(HasDerivedMounts),
+            nameof(DroppedDerivedRoots),
+            nameof(HasDroppedDerivedRoots),
+            nameof(DroppedDerivedWarning));
+    }
+
     /// <summary>Adds the picker's choice to the team's future mounts.</summary>
     public void AddTeamMount(MountDefinition mount)
     {
         ArgumentNullException.ThrowIfNull(mount);
         TeamMounts.Add(mount.ToMountString());
-        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips), nameof(UnclaimedDerivedMounts), nameof(HasDerivedMounts));
+        RefreshMountSurfaces();
     }
 
     /// <summary>
@@ -976,7 +1060,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         SeedSchedule(team.Schedule);
         foreach (var mount in team.Mounts)
             TeamMounts.Add(mount);
-        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips), nameof(UnclaimedDerivedMounts), nameof(HasDerivedMounts));
+        RefreshMountSurfaces();
 
         MaxStep = 4;
         Step = 2;
@@ -1232,9 +1316,11 @@ public sealed class CreateTeamViewModel : ObservableObject
     private void ResetProjection()
     {
         // A new session starts from a clean slate: the previous team's folders were
-        // approved for THAT team, never for the next one; the old engine command lies.
+        // approved for THAT team, never for the next one; the old engine command lies. The
+        // dropped roots go with them — they were dropped from the previous blueprint.
         TeamMounts.Clear();
-        OnPropertiesChanged(nameof(HasTeamMounts), nameof(TeamMountChips), nameof(UnclaimedDerivedMounts), nameof(HasDerivedMounts));
+        _droppedDerivedRoots.Clear();
+        RefreshMountSurfaces();
         _reopenedTeamPath = null;
         _autoRetryPending = false;
         EngineCommandLine = null;

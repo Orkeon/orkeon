@@ -155,7 +155,18 @@
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Style="{StaticResource ToolChip}" Margin="0,0,7,4">
+                        <Border Margin="0,0,7,4">
+                          <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource ToolChip}">
+                              <Style.Triggers>
+                                <!-- Not in « Réglages › Dossiers autorisés » — /output and /input
+                                     live inside the team itself and are never declared. -->
+                                <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                                  <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </Border.Style>
                           <StackPanel Orientation="Horizontal">
                             <controls:LucideIcon Size="11" Foreground="{DynamicResource InkMutedBrush}"
                                                  VerticalAlignment="Center" Margin="0,0,6,0">
@@ -165,6 +176,9 @@
                                   <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
                                       <Setter Property="Kind" Value="pencil"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                                      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                                     </DataTrigger>
                                   </Style.Triggers>
                                 </Style>

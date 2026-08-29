@@ -44,6 +44,42 @@ internal static class MountLabels
     }
 
     /// <summary>
+    /// Whether the folder behind <paramref name="mountString"/> is one of the folders declared
+    /// in « Réglages › Dossiers autorisés ». A team mount that is not — a folder bound inside
+    /// the team at adoption, an entry inherited from an imported sidecar, a settings entry since
+    /// deleted — is shown in red: the settings are the list of what this machine allows, and a
+    /// team quietly reaching outside it is the thing the screen has to say out loud.
+    /// <para>
+    /// The comparison is on the physical folder alone. It is the unit the question is asked in
+    /// ("is this folder allowed?"), and the virtual spelling is a team's own business.
+    /// </para>
+    /// </summary>
+    public static bool IsDeclared(string mountString, IReadOnlyList<string> declaredMounts)
+    {
+        ArgumentNullException.ThrowIfNull(declaredMounts);
+
+        if (!MountDefinition.TryParse(mountString, out var mount, out _) || mount is null)
+            return false;
+
+        var folder = Normalize(mount.PhysicalPath);
+        if (folder.Length == 0)
+            return false;
+
+        foreach (var entry in declaredMounts)
+        {
+            if (MountDefinition.TryParse(entry, out var declared, out _) && declared is not null
+                && string.Equals(Normalize(declared.PhysicalPath), folder, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string Normalize(string path) => path.Trim().TrimEnd('/', '\\');
+
+    /// <summary>
     /// The same for a whole list, joined by <paramref name="separator"/>. An empty list reads
     /// as an em dash — the screens that call this always have room for one line.
     /// </summary>

@@ -589,8 +589,10 @@
   <data name="AllowedFolders_Sub" xml:space="preserve"><value>Choisissez parmi les dossiers déclarés dans Réglages › Dossiers autorisés. L'équipe les verra avec les mêmes droits.</value></data>
   <data name="AllowedFolders_Empty" xml:space="preserve"><value>Aucun dossier n'est encore déclaré dans les réglages.</value></data>
   <data name="AllowedFolders_Declare" xml:space="preserve"><value>Déclarer un nouveau dossier…</value></data>
-  <data name="AllowedFolders_Manage" xml:space="preserve"><value>Gérer les dossiers autorisés</value></data>
   <data name="AllowedFolders_Confirm" xml:space="preserve"><value>Ajouter à l'équipe</value></data>
+  <data name="Vm_Wizard_DroppedDerived" xml:space="preserve"><value>{0} : aucun dossier ne lui sera associé — les agents qui y écrivent échoueront.</value></data>
+  <data name="Wiz_RestoreFolders" xml:space="preserve"><value>Rétablir</value></data>
+  <data name="Wiz_UndeclaredLegend" xml:space="preserve"><value>En rouge : les dossiers qui ne font pas partie de vos dossiers autorisés.</value></data>
   <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve"><value>déjà ajouté</value></data>
   <data name="Vm_AllowedFolders_Conflict" xml:space="preserve"><value>{0} est déjà utilisé par un autre dossier</value></data>
   <data name="Vm_AllowedFolders_Summary" xml:space="preserve"><value>{0} dossier(s) sélectionné(s)</value></data>

@@ -49,7 +49,13 @@ public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary s
 /// The entry this chip stands for, verbatim — the command parameter a "remove" button needs.
 /// Empty where nothing removes chips.
 /// </param>
-public sealed record TeamMountChip(string Label, bool IsReadWrite, string MountString = "");
+/// <param name="IsUndeclared">
+/// True when the folder behind the chip is not in « Réglages › Dossiers autorisés ». The chip
+/// then reads red: the settings are the list of what this machine allows, and a team reaching
+/// outside it should not have to be discovered by reading a sidecar.
+/// </param>
+public sealed record TeamMountChip(
+    string Label, bool IsReadWrite, string MountString = "", bool IsUndeclared = false);
 
 /// <summary>One team card of "Mes équipes".</summary>
 public sealed class TeamCardViewModel : ObservableObject
@@ -58,7 +64,8 @@ public sealed class TeamCardViewModel : ObservableObject
     private DateTimeOffset? _lastRun;
     private RunOutcome? _lastOutcome;
 
-    internal TeamCardViewModel(TeamSummary summary, TeamsViewModel owner, IStudioStrings strings)
+    internal TeamCardViewModel(
+        TeamSummary summary, TeamsViewModel owner, IStudioStrings strings, IReadOnlyList<string> declaredMounts)
     {
         _strings = strings;
         Summary = summary;
@@ -68,7 +75,8 @@ public sealed class TeamCardViewModel : ObservableObject
         MountChips = [.. summary.Mounts.Select(mountString =>
         {
             var (label, readWrite) = MountLabels.Describe(mountString, strings);
-            return new TeamMountChip(label, readWrite);
+            return new TeamMountChip(
+                label, readWrite, IsUndeclared: !MountLabels.IsDeclared(mountString, declaredMounts));
         })];
         ScheduleDisplay = summary.Schedule switch
         {
@@ -253,6 +261,7 @@ public sealed class InProgressSessionViewModel
 public sealed class TeamsViewModel : ObservableObject
 {
     private readonly Func<IReadOnlyList<TeamSummary>> _loadTeams;
+    private readonly Func<IReadOnlyList<string>> _declaredMounts;
     private readonly IShellOpener? _shellOpener;
     private readonly Func<IReadOnlyList<ForgeSolutionSummary>> _loadSessions;
     private readonly IStudioStrings _strings;
@@ -267,8 +276,10 @@ public sealed class TeamsViewModel : ObservableObject
         Func<IReadOnlyList<ForgeSolutionSummary>>? loadSessions = null,
         IStudioStrings? strings = null,
         IShellOpener? shellOpener = null,
-        ILaunchHistoryStore? historyStore = null)
+        ILaunchHistoryStore? historyStore = null,
+        Func<IReadOnlyList<string>>? declaredMounts = null)
     {
+        _declaredMounts = declaredMounts ?? (() => []);
         _shellOpener = shellOpener;
         _historyStore = historyStore;
         var root = teamsRoot ?? TeamCatalog.DefaultRoot();
@@ -347,8 +358,10 @@ public sealed class TeamsViewModel : ObservableObject
     public void Refresh()
     {
         Teams.Clear();
+        // Read once per refresh, not once per card: the settings list is the same for all of them.
+        var declared = _declaredMounts();
         foreach (var team in _loadTeams())
-            Teams.Add(new TeamCardViewModel(team, this, _strings));
+            Teams.Add(new TeamCardViewModel(team, this, _strings, declared));
 
         InProgress.Clear();
         foreach (var session in _loadSessions())

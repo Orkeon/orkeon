@@ -69,16 +69,28 @@ carries, or whose virtual root another folder already spends, says so and
 cannot be picked — two mounts on one root is not a merge the runtime performs,
 it is one it drops.
 
-Declaring is the settings' own gesture, and only their novice card still opens
-the shared « Autoriser un dossier » picker directly (path + browse, a one-level
-tree with "already allowed" notes, rights as two radio rows, and an expert
-preview of the exact mount string). The chooser reaches it too, through
-« Déclarer un nouveau dossier… »: the picker opens over the chooser, and the
-new entry is written to `appsettings.json` **straight away** — the user is not
-in the settings' edit cycle when they make that gesture, and asking them to go
-and save afterwards is how a declaration gets lost. A refused save is reported
-rather than swallowed; the folder stays usable for the team either way, only
-the file was not written. At launch, Studio lays the sidecar's
+Declaring is the settings' own gesture, and the chooser's « Déclarer un nouveau
+dossier… » is one door to it: it closes and lands on « Réglages › Dossiers
+autorisés », on that tab and not merely on that screen. One door, so a folder
+cannot be declared from two places and drift between them; the settings' own
+novice card is where the shared « Autoriser un dossier » picker still opens
+(path + browse, a one-level tree with "already allowed" notes, rights as two
+radio rows, and an expert preview of the exact mount string).
+
+A team folder the settings do **not** declare reads red — on the wizard's chips,
+the "Mes équipes" cards and the team-mounts modal alike. It is not an error:
+a team's `/output` and `/input` are created inside the team at adoption and are
+never declared. It is the one thing a row cannot say by naming a virtual path,
+and a team reaching outside the machine's authorized folders should not have to
+be discovered by reading a sidecar.
+
+The folders the blueprint implies are removable like any other. They used to be
+informative chips with no ✕ — "edit an agent to change them" — which left a team
+carrying a root its owner did not want with no way to say so. Dropping one now
+sticks: `WithDerivedWriteMounts` no longer re-adds it, the same silent undo that
+method exists to prevent. The screen warns and names the dropped roots, because
+nothing will be bound to them and the agents writing there will fail; a single
+« Rétablir » is the way back from a wrong ✕. At launch, Studio lays the sidecar's
 mounts on the run as `--mount` arguments ahead of the per-launch ones, so the
 chips and the command cannot disagree. Deliberate limit: a bare `orkeon run` in
 a terminal does not read the sidecar — like the `profile` field, this is

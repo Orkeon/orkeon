@@ -70,17 +70,32 @@ l'équipe porte déjà, ou dont la racine virtuelle est déjà prise par un autr
 dossier, le dit et ne peut pas être choisie — deux montages sur une même racine
 ne sont pas fusionnés par le runtime, l'un est perdu.
 
-Déclarer reste le geste des réglages, et seule leur carte novice ouvre encore
-directement le sélecteur partagé « Autoriser un dossier » (chemin + Parcourir,
-arborescence à un niveau avec la note « déjà autorisé », droits en deux lignes
-radio, aperçu expert du mount-string exact). Le sélecteur de dossiers autorisés
-y accède aussi, par « Déclarer un nouveau dossier… » : le sélecteur s'ouvre
-par-dessus, et la nouvelle entrée est écrite dans `appsettings.json`
-**immédiatement** — l'utilisateur n'est pas dans le cycle d'édition des réglages
-au moment de ce geste, et lui demander d'aller enregistrer ensuite est la façon
-dont une déclaration se perd. Un enregistrement refusé est signalé plutôt
-qu'avalé ; le dossier reste utilisable par l'équipe dans les deux cas, seul le
-fichier n'a pas été écrit. Au lancement, Studio pose les mounts du sidecar sur le run
+Déclarer reste le geste des réglages, et « Déclarer un nouveau dossier… » est
+une porte vers eux : le sélecteur se ferme et l'écran bascule sur
+« Réglages › Dossiers autorisés », sur cet onglet et pas seulement sur cet
+écran. Une seule porte, pour qu'un dossier ne puisse pas être déclaré à deux
+endroits et diverger entre eux ; c'est sur la carte novice des réglages que
+s'ouvre encore le sélecteur partagé « Autoriser un dossier » (chemin +
+Parcourir, arborescence à un niveau avec la note « déjà autorisé », droits en
+deux lignes radio, aperçu expert du mount-string exact).
+
+Un dossier d'équipe que les réglages ne déclarent **pas** apparaît en rouge —
+sur les puces du wizard, les cartes de « Mes équipes » et la modale des
+dossiers d'équipe. Ce n'est pas une erreur : le `/output` et le `/input` d'une
+équipe sont créés dans l'équipe elle-même à l'adoption et ne sont jamais
+déclarés. C'est la seule chose qu'une ligne ne peut pas dire en nommant un
+chemin virtuel, et une équipe qui sort des dossiers autorisés de la machine ne
+devrait pas se découvrir en lisant un sidecar.
+
+Les dossiers déduits du blueprint sont supprimables comme les autres. C'étaient
+des puces informatives sans croix — « modifiez un agent pour les changer » — ce
+qui laissait une équipe porter une racine dont son propriétaire ne voulait pas,
+sans moyen de le dire. Une suppression tient désormais : `WithDerivedWriteMounts`
+ne la réajoute plus, exactement l'annulation silencieuse que cette méthode
+existe pour empêcher. L'écran avertit et nomme les racines abandonnées, parce
+que rien ne leur sera associé et que les agents qui y écrivent échoueront ; un
+« Rétablir » unique est le chemin de retour après une croix de trop.
+Au lancement, Studio pose les mounts du sidecar sur le run
 en arguments `--mount`, devant ceux du lancement — les chips et la commande ne
 peuvent pas diverger. Limite assumée : un `orkeon run` nu en terminal ne lit pas
 le sidecar — comme le champ `profile`, c'est le confort de Studio, pas le

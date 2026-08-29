@@ -26,19 +26,25 @@ already carries, or whose virtual root another folder already spends, says so
 and cannot be picked — two mounts on one root is not a merge the runtime
 performs, it is one it drops.
 
-Declaring stays the settings' gesture. Their novice card still opens the picker
-directly, and the chooser reaches it through « Déclarer un nouveau dossier… »:
-the picker opens over the chooser, and the new entry is written to
-`appsettings.json` **straight away**. The user is not in the settings' edit
-cycle when they make that gesture, and asking them to go and save afterwards is
-how a declaration gets lost; Novice mode already auto-saved on every edit, this
-gives Expert the same behaviour for this one gesture. A refused save is
-reported rather than swallowed — the folder stays usable for the team either
-way, only the file was not written.
+Declaring stays the settings' gesture, and « Déclarer un nouveau dossier… » is
+one door to it: the modal closes and the app lands on « Réglages › Dossiers
+autorisés », on that tab and not merely on that screen. One door, so a folder
+cannot be declared from two places and drift between them.
 
-Neither `CreateTeamViewModel` nor `TeamMountsDialogViewModel` changed: they
-already took a `MountDefinition`, which is what made the wrong wiring so easy to
-miss.
+A team folder the settings do **not** declare now reads red — on the wizard's
+chips, the "Mes équipes" cards and the team-mounts modal alike. It is not an
+error: a team's `/output` and `/input` are created inside the team at adoption
+and are never declared. It is the one thing a row cannot say by naming a virtual
+path, and a team reaching outside the machine's authorized folders should not
+have to be discovered by reading a sidecar.
+
+The folders the blueprint implies became removable like any other. They were
+informative chips with no ✕ — "edit an agent to change them" — which left a team
+carrying a root its owner did not want with no way to say so. Dropping one now
+sticks: `WithDerivedWriteMounts` no longer re-adds it, the same silent undo that
+method exists to prevent. The screen warns and names the dropped roots, because
+nothing will be bound to them and the agents writing there will fail; a single
+« Rétablir » is the way back from a wrong ✕.
 
 ### Fixed — Virtual paths are the only currency agents are paid in (ADR-008)
 

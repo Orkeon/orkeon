@@ -663,7 +663,7 @@
                             <StackPanel>
                               <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}"
                                          Text="{Binding VirtualPath}"/>
-                              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                              <TextBlock x:Name="Disk" FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
                                          TextTrimming="CharacterEllipsis" Text="{Binding PhysicalPath}"/>
                             </StackPanel>
                           </DockPanel>
@@ -676,6 +676,11 @@
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                             <Setter TargetName="Tick" Property="Visibility" Value="Visible"/>
                           </Trigger>
+                          <!-- Not in « Réglages › Dossiers autorisés » — the border says so. -->
+                          <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                            <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                            <Setter TargetName="Disk" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                          </DataTrigger>
                         </ControlTemplate.Triggers>
                       </ControlTemplate>
                     </ToggleButton.Template>
@@ -899,23 +904,14 @@
               </ItemsControl>
             </ScrollViewer>
 
-            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,10,0,0" Text="{Binding Notice}"
-                       Visibility="{Binding HasNotice, Converter={StaticResource BooleanToVisibility}}"/>
-
-            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-              <Button Style="{StaticResource BtnGhost}" Command="{Binding DeclareNewCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [AllowedFolders_Declare], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
-              <Button Style="{StaticResource BtnGhost}" Margin="10,0,0,0" Command="{Binding OpenSettingsCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [AllowedFolders_Manage], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
-            </StackPanel>
+            <!-- One door, leading to the one screen that declares. -->
+            <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                    Command="{Binding DeclareNewCommand}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [AllowedFolders_Declare], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
           </StackPanel>
           <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
                   BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">

@@ -13,10 +13,16 @@ public sealed class TeamMountRowViewModel : ObservableObject
     private readonly TeamMountsDialogViewModel _owner;
     private bool _isChecked;
 
-    internal TeamMountRowViewModel(string mountString, MountDefinition? mount, TeamMountsDialogViewModel owner, IStudioStrings strings)
+    internal TeamMountRowViewModel(
+        string mountString,
+        MountDefinition? mount,
+        bool isUndeclared,
+        TeamMountsDialogViewModel owner,
+        IStudioStrings strings)
     {
         _owner = owner;
         MountString = mountString;
+        IsUndeclared = isUndeclared;
         // An entry the parser refuses has no virtual spelling — say so, rather than falling
         // back to the raw string, which carries the physical folder (ADR-008).
         VirtualPath = mount?.VirtualPath ?? MountLabels.Unreadable(strings);
@@ -43,6 +49,13 @@ public sealed class TeamMountRowViewModel : ObservableObject
     /// <summary>True for a read-only mount — the pill's quiet tone.</summary>
     public bool IsReadOnly { get; }
 
+    /// <summary>
+    /// True when this folder is not in « Réglages › Dossiers autorisés » — the row reads red.
+    /// It is not an error: a team's <c>/output</c> lives inside the team itself and is never
+    /// declared. It is the one thing the row cannot say by naming a virtual path.
+    /// </summary>
+    public bool IsUndeclared { get; }
+
     /// <summary>Whether the team keeps this folder; unchecked rows are dropped on save.</summary>
     public bool IsChecked
     {
@@ -63,6 +76,7 @@ public sealed class TeamMountRowViewModel : ObservableObject
 public sealed class TeamMountsDialogViewModel : ObservableObject
 {
     private readonly IStudioStrings _strings;
+    private readonly Func<IReadOnlyList<string>> _declaredMounts;
     private readonly Action<string, IReadOnlyList<string>> _saveMounts;
     private string _teamDirectory = "";
     private string _teamName = "";
@@ -72,9 +86,11 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     /// <summary>Builds the modal; <paramref name="saveMounts"/> defaults to the real catalog.</summary>
     public TeamMountsDialogViewModel(
         IStudioStrings? strings = null,
-        Action<string, IReadOnlyList<string>>? saveMounts = null)
+        Action<string, IReadOnlyList<string>>? saveMounts = null,
+        Func<IReadOnlyList<string>>? declaredMounts = null)
     {
         _strings = strings ?? EnglishStudioStrings.Instance;
+        _declaredMounts = declaredMounts ?? (() => []);
         _saveMounts = saveMounts ?? TeamCatalog.SaveMounts;
         SaveCommand = new RelayCommand(Save);
         CancelCommand = new RelayCommand(Close);
@@ -158,6 +174,7 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     private TeamMountRowViewModel Row(string mountString) => new(
         mountString,
         MountDefinition.TryParse(mountString, out var mount, out _) ? mount : null,
+        !MountLabels.IsDeclared(mountString, _declaredMounts()),
         this,
         _strings);
 

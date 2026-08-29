@@ -85,15 +85,23 @@ public sealed class MainWindowViewModel : ObservableObject
                 loadTeams: () => TeamCatalog.List(teamsHome)),
             Mode);
 
+        // The settings' folder list is read live everywhere it is needed: a team folder that is
+        // not in it reads red, on the wizard's chips, the team cards and the team-mounts modal
+        // alike. Passing a snapshot would leave the red behind after an edit in the settings.
+        var declaredMounts = () => Config.Mounts.CurrentMountStrings;
+
         CreateTeam = new CreateTeamViewModel(
             Settings.Profiles,
             forgeClient,
             dispatcher,
             strings,
             forgeHome,
-            teamsRoot);
+            teamsRoot,
+            declaredMounts);
 
-        Teams = new TeamsViewModel(teamsRoot, forgeHome, strings: strings, shellOpener: shellOpener, historyStore: historyStore);
+        Teams = new TeamsViewModel(
+            teamsRoot, forgeHome, strings: strings, shellOpener: shellOpener, historyStore: historyStore,
+            declaredMounts: declaredMounts);
 
 
         // The expert trial screen runs over its own launcher, with NO history store: a
@@ -109,8 +117,8 @@ public sealed class MainWindowViewModel : ObservableObject
         // already declared there, which is what the chooser offers; wiring both team screens on
         // the picker made every team re-declare its mounts from scratch.
         FolderPicker = new FolderPickerViewModel(directories, picker, strings);
-        AllowedFolders = new AllowedFolderChooserViewModel(() => Config.Mounts.CurrentMountStrings, strings);
-        TeamMounts = new TeamMountsDialogViewModel(strings);
+        AllowedFolders = new AllowedFolderChooserViewModel(declaredMounts, strings);
+        TeamMounts = new TeamMountsDialogViewModel(strings, declaredMounts: declaredMounts);
         Teams.MountsRequested += (_, e) =>
             TeamMounts.Open(e.Card.Summary.Path, e.Card.Name, e.Card.Mounts,
                 onSaved: () => { Teams.Refresh(); Launch.RefreshTeamDescription(); });
@@ -127,8 +135,10 @@ public sealed class MainWindowViewModel : ObservableObject
         // the disk picker directly.
         Config.Mounts.FolderPickRequested += (_, _) =>
             FolderPicker.Open(Config.Mounts.CurrentMountStrings, Config.Mounts.AddPickedMount);
-        AllowedFolders.DeclareRequested += (_, _) =>
-            FolderPicker.Open(Config.Mounts.CurrentMountStrings, mount => _ = DeclareAllowedFolderAsync(mount));
+        // « Déclarer un nouveau dossier… » lands on the folders tab, not merely on the settings
+        // screen: arriving on the model tab and having to find the right one is how the gesture
+        // loses the user it was meant to help.
+        AllowedFolders.OpenSettingsRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
 
         // An adopted team is an ordinary folder: "Lancer" hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
@@ -279,25 +289,6 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             CreateTeam.ReportStatus(ex.Message);
         }
-    }
-
-    /// <summary>
-    /// A folder declared from the chooser lands in the settings AND on disk right away: the
-    /// user is not in the settings' edit cycle when they make this gesture, and asking them to
-    /// go and save afterwards is how a declaration gets lost. Novice mode already auto-saves on
-    /// every edit; this makes Expert behave the same for this one gesture.
-    /// <para>
-    /// A refused save is reported, never swallowed: the folder is usable for the team either
-    /// way — it is in the live document — but only the file was not written, and the modal says
-    /// so with the settings screen's own message.
-    /// </para>
-    /// </summary>
-    private async Task DeclareAllowedFolderAsync(Orkeon.Studio.Core.FileSystem.MountDefinition mount)
-    {
-        Config.Mounts.AddPickedMount(mount);
-
-        var saved = await Config.SaveAsync().ConfigureAwait(true);
-        AllowedFolders.NotifyDeclared(mount, saved ? null : Config.StatusMessage);
     }
 
     /// <summary>«Modifier» on a team card — same fault barrier as a resume (W-09).</summary>

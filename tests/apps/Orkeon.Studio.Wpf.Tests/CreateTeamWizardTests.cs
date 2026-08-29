@@ -23,7 +23,8 @@ public class CreateTeamWizardTests
 
     private static (CreateTeamViewModel Vm, FakeProcessLauncher Processes, ModelProfilesViewModel Profiles) Build(
         string? teamsRoot = null,
-        bool withAssistant = true)
+        bool withAssistant = true,
+        Func<IReadOnlyList<string>>? declaredMounts = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
@@ -46,7 +47,8 @@ public class CreateTeamWizardTests
             dispatcher: null,
             strings: null,
             workspaceDirectory: "/ws",
-            teamsRoot: teamsRoot ?? "/teams");
+            teamsRoot: teamsRoot ?? "/teams",
+            declaredMounts: declaredMounts);
         return (vm, processes, profiles);
     }
 
@@ -701,6 +703,89 @@ public class CreateTeamWizardTests
         Assert.Contains(
             vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille")),
             m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The folders the agents imply are removable like any other, and dropping one is honoured
+    /// at save.
+    /// <para>
+    /// They used to be informative chips with no ✕ — "edit an agent to change them" — which
+    /// left a team carrying a root its owner did not want with no way to say so. Dropping one
+    /// now sticks: <see cref="CreateTeamViewModel.WithDerivedWriteMounts"/> no longer re-adds
+    /// it, which is the same silent undo that method exists to prevent. The screen warns,
+    /// because nothing will be bound to that root and the agents writing there will fail.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_folder_the_agents_imply_can_be_dropped_and_stays_dropped_at_save()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read","file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"/output/rapport.md"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.Equal(["/workspace", "/output"], vm.UnclaimedDerivedMounts.Select(m => m.VirtualPath));
+        Assert.False(vm.HasDroppedDerivedRoots);
+
+        vm.RemoveDerivedMountCommand.Execute("/output");
+
+        Assert.Equal(["/workspace"], vm.UnclaimedDerivedMounts.Select(m => m.VirtualPath));
+        Assert.Equal(["/output"], vm.DroppedDerivedRoots);
+        Assert.True(vm.HasDroppedDerivedRoots);
+        Assert.Contains("/output", vm.DroppedDerivedWarning, StringComparison.Ordinal);
+
+        var mounts = vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille"));
+        Assert.DoesNotContain(mounts, m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
+        Assert.Contains(mounts, m => m.EndsWith(":/workspace:ro", StringComparison.Ordinal));
+
+        // A wrong ✕ has a way back.
+        Assert.True(vm.RestoreDerivedMountsCommand.CanExecute(null));
+        vm.RestoreDerivedMountsCommand.Execute(null);
+        Assert.False(vm.HasDroppedDerivedRoots);
+        Assert.Contains(
+            vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille")),
+            m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The chips of the folders the agents imply always read red: the folder behind them is
+    /// created inside the team at adoption, so it is by construction not one of the settings'
+    /// authorized folders. A folder taken from the settings reads neutral.
+    /// </summary>
+    [Fact]
+    public async Task The_agent_implied_chips_read_as_undeclared_and_a_settings_folder_does_not()
+    {
+        var (vm, processes, _) = Build(declaredMounts: () => ["/data/sorties:/output:rw"]);
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read"]}],"tasks":[{"key":"t","description":"d","agent":"a"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.Contains(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/workspace");
+
+        vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/data/sorties",
+            VirtualPath = "/output",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite,
+        });
+        Assert.False(Assert.Single(vm.TeamMountChips).IsUndeclared);
+
+        vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/elsewhere/archives",
+            VirtualPath = "/archives",
+        });
+        Assert.True(vm.TeamMountChips.Single(c => c.MountString.StartsWith("/elsewhere", StringComparison.Ordinal)).IsUndeclared);
     }
 }
 

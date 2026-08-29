@@ -114,6 +114,24 @@ public sealed class ModalDialogsTests
         Assert.Contains("neither read nor write", dialog.Summary, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_team_folder_the_settings_do_not_declare_reads_red_and_stays_removable()
+    {
+        var dialog = new TeamMountsDialogViewModel(
+            saveMounts: (_, _) => { },
+            declaredMounts: () => ["/data/docs:/docs:ro"]);
+
+        // /docs comes from the settings; /output is created inside the team at adoption and is
+        // never declared — red is the only way the row can say that, and it stays removable.
+        dialog.Open("/teams/veille", "Veille", ["/data/docs:/docs:ro", "/teams/veille/output:/output:rw"]);
+
+        Assert.False(dialog.Rows.Single(r => r.VirtualPath == "/docs").IsUndeclared);
+        Assert.True(dialog.Rows.Single(r => r.VirtualPath == "/output").IsUndeclared);
+
+        dialog.Rows.Single(r => r.VirtualPath == "/output").IsChecked = false;
+        Assert.Equal(["/data/docs:/docs:ro"], dialog.CheckedMounts);
+    }
+
     // ── Agent editor ──
 
     private const string Blueprint =

@@ -140,30 +140,34 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Declaring_from_the_chooser_writes_the_settings_file_straight_away()
+    public void Declaring_a_new_folder_sends_the_user_to_the_settings_folders_tab()
     {
-        var store = new FakeAppSettingsStore();
-        var window = WithDeclaredFolders(store, "/data/docs:/docs:ro");
+        var window = WithDeclaredFolders(new FakeAppSettingsStore(), "/data/docs:/docs:ro");
 
         window.CreateTeam.AllowFolderCommand.Execute(null);
         window.AllowedFolders.DeclareNewCommand.Execute(null);
-        Assert.True(window.FolderPicker.IsOpen);
 
-        window.FolderPicker.Path = "/data/out";
-        window.FolderPicker.PickReadWriteCommand.Execute(null);
-        window.FolderPicker.ConfirmCommand.Execute(null);
+        // The folders tab, not merely the settings screen: arriving on the model tab and having
+        // to find the right one is how the gesture loses the user it was meant to help.
+        Assert.False(window.AllowedFolders.IsOpen);
+        Assert.False(window.FolderPicker.IsOpen);
+        Assert.True(window.Settings.IsFoldersTab);
+    }
 
-        // The save is awaited off the picker's callback; give that continuation its turn.
-        await Task.Yield();
+    [Fact]
+    public void A_team_folder_the_settings_do_not_declare_reads_red()
+    {
+        var window = WithDeclaredFolders(new FakeAppSettingsStore(), "/data/docs:/docs:ro");
 
-        Assert.Contains("/data/out:/out:rw", window.Config.Mounts.CurrentMountStrings);
-        Assert.Contains("/home/user/.config/Orkeon/appsettings.json", store.SavedPaths);
-        Assert.Contains("/data/out", store.LastSavedJson, StringComparison.Ordinal);
+        window.CreateTeam.AllowFolderCommand.Execute(null);
+        window.AllowedFolders.Rows.Single().IsChecked = true;
+        window.AllowedFolders.ConfirmCommand.Execute(null);
+        // An entry no settings folder backs — an imported sidecar, a settings entry since deleted.
+        window.CreateTeam.TeamMounts.Add("/elsewhere/archives:/archives:ro");
 
-        // The chooser picked the new entry up and pre-checked it — no trip to the settings.
-        var row = window.AllowedFolders.Rows.Single(r => r.VirtualPath == "/out");
-        Assert.True(row.IsChecked);
-        Assert.True(window.AllowedFolders.HasNotice);
+        var chips = window.CreateTeam.TeamMountChips;
+        Assert.False(chips.Single(c => c.MountString.StartsWith("/data/docs", StringComparison.Ordinal)).IsUndeclared);
+        Assert.True(chips.Single(c => c.MountString.StartsWith("/elsewhere", StringComparison.Ordinal)).IsUndeclared);
     }
 
     [Fact]

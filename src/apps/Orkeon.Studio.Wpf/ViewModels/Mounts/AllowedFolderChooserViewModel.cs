@@ -91,8 +91,9 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
 /// <para>
 /// A team does not declare a folder, it associates one: the entry is carried over verbatim,
 /// rights included. Declaring is what the settings screen is for, and
-/// <see cref="DeclareRequested"/> is the door to it — the shell opens the disk picker over
-/// this modal and writes the new entry to <c>appsettings.json</c> straight away.
+/// <see cref="DeclareNewCommand"/> is the door to it — one door, leading to the one screen
+/// that declares, rather than a second picker that would let a folder be declared from two
+/// places and drift between them.
 /// </para>
 /// </summary>
 public sealed class AllowedFolderChooserViewModel : ObservableObject
@@ -102,7 +103,6 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
 
     private Action<MountDefinition>? _onAdd;
     private IReadOnlyList<string> _alreadyOnTarget = [];
-    private string? _notice;
     private bool _isOpen;
 
     /// <summary>Builds the chooser over the settings list it renders.</summary>
@@ -119,8 +119,7 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
 
         ConfirmCommand = new RelayCommand(Confirm, () => CanConfirm);
         CancelCommand = new RelayCommand(Close);
-        DeclareNewCommand = new RelayCommand(() => DeclareRequested?.Invoke(this, EventArgs.Empty));
-        OpenSettingsCommand = new RelayCommand(() =>
+        DeclareNewCommand = new RelayCommand(() =>
         {
             Close();
             OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
@@ -140,20 +139,6 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
     /// <summary>Whether the settings declare anything at all — false drives the empty state.</summary>
     public bool HasRows => Rows.Count > 0;
 
-    /// <summary>The last declaration's outcome, shown as a line under the list.</summary>
-    public string? Notice
-    {
-        get => _notice;
-        private set
-        {
-            if (SetProperty(ref _notice, value))
-                OnPropertyChanged(nameof(HasNotice));
-        }
-    }
-
-    /// <summary>Whether a notice is showing.</summary>
-    public bool HasNotice => _notice is { Length: > 0 };
-
     /// <summary>The footer's count of what « Ajouter à l'équipe » would add.</summary>
     public string Summary => string.Format(
         CultureInfo.CurrentCulture,
@@ -169,16 +154,13 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
     /// <summary>Closes without adding anything.</summary>
     public RelayCommand CancelCommand { get; }
 
-    /// <summary>« Déclarer un nouveau dossier… » — the shell opens the disk picker over this modal.</summary>
+    /// <summary>
+    /// « Déclarer un nouveau dossier… » — closes and sends the shell to
+    /// « Réglages › Dossiers autorisés », the one screen that declares.
+    /// </summary>
     public RelayCommand DeclareNewCommand { get; }
 
-    /// <summary>« Gérer les dossiers autorisés » — closes and sends the shell to the settings.</summary>
-    public RelayCommand OpenSettingsCommand { get; }
-
-    /// <summary>Raised by <see cref="DeclareNewCommand"/>; the answer comes back through <see cref="NotifyDeclared"/>.</summary>
-    public event EventHandler? DeclareRequested;
-
-    /// <summary>Raised by <see cref="OpenSettingsCommand"/> — the shell switches to the settings screen.</summary>
+    /// <summary>Raised by <see cref="DeclareNewCommand"/> — the shell opens the settings on their folders tab.</summary>
     public event EventHandler? OpenSettingsRequested;
 
     /// <summary>
@@ -193,32 +175,11 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
 
         _alreadyOnTarget = alreadyOnTarget;
         _onAdd = onAdd;
-        Notice = null;
         // A fresh open starts on a clean selection: Rebuild carries the ticks over, which is
         // what a declaration made mid-selection needs and what a reopen must not inherit.
         Rows.Clear();
-        Rebuild(preCheck: null);
+        Rebuild();
         IsOpen = true;
-    }
-
-    /// <summary>
-    /// Reports the outcome of a declaration made from this modal: the list picks the new entry
-    /// up and pre-checks it. <paramref name="saveError"/> is the settings screen's own message
-    /// when the write to <c>appsettings.json</c> did not go through — the folder is usable for
-    /// the team either way, only the file was not written, and the notice says so.
-    /// </summary>
-    public void NotifyDeclared(MountDefinition mount, string? saveError)
-    {
-        ArgumentNullException.ThrowIfNull(mount);
-
-        Rebuild(preCheck: mount.ToMountString());
-        Notice = saveError is { Length: > 0 }
-            ? string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.AllowedFoldersNotSaved], mount.VirtualPath, saveError)
-            : string.Format(
-                CultureInfo.CurrentCulture,
-                _strings[StudioStringKeys.AllowedFoldersDeclared], mount.VirtualPath);
     }
 
     internal void RowToggled()
@@ -249,19 +210,13 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
         IsOpen = false;
     }
 
-    /// <summary>
-    /// Rebuilds the rows from the settings, keeping what is checked. <paramref name="preCheck"/>
-    /// names an entry to check on arrival — the folder just declared from this modal.
-    /// </summary>
-    private void Rebuild(string? preCheck)
+    /// <summary>Rebuilds the rows from the settings, keeping what is already ticked.</summary>
+    private void Rebuild()
     {
         var checkedBefore = Rows
             .Where(r => r.IsChecked)
             .Select(r => r.MountString)
             .ToHashSet(StringComparer.Ordinal);
-
-        if (preCheck is { Length: > 0 })
-            checkedBefore.Add(preCheck);
 
         // The virtual roots the team already spends, and the folder behind each one: a second
         // mount on the same root is not a duplicate the runtime merges, it is one the runtime

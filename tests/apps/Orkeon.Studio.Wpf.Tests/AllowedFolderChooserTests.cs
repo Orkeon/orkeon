@@ -116,65 +116,34 @@ public sealed class AllowedFolderChooserTests
     }
 
     [Fact]
-    public void Declaring_a_folder_raises_the_request_and_the_answer_lands_pre_checked()
+    public void Declaring_a_new_folder_closes_the_modal_and_asks_for_the_settings()
+    {
+        // Declaring is the settings' gesture and happens on their screen: one door, so a folder
+        // cannot be declared from two places and drift between them.
+        var chooser = Chooser(Docs);
+        var asked = 0;
+        chooser.OpenSettingsRequested += (_, _) => asked++;
+        chooser.Open([], _ => { });
+
+        chooser.DeclareNewCommand.Execute(null);
+
+        Assert.Equal(1, asked);
+        Assert.False(chooser.IsOpen);
+    }
+
+    [Fact]
+    public void A_folder_declared_while_away_shows_up_on_the_next_open()
     {
         var declared = new List<string> { Docs };
         var chooser = new AllowedFolderChooserViewModel(() => declared);
-        var asked = 0;
-        chooser.DeclareRequested += (_, _) => asked++;
-
-        var added = new List<MountDefinition>();
-        chooser.Open([], added.Add);
+        chooser.Open([], _ => { });
         chooser.DeclareNewCommand.Execute(null);
-        Assert.Equal(1, asked);
 
-        // The shell wrote it into the settings, then reported back.
-        var mount = new MountDefinition { PhysicalPath = "/data/rapports", VirtualPath = "/rapports", Rights = MountRights.ReadWrite };
-        declared.Add(mount.ToMountString());
-        chooser.NotifyDeclared(mount, saveError: null);
-
-        var row = chooser.Rows.Single(r => r.VirtualPath == "/rapports");
-        Assert.True(row.IsChecked);
-        Assert.True(chooser.HasNotice);
-        Assert.Contains("/rapports", chooser.Notice, StringComparison.Ordinal);
-
-        chooser.ConfirmCommand.Execute(null);
-        Assert.Equal(["/rapports"], added.Select(m => m.VirtualPath));
-    }
-
-    [Fact]
-    public void A_declaration_the_settings_refused_to_save_says_so_and_keeps_the_folder_usable()
-    {
-        var declared = new List<string>();
-        var chooser = new AllowedFolderChooserViewModel(() => declared);
+        // The user declared it in the settings, then came back to the team.
+        declared.Add("/data/rapports:/rapports:rw");
         chooser.Open([], _ => { });
 
-        var mount = new MountDefinition { PhysicalPath = "/data/rapports", VirtualPath = "/rapports" };
-        declared.Add(mount.ToMountString());
-        chooser.NotifyDeclared(mount, saveError: "No destination is selected.");
-
-        Assert.Contains("No destination is selected.", chooser.Notice, StringComparison.Ordinal);
-        // The write failed, not the declaration: the row is there and the team can take it.
-        Assert.True(chooser.Rows.Single().IsChecked);
-        Assert.True(chooser.CanConfirm);
-    }
-
-    [Fact]
-    public void A_selection_survives_a_declaration_made_in_the_middle_of_it()
-    {
-        var declared = new List<string> { Docs, Out };
-        var chooser = new AllowedFolderChooserViewModel(() => declared);
-        var added = new List<MountDefinition>();
-        chooser.Open([], added.Add);
-
-        chooser.Rows.Single(r => r.VirtualPath == "/docs").IsChecked = true;
-
-        var mount = new MountDefinition { PhysicalPath = "/data/rapports", VirtualPath = "/rapports" };
-        declared.Add(mount.ToMountString());
-        chooser.NotifyDeclared(mount, saveError: null);
-
-        chooser.ConfirmCommand.Execute(null);
-        Assert.Equal(["/docs", "/rapports"], added.Select(m => m.VirtualPath));
+        Assert.Equal(["/docs", "/rapports"], chooser.Rows.Select(r => r.VirtualPath));
     }
 
     [Fact]
@@ -202,7 +171,6 @@ public sealed class AllowedFolderChooserTests
         chooser.Open([], _ => { });
 
         Assert.All(chooser.Rows, row => Assert.False(row.IsChecked));
-        Assert.Null(chooser.Notice);
         Assert.False(chooser.CanConfirm);
     }
 }

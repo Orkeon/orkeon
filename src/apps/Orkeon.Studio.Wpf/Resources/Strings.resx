@@ -589,8 +589,10 @@
   <data name="AllowedFolders_Sub" xml:space="preserve"><value>Pick from the folders declared in Settings › Authorized folders. The team sees them with the same rights.</value></data>
   <data name="AllowedFolders_Empty" xml:space="preserve"><value>No folder is declared yet in the settings.</value></data>
   <data name="AllowedFolders_Declare" xml:space="preserve"><value>Declare a new folder…</value></data>
-  <data name="AllowedFolders_Manage" xml:space="preserve"><value>Manage authorized folders</value></data>
   <data name="AllowedFolders_Confirm" xml:space="preserve"><value>Add to the team</value></data>
+  <data name="Vm_Wizard_DroppedDerived" xml:space="preserve"><value>{0}: nothing will be bound to it — the agents writing there will fail.</value></data>
+  <data name="Wiz_RestoreFolders" xml:space="preserve"><value>Restore</value></data>
+  <data name="Wiz_UndeclaredLegend" xml:space="preserve"><value>In red: folders that are not among your authorized folders.</value></data>
   <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve"><value>already added</value></data>
   <data name="Vm_AllowedFolders_Conflict" xml:space="preserve"><value>{0} is already used by another folder</value></data>
   <data name="Vm_AllowedFolders_Summary" xml:space="preserve"><value>{0} folder(s) selected</value></data>

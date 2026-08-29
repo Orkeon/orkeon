@@ -347,9 +347,12 @@
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Style="{StaticResource ToolChip}" Margin="0,0,7,7">
+                        <!-- Always red: the folder behind an agent-implied root is created inside
+                             the team at adoption, so it is never one of the authorized folders. -->
+                        <Border Style="{StaticResource ToolChip}" Margin="0,0,7,7"
+                                BorderBrush="{DynamicResource DangerBrush}">
                           <StackPanel Orientation="Horizontal">
-                            <controls:LucideIcon Size="11" Foreground="{DynamicResource InkMutedBrush}"
+                            <controls:LucideIcon Size="11" Foreground="{DynamicResource DangerBrush}"
                                                  VerticalAlignment="Center" Margin="0,0,6,0">
                               <controls:LucideIcon.Style>
                                 <Style TargetType="controls:LucideIcon">
@@ -363,6 +366,11 @@
                               </controls:LucideIcon.Style>
                             </controls:LucideIcon>
                             <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding VirtualPath}"/>
+                            <Button Width="16" Height="16" Margin="6,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0"
+                                    Command="{Binding DataContext.RemoveDerivedMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                                    CommandParameter="{Binding VirtualPath}">
+                              <controls:LucideIcon Kind="x" Size="10" Foreground="{DynamicResource DangerBrush}"/>
+                            </Button>
                           </StackPanel>
                         </Border>
                       </DataTemplate>
@@ -375,7 +383,17 @@
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Style="{StaticResource ToolChip}" Margin="0,0,7,7">
+                        <Border Margin="0,0,7,7">
+                          <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource ToolChip}">
+                              <Style.Triggers>
+                                <!-- Not in « Réglages › Dossiers autorisés ». -->
+                                <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                                  <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </Border.Style>
                           <StackPanel Orientation="Horizontal">
                             <controls:LucideIcon Size="11" Foreground="{DynamicResource InkMutedBrush}"
                                                  VerticalAlignment="Center" Margin="0,0,6,0">
@@ -385,6 +403,9 @@
                                   <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
                                       <Setter Property="Kind" Value="pencil"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                                      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                                     </DataTrigger>
                                   </Style.Triggers>
                                 </Style>
@@ -413,6 +434,21 @@
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
                            Text="{Binding [Wiz_DerivedHint], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}"/>
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
+                           Foreground="{DynamicResource DangerBrush}"
+                           Text="{Binding [Wiz_UndeclaredLegend], Source={x:Static services:I18n.Instance}}"/>
+                <!-- A dropped agent-addressed root: nothing will back it, and the run would
+                     otherwise report success and produce nothing. -->
+                <Border Background="{DynamicResource DangerWeakBrush}" CornerRadius="10" Padding="12,10" Margin="0,8,0,0"
+                        Visibility="{Binding HasDroppedDerivedRoots, Converter={StaticResource BooleanToVisibility}}">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="10,0,0,0"
+                            Command="{Binding RestoreDerivedMountsCommand}"
+                            Content="{Binding [Wiz_RestoreFolders], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"
+                               Foreground="{DynamicResource DangerBrush}" Text="{Binding DroppedDerivedWarning}"/>
+                  </DockPanel>
+                </Border>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
                            Text="{Binding [Wiz_FoldersHint], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
