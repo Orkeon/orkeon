@@ -87,6 +87,18 @@ déclarés. C'est la seule chose qu'une ligne ne peut pas dire en nommant un
 chemin virtuel, et une équipe qui sort des dossiers autorisés de la machine ne
 devrait pas se découvrir en lisant un sidecar.
 
+Une équipe qui sort des réglages ne se lance pas. « Exécuter » refuse une équipe
+portant un dossier qu'aucune entrée des réglages n'autorise : le bouton de
+lancement est désactivé et la carte nomme les dossiers ainsi que les deux
+issues (les déclarer, ou les retirer de l'équipe), avec un bouton vers
+« Réglages › Dossiers autorisés ». Découvrir ce refus par un run qui échoue à
+mi-course, sa raison enfouie dans un journal, est le résultat que cela remplace.
+La règle vit dans `Orkeon.Studio.Core` (`DeclaredMounts.BlockingFolders`) et non
+dans les écrans WPF, pour que le lanceur TUI ne puisse pas y répondre
+autrement — et le `/output` et le `/input` d'une équipe ne la bloquent jamais :
+c'est sa plomberie, et les compter rendrait toute équipe adoptée impossible à
+lancer.
+
 Les dossiers déduits du blueprint sont supprimables comme les autres. C'étaient
 des puces informatives sans croix — « modifiez un agent pour les changer » — ce
 qui laissait une équipe porter une racine dont son propriétaire ne voulait pas,

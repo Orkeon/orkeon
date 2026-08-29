@@ -592,6 +592,8 @@
   <data name="AllowedFolders_Confirm" xml:space="preserve"><value>Ajouter à l'équipe</value></data>
   <data name="Vm_Wizard_DroppedDerived" xml:space="preserve"><value>{0} : aucun dossier ne lui sera associé — les agents qui y écrivent échoueront.</value></data>
   <data name="Wiz_RestoreFolders" xml:space="preserve"><value>Rétablir</value></data>
+  <data name="Vm_Run_BlockedUndeclared" xml:space="preserve"><value>Cette équipe utilise des dossiers que vos réglages n'autorisent pas : {0}. Déclarez-les dans Réglages › Dossiers autorisés, ou retirez-les de l'équipe.</value></data>
+  <data name="Run_OpenAllowedFolders" xml:space="preserve"><value>Ouvrir les dossiers autorisés</value></data>
   <data name="Wiz_UndeclaredLegend" xml:space="preserve"><value>En rouge : les dossiers qui ne font pas partie de vos dossiers autorisés.</value></data>
   <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve"><value>déjà ajouté</value></data>
   <data name="Vm_AllowedFolders_Conflict" xml:space="preserve"><value>{0} est déjà utilisé par un autre dossier</value></data>

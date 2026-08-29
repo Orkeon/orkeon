@@ -42,6 +42,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
     private readonly Func<string, IReadOnlyDictionary<string, string>?>? _environmentForTarget;
+    private readonly Func<IReadOnlyList<string>> _declaredMounts;
+    private readonly IDirectoryProbe _directories;
     private bool _isRunning;
     private bool _isJournalOpen;
     private readonly IShellOpener? _shellOpener;
@@ -62,9 +64,12 @@ public sealed class LaunchTabViewModel : ObservableObject
         IUiDispatcher? dispatcher = null,
         IStudioStrings? strings = null,
         Func<string, IReadOnlyDictionary<string, string>?>? environmentForTarget = null,
-        IShellOpener? shellOpener = null)
+        IShellOpener? shellOpener = null,
+        Func<IReadOnlyList<string>>? declaredMounts = null)
     {
         _environmentForTarget = environmentForTarget;
+        _declaredMounts = declaredMounts ?? (() => []);
+        _directories = directories ?? PhysicalDirectoryProbe.Instance;
         _runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
         // The run lifecycle is the shared Core session, not a re-implementation: the terminal
         // launcher runs over the very same class, which is what keeps the two in step.
@@ -98,6 +103,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             parameter => parameter is LaunchHistoryEntry entry ? ReplayAsync(entry) : Task.CompletedTask,
             _ => !IsRunning);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
+        OpenAllowedFoldersCommand = new RelayCommand(() => OpenAllowedFoldersRequested?.Invoke(this, EventArgs.Empty));
         ClearLogCommand = new RelayCommand(() => Log.Clear());
         OpenResultCommand = new RelayCommand(OpenResult, () => CanOpenResult);
         CheckOptionsCommand = new RelayCommand(() => CheckOptions());
@@ -344,7 +350,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     private RunLaunchOptions BuildOptions(bool validate = false) =>
         Options.ToOptions(Mounts.ToMountArguments(), Mounts.AllowExternalMounts, validate);
 
-    private bool CanLaunch() => !IsRunning && Target.IsResolved;
+    private bool CanLaunch() => !IsRunning && Target.IsResolved && !IsBlockedByUndeclaredFolders;
 
     private async Task<ProcessRunResult?> LaunchAsync(bool validate, CancellationToken cancellationToken)
     {
@@ -560,7 +566,10 @@ public sealed class LaunchTabViewModel : ObservableObject
     {
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
         Mounts.SetTeamMounts(_team.Mounts);
-        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard));
+        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
+            nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage));
+        RunCommand.RaiseCanExecuteChanged();
+        ValidateCommand.RaiseCanExecuteChanged();
         RefreshPreview();
     }
 
@@ -594,6 +603,40 @@ public sealed class LaunchTabViewModel : ObservableObject
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
         }
     }
+
+    /// <summary>
+    /// The team's folders that no settings entry allows and that do not live inside the team
+    /// itself — spelled as the virtual paths the agents address (ADR-008).
+    /// <para>
+    /// A team's own <c>/output</c> and <c>/input</c> are created inside the team at adoption and
+    /// are never declared; they are the team's plumbing, not a reach outside the allow-list.
+    /// Counting them here would make every adopted team unlaunchable.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> UndeclaredTeamFolders =>
+        DeclaredMounts.BlockingFolders(_team.Mounts, _declaredMounts(), TeamDirectory());
+
+    /// <summary>
+    /// Whether the run is refused. « Réglages › Dossiers autorisés » is the list of what this
+    /// machine allows: a team reaching outside it does not start, it says which folder and why.
+    /// Discovering that from a run that failed halfway is the outcome this replaces.
+    /// </summary>
+    public bool IsBlockedByUndeclaredFolders => UndeclaredTeamFolders.Count > 0;
+
+    /// <summary>The refusal, naming the folders and the two ways out.</summary>
+    public string UndeclaredFoldersMessage =>
+        IsBlockedByUndeclaredFolders
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.RunBlockedUndeclared],
+                string.Join(", ", UndeclaredTeamFolders))
+            : "";
+
+    /// <summary>« Ouvrir les dossiers autorisés » — the shell lands on the settings' folders tab.</summary>
+    public RelayCommand OpenAllowedFoldersCommand { get; }
+
+    /// <summary>Raised by <see cref="OpenAllowedFoldersCommand"/>.</summary>
+    public event EventHandler? OpenAllowedFoldersRequested;
 
     /// <summary>The team card only exists once a target resolves.</summary>
     public bool HasTeamCard => Target.IsResolved;
@@ -660,6 +703,25 @@ public sealed class LaunchTabViewModel : ObservableObject
             _shellOpener?.Open(folder);
     }
 
+    /// <summary>
+    /// The adopted team's own folder. The target may be the folder itself or a crew file inside
+    /// it — the same two shapes <c>TeamCatalog.DescribeTarget</c> reads the sidecar from.
+    /// </summary>
+    private string? TeamDirectory()
+    {
+        if (Target.SelectedPath is not { Length: > 0 } path)
+            return null;
+
+        try
+        {
+            return _directories.Exists(path) ? path : System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path));
+        }
+        catch (Exception ex) when (ex is ArgumentException or System.IO.PathTooLongException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
     private void RaiseRunStateChanged()
     {
         OnPropertiesChanged(nameof(RunStateTitle), nameof(RunBadgeText), nameof(RunBadgeTone),
@@ -672,7 +734,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         Options.Target = Target.Target;
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
         Mounts.SetTeamMounts(_team.Mounts);
-        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard));
+        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
+            nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
         RefreshPreview();

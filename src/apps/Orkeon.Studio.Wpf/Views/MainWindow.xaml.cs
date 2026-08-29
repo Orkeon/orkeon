@@ -33,6 +33,8 @@ public partial class MainWindow : Window
         shell.CreateTeam.SessionActivated += (_, _) => NavCreate.IsChecked = true;
         shell.CreateTeam.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
         shell.AllowedFolders.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Launch.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Test.Launcher.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
         shell.TestRequested += (_, _) => NavTest.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;

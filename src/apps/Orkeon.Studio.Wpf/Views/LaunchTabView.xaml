@@ -183,6 +183,21 @@
           </StackPanel>
         </DockPanel>
 
+        <!-- The run is refused: this team reaches outside « Réglages › Dossiers autorisés ».
+             Naming the folders and the way out beats a run that fails halfway. -->
+        <Border Background="{DynamicResource DangerWeakBrush}" CornerRadius="10" Padding="13,11" Margin="0,14,0,0"
+                Visibility="{Binding IsBlockedByUndeclaredFolders, Converter={StaticResource BooleanToVisibility}}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="12,0,0,0" VerticalAlignment="Center"
+                    Command="{Binding OpenAllowedFoldersCommand}"
+                    Content="{Binding [Run_OpenAllowedFolders], Source={x:Static services:I18n.Instance}}"/>
+            <controls:LucideIcon DockPanel.Dock="Left" Kind="triangle-alert" Size="15" Margin="0,0,10,0"
+                                 VerticalAlignment="Center" Foreground="{DynamicResource DangerBrush}"/>
+            <TextBlock FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Foreground="{DynamicResource DangerBrush}" Text="{Binding UndeclaredFoldersMessage}"/>
+          </DockPanel>
+        </Border>
+
         <!-- expert machinery inside the same card, per the mock -->
         <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
           <Border Height="1" Background="{DynamicResource LineFaintBrush}" Margin="0,14,0,14"/>

@@ -133,6 +133,9 @@ public static class StudioStringKeys
     /// <summary>"already allowed" — the folder picker's faint note on a mounted row.</summary>
     public const string PickerAlreadyMounted = "Vm_Picker_AlreadyMounted";
 
+    /// <summary>Why the run is refused: folders no settings entry allows.</summary>
+    public const string RunBlockedUndeclared = "Vm_Run_BlockedUndeclared";
+
     /// <summary>"{0}: nothing will be bound to it — the agents writing there will fail."</summary>
     public const string WizardDroppedDerived = "Vm_Wizard_DroppedDerived";
 
@@ -877,6 +880,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RagWebFallbackPolicyOff] = "Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackOff] = "Off. Both switches must be turned on for the corrective loop to reach the web.",
         [StudioStringKeys.PickerAlreadyMounted] = "already allowed",
+        [StudioStringKeys.RunBlockedUndeclared] = "This team uses folders your settings do not allow: {0}. Declare them in Settings › Authorized folders, or remove them from the team.",
         [StudioStringKeys.WizardDroppedDerived] = "{0}: nothing will be bound to it — the agents writing there will fail.",
         [StudioStringKeys.AllowedFoldersAlreadyAdded] = "already added",
         [StudioStringKeys.AllowedFoldersConflict] = "{0} is already used by another folder",

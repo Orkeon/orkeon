@@ -58,6 +58,12 @@ public sealed class MainWindowViewModel : ObservableObject
             llmProbe: null,
             strings);
 
+        // The settings' folder list is read live everywhere it is needed: a team folder that is
+        // not in it reads red — on the wizard's chips, the team cards and the team-mounts modal
+        // alike — and stops the run outright. Passing a snapshot would leave a stale verdict
+        // behind after an edit in the settings.
+        Func<IReadOnlyList<string>> declaredMounts = () => Config.Mounts.CurrentMountStrings;
+
         Launch = new LaunchTabViewModel(
             runner,
             targetProbe,
@@ -68,7 +74,8 @@ public sealed class MainWindowViewModel : ObservableObject
             dispatcher,
             strings,
             TeamEnvironment,
-            shellOpener);
+            shellOpener,
+            declaredMounts);
 
         var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
         // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
@@ -84,11 +91,6 @@ public sealed class MainWindowViewModel : ObservableObject
             new ModelProfilesViewModel(profileStore, Config.Llm, strings,
                 loadTeams: () => TeamCatalog.List(teamsHome)),
             Mode);
-
-        // The settings' folder list is read live everywhere it is needed: a team folder that is
-        // not in it reads red, on the wizard's chips, the team cards and the team-mounts modal
-        // alike. Passing a snapshot would leave the red behind after an edit in the settings.
-        var declaredMounts = () => Config.Mounts.CurrentMountStrings;
 
         CreateTeam = new CreateTeamViewModel(
             Settings.Profiles,
@@ -107,7 +109,9 @@ public sealed class MainWindowViewModel : ObservableObject
         // The expert trial screen runs over its own launcher, with NO history store: a
         // trial is a rehearsal, not a run to replay from the history.
         Test = new TestTeamViewModel(
-            new LaunchTabViewModel(runner, targetProbe, directories, picker, null, settingsStore, dispatcher, strings, TeamEnvironment, shellOpener),
+            new LaunchTabViewModel(
+                runner, targetProbe, directories, picker, null, settingsStore, dispatcher, strings,
+                TeamEnvironment, shellOpener, declaredMounts),
             teamsRoot);
 
         Import = new ImportTeamViewModel(targetProbe, picker, strings, teamsRoot);
@@ -139,6 +143,8 @@ public sealed class MainWindowViewModel : ObservableObject
         // screen: arriving on the model tab and having to find the right one is how the gesture
         // loses the user it was meant to help.
         AllowedFolders.OpenSettingsRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
+        Launch.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
+        Test.Launcher.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
 
         // An adopted team is an ordinary folder: "Lancer" hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.

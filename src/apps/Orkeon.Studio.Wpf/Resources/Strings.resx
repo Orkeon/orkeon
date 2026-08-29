@@ -592,6 +592,8 @@
   <data name="AllowedFolders_Confirm" xml:space="preserve"><value>Add to the team</value></data>
   <data name="Vm_Wizard_DroppedDerived" xml:space="preserve"><value>{0}: nothing will be bound to it — the agents writing there will fail.</value></data>
   <data name="Wiz_RestoreFolders" xml:space="preserve"><value>Restore</value></data>
+  <data name="Vm_Run_BlockedUndeclared" xml:space="preserve"><value>This team uses folders your settings do not allow: {0}. Declare them in Settings › Authorized folders, or remove them from the team.</value></data>
+  <data name="Run_OpenAllowedFolders" xml:space="preserve"><value>Open authorized folders</value></data>
   <data name="Wiz_UndeclaredLegend" xml:space="preserve"><value>In red: folders that are not among your authorized folders.</value></data>
   <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve"><value>already added</value></data>
   <data name="Vm_AllowedFolders_Conflict" xml:space="preserve"><value>{0} is already used by another folder</value></data>

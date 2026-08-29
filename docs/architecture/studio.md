@@ -84,6 +84,17 @@ never declared. It is the one thing a row cannot say by naming a virtual path,
 and a team reaching outside the machine's authorized folders should not have to
 be discovered by reading a sidecar.
 
+A team reaching outside the settings does not launch. « Exécuter » refuses a team
+carrying a folder that no settings entry allows: the run button is disabled and
+the card names the folders and the two ways out (declare them, or take them off
+the team), with a button onto « Réglages › Dossiers autorisés ». Discovering
+that refusal from a run that failed halfway, its reason buried in a log, is the
+outcome this replaces. The rule lives in `Orkeon.Studio.Core`
+(`DeclaredMounts.BlockingFolders`) rather than in the WPF screens, so the TUI
+launcher cannot answer it differently — and a team's own `/output` and `/input`
+never block it: they are the team's plumbing, and counting them would make every
+adopted team unlaunchable.
+
 The folders the blueprint implies are removable like any other. They used to be
 informative chips with no ✕ — "edit an agent to change them" — which left a team
 carrying a root its owner did not want with no way to say so. Dropping one now
