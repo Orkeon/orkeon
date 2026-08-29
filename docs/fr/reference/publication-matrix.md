@@ -22,7 +22,7 @@ ne divergent plus jamais (OSS-011 / R8.3).
 | PackageId | Pourquoi |
 |---|---|
 | `Orkeon.Domain` | Entités et interfaces cœur. Depuis ADR-009 il porte une référence runtime, vers `Orkeon.Constants.Llm`, qui doit donc être poussé avant lui — `publish.yml` ordonne les pushes explicitement. |
-| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration` | Satellites de constantes PARTAGÉES (ADR-009) : le vocabulaire sur lequel deux projets doivent s'accorder, déclaré une seule fois, sans aucune dépendance runtime. Publiés en v1 **et nécessairement** — `Orkeon.Domain` dépend d'`Orkeon.Constants.Llm`, donc les différer publierait un paquet cœur dont la dépendance ne se restaure pas. |
+| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration`, `Orkeon.Constants.Protocol` | Satellites de constantes PARTAGÉES (ADR-009) : le vocabulaire sur lequel deux projets doivent s'accorder, déclaré une seule fois, sans aucune dépendance runtime. Publiés en v1 **et nécessairement** — `Orkeon.Domain` dépend d'`Orkeon.Constants.Llm`, donc les différer publierait un paquet cœur dont la dépendance ne se restaure pas. |
 | `Orkeon.Application` | Cas d'usage, ports, orchestration. |
 | `Orkeon.Infrastructure` | Adaptateurs (LLM, mémoire, stratégies). Documenté comme installable dans le README ; c'est pourquoi `release.yml` a été corrigé pour le packager. |
 

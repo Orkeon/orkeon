@@ -29,6 +29,8 @@
          copied here and pinned pairwise by a drift test. -->
     <!-- ADR-009: provider endpoints, read from the satellite instead of copied here. -->
     <!-- ADR-009: the WIN-01 wording, worded once. -->
+    <!-- ADR-009: the run event stream's vocabulary, shared with the runner that emits it. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Protocol\Orkeon.Constants.Protocol.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Llm\Orkeon.Constants.Llm.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.FileSystem\Orkeon.Constants.FileSystem.csproj" />

@@ -6,35 +6,56 @@ using Orkeon.Studio.Core.Targets;
 
 namespace Orkeon.Studio.Core.Run;
 
-/// <summary>The event kinds a watched run emits. Mirrors <c>RunEventKinds</c> on the CLI side.</summary>
+/// <summary>
+/// The event kinds a watched run emits, re-exported from
+/// <see cref="Orkeon.Constants.Protocol.RunEventKinds"/>.
+/// <para>
+/// This was a hand-written mirror of the CLI's copy, and the mirror had already fallen behind:
+/// the runner emits <c>tool.called</c>, <c>tool.returned</c>, <c>delegation.started</c> and
+/// <c>agent.spawned</c>, none of which appeared here. An unknown kind is ignored rather than
+/// reported, so a run's tool activity and delegations simply never reached the screen.
+/// </para>
+/// </summary>
 public static class RunEventKinds
 {
     /// <summary>The run began; carries the target and whether deltas were asked for.</summary>
-    public const string RunStarted = "run.started";
+    public const string RunStarted = Orkeon.Constants.Protocol.RunEventKinds.RunStarted;
 
     /// <summary>One task finished; carries its identifier, agent, outcome and duration.</summary>
-    public const string TaskCompleted = "task.completed";
+    public const string TaskCompleted = Orkeon.Constants.Protocol.RunEventKinds.TaskCompleted;
 
     /// <summary>The token meter moved.</summary>
-    public const string CostUpdated = "cost.updated";
+    public const string CostUpdated = Orkeon.Constants.Protocol.RunEventKinds.CostUpdated;
 
     /// <summary>A fragment of generated text, only under <c>--stream</c>.</summary>
-    public const string LlmDelta = "llm.delta";
+    public const string LlmDelta = Orkeon.Constants.Protocol.RunEventKinds.LlmDelta;
 
     /// <summary>The run ended; carries the outcome and the exit code.</summary>
-    public const string RunFinished = "run.finished";
+    public const string RunFinished = Orkeon.Constants.Protocol.RunEventKinds.RunFinished;
 
     /// <summary>Something went wrong, recoverably or not.</summary>
-    public const string Error = "error";
+    public const string Error = Orkeon.Constants.Protocol.RunEventKinds.Error;
 
     /// <summary>A task is asking a human; carries the question and, for a choice, its options.</summary>
-    public const string InputNeeded = "input.needed";
+    public const string InputNeeded = Orkeon.Constants.Protocol.RunEventKinds.InputNeeded;
 
     /// <summary>A human answered.</summary>
-    public const string InputGiven = "input.given";
+    public const string InputGiven = Orkeon.Constants.Protocol.RunEventKinds.InputGiven;
+
+    /// <summary>A tool was invoked; correlated with its <see cref="ToolReturned"/>.</summary>
+    public const string ToolCalled = Orkeon.Constants.Protocol.RunEventKinds.ToolCalled;
+
+    /// <summary>A tool finished, successfully or not.</summary>
+    public const string ToolReturned = Orkeon.Constants.Protocol.RunEventKinds.ToolReturned;
+
+    /// <summary>One agent handed work to another.</summary>
+    public const string DelegationStarted = Orkeon.Constants.Protocol.RunEventKinds.DelegationStarted;
+
+    /// <summary>The team grew at runtime.</summary>
+    public const string AgentSpawned = Orkeon.Constants.Protocol.RunEventKinds.AgentSpawned;
 
     /// <summary>Something the run's hub relayed to this process.</summary>
-    public const string HubMessage = "hub.message";
+    public const string HubMessage = Orkeon.Constants.Protocol.RunEventKinds.HubMessage;
 }
 
 /// <summary>

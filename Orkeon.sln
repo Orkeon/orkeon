@@ -223,6 +223,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Constants.FileSystem
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Constants.Configuration", "src\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj", "{A0144BEF-5CD0-4754-8E90-0B17F91FBF03}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Constants.Protocol", "src\constants\Orkeon.Constants.Protocol\Orkeon.Constants.Protocol.csproj", "{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1145,6 +1147,18 @@ Global
 		{A0144BEF-5CD0-4754-8E90-0B17F91FBF03}.Release|x64.Build.0 = Release|Any CPU
 		{A0144BEF-5CD0-4754-8E90-0B17F91FBF03}.Release|x86.ActiveCfg = Release|Any CPU
 		{A0144BEF-5CD0-4754-8E90-0B17F91FBF03}.Release|x86.Build.0 = Release|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Debug|x64.Build.0 = Debug|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Debug|x86.Build.0 = Debug|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|x64.ActiveCfg = Release|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|x64.Build.0 = Release|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|x86.ActiveCfg = Release|Any CPU
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -1256,6 +1270,7 @@ Global
 		{4E8197C7-0797-4F6B-BD81-7F39CE8D9187} = {AFBC87FA-5609-7EC0-2A8C-7033878AC25B}
 		{98FBE965-2729-4083-9CA1-3497BB496533} = {AFBC87FA-5609-7EC0-2A8C-7033878AC25B}
 		{A0144BEF-5CD0-4754-8E90-0B17F91FBF03} = {AFBC87FA-5609-7EC0-2A8C-7033878AC25B}
+		{E62BA54A-FF6C-4ADE-A597-474F9C2CC0D0} = {AFBC87FA-5609-7EC0-2A8C-7033878AC25B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {07D2740A-4DC3-407A-8060-8CD6F87F73FC}

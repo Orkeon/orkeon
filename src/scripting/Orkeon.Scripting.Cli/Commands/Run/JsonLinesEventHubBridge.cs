@@ -18,7 +18,7 @@ internal static class HubCommandKinds
     public const string Unsubscribe = "unsubscribe";
 
     /// <summary>The outbound kind carrying anything the external peer asked to hear.</summary>
-    public const string HubMessage = "hub.message";
+    public const string HubMessage = Orkeon.Constants.Protocol.RunEventKinds.HubMessage;
 }
 
 /// <summary>

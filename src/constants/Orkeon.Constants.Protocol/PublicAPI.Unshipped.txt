@@ -1,0 +1,16 @@
+#nullable enable
+Orkeon.Constants.Protocol.RunEventKinds
+const Orkeon.Constants.Protocol.RunEventKinds.AgentSpawned = "agent.spawned" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.CostUpdated = "cost.updated" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.DelegationStarted = "delegation.started" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.Error = "error" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.HubMessage = "hub.message" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.InputGiven = "input.given" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.InputNeeded = "input.needed" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.LlmDelta = "llm.delta" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.RunFinished = "run.finished" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.RunStarted = "run.started" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.TaskCompleted = "task.completed" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.ToolCalled = "tool.called" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.ToolReturned = "tool.returned" -> string!
+static Orkeon.Constants.Protocol.RunEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Constants.Protocol</PackageId>
+    <Description>Shared wire vocabulary for Orkeon: the event kinds a run streams between the runner process and whatever is watching it. Depends on nothing.</Description>
+    <PackageTags>AI;Agents;Orkeon;Constants;Protocol</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!--
+    ADR-009: a satellite references NO project and NO package. That is what makes it
+    referenceable from anywhere, Orkeon.Domain included, without inverting any layer.
+    The only ProjectReference it carries is the VFS analyzer, injected into every src
+    project by Directory.Build.props as OutputItemType="Analyzer" — build time, never
+    shipped. So the promise is exact: no runtime dependency.
+  -->
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
