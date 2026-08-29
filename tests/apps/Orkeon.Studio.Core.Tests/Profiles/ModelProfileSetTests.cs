@@ -4,7 +4,7 @@ using Orkeon.Studio.Core.Profiles;
 namespace Orkeon.Studio.Core.Tests.Profiles;
 
 /// <summary>
-/// The model-profile set (design v3 "réglages de modèle"): elections that never dangle,
+/// The model-profile set (the model settings of design v3): elections that never dangle,
 /// renames the elections follow, and a file that always degrades to the empty set.
 /// </summary>
 public sealed class ModelProfileSetTests

@@ -250,7 +250,7 @@ public sealed class LaunchOptionsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// « Validation à blanc d'abord » (mock, expert options): the run is preceded by a
+    /// The dry-run-first option (mock, expert options): the run is preceded by a
     /// <c>--validate</c> pass, and a failed pass stops the launch. A UI-side sequencing
     /// choice — it never appears in the command line itself.
     /// </summary>

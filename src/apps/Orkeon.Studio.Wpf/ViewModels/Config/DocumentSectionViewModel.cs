@@ -5,7 +5,7 @@ using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
-/// Base for the section forms. Each form is a thin façade over the live
+/// Base for the section forms. Each form is a thin facade over the live
 /// <see cref="AppSettingsDocument"/>: a setter writes straight into the JSON tree, which is what
 /// keeps the round-trip lossless (unknown keys are never re-serialized from a typed model).
 /// </summary>

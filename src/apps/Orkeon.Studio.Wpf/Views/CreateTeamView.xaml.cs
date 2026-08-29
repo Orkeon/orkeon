@@ -4,7 +4,7 @@ using Orkeon.Studio.Wpf.ViewModels.Teams;
 
 namespace Orkeon.Studio.Wpf.Views;
 
-/// <summary>The "Créer une équipe" wizard. XAML wiring only; every behaviour lives in the ViewModel.</summary>
+/// <summary>The create-a-team wizard. XAML wiring only; every behaviour lives in the ViewModel.</summary>
 public partial class CreateTeamView : UserControl
 {
     /// <summary>Loads the XAML.</summary>
@@ -28,7 +28,7 @@ public partial class CreateTeamView : UserControl
         }
     }
 
-    /// <summary>Copies the rendered crew YAML of the «Définition générée» card.</summary>
+    /// <summary>Copies the rendered crew YAML of the generated-definition card.</summary>
     private void OnCopyDefinition(object sender, RoutedEventArgs e)
     {
         if (DataContext is CreateTeamViewModel { HasCrewDefinition: true } wizard)

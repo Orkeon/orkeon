@@ -69,8 +69,8 @@ internal class OrkeonEventWriter
 
     /// <summary>
     /// Relaxed escaping: the stream is a local pipe between two of our own processes, never
-    /// HTML, and the conversation it carries is French — <c>é</c> must stay <c>é</c> on the
-    /// wire, not become <c>é</c> in every log a human reads.
+    /// HTML, and the conversation it carries is French — an accented letter must stay that same
+    /// letter on the wire, not turn into an escape sequence in every log a human reads.
     /// </summary>
     private static readonly JsonSerializerOptions WireOptions = new()
     {

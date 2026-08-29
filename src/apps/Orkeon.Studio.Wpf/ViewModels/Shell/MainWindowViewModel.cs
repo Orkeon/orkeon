@@ -139,14 +139,14 @@ public sealed class MainWindowViewModel : ObservableObject
         // the disk picker directly.
         Config.Mounts.FolderPickRequested += (_, _) =>
             FolderPicker.Open(Config.Mounts.CurrentMountStrings, Config.Mounts.AddPickedMount);
-        // « Déclarer un nouveau dossier… » lands on the folders tab, not merely on the settings
+        // The declare-a-new-folder action lands on the folders tab, not merely on the settings
         // screen: arriving on the model tab and having to find the right one is how the gesture
         // loses the user it was meant to help.
         AllowedFolders.OpenSettingsRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
         Launch.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
         Test.Launcher.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
 
-        // An adopted team is an ordinary folder: "Lancer" hands it to the launcher, the
+        // An adopted team is an ordinary folder: the Launch action hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
         Teams.LaunchRequested += (_, e) => Launch.Target.Select(e.Path);
         Teams.ResumeRequested += (_, e) => _ = ResumeGuarded(e.Session);
@@ -158,34 +158,34 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>The appsettings editor (spec §4).</summary>
     public ConfigTabViewModel Config { get; }
 
-    /// <summary>The unified "Réglages" screen and its model profiles (design v3).</summary>
+    /// <summary>The unified Settings screen and its model profiles (design v3).</summary>
     public SettingsScreenViewModel Settings { get; }
 
     /// <summary>The crew launcher (spec §5).</summary>
     public LaunchTabViewModel Launch { get; }
 
-    /// <summary>The "Créer une équipe" wizard, over the forge engine (design v3).</summary>
+    /// <summary>The create-a-team wizard, over the forge engine (design v3).</summary>
     public CreateTeamViewModel CreateTeam { get; }
 
-    /// <summary>"Mes équipes" — the adopted team folders and the sessions underway.</summary>
+    /// <summary>The My teams screen — the adopted team folders and the sessions underway.</summary>
     public TeamsViewModel Teams { get; }
 
-    /// <summary>The expert "Tester" screen — a trial launcher that never touches the history.</summary>
+    /// <summary>The expert Test screen — a trial launcher that never touches the history.</summary>
     public TestTeamViewModel Test { get; }
 
-    /// <summary>The "Importer" screen.</summary>
+    /// <summary>The Import screen.</summary>
     public ImportTeamViewModel Import { get; }
 
-    /// <summary>The shared « Autoriser un dossier » modal (remediation v2, F-03).</summary>
+    /// <summary>The shared allow-a-folder modal (remediation v2, F-03).</summary>
     public FolderPickerViewModel FolderPicker { get; }
 
     /// <summary>
-    /// The « Ajouter un dossier autorisé » modal the two team screens use: it offers the folders
+    /// The add-an-allowed-folder modal the two team screens use: it offers the folders
     /// already declared in the settings, and chains to <see cref="FolderPicker"/> to declare one more.
     /// </summary>
     public AllowedFolderChooserViewModel AllowedFolders { get; }
 
-    /// <summary>The « Dossiers de « X » » modal (remediation v2, F-03).</summary>
+    /// <summary>The folders-of-team-X modal (remediation v2, F-03).</summary>
     public TeamMountsDialogViewModel TeamMounts { get; }
 
     /// <summary>Raised when a team card asks for the trial screen — the shell switches tabs.</summary>
@@ -194,7 +194,7 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>The window-wide Novice/Expert switch (design v3).</summary>
     public UiModeViewModel Mode { get; }
 
-    /// <summary>The "À propos" overlay state.</summary>
+    /// <summary>The About overlay state.</summary>
     public AboutViewModel About { get; }
 
     /// <summary>Which tab is showing.</summary>
@@ -266,8 +266,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 // The silent doctor run (audit 09/20): the sidebar dot and the verdict card
                 // are honest from the first frame, without the user pressing anything.
                 Config.Diagnostic.InitializeAsync(cancellationToken),
-                // The team cards' "dernière exécution" line, from the same history the
-                // Historique screen reads.
+                // The team cards' last-run line, from the same history the
+                // History screen reads.
                 Teams.LoadLastRunsAsync(cancellationToken)).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
@@ -297,7 +297,7 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>«Modifier» on a team card — same fault barrier as a resume (W-09).</summary>
+    /// <summary>The Modify action on a team card — same fault barrier as a resume (W-09).</summary>
     private async Task ModifyGuarded(ViewModels.Teams.TeamModifyEventArgs request)
     {
         try

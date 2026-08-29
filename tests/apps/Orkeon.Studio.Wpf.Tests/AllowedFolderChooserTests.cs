@@ -5,7 +5,7 @@ namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
 /// The chooser a team uses to associate folders already declared in
-/// « Réglages › Dossiers autorisés ». The point pinned here is that a team never re-declares
+/// the Settings > Allowed folders screen. The point pinned here is that a team never re-declares
 /// a folder and never re-chooses its rights: the settings entry is carried over verbatim.
 /// </summary>
 public sealed class AllowedFolderChooserTests

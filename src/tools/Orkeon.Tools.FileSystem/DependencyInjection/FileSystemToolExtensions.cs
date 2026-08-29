@@ -11,7 +11,7 @@ public static class FileSystemToolExtensions
 {
     /// <summary>
     /// Adds file system tools (FileRead, FileWrite, DirectoryRead, EmailParser, DirectorySearch) to the service collection.
-    /// The directory_search façade rides on the shared ephemeral-collection RAG search
+    /// The directory_search facade rides on the shared ephemeral-collection RAG search
     /// (RAG-03/C5): the host must register the RAG subsystem (<c>AddOrkeonRag</c> + an
     /// embedding provider) for it to run — without it, registration and construction
     /// still succeed and searches fail loudly at call time with an actionable message.

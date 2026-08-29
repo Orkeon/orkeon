@@ -243,7 +243,7 @@ public sealed class ScopedCrewExecutionStateManagerPersistenceTests : IDisposabl
         Assert.DoesNotContain(active, s => s.Id == completed);
     }
 
-    // ── Défaut rétro-compatible ─────────────────────────────────────────────
+    // ── Backward-compatible default ─────────────────────────────────────────
 
     [Fact]
     public async System.Threading.Tasks.Task ShouldNotPersist_WhenPersistenceNotConfigured()
@@ -308,7 +308,7 @@ public sealed class ScopedCrewExecutionStateManagerPersistenceTests : IDisposabl
         Assert.Null(reloaded);
     }
 
-    // ── Cohabitation avec le checkpointing de tâches ────────────────────────
+    // ── Cohabiting with task checkpointing ──────────────────────────────────
 
     [Fact]
     public async System.Threading.Tasks.Task ShouldNamespaceSessions_SoTaskCheckpointsAreUntouched()

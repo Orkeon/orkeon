@@ -12,7 +12,7 @@ using Orkeon.Studio.Core.Localization;
 namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
-/// The "Créer une équipe" wizard over a scripted engine child: the stream in, the steps
+/// The create-a-team wizard over a scripted engine child: the stream in, the steps
 /// out — no real binary, no LLM, the inline dispatcher. The protocol reading itself is
 /// pinned in <c>Orkeon.Studio.Core.Tests</c>; these tests pin the wizard's behaviour.
 /// </summary>
@@ -131,7 +131,7 @@ public class CreateTeamWizardTests
         ]);
         await vm.TryTeamCommand.ExecuteAsync();
 
-        // « Essayer l'équipe » resumes WITHOUT dry: the engine picks up at the trial.
+        // The try-the-team action resumes WITHOUT dry: the engine picks up at the trial.
         Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[1].Arguments);
         Assert.Equal(3, vm.MaxStep);   // the run advanced the stepper to Essayer
     }
@@ -140,7 +140,7 @@ public class CreateTeamWizardTests
     public async Task At_the_dry_pause_an_agent_edit_relaunches_the_engine_with_the_amended_blueprint()
     {
         // The user's own scenario (W-10): the Composer shows the proposed team, the
-        // engine is off at the dry pause — « Modifier » must not be greyed out.
+        // engine is off at the dry pause — the Modify action must not be greyed out.
         var (vm, processes, _) = Build();
         processes.OutputToEmit.AddRange(
         [
@@ -184,7 +184,7 @@ public class CreateTeamWizardTests
     public async Task A_cold_resume_of_the_dry_pause_restores_the_identity_and_the_trial_button()
     {
         // Regression (W-09 exploration): the hydrate-only branch never set the model's
-        // Slug — « Essayer l'équipe » and « Enregistrer » stayed dead on a cold resume.
+        // Slug — the try-the-team and save actions stayed dead on a cold resume.
         var root = Path.Combine(Path.GetTempPath(), "orkeon-wiz-resume-" + Guid.NewGuid().ToString("N"));
         var sessionDir = Path.Combine(root, ".orkeon", "forge", "veille");
         Directory.CreateDirectory(sessionDir);
@@ -338,7 +338,7 @@ public class CreateTeamWizardTests
         processes.WhileRunning = () =>
         {
             // The engine paused on the arbitration only after its scripted lines played; the
-            // wizard's buttons come from the options and "refine" sends the consigne first.
+            // wizard's buttons come from the options and "refine" sends the Consigne note first.
         };
 
         FillStepOne(vm);

@@ -4,7 +4,7 @@ using Orkeon.Domain.Common;
 namespace Orkeon.Cli.Commands.Scripting.Dispatch;
 
 /// <summary>
-/// Maps a human-readable agent name to its <see cref="AgentId"/> so the command façade can
+/// Maps a human-readable agent name to its <see cref="AgentId"/> so the command facade can
 /// dispatch by name while the underlying <c>IAgentChannel</c> routes by id (design §3).
 /// </summary>
 /// <remarks>

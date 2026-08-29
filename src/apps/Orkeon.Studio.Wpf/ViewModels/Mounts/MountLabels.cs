@@ -6,8 +6,8 @@ namespace Orkeon.Studio.Wpf.ViewModels.Mounts;
 
 /// <summary>
 /// How a mount is named on an agent-facing or novice screen: the virtual path the agents
-/// address, plus its rights — <c>/output (lecture, écriture)</c> — never the folder on this
-/// machine (ADR-008).
+/// address, plus its rights — <c>/output</c> followed by a read/write suffix — never the folder
+/// on this machine (ADR-008).
 /// <para>
 /// One implementation, because there were four: the team cards, the Composer's chips, the
 /// agent editor's scope line and the team-mounts modal each re-derived it, and the two that
@@ -45,7 +45,7 @@ internal static class MountLabels
 
     /// <summary>
     /// Whether the folder behind <paramref name="mountString"/> is one of the folders declared
-    /// in « Réglages › Dossiers autorisés ». A team mount that is not — a folder bound inside the
+    /// on the Settings › Allowed folders screen. A team mount that is not — a folder bound inside the
     /// team at adoption, an entry inherited from an imported sidecar, a settings entry since
     /// deleted — reads red: the settings are the list of what this machine allows, and a team
     /// quietly reaching outside it is the thing the screen has to say out loud.

@@ -21,7 +21,7 @@ public enum TurnState
 public static class StatusLineFormatter
 {
     /// <summary>
-    /// The default gerund rotation. Orkéon's own words, deliberately — the reference UI's
+    /// The default gerund rotation. Orkeon's own words, deliberately — the reference UI's
     /// ("Frolicking", "Booping") are its tone, not ours. Sober but not lifeless.
     /// Overridable per session via the <c>spinnerVerbs</c> setting (tweakcc vocabulary:
     /// "thinking verbs"), which flows in through <c>TuiIntegration.SpinnerVerbs</c>.

@@ -5,7 +5,7 @@ using Orkeon.Studio.Wpf.ViewModels.Shell;
 namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
-/// The v3 shell chrome: the window-wide Novice/Expert switch and the "À propos" overlay.
+/// The v3 shell chrome: the window-wide Novice/Expert switch and the about-the-app overlay.
 /// Both are pure ViewModel state — the XAML only binds to them — so everything the pill and
 /// the dialog do is asserted here, on Linux, without a window.
 /// </summary>

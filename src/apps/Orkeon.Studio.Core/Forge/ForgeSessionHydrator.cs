@@ -25,8 +25,8 @@ public static class ForgeSessionHydrator
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionDirectory);
 
         // Identity first (review of the dry-pause resume, W-09): a hydrate-only reopen
-        // has no live session.started, and every downstream gate — «Essayer l'équipe»,
-        // «Enregistrer» — keys on the model's Slug.
+        // has no live session.started, and every downstream gate — the try-the-team
+        // button, the save button — keys on the model's Slug.
         HydrateIdentity(model, sessionDirectory);
         HydrateTranscript(model, Path.Combine(sessionDirectory, "transcript.jsonl"));
         FeedWrapped(model, Path.Combine(sessionDirectory, "brief.json"), ForgeEventKinds.BriefReady, "brief");

@@ -13,7 +13,7 @@ using Orkeon.Tools.Abstractions.Base;
 namespace Orkeon.Tools.FileSystem;
 
 /// <summary>
-/// Tool for semantic search across all files in a directory. Thin façade over
+/// Tool for semantic search across all files in a directory. Thin facade over
 /// the shared ephemeral-collection RAG search (RAG-03/C5): candidate files are
 /// resolved through the VFS (patterns, size and binary filters), ingested
 /// incrementally as inline sources (unchanged corpus = zero embeddings), and

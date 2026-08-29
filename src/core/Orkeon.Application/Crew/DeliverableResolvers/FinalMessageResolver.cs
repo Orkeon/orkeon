@@ -431,7 +431,7 @@ public sealed partial class FinalMessageResolver : IDeliverableResolver
             }
         }
 
-        // Triple-quote orphelines laissées par gemma4 qui "oublie" le préfixe `file_write(`.
+        // Orphan triple quotes left by gemma4 when it "forgets" the `file_write(` prefix.
         var artifact = TrailingQuoteArtifacts.FirstOrDefault(q => trimmed.EndsWith(q, StringComparison.Ordinal));
         if (artifact is not null)
             trimmed = trimmed[..^artifact.Length].TrimEnd();

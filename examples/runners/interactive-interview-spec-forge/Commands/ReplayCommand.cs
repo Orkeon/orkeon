@@ -9,7 +9,7 @@ namespace Orkeon.Examples.Interactive.InterviewSpecForge.Commands;
 /// <summary>
 /// Re-runs the forge pipeline on a transcript that already has at least one
 /// attempt under <c>rounds/round-NN-...</c>. Allocates a new <c>attempt-MM</c>
-/// (max+1) under the existing round directory (D10 acté) — the existing
+/// (max+1) under the existing round directory (decision D10) — the existing
 /// attempts are preserved for diagnosis. Stages the transcript and the
 /// previous round's outputs (NOT the previous attempt's outputs of the same
 /// round, which would re-feed a possibly-bad CR back into indexation).

@@ -108,7 +108,7 @@ public class ArchitectureTests
     [Fact]
     public void DirectorySearchTool_CanBeCreated_WithEphemeralCollectionSearch()
     {
-        // Arrange — since RAG-03/C5 the façade takes the shared ephemeral-collection
+        // Arrange — since RAG-03/C5 the facade takes the shared ephemeral-collection
         // search contract (Orkeon.Rag.Abstractions, itself Domain-only per ADR-006),
         // still not requiring any Application type.
         var constructors = typeof(DirectorySearchTool).GetConstructors(BindingFlags.Public | BindingFlags.Instance);

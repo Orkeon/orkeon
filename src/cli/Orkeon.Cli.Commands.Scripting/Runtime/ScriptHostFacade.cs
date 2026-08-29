@@ -12,7 +12,7 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 
 #pragma warning disable IDE1006 // camelCase methods: this CLR type is exposed to scripts as ctx.services.get("script-host")
 /// <summary>
-/// Host-side façade exposed to scripts as <c>script-host</c> (exp 07 SPEC §6). Lets a
+/// Host-side facade exposed to scripts as <c>script-host</c> (exp 07 SPEC §6). Lets a
 /// <c>*.cmd.ts</c> launch a <c>crew.ork.ts</c> by name and pass it an input, bridging the
 /// command-runtime (<c>Orkeon.Cli.Commands.Scripting</c>) to the crew-runtime
 /// (<c>Orkeon.Scripting.ScriptHost</c>, which honours <c>.body()</c> + <c>ctx.llm</c>).

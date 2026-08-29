@@ -3,7 +3,7 @@ using Orkeon.Rag.Abstractions.Models;
 namespace Orkeon.Rag.Abstractions.Interfaces;
 
 /// <summary>
-/// Ingestion façade: loads, chunks, embeds, and upserts sources into a document
+/// Ingestion facade: loads, chunks, embeds, and upserts sources into a document
 /// store collection, incrementally where possible.
 /// </summary>
 public interface IIngestionPipeline

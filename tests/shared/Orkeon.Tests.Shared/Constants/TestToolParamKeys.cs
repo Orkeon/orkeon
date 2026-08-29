@@ -1,6 +1,6 @@
 namespace Orkeon.Tests.Shared.Constants;
 
-/// <summary>Clés de paramètres d'outils.</summary>
+/// <summary>Tool parameter keys.</summary>
 public static class TestToolParamKeys
 {
     public const string ParamQuery = "query";

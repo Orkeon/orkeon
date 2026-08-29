@@ -7,7 +7,7 @@ namespace Orkeon.Rag.Abstractions.Interfaces;
 /// given a set of sources and a query, ingests the sources incrementally into a
 /// deterministic collection (unchanged corpus = zero embeddings, per the
 /// collection manifest) and returns the scored candidates. This is the shared
-/// engine behind the thin search-tool façades (<c>txt_search</c>,
+/// engine behind the thin search-tool facades (<c>txt_search</c>,
 /// <c>mdx_search</c>, <c>pdf_search</c>, <c>directory_search</c>), which used to
 /// re-embed their whole corpus on every request.
 /// </summary>

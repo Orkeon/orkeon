@@ -1,6 +1,6 @@
 namespace Orkeon.Tests.Shared.Constants;
 
-/// <summary>Durées et délais de test.</summary>
+/// <summary>Test timeouts and delays.</summary>
 public static class TestTimingConstants
 {
     public static readonly TimeSpan TimeoutStandard = TimeSpan.FromMinutes(5);

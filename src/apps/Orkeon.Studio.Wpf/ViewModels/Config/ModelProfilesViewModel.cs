@@ -11,7 +11,7 @@ using System.Globalization;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
-/// One profile card on the "Modèle d'IA" tab. A thin projection over
+/// One profile card on the model-settings tab. A thin projection over
 /// <see cref="ModelProfile"/>; the commands are handed in by the list so every mutation goes
 /// through one place.
 /// </summary>
@@ -60,7 +60,7 @@ public sealed class ModelProfileItemViewModel
     /// <summary>The adopted teams whose sidecar names this profile (audit 07/16 chips).</summary>
     public IReadOnlyList<string> UsedByTeams { get; }
 
-    /// <summary>Whether the "Utilisé par" row shows.</summary>
+    /// <summary>Whether the "used by" row shows.</summary>
     public bool IsUsedByTeams => UsedByTeams.Count > 0;
 
     /// <summary>Elects this profile as the machine default.</summary>
@@ -77,7 +77,7 @@ public sealed class ModelProfileItemViewModel
 }
 
 /// <summary>
-/// The editor overlay for one profile ("Nouveau réglage" / "Modifier le réglage"). Picking a
+/// The editor overlay for one profile (the new-profile / edit-profile form). Picking a
 /// provider seeds the endpoint and model from the preset catalogue; expert mode exposes both
 /// fields for hand-editing. The API key never appears here — it stays in the environment.
 /// </summary>
@@ -324,7 +324,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>Probes the endpoint with the key resolved from the environment.</summary>
     public AsyncRelayCommand TestConnectionCommand { get; }
 
-    /// <summary>"Mémoriser la clé" — stores the draft under the profile's variable, now.</summary>
+    /// <summary>The remember-the-key action — stores the draft under the profile's variable, now.</summary>
     public RelayCommand StoreKeyCommand { get; }
 
     private void StoreKey()
@@ -427,7 +427,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 }
 
 /// <summary>
-/// The "Modèle d'IA" tab: the named, reusable model settings of this machine, the default
+/// The model-settings tab: the named, reusable model settings of this machine, the default
 /// election, and the profile Studio's own assistant runs on. Every mutation is persisted to
 /// the store immediately (its file is Studio state, like the history); electing a default
 /// additionally mirrors it into the settings document's <c>Llm</c> section, which is what the
@@ -435,7 +435,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 /// cycle of the settings screen.
 /// </summary>
 /// <summary>
-/// One API key of the Réglages screen's "Clés API" card: the environment variable a
+/// One API key of the settings screen's API-keys card: the environment variable a
 /// profile names, whether a value is in place, and the paste-to-remember flow. The key
 /// value itself only ever travels to <see cref="IApiKeyStore"/> — never into a file.
 /// </summary>
@@ -533,7 +533,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     public ObservableCollection<string> ProfileNames { get; } = [];
 
     /// <summary>
-    /// The Réglages screen's "Clés API" rows (one per distinct environment-variable name
+    /// The settings screen's API-keys rows (one per distinct environment-variable name
     /// the profiles resolve), rebuilt with the profile list.
     /// </summary>
     public ObservableCollection<SecretRowViewModel> Secrets { get; } = [];
@@ -698,7 +698,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
     private void Rebuild()
     {
-        // "Utilisé par" chips (audit 07/16): which adopted teams name each profile in their
+        // "used by" chips (audit 07/16): which adopted teams name each profile in their
         // sidecar. Best-effort — an unreadable teams root simply yields no chips.
         var usage = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         if (_loadTeams is not null)

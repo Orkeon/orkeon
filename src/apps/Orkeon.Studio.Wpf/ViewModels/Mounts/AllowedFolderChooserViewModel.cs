@@ -8,7 +8,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Mounts;
 
 /// <summary>
 /// One row of the allowed-folder chooser: a folder declared once in
-/// « Réglages › Dossiers autorisés », offered to a team as-is.
+/// the Settings › Allowed folders screen, offered to a team as-is.
 /// </summary>
 public sealed class AllowedFolderRowViewModel : ObservableObject
 {
@@ -86,8 +86,8 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
 }
 
 /// <summary>
-/// « Ajouter un dossier autorisé » — the modal a team uses to pick among the folders already
-/// declared in « Réglages › Dossiers autorisés » (<c>Orkeon:FileSystem:Mounts</c>).
+/// The add-an-allowed-folder modal a team uses to pick among the folders already
+/// declared on the Settings › Allowed folders screen (<c>Orkeon:FileSystem:Mounts</c>).
 /// <para>
 /// A team does not declare a folder, it associates one: the entry is carried over verbatim,
 /// rights included. Declaring is what the settings screen is for, and
@@ -139,7 +139,7 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
     /// <summary>Whether the settings declare anything at all — false drives the empty state.</summary>
     public bool HasRows => Rows.Count > 0;
 
-    /// <summary>The footer's count of what « Ajouter à l'équipe » would add.</summary>
+    /// <summary>The footer's count of what the add-to-team button would add.</summary>
     public string Summary => string.Format(
         CultureInfo.CurrentCulture,
         _strings[StudioStringKeys.AllowedFoldersSummary],
@@ -148,15 +148,15 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
     /// <summary>Whether at least one selectable row is checked.</summary>
     public bool CanConfirm => Rows.Any(r => r is { IsChecked: true, IsSelectable: true });
 
-    /// <summary>« Ajouter à l'équipe ».</summary>
+    /// <summary>Adds the checked folders to the team.</summary>
     public RelayCommand ConfirmCommand { get; }
 
     /// <summary>Closes without adding anything.</summary>
     public RelayCommand CancelCommand { get; }
 
     /// <summary>
-    /// « Déclarer un nouveau dossier… » — closes and sends the shell to
-    /// « Réglages › Dossiers autorisés », the one screen that declares.
+    /// The declare-a-new-folder action — closes and sends the shell to
+    /// the Settings › Allowed folders screen, the one screen that declares.
     /// </summary>
     public RelayCommand DeclareNewCommand { get; }
 
@@ -165,7 +165,7 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
 
     /// <summary>
     /// Shows the modal. <paramref name="alreadyOnTarget"/> are the mount strings the team
-    /// already carries — they drive the "déjà ajouté" and virtual-root notes;
+    /// already carries — they drive the "already added" and virtual-root notes;
     /// <paramref name="onAdd"/> receives one call per checked folder.
     /// </summary>
     public void Open(IReadOnlyList<string> alreadyOnTarget, Action<MountDefinition> onAdd)

@@ -11,7 +11,7 @@ namespace Orkeon.Rag.DependencyInjection;
 
 /// <summary>
 /// Registration of the ephemeral-collection search engine (RAG-03/C5) consumed
-/// by the thin search-tool façades (<c>txt_search</c>, <c>mdx_search</c>,
+/// by the thin search-tool facades (<c>txt_search</c>, <c>mdx_search</c>,
 /// <c>pdf_search</c>, <c>directory_search</c>). Safe to call from any tool
 /// package (<c>TryAdd*</c> everywhere, idempotent).
 /// </summary>
@@ -20,7 +20,7 @@ namespace Orkeon.Rag.DependencyInjection;
 /// must be registered (plus an <see cref="IEmbeddingProvider"/>, which
 /// <c>AddOrkeonInfrastructure()</c> provides) for searches to run. When the
 /// subsystem is absent, tool <b>registration and construction still succeed</b>
-/// — the search façades only fail at call time, loudly and with an actionable
+/// — the search facades only fail at call time, loudly and with an actionable
 /// message (same lazy-failure philosophy as the former no-op embedding fallback).
 /// </remarks>
 public static class EphemeralSearchExtensions
@@ -35,7 +35,7 @@ public static class EphemeralSearchExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Inline text sources ("kind": "text") used by the façades to submit
+        // Inline text sources ("kind": "text") used by the facades to submit
         // preprocessed content (stripped frontmatter, extracted PDF pages…).
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDocumentLoader, InlineTextLoader>());
 

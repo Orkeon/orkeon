@@ -80,8 +80,8 @@ public sealed class I18nResourceParityTests
     [Fact]
     public void Should_Speak_Of_Equipes_Not_Crews_When_Reading_The_French_Values()
     {
-        // T-07: the mock's vocabulary is "équipe"; "crew" is the engine's word and stays
-        // out of every user-visible French string (key NAMES may keep it — identifiers).
+        // T-07: the mock's vocabulary is the French word for team; "crew" is the engine's word
+        // and stays out of every user-visible French string (key NAMES may keep it — identifiers).
         var offenders = ReadEntries("Strings.fr.resx")
             .Where(e => StripMountLiterals(e.Value).Contains("crew", StringComparison.OrdinalIgnoreCase))
             .Select(e => e.Key)

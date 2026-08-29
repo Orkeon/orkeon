@@ -15,7 +15,7 @@ public class RaggableTreeE2ETests
 {
     private static readonly float[] UnitEmbedding = [1f, 0f, 0f];
 
-    // ----- E2E-01 — Pipeline complet TypeScript -----
+    // ----- E2E-01 — Full TypeScript pipeline -----
 
     [Fact]
     public async Task E2E01_typescript_pipeline_produces_coherent_tree()
@@ -49,7 +49,7 @@ public class RaggableTreeE2ETests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
-    // ----- E2E-02 — Pipeline polyglotte (CA-08) -----
+    // ----- E2E-02 — Polyglot pipeline (CA-08) -----
 
     [Fact]
     public async Task E2E02_polyglot_indexes_typescript_and_python_in_same_tree()
@@ -168,7 +168,7 @@ public class RaggableTreeE2ETests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
-    // ----- E2E-05 — Réindexation incrémentale -----
+    // ----- E2E-05 — Incremental reindex -----
 
     [Fact]
     public async Task E2E05_incremental_reindex_refreshes_only_changed_file_and_emits_new_index_id()
@@ -239,7 +239,7 @@ public class RaggableTreeE2ETests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
-    // ----- T-09 — symbol_detail FQN introuvable -----
+    // ----- T-09 — symbol_detail on an unknown FQN -----
 
     [Fact]
     public async Task T09_symbol_detail_throws_not_found_with_suggestions_for_unknown_fqn()

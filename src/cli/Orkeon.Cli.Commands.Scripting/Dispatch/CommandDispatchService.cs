@@ -11,7 +11,7 @@ namespace Orkeon.Cli.Commands.Scripting.Dispatch;
 
 #pragma warning disable IDE1006 // camelCase methods: this CLR type is exposed to scripts as ctx.services.get("commands")
 /// <summary>
-/// Host-side façade exposed to scripts as <c>commands</c> (design §4, §8 item 1). Turns the
+/// Host-side facade exposed to scripts as <c>commands</c> (design §4, §8 item 1). Turns the
 /// name-addressed <c>request</c>/<c>post</c>/<c>list</c>/<c>get</c>/<c>cancel</c> verbs into
 /// correlated <see cref="IAgentChannel"/> traffic and bookkeeping in the
 /// <see cref="CommandInstanceRegistry"/>.

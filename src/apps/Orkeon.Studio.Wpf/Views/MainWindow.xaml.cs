@@ -20,9 +20,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The gestures that move the navigation: an activated wizard session brings "Créer une
-    /// équipe" forward, "Lancer" on a team lands on the launcher, the gate's "Gérer les
-    /// réglages" opens the settings screen (the targets themselves are wired in the
+    /// The gestures that move the navigation: an activated wizard session brings the
+    /// create-a-team panel forward, running a team lands on the launcher, the gate's
+    /// settings link opens the settings screen (the targets themselves are wired in the
     /// ViewModels — this is only the visible panel).
     /// </summary>
     private void WireForgeNavigation()

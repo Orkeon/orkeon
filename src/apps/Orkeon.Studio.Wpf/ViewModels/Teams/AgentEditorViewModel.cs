@@ -78,8 +78,8 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// feeds the informative "sur quel dossier" line (rights live per mount, not per
     /// agent); <paramref name="apply"/> receives the amended blueprint JSON.
     /// <para>
-    /// The line names the mounts the way the agent addresses them — <c>/output (lecture,
-    /// écriture)</c> — never the folder on this machine. An agent-facing screen showing
+    /// The line names the mounts the way the agent addresses them — the virtual path with
+    /// its rights in words — never the folder on this machine. An agent-facing screen showing
     /// <c>C:\Users\…</c> is the same category of leak as an agent prompt showing it.
     /// </para>
     /// </summary>
@@ -121,7 +121,7 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// <summary>« Ajouter un agent » / « Modifier l'agent ».</summary>
     public string Title => _strings[IsNew ? StudioStringKeys.AgentEditorTitleAdd : StudioStringKeys.AgentEditorTitleEdit];
 
-    /// <summary>« Ajouter à l'équipe » / « Enregistrer ».</summary>
+    /// <summary>The add-to-team / save button label.</summary>
     public string SaveLabel => _strings[IsNew ? StudioStringKeys.AgentEditorAdd : StudioStringKeys.ActSave];
 
     /// <summary>The display name — the blueprint's <c>role</c>.</summary>
@@ -169,7 +169,7 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// <summary>Applies the edit and closes.</summary>
     public RelayCommand SaveCommand { get; }
 
-    /// <summary>« Retirer de l'équipe » — removes the agent (the engine refuses an orphaned task, loudly).</summary>
+    /// <summary>The remove-from-team button — removes the agent (the engine refuses an orphaned task, loudly).</summary>
     public RelayCommand RemoveCommand { get; }
 
     /// <summary>Closes without applying.</summary>

@@ -36,8 +36,8 @@ namespace Orkeon.Hosting;
 /// local BGE-micro-v2 when <c>AddOrkeonLocalEmbeddings()</c> was called, else the
 /// remote provider from the <c>Orkeon:Embeddings</c> configuration, else a fail-fast
 /// provider whose first embed call throws an actionable
-/// <see cref="InvalidOperationException"/> (« aucun embedding provider sémantique
-/// configuré ; ajoutez AddOrkeonLocalEmbeddings() ou configurez Orkeon:Embeddings »).
+/// <see cref="InvalidOperationException"/> (it reports that no semantic embedding provider
+/// is configured, and to add AddOrkeonLocalEmbeddings() or configure Orkeon:Embeddings).
 /// Hosts wanting deterministic non-semantic embeddings (tests) must register
 /// <c>Stubs.HashBasedEmbeddingProvider</c> explicitly.
 /// </remarks>

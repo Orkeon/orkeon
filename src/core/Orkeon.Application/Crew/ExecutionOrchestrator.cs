@@ -20,7 +20,7 @@ namespace Orkeon.Application.Crew;
 /// Supports native function calling via IChatClient ChatOptions.Tools.
 /// </summary>
 /// <remarks>
-/// Decomposed into focused collaborators (R4.1): this class is now a composition façade
+/// Decomposed into focused collaborators (R4.1): this class is now a composition facade
 /// that routes execution to <see cref="ChatClientAgentLoop"/>,
 /// <see cref="NativeToolCallingAgentLoop"/> or <see cref="LegacyTextAgentLoop"/>, then
 /// runs output validation via <see cref="OutputValidationCoordinator"/> and deliverable

@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Orkeon.Studio.Core.Profiles;
 
 /// <summary>
-/// A named model setting ("réglage de modèle", design v3): a provider, a model and its
+/// A named model setting, as the design v3 settings screen calls it: a provider, a model and its
 /// endpoint, reusable by several teams and by Studio's own assistant. Profiles are Studio
 /// state — the CLI never reads them; the one marked default is <em>written into</em> the
 /// <c>Llm</c> section of <c>appsettings.json</c>, and a team that chose another profile gets

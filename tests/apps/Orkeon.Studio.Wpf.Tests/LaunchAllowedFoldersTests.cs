@@ -6,7 +6,7 @@ using Orkeon.Studio.Wpf.ViewModels.Launch;
 namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
-/// A team reaching outside « Réglages › Dossiers autorisés » does not start.
+/// A team reaching outside the Settings > Allowed folders list does not start.
 /// <para>
 /// The settings are the list of what this machine allows. Letting such a team run meant
 /// discovering the refusal from a run that failed halfway, with the reason buried in a log —

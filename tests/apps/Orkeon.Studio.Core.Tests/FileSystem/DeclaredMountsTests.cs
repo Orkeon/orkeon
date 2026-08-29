@@ -4,7 +4,7 @@ using Orkeon.Studio.Core.Tests.Doubles;
 namespace Orkeon.Studio.Core.Tests.FileSystem;
 
 /// <summary>
-/// « Réglages › Dossiers autorisés » is the list of what this machine allows. A team associates
+/// The Settings > Allowed folders screen is the list of what this machine allows. A team associates
 /// entries from it and never declares its own, so a team folder outside that list is either the
 /// team's own plumbing or a reach the launcher must refuse.
 /// </summary>

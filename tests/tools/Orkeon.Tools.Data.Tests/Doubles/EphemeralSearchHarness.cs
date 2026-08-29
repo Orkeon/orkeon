@@ -15,7 +15,7 @@ namespace Orkeon.Tools.Data.Tests.Doubles;
 /// <summary>
 /// Builds a real <see cref="EphemeralCollectionSearchService"/> over in-memory
 /// collaborators (<see cref="FakeDocumentStore"/>, fake VFS manifests, the
-/// canonical chunking strategies) so the search-tool façades are exercised
+/// canonical chunking strategies) so the search-tool facades are exercised
 /// end-to-end while embeddings stay under the test's control via
 /// <see cref="MockEmbeddingService"/>.
 /// </summary>

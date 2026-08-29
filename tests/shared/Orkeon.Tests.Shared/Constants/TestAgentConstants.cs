@@ -1,9 +1,9 @@
 namespace Orkeon.Tests.Shared.Constants;
 
-/// <summary>Rôles et objectifs d'agents pour les tests.</summary>
+/// <summary>Agent roles and goals, for the tests.</summary>
 public static class TestAgentConstants
 {
-    // --- Rôles ---
+    // --- Roles ---
     public const string RoleDeveloper = "Developer";
     public const string RoleSeniorDeveloper = "Senior Developer";
     public const string RoleManager = "Manager";

@@ -4,7 +4,7 @@ using Orkeon.Studio.Wpf.ViewModels.Launch;
 
 namespace Orkeon.Studio.Wpf.Views;
 
-/// <summary>The "Exécuter" screen. Code-behind is XAML wiring only.</summary>
+/// <summary>The Run screen. Code-behind is XAML wiring only.</summary>
 public partial class LaunchTabView : UserControl
 {
     /// <summary>Loads the XAML.</summary>
@@ -29,7 +29,7 @@ public partial class LaunchTabView : UserControl
             tab.Options.SettingsMode = ViewModels.Launch.SettingsSelectionMode.ExplicitPath;
     }
 
-    /// <summary>"Changer d'équipe" — lands on My teams (navigation is a window concern).</summary>
+    /// <summary>The change-team action — lands on My teams (navigation is a window concern).</summary>
     private void OnCopyJournal(object sender, RoutedEventArgs e)
     {
         if (DataContext is LaunchTabViewModel { Log.CanCopy: true } tab)

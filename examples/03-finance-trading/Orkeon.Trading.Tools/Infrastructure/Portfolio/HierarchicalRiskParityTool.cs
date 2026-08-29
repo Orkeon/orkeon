@@ -50,7 +50,7 @@ public class HierarchicalRiskParityTool(ILogger<HierarchicalRiskParityTool>? log
         string linkageMethod,
         double riskFreeRate)
     {
-        // HRP Algorithm (Marcos López de Prado, 2016):
+        // HRP Algorithm (Marcos Lopez de Prado, 2016):
         // 1. Calculate correlation matrix and distance matrix
         // 2. Perform hierarchical clustering
         // 3. Quasi-diagonalize covariance matrix based on dendrogram

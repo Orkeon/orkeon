@@ -37,7 +37,7 @@ public sealed record ScriptingLimitsOptions
     /// (e.g. RaggableTree bundling) must <strong>opt in</strong> explicitly:
     /// raise <c>Orkeon:Scripting:Limits:MemoryLimitBytes</c> in appsettings, or
     /// set <c>--memory-limit-mb 0</c> on the CLI (translates to a large ceiling)
-    /// for a fully trusted run. The strict default stays serré.
+    /// for a fully trusted run. The strict default stays tight.
     /// </summary>
     public long MemoryLimitBytes { get; init; } = 100L * 1024 * 1024;
 
@@ -64,7 +64,7 @@ public sealed record ScriptingLimitsOptions
     /// This is a security ceiling that bounds how long a hostile script can pin
     /// a thread. Trusted long-running design-spec runs must <strong>opt in</strong>
     /// explicitly by raising <c>Orkeon:Scripting:Limits:ExecutionTimeout</c> in
-    /// appsettings. The strict default stays serré.
+    /// appsettings. The strict default stays tight.
     /// </summary>
     public TimeSpan ExecutionTimeout { get; init; } = TimeSpan.FromSeconds(30);
 }

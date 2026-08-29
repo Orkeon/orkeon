@@ -4,7 +4,7 @@ namespace Orkeon.Studio.Core.Forge;
 
 /// <summary>
 /// Reads the rendered crew definition of a forge session as one displayable YAML
-/// document (v3 W-06: the «Définition générée» card shows the YAML itself, not the
+/// document (v3 W-06: the generated-definition card shows the YAML itself, not the
 /// session path). Files are concatenated in render order — config, then agents, then
 /// tasks — separated by a mono comment naming each part.
 /// </summary>

@@ -161,7 +161,7 @@ public static partial class RunnerExecution
     }
 
     /// <summary>
-    /// Loads a crew from an Orkéon Scripting (.ork.ts) source, a multi-file crew directory, or a
+    /// Loads a crew from an Orkeon Scripting (.ork.ts) source, a multi-file crew directory, or a
     /// single YAML definition — dispatching on <see cref="IsScriptedCrewDefinition"/> then on the
     /// directory form (already validated by <see cref="TryBuildHost"/> via
     /// <see cref="CrewDirectoryLayout"/>). Shared by the one-shot and validate flows so both

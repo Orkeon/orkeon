@@ -16,7 +16,7 @@ namespace Orkeon.Examples.Interactive.InterviewSpecForge.Commands;
 /// <remarks>
 /// // EXCEPTION-BOOTSTRAP — stages files on physical paths before delegating
 /// to <c>RunOneShotAsync</c>, which itself bootstraps the VFS for the inner host.
-/// D21 acté : staging en C# côté runner (helper partagé entre forge et replay).
+/// D21 settled: staging done in C# on the runner side (helper shared by forge and replay).
 /// </remarks>
 public sealed class ForgeCommand : IInteractiveCommand
 {

@@ -1,6 +1,6 @@
 namespace Orkeon.Tests.Shared.Constants;
 
-/// <summary>Valeurs numériques de test (iterations, embeddings, etc.).</summary>
+/// <summary>Numeric test values (iterations, embeddings, etc.).</summary>
 public static class TestNumericConstants
 {
     // --- Embeddings ---

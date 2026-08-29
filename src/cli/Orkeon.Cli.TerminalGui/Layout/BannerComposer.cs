@@ -8,7 +8,7 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// transcript CONTENT, not a pinned view.
 /// </summary>
 /// <remarks>
-/// The pixel-art block is an Orkéon glyph, deliberately. The reference captures show the
+/// The pixel-art block is an Orkeon glyph, deliberately. The reference captures show the
 /// Claude Code logo; reproducing a third party's mark would not be fidelity, it would be
 /// impersonation — the layout is copied (logo column + three text lines), the identity is
 /// ours. Drawn with half-block cells so it renders in any monospace font; the ASCII glyph
@@ -16,7 +16,7 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// </remarks>
 public static class BannerComposer
 {
-    // 4 rows, ~7 columns — an "O" struck through, the Orkéon mark reduced to cells.
+    // 4 rows, ~7 columns — an "O" struck through, the Orkeon mark reduced to cells.
     private static readonly string[] UnicodeLogo =
     {
         "  ▄▄▄▄▄ ",

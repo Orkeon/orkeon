@@ -71,6 +71,19 @@ dotnet test Orkeon.sln
 La solution compte **37 projets src répartis en 12 zones**, chacun reflété par un
 projet de tests (plus `tests/e2e`, `tests/examples`, `tests/shared`) :
 
+### Les commentaires sont en anglais, et jamais accentués
+
+Un invariant, tenu par `scripts/check-comment-accents.py` en CI : tout commentaire est en
+anglais et ne porte aucune lettre accentuée. L'interface de Studio étant en français, le
+piège est le commentaire qui cite un libellé : **traduisez le libellé, n'enlevez pas ses
+accents** — un commentaire citant `"Modele d'IA"` nomme quelque chose que le produit
+n'affiche jamais. Nommez plutôt le rôle (`the model-settings tab`). Une phrase française
+désaccentuée reste du français, en pire.
+
+Seules les lignes de commentaire sont concernées. Les chaînes visibles par l'utilisateur
+gardent leurs accents, tout comme la typographie employée partout dans le dépôt — tirets
+cadratins, points de suspension, flèches, guillemets : ce ne sont pas des lettres accentuées.
+
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (cœur Clean Architecture)

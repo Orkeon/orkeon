@@ -9,7 +9,7 @@ namespace Orkeon.Rag.Loaders;
 /// Loads inline text sources: the content travels inside the
 /// <see cref="SourceDescriptor.Options"/> bag instead of being read from disk
 /// or the network. Used by callers that already hold (and possibly preprocess)
-/// their corpus in memory — notably the ephemeral-collection search façades
+/// their corpus in memory — notably the ephemeral-collection search facades
 /// (RAG-03/C5), which strip frontmatter or extract PDF pages before ingestion.
 /// </summary>
 /// <remarks>

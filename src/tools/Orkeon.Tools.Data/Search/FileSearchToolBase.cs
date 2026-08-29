@@ -12,7 +12,7 @@ using Orkeon.Tools.Data.Constants.Search;
 namespace Orkeon.Tools.Data.Search;
 
 /// <summary>
-/// Abstract base class for file-based semantic search tools. Thin façade over
+/// Abstract base class for file-based semantic search tools. Thin facade over
 /// the shared ephemeral-collection RAG search (RAG-03/C5): resolves the files
 /// through the VFS, submits them as inline sources to
 /// <see cref="IEphemeralCollectionSearch"/> (incremental ingestion — an
@@ -50,7 +50,7 @@ public abstract partial class FileSearchToolBase<TRequest> : ToolBase<TRequest, 
     /// </summary>
     protected virtual string PreprocessContent(string content) => content;
 
-    /// <summary>Initializes a new instance of the file search tool façade.</summary>
+    /// <summary>Initializes a new instance of the file search tool facade.</summary>
     /// <param name="searchService">Shared ephemeral-collection RAG search engine.</param>
     /// <param name="fileSystemService">Virtual file system service.</param>
     /// <param name="logger">Optional logger.</param>

@@ -187,7 +187,7 @@ public sealed class ForgeSessionModel
     /// <summary>
     /// Marks a hydrated session as sitting at the <c>--dry</c> pause (saved state: Test,
     /// nothing run yet) — a resume reopens the Composer review without an engine, and the
-    /// « Essayer l'équipe » gate reads the same status a live pause would have streamed.
+    /// try-the-team gate reads the same status a live pause would have streamed.
     /// </summary>
     public void MarkPaused() => FinishedStatus = "paused";
 
@@ -463,7 +463,7 @@ public sealed class ForgeSessionModel
     }
 
     /// <summary>
-    /// «Ils viennent des agents» made literal: any reading tool implies the sandbox's
+    /// The rule that they come from the agents, made literal: any reading tool implies the sandbox's
     /// read mount (<c>/workspace</c>); each task deliverable implies its root as a write
     /// mount (<c>/output/x.md</c> → <c>/output</c>). Nothing is invented beyond what the
     /// trial bench itself mounts.

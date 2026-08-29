@@ -196,7 +196,7 @@ public static class ScriptingCliServiceCollectionExtensions
 
         // ---- exp 07: the script-host service (cmd → crew bridge, SPEC §6) -------------------
         // Bind crew-directory options (section Orkeon:Cli:ScriptHost) so a host can point the
-        // façade at its crews; the ConsoleApp bootstrap also appends mounted crew dirs.
+        // facade at its crews; the ConsoleApp bootstrap also appends mounted crew dirs.
         if (configuration is not null)
         {
             var shSection = configuration.GetSection(ScriptHostFacadeOptions.SectionName);

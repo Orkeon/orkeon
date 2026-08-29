@@ -111,7 +111,7 @@ public sealed class WizardDecision
 }
 
 /// <summary>
-/// One chip of « Dossiers de cette équipe » standing for a folder the blueprint itself implies.
+/// One chip of the team-folders list standing for a folder the blueprint itself implies.
 /// It always reads as undeclared: the folder behind it is created inside the team at adoption,
 /// so it is by construction not one of the settings' authorized folders.
 /// </summary>
@@ -120,8 +120,8 @@ public sealed class WizardDecision
 public sealed record DerivedMountChip(string VirtualPath, bool IsReadWrite);
 
 /// <summary>
-/// The "Créer une équipe" wizard (design v3): four steps — Décrire, Composer, Essayer,
-/// Adopter — over the forge engine's event stream. The engine owns the cycle; the stepper
+/// The "create a team" wizard (design v3): four steps — Describe, Compose, Try,
+/// Adopt — over the forge engine's event stream. The engine owns the cycle; the stepper
 /// is a projection of its milestones, and every gesture here is one of the engine's own
 /// (a brief, a message, an arbitration, a promotion). The wizard is gated on Studio's
 /// assistant profile: composing a team and judging a trial are LLM work, and the engine
@@ -253,7 +253,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Raised when a team lands in the teams folder.</summary>
     public event EventHandler<TeamAdoptedEventArgs>? TeamAdopted;
 
-    /// <summary>Raised by "Gérer les réglages" — the shell shows the settings screen.</summary>
+    /// <summary>Raised by the "manage settings" button — the shell shows the settings screen.</summary>
     public event EventHandler? OpenSettingsRequested;
 
     /// <summary>The model profiles — the gate and the adoption picker read them.</summary>
@@ -329,7 +329,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Shows step 4, once reached.</summary>
     public RelayCommand GoStep4Command { get; }
 
-    // ── step 1 : Décrire ──
+    // ── step 1 : Describe ──
 
     /// <summary>The need, in the user's words.</summary>
     public string Need
@@ -354,13 +354,13 @@ public sealed class CreateTeamViewModel : ObservableObject
         _strings[StudioStringKeys.ForgeExample4],
     ];
 
-    /// <summary>"À quelle fréquence" chips.</summary>
+    /// <summary>The "how often" chips.</summary>
     public IReadOnlyList<WizardChoice> FrequencyChoices { get; }
 
-    /// <summary>"Où sont les informations" chips.</summary>
+    /// <summary>The "where the information lives" chips.</summary>
     public IReadOnlyList<WizardChoice> SourceChoices { get; }
 
-    /// <summary>"Que doit produire l'équipe" chips.</summary>
+    /// <summary>The "what the team must produce" chips.</summary>
     public IReadOnlyList<WizardChoice> OutputChoices { get; }
 
     /// <summary>Free description of the expected result; required when the format is free.</summary>
@@ -400,7 +400,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Fills the need box from an example.</summary>
     public RelayCommand UseExampleCommand { get; }
 
-    /// <summary>Sends the brief to the engine — the wizard's "Composer l'équipe".</summary>
+    /// <summary>Sends the brief to the engine — the wizard's "compose the team" button.</summary>
     public AsyncRelayCommand ComposeCommand { get; }
 
     // ── the engine ──
@@ -470,7 +470,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Whether an arbitration is owed.</summary>
     public bool DecisionPending => Decisions.Count > 0;
 
-    /// <summary>Stops the engine; the session stays resumable from "Mes équipes".</summary>
+    /// <summary>Stops the engine; the session stays resumable from the my-teams screen.</summary>
     public RelayCommand StopCommand { get; }
 
     /// <summary>Back to a blank step 1 (a running engine is asked to stop first).</summary>
@@ -490,7 +490,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     public string? SessionDirectory => _model.Directory;
 
     /// <summary>
-    /// The rendered crew YAML, concatenated for the «Définition générée» card (v3 W-06:
+    /// The rendered crew YAML, concatenated for the generated-definition card (v3 W-06:
     /// the card shows the definition itself; the path retreats to a tooltip).
     /// </summary>
     public string CrewDefinitionYaml =>
@@ -508,7 +508,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     public AgentEditorViewModel AgentEditor { get; }
 
     /// <summary>
-    /// « Dossiers de cette équipe » — the mounts the adoption will record in the sidecar.
+    /// The team-folders list — the mounts the adoption will record in the sidecar.
     /// The trial itself runs on the forge bench's own sandbox mounts; these describe what
     /// the adopted team will be allowed to see.
     /// </summary>
@@ -978,7 +978,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Whether an install command exists to show.</summary>
     public bool HasInstallCommand => _model.Promotion?.Install is { Length: > 0 };
 
-    /// <summary>Whether "Enregistrer dans mes équipes" may run.</summary>
+    /// <summary>Whether the "save to my teams" command may run.</summary>
     public bool CanSaveTeam =>
         !IsEngineRunning
         && !IsSaved
@@ -992,13 +992,13 @@ public sealed class CreateTeamViewModel : ObservableObject
         TimeSpan.TryParseExact(time.Trim(), @"h\:mm", CultureInfo.InvariantCulture, out _)
         || TimeSpan.TryParseExact(time.Trim(), @"hh\:mm", CultureInfo.InvariantCulture, out _);
 
-    /// <summary>« Essayer l'équipe » — the trial, as an explicit click at the Composer pause.</summary>
+    /// <summary>The "try the team" button — the trial, as an explicit click at the Compose pause.</summary>
     public AsyncRelayCommand TryTeamCommand { get; }
 
     /// <summary>Promotes the session into the teams folder and writes the Studio sidecar.</summary>
     public AsyncRelayCommand SaveTeamCommand { get; }
 
-    /// <summary>Jumps to the settings screen (the gate's "Gérer les réglages").</summary>
+    /// <summary>Jumps to the settings screen (the gate's "manage settings" button).</summary>
     public RelayCommand OpenSettingsCommand { get; }
 
     /// <summary>The gate's quick pick: elects the named profile as the assistant's.</summary>
@@ -1075,10 +1075,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         }).ConfigureAwait(false);
     }
 
-    /// <summary>«Modifier l'équipe» on the saved card — back to step 2, state intact.</summary>
+    /// <summary>The "edit the team" button on the saved card — back to step 2, state intact.</summary>
     public AsyncRelayCommand ReopenComposeCommand { get; }
 
-    /// <summary>«Refaire un essai» on the saved card — back to step 3, the trial re-runs.</summary>
+    /// <summary>The "run another trial" button on the saved card — back to step 3, the trial re-runs.</summary>
     public AsyncRelayCommand RetryTrialCommand { get; }
 
     /// <summary>
@@ -1147,14 +1147,14 @@ public sealed class CreateTeamViewModel : ObservableObject
             WorkingDirectory = _workspace,
             EnvironmentOverrides = AssistantEnvironment(),
             // The Composer pause (owner, 2026-08-24): generate and validate, then STOP.
-            // The trial is the user's click (« Essayer l'équipe »), never a side effect
+            // The trial is the user's click on "try the team", never a side effect
             // of composing — the engine's --dry boundary is exactly this.
             Dry = true,
         }).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// « Essayer l'équipe » — resumes the paused session without --dry: the engine picks
+    /// The "try the team" gesture — resumes the paused session without --dry: the engine picks
     /// up exactly at the trial, then waits at its arbitration.
     /// </summary>
     private async Task TryTeamAsync()

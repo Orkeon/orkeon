@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 namespace Orkeon.Rag.Abstractions.Models;
 
 /// <summary>
-/// End-user question handled by the <see cref="Interfaces.IRagPipeline"/> façade.
+/// End-user question handled by the <see cref="Interfaces.IRagPipeline"/> facade.
 /// </summary>
 public sealed record RagQuery
 {

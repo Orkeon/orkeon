@@ -9,7 +9,7 @@ using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.Parsing;
 using Orkeon.Application.Interfaces.Services;
 using System.Diagnostics;
-// Aliases pour éviter les conflits
+// Aliases to avoid the name clashes
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
 using CrewInput = Orkeon.Application.Interfaces.Services.CrewInput;
 using CrewOutput = Orkeon.Application.Interfaces.Services.CrewOutput;
@@ -78,7 +78,7 @@ public class SequentialCrewOrchestratorAdditionalTests
             return System.Threading.Tasks.Task.CompletedTask;
         }
 
-        // Méthodes supplémentaires requises par ICrewRepository
+        // Additional methods required by ICrewRepository
         public System.Threading.Tasks.Task<IReadOnlyList<DomainCrew>> GetByIdsAsync(IEnumerable<CrewId> ids, CancellationToken cancellationToken = default)
         {
             var result = _crews.Where(c => c.Value != null && ids.Contains(c.Value.Id)).Select(c => c.Value!).ToList();
@@ -176,7 +176,7 @@ public class SequentialCrewOrchestratorAdditionalTests
             return System.Threading.Tasks.Task.CompletedTask;
         }
 
-        // Nouvelles méthodes requises
+        // Newly required methods
         public System.Threading.Tasks.Task<CrewExecutionState> CreateStateAsync(CrewId crewId, CancellationToken cancellationToken = default)
         {
             var state = new CrewExecutionState(crewId, ExecutionId.New(), new CrewInput("Default", new Dictionary<string, object>()));

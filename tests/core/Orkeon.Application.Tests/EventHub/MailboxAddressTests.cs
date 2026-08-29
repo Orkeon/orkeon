@@ -6,7 +6,7 @@ namespace Orkeon.Application.Tests.EventHub;
 
 public sealed class MailboxAddressTests
 {
-    // Six valid URIs (Spec §16 unit tests compléments).
+    // Six valid URIs (Spec §16, supplementary unit tests).
     public static TheoryData<string, MailboxKind> ValidAddresses() =>
         new()
         {

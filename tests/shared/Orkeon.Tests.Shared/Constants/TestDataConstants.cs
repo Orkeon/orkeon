@@ -1,6 +1,6 @@
 namespace Orkeon.Tests.Shared.Constants;
 
-/// <summary>Données de test génériques.</summary>
+/// <summary>Generic test data.</summary>
 public static class TestDataConstants
 {
     public const string TestPrompt = "Test prompt";

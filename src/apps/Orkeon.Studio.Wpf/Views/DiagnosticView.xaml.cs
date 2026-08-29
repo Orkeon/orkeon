@@ -27,7 +27,7 @@ public partial class DiagnosticView : UserControl
                 // process (RDP, clipboard managers, VM tools) is holding the Win32 clipboard open.
                 Clipboard.SetDataObject(diagnostic.BuildReport(), copy: false);
 
-                // « Copié ! » for ~1,6 s (mock §D-3), then the label comes back.
+                // The copy confirmation shows for ~1.6 s (mock §D-3), then the label comes back.
                 diagnostic.ReportCopied = true;
                 var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.6) };
                 timer.Tick += (_, _) => { diagnostic.ReportCopied = false; timer.Stop(); };

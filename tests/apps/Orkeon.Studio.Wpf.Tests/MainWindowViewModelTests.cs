@@ -71,7 +71,7 @@ public sealed class MainWindowViewModelTests
         Assert.Single(launcher.Requests);
     }
 
-    // ── « Autoriser un dossier » : les écrans équipe associent, les Réglages déclarent ──
+    // ── "allow a folder" : the team screens associate, the settings screen declares ──
 
     private static MainWindowViewModel WithDeclaredFolders(FakeAppSettingsStore store, params string[] mounts)
     {

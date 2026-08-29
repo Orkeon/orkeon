@@ -21,7 +21,7 @@ internal static class ForgeScriptRenderer
     /// <summary>
     /// String literals are JSON-escaped — valid JavaScript by construction — with relaxed
     /// escaping: the file is meant to be read and edited by the crew's owner, and the
-    /// conversation is French; <c>é</c> must stay <c>é</c>, not become <c>é</c>.
+    /// conversation is French; an accented letter must stay itself, not turn into an escape.
     /// </summary>
     private static readonly JsonSerializerOptions LiteralOptions = new()
     {

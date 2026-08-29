@@ -14,7 +14,7 @@ namespace Orkeon.Cli.TerminalGui.Hosting;
 /// </remarks>
 public sealed record BannerInfo
 {
-    /// <summary>Product + version line, e.g. <c>"Orkéon Coding Agent — orkeon-repl 0.9.2-beta"</c>.</summary>
+    /// <summary>Product + version line, e.g. <c>"Orkeon Coding Agent — orkeon-repl 0.9.2-beta"</c>.</summary>
     public required string ProductLine { get; init; }
 
     /// <summary>Model line, e.g. <c>"kimi-k3 (1M context) · Moonshot"</c>. Empty ⇒ omitted.</summary>

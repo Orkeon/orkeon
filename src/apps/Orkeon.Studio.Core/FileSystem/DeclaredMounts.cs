@@ -4,7 +4,7 @@ using Orkeon.Domain.FileSystem;
 namespace Orkeon.Studio.Core.FileSystem;
 
 /// <summary>
-/// Answers, of a team's mount, the one question « Réglages › Dossiers autorisés » exists to
+/// Answers, of a team's mount, the one question the Settings › Allowed folders screen exists to
 /// answer: is this folder one this machine allows?
 /// <para>
 /// The settings hold the allow-list. A team associates entries from it; it never declares its

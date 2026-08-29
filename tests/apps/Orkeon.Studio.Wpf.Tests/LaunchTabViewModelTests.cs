@@ -777,8 +777,8 @@ public sealed class ValidationMessageViewModelTests
 }
 
 /// <summary>
-/// The remediated Exécuter screen (audit 05/14): a team card, a plain-language progress
-/// card, a localized banner when the CLI is missing, and "Ouvrir le résultat".
+/// The remediated Run screen (audit 05/14): a team card, a plain-language progress
+/// card, a localized banner when the CLI is missing, and an open-the-result action.
 /// </summary>
 public sealed class LaunchScreenFacetsTests
 {

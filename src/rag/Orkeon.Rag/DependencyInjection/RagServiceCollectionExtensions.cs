@@ -140,7 +140,7 @@ public static class RagServiceCollectionExtensions
             sp.GetRequiredService<IOptions<RagIngestionOptions>>().Value,
             sp.GetService<ILogger<FileIngestionManifestStore>>()));
 
-        // Pipelines (façades of the subsystem).
+        // Pipelines (facades of the subsystem).
         services.TryAddSingleton<IIngestionPipeline>(sp => new DefaultIngestionPipeline(
             sp.GetRequiredService<DocumentLoaderFactory>(),
             sp.GetRequiredService<ChunkingStrategyFactory>(),

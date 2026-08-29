@@ -146,7 +146,7 @@ public sealed class TeamCatalogTests : IDisposable
     }
 }
 
-/// <summary>What the Exécuter screen's team card can honestly say about a target (audit 05/14).</summary>
+/// <summary>What the Run screen's team card can honestly say about a target (audit 05/14).</summary>
 public sealed class TeamCatalogDescribeTargetTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"orkeon-describe-{Guid.NewGuid():N}");

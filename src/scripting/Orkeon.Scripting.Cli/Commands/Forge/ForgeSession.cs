@@ -445,8 +445,8 @@ internal sealed class ForgeSession
         var builder = new StringBuilder(requested.Length);
         var previousDash = false;
 
-        // FormD then dropping the combining marks turns "Résumé" into "Resume": the slug is
-        // a directory name, and the product's first audience writes French.
+        // FormD then dropping the combining marks strips accents, so an accented title collapses to
+        // plain ASCII: the slug is a directory name, and the product's first audience writes French.
 #pragma warning disable CA1308 // lowercase is the slug's stored form (a directory name), not a comparison normalization
         var normalized = new string(
             [.. requested.Trim().Normalize(NormalizationForm.FormD)

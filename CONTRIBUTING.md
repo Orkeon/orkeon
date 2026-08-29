@@ -71,6 +71,18 @@ dotnet test Orkeon.sln
 The solution has **37 src projects across 12 zones**, each mirrored by a test
 project (plus `tests/e2e`, `tests/examples`, `tests/shared`):
 
+### Comments are English, and never accented
+
+An invariant, enforced by `scripts/check-comment-accents.py` in CI: every comment is in
+English and carries no accented letter. Studio's interface is in French, so the trap is a
+comment quoting a UI label — **translate the label, do not strip its accents**: a comment
+citing `"Modele d'IA"` names something the product never displays. Name the role instead
+(`the model-settings tab`). An accent-stripped French sentence is still French, only worse.
+
+Only comment lines are in scope. User-facing strings keep their accents. So does typography
+the repository uses everywhere — em dashes, ellipses, arrows, guillemets: none of those are
+accented letters.
+
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (Clean Architecture core)

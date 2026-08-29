@@ -34,7 +34,7 @@ public sealed class FolderNodeViewModel
     /// <summary>True for the row the picker currently points at.</summary>
     public bool IsSelected { get; }
 
-    /// <summary>The faint right-hand note ("déjà autorisé"), when one applies.</summary>
+    /// <summary>The faint right-hand note (already allowed), when one applies.</summary>
     public string? Note { get; }
 
     /// <summary>Whether a note exists.</summary>
@@ -45,7 +45,7 @@ public sealed class FolderNodeViewModel
 }
 
 /// <summary>
-/// The "Autoriser un dossier" modal (remediation v2, F-03): path + browse, a one-level
+/// The allow-a-folder modal (remediation v2, F-03): path + browse, a one-level
 /// tree, the rights choice in two radio rows, and — expert — the exact mount string the
 /// choice will be written as. One shared instance serves every caller: each
 /// <see cref="Open"/> names its own callback.
@@ -91,7 +91,7 @@ public sealed class FolderPickerViewModel : ObservableObject
 
     /// <summary>
     /// Shows the modal. <paramref name="existingMounts"/> (mount strings) drive the
-    /// "déjà autorisé" notes and the virtual-path uniqueness; <paramref name="onPicked"/>
+    /// already-allowed notes and the virtual-path uniqueness; <paramref name="onPicked"/>
     /// receives the confirmed mount.
     /// </summary>
     public void Open(IReadOnlyList<string> existingMounts, Action<MountDefinition> onPicked, string? initialPath = null)
@@ -137,7 +137,7 @@ public sealed class FolderPickerViewModel : ObservableObject
     /// <summary>The tree rows: the ancestors of the current path, then its children.</summary>
     public ObservableCollection<FolderNodeViewModel> Nodes { get; } = [];
 
-    /// <summary>True when the "Lecture seule" row is chosen (the default).</summary>
+    /// <summary>True when the read-only row is chosen (the default).</summary>
     public bool IsReadOnly
     {
         get => _isReadOnly;
@@ -148,19 +148,19 @@ public sealed class FolderPickerViewModel : ObservableObject
         }
     }
 
-    /// <summary>True when the "Lecture et écriture" row is chosen.</summary>
+    /// <summary>True when the read-and-write row is chosen.</summary>
     public bool IsReadWrite => !_isReadOnly;
 
-    /// <summary>Chooses "Lecture seule".</summary>
+    /// <summary>Chooses read-only.</summary>
     public RelayCommand PickReadOnlyCommand { get; }
 
-    /// <summary>Chooses "Lecture et écriture".</summary>
+    /// <summary>Chooses read-and-write.</summary>
     public RelayCommand PickReadWriteCommand { get; }
 
     /// <summary>Opens the OS folder browser.</summary>
     public RelayCommand BrowseCommand { get; }
 
-    /// <summary>"Autoriser ce dossier".</summary>
+    /// <summary>The confirm action: allow this folder.</summary>
     public RelayCommand ConfirmCommand { get; }
 
     /// <summary>Closes without picking.</summary>
@@ -201,7 +201,7 @@ public sealed class FolderPickerViewModel : ObservableObject
     /// <summary>
     /// The virtual spelling: the folder's own name, lowercased — or the first free
     /// suggestion when that name is taken or unusable. Same derivation as the mounts
-    /// editor's "Autoriser un dossier".
+    /// editor's allow-a-folder gesture.
     /// </summary>
     private string VirtualPathCandidate()
     {

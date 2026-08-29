@@ -16,8 +16,8 @@ namespace Orkeon.Rag.Embeddings;
 /// <c>LocalEmbeddingProvider</c> (BGE-micro-v2 ONNX, 384 dims, zero API key) — consumable
 /// everywhere the Application port is expected (RAG, knowledge, agent selection).
 /// Introduced in RAG-01/C3 with a provisional home in <c>Orkeon.Infrastructure</c>;
-/// moved to <c>Orkeon.Rag</c> in RAG-02/C3 per the plan (§4.1 — "dans Orkeon.Rag,
-/// qui référence les deux mondes") and the ADR-006 amendment.
+/// moved to <c>Orkeon.Rag</c> in RAG-02/C3 per the plan (§4.1 — it belongs in Orkeon.Rag,
+/// the one project that references both worlds) and the ADR-006 amendment.
 /// </para>
 /// <para>
 /// Both the unary and the batch port methods route through the inner provider's

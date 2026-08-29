@@ -16,7 +16,7 @@ using UglyToad.PdfPig;
 namespace Orkeon.Tools.Data.Search;
 
 /// <summary>
-/// Performs semantic search within PDF documents. Thin façade over the shared
+/// Performs semantic search within PDF documents. Thin facade over the shared
 /// ephemeral-collection RAG search (RAG-03/C5): pages are extracted with PdfPig
 /// and ingested incrementally as per-page inline sources (unchanged corpus =
 /// zero embeddings), then queried through the document store. Supports single

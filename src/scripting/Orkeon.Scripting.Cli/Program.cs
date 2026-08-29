@@ -67,7 +67,7 @@ internal static class Program
     /// Speaks UTF-8 on every console stream. Without this, .NET encodes redirected
     /// stdout/stderr with the Windows OEM codepage (850 on a French machine), and every
     /// accented character in the event stream reaches the watching process as mojibake
-    /// ("déjà" → "d‚j…"). Stdin gets the mirror treatment so a typed reply with accents
+    /// (an accented word arrives as "d‚j…"). Stdin gets the mirror treatment so a typed reply with accents
     /// survives the trip down. No BOM anywhere: the protocol is one JSON document per
     /// line and a BOM would corrupt the first one.
     /// </summary>

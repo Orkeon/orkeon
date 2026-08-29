@@ -1,7 +1,7 @@
 namespace Orkeon.Studio.Core.Forge;
 
 /// <summary>
-/// The four user-facing milestones (UX study §3): Décrire ▸ Proposer ▸ Essayer ▸ Adopter.
+/// The four user-facing milestones (UX study §3): Describe ▸ Propose ▸ Try ▸ Adopt.
 /// A client-side projection — the engine has more states than the user has milestones,
 /// and that asymmetry is the point.
 /// </summary>

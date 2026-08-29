@@ -312,7 +312,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         LaunchAsync(validate: true, cancellationToken);
 
     /// <summary>
-    /// Runs the crew for real (spec §5.3). With « Validation à blanc d'abord » (mock,
+    /// Runs the crew for real (spec §5.3). With the dry-run-first option (mock,
     /// expert options), a <c>--validate</c> pass runs first and a failed one stops here —
     /// the dry run is exactly the protection it claims to be.
     /// </summary>
@@ -472,7 +472,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             if (request.RecordInHistory)
             {
                 History.Publish(_session.History);
-                // The team cards' « dernière exécution » line reads the same history —
+                // The team cards' last-run line reads the same history —
                 // the shell refreshes it now, not at the next app start (review D5).
                 RunRecorded?.Invoke(this, EventArgs.Empty);
             }
@@ -558,7 +558,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     public event EventHandler? RunRecorded;
 
     /// <summary>
-    /// Re-reads the selected target's sidecar — « Changer les dossiers » may have edited
+    /// Re-reads the selected target's sidecar — the change-folders action may have edited
     /// the very team the launcher points at, and the run must lay the NEW mounts
     /// (review D6: the chips and the command must not disagree, even for a minute).
     /// </summary>
@@ -576,7 +576,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>Display name of the selected team (sidecar-backed, file name otherwise).</summary>
     public string? TeamHeadline => _team.Name;
 
-    /// <summary>"3 agents · réglage X" — only the parts the catalog can honestly assert.</summary>
+    /// <summary>"3 agents · setting X" — only the parts the catalog can honestly assert.</summary>
     public string? TeamMetaLine
     {
         get
@@ -586,7 +586,7 @@ public sealed class LaunchTabViewModel : ObservableObject
                 parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaAgents], agents));
             foreach (var mountString in _team.Mounts)
             {
-                // « lit /docs · écrit dans /output » — the sidecar's mounts, in words.
+                // "reads /docs · writes to /output" — the sidecar's mounts, in words.
                 if (MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null)
                 {
                     parts.Add(string.Format(
@@ -617,7 +617,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         DeclaredMounts.BlockingFolders(_team.Mounts, _declaredMounts(), TeamDirectory());
 
     /// <summary>
-    /// Whether the run is refused. « Réglages › Dossiers autorisés » is the list of what this
+    /// Whether the run is refused. The Settings > Allowed folders screen is the list of what this
     /// machine allows: a team reaching outside it does not start, it says which folder and why.
     /// Discovering that from a run that failed halfway is the outcome this replaces.
     /// </summary>
@@ -632,7 +632,7 @@ public sealed class LaunchTabViewModel : ObservableObject
                 string.Join(", ", UndeclaredTeamFolders))
             : "";
 
-    /// <summary>« Ouvrir les dossiers autorisés » — the shell lands on the settings' folders tab.</summary>
+    /// <summary>Opens the allowed-folders list — the shell lands on the settings' folders tab.</summary>
     public RelayCommand OpenAllowedFoldersCommand { get; }
 
     /// <summary>Raised by <see cref="OpenAllowedFoldersCommand"/>.</summary>
@@ -674,7 +674,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         set => SetProperty(ref _isJournalOpen, value);
     }
 
-    /// <summary>"Ouvrir le résultat" — the physical folder of the first writable mount.</summary>
+    /// <summary>Opens the result — the physical folder of the first writable mount.</summary>
     public RelayCommand OpenResultCommand { get; private set; } = null!;
 
     /// <summary>A result folder exists once the run finished and a writable mount is known.</summary>

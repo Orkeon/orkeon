@@ -2,7 +2,7 @@ namespace Orkeon.Cli.Commands.Scripting.Dispatch;
 
 /// <summary>
 /// Ambient context for one command invocation, pushed by the runner around a handler /
-/// <c>dispatch</c> call so the façade's <c>request</c>/<c>post</c> know the originating
+/// <c>dispatch</c> call so the facade's <c>request</c>/<c>post</c> know the originating
 /// command name, the cooperative cancellation token, and where to record the instances a
 /// <c>dispatch</c> created (for the async <c>completed</c> drain — design §4.3).
 /// </summary>

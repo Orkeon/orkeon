@@ -1,14 +1,14 @@
 namespace Orkeon.Tests.Shared.Constants;
 
-/// <summary>Constantes LLM pour les tests.</summary>
+/// <summary>LLM constants for tests.</summary>
 public static class TestLlmConstants
 {
-    // --- Noms de modèles ---
+    // --- Model names ---
     /// <summary>
-    /// Le modèle par défaut de la plateforme (<c>LlmDefaults.DefaultModelName</c>).
-    /// À utiliser quand l'assertion porte sur « la valeur par défaut », pas sur un
-    /// identifiant précis — les deux étaient confondus avant LLM-01, où le défaut est
-    /// passé de <c>gpt-4</c> à <c>gpt-5.6-sol</c>.
+    /// The platform's default model (<c>LlmDefaults.DefaultModelName</c>).
+    /// Use it when the assertion is about the default value itself, not about a
+    /// specific identifier — the two were conflated before LLM-01, where the default
+    /// moved from <c>gpt-4</c> to <c>gpt-5.6-sol</c>.
     /// </summary>
     public const string ModelDefault = "gpt-5.6-sol";
     public const string ModelGpt4 = "gpt-4";
@@ -32,14 +32,14 @@ public static class TestLlmConstants
     // --- Endpoints ---
     public const string EndpointMistral = "https://api.mistral.ai/v1";
 
-    // --- Configuration par défaut ---
+    // --- Default configuration ---
     public const double DefaultTemperature = 0.7;
     public const double DefaultTopP = 0.95;
     public const int DefaultMaxTokens = 4096;
     public const int HighMaxTokens = 8192;
     public const int DefaultTimeoutSeconds = 30;
 
-    // --- Clés API de test ---
+    // --- Test API keys ---
     public const string TestApiKey = "test-api-key";
     public const string CustomApiKey = "custom-api-key";
 }

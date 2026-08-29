@@ -33,7 +33,7 @@ public static class DefaultScriptServiceWhitelist
             .AddOptional(ScriptServiceKeys.Logger, sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger("script"))
             // Optional: present only when the host wired the command-dispatch substrate (AddScriptCommands).
             .AddOptional(ScriptServiceKeys.Commands, sp => sp.GetService<CommandDispatchService>())
-            // Optional: the crew-launching façade (exp 07 SPEC §6) — present when AddScriptCommands ran.
+            // Optional: the crew-launching facade (exp 07 SPEC §6) — present when AddScriptCommands ran.
             .AddOptional(ScriptServiceKeys.ScriptHost, sp => sp.GetService<ScriptHostFacade>());
     }
 

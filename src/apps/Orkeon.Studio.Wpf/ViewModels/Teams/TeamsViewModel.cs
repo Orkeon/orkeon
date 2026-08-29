@@ -50,14 +50,14 @@ public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary s
 /// Empty where nothing removes chips.
 /// </param>
 /// <param name="IsUndeclared">
-/// True when the folder behind the chip is not in « Réglages › Dossiers autorisés ». The chip
+/// True when the folder behind the chip is not in the Settings > Allowed folders list. The chip
 /// then reads red: the settings are the list of what this machine allows, and a team reaching
 /// outside it should not have to be discovered by reading a sidecar.
 /// </param>
 public sealed record TeamMountChip(
     string Label, bool IsReadWrite, string MountString = "", bool IsUndeclared = false);
 
-/// <summary>One team card of "Mes équipes".</summary>
+/// <summary>One team card of the my-teams screen.</summary>
 public sealed class TeamCardViewModel : ObservableObject
 {
     private readonly IStudioStrings _strings;
@@ -139,7 +139,7 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Whether a profile is recorded.</summary>
     public bool HasProfile => Summary.Profile is { Length: > 0 };
 
-    /// <summary>The schedule in words ("À la demande", "Chaque jour à 07:30", …).</summary>
+    /// <summary>The schedule in words (on demand, every day at 07:30, …).</summary>
     public string ScheduleDisplay { get; }
 
     /// <summary>True for a team the wizard adopted (it carries the Studio sidecar).</summary>
@@ -176,7 +176,7 @@ public sealed class TeamCardViewModel : ObservableObject
     public IReadOnlyList<TeamMountChip> MountChips { get; }
 
     /// <summary>
-    /// The card badge (mock: programmée = green, à tester = amber, à la demande = accent).
+    /// The card badge (mock: scheduled = green, to be tested = amber, on demand = accent).
     /// A team that never ran and is not scheduled still has to earn its first run.
     /// </summary>
     public string BadgeText =>
@@ -185,7 +185,7 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>ok / warn / accent — the badge's tone name for the view's triggers.</summary>
     public string BadgeTone => IsScheduled ? "ok" : _lastRun is null ? "warn" : "accent";
 
-    /// <summary>« Dernière exécution : … » / « Jamais exécutée » — the meta line's history part.</summary>
+    /// <summary>The last-run date, or never-ran — the meta line's history part.</summary>
     public string LastRunDisplay =>
         _lastRun is { } startedAt
             ? string.Format(
@@ -203,7 +203,7 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Whether the agent-count meta part exists.</summary>
     public bool HasAgentCount => Summary.AgentCount is not null;
 
-    /// <summary>« Réglage : X » — the meta line's model-profile part.</summary>
+    /// <summary>The setting-name part ("setting: X") — the meta line's model-profile part.</summary>
     public string? ProfileDisplay =>
         Summary.Profile is { Length: > 0 } profile
             ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsSettingLabel], profile)
@@ -211,7 +211,7 @@ public sealed class TeamCardViewModel : ObservableObject
 
     /// <summary>
     /// The card's one meta line, « · »-joined like the launcher's (v3 F-02):
-    /// « 3 agents · Chaque jour à 07:30 · Dernière exécution : … · Réglage : X ».
+    /// "3 agents · every day at 07:30 · last run: … · setting: X".
     /// </summary>
     public string MetaLine => string.Join(
         " · ",
@@ -254,7 +254,7 @@ public sealed class InProgressSessionViewModel
 }
 
 /// <summary>
-/// "Mes équipes" (design v3): every adopted team is an ordinary folder under the teams
+/// The my-teams screen (design v3): every adopted team is an ordinary folder under the teams
 /// root — copiable, deletable, runnable with <c>orkeon run</c> alone — plus the wizard
 /// sessions still underway, resumable where they stopped.
 /// </summary>
@@ -297,7 +297,7 @@ public sealed class TeamsViewModel : ObservableObject
     /// <summary>Raised when a stopped wizard session should resume.</summary>
     public event EventHandler<SessionResumeEventArgs>? ResumeRequested;
 
-    /// <summary>Raised by "Créer une équipe" — the shell brings the wizard forward.</summary>
+    /// <summary>Raised by the create-a-team button — the shell brings the wizard forward.</summary>
     public event EventHandler? CreateRequested;
 
     /// <summary>Raised by « Changer les dossiers » — the shell opens the team-mounts modal.</summary>

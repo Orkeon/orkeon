@@ -8,7 +8,7 @@ public abstract record WaitTimeout
     private protected WaitTimeout() { }
 }
 
-/// <summary>Bounded wait. Crew dormante → réveil planifié à <c>StartedAt + Duration</c>.</summary>
+/// <summary>Bounded wait. The crew sleeps → wake-up scheduled at <c>StartedAt + Duration</c>.</summary>
 public sealed record FiniteWaitTimeout(TimeSpan Duration) : WaitTimeout
 {
     /// <summary>Creates a <see cref="FiniteWaitTimeout"/>, validating that <paramref name="duration"/> is strictly positive.</summary>
@@ -21,7 +21,7 @@ public sealed record FiniteWaitTimeout(TimeSpan Duration) : WaitTimeout
     }
 }
 
-/// <summary>Unbounded wait. Réveil exclusif sur arrivée de message matchant.</summary>
+/// <summary>Unbounded wait. Woken only by the arrival of a matching message.</summary>
 public sealed record ForeverWaitTimeout : WaitTimeout
 {
     /// <summary>Singleton instance.</summary>

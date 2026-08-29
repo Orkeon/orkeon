@@ -169,7 +169,7 @@ public sealed class DiagnosticViewModel : ObservableObject
         OkCount, WarningCount, FailureCount);
 
     /// <summary>There is something to copy once a run has produced checks or an error.</summary>
-    /// <summary>« Copié ! » feedback of the header button; the view resets it after ~1,6 s.</summary>
+    /// <summary>The "copied!" feedback of the header button; the view resets it after ~1.6 s.</summary>
     public bool ReportCopied
     {
         get => _reportCopied;

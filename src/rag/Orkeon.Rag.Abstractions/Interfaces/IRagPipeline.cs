@@ -3,7 +3,7 @@ using Orkeon.Rag.Abstractions.Models;
 namespace Orkeon.Rag.Abstractions.Interfaces;
 
 /// <summary>
-/// Query façade of the RAG subsystem: answers a <see cref="RagQuery"/> with a
+/// Query facade of the RAG subsystem: answers a <see cref="RagQuery"/> with a
 /// cited, traced <see cref="RagAnswer"/>. The linear pipeline and the corrective
 /// graph engine both live behind this interface; the configured profile selects
 /// the executor.

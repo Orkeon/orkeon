@@ -3,7 +3,7 @@ using Orkeon.Studio.Core.Forge;
 namespace Orkeon.Studio.Core.Tests.Forge;
 
 /// <summary>
-/// The «Définition générée» card shows the rendered YAML itself (v3 W-06):
+/// The generated-definition card shows the rendered YAML itself (v3 W-06):
 /// config first, then agents, then tasks, each part named by a mono comment.
 /// </summary>
 public sealed class ForgeRenderReaderTests : IDisposable

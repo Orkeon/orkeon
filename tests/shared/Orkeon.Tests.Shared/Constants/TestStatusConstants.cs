@@ -1,6 +1,6 @@
 namespace Orkeon.Tests.Shared.Constants;
 
-/// <summary>Statuts et états.</summary>
+/// <summary>Statuses and states.</summary>
 public static class TestStatusConstants
 {
     public const string Completed = "Completed";

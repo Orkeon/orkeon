@@ -875,7 +875,7 @@ public static partial class RunnerExecution
     }
 
     /// <summary>
-    /// True when <paramref name="configPath"/> looks like a <c>.ork.ts</c> Orkéon Scripting
+    /// True when <paramref name="configPath"/> looks like a <c>.ork.ts</c> Orkeon Scripting
     /// DSL source rather than a YAML crew definition. The runner dispatches on this so the
     /// same <c>-c/--config</c> CLI flag accepts both formats.
     /// </summary>

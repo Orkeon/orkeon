@@ -1,6 +1,6 @@
 namespace Orkeon.Tests.Shared.Constants;
 
-/// <summary>Identifiants de test réutilisables.</summary>
+/// <summary>Reusable test identifiers.</summary>
 public static class TestEntityIds
 {
     public const string AgentId1 = "agent-1";

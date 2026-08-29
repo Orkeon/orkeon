@@ -41,6 +41,10 @@ jobs:
       # the version string in README/INDEX/CLAUDE.md are checked against the code.
       - name: Check documentation claims against the code
         run: python3 scripts/check-doc-claims.py
+      # Comment-language invariant: comments are English and never accented. Cheap and
+      # build-free like its two neighbours, so it runs before setup-dotnet.
+      - name: Check comments carry no accented letter
+        run: python3 scripts/check-comment-accents.py
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '10.0.x' }
       - uses: actions/cache@v4

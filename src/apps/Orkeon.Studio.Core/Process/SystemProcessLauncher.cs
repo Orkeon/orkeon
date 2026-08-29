@@ -126,7 +126,7 @@ public sealed class SystemProcessLauncher : IProcessLauncher
             CreateNoWindow = true,
             // The CLI writes UTF-8; without this, Windows decodes redirected pipes with
             // the console OEM codepage (850 on a French machine) and every accent in the
-            // journal turns into mojibake ("déjà" → "d‚j…").
+            // journal turns into mojibake (an accented letter arrives as a stray glyph).
             StandardOutputEncoding = System.Text.Encoding.UTF8,
             StandardErrorEncoding = System.Text.Encoding.UTF8,
         };

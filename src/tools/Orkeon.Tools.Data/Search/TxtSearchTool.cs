@@ -7,7 +7,7 @@ namespace Orkeon.Tools.Data.Search;
 
 /// <summary>
 /// Tool for performing semantic search within plain text (.txt) files.
-/// Thin façade over the shared ephemeral-collection RAG search (RAG-03/C5):
+/// Thin facade over the shared ephemeral-collection RAG search (RAG-03/C5):
 /// files are ingested incrementally (unchanged corpus = zero embeddings) and
 /// queried through the document store.
 /// </summary>

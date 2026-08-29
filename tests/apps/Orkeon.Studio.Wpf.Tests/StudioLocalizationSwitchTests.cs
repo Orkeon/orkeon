@@ -101,7 +101,7 @@ public sealed class StudioLocalizationSwitchTests
     public void ProfileEditor_OpensWithTheCultureLabels_When_FrenchIsActive()
     {
         // The provider catalogue and the seeded name go through the culture port: a French
-        // Studio proposes "Nouveau réglage" over French provider rows, not English ones.
+        // Studio proposes the French new-profile name over French provider rows, not English ones.
         var strings = new SwitchableStrings();
         strings.SwitchToFrench();
         var document = AppSettingsDocument.CreateEmpty();

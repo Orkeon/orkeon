@@ -3,7 +3,7 @@ using Orkeon.Rag.Abstractions.Models;
 namespace Orkeon.Rag.Abstractions.Interfaces;
 
 /// <summary>
-/// Evaluation harness façade (plan §9): runs a golden dataset against the
+/// Evaluation harness facade (plan §9): runs a golden dataset against the
 /// pipeline resolved for <see cref="RagEvalOptions.Profile"/> and returns a
 /// <see cref="RagEvalReport"/> with deterministic retrieval metrics
 /// (recall@k, precision@k, MRR) and labelled generation metrics

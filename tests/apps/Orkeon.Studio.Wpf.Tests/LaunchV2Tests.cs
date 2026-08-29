@@ -6,7 +6,7 @@ using Orkeon.Studio.Wpf.ViewModels.Launch;
 namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
-/// Remediation v2 on the Exécuter screen (F-05): « Validation à blanc d'abord » really
+/// Remediation v2 on the Run screen (F-05): the dry-run-first option really
 /// runs a --validate pass before the run and stops on a failed one; the team meta line
 /// speaks the sidecar's mounts.
 /// </summary>

@@ -50,7 +50,7 @@ public sealed class TeamMountRowViewModel : ObservableObject
     public bool IsReadOnly { get; }
 
     /// <summary>
-    /// True when this folder is not in « Réglages › Dossiers autorisés » — the row reads red.
+    /// True when this folder is not in Settings › Allowed folders — the row reads red.
     /// It is not an error: a team's <c>/output</c> lives inside the team itself and is never
     /// declared. It is the one thing the row cannot say by naming a virtual path.
     /// </summary>
@@ -69,7 +69,7 @@ public sealed class TeamMountRowViewModel : ObservableObject
 }
 
 /// <summary>
-/// The "Dossiers de « X » " modal (remediation v2, F-03): the team's mount strings as
+/// The folders-of-team-X modal (remediation v2, F-03): the team's mount strings as
 /// checkbox rows, an add button routed through the shared folder picker, and a save that
 /// writes the sidecar — the card chips, this list and the launch arguments are one list.
 /// </summary>
@@ -98,12 +98,12 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Raised by « Autoriser un autre dossier… » — the shell opens the shared folder
+    /// Raised by the allow-another-folder action — the shell opens the shared folder
     /// picker over this modal and feeds the choice back through <see cref="AddMount"/>.
     /// </summary>
     public event EventHandler? AddRequested;
 
-    /// <summary>« Autoriser un autre dossier… ».</summary>
+    /// <summary>The allow-another-folder action.</summary>
     public RelayCommand AddCommand { get; }
 
     /// <summary>Whether the modal is showing.</summary>
@@ -144,7 +144,7 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     /// <summary>The checkbox rows.</summary>
     public ObservableCollection<TeamMountRowViewModel> Rows { get; } = [];
 
-    /// <summary>« Dossiers de « X » ».</summary>
+    /// <summary>The modal's title: the folders of team X.</summary>
     public string Title => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamMountsTitle], _teamName);
 
     /// <summary>The footer's plain-words summary of what a save would keep.</summary>

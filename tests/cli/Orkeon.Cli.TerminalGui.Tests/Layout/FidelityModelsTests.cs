@@ -80,7 +80,7 @@ public class BannerComposerTests
     public void Ascii_glyphs_degrade_the_LOGO_to_7bit()
     {
         // Only the logo is the composer's to degrade — the info lines are the host's
-        // own text and may legitimately carry accents ("Orkéon") or dashes.
+        // own text and may legitimately carry accents ("Orkeon") or dashes.
         var lines = BannerComposer.Compose(Info(), GlyphSet.Ascii);
         Assert.DoesNotContain(lines, l => l.Contains('▄', StringComparison.Ordinal));
         Assert.DoesNotContain(lines, l => l.Contains('▀', StringComparison.Ordinal));

@@ -15,7 +15,7 @@ namespace Orkeon.Rag.Tests.Search;
 
 /// <summary>
 /// Tests for <see cref="EphemeralCollectionSearchService"/> (RAG-03/C5): the
-/// shared engine behind the search-tool façades. Key guarantees: a second
+/// shared engine behind the search-tool facades. Key guarantees: a second
 /// search over an unchanged corpus computes <b>zero corpus embeddings</b>
 /// (only the query is embedded), the ephemeral collection name is
 /// deterministic, and scored results flow through untouched, best first.

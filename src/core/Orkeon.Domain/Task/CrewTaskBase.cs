@@ -110,10 +110,10 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     public ITaskCallback? Callback { get; private set; }
 
     /// <summary>
-    /// Optional per-task LLM override. Surcharge l'agent.LlmConfig sur le seul périmètre de
-    /// cette task (ex. <c>response_format: json_object</c>, ou <c>temperature: 0.0</c> pour
-    /// une extraction stricte). Appliqué par <c>LlmConfigResolver</c> avant chaque call
-    /// provider.
+    /// Optional per-task LLM override. Overrides the agent's LlmConfig on the scope of this
+    /// task alone (e.g. <c>response_format: json_object</c>, or <c>temperature: 0.0</c> for
+    /// a strict extraction). Applied by <c>LlmConfigResolver</c> before every provider
+    /// call.
     /// </summary>
     public LlmConfigOverride? LlmOverride { get; private set; }
 

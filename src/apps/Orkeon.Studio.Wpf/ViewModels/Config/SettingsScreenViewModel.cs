@@ -5,9 +5,9 @@ using Orkeon.Studio.Wpf.ViewModels.Shell;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
-/// The unified "Réglages" screen (design v3): one nav entry, four inner tabs. Novice sees the
-/// two that matter — the AI model and the authorized folders; "Limites &amp; journaux" and
-/// "JSON brut" are expert-only, and a switch back to novice while one of them is showing
+/// The unified Settings screen (design v3): one nav entry, four inner tabs. Novice sees the
+/// two that matter — the AI model and the authorized folders; the limits-and-logs tab and
+/// the raw-JSON tab are expert-only, and a switch back to novice while one of them is showing
 /// falls back to the model tab rather than leaving a blank screen.
 /// </summary>
 public sealed class SettingsScreenViewModel : ObservableObject
@@ -79,16 +79,16 @@ public sealed class SettingsScreenViewModel : ObservableObject
         }
     }
 
-    /// <summary>True while the "Modèle d'IA" tab shows.</summary>
+    /// <summary>True while the AI-model tab shows.</summary>
     public bool IsModelTab => _activeTab == ModelTab;
 
-    /// <summary>True while the "Dossiers autorisés" tab shows.</summary>
+    /// <summary>True while the allowed-folders tab shows.</summary>
     public bool IsFoldersTab => _activeTab == FoldersTab;
 
-    /// <summary>True while the expert "Limites &amp; journaux" tab shows.</summary>
+    /// <summary>True while the expert limits-and-logs tab shows.</summary>
     public bool IsLimitsTab => _activeTab == LimitsTab;
 
-    /// <summary>True while the expert "JSON brut" tab shows.</summary>
+    /// <summary>True while the expert raw-JSON tab shows.</summary>
     public bool IsJsonTab => _activeTab == JsonTab;
 
     /// <summary>Shows the model tab.</summary>

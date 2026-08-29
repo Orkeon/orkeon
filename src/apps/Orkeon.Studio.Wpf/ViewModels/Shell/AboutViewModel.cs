@@ -5,7 +5,7 @@ using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 namespace Orkeon.Studio.Wpf.ViewModels.Shell;
 
 /// <summary>
-/// The "À propos" overlay: Studio's version, the co-installed CLI's version, and Kama. The CLI
+/// The About overlay: Studio's version, the co-installed CLI's version, and Kama. The CLI
 /// version is asked once, lazily, the first time the dialog opens — <c>orkeon --version</c> is
 /// a disk-and-fork touch that the window must not pay at startup, and a missing binary simply
 /// leaves the CLI segment out of the line rather than surfacing an error in an About box.

@@ -61,7 +61,7 @@ public sealed record TargetDescription
 }
 
 
-/// <summary>One team folder, as "Mes équipes" lists it.</summary>
+/// <summary>One team folder, as the my-teams screen lists it.</summary>
 public sealed record TeamSummary
 {
     /// <summary>Display name.</summary>

@@ -224,7 +224,7 @@ public static class StudioStringKeys
     /// <summary>"No declared folder" — the sidecar names none (or there is no sidecar).</summary>
     public const string ImportMountsNone = "Vm_Import_MountsNone";
 
-    /// <summary>"Allow its folders after adding — Mes équipes, Changer les dossiers."</summary>
+    /// <summary>"Allow its folders after adding — My teams, Change the folders."</summary>
     public const string ImportMountsNoneDetail = "Vm_Import_MountsNoneDetail";
 
     /// <summary>"reads {0}" — a read-only team mount, in the launcher's meta line.</summary>
@@ -595,7 +595,7 @@ public static class StudioStringKeys
     public const string RunProgressHubMessages = "Vm_RunProgress_HubMessages";
 
 
-    // ---- Model profiles (Réglages, design v3) -------------------------------
+    // ---- Model profiles (settings screen, design v3) ------------------------
 
     /// <summary>"New setting" — the freshly created profile's placeholder name.</summary>
     public const string ProfileNewName = "Vm_Profiles_NewName";
@@ -724,7 +724,7 @@ public static class StudioStringKeys
     public const string WizardHintReady = "Vm_Wizard_Hint_Ready";
 
 
-    // ---- Mes équipes (design v3) --------------------------------------------
+    // ---- My teams screen (design v3) ----------------------------------------
 
     /// <summary>"Looks good to me"</summary>
     public const string WizardDecisionAccept = "Vm_Wizard_Decision_Accept";

@@ -10,7 +10,7 @@ using Orkeon.Studio.Wpf.ViewModels.Shell;
 namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
-/// The unified "Réglages" screen (design v3): the model profiles, their two elections, the
+/// The unified settings screen (design v3): the model profiles, their two elections, the
 /// mirror of the default into the Llm section, and the tab gating by mode.
 /// </summary>
 public sealed class SettingsScreenTests
@@ -317,7 +317,7 @@ public sealed class SettingsRemediationTests
     }
 }
 
-/// <summary>The Réglages "Clés API" card: env-var rows, remember flow, no file ever.</summary>
+/// <summary>The settings screen's API-keys card: env-var rows, remember flow, no file ever.</summary>
 public sealed class SecretsCardTests
 {
     private sealed class RecordingKeyStore : IApiKeyStore

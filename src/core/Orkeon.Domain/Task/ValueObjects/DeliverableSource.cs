@@ -16,8 +16,8 @@ public enum DeliverableSource
 
     /// <summary>
     /// The framework writes the agent's final assistant message to the declared path.
-    /// Fiable pour les livrables markdown/texte volumineux, le modèle n'a pas à
-    /// sérialiser le contenu à l'intérieur d'un argument de tool_call.
+    /// Reliable for large markdown/text deliverables: the model does not have to
+    /// serialize the content inside a tool_call argument.
     /// </summary>
     FinalMessage,
 

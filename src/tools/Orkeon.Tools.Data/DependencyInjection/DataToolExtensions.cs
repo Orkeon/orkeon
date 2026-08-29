@@ -16,7 +16,7 @@ public static class DataToolExtensions
 {
     /// <summary>
     /// Adds data tools (JSON, CSV, PDF, XML, Database, MongoDB, Graph) to the service collection.
-    /// The search façades (txt_search, mdx_search, pdf_search) ride on the shared
+    /// The search facades (txt_search, mdx_search, pdf_search) ride on the shared
     /// ephemeral-collection RAG search (RAG-03/C5): the host must register the RAG
     /// subsystem (<c>AddOrkeonRag</c> + an embedding provider) for them to run —
     /// without it, registration and construction still succeed and searches fail
@@ -24,7 +24,7 @@ public static class DataToolExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonDataTools(this IServiceCollection services)
     {
-        // Shared ephemeral-collection search engine of the search façades (TryAdd, idempotent).
+        // Shared ephemeral-collection search engine of the search facades (TryAdd, idempotent).
         services.AddOrkeonEphemeralSearch();
 
         services.AddTransient<IBaseTool, JsonTool>();
