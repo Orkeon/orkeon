@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
@@ -43,19 +44,19 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
 
         return InferProviderType(config) switch
         {
-            "ollama" => CreateOllamaProvider(config),
-            "openai" => CreateOpenAIProvider(config),
-            "anthropic" => CreateAnthropicProvider(config),
-            "azure" or "azure-openai" => CreateAzureOpenAIProvider(config),
-            "groq" => CreateGroqProvider(config),
-            "together" or "togetherai" => CreateTogetherAiProvider(config),
-            "qwen" => CreateQwenProvider(config),
-            "deepseek" => CreateDeepSeekProvider(config),
-            "kimi" or "moonshot" => CreateKimiProvider(config),
-            "mistral" => CreateMistralProvider(config),
-            "huggingface" or "hf" => CreateHuggingFaceProvider(config),
-            "gemini" or "google" => CreateGeminiProvider(config),
-            "zai" or "glm" or "zhipu" => CreateZaiProvider(config),
+            LlmProviderKeys.Ollama => CreateOllamaProvider(config),
+            LlmProviderKeys.OpenAI => CreateOpenAIProvider(config),
+            LlmProviderKeys.Anthropic => CreateAnthropicProvider(config),
+            LlmProviderKeys.AzureShort or LlmProviderKeys.AzureOpenAI => CreateAzureOpenAIProvider(config),
+            LlmProviderKeys.Groq => CreateGroqProvider(config),
+            LlmProviderKeys.Together or LlmProviderKeys.TogetherAiAlias => CreateTogetherAiProvider(config),
+            LlmProviderKeys.Qwen => CreateQwenProvider(config),
+            LlmProviderKeys.DeepSeek => CreateDeepSeekProvider(config),
+            LlmProviderKeys.Kimi or LlmProviderKeys.MoonshotAlias => CreateKimiProvider(config),
+            LlmProviderKeys.Mistral => CreateMistralProvider(config),
+            LlmProviderKeys.HuggingFace or LlmProviderKeys.HuggingFaceAlias => CreateHuggingFaceProvider(config),
+            LlmProviderKeys.Gemini or LlmProviderKeys.GoogleAlias => CreateGeminiProvider(config),
+            LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
             _ => CreateOpenAIProvider(config) // Default to OpenAI
         };
     }
@@ -71,19 +72,19 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         return providerType.ToLowerInvariant() switch
 #pragma warning restore CA1308
         {
-            "ollama" => CreateOllamaProvider(config),
-            "openai" => CreateOpenAIProvider(config),
-            "anthropic" => CreateAnthropicProvider(config),
-            "azure" or "azure-openai" => CreateAzureOpenAIProvider(config),
-            "groq" => CreateGroqProvider(config),
-            "together" or "togetherai" => CreateTogetherAiProvider(config),
-            "qwen" => CreateQwenProvider(config),
-            "deepseek" => CreateDeepSeekProvider(config),
-            "kimi" or "moonshot" => CreateKimiProvider(config),
-            "mistral" => CreateMistralProvider(config),
-            "huggingface" or "hf" => CreateHuggingFaceProvider(config),
-            "gemini" or "google" => CreateGeminiProvider(config),
-            "zai" or "glm" or "zhipu" => CreateZaiProvider(config),
+            LlmProviderKeys.Ollama => CreateOllamaProvider(config),
+            LlmProviderKeys.OpenAI => CreateOpenAIProvider(config),
+            LlmProviderKeys.Anthropic => CreateAnthropicProvider(config),
+            LlmProviderKeys.AzureShort or LlmProviderKeys.AzureOpenAI => CreateAzureOpenAIProvider(config),
+            LlmProviderKeys.Groq => CreateGroqProvider(config),
+            LlmProviderKeys.Together or LlmProviderKeys.TogetherAiAlias => CreateTogetherAiProvider(config),
+            LlmProviderKeys.Qwen => CreateQwenProvider(config),
+            LlmProviderKeys.DeepSeek => CreateDeepSeekProvider(config),
+            LlmProviderKeys.Kimi or LlmProviderKeys.MoonshotAlias => CreateKimiProvider(config),
+            LlmProviderKeys.Mistral => CreateMistralProvider(config),
+            LlmProviderKeys.HuggingFace or LlmProviderKeys.HuggingFaceAlias => CreateHuggingFaceProvider(config),
+            LlmProviderKeys.Gemini or LlmProviderKeys.GoogleAlias => CreateGeminiProvider(config),
+            LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
             _ => throw new NotSupportedException($"Provider type '{providerType}' is not supported.")
         };
     }
@@ -108,7 +109,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         if (fromApiKey != null)
             return fromApiKey;
 
-        return "openai"; // Default
+        return LlmProviderKeys.OpenAI; // Default
     }
 
     /// <summary>
@@ -131,13 +132,13 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         // Docker Model Runner: must be checked BEFORE the generic localhost rule for Ollama
         if (url.Contains("/engines/", StringComparison.Ordinal)
             || url.Contains("model-runner.docker.internal", StringComparison.Ordinal))
-            return "openai";
-        if (url.Contains("azure", StringComparison.Ordinal) || url.Contains(".cognitiveservices.", StringComparison.Ordinal))
-            return "azure-openai";
+            return LlmProviderKeys.OpenAI;
+        if (url.Contains(LlmProviderKeys.AzureShort, StringComparison.Ordinal) || url.Contains(".cognitiveservices.", StringComparison.Ordinal))
+            return LlmProviderKeys.AzureOpenAI;
         if (url.Contains("groq.com", StringComparison.Ordinal))
-            return "groq";
+            return LlmProviderKeys.Groq;
         if (url.Contains("together.xyz", StringComparison.Ordinal))
-            return "together";
+            return LlmProviderKeys.Together;
         // Qwen / Alibaba Model Studio: the mainland host (dashscope.aliyuncs.com), the
         // international host (dashscope-intl.aliyuncs.com — note it does NOT contain the
         // mainland string), and the per-workspace regional hosts
@@ -145,39 +146,39 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         if (url.Contains("dashscope.aliyuncs.com", StringComparison.Ordinal)
             || url.Contains("dashscope-intl.aliyuncs.com", StringComparison.Ordinal)
             || url.Contains("maas.aliyuncs.com", StringComparison.Ordinal))
-            return "qwen";
+            return LlmProviderKeys.Qwen;
         if (url.Contains("deepseek.com", StringComparison.Ordinal))
         {
             GuardAgainstDeepSeekAnthropicEndpoint(url);
-            return "deepseek";
+            return LlmProviderKeys.DeepSeek;
         }
         // Kimi: mainland (moonshot.cn) and international (moonshot.ai) hosts.
         if (url.Contains("moonshot.cn", StringComparison.Ordinal)
             || url.Contains("moonshot.ai", StringComparison.Ordinal))
-            return "kimi";
+            return LlmProviderKeys.Kimi;
         if (url.Contains("mistral.ai", StringComparison.Ordinal))
-            return "mistral";
+            return LlmProviderKeys.Mistral;
         // Google Gemini: the OpenAI-compatible host (Vertex AI endpoints are a separate,
         // OAuth-authenticated surface and are deliberately NOT matched here).
         if (url.Contains("generativelanguage.googleapis.com", StringComparison.Ordinal))
-            return "gemini";
+            return LlmProviderKeys.Gemini;
         if (url.Contains("huggingface.co", StringComparison.Ordinal) || url.Contains("hf.co", StringComparison.Ordinal))
-            return "huggingface";
+            return LlmProviderKeys.HuggingFace;
         // Z.AI (Zhipu GLM): match the full host, not the bare "z.ai" substring
         // (which would also hit any *z.ai domain), plus the mainland bigmodel.cn twin.
         if (url.Contains("api.z.ai", StringComparison.Ordinal) || url.Contains("bigmodel.cn", StringComparison.Ordinal))
-            return "zai";
+            return LlmProviderKeys.Zai;
         return null;
     }
 
     private static string? InferFromGenericPatterns(string url)
     {
-        if (url.Contains("openai", StringComparison.Ordinal))
-            return "openai";
-        if (url.Contains("anthropic", StringComparison.Ordinal))
-            return "anthropic";
+        if (url.Contains(LlmProviderKeys.OpenAI, StringComparison.Ordinal))
+            return LlmProviderKeys.OpenAI;
+        if (url.Contains(LlmProviderKeys.Anthropic, StringComparison.Ordinal))
+            return LlmProviderKeys.Anthropic;
         if (url.Contains("localhost", StringComparison.Ordinal) || url.Contains("11434", StringComparison.Ordinal))
-            return "ollama";
+            return LlmProviderKeys.Ollama;
         return null;
     }
 
@@ -194,27 +195,27 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
 #pragma warning restore CA1308
 
         if (m.StartsWith("gpt", StringComparison.Ordinal))
-            return "openai";
+            return LlmProviderKeys.OpenAI;
         if (m.StartsWith("claude", StringComparison.Ordinal))
-            return "anthropic";
+            return LlmProviderKeys.Anthropic;
         if (m.StartsWith("llama", StringComparison.Ordinal) || m.StartsWith("codellama", StringComparison.Ordinal))
-            return "ollama";
+            return LlmProviderKeys.Ollama;
         if (IsOllamaMistralTag(m))
-            return "ollama";
-        if (m.StartsWith("mistral", StringComparison.Ordinal) || m.StartsWith("ministral", StringComparison.Ordinal))
-            return "mistral";
-        if (m.Contains("mixtral", StringComparison.Ordinal) || m.Contains("groq", StringComparison.Ordinal))
-            return "groq";
-        if (m.StartsWith("qwen", StringComparison.Ordinal))
-            return "qwen";
-        if (m.StartsWith("deepseek", StringComparison.Ordinal))
-            return "deepseek";
-        if (m.StartsWith("moonshot", StringComparison.Ordinal))
-            return "kimi";
-        if (m.StartsWith("glm", StringComparison.Ordinal))
-            return "zai";
-        if (m.StartsWith("gemini", StringComparison.Ordinal))
-            return "gemini";
+            return LlmProviderKeys.Ollama;
+        if (m.StartsWith(LlmProviderKeys.Mistral, StringComparison.Ordinal) || m.StartsWith("ministral", StringComparison.Ordinal))
+            return LlmProviderKeys.Mistral;
+        if (m.Contains("mixtral", StringComparison.Ordinal) || m.Contains(LlmProviderKeys.Groq, StringComparison.Ordinal))
+            return LlmProviderKeys.Groq;
+        if (m.StartsWith(LlmProviderKeys.Qwen, StringComparison.Ordinal))
+            return LlmProviderKeys.Qwen;
+        if (m.StartsWith(LlmProviderKeys.DeepSeek, StringComparison.Ordinal))
+            return LlmProviderKeys.DeepSeek;
+        if (m.StartsWith(LlmProviderKeys.MoonshotAlias, StringComparison.Ordinal))
+            return LlmProviderKeys.Kimi;
+        if (m.StartsWith(LlmProviderKeys.GlmAlias, StringComparison.Ordinal))
+            return LlmProviderKeys.Zai;
+        if (m.StartsWith(LlmProviderKeys.Gemini, StringComparison.Ordinal))
+            return LlmProviderKeys.Gemini;
 
         return null;
     }
@@ -254,7 +255,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// <see cref="LlmConfig.BaseUrl"/> to their server — base-URL inference runs first and wins.
     /// </remarks>
     private static bool IsOllamaMistralTag(string normalizedModel) =>
-        string.Equals(normalizedModel, "mistral", StringComparison.Ordinal)
+        string.Equals(normalizedModel, LlmProviderKeys.Mistral, StringComparison.Ordinal)
         || normalizedModel.StartsWith("mistral:", StringComparison.Ordinal);
 
     /// <summary>
@@ -266,7 +267,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return null;
 
         if (apiKey.StartsWith("hf_", StringComparison.Ordinal))
-            return "huggingface";
+            return LlmProviderKeys.HuggingFace;
 
         return null;
     }

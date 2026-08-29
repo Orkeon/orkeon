@@ -12,19 +12,19 @@ namespace Orkeon.Studio.Core.Configuration;
 public static class LlmProviderDetector
 {
     /// <summary>Reported when no base URL is configured (the <c>none</c> preset).</summary>
-    public const string None = "none";
+    public const string None = LlmProviderKeys.None;
 
     /// <summary>Reported for an endpoint that matches no known host.</summary>
-    public const string Custom = "custom";
+    public const string Custom = LlmProviderKeys.Custom;
 
     /// <summary>Local Ollama server.</summary>
-    public const string Ollama = "ollama";
+    public const string Ollama = LlmProviderKeys.Ollama;
 
     /// <summary>Docker Model Runner's llama.cpp OpenAI-compatible endpoint.</summary>
-    public const string DockerModelRunner = "docker-model-runner";
+    public const string DockerModelRunner = LlmProviderKeys.DockerModelRunner;
 
     /// <summary>Azure OpenAI (any <c>*.openai.azure.com</c> deployment host).</summary>
-    public const string AzureOpenAI = "azure-openai";
+    public const string AzureOpenAI = LlmProviderKeys.AzureOpenAI;
 
     private const int OllamaDefaultPort = 11434;
     private const int DockerModelRunnerDefaultPort = 12434;
@@ -79,19 +79,19 @@ public static class LlmProviderDetector
     {
         var hosts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        Add(LlmProviderEndpoints.OpenAI, "openai");
-        Add(LlmProviderEndpoints.Anthropic, "anthropic");
-        Add(LlmProviderEndpoints.Groq, "groq");
-        Add(LlmProviderEndpoints.DeepSeek, "deepseek");
-        Add(LlmProviderEndpoints.Together, "together");
-        Add(LlmProviderEndpoints.Qwen, "qwen");
-        Add(LlmProviderEndpoints.Kimi, "kimi");
-        Add(LlmProviderEndpoints.HuggingFace, "huggingface");
-        Add(LlmProviderEndpoints.Mistral, "mistral");
-        Add(LlmProviderEndpoints.Zai, "zai");
+        Add(LlmProviderEndpoints.OpenAI, LlmProviderKeys.OpenAI);
+        Add(LlmProviderEndpoints.Anthropic, LlmProviderKeys.Anthropic);
+        Add(LlmProviderEndpoints.Groq, LlmProviderKeys.Groq);
+        Add(LlmProviderEndpoints.DeepSeek, LlmProviderKeys.DeepSeek);
+        Add(LlmProviderEndpoints.Together, LlmProviderKeys.Together);
+        Add(LlmProviderEndpoints.Qwen, LlmProviderKeys.Qwen);
+        Add(LlmProviderEndpoints.Kimi, LlmProviderKeys.Kimi);
+        Add(LlmProviderEndpoints.HuggingFace, LlmProviderKeys.HuggingFace);
+        Add(LlmProviderEndpoints.Mistral, LlmProviderKeys.Mistral);
+        Add(LlmProviderEndpoints.Zai, LlmProviderKeys.Zai);
         // Gemini's OpenAI-compatible host. Missing until now, so Studio reported "custom" for
         // the endpoint its own preset catalogue writes — the runtime maps it to "gemini".
-        Add(LlmProviderEndpoints.Gemini, "gemini");
+        Add(LlmProviderEndpoints.Gemini, LlmProviderKeys.Gemini);
 
         // The mainland-China Moonshot twin, documented on LlmEndpoints.Kimi.
         hosts[LlmProviderEndpoints.KimiChinaHost] = "kimi";

@@ -98,19 +98,19 @@ public enum LlmPresetKind
 public static class LlmPresets
 {
     /// <summary>Local Ollama server.</summary>
-    public const string Ollama = "ollama";
+    public const string Ollama = LlmProviderKeys.Ollama;
 
     /// <summary>Docker Model Runner (llama.cpp, OpenAI-compatible).</summary>
-    public const string DockerModelRunner = "docker-model-runner";
+    public const string DockerModelRunner = LlmProviderKeys.DockerModelRunner;
 
     /// <summary>OpenAI cloud API.</summary>
-    public const string OpenAI = "openai";
+    public const string OpenAI = LlmProviderKeys.OpenAI;
 
     /// <summary>Any other OpenAI-compatible endpoint.</summary>
-    public const string Custom = "custom";
+    public const string Custom = LlmProviderKeys.Custom;
 
     /// <summary>No LLM: the runtime falls back to the echo provider.</summary>
-    public const string None = "none";
+    public const string None = LlmProviderKeys.None;
 
     /// <summary>The environment variable the runtime reads natively (<c>AddEnvironmentVariables("ORKEON_")</c>).</summary>
     public const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
@@ -140,37 +140,37 @@ public static class LlmPresets
     // so a profile only carries the endpoint and the model.
 
     /// <summary>Anthropic cloud API.</summary>
-    public const string Anthropic = "anthropic";
+    public const string Anthropic = LlmProviderKeys.Anthropic;
 
     /// <summary>Azure OpenAI (per-resource endpoint — no default URL exists).</summary>
-    public const string AzureOpenAI = "azure-openai";
+    public const string AzureOpenAI = LlmProviderKeys.AzureOpenAI;
 
     /// <summary>DeepSeek cloud API (OpenAI-compatible).</summary>
-    public const string DeepSeek = "deepseek";
+    public const string DeepSeek = LlmProviderKeys.DeepSeek;
 
     /// <summary>Google Gemini (OpenAI-compatible endpoint).</summary>
-    public const string Gemini = "gemini";
+    public const string Gemini = LlmProviderKeys.Gemini;
 
     /// <summary>Groq cloud API (OpenAI-compatible).</summary>
-    public const string Groq = "groq";
+    public const string Groq = LlmProviderKeys.Groq;
 
     /// <summary>HuggingFace Inference Providers router.</summary>
-    public const string HuggingFace = "huggingface";
+    public const string HuggingFace = LlmProviderKeys.HuggingFace;
 
     /// <summary>Kimi (Moonshot AI) cloud API.</summary>
-    public const string Kimi = "kimi";
+    public const string Kimi = LlmProviderKeys.Kimi;
 
     /// <summary>Mistral AI cloud API.</summary>
-    public const string Mistral = "mistral";
+    public const string Mistral = LlmProviderKeys.Mistral;
 
     /// <summary>Qwen (Alibaba DashScope) cloud API.</summary>
-    public const string Qwen = "qwen";
+    public const string Qwen = LlmProviderKeys.Qwen;
 
     /// <summary>Together AI cloud API.</summary>
-    public const string Together = "together";
+    public const string Together = LlmProviderKeys.Together;
 
     /// <summary>Z.AI (Zhipu GLM) cloud API.</summary>
-    public const string Zai = "zai";
+    public const string Zai = LlmProviderKeys.Zai;
 
     /// <summary>Preset names, in the order the wizard lists them.</summary>
     public static IReadOnlyList<string> Names { get; } =

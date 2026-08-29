@@ -1,6 +1,7 @@
 #nullable enable
 Orkeon.Constants.Llm.LlmProviderDefaultModels
 Orkeon.Constants.Llm.LlmProviderEndpoints
+Orkeon.Constants.Llm.LlmProviderKeys
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Anthropic = "claude-sonnet-5" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.DeepSeek = "deepseek-v4-flash" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.DockerModelRunner = "ai/granite-4.0-h-tiny" -> string!
@@ -30,3 +31,28 @@ const Orkeon.Constants.Llm.LlmProviderEndpoints.OpenAIEmbeddingsRoot = "https://
 const Orkeon.Constants.Llm.LlmProviderEndpoints.Qwen = "https://dashscope.aliyuncs.com/compatible-mode/v1" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.Together = "https://api.together.xyz/v1" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.Zai = "https://api.z.ai/api/paas/v4" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Anthropic = "anthropic" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.AzureOpenAI = "azure-openai" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.AzureShort = "azure" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Custom = "custom" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.DeepSeek = "deepseek" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.DockerModelRunner = "docker-model-runner" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Gemini = "gemini" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.GlmAlias = "glm" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.GoogleAlias = "google" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Groq = "groq" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.HuggingFace = "huggingface" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.HuggingFaceAlias = "hf" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Kimi = "kimi" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Mistral = "mistral" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.MoonshotAlias = "moonshot" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.None = "none" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Ollama = "ollama" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.OpenAI = "openai" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Qwen = "qwen" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Together = "together" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.TogetherAiAlias = "togetherai" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Zai = "zai" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.ZhipuAlias = "zhipu" -> string!
+static Orkeon.Constants.Llm.LlmProviderKeys.Aliases.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+static Orkeon.Constants.Llm.LlmProviderKeys.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
