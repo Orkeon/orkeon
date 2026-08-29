@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
 using System.Diagnostics;
 using System.Globalization;
@@ -196,7 +197,7 @@ internal static class DoctorCommand
         builder.AddEnvironmentVariables("ORKEON_");
         var configuration = builder.Build();
 
-        var section = configuration.GetSection("Llm");
+        var section = configuration.GetSection(ConfigurationKeys.LlmSection);
         if (!section.Exists())
             return new LlmContext { SettingsPath = settingsPath, HasLlmSection = false };
 

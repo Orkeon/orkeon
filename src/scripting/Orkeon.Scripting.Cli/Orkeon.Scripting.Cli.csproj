@@ -19,6 +19,8 @@
     <!-- ADR-009: the .orkeon state directory, shared with Studio and the index cache. -->
     <!-- ADR-009: the run event stream's vocabulary, shared with whatever watches the run. -->
     <!-- ADR-009: the run option grammar, shared with the tooling that predicts it. -->
+    <!-- ADR-009: the Llm configuration section, shared with the REPL and the runner host. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Cli\Orkeon.Constants.Cli.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Protocol\Orkeon.Constants.Protocol.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.FileSystem\Orkeon.Constants.FileSystem.csproj" />

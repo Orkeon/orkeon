@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
@@ -34,7 +35,7 @@ internal static class ConfiguredLlmProviderBootstrapper
     {
         // Llm:Thinking:{Enabled,Effort} — forwarded to thinking-capable providers
         // (DeepSeek, Z.AI GLM) as the `thinking` block + `reasoning_effort` field.
-        var thinkingSection = llmSection.GetSection("Thinking");
+        var thinkingSection = llmSection.GetSection(ConfigurationKeys.ThinkingSection);
         if (!thinkingSection.Exists()) return null;
         return new LlmThinkingConfig
         {
@@ -55,7 +56,7 @@ internal static class ConfiguredLlmProviderBootstrapper
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var section = configuration.GetSection("Llm");
+        var section = configuration.GetSection(ConfigurationKeys.LlmSection);
         if (!section.Exists())
             return services;
 

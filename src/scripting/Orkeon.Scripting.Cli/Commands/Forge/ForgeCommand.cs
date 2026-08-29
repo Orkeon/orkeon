@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
@@ -403,7 +404,7 @@ internal static class ForgeCommand
         // No Llm section = no interview. Refuse with the remedy, before spending a turn —
         // the silent echo degrade that is acceptable for `orkeon run` would make the
         // assistant babble its own prompts back at the user.
-        if (!host.Services.GetRequiredService<IConfiguration>().GetSection("Llm").Exists())
+        if (!host.Services.GetRequiredService<IConfiguration>().GetSection(ConfigurationKeys.LlmSection).Exists())
         {
             await Console.Error.WriteLineAsync(
                 "orkeon forge: no LLM is configured (FORGE-LLM-UNAVAILABLE) — run `orkeon init`, or pass --settings.")

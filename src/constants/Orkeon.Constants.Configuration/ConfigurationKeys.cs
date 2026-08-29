@@ -42,4 +42,19 @@ public static class ConfigurationKeys
     /// console's fidelity wiring, which live in projects that do not share a layer.
     /// </summary>
     public const string CliSessionContextWindowTokens = "Orkeon:Cli:Session:ContextWindowTokens";
+
+    /// <summary>
+    /// The LLM section, at the configuration ROOT rather than under <c>Orkeon:</c> - the one
+    /// section that is, for historical reasons the settings files already carry. Read by the
+    /// REPL's bootstrapper, by the shared runner host and by the CLI's doctor and forge verbs,
+    /// in three projects that cannot reference each other.
+    /// </summary>
+    public const string LlmSection = "Llm";
+
+    /// <summary>
+    /// The thinking sub-section of <see cref="LlmSection"/>. Read by two projects, and its
+    /// absence is not an error anywhere - which is exactly why a spelling that drifted would be
+    /// read as "thinking not configured" rather than reported.
+    /// </summary>
+    public const string ThinkingSection = "Thinking";
 }

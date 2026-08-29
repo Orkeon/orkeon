@@ -117,7 +117,7 @@ public static partial class RunnerHost
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger("Orkeon.Hosting.RunnerHost");
 
-        var llmSection = configuration.GetSection("Llm");
+        var llmSection = configuration.GetSection(ConfigurationKeys.LlmSection);
         if (llmSection.Exists())
         {
             // One line of truth about what was actually resolved (file + ORKEON_ overlay):
@@ -471,7 +471,7 @@ public static partial class RunnerHost
 
     private static void RegisterLlmProvider(HostBuilderContext context, IServiceCollection services)
     {
-        var llmSection = context.Configuration.GetSection("Llm");
+        var llmSection = context.Configuration.GetSection(ConfigurationKeys.LlmSection);
         // No section → no provider registration; the echo fallback is announced once per
         // host build by WarnIfLlmNotConfigured (no logger exists yet at this point).
         if (!llmSection.Exists()) return;
@@ -507,7 +507,7 @@ public static partial class RunnerHost
         {
             // Llm:Thinking:{Enabled,Effort} — forwarded to thinking-capable providers
             // (DeepSeek, Z.AI GLM) as the `thinking` block + `reasoning_effort` field.
-            var thinkingSection = llmSection.GetSection("Thinking");
+            var thinkingSection = llmSection.GetSection(ConfigurationKeys.ThinkingSection);
             if (!thinkingSection.Exists()) return null;
             return new LlmThinkingConfig
             {
