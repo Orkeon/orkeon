@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
 using System.Collections.Immutable;
 using System.Globalization;
@@ -45,9 +46,7 @@ public static partial class RunnerHost
     /// the two texts together — a UI that warns differently from the runtime is worse than
     /// one that does not warn at all.
     /// </summary>
-    public const string LlmNotConfiguredMessage =
-        "No `Llm` section configured — falling back to the echo provider (`<undefined-llm>`). " +
-        "Run `orkeon init` to create a configuration, or set `ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`.";
+    public const string LlmNotConfiguredMessage = OperatorMessages.LlmNotConfigured;
 
     /// <summary>
     /// Builds a fully-configured host with all Orkeon services.

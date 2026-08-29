@@ -106,29 +106,6 @@ public sealed class ConstantDriftTests
         Assert.Equal(RunnerSettings.GetGlobalSettingsPath(), SettingsLocations.GetGlobalSettingsPath());
     }
 
-    /// <summary>
-    /// The sub-folder a promoted team keeps its definition in. The detector descends into it
-    /// so a team card can be launched; if the name drifted from what the forge renderer
-    /// writes, adopted teams would stop resolving again.
-    /// </summary>
-    [Fact]
-    public void The_promoted_crew_folder_is_the_one_the_forge_writes()
-    {
-        Assert.Equal(ForgeRenderReader.CrewDirectoryName, RunTargetDetector.PromotedCrewDirectoryName);
-    }
-
-    [Fact]
-    public void The_win01_wording_is_the_runtime_wording()
-    {
-        Assert.Equal(RunnerHost.LlmNotConfiguredMessage, AppSettingsValidator.LlmNotConfiguredMessage);
-
-        // Studio adds a note of its own, and only appends it.
-        Assert.StartsWith(
-            AppSettingsValidator.LlmNotConfiguredMessage,
-            AppSettingsValidator.LlmNotConfiguredWarning,
-            StringComparison.Ordinal);
-    }
-
     [Fact]
     public void The_declared_minimum_cli_version_is_one_this_repository_has_reached()
     {

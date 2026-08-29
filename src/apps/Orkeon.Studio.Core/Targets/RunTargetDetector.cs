@@ -35,7 +35,7 @@ public sealed class RunTargetDetector
     /// <c>forge promote</c> writes (mirrors its <c>ForgeYamlRenderer.CrewDirectoryName</c>,
     /// and the one <c>TeamCatalog</c> already counts agents in).
     /// </summary>
-    public const string PromotedCrewDirectoryName = "crew";
+    public const string PromotedCrewDirectoryName = Forge.ForgeRenderReader.CrewDirectoryName;
 
     /// <summary>Suffix of a scripting-DSL crew file.</summary>
     public const string ScriptSuffix = ".ork.ts";

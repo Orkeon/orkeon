@@ -28,6 +28,8 @@
     <!-- ADR-009: the virtual roots the runner mounts, read from the satellite instead of
          copied here and pinned pairwise by a drift test. -->
     <!-- ADR-009: provider endpoints, read from the satellite instead of copied here. -->
+    <!-- ADR-009: the WIN-01 wording, worded once. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.Llm\Orkeon.Constants.Llm.csproj" />
     <ProjectReference Include="..\..\constants\Orkeon.Constants.FileSystem\Orkeon.Constants.FileSystem.csproj" />
     <!-- FileSystemMount (mount round-trip), LlmDefaults, [SuppressVfsCompliance]. -->

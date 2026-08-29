@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Orkeon.Studio.Core.Configuration;
@@ -35,9 +36,7 @@ public sealed class AppSettingsValidator
     /// The WIN-01 message, verbatim as <c>RunnerHost.LlmNotConfiguredMessage</c> words it so
     /// the UI warning and the runtime warning read the same.
     /// </summary>
-    public const string LlmNotConfiguredMessage =
-        "No `Llm` section configured — falling back to the echo provider (`<undefined-llm>`). " +
-        "Run `orkeon init` to create a configuration, or set `ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`.";
+    public const string LlmNotConfiguredMessage = OperatorMessages.LlmNotConfigured;
 
     /// <summary>
     /// Studio-only addendum to WIN-01. The runtime reads <c>ORKEON_Llm__*</c> environment

@@ -1,1 +1,3 @@
 #nullable enable
+Orkeon.Constants.Configuration.OperatorMessages
+const Orkeon.Constants.Configuration.OperatorMessages.LlmNotConfigured = "No `Llm` section configured — falling back to the echo provider (`<undefined-llm>`). Run `orkeon init` to create a configuration, or set `ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`." -> string!
