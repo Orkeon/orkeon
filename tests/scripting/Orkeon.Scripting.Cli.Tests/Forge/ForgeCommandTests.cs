@@ -113,4 +113,40 @@ public sealed class ForgeCommandTests : IDisposable
         var session = Assert.Single(ForgeSession.List(_workspace));
         Assert.Equal("un-besoin-concret", session.Slug);
     }
+
+    /// <summary>
+    /// A settings file that claims one of the three roots forge mounts for itself is a
+    /// configuration mistake, and has to read as one.
+    /// <para>
+    /// Forge accepts no <c>--mount</c>, so its settings file is the ONLY place its roots can
+    /// be claimed from — and that was exactly the case the reserved-root guard never covered:
+    /// every other entry point calls it, on its command-line mounts. The team composer writes
+    /// <c>/output</c> into the settings the moment a team produces a deliverable, so creating
+    /// a team and then composing it was enough to reach it, and what came back was
+    /// "Duplicate virtual paths: /output" thrown out of a DI factory.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_settings_declared_output_mount_is_refused_rather_than_crashing_the_host_build()
+    {
+        Directory.CreateDirectory(_workspace);
+        var deliverables = Path.Combine(_workspace, "livrables");
+        Directory.CreateDirectory(deliverables);
+        var claim = System.Text.Json.JsonSerializer.Serialize(
+            Orkeon.Domain.FileSystem.FileSystemMount.Quote(deliverables) + ":/output:rw");
+        await File.WriteAllTextAsync(
+            Path.Combine(_workspace, "appsettings.json"),
+            "{ \"Llm\": { \"Provider\": \"ollama\", \"Model\": \"llama3.2\" },"
+            + " \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ " + claim + " ] } } }",
+            TestContext.Current.CancellationToken);
+
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync([], _workspace);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("/output", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("reserved", console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("Duplicate virtual paths", console.Stderr, StringComparison.Ordinal);
+    }
 }

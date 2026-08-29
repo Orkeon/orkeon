@@ -135,7 +135,8 @@ public static partial class RunnerExecution
 
         if (!EnsureExternalMountsAllowed(opts, isScript ? null : configDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
-                cliMounts, targetVirtualRoot, RunnerMounts.LlmLogVirtualRoot, RunnerMounts.SandboxVirtualRoot))
+                [.. cliMounts, .. RunnerSettings.ReadDeclaredMounts(settingsPath)],
+                targetVirtualRoot, RunnerMounts.LlmLogVirtualRoot, RunnerMounts.SandboxVirtualRoot))
         {
             errorCode = 1;
             return false;
@@ -268,10 +269,13 @@ public static partial class RunnerExecution
             if (clash is null)
                 continue;
 
+            // The roots differ per entry point — the YAML runner reserves /crew, the forge
+            // /workspace, /forge and /output — so the line names what THIS command reserves
+            // rather than a fixed list that was false for whoever was not the YAML runner.
             Console.Error.WriteLine(
-                $"ERROR: '{clash}' is a virtual root reserved by the runner (it is where Orkéon "
-                + "mounts the crew or script definition, the hosted crews, and the LLM exchange "
-                + "logs). Give this mount another virtual name.");
+                $"ERROR: '{clash}' is a virtual root reserved by the runner: this command mounts "
+                + $"it for itself (reserved here: {string.Join(", ", reserved)}). Give this mount "
+                + "another virtual name.");
             Console.Error.WriteLine($"       mount       : {mountString}");
             return false;
         }

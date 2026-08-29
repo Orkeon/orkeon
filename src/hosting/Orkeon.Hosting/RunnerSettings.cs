@@ -160,4 +160,48 @@ public static class RunnerSettings
         }
         return null;
     }
+
+    /// <summary>
+    /// The mount strings a settings file declares under <c>Orkeon:FileSystem:Mounts</c>.
+    /// <para>
+    /// The reserved-root guard used to see only the <c>--mount</c> arguments, so the same
+    /// collision written in <c>appsettings.json</c> reached <c>FileSystemRegistry</c> and came
+    /// back as "Duplicate virtual paths" out of a DI factory. A mount claims a root the same
+    /// way whichever of the two it was written in, so the guard has to be shown both.
+    /// </para>
+    /// <para>
+    /// Read with the JSON reader rather than a configuration builder on purpose: this runs
+    /// before the host exists, it must not apply environment or command-line overlays, and a
+    /// malformed file is not this method's business to report — the host build says it better,
+    /// with the path and the parse position. Anything it cannot read is no mounts, never a throw.
+    /// </para>
+    /// </summary>
+    /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
+    /// <returns>The declared mount strings, in file order; empty when there are none.</returns>
+    public static IReadOnlyList<string> ReadDeclaredMounts(string? settingsPath)
+    {
+        if (settingsPath is not { Length: > 0 } || !File.Exists(settingsPath))
+            return [];
+
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settingsPath));
+            if (!document.RootElement.TryGetProperty("Orkeon", out var orkeon)
+                || !orkeon.TryGetProperty("FileSystem", out var fileSystem)
+                || !fileSystem.TryGetProperty("Mounts", out var mounts)
+                || mounts.ValueKind != System.Text.Json.JsonValueKind.Array)
+            {
+                return [];
+            }
+
+            return [.. mounts.EnumerateArray()
+                .Where(e => e.ValueKind == System.Text.Json.JsonValueKind.String)
+                .Select(e => e.GetString()!)
+                .Where(s => s.Length > 0)];
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
 }

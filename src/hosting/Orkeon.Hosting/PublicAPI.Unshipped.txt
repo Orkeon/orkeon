@@ -9,3 +9,4 @@ static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, System.Collections.
 static Orkeon.Hosting.RunnerExecution.LoadCrewAsync(Microsoft.Extensions.Hosting.IHost! host, Orkeon.Application.Interfaces.ICrewFactory! factory, string! configPath, Microsoft.Extensions.Logging.ILogger! logger, System.Threading.CancellationToken ct, bool? targetIsDirectory = null) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
 *REMOVED*static Orkeon.Hosting.RunnerExecution.LoadCrewAsync(Microsoft.Extensions.Hosting.IHost! host, Orkeon.Application.Interfaces.ICrewFactory! factory, string! configPath, Microsoft.Extensions.Logging.ILogger! logger, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
 const Orkeon.Hosting.RunnerMounts.SandboxVirtualRoot = "/sandbox" -> string!
+static Orkeon.Hosting.RunnerSettings.ReadDeclaredMounts(string? settingsPath) -> System.Collections.Generic.IReadOnlyList<string!>!

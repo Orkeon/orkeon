@@ -450,10 +450,17 @@ internal static class RagCommand
 
         var cliMounts = options.Mounts.Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
 
-        if (!cliMounts.Any(m => ClaimsVirtualRoot(m, "/workspace")))
+        // The settings file declares mounts too, and RunnerHost appends ours after them: a
+        // declared /workspace or /output met an injected twin and the host died on
+        // "Duplicate virtual paths" out of a DI factory. Yielding to whoever already claimed
+        // the root is this command's existing policy for --mount; it just never saw the other
+        // half of the list it was reasoning about.
+        var claimed = cliMounts.Concat(RunnerSettings.ReadDeclaredMounts(settingsPath)).ToList();
+
+        if (!claimed.Any(m => ClaimsVirtualRoot(m, "/workspace")))
             cliMounts.Insert(0, $"{FileSystemMount.Quote(cwd)}:/workspace:ro");
 
-        if (!cliMounts.Any(m => ClaimsVirtualRoot(m, "/output")))
+        if (!claimed.Any(m => ClaimsVirtualRoot(m, "/output")))
         {
             var stateDir = Path.Combine(cwd, ".orkeon");
             // EXCEPTION-BOOTSTRAP: provisions the manifest mount's physical directory

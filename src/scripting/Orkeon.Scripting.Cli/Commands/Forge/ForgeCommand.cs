@@ -220,6 +220,15 @@ internal sealed record ForgeCommandOptions
 /// </summary>
 internal static class ForgeCommand
 {
+    /// <summary>The workspace, read-only, as the forge's crews address it.</summary>
+    public const string WorkspaceVirtualRoot = "/workspace";
+
+    /// <summary>The forge session directory, writable, as its crews address it.</summary>
+    public const string SessionVirtualRoot = "/forge";
+
+    /// <summary>The trial bench's write surface, snapshotted per run by the test stage.</summary>
+    public const string OutputVirtualRoot = "/output";
+
     /// <summary>Exit code for a session/usage error, aligned on the CLI's contract.</summary>
     private const int ExitError = 1;
 
@@ -366,6 +375,18 @@ internal static class ForgeCommand
         var outputDirectory = Path.Combine(session.Directory, TestStage.OutputDirectoryName);
         Directory.CreateDirectory(outputDirectory);
 
+        // Forge accepts no --mount, so its settings file is the only place these three roots
+        // can be claimed from — and that is precisely the input the reserved-root guard never
+        // saw. Every other entry point calls it, on its command-line mounts; this one has to
+        // call it on what the settings declare, or the collision comes back from a DI factory
+        // as "Duplicate virtual paths" and reads as a crash instead of the mistake it is.
+        if (!RunnerExecution.EnsureReservedRootsAreFree(
+                RunnerSettings.ReadDeclaredMounts(settingsPath),
+                WorkspaceVirtualRoot, SessionVirtualRoot, OutputVirtualRoot))
+        {
+            return 1;
+        }
+
         using var host = RunnerHost.Build(
             settingsPath,
             cliMounts:
@@ -374,9 +395,9 @@ internal static class ForgeCommand
                 // workspace path carrying a ':' or ';' would otherwise split into the wrong
                 // segments and the forge would die at host build with a grammar error about
                 // a path the user never typed.
-                $"{FileSystemMount.Quote(workspace)}:/workspace:ro",
-                $"{FileSystemMount.Quote(session.Directory)}:/forge:rw",
-                $"{FileSystemMount.Quote(outputDirectory)}:/output:rw",
+                $"{FileSystemMount.Quote(workspace)}:{WorkspaceVirtualRoot}:ro",
+                $"{FileSystemMount.Quote(session.Directory)}:{SessionVirtualRoot}:rw",
+                $"{FileSystemMount.Quote(outputDirectory)}:{OutputVirtualRoot}:rw",
             ],
             configureServices: (_, services) =>
             {

@@ -334,4 +334,36 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         Assert.Contains(RunnerMounts.CrewVirtualRoot, stderr, StringComparison.Ordinal);
         Assert.Contains("reserved by the runner", stderr, StringComparison.Ordinal);
     }
+    /// <summary>
+    /// The same collision, declared in the settings file instead of on the command line.
+    /// <para>
+    /// The guard only ever read the <c>--mount</c> arguments, so a reserved root claimed from
+    /// <c>appsettings.json</c> walked straight past it and came back as
+    /// "Duplicate virtual paths" out of a DI factory — the exact exception the sibling test
+    /// above exists to keep off the screen. Same mistake, same remedy, so it must read the
+    /// same way whichever of the two the operator wrote it in.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_settings_declared_mount_claiming_the_crew_root_is_refused_with_the_same_line()
+    {
+        var configPath = WriteConfig("config.yaml", OkCrewYaml);
+        var claim = System.Text.Json.JsonSerializer.Serialize(
+            FileSystemMount.Quote(_tempDir) + ":" + RunnerMounts.CrewVirtualRoot + ":ro");
+        await File.WriteAllTextAsync(
+            Path.Combine(_tempDir, "appsettings.json"),
+            "{ \"RaggableTree\": { \"Enabled\": false },"
+            + " \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ " + claim + " ] } } }",
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, _, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(1, exit);
+        Assert.Contains(RunnerMounts.CrewVirtualRoot, stderr, StringComparison.Ordinal);
+        Assert.Contains("reserved by the runner", stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("Duplicate virtual paths", stderr, StringComparison.Ordinal);
+    }
 }
