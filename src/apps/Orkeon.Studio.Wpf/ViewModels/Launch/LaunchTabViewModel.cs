@@ -704,23 +704,10 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The adopted team's own folder. The target may be the folder itself or a crew file inside
-    /// it — the same two shapes <c>TeamCatalog.DescribeTarget</c> reads the sidecar from.
+    /// The adopted team's own folder, resolved by <see cref="DeclaredMounts.TeamDirectoryOf"/> —
+    /// the screen asks the question, Studio.Core owns the answer.
     /// </summary>
-    private string? TeamDirectory()
-    {
-        if (Target.SelectedPath is not { Length: > 0 } path)
-            return null;
-
-        try
-        {
-            return _directories.Exists(path) ? path : System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path));
-        }
-        catch (Exception ex) when (ex is ArgumentException or System.IO.PathTooLongException or NotSupportedException)
-        {
-            return null;
-        }
-    }
+    private string? TeamDirectory() => DeclaredMounts.TeamDirectoryOf(Target.SelectedPath, _directories);
 
     private void RaiseRunStateChanged()
     {

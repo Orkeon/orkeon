@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Tests.Doubles;
 
 namespace Orkeon.Studio.Core.Tests.FileSystem;
 
@@ -10,6 +11,58 @@ namespace Orkeon.Studio.Core.Tests.FileSystem;
 public sealed class DeclaredMountsTests
 {
     private static string Team => Path.Combine(Path.GetTempPath(), "orkeon-teams", "veille");
+
+    [Fact]
+    public void The_team_folder_of_a_picked_folder_is_that_folder()
+    {
+        var directories = new FakeDirectoryProbe(Team);
+
+        Assert.Equal(Team, DeclaredMounts.TeamDirectoryOf(Team, directories));
+    }
+
+    [Fact]
+    public void The_team_folder_of_a_picked_crew_file_is_the_folder_holding_it()
+    {
+        // The two shapes TeamCatalog.DescribeTarget reads a sidecar from: the folder, or a file
+        // inside it. A launcher that answered only the first would block every YAML-file target.
+        var crewFile = Path.Combine(Team, "crew.yaml");
+        var directories = new FakeDirectoryProbe(Team);
+
+        Assert.Equal(Team, DeclaredMounts.TeamDirectoryOf(crewFile, directories));
+    }
+
+    [Fact]
+    public void No_selection_names_no_team_folder()
+    {
+        var directories = new FakeDirectoryProbe();
+
+        Assert.Null(DeclaredMounts.TeamDirectoryOf(null, directories));
+        Assert.Null(DeclaredMounts.TeamDirectoryOf("", directories));
+    }
+
+    [Fact]
+    public void A_path_the_platform_refuses_names_no_team_folder()
+    {
+        // Reporting "no team folder" is what makes the mount fall through to the allow-list;
+        // throwing here would take the launch screen down with it.
+        var directories = new FakeDirectoryProbe();
+
+        Assert.Null(DeclaredMounts.TeamDirectoryOf("\0invalid", directories));
+    }
+
+    [Fact]
+    public void The_teams_own_folders_never_block_it_when_a_crew_file_was_picked()
+    {
+        // The regression this pairs with: TeamDirectoryOf and BlockingFolders must agree, or a
+        // team picked by its crew.yaml blocks on the /output it created itself at adoption.
+        var directories = new FakeDirectoryProbe(Team);
+        var teamDirectory = DeclaredMounts.TeamDirectoryOf(Path.Combine(Team, "crew.yaml"), directories);
+
+        var blocking = DeclaredMounts.BlockingFolders(
+            [$"{Path.Combine(Team, "output")}:/output:rw"], [], teamDirectory);
+
+        Assert.Empty(blocking);
+    }
 
     [Fact]
     public void A_folder_is_declared_on_its_disk_path_whatever_the_team_calls_it()

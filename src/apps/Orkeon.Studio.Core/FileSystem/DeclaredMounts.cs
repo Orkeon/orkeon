@@ -90,6 +90,39 @@ public static class DeclaredMounts
         return blocking;
     }
 
+    /// <summary>
+    /// The folder that holds the team behind <paramref name="selectedPath"/> — the value
+    /// <see cref="BlockingFolders"/> takes as its third argument. The picked target may be the
+    /// folder itself or a crew file inside it: the same two shapes <c>TeamCatalog.DescribeTarget</c>
+    /// reads the sidecar from.
+    /// <para>
+    /// It lives here, beside the containment predicate that consumes it, and not in a launcher
+    /// screen. A physical-path rule written in a front-end is precisely what the earlier local
+    /// copy of the containment test got wrong, and there are two launchers to keep in agreement.
+    /// </para>
+    /// </summary>
+    /// <param name="selectedPath">The path the user picked; blank yields <see langword="null"/>.</param>
+    /// <param name="directories">The probe that answers whether the path is a folder.</param>
+    public static string? TeamDirectoryOf(string? selectedPath, IDirectoryProbe directories)
+    {
+        ArgumentNullException.ThrowIfNull(directories);
+
+        if (selectedPath is not { Length: > 0 } path)
+            return null;
+
+        try
+        {
+            return directories.Exists(path)
+                ? path
+                : System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path));
+        }
+        catch (Exception ex) when (ex is ArgumentException or System.IO.PathTooLongException or NotSupportedException)
+        {
+            // A path the platform refuses to resolve names no team folder we can vouch for.
+            return null;
+        }
+    }
+
     private static bool IsInsideTeam(string physicalPath, string? teamDirectory)
     {
         if (teamDirectory is not { Length: > 0 } || physicalPath is not { Length: > 0 })
