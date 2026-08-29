@@ -505,7 +505,7 @@ public sealed class ResiliencePoliciesTests : IDisposable
             attemptCount++;
             if (attemptCount < 3)
             {
-                throw new RedisTimeoutException("Operation timed out", CommandStatus.Sent);
+                throw new RedisTimeoutException(CommandFlags.None, "Operation timed out", CommandStatus.Sent);
             }
             return Task.FromResult(Success);
         });
@@ -528,7 +528,9 @@ public sealed class ResiliencePoliciesTests : IDisposable
             attemptCount++;
             if (attemptCount == 1)
             {
-                throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Cannot connect");
+                throw new RedisConnectionException(
+                    ConnectionFailureType.UnableToConnect, CommandFlags.None, "Cannot connect",
+                    innerException: null, CommandStatus.Unknown);
             }
             return Task.FromResult(Success);
         });
