@@ -139,6 +139,12 @@
     <PackageVersion Include="YahooFinanceApi" Version="2.3.3" />
   </ItemGroup>
   <ItemGroup Label="Roslyn">
+    <!-- The compiler the build RUNS, pinned to the same 5.9.0 as the Roslyn packages
+         above. Without it csc is whatever the installed SDK ships (5.6.0 on 10.0.3xx)
+         and refuses to load an analyzer or generator compiled against 5.9.0 — CS9057,
+         a warning, after which the generator emits nothing and the build dies on the
+         partials it never wrote. Analyzer pin and compiler must move together. -->
+    <PackageVersion Include="Microsoft.Net.Compilers.Toolset" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />

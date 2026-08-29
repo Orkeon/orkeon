@@ -20,15 +20,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!--
-      A Roslyn component declares the OLDEST compiler it must load in, never the newest.
-      Referencing the repo's 5.9.0 pin made csc refuse this assembly on any SDK whose
-      Roslyn is older (CS9057) — a warning, so the analyzer and the generator went silently
-      missing and the build failed 100+ lines later on the partials nobody had generated.
-      VersionOverride keeps the floor here without moving the pin every other project uses.
-    -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.6.0" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" VersionOverride="5.6.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

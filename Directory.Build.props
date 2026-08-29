@@ -11,6 +11,13 @@
     <AnalysisMode>All</AnalysisMode>
     <AnalysisLevel>latest-all</AnalysisLevel>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Build-only: replaces the SDK's csc with the pinned Roslyn so the repo's own
+         analyzer and source generator, which reference Microsoft.CodeAnalysis 5.9.0,
+         can be loaded by the compiler that runs them. Repo-wide because every project
+         loads them, and a project left on the SDK compiler would silently lose both. -->
+    <PackageReference Include="Microsoft.Net.Compilers.Toolset" PrivateAssets="all" />
+  </ItemGroup>
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj-linux/</BaseIntermediateOutputPath>
     <RestorePackagesPath>$(MSBuildThisFileDirectory)packages</RestorePackagesPath>
