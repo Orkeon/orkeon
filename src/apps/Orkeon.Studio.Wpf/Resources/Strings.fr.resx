@@ -585,6 +585,17 @@
   <data name="Picker_Confirm" xml:space="preserve"><value>Autoriser ce dossier</value></data>
   <data name="TeamMounts_Sub" xml:space="preserve"><value>Cochez ce que cette équipe peut voir. Tout dossier décoché lui devient invisible, même si d'autres équipes l'utilisent.</value></data>
   <data name="TeamMounts_AddAnother" xml:space="preserve"><value>Autoriser un autre dossier…</value></data>
+  <data name="AllowedFolders_Title" xml:space="preserve"><value>Ajouter un dossier autorisé</value></data>
+  <data name="AllowedFolders_Sub" xml:space="preserve"><value>Choisissez parmi les dossiers déclarés dans Réglages › Dossiers autorisés. L'équipe les verra avec les mêmes droits.</value></data>
+  <data name="AllowedFolders_Empty" xml:space="preserve"><value>Aucun dossier n'est encore déclaré dans les réglages.</value></data>
+  <data name="AllowedFolders_Declare" xml:space="preserve"><value>Déclarer un nouveau dossier…</value></data>
+  <data name="AllowedFolders_Manage" xml:space="preserve"><value>Gérer les dossiers autorisés</value></data>
+  <data name="AllowedFolders_Confirm" xml:space="preserve"><value>Ajouter à l'équipe</value></data>
+  <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve"><value>déjà ajouté</value></data>
+  <data name="Vm_AllowedFolders_Conflict" xml:space="preserve"><value>{0} est déjà utilisé par un autre dossier</value></data>
+  <data name="Vm_AllowedFolders_Summary" xml:space="preserve"><value>{0} dossier(s) sélectionné(s)</value></data>
+  <data name="Vm_AllowedFolders_Declared" xml:space="preserve"><value>« {0} » ajouté aux dossiers autorisés</value></data>
+  <data name="Vm_AllowedFolders_NotSaved" xml:space="preserve"><value>« {0} » ajouté, mais les réglages n'ont pas pu être enregistrés — {1}</value></data>
   <data name="AgentEd_Sub" xml:space="preserve"><value>Un agent fait une seule chose. Décrivez-la en une phrase, puis n'ouvrez que les capacités nécessaires.</value></data>
   <data name="AgentEd_Name" xml:space="preserve"><value>Nom</value></data>
   <data name="AgentEd_Does" xml:space="preserve"><value>Ce qu'il fait</value></data>

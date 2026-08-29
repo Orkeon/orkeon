@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a team associates a folder, it does not declare one
+
+In Orkeon Studio, « Autoriser un dossier » on a team opened the folder picker:
+a disk tree, a physical path, a rights choice. That is the **declaration**
+screen, and it belongs to « Réglages › Dossiers autorisés » — nowhere else.
+Wired onto the two team screens, it made every team re-declare its mounts from
+scratch, next to a settings list that already held them.
+
+The defect was two lines of shell wiring, not the picker: `MainWindowViewModel`
+had all three callers subscribed to the same modal. The two team gestures — the
+creation wizard's « Dossiers de cette équipe » block, and « Autoriser un autre
+dossier… » on an adopted team — now open a chooser over the folders the
+settings declare. Ticked entries are carried over **verbatim, rights included**:
+the settings are the one place a folder and its rights are decided, and a team
+able to widen them would make that declaration a suggestion. A folder the team
+already carries, or whose virtual root another folder already spends, says so
+and cannot be picked — two mounts on one root is not a merge the runtime
+performs, it is one it drops.
+
+Declaring stays the settings' gesture. Their novice card still opens the picker
+directly, and the chooser reaches it through « Déclarer un nouveau dossier… »:
+the picker opens over the chooser, and the new entry is written to
+`appsettings.json` **straight away**. The user is not in the settings' edit
+cycle when they make that gesture, and asking them to go and save afterwards is
+how a declaration gets lost; Novice mode already auto-saved on every edit, this
+gives Expert the same behaviour for this one gesture. A refused save is
+reported rather than swallowed — the folder stays usable for the team either
+way, only the file was not written.
+
+Neither `CreateTeamViewModel` nor `TeamMountsDialogViewModel` changed: they
+already took a `MountDefinition`, which is what made the wrong wiring so easy to
+miss.
+
 ### Fixed — Virtual paths are the only currency agents are paid in (ADR-008)
 
 The owner found absolute disk folders in Orkeon Studio where only VFS mount

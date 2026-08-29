@@ -32,6 +32,7 @@ public partial class MainWindow : Window
 
         shell.CreateTeam.SessionActivated += (_, _) => NavCreate.IsChecked = true;
         shell.CreateTeam.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.AllowedFolders.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
         shell.TestRequested += (_, _) => NavTest.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
@@ -127,6 +128,12 @@ public partial class MainWindow : Window
     {
         if (DataContext is ViewModels.Shell.MainWindowViewModel shell)
             shell.CreateTeam.AgentEditor.CancelCommand.Execute(null);
+    }
+
+    private void OnAllowedFoldersBackdropClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (DataContext is ViewModels.Shell.MainWindowViewModel shell)
+            shell.AllowedFolders.CancelCommand.Execute(null);
     }
 
     private void OnFolderPickerBackdropClick(object sender, System.Windows.Input.MouseButtonEventArgs e)

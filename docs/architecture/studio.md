@@ -57,11 +57,28 @@ Three refusals keep the panel honest, and each is pinned by a test. A silent run
 An adopted team's folders are part of the team: the sidecar `studio-team.json`
 records them as mount strings (`mounts`), next to the display name, profile and
 schedule. The "Mes équipes" cards show them as chips; « Changer les dossiers »
-edits them in the team-mounts modal; every folder choice — there, in the
-wizard's « Dossiers de cette équipe » block, or on the novice settings card —
-goes through the shared « Autoriser un dossier » picker (path + browse, a
-one-level tree with "already allowed" notes, rights as two radio rows, and an
-expert preview of the exact mount string). At launch, Studio lays the sidecar's
+edits them in the team-mounts modal. A team never declares a folder, it
+associates one already declared: both team gestures — the wizard's « Dossiers
+de cette équipe » block and « Autoriser un autre dossier… » on an adopted team
+— open the « Ajouter un dossier autorisé » chooser, a checkbox list of the
+folders held in « Réglages › Dossiers autorisés » (`Orkeon:FileSystem:Mounts`).
+The picked entries are carried over verbatim, **rights included**: the settings
+are the single place a folder and its rights are decided, and a team that could
+widen them would make that declaration a suggestion. A row the team already
+carries, or whose virtual root another folder already spends, says so and
+cannot be picked — two mounts on one root is not a merge the runtime performs,
+it is one it drops.
+
+Declaring is the settings' own gesture, and only their novice card still opens
+the shared « Autoriser un dossier » picker directly (path + browse, a one-level
+tree with "already allowed" notes, rights as two radio rows, and an expert
+preview of the exact mount string). The chooser reaches it too, through
+« Déclarer un nouveau dossier… »: the picker opens over the chooser, and the
+new entry is written to `appsettings.json` **straight away** — the user is not
+in the settings' edit cycle when they make that gesture, and asking them to go
+and save afterwards is how a declaration gets lost. A refused save is reported
+rather than swallowed; the folder stays usable for the team either way, only
+the file was not written. At launch, Studio lays the sidecar's
 mounts on the run as `--mount` arguments ahead of the per-launch ones, so the
 chips and the command cannot disagree. Deliberate limit: a bare `orkeon run` in
 a terminal does not read the sidecar — like the `profile` field, this is

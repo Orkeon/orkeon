@@ -133,6 +133,21 @@ public static class StudioStringKeys
     /// <summary>"already allowed" — the folder picker's faint note on a mounted row.</summary>
     public const string PickerAlreadyMounted = "Vm_Picker_AlreadyMounted";
 
+    /// <summary>"already added" — a settings folder the team already carries.</summary>
+    public const string AllowedFoldersAlreadyAdded = "Vm_AllowedFolders_AlreadyAdded";
+
+    /// <summary>"{0} is already used by another folder" — a virtual root the team already spends.</summary>
+    public const string AllowedFoldersConflict = "Vm_AllowedFolders_Conflict";
+
+    /// <summary>"{0} folder(s) selected" — the chooser's footer count.</summary>
+    public const string AllowedFoldersSummary = "Vm_AllowedFolders_Summary";
+
+    /// <summary>"“{0}” added to the authorized folders" — a declaration made from the chooser.</summary>
+    public const string AllowedFoldersDeclared = "Vm_AllowedFolders_Declared";
+
+    /// <summary>"“{0}” added, but the settings could not be saved — {1}".</summary>
+    public const string AllowedFoldersNotSaved = "Vm_AllowedFolders_NotSaved";
+
     /// <summary>"Folders of “{0}”" — the team-mounts modal title.</summary>
     public const string TeamMountsTitle = "Vm_TeamMounts_Title";
 
@@ -859,6 +874,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RagWebFallbackPolicyOff] = "Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.",
         [StudioStringKeys.RagWebFallbackOff] = "Off. Both switches must be turned on for the corrective loop to reach the web.",
         [StudioStringKeys.PickerAlreadyMounted] = "already allowed",
+        [StudioStringKeys.AllowedFoldersAlreadyAdded] = "already added",
+        [StudioStringKeys.AllowedFoldersConflict] = "{0} is already used by another folder",
+        [StudioStringKeys.AllowedFoldersSummary] = "{0} folder(s) selected",
+        [StudioStringKeys.AllowedFoldersDeclared] = "“{0}” added to the authorized folders",
+        [StudioStringKeys.AllowedFoldersNotSaved] = "“{0}” added, but the settings could not be saved — {1}",
         [StudioStringKeys.TeamMountsTitle] = "Folders of “{0}”",
         [StudioStringKeys.TeamMountsNone] = "Without a folder, this team can neither read nor write any file.",
         [StudioStringKeys.TeamMountsSummary] = "{0} folders: {1}",

@@ -57,12 +57,30 @@ Trois refus tiennent le panneau honnête, chacun épinglé par un test. Un run m
 Les dossiers d'une équipe adoptée font partie de l'équipe : le sidecar
 `studio-team.json` les enregistre en mount-strings (`mounts`), à côté du nom,
 du réglage et de la programmation. Les cartes de « Mes équipes » les montrent en
-chips ; « Changer les dossiers » les édite dans la modale des dossiers d'équipe ;
-tout choix de dossier — là, dans le bloc « Dossiers de cette équipe » du wizard,
-ou sur la carte novice des réglages — passe par le sélecteur partagé
-« Autoriser un dossier » (chemin + Parcourir, arborescence à un niveau avec la
-note « déjà autorisé », droits en deux lignes radio, aperçu expert du
-mount-string exact). Au lancement, Studio pose les mounts du sidecar sur le run
+chips ; « Changer les dossiers » les édite dans la modale des dossiers d'équipe.
+Une équipe ne déclare jamais un dossier, elle en associe un déjà déclaré : les
+deux gestes côté équipe — le bloc « Dossiers de cette équipe » du wizard et
+« Autoriser un autre dossier… » sur une équipe adoptée — ouvrent le sélecteur
+« Ajouter un dossier autorisé », une liste à cocher des dossiers tenus dans
+« Réglages › Dossiers autorisés » (`Orkeon:FileSystem:Mounts`). Les entrées
+choisies sont reportées telles quelles, **droits compris** : les réglages sont
+le seul endroit où un dossier et ses droits se décident, et une équipe capable
+de les élargir ferait de cette déclaration une suggestion. Une ligne que
+l'équipe porte déjà, ou dont la racine virtuelle est déjà prise par un autre
+dossier, le dit et ne peut pas être choisie — deux montages sur une même racine
+ne sont pas fusionnés par le runtime, l'un est perdu.
+
+Déclarer reste le geste des réglages, et seule leur carte novice ouvre encore
+directement le sélecteur partagé « Autoriser un dossier » (chemin + Parcourir,
+arborescence à un niveau avec la note « déjà autorisé », droits en deux lignes
+radio, aperçu expert du mount-string exact). Le sélecteur de dossiers autorisés
+y accède aussi, par « Déclarer un nouveau dossier… » : le sélecteur s'ouvre
+par-dessus, et la nouvelle entrée est écrite dans `appsettings.json`
+**immédiatement** — l'utilisateur n'est pas dans le cycle d'édition des réglages
+au moment de ce geste, et lui demander d'aller enregistrer ensuite est la façon
+dont une déclaration se perd. Un enregistrement refusé est signalé plutôt
+qu'avalé ; le dossier reste utilisable par l'équipe dans les deux cas, seul le
+fichier n'a pas été écrit. Au lancement, Studio pose les mounts du sidecar sur le run
 en arguments `--mount`, devant ceux du lancement — les chips et la commande ne
 peuvent pas diverger. Limite assumée : un `orkeon run` nu en terminal ne lit pas
 le sidecar — comme le champ `profile`, c'est le confort de Studio, pas le

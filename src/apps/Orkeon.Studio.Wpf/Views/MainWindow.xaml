@@ -798,6 +798,144 @@
       </Border>
     </Grid>
 
+    <!-- ══════════ AJOUTER UN DOSSIER AUTORISÉ (overlay — les deux écrans équipe) ══════════
+         Une équipe ne déclare pas un dossier : elle associe un montage déjà déclaré dans
+         Réglages › Dossiers autorisés, droits compris. Déclarer reste le geste des Réglages,
+         et « Déclarer un nouveau dossier… » enchaîne sur le sélecteur, qui s'empile au-dessus
+         de cet overlay — d'où l'ordre : ce Grid AVANT celui du sélecteur. -->
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnAllowedFoldersBackdropClick"
+          Visibility="{Binding AllowedFolders.IsOpen, Converter={StaticResource BooleanToVisibility}}">
+      <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+              CornerRadius="18" DataContext="{Binding AllowedFolders}">
+        <StackPanel>
+          <StackPanel Margin="22,20,22,0">
+            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding [AllowedFolders_Title], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+                       Margin="0,6,0,0" Text="{Binding [AllowedFolders_Sub], Source={x:Static services:I18n.Instance}}"/>
+
+            <!-- État vide : les Réglages ne déclarent encore rien. -->
+            <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="11" Padding="14,13" Margin="0,14,0,0"
+                    Visibility="{Binding HasRows, Converter={StaticResource InverseBooleanToVisibility}}">
+              <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                         Text="{Binding [AllowedFolders_Empty], Source={x:Static services:I18n.Instance}}"/>
+            </Border>
+
+            <ScrollViewer MaxHeight="264" VerticalScrollBarVisibility="Auto" Margin="0,14,0,0"
+                          Visibility="{Binding HasRows, Converter={StaticResource BooleanToVisibility}}">
+              <ItemsControl ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <ToggleButton IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsSelectable}"
+                                  Cursor="Hand" Margin="0,0,0,8">
+                      <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                          <Border x:Name="Row" Background="{DynamicResource SurfaceBrush}"
+                                  BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                                  CornerRadius="10" Padding="13,11">
+                            <DockPanel>
+                              <Border x:Name="Box" DockPanel.Dock="Left" Width="16" Height="16" CornerRadius="5"
+                                      BorderThickness="1.5" BorderBrush="{DynamicResource LineStrongBrush}"
+                                      Background="{DynamicResource PaperSunkBrush}" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
+                                                     Foreground="{DynamicResource AccentFgBrush}" Visibility="Collapsed"/>
+                              </Border>
+                              <!-- Les droits viennent des Réglages et ne se rechoisissent pas ici. -->
+                              <Border DockPanel.Dock="Right">
+                                <Border.Style>
+                                  <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+                                    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                                    <Style.Triggers>
+                                      <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
+                                        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                                      </DataTrigger>
+                                    </Style.Triggers>
+                                  </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding RightsLabel}">
+                                  <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
+                                      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                                      <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
+                                          <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        </DataTrigger>
+                                      </Style.Triggers>
+                                    </Style>
+                                  </TextBlock.Style>
+                                </TextBlock>
+                              </Border>
+                              <TextBlock DockPanel.Dock="Right" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"
+                                         Foreground="{DynamicResource InkFaintBrush}" Text="{Binding UnavailableNote}"
+                                         Visibility="{Binding HasNote, Converter={StaticResource BooleanToVisibility}}"/>
+                              <StackPanel>
+                                <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}"
+                                           Text="{Binding VirtualPath}"/>
+                                <TextBlock FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                                           TextTrimming="CharacterEllipsis" Text="{Binding PhysicalPath}"/>
+                              </StackPanel>
+                            </DockPanel>
+                          </Border>
+                          <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                              <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                              <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                              <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                              <Setter TargetName="Tick" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                              <Setter TargetName="Row" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                              <Setter TargetName="Row" Property="Opacity" Value="0.62"/>
+                            </Trigger>
+                          </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                      </ToggleButton.Template>
+                    </ToggleButton>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,10,0,0" Text="{Binding Notice}"
+                       Visibility="{Binding HasNotice, Converter={StaticResource BooleanToVisibility}}"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button Style="{StaticResource BtnGhost}" Command="{Binding DeclareNewCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [AllowedFolders_Declare], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource BtnGhost}" Margin="10,0,0,0" Command="{Binding OpenSettingsCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [AllowedFolders_Manage], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </StackPanel>
+          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                  <TextBlock Text="{Binding [AllowedFolders_Confirm], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                         Text="{Binding Summary}"/>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+    </Grid>
+
     <!-- ══════════ AUTORISER UN DOSSIER (overlay, F-03 — au-dessus des deux autres) ══════════ -->
     <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnFolderPickerBackdropClick"
           Visibility="{Binding FolderPicker.IsOpen, Converter={StaticResource BooleanToVisibility}}">
