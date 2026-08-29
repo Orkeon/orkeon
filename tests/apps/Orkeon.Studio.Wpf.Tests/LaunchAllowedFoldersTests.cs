@@ -126,4 +126,34 @@ public sealed class LaunchAllowedFoldersTests : IDisposable
 
         Assert.Equal(1, asked);
     }
+
+    /// <summary>
+    /// Replay is refused for the same reason a fresh run is.
+    /// <para>
+    /// A replay deliberately re-runs a RECORDED argument list, so that it cannot drift from what
+    /// actually ran. But "Settings &gt; Allowed folders" is machine policy and it changes: without
+    /// this gate, revoking a folder left every past launch of that team one click away from
+    /// running against it anyway, from the one button whose whole promise is that it changes
+    /// nothing. The history panel's one-click path goes through the same command, and
+    /// <c>AsyncRelayCommand.ExecuteAsync</c> checks <c>CanExecute</c> before doing anything, so
+    /// gating the command gates both ways in.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_past_launch_cannot_be_replayed_against_a_folder_since_revoked()
+    {
+        var team = NewTeam("veille", "/elsewhere/archives:/archives:ro");
+        var declared = new List<string> { "/elsewhere/archives:/archives:ro" };
+        var tab = Launcher(team, () => declared);
+
+        Assert.False(tab.IsBlockedByUndeclaredFolders);
+        Assert.True(tab.ReplayCommand.CanExecute(null));
+
+        // The folder is taken off the machine's allow-list after that launch was recorded.
+        declared.Clear();
+        tab.RefreshTeamDescription();
+
+        Assert.True(tab.IsBlockedByUndeclaredFolders);
+        Assert.False(tab.ReplayCommand.CanExecute(null));
+    }
 }

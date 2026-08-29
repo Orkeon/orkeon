@@ -99,9 +99,14 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         ValidateCommand = new AsyncRelayCommand(() => ValidateAsync(), CanLaunch);
         RunCommand = new AsyncRelayCommand(() => RunAsync(), CanLaunch);
+        // The undeclared-folders refusal gates the replay too. A recorded argument list is
+        // replayed verbatim precisely so it cannot drift from what ran - but "Settings > Allowed
+        // folders" is machine policy, and it changes. Without this, revoking a folder left every
+        // past launch of that team one click away from running against it anyway, from a button
+        // whose whole promise is that it changes nothing.
         ReplayCommand = new AsyncRelayCommand(
             parameter => parameter is LaunchHistoryEntry entry ? ReplayAsync(entry) : Task.CompletedTask,
-            _ => !IsRunning);
+            _ => !IsRunning && !IsBlockedByUndeclaredFolders);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         OpenAllowedFoldersCommand = new RelayCommand(() => OpenAllowedFoldersRequested?.Invoke(this, EventArgs.Empty));
         ClearLogCommand = new RelayCommand(() => Log.Clear());
@@ -570,6 +575,9 @@ public sealed class LaunchTabViewModel : ObservableObject
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
+        // Replay is gated on the same refusal, so it has to be told when the refusal changes -
+        // otherwise the button stays enabled until something else happens to refresh it.
+        ReplayCommand.RaiseCanExecuteChanged();
         RefreshPreview();
     }
 
