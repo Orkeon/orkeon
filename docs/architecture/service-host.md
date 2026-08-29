@@ -34,9 +34,15 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
         {
           "Name": "support",
           "Path": "/srv/orkeon/crews/support",
+          "Mounts": [ "/srv/orkeon/out/support:/output:rw" ],
           "Profile": {
             "MaxConcurrentRuns": 4
           }
+        },
+        {
+          "Name": "veille",
+          "Path": "/srv/orkeon/crews/veille",
+          "Mounts": [ "/srv/orkeon/out/veille:/output:rw" ]
         }
       ],
 
@@ -51,6 +57,24 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
   }
 }
 ```
+
+### `Mounts` — a mount namespace per hosted crew
+
+The two crews above both address `/output`, over two different folders. That is the point of the
+key: a team's mounts are its own namespace, not an entry in a shared table.
+
+The host **grants** those folders; the crew does not declare them. `CrewRunner` enters an ambient
+`IFileSystemScope` for the run, over a registry composed by `ScopedMountComposition.ForExecution`,
+so two crews running at the same time never see each other's mounts. A crew with no `Mounts` keeps
+the boot mounts, unchanged.
+
+Two things worth knowing before you use it. Entering a scope **replaces** the mount set rather
+than merging with it, so the composed registry carries the boot Internal mounts (`/llm-logs`,
+`/sandbox`) forward — without that, exchange logging and the code sandboxes would fail for the
+length of the run, and the check that stops either gaining a second, agent-reachable address would
+go with them. And `IPathValidator` is a second, process-wide gate whose allowed roots are captured
+at boot: a granted folder outside the workspace root resolves in the namespace and is then refused
+there, unless you widen `PathSecurity:AdditionalAllowedDirectories`.
 
 `Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches. Each crew's directory is **mounted read-only into the VFS automatically**, under a name — `/crews`, then `/crews-1`, `/crews-2`, … for each further directory — and the crew is loaded by that virtual spelling (`/crews/support.yaml` for a file, `/crews-1` for a directory). The loader reads through the virtual file system like everything else in the framework, and a path that only existed on the physical disk would pass the startup probe and then fail on every message. The mount is deliberately *not* identity-mapped: an agent that calls `list_mounts`, or reads any access-denied message, must never be handed the operator's disk layout ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). A `--mount` of your own claiming `/crews*` is refused at start with exit code 78. One caveat travels with the script form: transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare service install carries it — a daemon-hosted crew is a YAML crew unless you install esbuild yourself.
 

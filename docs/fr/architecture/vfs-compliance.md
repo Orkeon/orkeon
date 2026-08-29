@@ -129,14 +129,30 @@ contrôle asynchrone, donc des runs concurrents ne voient jamais les mounts les 
 hôte qui n'entre jamais dans un scope conserve un comportement identique à l'octet près.
 
 ```csharp
-// Dans un scope de run : installer les mounts du profil du run pour ce flux async uniquement.
-var mounts = profileMountStrings.Select(FileSystemMount.Parse).ToList();
-using var registry = new FileSystemRegistry(mounts);   // l'appelant possède la durée de vie du registre
+// Dans un scope de run : installer les mounts de ce run pour ce flux async uniquement.
+var granted = grantedMountStrings.Select(FileSystemMount.Parse).ToList();
+using var registry = ScopedMountComposition.ForExecution(bootRegistry, granted);
 using var _ = fileSystemScope.Enter(registry);          // restauré au dispose (imbrication supportée)
 
-// Tout appel IFileSystemService sur CE flux async résout désormais contre `mounts` ;
+// Tout appel IFileSystemService sur CE flux async résout désormais contre `granted` ;
 // les autres runs concurrents continuent de voir les mounts de démarrage.
 ```
+
+**Composer, jamais construire à la main.** Entrer un scope **remplace** le jeu de mounts —
+`ActiveRegistry` vaut `scope?.Current ?? boot`, jamais une union — donc un registre bâti des seuls
+dossiers d'une exécution emporte avec lui les mounts **internes** du boot pour toute la durée du
+flux. `/llm-logs` et `/sandbox` cessent de résoudre, ce qui casse la journalisation des échanges et
+les deux bacs à sable de code ; pire, `IsUnderInternalMountUnsafe` tombe aussi — le contrôle qui
+les empêche de gagner une seconde adresse joignable par l'agent via l'un des mounts de l'exécution.
+Les reporter est donc une exigence de **confidentialité**, pas un confort : c'est la raison d'être
+de `ScopedMountComposition.ForExecution`, et pourquoi l'extrait ci-dessus l'appelle au lieu de
+`new FileSystemRegistry(...)`.
+
+**Qui en entre un aujourd'hui.** `orkeon-host` est la seule racine de composition livrée qui le
+fasse, une fois par crew hébergé, depuis `Orkeon:Host:Crews:*:Mounts` — deux crews hébergés peuvent
+donc adresser chacun son `/output` sur des dossiers différents, ce que l'unique registre de boot,
+plat, ne sait pas exprimer. Tous les autres runners gardent les mounts de boot : un processus par
+lancement rend la question sans objet chez eux.
 
 Les gardes s'appliquent aux mounts scopés exactement comme aux mounts de démarrage, car elles
 s'exécutent à chaque opération sur le registre actif : le registre applique les droits de mount + le

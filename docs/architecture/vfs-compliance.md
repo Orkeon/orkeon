@@ -126,14 +126,29 @@ otherwise. `AsyncLocal` isolates the value per asynchronous control flow, so con
 each other's mounts, and a host that never enters a scope keeps byte-identical behavior.
 
 ```csharp
-// Inside a run scope: install the run profile's mounts for this async flow only.
-var mounts = profileMountStrings.Select(FileSystemMount.Parse).ToList();
-using var registry = new FileSystemRegistry(mounts);   // caller owns the registry lifetime
+// Inside a run scope: install this run's mounts for this async flow only.
+var granted = grantedMountStrings.Select(FileSystemMount.Parse).ToList();
+using var registry = ScopedMountComposition.ForExecution(bootRegistry, granted);
 using var _ = fileSystemScope.Enter(registry);          // restored on dispose (nesting supported)
 
-// Every IFileSystemService call on THIS async flow now resolves against `mounts`;
+// Every IFileSystemService call on THIS async flow now resolves against `granted`;
 // other concurrent runs continue to see the boot mounts.
 ```
+
+**Compose, never hand-build.** Entering a scope REPLACES the mount set — `ActiveRegistry` is
+`scope?.Current ?? boot`, never a union — so a registry built from one execution's own folders
+alone takes the boot **Internal** mounts down with it for the length of that flow. `/llm-logs` and
+`/sandbox` stop resolving, which breaks exchange logging and both code sandboxes; worse, so does
+`IsUnderInternalMountUnsafe`, the check that stops either of them gaining a second, agent-reachable
+address through one of the execution's own mounts. That makes carrying them forward a
+confidentiality requirement rather than a convenience, which is why
+`ScopedMountComposition.ForExecution` exists and why the snippet above calls it instead of
+`new FileSystemRegistry(...)`.
+
+**Who enters one today.** `orkeon-host` is the one shipped composition root that does, once per
+hosted crew, from `Orkeon:Host:Crews:*:Mounts` — so two hosted crews may each address their own
+`/output` over different folders, which the single flat boot registry cannot express. Every other
+runner keeps the boot mounts: one process per launch makes the question moot for them.
 
 The guards apply to scoped mounts exactly as to boot mounts, because they run per operation over
 whichever registry is active: the registry enforces mount rights + path-traversal containment, and

@@ -41,11 +41,17 @@ IHost host = RunnerHost.Build(
 ```
 
 Un chemin virtuel est toujours un nom commençant par `/` — jamais un chemin disque
-([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). `RunnerMounts` nomme les
-racines que les runners livrés se réservent : `/crew` (le dossier de définition du crew),
-`/script` (le dossier d'un point d'entrée scripté) et `/llm-logs`. Un appelant qui active la
-journalisation des échanges monte son répertoire de logs en interne et passe ici
-`RunnerMounts.LlmLogVirtualRoot` — c'est ce que fait la CLI.
+([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)).
+`RunnerVirtualRoots` — dans le paquet sans dépendance `Orkeon.Constants.FileSystem`
+([ADR-009](../adr/ADR-009-shared-constants-satellites.md)), pour que le moteur et l'outillage
+lisent une seule déclaration — nomme les racines que les runners livrés se réservent : `/crew`
+(le dossier de définition du crew), `/script` (le dossier d'un point d'entrée scripté),
+`/llm-logs`, et `/sandbox` (où les bacs à sable de code déposent ce qu'ils exécutent).
+`RunnerVirtualRoots.All` est l'ensemble contre lequel un appelant refuse un `--mount` utilisateur ;
+demander l'ensemble plutôt que comparer les racines une à une est délibéré, car l'oubli de
+`/sandbox` a survécu à une comparaison deux à deux tant qu'elle restait verte. Un appelant qui
+active la journalisation des échanges monte son répertoire de logs en interne et passe ici
+`RunnerVirtualRoots.LlmLogs` — c'est ce que fait la CLI.
 
 `LoadCrewAsync` prend de même sa cible en chemin **virtuel** : elle demande au VFS si la cible est
 un répertoire au lieu de sonder le disque, donc un chemin physique qu'on lui passe est refusé.

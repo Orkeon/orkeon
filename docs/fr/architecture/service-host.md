@@ -34,9 +34,15 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
         {
           "Name": "support",
           "Path": "/srv/orkeon/crews/support",
+          "Mounts": [ "/srv/orkeon/out/support:/output:rw" ],
           "Profile": {
             "MaxConcurrentRuns": 4
           }
+        },
+        {
+          "Name": "veille",
+          "Path": "/srv/orkeon/crews/veille",
+          "Mounts": [ "/srv/orkeon/out/veille:/output:rw" ]
         }
       ],
 
@@ -51,6 +57,26 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
   }
 }
 ```
+
+### `Mounts` — un espace de noms de mounts par crew hébergé
+
+Les deux crews ci-dessus adressent tous deux `/output`, sur deux dossiers différents. C'est
+l'objet de la clé : les mounts d'une équipe sont son espace de noms à elle, pas une entrée dans
+une table commune.
+
+C'est l'hôte qui **accorde** ces dossiers ; le crew ne les déclare pas. `CrewRunner` entre un
+`IFileSystemScope` ambiant pour la durée du run, sur un registre composé par
+`ScopedMountComposition.ForExecution` : deux crews simultanés ne voient jamais les mounts l'un de
+l'autre. Un crew sans `Mounts` garde les mounts de boot, inchangés.
+
+Deux choses à savoir avant de s'en servir. Entrer un scope **remplace** le jeu de mounts au lieu
+de fusionner avec lui, donc le registre composé reporte les mounts internes du boot (`/llm-logs`,
+`/sandbox`) — sans cela, la journalisation des échanges et les bacs à sable de code tomberaient
+pour toute la durée du run, et le contrôle qui les empêche de gagner une seconde adresse joignable
+par l'agent tomberait avec eux. Et `IPathValidator` est un second portail, process-global, dont
+les racines autorisées sont figées au boot : un dossier accordé hors de la racine du workspace
+résout dans l'espace de noms puis se fait refuser là, sauf à élargir
+`PathSecurity:AdditionalAllowedDirectories`.
 
 `Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Le dossier de chaque crew est **monté automatiquement dans le VFS, en lecture seule, sous un nom** — `/crews`, puis `/crews-1`, `/crews-2`, … pour chaque dossier supplémentaire — et la crew est chargée par cette orthographe virtuelle (`/crews/support.yaml` pour un fichier, `/crews-1` pour un dossier). Le loader lit par le système de fichiers virtuel comme tout le reste du framework, et un chemin qui n'existerait que sur le disque physique passerait la sonde de démarrage puis échouerait à chaque message. Le montage n'est délibérément **pas** identité : un agent qui appelle `list_mounts`, ou qui lit un message de refus d'accès, ne doit jamais recevoir l'organisation disque de l'opérateur ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Un `--mount` à vous qui revendique `/crews*` est refusé au démarrage avec le code de sortie 78. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
 

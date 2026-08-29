@@ -39,11 +39,16 @@ IHost host = RunnerHost.Build(
 ```
 
 A virtual path is always a name starting with `/` — never a disk path
-([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). `RunnerMounts` names the
-roots the shipped runners take for themselves: `/crew` (the crew definition's directory),
-`/script` (a scripting entry point's directory) and `/llm-logs`. A caller that enables exchange
-logging mounts its log directory internally and passes `RunnerMounts.LlmLogVirtualRoot` here —
-that is what the CLI does.
+([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)).
+`RunnerVirtualRoots` — in the dependency-free `Orkeon.Constants.FileSystem` package
+([ADR-009](../adr/ADR-009-shared-constants-satellites.md)) so the engine and the tooling read one
+declaration — names the roots the shipped runners take for themselves: `/crew` (the crew
+definition's directory), `/script` (a scripting entry point's directory), `/llm-logs`, and
+`/sandbox` (where the code sandboxes stage what they run). `RunnerVirtualRoots.All` is the set a
+caller refuses a user `--mount` against; asking for the set rather than comparing the roots one by
+one is deliberate, because the omission of `/sandbox` survived a pairwise check for as long as it
+was green. A caller that enables exchange logging mounts its log directory internally and passes
+`RunnerVirtualRoots.LlmLogs` here — that is what the CLI does.
 
 `LoadCrewAsync` likewise takes the crew target as a **virtual** path: it asks the VFS whether the
 target is a directory rather than probing the disk, so a physical path handed to it is denied.
