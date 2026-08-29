@@ -9,7 +9,7 @@ public sealed class LlmFacadeTests
 {
     private static (Engine, StubLlmProvider) NewFacade(out JsLlmFacade facade)
     {
-        var engine = new Engine();
+        var engine = new Engine(opt => JsEngineFactory.ApplyInteropPolicy(opt));
         var provider = new StubLlmProvider();
         facade = new JsLlmFacade(engine, provider, CancellationToken.None);
         return (engine, provider);
@@ -29,7 +29,7 @@ public sealed class LlmFacadeTests
     [Fact]
     public async Task complete_falls_back_to_undefined_llm_when_no_provider_is_injected()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(opt => JsEngineFactory.ApplyInteropPolicy(opt));
         var facade = new JsLlmFacade(engine, null, CancellationToken.None);
 
         var result = await facade.complete("ping", null);

@@ -70,11 +70,34 @@ public sealed class JsEngineFactory
     }
 
     /// <summary>
+    /// The interop policy every Orkeon engine runs under. It lives in one place, and is public,
+    /// so that a bare <c>new Engine()</c> in a test can be held to the same rules a script really
+    /// runs under rather than quietly diverging from them.
+    /// <para>
+    /// <see cref="ArrayConversionMode.Copy"/> is not nostalgia for Jint's pre-4.14 default. The
+    /// DSL publishes typings, and they promise arrays — <c>embed(): Promise&lt;readonly
+    /// number[][]&gt;</c> in <c>Typings/context.d.ts</c>. Under Jint's current default,
+    /// <see cref="ArrayConversionMode.LiveView"/>, a CLR array reaches the script as a live
+    /// wrapper view over the underlying array, and <c>Array.isArray</c> answers false for it.
+    /// Copying is what makes the runtime honour the contract the <c>.d.ts</c> files publish;
+    /// changing that contract is a decision for the DSL, not a side effect of a version bump.
+    /// </para>
+    /// </summary>
+    /// <param name="options">The options being built for a new engine.</param>
+    /// <returns>The same instance, so it can be chained.</returns>
+    public static Jint.Options ApplyInteropPolicy(Jint.Options options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        options.Interop.ArrayConversion = ArrayConversionMode.Copy;
+        return options;
+    }
+
+    /// <summary>
     /// Creates a fresh, isolated <see cref="Engine"/> with the configured sandbox limits.
     /// </summary>
     public Engine Create()
     {
-        var engine = new Engine(opt => opt
+        var engine = new Engine(opt => ApplyInteropPolicy(opt)
             .LimitMemory(_limits.MemoryLimitBytes)
             .LimitRecursion(_limits.RecursionLimit)
             .TimeoutInterval(_limits.ExecutionTimeout));

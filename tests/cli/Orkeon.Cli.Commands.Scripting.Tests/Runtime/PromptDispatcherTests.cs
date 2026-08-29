@@ -15,7 +15,9 @@ public sealed class PromptDispatcherTests : IDisposable
     private static readonly string[] AbcChoices = ["a", "b", "c"];
     private static readonly string[] AbChoices = ["a", "b"];
 
-    private readonly Engine _engine = new();
+    // Built the way the script host builds it: PromptDispatcher reads 'choices' off the spec,
+    // and how a CLR array crosses into JS is exactly what Orkeon's interop policy decides.
+    private readonly Engine _engine = new(opt => Orkeon.Scripting.JsEngineFactory.ApplyInteropPolicy(opt));
 
     public void Dispose() => _engine.Dispose();
 

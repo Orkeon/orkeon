@@ -1,1 +1,2 @@
 #nullable enable
+static Orkeon.Scripting.JsEngineFactory.ApplyInteropPolicy(Jint.Options! options) -> Jint.Options!
