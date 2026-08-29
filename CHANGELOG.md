@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — satellites for the constants two projects must agree on (ADR-009)
+
+`Orkeon.Studio.Core` may not reference `Orkeon.Infrastructure` or `Orkeon.Hosting`, and the
+reason is measured rather than doctrinal: doing so *"dragged the whole runtime — ONNX runtimes,
+tree-sitter grammars, the local embedding model — into every published app, for roughly 230 MB
+each"*. So Studio copied the values it needed by hand, and `ConstantDriftTests` existed to stop
+the copies diverging.
+
+Three new packages hold them instead, each with **no runtime dependency**, which is what lets
+both sides reference one declaration: `Orkeon.Constants.Llm` (provider endpoints, default
+models), `Orkeon.Constants.FileSystem` (the virtual roots a runner mounts for itself),
+`Orkeon.Constants.Configuration` (shared operator wording).
+
+`Orkeon.Domain` gains its first runtime project reference, to `Orkeon.Constants.Llm` — its
+default model name is the same string as OpenAI's provider default. A project that depends on
+nothing inverts no layer and drags nothing in behind it; ADR-009 records the argument.
+
+Nothing published changes shape: `LlmEndpoints`, `ProviderDefaults` and `LlmDefaults` are frozen
+surfaces, so their names stay and only their value moves — a `const` initialised from another
+assembly's `const` is inlined at compile time. Only `RunnerMounts`, which was unshipped, is
+removed; its four roots are now `RunnerVirtualRoots`.
+
+`ConstantDriftTests` goes from 12 facts to 5. The five that remain never guarded duplication:
+they ask the endpoint detector to recognise each endpoint, pin the Docker Model Runner defaults
+against the committed `appsettings.json` template, and check the declared minimum CLI version.
+
+Publication order matters now: `.github/workflows/publish.yml` pushes the satellites before
+`Orkeon.Domain`, or Domain would ship with a dependency that cannot be restored.
+
 ### Fixed — a team associates a folder, it does not declare one
 
 In Orkeon Studio, « Autoriser un dossier » on a team opened the folder picker:

@@ -68,7 +68,7 @@ dotnet test Orkeon.sln
 
 ## Project Structure
 
-The solution has **33 src projects across 11 zones**, each mirrored by a test
+The solution has **37 src projects across 12 zones**, each mirrored by a test
 project (plus `tests/e2e`, `tests/examples`, `tests/shared`):
 
 ```

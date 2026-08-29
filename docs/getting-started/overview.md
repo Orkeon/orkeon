@@ -265,7 +265,7 @@ Collaboration between agents is also supported at the domain level: `Agent.Colla
 
 ```
 Orkeon.sln
-├── src/                            # 34 projects, 11 zones
+├── src/                            # 37 projects, 12 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entities, value objects, interfaces, events
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
@@ -287,6 +287,7 @@ Orkeon.sln
 │   ├── hosting/                    # Orkeon.Hosting (RunnerHost) + Orkeon.Host (`orkeon-host` service daemon)
 │   ├── plugins/                    # Orkeon.Plugins (runtime plugin loading)
 │   ├── generators/                 # Orkeon.Generators (source generators)
+│   ├── constants/                  # Satellites of SHARED constants, zero runtime dependency (ADR-009)
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (Roslyn analyzer)
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
