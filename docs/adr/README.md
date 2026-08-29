@@ -19,4 +19,5 @@ back.
 | [ADR-006](./ADR-006-rag-subsystem.md) | The `src/rag/` subsystem: `Orkeon.Rag.Abstractions` shared kernel, legacy RAG namespaces removed without shims | Accepted |
 | [ADR-007](./ADR-007-d3-renommage-cli-commands-scripting.md) | Decision D3: `Orkeon.Cli.Scripting` renamed to `Orkeon.Cli.Commands.Scripting` before any NuGet publish | Accepted |
 | [ADR-008](./ADR-008-virtual-paths-are-the-only-currency.md) | A physical path is never a virtual path: runners mount under a name, infrastructure mounts are invisible to agents | Accepted |
+| [ADR-009](./ADR-009-shared-constants-satellites.md) | A constant two projects must agree on lives in a zero-dependency satellite, not in a hand-written copy guarded by a drift test | Accepted |
 | [ADR — RaggableTree](../architecture/raggable-tree-adr.md) | 5-level-plus-edges stratified semantic graph via Tree-sitter (unnumbered — lives with its architecture guide; amended 2026-08-18) | Accepted |
