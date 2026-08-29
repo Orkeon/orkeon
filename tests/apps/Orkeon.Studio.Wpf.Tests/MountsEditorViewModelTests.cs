@@ -180,9 +180,10 @@ public sealed class MountsEditorViewModelTests
 
         var mount = editor.AddMount();
         mount.PhysicalPath = "/data";
+        mount.VirtualPath = "/docs";
 
         Assert.True(changes > 0);
-        Assert.Equal("/data:/workspace:ro", Assert.Single(editor.ToRawEntries()));
+        Assert.Equal("/data:/docs:ro", Assert.Single(editor.ToRawEntries()));
     }
 
     [Fact]

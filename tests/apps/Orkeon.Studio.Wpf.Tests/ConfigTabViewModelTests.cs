@@ -168,9 +168,10 @@ public sealed class ConfigTabViewModelTests
 
         var mount = tab.Mounts.AddMount();
         mount.PhysicalPath = "/data";
+        mount.VirtualPath = "/docs";
         await tab.SaveAsync(TestContext.Current.CancellationToken);
 
-        Assert.Contains("/data:/workspace:ro", store.LastSavedJson!, StringComparison.Ordinal);
+        Assert.Contains("/data:/docs:ro", store.LastSavedJson!, StringComparison.Ordinal);
     }
 
     [Fact]

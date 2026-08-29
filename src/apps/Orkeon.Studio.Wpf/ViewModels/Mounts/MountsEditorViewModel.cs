@@ -209,7 +209,8 @@ public sealed class MountsEditorViewModel : ObservableObject
         if (!MountDefinition.IsValidVirtualPath(candidate) || Mounts.Any(m => m.VirtualPath == candidate))
         {
             candidate = MountDefinition.SuggestedVirtualPaths
-                .FirstOrDefault(s => Mounts.All(m => m.VirtualPath != s)) ?? "/workspace";
+                .FirstOrDefault(s => Mounts.All(m => m.VirtualPath != s))
+                ?? MountDefinition.SuggestedVirtualPaths[0];
         }
 
         var mount = new MountEditorViewModel(_strings)
@@ -229,9 +230,7 @@ public sealed class MountsEditorViewModel : ObservableObject
     {
         var mount = new MountEditorViewModel(_strings)
         {
-            VirtualPath = MountDefinition.SuggestedVirtualPaths.Count > 0
-                ? MountDefinition.SuggestedVirtualPaths[0]
-                : "/workspace",
+            VirtualPath = MountDefinition.SuggestedVirtualPaths[0],
         };
 
         Mounts.Add(mount);

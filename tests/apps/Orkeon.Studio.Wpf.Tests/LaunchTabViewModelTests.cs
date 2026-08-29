@@ -497,6 +497,7 @@ public sealed class LaunchTabViewModelTests
         tab.Options.LlmLogEnabled = true;
         var mount = tab.Mounts.LaunchMounts.AddMount();
         mount.PhysicalPath = "/data";
+        mount.VirtualPath = "/docs";
         tab.Mounts.AllowExternalMounts = true;
 
         await tab.RunAsync(TestContext.Current.CancellationToken);
@@ -508,7 +509,7 @@ public sealed class LaunchTabViewModelTests
         Assert.Contains("2", arguments);
         Assert.Contains("--llm-log", arguments);
         Assert.Contains("--mount", arguments);
-        Assert.Contains("/data:/workspace:ro", arguments);
+        Assert.Contains("/data:/docs:ro", arguments);
         Assert.Contains("--allow-external-mounts", arguments);
     }
 

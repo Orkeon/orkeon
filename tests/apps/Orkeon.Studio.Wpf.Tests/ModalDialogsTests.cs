@@ -67,7 +67,7 @@ public sealed class ModalDialogsTests
         picker.Open(["/elsewhere:/veille:ro"], m => picked = m, "/data/projets/veille");
         picker.ConfirmCommand.Execute(null);
 
-        Assert.Equal("/workspace", picked!.VirtualPath);
+        Assert.Equal(MountDefinition.SuggestedVirtualPaths[0], picked!.VirtualPath);
         Assert.Equal(MountRights.ReadOnly, picked.Rights);   // read-only is the default
     }
 

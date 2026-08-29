@@ -212,7 +212,7 @@ public sealed class FolderPickerViewModel : ObservableObject
         if (!MountDefinition.IsValidVirtualPath(candidate) || _mountedVirtual.Contains(candidate, StringComparer.Ordinal))
         {
             candidate = MountDefinition.SuggestedVirtualPaths
-                .FirstOrDefault(s => !_mountedVirtual.Contains(s, StringComparer.Ordinal)) ?? "/workspace";
+                .FirstOrDefault(s => !_mountedVirtual.Contains(s, StringComparer.Ordinal)) ?? MountDefinition.SuggestedVirtualPaths[0];
         }
 
         return candidate;

@@ -31,9 +31,19 @@ public sealed record MountDefinition
     /// <summary>Optional per-sub-path rights overrides.</summary>
     public IReadOnlyList<SubPathRightsOverride> Overrides { get; init; } = [];
 
-    /// <summary>Virtual paths the UIs offer as suggestions.</summary>
+    /// <summary>
+    /// Virtual paths the UIs offer as suggestions — and pre-fill a new mount row with.
+    /// <para>
+    /// None of them may be a root a command mounts for itself. The list used to open on
+    /// <c>/workspace</c> and offer <c>/output</c>, which are two of the three roots
+    /// <c>orkeon forge</c> claims for its trial bench, so a user who accepted what Studio
+    /// proposed got a settings file the forge then refused at host build. The editor already
+    /// holds that line for the runner's own roots through <see cref="IsValidVirtualPath"/>;
+    /// a suggestion the engine goes on to refuse is worse than no suggestion.
+    /// </para>
+    /// </summary>
     public static IReadOnlyList<string> SuggestedVirtualPaths { get; } =
-        ["/workspace", "/output", "/tmp"];
+        ["/data", "/docs", "/tmp"];
 
     /// <summary>
     /// Serializes to the mount string format the runtime parses. Each path segment goes through

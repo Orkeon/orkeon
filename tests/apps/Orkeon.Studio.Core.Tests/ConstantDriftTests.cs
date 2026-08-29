@@ -177,6 +177,18 @@ public sealed class ConstantDriftTests
         Assert.Equal(RunnerMounts.CrewVirtualRoot, MountAutoInjection.CrewVirtualRoot);
         Assert.Equal(RunnerMounts.ScriptVirtualRoot, MountAutoInjection.ScriptVirtualRoot);
         Assert.Equal(RunnerMounts.LlmLogVirtualRoot, MountAutoInjection.LlmLogVirtualRoot);
+
+        // Pairwise equality cannot catch an omission: /sandbox is mounted unconditionally in
+        // every host (RunnerMounts), every runner refuses a user mount claiming it, and the
+        // Studio editor green-lit it because the mirror never listed it. Pin the SET.
+        Assert.Equal(
+            new SortedSet<string>(
+                [
+                    RunnerMounts.CrewVirtualRoot, RunnerMounts.ScriptVirtualRoot,
+                    RunnerMounts.LlmLogVirtualRoot, RunnerMounts.SandboxVirtualRoot,
+                ],
+                StringComparer.Ordinal),
+            new SortedSet<string>(MountAutoInjection.ReservedVirtualRoots, StringComparer.Ordinal));
     }
 
     /// <summary>

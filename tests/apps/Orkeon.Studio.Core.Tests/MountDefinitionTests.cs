@@ -1,5 +1,6 @@
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Launch;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -11,7 +12,7 @@ public sealed class MountDefinitionTests
 {
     private static readonly string[] OverridesByDescendingLength = ["build/cache", "build"];
 
-    private static readonly string[] SuggestedVirtualPaths = ["/workspace", "/output", "/tmp"];
+    private static readonly string[] SuggestedVirtualPaths = ["/data", "/docs", "/tmp"];
 
     private static readonly string[] RightsTokens = ["ro", "rw", "rwnd"];
 
@@ -199,5 +200,43 @@ public sealed class MountDefinitionTests
                 Assert.Equal(choice.Token, MountRightsTokens.ToToken(choice.Rights));
                 Assert.False(string.IsNullOrWhiteSpace(choice.Label));
             });
+    }
+
+    /// <summary>
+    /// A suggestion the engine then refuses is worse than no suggestion at all.
+    /// <para>
+    /// Two of the three offered roots — <c>/workspace</c> and <c>/output</c> — are roots
+    /// <c>orkeon forge</c> mounts for its own trial bench, and a new mount row was pre-filled
+    /// with the first of them. So accepting what Studio proposed produced a settings file the
+    /// forge refuses at host build. The editor already refuses the runner's own roots through
+    /// <see cref="MountDefinition.IsValidVirtualPath"/>; the suggestion list has to hold the
+    /// same line, for every root some command claims, not only the three it mirrors.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void No_suggested_virtual_path_is_a_root_a_command_mounts_for_itself()
+    {
+        string[] claimedSomewhere =
+        [
+            .. MountAutoInjection.ReservedVirtualRoots,   // /crew, /script, /llm-logs
+            "/sandbox",                                   // AddOrkeonFileSystem, unconditionally
+            "/workspace", "/forge", "/output",             // orkeon forge's trial bench
+        ];
+
+        Assert.Empty(MountDefinition.SuggestedVirtualPaths
+            .Intersect(claimedSomewhere, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Every suggestion taken is the case the hardcoded fallbacks were written for, and all
+    /// three of them named <c>/workspace</c> — a root the forge claims. Exhausting the list
+    /// must not resurrect the very name the list was cleaned of.
+    /// </summary>
+    [Fact]
+    public void The_suggestion_list_is_the_only_source_of_a_default_virtual_path()
+    {
+        Assert.DoesNotContain("/workspace", MountDefinition.SuggestedVirtualPaths, StringComparer.Ordinal);
+        Assert.DoesNotContain("/output", MountDefinition.SuggestedVirtualPaths, StringComparer.Ordinal);
+        Assert.True(MountDefinition.IsReservedVirtualPath("/sandbox"));
     }
 }

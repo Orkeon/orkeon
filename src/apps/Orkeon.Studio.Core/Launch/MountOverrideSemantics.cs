@@ -73,12 +73,19 @@ public sealed record MountAutoInjection
     /// <summary>Mirrors <c>RunnerMounts.LlmLogVirtualRoot</c>. Same drift test.</summary>
     public const string LlmLogVirtualRoot = "/llm-logs";
 
+    /// <summary>Mirrors <c>RunnerMounts.SandboxVirtualRoot</c>. Same drift test.</summary>
+    public const string SandboxVirtualRoot = "/sandbox";
+
     /// <summary>
-    /// The three together: a user <c>--mount</c> claiming one is refused by the engine at
+    /// The four together: a user <c>--mount</c> claiming one is refused by the engine at
     /// launch, so Studio refuses it in the editor rather than building a command that fails.
+    /// <para>
+    /// <c>/sandbox</c> was missing here while every runner already refused it — the drift test
+    /// asserted three pairwise equalities, which cannot catch an omission. It pins the set now.
+    /// </para>
     /// </summary>
     public static IReadOnlyList<string> ReservedVirtualRoots { get; } =
-        [CrewVirtualRoot, ScriptVirtualRoot, LlmLogVirtualRoot];
+        [CrewVirtualRoot, ScriptVirtualRoot, LlmLogVirtualRoot, SandboxVirtualRoot];
 
     /// <summary>The injected mount strings, in the order the runner inserts them.</summary>
     public required IReadOnlyList<string> Mounts { get; init; }
