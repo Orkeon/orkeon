@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Orkeon.Application.Interfaces.LLM;
@@ -20,7 +21,7 @@ public class QwenLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.Qwen);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.QwenDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.Qwen;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Qwen";

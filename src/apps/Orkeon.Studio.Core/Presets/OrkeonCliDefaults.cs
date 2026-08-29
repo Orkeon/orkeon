@@ -39,51 +39,19 @@ public static class OrkeonCliDefaults
 #pragma warning restore S1075
 
 
-    /// <summary>Ollama's default model (<c>ProviderDefaults.ForProvider("ollama")</c>).</summary>
-    public const string OllamaDefaultModel = "llama3.2";
 
-    /// <summary>
-    /// OpenAI's default model. Taken straight from the Domain constant the runtime's own
-    /// <c>ProviderDefaults</c> reads, so this one cannot drift at all — Studio Core keeps its
-    /// Domain reference.
-    /// </summary>
-    public const string OpenAIDefaultModel = LlmDefaults.DefaultModelName;
 
-    /// <summary>Docker Model Runner default model (<c>DockerModelRunnerDefaults.DefaultModel</c>).</summary>
-    public const string DockerModelRunnerDefaultModel = "ai/granite-4.0-h-tiny";
 
     // Cloud default models — copies of ProviderDefaults.ForProvider(<id>), same drift pinning.
 
-    /// <summary>Anthropic's default model (<c>ProviderDefaults.ForProvider("anthropic")</c>).</summary>
-    public const string AnthropicDefaultModel = "claude-sonnet-5";
 
-    /// <summary>DeepSeek's default model (<c>ProviderDefaults.ForProvider("deepseek")</c>).</summary>
-    public const string DeepSeekDefaultModel = "deepseek-v4-flash";
 
-    /// <summary>Gemini's default model (<c>ProviderDefaults.ForProvider("gemini")</c>).</summary>
-    public const string GeminiDefaultModel = "gemini-3.7-flash";
 
-    /// <summary>Groq's default model (<c>ProviderDefaults.ForProvider("groq")</c>).</summary>
-    public const string GroqDefaultModel = "llama-3.3-70b-versatile";
 
-    /// <summary>HuggingFace's default model (<c>ProviderDefaults.ForProvider("huggingface")</c>).</summary>
-    public const string HuggingFaceDefaultModel = "meta-llama/Llama-3.1-8B-Instruct";
 
-    /// <summary>Kimi's default model (<c>ProviderDefaults.ForProvider("kimi")</c>).</summary>
-    public const string KimiDefaultModel = "kimi-k2.6";
 
-    /// <summary>Mistral's default model (<c>ProviderDefaults.ForProvider("mistral")</c>).</summary>
-    public const string MistralDefaultModel = "mistral-medium-3-5-26-04";
 
-    /// <summary>Qwen's default model (<c>ProviderDefaults.ForProvider("qwen")</c>).</summary>
-    public const string QwenDefaultModel = "qwen3.7-plus";
 
-    /// <summary>Together AI's default model (<c>ProviderDefaults.ForProvider("together")</c>).</summary>
-    public const string TogetherDefaultModel = "meta-llama/Llama-3.3-70B-Instruct-Turbo";
 
-    /// <summary>Z.AI's default model (<c>ProviderDefaults.ForProvider("zai")</c>).</summary>
-    public const string ZaiDefaultModel = "glm-5.2";
 
-    /// <summary>Docker Model Runner API key placeholder (<c>DockerModelRunnerDefaults.ApiKeyPlaceholder</c>).</summary>
-    public const string DockerModelRunnerApiKeyPlaceholder = "not-needed";
 }

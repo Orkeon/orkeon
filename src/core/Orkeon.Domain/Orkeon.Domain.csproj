@@ -30,6 +30,16 @@
     <PackageReference Include="Ulid" />
   </ItemGroup>
 
+  <!--
+    ADR-009: the first RUNTIME project reference Domain carries. A satellite depends on
+    nothing, so referencing it inverts no layer and drags nothing in behind it; the
+    alternative was Domain keeping its own copy of a model name Infrastructure and Studio
+    also hold.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Llm\Orkeon.Constants.Llm.csproj" />
+  </ItemGroup>
+
   <!-- R4.5: typed-dictionary wrapper source generator (compile-time only). -->
   <ItemGroup>
     <ProjectReference Include="..\..\generators\Orkeon.Generators\Orkeon.Generators.csproj"

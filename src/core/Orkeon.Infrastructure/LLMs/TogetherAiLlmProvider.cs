@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using System.Text.Json;
@@ -21,7 +22,7 @@ public partial class TogetherAiLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.Together);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.TogetherDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.Together;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Together AI";

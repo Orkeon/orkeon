@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Orkeon.Application.Interfaces.LLM;
@@ -20,7 +21,7 @@ public class MistralLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.Mistral);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.MistralDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.Mistral;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Mistral AI";

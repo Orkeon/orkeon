@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Orkeon.Application.Interfaces.LLM;
@@ -21,7 +22,7 @@ public class GeminiLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.Gemini);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.GeminiDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.Gemini;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Gemini";

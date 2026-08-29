@@ -1,3 +1,5 @@
+using Orkeon.Constants.Llm;
+
 namespace Orkeon.Domain.Constants.Llm;
 
 /// <summary>
@@ -47,7 +49,7 @@ public static class LlmDefaults
     /// GPT-5.6 Sol — the previous default, <c>gpt-4</c>, reaches end of life 2026-10-23
     /// and caps the context window at 8 192 tokens.
     /// </summary>
-    public const string DefaultModelName = "gpt-5.6-sol";
+    public const string DefaultModelName = LlmProviderDefaultModels.OpenAI;
 
     /// <summary>
     /// Legacy LLM model name (GPT-3.5 Turbo) kept for backward compatibility.

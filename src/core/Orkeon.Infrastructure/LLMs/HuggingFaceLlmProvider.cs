@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using System.Text.Json;
@@ -23,7 +24,7 @@ public partial class HuggingFaceLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.HuggingFace);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.HuggingFaceDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.HuggingFace;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "HuggingFace";

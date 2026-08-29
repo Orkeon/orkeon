@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using System.Text.Json;
@@ -25,7 +26,7 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.Zai);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.ZaiDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.Zai;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Z.AI";

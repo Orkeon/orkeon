@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using System.Runtime.CompilerServices;
@@ -264,7 +265,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
         var payload = new Dictionary<string, object>
         {
-            ["model"] = config.Model ?? ProviderDefaults.OllamaDefaults.DefaultModel,
+            ["model"] = config.Model ?? LlmProviderDefaultModels.Ollama,
             ["messages"] = BuildChatMessages(messages, config),
             ["stream"] = false,
             ["options"] = options.ToDictionary(),
@@ -458,7 +459,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 TokensUsed = (promptTokens ?? 0) + (completionTokens ?? 0),
                 PromptTokens = promptTokens,
                 CompletionTokens = completionTokens,
-                Model = config.Model ?? ProviderDefaults.OllamaDefaults.DefaultModel,
+                Model = config.Model ?? LlmProviderDefaultModels.Ollama,
                 Metadata = metadata.Build().ToDictionary(),
                 RawResponseBody = SynthesizeOpenAiBody(message, content),
             };
@@ -716,7 +717,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             TokensUsed = (state.PromptTokens ?? 0) + (state.CompletionTokens ?? 0),
             PromptTokens = state.PromptTokens,
             CompletionTokens = state.CompletionTokens,
-            Model = config.Model ?? ProviderDefaults.OllamaDefaults.DefaultModel,
+            Model = config.Model ?? LlmProviderDefaultModels.Ollama,
             Metadata = metadata.Build().ToDictionary(),
             RawResponseBody = rawBody,
         };

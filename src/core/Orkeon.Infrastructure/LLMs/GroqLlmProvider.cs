@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using System.Text.Json;
@@ -21,7 +22,7 @@ public partial class GroqLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.Groq);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.GroqDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.Groq;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Groq";

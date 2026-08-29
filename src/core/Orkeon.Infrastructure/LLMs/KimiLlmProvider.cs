@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Orkeon.Application.Interfaces.LLM;
@@ -23,7 +24,7 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.Kimi);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.KimiDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.Kimi;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "Kimi";

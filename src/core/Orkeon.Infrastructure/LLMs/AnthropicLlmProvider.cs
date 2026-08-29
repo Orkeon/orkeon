@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using System.Runtime.CompilerServices;
@@ -468,7 +469,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     {
         var payload = new Dictionary<string, object>
         {
-            ["model"] = config.Model ?? ProviderDefaults.AnthropicDefaults.DefaultModel,
+            ["model"] = config.Model ?? LlmProviderDefaultModels.Anthropic,
             ["messages"] = messages,
             ["max_tokens"] = config.MaxTokens > 0 ? config.MaxTokens : 4096,
             ["temperature"] = config.Temperature

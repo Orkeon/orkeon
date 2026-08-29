@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using System.Text.Json;
@@ -21,7 +22,7 @@ public class DeepSeekLlmProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.DeepSeek);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.DeepSeekDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.DeepSeek;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "DeepSeek";

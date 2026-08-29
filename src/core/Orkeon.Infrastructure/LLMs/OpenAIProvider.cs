@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Orkeon.Application.Interfaces.LLM;
@@ -19,7 +20,7 @@ public class OpenAIProvider : OpenAICompatibleProviderBase
     protected override Uri DefaultBaseUrl => new(LlmEndpoints.OpenAI);
 
     /// <inheritdoc />
-    protected override string DefaultModel => ProviderDefaults.OpenAIDefaults.DefaultModel;
+    protected override string DefaultModel => LlmProviderDefaultModels.OpenAI;
 
     /// <inheritdoc />
     protected override string ProviderDisplayName => "OpenAI";

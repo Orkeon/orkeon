@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using System.Reflection;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.Constants.Llm;
@@ -57,14 +58,14 @@ public class ProviderDefaultsPinningTests
     public void ShouldPinAnthropicDefaults()
     {
         Assert.Equal("https://api.anthropic.com", AnthropicLlmProvider.DefaultBaseUrl);
-        Assert.Equal("claude-sonnet-5", ProviderDefaults.AnthropicDefaults.DefaultModel);
+        Assert.Equal("claude-sonnet-5", LlmProviderDefaultModels.Anthropic);
     }
 
     [Fact]
     public void ShouldPinOllamaDefaults()
     {
         Assert.Equal("http://localhost:11434", LlmEndpoints.OllamaDefault);
-        Assert.Equal("llama3.2", ProviderDefaults.OllamaDefaults.DefaultModel);
+        Assert.Equal("llama3.2", LlmProviderDefaultModels.Ollama);
     }
 
     [Fact]
