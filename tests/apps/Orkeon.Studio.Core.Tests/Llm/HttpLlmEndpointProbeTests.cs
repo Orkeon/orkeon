@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using System.Net;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
@@ -39,7 +40,7 @@ public sealed class HttpLlmEndpointProbeTests
             Body = """{ "data": [ { "id": "gpt-4o" }, { "id": "gpt-4o-mini" } ] }""",
         };
 
-        var result = await ProbeAsync(handler, OrkeonCliDefaults.OpenAI, apiKey: "sk-test");
+        var result = await ProbeAsync(handler, LlmProviderEndpoints.OpenAI, apiKey: "sk-test");
 
         Assert.True(result.Succeeded);
         Assert.Equal(2, result.ModelCount);
@@ -85,7 +86,7 @@ public sealed class HttpLlmEndpointProbeTests
     {
         using var handler = new StubHttpMessageHandler { Body = """{ "data": [ { "id": "claude" } ] }""" };
 
-        var result = await ProbeAsync(handler, OrkeonCliDefaults.Anthropic, apiKey: "sk-ant");
+        var result = await ProbeAsync(handler, LlmProviderEndpoints.Anthropic, apiKey: "sk-ant");
 
         Assert.True(result.Succeeded);
         Assert.Equal(new Uri("https://api.anthropic.com/v1/models"), handler.LastRequest.Uri);
@@ -99,7 +100,7 @@ public sealed class HttpLlmEndpointProbeTests
         // The question the button asks is "does it answer", not "what does it serve".
         using var handler = new StubHttpMessageHandler { Body = "not json at all" };
 
-        var result = await ProbeAsync(handler, OrkeonCliDefaults.OpenAI);
+        var result = await ProbeAsync(handler, LlmProviderEndpoints.OpenAI);
 
         Assert.True(result.Succeeded);
         Assert.Null(result.ModelCount);
@@ -115,7 +116,7 @@ public sealed class HttpLlmEndpointProbeTests
             Body = """{ "error": { "message": "Incorrect API key provided" } }""",
         };
 
-        var result = await ProbeAsync(handler, OrkeonCliDefaults.OpenAI, apiKey: "sk-wrong");
+        var result = await ProbeAsync(handler, LlmProviderEndpoints.OpenAI, apiKey: "sk-wrong");
 
         Assert.False(result.Succeeded);
         Assert.Contains("401", result.Message, StringComparison.Ordinal);
@@ -130,7 +131,7 @@ public sealed class HttpLlmEndpointProbeTests
             FailWith = new HttpRequestException("Connection refused (localhost:11434)"),
         };
 
-        var result = await ProbeAsync(handler, OrkeonCliDefaults.OllamaDefault);
+        var result = await ProbeAsync(handler, LlmProviderEndpoints.OllamaDefault);
 
         Assert.False(result.Succeeded);
         Assert.Contains("Connection refused", result.Message, StringComparison.Ordinal);
@@ -142,7 +143,7 @@ public sealed class HttpLlmEndpointProbeTests
         using var handler = new StubHttpMessageHandler { Delay = TimeSpan.FromMinutes(1) };
 
         var result = await ProbeAsync(
-            handler, OrkeonCliDefaults.OpenAI, timeout: TimeSpan.FromMilliseconds(50));
+            handler, LlmProviderEndpoints.OpenAI, timeout: TimeSpan.FromMilliseconds(50));
 
         Assert.False(result.Succeeded);
         Assert.Contains("no answer within", result.Message, StringComparison.Ordinal);
@@ -160,7 +161,7 @@ public sealed class HttpLlmEndpointProbeTests
         using var probe = new HttpLlmEndpointProbe(client);
         using var cts = new CancellationTokenSource();
 
-        var running = probe.ProbeAsync(new LlmProbeRequest { BaseUrl = OrkeonCliDefaults.OpenAI }, cts.Token);
+        var running = probe.ProbeAsync(new LlmProbeRequest { BaseUrl = LlmProviderEndpoints.OpenAI }, cts.Token);
         await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);

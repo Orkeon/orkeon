@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Orkeon.Studio.Config.Presentation;
 using Orkeon.Studio.Config.Tests.Doubles;
 using Orkeon.Studio.Config.Views;
@@ -16,14 +17,14 @@ public sealed class LlmConnectionTestTests
     [Fact]
     public async Task The_button_probes_the_endpoint_currently_on_screen()
     {
-        var form = new LlmForm { BaseUrl = OrkeonCliDefaults.OllamaDefault };
+        var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OllamaDefault };
         var probe = new FakeLlmEndpointProbe { Result = LlmProbeResult.Reachable(3) };
         using var view = new LlmSectionView(form, probe);
         view.Load();
 
         await view.TestConnection();
 
-        Assert.Equal(OrkeonCliDefaults.OllamaDefault, Assert.Single(probe.Requests).BaseUrl);
+        Assert.Equal(LlmProviderEndpoints.OllamaDefault, Assert.Single(probe.Requests).BaseUrl);
         Assert.Equal("Endpoint reachable — 3 model(s).", view.TestResult);
     }
 
@@ -31,7 +32,7 @@ public sealed class LlmConnectionTestTests
     public async Task An_endpoint_typed_but_not_yet_committed_is_the_one_probed()
     {
         // The user types a new URL and hits the button without leaving the screen.
-        var form = new LlmForm { BaseUrl = OrkeonCliDefaults.OllamaDefault };
+        var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OllamaDefault };
         var probe = new FakeLlmEndpointProbe();
         using var view = new LlmSectionView(form, probe);
         view.Load();
@@ -47,7 +48,7 @@ public sealed class LlmConnectionTestTests
     public async Task The_screen_stays_alive_while_the_endpoint_is_being_reached()
     {
         var probe = new FakeLlmEndpointProbe { Gate = new TaskCompletionSource() };
-        using var view = new LlmSectionView(new LlmForm { BaseUrl = OrkeonCliDefaults.OpenAI }, probe);
+        using var view = new LlmSectionView(new LlmForm { BaseUrl = LlmProviderEndpoints.OpenAI }, probe);
 
         var running = view.TestConnection();
 
@@ -69,7 +70,7 @@ public sealed class LlmConnectionTestTests
         {
             Result = LlmProbeResult.Unreachable("Connection refused (localhost:11434)"),
         };
-        var form = new LlmForm { BaseUrl = OrkeonCliDefaults.OllamaDefault, Model = "llama3.2" };
+        var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OllamaDefault, Model = "llama3.2" };
         using var view = new LlmSectionView(form, probe);
 
         await view.TestConnection();
@@ -85,7 +86,7 @@ public sealed class LlmConnectionTestTests
     public async Task An_unexpected_failure_lands_in_the_label_instead_of_faulting_the_task()
     {
         var probe = new FakeLlmEndpointProbe { FailWith = new InvalidOperationException("probe exploded") };
-        using var view = new LlmSectionView(new LlmForm { BaseUrl = OrkeonCliDefaults.OpenAI }, probe);
+        using var view = new LlmSectionView(new LlmForm { BaseUrl = LlmProviderEndpoints.OpenAI }, probe);
 
         await view.TestConnection();
 
@@ -97,7 +98,7 @@ public sealed class LlmConnectionTestTests
     {
         // Studio tells users to keep the key in ORKEON_Llm__ApiKey, so the probe has to
         // look there — otherwise the button fails for everyone who followed the advice.
-        var form = new LlmForm { BaseUrl = OrkeonCliDefaults.OpenAI };
+        var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OpenAI };
 
         var request = form.ToProbeRequest(name =>
             string.Equals(name, LlmPresets.DefaultApiKeyEnv, StringComparison.Ordinal) ? "sk-from-env" : null);
@@ -108,7 +109,7 @@ public sealed class LlmConnectionTestTests
     [Fact]
     public void An_inline_key_wins_over_the_environment_variable()
     {
-        var form = new LlmForm { BaseUrl = OrkeonCliDefaults.OpenAI, ApiKey = "sk-from-file" };
+        var form = new LlmForm { BaseUrl = LlmProviderEndpoints.OpenAI, ApiKey = "sk-from-file" };
 
         var request = form.ToProbeRequest(_ => "sk-from-env");
 

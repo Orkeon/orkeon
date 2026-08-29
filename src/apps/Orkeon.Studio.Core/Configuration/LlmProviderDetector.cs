@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using Orkeon.Studio.Core.Presets;
 
@@ -78,22 +79,22 @@ public static class LlmProviderDetector
     {
         var hosts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        Add(OrkeonCliDefaults.OpenAI, "openai");
-        Add(OrkeonCliDefaults.Anthropic, "anthropic");
-        Add(OrkeonCliDefaults.Groq, "groq");
-        Add(OrkeonCliDefaults.DeepSeek, "deepseek");
-        Add(OrkeonCliDefaults.Together, "together");
-        Add(OrkeonCliDefaults.Qwen, "qwen");
-        Add(OrkeonCliDefaults.Kimi, "kimi");
-        Add(OrkeonCliDefaults.HuggingFace, "huggingface");
-        Add(OrkeonCliDefaults.Mistral, "mistral");
-        Add(OrkeonCliDefaults.Zai, "zai");
+        Add(LlmProviderEndpoints.OpenAI, "openai");
+        Add(LlmProviderEndpoints.Anthropic, "anthropic");
+        Add(LlmProviderEndpoints.Groq, "groq");
+        Add(LlmProviderEndpoints.DeepSeek, "deepseek");
+        Add(LlmProviderEndpoints.Together, "together");
+        Add(LlmProviderEndpoints.Qwen, "qwen");
+        Add(LlmProviderEndpoints.Kimi, "kimi");
+        Add(LlmProviderEndpoints.HuggingFace, "huggingface");
+        Add(LlmProviderEndpoints.Mistral, "mistral");
+        Add(LlmProviderEndpoints.Zai, "zai");
         // Gemini's OpenAI-compatible host. Missing until now, so Studio reported "custom" for
         // the endpoint its own preset catalogue writes — the runtime maps it to "gemini".
-        Add(OrkeonCliDefaults.Gemini, "gemini");
+        Add(LlmProviderEndpoints.Gemini, "gemini");
 
         // The mainland-China Moonshot twin, documented on LlmEndpoints.Kimi.
-        hosts[OrkeonCliDefaults.KimiChinaHost] = "kimi";
+        hosts[LlmProviderEndpoints.KimiChinaHost] = "kimi";
 
         return hosts;
 

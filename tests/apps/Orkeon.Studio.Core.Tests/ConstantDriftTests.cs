@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Orkeon.Constants.FileSystem;
 using System.Reflection;
 using System.Text.Json;
@@ -23,43 +24,12 @@ namespace Orkeon.Studio.Core.Tests;
 /// </summary>
 public sealed class ConstantDriftTests
 {
-    [Fact]
-    public void Every_copied_endpoint_matches_the_runtime_constant()
-    {
-        Assert.Equal(LlmEndpoints.OpenAI, OrkeonCliDefaults.OpenAI);
-        Assert.Equal(LlmEndpoints.Anthropic, OrkeonCliDefaults.Anthropic);
-        Assert.Equal(LlmEndpoints.Groq, OrkeonCliDefaults.Groq);
-        Assert.Equal(LlmEndpoints.DeepSeek, OrkeonCliDefaults.DeepSeek);
-        Assert.Equal(LlmEndpoints.Together, OrkeonCliDefaults.Together);
-        Assert.Equal(LlmEndpoints.Qwen, OrkeonCliDefaults.Qwen);
-        Assert.Equal(LlmEndpoints.Kimi, OrkeonCliDefaults.Kimi);
-        Assert.Equal(LlmEndpoints.HuggingFace, OrkeonCliDefaults.HuggingFace);
-        Assert.Equal(LlmEndpoints.Mistral, OrkeonCliDefaults.Mistral);
-        Assert.Equal(LlmEndpoints.Zai, OrkeonCliDefaults.Zai);
-        Assert.Equal(LlmEndpoints.OllamaDefault, OrkeonCliDefaults.OllamaDefault);
-    }
-
-    [Fact]
-    public void No_public_endpoint_constant_is_missing_from_the_copy()
-    {
-        // A provider added to LlmEndpoints without a copy here would silently be detected as
-        // 'custom' by LlmProviderDetector. Vector-store endpoints are out of scope: Studio's
-        // detector reads Llm:BaseUrl only.
-        string[] vectorStores = [LlmEndpoints.ChromaDbDefault, LlmEndpoints.RedisDefault];
-
-        var runtime = ConstantValuesOf(typeof(LlmEndpoints)).Except(vectorStores, StringComparer.Ordinal);
-        var copied = ConstantValuesOf(typeof(OrkeonCliDefaults)).ToHashSet(StringComparer.Ordinal);
-
-        Assert.All(runtime, endpoint =>
-            Assert.True(copied.Contains(endpoint), $"LlmEndpoints value '{endpoint}' has no OrkeonCliDefaults copy."));
-    }
-
     /// <summary>
     /// Every cloud endpoint Studio copies is one the detector recognises.
     /// <para>
     /// The neighbouring test asserts the constant was <i>copied</i>, and its own comment says
     /// a missing copy "would silently be detected as 'custom'". That is the property one step
-    /// away from the one that matters: <c>OrkeonCliDefaults.Gemini</c> was copied, was pinned
+    /// away from the one that matters: <c>LlmProviderEndpoints.Gemini</c> was copied, was pinned
     /// by that test, and <c>LlmProviderDetector</c> never registered it — so Studio reported
     /// "custom" for the endpoint its own preset catalogue writes, with a green drift suite.
     /// Ask the detector.
@@ -134,7 +104,7 @@ public sealed class ConstantDriftTests
     [Fact]
     public void The_docker_model_runner_defaults_are_the_shared_ones()
     {
-        Assert.Equal(DockerModelRunnerDefaults.BaseUrl, OrkeonCliDefaults.DockerModelRunner);
+        Assert.Equal(DockerModelRunnerDefaults.BaseUrl, LlmProviderEndpoints.DockerModelRunner);
         Assert.Equal(DockerModelRunnerDefaults.DefaultModel, OrkeonCliDefaults.DockerModelRunnerDefaultModel);
         Assert.Equal(DockerModelRunnerDefaults.ApiKeyPlaceholder, OrkeonCliDefaults.DockerModelRunnerApiKeyPlaceholder);
 

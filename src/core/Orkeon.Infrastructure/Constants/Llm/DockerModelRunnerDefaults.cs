@@ -1,3 +1,5 @@
+using Orkeon.Constants.Llm;
+
 namespace Orkeon.Infrastructure.Constants.Llm;
 
 /// <summary>
@@ -10,9 +12,7 @@ namespace Orkeon.Infrastructure.Constants.Llm;
 public static class DockerModelRunnerDefaults
 {
     /// <summary>Docker Model Runner llama.cpp OpenAI-compatible endpoint.</summary>
-#pragma warning disable S1075 // URIs should not be hardcoded — this is the product's fixed local endpoint
-    public const string BaseUrl = "http://localhost:12434/engines/llama.cpp/v1";
-#pragma warning restore S1075
+    public const string BaseUrl = LlmProviderEndpoints.DockerModelRunner;
 
     /// <summary>Default model (parity with <c>examples/appsettings/appsettings.json</c>).</summary>
     public const string DefaultModel = "ai/granite-4.0-h-tiny";

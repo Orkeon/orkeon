@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
@@ -115,7 +116,7 @@ public static class LlmPresets
     public const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
 
     /// <summary>Docker Model Runner llama.cpp OpenAI-compatible endpoint.</summary>
-    public const string DockerModelRunnerBaseUrl = OrkeonCliDefaults.DockerModelRunner;
+    public const string DockerModelRunnerBaseUrl = LlmProviderEndpoints.DockerModelRunner;
 
     /// <summary>Docker Model Runner default model (parity with <c>examples/appsettings/appsettings.json</c>).</summary>
     public const string DockerModelRunnerDefaultModel = OrkeonCliDefaults.DockerModelRunnerDefaultModel;
@@ -186,11 +187,11 @@ public static class LlmPresets
         return
         [
             new(Ollama, strings[StudioStringKeys.PresetOllamaTitle], strings[StudioStringKeys.PresetOllamaDescription],
-                OrkeonCliDefaults.OllamaDefault, OrkeonCliDefaults.OllamaDefaultModel, RequiresApiKey: false),
+                LlmProviderEndpoints.OllamaDefault, OrkeonCliDefaults.OllamaDefaultModel, RequiresApiKey: false),
             new(DockerModelRunner, strings[StudioStringKeys.PresetDmrTitle], strings[StudioStringKeys.PresetDmrDescription],
                 DockerModelRunnerBaseUrl, DockerModelRunnerDefaultModel, RequiresApiKey: false),
             new(OpenAI, strings[StudioStringKeys.PresetOpenAITitle], strings[StudioStringKeys.PresetOpenAIDescription],
-                OrkeonCliDefaults.OpenAI, OrkeonCliDefaults.OpenAIDefaultModel, RequiresApiKey: true),
+                LlmProviderEndpoints.OpenAI, OrkeonCliDefaults.OpenAIDefaultModel, RequiresApiKey: true),
             new(Custom, strings[StudioStringKeys.PresetCustomTitle], strings[StudioStringKeys.PresetCustomDescription],
                 null, null, RequiresApiKey: true),
             new(None, strings[StudioStringKeys.PresetNoneTitle], strings[StudioStringKeys.PresetNoneDescription],
@@ -219,43 +220,43 @@ public static class LlmPresets
         return
         [
             new(Ollama, strings[StudioStringKeys.PresetOllamaTitle], strings[StudioStringKeys.PresetOllamaDescription],
-                OrkeonCliDefaults.OllamaDefault, OrkeonCliDefaults.OllamaDefaultModel, RequiresApiKey: false,
+                LlmProviderEndpoints.OllamaDefault, OrkeonCliDefaults.OllamaDefaultModel, RequiresApiKey: false,
                 Kind: LlmPresetKind.Local),
             new(DockerModelRunner, strings[StudioStringKeys.PresetDmrTitle], strings[StudioStringKeys.PresetDmrDescription],
                 DockerModelRunnerBaseUrl, DockerModelRunnerDefaultModel, RequiresApiKey: false,
                 Kind: LlmPresetKind.Local),
             new(OpenAI, strings[StudioStringKeys.PresetOpenAITitle], strings[StudioStringKeys.ProviderOpenAIShortDescription],
-                OrkeonCliDefaults.OpenAI, OrkeonCliDefaults.OpenAIDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.OpenAI, OrkeonCliDefaults.OpenAIDefaultModel, RequiresApiKey: true,
                 "OPENAI_API_KEY", LlmPresetKind.Cloud, "platform.openai.com/api-keys"),
             new(Anthropic, strings[StudioStringKeys.ProviderAnthropicTitle], strings[StudioStringKeys.ProviderAnthropicDescription],
-                OrkeonCliDefaults.Anthropic, OrkeonCliDefaults.AnthropicDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.Anthropic, OrkeonCliDefaults.AnthropicDefaultModel, RequiresApiKey: true,
                 "ANTHROPIC_API_KEY", LlmPresetKind.Cloud, "console.anthropic.com"),
             new(DeepSeek, strings[StudioStringKeys.ProviderDeepSeekTitle], strings[StudioStringKeys.ProviderDeepSeekDescription],
-                OrkeonCliDefaults.DeepSeek, OrkeonCliDefaults.DeepSeekDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.DeepSeek, OrkeonCliDefaults.DeepSeekDefaultModel, RequiresApiKey: true,
                 "DEEPSEEK_API_KEY", LlmPresetKind.Cloud, "platform.deepseek.com"),
             new(Mistral, strings[StudioStringKeys.ProviderMistralTitle], strings[StudioStringKeys.ProviderMistralDescription],
-                OrkeonCliDefaults.Mistral, OrkeonCliDefaults.MistralDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.Mistral, OrkeonCliDefaults.MistralDefaultModel, RequiresApiKey: true,
                 "MISTRAL_API_KEY", LlmPresetKind.Cloud, "console.mistral.ai"),
             new(Gemini, strings[StudioStringKeys.ProviderGeminiTitle], strings[StudioStringKeys.ProviderGeminiDescription],
-                OrkeonCliDefaults.Gemini, OrkeonCliDefaults.GeminiDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.Gemini, OrkeonCliDefaults.GeminiDefaultModel, RequiresApiKey: true,
                 "GEMINI_API_KEY", LlmPresetKind.Cloud, "aistudio.google.com/apikey"),
             new(Groq, strings[StudioStringKeys.ProviderGroqTitle], strings[StudioStringKeys.ProviderGroqDescription],
-                OrkeonCliDefaults.Groq, OrkeonCliDefaults.GroqDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.Groq, OrkeonCliDefaults.GroqDefaultModel, RequiresApiKey: true,
                 "GROQ_API_KEY", LlmPresetKind.Cloud, "console.groq.com/keys"),
             new(Together, strings[StudioStringKeys.ProviderTogetherTitle], strings[StudioStringKeys.ProviderTogetherDescription],
-                OrkeonCliDefaults.Together, OrkeonCliDefaults.TogetherDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.Together, OrkeonCliDefaults.TogetherDefaultModel, RequiresApiKey: true,
                 "TOGETHER_API_KEY", LlmPresetKind.Cloud, "api.together.ai"),
             new(Qwen, strings[StudioStringKeys.ProviderQwenTitle], strings[StudioStringKeys.ProviderQwenDescription],
-                OrkeonCliDefaults.Qwen, OrkeonCliDefaults.QwenDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.Qwen, OrkeonCliDefaults.QwenDefaultModel, RequiresApiKey: true,
                 "DASHSCOPE_API_KEY", LlmPresetKind.Cloud, "dashscope.console.aliyun.com"),
             new(Kimi, strings[StudioStringKeys.ProviderKimiTitle], strings[StudioStringKeys.ProviderKimiDescription],
-                OrkeonCliDefaults.Kimi, OrkeonCliDefaults.KimiDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.Kimi, OrkeonCliDefaults.KimiDefaultModel, RequiresApiKey: true,
                 "MOONSHOT_API_KEY", LlmPresetKind.Cloud, "platform.moonshot.ai"),
             new(HuggingFace, strings[StudioStringKeys.ProviderHuggingFaceTitle], strings[StudioStringKeys.ProviderHuggingFaceDescription],
-                OrkeonCliDefaults.HuggingFace, OrkeonCliDefaults.HuggingFaceDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.HuggingFace, OrkeonCliDefaults.HuggingFaceDefaultModel, RequiresApiKey: true,
                 "HF_TOKEN", LlmPresetKind.Cloud, "huggingface.co/settings/tokens"),
             new(Zai, strings[StudioStringKeys.ProviderZaiTitle], strings[StudioStringKeys.ProviderZaiDescription],
-                OrkeonCliDefaults.Zai, OrkeonCliDefaults.ZaiDefaultModel, RequiresApiKey: true,
+                LlmProviderEndpoints.Zai, OrkeonCliDefaults.ZaiDefaultModel, RequiresApiKey: true,
                 "ZAI_API_KEY", LlmPresetKind.Cloud, "z.ai/manage-apikey"),
             new(Custom, strings[StudioStringKeys.PresetCustomTitle], strings[StudioStringKeys.ProviderCustomShortDescription],
                 null, null, RequiresApiKey: true, DefaultApiKeyEnv, LlmPresetKind.Other),
@@ -308,7 +309,7 @@ public static class LlmPresets
                 plan = new LlmPresetPlan
                 {
                     Preset = name,
-                    BaseUrl = baseUrl ?? OrkeonCliDefaults.OllamaDefault,
+                    BaseUrl = baseUrl ?? LlmProviderEndpoints.OllamaDefault,
                     Model = model ?? OrkeonCliDefaults.OllamaDefaultModel,
                 };
                 return true;
@@ -327,7 +328,7 @@ public static class LlmPresets
                 plan = new LlmPresetPlan
                 {
                     Preset = name,
-                    BaseUrl = baseUrl ?? OrkeonCliDefaults.OpenAI,
+                    BaseUrl = baseUrl ?? LlmProviderEndpoints.OpenAI,
                     Model = model ?? OrkeonCliDefaults.OpenAIDefaultModel,
                     InlineApiKey = apiKey,
                     ApiKeyEnvName = apiKey is null ? apiKeyEnv ?? DefaultApiKeyEnv : null,

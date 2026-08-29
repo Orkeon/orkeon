@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
@@ -139,9 +140,9 @@ public sealed class LlmConnectionTestTests
             globalPathOverride: "/home/user/.config/Orkeon/appsettings.json",
             llmProbe: probe);
 
-        tab.Llm.BaseUrl = OrkeonCliDefaults.OllamaDefault;
+        tab.Llm.BaseUrl = LlmProviderEndpoints.OllamaDefault;
         await tab.Llm.TestConnectionCommand.ExecuteAsync();
 
-        Assert.Equal(OrkeonCliDefaults.OllamaDefault, Assert.Single(probe.Requests).BaseUrl);
+        Assert.Equal(LlmProviderEndpoints.OllamaDefault, Assert.Single(probe.Requests).BaseUrl);
     }
 }

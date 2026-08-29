@@ -1,1 +1,16 @@
 #nullable enable
+Orkeon.Constants.Llm.LlmProviderEndpoints
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Anthropic = "https://api.anthropic.com" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.DeepSeek = "https://api.deepseek.com" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.DockerModelRunner = "http://localhost:12434/engines/llama.cpp/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Gemini = "https://generativelanguage.googleapis.com/v1beta/openai" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Groq = "https://api.groq.com/openai/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.HuggingFace = "https://router.huggingface.co/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Kimi = "https://api.moonshot.ai/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.KimiChinaHost = "api.moonshot.cn" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Mistral = "https://api.mistral.ai/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.OllamaDefault = "http://localhost:11434" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.OpenAI = "https://api.openai.com/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Qwen = "https://dashscope.aliyuncs.com/compatible-mode/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Together = "https://api.together.xyz/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Zai = "https://api.z.ai/api/paas/v4" -> string!
