@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Configuration;
@@ -131,12 +132,12 @@ public static partial class RunnerExecution
         // validation that answers about a different arrangement than the run is worse than no
         // validation.
         var isScript = !inspection.IsCrewDirectory && IsScriptedCrewDefinition(configPath);
-        var targetVirtualRoot = isScript ? RunnerMounts.ScriptVirtualRoot : RunnerMounts.CrewVirtualRoot;
+        var targetVirtualRoot = isScript ? RunnerVirtualRoots.Script : RunnerVirtualRoots.Crew;
 
         if (!EnsureExternalMountsAllowed(opts, isScript ? null : configDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
                 [.. cliMounts, .. RunnerSettings.ReadDeclaredMounts(settingsPath)],
-                targetVirtualRoot, RunnerMounts.LlmLogVirtualRoot, RunnerMounts.SandboxVirtualRoot))
+                targetVirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
         {
             errorCode = 1;
             return false;
@@ -154,7 +155,7 @@ public static partial class RunnerExecution
             // Mount base paths must exist before FileSystemRegistry is built
             // (FileSystemServiceRegistration throws DirectoryNotFoundException otherwise).
             Directory.CreateDirectory(llmLogPath);
-            internalMounts.Add($"{FileSystemMount.Quote(llmLogPath)}:{RunnerMounts.LlmLogVirtualRoot}:rw");
+            internalMounts.Add($"{FileSystemMount.Quote(llmLogPath)}:{RunnerVirtualRoots.LlmLogs}:rw");
         }
 
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
@@ -163,7 +164,7 @@ public static partial class RunnerExecution
         var host = RunnerHost.Build(
             settingsPath, cliMounts,
             allowExternalMounts: opts.EffectiveAllowExternalMounts,
-            llmLogVirtualPath: llmLogPath != null ? RunnerMounts.LlmLogVirtualRoot : null,
+            llmLogVirtualPath: llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
             internalMounts: internalMounts,
             configureLogging: verbosity > 0
                 ? (_, b) => ConfigureVerboseLogging(b, verbosity)
@@ -237,9 +238,9 @@ public static partial class RunnerExecution
     /// Without this the collision surfaces as a raw <see cref="InvalidOperationException"/>
     /// ("Duplicate virtual paths") thrown out of a DI factory, which reads as a crash rather
     /// than as the configuration mistake it is. Every runner entry point guards its own
-    /// roots: the YAML runner <see cref="RunnerMounts.CrewVirtualRoot"/>, the scripting
-    /// runner <see cref="RunnerMounts.ScriptVirtualRoot"/>, both
-    /// <see cref="RunnerMounts.LlmLogVirtualRoot"/>.
+    /// roots: the YAML runner <see cref="RunnerVirtualRoots.Crew"/>, the scripting
+    /// runner <see cref="RunnerVirtualRoots.Script"/>, both
+    /// <see cref="RunnerVirtualRoots.LlmLogs"/>.
     /// </summary>
     /// <param name="userMounts">The user-supplied mount strings.</param>
     /// <param name="reserved">The virtual roots this runner keeps for itself.</param>

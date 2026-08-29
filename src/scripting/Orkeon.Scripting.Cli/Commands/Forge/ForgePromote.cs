@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Globalization;
 using System.Reflection;
 using System.Security;
@@ -346,7 +347,7 @@ internal static class ForgePromoter
 
     /// <summary>The virtual roots the runners mount for themselves — never a deliverable's.</summary>
     private static readonly string[] ReservedVirtualRoots =
-        [RunnerMounts.CrewVirtualRoot, RunnerMounts.ScriptVirtualRoot, RunnerMounts.LlmLogVirtualRoot];
+        [RunnerVirtualRoots.Crew, RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs];
 
     /// <summary>
     /// The virtual roots the blueprint's deliverables are written to — the same derivation

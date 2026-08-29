@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Domain.FileSystem;
 
@@ -69,7 +70,7 @@ public sealed class MountOverrideAppendTests : IDisposable
         using var host = RunnerHost.Build(
             settingsPath,
             cliMounts: [$"{FileSystemMount.Quote(crew)}:/crew:ro"],
-            internalMounts: [$"{FileSystemMount.Quote(logs)}:{RunnerMounts.LlmLogVirtualRoot}:rw"]);
+            internalMounts: [$"{FileSystemMount.Quote(logs)}:{RunnerVirtualRoots.LlmLogs}:rw"]);
 
         var registry = host.Services.GetRequiredService<FileSystemRegistry>();
         var virtualPaths = registry.GetAllMountsInternal().Select(m => m.VirtualPath).ToList();
@@ -80,7 +81,7 @@ public sealed class MountOverrideAppendTests : IDisposable
 
         // …alongside, not instead of, what the runner needed.
         Assert.Contains("/crew", virtualPaths, StringComparer.Ordinal);
-        Assert.Contains(RunnerMounts.LlmLogVirtualRoot, virtualPaths, StringComparer.Ordinal);
+        Assert.Contains(RunnerVirtualRoots.LlmLogs, virtualPaths, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -106,12 +107,12 @@ public sealed class MountOverrideAppendTests : IDisposable
         using var host = RunnerHost.Build(
             settingsPath,
             cliMounts: [$"{FileSystemMount.Quote(crew)}:/crew:ro"],
-            internalMounts: [$"{FileSystemMount.Quote(logs)}:{RunnerMounts.LlmLogVirtualRoot}:rw"]);
+            internalMounts: [$"{FileSystemMount.Quote(logs)}:{RunnerVirtualRoots.LlmLogs}:rw"]);
 
         var registry = host.Services.GetRequiredService<FileSystemRegistry>();
         var virtualPaths = registry.GetAllMountsInternal().Select(m => m.VirtualPath).ToList();
 
         Assert.Contains("/vault", virtualPaths, StringComparer.Ordinal);
-        Assert.Contains(RunnerMounts.LlmLogVirtualRoot, virtualPaths, StringComparer.Ordinal);
+        Assert.Contains(RunnerVirtualRoots.LlmLogs, virtualPaths, StringComparer.Ordinal);
     }
 }

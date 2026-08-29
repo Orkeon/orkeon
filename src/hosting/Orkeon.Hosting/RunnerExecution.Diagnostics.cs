@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -126,9 +127,9 @@ public static partial class RunnerExecution
             // registry enumerates the DI-provided IBaseTool set. An internal mount of the cwd
             // satisfies that without putting a directory on the agent-facing surface.
             var cliMounts = opts.Mounts.ToList();
-            if (!EnsureReservedRootsAreFree(cliMounts, RunnerMounts.CrewVirtualRoot))
+            if (!EnsureReservedRootsAreFree(cliMounts, RunnerVirtualRoots.Crew))
                 return 1;
-            var internalMounts = new[] { $"{FileSystemMount.Quote(cwd)}:{RunnerMounts.CrewVirtualRoot}:ro" };
+            var internalMounts = new[] { $"{FileSystemMount.Quote(cwd)}:{RunnerVirtualRoots.Crew}:ro" };
 
             using var host = RunnerHost.Build(
                 settingsPath, cliMounts,
@@ -175,7 +176,7 @@ public static partial class RunnerExecution
     /// <param name="configPath">
     /// The crew target as a <b>virtual</b> path — a <c>.ork.ts</c> source, a crew directory, or a
     /// YAML file, under whatever root the caller mounted it (the runners use
-    /// <see cref="RunnerMounts.CrewVirtualRoot"/>). Since ADR-008 this is never a disk path:
+    /// <see cref="RunnerVirtualRoots.Crew"/>). Since ADR-008 this is never a disk path:
     /// the directory-or-file question is asked of the VFS, not of <c>System.IO</c>.
     /// </param>
     /// <param name="factory">The crew factory.</param>

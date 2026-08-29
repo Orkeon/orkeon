@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -96,7 +97,7 @@ tasks:
             new FileSystemMount(_dir, "/boot", FileAccessRights.Read),
             new FileSystemMount(
                 sandboxDir,
-                Orkeon.Hosting.RunnerMounts.SandboxVirtualRoot,
+                RunnerVirtualRoots.Sandbox,
                 FileAccessRights.ReadWrite,
                 null,
                 MountVisibility.Internal),
@@ -307,7 +308,7 @@ tasks:
         // …carrying the infrastructure the run still needs. Entering REPLACES the mount set,
         // so a namespace built from the crew's folders alone would silently take the exchange
         // log and the sandbox down with it for the whole run.
-        Assert.Contains(Orkeon.Hosting.RunnerMounts.SandboxVirtualRoot, entered, StringComparer.Ordinal);
+        Assert.Contains(RunnerVirtualRoots.Sandbox, entered, StringComparer.Ordinal);
     }
 
     /// <summary>A crew granted nothing keeps the boot mounts — no scope is entered at all.</summary>

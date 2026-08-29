@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Collections.Immutable;
 using System.Globalization;
 using Microsoft.Extensions.AI;
@@ -61,7 +62,7 @@ public static partial class RunnerHost
     /// <param name="llmLogVirtualPath">
     /// When non-null, enables LLM exchange logging under this <b>virtual</b> path — the caller
     /// is responsible for having mounted it (the runners pass
-    /// <see cref="RunnerMounts.LlmLogVirtualRoot"/> and mount it internally). All HTTP
+    /// <see cref="RunnerVirtualRoots.LlmLogs"/> and mount it internally). All HTTP
     /// request/response headers and payloads are captured as JSON Lines (.jsonl) files,
     /// written through <c>IFileSystemService</c> like every other file the framework touches.
     /// </param>

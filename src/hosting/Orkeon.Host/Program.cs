@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -115,7 +116,7 @@ foreach (var mount in mounts)
 // host — so the guard has to run even when the daemon hosts no crew of its own, which is why
 // the Roots.Count check is gone.
 if (!RunnerExecution.EnsureReservedRootsAreFree(
-        mounts, [.. crewPlan.Roots, RunnerMounts.SandboxVirtualRoot]))
+        mounts, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]))
 {
     return HostConfigurationException.ExitCode;
 }

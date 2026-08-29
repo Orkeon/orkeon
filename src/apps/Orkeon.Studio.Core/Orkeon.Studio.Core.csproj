@@ -25,6 +25,9 @@
     Keep this list slim: Domain and Rag.Abstractions have no heavy transitive dependency.
   -->
   <ItemGroup>
+    <!-- ADR-009: the virtual roots the runner mounts, read from the satellite instead of
+         copied here and pinned pairwise by a drift test. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.FileSystem\Orkeon.Constants.FileSystem.csproj" />
     <!-- FileSystemMount (mount round-trip), LlmDefaults, [SuppressVfsCompliance]. -->
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
     <!-- RagProfilePresets — the closed list of RAG profile names offered by the UIs. -->

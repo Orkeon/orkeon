@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Targets;
 
@@ -66,7 +67,7 @@ public sealed class MountOverrideSemanticsTests
         Assert.Equal(1, injection.Count);
         var internalMount = Assert.Single(injection.InternalMounts);
         Assert.Equal(
-            $"{Path.GetFullPath("/var/log/orkeon")}:{MountAutoInjection.LlmLogVirtualRoot}:rw",
+            $"{Path.GetFullPath("/var/log/orkeon")}:{RunnerVirtualRoots.LlmLogs}:rw",
             internalMount);
     }
 

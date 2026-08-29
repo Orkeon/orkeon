@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Globalization;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Domain.FileSystem;
@@ -62,30 +63,15 @@ public sealed record EffectiveMount(
 public sealed record MountAutoInjection
 {
     /// <summary>
-    /// The crew's virtual root on the engine side. Mirrors <c>RunnerMounts.CrewVirtualRoot</c>;
-    /// Studio.Core cannot reference Orkeon.Hosting, so a drift test pins the pair.
-    /// </summary>
-    public const string CrewVirtualRoot = "/crew";
-
-    /// <summary>Mirrors <c>RunnerMounts.ScriptVirtualRoot</c>. Same drift test.</summary>
-    public const string ScriptVirtualRoot = "/script";
-
-    /// <summary>Mirrors <c>RunnerMounts.LlmLogVirtualRoot</c>. Same drift test.</summary>
-    public const string LlmLogVirtualRoot = "/llm-logs";
-
-    /// <summary>Mirrors <c>RunnerMounts.SandboxVirtualRoot</c>. Same drift test.</summary>
-    public const string SandboxVirtualRoot = "/sandbox";
-
-    /// <summary>
-    /// The four together: a user <c>--mount</c> claiming one is refused by the engine at
+    /// The roots the engine mounts for itself: a user <c>--mount</c> claiming one is refused at
     /// launch, so Studio refuses it in the editor rather than building a command that fails.
     /// <para>
-    /// <c>/sandbox</c> was missing here while every runner already refused it — the drift test
-    /// asserted three pairwise equalities, which cannot catch an omission. It pins the set now.
+    /// Read from the satellite (ADR-009), not copied. The four used to be declared here again
+    /// and pinned to the engine's by a drift test asserting pairwise equality — which cannot
+    /// catch an omission: <c>/sandbox</c> was missing for as long as the test was green.
     /// </para>
     /// </summary>
-    public static IReadOnlyList<string> ReservedVirtualRoots { get; } =
-        [CrewVirtualRoot, ScriptVirtualRoot, LlmLogVirtualRoot, SandboxVirtualRoot];
+    public static IReadOnlyList<string> ReservedVirtualRoots { get; } = RunnerVirtualRoots.All;
 
     /// <summary>The injected mount strings, in the order the runner inserts them.</summary>
     public required IReadOnlyList<string> Mounts { get; init; }
@@ -122,7 +108,7 @@ public sealed record MountAutoInjection
         var effective = options ?? new RunLaunchOptions();
         var mounts = new List<string> { DescribeTargetMount(target) };
         var internalMounts = ResolveLlmLogDirectory(effective) is { } logDirectory
-            ? new[] { $"{FileSystemMount.Quote(logDirectory)}:{LlmLogVirtualRoot}:rw" }
+            ? new[] { $"{FileSystemMount.Quote(logDirectory)}:{RunnerVirtualRoots.LlmLogs}:rw" }
             : [];
 
         return new MountAutoInjection { Mounts = mounts, InternalMounts = internalMounts };
@@ -131,12 +117,12 @@ public sealed record MountAutoInjection
     /// <summary>
     /// The runner's own mount for the target: the crew's directory as <c>/crew</c>, a
     /// script's directory as <c>/script</c>. Both are names, never the folder's own path —
-    /// mirrors <c>RunnerMounts</c> on the engine side, pinned by a drift test.
+    /// mirrors <c>RunnerVirtualRoots</c> on the engine side, pinned by a drift test.
     /// </summary>
     private static string DescribeTargetMount(RunTarget target)
     {
         if (target.Dialect == RunTargetDialect.Script)
-            return $"{FileSystemMount.Quote(DirectoryOf(target.RunPath))}:{ScriptVirtualRoot}:ro";
+            return $"{FileSystemMount.Quote(DirectoryOf(target.RunPath))}:{RunnerVirtualRoots.Script}:ro";
 
         var configDirectory = target.Kind == RunTargetKind.MultiFileCrewDirectory
             ? Path.TrimEndingDirectorySeparator(FullPath(target.RunPath))
@@ -145,7 +131,7 @@ public sealed record MountAutoInjection
         // Quoted the way the runner quotes it: Studio predicts the CLI's own command line,
         // and a prediction that spells a path differently from the thing it predicts is not
         // a prediction. The drift test pins the pair.
-        return $"{FileSystemMount.Quote(configDirectory)}:{CrewVirtualRoot}:ro";
+        return $"{FileSystemMount.Quote(configDirectory)}:{RunnerVirtualRoots.Crew}:ro";
     }
 
     /// <summary>

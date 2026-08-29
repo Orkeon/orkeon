@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Domain.FileSystem;
@@ -292,18 +293,18 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         });
 
         // The crew's own directory is mounted, under a name.
-        Assert.Contains(visible, m => m.VirtualPath == RunnerMounts.CrewVirtualRoot);
+        Assert.Contains(visible, m => m.VirtualPath == RunnerVirtualRoots.Crew);
 
         // The exchange log is invisible to agents AND unreachable through the file system they
         // hold. It used to be merely invisible — and the name is documented, so one
         // file_read /llm-logs/… handed an agent every prompt and response of the run. The
         // logger that writes there asks for the privileged view by name.
-        Assert.DoesNotContain(visible, m => m.VirtualPath == RunnerMounts.LlmLogVirtualRoot);
+        Assert.DoesNotContain(visible, m => m.VirtualPath == RunnerVirtualRoots.LlmLogs);
         Assert.False(
-            fileSystem.ResolveAndValidate(RunnerMounts.LlmLogVirtualRoot, FileAccessRights.Write).IsAllowed);
+            fileSystem.ResolveAndValidate(RunnerVirtualRoots.LlmLogs, FileAccessRights.Write).IsAllowed);
         Assert.True(
             host.Services.GetRequiredService<Orkeon.Infrastructure.FileSystem.PrivilegedFileSystemAccess>()
-                .FileSystem.ResolveAndValidate(RunnerMounts.LlmLogVirtualRoot, FileAccessRights.Write).IsAllowed);
+                .FileSystem.ResolveAndValidate(RunnerVirtualRoots.LlmLogs, FileAccessRights.Write).IsAllowed);
 
         // And a refusal names only virtual paths — the redaction carve-out that used to
         // exempt identity mounts has nothing left to exempt.
@@ -324,14 +325,14 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         {
             ConfigPath = configPath,
             AllowExternalMounts = true,
-            Mounts = [$"{_tempDir}:{RunnerMounts.CrewVirtualRoot}:ro"],
+            Mounts = [$"{_tempDir}:{RunnerVirtualRoots.Crew}:ro"],
         };
 
         var (exit, _, stderr) = await CaptureAsync(
             () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
 
         Assert.Equal(1, exit);
-        Assert.Contains(RunnerMounts.CrewVirtualRoot, stderr, StringComparison.Ordinal);
+        Assert.Contains(RunnerVirtualRoots.Crew, stderr, StringComparison.Ordinal);
         Assert.Contains("reserved by the runner", stderr, StringComparison.Ordinal);
     }
     /// <summary>
@@ -349,7 +350,7 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
     {
         var configPath = WriteConfig("config.yaml", OkCrewYaml);
         var claim = System.Text.Json.JsonSerializer.Serialize(
-            FileSystemMount.Quote(_tempDir) + ":" + RunnerMounts.CrewVirtualRoot + ":ro");
+            FileSystemMount.Quote(_tempDir) + ":" + RunnerVirtualRoots.Crew + ":ro");
         await File.WriteAllTextAsync(
             Path.Combine(_tempDir, "appsettings.json"),
             "{ \"RaggableTree\": { \"Enabled\": false },"
@@ -362,7 +363,7 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
             () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
 
         Assert.Equal(1, exit);
-        Assert.Contains(RunnerMounts.CrewVirtualRoot, stderr, StringComparison.Ordinal);
+        Assert.Contains(RunnerVirtualRoots.Crew, stderr, StringComparison.Ordinal);
         Assert.Contains("reserved by the runner", stderr, StringComparison.Ordinal);
         Assert.DoesNotContain("Duplicate virtual paths", stderr, StringComparison.Ordinal);
     }

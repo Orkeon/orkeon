@@ -1,1 +1,7 @@
 #nullable enable
+Orkeon.Constants.FileSystem.RunnerVirtualRoots
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Crew = "/crew" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmLogs = "/llm-logs" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Sandbox = "/sandbox" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Script = "/script" -> string!
+static Orkeon.Constants.FileSystem.RunnerVirtualRoots.All.get -> System.Collections.Generic.IReadOnlyList<string!>!

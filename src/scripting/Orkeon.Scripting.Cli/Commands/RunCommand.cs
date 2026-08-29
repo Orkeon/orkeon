@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
@@ -545,13 +546,13 @@ internal static partial class RunCommand
         // runner needs would otherwise surface as a duplicate-virtual-path exception thrown
         // out of a DI factory, not as the configuration mistake it is.
         if (!RunnerExecution.EnsureReservedRootsAreFree(
-                cliMounts, RunnerMounts.ScriptVirtualRoot, RunnerMounts.LlmLogVirtualRoot))
+                cliMounts, RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs))
             return Program.ExitScriptError;
 
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
         // the source through the same IFileSystemService the tools will see. We add it as
         // an "allowed-external" mount regardless of cwd because the script is the input.
-        cliMounts.Insert(0, $"{FileSystemMount.Quote(scriptDir)}:{RunnerMounts.ScriptVirtualRoot}:ro");
+        cliMounts.Insert(0, $"{FileSystemMount.Quote(scriptDir)}:{RunnerVirtualRoots.Script}:ro");
         // The exchange log is infrastructure — reachable by the VFS, invisible to agents.
         var internalMounts = Array.Empty<string>();
         if (llmLogPath != null)
@@ -560,7 +561,7 @@ internal static partial class RunCommand
             // FileSystemServiceRegistration throws DirectoryNotFoundException — the YAML
             // runner has done this since the flag existed.
             Directory.CreateDirectory(llmLogPath);
-            internalMounts = [$"{FileSystemMount.Quote(llmLogPath)}:{RunnerMounts.LlmLogVirtualRoot}:rw"];
+            internalMounts = [$"{FileSystemMount.Quote(llmLogPath)}:{RunnerVirtualRoots.LlmLogs}:rw"];
         }
         // The script directory always needs to be on the security whitelist so the VFS
         // can resolve /script/* even when the user didn't pass --allow-external-mounts.
@@ -575,7 +576,7 @@ internal static partial class RunCommand
         using var host = RunnerHost.Build(
             settingsPath, cliMounts,
             allowExternalMounts: implicitlyAllow,
-            llmLogVirtualPath: llmLogPath != null ? RunnerMounts.LlmLogVirtualRoot : null,
+            llmLogVirtualPath: llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
             internalMounts: internalMounts,
             configureLogging: verbosity > 0
                 ? (_, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity)
@@ -699,7 +700,7 @@ internal static partial class RunCommand
             inputsJson = await File.ReadAllTextAsync(options.InputsFilePath, linkCts.Token).ConfigureAwait(false);
         }
 
-        var virtualPath = $"{RunnerMounts.ScriptVirtualRoot}/{fileName}";
+        var virtualPath = $"{RunnerVirtualRoots.Script}/{fileName}";
         // Pass the physical path so esbuild can --bundle relative imports from the
         // entry's directory. ScriptHost still uses virtualPath for VFS reads and logging.
         var result = await scriptHost.RunFromFileAsync(fullPath, virtualPath, linkCts.Token, inputsJson).ConfigureAwait(false);
