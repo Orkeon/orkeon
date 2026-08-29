@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
@@ -8,7 +9,7 @@ namespace Orkeon.Analysis.Core.Cache;
 
 public sealed class RaggableTreeCache : IRaggableTreeCache
 {
-    public const string CacheDirectoryName = ".orkeon";
+    public const string CacheDirectoryName = ConventionalNames.StateDirectory;
     public const string TreeFileName = "raggable-tree.json";
     public const string ManifestFileName = "raggable-tree-manifest.json";
 

@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using Orkeon.Compliance.Vfs;
 
 namespace Orkeon.Hosting;
@@ -38,7 +39,7 @@ public static class CrewDirectoryLayout
     private static readonly string[] EntityFolders = ["agents", "tasks"];
 
     /// <summary>File names that make up the flat legacy layout (all three required).</summary>
-    private static readonly string[] FlatFiles = ["crew.yaml", "agents.yaml", "tasks.yaml"];
+    private static readonly IReadOnlyList<string> FlatFiles = ConventionalNames.FlatCrewLayoutFiles;
 
     /// <summary>Suffixes of the scripting entry points that would make a directory ambiguous.</summary>
     private static readonly string[] ScriptSuffixes = [".ork.ts", ".ork.js"];

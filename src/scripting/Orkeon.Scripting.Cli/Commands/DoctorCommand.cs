@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -540,7 +541,7 @@ internal static class DoctorCommand
         // The runners' default /output mount is {cwd}/.orkeon — the one path every run
         // must be able to write. The only mutating check; the finally guarantees it removes
         // everything it created even when the probe fails halfway through.
-        var stateDir = Path.Combine(cwd, ".orkeon");
+        var stateDir = Path.Combine(cwd, ConventionalNames.StateDirectory);
         var existedBefore = Directory.Exists(stateDir);
         var probeFile = Path.Combine(stateDir, $".doctor-probe-{Guid.NewGuid():N}.tmp");
         try

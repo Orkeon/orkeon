@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using Orkeon.Compliance.Vfs;
 
 namespace Orkeon.Hosting;
@@ -84,7 +85,7 @@ public static class RunnerSettings
                 : Path.Combine(home, ".config");
         }
 
-        var path = Path.Combine(appData, "Orkeon", "appsettings.json");
+        var path = Path.Combine(appData, "Orkeon", ConventionalNames.SettingsFile);
         if (!Path.IsPathRooted(path))
         {
             throw new InvalidOperationException(
@@ -124,7 +125,7 @@ public static class RunnerSettings
         }
 
         // 2. Per-example override (next to config.yaml)
-        var localSettings = Path.Combine(configDir, "appsettings.json");
+        var localSettings = Path.Combine(configDir, ConventionalNames.SettingsFile);
         if (File.Exists(localSettings)) return localSettings;
 
         // 3. Walk up to find the canonical appsettings/appsettings.json.

@@ -228,8 +228,8 @@ internal static class StartupProbes
     public static IConfigurationRoot BuildBootConfiguration(string? settingsPath) =>
         new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddJsonFile(settingsPath ?? "appsettings.json", optional: true)
+            .AddJsonFile(ConventionalNames.SettingsFile, optional: true)
+            .AddJsonFile(settingsPath ?? ConventionalNames.SettingsFile, optional: true)
             .AddEnvironmentVariables()
             .AddEnvironmentVariables("ORKEON_")
             .Build();

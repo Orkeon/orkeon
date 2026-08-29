@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Compliance.Vfs;
@@ -383,7 +384,7 @@ public static partial class TeamCatalog
             Directory.CreateDirectory(destination);
             foreach (var file in Directory.EnumerateFiles(teamDirectory))
             {
-                if (string.Equals(Path.GetFileName(file), "appsettings.json", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(Path.GetFileName(file), ConventionalNames.SettingsFile, StringComparison.OrdinalIgnoreCase))
                     continue;
                 File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
             }

@@ -17,6 +17,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ADR-009: the settings file name, shared with the runners and the tooling. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.FileSystem\Orkeon.Constants.FileSystem.csproj" />
     <ProjectReference Include="..\Orkeon.Hosting\Orkeon.Hosting.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />

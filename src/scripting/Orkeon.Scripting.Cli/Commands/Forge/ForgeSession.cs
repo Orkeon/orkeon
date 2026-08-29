@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -183,7 +184,7 @@ internal sealed class ForgeSession
 
     /// <summary>The session root for <paramref name="workspaceDirectory"/>.</summary>
     public static string RootFor(string workspaceDirectory) =>
-        Path.Combine(workspaceDirectory, ".orkeon", "forge");
+        Path.Combine(workspaceDirectory, ConventionalNames.StateDirectory, "forge");
 
     /// <summary>
     /// Creates a fresh session directory. A slug collision gets a numeric suffix rather

@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Globalization;
 
 namespace Orkeon.Studio.Core.Targets;
@@ -48,7 +49,7 @@ public sealed class RunTargetDetector
     /// one (mirrors <c>CrewDirectoryLayout.FlatFiles</c>).
     /// </summary>
     public static IReadOnlyList<string> FlatLayoutFileNames { get; } =
-        ["crew.yaml", "agents.yaml", "tasks.yaml"];
+        ConventionalNames.FlatCrewLayoutFiles;
 
     /// <summary>Per-entity sub-folders that select the multi-file layout.</summary>
     private static readonly string[] EntityDirectoryNames = [AgentsDirectoryName, TasksDirectoryName];

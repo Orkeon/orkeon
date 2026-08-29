@@ -16,6 +16,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ADR-009: the .orkeon state directory, shared with Studio and the index cache. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.FileSystem\Orkeon.Constants.FileSystem.csproj" />
     <ProjectReference Include="..\Orkeon.Scripting\Orkeon.Scripting.csproj" />
     <!-- Shared runner host bootstrap (settings, mounts, LLM wiring) — extracted to
          src/hosting so the packable tool no longer ships sample code (R1.5 / ORG-001). -->

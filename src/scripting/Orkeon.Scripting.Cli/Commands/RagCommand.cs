@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Collections.Immutable;
 using System.Globalization;
 using CommandLine;
@@ -462,7 +463,7 @@ internal static class RagCommand
 
         if (!claimed.Any(m => ClaimsVirtualRoot(m, "/output")))
         {
-            var stateDir = Path.Combine(cwd, ".orkeon");
+            var stateDir = Path.Combine(cwd, ConventionalNames.StateDirectory);
             // EXCEPTION-BOOTSTRAP: provisions the manifest mount's physical directory
             // before the DI container (and thus IFileSystemService) exists.
             Directory.CreateDirectory(stateDir);

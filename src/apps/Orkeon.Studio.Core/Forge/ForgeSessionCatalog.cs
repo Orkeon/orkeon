@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using Orkeon.Compliance.Vfs;
 
@@ -69,7 +70,7 @@ public static class ForgeSessionCatalog
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
 
-        var root = Path.Combine(workspaceDirectory, ".orkeon", "forge");
+        var root = Path.Combine(workspaceDirectory, ConventionalNames.StateDirectory, "forge");
         if (!System.IO.Directory.Exists(root))
             return [];
 

@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
@@ -22,7 +23,7 @@ namespace Orkeon.Studio.Core.Configuration;
 public sealed class AppSettingsDocument
 {
     /// <summary>Conventional file name of a settings document.</summary>
-    public const string FileName = "appsettings.json";
+    public const string FileName = ConventionalNames.SettingsFile;
 
     private static readonly JsonDocumentOptions ParseOptions = new()
     {
