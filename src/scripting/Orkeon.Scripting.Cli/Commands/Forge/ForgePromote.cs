@@ -113,7 +113,7 @@ internal static class ForgePromoter
     public const string ScheduleDirectoryName = "schedule";
 
     /// <summary>Name of the copied settings file, when <c>--with-settings</c> asked for it.</summary>
-    public const string SettingsFileName = "appsettings.json";
+    public const string SettingsFileName = ConventionalNames.SettingsFile;
 
     /// <summary>The platform this process runs on.</summary>
     public static ForgePromotePlatform DetectPlatform() =>

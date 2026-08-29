@@ -1,3 +1,4 @@
+using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using CommandLine;
 using Orkeon.Hosting;
@@ -370,7 +371,7 @@ internal static class InitCommand
             return RunnerSettings.GetGlobalSettingsPath();
 
         var full = Path.GetFullPath(outputPath);
-        return Directory.Exists(full) ? Path.Combine(full, "appsettings.json") : full;
+        return Directory.Exists(full) ? Path.Combine(full, ConventionalNames.SettingsFile) : full;
     }
 
     private static string BuildJson(InitPlan plan)

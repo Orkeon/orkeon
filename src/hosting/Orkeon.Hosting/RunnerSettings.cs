@@ -134,11 +134,11 @@ public static class RunnerSettings
         var dir = new DirectoryInfo(configDir);
         while (dir != null)
         {
-            var canonical = Path.Combine(dir.FullName, "appsettings", "appsettings.json");
+            var canonical = Path.Combine(dir.FullName, "appsettings", ConventionalNames.SettingsFile);
             if (File.Exists(canonical)) return canonical;
 
             // DEPRECATED: legacy _shared location, kept one release for compatibility.
-            var legacyShared = Path.Combine(dir.FullName, "_shared", "appsettings.json");
+            var legacyShared = Path.Combine(dir.FullName, "_shared", ConventionalNames.SettingsFile);
             if (File.Exists(legacyShared)) return legacyShared;
 
             if (File.Exists(Path.Combine(dir.FullName, "Orkeon.Examples.sln"))) break;
