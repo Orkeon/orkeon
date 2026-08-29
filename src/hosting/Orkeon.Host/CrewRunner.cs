@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Hosting;
 
 namespace Orkeon.Host;
@@ -151,6 +153,14 @@ internal sealed partial class CrewRunner : ICrewRunner
             if (onStarted is not null)
                 await onStarted(run.Id).ConfigureAwait(false);
 
+            // The run's own mount namespace, when the host grants this crew folders of its
+            // own. Ambient rather than DI-scoped on purpose: IFileSystemService is a singleton
+            // that many singletons inject, so it consults the ambient override per operation
+            // instead of being resolved per scope. Two hosted crews may therefore both address
+            // /output over two different physical folders — which the one flat boot registry,
+            // where a virtual path must be globally unique, cannot express.
+            using var mounts = EnterMountNamespace(hosted);
+
             // One scope per run. Anything registered scoped belongs to this run and dies with
             // it — the crew repository above all, which is what keeps one conversation's crew
             // out of another's resolution. Per-crew memory is released in the finally: a
@@ -282,4 +292,46 @@ internal sealed partial class CrewRunner : ICrewRunner
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Run {RunId} of '{CrewName}' failed: {Output}")]
     private partial void LogRunFailedWithOutput(string runId, string crewName, string output);
+
+    /// <summary>
+    /// Enters the mount namespace this crew was granted, or nothing when it was granted none.
+    /// </summary>
+    /// <remarks>
+    /// The composed registry carries the boot Internal mounts forward — entering a scope
+    /// REPLACES the mount set rather than merging with it, so a registry built from the crew's
+    /// own folders alone would take <c>/llm-logs</c> and <c>/sandbox</c> down with it for the
+    /// length of the run, and with them the check that stops either gaining a second,
+    /// agent-reachable address through one of the crew's own mounts.
+    /// </remarks>
+    private MountNamespaceLease? EnterMountNamespace(HostedCrewOptions hosted)
+    {
+        if (hosted.Mounts.Count == 0)
+            return null;
+
+        var ambient = _host.Services.GetService<IFileSystemScope>();
+        var boot = _host.Services.GetService<FileSystemRegistry>();
+        if (ambient is null || boot is null)
+            return null;
+
+        var granted = hosted.Mounts
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .Select(FileSystemMount.Parse)
+            .ToList();
+        if (granted.Count == 0)
+            return null;
+
+        var registry = ScopedMountComposition.ForExecution(boot, granted);
+        return new MountNamespaceLease(registry, ambient.Enter(registry));
+    }
+
+    /// <summary>Releases the ambient override first, then the registry it pointed at.</summary>
+    private sealed class MountNamespaceLease(FileSystemRegistry registry, IDisposable token) : IDisposable
+    {
+        public void Dispose()
+        {
+            token.Dispose();
+            registry.Dispose();
+        }
+    }
+
 }

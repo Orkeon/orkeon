@@ -14,3 +14,4 @@ static Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison.get -> System
 *REMOVED*Orkeon.Domain.FileSystem.FileSystemRegistry.ToVirtualPath(string! physicalPath) -> string?
 Orkeon.Domain.FileSystem.FileSystemRegistry.ResolveAndCheckRights(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, bool includeInternal = false) -> string!
 Orkeon.Domain.FileSystem.FileSystemRegistry.ToVirtualPath(string! physicalPath, bool includeInternal = false) -> string?
+Orkeon.Domain.FileSystem.FileSystemRegistry.GetInternalMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemMount!>!

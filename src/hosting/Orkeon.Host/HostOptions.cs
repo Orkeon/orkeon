@@ -36,6 +36,29 @@ internal sealed record HostedCrewOptions
 
     /// <summary>How it behaves under the host.</summary>
     public CrewHostingProfile Profile { get; init; } = CrewHostingProfile.Default;
+    /// <summary>
+    /// The folders this host grants THIS crew, as mount strings
+    /// (<c>&lt;physical&gt;:&lt;virtual&gt;:&lt;rights&gt;</c>).
+    /// <para>
+    /// Declared by the host, never by the crew: the host grants, the crew does not demand.
+    /// They are entered as a per-run mount namespace, so two hosted crews may both address
+    /// <c>/output</c> over two different physical folders — the boot registry is one flat set
+    /// where a virtual path has to be globally unique, which is why <c>HostCrewMounts</c>
+    /// otherwise has to rename them (<c>/crews</c>, <c>/crews-1</c>, …).
+    /// </para>
+    /// <para>
+    /// Empty (the default) keeps the boot mounts for that crew, unchanged.
+    /// </para>
+    /// <para>
+    /// <b>Second gate.</b> Resolving in the run's namespace is not the whole story:
+    /// <c>IPathValidator</c> is a process-wide singleton whose allowed roots are captured at
+    /// boot, so a granted folder outside the process workspace root resolves here and is then
+    /// refused there. Grant folders under that root, or widen it with
+    /// <c>PathSecurity:AdditionalAllowedDirectories</c>.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> Mounts { get; init; } = [];
+
 }
 
 /// <summary>

@@ -74,10 +74,33 @@ tasks:
     }
 
     private (CrewRunner Runner, CrewHostRegistry Registry, FakeHost Host) Build(
-        TimeSpan? runTimeout = null, string crewFile = "crew.yaml")
+        TimeSpan? runTimeout = null,
+        string crewFile = "crew.yaml",
+        IReadOnlyList<string>? mounts = null,
+        IFileSystemScope? scope = null)
     {
         var services = new ServiceCollection();
+        if (scope is not null)
+            services.AddSingleton(scope);
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+
+        // The boot registry the host would have built. AddOrkeonInfrastructure deliberately
+        // does not register one — a host wires its own IFileSystemService or calls
+        // AddOrkeonFileSystem — so the per-run namespace has to be given something to compose
+        // over. The Internal sandbox mount is the point: entering a scope REPLACES the mount
+        // set, and a namespace built from the crew's folders alone would drop it.
+        var sandboxDir = Path.Combine(_dir, "sandbox");
+        Directory.CreateDirectory(sandboxDir);
+        services.AddSingleton(_ => new FileSystemRegistry(
+        [
+            new FileSystemMount(_dir, "/boot", FileAccessRights.Read),
+            new FileSystemMount(
+                sandboxDir,
+                Orkeon.Hosting.RunnerMounts.SandboxVirtualRoot,
+                FileAccessRights.ReadWrite,
+                null,
+                MountVisibility.Internal),
+        ]));
         services.AddLogging(b => b.AddProvider(new SinkProvider(_log)));
         // The loader reads through the VFS — the same rule the host itself follows by
         // auto-mounting each crew's directory (HostCrewMounts). The fake carries the crews
@@ -104,7 +127,15 @@ tasks:
 
         var options = Options.Create(new OrkeonHostOptions
         {
-            Crews = [new HostedCrewOptions { Name = "support", Path = $"/crews/{crewFile}" }],
+            Crews =
+            [
+                new HostedCrewOptions
+                {
+                    Name = "support",
+                    Path = $"/crews/{crewFile}",
+                    Mounts = mounts ?? [],
+                },
+            ],
             RunTimeout = runTimeout ?? TimeSpan.FromMinutes(5),
         });
 
@@ -154,10 +185,23 @@ tasks:
     {
         // One cancelled token, two stories. "The run was stopped." for a timeout sent the
         // operator hunting for a user who pressed nothing.
+        //
+        // The deadline used to be 1 ms against a crew that answers instantly, so the test
+        // raced the timer against the work and lost about once in three full-suite runs —
+        // reporting Completed, which is a true outcome for a run that finished first, not a
+        // defect in the message it was asserting on.
+        //
+        // The runner arms the deadline BEFORE awaiting the acknowledgement, and says so: the
+        // ack is a network round trip, and a rate-limited channel could otherwise hold an
+        // admitted slot with no timeout at all. Waiting inside the ack therefore lands after
+        // a deadline that has certainly passed — two orders of magnitude of margin, and the
+        // work is never what the timer is raced against.
         var (runner, registry, host) = Build(runTimeout: TimeSpan.FromMilliseconds(1));
         using var _ = host;
 
-        var result = await runner.RunAsync("support", "hello", "test:thread-1");
+        var result = await runner.RunAsync(
+            "support", "hello", "test:thread-1",
+            onStarted: async _ => await Task.Delay(TimeSpan.FromMilliseconds(250)));
 
         Assert.Equal(HostedRunOutcome.Cancelled, result.Outcome);
         Assert.Contains("timed out", result.Message, StringComparison.Ordinal);
@@ -212,5 +256,71 @@ tasks:
 
         Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
         Assert.Contains(progress, line => line.Contains("Echoist", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Observes what the runner entered as the ambient mount set for a run.
+    /// </summary>
+    private sealed class SpyFileSystemScope : IFileSystemScope
+    {
+        private readonly AsyncLocalFileSystemScope _inner = new();
+
+        public List<IReadOnlyList<string>> Entered { get; } = [];
+
+        public FileSystemRegistry? Current => _inner.Current;
+
+        public IDisposable Enter(FileSystemRegistry registry)
+        {
+            Entered.Add([.. registry.GetAllMountsInternal().Select(m => m.VirtualPath)]);
+            return _inner.Enter(registry);
+        }
+    }
+
+    /// <summary>
+    /// The sandboxing property: what a hosted crew addresses as <c>/output</c> is ITS folder,
+    /// so two crews may both use the name over two different physical ones. The boot registry
+    /// is a single flat set where a virtual path has to be globally unique — which is why
+    /// <c>HostCrewMounts</c> otherwise renames hosted crews apart (<c>/crews</c>,
+    /// <c>/crews-1</c>, …) instead of letting them share a namespace.
+    /// </summary>
+    [Fact]
+    public async Task A_crew_granted_folders_runs_in_its_own_mount_namespace()
+    {
+        var granted = Path.Combine(_dir, "granted");
+        Directory.CreateDirectory(granted);
+
+        var spy = new SpyFileSystemScope();
+        var (runner, _, host) = Build(
+            mounts: [$"{FileSystemMount.Quote(granted)}:/output:rw"], scope: spy);
+        using (host)
+        {
+            var result = await runner.RunAsync("support", "hello", "test");
+
+            Assert.True(result.Succeeded, DebugLog);
+        }
+
+        var entered = Assert.Single(spy.Entered);
+
+        // Its own namespace…
+        Assert.Contains("/output", entered, StringComparer.Ordinal);
+
+        // …carrying the infrastructure the run still needs. Entering REPLACES the mount set,
+        // so a namespace built from the crew's folders alone would silently take the exchange
+        // log and the sandbox down with it for the whole run.
+        Assert.Contains(Orkeon.Hosting.RunnerMounts.SandboxVirtualRoot, entered, StringComparer.Ordinal);
+    }
+
+    /// <summary>A crew granted nothing keeps the boot mounts — no scope is entered at all.</summary>
+    [Fact]
+    public async Task A_crew_granted_nothing_enters_no_mount_namespace()
+    {
+        var spy = new SpyFileSystemScope();
+        var (runner, _, host) = Build(scope: spy);
+        using (host)
+        {
+            await runner.RunAsync("support", "hello", "test");
+        }
+
+        Assert.Empty(spy.Entered);
     }
 }

@@ -266,6 +266,31 @@ public sealed class FileSystemRegistry : IDisposable
         finally { _lock.ExitReadLock(); }
     }
 
+    /// <summary>
+    /// The Internal mounts themselves — base paths included — so a host composing a
+    /// per-execution registry can carry them forward.
+    /// <para>
+    /// <see cref="GetAllMountsInternal"/> answers a different question: it describes mounts for
+    /// diagnostics and deliberately drops the base path. Entering a scope REPLACES the mount
+    /// set, so an execution built from its own mounts alone loses the exchange log and the
+    /// sandbox — and, worse, loses the overlap check that stops them gaining a second address
+    /// through one of its own mounts. This is the accessor that lets a caller not do that.
+    /// </para>
+    /// </summary>
+    /// <returns>The Internal mounts, in registration order.</returns>
+    public IReadOnlyList<FileSystemMount> GetInternalMounts()
+    {
+        _lock.EnterReadLock();
+        try
+        {
+            return _mounts
+                .Where(m => m.Visibility == MountVisibility.Internal)
+                .ToList()
+                .AsReadOnly();
+        }
+        finally { _lock.ExitReadLock(); }
+    }
+
     /// <inheritdoc />
     public void Dispose() => _lock.Dispose();
 

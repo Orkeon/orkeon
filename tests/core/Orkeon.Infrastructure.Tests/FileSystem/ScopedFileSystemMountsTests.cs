@@ -154,4 +154,43 @@ public sealed class ScopedFileSystemMountsTests : IDisposable
             Assert.True(allowed.IsAllowed);
         }
     }
+
+    /// <summary>
+    /// A per-execution registry is a REPLACEMENT, not a delta: <c>ActiveRegistry</c> is
+    /// <c>_scope?.Current ?? _bootRegistry</c>. So a registry built from one crew's own mounts
+    /// alone takes the boot Internal mounts down with it for the length of that crew's run —
+    /// the LLM exchange log and the sandbox both resolve through the SAME ambient scope, and
+    /// <c>IsUnderInternalMountUnsafe</c>, the check that stops <c>/llm-logs</c> gaining a second
+    /// address through a parent agent-facing mount, is computed against whatever registry is
+    /// active. Losing them is a correctness failure that degrades silently, and a
+    /// confidentiality one: exchange logs would regain an agent-reachable address.
+    /// </summary>
+    [Fact]
+    public void ComposingForAnExecution_ShouldCarryTheBootInternalMountsForward()
+    {
+        var crewDir = Path.Combine(_root, "crew-a");
+        var logsDir = Path.Combine(_root, "logs");
+        Directory.CreateDirectory(crewDir);
+        Directory.CreateDirectory(logsDir);
+
+        using var boot = new FileSystemRegistry(
+        [
+            new FileSystemMount(_bootDir, "/work", FileAccessRights.ReadWrite),
+            new FileSystemMount(logsDir, "/llm-logs", FileAccessRights.ReadWrite, null, MountVisibility.Internal),
+        ]);
+
+        using var composed = ScopedMountComposition.ForExecution(
+            boot, [new FileSystemMount(crewDir, "/output", FileAccessRights.ReadWrite)]);
+
+        var all = composed.GetAllMountsInternal().Select(m => m.VirtualPath).ToList();
+        var agentFacing = composed.GetAvailableMounts().Select(m => m.VirtualPath).ToList();
+
+        // The crew's own namespace, and nothing of the boot's agent-facing surface.
+        Assert.Contains("/output", agentFacing, StringComparer.Ordinal);
+        Assert.DoesNotContain("/work", agentFacing, StringComparer.Ordinal);
+
+        // …but the infrastructure the run still needs, carried forward and still invisible.
+        Assert.Contains("/llm-logs", all, StringComparer.Ordinal);
+        Assert.DoesNotContain("/llm-logs", agentFacing, StringComparer.Ordinal);
+    }
 }
