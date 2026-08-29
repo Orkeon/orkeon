@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,7 +42,7 @@ internal static class TuiFidelityWiring
     {
         var version = typeof(TuiFidelityWiring).Assembly.GetName().Version?.ToString(3) ?? "dev";
         var model = configuration["Llm:Model"];
-        var window = configuration["Orkeon:Cli:Session:ContextWindowTokens"];
+        var window = configuration[ConfigurationKeys.CliSessionContextWindowTokens];
         var baseUrl = configuration["Llm:BaseUrl"];
 
         var modelLine = string.IsNullOrWhiteSpace(model)

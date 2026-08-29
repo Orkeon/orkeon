@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Rag.Abstractions.Options;
 
 namespace Orkeon.Studio.Core.Configuration;
@@ -11,7 +12,7 @@ namespace Orkeon.Studio.Core.Configuration;
 public sealed class RagSection
 {
     /// <summary>Configuration path of the section.</summary>
-    public const string SectionPath = "Orkeon:Rag";
+    public const string SectionPath = ConfigurationKeys.Rag;
 
     private readonly AppSettingsDocument _document;
 

@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,7 +44,7 @@ namespace Orkeon.Rag.DependencyInjection;
 public static class RagServiceCollectionExtensions
 {
     /// <summary>Configuration section bound to <see cref="RagStoreOptions"/> (document-store provider selection).</summary>
-    public const string RagSectionKey = "Orkeon:Rag";
+    public const string RagSectionKey = ConfigurationKeys.Rag;
 
     /// <summary>Configuration section bound to <see cref="RagIngestionOptions"/>.</summary>
     public const string IngestionSectionKey = "Orkeon:Rag:Ingestion";

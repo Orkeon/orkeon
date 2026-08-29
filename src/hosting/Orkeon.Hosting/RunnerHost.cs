@@ -164,7 +164,7 @@ public static partial class RunnerHost
 
         // Every one of these three keys appends. See HighestDeclaredIndex: this source wins on
         // an identical key, so starting at 0 does not add a mount, it REPLACES one.
-        var declaredMounts = HighestDeclaredIndex(builder, "Orkeon:FileSystem:Mounts");
+        var declaredMounts = HighestDeclaredIndex(builder, ConfigurationKeys.FileSystemMounts);
         for (var i = 0; i < cliMounts.Count; i++)
             mountOverrides[$"Orkeon:FileSystem:Mounts:{declaredMounts + i}"] = cliMounts[i];
 
@@ -172,7 +172,7 @@ public static partial class RunnerHost
         // (the mount-string grammar has no room for it). Configuration rather than a hosted
         // service: the runners never start the host, so an IHostedService would silently
         // never fire under --validate or --list-tools.
-        var declaredInternal = HighestDeclaredIndex(builder, "Orkeon:FileSystem:InternalMounts");
+        var declaredInternal = HighestDeclaredIndex(builder, ConfigurationKeys.FileSystemInternalMounts);
         for (var i = 0; i < internalMounts.Count; i++)
             mountOverrides[$"Orkeon:FileSystem:InternalMounts:{declaredInternal + i}"] = internalMounts[i];
 
@@ -258,7 +258,7 @@ public static partial class RunnerHost
         // infrastructure mounts a runner declares for itself). Either list alone is enough
         // to make the VFS real: --list-tools has only the latter, and without the service
         // the filesystem-backed tools cannot even be constructed.
-        if (HasMounts("Orkeon:FileSystem:Mounts") || HasMounts("Orkeon:FileSystem:InternalMounts"))
+        if (HasMounts(ConfigurationKeys.FileSystemMounts) || HasMounts(ConfigurationKeys.FileSystemInternalMounts))
             services.AddOrkeonFileSystem(context.Configuration);
 
         bool HasMounts(string key)

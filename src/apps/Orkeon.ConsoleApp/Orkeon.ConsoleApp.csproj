@@ -28,6 +28,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- ADR-009: the session context-window key, shared with Orkeon.Infrastructure. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
     <ProjectReference Include="..\..\cli\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
     <ProjectReference Include="..\..\cli\Orkeon.Cli\Orkeon.Cli.csproj" />
     <ProjectReference Include="..\..\cli\Orkeon.Cli.TerminalGui\Orkeon.Cli.TerminalGui.csproj" />

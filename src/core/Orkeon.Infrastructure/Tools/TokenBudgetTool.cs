@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Orkeon.Application.Interfaces.Ports;
@@ -67,7 +68,7 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
     protected override Task<TokenBudgetResponse> ExecuteTypedAsync(
         TokenBudgetRequest request, CancellationToken cancellationToken)
     {
-        var contextWindow = ReadInt("Orkeon:Cli:Session:ContextWindowTokens", DefaultContextWindow);
+        var contextWindow = ReadInt(ConfigurationKeys.CliSessionContextWindowTokens, DefaultContextWindow);
         var model = _configuration?["Llm:Model"] ?? "unknown";
         var used = _buffer.EstimateTokenCount();
 

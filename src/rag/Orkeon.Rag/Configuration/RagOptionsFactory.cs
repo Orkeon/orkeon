@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Microsoft.Extensions.Configuration;
 using Orkeon.Domain.Constants.Rag;
 using Orkeon.Rag.Abstractions.Options;
@@ -12,7 +13,7 @@ namespace Orkeon.Rag.Configuration;
 public static class RagOptionsFactory
 {
     /// <summary>Configuration section bound over the profile preset.</summary>
-    public const string SectionKey = "Orkeon:Rag";
+    public const string SectionKey = ConfigurationKeys.Rag;
 
     /// <summary>
     /// Builds the options for <paramref name="profileName"/> (or, when

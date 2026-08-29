@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
 using System.Globalization;
 using Orkeon.Compliance.Vfs;
@@ -178,7 +179,7 @@ public sealed record MountAutoInjection
 public static class MountOverrideSemantics
 {
     /// <summary>Configuration path of the mount array.</summary>
-    public const string ConfigurationSection = "Orkeon:FileSystem:Mounts";
+    public const string ConfigurationSection = ConfigurationKeys.FileSystemMounts;
 
     /// <summary>Configuration path whitelisted by <c>--allow-external-mounts</c>.</summary>
     public const string ExternalMountsConfigurationSection = "PathSecurity:AdditionalAllowedDirectories";

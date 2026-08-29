@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using System.Globalization;
 using Orkeon.Studio.Core.Validation;
 
@@ -115,7 +116,7 @@ public sealed class MountValidator
     }
 
     /// <summary>Configuration path of the mount list, used as the message path.</summary>
-    private const string MountsSectionPath = "Orkeon:FileSystem:Mounts";
+    private const string MountsSectionPath = ConfigurationKeys.FileSystemMounts;
 
     private static IEnumerable<ValidationMessage> FindVirtualPathCollisions(IReadOnlyList<MountDefinition> mounts)
     {

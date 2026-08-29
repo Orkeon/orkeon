@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Studio.Core.FileSystem;
 
 namespace Orkeon.Studio.Core.Configuration;
@@ -10,7 +11,7 @@ namespace Orkeon.Studio.Core.Configuration;
 public sealed class MountsSection
 {
     /// <summary>Configuration path of the mount array.</summary>
-    public const string SectionPath = "Orkeon:FileSystem:Mounts";
+    public const string SectionPath = ConfigurationKeys.FileSystemMounts;
 
     private readonly AppSettingsDocument _document;
 
