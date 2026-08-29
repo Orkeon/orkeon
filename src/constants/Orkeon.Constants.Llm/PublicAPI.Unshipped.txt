@@ -26,6 +26,7 @@ const Orkeon.Constants.Llm.LlmProviderEndpoints.KimiChinaHost = "api.moonshot.cn
 const Orkeon.Constants.Llm.LlmProviderEndpoints.Mistral = "https://api.mistral.ai/v1" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.OllamaDefault = "http://localhost:11434" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.OpenAI = "https://api.openai.com/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.OpenAIEmbeddingsRoot = "https://api.openai.com/" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.Qwen = "https://dashscope.aliyuncs.com/compatible-mode/v1" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.Together = "https://api.together.xyz/v1" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.Zai = "https://api.z.ai/api/paas/v4" -> string!

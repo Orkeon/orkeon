@@ -63,6 +63,14 @@ public static class LlmProviderEndpoints
     /// <summary>Z.AI (Zhipu GLM) API base URL (OpenAI-compatible).</summary>
     public const string Zai = "https://api.z.ai/api/paas/v4";
 
+    /// <summary>
+    /// OpenAI's API root as the EMBEDDING clients address it — no <c>/v1</c> suffix and a
+    /// trailing slash, because they append their own path. Deliberately distinct from
+    /// <see cref="OpenAI"/>, which is the chat base URL: the two are not interchangeable, and
+    /// writing one where the other belongs produces a 404 rather than a compile error.
+    /// </summary>
+    public const string OpenAIEmbeddingsRoot = "https://api.openai.com/";
+
     /// <summary>Default Ollama local server base URL.</summary>
     public const string OllamaDefault = "http://localhost:11434";
 

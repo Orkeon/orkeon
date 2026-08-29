@@ -13,6 +13,8 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>
+    <!-- ADR-009: the OpenAI API root the image endpoint is built on. -->
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Llm\Orkeon.Constants.Llm.csproj" />
     <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Abstractions\Orkeon.Rag.Abstractions.csproj" />

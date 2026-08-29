@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -114,7 +115,7 @@ public sealed class GeneratedImage
     Category = "Web Operations")]
 public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, ImageGenerationResponse>
 {
-    private const string OpenAiImagesEndpoint = "https://api.openai.com/v1/images/generations";
+    private const string OpenAiImagesEndpoint = LlmProviderEndpoints.OpenAI + "/images/generations";
     private readonly IFileSystemService _fileSystem;
 
     private static readonly HashSet<string> ValidSizes = new(StringComparer.OrdinalIgnoreCase)

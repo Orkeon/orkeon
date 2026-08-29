@@ -1,3 +1,5 @@
+using Orkeon.Constants.FileSystem;
+
 namespace Orkeon.Infrastructure.Sandbox;
 
 /// <summary>
@@ -23,5 +25,5 @@ public sealed class SandboxFileSystemOptions
     /// Virtual path at which the sandbox is mounted.
     /// Defaults to <c>/sandbox</c>.
     /// </summary>
-    public string VirtualPath { get; set; } = "/sandbox";
+    public string VirtualPath { get; set; } = RunnerVirtualRoots.Sandbox;
 }

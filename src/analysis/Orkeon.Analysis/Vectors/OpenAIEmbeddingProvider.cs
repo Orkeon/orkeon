@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
@@ -240,7 +241,7 @@ public sealed partial class OpenAIEmbeddingProvider : IEmbeddingProvider, IDispo
 public sealed record OpenAIEmbeddingOptions
 {
     public required string ApiKey { get; init; }
-    public Uri BaseUrl { get; init; } = new("https://api.openai.com/");
+    public Uri BaseUrl { get; init; } = new(LlmProviderEndpoints.OpenAIEmbeddingsRoot);
     public string EmbeddingsPath { get; init; } = "v1/embeddings";
     /// <summary>
     /// OpenAI embedding model identifier. Default <c>text-embedding-3-small</c> (1536 dims).

@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,7 @@ public static class RaggableTreeInfrastructureExtensions
 {
 #pragma warning disable S1075 // Canonical vendor API root used as a documented fallback default; configuration overrides it. Not a filesystem path — the VFS policy does not apply.
     /// <summary>Default base URI for the OpenAI embeddings API when none is configured.</summary>
-    private const string DefaultOpenAIEmbeddingBaseUrl = "https://api.openai.com/";
+    private const string DefaultOpenAIEmbeddingBaseUrl = LlmProviderEndpoints.OpenAIEmbeddingsRoot;
 
     /// <summary>Default base URI for a local Ollama server when none is configured.</summary>
     private const string DefaultOllamaEmbeddingBaseUrl = "http://localhost:11434/";
