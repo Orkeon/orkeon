@@ -13,7 +13,7 @@ namespace Orkeon.Studio.Wpf.Tests;
 /// prevent. Adding a language means adding it in both places.
 /// </para>
 /// </summary>
-public sealed class I18nResourceParityTests
+public sealed partial class I18nResourceParityTests
 {
     /// <summary>The neutral culture: the key registry of record.</summary>
     private const string Neutral = "Strings.resx";
@@ -124,18 +124,25 @@ public sealed class I18nResourceParityTests
     }
 
     /// <summary>
-    /// How many strings a satellite has not been translated yet and still carries the English
-    /// text verbatim. The design bundle covered a little over half the catalogue; the rest is
-    /// being written down language by language, and this is the number that has to keep going
-    /// down. It is a CEILING, not an assertion that everything is done: raising it is how a
-    /// regression would hide, so it may only ever be lowered.
+    /// How many strings a satellite still carries verbatim from English.
+    /// <para>
+    /// What is left is the irreducible floor, and it is worth naming: product names nobody
+    /// translates (Ollama, Anthropic, Qwen, Z.AI…), pure format patterns with no words in
+    /// them (« {0} · {1} », « {0} / {1} »), and real cognates — Spanish «normal», German
+    /// «{0} Tokens». Everything with a sentence in it has been written down in all four.
+    /// </para>
+    /// <para>
+    /// It stays a CEILING rather than an equality: a new English string lands here before
+    /// anyone translates it, and this is what says so out loud instead of letting a
+    /// half-translated app look finished. It may only ever be lowered.
+    /// </para>
     /// </summary>
     private static readonly Dictionary<string, int> TranslationDebtCeiling = new(StringComparer.Ordinal)
     {
         ["Strings.fr.resx"] = 48,
-        ["Strings.es.resx"] = 352,
-        ["Strings.de.resx"] = 355,
-        ["Strings.zh-Hans.resx"] = 352,
+        ["Strings.es.resx"] = 32,
+        ["Strings.de.resx"] = 33,
+        ["Strings.zh-Hans.resx"] = 26,
     };
 
     [Theory]
@@ -157,4 +164,42 @@ public sealed class I18nResourceParityTests
             $"{satellite}: {untranslated} strings still carry the English text, ceiling is "
             + $"{TranslationDebtCeiling[satellite]}. Lower the ceiling when you lower the debt; never raise it.");
     }
+
+    /// <summary>
+    /// Every {N} placeholder of the neutral culture must appear in each satellite, and no
+    /// satellite may invent one. This is not cosmetic: a translated pattern that dropped a
+    /// placeholder silently loses the value, and one that gained a {2} throws
+    /// FormatException the first time that screen renders — in one language only, on a
+    /// machine that is not the developer's.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(SatelliteCultures))]
+    public void Should_Keep_Every_Placeholder_When_Comparing_A_Satellite_To_The_Neutral_Culture(string satellite)
+    {
+        var neutral = ReadEntries(Neutral);
+        var translated = ReadEntries(satellite);
+        var offenders = new List<string>();
+
+        foreach (var (key, english) in neutral)
+        {
+            if (!translated.TryGetValue(key, out var value))
+                continue;
+
+            var expected = Placeholders(english);
+            var actual = Placeholders(value);
+            if (!expected.SetEquals(actual))
+            {
+                offenders.Add(
+                    $"{key}: expected {{{string.Join(",", expected.Order())}}}, found {{{string.Join(",", actual.Order())}}}");
+            }
+        }
+
+        Assert.True(offenders.Count == 0, $"Placeholder drift in {satellite}: {string.Join("; ", offenders)}");
+
+        static HashSet<string> Placeholders(string text) =>
+            [.. PlaceholderPattern().Matches(text).Select(m => m.Groups[1].Value)];
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\{(\d+)\}")]
+    private static partial System.Text.RegularExpressions.Regex PlaceholderPattern();
 }

@@ -24,16 +24,16 @@
     <value>有效</value>
   </data>
   <data name="Badge_Invalid" xml:space="preserve">
-    <value>invalid</value>
+    <value>无效</value>
   </data>
   <data name="Act_New" xml:space="preserve">
-    <value>New</value>
+    <value>新建</value>
   </data>
   <data name="Act_Open" xml:space="preserve">
-    <value>Open…</value>
+    <value>打开…</value>
   </data>
   <data name="Act_Reload" xml:space="preserve">
-    <value>Reload</value>
+    <value>重新加载</value>
   </data>
   <data name="Act_Validate" xml:space="preserve">
     <value>验证</value>
@@ -48,7 +48,7 @@
     <value>模型</value>
   </data>
   <data name="Lbl_ApiKey" xml:space="preserve">
-    <value>API key</value>
+    <value>API 密钥</value>
   </data>
   <data name="Loc_Title" xml:space="preserve">
     <value>文件保存在哪里</value>
@@ -72,19 +72,19 @@
     <value>第一个匹配的层级生效——团队旁的文件会静默覆盖全局文件。</value>
   </data>
   <data name="Chain_SaveTarget" xml:space="preserve">
-    <value>your save target</value>
+    <value>您的保存目标</value>
   </data>
   <data name="Theme_ToDark" xml:space="preserve">
-    <value>Switch to the dark theme</value>
+    <value>切换到深色主题</value>
   </data>
   <data name="Theme_ToLight" xml:space="preserve">
-    <value>Switch to the light theme</value>
+    <value>切换到浅色主题</value>
   </data>
   <data name="Tour_Tip" xml:space="preserve">
-    <value>Guided tour — learn the interface</value>
+    <value>导览 — 了解界面</value>
   </data>
   <data name="Tour_Label" xml:space="preserve">
-    <value>GUIDED TOUR</value>
+    <value>导览</value>
   </data>
   <data name="Tour_Skip" xml:space="preserve">
     <value>跳过</value>
@@ -126,22 +126,22 @@
     <value>帮助与上下文相关</value>
   </data>
   <data name="Tour5_Body" xml:space="preserve">
-    <value>In Novice mode, each screen carries a column of explanations on the right. It steps aside in Expert mode.</value>
+    <value>在新手模式下，每个界面右侧都有一栏说明。切换到专家模式后它会隐去。</value>
   </data>
   <data name="Val_Title" xml:space="preserve">
-    <value>Validation</value>
+    <value>校验</value>
   </data>
   <data name="Sec_DetectedProvider" xml:space="preserve">
-    <value>DETECTED PROVIDER</value>
+    <value>检测到的提供方</value>
   </data>
   <data name="Sec_Lbl_Temperature" xml:space="preserve">
     <value>温度</value>
   </data>
   <data name="Sec_Lbl_MaxTokens" xml:space="preserve">
-    <value>Max tokens</value>
+    <value>最大 token 数</value>
   </data>
   <data name="Sec_Lbl_TimeoutSeconds" xml:space="preserve">
-    <value>Timeout (seconds)</value>
+    <value>超时（秒）</value>
   </data>
   <data name="Sec_TestConnection" xml:space="preserve">
     <value>测试连接</value>
@@ -159,10 +159,10 @@
     <value>代理请求 / 分钟</value>
   </data>
   <data name="Sec_Lbl_QueueLimit" xml:space="preserve">
-    <value>Queue limit</value>
+    <value>队列上限</value>
   </data>
   <data name="Sec_Lbl_RagProfile" xml:space="preserve">
-    <value>Profile</value>
+    <value>配置档</value>
   </data>
   <data name="Sec_Lbl_RagProvider" xml:space="preserve">
     <value>供应商</value>
@@ -174,31 +174,31 @@
     <value>混合检索（BM25 + RRF）</value>
   </data>
   <data name="Sec_Rag_CorrectiveWebFallback" xml:space="preserve">
-    <value>Corrective web fallback — policy</value>
+    <value>纠错型网络回退——策略</value>
   </data>
   <data name="Sec_Rag_WebFallback" xml:space="preserve">
-    <value>Web fallback — transport</value>
+    <value>网络回退——传输</value>
   </data>
   <data name="Sec_Lbl_CorrectiveMaxIterations" xml:space="preserve">
     <value>最大纠错迭代次数</value>
   </data>
   <data name="Sec_Lbl_DefaultLevel" xml:space="preserve">
-    <value>Default level</value>
+    <value>默认级别</value>
   </data>
   <data name="Sec_AddCategory" xml:space="preserve">
-    <value>Add category</value>
+    <value>添加类别</value>
   </data>
   <data name="Sec_Remove" xml:space="preserve">
     <value>移除</value>
   </data>
   <data name="Sec_LlmLog_FullEmbedding" xml:space="preserve">
-    <value>Log full embedding payloads</value>
+    <value>记录完整的 embedding 负载</value>
   </data>
   <data name="Sec_LlmLog_Streaming" xml:space="preserve">
-    <value>Log streaming exchanges</value>
+    <value>记录流式交互</value>
   </data>
   <data name="Sec_Lbl_MaxBodyLength" xml:space="preserve">
-    <value>Max body length (chars)</value>
+    <value>正文最大长度（字符）</value>
   </data>
   <data name="Mounts_Add" xml:space="preserve">
     <value>添加</value>
@@ -207,7 +207,7 @@
     <value>移除</value>
   </data>
   <data name="Mounts_Unparsed" xml:space="preserve">
-    <value>This entry could not be parsed. It is kept exactly as written so nothing is lost.</value>
+    <value>无法解析该条目。它被原样保留，不会丢失任何内容。</value>
   </data>
   <data name="Mounts_Lbl_Physical" xml:space="preserve">
     <value>物理路径（本机）</value>
@@ -219,7 +219,7 @@
     <value>虚拟路径（代理所见）</value>
   </data>
   <data name="Mounts_VirtualInvalid" xml:space="preserve">
-    <value>Must start with '/'.</value>
+    <value>必须以「/」开头。</value>
   </data>
   <data name="Mounts_Lbl_Rights" xml:space="preserve">
     <value>权限</value>
@@ -231,10 +231,10 @@
     <value>添加例外</value>
   </data>
   <data name="Mounts_Preview" xml:space="preserve">
-    <value>MOUNT STRING</value>
+    <value>挂载字符串</value>
   </data>
   <data name="Raw_ReadOnly" xml:space="preserve">
-    <value>READ-ONLY</value>
+    <value>只读</value>
   </data>
   <data name="Raw_Copy" xml:space="preserve">
     <value>复制</value>
@@ -261,7 +261,7 @@
     <value>执行</value>
   </data>
   <data name="Scr_Run_Sub" xml:space="preserve">
-    <value>Pick a target, tune the options, watch the log stream.</value>
+    <value>选择目标、调整选项、实时查看日志。</value>
   </data>
   <data name="Scr_Run_SubNovice" xml:space="preserve">
     <value>一个团队，一个按钮。需要时技术细节仍然可查。</value>
@@ -270,34 +270,34 @@
     <value>目标、选项、精确命令与实时日志。dry-run 校验无副作用。</value>
   </data>
   <data name="Run_Target_Title" xml:space="preserve">
-    <value>Crew to run</value>
+    <value>要启动的团队</value>
   </data>
   <data name="Run_Detect" xml:space="preserve">
     <value>检测</value>
   </data>
   <data name="Run_File" xml:space="preserve">
-    <value>File…</value>
+    <value>文件…</value>
   </data>
   <data name="Run_Folder" xml:space="preserve">
-    <value>Folder…</value>
+    <value>文件夹…</value>
   </data>
   <data name="Run_UseCandidate" xml:space="preserve">
-    <value>Use this file</value>
+    <value>使用此文件</value>
   </data>
   <data name="Run_Tab_Options" xml:space="preserve">
-    <value>Options</value>
+    <value>选项</value>
   </data>
   <data name="Run_Tab_Mounts" xml:space="preserve">
-    <value>Mounts</value>
+    <value>挂载</value>
   </data>
   <data name="Run_Settings_Auto" xml:space="preserve">
-    <value>Automatic (let the runtime resolve it)</value>
+    <value>自动（由运行时解析）</value>
   </data>
   <data name="Run_Settings_Explicit" xml:space="preserve">
-    <value>Explicit path</value>
+    <value>显式路径</value>
   </data>
   <data name="Run_Vars_Title" xml:space="preserve">
-    <value>Variables (-V KEY=VALUE)</value>
+    <value>变量（-V 键=值）</value>
   </data>
   <data name="Run_Add" xml:space="preserve">
     <value>添加</value>
@@ -306,40 +306,40 @@
     <value>移除</value>
   </data>
   <data name="Run_Lbl_InitialContext" xml:space="preserve">
-    <value>Initial context</value>
+    <value>初始上下文</value>
   </data>
   <data name="Run_Inputs_Title" xml:space="preserve">
-    <value>Inputs</value>
+    <value>输入</value>
   </data>
   <data name="Run_Lbl_InputsJson" xml:space="preserve">
-    <value>Inline JSON (--inputs)</value>
+    <value>内联 JSON（--inputs）</value>
   </data>
   <data name="Run_Lbl_InputsFile" xml:space="preserve">
-    <value>File (--inputs-file)</value>
+    <value>文件（--inputs-file）</value>
   </data>
   <data name="Run_Diag_Title" xml:space="preserve">
-    <value>Diagnostics</value>
+    <value>诊断</value>
   </data>
   <data name="Run_Lbl_Verbosity" xml:space="preserve">
-    <value>Verbosity (--verbose)</value>
+    <value>详细程度（--verbose）</value>
   </data>
   <data name="Run_LlmLog" xml:space="preserve">
-    <value>Log LLM exchanges (--llm-log)</value>
+    <value>记录 LLM 交互（--llm-log）</value>
   </data>
   <data name="Run_SettingsMounts_Title" xml:space="preserve">
-    <value>Mounts already in the selected appsettings</value>
+    <value>所选 appsettings 中已有的挂载</value>
   </data>
   <data name="Run_AllowExternal" xml:space="preserve">
-    <value>Allow mounts outside the working directory (--allow-external-mounts)</value>
+    <value>允许工作目录之外的挂载（--allow-external-mounts）</value>
   </data>
   <data name="Run_Col_Key" xml:space="preserve">
-    <value>Key</value>
+    <value>键</value>
   </data>
   <data name="Run_Col_Effective" xml:space="preserve">
-    <value>Effective mount</value>
+    <value>生效的挂载</value>
   </data>
   <data name="Run_Col_Origin" xml:space="preserve">
-    <value>Origin</value>
+    <value>来源</value>
   </data>
   <data name="Run_Cmd_Title" xml:space="preserve">
     <value>命令</value>
@@ -363,7 +363,7 @@
     <value>成功</value>
   </data>
   <data name="Vm_Run_BadgeFailed" xml:space="preserve">
-    <value>failed</value>
+    <value>失败</value>
   </data>
   <data name="Vm_Run_BtnLaunch" xml:space="preserve">
     <value>立即启动</value>
@@ -378,10 +378,10 @@
     <value>找不到 Orkeon 引擎——请运行诊断。</value>
   </data>
   <data name="Vm_Run_MetaAgents" xml:space="preserve">
-    <value>{0} agents</value>
+    <value>{0} 个智能体</value>
   </data>
   <data name="Vm_Run_MetaProfile" xml:space="preserve">
-    <value>setting {0}</value>
+    <value>设置 {0}</value>
   </data>
   <data name="Run_ChangeTeam" xml:space="preserve">
     <value>切换团队</value>
@@ -399,25 +399,25 @@
     <value>打开结果</value>
   </data>
   <data name="Run_Advanced" xml:space="preserve">
-    <value>Advanced options</value>
+    <value>高级选项</value>
   </data>
   <data name="Run_Verb_Normal" xml:space="preserve">
-    <value>normal</value>
+    <value>普通</value>
   </data>
   <data name="Run_Verb_Detailed" xml:space="preserve">
-    <value>detailed</value>
+    <value>详细</value>
   </data>
   <data name="Run_Verb_Diagnostic" xml:space="preserve">
-    <value>diagnostic</value>
+    <value>诊断</value>
   </data>
   <data name="Run_Empty" xml:space="preserve">
-    <value>Pick a team in “My teams” — its Launch button lands here.</value>
+    <value>在「我的团队」中选择一个团队——它的「启动」按钮会指向这里。</value>
   </data>
   <data name="Run_Lines" xml:space="preserve">
-    <value>lines</value>
+    <value>行</value>
   </data>
   <data name="Run_Validate" xml:space="preserve">
-    <value>Validate (dry-run)</value>
+    <value>校验（dry-run）</value>
   </data>
   <data name="Run_Run" xml:space="preserve">
     <value>启动</value>
@@ -426,7 +426,7 @@
     <value>取消</value>
   </data>
   <data name="Run_ClearLog" xml:space="preserve">
-    <value>Clear log</value>
+    <value>清空日志</value>
   </data>
   <data name="Scr_Hist_Title" xml:space="preserve">
     <value>历史记录</value>
@@ -435,64 +435,64 @@
     <value>每次执行都保存在本地，可原样重放。</value>
   </data>
   <data name="Hist_Replay" xml:space="preserve">
-    <value>Prepare replay</value>
+    <value>准备重放</value>
   </data>
   <data name="Hist_Reload" xml:space="preserve">
-    <value>Reload</value>
+    <value>重新加载</value>
   </data>
   <data name="Core_Validation_NoFindings" xml:space="preserve">
-    <value>Validation: no findings.</value>
+    <value>校验：无任何发现。</value>
   </data>
   <data name="Core_Validation_Summary" xml:space="preserve">
-    <value>Validation: {0} error(s), {1} warning(s), {2} note(s).</value>
+    <value>校验：{0} 个错误、{1} 个警告、{2} 条提示。</value>
   </data>
   <data name="Core_Launch_NothingRan" xml:space="preserve">
-    <value>Nothing ran — {0}</value>
+    <value>没有执行任何内容 — {0}</value>
   </data>
   <data name="Core_Usage_Tokens" xml:space="preserve">
-    <value>{0} tokens</value>
+    <value>{0} 个 token</value>
   </data>
   <data name="Core_Usage_Cache" xml:space="preserve">
-    <value>cache {0} % · {1} tokens</value>
+    <value>缓存 {0} % · {1} 个 token</value>
   </data>
   <data name="Core_Usage_Seconds" xml:space="preserve">
-    <value>{0} s</value>
+    <value>{0} 秒</value>
   </data>
   <data name="Core_Usage_MinutesSeconds" xml:space="preserve">
-    <value>{0} min {1} s</value>
+    <value>{0} 分 {1} 秒</value>
   </data>
   <data name="Core_Launch_ExitCode" xml:space="preserve">
-    <value>Exit code {0} — {1}</value>
+    <value>退出码 {0} — {1}</value>
   </data>
   <data name="Core_Preset_Ollama_Title" xml:space="preserve">
     <value>Ollama</value>
   </data>
   <data name="Core_Preset_Ollama_Desc" xml:space="preserve">
-    <value>Local Ollama server.</value>
+    <value>本地 Ollama 服务器。</value>
   </data>
   <data name="Core_Preset_Dmr_Title" xml:space="preserve">
     <value>Docker Model Runner</value>
   </data>
   <data name="Core_Preset_Dmr_Desc" xml:space="preserve">
-    <value>Local llama.cpp engine served by Docker Desktop.</value>
+    <value>由 Docker Desktop 提供的本地 llama.cpp 引擎。</value>
   </data>
   <data name="Core_Preset_OpenAI_Title" xml:space="preserve">
     <value>OpenAI</value>
   </data>
   <data name="Core_Preset_OpenAI_Desc" xml:space="preserve">
-    <value>OpenAI cloud API.</value>
+    <value>OpenAI 云端 API。</value>
   </data>
   <data name="Core_Preset_Custom_Title" xml:space="preserve">
     <value>其他 OpenAI 兼容</value>
   </data>
   <data name="Core_Preset_Custom_Desc" xml:space="preserve">
-    <value>DeepSeek, GLM, Mistral, … — base URL and model required.</value>
+    <value>DeepSeek、GLM、Mistral 等 — 需要基础 URL 和模型。</value>
   </data>
   <data name="Core_Preset_None_Title" xml:space="preserve">
-    <value>None / offline</value>
+    <value>无 / 离线</value>
   </data>
   <data name="Core_Preset_None_Desc" xml:space="preserve">
-    <value>No LLM: runs use the &lt;undefined-llm&gt; echo provider.</value>
+    <value>无 LLM：运行使用回显提供方 &lt;undefined-llm&gt;。</value>
   </data>
   <data name="Core_Provider_Anthropic_Title" xml:space="preserve">
     <value>Anthropic</value>
@@ -522,7 +522,7 @@
     <value>MiniMax</value>
   </data>
   <data name="Core_Provider_MiniMax_Desc" xml:space="preserve">
-    <value>M2 family, intl + mainland endpoints</value>
+    <value>M2 系列，国际 + 中国大陆端点</value>
   </data>
   <data name="Core_Provider_HuggingFace_Title" xml:space="preserve">
     <value>HuggingFace</value>
@@ -570,262 +570,262 @@
     <value>测试安装，无需模型</value>
   </data>
   <data name="Core_Preset_Error_CustomIncomplete" xml:space="preserve">
-    <value>The custom preset requires both a base URL and a model.</value>
+    <value>自定义预设同时需要基础 URL 和模型。</value>
   </data>
   <data name="Core_Preset_Error_Unknown" xml:space="preserve">
-    <value>Unknown preset '{0}'. Supported: {1}.</value>
+    <value>未知预设「{0}」。支持：{1}。</value>
   </data>
   <data name="Core_Preset_Guidance_None" xml:space="preserve">
-    <value>No LLM configured: runs will use the &lt;undefined-llm&gt; echo provider. Configure one when you are ready.</value>
+    <value>未配置 LLM：运行将使用回显提供方 &lt;undefined-llm&gt;。准备好后再配置一个。</value>
   </data>
   <data name="Core_Preset_Guidance_ApiKeyEnv" xml:space="preserve">
-    <value>API key: referenced from the environment — set it with: export {0}=&lt;your-key&gt;</value>
+    <value>API 密钥：从环境变量引用 — 用以下命令设置：export {0}=&lt;您的密钥&gt;</value>
   </data>
   <data name="Core_Preset_Guidance_NonDefaultEnv" xml:space="preserve">
-    <value>Note: the Orkeon runtime reads `{0}` natively; `{1}` is only read by the `orkeon init` / `orkeon llm` probes.</value>
+    <value>注意：Orkeon 运行时原生读取 `{0}`；`{1}` 只被 `orkeon init` / `orkeon llm` 探测读取。</value>
   </data>
   <data name="Core_Preset_Guidance_InlineKeyWarning" xml:space="preserve">
-    <value>WARNING: the API key is stored in plain text in the generated file. Prefer referencing it from the {0} environment variable.</value>
+    <value>注意：API 密钥以明文形式保存在生成的文件中。建议改为从环境变量 {0} 引用。</value>
   </data>
   <data name="Core_Resolution_Step1_Title" xml:space="preserve">
-    <value>Explicit path</value>
+    <value>显式路径</value>
   </data>
   <data name="Core_Resolution_Step1_Desc" xml:space="preserve">
-    <value>The file passed to the runner with --settings. If it does not exist, resolution stops and the runtime falls back to environment variables only.</value>
+    <value>通过 --settings 传给运行器的文件。若不存在，解析即停止，运行时只读取环境变量。</value>
   </data>
   <data name="Core_Resolution_Step2_Title" xml:space="preserve">
-    <value>Next to the crew</value>
+    <value>在团队旁边</value>
   </data>
   <data name="Core_Resolution_Step2_Desc" xml:space="preserve">
-    <value>{0} in the directory holding the crew configuration.</value>
+    <value>位于包含团队定义的目录中的 {0}。</value>
   </data>
   <data name="Core_Resolution_Step3_Title" xml:space="preserve">
-    <value>Shared appsettings directory</value>
+    <value>共享 appsettings 目录</value>
   </data>
   <data name="Core_Resolution_Step3_Desc" xml:space="preserve">
-    <value>appsettings/{0}, searched by walking up from the crew directory (the legacy _shared/ location is still accepted for one release).</value>
+    <value>appsettings/{0}，从团队目录逐级向上查找（旧的 _shared/ 位置还会再兼容一个版本）。</value>
   </data>
   <data name="Core_Resolution_Step4_Title" xml:space="preserve">
     <value>每用户全局文件</value>
   </data>
   <data name="Core_Resolution_Step4_Desc" xml:space="preserve">
-    <value>The file written by `orkeon init`: %APPDATA%\Orkeon\appsettings.json on Windows, $XDG_CONFIG_HOME/Orkeon/appsettings.json (else ~/.config/Orkeon/appsettings.json) elsewhere.</value>
+    <value>由 `orkeon init` 写入的文件：Windows 上是 %APPDATA%\Orkeon\appsettings.json，其他系统是 $XDG_CONFIG_HOME/Orkeon/appsettings.json（否则 ~/.config/Orkeon/appsettings.json）。</value>
   </data>
   <data name="Core_Rights_ReadOnly" xml:space="preserve">
-    <value>Read only</value>
+    <value>只读</value>
   </data>
   <data name="Core_Rights_ReadWrite" xml:space="preserve">
-    <value>Read / write (create and delete allowed)</value>
+    <value>读 / 写（允许创建和删除）</value>
   </data>
   <data name="Core_Rights_ReadWriteNoDelete" xml:space="preserve">
-    <value>Read / write without delete</value>
+    <value>读 / 写，不可删除</value>
   </data>
   <data name="Core_Target_DirectoryRunNotice" xml:space="preserve">
-    <value>This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;', which requires Orkeon &gt;= {0}. The CLI installed alongside Studio supports this.</value>
+    <value>这是一个多文件团队目录：运行它需要「orkeon run &lt;目录&gt;」，要求 Orkeon &gt;= {0}。随 Studio 安装的 CLI 支持该功能。</value>
   </data>
   <data name="Core_MountSemantics_Explanation" xml:space="preserve">
-    <value>The runner injects its own mount first — the crew's configuration directory as '/crew' (the script's directory as '/script' for a .ork.ts crew) — then appends each --mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So the appsettings mount at index 0 is always replaced by the auto-injected one, the first --mount replaces the appsettings mount at index 1, and the two lists are never merged. Appsettings entries past the last written index stay in force. The LLM log directory is mounted separately, hidden from agents, and shifts nothing.</value>
+    <value>运行器先注入自己的挂载——团队的配置目录挂载为「/crew」（.ork.ts 团队则把脚本目录挂载为「/script」）——然后追加每个 --mount 参数，并把整份列表写入「Orkeon:FileSystem:Mounts:{index}」。因此索引 0 的 appsettings 挂载总是被自动注入的挂载取代，第一个 --mount 取代索引 1 的 appsettings 挂载，两份列表永不合并。超出最后写入索引的 appsettings 条目继续生效。LLM 日志目录单独挂载，对智能体不可见，也不会造成任何偏移。</value>
   </data>
   <data name="Core_MountSemantics_ExternalMounts" xml:space="preserve">
-    <value>--allow-external-mounts additionally whitelists each --mount base path under 'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working directory (same effect as ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value>
+    <value>--allow-external-mounts 还会把每个 --mount 基础路径加入「PathSecurity:AdditionalAllowedDirectories」白名单，使挂载可以指向工作目录之外（效果等同于 ORKEON_ALLOW_EXTERNAL_MOUNTS=1）。</value>
   </data>
   <data name="Core_MountSemantics_ThisLaunch" xml:space="preserve">
-    <value> For this launch the runner injects {0} mount(s) ({1}), so the first --mount occupies '{2}'.</value>
+    <value> 本次启动运行器注入 {0} 个挂载（{1}），因此第一个 --mount 占用「{2}」。</value>
   </data>
   <data name="Vm_Config_NewDocument" xml:space="preserve">
-    <value>New empty document. Pick a preset to fill in the Llm section.</value>
+    <value>新的空文档。选择一个预设来填写 Llm 部分。</value>
   </data>
   <data name="Vm_Config_NoFileSelected" xml:space="preserve">
-    <value>No file selected.</value>
+    <value>未选择任何文件。</value>
   </data>
   <data name="Vm_Config_Loaded" xml:space="preserve">
-    <value>Loaded {0}.</value>
+    <value>已加载：{0}。</value>
   </data>
   <data name="Vm_Config_NotSavedErrors" xml:space="preserve">
-    <value>Not saved: {0} error(s) must be fixed first.</value>
+    <value>未保存：需先修正 {0} 个错误。</value>
   </data>
   <data name="Vm_Config_NotSavedNoDestination" xml:space="preserve">
-    <value>Not saved: no destination selected.</value>
+    <value>未保存：未选择目标位置。</value>
   </data>
   <data name="Vm_Config_Saved" xml:space="preserve">
-    <value>Saved to {0}.</value>
+    <value>已保存到 {0}。</value>
   </data>
   <data name="Vm_Config_SavedLlmWarning" xml:space="preserve">
-    <value>Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider.</value>
+    <value>已保存到 {0}。警告 {1}：没有 Llm 部分，运行将使用回显提供方。</value>
   </data>
   <data name="Vm_Config_NoProblem" xml:space="preserve">
-    <value>No problem found.</value>
+    <value>未发现任何问题。</value>
   </data>
   <data name="Vm_Config_ErrorsWarnings" xml:space="preserve">
-    <value>{0} error(s), {1} warning(s).</value>
+    <value>{0} 个错误、{1} 个警告。</value>
   </data>
   <data name="Vm_Llm_NoBaseUrl" xml:space="preserve">
-    <value>No base URL — the runtime falls back to the echo provider.</value>
+    <value>没有基础 URL——运行时会退回到回显提供方。</value>
   </data>
   <data name="Vm_Llm_CustomProvider" xml:space="preserve">
-    <value>custom (host not in the known-endpoint table)</value>
+    <value>自定义（主机不在已知端点表中）</value>
   </data>
   <data name="Vm_Llm_ApiKeyRecommendation" xml:space="preserve">
-    <value>Prefer the {0} environment variable: the runtime reads it with precedence over this file, so the key never has to be stored in clear text.</value>
+    <value>建议使用环境变量 {0}：运行时优先读取它而不是本文件，密钥就无需明文保存。</value>
   </data>
   <data name="Vm_Llm_Testing" xml:space="preserve">
-    <value>Testing the connection…</value>
+    <value>正在测试连接…</value>
   </data>
   <data name="Vm_Diag_NoCheck" xml:space="preserve">
-    <value>orkeon doctor reported no check.</value>
+    <value>orkeon doctor 未报告任何检查。</value>
   </data>
   <data name="Vm_Diag_AllGreen" xml:space="preserve">
-    <value>{0} check(s), all green.</value>
+    <value>{0} 项检查，全部通过。</value>
   </data>
   <data name="Vm_Diag_Findings" xml:space="preserve">
-    <value>{0} check(s): {1} failure(s), {2} warning(s).</value>
+    <value>{0} 项检查：{1} 个失败、{2} 个警告。</value>
   </data>
   <data name="Vm_Mounts_SummaryOk" xml:space="preserve">
-    <value>{0} mount(s), no error.</value>
+    <value>{0} 个挂载，没有错误。</value>
   </data>
   <data name="Vm_Mounts_SummaryErrors" xml:space="preserve">
-    <value>{0} mount(s), {1} error(s).</value>
+    <value>{0} 个挂载，{1} 个错误。</value>
   </data>
   <data name="Vm_Mounts_SelectCrewFirst" xml:space="preserve">
-    <value>Select a crew first: the runner injects its own mounts ahead of every --mount, so which configuration key each mount occupies depends on the crew being launched.</value>
+    <value>请先选择一个团队：运行器会在每个 --mount 之前注入自己的挂载，因此每个挂载占用哪个配置键取决于所启动的团队。</value>
   </data>
   <data name="Vm_Mounts_ExternalWarning" xml:space="preserve">
-    <value>Security: this lets a mount point anywhere on the machine, outside the working directory. Only enable it for a path you chose deliberately.</value>
+    <value>安全提示：这会允许挂载指向机器上的任意位置，包括工作目录之外。请只对您有意选定的路径启用。</value>
   </data>
   <data name="Vm_Mounts_EffectiveNone" xml:space="preserve">
-    <value>{0} effective mount(s); no appsettings entry is replaced.</value>
+    <value>{0} 个生效挂载；没有替换任何 appsettings 条目。</value>
   </data>
   <data name="Vm_Mounts_EffectiveReplaced" xml:space="preserve">
-    <value>{0} effective mount(s); {1} appsettings entry(ies) replaced by index.</value>
+    <value>{0} 个生效挂载；按索引替换了 {1} 个 appsettings 条目。</value>
   </data>
   <data name="Vm_Mounts_OriginAuto" xml:space="preserve">
-    <value>auto (injected by the runner)</value>
+    <value>自动（由运行器注入）</value>
   </data>
   <data name="Vm_Mounts_OriginReplaces" xml:space="preserve">
-    <value>{0} (replaces «{1}»)</value>
+    <value>{0}（替换「{1}」）</value>
   </data>
   <data name="Vm_Launch_BinaryNotLocated" xml:space="preserve">
-    <value>The orkeon CLI has not been located yet.</value>
+    <value>尚未定位到 orkeon CLI。</value>
   </data>
   <data name="Vm_Launch_BinaryNotFound" xml:space="preserve">
-    <value>The orkeon CLI was not found.</value>
+    <value>找不到 orkeon CLI。</value>
   </data>
   <data name="Vm_Launch_Ready" xml:space="preserve">
-    <value>Ready to launch.</value>
+    <value>可以启动了。</value>
   </data>
   <data name="Vm_Launch_NoTarget" xml:space="preserve">
-    <value>No target resolved.</value>
+    <value>未解析出目标。</value>
   </data>
   <data name="Vm_Launch_NotLaunchedErrors" xml:space="preserve">
-    <value>Not launched: {0} error(s) must be fixed first.</value>
+    <value>未启动：需先修正 {0} 个错误。</value>
   </data>
   <data name="Vm_Launch_Cancelling" xml:space="preserve">
-    <value>Cancelling: the CLI is asked to stop, and is killed if it does not.</value>
+    <value>正在取消：先请求 CLI 停止，若不停止则强制结束。</value>
   </data>
   <data name="Vm_Launch_NothingToReplay" xml:space="preserve">
-    <value>Nothing to replay: the entry for '{0}' recorded no arguments.</value>
+    <value>无内容可重放：「{0}」的记录没有保存任何参数。</value>
   </data>
   <data name="Vm_Launch_Validating" xml:space="preserve">
-    <value>Validating…</value>
+    <value>校验中…</value>
   </data>
   <data name="Vm_Launch_Running" xml:space="preserve">
-    <value>Running…</value>
+    <value>执行中…</value>
   </data>
   <data name="Vm_RunProgress_NothingYet" xml:space="preserve">
-    <value>Nothing reported yet.</value>
+    <value>目前还没有任何报告。</value>
   </data>
   <data name="Vm_RunProgress_TasksDone" xml:space="preserve">
-    <value>{0} task(s) finished.</value>
+    <value>已完成 {0} 项任务。</value>
   </data>
   <data name="Vm_RunProgress_Succeeded" xml:space="preserve">
-    <value>Finished successfully.</value>
+    <value>已成功完成。</value>
   </data>
   <data name="Vm_RunProgress_Failed" xml:space="preserve">
-    <value>Finished with a failure.</value>
+    <value>以失败告终。</value>
   </data>
   <data name="Vm_RunProgress_Cost" xml:space="preserve">
-    <value>{0} tokens · {1}</value>
+    <value>{0} 个 token · {1}</value>
   </data>
   <data name="Vm_RunProgress_Watch" xml:space="preserve">
-    <value>Show progress instead of raw output</value>
+    <value>显示进度，而不是原始输出</value>
   </data>
   <data name="Vm_RunProgress_Stream" xml:space="preserve">
-    <value>Stream generated text token by token</value>
+    <value>逐 token 流式输出生成的文本</value>
   </data>
   <data name="Vm_RunProgress_Answer" xml:space="preserve">
     <value>回答</value>
   </data>
   <data name="Vm_RunProgress_AgentAsks" xml:space="preserve">
-    <value>An agent is asking:</value>
+    <value>一个智能体在提问：</value>
   </data>
   <data name="Vm_RunProgress_Reply" xml:space="preserve">
     <value>回答</value>
   </data>
   <data name="Vm_RunProgress_HubMessages" xml:space="preserve">
-    <value>Hub messages</value>
+    <value>hub 消息</value>
   </data>
   <data name="Vm_Target_None" xml:space="preserve">
-    <value>No target selected.</value>
+    <value>未选择任何目标。</value>
   </data>
   <data name="Vm_Target_Resolved" xml:space="preserve">
     <value>{0} — orkeon run {1}</value>
   </data>
   <data name="Vm_Target_PickScript" xml:space="preserve">
-    <value>{0} script(s) found: pick the one to run.</value>
+    <value>找到 {0} 个脚本：请选择要运行的那个。</value>
   </data>
   <data name="Vm_Target_DetectionFailed" xml:space="preserve">
-    <value>Detection failed.</value>
+    <value>检测失败。</value>
   </data>
   <data name="Vm_Target_KindYamlFile" xml:space="preserve">
-    <value>YAML crew file</value>
+    <value>YAML 团队文件</value>
   </data>
   <data name="Vm_Target_KindScriptFile" xml:space="preserve">
-    <value>Scripting crew file</value>
+    <value>脚本式团队文件</value>
   </data>
   <data name="Vm_Target_KindCrewDirectory" xml:space="preserve">
-    <value>Multi-file crew directory</value>
+    <value>多文件团队目录</value>
   </data>
   <data name="Vm_Target_KindScriptDirectory" xml:space="preserve">
-    <value>Scripting crew directory</value>
+    <value>脚本式团队目录</value>
   </data>
   <data name="Vm_Log_Lines" xml:space="preserve">
-    <value>{0} line(s).</value>
+    <value>{0} 行。</value>
   </data>
   <data name="Vm_Log_LinesDropped" xml:space="preserve">
-    <value>{0} line(s); {1} older line(s) dropped (cap {2}).</value>
+    <value>{0} 行；已丢弃 {1} 行较早内容（上限 {2}）。</value>
   </data>
   <data name="Vm_Dialog_OpenAppSettings" xml:space="preserve">
-    <value>Open appsettings.json</value>
+    <value>打开 appsettings.json</value>
   </data>
   <data name="Vm_Dialog_SaveAppSettings" xml:space="preserve">
-    <value>Save appsettings.json</value>
+    <value>保存 appsettings.json</value>
   </data>
   <data name="Vm_Dialog_SelectAppSettings" xml:space="preserve">
-    <value>Select an appsettings.json</value>
+    <value>选择一个 appsettings.json</value>
   </data>
   <data name="Vm_Dialog_SelectInputsFile" xml:space="preserve">
-    <value>Select an inputs file</value>
+    <value>选择一个输入文件</value>
   </data>
   <data name="Vm_Dialog_SelectLlmLogDest" xml:space="preserve">
-    <value>Select the LLM log destination</value>
+    <value>选择 LLM 日志的存放位置</value>
   </data>
   <data name="Vm_Dialog_SelectCrewDefinition" xml:space="preserve">
-    <value>Select a crew definition</value>
+    <value>选择一个团队定义</value>
   </data>
   <data name="Vm_Dialog_SelectCrewDirectory" xml:space="preserve">
-    <value>Select a crew directory</value>
+    <value>选择一个团队目录</value>
   </data>
   <data name="Vm_Dialog_SelectMountFolder" xml:space="preserve">
-    <value>Select the folder to mount</value>
+    <value>选择要挂载的文件夹</value>
   </data>
   <data name="Vm_Dialog_FilterJson" xml:space="preserve">
-    <value>JSON files|*.json|All files|*.*</value>
+    <value>JSON 文件|*.json|所有文件|*.*</value>
   </data>
   <data name="Vm_Dialog_FilterCrew" xml:space="preserve">
-    <value>Crew definitions|*.yaml;*.yml;*.ts;*.js|All files|*.*</value>
+    <value>团队定义|*.yaml;*.yml;*.ts;*.js|所有文件|*.*</value>
   </data>
   <data name="Vm_Dialog_FilterAll" xml:space="preserve">
-    <value>All files|*.*</value>
+    <value>所有文件|*.*</value>
   </data>
   <data name="Vm_Forge_Example1" xml:space="preserve">
     <value>每天早上总结一个网站的新内容</value>
@@ -840,43 +840,43 @@
     <value>把一个文档文件夹变成报告</value>
   </data>
   <data name="Vm_Forge_StatusPreparing" xml:space="preserve">
-    <value>I am preparing a proposal…</value>
+    <value>正在准备一个方案…</value>
   </data>
   <data name="Vm_Forge_StatusTrying" xml:space="preserve">
-    <value>Trying it on your example…</value>
+    <value>正在用您的示例试跑…</value>
   </data>
   <data name="Vm_Forge_StatusJudging" xml:space="preserve">
-    <value>Checking the result against what you asked…</value>
+    <value>正在对照您的要求核查结果…</value>
   </data>
   <data name="Vm_Forge_StatusReady" xml:space="preserve">
-    <value>Your solution is ready.</value>
+    <value>您的方案已就绪。</value>
   </data>
   <data name="Vm_Forge_StatusFailed" xml:space="preserve">
-    <value>Something went wrong — open the details for the technical part.</value>
+    <value>出了点问题——展开详情查看技术部分。</value>
   </data>
   <data name="Vm_Forge_StatusStopped" xml:space="preserve">
-    <value>Stopped — you can pick it up again from My solutions.</value>
+    <value>已停止——随时可以从「我的方案」继续。</value>
   </data>
   <data name="Vm_Forge_Attempt" xml:space="preserve">
-    <value>Attempt {0}</value>
+    <value>第 {0} 次尝试</value>
   </data>
   <data name="Vm_Forge_CheckUnverified" xml:space="preserve">
-    <value>I could not check this automatically — judge for yourself.</value>
+    <value>这一点我无法自动核查——请您自行判断。</value>
   </data>
   <data name="Vm_Forge_ResultScore" xml:space="preserve">
-    <value>The try is done (score {0}).</value>
+    <value>试运行已结束（评分 {0}）。</value>
   </data>
   <data name="Vm_Forge_StorePickTitle" xml:space="preserve">
-    <value>Choose where to store the solution</value>
+    <value>选择方案的存放位置</value>
   </data>
   <data name="Mode_Label" xml:space="preserve">
-    <value>MODE</value>
+    <value>模式</value>
   </data>
   <data name="Mode_Novice" xml:space="preserve">
-    <value>Novice</value>
+    <value>新手</value>
   </data>
   <data name="Mode_Expert" xml:space="preserve">
-    <value>Expert</value>
+    <value>专家</value>
   </data>
   <data name="Help_Title" xml:space="preserve">
     <value>需要帮助？</value>
@@ -900,7 +900,7 @@
     <value>Orkeon 的桌面伴侣：您组建代理团队，Studio 让它们工作——每个团队只限于您开放的文件夹，每次执行都有迹可查。</value>
   </data>
   <data name="About_Kama" xml:space="preserve">
-    <value>Meet Kama, Orkeon's chameleon. He adapts to whatever he is asked — the way an agent team is composed around your need, and not the other way round.</value>
+    <value>这是 Orkeon 的变色龙 Kama。它会适应别人对它的要求——就像智能体团队是围绕您的需求组建的，而不是反过来。</value>
   </data>
   <data name="About_Close" xml:space="preserve">
     <value>关闭</value>
@@ -960,13 +960,13 @@
     <value>新建配置</value>
   </data>
   <data name="Profile_Empty" xml:space="preserve">
-    <value>No setting yet — create one to give your teams a model.</value>
+    <value>暂无任何设置——创建一个，为您的团队指定模型。</value>
   </data>
   <data name="Profile_DefaultBadge" xml:space="preserve">
     <value>默认</value>
   </data>
   <data name="Profile_StudioBadge" xml:space="preserve">
-    <value>assistant</value>
+    <value>助手</value>
   </data>
   <data name="Profile_UseDefault" xml:space="preserve">
     <value>设为默认</value>
@@ -993,7 +993,7 @@
     <value>配置名称</value>
   </data>
   <data name="Profile_NameTaken" xml:space="preserve">
-    <value>Another setting already uses this name.</value>
+    <value>已有另一个设置使用了这个名称。</value>
   </data>
   <data name="Profile_ProviderLabel" xml:space="preserve">
     <value>模型来自哪里</value>
@@ -1014,7 +1014,7 @@
     <value>云端 · 需要 API 密钥</value>
   </data>
   <data name="Profile_KeyTitleFor" xml:space="preserve">
-    <value>API key {0}</value>
+    <value>API 密钥 {0}</value>
   </data>
   <data name="Profile_KeyTitleService" xml:space="preserve">
     <value>服务的 API 密钥</value>
@@ -1053,7 +1053,7 @@
     <value>缺少 API 密钥——请先记住它</value>
   </data>
   <data name="Vm_Profiles_CopySuffix" xml:space="preserve">
-    <value>copy</value>
+    <value>副本</value>
   </data>
   <data name="Nav_Create" xml:space="preserve">
     <value>创建团队</value>
@@ -1152,19 +1152,19 @@
     <value>能力：</value>
   </data>
   <data name="Wiz_Validation_Title" xml:space="preserve">
-    <value>Validation findings</value>
+    <value>校验发现</value>
   </data>
   <data name="Wiz_Files_Title" xml:space="preserve">
     <value>已生成的定义</value>
   </data>
   <data name="Wiz_Try_Title" xml:space="preserve">
-    <value>Trying the team on a real case</value>
+    <value>在真实案例上试运行团队</value>
   </data>
   <data name="Wiz_Try_Sub" xml:space="preserve">
-    <value>A trial changes nothing definitive: the result is written into a session folder you can throw away.</value>
+    <value>试运行不会造成任何永久改动：结果写入一个您可以随时丢弃的会话文件夹。</value>
   </data>
   <data name="Wiz_Verdict_Title" xml:space="preserve">
-    <value>The verdict</value>
+    <value>结论</value>
   </data>
   <data name="Wiz_Checklist_Label" xml:space="preserve">
     <value>对照您的预期</value>
@@ -1194,13 +1194,13 @@
     <value>自动，在固定时间</value>
   </data>
   <data name="Wiz_Sched_Hourly" xml:space="preserve">
-    <value>Every hour</value>
+    <value>每小时</value>
   </data>
   <data name="Wiz_Sched_Hourly_Hint" xml:space="preserve">
-    <value>automatically, around the clock</value>
+    <value>自动运行，全天不间断</value>
   </data>
   <data name="Wiz_Sched_At" xml:space="preserve">
-    <value>at</value>
+    <value>在</value>
   </data>
   <data name="Wiz_Sched_LocalTime" xml:space="preserve">
     <value>本机的本地时间</value>
@@ -1233,7 +1233,7 @@
     <value>技术日志</value>
   </data>
   <data name="Wiz_Tech_Toggle" xml:space="preserve">
-    <value>Show / hide</value>
+    <value>显示 / 隐藏</value>
   </data>
   <data name="Notes_Sub" xml:space="preserve">
     <value>指令适用于所有代理，随团队一起保存，并成为试运行时的检查点。</value>
@@ -1245,10 +1245,10 @@
     <value>提问</value>
   </data>
   <data name="Notes_Ask_Title" xml:space="preserve">
-    <value>Ask the assistant</value>
+    <value>询问助手</value>
   </data>
   <data name="Notes_Ask_Hint" xml:space="preserve">
-    <value>— changes nothing without your approval</value>
+    <value>— 未经您同意不会更改任何内容</value>
   </data>
   <data name="Notes_Clear" xml:space="preserve">
     <value>清除</value>
@@ -1266,7 +1266,7 @@
     <value>删除</value>
   </data>
   <data name="Teams_Empty" xml:space="preserve">
-    <value>No team yet — the wizard builds the first one with you.</value>
+    <value>暂无团队——助手会和您一起搭建第一个。</value>
   </data>
   <data name="Teams_InProgress" xml:space="preserve">
     <value>进行中的会话</value>
@@ -1305,34 +1305,34 @@
     <value>其他</value>
   </data>
   <data name="Vm_Wizard_Brief_Frequency" xml:space="preserve">
-    <value>How often: {0}.</value>
+    <value>频率：{0}。</value>
   </data>
   <data name="Vm_Wizard_Brief_Source" xml:space="preserve">
-    <value>Where the information lives: {0}.</value>
+    <value>信息所在的位置：{0}。</value>
   </data>
   <data name="Vm_Wizard_Brief_Output" xml:space="preserve">
-    <value>Expected result: {0}.</value>
+    <value>期望的结果：{0}。</value>
   </data>
   <data name="Vm_Wizard_Brief_Shape" xml:space="preserve">
-    <value>The result should look like: {0}</value>
+    <value>结果应当是这样的：{0}</value>
   </data>
   <data name="Vm_Wizard_Brief_Consigne" xml:space="preserve">
-    <value>Standing instruction for every agent: {0}</value>
+    <value>对所有智能体的长期指令：{0}</value>
   </data>
   <data name="Vm_Wizard_AgentFallback" xml:space="preserve">
-    <value>Agent</value>
+    <value>智能体</value>
   </data>
   <data name="Vm_Wizard_PromoteFailed" xml:space="preserve">
-    <value>The save failed — the engine refused the promotion: {0}</value>
+    <value>保存失败——引擎拒绝了此次提升：{0}</value>
   </data>
   <data name="Vm_Import_Failed" xml:space="preserve">
-    <value>The import failed — nothing was copied. Check access to the source and try again.</value>
+    <value>导入失败——没有复制任何内容。请检查对源的访问权限后重试。</value>
   </data>
   <data name="Vm_Wizard_ActivityDone" xml:space="preserve">
-    <value>{0} — done in {1} s</value>
+    <value>{0} — 用时 {1} 秒完成</value>
   </data>
   <data name="Vm_Wizard_ActivityFailed" xml:space="preserve">
-    <value>{0} — failed</value>
+    <value>{0} — 失败</value>
   </data>
   <data name="Vm_Wizard_Hint_Describe" xml:space="preserve">
     <value>请先描述工作再继续。</value>
@@ -1356,16 +1356,16 @@
     <value>修正并重试</value>
   </data>
   <data name="Vm_Wizard_Decision_Abort" xml:space="preserve">
-    <value>Abandon</value>
+    <value>放弃</value>
   </data>
   <data name="Vm_Teams_OnDemand" xml:space="preserve">
     <value>按需</value>
   </data>
   <data name="Vm_Teams_Daily" xml:space="preserve">
-    <value>Every day at {0}</value>
+    <value>每天 {0}</value>
   </data>
   <data name="Vm_Teams_Hourly" xml:space="preserve">
-    <value>Every hour</value>
+    <value>每小时</value>
   </data>
   <data name="Nav_Import" xml:space="preserve">
     <value>导入</value>
@@ -1383,10 +1383,10 @@
     <value>一个 YAML 定义、一个 .ork.ts 脚本，或完整的团队文件夹。您确认之前不复制任何内容。</value>
   </data>
   <data name="Import_Secrets_Title" xml:space="preserve">
-    <value>An API key travels inside this definition</value>
+    <value>此定义中夹带了一个 API 密钥</value>
   </data>
   <data name="Import_Secrets_Body" xml:space="preserve">
-    <value>These files look like they carry a pasted secret. Keys belong in the environment, never inside a shared folder — clean them up before importing.</value>
+    <value>这些文件里似乎粘贴了明文密钥。密钥应放在环境变量中，绝不能放进共享文件夹——请先清理再导入。</value>
   </data>
   <data name="Import_Add" xml:space="preserve">
     <value>添加到我的团队</value>
@@ -1410,55 +1410,55 @@
     <value>校验发现</value>
   </data>
   <data name="Vm_ValMsg_WIN-01" xml:space="preserve">
-    <value>No Llm section: the engine will start on its built-in defaults (Ollama, local).</value>
+    <value>没有 Llm 部分：引擎将使用内置默认值启动（Ollama，本地）。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-JSON" xml:space="preserve">
-    <value>The settings file is not valid JSON.</value>
+    <value>设置文件不是有效的 JSON。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-TYPE" xml:space="preserve">
-    <value>A settings field has the wrong type.</value>
+    <value>某个设置字段的类型不正确。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-LLM-APIKEY" xml:space="preserve">
-    <value>An API key is written inside the file — move it to an environment variable.</value>
+    <value>文件里写着一个 API 密钥——请把它移到环境变量中。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-RAG-PROFILE" xml:space="preserve">
-    <value>The document-index profile named here is unknown.</value>
+    <value>此处指定的文档索引配置档未知。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-MOUNT-EMPTY" xml:space="preserve">
-    <value>No folder is allowed yet: add at least one.</value>
+    <value>尚未授权任何文件夹：请至少添加一个。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-MOUNT-FORMAT" xml:space="preserve">
-    <value>A folder entry is malformed.</value>
+    <value>某个文件夹条目格式有误。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-MOUNT-PATH" xml:space="preserve">
-    <value>An allowed folder does not exist on this machine.</value>
+    <value>有一个授权文件夹在这台机器上不存在。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-MOUNT-COLLISION" xml:space="preserve">
-    <value>Two folders share the same internal name.</value>
+    <value>两个文件夹使用了相同的内部名称。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-LAUNCH-OPTION" xml:space="preserve">
-    <value>This option does not apply to the selected team.</value>
+    <value>该选项不适用于所选团队。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-LAUNCH-VERBOSE" xml:space="preserve">
-    <value>The verbosity level is not valid.</value>
+    <value>详细程度取值无效。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-LAUNCH-VAR" xml:space="preserve">
-    <value>A variable is malformed (expected name=value).</value>
+    <value>某个变量格式有误（应为 名称=值）。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-LAUNCH-MOUNT" xml:space="preserve">
-    <value>An added folder line is empty.</value>
+    <value>有一行新增的文件夹是空的。</value>
   </data>
   <data name="Vm_ValMsg_STUDIO-LAUNCH-INPUTS" xml:space="preserve">
-    <value>Two conflicting input sources are set — keep one.</value>
+    <value>设置了两个互相冲突的输入来源——请只保留一个。</value>
   </data>
   <data name="Vm_Rag_WebFallbackActive" xml:space="preserve">
-    <value>Web fallback active: the corrective loop may fetch pages, each one validated against prompt injection.</value>
+    <value>网络回退已启用：纠错循环可以抓取网页，每一页都会做提示注入校验。</value>
   </data>
   <data name="Vm_Rag_WebFallbackTransportOff" xml:space="preserve">
-    <value>Inactive: the corrective policy allows it, but the transport (Orkeon:Rag:WebFallback) is still off.</value>
+    <value>未生效：纠错策略允许，但传输（Orkeon:Rag:WebFallback）仍处于关闭状态。</value>
   </data>
   <data name="Vm_Rag_WebFallbackPolicyOff" xml:space="preserve">
-    <value>Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.</value>
+    <value>未生效：传输已开启，但纠错策略（Orkeon:Rag:Corrective:WebFallback）仍处于关闭状态。</value>
   </data>
   <data name="Vm_Rag_WebFallbackOff" xml:space="preserve">
     <value>已关闭。两个开关都打开，纠错循环才能访问网络。</value>
@@ -1467,25 +1467,25 @@
     <value>速率</value>
   </data>
   <data name="Limits_Card_Rag" xml:space="preserve">
-    <value>Document index</value>
+    <value>文档索引</value>
   </data>
   <data name="Limits_Card_Logging" xml:space="preserve">
-    <value>Logging</value>
+    <value>日志记录</value>
   </data>
   <data name="Limits_Card_LlmLog" xml:space="preserve">
-    <value>LLM journal</value>
+    <value>LLM 日志</value>
   </data>
   <data name="Vm_Hist_OutcomeSuccess" xml:space="preserve">
-    <value>Finished without errors.</value>
+    <value>顺利完成，没有错误。</value>
   </data>
   <data name="Vm_Hist_OutcomeFailed" xml:space="preserve">
-    <value>Failed (code {0}).</value>
+    <value>失败（代码 {0}）。</value>
   </data>
   <data name="Vm_Hist_OutcomeCancelled" xml:space="preserve">
-    <value>Interrupted before the end.</value>
+    <value>在结束前被中断。</value>
   </data>
   <data name="Vm_Hist_OutcomeNotStarted" xml:space="preserve">
-    <value>Never started.</value>
+    <value>从未启动。</value>
   </data>
   <data name="Hist_Result" xml:space="preserve">
     <value>打开结果</value>
@@ -1515,16 +1515,16 @@
     <value>代码分析器（tree-sitter）</value>
   </data>
   <data name="Vm_Doctor_workspace-write" xml:space="preserve">
-    <value>Write access to the workspace</value>
+    <value>对工作目录的写入权限</value>
   </data>
   <data name="Vm_Diag_AllGood" xml:space="preserve">
-    <value>Everything is in place.</value>
+    <value>一切就绪。</value>
   </data>
   <data name="Vm_Diag_FixNeeded" xml:space="preserve">
     <value>启动团队前需修正一处。</value>
   </data>
   <data name="Vm_Diag_Counts" xml:space="preserve">
-    <value>{0} checks passed, {1} warning(s), {2} failure(s).</value>
+    <value>{0} 项检查通过、{1} 个警告、{2} 个失败。</value>
   </data>
   <data name="Diag_Fix" xml:space="preserve">
     <value>到设置中修正</value>
@@ -1536,43 +1536,43 @@
     <value>机器上的其他一切对它们不可见。只读文件夹永远无法被修改。</value>
   </data>
   <data name="Mounts_SeenAs" xml:space="preserve">
-    <value>seen as</value>
+    <value>显示为</value>
   </data>
   <data name="Mounts_Allow" xml:space="preserve">
     <value>授权文件夹…</value>
   </data>
   <data name="Test_Inputs_Label" xml:space="preserve">
-    <value>Sample inputs (JSON)</value>
+    <value>示例输入（JSON）</value>
   </data>
   <data name="Test_Inputs_Hint" xml:space="preserve">
-    <value>Passed to the trial as --inputs; the real launches keep their own inputs.</value>
+    <value>通过 --inputs 传给试运行；真实启动仍使用各自的输入。</value>
   </data>
   <data name="Vm_Import_RecognizedAgents" xml:space="preserve">
-    <value>{0} — {1} agent(s)</value>
+    <value>{0} — {1} 个智能体</value>
   </data>
   <data name="Vm_Import_SecretsClean" xml:space="preserve">
-    <value>No secret in the files</value>
+    <value>文件中没有密钥</value>
   </data>
   <data name="Vm_Import_SecretsCleanDetail" xml:space="preserve">
-    <value>API keys travel through the environment, and these files carry none.</value>
+    <value>API 密钥通过环境变量传递，这些文件里没有。</value>
   </data>
   <data name="Vm_Import_SecretsFound" xml:space="preserve">
-    <value>Something looks like a pasted key</value>
+    <value>有内容看起来像粘贴的密钥</value>
   </data>
   <data name="Vm_Import_SecretsFoundDetail" xml:space="preserve">
-    <value>{0} file(s) carry what looks like an inline secret — see the warning below.</value>
+    <value>{0} 个文件包含疑似明文密钥——见下方警告。</value>
   </data>
   <data name="Vm_Import_ToolsLater" xml:space="preserve">
     <value>工具</value>
   </data>
   <data name="Vm_Import_ToolsLaterDetail" xml:space="preserve">
-    <value>The team's tools are checked at its first launch.</value>
+    <value>团队的工具会在首次启动时检查。</value>
   </data>
   <data name="Import_Drop_Hint" xml:space="preserve">
-    <value>…or drop a folder / a .yaml or .ork.ts file here</value>
+    <value>…或将文件夹 / .yaml 或 .ork.ts 文件拖放到这里</value>
   </data>
   <data name="Import_Report_Title" xml:space="preserve">
-    <value>RECOGNITION REPORT</value>
+    <value>识别报告</value>
   </data>
   <data name="Import_TestFirst" xml:space="preserve">
     <value>先试运行</value>
@@ -1584,19 +1584,19 @@
     <value>使用者</value>
   </data>
   <data name="Studio_Model_Placeholder" xml:space="preserve">
-    <value>— to configure —</value>
+    <value>— 待配置 —</value>
   </data>
   <data name="Limits_DefaultsApply" xml:space="preserve">
     <value>文件中缺少该节：引擎使用默认值。</value>
   </data>
   <data name="Hist_Empty" xml:space="preserve">
-    <value>No run yet. The first launch of a team will appear here.</value>
+    <value>暂无任何执行记录。团队的首次启动将出现在这里。</value>
   </data>
   <data name="Test_Empty" xml:space="preserve">
-    <value>Pick a team to prepare a trial.</value>
+    <value>选择一个团队来准备试运行。</value>
   </data>
   <data name="Teams_Open" xml:space="preserve">
-    <value>Open the folder</value>
+    <value>打开文件夹</value>
   </data>
   <data name="Diag_LlmConfigHint" xml:space="preserve">
     <value>这是公共基础（设置文件 + 此 shell 的环境）。选择了自有模型配置的团队会在启动时叠加它——此处不显示。</value>
@@ -1608,37 +1608,37 @@
     <value>密钥存放在您的用户环境变量中，绝不写入文件。粘贴后记住它；保存后输入框即清空。</value>
   </data>
   <data name="Vm_Config_NotSavedNeedFolder" xml:space="preserve">
-    <value>Not saved yet: authorize at least one folder (Dossiers autorisés tab) — your changes will be saved as soon as one is in place.</value>
+    <value>尚未保存：请至少授权一个文件夹（「授权文件夹」标签页）——一旦有了，您的修改就会被保存。</value>
   </data>
   <data name="Vm_Wiz_AssistantNotRunning" xml:space="preserve">
-    <value>The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.</value>
+    <value>助手当前未在运行——请启动组建（第 1 步「组建」）或恢复会话；您的问题已保留。</value>
   </data>
   <data name="Run_Journal_Copy" xml:space="preserve">
     <value>复制</value>
   </data>
   <data name="Profile_Lbl_Temperature" xml:space="preserve">
-    <value>Temperature (optional)</value>
+    <value>温度（可选）</value>
   </data>
   <data name="Profile_Temperature_Hint" xml:space="preserve">
-    <value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value>
+    <value>留空：由引擎决定。有些模型强制取值——Kimi K3 只接受 1。</value>
   </data>
   <data name="Profile_Lbl_Timeout" xml:space="preserve">
-    <value>Response timeout (s, optional)</value>
+    <value>响应超时（秒，可选）</value>
   </data>
   <data name="Profile_Timeout_Hint" xml:space="preserve">
-    <value>Empty: 30 s. Reasoning models (Kimi K3, thinking modes) often need 120–300 s.</value>
+    <value>留空：30 秒。推理模型（Kimi K3、thinking 模式）通常需要 120–300 秒。</value>
   </data>
   <data name="Vm_Picker_AlreadyMounted" xml:space="preserve">
     <value>已授权</value>
   </data>
   <data name="Vm_TeamMounts_Title" xml:space="preserve">
-    <value>Folders of “{0}”</value>
+    <value>「{0}」的文件夹</value>
   </data>
   <data name="Vm_TeamMounts_None" xml:space="preserve">
     <value>没有文件夹，该团队将无法读写任何文件。</value>
   </data>
   <data name="Vm_TeamMounts_Summary" xml:space="preserve">
-    <value>{0} folders: {1}</value>
+    <value>{0} 个文件夹：{1}</value>
   </data>
   <data name="Vm_AgentEditor_TitleAdd" xml:space="preserve">
     <value>添加代理</value>
@@ -1662,7 +1662,7 @@
     <value>代理将能做什么</value>
   </data>
   <data name="Picker_ReadOnly" xml:space="preserve">
-    <value>Read only</value>
+    <value>只读</value>
   </data>
   <data name="Picker_ReadOnly_Hint" xml:space="preserve">
     <value>代理只读，绝不修改</value>
@@ -1686,49 +1686,49 @@
     <value>授权其他文件夹…</value>
   </data>
   <data name="AllowedFolders_Title" xml:space="preserve">
-    <value>Add an allowed folder</value>
+    <value>添加授权文件夹</value>
   </data>
   <data name="AllowedFolders_Sub" xml:space="preserve">
-    <value>Pick from the folders declared in Settings › Authorized folders. The team sees them with the same rights.</value>
+    <value>从「设置 › 授权文件夹」中已声明的文件夹里选择。团队将以相同的权限看到它们。</value>
   </data>
   <data name="AllowedFolders_Empty" xml:space="preserve">
-    <value>No folder is declared yet in the settings.</value>
+    <value>设置中尚未声明任何文件夹。</value>
   </data>
   <data name="AllowedFolders_Declare" xml:space="preserve">
-    <value>Declare a new folder…</value>
+    <value>声明一个新文件夹…</value>
   </data>
   <data name="AllowedFolders_Confirm" xml:space="preserve">
     <value>添加到团队</value>
   </data>
   <data name="Vm_Wizard_DroppedDerived" xml:space="preserve">
-    <value>{0}: nothing will be bound to it — the agents writing there will fail.</value>
+    <value>{0}：不会绑定任何文件夹——往那里写入的智能体会失败。</value>
   </data>
   <data name="Wiz_RestoreFolders" xml:space="preserve">
-    <value>Restore</value>
+    <value>恢复</value>
   </data>
   <data name="Vm_Run_BlockedUndeclared" xml:space="preserve">
-    <value>This team uses folders your settings do not allow: {0}. Declare them in Settings › Authorized folders, or remove them from the team.</value>
+    <value>该团队使用了您的设置未授权的文件夹：{0}。请在「设置 › 授权文件夹」中声明它们，或将其从团队中移除。</value>
   </data>
   <data name="Run_OpenAllowedFolders" xml:space="preserve">
-    <value>Open authorized folders</value>
+    <value>打开授权文件夹</value>
   </data>
   <data name="Wiz_UndeclaredLegend" xml:space="preserve">
-    <value>In red: folders that are not among your authorized folders.</value>
+    <value>红色标出的是不在您授权文件夹之列的文件夹。</value>
   </data>
   <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve">
-    <value>already added</value>
+    <value>已添加</value>
   </data>
   <data name="Vm_AllowedFolders_Conflict" xml:space="preserve">
-    <value>{0} is already used by another folder</value>
+    <value>{0} 已被另一个文件夹占用</value>
   </data>
   <data name="Vm_AllowedFolders_Summary" xml:space="preserve">
-    <value>{0} folder(s) selected</value>
+    <value>已选择 {0} 个文件夹</value>
   </data>
   <data name="Vm_AllowedFolders_Declared" xml:space="preserve">
-    <value>“{0}” added to the authorized folders</value>
+    <value>「{0}」已加入授权文件夹</value>
   </data>
   <data name="Vm_AllowedFolders_NotSaved" xml:space="preserve">
-    <value>“{0}” added, but the settings could not be saved — {1}</value>
+    <value>「{0}」已添加，但设置未能保存 — {1}</value>
   </data>
   <data name="AgentEd_Sub" xml:space="preserve">
     <value>一个代理只做一件事。用一句话描述它，并只开放必需的能力。</value>
@@ -1752,10 +1752,10 @@
     <value>从团队移除</value>
   </data>
   <data name="AgentEd_Wait" xml:space="preserve">
-    <value>The step in progress must finish first</value>
+    <value>必须先完成正在进行的步骤</value>
   </data>
   <data name="Vm_Dialog_ExportDestination" xml:space="preserve">
-    <value>Choose where to export the team</value>
+    <value>选择团队的导出位置</value>
   </data>
   <data name="Wiz_TeamFolders" xml:space="preserve">
     <value>该团队的文件夹</value>
@@ -1764,7 +1764,7 @@
     <value>授权一个文件夹</value>
   </data>
   <data name="Wiz_FoldersHint" xml:space="preserve">
-    <value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value>
+    <value>这些文件夹会在采纳时随团队一起记录——而试运行本身在自己的沙箱中进行。</value>
   </data>
   <data name="Wiz_DerivedHint" xml:space="preserve">
     <value>它们来自各个代理：修改某个代理即可改变它能看到的内容。</value>
@@ -1776,7 +1776,7 @@
     <value>为此团队重新打开助手</value>
   </data>
   <data name="Teams_Modify_NoSession" xml:space="preserve">
-    <value>No workshop session points at this team (imported, or its session was deleted).</value>
+    <value>没有工坊会话指向该团队（可能是导入的，或其会话已被删除）。</value>
   </data>
   <data name="Wiz_Saved_ModifyTeam" xml:space="preserve">
     <value>编辑团队</value>
@@ -1788,10 +1788,10 @@
     <value>一切都未定死：您仍可编辑代理、再次试运行、重新采用——保存的团队会被更新，而不是复制。</value>
   </data>
   <data name="Wiz_Reopened_Note" xml:space="preserve">
-    <value>Re-adopting regenerates run.sh and crew/ — hand edits inside those files will be lost.</value>
+    <value>重新采纳会重新生成产出文件——run.sh 和 YAML 定义——其中手工修改的内容会丢失。</value>
   </data>
   <data name="Wiz_Adopt_Change" xml:space="preserve">
-    <value>Change</value>
+    <value>更换</value>
   </data>
   <data name="Wiz_AgentCan" xml:space="preserve">
     <value>能力：</value>
@@ -1803,25 +1803,25 @@
     <value>添加代理</value>
   </data>
   <data name="Vm_Teams_MountRo" xml:space="preserve">
-    <value>{0} (read)</value>
+    <value>{0}（读取）</value>
   </data>
   <data name="Vm_Teams_MountRw" xml:space="preserve">
-    <value>{0} (read, write)</value>
+    <value>{0}（读取、写入）</value>
   </data>
   <data name="Vm_Teams_MountUnreadable" xml:space="preserve">
-    <value>unreadable folder</value>
+    <value>无法读取的文件夹</value>
   </data>
   <data name="Vm_Teams_ToTest" xml:space="preserve">
     <value>待试运行</value>
   </data>
   <data name="Vm_Teams_LastRun" xml:space="preserve">
-    <value>Last run: {0}, {1}</value>
+    <value>上次执行：{0}，{1}</value>
   </data>
   <data name="Vm_Teams_RunOk" xml:space="preserve">
     <value>成功</value>
   </data>
   <data name="Vm_Teams_RunFail" xml:space="preserve">
-    <value>failed</value>
+    <value>失败</value>
   </data>
   <data name="Vm_Teams_NeverRan" xml:space="preserve">
     <value>从未执行</value>
@@ -1842,34 +1842,34 @@
     <value>试运行</value>
   </data>
   <data name="Teams_SettingLabel" xml:space="preserve">
-    <value>Setting: {0}</value>
+    <value>设置：{0}</value>
   </data>
   <data name="Vm_Run_MetaReads" xml:space="preserve">
-    <value>reads {0}</value>
+    <value>读取 {0}</value>
   </data>
   <data name="Vm_Run_MetaWrites" xml:space="preserve">
-    <value>writes to {0}</value>
+    <value>写入 {0}</value>
   </data>
   <data name="Run_ValidateFirst" xml:space="preserve">
     <value>先做 dry-run 校验</value>
   </data>
   <data name="Test_Console_Empty" xml:space="preserve">
-    <value>Waiting for a trial…</value>
+    <value>等待试运行…</value>
   </data>
   <data name="Vm_Import_MountsDeclared" xml:space="preserve">
-    <value>Declared folders</value>
+    <value>已声明的文件夹</value>
   </data>
   <data name="Vm_Import_MountsDeclaredDetail" xml:space="preserve">
-    <value>{0} folder(s): {1}</value>
+    <value>{0} 个文件夹：{1}</value>
   </data>
   <data name="Vm_Import_MountsNone" xml:space="preserve">
-    <value>No declared folder</value>
+    <value>未声明任何文件夹</value>
   </data>
   <data name="Vm_Import_MountsNoneDetail" xml:space="preserve">
-    <value>Allow its folders after adding — Mes équipes, Changer les dossiers.</value>
+    <value>添加后再授权它的文件夹——「我的团队」→「更换文件夹」。</value>
   </data>
   <data name="Wiz_TrialCommand" xml:space="preserve">
-    <value>TRIAL COMMAND</value>
+    <value>试运行命令</value>
   </data>
   <data name="Diag_Copied" xml:space="preserve">
     <value>已复制！</value>
@@ -1878,43 +1878,43 @@
     <value>安装检查</value>
   </data>
   <data name="Wiz_Help_Title" xml:space="preserve">
-    <value>What this step does</value>
+    <value>这一步做什么</value>
   </data>
   <data name="Wiz_Help_Step1" xml:space="preserve">
-    <value>Describe what you need in your own words — folders to read, the result you expect, how often. The assistant asks its questions until the brief is clear; nothing runs on your machine yet.</value>
+    <value>用您自己的话描述需求——要读哪些文件夹、期望什么结果、多久一次。助手会不断提问直到简报清晰；此时您的机器上还没有运行任何东西。</value>
   </data>
   <data name="Wiz_Help_Step2" xml:space="preserve">
-    <value>The assistant proposes a team: one agent per job, each with only the capacities it needs. You can edit an agent, add one, and choose which folders the team may see once adopted.</value>
+    <value>助手会提出一个团队：每项任务一个智能体，各自只拥有必需的能力。您可以修改某个智能体、新增一个，并选择团队被采纳后能看到哪些文件夹。</value>
   </data>
   <data name="Wiz_Help_Step3" xml:space="preserve">
-    <value>The team rehearses on a sample, in its own sandbox — nothing outside it is touched. The verdict tells you honestly whether the result meets what you asked at step 1.</value>
+    <value>团队会在自己的沙箱里用一个样例排练——沙箱之外的一切都不会被触碰。结论会如实告诉您结果是否符合您在第 1 步提出的要求。</value>
   </data>
   <data name="Wiz_Help_Step4" xml:space="preserve">
-    <value>Adopting stores the team as an ordinary folder under your profile. Scheduling is shown as a command, never run for you; the team then appears in Mes équipes.</value>
+    <value>采纳会把团队保存为您个人目录下的一个普通文件夹。排程只以命令的形式展示，绝不会代您执行；随后团队会出现在「我的团队」中。</value>
   </data>
   <data name="Mounts_Novice_Empty" xml:space="preserve">
-    <value>No folder is allowed yet. The agents will see nothing until you allow at least one.</value>
+    <value>尚未授权任何文件夹。在您至少授权一个之前，智能体什么也看不到。</value>
   </data>
   <data name="Vm_Config_NotSavedWriteFailed" xml:space="preserve">
-    <value>Not saved — the file could not be written: {0}</value>
+    <value>未保存——无法写入文件：{0}</value>
   </data>
   <data name="Vm_Teams_ExportedTo" xml:space="preserve">
-    <value>Team exported to {0}</value>
+    <value>团队已导出到 {0}</value>
   </data>
   <data name="Vm_Teams_ExportFailed" xml:space="preserve">
-    <value>Export refused — the destination already exists, or the disk said no.</value>
+    <value>导出被拒绝——目标已存在，或磁盘拒绝了操作。</value>
   </data>
   <data name="Wiz_TryTeam" xml:space="preserve">
     <value>试运行团队</value>
   </data>
   <data name="Wiz_Paused_Hint" xml:space="preserve">
-    <value>Composed and validated — nothing has run yet.</value>
+    <value>已组建并校验——尚未运行任何内容。</value>
   </data>
   <data name="Teams_Delete_Confirm" xml:space="preserve">
     <value>删除这个团队？</value>
   </data>
   <data name="Teams_Session_Delete_Confirm" xml:space="preserve">
-    <value>Delete this draft?</value>
+    <value>删除这份草稿？</value>
   </data>
   <data name="Teams_Session_Delete" xml:space="preserve">
     <value>删除</value>
@@ -1932,7 +1932,7 @@
     <value>没有进行中的会话。中断的创建会重新出现在这里。</value>
   </data>
   <data name="Vm_Wiz_DraftStepPattern" xml:space="preserve">
-    <value>Step {0} of {1} · {2}</value>
+    <value>第 {0} / {1} 步 · {2}</value>
   </data>
   <data name="Vm_Wiz_DraftTitle" xml:space="preserve">
     <value>创建进行中</value>
@@ -1989,7 +1989,7 @@
     <value>查看对话</value>
   </data>
   <data name="Vm_Chat_Close" xml:space="preserve">
-    <value>Close the conversation</value>
+    <value>关闭对话</value>
   </data>
   <data name="Vm_Chat_BriefEmpty" xml:space="preserve">
     <value>您还没有描述任何内容。</value>
@@ -2001,13 +2001,13 @@
     <value>助手需要您补充一点信息</value>
   </data>
   <data name="Vm_Chat_StatusQuestionPattern" xml:space="preserve">
-    <value>question {0} of {1} · waiting for your answer</value>
+    <value>第 {0} / {1} 个问题 · 等待您的回答</value>
   </data>
   <data name="Vm_Chat_StatusDonePattern" xml:space="preserve">
-    <value>brief complete · {0} message(s)</value>
+    <value>简报已完成 · {0} 条消息</value>
   </data>
   <data name="Vm_Chat_StatusMessagesPattern" xml:space="preserve">
-    <value>{0} message(s)</value>
+    <value>{0} 条消息</value>
   </data>
   <data name="Vm_Chat_StatusNoQuestion" xml:space="preserve">
     <value>暂时没有问题</value>
@@ -2055,10 +2055,10 @@
     <value>不确定就直说：我将默认是单一文件夹中的文本文档。</value>
   </data>
   <data name="Vm_Chat_Q1_Placeholder" xml:space="preserve">
-    <value>e.g. C:\Users\me\Documents\Meeting notes</value>
+    <value>例如 C:\Users\me\Documents\会议纪要</value>
   </data>
   <data name="Vm_Chat_Q1_Chip1" xml:space="preserve">
-    <value>Documents/Meeting notes</value>
+    <value>文档/会议纪要</value>
   </data>
   <data name="Vm_Chat_Q1_Chip2" xml:space="preserve">
     <value>选择文件夹…</value>
@@ -2067,7 +2067,7 @@
     <value>还不知道</value>
   </data>
   <data name="Vm_Chat_Q1_Value1" xml:space="preserve">
-    <value>Documents/Meeting notes</value>
+    <value>文档/会议纪要</value>
   </data>
   <data name="Vm_Chat_Q1_Value2" xml:space="preserve">
     <value>待选择的文件夹</value>
@@ -2076,7 +2076,7 @@
     <value>稍后再定</value>
   </data>
   <data name="Vm_Chat_Q2_Fact" xml:space="preserve">
-    <value>Delivery moment</value>
+    <value>交付时间</value>
   </data>
   <data name="Vm_Chat_Q2_Body" xml:space="preserve">
     <value>您想何时收到摘要？</value>
@@ -2088,22 +2088,22 @@
     <value>例如：周五 17 点左右</value>
   </data>
   <data name="Vm_Chat_Q2_Chip1" xml:space="preserve">
-    <value>Friday 5 pm</value>
+    <value>周五 17 点</value>
   </data>
   <data name="Vm_Chat_Q2_Chip2" xml:space="preserve">
-    <value>Monday 8 am</value>
+    <value>周一 8 点</value>
   </data>
   <data name="Vm_Chat_Q2_Chip3" xml:space="preserve">
-    <value>Whenever</value>
+    <value>都可以</value>
   </data>
   <data name="Vm_Chat_Q2_Value1" xml:space="preserve">
-    <value>Friday 5 pm</value>
+    <value>周五 17 点</value>
   </data>
   <data name="Vm_Chat_Q2_Value2" xml:space="preserve">
-    <value>Monday 8 am</value>
+    <value>周一 8 点</value>
   </data>
   <data name="Vm_Chat_Q2_Value3" xml:space="preserve">
-    <value>Free schedule</value>
+    <value>时间不限</value>
   </data>
   <data name="Vm_Chat_Q3_Fact" xml:space="preserve">
     <value>需要遵守的限制</value>
@@ -2127,7 +2127,7 @@
     <value>忽略草稿</value>
   </data>
   <data name="Vm_Chat_Q3_Chip3" xml:space="preserve">
-    <value>Nothing in particular</value>
+    <value>没有特别要求</value>
   </data>
   <data name="Vm_Chat_Q3_Value1" xml:space="preserve">
     <value>文件夹只读</value>
@@ -2136,16 +2136,16 @@
     <value>已忽略草稿</value>
   </data>
   <data name="Vm_Chat_Q3_Value3" xml:space="preserve">
-    <value>No limit</value>
+    <value>无限制</value>
   </data>
   <data name="Vm_Chat_BriefAnswerPattern" xml:space="preserve">
-    <value>{0}: {1}.</value>
+    <value>{0}：{1}。</value>
   </data>
   <data name="Vm_Chat_FactBrief" xml:space="preserve">
     <value>交付的工作</value>
   </data>
   <data name="Vm_Chat_FactRhythm" xml:space="preserve">
-    <value>Rhythm</value>
+    <value>节奏</value>
   </data>
   <data name="Vm_Chat_FactSource" xml:space="preserve">
     <value>文档来源</value>
@@ -2175,22 +2175,22 @@
     <value>就过去的执行提问：为什么失败、之后有什么变化、如何避免再次发生。</value>
   </data>
   <data name="Vm_Chat_RuleFolders" xml:space="preserve">
-    <value>folder|file|access|permission|read|writ</value>
+    <value>文件夹|目录|文件|访问|权限|读取|写入</value>
   </data>
   <data name="Vm_Chat_RuleCost" xml:space="preserve">
-    <value>cost|price|paid|bill|token|expensive</value>
+    <value>费用|价格|收费|计费|token|贵|花钱</value>
   </data>
   <data name="Vm_Chat_RuleDuration" xml:space="preserve">
-    <value>time|duration|how long|slow|fast|minute</value>
+    <value>时间|时长|多久|慢|快|分钟</value>
   </data>
   <data name="Vm_Chat_RuleError" xml:space="preserve">
-    <value>error|fail|crash|break|bug</value>
+    <value>错误|失败|报错|崩溃|故障|bug</value>
   </data>
   <data name="Vm_Chat_RuleSchedule" xml:space="preserve">
-    <value>schedul|plan|hour|cron|automatic|morning</value>
+    <value>计划|排程|定时|时间|cron|自动|每天早上</value>
   </data>
   <data name="Vm_Chat_RulePrivacy" xml:space="preserve">
-    <value>confidential|privat|data|gdpr|security|leave</value>
+    <value>机密|隐私|私密|数据|个人信息|安全|外传</value>
   </data>
   <data name="Vm_Chat_AnswerFolders" xml:space="preserve">
     <value>代理只能看到设置中授权的文件夹。只读文件夹永远无法被修改，即使代理提出请求。</value>
