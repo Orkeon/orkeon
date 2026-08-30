@@ -41,6 +41,7 @@ CONFIGURATION="Debug"
 # and duplicating those numbers here would let the two drift apart silently.
 TIMEOUT=""
 TEMPERATURE=""
+THINKING_EFFORT=""
 
 DEFAULT_MAX_MODELS=5
 # M11 (long context) and M14 (end-to-end crew) are manual on purpose — see the kit README.
@@ -65,6 +66,7 @@ Options:
   -p, --provider <keys>  one key, or several separated by commas
                          openai | anthropic | ollama | azure | together | qwen
                          | deepseek | kimi | mistral | huggingface | zai
+                         | gemini | grok | minimax
       --all              every provider declared in the configuration (needs --config)
       --parallel         run the selected providers concurrently. Each provider's own models
                          still run one after another: they share its rate limit, and racing
@@ -85,6 +87,9 @@ Options:
       --timeout <s>      per-request timeout, default 180 (a cold local model must load first)
       --temperature <t>  sampling temperature, default 0 — pinned so a verdict is reproducible.
                          Raise it only for a model that rejects a pinned temperature.
+      --thinking-effort <e>  base reasoning effort override (e.g. none) — for models that
+                         refuse tools while reasoning; the catalogue's per-model
+                         requiredParams supplies it automatically when unset.
   -o, --out <dir>        report root (default: this directory)
 
 These campaigns spend real credits on real accounts. --dry-run resolves everything and
@@ -116,6 +121,7 @@ while [[ $# -gt 0 ]]; do
     --parallel)       PARALLEL=1; shift ;;
     --timeout)        TIMEOUT="$2"; shift 2 ;;
     --temperature)    TEMPERATURE="$2"; shift 2 ;;
+    --thinking-effort) THINKING_EFFORT="$2"; shift 2 ;;
     -o|--out)         OUT="$2"; shift 2 ;;
     --configuration)  CONFIGURATION="$2"; shift 2 ;;
     -h|--help)        usage; exit 0 ;;
@@ -321,8 +327,8 @@ run_one() {
   # chat/completions unless reasoning is explicitly off (2026-08-30). Declared per model in
   # the catalogue's requiredParams, printed by the report header; M7 keeps probing thinking
   # with its own explicit effort.
-  local thinking_effort
-  thinking_effort=$(catalog_model_param "$provider" "$model" "thinkingEffort")
+  local thinking_effort="$THINKING_EFFORT"
+  [[ -z "$thinking_effort" ]] && thinking_effort=$(catalog_model_param "$provider" "$model" "thinkingEffort")
   [[ -n "$thinking_effort" ]] && args+=(--thinking-effort "$thinking_effort")
 
   # M7's own effort, where a model's supported set excludes the default "low"

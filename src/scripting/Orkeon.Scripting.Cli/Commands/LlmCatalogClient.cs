@@ -16,7 +16,7 @@ namespace Orkeon.Scripting.Cli.Commands;
 /// upstream while the constant in the repo stayed put.
 /// </para>
 /// <para>
-/// Four dialects cover the twelve providers. Azure has none in deployment mode — deployments
+/// Four dialects cover the fourteen providers. Azure has none in deployment mode — deployments
 /// are names an operator chose, not a public catalogue — and says so with a typed error rather
 /// than returning an empty list that would read as "this provider serves nothing".
 /// </para>

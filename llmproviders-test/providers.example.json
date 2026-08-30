@@ -88,7 +88,7 @@
     },
 
     "minimax": {
-      "_comment": "Aucune campagne encore : fiche documentaire. Endpoint continental : baseUrl https://api.minimaxi.com/v1.",
+      "_comment": "Campagne 2026-08-30 : 7 modes verts sur MiniMax-M2 (les rouges sont au modèle). Endpoint continental : baseUrl https://api.minimaxi.com/v1.",
       "apiKeyEnv": "MINIMAX_API_KEY",
       "models": ["MiniMax-M2"]
     },

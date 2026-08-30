@@ -39,6 +39,7 @@ declare global {
         const ollama: LlmProvider;
         const azureOpenai: LlmProvider;
         const grok: LlmProvider;
+        const minimax: LlmProvider;
 
         /**
          * The configured provider, already resolved — a value, not a factory. Comes from

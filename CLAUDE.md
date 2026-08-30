@@ -187,7 +187,7 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ Anthropic LLM provider implementation (`AnthropicLlmProvider`)
 - ✅ Azure OpenAI LLM provider implementation (`AzureOpenAILlmProvider`)
 - ✅ Grok (x.AI) LLM provider implementation (`GrokLlmProvider`)
-- ✅ MiniMax LLM provider implementation (`MiniMaxLlmProvider`, intl + mainland endpoints — documentation-sourced, campaign pending)
+- ✅ MiniMax LLM provider implementation (`MiniMaxLlmProvider`, intl + mainland endpoints — campaigned 2026-08-30, inline `<think>` reasoning split out by the dialect)
 - ✅ Mistral AI LLM provider implementation (`MistralLlmProvider`, OpenAI-compatible cloud API)
 - ✅ DeepSeek LLM provider implementation (`DeepSeekLlmProvider`)
 - ✅ Kimi (Moonshot) LLM provider implementation (`KimiLlmProvider`)
@@ -434,7 +434,7 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 ### Infrastructure Layer (Outer Circle)
 - Implementations of Application interfaces (adapters)
 - External service integrations:
-  - LLM Providers (OpenAI, Ollama, Anthropic, AzureOpenAI, MiniMax, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI)
+  - LLM Providers (OpenAI, Ollama, Anthropic, AzureOpenAI, Gemini, Grok, MiniMax, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI)
   - Memory Stores (Redis, SQLite, InMemory, ChromaDB, Pinecone, LanceDB)
   - File System access
   - HTTP clients

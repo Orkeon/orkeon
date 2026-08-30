@@ -84,7 +84,9 @@ API parlent leur propre dialecte.
   `<think>` dans `content`, sans champ séparé — et le dialecte l'extrait vers
   `reasoning_content`, en le réinjectant au replay comme la doc du vendeur l'exige.
   `response_format` est accepté mais NON contraignant (schéma ignoré, `json_object` en
-  clôture markdown) : la déclaration None est une mesure. Vision par modèle (D-03) :
+  clôture markdown) : la déclaration None est une mesure (appels bruts, 2026-08-30,
+  consignée dans la note MiniMax du catalogue de campagne — le M8 archivé montre ➖ parce
+  que la déclaration None empêche l'option d'être envoyée). Vision par modèle (D-03) :
   `MiniMax-M2` répond « I'm unable to view the image », et la famille VL n'apparaît pas au
   `/models` de la plateforme — pas de compagnon déclarable en l'état.
 - **Grok (x.AI)** : chaque capacité déclarée est une mesure en réel — une campagne complète de

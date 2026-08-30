@@ -289,6 +289,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             yield break;
         }
 
+        // The streaming path drops an unsendable image exactly like the buffered one,
+        // so it must warn exactly like the buffered one. (After the missing-key branch:
+        // that fallback re-enters ChatAsync, which already warns.)
+        WarnOnUnsendableAttachments(messages);
+
         // Do NOT use 'using' — factory-managed clients must not be disposed.
         var client = CreateHttpClient(effectiveConfig);
         var endpoint = BuildEndpoint(effectiveConfig);
@@ -913,7 +918,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (support == ThinkingSupport.None)
         {
             LogUnsupportedOption("thinking", ProviderDisplayName,
-                "this API exposes no reasoning pass; remove the option or pick a provider that does");
+                "this provider offers no thinking control - no reasoning pass, or one that is always on; remove the option or pick a provider that does");
             return;
         }
 
@@ -964,7 +969,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (Capabilities.ResponseFormat == ResponseFormatSupport.None)
         {
             LogUnsupportedOption("response_format", ProviderDisplayName,
-                "this API has no response-format field; constrain the output in the prompt instead");
+                "this provider does not honour response_format - the field is absent or non-binding on this API; constrain the output in the prompt instead");
             return;
         }
 

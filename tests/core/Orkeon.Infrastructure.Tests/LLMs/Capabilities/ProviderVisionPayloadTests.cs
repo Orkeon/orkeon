@@ -35,6 +35,7 @@ public class ProviderVisionPayloadTests
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(GrokLlmProvider), nameof(MiniMaxLlmProvider),
+        nameof(GeminiLlmProvider),
     ];
 
     private static MultiModalContent ImageMessage() =>

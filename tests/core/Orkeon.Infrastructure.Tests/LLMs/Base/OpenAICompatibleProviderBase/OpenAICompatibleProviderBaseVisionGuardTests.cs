@@ -108,6 +108,33 @@ public class OpenAICompatibleProviderBaseVisionGuardTests
         Assert.Contains("only the text parts were sent", warning, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The guarantee is worthless if it depends on which transport the caller picked:
+    /// the streaming chat path drops the image exactly like the buffered one, so it must
+    /// warn exactly like the buffered one.
+    /// </summary>
+    [Fact]
+    public async Task ShouldWarn_WhenAnImageIsStreamedToAProviderThatDeclaresNoVision()
+    {
+        var logger = new TestDoubles.TestLogger<TextOnlyProvider>();
+        using var handler = TestDoubles.TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, "data: [DONE]\n\n");
+        using var httpClient = new HttpClient(handler);
+        _httpClientFactory.RegisterClient("TextOnlyProvider", httpClient);
+
+        using var provider = new TextOnlyProvider(
+            LlmConfig.Create(TestModelName, TestApiKey), _httpClientFactory, _noOpPolicy, logger);
+
+        await foreach (var _ in provider.ChatStreamingAsync(
+            [ImageMessage()], cancellationToken: TestContext.Current.CancellationToken))
+        {
+            // Drain the stream; only the warning matters here.
+        }
+
+        var warning = Assert.Single(logger.LoggedMessages, m => m.Contains("attachments", StringComparison.Ordinal));
+        Assert.Contains("only the text parts were sent", warning, StringComparison.Ordinal);
+    }
+
     /// <summary>A text-only conversation must not produce a warning about attachments.</summary>
     [Fact]
     public async Task ShouldStaySilent_WhenTheConversationCarriesOnlyText()

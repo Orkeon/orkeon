@@ -36,6 +36,10 @@ public sealed class LlmProviderDetectorTests
     [InlineData("https://api.mistral.ai/v1", "mistral")]
     [InlineData("https://api.z.ai/api/paas/v4", "zai")]
     [InlineData("https://api.moonshot.cn/v1", "kimi")]
+    // MiniMax's mainland twin — same regional split as Kimi: the runtime factory routes
+    // both hosts to "minimax", so Studio must not report "custom" for one of them.
+    [InlineData("https://api.minimax.io/v1", "minimax")]
+    [InlineData("https://api.minimaxi.com/v1", "minimax")]
     [InlineData("https://my-deployment.openai.azure.com/", "azure-openai")]
     public void Known_cloud_hosts_are_detected(string baseUrl, string expected) =>
         Assert.Equal(expected, LlmProviderDetector.Detect(baseUrl));

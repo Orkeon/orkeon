@@ -123,7 +123,7 @@ retourne un ticket immédiatement et livre le résumé du crew au callback
 - `concurrency(N)` plafonné à 1 (mutex). Le sémaphore à N détenteurs est prévu en V1.5.
 - Les locks n'ont pas de timeout. `LockTimeoutError` est prévu en V1.5.
 - Le streaming via `ctx.llm.stream` est **par token** dès que le provider est un
-  `IStreamingLlmProvider` (les 13 providers livrés le sont) ; le chunk unique en
+  `IStreamingLlmProvider` (les 14 providers livrés le sont) ; le chunk unique en
   texte plein n'est que le repli d'un provider custom non-streaming.
 - `ctx.llm.embed` renvoie un vecteur stub ; l'intégration avec de vrais embedders est
   un chantier ultérieur.

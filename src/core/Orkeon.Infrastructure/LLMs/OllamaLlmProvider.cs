@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.SharedKernel.ValueObjects.Content;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
 using Orkeon.Infrastructure.LLMs.Converters;
@@ -258,6 +259,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
     private Dictionary<string, object> BuildChatPayload(LlmMessage[] messages, LlmConfig config)
     {
+        WarnOnUrlOnlyImages(messages);
+
         var options = OllamaRequestOptions.CreateBuilder()
             .AddTemperature(config.Temperature)
             .AddNumPredict(config.MaxTokens)
@@ -317,6 +320,27 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             && raw is string text
                 ? text
                 : null;
+    }
+
+    /// <summary>
+    /// Ollama's <c>images</c> array carries bare base64 only and the server never fetches
+    /// remote URLs, so <see cref="ContentConverter.ToOllamaMessage"/> skips an image the
+    /// caller only referenced by URL. The skip is by design; the silence would not be —
+    /// this is the "reported as skipped" half of that contract.
+    /// </summary>
+    private void WarnOnUrlOnlyImages(LlmMessage[] messages)
+    {
+        var urlOnly = messages
+            .Where(m => m.MultiModalContent is { } content && content.Parts.Count > 0)
+            .SelectMany(m => m.MultiModalContent!.Parts)
+            .Count(p => p is ImageContentPart image && image.Data is not { Count: > 0 });
+
+        if (urlOnly > 0)
+        {
+            LogUnsupportedOption(
+                $"{urlOnly} image(s) referenced by URL",
+                "Ollama never fetches remote URLs; inline the image bytes (base64) instead");
+        }
     }
 
     private static Dictionary<string, object?> BuildChatMessage(LlmMessage message)

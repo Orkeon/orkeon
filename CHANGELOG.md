@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the pre-push audit: what forty-one reviewers found in the campaign season's own commits
+
+A six-dimension adversarial audit of the fifteen unpushed commits (token/cache accounting,
+multimodal, dialect hooks, fleet coherence, documentation, commit hygiene) confirmed no
+accounting defect and no payload defect — and a crop of real gaps at the edges, each fixed
+test-first:
+
+- **MiniMax, truncated mid-thought**: a reply cut by `max_tokens` inside the `<think>`
+  block never reaches the closing tag, and the split hook shipped the whole raw trace as
+  visible content — the exact failure the hook exists to prevent, on the exact path where
+  the model is most verbose. An unterminated leading block now yields empty content with
+  the partial trace in `reasoning_content`. The hook's edges are pinned while at it: a
+  mid-content `<think>` survives (quoting is content), an empty block records nothing, and
+  the stream-final scrub is now a test, not a hope.
+- **The streaming chat path dropped images silently**: `ChatStreamingAsync` built the same
+  payload as the buffered path without calling `WarnOnUnsendableAttachments`, so a
+  non-vision provider streaming a multimodal conversation lost the image without a word —
+  the guarantee depended on which transport the caller picked. Both paths warn now.
+- **Ollama's URL-only images**: the converter documents that an image referenced only by
+  URL is "reported as skipped rather than silently dropped" (the server never fetches
+  URLs), but nothing reported it. `BuildChatPayload` now emits the structured warning with
+  the remedy (inline the bytes).
+- **The None warnings claimed too much**: "this API has no response-format field" is
+  factually wrong for MiniMax — the only provider that triggers it — whose API accepts the
+  field and ignores it; same for "no reasoning pass" on a model that always reasons. Both
+  texts now state the honest diagnosis (not honoured / no control), and MiniMax's two
+  uniquely reachable warning branches are under test.
+- **Studio called the mainland MiniMax "custom"**: the detector mapped only
+  `api.minimax.io`; `api.minimaxi.com` — a constant this very range introduced, routed by
+  the runtime factory — now detects as `minimax`, the Kimi twin pattern.
+- **`llm.minimax`**: the scripting namespace gained the accessor (binding, provider-name
+  switch, typings, PublicAPI), as `llm.grok` had — a first-class provider should not be
+  reachable everywhere but from a script. `llm.grok` gets its first pin alongside.
+- **The registry's promise is now kept in print**: "the report header prints the values
+  actually used" was false for the M7 effort (`mistral-medium-2604` probes at `high`, the
+  header said nothing) — the probe report (markdown + JSON) and both kit report writers
+  now print the base and M7 efforts whenever a run departed from the default, and
+  `--thinking-effort` is a real flag of both campaign scripts (explicit beats catalogue),
+  as their options table already claimed.
+- **Documentation swept against the code at HEAD**: the fleet is 14 everywhere (eight
+  pages EN+FR still said 13, one said twelve); the response-format matrix lost its stale
+  contradictory `Gemini | None` row and gained the missing MiniMax row; the vision table
+  no longer lists DeepSeek as both having and lacking the capability and counts all 14;
+  the opt-in page's "12 of the 13 declare it (only DeepSeek does not)" was wrong on both
+  halves; every "campaign pending / non campagné / NOT yet campaign-verified" left over
+  from MiniMax's documentation-first landing now states the campaign; `--m7-effort`
+  reached the CLI reference; the Grok custom-endpoint report's paste-ready journal line
+  named a path that does not exist; and this file's own `max_completion_tokens` entry
+  claimed Groq passed a campaign two sections after recording that Groq never ran one.
+- **Pins the audit found missing**: Gemini joins the fleet capability table (its
+  declaration was the only one unpinned), and the `xai-` key-prefix inference — the last
+  routing arm — gets the test that distinguishes it from a deleted one.
+
 ### Added — MiniMax, the fourteenth provider — the first documentation-first integration
 
 Unlike Grok, which arrived preceded by its own live campaign, MiniMax arrives with no key
@@ -81,8 +134,8 @@ turned five findings into fixes. Each one is dated and pinned by an offline test
   'max_completion_tokens' instead"`). The OpenAI dialect now writes `max_completion_tokens` —
   verified live to be accepted by the older generations too (`gpt-4o-mini`) — through a
   `MaxTokensFieldName` hook on `OpenAICompatibleProviderBase` that only `OpenAIProvider`
-  overrides: DeepSeek, Groq and the rest of the compatible family still document and expect
-  `max_tokens`, and all of them passed their campaigns with it the same day.
+  overrides: DeepSeek and the rest of the compatible family still document and expect
+  `max_tokens`, and every provider campaigned that day passed with it.
 - **Gemini: `response_format` works and was being refused.** Declared `None` when the compat
   surface left it undocumented (2026-08-18), so every JSON request got a capability warning
   instead of being sent. Measured live: the surface accepts `json_object` and `json_schema`

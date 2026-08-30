@@ -95,6 +95,34 @@ public sealed class LlmProbeReportTests
     }
 
     /// <summary>
+    /// Same reproducibility contract for the M7 effort: <c>mistral-medium-2604</c> only
+    /// accepts <c>high</c> (or <c>none</c>), so its M7 verdict was obtained with a
+    /// non-default effort. The per-model registry promises "the report header prints the
+    /// values actually used" — without this field that promise is false for exactly the
+    /// models the registry exists for.
+    /// </summary>
+    [Fact]
+    public void ShouldRecordTheM7Effort_WhenItIsNotTheDefault()
+    {
+        var context = Context() with { M7ThinkingEffort = "high" };
+        var results = Results();
+
+        Assert.Contains("**Effort de raisonnement (M7)** : high",
+            LlmProbeReport.ToMarkdown(context, results), StringComparison.Ordinal);
+
+        using var document = JsonDocument.Parse(LlmProbeReport.ToJson(context, results));
+        Assert.Equal("high", document.RootElement.GetProperty("m7_thinking_effort").GetString());
+    }
+
+    /// <summary>A run on the default effort has nothing to caveat — the line would be noise.</summary>
+    [Fact]
+    public void ShouldStayQuietAboutTheM7Effort_WhenTheRunUsedTheDefault()
+    {
+        Assert.DoesNotContain("Effort de raisonnement (M7)",
+            LlmProbeReport.ToMarkdown(Context(), Results()), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// LLM-08 states the constraint as non-negotiable: no API key in the repo, the matrix, or
     /// an archived trace. The report is the archived trace, so it is pinned here.
     /// </summary>

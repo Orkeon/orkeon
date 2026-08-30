@@ -12,7 +12,7 @@
   *.local.json or *.secrets.json (both gitignored).
 .PARAMETER Provider
   Provider key, or several separated by commas: openai, anthropic, ollama, azure,
-  together, qwen, deepseek, kimi, mistral, huggingface, zai.
+  together, qwen, deepseek, kimi, mistral, huggingface, zai, gemini, grok, minimax.
 .PARAMETER All
   Run every provider declared in the configuration. Requires -Config.
 .PARAMETER Parallel
@@ -49,6 +49,9 @@
 .PARAMETER Temperature
   Sampling temperature. Default 0, pinned so a verdict is reproducible. Raise it only for a
   model that rejects a pinned temperature.
+.PARAMETER ThinkingEffort
+  Base reasoning effort override (e.g. none) — for models that refuse tools while
+  reasoning; the catalogue's per-model requiredParams supplies it automatically when unset.
 .PARAMETER Out
   Root directory for the reports. Defaults to the kit directory.
 .EXAMPLE
@@ -78,6 +81,7 @@ param(
     # -Temperature, where 0 is itself the value we want to pin.
     [Nullable[int]]$Timeout = $null,
     [Nullable[double]]$Temperature = $null,
+    [string]$ThinkingEffort = '',
     [string]$Out = '',
     [string]$Configuration = 'Debug'
 )
@@ -167,7 +171,7 @@ function Get-Setting {
 # The built-in default used to be ORKEON_LLM_API_KEY for every provider, so any run without
 # a -Config looked for a variable nobody exports. The probe refused and said so — on a
 # stderr the kit discarded — and the campaign was archived as an empty report
-# (deepseek-v4-pro, 2026-08-02). A default that is wrong for all twelve providers is not a
+# (deepseek-v4-pro, 2026-08-02). A default that is wrong for every provider is not a
 # default. -ApiKeyEnv and the configuration still win; the point is that the common case
 # should need neither.
 $script:Catalog = $null
@@ -358,7 +362,7 @@ function Invoke-Campaign {
     # Same shape for the base thinking effort: gpt-5.6-sol refuses function tools on
     # chat/completions unless reasoning is explicitly off (2026-08-30). Catalogue-declared,
     # printed by the report header; M7 keeps probing thinking with its own explicit effort.
-    $thinkingEffort = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'thinkingEffort'
+    $thinkingEffort = if ($ThinkingEffort) { $ThinkingEffort } else { Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'thinkingEffort' }
     if ($thinkingEffort) { $arguments += @('--thinking-effort', $thinkingEffort) }
 
     # M7's own effort, where a model's supported set excludes the default "low"

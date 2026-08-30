@@ -77,6 +77,14 @@ $temperature = if ($null -ne $c.PSObject.Properties['temperature']) {
     $c.temperature.ToString([cultureinfo]::InvariantCulture)
 } else { 'non épinglée' }
 & $add "| **Température** | $temperature |"
+# Efforts de raisonnement epingles par le registre par-modele (requiredParams) : presents
+# uniquement quand la campagne a du s'ecarter du defaut.
+if ($c.PSObject.Properties['thinking_effort'] -and $c.thinking_effort) {
+    & $add "| **Effort de raisonnement (base)** | $($c.thinking_effort) |"
+}
+if ($c.PSObject.Properties['m7_thinking_effort'] -and $c.m7_thinking_effort) {
+    & $add "| **Effort de raisonnement (M7)** | $($c.m7_thinking_effort) |"
+}
 & $add '| **Qualité de preuve** | sortie archivée |'
 & $add ''
 & $add '## Résultats'

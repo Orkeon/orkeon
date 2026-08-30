@@ -129,7 +129,7 @@ traduit une fois par `OpenAICompatibleProviderBase` — voir le
 | **Ollama** | `JsonSchema` | Dialecte propre (`format`). |
 | **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. |
 | `deepseek-reasoner` (R1) | ⚠️ | Peut refuser `response_format` avec un HTTP 400. Tester avant production. L'erreur remonte comme une `APIError` typée via le pipeline existant — pas de crash. |
-| **Gemini** | `None` | Un format de réponse déclaré produit l'avertissement structuré de capacité. |
+| **MiniMax** | `None` | Accepté mais non contraignant — mesuré le 2026-08-30 (schéma ignoré, `json_object` clôturé en markdown) ; un format déclaré produit l'avertissement structuré de capacité. |
 
 ## Comment ça circule dans l'orchestrateur
 

@@ -68,6 +68,20 @@ public class LlmProviderFactoryRoutingTests
         Assert.Equal(expectedProvider, RoutedProviderName(model, baseUrl: null));
     }
 
+    /// <summary>
+    /// The x.AI key prefix is the LAST inference arm: no base URL, no recognisable model —
+    /// the key alone routes to Grok. Pinned because an untested inference arm is
+    /// indistinguishable from a deleted one.
+    /// </summary>
+    [Fact]
+    public void ShouldRouteToGrok_WhenOnlyTheApiKeyPrefixSaysXai()
+    {
+#pragma warning disable CS0618 // ApiKey kept for inference-path coverage
+        var config = LlmConfig.Create("custom-model") with { ApiKey = "xai-test-not-a-real-key" };
+#pragma warning restore CS0618
+        Assert.Equal("grok", CreateFactory().Create(config).Name);
+    }
+
     [Fact]
     public void ShouldPreferBaseUrlOverModelName_ForAHyphenatedLocalMistralTag()
     {

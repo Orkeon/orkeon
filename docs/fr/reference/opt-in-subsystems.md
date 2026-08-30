@@ -262,8 +262,9 @@ partiel (signalé au cas par cas ci-dessous).
   (`AddOrkeonFileSystem(configuration)` dans les hôtes réels).
 - **Limites connues** : la composition des payloads vision est pilotée par capacité
   (`LlmProviderCapabilities.Vision`, traduite une fois par `OpenAICompatibleProviderBase`)
-  — **12 des 13 providers** la déclarent (seul DeepSeek ne le fait pas) ; un provider
-  sans la capacité dégrade les messages multi-modaux vers leur repli texte
+  — **les 14 providers** la déclarent (DeepSeek depuis la campagne du 2026-08-30 qui a
+  mesuré `deepseek-v4-flash-vision-exp`) ; un provider sans la capacité dégrade les
+  messages multi-modaux vers leur repli texte
   (`LlmMessage.Content`). Formats image supportés : png, jpeg, gif, webp.
   Les parts audio/fichier ne sont envoyées par aucun provider et lèvent une
   `NotSupportedException` explicite si elles atteignent un payload vision.

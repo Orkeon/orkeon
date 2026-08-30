@@ -76,7 +76,9 @@ their own dialect.
   reasoning arrives INLINE — every reply opens with a `<think>` block inside `content`, no
   separate field — and the dialect splits it out to `reasoning_content`, re-inlining it on
   replay as the vendor documents. `response_format` is accepted but NON-BINDING (a schema is
-  ignored, `json_object` arrives fenced in markdown): the None declaration is a measurement.
+  ignored, `json_object` arrives fenced in markdown): the None declaration is a measurement
+  (raw calls, 2026-08-30, recorded in the campaign catalog's MiniMax note — the archived M8
+  shows ➖ because the None declaration keeps the option from ever being sent).
   Vision is per model (D-03): `MiniMax-M2` answers "I'm unable to view the image", and the
   VL family does not appear on the platform's `/models` — no companion declarable yet.
 - **Grok (x.AI)**: every declared capability is a live measurement — a full 12-mode campaign

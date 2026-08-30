@@ -124,7 +124,7 @@ returns a ticket immediately and delivers the crew summary to a
 - `concurrency(N)` capped at 1 (mutex). N-holders semaphore is V1.5.
 - Locks have no timeout. `LockTimeoutError` is V1.5.
 - Streaming through `ctx.llm.stream` is **per-token** when the provider is an
-  `IStreamingLlmProvider` (all 13 shipped providers are); the single full-text
+  `IStreamingLlmProvider` (all 14 shipped providers are); the single full-text
   chunk is only the fallback for a non-streaming custom provider.
 - `ctx.llm.embed` returns a stub vector; integration with real embedders is a
   follow-up.

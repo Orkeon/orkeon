@@ -14,7 +14,11 @@ namespace Orkeon.Domain.SharedKernel.ValueObjects;
 /// </remarks>
 public enum ResponseFormatSupport
 {
-    /// <summary>The API has no response-format field; the constraint can only be prompted.</summary>
+    /// <summary>
+    /// The provider does not honour a response-format option: the API has no such field,
+    /// or accepts it without binding (MiniMax, measured 2026-08-30 — schema ignored,
+    /// json_object fenced in markdown). The constraint can only be prompted.
+    /// </summary>
     None = 0,
 
     /// <summary>The API guarantees syntactically valid JSON, but accepts no schema.</summary>

@@ -97,6 +97,10 @@ public static class LlmProviderDetector
         // The mainland-China Moonshot twin, documented on LlmEndpoints.Kimi.
         hosts[LlmProviderEndpoints.KimiChinaHost] = "kimi";
 
+        // MiniMax's mainland twin — same regional split: the runtime factory routes both
+        // hosts to "minimax", so Studio must not report "custom" for one of them.
+        hosts[LlmProviderEndpoints.MiniMaxChinaHost] = "minimax";
+
         return hosts;
 
         void Add(string endpoint, string provider)

@@ -254,6 +254,53 @@ public class OllamaChatEndpointTests
         Assert.DoesNotContain("data:", image!, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Ollama's server never fetches remote URLs, so an image the caller only referenced
+    /// by URL cannot travel in the bare-base64 <c>images</c> array. The converter's
+    /// contract says such an image is "reported as skipped rather than silently dropped" —
+    /// this pins the report.
+    /// </summary>
+    [Fact]
+    public async Task ShouldWarn_WhenAnImageIsOnlyReferencedByUrl()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        using var provider = CreateProvider(BaseConfig(), handler);
+
+        var content = MultiModalContent.Empty()
+            .AddText("Describe this")
+            .AddImage(ImageContentPart.FromUri(new Uri("https://example.test/cat.png"), "image/png"));
+
+        await provider.ChatAsync(
+            [LlmMessage.User(content)], cancellationToken: TestContext.Current.CancellationToken);
+
+        var warning = Assert.Single(
+            _logger.LoggedMessages, m => m.Contains("URL", StringComparison.Ordinal));
+        Assert.Contains("inline the image bytes", warning, StringComparison.Ordinal);
+
+        // The skip itself is unchanged: no images array entry for the URL-only part.
+        var message = (await ReadRequestAsync(handler.CapturedRequests.Single())).GetProperty("messages")[0];
+        Assert.False(message.TryGetProperty("images", out var images) && images.GetArrayLength() > 0);
+    }
+
+    /// <summary>An image with raw bytes is sendable — warning there would be noise.</summary>
+    [Fact]
+    public async Task ShouldStaySilent_WhenTheImageCarriesItsBytes()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        using var provider = CreateProvider(BaseConfig(), handler);
+
+        var content = MultiModalContent.Empty()
+            .AddText("Describe this")
+            .AddImage(ImageContentPart.FromBytes([0x89, 0x50, 0x4E, 0x47], "image/png"));
+
+        await provider.ChatAsync(
+            [LlmMessage.User(content)], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(_logger.LoggedMessages, m => m.Contains("URL", StringComparison.Ordinal));
+    }
+
     // ── System message on the structured path ───────────────────────────────
 
     /// <summary>

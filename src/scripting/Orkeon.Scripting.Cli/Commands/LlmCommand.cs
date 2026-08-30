@@ -290,7 +290,10 @@ internal static class LlmCommand
             Commit: options.Commit ?? "",
             TimestampUtc: DateTimeOffset.UtcNow,
             Temperature: config.Temperature,
-            ThinkingEffort: config.Thinking?.Effort);
+            ThinkingEffort: config.Thinking?.Effort,
+            M7ThinkingEffort: string.IsNullOrWhiteSpace(options.M7Effort) || options.M7Effort == "low"
+                ? null
+                : options.M7Effort);
 
     /// <summary>
     /// The host, never the full URL: a base URL can carry a resource name, a workspace or a

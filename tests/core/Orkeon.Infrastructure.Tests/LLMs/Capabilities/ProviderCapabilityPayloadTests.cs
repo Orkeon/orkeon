@@ -35,15 +35,16 @@ public class ProviderCapabilityPayloadTests
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(AnthropicLlmProvider), nameof(OllamaLlmProvider),
-        nameof(GrokLlmProvider), nameof(MiniMaxLlmProvider),
+        nameof(GrokLlmProvider), nameof(MiniMaxLlmProvider), nameof(GeminiLlmProvider),
     ];
 
     // ── The declaration itself ──────────────────────────────────────────────
 
     /// <summary>
     /// The declaration is what the whole mechanism reads, so it is reviewed in diff rather
-    /// than left implicit. Only DeepSeek replays reasoning content; only Anthropic needs
-    /// explicit cache breakpoints — the two claims the audit found most often over-generalised.
+    /// than left implicit. Only DeepSeek and MiniMax replay reasoning content (a separate
+    /// field for one, a re-inlined think block for the other); only Anthropic needs
+    /// explicit cache breakpoints — the claims the audit found most often over-generalised.
     /// </summary>
     [Theory]
     [MemberData(nameof(AllProviders))]

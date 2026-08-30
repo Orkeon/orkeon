@@ -20,7 +20,7 @@ container, see [Three ways to run Orkeon](./three-ways-to-run-orkeon.md).
 |---|---|
 | **.NET SDK ≥ 10.0.300** | The repository pins the SDK in `global.json` with `rollForward: latestFeature`. An older SDK fails the build (see [Troubleshooting](#troubleshooting)). Verify with `dotnet --version`. |
 | **Git** | To clone the repository. |
-| **An LLM endpoint + key** | Any of the 13 supported providers, or a local endpoint such as Docker Model Runner / Ollama. Supplied through an `appsettings` profile (below). |
+| **An LLM endpoint + key** | Any of the 14 supported providers, or a local endpoint such as Docker Model Runner / Ollama. Supplied through an `appsettings` profile (below). |
 
 ## 1. Clone and build
 

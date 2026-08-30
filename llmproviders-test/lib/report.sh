@@ -35,6 +35,11 @@ stamp=$(jq -r '.timestampUtc' "$CAMPAIGN")
 # Older campaigns predate the field; "non épinglée" is the honest rendering of a run whose
 # sampling was left at the framework default, and reads as the caveat it is.
 temperature=$(jq -r 'if has("temperature") then (.temperature | tostring) else "non épinglée" end' "$CAMPAIGN")
+# Efforts de raisonnement epingles par le registre par-modele (requiredParams) : presents
+# uniquement quand la campagne a du s'ecarter du defaut — l'en-tete porte les valeurs
+# reellement utilisees, sinon un verdict M7 lit comme obtenu au defaut.
+thinking_effort=$(jq -r '.thinking_effort // ""' "$CAMPAIGN")
+m7_effort=$(jq -r '.m7_thinking_effort // ""' "$CAMPAIGN")
 passed=$(jq -r '.passed' "$CAMPAIGN")
 failed=$(jq -r '.failed' "$CAMPAIGN")
 skipped=$(jq -r '.notApplicable' "$CAMPAIGN")
@@ -68,6 +73,8 @@ mkdir -p "$(dirname "$OUTPUT")"
   echo "| **Commit** | \`${commit}\` |"
   echo "| **Modes exercés** | ${modes_run} |"
   echo "| **Température** | ${temperature} |"
+  [[ -n "$thinking_effort" ]] && echo "| **Effort de raisonnement (base)** | ${thinking_effort} |"
+  [[ -n "$m7_effort" ]] && echo "| **Effort de raisonnement (M7)** | ${m7_effort} |"
   echo "| **Qualité de preuve** | sortie archivée |"
   echo
   echo "## Résultats"

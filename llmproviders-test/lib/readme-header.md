@@ -2,7 +2,7 @@
 
 # Campagnes de validation des providers LLM
 
-Ce dossier porte les **preuves d'exécution réelle** des 13 providers LLM d'Orkéon : les
+Ce dossier porte les **preuves d'exécution réelle** des 14 providers LLM d'Orkéon : les
 scripts qui lancent les campagnes, et le rapport archivé de chacune.
 
 > **Pourquoi ce dossier existe.** Le dépôt compte ≈ 400 tests unitaires sur les providers
@@ -169,7 +169,7 @@ campagne > le `defaultModel` du catalogue.
 | `zai` | `glm-5.2` | `glm-4.6v-flash` |
 | `gemini` | `gemini-3.7-flash` | *(le défaut voit)* |
 | `grok` | `grok-4.6` | *(le défaut voit)* |
-| `minimax` | `MiniMax-M2` | *(non campagné — fiche documentaire)* |
+| `minimax` | `MiniMax-M2` | *(pas de compagnon : la famille VL est documentée mais absente du `/models` de la plateforme)* |
 
 Ces identifiants viennent des sections §6.x de la matrice, **pas des défauts compilés dans
 les providers** : six d'entre eux y sont signalés retirés ou faux (G-01 à G-04, G-07, G-08).

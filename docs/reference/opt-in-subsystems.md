@@ -259,8 +259,9 @@ partial (flagged case by case below).
   (`AddOrkeonFileSystem(configuration)` in real hosts).
 - **Known limits**: vision payload composition is capability-driven
   (`LlmProviderCapabilities.Vision`, translated once by `OpenAICompatibleProviderBase`)
-  — **12 of the 13 providers** declare it (only DeepSeek does not); a provider
-  without the capability degrades multi-modal messages to their text fallback
+  — **all 14 providers** declare it (DeepSeek since the 2026-08-30 campaign measured
+  `deepseek-v4-flash-vision-exp`); a provider without the capability degrades
+  multi-modal messages to their text fallback
   (`LlmMessage.Content`). Supported image formats: png, jpeg, gif, webp.
   Audio/file parts are not sent by any provider and throw an explicit
   `NotSupportedException` if they reach a vision payload.

@@ -21,7 +21,7 @@ binaire précompilé ou utiliser un conteneur, voir
 |---|---|
 | **SDK .NET ≥ 10.0.300** | Le dépôt épingle le SDK dans `global.json` avec `rollForward: latestFeature`. Un SDK plus ancien fait échouer le build (voir [Dépannage](#dépannage)). Vérifiez avec `dotnet --version`. |
 | **Git** | Pour cloner le dépôt. |
-| **Un endpoint LLM + une clé** | N'importe lequel des 13 fournisseurs supportés, ou un endpoint local type Docker Model Runner / Ollama. Fourni via un profil `appsettings` (ci-dessous). |
+| **Un endpoint LLM + une clé** | N'importe lequel des 14 fournisseurs supportés, ou un endpoint local type Docker Model Runner / Ollama. Fourni via un profil `appsettings` (ci-dessous). |
 
 ## 1. Cloner et builder
 

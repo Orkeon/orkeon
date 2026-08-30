@@ -48,6 +48,24 @@ public sealed class LlmDefaultsTests
     }
 
     [Fact]
+    public void llm_grok_returns_provider_named_grok_with_its_default_model()
+    {
+        var built = Eval<JsLlmConfig>(null, null, """llm.grok({});""");
+
+        Assert.Equal("grok", built.provider);
+        Assert.Equal("grok-4.6", built.model);
+    }
+
+    [Fact]
+    public void llm_minimax_returns_provider_named_minimax_with_its_default_model()
+    {
+        var built = Eval<JsLlmConfig>(null, null, """llm.minimax({});""");
+
+        Assert.Equal("minimax", built.provider);
+        Assert.Equal("MiniMax-M2", built.model);
+    }
+
+    [Fact]
     public void llm_default_resolves_OpenAI_when_configured()
     {
         var cfg = Cfg(("Orkeon:DefaultLlmProvider", "openai"));

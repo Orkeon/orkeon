@@ -26,6 +26,9 @@ public partial class MiniMaxLlmProvider : OpenAICompatibleProviderBase
     [GeneratedRegex(@"^\s*<think>(?<trace>.*?)</think>\s*", RegexOptions.Singleline)]
     private static partial Regex LeadingThinkBlock();
 
+    [GeneratedRegex(@"^\s*<think>")]
+    private static partial Regex UnterminatedLeadingThink();
+
     /// <inheritdoc />
     public override string Name => "minimax";
 
@@ -69,8 +72,16 @@ public partial class MiniMaxLlmProvider : OpenAICompatibleProviderBase
             return (content, null);
 
         var match = LeadingThinkBlock().Match(content);
-        return match.Success
-            ? (content[match.Length..], match.Groups["trace"].Value.Trim())
+        if (match.Success)
+            return (content[match.Length..], match.Groups["trace"].Value.Trim());
+
+        // finish_reason=length can cut the reply inside the think block, so the closing
+        // tag never arrives. The first regex being lazy, a leading <think> it did not
+        // match means no </think> exists at all: everything after the opening tag is
+        // reasoning, and the visible answer is simply missing.
+        var open = UnterminatedLeadingThink().Match(content);
+        return open.Success
+            ? (string.Empty, content[open.Length..].Trim())
             : (content, null);
     }
 

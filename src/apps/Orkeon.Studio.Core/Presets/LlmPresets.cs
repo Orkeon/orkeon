@@ -210,7 +210,7 @@ public static class LlmPresets
     /// endpoint makes it a "Compatible OpenAI" entry. Wider
     /// than <see cref="Catalog"/> on purpose — <see cref="Catalog"/> stays the byte-for-byte
     /// mirror of the five <c>orkeon init</c> presets, while a model profile may point at any
-    /// of the runtime's 13 providers (the runtime detects the dialect from the URL, so the
+    /// of the runtime's 14 providers (the runtime detects the dialect from the URL, so the
     /// profile only needs the endpoint and the model). Clouds carry the vendor's conventional
     /// key variable in <see cref="LlmPresetInfo.DefaultApiKeyEnv"/> — the key itself never
     /// enters a file: Studio stores it in that user environment variable and lays it over

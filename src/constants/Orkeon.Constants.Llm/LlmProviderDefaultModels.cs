@@ -68,10 +68,10 @@ public static class LlmProviderDefaultModels
     public const string Grok = "grok-4.6";
 
     /// <summary>
-    /// MiniMax — the current flagship per the vendor's platform documentation (2026-08-30).
-    /// UNVERIFIED BY CAMPAIGN: no key has been available; the Mistral lesson
-    /// (a compiled default the API never served, found by the first real call) applies in
-    /// full until a campaign archives a live M1 on this identifier.
+    /// MiniMax — the vendor's flagship, verified live 2026-08-30 with a full campaign
+    /// (7 green modes on MiniMax-M2; the two reds are model-level: system prompt ignored,
+    /// text-only vision). The catalog lists newer generations (M2.5/M2.7/M3) — bumping the
+    /// default is the maintainer's call, backed by a fresh campaign.
     /// </summary>
     public const string MiniMax = "MiniMax-M2";
 
