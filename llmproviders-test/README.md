@@ -66,12 +66,14 @@ Sous Windows, `run-campaign.ps1` expose exactement les mêmes options.
 | `--config <fichier>` | Configuration de campagne (voir `providers.schema.json`) |
 | `--base-url <url>` | Surcharge d'endpoint (Azure, miroirs régionaux) |
 | `--api-version <v>` | `api-version` Azure en mode deployment |
+| `--workspace-id <w>` | Workspace des requêtes, pour les clés à portée de workspace — les clés identity-linked d'Anthropic l'exigent (aussi déclarable par provider : `workspaceId` dans le JSON) |
 | `--api-key-env <VAR>` | Variable portant la clé |
 | `--max-models <n>` | Plafond du wildcard (défaut 5 ; `providers.example.json` l'abaisse à 3) |
 | `--dry-run` | Résout et affiche le plan, n'appelle rien |
 | `--no-recap` | Ne reconstruit pas l'index — pour les lancements parallèles |
 | `--timeout <s>` | Délai par requête, défaut **180 s** (un modèle local froid doit d'abord se charger) |
 | `--temperature <t>` | Échantillonnage, défaut **0** — épinglé pour qu'un verdict soit reproductible |
+| `--thinking-effort <e>` | Effort de raisonnement de base (ex. `none`) — pour les modèles qui refusent les tools en raisonnant ; aussi déclarable par provider (`thinkingEffort` au catalogue) |
 | `--out <dir>` | Racine des rapports (défaut : ce dossier) |
 
 ## Lancer plusieurs providers en parallèle
@@ -160,7 +162,7 @@ campagne > le `defaultModel` du catalogue.
 | `groq` | `llama-3.3-70b-versatile` | |
 | `ollama` | `llama3.2` | `llava` |
 | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | |
-| `deepseek` | `deepseek-v4-flash` | |
+| `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |
 | `kimi` | `kimi-k2.6` | |
 | `qwen` | `qwen3.7-plus` | |
 | `mistral` | `mistral-large-latest` | |
@@ -300,6 +302,20 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T08:51:33Z | `openai` | `gpt-5.6-sol` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](openai/2026-08-30-085110-gpt-5.6-sol.md) |
+| 2026-08-30T08:44:28Z | `openai` | `gpt-5.6-sol` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](openai/2026-08-30-084408-gpt-5.6-sol.md) |
+| 2026-08-30T08:41:30Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-084124-glm-4.6v-flash.md) |
+| 2026-08-30T08:41:23Z | `zai` | `glm-5.2` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-084018-glm-5.2.md) |
+| 2026-08-30T08:41:03Z | `gemini` | `gemini-3.7-flash` | ✅ 11/0/1 | 1.0.0-rc.2 | [rapport](gemini/2026-08-30-084018-gemini-3.7-flash.md) |
+| 2026-08-30T08:40:44Z | `deepseek` | `deepseek-v4-flash-vision-exp` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](deepseek/2026-08-30-084042-deepseek-v4-flash-vision-exp.md) |
+| 2026-08-30T08:40:41Z | `deepseek` | `deepseek-v4-flash` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](deepseek/2026-08-30-084018-deepseek-v4-flash.md) |
+| 2026-08-30T08:40:28Z | `openai` | `gpt-5.6-sol` | ❌ 2/10/0 | 1.0.0-rc.2 | [rapport](openai/2026-08-30-084018-gpt-5.6-sol.md) |
+| 2026-08-30T07:58:13Z | `kimi` | `kimi-k2.6` | ✅ 11/0/1 | 1.0.0-rc.2 | [rapport](kimi/2026-08-30-075629-kimi-k2.6.md) |
+| 2026-08-30T07:57:39Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-075736-glm-4.6v-flash.md) |
+| 2026-08-30T07:57:35Z | `zai` | `glm-5.2` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-075629-glm-5.2.md) |
+| 2026-08-30T07:57:26Z | `gemini` | `gemini-3.7-flash` | ❌ 7/3/2 | 1.0.0-rc.2 | [rapport](gemini/2026-08-30-075629-gemini-3.7-flash.md) |
+| 2026-08-30T07:56:51Z | `deepseek` | `deepseek-v4-flash` | ❌ 10/1/1 | 1.0.0-rc.2 | [rapport](deepseek/2026-08-30-075629-deepseek-v4-flash.md) |
+| 2026-08-30T07:56:39Z | `openai` | `gpt-5.6-sol` | ❌ 2/10/0 | 1.0.0-rc.2 | [rapport](openai/2026-08-30-075629-gpt-5.6-sol.md) |
 | 2026-08-30T07:24:13Z | `ollama` | `llava` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](ollama/2026-08-30-072359-llava.md) |
 | 2026-08-30T07:23:59Z | `ollama` | `llama3.2` | ❌ 8/3/1 | 1.0.0-rc.2 | [rapport](ollama/2026-08-30-072345-llama3.2.md) |
 | 2026-08-03T11:42:17Z | `kimi` | `kimi-k2.6` | ❌ 11/1/0 | 0.9.2-beta | [rapport](kimi/2026-08-03-114109-kimi-k2.6.md) |
@@ -315,12 +331,14 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Provider | Modèle | Date | Statut | Modes exercés |
 |---|---|---|---|---|
-| `deepseek` | `deepseek-v4-flash` | 2026-08-02 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `kimi` | `kimi-k2.6` | 2026-08-03 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `deepseek` | `deepseek-v4-flash-vision-exp` | 2026-08-30 | ✅ | M9 |
+| `gemini` | `gemini-3.7-flash` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `kimi` | `kimi-k2.6` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `ollama` | `llava` | 2026-08-30 | ✅ | M9 |
-| `zai` | `glm-4.6v-flash` | 2026-08-02 | ✅ | M9 |
+| `openai` | `gpt-5.6-sol` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `zai` | `glm-4.6v-flash` | 2026-08-30 | ✅ | M9 |
 
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_10 campagne(s) archivée(s)._
+_24 campagne(s) archivée(s)._
