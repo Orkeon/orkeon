@@ -117,6 +117,21 @@
       </Trigger>
     </Style.Triggers>
   </Style>
+  <!-- Solid danger: the confirm half of an in-place «Supprimer cette équipe ?» banner.
+       Reached only from an armed confirmation, never from a resting action row. -->
+  <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+    <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource DangerFgBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Style.Triggers>
+      <Trigger Property="IsPressed" Value="True">
+        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
   <Style x:Key="BtnGhost" TargetType="Button" BasedOn="{StaticResource BtnBase}">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
@@ -167,6 +182,18 @@
     </Style.Triggers>
   </Style>
 
+  <!-- Ghost that announces itself on hover: neutral at rest so a destructive action
+       never shouts from a resting row, danger the moment the pointer commits to it. -->
+  <Style x:Key="BtnGhostDanger" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
   <!-- ══ Sidebar nav item (RadioButton, GroupName="Nav") ══ -->
   <Style x:Key="NavItem" TargetType="RadioButton">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
@@ -192,6 +219,30 @@
               </MultiTrigger.Conditions>
               <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
             </MultiTrigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The draft note under «Créer une équipe» (T-09). Indented past the nav icon so it
+       reads as belonging to that entry rather than as a row of its own. -->
+  <Style x:Key="DraftNote" TargetType="Button">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="Margin" Value="0,1,0,3"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="bd" Background="{DynamicResource AccentWeakBrush}" CornerRadius="8"
+                  Padding="35,7,11,8">
+            <ContentPresenter/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource SkyBrush}"/>
+            </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>

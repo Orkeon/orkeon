@@ -36,6 +36,7 @@ public partial class MainWindow : Window
         shell.Launch.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Test.Launcher.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
+        shell.Teams.ImportRequested += (_, _) => NavImport.IsChecked = true;
         shell.TestRequested += (_, _) => NavTest.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
@@ -186,4 +187,7 @@ public partial class MainWindow : Window
         animation.Completed += (_, _) => Splash.Visibility = Visibility.Collapsed;
         Splash.BeginAnimation(OpacityProperty, animation);
     }
+
+    /// <summary>The draft note under the nav: one click puts the unfinished creation back in front.</summary>
+    private void OnResumeDraft(object sender, RoutedEventArgs e) => NavCreate.IsChecked = true;
 }

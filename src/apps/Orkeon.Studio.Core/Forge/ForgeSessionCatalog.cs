@@ -85,6 +85,30 @@ public static class ForgeSessionCatalog
     }
 
     /// <summary>
+    /// Deletes a session directory, recursively. Returns false when the disk refused.
+    /// <para>
+    /// An interrupted creation is a draft, and a draft the user abandons has to be
+    /// removable from the screen that lists it — otherwise « Sessions en cours » only
+    /// ever grows. Deliberately tolerant, like <c>TeamCatalog.Delete</c>: losing the
+    /// gesture is a nuisance, a crash on a locked folder is not.
+    /// </para>
+    /// </summary>
+    public static bool Delete(string sessionDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDirectory);
+
+        try
+        {
+            System.IO.Directory.Delete(sessionDirectory, recursive: true);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// The session that adopted <paramref name="teamDirectory"/>, or null — the reverse
     /// lookup «Modifier» rests on (W-09): the sidecar records no session, but every
     /// session records its <c>promotedTo</c>. Path comparison is full-path,

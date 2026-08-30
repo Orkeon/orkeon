@@ -63,6 +63,7 @@ public sealed class TeamCardViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private DateTimeOffset? _lastRun;
     private RunOutcome? _lastOutcome;
+    private bool _isConfirmingDelete;
 
     internal TeamCardViewModel(
         TeamSummary summary, TeamsViewModel owner, IStudioStrings strings, IReadOnlyList<string> declaredMounts)
@@ -88,7 +89,12 @@ public sealed class TeamCardViewModel : ObservableObject
         };
         LaunchCommand = new RelayCommand(() => owner.RequestLaunch(summary.Path));
         DuplicateCommand = new RelayCommand(() => owner.Duplicate(summary.Path));
-        DeleteCommand = new RelayCommand(() => owner.Delete(summary.Path));
+        // Delete is a two-step gesture, and BOTH entry points (the labelled Novice button
+        // and the Expert trash icon) arm the same confirmation: no path removes a team on
+        // a single click. The banner replaces the action row in place — no MessageBox.
+        AskDeleteCommand = new RelayCommand(() => owner.ArmDelete(this));
+        ConfirmDeleteCommand = new RelayCommand(() => owner.Delete(summary.Path));
+        CancelDeleteCommand = new RelayCommand(() => IsConfirmingDelete = false);
         OpenCommand = new RelayCommand(() => owner.OpenInShell(summary.Path), () => owner.CanOpenInShell);
         ChangeMountsCommand = new RelayCommand(() => owner.RequestMounts(this));
         ExportCommand = new RelayCommand(() => owner.Export(summary.Path));
@@ -154,8 +160,28 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Copies the folder next to itself.</summary>
     public RelayCommand DuplicateCommand { get; }
 
-    /// <summary>Deletes the folder, recursively.</summary>
-    public RelayCommand DeleteCommand { get; }
+    /// <summary>Arms the in-place confirmation; deletes nothing on its own.</summary>
+    public RelayCommand AskDeleteCommand { get; }
+
+    /// <summary>Deletes the folder, recursively — only reachable from the armed banner.</summary>
+    public RelayCommand ConfirmDeleteCommand { get; }
+
+    /// <summary>Disarms the confirmation and puts the action row back.</summary>
+    public RelayCommand CancelDeleteCommand { get; }
+
+    /// <summary>Whether this card is showing its « Supprimer cette équipe ? » banner.</summary>
+    public bool IsConfirmingDelete
+    {
+        get => _isConfirmingDelete;
+        internal set
+        {
+            if (SetProperty(ref _isConfirmingDelete, value))
+                OnPropertyChanged(nameof(IsIdle));
+        }
+    }
+
+    /// <summary>The action row's own visibility — the banner takes its place, never sits over it.</summary>
+    public bool IsIdle => !_isConfirmingDelete;
 
     /// <summary>The team's mount strings, straight from the sidecar.</summary>
     public IReadOnlyList<string> Mounts => Summary.Mounts;
@@ -232,12 +258,17 @@ public sealed class TeamCardViewModel : ObservableObject
 }
 
 /// <summary>One resumable wizard session, listed under the teams.</summary>
-public sealed class InProgressSessionViewModel
+public sealed class InProgressSessionViewModel : ObservableObject
 {
+    private bool _isConfirmingDelete;
+
     internal InProgressSessionViewModel(ForgeSolutionSummary summary, TeamsViewModel owner)
     {
         Summary = summary;
         ResumeCommand = new RelayCommand(() => owner.RequestResume(summary));
+        AskDeleteCommand = new RelayCommand(() => owner.ArmDelete(this));
+        ConfirmDeleteCommand = new RelayCommand(() => owner.DeleteSession(summary));
+        CancelDeleteCommand = new RelayCommand(() => IsConfirmingDelete = false);
     }
 
     /// <summary>The session, as the forge catalog listed it.</summary>
@@ -251,6 +282,29 @@ public sealed class InProgressSessionViewModel
 
     /// <summary>Reopens the wizard where the session stopped.</summary>
     public RelayCommand ResumeCommand { get; }
+
+    /// <summary>Arms the in-place confirmation; deletes nothing on its own.</summary>
+    public RelayCommand AskDeleteCommand { get; }
+
+    /// <summary>Discards the abandoned draft, recursively.</summary>
+    public RelayCommand ConfirmDeleteCommand { get; }
+
+    /// <summary>Disarms the confirmation.</summary>
+    public RelayCommand CancelDeleteCommand { get; }
+
+    /// <summary>Whether this row is showing its confirmation banner.</summary>
+    public bool IsConfirmingDelete
+    {
+        get => _isConfirmingDelete;
+        internal set
+        {
+            if (SetProperty(ref _isConfirmingDelete, value))
+                OnPropertyChanged(nameof(IsIdle));
+        }
+    }
+
+    /// <summary>The action row's own visibility.</summary>
+    public bool IsIdle => !_isConfirmingDelete;
 }
 
 /// <summary>
@@ -288,6 +342,7 @@ public sealed class TeamsViewModel : ObservableObject
         _loadSessions = loadSessions ?? (() => ForgeSessionCatalog.List(workspace));
         _strings = strings ?? EnglishStudioStrings.Instance;
         CreateCommand = new RelayCommand(() => CreateRequested?.Invoke(this, EventArgs.Empty));
+        ImportCommand = new RelayCommand(() => ImportRequested?.Invoke(this, EventArgs.Empty));
         Refresh();
     }
 
@@ -299,6 +354,12 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>Raised by the create-a-team button — the shell brings the wizard forward.</summary>
     public event EventHandler? CreateRequested;
+
+    /// <summary>
+    /// Raised by the empty state's second way out — the shell brings the import screen
+    /// forward. An empty My-teams offers both doors, not just the one.
+    /// </summary>
+    public event EventHandler? ImportRequested;
 
     /// <summary>Raised by « Changer les dossiers » — the shell opens the team-mounts modal.</summary>
     public event EventHandler<TeamMountsRequestedEventArgs>? MountsRequested;
@@ -353,6 +414,9 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>Opens the creation wizard.</summary>
     public RelayCommand CreateCommand { get; }
+
+    /// <summary>Opens the import screen.</summary>
+    public RelayCommand ImportCommand { get; }
 
     /// <summary>Re-reads both catalogs.</summary>
     public void Refresh()
@@ -469,5 +533,29 @@ public sealed class TeamsViewModel : ObservableObject
     {
         if (TeamCatalog.Delete(path))
             Refresh();
+    }
+
+    /// <summary>
+    /// Discards an abandoned wizard draft. The session directory is the whole of it —
+    /// a draft that never promoted owns nothing else.
+    /// </summary>
+    internal void DeleteSession(ForgeSolutionSummary session)
+    {
+        if (ForgeSessionCatalog.Delete(session.Directory))
+            Refresh();
+    }
+
+    /// <summary>
+    /// Arms one card's confirmation and disarms every other. The mock keeps a single
+    /// index rather than a flag per row: two banners open at once would ask the same
+    /// question twice, and the second answer would land on the wrong team.
+    /// </summary>
+    internal void ArmDelete(object row)
+    {
+        foreach (var card in Teams)
+            card.IsConfirmingDelete = ReferenceEquals(card, row);
+
+        foreach (var session in InProgress)
+            session.IsConfirmingDelete = ReferenceEquals(session, row);
     }
 }

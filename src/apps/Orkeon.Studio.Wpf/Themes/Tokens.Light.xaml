@@ -35,6 +35,7 @@
   <SolidColorBrush x:Key="WarningBrush"     Color="#C68A2A"/>
   <SolidColorBrush x:Key="WarningWeakBrush" Color="#F8EED5"/>
   <SolidColorBrush x:Key="DangerBrush"      Color="#C0473B"/>
+  <SolidColorBrush x:Key="DangerFgBrush"   Color="#FFFFFF"/>
   <SolidColorBrush x:Key="DangerWeakBrush"  Color="#F7E3E0"/>
   <SolidColorBrush x:Key="SandBrush"        Color="#BB8628"/>
   <SolidColorBrush x:Key="SandWeakBrush"    Color="#FBF3E2"/>

@@ -662,4 +662,37 @@
   <data name="Vm_Teams_ExportFailed" xml:space="preserve"><value>Export refusé — la destination existe déjà, ou le disque a refusé.</value></data>
   <data name="Wiz_TryTeam" xml:space="preserve"><value>Essayer l'équipe</value></data>
   <data name="Wiz_Paused_Hint" xml:space="preserve"><value>Composée et validée — rien n'a encore tourné.</value></data>
+  <data name="Teams_Delete_Confirm" xml:space="preserve">
+    <value>Supprimer cette équipe ?</value>
+  </data>
+  <data name="Teams_Session_Delete_Confirm" xml:space="preserve">
+    <value>Supprimer ce brouillon ?</value>
+  </data>
+  <data name="Teams_Session_Delete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Teams_Empty_Title" xml:space="preserve">
+    <value>Aucune équipe pour l'instant</value>
+  </data>
+  <data name="Teams_Empty_Body" xml:space="preserve">
+    <value>Décrivez un travail à confier, l'assistant compose l'équipe et vous l'essayez avant de l'adopter.</value>
+  </data>
+  <data name="Teams_Import" xml:space="preserve">
+    <value>Importer une équipe</value>
+  </data>
+  <data name="Teams_NoSessions" xml:space="preserve">
+    <value>Aucune session en cours. Une création interrompue réapparaîtra ici.</value>
+  </data>
+  <data name="Vm_Wiz_DraftStepPattern" xml:space="preserve">
+    <value>Étape {0} sur {1} · {2}</value>
+  </data>
+  <data name="Vm_Wiz_DraftTitle" xml:space="preserve">
+    <value>Création en cours</value>
+  </data>
+  <data name="Vm_Wiz_DraftWaitingTitle" xml:space="preserve">
+    <value>L'assistant attend votre réponse</value>
+  </data>
+  <data name="Vm_Wiz_DraftResume" xml:space="preserve">
+    <value>reprendre la discussion</value>
+  </data>
 </root>

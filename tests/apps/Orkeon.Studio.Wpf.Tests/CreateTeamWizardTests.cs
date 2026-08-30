@@ -519,7 +519,16 @@ public class CreateTeamWizardTests
             card.LaunchCommand.Execute(null);
             Assert.Equal(teamDir, launched);
 
-            card.DeleteCommand.Execute(null);
+            // Delete is armed, not immediate: the card asks first, and a cancel puts it back.
+            card.AskDeleteCommand.Execute(null);
+            Assert.True(card.IsConfirmingDelete);
+            Assert.False(card.IsIdle);
+            card.CancelDeleteCommand.Execute(null);
+            Assert.False(card.IsConfirmingDelete);
+            Assert.False(teams.IsEmpty);
+
+            card.AskDeleteCommand.Execute(null);
+            card.ConfirmDeleteCommand.Execute(null);
             Assert.True(teams.IsEmpty);
         }
         finally

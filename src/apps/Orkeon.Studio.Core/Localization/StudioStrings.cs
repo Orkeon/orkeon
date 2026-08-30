@@ -68,6 +68,33 @@ public static class StudioStringKeys
     /// <summary>"The assistant is not running any more — …"</summary>
     public const string WizardAssistantNotRunning = "Vm_Wiz_AssistantNotRunning";
 
+    /// <summary>The four stepper labels. They already lived in the WPF resx for the
+    /// stepper itself; the registry adopts the same keys so the draft line below the nav
+    /// can name a step without a second spelling of it.</summary>
+    public const string WizardStep1 = "Wiz_Step1";
+
+    /// <summary>"Compose"</summary>
+    public const string WizardStep2 = "Wiz_Step2";
+
+    /// <summary>"Try"</summary>
+    public const string WizardStep3 = "Wiz_Step3";
+
+    /// <summary>"Adopt"</summary>
+    public const string WizardStep4 = "Wiz_Step4";
+
+    /// <summary>"Step {0} of {1} · {2}" — never assembled by hand: Chinese has no
+    /// « sur », and a concatenation would ship the French joiner to every culture.</summary>
+    public const string WizardDraftStepPattern = "Vm_Wiz_DraftStepPattern";
+
+    /// <summary>"A creation in progress"</summary>
+    public const string WizardDraftTitle = "Vm_Wiz_DraftTitle";
+
+    /// <summary>"The assistant is waiting for your answer"</summary>
+    public const string WizardDraftWaitingTitle = "Vm_Wiz_DraftWaitingTitle";
+
+    /// <summary>"resume the conversation"</summary>
+    public const string WizardDraftResume = "Vm_Wiz_DraftResume";
+
     // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
 
     /// <summary>"{0} — {1} agent(s)"</summary>
@@ -929,6 +956,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagCounts] = "{0} checks passed, {1} warning(s), {2} failure(s).",
         [StudioStringKeys.ConfigNotSavedNeedFolder] = "Not saved yet: authorize at least one folder (Dossiers autorisés tab) — your changes will be saved as soon as one is in place.",
         [StudioStringKeys.WizardAssistantNotRunning] = "The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.",
+        [StudioStringKeys.WizardStep1] = "Describe",
+        [StudioStringKeys.WizardStep2] = "Compose",
+        [StudioStringKeys.WizardStep3] = "Try",
+        [StudioStringKeys.WizardStep4] = "Adopt",
+        [StudioStringKeys.WizardDraftStepPattern] = "Step {0} of {1} · {2}",
+        [StudioStringKeys.WizardDraftTitle] = "A creation in progress",
+        [StudioStringKeys.WizardDraftWaitingTitle] = "The assistant is waiting for your answer",
+        [StudioStringKeys.WizardDraftResume] = "resume the conversation",
         ["Vm_Doctor_appsettings"] = "The settings file is readable",
         ["Vm_Doctor_dotnet-runtime"] = "The .NET runtime",
         ["Vm_Doctor_esbuild"] = "The script compiler (esbuild)",

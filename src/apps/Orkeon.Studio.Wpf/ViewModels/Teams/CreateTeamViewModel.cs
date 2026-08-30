@@ -291,6 +291,7 @@ public sealed class CreateTeamViewModel : ObservableObject
                 return;
 
             OnPropertiesChanged(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4));
+            RaiseDraftChanged();
         }
     }
 
@@ -304,6 +305,59 @@ public sealed class CreateTeamViewModel : ObservableObject
                 RestartCommand.RaiseCanExecuteChanged();
         }
     }
+
+    // ── the draft, as the navigation sees it (30/08 mock, T-09) ──
+
+    /// <summary>
+    /// Whether an unfinished creation exists: something typed, a step passed, or the
+    /// assistant mid-thread. Leaving the wizard must never be the same as losing it.
+    /// </summary>
+    public bool HasDraft => !IsSaved && (_step > 1 || _need.Trim().Length > 0 || IsEngineRunning);
+
+    /// <summary>Whether the assistant is the one holding the draft up.</summary>
+    public bool IsAssistantWaiting => HasDraft && (IsEngineRunning || HasAssistantPrompt);
+
+    /// <summary>The nav entry's own counter — «2/4», mono, no chip.</summary>
+    public string DraftStepShort =>
+        string.Create(CultureInfo.CurrentCulture, $"{_step}/{StepCount}");
+
+    /// <summary>Title of the block under the nav entry.</summary>
+    public string DraftTitle => _strings[IsAssistantWaiting
+        ? StudioStringKeys.WizardDraftWaitingTitle
+        : StudioStringKeys.WizardDraftTitle];
+
+    /// <summary>
+    /// «Étape 2 sur 4 · Composer», assembled from a per-culture pattern — Chinese has no
+    /// « sur » and a concatenation would ship the French joiner everywhere.
+    /// </summary>
+    public string DraftLine
+    {
+        get
+        {
+            var tail = _strings[StepNameKey(_step)];
+            if (IsAssistantWaiting)
+                tail += " · " + _strings[StudioStringKeys.WizardDraftResume];
+
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.WizardDraftStepPattern],
+                _step, StepCount, tail);
+        }
+    }
+
+    private const int StepCount = 4;
+
+    private static string StepNameKey(int step) => step switch
+    {
+        2 => StudioStringKeys.WizardStep2,
+        3 => StudioStringKeys.WizardStep3,
+        4 => StudioStringKeys.WizardStep4,
+        _ => StudioStringKeys.WizardStep1,
+    };
+
+    private void RaiseDraftChanged() => OnPropertiesChanged(
+        nameof(HasDraft), nameof(IsAssistantWaiting),
+        nameof(DraftStepShort), nameof(DraftTitle), nameof(DraftLine));
 
     /// <summary>Step visibilities.</summary>
     public bool IsStep1 => _step == 1;
@@ -340,6 +394,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (SetProperty(ref _need, value))
             {
                 OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint));
+                RaiseDraftChanged();
                 ComposeCommand.RaiseCanExecuteChanged();
             }
         }
@@ -415,6 +470,7 @@ public sealed class CreateTeamViewModel : ObservableObject
                 return;
 
             OnPropertiesChanged(nameof(CanCompose), nameof(CanSaveTeam));
+            RaiseDraftChanged();
             ComposeCommand.RaiseCanExecuteChanged();
             StopCommand.RaiseCanExecuteChanged();
             ReplyCommand.RaiseCanExecuteChanged();
@@ -444,6 +500,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             if (SetProperty(ref _assistantPrompt, value))
                 OnPropertyChanged(nameof(HasAssistantPrompt));
+                RaiseDraftChanged();
         }
     }
 
@@ -957,6 +1014,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (SetProperty(ref _isSaved, value))
             {
                 OnPropertyChanged(nameof(NotSaved));
+                RaiseDraftChanged();
                 ReopenComposeCommand?.RaiseCanExecuteChanged();
                 RetryTrialCommand?.RaiseCanExecuteChanged();
             }

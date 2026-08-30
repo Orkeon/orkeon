@@ -90,3 +90,32 @@ public sealed class VerbosityLabelConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>
+/// Every bound value true → Visible, anything else → Collapsed. The draft note is the case
+/// it exists for: it shows when a draft stands AND the wizard is not the screen in front,
+/// two conditions that live on different objects.
+/// </summary>
+public sealed class AllTrueToVisibilityConverter : IMultiValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture) =>
+        values is not null && values.Length > 0 && values.All(v => v is true)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+    /// <inheritdoc />
+    public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>Boolean inverter — a null (an unset IsChecked) reads as false, so it negates to true.</summary>
+public sealed class NegateConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is not true;
+
+    /// <inheritdoc />
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is not true;
+}

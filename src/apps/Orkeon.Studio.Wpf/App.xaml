@@ -20,6 +20,8 @@
       <views:StringPresentToVisibilityConverter x:Key="StringPresentToVisibility" />
       <views:CountToVisibilityConverter x:Key="CountToVisibility" />
       <views:ZeroToVisibilityConverter x:Key="ZeroToVisibility" />
+      <views:AllTrueToVisibilityConverter x:Key="AllTrueToVisibility" />
+      <views:NegateConverter x:Key="Negate" />
 
     </ResourceDictionary>
   </Application.Resources>

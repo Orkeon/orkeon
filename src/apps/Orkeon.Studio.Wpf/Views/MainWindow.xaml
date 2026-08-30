@@ -235,12 +235,54 @@
             <StackPanel x:Name="NavGroupTeams">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,0,0,7"
                        Text="{Binding [Grp_Teams], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton x:Name="NavCreate" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="wand-2" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
+            <RadioButton x:Name="NavCreate" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True"
+                         HorizontalContentAlignment="Stretch">
+              <!-- T-09: a creation left mid-flight is announced on its own entry — the step
+                   counter and an accent dot, pushed right like the team count below. -->
+              <DockPanel LastChildFill="False">
+                <controls:LucideIcon DockPanel.Dock="Left" Kind="wand-2" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding DataContext.CreateTeam.HasDraft, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" VerticalAlignment="Center"
+                             Foreground="{DynamicResource InkFaintBrush}"
+                             Text="{Binding DataContext.CreateTeam.DraftStepShort, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                  <Ellipse Width="6" Height="6" Margin="7,0,0,0" VerticalAlignment="Center"
+                           Fill="{DynamicResource MarkBrush}"/>
+                </StackPanel>
+              </DockPanel>
             </RadioButton>
+
+            <!-- Under the entry, and only from somewhere else: the draft says where it
+                 stopped, so leaving the assistant is never the same as forgetting it.
+                 On the Créer screen itself it would only repeat what is on screen. -->
+            <Button x:Name="DraftNote" Style="{StaticResource DraftNote}" Click="OnResumeDraft">
+              <StackPanel>
+                <TextBlock FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap"
+                           Foreground="{DynamicResource AccentBrush}"
+                           Text="{Binding DataContext.CreateTeam.DraftTitle, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                <TextBlock FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap"
+                           Text="{Binding DataContext.CreateTeam.DraftLine, RelativeSource={RelativeSource AncestorType=Window}}">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding DataContext.CreateTeam.IsAssistantWaiting, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                          <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                          <Setter Property="FontWeight" Value="SemiBold"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+              </StackPanel>
+              <Button.Visibility>
+                <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                  <Binding Path="DataContext.CreateTeam.HasDraft" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                  <Binding Path="IsChecked" ElementName="NavCreate" Converter="{StaticResource Negate}"/>
+                </MultiBinding>
+              </Button.Visibility>
+            </Button>
             <RadioButton x:Name="NavTeams" GroupName="Nav" Style="{StaticResource NavItem}"
                          HorizontalContentAlignment="Stretch">
               <!-- T-10: the counter is pushed to the right edge, mono 10 faint, no chip -->
