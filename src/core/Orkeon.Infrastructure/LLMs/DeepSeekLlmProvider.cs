@@ -31,12 +31,18 @@ public class DeepSeekLlmProvider : OpenAICompatibleProviderBase
     /// DeepSeek accepts <c>response_format: json_object</c> (no schema), exposes an explicit
     /// thinking toggle plus <c>reasoning_effort</c>, requires the word "json" in the prompt
     /// when constraining JSON, and — uniquely among the reasoning providers — requires the
-    /// previous turn's <c>reasoning_content</c> to be replayed.
+    /// previous turn's <c>reasoning_content</c> to be replayed. Vision arrived with
+    /// <c>deepseek-v4-flash-vision-exp</c> (measured live 2026-08-30: it reads a base64
+    /// <c>image_url</c> part and answers about it), ending DeepSeek's run as the one
+    /// provider in the fleet with no vision model. As everywhere, the declaration is per
+    /// provider while reality is per model (D-03): the default <c>deepseek-v4-flash</c> is
+    /// text-only and answers an image with the vendor's own error, not a silent downgrade.
     /// </summary>
     public override LlmProviderCapabilities Capabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Toggle,
+        Vision = true,
         RequiresJsonKeywordInPrompt = true,
         ReplaysReasoningContent = true,
     };

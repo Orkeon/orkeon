@@ -21,6 +21,12 @@ namespace Orkeon.Scripting.Cli.Commands;
 /// reproducible: at the framework default of 0.7 the same probe returned ❌ ✅ ❌ on three
 /// consecutive Ollama runs (2026-08-01), which is a coin toss, not a measurement.
 /// </param>
+/// <param name="ThinkingEffort">
+/// Base reasoning-effort hint the run pinned, or null when none was. Recorded for the same
+/// reason as the temperature: `gpt-5.6-sol` refuses function tools on chat/completions
+/// unless reasoning is explicitly off (2026-08-30), so a verdict obtained with
+/// <c>none</c> must say so or it reads as the model's default behaviour.
+/// </param>
 internal sealed record LlmProbeContext(
     string Provider,
     string Model,
@@ -28,7 +34,8 @@ internal sealed record LlmProbeContext(
     string OrkeonVersion,
     string Commit,
     DateTimeOffset TimestampUtc,
-    double Temperature);
+    double Temperature,
+    string? ThinkingEffort = null);
 
 /// <summary>
 /// Renders a campaign into the two shapes a run needs: one for a human reading the terminal,
@@ -82,6 +89,8 @@ internal static class LlmProbeReport
         sb.Append("- **Endpoint** : ").AppendLine(context.EndpointHost);
         sb.Append("- **Température** : ")
           .AppendLine(context.Temperature.ToString("0.##", CultureInfo.InvariantCulture));
+        if (!string.IsNullOrWhiteSpace(context.ThinkingEffort))
+            sb.Append("- **Effort de raisonnement (base)** : ").AppendLine(context.ThinkingEffort);
         sb.AppendLine("- **Qualité de preuve** : sortie archivée");
         sb.AppendLine();
         sb.AppendLine("| Mode | Résultat | Détail | Durée |");
@@ -119,6 +128,7 @@ internal static class LlmProbeReport
             commit = context.Commit,
             timestampUtc = context.TimestampUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
             temperature = context.Temperature,
+            thinking_effort = context.ThinkingEffort,
             passed = results.Count(r => r.Outcome == LlmProbeOutcome.Passed),
             failed = results.Count(r => r.Outcome == LlmProbeOutcome.Failed),
             notApplicable = results.Count(r => r.Outcome == LlmProbeOutcome.NotApplicable),

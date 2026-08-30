@@ -31,6 +31,24 @@ internal sealed class LlmProbeCommandOptions
         HelpText = "Azure OpenAI api-version (deployment mode). Omit to exercise the v1 GA surface.")]
     public string? ApiVersion { get; set; }
 
+    /// <summary>
+    /// Workspace the requests act in. Anthropic's identity-linked API keys refuse every
+    /// request without it (2026-08-30); classic keys need none. An identifier, not a secret.
+    /// </summary>
+    [Option("workspace-id", Required = false,
+        HelpText = "Workspace id for workspace-scoped keys (Anthropic identity-linked keys require it).")]
+    public string? WorkspaceId { get; set; }
+
+    /// <summary>
+    /// Base thinking-effort hint, for models that demand one. <c>gpt-5.6-sol</c> refuses
+    /// function tools on chat/completions unless reasoning is explicitly off (2026-08-30) —
+    /// same shape as the pinned temperature, same remedy: the catalogue declares it, the
+    /// report prints it. M7 keeps probing thinking with its own explicit effort.
+    /// </summary>
+    [Option("thinking-effort", Required = false,
+        HelpText = "Base reasoning-effort hint (e.g. none). For models that refuse tools while reasoning; M7 still probes thinking explicitly.")]
+    public string? ThinkingEffort { get; set; }
+
     /// <summary>Environment variable holding the API key. Never the key itself.</summary>
     [Option('k', "api-key-env", Required = false, Default = "ORKEON_LLM_API_KEY",
         HelpText = "Name of the environment variable holding the API key. The key itself is never accepted on the command line.")]
@@ -256,7 +274,8 @@ internal static class LlmCommand
             OrkeonVersion: LlmProbeReport.ResolveVersion(),
             Commit: options.Commit ?? "",
             TimestampUtc: DateTimeOffset.UtcNow,
-            Temperature: config.Temperature);
+            Temperature: config.Temperature,
+            ThinkingEffort: config.Thinking?.Effort);
 
     /// <summary>
     /// The host, never the full URL: a base URL can carry a resource name, a workspace or a
@@ -297,7 +316,7 @@ internal static class LlmCommand
         return cts;
     }
 
-    private static LlmConfig BuildConfig(LlmProbeCommandOptions options, string? apiKey)
+    internal static LlmConfig BuildConfig(LlmProbeCommandOptions options, string? apiKey)
     {
         // Falling back to LlmConfig.Default() would send OpenAI's default model to whichever
         // provider was named — a campaign against Groq would silently measure "gpt-5.6-sol".
@@ -330,6 +349,16 @@ internal static class LlmCommand
 
         if (!string.IsNullOrWhiteSpace(options.ApiVersion))
             config = config with { ApiVersion = options.ApiVersion };
+
+        // Anthropic's identity-linked keys are refused without their workspace id — the
+        // 2026-08-30 campaign could not place a single call until this existed.
+        if (!string.IsNullOrWhiteSpace(options.WorkspaceId))
+            config = config with { WorkspaceId = options.WorkspaceId };
+
+        // Some models demand an explicit reasoning effort before they accept function tools
+        // (gpt-5.6-sol, 2026-08-30). Base config only: M7 overrides with its own effort.
+        if (!string.IsNullOrWhiteSpace(options.ThinkingEffort))
+            config = config with { Thinking = new LlmThinkingConfig { Effort = options.ThinkingEffort } };
 
         return config;
     }

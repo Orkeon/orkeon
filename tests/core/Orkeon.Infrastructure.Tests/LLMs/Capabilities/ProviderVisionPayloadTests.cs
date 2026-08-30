@@ -13,11 +13,13 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// Vision exposure across the OpenAI-compatible family (LLM-06, G-18).
 /// </summary>
 /// <remarks>
-/// Eleven providers out of twelve accept image input; only OpenAI and Anthropic composed it.
-/// The eight covered here now declare the capability and inherit the composition from the
-/// base — no per-provider override. Ollama stays out on purpose: it takes a base64
-/// <c>images</c> array rather than OpenAI content parts, a translation that belongs with the
-/// rest of its request-shape work (LLM-07). DeepSeek is the one provider with no vision at all.
+/// Every provider in the fleet now accepts image input; only OpenAI and Anthropic composed
+/// it originally. The family covered here declares the capability and inherits the
+/// composition from the base — no per-provider override. Ollama stays out on purpose: it
+/// takes a base64 <c>images</c> array rather than OpenAI content parts, a translation that
+/// belongs with the rest of its request-shape work (LLM-07). DeepSeek, long the one provider
+/// with no vision at all, joined the family when <c>deepseek-v4-flash-vision-exp</c> shipped
+/// (measured 2026-08-30).
 /// </remarks>
 public class ProviderVisionPayloadTests
 {
@@ -32,6 +34,7 @@ public class ProviderVisionPayloadTests
         nameof(OpenAIProvider), nameof(AzureOpenAILlmProvider), nameof(GroqLlmProvider),
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
+        nameof(DeepSeekLlmProvider),
     ];
 
     private static MultiModalContent ImageMessage() =>
@@ -107,16 +110,21 @@ public class ProviderVisionPayloadTests
     }
 
     /// <summary>
-    /// DeepSeek has no vision model, so an image message degrades to its text fallback rather
-    /// than producing a payload the API would reject.
+    /// DeepSeek used to be the one provider in the fleet with no vision model, and an image
+    /// message degraded to its text fallback. That ended with <c>deepseek-v4-flash-vision-exp</c>:
+    /// measured live on 2026-08-30, the model reads a base64 image and answers about it. The
+    /// capability is declared per provider while reality is per model (D-03) — exactly like
+    /// Ollama (<c>llava</c> sees, <c>llama3.2</c> does not) and Z.AI (<c>glm-4.6v-flash</c>
+    /// sees, <c>glm-5.2</c> does not) — so the image now travels as structured parts and a
+    /// text-only default model answers with the vendor's own error, not a silent downgrade.
     /// </summary>
     [Fact]
-    public async Task ShouldDegradeToText_OnDeepSeekWhichHasNoVision()
+    public async Task ShouldEmitStructuredParts_OnDeepSeekWhoseVisionArrivedPerModel()
     {
         var payload = await CaptureChatPayloadAsync(
             nameof(DeepSeekLlmProvider), LlmMessage.User(ImageMessage()));
 
         var content = payload.GetProperty("messages")[0].GetProperty("content");
-        Assert.Equal(JsonValueKind.String, content.ValueKind);
+        Assert.Equal(JsonValueKind.Array, content.ValueKind);
     }
 }

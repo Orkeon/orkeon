@@ -35,6 +35,16 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     protected virtual string ApiEndpointPath => "/chat/completions";
 
     /// <summary>
+    /// Wire name of the completion-length bound. The compatible family documents and expects
+    /// <c>max_tokens</c> — every vendor of the fleet passed its 2026-08-30 campaign with it —
+    /// but OpenAI itself retired the field on its current models (<c>"Unsupported parameter:
+    /// 'max_tokens' ... Use 'max_completion_tokens' instead"</c>, same campaign), so
+    /// <see cref="OpenAIProvider"/> overrides this. A dialect detail of one vendor, not a
+    /// capability anyone declares.
+    /// </summary>
+    protected virtual string MaxTokensFieldName => "max_tokens";
+
+    /// <summary>
     /// Whether this provider composes OpenAI vision content parts (<c>text</c> +
     /// <c>image_url</c>) for messages carrying <see cref="LlmMessage.MultiModalContent"/>
     /// with non-text parts (R3.9). Providers that do not declare the capability keep their
@@ -662,7 +672,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ["model"] = effectiveConfig.Model ?? DefaultModel,
             ["messages"] = messagesList,
             ["temperature"] = effectiveConfig.Temperature,
-            ["max_tokens"] = effectiveConfig.MaxTokens
+            [MaxTokensFieldName] = effectiveConfig.MaxTokens
         };
 
         ApplyOptions(payload, effectiveConfig);
@@ -1077,7 +1087,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ["model"] = config.Model ?? DefaultModel,
             ["messages"] = messages,
             ["temperature"] = config.Temperature,
-            ["max_tokens"] = config.MaxTokens
+            [MaxTokensFieldName] = config.MaxTokens
         };
 
         if (config.TopP != 1.0)

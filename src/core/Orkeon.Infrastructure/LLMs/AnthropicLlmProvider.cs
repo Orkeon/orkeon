@@ -101,6 +101,14 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 #pragma warning restore CS0618
 
         client.DefaultRequestHeaders.Add(HttpDefaults.AnthropicVersionHeader, ApiVersion);
+
+        // Identity-linked API keys are workspace-scoped: the API refuses every request that
+        // does not name the workspace it acts in (measured live, 2026-08-30). Classic keys
+        // carry no workspace, so the header only travels when the configuration names one.
+        if (!string.IsNullOrWhiteSpace(config.WorkspaceId))
+        {
+            client.DefaultRequestHeaders.Add(HttpDefaults.AnthropicWorkspaceIdHeader, config.WorkspaceId);
+        }
     }
 
     /// <inheritdoc />

@@ -399,7 +399,7 @@ internal sealed class LlmProbeRunner
         try
         {
             await foreach (var token in streaming
-                .GenerateStreamingAsync("Count from one to five.", config, cancellationToken)
+                .GenerateStreamingAsync(StreamingProbePrompt, config, cancellationToken)
                 .ConfigureAwait(false))
             {
                 chunks++;
@@ -435,7 +435,7 @@ internal sealed class LlmProbeRunner
         var deltas = 0;
         LlmResponse? final = null;
         await foreach (var ev in streaming.ChatStreamingAsync(
-            [LlmMessage.User("Count from one to five.")], config, cancellationToken).ConfigureAwait(false))
+            [LlmMessage.User(StreamingProbePrompt)], config, cancellationToken).ConfigureAwait(false))
         {
             if (ev.Kind == LlmStreamEventKind.ContentDelta)
                 deltas++;
@@ -495,20 +495,28 @@ internal sealed class LlmProbeRunner
         if (!string.Equals(call.ToolName, ToolProbeSchema.Name, StringComparison.Ordinal))
             return (LlmProbeOutcome.Failed, $"called '{call.ToolName}' instead of '{ToolProbeSchema.Name}'");
 
-        return await CompleteToolRoundTripAsync(withTools, calls, call, cancellationToken).ConfigureAwait(false);
+        var replayToolCalls = RawOpenAiToolCalls(body.RootElement) ?? CanonicalToolCalls(calls);
+        return await CompleteToolRoundTripAsync(withTools, replayToolCalls, call, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<(LlmProbeOutcome, string)> CompleteToolRoundTripAsync(
-        LlmConfig withTools, IReadOnlyList<ParsedToolCall> calls, ParsedToolCall call,
+        LlmConfig withTools, string replayToolCalls, ParsedToolCall call,
         CancellationToken cancellationToken)
     {
-        // RawToolCalls is Orkeon's canonical shape — the OpenAI array — and both the
-        // OpenAI-compatible base and the Anthropic provider read it back from there. Rebuilding
-        // it from the parsed calls therefore keeps this probe free of any dialect knowledge.
+        // The real agent loop (NativeToolCallingAgentLoop) replays the vendor's tool_calls
+        // fragment VERBATIM — GetRawText(), nothing rebuilt — and a probe that rebuilds from
+        // the parsed calls measures a different product than the one shipping. Gemini turned
+        // that difference into a 400 on 2026-08-30: its compat surface puts a
+        // thought_signature inside each tool_call (extra_content.google) and rejects a replay
+        // that lost it, so M5 failed for a defect the framework does not have. The raw
+        // fragment is therefore replayed whenever the body carries one; the canonical rebuild
+        // remains for dialects whose body is not OpenAI-shaped (Anthropic tool_use blocks),
+        // because the OpenAI array is what AnthropicLlmProvider reads back.
         LlmMessage[] conversation =
         [
             LlmMessage.User(ToolProbePrompt),
-            LlmMessage.Assistant("") with { RawToolCalls = CanonicalToolCalls(calls) },
+            LlmMessage.Assistant("") with { RawToolCalls = replayToolCalls },
             new LlmMessage
             {
                 Role = LlmRoles.Tool,
@@ -771,6 +779,27 @@ internal sealed class LlmProbeRunner
 
     private static string FormatArguments(Dictionary<string, object?> arguments) =>
         string.Join(", ", arguments.Select(a => $"{a.Key}={a.Value}"));
+
+    /// <summary>
+    /// What M3 and M4 ask for. Thirty numbers, not five: a coarse-chunking stream (Gemini
+    /// emits ~13-character events) fits a five-number answer in a single chunk, and both
+    /// modes then read a genuine stream as a buffered fallback — measured 2026-08-30, where
+    /// the same endpoint produced four chunks the moment the count reached twenty.
+    /// </summary>
+    private const string StreamingProbePrompt = "Count from one to thirty, separated by spaces.";
+
+    /// <summary>
+    /// The vendor's own <c>tool_calls</c> fragment, verbatim, when the body is OpenAI-shaped —
+    /// signatures and vendor extras included. Null for any other dialect.
+    /// </summary>
+    private static string? RawOpenAiToolCalls(JsonElement root) =>
+        root.TryGetProperty("choices", out var choices)
+        && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0
+        && choices[0].TryGetProperty("message", out var message)
+        && message.TryGetProperty("tool_calls", out var toolCalls)
+        && toolCalls.ValueKind == JsonValueKind.Array
+            ? toolCalls.GetRawText()
+            : null;
 
     /// <summary>Rebuilds the canonical <c>tool_calls</c> array Orkeon replays to every dialect.</summary>
     private static string CanonicalToolCalls(IReadOnlyList<ParsedToolCall> calls) =>

@@ -59,6 +59,16 @@ public sealed record LlmConfig
     public string? ApiVersion { get; init; }
 
     /// <summary>
+    /// Workspace the requests act in, for providers whose keys are workspace-scoped.
+    /// Anthropic's identity-linked API keys refuse every request that does not carry an
+    /// <c>anthropic-workspace-id</c> header (measured live, 2026-08-30), so without this
+    /// field such a key cannot be used at all. Not a secret — it scopes the key, it does
+    /// not authenticate. Ignored by providers that have no workspace concept, the same
+    /// way <see cref="ApiVersion"/> is Azure's own out-of-band detail.
+    /// </summary>
+    public string? WorkspaceId { get; init; }
+
+    /// <summary>
     /// Additional provider-specific parameters.
     /// Prefer the typed properties (<see cref="SystemMessage"/>, <see cref="ApiVersion"/>)
     /// for well-known keys. Use this dictionary only for provider-specific extensions.

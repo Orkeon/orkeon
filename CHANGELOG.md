@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — what the first real campaigns against six vendors found (2026-08-30)
+
+The first full campaigns ever run against api.openai.com, the Gemini compat surface and an
+identity-linked Anthropic key — plus re-runs of DeepSeek, Kimi, Z.AI and Ollama on rc.2 —
+turned five findings into fixes. Each one is dated and pinned by an offline test:
+
+- **OpenAI: `max_tokens` is retired on current models.** The campaign failed ten modes out of
+  twelve on `gpt-5.6-sol` over that one field (`"Unsupported parameter: 'max_tokens' ... Use
+  'max_completion_tokens' instead"`). The OpenAI dialect now writes `max_completion_tokens` —
+  verified live to be accepted by the older generations too (`gpt-4o-mini`) — through a
+  `MaxTokensFieldName` hook on `OpenAICompatibleProviderBase` that only `OpenAIProvider`
+  overrides: DeepSeek, Groq and the rest of the compatible family still document and expect
+  `max_tokens`, and all of them passed their campaigns with it the same day.
+- **Gemini: `response_format` works and was being refused.** Declared `None` when the compat
+  surface left it undocumented (2026-08-18), so every JSON request got a capability warning
+  instead of being sent. Measured live: the surface accepts `json_object` and `json_schema`
+  and enforces the schema server-side (`additionalProperties` included). The declaration is
+  now `JsonSchema`.
+- **DeepSeek: vision arrived, per model.** `deepseek-v4-flash-vision-exp` reads a base64
+  image (measured live); DeepSeek was the one provider in the fleet with no vision model and
+  its images silently degraded to text. `Vision = true` now, with the same per-provider
+  declaration / per-model reality the fleet already lives with (D-03): the text-only default
+  model answers an image with the vendor's own error.
+- **Anthropic: identity-linked API keys were unusable.** They refuse every request without an
+  `anthropic-workspace-id` header — Messages API and `/v1/models` alike — and Orkeon had no
+  way to send one. `LlmConfig.WorkspaceId` (a scoping identifier, not a secret, same family
+  as `ApiVersion`) now travels as that header when set; classic keys change nothing. Wired
+  through `orkeon llm probe --workspace-id` and the campaign kit (`workspaceId` per provider).
+- **The probe harness accused the framework twice, wrongly.** M5 rebuilt the assistant
+  tool-call turn from parsed calls while the real agent loop replays the vendor's raw
+  `tool_calls` fragment verbatim — Gemini rejects a replay that lost its per-call
+  `thought_signature`, so the probe failed M5 for a defect the product does not have; it now
+  replays the raw fragment whenever the body is OpenAI-shaped (the canonical rebuild remains
+  for Anthropic's dialect). And M3/M4 asked for five numbers, which fits in a single event on
+  a coarse-chunking stream (Gemini emits ~13-character chunks), reading a genuine stream as a
+  buffered fallback; the probe now demands thirty.
+
+Campaign verdicts, same day: Kimi's open M3 "stream refused" of August did not reproduce
+(4/4 green, replays included); Z.AI's implicit context cache missed once in-campaign
+(0 cached tokens) and hit on both replays (1984 tokens, ratio 0.97) — server behaviour, not
+a defect. Reports under `llmproviders-test/`.
+
 ### Fixed — `dotnet test` runs again, and the tests it skipped are back
 
 The .NET 10 SDK stopped honouring the VSTest target for Microsoft.Testing.Platform test

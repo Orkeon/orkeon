@@ -39,3 +39,6 @@ Orkeon.Infrastructure.FileSystem.PrivilegedFileSystemAccess.FileSystem.get -> Or
 Orkeon.Infrastructure.FileSystem.FileSystemService.FileSystemService(Orkeon.Domain.FileSystem.FileSystemRegistry! registry, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.FileSystem.FileSystemService!>! logger, Orkeon.Domain.FileSystem.IFileSystemScope? scope = null, bool internalAccess = false) -> void
 Orkeon.Infrastructure.FileSystem.ScopedMountComposition
 static Orkeon.Infrastructure.FileSystem.ScopedMountComposition.ForExecution(Orkeon.Domain.FileSystem.FileSystemRegistry! boot, System.Collections.Generic.IEnumerable<Orkeon.Domain.FileSystem.FileSystemMount!>! agentFacing) -> Orkeon.Domain.FileSystem.FileSystemRegistry!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AnthropicWorkspaceIdHeader = "anthropic-workspace-id" -> string!
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.MaxTokensFieldName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAIProvider.MaxTokensFieldName.get -> string!

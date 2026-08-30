@@ -61,6 +61,20 @@ internal static class CapabilityMismatchHint
         if (string.IsNullOrWhiteSpace(vendorError))
             return "";
 
+        // OpenAI campaign, 2026-08-30: `gpt-5.6-sol` reasons by default, and chat/completions
+        // refuses function tools unless reasoning_effort is explicitly "none". The request
+        // carried no reasoning_effort at all — the SERVER default is what collides — so the
+        // generic "drop the option" sentence would blame an option nobody sent. The remedy is
+        // Orkeon's own knob, and only this hint knows to say so.
+        if (vendorError.Contains("Function tools with reasoning_effort are not supported",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            var reasoningModel = string.IsNullOrWhiteSpace(model) ? "This model" : $"'{model}'";
+            return $" — {reasoningModel} reasons by default and this endpoint refuses function "
+                 + "tools while it does: set the thinking effort to 'none' "
+                 + "(YAML: thinking: { effort: none }), or pick a non-reasoning model.";
+        }
+
         var capability = Array.Find(
             Signatures,
             s => vendorError.Contains(s.Marker, StringComparison.OrdinalIgnoreCase)).Capability;

@@ -2,7 +2,7 @@
 
 # LLM Provider Comparison — Orkeon
 
-> Status as of 2026-07-27, derived from the source code (`src/core/Orkeon.Infrastructure/LLMs/`)
+> Status as of 2026-08-30, derived from the source code (`src/core/Orkeon.Infrastructure/LLMs/`)
 > and from each provider's declared `LlmProviderCapabilities`.
 > Legend: ✓ supported · ✗ absent · ◐ partial/generic.
 
@@ -11,14 +11,14 @@
 | **OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Azure OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Anthropic** | HttpLlmProviderBase | ✓ native | ✓ | ✓ | ✓ (native, separate) | ✓ | ✗ | ✓ schema | ✓ toggle | ✓ | ✗ | ✓ explicit | ✗ | ✓ | ✓ |
-| **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✗ | ✓ | ✓ metrics | ✗ | ✓ | ✓ |
+| **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✓ | ✓ metrics | ✗ | ✓ | ✓ |
 | **Z.AI (GLM)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ✓ metrics | ✗ | ✓ | ✓ |
 | **Groq** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✓ | ✓ | ✓ |
 | **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Mistral AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ budget | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (undeclared — compat surface undocumented) | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ✗ | ✓ | ✓ |
 
@@ -60,6 +60,20 @@ their own dialect.
 - **HuggingFace**: model identifiers accept a routing suffix (`:fastest` / `:cheapest` /
   `:preferred` / `:<partner>`) — the only cost and latency lever on Inference Providers.
 - **top_p / stop**: Ollama only exposes `temperature` + `num_predict` (= max_tokens).
+- **OpenAI `max_completion_tokens`**: OpenAI retired `max_tokens` on its current models (the
+  2026-08-30 campaign failed ten modes on that one field), so the OpenAI dialect writes
+  `max_completion_tokens` — accepted by the older generations too (verified on `gpt-4o-mini`
+  the same day). The compatible vendors keep `max_tokens`: the retirement is OpenAI's alone.
+- **Gemini `response_format`**: undocumented on the compat surface when first audited
+  (2026-08-18) and undeclared then; measured live on 2026-08-30, the surface accepts
+  `json_object` and `json_schema` and enforces the schema server-side, so the provider now
+  declares `JsonSchema`.
+- **DeepSeek vision**: arrived with `deepseek-v4-flash-vision-exp` (measured 2026-08-30). Per
+  provider vs per model as everywhere (D-03): the default `deepseek-v4-flash` stays text-only
+  and answers an image with the vendor's own error.
+- **Anthropic identity-linked keys**: refuse every request without an `anthropic-workspace-id`
+  header (2026-08-30). Set `LlmConfig.WorkspaceId` (CLI: `--workspace-id`); classic keys need
+  nothing.
 - **Polly** and **API key sanitization**: provided by `HttpLlmProviderBase` → active everywhere.
 
 ## What this table does not prove

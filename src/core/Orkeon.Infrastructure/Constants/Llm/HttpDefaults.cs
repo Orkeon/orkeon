@@ -18,6 +18,13 @@ public static class HttpDefaults
     /// <summary>Anthropic Messages API version value.</summary>
     public const string AnthropicApiVersion = "2023-06-01";
 
+    /// <summary>
+    /// Anthropic workspace-scoping request header name. Mandatory with identity-linked API
+    /// keys (the API refuses the request without it, 2026-08-30); meaningless with classic
+    /// keys, so it is only sent when <c>LlmConfig.WorkspaceId</c> is set.
+    /// </summary>
+    public const string AnthropicWorkspaceIdHeader = "anthropic-workspace-id";
+
     // ── Azure OpenAI ────────────────────────────────────────────────────────
 
     /// <summary>Azure OpenAI API key request header name.</summary>

@@ -29,9 +29,14 @@
       "matrix": "§6.1",
       "apiKeyEnv": "OPENAI_API_KEY",
       "defaultModel": "gpt-5.6-sol",
+      "temperature": 1,
+      "thinkingEffort": "none",
       "notes": [
         "Cible générique du fallback de `LlmProviderFactory` : une campagne verte ici valide indirectement Docker Model Runner, vLLM et LM Studio.",
-        "G-05 fermé (LLM-01) : le défaut est passé de `gpt-4` (8 K de contexte, extinction 2026-10-23) à `gpt-5.6-sol`."
+        "G-05 fermé (LLM-01) : le défaut est passé de `gpt-4` (8 K de contexte, extinction 2026-10-23) à `gpt-5.6-sol`.",
+        "Les modèles actuels refusent `max_tokens` (campagne 2026-08-30 : dix modes rouges sur ce seul champ). Le dialecte OpenAI écrit `max_completion_tokens` depuis cette date — accepté aussi par les générations antérieures (vérifié sur `gpt-4o-mini` le même jour).",
+        "`gpt-5.6-sol` refuse toute température autre que 1 (`'temperature' does not support 0 with this model`) — même classe que `kimi-k2.6`, même remède : le catalogue épingle 1 et l'en-tête du rapport porte la valeur réellement utilisée.",
+        "`gpt-5.6-sol` raisonne par défaut et refuse les function tools sur chat/completions tant que `reasoning_effort` n'est pas explicitement `none` (mesuré 2026-08-30, `none` débloque l'appel). Le catalogue épingle `thinkingEffort: none` ; M7 continue de sonder le thinking avec son propre effort explicite."
       ]
     },
     "anthropic": {
@@ -43,7 +48,8 @@
         "Dialecte propre (Messages API) : c'est le provider qui porte le plus de code spécifique.",
         "M8 est **schéma obligatoire** — `output_config.format` n'a pas d'équivalent de `json_object`.",
         "M10 n'a de sens qu'avec un breakpoint explicite : sans `cache_control`, Anthropic ne cache rien (G-17). Le harnais l'active de lui-même ici.",
-        "M4 doit confirmer le SSE natif livré par LLM-05 (G-20), et non un repli bufferisé."
+        "M4 doit confirmer le SSE natif livré par LLM-05 (G-20), et non un repli bufferisé.",
+        "Les clés identity-linked exigent l'en-tête `anthropic-workspace-id` sur chaque requête (mesuré 2026-08-30). Déclarer `workspaceId` dans le JSON de campagne ou passer `--workspace-id` ; les clés classiques n'en ont pas besoin."
       ]
     },
     "azure": {
@@ -95,11 +101,12 @@
       "matrix": "§6.7",
       "apiKeyEnv": "DEEPSEEK_API_KEY",
       "defaultModel": "deepseek-v4-flash",
+      "visionModel": "deepseek-v4-flash-vision-exp",
       "notes": [
         "À **revalider** malgré son ancienneté de preuve : LLM-01 a changé son modèle par défaut et LLM-02 l'a refactoré sur le socle de capacités.",
         "M7 doit confirmer le round-trip de `reasoning_content` — sans lui l'API renvoie un 400.",
         "M8 doit confirmer la garde « mot *json* absent du prompt ».",
-        "Seul provider du parc sans modèle vision : M9 y est légitimement ➖."
+        "Longtemps seul provider du parc sans modèle vision, jusqu'à `deepseek-v4-flash-vision-exp` (mesuré 2026-08-30 : il lit une image base64). Le défaut `deepseek-v4-flash` reste texte seul : son M9 rouge est la preuve D-03, le compagnon vision apporte le fait complémentaire."
       ]
     },
     "kimi": {
@@ -170,7 +177,8 @@
       "notes": [
         "Arrivé **après** l'audit du 2026-07-27 : il ne porte aucun gap G-xx hérité, et sa fiche §6.13 a été ouverte sans campagne. Celle-ci est sa première preuve d'exécution réelle.",
         "Endpoint de **compatibilité OpenAI** (`generativelanguage.googleapis.com/v1beta/openai`) — ni l'API Gemini native, ni Vertex AI. L'hôte porté par l'en-tête du rapport est ce qui le confirme.",
-        "**M8 est légitimement ➖** : `response_format` n'est pas documenté sur la surface de compatibilité, le provider déclare donc `ResponseFormat = None`. Ce que M8 observe ici, c'est l'avertissement de capacité — jamais un abandon silencieux.",
+        "**M8 n'est plus ➖** : mesuré le 2026-08-30, la surface de compatibilité accepte `response_format` `json_object` **et** `json_schema`, schéma validé côté serveur (`additionalProperties` compris). Le provider déclare `JsonSchema` depuis cette date — l'avertissement qu'il émettait refusait quelque chose qui marche.",
+        "M3/M4 streament par gros blocs (~13 caractères par événement) : une réponse trop courte tient dans un seul chunk et se lit comme un repli bufferisé. La sonde demande trente nombres depuis le 2026-08-30 pour discriminer.",
         "M7 est **effort seul** (`reasoning_effort` traduit en `thinking_level`) : ni bascule, ni budget de tokens, contrairement à Qwen.",
         "Le modèle par défaut voit : M9 s'exerce sur lui, sans campagne vision compagnon."
       ]

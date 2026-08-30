@@ -33,6 +33,9 @@
   Endpoint override (Azure, regional mirrors).
 .PARAMETER ApiVersion
   Azure api-version, deployment mode only.
+
+.PARAMETER WorkspaceId
+  Workspace id for workspace-scoped keys (Anthropic identity-linked keys require it).
 .PARAMETER ApiKeyEnv
   Name of the environment variable holding the API key.
 .PARAMETER MaxModels
@@ -64,6 +67,7 @@ param(
     [string]$Config = '',
     [string]$BaseUrl = '',
     [string]$ApiVersion = '',
+    [string]$WorkspaceId = '',
     [string]$ApiKeyEnv = '',
     [int]$MaxModels = 0,
     [switch]$DryRun,
@@ -287,7 +291,7 @@ New-Item -ItemType Directory -Force -Path $TmpDir | Out-Null
 function Invoke-Campaign {
     param(
         [string]$ProviderKey, [string]$ModelId, [string]$ModeList,
-        [string]$KeyEnv, [string]$Base, [string]$Version
+        [string]$KeyEnv, [string]$Base, [string]$Version, [string]$Workspace
     )
 
     $slug = ($ModelId.ToCharArray() | ForEach-Object {
@@ -307,6 +311,7 @@ function Invoke-Campaign {
                    '--modes', $ModeList, '--format', 'json', '-k', $KeyEnv)
     if ($Base)    { $arguments += @('-u', $Base) }
     if ($Version) { $arguments += @('--api-version', $Version) }
+    if ($Workspace) { $arguments += @('--workspace-id', $Workspace) }
     if ($Commit)  { $arguments += @('--commit', $Commit) }
     if ($null -ne $Timeout)     { $arguments += @('--timeout', $Timeout.ToString([cultureinfo]::InvariantCulture)) }
 
@@ -324,6 +329,12 @@ function Invoke-Campaign {
     if ($null -ne $effectiveTemperature) {
         $arguments += @('--temperature', $effectiveTemperature.ToString([cultureinfo]::InvariantCulture))
     }
+
+    # Same shape for the base thinking effort: gpt-5.6-sol refuses function tools on
+    # chat/completions unless reasoning is explicitly off (2026-08-30). Catalogue-declared,
+    # printed by the report header; M7 keeps probing thinking with its own explicit effort.
+    $thinkingEffort = Get-CatalogField -ProviderKey $ProviderKey -Field 'thinkingEffort'
+    if ($thinkingEffort) { $arguments += @('--thinking-effort', $thinkingEffort) }
 
     $raw = Join-Path $TmpDir "$ProviderKey-$slug.json"
     $err = Join-Path $TmpDir "$ProviderKey-$slug.stderr"
@@ -367,6 +378,7 @@ function Invoke-Provider {
     if (-not $keyEnv) { $keyEnv = 'ORKEON_LLM_API_KEY' }
     $base     = if ($BaseUrl)   { $BaseUrl }   else { Get-Setting $ProviderKey 'baseUrl' }
     $version  = if ($ApiVersion){ $ApiVersion} else { Get-Setting $ProviderKey 'apiVersion' }
+    $workspace = if ($WorkspaceId) { $WorkspaceId } else { Get-Setting $ProviderKey 'workspaceId' }
     $cap      = if ($MaxModels -gt 0) { $MaxModels } else { [int](Get-Setting $ProviderKey 'maxModels' $DefaultMaxModels) }
 
     # A literal key from the configuration is set for the duration of this provider's
@@ -396,7 +408,7 @@ function Invoke-Provider {
             $models = $models | Select-Object -First $cap
         }
 
-        foreach ($m in $models) { Invoke-Campaign $ProviderKey $m $modeList $keyEnv $base $version }
+        foreach ($m in $models) { Invoke-Campaign $ProviderKey $m $modeList $keyEnv $base $version $workspace }
 
         # A vision companion run, when the provider's default model cannot see and it declares
         # one that can. This is the practical half of D-03: capabilities are declared per
@@ -415,7 +427,7 @@ function Invoke-Provider {
             $vision = Get-CatalogField $ProviderKey 'visionModel'
             if ($vision -and ($models -notcontains $vision)) {
                 Write-Log "  ↳ $ProviderKey declares a vision model — running M9 on $vision as well"
-                Invoke-Campaign $ProviderKey $vision 'M9' $keyEnv $base $version
+                Invoke-Campaign $ProviderKey $vision 'M9' $keyEnv $base $version $workspace
             }
         }
     }
@@ -463,6 +475,7 @@ try {
         if ($Config)        { $forwarded += @('-Config', $Config) }
         if ($BaseUrl)       { $forwarded += @('-BaseUrl', $BaseUrl) }
         if ($ApiVersion)    { $forwarded += @('-ApiVersion', $ApiVersion) }
+        if ($WorkspaceId)   { $forwarded += @('-WorkspaceId', $WorkspaceId) }
         if ($ApiKeyEnv)     { $forwarded += @('-ApiKeyEnv', $ApiKeyEnv) }
         if ($MaxModels)     { $forwarded += @('-MaxModels', "$MaxModels") }
         if ($null -ne $Timeout)     { $forwarded += @('-Timeout', "$Timeout") }

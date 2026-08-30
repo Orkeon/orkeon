@@ -31,14 +31,16 @@ public class GeminiLlmProvider : OpenAICompatibleProviderBase
     /// Capabilities verified against Google's OpenAI-compatibility documentation
     /// (2026-08-18): <c>reasoning_effort</c> is supported and maps to Gemini's
     /// <c>thinking_level</c> (effort-only — no toggle, no token budget); vision flows
-    /// through <c>image_url</c> with base64 data URIs. <c>response_format</c> is NOT
-    /// documented on the compatibility surface (structured outputs go through the
-    /// vendor SDKs' parse helpers), so it stays undeclared: a caller requesting a JSON
-    /// response format gets the structured capability warning instead of a silent drop.
+    /// through <c>image_url</c> with base64 data URIs. <c>response_format</c> was
+    /// undocumented on the compatibility surface then and stayed undeclared; measured
+    /// live on 2026-08-30, the surface accepts both <c>json_object</c> and
+    /// <c>json_schema</c> and enforces the schema server-side
+    /// (<c>additionalProperties</c> included), so the declaration follows the
+    /// measurement — the warning it used to emit was refusing something that works.
     /// </summary>
     public override LlmProviderCapabilities Capabilities { get; } = new()
     {
-        ResponseFormat = ResponseFormatSupport.None,
+        ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.EffortOnly,
         Vision = true,
     };

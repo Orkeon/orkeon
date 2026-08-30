@@ -80,6 +80,10 @@
           "type": "string",
           "description": "api-version Azure en mode deployment. Omis en mode v1 GA."
         },
+        "workspaceId": {
+          "type": "string",
+          "description": "Workspace des requêtes, pour les clés à portée de workspace (les clés identity-linked d'Anthropic l'exigent). Un identifiant, pas un secret."
+        },
         "modes": { "$ref": "#/$defs/modes" },
         "maxModels": { "$ref": "#/$defs/maxModels" },
         "models": {

@@ -26,6 +26,15 @@ public class OpenAIProvider : OpenAICompatibleProviderBase
     protected override string ProviderDisplayName => "OpenAI";
 
     /// <summary>
+    /// OpenAI retired <c>max_tokens</c> on its current chat models — the 2026-08-30 campaign
+    /// failed ten modes out of twelve on <c>gpt-5.6-sol</c> over this one field — and its
+    /// replacement is accepted by the older generations too (verified live against
+    /// <c>gpt-4o-mini</c> the same day), so the rename is unconditional here. The compatible
+    /// vendors keep the base's <c>max_tokens</c>: the retirement is OpenAI's, not the dialect's.
+    /// </summary>
+    protected override string MaxTokensFieldName => "max_completion_tokens";
+
+    /// <summary>
     /// OpenAI offers Structured Outputs (server-validated JSON Schema), a reasoning effort
     /// hint that cannot be switched off, automatic prompt caching (nothing to declare on the
     /// wire), and vision: messages carrying

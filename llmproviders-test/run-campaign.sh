@@ -29,6 +29,7 @@ MODES=""
 CONFIG=""
 BASE_URL=""
 API_VERSION=""
+WORKSPACE_ID=""
 API_KEY_ENV=""
 MAX_MODELS=""
 DRY_RUN=0
@@ -75,6 +76,7 @@ Options:
   -c, --config <file>    campaign configuration — see providers.schema.json
   -u, --base-url <url>   endpoint override (Azure, regional mirrors)
       --api-version <v>  Azure api-version, deployment mode only
+      --workspace-id <w> workspace id for workspace-scoped keys (Anthropic identity-linked)
   -k, --api-key-env <V>  name of the environment variable holding the API key
       --max-models <n>   cap on how far a wildcard may expand (default 5)
       --dry-run          resolve and print the plan; place no call, write nothing
@@ -106,6 +108,7 @@ while [[ $# -gt 0 ]]; do
     -c|--config)      CONFIG="$2"; shift 2 ;;
     -u|--base-url)    BASE_URL="$2"; shift 2 ;;
     --api-version)    API_VERSION="$2"; shift 2 ;;
+    --workspace-id)   WORKSPACE_ID="$2"; shift 2 ;;
     -k|--api-key-env) API_KEY_ENV="$2"; shift 2 ;;
     --max-models)     MAX_MODELS="$2"; shift 2 ;;
     --dry-run)        DRY_RUN=1; shift ;;
@@ -272,7 +275,7 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 run_one() {
-  local provider="$1" model="$2" modes="$3" key_env="$4" base_url="$5" api_version="$6"
+  local provider="$1" model="$2" modes="$3" key_env="$4" base_url="$5" api_version="$6" workspace_id="$7"
   local slug stamp target raw err args status
 
   slug=$(printf '%s' "$model" | tr -c 'A-Za-z0-9._-' '_')
@@ -289,6 +292,7 @@ run_one() {
   args=(llm probe -p "$provider" -m "$model" --modes "$modes" --format json -k "$key_env")
   [[ -n "$base_url" ]] && args+=(-u "$base_url")
   [[ -n "$api_version" ]] && args+=(--api-version "$api_version")
+  [[ -n "$workspace_id" ]] && args+=(--workspace-id "$workspace_id")
   [[ -n "$COMMIT" ]] && args+=(--commit "$COMMIT")
   [[ -n "$TIMEOUT" ]] && args+=(--timeout "$TIMEOUT")
 
@@ -301,6 +305,13 @@ run_one() {
   local temperature="$TEMPERATURE"
   [[ -z "$temperature" ]] && temperature=$(catalog_field "$provider" "temperature")
   [[ -n "$temperature" ]] && args+=(--temperature "$temperature")
+
+  # Same shape for the base thinking effort: gpt-5.6-sol refuses function tools on
+  # chat/completions unless reasoning is explicitly off (2026-08-30). Catalogue-declared,
+  # printed by the report header; M7 keeps probing thinking with its own explicit effort.
+  local thinking_effort
+  thinking_effort=$(catalog_field "$provider" "thinkingEffort")
+  [[ -n "$thinking_effort" ]] && args+=(--thinking-effort "$thinking_effort")
 
   raw="$TMP_DIR/$provider-$slug.json"
   err="$TMP_DIR/$provider-$slug.stderr"
@@ -342,7 +353,7 @@ run_one() {
 
 run_provider() {
   local provider="$1"
-  local modes key_env base_url api_version cap models key_value
+  local modes key_env base_url api_version workspace_id cap models key_value
 
   # Command line wins over the configuration, which wins over the built-in default — the
   # usual precedence, so an operator can override one provider without editing the file.
@@ -351,6 +362,7 @@ run_provider() {
   key_env="${key_env:-ORKEON_LLM_API_KEY}"
   base_url="${BASE_URL:-$(cfg "$provider" "baseUrl")}"
   api_version="${API_VERSION:-$(cfg "$provider" "apiVersion")}"
+  workspace_id="${WORKSPACE_ID:-$(cfg "$provider" "workspaceId")}"
   cap="${MAX_MODELS:-$(cfg "$provider" "maxModels" "$DEFAULT_MAX_MODELS")}"
 
   # A literal key from the configuration is exported for the child process only: never onto
@@ -379,7 +391,7 @@ run_provider() {
   fi
 
   for model in "${models[@]}"; do
-    run_one "$provider" "$model" "$modes" "$key_env" "$base_url" "$api_version"
+    run_one "$provider" "$model" "$modes" "$key_env" "$base_url" "$api_version" "$workspace_id"
   done
 
   # A vision companion run, when the provider's default model cannot see and it declares one
@@ -400,7 +412,7 @@ run_provider() {
     vision=$(catalog_field "$provider" "visionModel")
     if [[ -n "$vision" ]] && ! printf '%s\n' "${models[@]}" | grep -qxF "$vision"; then
       log "  ↳ $provider declares a vision model — running M9 on $vision as well"
-      run_one "$provider" "$vision" "M9" "$key_env" "$base_url" "$api_version"
+      run_one "$provider" "$vision" "M9" "$key_env" "$base_url" "$api_version" "$workspace_id"
     fi
   fi
 

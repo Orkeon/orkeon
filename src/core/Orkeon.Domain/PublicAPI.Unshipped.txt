@@ -15,3 +15,5 @@ static Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison.get -> System
 Orkeon.Domain.FileSystem.FileSystemRegistry.ResolveAndCheckRights(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, bool includeInternal = false) -> string!
 Orkeon.Domain.FileSystem.FileSystemRegistry.ToVirtualPath(string! physicalPath, bool includeInternal = false) -> string?
 Orkeon.Domain.FileSystem.FileSystemRegistry.GetMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemMount!>!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WorkspaceId.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WorkspaceId.init -> void

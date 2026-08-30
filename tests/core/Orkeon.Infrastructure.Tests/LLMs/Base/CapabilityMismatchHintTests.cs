@@ -35,6 +35,26 @@ public class CapabilityMismatchHintTests
         Assert.Contains("'llama3.2'", hint, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The OpenAI campaign of 2026-08-30: `gpt-5.6-sol` reasons by default, and on
+    /// /v1/chat/completions the server refuses function tools unless `reasoning_effort` is
+    /// explicitly `"none"`. Orkeon sent no reasoning_effort at all — the server default is
+    /// what collides — so the generic "drop the option" sentence would name an option the
+    /// request never carried. The remedy is Orkeon's own knob, and the hint must say it.
+    /// </summary>
+    [Fact]
+    public void ShouldNameTheThinkingKnob_WhenAReasoningModelRefusesFunctionTools()
+    {
+        const string VendorError =
+            """{"error":{"message":"Function tools with reasoning_effort are not supported for gpt-5.6-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.","param":"reasoning_effort"}}""";
+
+        var hint = CapabilityMismatchHint.ForVendorError(VendorError, "OpenAI", "gpt-5.6-sol");
+
+        Assert.Contains("effort", hint, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("none", hint, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("thinking", hint, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>A remedy, not just a diagnosis — a hint with no way forward is noise.</summary>
     [Fact]
     public void ShouldOfferAWayForward()

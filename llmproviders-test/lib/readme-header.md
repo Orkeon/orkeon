@@ -66,12 +66,14 @@ Sous Windows, `run-campaign.ps1` expose exactement les mêmes options.
 | `--config <fichier>` | Configuration de campagne (voir `providers.schema.json`) |
 | `--base-url <url>` | Surcharge d'endpoint (Azure, miroirs régionaux) |
 | `--api-version <v>` | `api-version` Azure en mode deployment |
+| `--workspace-id <w>` | Workspace des requêtes, pour les clés à portée de workspace — les clés identity-linked d'Anthropic l'exigent (aussi déclarable par provider : `workspaceId` dans le JSON) |
 | `--api-key-env <VAR>` | Variable portant la clé |
 | `--max-models <n>` | Plafond du wildcard (défaut 5 ; `providers.example.json` l'abaisse à 3) |
 | `--dry-run` | Résout et affiche le plan, n'appelle rien |
 | `--no-recap` | Ne reconstruit pas l'index — pour les lancements parallèles |
 | `--timeout <s>` | Délai par requête, défaut **180 s** (un modèle local froid doit d'abord se charger) |
 | `--temperature <t>` | Échantillonnage, défaut **0** — épinglé pour qu'un verdict soit reproductible |
+| `--thinking-effort <e>` | Effort de raisonnement de base (ex. `none`) — pour les modèles qui refusent les tools en raisonnant ; aussi déclarable par provider (`thinkingEffort` au catalogue) |
 | `--out <dir>` | Racine des rapports (défaut : ce dossier) |
 
 ## Lancer plusieurs providers en parallèle
@@ -160,7 +162,7 @@ campagne > le `defaultModel` du catalogue.
 | `groq` | `llama-3.3-70b-versatile` | |
 | `ollama` | `llama3.2` | `llava` |
 | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | |
-| `deepseek` | `deepseek-v4-flash` | |
+| `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |
 | `kimi` | `kimi-k2.6` | |
 | `qwen` | `qwen3.7-plus` | |
 | `mistral` | `mistral-large-latest` | |

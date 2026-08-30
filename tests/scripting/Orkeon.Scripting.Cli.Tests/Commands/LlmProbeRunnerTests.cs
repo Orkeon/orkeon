@@ -364,6 +364,27 @@ public sealed class LlmProbeRunnerTests
         Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
     }
 
+    /// <summary>
+    /// The demanded answer must be long enough to discriminate a coarse-chunking stream from a
+    /// buffered fallback. "Count from one to five" was not: Gemini genuinely streams, but its
+    /// compat surface emits ~13-character chunks, so five numbers fit in one event and both M3
+    /// and M4 read a real stream as buffered (2026-08-30) — while the same endpoint produced
+    /// four chunks the moment the count went to twenty. Thirty keeps a margin. The property
+    /// pinned here is the count the prompt asks for, not its phrasing.
+    /// </summary>
+    [Fact]
+    public async Task ShouldDemandAnAnswerLongEnoughToDiscriminate_OnBothStreamingModes()
+    {
+        var provider = new ScriptedProvider { Content = "one two three", StreamInChunks = true };
+        var runner = new LlmProbeRunner(provider);
+
+        await RunAsync(runner, LlmProbeMode.M3);
+        await RunAsync(runner, LlmProbeMode.M4);
+
+        Assert.Contains("thirty", Assert.Single(provider.Prompts), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("thirty", Assert.Single(provider.Conversations)[0].Content, StringComparison.OrdinalIgnoreCase);
+    }
+
     // ── Capability gates: absence is not failure ────────────────────────────
 
     /// <summary>A provider that declares no capability must not be marked down for lacking it.</summary>
@@ -501,6 +522,55 @@ public sealed class LlmProbeRunnerTests
         Assert.Equal("tool", replay[2].Role);
         Assert.Equal("call-1", replay[2].ToolCallId);
         Assert.Equal(ProbeCode, replay[2].Content);
+    }
+
+    /// <summary>
+    /// When the body already carries the OpenAI <c>tool_calls</c> array, the probe must
+    /// replay THAT fragment — the raw one — not a canonical rebuild of it. The real agent
+    /// loop (<c>NativeToolCallingAgentLoop</c>) replays <c>tc.GetRawText()</c> verbatim, and
+    /// a probe that rebuilds from the parsed calls measures a different product than the one
+    /// shipping. Gemini turned the difference into a 400: its compat surface returns a
+    /// <c>thought_signature</c> inside each tool_call (<c>extra_content.google</c>) and
+    /// rejects a replay that lost it — which is exactly what the rebuild did, failing M5 on
+    /// 2026-08-30 for a defect the framework does not have.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReplayM5_WithTheRawToolCallsFragment_WhenTheBodyIsOpenAiShaped()
+    {
+        var provider = new ScriptedProvider().Script(
+            GeminiShapedToolCallResponse(ProbeTool, """{"city":"Lyon"}"""),
+            new LlmResponse { Content = ProbeCode });
+        var runner = new LlmProbeRunner(provider, OpenAiParser());
+
+        var result = await RunAsync(runner, LlmProbeMode.M5);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        var replay = provider.Conversations[1];
+        Assert.Contains("thought_signature", replay[1].RawToolCalls, StringComparison.Ordinal);
+        Assert.Contains("sig-opaque-blob", replay[1].RawToolCalls, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A dialect whose body is not OpenAI-shaped (Anthropic's <c>tool_use</c> content blocks)
+    /// has no raw fragment to lift, so the canonical rebuild remains the replay — it is what
+    /// <c>AnthropicLlmProvider</c> reads back.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReplayM5_AsTheCanonicalRebuild_WhenTheBodyIsNotOpenAiShaped()
+    {
+        var provider = new ScriptedProvider().Script(
+            AnthropicShapedToolCallResponse(ProbeTool, "toolu-1"),
+            new LlmResponse { Content = ProbeCode });
+        var runner = new LlmProbeRunner(
+            provider, new AnthropicToolCallingStrategy().Parser);
+
+        var result = await RunAsync(runner, LlmProbeMode.M5);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        var replay = provider.Conversations[1];
+        Assert.Contains(ProbeTool, replay[1].RawToolCalls, StringComparison.Ordinal);
+        Assert.Contains("\"type\":\"function\"", replay[1].RawToolCalls, StringComparison.Ordinal);
+        Assert.Equal("toolu-1", replay[2].ToolCallId);
     }
 
     // ── M6: the text fallback protocol ──────────────────────────────────────
@@ -799,6 +869,52 @@ public sealed class LlmProbeRunnerTests
         }),
     };
 
+    /// <summary>
+    /// Gemini's compat surface, verbatim shape of 2026-08-30: each tool_call carries an
+    /// <c>extra_content.google.thought_signature</c> the vendor demands back on replay.
+    /// </summary>
+    private static LlmResponse GeminiShapedToolCallResponse(string tool, string argumentsJson) => new()
+    {
+        Content = "",
+        RawResponseBody = JsonSerializer.Serialize(new
+        {
+            choices = new[]
+            {
+                new
+                {
+                    message = new
+                    {
+                        role = "assistant",
+                        content = (string?)null,
+                        tool_calls = new[]
+                        {
+                            new
+                            {
+                                id = "call-1",
+                                type = "function",
+                                function = new { name = tool, arguments = argumentsJson },
+                                extra_content = new { google = new { thought_signature = "sig-opaque-blob" } },
+                            },
+                        },
+                    },
+                },
+            },
+        }),
+    };
+
+    /// <summary>Anthropic Messages API shape: tool_use content blocks, no tool_calls array.</summary>
+    private static LlmResponse AnthropicShapedToolCallResponse(string tool, string id) => new()
+    {
+        Content = "",
+        RawResponseBody = JsonSerializer.Serialize(new
+        {
+            content = new object[]
+            {
+                new { type = "tool_use", id, name = tool, input = new { city = "Lyon" } },
+            },
+        }),
+    };
+
     /// <summary>A provider whose behaviour the test dictates, so the harness's judgement is what is measured.</summary>
     /// <summary>
     /// A scripted response the runner reads as an API error. <see cref="ScriptedProvider.Error"/>
@@ -891,6 +1007,7 @@ public sealed class LlmProbeRunnerTests
             string prompt, LlmConfig? config = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            Prompts.Add(prompt);
             await Task.CompletedTask.ConfigureAwait(false);
 
             if (StreamThrow is not null)
@@ -910,6 +1027,7 @@ public sealed class LlmProbeRunnerTests
             LlmMessage[] messages, LlmConfig? config = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            Conversations.Add(messages);
             await Task.CompletedTask.ConfigureAwait(false);
 
             // A refused chat stream yields no delta and a Completed event whose response carries

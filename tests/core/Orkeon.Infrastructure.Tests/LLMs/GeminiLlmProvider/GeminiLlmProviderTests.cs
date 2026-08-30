@@ -47,11 +47,13 @@ public class GeminiLlmProviderTests
         using var provider = new GeminiLlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Verified against the OpenAI-compatibility docs (2026-08-18): reasoning_effort
-        // is supported (effort-only), vision flows through image_url; response_format is
-        // undocumented on the compat surface, so it stays undeclared (never a silent drop).
+        // is supported (effort-only), vision flows through image_url. response_format was
+        // undocumented on the compat surface then and stayed undeclared; measured live on
+        // 2026-08-30, the surface accepts both json_object and json_schema and honours the
+        // schema (additionalProperties enforced), so the declaration follows the measurement.
         Assert.Equal(ThinkingSupport.EffortOnly, provider.Capabilities.Thinking);
         Assert.True(provider.Capabilities.Vision);
-        Assert.Equal(ResponseFormatSupport.None, provider.Capabilities.ResponseFormat);
+        Assert.Equal(ResponseFormatSupport.JsonSchema, provider.Capabilities.ResponseFormat);
     }
 
     [Fact]
