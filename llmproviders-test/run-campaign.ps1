@@ -361,6 +361,11 @@ function Invoke-Campaign {
     $thinkingEffort = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'thinkingEffort'
     if ($thinkingEffort) { $arguments += @('--thinking-effort', $thinkingEffort) }
 
+    # M7's own effort, where a model's supported set excludes the default "low"
+    # (mistral-medium-2604: only high or none, 2026-08-30).
+    $m7Effort = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'm7Effort'
+    if ($m7Effort) { $arguments += @('--m7-effort', $m7Effort) }
+
     $raw = Join-Path $TmpDir "$ProviderKey-$slug.json"
     $err = Join-Path $TmpDir "$ProviderKey-$slug.stderr"
     Write-Log "▶ $ProviderKey / $ModelId  [$ModeList]"

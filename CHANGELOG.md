@@ -55,6 +55,14 @@ turned five findings into fixes. Each one is dated and pinned by an offline test
   then claude-sonnet-5 coalesced the whole count-to-thirty into a single delta the
   same day.
 
+The Mistral default model was broken and nothing could have said so offline:
+`LlmProviderDefaultModels.Mistral` carried `mistral-medium-3-5-26-04`, an identifier the API
+never served (`Invalid model`, measured 2026-08-30) — it reads like a concatenation of the
+alias `mistral-medium-3-5` and the vintage `2604`, the two forms Mistral really serves. Any
+configuration naming the provider without a model got a guaranteed 400. Now
+`mistral-medium-2604`, the dated snapshot, verified live; same class as the retired defaults
+LLM-01 fixed (G-01..G-04), found the same way — by the first real call.
+
 The mandatory values some models dictate are now a per-model registry, not folklore:
 `requiredParams` in the campaign catalogue (kimi-k2.6, gpt-5.6-sol and claude-sonnet-5 all
 refuse any temperature but 1; gpt-5.6-sol additionally demands `reasoning_effort: "none"`
@@ -63,6 +71,32 @@ provider, because `gpt-4o-mini` rejects `reasoning_effort` outright and a provid
 would break it. Human-readable twin: the "Per-model mandatory parameter values" section of
 `docs/reference/llm-providers-comparison.md` (mirrored in French), vendor wording and
 measurement date included.
+
+Mistral, first campaign ever (the key arrived last), peeled four findings in a row before
+settling at 11/1 on `mistral-medium-2604`, with the G-14 proof in the header
+(`api.mistral.ai`, not `localhost`, no base-url passed):
+
+- The compiled default was the broken identifier above — first finding, fixed first.
+- The model restricts `reasoning_effort` to `['high', 'none']`, so M7's hard-coded "low"
+  was refused: the probe's effort is now a per-model registry value (`m7Effort`,
+  CLI `--m7-effort`).
+- **Orkeon's omit-top_p-when-1 was a silent drop there.** Mistral's reasoning mode runs an
+  internal top_p default of its own and validates greedy sampling against the EXPLICIT
+  field, so `temperature: 0` + reasoning with no `top_p` is refused (`"top_p must be 1 when
+  using greedy sampling."`) while the same request with an explicit `top_p: 1` passes. The
+  Mistral dialect now always writes the configured value (`AlwaysEmitTopP` hook — the base
+  keeps omitting: OpenAI's reasoning models reject the explicit field, the same assumption
+  broken in the other direction).
+- **Reasoning replies were parsed as empty.** With `reasoning_effort` on, Mistral answers
+  `message.content` as an ARRAY of typed chunks (`thinking` + `text`) and the string-only
+  read dropped both: M7 archived `accepted, no reasoning trace returned, tokens=243` — 243
+  tokens billed, nothing kept. The shared parse now walks the text parts (the OpenAI
+  multi-part standard) and surfaces the thinking chunks as `reasoning_content`; the re-run
+  archives `reasoning trace returned`.
+
+The one standing red is the vendor's: `prompt_tokens_details.cached_tokens` stays 0 on an
+identical 5812-token prefix called twice (three measurements) — the field exists, the
+implicit cache never hits.
 
 Campaign verdicts, same day: Kimi's open M3 "stream refused" of August did not reproduce
 (4/4 green, replays included); Z.AI's implicit context cache missed once in-campaign

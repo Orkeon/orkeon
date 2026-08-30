@@ -50,8 +50,15 @@ public static class LlmProviderDefaultModels
     /// <summary>Google Gemini, over its OpenAI-compatibility surface.</summary>
     public const string Gemini = "gemini-3.7-flash";
 
-    /// <summary>Mistral AI.</summary>
-    public const string Mistral = "mistral-medium-3-5-26-04";
+    /// <summary>
+    /// Mistral AI — the dated snapshot of the medium 3.5 generation. The previous value,
+    /// <c>mistral-medium-3-5-26-04</c>, was never a served identifier: the API answers
+    /// <c>Invalid model</c> (measured 2026-08-30), and the string reads like a concatenation
+    /// of the two forms Mistral really serves — the alias <c>mistral-medium-3-5</c> and the
+    /// vintage <c>2604</c>. Both were verified live the same day; the dated one is pinned,
+    /// per this file's convention that a default does not drift under an alias.
+    /// </summary>
+    public const string Mistral = "mistral-medium-2604";
 
     /// <summary>Groq.</summary>
     public const string Groq = "llama-3.3-70b-versatile";

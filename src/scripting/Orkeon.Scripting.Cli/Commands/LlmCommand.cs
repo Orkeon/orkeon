@@ -49,6 +49,14 @@ internal sealed class LlmProbeCommandOptions
         HelpText = "Base reasoning-effort hint (e.g. none). For models that refuse tools while reasoning; M7 still probes thinking explicitly.")]
     public string? ThinkingEffort { get; set; }
 
+    /// <summary>
+    /// Effort value M7 probes with, for models whose supported set excludes the default
+    /// "low" (mistral-medium-2604 accepts only high or none, 2026-08-30).
+    /// </summary>
+    [Option("m7-effort", Required = false,
+        HelpText = "Reasoning effort M7 probes with (default low). For models whose supported set excludes low.")]
+    public string? M7Effort { get; set; }
+
     /// <summary>Environment variable holding the API key. Never the key itself.</summary>
     [Option('k', "api-key-env", Required = false, Default = "ORKEON_LLM_API_KEY",
         HelpText = "Name of the environment variable holding the API key. The key itself is never accepted on the command line.")]
@@ -230,7 +238,10 @@ internal static class LlmCommand
             return Program.ExitRuntimeError;
         }
 
-        var runner = new LlmProbeRunner(typed.UnderlyingProvider, ResolveToolCallParser(options.Provider));
+        var runner = new LlmProbeRunner(typed.UnderlyingProvider, ResolveToolCallParser(options.Provider))
+        {
+            M7ThinkingEffort = string.IsNullOrWhiteSpace(options.M7Effort) ? "low" : options.M7Effort!,
+        };
 
         IReadOnlyList<LlmProbeResult> results;
         try

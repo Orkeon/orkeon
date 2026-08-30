@@ -152,11 +152,16 @@
       "label": "Mistral AI",
       "matrix": "§6.10",
       "apiKeyEnv": "MISTRAL_API_KEY",
-      "defaultModel": "mistral-large-latest",
+      "defaultModel": "mistral-medium-2604",
+      "requiredParams": {
+        "mistral-medium-2604": { "m7Effort": "high" }
+      },
       "notes": [
         "Lancer **sans `--base-url`** : c'est ainsi, et seulement ainsi, qu'on vérifie en réel que G-14 est fermé — un modèle `mistral-*` nu ne doit plus partir vers `localhost:11434`.",
         "L'hôte affiché dans l'en-tête du rapport est la preuve : `api.mistral.ai`, pas `localhost`.",
-        "Les identifiants mêlent alias et snapshots datés : confirmer l'id sur la fiche modèle officielle avant de le figer."
+  "`mistral-medium-2604` restreint `reasoning_effort` à `['high', 'none']` (mesuré 2026-08-30) — le `low` par défaut de M7 est refusé, d'où le `m7Effort: high` de requiredParams.",
+  "M10 : l'usage porte `prompt_tokens_details.cached_tokens` mais la valeur reste 0 sur un préfixe identique de 5812 tokens appelé deux fois (3 mesures, 2026-08-30). Le champ existe, le cache implicite n'accroche pas — rouge vendeur, pas défaut Orkéon.",
+        "Les identifiants mêlent alias et snapshots datés : confirmer l'id sur la fiche modèle officielle avant de le figer. Le défaut compilé a été exactement ce piège : `mistral-medium-3-5-26-04` (une concaténation de l'alias `-3-5` et du millésime `26-04`) n'a jamais été servi — `Invalid model`, mesuré 2026-08-30, corrigé en `mistral-medium-2604`."
       ]
     },
     "huggingface": {

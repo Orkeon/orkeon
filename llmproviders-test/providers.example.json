@@ -72,7 +72,7 @@
     "mistral": {
       "_comment": "Lancer SANS baseUrl : c'est ainsi qu'on vérifie en réel que G-14 est fermé.",
       "apiKeyEnv": "MISTRAL_API_KEY",
-      "models": ["mistral-medium-3-5-26-04"]
+      "models": ["mistral-medium-2604"]
     },
 
     "huggingface": {

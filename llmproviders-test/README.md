@@ -165,7 +165,7 @@ campagne > le `defaultModel` du catalogue.
 | `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |
 | `kimi` | `kimi-k2.6` | |
 | `qwen` | `qwen3.7-plus` | |
-| `mistral` | `mistral-large-latest` | |
+| `mistral` | `mistral-medium-2604` | |
 | `huggingface` | `openai/gpt-oss-120b` | |
 | `zai` | `glm-5.2` | `glm-4.6v-flash` |
 | `gemini` | `gemini-3.7-flash` | *(le défaut voit)* |
@@ -302,6 +302,10 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T11:11:20Z | `mistral` | `mistral-medium-2604` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](mistral/2026-08-30-111105-mistral-medium-2604.md) |
+| 2026-08-30T11:04:40Z | `mistral` | `mistral-medium-2604` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](mistral/2026-08-30-110426-mistral-medium-2604.md) |
+| 2026-08-30T11:01:22Z | `mistral` | `mistral-medium-2604` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](mistral/2026-08-30-110109-mistral-medium-2604.md) |
+| 2026-08-30T10:56:37Z | `mistral` | `mistral-medium-2604` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](mistral/2026-08-30-105625-mistral-medium-2604.md) |
 | 2026-08-30T10:31:19Z | `anthropic` | `claude-sonnet-5` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](anthropic/2026-08-30-103048-claude-sonnet-5.md) |
 | 2026-08-30T10:25:16Z | `anthropic` | `claude-sonnet-5` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](anthropic/2026-08-30-102446-claude-sonnet-5.md) |
 | 2026-08-30T10:03:33Z | `ollama` | `llava` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](ollama/2026-08-30-100320-llava.md) |
@@ -339,6 +343,7 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 | `deepseek` | `deepseek-v4-flash-vision-exp` | 2026-08-30 | ✅ | M9 |
 | `gemini` | `gemini-3.7-flash` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `kimi` | `kimi-k2.6` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `mistral` | `mistral-medium-2604` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `ollama` | `llava` | 2026-08-30 | ✅ | M9 |
 | `openai` | `gpt-5.6-sol` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `zai` | `glm-4.6v-flash` | 2026-08-30 | ✅ | M9 |
@@ -346,4 +351,4 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_28 campagne(s) archivée(s)._
+_32 campagne(s) archivée(s)._

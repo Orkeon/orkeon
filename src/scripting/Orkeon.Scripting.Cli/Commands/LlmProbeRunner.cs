@@ -177,6 +177,14 @@ internal sealed class LlmProbeRunner
     /// request close to the model's advertised window, the second needs a real crew with
     /// delegation. Both are documented as manual procedures in the campaign kit.
     /// </remarks>
+    /// <summary>
+    /// The effort hint M7 sends. "low" is the cheapest and the default, but the value set is
+    /// model-territory: mistral-medium-2604 refuses it outright ("supported values:
+    /// ['high', 'none']", 2026-08-30). Supplied per model by the campaign catalogue's
+    /// requiredParams registry, like the pinned temperature.
+    /// </summary>
+    public string M7ThinkingEffort { get; init; } = "low";
+
     public static IReadOnlyList<LlmProbeMode> SupportedModes { get; } =
     [
         LlmProbeMode.M1, LlmProbeMode.M2, LlmProbeMode.M3, LlmProbeMode.M4,
@@ -567,7 +575,7 @@ internal sealed class LlmProbeRunner
         if (_provider.Capabilities.Thinking == ThinkingSupport.None)
             return (LlmProbeOutcome.NotApplicable, "the provider declares no thinking capability");
 
-        var withThinking = config with { Thinking = new LlmThinkingConfig { Effort = "low" } };
+        var withThinking = config with { Thinking = new LlmThinkingConfig { Effort = M7ThinkingEffort } };
         var response = await _provider.GenerateAsync(
             "Briefly, why is the sky blue?", withThinking, cancellationToken).ConfigureAwait(false);
 

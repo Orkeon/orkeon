@@ -45,6 +45,17 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     protected virtual string MaxTokensFieldName => "max_tokens";
 
     /// <summary>
+    /// Whether <c>top_p</c> is written even when it equals 1.0. The base omits it then,
+    /// assuming omission means 1 on the wire — true for most vendors, and required by some
+    /// (OpenAI's reasoning models reject the explicit field). Mistral breaks the assumption
+    /// the other way: its reasoning mode runs an internal top_p default and validates greedy
+    /// sampling against the explicit field, so <c>temperature: 0</c> plus reasoning with no
+    /// <c>top_p</c> is refused (<c>"top_p must be 1 when using greedy sampling."</c>,
+    /// 2026-08-30). Omission-when-1 there silently drops a configured value.
+    /// </summary>
+    protected virtual bool AlwaysEmitTopP => false;
+
+    /// <summary>
     /// Whether this provider composes OpenAI vision content parts (<c>text</c> +
     /// <c>image_url</c>) for messages carrying <see cref="LlmMessage.MultiModalContent"/>
     /// with non-text parts (R3.9). Providers that do not declare the capability keep their
@@ -819,7 +830,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// </summary>
     private void ApplyOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
     {
-        if (effectiveConfig.TopP != 1.0)
+        if (AlwaysEmitTopP || effectiveConfig.TopP != 1.0)
             payload["top_p"] = effectiveConfig.TopP;
         if (effectiveConfig.StopSequences is { Count: > 0 })
             payload["stop"] = effectiveConfig.StopSequences;
@@ -1090,7 +1101,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             [MaxTokensFieldName] = config.MaxTokens
         };
 
-        if (config.TopP != 1.0)
+        if (AlwaysEmitTopP || config.TopP != 1.0)
         {
             payload["top_p"] = config.TopP;
         }
@@ -1160,10 +1171,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             .FirstOrDefault()
             .GetProperty("message");
 
-        var messageContent = contentElement.TryGetProperty("content", out var contentProp)
-            && contentProp.ValueKind == JsonValueKind.String
-            ? contentProp.GetString() ?? ""
-            : "";
+        var (messageContent, reasoningFromChunks) = ExtractMessageContent(contentElement);
 
         var usage = doc.RootElement.GetProperty("usage");
         var tokensUsed = usage.GetProperty("total_tokens").GetInt32();
@@ -1188,6 +1196,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             .AddProvider(Name);
 
         ExtractResponseMetadata(doc, metadata);
+        if (!string.IsNullOrEmpty(reasoningFromChunks))
+            metadata.Add("reasoning_content", reasoningFromChunks);
 
         return new LlmResponse
         {
@@ -1203,6 +1213,65 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 ? responseJson
                 : null
         };
+    }
+
+    /// <summary>
+    /// Reads <c>message.content</c> in both shapes the dialect serves: the plain string, and
+    /// the array of typed chunks Mistral answers with once <c>reasoning_effort</c> is on —
+    /// <c>{"type":"thinking","thinking":[{"type":"text",...}]}</c> for the trace,
+    /// <c>{"type":"text","text":...}</c> for the visible answer. The string-only read
+    /// returned an empty response for a billed reasoning reply (M7, 2026-08-30: 243 tokens,
+    /// content and trace both dropped). The text-parts walk is also the OpenAI multi-part
+    /// standard, so it is generic here rather than a Mistral override.
+    /// </summary>
+    private static (string Content, string Reasoning) ExtractMessageContent(JsonElement message)
+    {
+        if (!message.TryGetProperty("content", out var content))
+            return ("", "");
+
+        if (content.ValueKind == JsonValueKind.String)
+            return (content.GetString() ?? "", "");
+
+        if (content.ValueKind != JsonValueKind.Array)
+            return ("", "");
+
+        var text = new StringBuilder();
+        var reasoning = new StringBuilder();
+        foreach (var part in content.EnumerateArray())
+        {
+            if (part.ValueKind != JsonValueKind.Object
+                || !part.TryGetProperty("type", out var typeProp))
+            {
+                continue;
+            }
+
+            switch (typeProp.GetString())
+            {
+                case "text" when part.TryGetProperty("text", out var textProp)
+                    && textProp.ValueKind == JsonValueKind.String:
+                    text.Append(textProp.GetString());
+                    break;
+
+                case "thinking" when part.TryGetProperty("thinking", out var thinkingArray)
+                    && thinkingArray.ValueKind == JsonValueKind.Array:
+                    foreach (var thought in thinkingArray.EnumerateArray())
+                    {
+                        if (thought.ValueKind == JsonValueKind.Object
+                            && thought.TryGetProperty("text", out var thoughtText)
+                            && thoughtText.ValueKind == JsonValueKind.String)
+                        {
+                            reasoning.Append(thoughtText.GetString());
+                        }
+                    }
+
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        return (text.ToString(), reasoning.ToString());
     }
 
     private static int? TryReadInt(JsonElement element, string propertyName)

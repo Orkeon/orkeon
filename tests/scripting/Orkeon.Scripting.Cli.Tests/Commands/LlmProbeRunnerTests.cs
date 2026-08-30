@@ -389,6 +389,47 @@ public sealed class LlmProbeRunnerTests
 
     // ── Capability gates: absence is not failure ────────────────────────────
 
+    /// <summary>
+    /// M7's effort value is model-territory, like the pinned temperature: the default "low"
+    /// is the cheapest hint, but mistral-medium-2604 answers it with
+    /// "reasoning_effort low is not supported for this model, supported values:
+    /// ['high', 'none']" (2026-08-30) — a red about the probe's own calibration, not about
+    /// the thinking plumbing M7 exists to verify. The catalogue's per-model registry
+    /// (requiredParams.m7Effort) supplies a supported value; the harness must use it.
+    /// </summary>
+    [Fact]
+    public async Task ShouldProbeThinking_WithTheEffortTheModelSupports()
+    {
+        var provider = new ScriptedProvider
+        {
+            Content = "because of scattering",
+            Capabilities = new LlmProviderCapabilities { Thinking = ThinkingSupport.EffortOnly },
+        };
+        var runner = new LlmProbeRunner(provider) { M7ThinkingEffort = "high" };
+
+        await RunAsync(runner, LlmProbeMode.M7);
+
+        var config = Assert.Single(provider.Configs);
+        Assert.Equal("high", config?.Thinking?.Effort);
+    }
+
+    /// <summary>Nothing pinned: the cheap default stays.</summary>
+    [Fact]
+    public async Task ShouldProbeThinking_WithLowEffort_ByDefault()
+    {
+        var provider = new ScriptedProvider
+        {
+            Content = "because of scattering",
+            Capabilities = new LlmProviderCapabilities { Thinking = ThinkingSupport.EffortOnly },
+        };
+        var runner = new LlmProbeRunner(provider);
+
+        await RunAsync(runner, LlmProbeMode.M7);
+
+        var config = Assert.Single(provider.Configs);
+        Assert.Equal("low", config?.Thinking?.Effort);
+    }
+
     /// <summary>A provider that declares no capability must not be marked down for lacking it.</summary>
     [Fact]
     public Task ShouldSkipTheThinkingMode_WhenTheProviderDeclaresItAbsent() =>

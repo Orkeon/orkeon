@@ -91,6 +91,8 @@ breaking the sibling model. Every row below was measured live; nothing is inferr
 | OpenAI | `gpt-5.6-sol` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-08-30 |
 | OpenAI | `gpt-5.6-sol` | `reasoning_effort` | `"none"` when the request carries function tools on `/v1/chat/completions` | `Function tools with reasoning_effort are not supported for gpt-5.6-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.` | 2026-08-30 |
 | Anthropic | `claude-sonnet-5` | `temperature` | `1`, or omit the field | `` `temperature` is deprecated for this model.`` (1 and omission pass; 0 and 0.7 do not) | 2026-08-30 |
+| Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` or `none` only | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
+| Mistral | `mistral-medium-2604` | `top_p` | explicit `1` when `temperature` is 0 and reasoning is on (omission is NOT 1 there) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
 
 The counter-example that makes the registry per-model: `gpt-4o-mini` — same provider as
 `gpt-5.6-sol` — rejects `reasoning_effort` outright (`Unrecognized request argument supplied:

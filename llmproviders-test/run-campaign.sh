@@ -325,6 +325,12 @@ run_one() {
   thinking_effort=$(catalog_model_param "$provider" "$model" "thinkingEffort")
   [[ -n "$thinking_effort" ]] && args+=(--thinking-effort "$thinking_effort")
 
+  # M7's own effort, where a model's supported set excludes the default "low"
+  # (mistral-medium-2604: only high or none, 2026-08-30).
+  local m7_effort
+  m7_effort=$(catalog_model_param "$provider" "$model" "m7Effort")
+  [[ -n "$m7_effort" ]] && args+=(--m7-effort "$m7_effort")
+
   raw="$TMP_DIR/$provider-$slug.json"
   err="$TMP_DIR/$provider-$slug.stderr"
   log "▶ $provider / $model  [$modes]"

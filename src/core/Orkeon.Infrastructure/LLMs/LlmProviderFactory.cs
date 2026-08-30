@@ -248,7 +248,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// </summary>
     /// <remarks>
     /// LLM-01 / G-14: the previous rule routed <em>every</em> <c>mistral*</c> model to Ollama,
-    /// so a cloud identifier such as <c>mistral-medium-3-5-26-04</c> was sent to
+    /// so a cloud identifier such as <c>mistral-medium-2604</c> was sent to
     /// <c>localhost:11434</c>. Versioned identifiers now reach the Mistral cloud instead. The
     /// arbitration of MISTRAL-PROVIDER-PLAN §0 is preserved for the bare name. Ollama users who
     /// run a hyphenated local tag (<c>mistral-nemo</c>, <c>mistral-small3.2</c>) set

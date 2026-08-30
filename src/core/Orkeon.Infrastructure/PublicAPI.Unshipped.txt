@@ -42,3 +42,5 @@ static Orkeon.Infrastructure.FileSystem.ScopedMountComposition.ForExecution(Orke
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AnthropicWorkspaceIdHeader = "anthropic-workspace-id" -> string!
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.MaxTokensFieldName.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenAIProvider.MaxTokensFieldName.get -> string!
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.AlwaysEmitTopP.get -> bool
+override Orkeon.Infrastructure.LLMs.MistralLlmProvider.AlwaysEmitTopP.get -> bool

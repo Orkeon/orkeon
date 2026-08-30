@@ -165,7 +165,7 @@ campagne > le `defaultModel` du catalogue.
 | `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |
 | `kimi` | `kimi-k2.6` | |
 | `qwen` | `qwen3.7-plus` | |
-| `mistral` | `mistral-large-latest` | |
+| `mistral` | `mistral-medium-2604` | |
 | `huggingface` | `openai/gpt-oss-120b` | |
 | `zai` | `glm-5.2` | `glm-4.6v-flash` |
 | `gemini` | `gemini-3.7-flash` | *(le défaut voit)* |

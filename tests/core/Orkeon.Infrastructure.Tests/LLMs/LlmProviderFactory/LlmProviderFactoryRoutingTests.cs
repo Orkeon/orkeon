@@ -58,7 +58,7 @@ public class LlmProviderFactoryRoutingTests
     [InlineData("mistral:7b", "ollama")]
     [InlineData("mistral:latest", "ollama")]
     // Versioned cloud identifiers used to be sent to localhost:11434 (G-14).
-    [InlineData("mistral-medium-3-5-26-04", "mistral")]
+    [InlineData("mistral-medium-2604", "mistral")]
     [InlineData("mistral-small-4-0-26-03", "mistral")]
     [InlineData("mistral-large-3-25-12", "mistral")]
     [InlineData("ministral-3-8b-25-12", "mistral")]

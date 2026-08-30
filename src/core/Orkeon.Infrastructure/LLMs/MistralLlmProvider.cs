@@ -27,6 +27,13 @@ public class MistralLlmProvider : OpenAICompatibleProviderBase
     protected override string ProviderDisplayName => "Mistral AI";
 
     /// <summary>
+    /// Mistral validates greedy sampling against the explicit <c>top_p</c> field while its
+    /// reasoning mode runs an internal default of its own, so the configured value must
+    /// always reach the wire (see <see cref="Base.OpenAICompatibleProviderBase.AlwaysEmitTopP"/>).
+    /// </summary>
+    protected override bool AlwaysEmitTopP => true;
+
+    /// <summary>
     /// Mistral's cloud API follows the OpenAI dialect: JSON mode with a custom structured
     /// output schema, <c>reasoning_effort</c> on the reasoning models, and vision on the
     /// multimodal ones.
