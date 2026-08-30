@@ -72,8 +72,8 @@ Sous Windows, `run-campaign.ps1` expose exactement les mêmes options.
 | `--dry-run` | Résout et affiche le plan, n'appelle rien |
 | `--no-recap` | Ne reconstruit pas l'index — pour les lancements parallèles |
 | `--timeout <s>` | Délai par requête, défaut **180 s** (un modèle local froid doit d'abord se charger) |
-| `--temperature <t>` | Échantillonnage, défaut **0** — épinglé pour qu'un verdict soit reproductible |
-| `--thinking-effort <e>` | Effort de raisonnement de base (ex. `none`) — pour les modèles qui refusent les tools en raisonnant ; aussi déclarable par provider (`thinkingEffort` au catalogue) |
+| `--temperature <t>` | Échantillonnage, défaut **0** — épinglé pour qu'un verdict soit reproductible. Les modèles qui exigent une autre valeur sont consignés **par modèle** dans `requiredParams` (catalogue) et résolus automatiquement |
+| `--thinking-effort <e>` | Effort de raisonnement de base (ex. `none`) — pour les modèles qui refusent les tools en raisonnant ; consigné par modèle dans `requiredParams` (catalogue) |
 | `--out <dir>` | Racine des rapports (défaut : ce dossier) |
 
 ## Lancer plusieurs providers en parallèle

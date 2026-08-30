@@ -3,7 +3,15 @@
     "Données partagées par run-campaign.sh et run-campaign.ps1 : libellés des modes du",
     "protocole (matrice §5) et points de vigilance par provider (matrice §4 et §6).",
     "Un seul fichier pour les deux scripts — une prose dupliquée dans deux langages",
-    "diverge à la première correction."
+    "diverge à la première correction.",
+    "",
+    "requiredParams consigne, PAR MODÈLE, les paramètres dont un modèle exige une valeur",
+    "précise (kimi-k2.6 et gpt-5.6-sol et claude-sonnet-5 refusent toute température autre",
+    "que 1 ; gpt-5.6-sol exige reasoning_effort none avec des function tools). Par modèle et",
+    "non par fournisseur : gpt-4o-mini, même fournisseur, rejette reasoning_effort tout",
+    "court — un épinglage au niveau fournisseur casserait sa campagne. N'y entrent que des",
+    "valeurs MESURÉES, datées dans les notes ; le miroir lisible est la section",
+    "'Per-model mandatory parameter values' de docs/reference/llm-providers-comparison.md."
   ],
 
   "modes": {
@@ -29,14 +37,15 @@
       "matrix": "§6.1",
       "apiKeyEnv": "OPENAI_API_KEY",
       "defaultModel": "gpt-5.6-sol",
-      "temperature": 1,
-      "thinkingEffort": "none",
+      "requiredParams": {
+        "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" }
+      },
       "notes": [
         "Cible générique du fallback de `LlmProviderFactory` : une campagne verte ici valide indirectement Docker Model Runner, vLLM et LM Studio.",
         "G-05 fermé (LLM-01) : le défaut est passé de `gpt-4` (8 K de contexte, extinction 2026-10-23) à `gpt-5.6-sol`.",
         "Les modèles actuels refusent `max_tokens` (campagne 2026-08-30 : dix modes rouges sur ce seul champ). Le dialecte OpenAI écrit `max_completion_tokens` depuis cette date — accepté aussi par les générations antérieures (vérifié sur `gpt-4o-mini` le même jour).",
-        "`gpt-5.6-sol` refuse toute température autre que 1 (`'temperature' does not support 0 with this model`) — même classe que `kimi-k2.6`, même remède : le catalogue épingle 1 et l'en-tête du rapport porte la valeur réellement utilisée.",
-        "`gpt-5.6-sol` raisonne par défaut et refuse les function tools sur chat/completions tant que `reasoning_effort` n'est pas explicitement `none` (mesuré 2026-08-30, `none` débloque l'appel). Le catalogue épingle `thinkingEffort: none` ; M7 continue de sonder le thinking avec son propre effort explicite."
+        "`gpt-5.6-sol` refuse toute température autre que 1 (`'temperature' does not support 0 with this model`) — même classe que `kimi-k2.6`, même remède : le catalogue l'épingle pour ce modèle (requiredParams) et l'en-tête du rapport porte la valeur utilisée.",
+        "`gpt-5.6-sol` raisonne par défaut et refuse les function tools sur chat/completions tant que `reasoning_effort` n'est pas explicitement `none` (mesuré 2026-08-30, `none` débloque l'appel). Le catalogue l'épingle pour ce modèle (`requiredParams`) ; M7 continue de sonder le thinking avec son propre effort explicite."
       ]
     },
     "anthropic": {
@@ -44,14 +53,16 @@
       "matrix": "§6.2",
       "apiKeyEnv": "ANTHROPIC_API_KEY",
       "defaultModel": "claude-sonnet-5",
-      "temperature": 1,
+      "requiredParams": {
+        "claude-sonnet-5": { "temperature": 1 }
+      },
       "notes": [
         "Dialecte propre (Messages API) : c'est le provider qui porte le plus de code spécifique.",
         "M8 est **schéma obligatoire** — `output_config.format` n'a pas d'équivalent de `json_object`.",
         "M10 n'a de sens qu'avec un breakpoint explicite : sans `cache_control`, Anthropic ne cache rien (G-17). Le harnais l'active de lui-même ici.",
         "M4 doit confirmer le SSE natif livré par LLM-05 (G-20), et non un repli bufferisé.",
         "Les clés identity-linked exigent l'en-tête `anthropic-workspace-id` sur chaque requête (mesuré 2026-08-30). Déclarer `workspaceId` dans le JSON de campagne ou passer `--workspace-id` ; les clés classiques n'en ont pas besoin.",
-        "`claude-sonnet-5` refuse toute température explicite autre que 1 (`temperature is deprecated for this model`, mesuré 2026-08-30 : 1 et l'omission passent, 0 et 0.7 non) — même classe que `kimi-k2.6` et `gpt-5.6-sol`, même remède : le catalogue épingle 1, l'en-tête du rapport porte la valeur utilisée."
+        "`claude-sonnet-5` refuse toute température explicite autre que 1 (`temperature is deprecated for this model`, mesuré 2026-08-30 : 1 et l'omission passent, 0 et 0.7 non) — même classe que `kimi-k2.6` et `gpt-5.6-sol`, même remède : le catalogue l'épingle pour ce modèle (requiredParams), l'en-tête du rapport porte la valeur utilisée."
       ]
     },
     "azure": {
@@ -116,9 +127,11 @@
       "matrix": "§6.8",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "defaultModel": "kimi-k2.6",
-      "temperature": 1,
+      "requiredParams": {
+        "kimi-k2.6": { "temperature": 1 }
+      },
       "notes": [
-        "`kimi-k2.6` **refuse toute température autre que 1** (`invalid temperature: only 1 is allowed for this model`) — le catalogue épingle donc 1 pour ce fournisseur, et l'en-tête du rapport porte la valeur réellement utilisée. Un verdict Kimi n'est pas reproductible au même titre qu'un verdict à température 0.",
+        "`kimi-k2.6` **refuse toute température autre que 1** (`invalid temperature: only 1 is allowed for this model`) — le catalogue l'épingle pour ce modèle (requiredParams), et l'en-tête du rapport porte la valeur réellement utilisée. Un verdict Kimi n'est pas reproductible au même titre qu'un verdict à température 0.",
         "Deux endpoints régionaux à **comptes séparés** : `api.moonshot.ai` (international, défaut) et `api.moonshot.cn` (Chine continentale).",
         "G-11 fermé : vérifier que l'hôte résolu dans l'en-tête du rapport est bien celui attendu.",
         "La série `moonshot-v1-*` compte entrée + sortie dans la même borne — son « 8 K » n'est pas une fenêtre d'entrée de 8 K."

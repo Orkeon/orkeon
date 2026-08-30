@@ -55,6 +55,15 @@ turned five findings into fixes. Each one is dated and pinned by an offline test
   then claude-sonnet-5 coalesced the whole count-to-thirty into a single delta the
   same day.
 
+The mandatory values some models dictate are now a per-model registry, not folklore:
+`requiredParams` in the campaign catalogue (kimi-k2.6, gpt-5.6-sol and claude-sonnet-5 all
+refuse any temperature but 1; gpt-5.6-sol additionally demands `reasoning_effort: "none"`
+with function tools), resolved per model by both campaign scripts — per model and not per
+provider, because `gpt-4o-mini` rejects `reasoning_effort` outright and a provider-level pin
+would break it. Human-readable twin: the "Per-model mandatory parameter values" section of
+`docs/reference/llm-providers-comparison.md` (mirrored in French), vendor wording and
+measurement date included.
+
 Campaign verdicts, same day: Kimi's open M3 "stream refused" of August did not reproduce
 (4/4 green, replays included); Z.AI's implicit context cache missed once in-campaign
 (0 cached tokens) and hit on both replays (1984 tokens, ratio 0.97) — server behaviour, not

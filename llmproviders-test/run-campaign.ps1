@@ -191,6 +191,31 @@ function Get-CatalogField {
 
 function Get-CatalogKeyEnv { param([string]$ProviderKey) Get-CatalogField $ProviderKey 'apiKeyEnv' }
 
+# A parameter value one MODEL demands, from the per-model registry. Per model and not per
+# provider on purpose: gpt-5.6-sol demands temperature 1 and reasoning_effort none while
+# gpt-4o-mini, same provider, rejects reasoning_effort outright (both measured 2026-08-30).
+function Get-CatalogModelParam {
+    param([string]$ProviderKey, [string]$ModelId, [string]$Field)
+
+    $path = Join-Path $KitDir 'lib/catalog.json'
+    if (-not (Test-Path -LiteralPath $path)) { return '' }
+    if (-not $script:Catalog) {
+        $script:Catalog = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+    }
+
+    $entry = $script:Catalog.providers.PSObject.Properties[$ProviderKey]
+    if (-not $entry) { return '' }
+    if ($entry.Value.aliasOf) {
+        $entry = $script:Catalog.providers.PSObject.Properties[$entry.Value.aliasOf]
+        if (-not $entry) { return '' }
+    }
+    $params = $entry.Value.PSObject.Properties['requiredParams']
+    if (-not $params) { return '' }
+    $model = $params.Value.PSObject.Properties[$ModelId]
+    if (-not $model) { return '' }
+    return "$($model.Value.$Field)"
+}
+
 # ── The orkeon CLI ───────────────────────────────────────────────────────────
 
 # Resolved on first use, not up front: a dry run that only expands literal model names never
@@ -322,7 +347,7 @@ function Invoke-Campaign {
     # what it can take in the catalogue, and the report prints the value actually used.
     $effectiveTemperature = $Temperature
     if ($null -eq $effectiveTemperature) {
-        $catalogTemperature = Get-CatalogField -ProviderKey $ProviderKey -Field 'temperature'
+        $catalogTemperature = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'temperature'
         if ($catalogTemperature) { $effectiveTemperature = [double]$catalogTemperature }
     }
     # InvariantCulture matters: a French locale renders 0.5 as "0,5", which the parser rejects.
@@ -333,7 +358,7 @@ function Invoke-Campaign {
     # Same shape for the base thinking effort: gpt-5.6-sol refuses function tools on
     # chat/completions unless reasoning is explicitly off (2026-08-30). Catalogue-declared,
     # printed by the report header; M7 keeps probing thinking with its own explicit effort.
-    $thinkingEffort = Get-CatalogField -ProviderKey $ProviderKey -Field 'thinkingEffort'
+    $thinkingEffort = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'thinkingEffort'
     if ($thinkingEffort) { $arguments += @('--thinking-effort', $thinkingEffort) }
 
     $raw = Join-Path $TmpDir "$ProviderKey-$slug.json"

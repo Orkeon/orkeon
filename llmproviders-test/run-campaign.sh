@@ -184,6 +184,17 @@ catalog_field() {
 
 catalog_key_env() { catalog_field "$1" "apiKeyEnv"; }
 
+# A parameter value one MODEL demands, from the per-model registry. Per model and not per
+# provider on purpose: gpt-5.6-sol demands temperature 1 and reasoning_effort none while
+# gpt-4o-mini, same provider, rejects reasoning_effort outright (both measured 2026-08-30).
+# A provider-level pin was exactly one campaign away from breaking the other model.
+catalog_model_param() {
+  local provider="$1" model="$2" field="$3" canonical
+  [[ -f "$CATALOG" ]] || return 0
+  canonical=$(jq -r --arg p "$provider" '.providers[$p].aliasOf // $p' "$CATALOG")
+  jq -r --arg p "$canonical" --arg m "$model" --arg f "$field"     '.providers[$p].requiredParams[$m][$f] // empty' "$CATALOG"
+}
+
 # ── The orkeon CLI ───────────────────────────────────────────────────────────
 
 # Resolved on first use, not up front: a dry run that only expands literal model names never
@@ -303,14 +314,15 @@ run_one() {
   # what it can take in the catalogue, and the report prints the value it actually used, so a
   # verdict is never silently less reproducible than it looks.
   local temperature="$TEMPERATURE"
-  [[ -z "$temperature" ]] && temperature=$(catalog_field "$provider" "temperature")
+  [[ -z "$temperature" ]] && temperature=$(catalog_model_param "$provider" "$model" "temperature")
   [[ -n "$temperature" ]] && args+=(--temperature "$temperature")
 
   # Same shape for the base thinking effort: gpt-5.6-sol refuses function tools on
-  # chat/completions unless reasoning is explicitly off (2026-08-30). Catalogue-declared,
-  # printed by the report header; M7 keeps probing thinking with its own explicit effort.
+  # chat/completions unless reasoning is explicitly off (2026-08-30). Declared per model in
+  # the catalogue's requiredParams, printed by the report header; M7 keeps probing thinking
+  # with its own explicit effort.
   local thinking_effort
-  thinking_effort=$(catalog_field "$provider" "thinkingEffort")
+  thinking_effort=$(catalog_model_param "$provider" "$model" "thinkingEffort")
   [[ -n "$thinking_effort" ]] && args+=(--thinking-effort "$thinking_effort")
 
   raw="$TMP_DIR/$provider-$slug.json"

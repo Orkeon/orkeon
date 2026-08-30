@@ -83,6 +83,36 @@ API parlent leur propre dialecte.
   (CLI : `--workspace-id`) ; les clés classiques n'en ont pas besoin.
 - **Polly** et **Sanitization clé API** : fournis par `HttpLlmProviderBase` → actifs partout.
 
+## Valeurs de paramètres obligatoires, par modèle
+
+Certains modèles refusent une requête tant qu'un paramètre ne porte pas une valeur précise.
+C'est autre chose que les écarts de capacité par modèle ci-dessus (D-03 — un modèle sans
+thinking ou sans vision) : ici la capacité existe, mais le modèle dicte la valeur, et le
+vendeur répond 400 à tout le reste. **La contrainte est par modèle, jamais par fournisseur** —
+le même vendeur sert des modèles aux exigences opposées, un épinglage au niveau fournisseur
+est donc à une campagne de casser le modèle voisin. Chaque ligne ci-dessous est mesurée en
+réel ; rien n'est inféré.
+
+| Fournisseur | Modèle | Paramètre | Valeur obligatoire | Les mots du vendeur | Mesuré |
+|---|---|---|---|---|---|
+| Kimi | `kimi-k2.6` | `temperature` | `1` | `invalid temperature: only 1 is allowed for this model` | 2026-08-03 |
+| OpenAI | `gpt-5.6-sol` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-08-30 |
+| OpenAI | `gpt-5.6-sol` | `reasoning_effort` | `"none"` quand la requête porte des function tools sur `/v1/chat/completions` | `Function tools with reasoning_effort are not supported for gpt-5.6-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.` | 2026-08-30 |
+| Anthropic | `claude-sonnet-5` | `temperature` | `1`, ou omettre le champ | `` `temperature` is deprecated for this model.`` (1 et l'omission passent ; 0 et 0.7 non) | 2026-08-30 |
+
+Le contre-exemple qui rend le registre par-modèle : `gpt-4o-mini` — même fournisseur que
+`gpt-5.6-sol` — rejette `reasoning_effort` tout court (`Unrecognized request argument
+supplied: reasoning_effort`, mesuré le même jour). Un « toujours none » au niveau fournisseur
+le casserait.
+
+Jumeau lisible par machine : `llmproviders-test/lib/catalog.json`, clé `requiredParams` (par
+fournisseur, indexée par identifiant de modèle) — les scripts de campagne la résolvent
+automatiquement et l'en-tête du rapport imprime les valeurs réellement utilisées. Dans le code
+applicatif, les mêmes valeurs s'expriment par `LlmConfig` (`Temperature`,
+`Thinking = { Effort = "none" }`) ; sur une mauvaise valeur, l'erreur du vendeur revient
+attribuée (`CapabilityMismatchHint` nomme le réglage thinking sur le refus
+tools-avec-raisonnement).
+
 ## Ce que cette table ne prouve pas
 
 Chaque ligne est adossée à des tests unitaires qui vérifient le payload émis — contre un **handler
