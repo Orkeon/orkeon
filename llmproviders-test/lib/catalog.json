@@ -41,7 +41,7 @@
         "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" }
       },
       "notes": [
-        "Cible générique du fallback de `LlmProviderFactory` : une campagne verte ici valide indirectement Docker Model Runner, vLLM et LM Studio.",
+        "Cible générique du fallback de `LlmProviderFactory` : une campagne verte ici valide indirectement Docker Model Runner, vLLM et LM Studio. Prouvé en réel le 2026-08-30 : campagne 12/12 contre `api.x.ai` (`grok-4.6`, dialecte OpenAI, base-url seule) — rapport sous `custom-endpoints/`.",
         "G-05 fermé (LLM-01) : le défaut est passé de `gpt-4` (8 K de contexte, extinction 2026-10-23) à `gpt-5.6-sol`.",
         "Les modèles actuels refusent `max_tokens` (campagne 2026-08-30 : dix modes rouges sur ce seul champ). Le dialecte OpenAI écrit `max_completion_tokens` depuis cette date — accepté aussi par les générations antérieures (vérifié sur `gpt-4o-mini` le même jour).",
         "`gpt-5.6-sol` refuse toute température autre que 1 (`'temperature' does not support 0 with this model`) — même classe que `kimi-k2.6`, même remède : le catalogue l'épingle pour ce modèle (requiredParams) et l'en-tête du rapport porte la valeur utilisée.",
@@ -145,7 +145,8 @@
       "defaultModel": "qwen3.7-plus",
       "notes": [
         "Endpoint international distinct : `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (G-12 fermé).",
-        "Seul provider où le budget de réflexion est câblé (`thinking_budget`) : M7 y est plus riche qu'ailleurs."
+        "Seul provider où le budget de réflexion est câblé (`thinking_budget`) : M7 y est plus riche qu'ailleurs. Validé en réel le 2026-08-30 (12/12, trace de raisonnement retournée).",
+        "Le cache implicite DashScope n'accroche qu'au-delà d'un seuil élevé : 0 token caché avec le préfixe de sonde historique (~2050 tokens, 3 mesures) mais `cached_tokens: 4352` à 5809 tokens de préfixe (2026-08-30). La sonde M10 envoie ~8200 tokens depuis cette date ; le run propre archive 6528 cachés, ratio 0.81."
       ]
     },
     "mistral": {
@@ -160,7 +161,7 @@
         "Lancer **sans `--base-url`** : c'est ainsi, et seulement ainsi, qu'on vérifie en réel que G-14 est fermé — un modèle `mistral-*` nu ne doit plus partir vers `localhost:11434`.",
         "L'hôte affiché dans l'en-tête du rapport est la preuve : `api.mistral.ai`, pas `localhost`.",
   "`mistral-medium-2604` restreint `reasoning_effort` à `['high', 'none']` (mesuré 2026-08-30) — le `low` par défaut de M7 est refusé, d'où le `m7Effort: high` de requiredParams.",
-  "M10 : l'usage porte `prompt_tokens_details.cached_tokens` mais la valeur reste 0 sur un préfixe identique de 5812 tokens appelé deux fois (3 mesures, 2026-08-30). Le champ existe, le cache implicite n'accroche pas — rouge vendeur, pas défaut Orkéon.",
+  "M10 : l'usage porte `prompt_tokens_details.cached_tokens` mais la valeur reste 0 sur un préfixe identique de 5812 tokens appelé deux fois (3 mesures, 2026-08-30). Le champ existe, le cache implicite n'accroche pas — rouge vendeur, pas défaut Orkéon. Confirmé au préfixe long : toujours 0 à ~8200 tokens (2026-08-30).",
         "Les identifiants mêlent alias et snapshots datés : confirmer l'id sur la fiche modèle officielle avant de le figer. Le défaut compilé a été exactement ce piège : `mistral-medium-3-5-26-04` (une concaténation de l'alias `-3-5` et du millésime `26-04`) n'a jamais été servi — `Invalid model`, mesuré 2026-08-30, corrigé en `mistral-medium-2604`."
       ]
     },

@@ -202,6 +202,14 @@ ni l'un ni l'autre ne donne seul.
 Uniquement sur le chemin automatique : un `--model` explicite est un choix, et le
 contredire dépenserait des crédits que vous n'avez pas demandé à dépenser.
 
+## Endpoints custom
+
+Le dossier `custom-endpoints/` archive les campagnes menées contre un endpoint
+OpenAI-compatible arbitraire via le fallback (`--provider openai --base-url … --out
+llmproviders-test/custom-endpoints --no-recap`) : elles valident le chemin « serveur
+compatible inconnu » sans polluer l'index des fournisseurs officiels. Première preuve :
+`api.x.ai` / `grok-4.6`, 12/12 le 2026-08-30.
+
 ## Le wildcard
 
 Un `--model` contenant `*` ou `?` déclenche
@@ -302,6 +310,8 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T11:34:05Z | `qwen` | `qwen3.7-plus` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](qwen/2026-08-30-113159-qwen3.7-plus.md) |
+| 2026-08-30T11:26:05Z | `qwen` | `qwen3.7-plus` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](qwen/2026-08-30-112358-qwen3.7-plus.md) |
 | 2026-08-30T11:11:20Z | `mistral` | `mistral-medium-2604` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](mistral/2026-08-30-111105-mistral-medium-2604.md) |
 | 2026-08-30T11:04:40Z | `mistral` | `mistral-medium-2604` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](mistral/2026-08-30-110426-mistral-medium-2604.md) |
 | 2026-08-30T11:01:22Z | `mistral` | `mistral-medium-2604` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](mistral/2026-08-30-110109-mistral-medium-2604.md) |
@@ -346,9 +356,10 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 | `mistral` | `mistral-medium-2604` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `ollama` | `llava` | 2026-08-30 | ✅ | M9 |
 | `openai` | `gpt-5.6-sol` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `qwen` | `qwen3.7-plus` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `zai` | `glm-4.6v-flash` | 2026-08-30 | ✅ | M9 |
 
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_32 campagne(s) archivée(s)._
+_34 campagne(s) archivée(s)._

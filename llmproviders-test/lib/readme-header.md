@@ -202,6 +202,14 @@ ni l'un ni l'autre ne donne seul.
 Uniquement sur le chemin automatique : un `--model` explicite est un choix, et le
 contredire dépenserait des crédits que vous n'avez pas demandé à dépenser.
 
+## Endpoints custom
+
+Le dossier `custom-endpoints/` archive les campagnes menées contre un endpoint
+OpenAI-compatible arbitraire via le fallback (`--provider openai --base-url … --out
+llmproviders-test/custom-endpoints --no-recap`) : elles valident le chemin « serveur
+compatible inconnu » sans polluer l'index des fournisseurs officiels. Première preuve :
+`api.x.ai` / `grok-4.6`, 12/12 le 2026-08-30.
+
 ## Le wildcard
 
 Un `--model` contenant `*` ou `?` déclenche

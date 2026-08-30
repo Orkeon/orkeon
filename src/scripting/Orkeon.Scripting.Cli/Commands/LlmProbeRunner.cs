@@ -883,6 +883,15 @@ internal sealed class LlmProbeRunner
     /// a GUID anywhere in here would rebuild the prefix on every call and the cache would never
     /// hit — the very failure mode <see cref="LlmResponse.CacheHitRatio"/> exists to surface.
     /// </summary>
+    /// <remarks>
+    /// Length is the other point, and it is vendor-territory: the 32-repetition version
+    /// (~2050 tokens) was calibrated on "roughly a thousand tokens", and DashScope caches
+    /// nothing at that size — three runs archived 0 cached tokens while the same call shape
+    /// with a 5809-token prefix returned <c>cached_tokens: 4352</c> (2026-08-30). 128
+    /// repetitions (~8200 tokens) clear the highest measured threshold with margin; the
+    /// vendors that cached the short prefix (OpenAI, DeepSeek, Z.AI, Anthropic, x.AI) cache
+    /// the long one identically.
+    /// </remarks>
     private static string StableCachePrefix()
     {
         const string paragraph =
@@ -891,8 +900,8 @@ internal sealed class LlmProbeRunner
             "roughly a thousand tokens. It carries no instruction beyond answering the user " +
             "exactly as asked, in as few words as possible, with no preamble and no explanation. ";
 
-        var builder = new StringBuilder(paragraph.Length * 32);
-        for (var i = 0; i < 32; i++)
+        var builder = new StringBuilder(paragraph.Length * 128);
+        for (var i = 0; i < 128; i++)
             builder.Append(paragraph);
 
         return builder.ToString();

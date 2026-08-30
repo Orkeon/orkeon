@@ -98,6 +98,19 @@ The one standing red is the vendor's: `prompt_tokens_details.cached_tokens` stay
 identical 5812-token prefix called twice (three measurements) — the field exists, the
 implicit cache never hits.
 
+Qwen, first campaign (an international key: `dashscope-intl` base URL, G-12 closed by the
+report header): 12/12 — including the fleet's only `Thinking = Budget` wire
+(`enable_thinking` + `thinking_budget`) validated live. Its M10 exposed a harness artefact,
+not a vendor gap: DashScope's implicit cache hits nothing below a high threshold (0 cached
+tokens at the probe's historical ~2050-token prefix, three runs; `cached_tokens: 4352` at
+5809), so a working cache read as broken. The M10 prefix now carries ~8200 tokens — the
+clean run archives 6528 cached, ratio 0.81; Mistral's zero stayed zero at the long prefix
+too, which settles its verdict as the vendor's. And the OpenAI-dialect fallback for custom
+compatible endpoints — the path Docker Model Runner, vLLM and LM Studio ride — got its
+first real proof: a full 12/12 campaign against `api.x.ai` (`grok-4.6`), archived under
+`llmproviders-test/custom-endpoints/`. The key supplied as "Groq" was an x.AI key
+(`xai-` prefix, refused by api.groq.com, served by api.x.ai) — measured, not assumed.
+
 Campaign verdicts, same day: Kimi's open M3 "stream refused" of August did not reproduce
 (4/4 green, replays included); Z.AI's implicit context cache missed once in-campaign
 (0 cached tokens) and hit on both replays (1984 tokens, ratio 0.97) — server behaviour, not

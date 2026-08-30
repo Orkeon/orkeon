@@ -430,6 +430,29 @@ public sealed class LlmProbeRunnerTests
         Assert.Equal("low", config?.Thinking?.Effort);
     }
 
+    /// <summary>
+    /// M10's prefix must exceed the minimum any measured vendor caches, or a working cache
+    /// reads as broken. The 32-repetition prefix (~2050 tokens) was calibrated on "roughly a
+    /// thousand tokens" — and DashScope hits nothing at that size: three campaign runs
+    /// archived 0 cached tokens while the same call shape with a 5809-token prefix returned
+    /// cached_tokens: 4352 (measured 2026-08-30). The pinned floor (~40k characters, ~8k
+    /// tokens) clears that threshold with margin.
+    /// </summary>
+    [Fact]
+    public async Task ShouldSendACachePrefix_LongerThanTheHighestMeasuredVendorThreshold()
+    {
+        var provider = new ScriptedProvider().Script(
+            new LlmResponse { Content = "one" },
+            new LlmResponse { Content = "two" });
+        var runner = new LlmProbeRunner(provider);
+
+        await RunAsync(runner, LlmProbeMode.M10);
+
+        var prefix = provider.Configs[0]?.SystemMessage ?? "";
+        Assert.True(prefix.Length >= 40_000,
+            $"cache prefix is {prefix.Length} chars; DashScope needs ~6k tokens before it caches at all");
+    }
+
     /// <summary>A provider that declares no capability must not be marked down for lacking it.</summary>
     [Fact]
     public Task ShouldSkipTheThinkingMode_WhenTheProviderDeclaresItAbsent() =>
