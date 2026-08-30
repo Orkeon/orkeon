@@ -208,6 +208,7 @@
       "notes": [
         "Quinzième fiche, SANS preuve d'exécution : intégré le 2026-08-30 depuis la documentation vendeur, aucune clé disponible. La première campagne est la preuve en attente — la leçon Mistral (défaut compilé jamais servi) s'applique en entier jusqu'à un M1 vivant archivé.",
         "Deux endpoints régionaux à comptes séparés : `api.minimax.io` (international, défaut) et `api.minimaxi.com` (Chine continentale) — même motif que Kimi.",
+        "Première tentative le 2026-08-30 : clé internationale valide, catalogue servi (`MiniMax-M2` vivant, générations jusqu'à `MiniMax-M3` listées), mais Token Plan épuisé — chaque mode facturé répond `insufficient_balance_error` (402), erreurs typées de bout en bout. Le transport est validé ; la campagne reste la preuve en attente, à relancer compte rechargé.",
         "Questions ouvertes pour la première campagne : le flagship raisonneur rejoue-t-il sa trace façon DeepSeek (M5/M7 au deuxième tour) ; le cache implicite rapporte-t-il une ventilation (M10) ; `response_format` est-il servi malgré l'absence de documentation (le précédent Gemini)."
       ]
     },

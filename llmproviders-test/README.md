@@ -311,6 +311,7 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T13:23:22Z | `minimax` | `MiniMax-M2` | ❌ 2/8/2 | 1.0.0-rc.2 | [rapport](minimax/2026-08-30-132313-MiniMax-M2.md) |
 | 2026-08-30T12:46:33Z | `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](huggingface/2026-08-30-124631-Qwen_Qwen3-VL-30B-A3B-Instruct.md) |
 | 2026-08-30T12:46:30Z | `together` | `Qwen/Qwen3-VL-8B-Instruct` | ❌ 0/1/0 | 1.0.0-rc.2 | [rapport](together/2026-08-30-124627-Qwen_Qwen3-VL-8B-Instruct.md) |
 | 2026-08-30T12:45:22Z | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | ❌ 8/2/2 | 1.0.0-rc.2 | [rapport](huggingface/2026-08-30-124456-meta-llama_Llama-3.1-8B-Instruct.md) |
@@ -361,6 +362,7 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 | `grok` | `grok-4.6` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | 2026-08-30 | ✅ | M9 |
 | `kimi` | `kimi-k2.6` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `minimax` | `MiniMax-M2` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `mistral` | `mistral-medium-2604` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `ollama` | `llava` | 2026-08-30 | ✅ | M9 |
 | `openai` | `gpt-5.6-sol` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
@@ -371,4 +373,4 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_39 campagne(s) archivée(s)._
+_40 campagne(s) archivée(s)._
