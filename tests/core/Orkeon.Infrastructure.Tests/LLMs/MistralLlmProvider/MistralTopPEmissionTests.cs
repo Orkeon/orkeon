@@ -77,8 +77,8 @@ public sealed class MistralTopPEmissionTests : IDisposable
     [Fact]
     public async Task ShouldKeepOmittingTopPOne_OnTheRestOfTheFamily()
     {
-        var config = LlmConfig.Create("llama-3.3-70b-versatile", TestApiKey);
-        using var provider = new GroqLlmProvider(config, _httpClientFactory, _noOpPolicy);
+        var config = LlmConfig.Create("meta-llama/Llama-3.3-70B-Instruct-Turbo", TestApiKey);
+        using var provider = new TogetherAiLlmProvider(config, _httpClientFactory, _noOpPolicy);
 
         await provider.ChatAsync(
             [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);

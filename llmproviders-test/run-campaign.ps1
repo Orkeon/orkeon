@@ -11,7 +11,7 @@
   `apiKey` field of a configuration file this script refuses to read unless it is named
   *.local.json or *.secrets.json (both gitignored).
 .PARAMETER Provider
-  Provider key, or several separated by commas: openai, anthropic, ollama, azure, groq,
+  Provider key, or several separated by commas: openai, anthropic, ollama, azure,
   together, qwen, deepseek, kimi, mistral, huggingface, zai.
 .PARAMETER All
   Run every provider declared in the configuration. Requires -Config.

@@ -18,7 +18,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// <c>max_completion_tokens</c> unconditionally.
 /// </summary>
 /// <remarks>
-/// The rename is OpenAI's own, not the compatible family's: DeepSeek, Groq and the other
+/// The rename is OpenAI's own, not the compatible family's: DeepSeek, Together and the other
 /// OpenAI-compatible vendors still document and expect <c>max_tokens</c> — all of them
 /// passed their campaigns with it the same day. Hence the base keeps writing
 /// <c>max_tokens</c> and only <see cref="OpenAIProvider"/> overrides the field name.
@@ -85,8 +85,8 @@ public sealed class OpenAIMaxCompletionTokensTests : IDisposable
     [Fact]
     public async Task ShouldKeepMaxTokens_OnTheOpenAiCompatibleFamily()
     {
-        var config = LlmConfig.Create("llama-3.3-70b-versatile", TestApiKey) with { MaxTokens = 512 };
-        using var provider = new GroqLlmProvider(config, _httpClientFactory, _noOpPolicy);
+        var config = LlmConfig.Create("meta-llama/Llama-3.3-70B-Instruct-Turbo", TestApiKey) with { MaxTokens = 512 };
+        using var provider = new TogetherAiLlmProvider(config, _httpClientFactory, _noOpPolicy);
 
         await provider.ChatAsync(
             [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);

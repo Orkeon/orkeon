@@ -124,7 +124,7 @@ traduit une fois par `OpenAICompatibleProviderBase` — voir le
 
 | Provider | Capacité déclarée | Notes |
 |---|---|---|
-| OpenAI, Azure OpenAI, Groq, Mistral, TogetherAI | `JsonSchema` | Validation de schéma côté serveur. |
+| OpenAI, Azure OpenAI, Grok, Gemini, Mistral, TogetherAI | `JsonSchema` | Validation de schéma côté serveur. |
 | **Anthropic** | `JsonSchema` | Dialecte propre (`output_config`) — schema-only, pas de `json_object` nu. |
 | **Ollama** | `JsonSchema` | Dialecte propre (`format`). |
 | **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. |

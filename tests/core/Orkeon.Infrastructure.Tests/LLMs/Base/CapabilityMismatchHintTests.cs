@@ -73,7 +73,7 @@ public class CapabilityMismatchHintTests
     [InlineData(null)]
     public void ShouldStaySilent_WhenTheErrorIsAboutSomethingElse(string? vendorError)
     {
-        Assert.Empty(CapabilityMismatchHint.ForVendorError(vendorError, "Groq", "llama-3.3-70b-versatile"));
+        Assert.Empty(CapabilityMismatchHint.ForVendorError(vendorError, "Grok", "grok-4.6"));
     }
 
     /// <summary>Vendors vary their casing; the signature must not.</summary>

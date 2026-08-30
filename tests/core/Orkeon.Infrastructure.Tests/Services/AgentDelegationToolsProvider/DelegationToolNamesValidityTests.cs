@@ -7,7 +7,7 @@ namespace Orkeon.Infrastructure.Tests.Services;
 
 /// <summary>
 /// Regression coverage for Experiment 07 friction #1: OpenAI-compatible providers
-/// (DeepSeek, OpenAI, Groq, ...) enforce <c>^[a-zA-Z0-9_-]+$</c> on <c>function.name</c>.
+/// (DeepSeek, OpenAI, Grok, ...) enforce <c>^[a-zA-Z0-9_-]+$</c> on <c>function.name</c>.
 /// Any delegation tool that lands on the wire with spaces in its name triggers HTTP 400.
 /// </summary>
 public partial class DelegationToolNamesValidityTests

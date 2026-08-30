@@ -88,7 +88,7 @@ internal static class DoctorCommand
         ["OllamaLlmProvider"] = "ollama",
         ["OpenAIProvider"] = "openai",
         ["AnthropicLlmProvider"] = "anthropic",
-        ["GroqLlmProvider"] = "groq",
+        ["GrokLlmProvider"] = "grok",
         ["DeepSeekLlmProvider"] = "deepseek",
         ["KimiLlmProvider"] = "kimi",
         ["QwenLlmProvider"] = "qwen",

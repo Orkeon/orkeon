@@ -26,7 +26,7 @@ public sealed class ProviderCatalogTests
         string[] expected =
         [
             LlmPresets.Ollama, LlmPresets.OpenAI, LlmPresets.Anthropic,
-            LlmPresets.Groq, LlmPresets.Mistral, LlmPresets.DeepSeek, LlmPresets.Kimi,
+            LlmPresets.Mistral, LlmPresets.DeepSeek, LlmPresets.Kimi,
             LlmPresets.Qwen, LlmPresets.Together, LlmPresets.HuggingFace, LlmPresets.Zai,
             LlmPresets.Gemini, LlmPresets.Grok,
         ];

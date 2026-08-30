@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — Grok (x.AI), the fourteenth provider, preceded by its own proof
+### Removed — Groq, superseded by Grok (breaking, no shims)
+
+Groq was never the intended provider: the near-homograph had stood in for Grok since the
+provider list was first drawn. With Grok landed and Groq never campaigned (no key ever
+supplied, no archived proof), the fleet drops it outright per the pre-release rule - the new
+state replaces the old one everywhere, no aliases, no shims. Gone: `GroqLlmProvider`, the
+satellite constants (endpoint, key, default model), factory routing (key, groq.com host,
+mixtral/groq model inference), the Studio card and detection, the scripting DSL factory
+(`llm.groq` becomes `llm.grok`, which also retires its stale hardcoded llama-3.1 default),
+the doctor mapping, the campaign-kit entry and the docs rows. The HuggingFace `:groq`
+routing suffix stays - that is HF's partner vocabulary, not Orkeon's provider key. Provider
+count returns to 13; the claims gate re-derived it and named every count to fix.
+
+### Added — Grok (x.AI), preceded by its own proof
 
 The key supplied for "Groq" turned out to be an x.AI key (`xai-` prefix, refused by
 api.groq.com, served by api.x.ai) — and the user's intent turned out to be Grok all along.
@@ -21,8 +34,7 @@ key and default in the `Orkeon.Constants.Llm` satellite, factory routing by key,
 `api.x.ai` host, by `grok-*` model prefix and by the `xai-` key prefix — the grok/groq
 near-homograph is exactly the confusion that last inference absorbs. Studio gains the
 provider card and endpoint detection; `orkeon llm probe|models` accept it; the campaign kit
-carries its catalogue entry; docs and counts move from 13 to 14 providers everywhere the
-claims gate checks.
+carries its catalogue entry; docs and counts follow everywhere the claims gate checks.
 
 ### Fixed — what the first real campaigns against six vendors found (2026-08-30)
 

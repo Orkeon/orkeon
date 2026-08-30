@@ -244,7 +244,6 @@ public sealed class LlmLoggingDelegatingHandlerTests : IDisposable
         {
             ["https://api.openai.com/v1/chat/completions"] = "openai",
             ["https://api.anthropic.com/v1/messages"] = "anthropic",
-            ["https://api.groq.com/openai/v1/chat/completions"] = "groq",
             ["http://localhost:11434/api/generate"] = "ollama",
             ["https://my-resource.openai.azure.com/openai/deployments/gpt-4/chat/completions"] = "azure-openai"
         };

@@ -112,7 +112,7 @@ public sealed record LlmConfig
 
     /// <summary>
     /// Optional output-format constraint forwarded to OpenAI-compatible providers that
-    /// implement the <c>response_format</c> field (DeepSeek today; OpenAI/Groq can opt in
+    /// implement the <c>response_format</c> field (DeepSeek today; OpenAI/Grok can opt in
     /// later). <c>null</c> = provider default (free text).
     /// </summary>
     public LlmResponseFormat? ResponseFormat { get; init; }

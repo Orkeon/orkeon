@@ -21,7 +21,6 @@ public static class ProviderDefaults
     /// <remarks>
     /// Without this, a caller holding only a provider key — the campaign harness, for one — has
     /// no way to ask "what would this provider run by default?" and ends up sending OpenAI's
-    /// default model to Groq. Exposing the lookup rather than the constants keeps the nested
     /// classes internal and keeps this file the single place a default is written down.
     /// </remarks>
     private static readonly Dictionary<string, string> ByProviderKey = new(StringComparer.OrdinalIgnoreCase)
@@ -29,7 +28,6 @@ public static class ProviderDefaults
         [LlmProviderKeys.OpenAI] = LlmProviderDefaultModels.OpenAI,
         [LlmProviderKeys.Anthropic] = LlmProviderDefaultModels.Anthropic,
         [LlmProviderKeys.Ollama] = LlmProviderDefaultModels.Ollama,
-        [LlmProviderKeys.Groq] = LlmProviderDefaultModels.Groq,
         [LlmProviderKeys.Together] = LlmProviderDefaultModels.Together,
         [LlmProviderKeys.TogetherAiAlias] = LlmProviderDefaultModels.Together,
         [LlmProviderKeys.DeepSeek] = LlmProviderDefaultModels.DeepSeek,
@@ -49,7 +47,7 @@ public static class ProviderDefaults
     };
 
     /// <summary>Resolves a provider's default model from its factory key.</summary>
-    /// <param name="providerKey">Provider key, e.g. <c>groq</c>.</param>
+    /// <param name="providerKey">Provider key, e.g. <c>kimi</c>.</param>
     /// <returns>
     /// The default model, or <see langword="null"/> when the provider has none — Azure OpenAI
     /// serves deployments an operator named, so there is nothing to default to.

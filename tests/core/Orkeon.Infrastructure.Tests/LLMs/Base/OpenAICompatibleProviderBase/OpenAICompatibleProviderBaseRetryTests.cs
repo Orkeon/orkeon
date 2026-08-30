@@ -10,7 +10,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs.Base;
 /// <summary>
 /// Tests verifying that OpenAICompatibleProviderBase uses the Polly resilience policy
 /// for retry on transient HTTP errors (5xx, 429). Covers TASK-007 fix.
-/// All derived providers (OpenAI, Groq, DeepSeek, Qwen, Kimi, HuggingFace, TogetherAi)
+/// All derived providers (OpenAI, Grok, DeepSeek, Qwen, Kimi, HuggingFace, TogetherAi)
 /// inherit this behavior.
 /// </summary>
 public class OpenAICompatibleProviderBaseRetryTests

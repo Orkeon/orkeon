@@ -32,7 +32,6 @@ public sealed class LlmProviderDetectorTests
 
     [Theory]
     [InlineData("https://api.anthropic.com", "anthropic")]
-    [InlineData("https://api.groq.com/openai/v1", "groq")]
     [InlineData("https://api.deepseek.com", "deepseek")]
     [InlineData("https://api.mistral.ai/v1", "mistral")]
     [InlineData("https://api.z.ai/api/paas/v4", "zai")]

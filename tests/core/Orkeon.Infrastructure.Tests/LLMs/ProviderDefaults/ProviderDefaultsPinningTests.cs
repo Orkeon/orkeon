@@ -33,7 +33,6 @@ public class ProviderDefaultsPinningTests
         { nameof(KimiLlmProvider), "kimi-k2.6" },
         { nameof(QwenLlmProvider), "qwen3.7-plus" },
         { nameof(MistralLlmProvider), "mistral-medium-2604" },
-        { nameof(GroqLlmProvider), "llama-3.3-70b-versatile" },
         { nameof(TogetherAiLlmProvider), "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
         { nameof(HuggingFaceLlmProvider), "meta-llama/Llama-3.1-8B-Instruct" },
         { nameof(ZaiLlmProvider), "glm-5.2" },
@@ -47,7 +46,7 @@ public class ProviderDefaultsPinningTests
         { nameof(KimiLlmProvider), "https://api.moonshot.ai/v1" },
         { nameof(QwenLlmProvider), "https://dashscope.aliyuncs.com/compatible-mode/v1" },
         { nameof(MistralLlmProvider), "https://api.mistral.ai/v1" },
-        { nameof(GroqLlmProvider), "https://api.groq.com/openai/v1" },
+        { nameof(GrokLlmProvider), "https://api.x.ai/v1" },
         { nameof(TogetherAiLlmProvider), "https://api.together.xyz/v1" },
         { nameof(HuggingFaceLlmProvider), "https://router.huggingface.co/v1" },
         { nameof(ZaiLlmProvider), "https://api.z.ai/api/paas/v4" },
@@ -113,7 +112,6 @@ public class ProviderDefaultsPinningTests
         { "openai", "gpt-5.6-sol" },
         { "anthropic", "claude-sonnet-5" },
         { "ollama", "llama3.2" },
-        { "groq", "llama-3.3-70b-versatile" },
         { "together", "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
         { "togetherai", "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
         { "deepseek", "deepseek-v4-flash" },
@@ -132,7 +130,7 @@ public class ProviderDefaultsPinningTests
 
     /// <summary>
     /// A caller holding only a provider key must get that provider's default, not the
-    /// platform-wide one — otherwise a campaign named "groq" quietly measures an OpenAI model.
+    /// platform-wide one — otherwise a campaign named "kimi" quietly measures an OpenAI model.
     /// </summary>
     [Theory]
     [MemberData(nameof(PinnedDefaultsByProviderKey))]

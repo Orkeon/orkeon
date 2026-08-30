@@ -88,15 +88,12 @@ public class LlmProviderFactoryRoutingTests
     [InlineData("glm-5.2", null, "zai")]
     // Gemini (PUB-15): model-prefix and OpenAI-compatible host routing.
     [InlineData("gemini-3.7-flash", null, "gemini")]
-    // Grok (2026-08-30): the grok/groq near-homograph is the trap - "grok-4.6" must not
-    // fall into the Contains("groq") arm, and api.x.ai must route by host.
     [InlineData("grok-4.6", null, "grok")]
     [InlineData("unknown-model", null, "OpenAI")]
     [InlineData(null, "https://api.deepseek.com", "deepseek")]
     [InlineData(null, "https://api.z.ai/api/paas/v4", "zai")]
     [InlineData(null, "https://generativelanguage.googleapis.com/v1beta/openai", "gemini")]
     [InlineData(null, "https://api.x.ai/v1", "grok")]
-    [InlineData(null, "https://api.groq.com/openai/v1", "groq")]
     [InlineData(null, "https://api.mistral.ai/v1", "mistral")]
     [InlineData(null, "https://my-resource.openai.azure.com", "azure-openai")]
     public void ShouldRouteToExpectedProvider(string? model, string? baseUrl, string expectedProvider)

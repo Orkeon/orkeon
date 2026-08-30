@@ -54,3 +54,14 @@ override Orkeon.Infrastructure.LLMs.GrokLlmProvider.DefaultModel.get -> string!
 override Orkeon.Infrastructure.LLMs.GrokLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.GrokLlmProvider.ProviderDisplayName.get -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Grok = "https://api.x.ai/v1" -> string!
+*REMOVED*Orkeon.Infrastructure.LLMs.GroqLlmProvider
+*REMOVED*Orkeon.Infrastructure.LLMs.GroqLlmProvider.GroqLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GroqLlmProvider!>? logger = null) -> void
+*REMOVED*Orkeon.Infrastructure.LLMs.GroqLlmProvider.GroqLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GroqLlmProvider!>? logger = null) -> void
+*REMOVED*Orkeon.Infrastructure.LLMs.GroqLlmProvider.GroqLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GroqLlmProvider!>? logger = null) -> void
+*REMOVED*const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Groq = "https://api.groq.com/openai/v1" -> string!
+*REMOVED*override Orkeon.Infrastructure.LLMs.GroqLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+*REMOVED*override Orkeon.Infrastructure.LLMs.GroqLlmProvider.DefaultBaseUrl.get -> System.Uri!
+*REMOVED*override Orkeon.Infrastructure.LLMs.GroqLlmProvider.DefaultModel.get -> string!
+*REMOVED*override Orkeon.Infrastructure.LLMs.GroqLlmProvider.ExtractResponseMetadata(System.Text.Json.JsonDocument! doc, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
+*REMOVED*override Orkeon.Infrastructure.LLMs.GroqLlmProvider.Name.get -> string!
+*REMOVED*override Orkeon.Infrastructure.LLMs.GroqLlmProvider.ProviderDisplayName.get -> string!

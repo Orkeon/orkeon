@@ -28,7 +28,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// <summary>Gets the default model identifier when none is specified in the config.</summary>
     protected abstract string DefaultModel { get; }
 
-    /// <summary>Gets the display name used in user-facing error messages (e.g. "OpenAI", "Groq").</summary>
+    /// <summary>Gets the display name used in user-facing error messages (e.g. "OpenAI", "Grok").</summary>
     protected abstract string ProviderDisplayName { get; }
 
     /// <summary>Gets the API endpoint path appended to the base URL. Default is "/chat/completions".</summary>

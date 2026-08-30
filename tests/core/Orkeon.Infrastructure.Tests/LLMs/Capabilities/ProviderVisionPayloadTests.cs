@@ -31,7 +31,7 @@ public class ProviderVisionPayloadTests
 
     public static TheoryData<string> VisionCapableProviders() =>
     [
-        nameof(OpenAIProvider), nameof(AzureOpenAILlmProvider), nameof(GroqLlmProvider),
+        nameof(OpenAIProvider), nameof(AzureOpenAILlmProvider),
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(GrokLlmProvider),

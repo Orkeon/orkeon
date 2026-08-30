@@ -12,7 +12,7 @@ namespace Orkeon.Scripting.Bindings;
 /// <summary>
 /// Registers the global <c>llm</c> namespace on a Jint engine. Exposes provider
 /// factories (<c>llm.openai</c>, <c>llm.anthropic</c>, <c>llm.ollama</c>,
-/// <c>llm.azureOpenai</c>, <c>llm.groq</c>) and the resolved <c>llm.default</c>
+/// <c>llm.azureOpenai</c>, <c>llm.grok</c>) and the resolved <c>llm.default</c>
 /// derived from the DI-bound <see cref="ILlmProvider"/> (preferred) or from the
 /// <c>Orkeon:DefaultLlmProvider</c> configuration key (fallback).
 /// </summary>
@@ -75,7 +75,7 @@ public sealed partial class JsLlmNamespace
     private const string AnthropicDefaultModel = "claude-haiku-4-5";
     private const string OllamaDefaultModel = "llama3";
     private const string AzureOpenAiDefaultModel = "gpt-4o-mini";
-    private const string GroqDefaultModel = "llama-3.1-70b-versatile";
+    private const string GrokDefaultModel = "grok-4.6";
 
     internal JsLlmNamespace(IConfiguration? config, ILogger logger, ILlmProvider? defaultProvider = null)
     {
@@ -92,8 +92,8 @@ public sealed partial class JsLlmNamespace
     public Func<JsValue?, JsLlmConfig> ollama => opts => Build("ollama", opts, OllamaDefaultModel);
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "instance member required by the Jint JS binding surface — exposed as llm.azureOpenai on the global `llm` object set via engine.SetValue.")]
     public Func<JsValue?, JsLlmConfig> azureOpenai => opts => Build("azureOpenai", opts, AzureOpenAiDefaultModel);
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "instance member required by the Jint JS binding surface — exposed as llm.groq on the global `llm` object set via engine.SetValue.")]
-    public Func<JsValue?, JsLlmConfig> groq => opts => Build("groq", opts, GroqDefaultModel);
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "instance member required by the Jint JS binding surface — exposed as llm.grok on the global `llm` object set via engine.SetValue.")]
+    public Func<JsValue?, JsLlmConfig> grok => opts => Build("grok", opts, GrokDefaultModel);
 
     public JsLlmConfig @default
     {
@@ -162,7 +162,7 @@ public sealed partial class JsLlmNamespace
             "anthropic" => Build("anthropic", null, AnthropicDefaultModel),
             "ollama" => Build("ollama", null, OllamaDefaultModel),
             "azureopenai" => Build("azureOpenai", null, AzureOpenAiDefaultModel),
-            "groq" => Build("groq", null, GroqDefaultModel),
+            "grok" => Build("grok", null, GrokDefaultModel),
             _ => new JsLlmConfig(providerName, LlmConfig.Default()),
         };
 #pragma warning restore CA1308

@@ -63,7 +63,7 @@ Usage:
 
 Options:
   -p, --provider <keys>  one key, or several separated by commas
-                         openai | anthropic | ollama | azure | groq | together | qwen
+                         openai | anthropic | ollama | azure | together | qwen
                          | deepseek | kimi | mistral | huggingface | zai
       --all              every provider declared in the configuration (needs --config)
       --parallel         run the selected providers concurrently. Each provider's own models

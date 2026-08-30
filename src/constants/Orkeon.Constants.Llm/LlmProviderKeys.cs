@@ -3,7 +3,7 @@ namespace Orkeon.Constants.Llm;
 /// <summary>
 /// The keys that name an LLM provider, as a user writes them.
 /// <para>
-/// This is the vocabulary of <c>"Provider": "groq"</c> in a settings file, of
+/// This is the vocabulary of <c>"Provider": "kimi"</c> in a settings file, of
 /// <c>orkeon init</c>'s prompts, of Studio's endpoint detector and of the factory switch that
 /// turns the answer into a provider. Nothing validates the agreement between them at build time:
 /// a key the tooling offers and the factory does not recognise falls through to the OpenAI
@@ -33,8 +33,6 @@ public static class LlmProviderKeys
     /// <summary>Alias of <see cref="AzureOpenAI"/>.</summary>
     public const string AzureShort = "azure";
 
-    /// <summary>Groq.</summary>
-    public const string Groq = "groq";
 
     /// <summary>TogetherAI. <see cref="TogetherAiAlias"/> is the accepted alias.</summary>
     public const string Together = "together";
@@ -100,13 +98,13 @@ public static class LlmProviderKeys
     public const string Custom = "custom";
 
     /// <summary>
-    /// The fourteen canonical keys, aliases excluded, in the order the documentation lists the
-    /// providers. A set rather than fourteen comparisons: a provider added to the factory and
+    /// The thirteen canonical keys, aliases excluded, in the order the documentation lists the
+    /// providers. A set rather than thirteen comparisons: a provider added to the factory and
     /// forgotten in the tooling is the omission that pairwise checks do not see.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
     [
-        OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral,
+        OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral,
         DeepSeek, Kimi, Qwen, Together, HuggingFace, Zai, Gemini, Grok,
     ];
 

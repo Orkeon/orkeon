@@ -1,2 +1,4 @@
 #nullable enable
 static Orkeon.Scripting.JsEngineFactory.ApplyInteropPolicy(Jint.Options! options) -> Jint.Options!
+*REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.groq.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Bindings.JsLlmNamespace.grok.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!

@@ -46,7 +46,7 @@ graph TB
 
     subgraph Infrastructure["Orkeon.Infrastructure — Couche Infrastructure"]
         SeqOrch["SequentialCrewOrchestrator"]
-        LlmProviders["LLM Providers<br/>(OpenAI, Anthropic, Groq,<br/>Ollama, Azure, DeepSeek...)"]
+        LlmProviders["LLM Providers<br/>(OpenAI, Anthropic, Grok,<br/>Ollama, Azure, DeepSeek...)"]
         MemProviders["Memory Providers<br/>(InMemory, Redis, SQLite,<br/>ChromaDB, Pinecone, LanceDB)"]
         ToolImpl["Tool Implementations"]
         Config["Configuration Loaders<br/>(YAML, JSON, Env)"]

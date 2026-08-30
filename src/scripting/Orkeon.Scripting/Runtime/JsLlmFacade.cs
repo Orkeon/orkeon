@@ -368,7 +368,7 @@ public sealed partial class JsLlmFacade
         // extract's contract is "return structured JSON". Three things make that reliable instead
         // of best-effort: (1) the schema arg — previously ignored — is folded into the prompt so the
         // model knows the target shape; (2) response_format defaults to json_object (unless the caller
-        // explicitly asked for text), so OpenAI-compatible providers (DeepSeek/OpenAI/Groq/…) emit raw
+        // explicitly asked for text), so OpenAI-compatible providers (DeepSeek/OpenAI/Grok/…) emit raw
         // JSON; (3) the reply is stripped of ```json fences before parsing, tolerating models that wrap
         // the object anyway. Without these, any prose/markdown reply threw and aborted the whole crew.
         var fullPrompt = AugmentExtractPrompt(prompt, schema);
@@ -649,7 +649,7 @@ public sealed partial class JsLlmFacade
     /// <summary>
     /// Extracts the first tool call from an OpenAI-compatible chat response body
     /// (<c>choices[0].message.tool_calls[0].function.{name,arguments}</c>). Returns null when
-    /// the model produced no tool call. Targets OpenAI/DeepSeek/Groq/Azure-shaped responses.
+    /// the model produced no tool call. Targets OpenAI/DeepSeek/Grok/Azure-shaped responses.
     /// </summary>
     private static (string name, Dictionary<string, object?> args)? TryParseToolCall(string? rawBody)
     {

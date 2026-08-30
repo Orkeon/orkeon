@@ -239,7 +239,6 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
             _ when host.Contains("azure", StringComparison.Ordinal) => "azure-openai",
             _ when host.Contains("openai", StringComparison.Ordinal) => "openai",
             _ when host.Contains("anthropic", StringComparison.Ordinal) => "anthropic",
-            _ when host.Contains("groq", StringComparison.Ordinal) => "groq",
             _ when host.Contains("together", StringComparison.Ordinal) => "together",
             _ when host.Contains("deepseek", StringComparison.Ordinal) => "deepseek",
             _ when host.Contains("localhost", StringComparison.Ordinal) || host == "127.0.0.1" => "ollama",

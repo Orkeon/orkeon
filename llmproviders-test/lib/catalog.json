@@ -76,16 +76,6 @@
       ]
     },
     "azure-openai": { "label": "Azure OpenAI", "matrix": "§6.3", "aliasOf": "azure" },
-    "groq": {
-      "label": "Groq",
-      "matrix": "§6.4",
-      "apiKeyEnv": "GROQ_API_KEY",
-      "defaultModel": "llama-3.3-70b-versatile",
-      "notes": [
-        "Endpoint et modèle par défaut à jour. Un passage M1–M5 suffit : le code est mutualisé.",
-        "Contexte servi ≠ contexte natif : Groq plafonne la sortie de `gpt-oss-120b` à 65 536 contre 131 072 en natif."
-      ]
-    },
     "ollama": {
       "label": "Ollama",
       "matrix": "§6.5",

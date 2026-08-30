@@ -38,11 +38,6 @@
       "models": ["mon-deploiement"]
     },
 
-    "groq": {
-      "apiKeyEnv": "GROQ_API_KEY",
-      "modes": "M1,M2,M3,M4,M5",
-      "models": ["llama-3.3-70b-versatile"]
-    },
 
     "together": {
       "apiKeyEnv": "TOGETHER_API_KEY",

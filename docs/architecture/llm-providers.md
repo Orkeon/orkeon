@@ -11,7 +11,6 @@ Implemented providers:
 | OpenAI | `OpenAIProvider` (via `OpenAICompatibleProviderBase`) | `Orkeon.Infrastructure.LLMs` |
 | Anthropic | `AnthropicLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Azure OpenAI | `AzureOpenAILlmProvider` | `Orkeon.Infrastructure.LLMs` |
-| Groq | `GroqLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Ollama | `OllamaLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Together AI | `TogetherAiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | DeepSeek | `DeepSeekLlmProvider` | `Orkeon.Infrastructure.LLMs` |
@@ -21,6 +20,7 @@ Implemented providers:
 | Mistral AI | `MistralLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Z.AI (Zhipu GLM) | `ZaiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Google Gemini | `GeminiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| Grok (x.AI) | `GrokLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
 Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`, `ChatClientToBasicLlmProviderAdapter`) are available in `Orkeon.Infrastructure.LLMs.Adapters` to integrate other providers compatible with the `IChatClient` interface.
 

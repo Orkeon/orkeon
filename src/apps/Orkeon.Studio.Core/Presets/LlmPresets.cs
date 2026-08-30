@@ -154,9 +154,6 @@ public static class LlmPresets
     /// <summary>Canonical key of the Grok (x.AI) provider.</summary>
     public const string Grok = LlmProviderKeys.Grok;
 
-    /// <summary>Groq cloud API (OpenAI-compatible).</summary>
-    public const string Groq = LlmProviderKeys.Groq;
-
     /// <summary>HuggingFace Inference Providers router.</summary>
     public const string HuggingFace = LlmProviderKeys.HuggingFace;
 
@@ -246,9 +243,6 @@ public static class LlmPresets
             new(Grok, strings[StudioStringKeys.ProviderGrokTitle], strings[StudioStringKeys.ProviderGrokDescription],
                 LlmProviderEndpoints.Grok, LlmProviderDefaultModels.Grok, RequiresApiKey: true,
                 "XAI_API_KEY", LlmPresetKind.Cloud, "console.x.ai"),
-            new(Groq, strings[StudioStringKeys.ProviderGroqTitle], strings[StudioStringKeys.ProviderGroqDescription],
-                LlmProviderEndpoints.Groq, LlmProviderDefaultModels.Groq, RequiresApiKey: true,
-                "GROQ_API_KEY", LlmPresetKind.Cloud, "console.groq.com/keys"),
             new(Together, strings[StudioStringKeys.ProviderTogetherTitle], strings[StudioStringKeys.ProviderTogetherDescription],
                 LlmProviderEndpoints.Together, LlmProviderDefaultModels.Together, RequiresApiKey: true,
                 "TOGETHER_API_KEY", LlmPresetKind.Cloud, "api.together.ai"),

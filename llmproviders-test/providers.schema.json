@@ -29,10 +29,10 @@
       "minProperties": 1,
       "propertyNames": {
         "enum": [
-          "openai", "anthropic", "ollama", "azure", "azure-openai", "groq",
+          "openai", "anthropic", "ollama", "azure", "azure-openai",
           "together", "togetherai", "qwen", "deepseek", "kimi", "moonshot",
           "mistral", "huggingface", "hf", "zai", "glm", "zhipu",
-          "gemini", "google"
+          "gemini", "google", "grok", "xai"
         ]
       },
       "additionalProperties": { "$ref": "#/$defs/provider" }

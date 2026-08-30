@@ -48,7 +48,6 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.OpenAI => CreateOpenAIProvider(config),
             LlmProviderKeys.Anthropic => CreateAnthropicProvider(config),
             LlmProviderKeys.AzureShort or LlmProviderKeys.AzureOpenAI => CreateAzureOpenAIProvider(config),
-            LlmProviderKeys.Groq => CreateGroqProvider(config),
             LlmProviderKeys.Together or LlmProviderKeys.TogetherAiAlias => CreateTogetherAiProvider(config),
             LlmProviderKeys.Qwen => CreateQwenProvider(config),
             LlmProviderKeys.DeepSeek => CreateDeepSeekProvider(config),
@@ -77,7 +76,6 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.OpenAI => CreateOpenAIProvider(config),
             LlmProviderKeys.Anthropic => CreateAnthropicProvider(config),
             LlmProviderKeys.AzureShort or LlmProviderKeys.AzureOpenAI => CreateAzureOpenAIProvider(config),
-            LlmProviderKeys.Groq => CreateGroqProvider(config),
             LlmProviderKeys.Together or LlmProviderKeys.TogetherAiAlias => CreateTogetherAiProvider(config),
             LlmProviderKeys.Qwen => CreateQwenProvider(config),
             LlmProviderKeys.DeepSeek => CreateDeepSeekProvider(config),
@@ -137,8 +135,6 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return LlmProviderKeys.OpenAI;
         if (url.Contains(LlmProviderKeys.AzureShort, StringComparison.Ordinal) || url.Contains(".cognitiveservices.", StringComparison.Ordinal))
             return LlmProviderKeys.AzureOpenAI;
-        if (url.Contains("groq.com", StringComparison.Ordinal))
-            return LlmProviderKeys.Groq;
         if (url.Contains("together.xyz", StringComparison.Ordinal))
             return LlmProviderKeys.Together;
         // Qwen / Alibaba Model Studio: the mainland host (dashscope.aliyuncs.com), the
@@ -209,8 +205,6 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return LlmProviderKeys.Ollama;
         if (m.StartsWith(LlmProviderKeys.Mistral, StringComparison.Ordinal) || m.StartsWith("ministral", StringComparison.Ordinal))
             return LlmProviderKeys.Mistral;
-        if (m.Contains("mixtral", StringComparison.Ordinal) || m.Contains(LlmProviderKeys.Groq, StringComparison.Ordinal))
-            return LlmProviderKeys.Groq;
         if (m.StartsWith(LlmProviderKeys.Qwen, StringComparison.Ordinal))
             return LlmProviderKeys.Qwen;
         if (m.StartsWith(LlmProviderKeys.DeepSeek, StringComparison.Ordinal))
@@ -221,8 +215,6 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return LlmProviderKeys.Zai;
         if (m.StartsWith(LlmProviderKeys.Gemini, StringComparison.Ordinal))
             return LlmProviderKeys.Gemini;
-        // Before the groq Contains check would never see it: "grok-4.6" does not contain
-        // "groq", but keeping the prefix match explicit spares the reader the double take.
         if (m.StartsWith(LlmProviderKeys.Grok, StringComparison.Ordinal))
             return LlmProviderKeys.Grok;
 
@@ -333,10 +325,6 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// </summary>
     private LlmProviderAdapter CreateAzureOpenAIProvider(LlmConfig config)
         => Adapt<AzureOpenAILlmProvider>(logger => new AzureOpenAILlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
-
-    /// <summary>Creates Groq provider instance.</summary>
-    private LlmProviderAdapter CreateGroqProvider(LlmConfig config)
-        => Adapt<GroqLlmProvider>(logger => new GroqLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Together AI provider instance.</summary>
     private LlmProviderAdapter CreateTogetherAiProvider(LlmConfig config)

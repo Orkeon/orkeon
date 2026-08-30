@@ -26,7 +26,7 @@ internal static class LlmCatalogClient
     /// <summary>Providers whose catalogue is the OpenAI <c>GET /models</c> endpoint.</summary>
     private static readonly HashSet<string> OpenAiCompatible = new(StringComparer.OrdinalIgnoreCase)
     {
-        "openai", "groq", "together", "togetherai", "deepseek", "kimi", "moonshot",
+        "openai", "together", "togetherai", "deepseek", "kimi", "moonshot",
         "qwen", "mistral", "huggingface", "hf", "zai", "glm", "zhipu",
         "gemini", "google",
         "grok", "xai",
@@ -37,7 +37,6 @@ internal static class LlmCatalogClient
     {
         ["openai"] = LlmEndpoints.OpenAI,
         ["anthropic"] = LlmEndpoints.Anthropic,
-        ["groq"] = LlmEndpoints.Groq,
         ["deepseek"] = LlmEndpoints.DeepSeek,
         ["together"] = LlmEndpoints.Together,
         ["togetherai"] = LlmEndpoints.Together,

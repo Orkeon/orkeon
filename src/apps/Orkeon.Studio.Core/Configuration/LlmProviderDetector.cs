@@ -81,7 +81,6 @@ public static class LlmProviderDetector
 
         Add(LlmProviderEndpoints.OpenAI, LlmProviderKeys.OpenAI);
         Add(LlmProviderEndpoints.Anthropic, LlmProviderKeys.Anthropic);
-        Add(LlmProviderEndpoints.Groq, LlmProviderKeys.Groq);
         Add(LlmProviderEndpoints.DeepSeek, LlmProviderKeys.DeepSeek);
         Add(LlmProviderEndpoints.Together, LlmProviderKeys.Together);
         Add(LlmProviderEndpoints.Qwen, LlmProviderKeys.Qwen);

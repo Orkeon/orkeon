@@ -15,7 +15,7 @@ internal sealed class LlmProbeCommandOptions
 {
     /// <summary>Provider key, as accepted by <c>LlmProviderFactory</c>.</summary>
     [Option('p', "provider", Required = true,
-        HelpText = "Provider: openai | anthropic | ollama | azure | groq | together | qwen | deepseek | kimi | mistral | huggingface | zai | gemini | grok.")]
+        HelpText = "Provider: openai | anthropic | ollama | azure | together | qwen | deepseek | kimi | mistral | huggingface | zai | gemini | grok.")]
     public string Provider { get; set; } = "";
 
     /// <summary>Model identifier; defaults to the provider's own default when omitted.</summary>
@@ -330,7 +330,7 @@ internal static class LlmCommand
     internal static LlmConfig BuildConfig(LlmProbeCommandOptions options, string? apiKey)
     {
         // Falling back to LlmConfig.Default() would send OpenAI's default model to whichever
-        // provider was named — a campaign against Groq would silently measure "gpt-5.6-sol".
+        // provider was named — a campaign against Kimi would silently measure "gpt-5.6-sol".
         var model = string.IsNullOrWhiteSpace(options.Model)
             ? ProviderDefaults.ForProvider(options.Provider)
             : options.Model;

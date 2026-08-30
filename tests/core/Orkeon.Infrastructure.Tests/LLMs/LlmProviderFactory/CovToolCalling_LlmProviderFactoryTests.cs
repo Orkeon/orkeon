@@ -34,7 +34,8 @@ public class CovToolCalling_LlmProviderFactoryTests
     [InlineData("anthropic")]
     [InlineData("azure")]
     [InlineData("azure-openai")]
-    [InlineData("groq")]
+    [InlineData("grok")]
+    [InlineData("xai")]
     [InlineData("together")]
     [InlineData("togetherai")]
     [InlineData("qwen")]
@@ -57,7 +58,7 @@ public class CovToolCalling_LlmProviderFactoryTests
     [InlineData("http://model-runner.docker.internal/v1")]        // openai
     [InlineData("https://myresource.openai.azure.com")]           // azure
     [InlineData("https://x.cognitiveservices.azure.com")]         // azure
-    [InlineData("https://api.groq.com/openai/v1")]                // groq
+    [InlineData("https://api.x.ai/v1")]                           // grok
     [InlineData("https://api.together.xyz/v1")]                   // together
     [InlineData("https://dashscope.aliyuncs.com/v1")]             // qwen
     [InlineData("https://api.deepseek.com/v1")]                   // deepseek
@@ -113,8 +114,8 @@ public class CovToolCalling_LlmProviderFactoryTests
     [Fact]
     public void Create_BaseUrlBeatsModel()
     {
-        // Model says claude (anthropic) but URL says groq -> URL wins.
-        var config = LlmConfig.Create("claude-3") with { BaseUrl = new Uri("https://api.groq.com") };
+        // Model says claude (anthropic) but URL says x.ai -> URL wins.
+        var config = LlmConfig.Create("claude-3") with { BaseUrl = new Uri("https://api.x.ai/v1") };
         var provider = NewFactory().Create(config);
         Assert.IsType<LlmProviderAdapter>(provider);
     }

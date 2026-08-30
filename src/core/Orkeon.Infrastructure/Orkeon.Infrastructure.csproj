@@ -6,7 +6,7 @@
 
     <!-- Package Metadata (package-specific overrides) -->
     <PackageId>Orkeon.Infrastructure</PackageId>
-    <Description>Infrastructure layer for Orkeon - LLM providers (OpenAI, Anthropic, Azure, Groq, Ollama), memory stores (Redis, SQLite, InMemory), and 15+ built-in tools.</Description>
+    <Description>Infrastructure layer for Orkeon - LLM providers (OpenAI, Anthropic, Azure, Grok, Ollama), memory stores (Redis, SQLite, InMemory), and 15+ built-in tools.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Infrastructure;OpenAI;Anthropic;Ollama;Redis;SQLite;Tools</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

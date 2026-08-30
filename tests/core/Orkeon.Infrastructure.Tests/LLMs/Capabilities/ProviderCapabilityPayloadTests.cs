@@ -31,7 +31,7 @@ public class ProviderCapabilityPayloadTests
     /// <summary>Every provider, by the type name its HTTP client is registered under.</summary>
     public static TheoryData<string> AllProviders() =>
     [
-        nameof(OpenAIProvider), nameof(AzureOpenAILlmProvider), nameof(GroqLlmProvider),
+        nameof(OpenAIProvider), nameof(AzureOpenAILlmProvider),
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(AnthropicLlmProvider), nameof(OllamaLlmProvider),
@@ -70,7 +70,6 @@ public class ProviderCapabilityPayloadTests
     [Theory]
     [InlineData(nameof(OpenAIProvider))]
     [InlineData(nameof(AzureOpenAILlmProvider))]
-    [InlineData(nameof(GroqLlmProvider))]
     [InlineData(nameof(TogetherAiLlmProvider))]
     [InlineData(nameof(MistralLlmProvider))]
     [InlineData(nameof(KimiLlmProvider))]
@@ -140,7 +139,7 @@ public class ProviderCapabilityPayloadTests
     [Theory]
     [InlineData(nameof(OpenAIProvider))]
     [InlineData(nameof(AzureOpenAILlmProvider))]
-    [InlineData(nameof(GroqLlmProvider))]
+    [InlineData(nameof(GrokLlmProvider))]
     [InlineData(nameof(TogetherAiLlmProvider))]
     [InlineData(nameof(MistralLlmProvider))]
     public async Task ShouldSendTheSchema_WhenTheProviderValidatesOne(string providerTypeName)
@@ -207,7 +206,7 @@ public class ProviderCapabilityPayloadTests
     [Theory]
     [InlineData(nameof(OpenAIProvider))]
     [InlineData(nameof(AzureOpenAILlmProvider))]
-    [InlineData(nameof(GroqLlmProvider))]
+    [InlineData(nameof(GrokLlmProvider))]
     [InlineData(nameof(MistralLlmProvider))]
     [InlineData(nameof(KimiLlmProvider))]
     [InlineData(nameof(DeepSeekLlmProvider))]
@@ -228,7 +227,7 @@ public class ProviderCapabilityPayloadTests
     /// </summary>
     [Theory]
     [InlineData(nameof(OpenAIProvider))]
-    [InlineData(nameof(GroqLlmProvider))]
+    [InlineData(nameof(GrokLlmProvider))]
     public async Task ShouldReportTheToggle_WhenOnlyAnEffortHintIsAccepted(string providerTypeName)
     {
         var probe = await ProviderProbe.CapturePayloadWithLogAsync(providerTypeName, config => config with

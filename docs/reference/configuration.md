@@ -41,7 +41,7 @@ until that launch starts. No file is ever generated: the composition is in-memor
 
 The `Llm` section is read by `RunnerHost.RegisterLlmProvider` and turned into an
 `ILlmProvider` via `ILlmProviderFactory`. **The provider is inferred automatically**, in
-order: base-URL host patterns (e.g. `deepseek.com` → DeepSeek, `groq.com` → Groq,
+order: base-URL host patterns (e.g. `deepseek.com` → DeepSeek, `api.x.ai` → Grok,
 `/engines/` → Docker Model Runner/OpenAI-compatible), then model-name patterns, then
 API-key shape; default `openai`. Keys: `Model`, `BaseUrl`, `ApiKey` (prefer
 `ORKEON_Llm__ApiKey`), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, and

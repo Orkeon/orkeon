@@ -128,7 +128,7 @@ Options (`Orkeon:MultiModal`) : `Enabled`, `MaxImageSizeBytes` (20 Mo par défau
 
 | Capacité | Supporté |
 |---|---|
-| Providers vision (capacité `Vision = true`) | 12 des 13 : Anthropic, OpenAI, Azure OpenAI, Gemini, Groq, HuggingFace, Kimi, Mistral, Ollama (`images` natif), Qwen, TogetherAI, Z.AI |
+| Providers vision (capacité `Vision = true`) | Les 13 : Anthropic, OpenAI, Azure OpenAI, DeepSeek (par modèle, `deepseek-v4-flash-vision-exp`), Gemini, Grok, HuggingFace, Kimi, Mistral, Ollama (`images` natif), Qwen, TogetherAI, Z.AI |
 | Provider sans la capacité (DeepSeek) | Dégradation vers le repli texte `LlmMessage.Content` |
 | Types MIME image | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
 | Sources d'image | Bytes bruts (base64), URL http(s), data URL base64 |

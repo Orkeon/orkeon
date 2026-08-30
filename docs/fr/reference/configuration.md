@@ -46,7 +46,7 @@ mémoire.
 
 La section `Llm` est lue par `RunnerHost.RegisterLlmProvider` et transformée en
 `ILlmProvider` via `ILlmProviderFactory`. **Le provider est inféré automatiquement**, dans
-l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `groq.com` → Groq,
+l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `api.x.ai` → Grok,
 `/engines/` → Docker Model Runner/compatible OpenAI), puis motifs du nom de modèle, puis
 forme de la clé API ; défaut `openai`. Clés : `Model`, `BaseUrl`, `ApiKey` (préférer
 `ORKEON_Llm__ApiKey`), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, et

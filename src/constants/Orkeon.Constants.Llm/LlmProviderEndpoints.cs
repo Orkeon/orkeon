@@ -19,8 +19,6 @@ public static class LlmProviderEndpoints
     /// <summary>Anthropic Messages API base URL.</summary>
     public const string Anthropic = "https://api.anthropic.com";
 
-    /// <summary>Groq API base URL (OpenAI-compatible).</summary>
-    public const string Groq = "https://api.groq.com/openai/v1";
 
     /// <summary>DeepSeek API base URL (OpenAI-compatible).</summary>
     public const string DeepSeek = "https://api.deepseek.com";

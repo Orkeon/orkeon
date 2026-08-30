@@ -158,16 +158,16 @@ public sealed class ProviderStreamingTests : IDisposable
 
     #endregion
 
-    #region Groq Streaming
+    #region Grok Streaming
 
     [Fact]
-    public async Task ShouldYieldTokens_WhenGroqGenerateStreamingAsync()
+    public async Task ShouldYieldTokens_WhenGrokGenerateStreamingAsync()
     {
         var sseData = BuildSseStream(
             """{"choices":[{"delta":{"content":"Fast"}}]}""",
             """{"choices":[{"delta":{"content":" response"}}]}""");
 
-        using var provider = CreateGroqProvider(sseData, HttpStatusCode.OK);
+        using var provider = CreateGrokProvider(sseData, HttpStatusCode.OK);
 
         var tokens = await CollectTokens(provider, "test prompt");
 
@@ -282,13 +282,13 @@ public sealed class ProviderStreamingTests : IDisposable
             NullLogger<OllamaLlmProvider>.Instance);
     }
 
-    private GroqLlmProvider CreateGroqProvider(
+    private GrokLlmProvider CreateGrokProvider(
         string responseBody, HttpStatusCode statusCode)
     {
         SetupHttpClient(responseBody, statusCode);
-        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = "gsk-test", Model = "llama-3.3-70b-versatile" };
-        return new GroqLlmProvider(config, _httpClientFactory, _noOpPolicy,
-            NullLogger<GroqLlmProvider>.Instance);
+        var config = LlmConfig.Default() with { MaxRetries = 0, ApiKey = "xai-test", Model = "grok-4.6" };
+        return new GrokLlmProvider(config, _httpClientFactory, _noOpPolicy,
+            NullLogger<GrokLlmProvider>.Instance);
     }
 
     private AzureOpenAILlmProvider CreateAzureOpenAIProvider(

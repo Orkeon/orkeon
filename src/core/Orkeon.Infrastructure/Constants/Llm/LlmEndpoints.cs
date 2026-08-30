@@ -22,9 +22,6 @@ public static class LlmEndpoints
     /// <summary>Anthropic Messages API base URL.</summary>
     public const string Anthropic = LlmProviderEndpoints.Anthropic;
 
-    /// <summary>Groq API base URL (OpenAI-compatible).</summary>
-    public const string Groq = LlmProviderEndpoints.Groq;
-
     /// <summary>DeepSeek API base URL (OpenAI-compatible).</summary>
     public const string DeepSeek = LlmProviderEndpoints.DeepSeek;
 

@@ -38,7 +38,7 @@ declare global {
         const anthropic: LlmProvider;
         const ollama: LlmProvider;
         const azureOpenai: LlmProvider;
-        const groq: LlmProvider;
+        const grok: LlmProvider;
 
         /**
          * The configured provider, already resolved — a value, not a factory. Comes from

@@ -58,7 +58,7 @@ Sous Windows, `run-campaign.ps1` expose exactement les mêmes options.
 
 | Option | Rôle |
 |---|---|
-| `--provider <clés>` | Une clé, ou plusieurs séparées par des virgules — `openai`, `anthropic`, `ollama`, `azure`, `groq`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok` |
+| `--provider <clés>` | Une clé, ou plusieurs séparées par des virgules — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok` |
 | `--all` | Tous les providers déclarés dans le JSON |
 | `--parallel` | Lance les providers sélectionnés simultanément (voir plus bas) |
 | `--model <id\|glob>` | Un identifiant, ou un motif (`gpt-5.6-*`, `*flash*`) |
@@ -138,7 +138,7 @@ fournisseur, déclarée dans `lib/catalog.json` :
 | `openai` | `OPENAI_API_KEY` | `deepseek` | `DEEPSEEK_API_KEY` |
 | `anthropic` | `ANTHROPIC_API_KEY` | `kimi` · `moonshot` | `MOONSHOT_API_KEY` |
 | `azure` · `azure-openai` | `AZURE_OPENAI_API_KEY` | `qwen` | `DASHSCOPE_API_KEY` |
-| `groq` | `GROQ_API_KEY` | `mistral` | `MISTRAL_API_KEY` |
+| `mistral` | `MISTRAL_API_KEY` | | |
 | `together` · `togetherai` | `TOGETHER_API_KEY` | `huggingface` · `hf` | `HF_TOKEN` |
 | `ollama` | *aucune* | `zai` · `glm` · `zhipu` | `ZAI_API_KEY` |
 | `gemini` · `google` | `GEMINI_API_KEY` | `grok` · `xai` | `XAI_API_KEY` |
@@ -159,7 +159,6 @@ campagne > le `defaultModel` du catalogue.
 | `openai` | `gpt-5.6-sol` | |
 | `anthropic` | `claude-sonnet-5` | |
 | `azure` | *(aucun — voir plus bas)* | |
-| `groq` | `llama-3.3-70b-versatile` | |
 | `ollama` | `llama3.2` | `llava` |
 | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | |
 | `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |

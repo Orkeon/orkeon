@@ -289,11 +289,6 @@ public static class StudioStringKeys
     /// <summary>Provider card description: Grok.</summary>
     public const string ProviderGrokDescription = "Core_Provider_Grok_Desc";
 
-    /// <summary>"Groq"</summary>
-    public const string ProviderGroqTitle = "Core_Provider_Groq_Title";
-
-    /// <summary>"very fast responses"</summary>
-    public const string ProviderGroqDescription = "Core_Provider_Groq_Desc";
 
     /// <summary>"HuggingFace"</summary>
     public const string ProviderHuggingFaceTitle = "Core_Provider_HuggingFace_Title";
@@ -997,8 +992,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProviderGeminiDescription] = "Google",
         [StudioStringKeys.ProviderGrokTitle] = "Grok",
         [StudioStringKeys.ProviderGrokDescription] = "x.AI",
-        [StudioStringKeys.ProviderGroqTitle] = "Groq",
-        [StudioStringKeys.ProviderGroqDescription] = "very fast responses",
         [StudioStringKeys.ProviderHuggingFaceTitle] = "HuggingFace",
         [StudioStringKeys.ProviderHuggingFaceDescription] = "multi-model router",
         [StudioStringKeys.ProviderKimiTitle] = "Kimi",

@@ -60,8 +60,6 @@ public static class LlmProviderDefaultModels
     /// </summary>
     public const string Mistral = "mistral-medium-2604";
 
-    /// <summary>Groq.</summary>
-    public const string Groq = "llama-3.3-70b-versatile";
 
     /// <summary>
     /// Grok (x.AI) — the current chat flagship, verified live 2026-08-30 with a full 12-mode
