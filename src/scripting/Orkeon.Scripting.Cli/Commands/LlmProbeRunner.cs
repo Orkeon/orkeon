@@ -781,12 +781,15 @@ internal sealed class LlmProbeRunner
         string.Join(", ", arguments.Select(a => $"{a.Key}={a.Value}"));
 
     /// <summary>
-    /// What M3 and M4 ask for. Thirty numbers, not five: a coarse-chunking stream (Gemini
-    /// emits ~13-character events) fits a five-number answer in a single chunk, and both
-    /// modes then read a genuine stream as a buffered fallback — measured 2026-08-30, where
-    /// the same endpoint produced four chunks the moment the count reached twenty.
+    /// What M3 and M4 ask for. A hundred numbers, not five: a coarse-chunking stream fits a
+    /// short answer in a single event and both modes then read a genuine stream as a buffered
+    /// fallback. Calibrated twice on 2026-08-30 — Gemini emits ~13-character events (five
+    /// numbers = one chunk, twenty = four), then claude-sonnet-5 emitted the entire
+    /// eighty-character count-to-thirty as ONE delta while its chat path split the same
+    /// answer in two. A hundred numbers is ~290 characters: several events on every vendor
+    /// measured. The property pinned here is the count the prompt asks for, not its phrasing.
     /// </summary>
-    private const string StreamingProbePrompt = "Count from one to thirty, separated by spaces.";
+    private const string StreamingProbePrompt = "Count from one to one hundred, separated by spaces.";
 
     /// <summary>
     /// The vendor's own <c>tool_calls</c> fragment, verbatim, when the body is OpenAI-shaped —

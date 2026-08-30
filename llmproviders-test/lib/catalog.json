@@ -44,12 +44,14 @@
       "matrix": "§6.2",
       "apiKeyEnv": "ANTHROPIC_API_KEY",
       "defaultModel": "claude-sonnet-5",
+      "temperature": 1,
       "notes": [
         "Dialecte propre (Messages API) : c'est le provider qui porte le plus de code spécifique.",
         "M8 est **schéma obligatoire** — `output_config.format` n'a pas d'équivalent de `json_object`.",
         "M10 n'a de sens qu'avec un breakpoint explicite : sans `cache_control`, Anthropic ne cache rien (G-17). Le harnais l'active de lui-même ici.",
         "M4 doit confirmer le SSE natif livré par LLM-05 (G-20), et non un repli bufferisé.",
-        "Les clés identity-linked exigent l'en-tête `anthropic-workspace-id` sur chaque requête (mesuré 2026-08-30). Déclarer `workspaceId` dans le JSON de campagne ou passer `--workspace-id` ; les clés classiques n'en ont pas besoin."
+        "Les clés identity-linked exigent l'en-tête `anthropic-workspace-id` sur chaque requête (mesuré 2026-08-30). Déclarer `workspaceId` dans le JSON de campagne ou passer `--workspace-id` ; les clés classiques n'en ont pas besoin.",
+        "`claude-sonnet-5` refuse toute température explicite autre que 1 (`temperature is deprecated for this model`, mesuré 2026-08-30 : 1 et l'omission passent, 0 et 0.7 non) — même classe que `kimi-k2.6` et `gpt-5.6-sol`, même remède : le catalogue épingle 1, l'en-tête du rapport porte la valeur utilisée."
       ]
     },
     "azure": {
@@ -178,7 +180,7 @@
         "Arrivé **après** l'audit du 2026-07-27 : il ne porte aucun gap G-xx hérité, et sa fiche §6.13 a été ouverte sans campagne. Celle-ci est sa première preuve d'exécution réelle.",
         "Endpoint de **compatibilité OpenAI** (`generativelanguage.googleapis.com/v1beta/openai`) — ni l'API Gemini native, ni Vertex AI. L'hôte porté par l'en-tête du rapport est ce qui le confirme.",
         "**M8 n'est plus ➖** : mesuré le 2026-08-30, la surface de compatibilité accepte `response_format` `json_object` **et** `json_schema`, schéma validé côté serveur (`additionalProperties` compris). Le provider déclare `JsonSchema` depuis cette date — l'avertissement qu'il émettait refusait quelque chose qui marche.",
-        "M3/M4 streament par gros blocs (~13 caractères par événement) : une réponse trop courte tient dans un seul chunk et se lit comme un repli bufferisé. La sonde demande trente nombres depuis le 2026-08-30 pour discriminer.",
+        "M3/M4 streament par gros blocs (~13 caractères par événement) : une réponse trop courte tient dans un seul chunk et se lit comme un repli bufferisé. La sonde demande cent nombres depuis le 2026-08-30 pour discriminer (trente suffisaient ici, mais claude-sonnet-5 a coalescé trente en un seul delta).",
         "M7 est **effort seul** (`reasoning_effort` traduit en `thinking_level`) : ni bascule, ni budget de tokens, contrairement à Qwen.",
         "Le modèle par défaut voit : M9 s'exerce sur lui, sans campagne vision compagnon."
       ]

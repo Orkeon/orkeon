@@ -369,8 +369,10 @@ public sealed class LlmProbeRunnerTests
     /// buffered fallback. "Count from one to five" was not: Gemini genuinely streams, but its
     /// compat surface emits ~13-character chunks, so five numbers fit in one event and both M3
     /// and M4 read a real stream as buffered (2026-08-30) — while the same endpoint produced
-    /// four chunks the moment the count went to twenty. Thirty keeps a margin. The property
-    /// pinned here is the count the prompt asks for, not its phrasing.
+    /// four chunks the moment the count went to twenty. Thirty was then eaten whole by
+    /// claude-sonnet-5, which coalesced the entire eighty-character count into ONE delta the
+    /// same day; a hundred numbers (~290 characters) splits on every vendor measured. The
+    /// property pinned here is the count the prompt asks for, not its phrasing.
     /// </summary>
     [Fact]
     public async Task ShouldDemandAnAnswerLongEnoughToDiscriminate_OnBothStreamingModes()
@@ -381,8 +383,8 @@ public sealed class LlmProbeRunnerTests
         await RunAsync(runner, LlmProbeMode.M3);
         await RunAsync(runner, LlmProbeMode.M4);
 
-        Assert.Contains("thirty", Assert.Single(provider.Prompts), StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("thirty", Assert.Single(provider.Conversations)[0].Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("hundred", Assert.Single(provider.Prompts), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("hundred", Assert.Single(provider.Conversations)[0].Content, StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Capability gates: absence is not failure ────────────────────────────

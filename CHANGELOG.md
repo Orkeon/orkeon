@@ -51,7 +51,9 @@ turned five findings into fixes. Each one is dated and pinned by an offline test
   replays the raw fragment whenever the body is OpenAI-shaped (the canonical rebuild remains
   for Anthropic's dialect). And M3/M4 asked for five numbers, which fits in a single event on
   a coarse-chunking stream (Gemini emits ~13-character chunks), reading a genuine stream as a
-  buffered fallback; the probe now demands thirty.
+  buffered fallback; the probe now demands a hundred — thirty sufficed for Gemini,
+  then claude-sonnet-5 coalesced the whole count-to-thirty into a single delta the
+  same day.
 
 Campaign verdicts, same day: Kimi's open M3 "stream refused" of August did not reproduce
 (4/4 green, replays included); Z.AI's implicit context cache missed once in-campaign

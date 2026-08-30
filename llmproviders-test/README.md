@@ -302,6 +302,8 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T10:31:19Z | `anthropic` | `claude-sonnet-5` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](anthropic/2026-08-30-103048-claude-sonnet-5.md) |
+| 2026-08-30T10:25:16Z | `anthropic` | `claude-sonnet-5` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](anthropic/2026-08-30-102446-claude-sonnet-5.md) |
 | 2026-08-30T10:03:33Z | `ollama` | `llava` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](ollama/2026-08-30-100320-llava.md) |
 | 2026-08-30T10:03:19Z | `ollama` | `llama3.2` | ❌ 8/3/1 | 1.0.0-rc.2 | [rapport](ollama/2026-08-30-100305-llama3.2.md) |
 | 2026-08-30T08:51:33Z | `openai` | `gpt-5.6-sol` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](openai/2026-08-30-085110-gpt-5.6-sol.md) |
@@ -333,6 +335,7 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Provider | Modèle | Date | Statut | Modes exercés |
 |---|---|---|---|---|
+| `anthropic` | `claude-sonnet-5` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `deepseek` | `deepseek-v4-flash-vision-exp` | 2026-08-30 | ✅ | M9 |
 | `gemini` | `gemini-3.7-flash` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `kimi` | `kimi-k2.6` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
@@ -343,4 +346,4 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_26 campagne(s) archivée(s)._
+_28 campagne(s) archivée(s)._
