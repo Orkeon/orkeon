@@ -18,10 +18,10 @@
     <Button Style="{StaticResource BtnGhost}" Height="32" Padding="13,0" Margin="0,14,0,0"
             HorizontalAlignment="Left"
             Command="{Binding DataContext.Chat.ToggleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-            ToolTip="{Binding [Vm_Chat_AskTip], Source={x:Static services:I18n.Instance}}">
+            ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}">
       <StackPanel Orientation="Horizontal">
         <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
-        <TextBlock Text="{Binding [Vm_Chat_Ask], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Text="{Binding [Studio.Chat.Ask], Source={x:Static services:I18n.Instance}}"/>
         <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
                  Fill="{DynamicResource MarkBrush}"
                  Visibility="{Binding DataContext.Chat.HasUnread, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>

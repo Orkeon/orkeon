@@ -38,7 +38,7 @@
   <data name="Studio.Common.Validate" xml:space="preserve">
     <value>验证</value>
   </data>
-  <data name="Act_Save" xml:space="preserve">
+  <data name="Studio.Common.Save" xml:space="preserve">
     <value>保存</value>
   </data>
   <data name="Studio.Common.BaseUrl" xml:space="preserve">
@@ -344,43 +344,43 @@
   <data name="Studio.Run.CmdTitle" xml:space="preserve">
     <value>命令</value>
   </data>
-  <data name="Vm_Run_StateIdle" xml:space="preserve">
+  <data name="Studio.Run.StateIdle" xml:space="preserve">
     <value>准备就绪</value>
   </data>
-  <data name="Vm_Run_StateRunning" xml:space="preserve">
+  <data name="Studio.Run.StateRunning" xml:space="preserve">
     <value>执行中</value>
   </data>
-  <data name="Vm_Run_StateDone" xml:space="preserve">
+  <data name="Studio.Run.StateDone" xml:space="preserve">
     <value>执行完成</value>
   </data>
-  <data name="Vm_Run_BadgeIdle" xml:space="preserve">
+  <data name="Studio.Run.BadgeIdle" xml:space="preserve">
     <value>等待中</value>
   </data>
-  <data name="Vm_Run_BadgeRunning" xml:space="preserve">
+  <data name="Studio.Run.BadgeRunning" xml:space="preserve">
     <value>进行中</value>
   </data>
-  <data name="Vm_Run_BadgeDone" xml:space="preserve">
+  <data name="Studio.Run.BadgeDone" xml:space="preserve">
     <value>成功</value>
   </data>
-  <data name="Vm_Run_BadgeFailed" xml:space="preserve">
+  <data name="Studio.Run.BadgeFailed" xml:space="preserve">
     <value>失败</value>
   </data>
-  <data name="Vm_Run_BtnLaunch" xml:space="preserve">
+  <data name="Studio.Run.BtnLaunch" xml:space="preserve">
     <value>立即启动</value>
   </data>
-  <data name="Vm_Run_BtnRunning" xml:space="preserve">
+  <data name="Studio.Run.BtnRunning" xml:space="preserve">
     <value>进行中…</value>
   </data>
-  <data name="Vm_Run_BtnRelaunch" xml:space="preserve">
+  <data name="Studio.Run.BtnRelaunch" xml:space="preserve">
     <value>重新启动</value>
   </data>
-  <data name="Vm_Run_CliMissing" xml:space="preserve">
+  <data name="Studio.Run.CliMissing" xml:space="preserve">
     <value>找不到 Orkeon 引擎——请运行诊断。</value>
   </data>
-  <data name="Vm_Run_MetaAgents" xml:space="preserve">
+  <data name="Studio.Run.MetaAgents" xml:space="preserve">
     <value>{0} 个智能体</value>
   </data>
-  <data name="Vm_Run_MetaProfile" xml:space="preserve">
+  <data name="Studio.Run.MetaProfile" xml:space="preserve">
     <value>设置 {0}</value>
   </data>
   <data name="Studio.Run.ChangeTeam" xml:space="preserve">
@@ -440,433 +440,433 @@
   <data name="Studio.History.Reload" xml:space="preserve">
     <value>重新加载</value>
   </data>
-  <data name="Core_Validation_NoFindings" xml:space="preserve">
+  <data name="Studio.Diagnostics.NoFindings" xml:space="preserve">
     <value>校验：无任何发现。</value>
   </data>
-  <data name="Core_Validation_Summary" xml:space="preserve">
+  <data name="Studio.Diagnostics.Summary" xml:space="preserve">
     <value>校验：{0} 个错误、{1} 个警告、{2} 条提示。</value>
   </data>
-  <data name="Core_Launch_NothingRan" xml:space="preserve">
+  <data name="Studio.Run.NothingRan" xml:space="preserve">
     <value>没有执行任何内容 — {0}</value>
   </data>
-  <data name="Core_Usage_Tokens" xml:space="preserve">
+  <data name="Studio.Run.Tokens" xml:space="preserve">
     <value>{0} 个 token</value>
   </data>
-  <data name="Core_Usage_Cache" xml:space="preserve">
+  <data name="Studio.Run.Cache" xml:space="preserve">
     <value>缓存 {0} % · {1} 个 token</value>
   </data>
-  <data name="Core_Usage_Seconds" xml:space="preserve">
+  <data name="Studio.Run.Seconds" xml:space="preserve">
     <value>{0} 秒</value>
   </data>
-  <data name="Core_Usage_MinutesSeconds" xml:space="preserve">
+  <data name="Studio.Run.MinutesSeconds" xml:space="preserve">
     <value>{0} 分 {1} 秒</value>
   </data>
-  <data name="Core_Launch_ExitCode" xml:space="preserve">
+  <data name="Studio.Run.ExitCode" xml:space="preserve">
     <value>退出码 {0} — {1}</value>
   </data>
-  <data name="Core_Preset_Ollama_Title" xml:space="preserve">
+  <data name="Studio.Settings.OllamaTitle" xml:space="preserve">
     <value>Ollama</value>
   </data>
-  <data name="Core_Preset_Ollama_Desc" xml:space="preserve">
+  <data name="Studio.Settings.OllamaDesc" xml:space="preserve">
     <value>本地 Ollama 服务器。</value>
   </data>
-  <data name="Core_Preset_Dmr_Title" xml:space="preserve">
+  <data name="Studio.Settings.DmrTitle" xml:space="preserve">
     <value>Docker Model Runner</value>
   </data>
-  <data name="Core_Preset_Dmr_Desc" xml:space="preserve">
+  <data name="Studio.Settings.DmrDesc" xml:space="preserve">
     <value>由 Docker Desktop 提供的本地 llama.cpp 引擎。</value>
   </data>
-  <data name="Core_Preset_OpenAI_Title" xml:space="preserve">
+  <data name="Studio.Settings.OpenAITitle" xml:space="preserve">
     <value>OpenAI</value>
   </data>
-  <data name="Core_Preset_OpenAI_Desc" xml:space="preserve">
+  <data name="Studio.Settings.OpenAIDesc" xml:space="preserve">
     <value>OpenAI 云端 API。</value>
   </data>
-  <data name="Core_Preset_Custom_Title" xml:space="preserve">
+  <data name="Studio.Settings.CustomTitle" xml:space="preserve">
     <value>其他 OpenAI 兼容</value>
   </data>
-  <data name="Core_Preset_Custom_Desc" xml:space="preserve">
+  <data name="Studio.Settings.CustomDesc" xml:space="preserve">
     <value>DeepSeek、GLM、Mistral 等 — 需要基础 URL 和模型。</value>
   </data>
-  <data name="Core_Preset_None_Title" xml:space="preserve">
+  <data name="Studio.Settings.NoneTitle" xml:space="preserve">
     <value>无 / 离线</value>
   </data>
-  <data name="Core_Preset_None_Desc" xml:space="preserve">
+  <data name="Studio.Settings.NoneDesc" xml:space="preserve">
     <value>无 LLM：运行使用回显提供方 &lt;undefined-llm&gt;。</value>
   </data>
-  <data name="Core_Provider_Anthropic_Title" xml:space="preserve">
+  <data name="Studio.Settings.AnthropicTitle" xml:space="preserve">
     <value>Anthropic</value>
   </data>
-  <data name="Core_Provider_Anthropic_Desc" xml:space="preserve">
+  <data name="Studio.Settings.AnthropicDesc" xml:space="preserve">
     <value>Claude</value>
   </data>
-  <data name="Core_Provider_DeepSeek_Title" xml:space="preserve">
+  <data name="Studio.Settings.DeepSeekTitle" xml:space="preserve">
     <value>DeepSeek</value>
   </data>
-  <data name="Core_Provider_DeepSeek_Desc" xml:space="preserve">
+  <data name="Studio.Settings.DeepSeekDesc" xml:space="preserve">
     <value>经济，很有能力</value>
   </data>
-  <data name="Core_Provider_Gemini_Title" xml:space="preserve">
+  <data name="Studio.Settings.GeminiTitle" xml:space="preserve">
     <value>Gemini</value>
   </data>
-  <data name="Core_Provider_Gemini_Desc" xml:space="preserve">
+  <data name="Studio.Settings.GeminiDesc" xml:space="preserve">
     <value>Google</value>
   </data>
-  <data name="Core_Provider_Grok_Title" xml:space="preserve">
+  <data name="Studio.Settings.GrokTitle" xml:space="preserve">
     <value>Grok</value>
   </data>
-  <data name="Core_Provider_Grok_Desc" xml:space="preserve">
+  <data name="Studio.Settings.GrokDesc" xml:space="preserve">
     <value>x.AI</value>
   </data>
-  <data name="Core_Provider_MiniMax_Title" xml:space="preserve">
+  <data name="Studio.Settings.MiniMaxTitle" xml:space="preserve">
     <value>MiniMax</value>
   </data>
-  <data name="Core_Provider_MiniMax_Desc" xml:space="preserve">
+  <data name="Studio.Settings.MiniMaxDesc" xml:space="preserve">
     <value>M2 系列，国际 + 中国大陆端点</value>
   </data>
-  <data name="Core_Provider_HuggingFace_Title" xml:space="preserve">
+  <data name="Studio.Settings.HuggingFaceTitle" xml:space="preserve">
     <value>HuggingFace</value>
   </data>
-  <data name="Core_Provider_HuggingFace_Desc" xml:space="preserve">
+  <data name="Studio.Settings.HuggingFaceDesc" xml:space="preserve">
     <value>多模型路由器</value>
   </data>
-  <data name="Core_Provider_Kimi_Title" xml:space="preserve">
+  <data name="Studio.Settings.KimiTitle" xml:space="preserve">
     <value>Kimi</value>
   </data>
-  <data name="Core_Provider_Kimi_Desc" xml:space="preserve">
+  <data name="Studio.Settings.KimiDesc" xml:space="preserve">
     <value>Moonshot AI</value>
   </data>
-  <data name="Core_Provider_Mistral_Title" xml:space="preserve">
+  <data name="Studio.Settings.MistralTitle" xml:space="preserve">
     <value>Mistral</value>
   </data>
-  <data name="Core_Provider_Mistral_Desc" xml:space="preserve">
+  <data name="Studio.Settings.MistralDesc" xml:space="preserve">
     <value>欧洲</value>
   </data>
-  <data name="Core_Provider_Qwen_Title" xml:space="preserve">
+  <data name="Studio.Settings.QwenTitle" xml:space="preserve">
     <value>Qwen</value>
   </data>
-  <data name="Core_Provider_Qwen_Desc" xml:space="preserve">
+  <data name="Studio.Settings.QwenDesc" xml:space="preserve">
     <value>Alibaba DashScope</value>
   </data>
-  <data name="Core_Provider_Together_Title" xml:space="preserve">
+  <data name="Studio.Settings.TogetherTitle" xml:space="preserve">
     <value>Together AI</value>
   </data>
-  <data name="Core_Provider_Together_Desc" xml:space="preserve">
+  <data name="Studio.Settings.TogetherDesc" xml:space="preserve">
     <value>开放模型</value>
   </data>
-  <data name="Core_Provider_Zai_Title" xml:space="preserve">
+  <data name="Studio.Settings.ZaiTitle" xml:space="preserve">
     <value>Z.AI (GLM)</value>
   </data>
-  <data name="Core_Provider_Zai_Desc" xml:space="preserve">
+  <data name="Studio.Settings.ZaiDesc" xml:space="preserve">
     <value>Zhipu</value>
   </data>
-  <data name="Core_Provider_OpenAI_ShortDesc" xml:space="preserve">
+  <data name="Studio.Settings.OpenAIShortDesc" xml:space="preserve">
     <value>GPT</value>
   </data>
-  <data name="Core_Provider_Custom_ShortDesc" xml:space="preserve">
+  <data name="Studio.Settings.CustomShortDesc" xml:space="preserve">
     <value>任意端点：输入 URL + 模型</value>
   </data>
-  <data name="Core_Provider_None_ShortDesc" xml:space="preserve">
+  <data name="Studio.Settings.NoneShortDesc" xml:space="preserve">
     <value>测试安装，无需模型</value>
   </data>
-  <data name="Core_Preset_Error_CustomIncomplete" xml:space="preserve">
+  <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve">
     <value>自定义预设同时需要基础 URL 和模型。</value>
   </data>
-  <data name="Core_Preset_Error_Unknown" xml:space="preserve">
+  <data name="Studio.Settings.ErrorUnknown" xml:space="preserve">
     <value>未知预设「{0}」。支持：{1}。</value>
   </data>
-  <data name="Core_Preset_Guidance_None" xml:space="preserve">
+  <data name="Studio.Settings.GuidanceNone" xml:space="preserve">
     <value>未配置 LLM：运行将使用回显提供方 &lt;undefined-llm&gt;。准备好后再配置一个。</value>
   </data>
-  <data name="Core_Preset_Guidance_ApiKeyEnv" xml:space="preserve">
+  <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve">
     <value>API 密钥：从环境变量引用 — 用以下命令设置：export {0}=&lt;您的密钥&gt;</value>
   </data>
-  <data name="Core_Preset_Guidance_NonDefaultEnv" xml:space="preserve">
+  <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve">
     <value>注意：Orkeon 运行时原生读取 `{0}`；`{1}` 只被 `orkeon init` / `orkeon llm` 探测读取。</value>
   </data>
-  <data name="Core_Preset_Guidance_InlineKeyWarning" xml:space="preserve">
+  <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve">
     <value>注意：API 密钥以明文形式保存在生成的文件中。建议改为从环境变量 {0} 引用。</value>
   </data>
-  <data name="Core_Resolution_Step1_Title" xml:space="preserve">
+  <data name="Studio.Settings.Step1Title" xml:space="preserve">
     <value>显式路径</value>
   </data>
-  <data name="Core_Resolution_Step1_Desc" xml:space="preserve">
+  <data name="Studio.Settings.Step1Desc" xml:space="preserve">
     <value>通过 --settings 传给运行器的文件。若不存在，解析即停止，运行时只读取环境变量。</value>
   </data>
-  <data name="Core_Resolution_Step2_Title" xml:space="preserve">
+  <data name="Studio.Settings.Step2Title" xml:space="preserve">
     <value>在团队旁边</value>
   </data>
-  <data name="Core_Resolution_Step2_Desc" xml:space="preserve">
+  <data name="Studio.Settings.Step2Desc" xml:space="preserve">
     <value>位于包含团队定义的目录中的 {0}。</value>
   </data>
-  <data name="Core_Resolution_Step3_Title" xml:space="preserve">
+  <data name="Studio.Settings.Step3Title" xml:space="preserve">
     <value>共享 appsettings 目录</value>
   </data>
-  <data name="Core_Resolution_Step3_Desc" xml:space="preserve">
+  <data name="Studio.Settings.Step3Desc" xml:space="preserve">
     <value>appsettings/{0}，从团队目录逐级向上查找（旧的 _shared/ 位置还会再兼容一个版本）。</value>
   </data>
-  <data name="Core_Resolution_Step4_Title" xml:space="preserve">
+  <data name="Studio.Settings.Step4Title" xml:space="preserve">
     <value>每用户全局文件</value>
   </data>
-  <data name="Core_Resolution_Step4_Desc" xml:space="preserve">
+  <data name="Studio.Settings.Step4Desc" xml:space="preserve">
     <value>由 `orkeon init` 写入的文件：Windows 上是 %APPDATA%\Orkeon\appsettings.json，其他系统是 $XDG_CONFIG_HOME/Orkeon/appsettings.json（否则 ~/.config/Orkeon/appsettings.json）。</value>
   </data>
-  <data name="Core_Rights_ReadOnly" xml:space="preserve">
+  <data name="Studio.Settings.RightsReadOnly" xml:space="preserve">
     <value>只读</value>
   </data>
-  <data name="Core_Rights_ReadWrite" xml:space="preserve">
+  <data name="Studio.Settings.RightsReadWrite" xml:space="preserve">
     <value>读 / 写（允许创建和删除）</value>
   </data>
-  <data name="Core_Rights_ReadWriteNoDelete" xml:space="preserve">
+  <data name="Studio.Settings.ReadWriteNoDelete" xml:space="preserve">
     <value>读 / 写，不可删除</value>
   </data>
-  <data name="Core_Target_DirectoryRunNotice" xml:space="preserve">
+  <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve">
     <value>这是一个多文件团队目录：运行它需要「orkeon run &lt;目录&gt;」，要求 Orkeon &gt;= {0}。随 Studio 安装的 CLI 支持该功能。</value>
   </data>
-  <data name="Core_MountSemantics_Explanation" xml:space="preserve">
+  <data name="Studio.Settings.Explanation" xml:space="preserve">
     <value>运行器先注入自己的挂载——团队的配置目录挂载为「/crew」（.ork.ts 团队则把脚本目录挂载为「/script」）——然后追加每个 --mount 参数，并把整份列表写入「Orkeon:FileSystem:Mounts:{index}」。因此索引 0 的 appsettings 挂载总是被自动注入的挂载取代，第一个 --mount 取代索引 1 的 appsettings 挂载，两份列表永不合并。超出最后写入索引的 appsettings 条目继续生效。LLM 日志目录单独挂载，对智能体不可见，也不会造成任何偏移。</value>
   </data>
-  <data name="Core_MountSemantics_ExternalMounts" xml:space="preserve">
+  <data name="Studio.Settings.ExternalMounts" xml:space="preserve">
     <value>--allow-external-mounts 还会把每个 --mount 基础路径加入「PathSecurity:AdditionalAllowedDirectories」白名单，使挂载可以指向工作目录之外（效果等同于 ORKEON_ALLOW_EXTERNAL_MOUNTS=1）。</value>
   </data>
-  <data name="Core_MountSemantics_ThisLaunch" xml:space="preserve">
+  <data name="Studio.Settings.ThisLaunch" xml:space="preserve">
     <value> 本次启动运行器注入 {0} 个挂载（{1}），因此第一个 --mount 占用「{2}」。</value>
   </data>
-  <data name="Vm_Config_NewDocument" xml:space="preserve">
+  <data name="Studio.Settings.NewDocument" xml:space="preserve">
     <value>新的空文档。选择一个预设来填写 Llm 部分。</value>
   </data>
-  <data name="Vm_Config_NoFileSelected" xml:space="preserve">
+  <data name="Studio.Settings.NoFileSelected" xml:space="preserve">
     <value>未选择任何文件。</value>
   </data>
-  <data name="Vm_Config_Loaded" xml:space="preserve">
+  <data name="Studio.Settings.Loaded" xml:space="preserve">
     <value>已加载：{0}。</value>
   </data>
-  <data name="Vm_Config_NotSavedErrors" xml:space="preserve">
+  <data name="Studio.Settings.NotSavedErrors" xml:space="preserve">
     <value>未保存：需先修正 {0} 个错误。</value>
   </data>
-  <data name="Vm_Config_NotSavedNoDestination" xml:space="preserve">
+  <data name="Studio.Settings.NotSavedNoDestination" xml:space="preserve">
     <value>未保存：未选择目标位置。</value>
   </data>
-  <data name="Vm_Config_Saved" xml:space="preserve">
+  <data name="Studio.Settings.Saved" xml:space="preserve">
     <value>已保存到 {0}。</value>
   </data>
-  <data name="Vm_Config_SavedLlmWarning" xml:space="preserve">
+  <data name="Studio.Settings.SavedLlmWarning" xml:space="preserve">
     <value>已保存到 {0}。警告 {1}：没有 Llm 部分，运行将使用回显提供方。</value>
   </data>
-  <data name="Vm_Config_NoProblem" xml:space="preserve">
+  <data name="Studio.Settings.NoProblem" xml:space="preserve">
     <value>未发现任何问题。</value>
   </data>
-  <data name="Vm_Config_ErrorsWarnings" xml:space="preserve">
+  <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve">
     <value>{0} 个错误、{1} 个警告。</value>
   </data>
-  <data name="Vm_Llm_NoBaseUrl" xml:space="preserve">
+  <data name="Studio.Settings.NoBaseUrl" xml:space="preserve">
     <value>没有基础 URL——运行时会退回到回显提供方。</value>
   </data>
-  <data name="Vm_Llm_CustomProvider" xml:space="preserve">
+  <data name="Studio.Settings.CustomProvider" xml:space="preserve">
     <value>自定义（主机不在已知端点表中）</value>
   </data>
-  <data name="Vm_Llm_ApiKeyRecommendation" xml:space="preserve">
+  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve">
     <value>建议使用环境变量 {0}：运行时优先读取它而不是本文件，密钥就无需明文保存。</value>
   </data>
-  <data name="Vm_Llm_Testing" xml:space="preserve">
+  <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>正在测试连接…</value>
   </data>
-  <data name="Vm_Diag_NoCheck" xml:space="preserve">
+  <data name="Studio.Diagnostics.NoCheck" xml:space="preserve">
     <value>orkeon doctor 未报告任何检查。</value>
   </data>
-  <data name="Vm_Diag_AllGreen" xml:space="preserve">
+  <data name="Studio.Diagnostics.AllGreen" xml:space="preserve">
     <value>{0} 项检查，全部通过。</value>
   </data>
-  <data name="Vm_Diag_Findings" xml:space="preserve">
+  <data name="Studio.Diagnostics.Findings" xml:space="preserve">
     <value>{0} 项检查：{1} 个失败、{2} 个警告。</value>
   </data>
-  <data name="Vm_Mounts_SummaryOk" xml:space="preserve">
+  <data name="Studio.Settings.SummaryOk" xml:space="preserve">
     <value>{0} 个挂载，没有错误。</value>
   </data>
-  <data name="Vm_Mounts_SummaryErrors" xml:space="preserve">
+  <data name="Studio.Settings.SummaryErrors" xml:space="preserve">
     <value>{0} 个挂载，{1} 个错误。</value>
   </data>
-  <data name="Vm_Mounts_SelectCrewFirst" xml:space="preserve">
+  <data name="Studio.Settings.SelectCrewFirst" xml:space="preserve">
     <value>请先选择一个团队：运行器会在每个 --mount 之前注入自己的挂载，因此每个挂载占用哪个配置键取决于所启动的团队。</value>
   </data>
-  <data name="Vm_Mounts_ExternalWarning" xml:space="preserve">
+  <data name="Studio.Settings.ExternalWarning" xml:space="preserve">
     <value>安全提示：这会允许挂载指向机器上的任意位置，包括工作目录之外。请只对您有意选定的路径启用。</value>
   </data>
-  <data name="Vm_Mounts_EffectiveNone" xml:space="preserve">
+  <data name="Studio.Settings.EffectiveNone" xml:space="preserve">
     <value>{0} 个生效挂载；没有替换任何 appsettings 条目。</value>
   </data>
-  <data name="Vm_Mounts_EffectiveReplaced" xml:space="preserve">
+  <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve">
     <value>{0} 个生效挂载；按索引替换了 {1} 个 appsettings 条目。</value>
   </data>
-  <data name="Vm_Mounts_OriginAuto" xml:space="preserve">
+  <data name="Studio.Settings.OriginAuto" xml:space="preserve">
     <value>自动（由运行器注入）</value>
   </data>
-  <data name="Vm_Mounts_OriginReplaces" xml:space="preserve">
+  <data name="Studio.Settings.OriginReplaces" xml:space="preserve">
     <value>{0}（替换「{1}」）</value>
   </data>
-  <data name="Vm_Launch_BinaryNotLocated" xml:space="preserve">
+  <data name="Studio.Run.BinaryNotLocated" xml:space="preserve">
     <value>尚未定位到 orkeon CLI。</value>
   </data>
-  <data name="Vm_Launch_BinaryNotFound" xml:space="preserve">
+  <data name="Studio.Run.BinaryNotFound" xml:space="preserve">
     <value>找不到 orkeon CLI。</value>
   </data>
-  <data name="Vm_Launch_Ready" xml:space="preserve">
+  <data name="Studio.Run.Ready" xml:space="preserve">
     <value>可以启动了。</value>
   </data>
-  <data name="Vm_Launch_NoTarget" xml:space="preserve">
+  <data name="Studio.Run.NoTarget" xml:space="preserve">
     <value>未解析出目标。</value>
   </data>
-  <data name="Vm_Launch_NotLaunchedErrors" xml:space="preserve">
+  <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve">
     <value>未启动：需先修正 {0} 个错误。</value>
   </data>
-  <data name="Vm_Launch_Cancelling" xml:space="preserve">
+  <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>正在取消：先请求 CLI 停止，若不停止则强制结束。</value>
   </data>
-  <data name="Vm_Launch_NothingToReplay" xml:space="preserve">
+  <data name="Studio.Run.NothingToReplay" xml:space="preserve">
     <value>无内容可重放：「{0}」的记录没有保存任何参数。</value>
   </data>
-  <data name="Vm_Launch_Validating" xml:space="preserve">
+  <data name="Studio.Run.Validating" xml:space="preserve">
     <value>校验中…</value>
   </data>
-  <data name="Vm_Launch_Running" xml:space="preserve">
+  <data name="Studio.Run.Running" xml:space="preserve">
     <value>执行中…</value>
   </data>
-  <data name="Vm_RunProgress_NothingYet" xml:space="preserve">
+  <data name="Studio.Run.NothingYet" xml:space="preserve">
     <value>目前还没有任何报告。</value>
   </data>
-  <data name="Vm_RunProgress_TasksDone" xml:space="preserve">
+  <data name="Studio.Run.TasksDone" xml:space="preserve">
     <value>已完成 {0} 项任务。</value>
   </data>
-  <data name="Vm_RunProgress_Succeeded" xml:space="preserve">
+  <data name="Studio.Run.Succeeded" xml:space="preserve">
     <value>已成功完成。</value>
   </data>
-  <data name="Vm_RunProgress_Failed" xml:space="preserve">
+  <data name="Studio.Run.Failed" xml:space="preserve">
     <value>以失败告终。</value>
   </data>
-  <data name="Vm_RunProgress_Cost" xml:space="preserve">
+  <data name="Studio.Run.Cost" xml:space="preserve">
     <value>{0} 个 token · {1}</value>
   </data>
-  <data name="Vm_RunProgress_Watch" xml:space="preserve">
+  <data name="Studio.Run.Watch" xml:space="preserve">
     <value>显示进度，而不是原始输出</value>
   </data>
-  <data name="Vm_RunProgress_Stream" xml:space="preserve">
+  <data name="Studio.Run.Stream" xml:space="preserve">
     <value>逐 token 流式输出生成的文本</value>
   </data>
-  <data name="Vm_RunProgress_Answer" xml:space="preserve">
+  <data name="Studio.Run.Answer" xml:space="preserve">
     <value>回答</value>
   </data>
-  <data name="Vm_RunProgress_AgentAsks" xml:space="preserve">
+  <data name="Studio.Run.AgentAsks" xml:space="preserve">
     <value>一个智能体在提问：</value>
   </data>
-  <data name="Vm_RunProgress_Reply" xml:space="preserve">
+  <data name="Studio.Run.Reply" xml:space="preserve">
     <value>回答</value>
   </data>
-  <data name="Vm_RunProgress_HubMessages" xml:space="preserve">
+  <data name="Studio.Run.HubMessages" xml:space="preserve">
     <value>hub 消息</value>
   </data>
-  <data name="Vm_Target_None" xml:space="preserve">
+  <data name="Studio.Run.None" xml:space="preserve">
     <value>未选择任何目标。</value>
   </data>
-  <data name="Vm_Target_Resolved" xml:space="preserve">
+  <data name="Studio.Run.Resolved" xml:space="preserve">
     <value>{0} — orkeon run {1}</value>
   </data>
-  <data name="Vm_Target_PickScript" xml:space="preserve">
+  <data name="Studio.Run.PickScript" xml:space="preserve">
     <value>找到 {0} 个脚本：请选择要运行的那个。</value>
   </data>
-  <data name="Vm_Target_DetectionFailed" xml:space="preserve">
+  <data name="Studio.Run.DetectionFailed" xml:space="preserve">
     <value>检测失败。</value>
   </data>
-  <data name="Vm_Target_KindYamlFile" xml:space="preserve">
+  <data name="Studio.Run.KindYamlFile" xml:space="preserve">
     <value>YAML 团队文件</value>
   </data>
-  <data name="Vm_Target_KindScriptFile" xml:space="preserve">
+  <data name="Studio.Run.KindScriptFile" xml:space="preserve">
     <value>脚本式团队文件</value>
   </data>
-  <data name="Vm_Target_KindCrewDirectory" xml:space="preserve">
+  <data name="Studio.Run.KindCrewDirectory" xml:space="preserve">
     <value>多文件团队目录</value>
   </data>
-  <data name="Vm_Target_KindScriptDirectory" xml:space="preserve">
+  <data name="Studio.Run.KindScriptDirectory" xml:space="preserve">
     <value>脚本式团队目录</value>
   </data>
-  <data name="Vm_Log_Lines" xml:space="preserve">
+  <data name="Studio.Run.LogLines" xml:space="preserve">
     <value>{0} 行。</value>
   </data>
-  <data name="Vm_Log_LinesDropped" xml:space="preserve">
+  <data name="Studio.Run.LinesDropped" xml:space="preserve">
     <value>{0} 行；已丢弃 {1} 行较早内容（上限 {2}）。</value>
   </data>
-  <data name="Vm_Dialog_OpenAppSettings" xml:space="preserve">
+  <data name="Studio.Settings.OpenAppSettings" xml:space="preserve">
     <value>打开 appsettings.json</value>
   </data>
-  <data name="Vm_Dialog_SaveAppSettings" xml:space="preserve">
+  <data name="Studio.Settings.SaveAppSettings" xml:space="preserve">
     <value>保存 appsettings.json</value>
   </data>
-  <data name="Vm_Dialog_SelectAppSettings" xml:space="preserve">
+  <data name="Studio.Settings.SelectAppSettings" xml:space="preserve">
     <value>选择一个 appsettings.json</value>
   </data>
-  <data name="Vm_Dialog_SelectInputsFile" xml:space="preserve">
+  <data name="Studio.Settings.SelectInputsFile" xml:space="preserve">
     <value>选择一个输入文件</value>
   </data>
-  <data name="Vm_Dialog_SelectLlmLogDest" xml:space="preserve">
+  <data name="Studio.Settings.SelectLlmLogDest" xml:space="preserve">
     <value>选择 LLM 日志的存放位置</value>
   </data>
-  <data name="Vm_Dialog_SelectCrewDefinition" xml:space="preserve">
+  <data name="Studio.Settings.SelectCrewDefinition" xml:space="preserve">
     <value>选择一个团队定义</value>
   </data>
-  <data name="Vm_Dialog_SelectCrewDirectory" xml:space="preserve">
+  <data name="Studio.Settings.SelectCrewDirectory" xml:space="preserve">
     <value>选择一个团队目录</value>
   </data>
-  <data name="Vm_Dialog_SelectMountFolder" xml:space="preserve">
+  <data name="Studio.Settings.SelectMountFolder" xml:space="preserve">
     <value>选择要挂载的文件夹</value>
   </data>
-  <data name="Vm_Dialog_FilterJson" xml:space="preserve">
+  <data name="Studio.Settings.FilterJson" xml:space="preserve">
     <value>JSON 文件|*.json|所有文件|*.*</value>
   </data>
-  <data name="Vm_Dialog_FilterCrew" xml:space="preserve">
+  <data name="Studio.Settings.FilterCrew" xml:space="preserve">
     <value>团队定义|*.yaml;*.yml;*.ts;*.js|所有文件|*.*</value>
   </data>
-  <data name="Vm_Dialog_FilterAll" xml:space="preserve">
+  <data name="Studio.Settings.FilterAll" xml:space="preserve">
     <value>所有文件|*.*</value>
   </data>
-  <data name="Vm_Forge_Example1" xml:space="preserve">
+  <data name="Studio.Create.Example1" xml:space="preserve">
     <value>每天早上总结一个网站的新内容</value>
   </data>
-  <data name="Vm_Forge_Example2" xml:space="preserve">
+  <data name="Studio.Create.Example2" xml:space="preserve">
     <value>根据我的文件生成每周摘要</value>
   </data>
-  <data name="Vm_Forge_Example3" xml:space="preserve">
+  <data name="Studio.Create.Example3" xml:space="preserve">
     <value>比较报价并告诉我最优的</value>
   </data>
-  <data name="Vm_Forge_Example4" xml:space="preserve">
+  <data name="Studio.Create.Example4" xml:space="preserve">
     <value>把一个文档文件夹变成报告</value>
   </data>
-  <data name="Vm_Forge_StatusPreparing" xml:space="preserve">
+  <data name="Studio.Create.StatusPreparing" xml:space="preserve">
     <value>正在准备一个方案…</value>
   </data>
-  <data name="Vm_Forge_StatusTrying" xml:space="preserve">
+  <data name="Studio.Create.StatusTrying" xml:space="preserve">
     <value>正在用您的示例试跑…</value>
   </data>
-  <data name="Vm_Forge_StatusJudging" xml:space="preserve">
+  <data name="Studio.Create.StatusJudging" xml:space="preserve">
     <value>正在对照您的要求核查结果…</value>
   </data>
-  <data name="Vm_Forge_StatusReady" xml:space="preserve">
+  <data name="Studio.Create.StatusReady" xml:space="preserve">
     <value>您的方案已就绪。</value>
   </data>
-  <data name="Vm_Forge_StatusFailed" xml:space="preserve">
+  <data name="Studio.Create.StatusFailed" xml:space="preserve">
     <value>出了点问题——展开详情查看技术部分。</value>
   </data>
-  <data name="Vm_Forge_StatusStopped" xml:space="preserve">
+  <data name="Studio.Create.StatusStopped" xml:space="preserve">
     <value>已停止——随时可以从「我的方案」继续。</value>
   </data>
-  <data name="Vm_Forge_Attempt" xml:space="preserve">
+  <data name="Studio.Create.Attempt" xml:space="preserve">
     <value>第 {0} 次尝试</value>
   </data>
-  <data name="Vm_Forge_CheckUnverified" xml:space="preserve">
+  <data name="Studio.Create.CheckUnverified" xml:space="preserve">
     <value>这一点我无法自动核查——请您自行判断。</value>
   </data>
-  <data name="Vm_Forge_ResultScore" xml:space="preserve">
+  <data name="Studio.Create.ResultScore" xml:space="preserve">
     <value>试运行已结束（评分 {0}）。</value>
   </data>
-  <data name="Vm_Forge_StorePickTitle" xml:space="preserve">
+  <data name="Studio.Create.StorePickTitle" xml:space="preserve">
     <value>选择方案的存放位置</value>
   </data>
   <data name="Studio.Shell.ModeLabel" xml:space="preserve">
@@ -1004,55 +1004,55 @@
   <data name="Studio.Common.Cancel" xml:space="preserve">
     <value>取消</value>
   </data>
-  <data name="Vm_Profiles_NewName" xml:space="preserve">
+  <data name="Studio.Settings.NewName" xml:space="preserve">
     <value>新建配置</value>
   </data>
-  <data name="Profile_GroupLocal" xml:space="preserve">
+  <data name="Studio.Settings.GroupLocal" xml:space="preserve">
     <value>本机运行 · 免费、无需密钥</value>
   </data>
-  <data name="Profile_GroupCloud" xml:space="preserve">
+  <data name="Studio.Settings.GroupCloud" xml:space="preserve">
     <value>云端 · 需要 API 密钥</value>
   </data>
-  <data name="Profile_KeyTitleFor" xml:space="preserve">
+  <data name="Studio.Settings.KeyTitleFor" xml:space="preserve">
     <value>API 密钥 {0}</value>
   </data>
-  <data name="Profile_KeyTitleService" xml:space="preserve">
+  <data name="Studio.Settings.KeyTitleService" xml:space="preserve">
     <value>服务的 API 密钥</value>
   </data>
-  <data name="Profile_KeyExplainer" xml:space="preserve">
+  <data name="Studio.Settings.KeyExplainer" xml:space="preserve">
     <value>Studio 将它存放在您的 Windows 会话中——绝不写入文件，绝不放进共享文件夹。</value>
   </data>
-  <data name="Profile_KeyPlaceholder" xml:space="preserve">
+  <data name="Studio.Settings.KeyPlaceholder" xml:space="preserve">
     <value>在此粘贴您的密钥（sk-…）</value>
   </data>
-  <data name="Profile_KeyStore" xml:space="preserve">
+  <data name="Studio.Settings.KeyStore" xml:space="preserve">
     <value>记住密钥</value>
   </data>
-  <data name="Profile_KeyStatusSet" xml:space="preserve">
+  <data name="Studio.Settings.KeyStatusSet" xml:space="preserve">
     <value>密钥已记住</value>
   </data>
-  <data name="Profile_KeyStatusMissing" xml:space="preserve">
+  <data name="Studio.Settings.KeyStatusMissing" xml:space="preserve">
     <value>未检测到密钥</value>
   </data>
-  <data name="Profile_KeyNoKeyYet" xml:space="preserve">
+  <data name="Studio.Settings.KeyNoKeyYet" xml:space="preserve">
     <value>还没有密钥？</value>
   </data>
-  <data name="Profile_KeyOnVendorSite" xml:space="preserve">
+  <data name="Studio.Settings.KeyOnVendorSite" xml:space="preserve">
     <value>在供应商网站上</value>
   </data>
-  <data name="Profile_KeyExpertHint" xml:space="preserve">
+  <data name="Studio.Settings.KeyExpertHint" xml:space="preserve">
     <value>setx ORKEON_Llm__ApiKey "sk-…" —— 由运行时原生读取，优先于任何文件</value>
   </data>
-  <data name="Profile_LocalNote" xml:space="preserve">
+  <data name="Studio.Settings.LocalNote" xml:space="preserve">
     <value>无需密钥——模型在您的机器上运行，任何数据都不会外传。</value>
   </data>
-  <data name="Profile_NoneNote" xml:space="preserve">
+  <data name="Studio.Settings.NoneNote" xml:space="preserve">
     <value>没有模型时，执行以回声应答——适合检验安装。</value>
   </data>
-  <data name="Profile_KeyMissingTest" xml:space="preserve">
+  <data name="Studio.Settings.KeyMissingTest" xml:space="preserve">
     <value>缺少 API 密钥——请先记住它</value>
   </data>
-  <data name="Vm_Profiles_CopySuffix" xml:space="preserve">
+  <data name="Studio.Settings.CopySuffix" xml:space="preserve">
     <value>副本</value>
   </data>
   <data name="Studio.Shell.Create" xml:space="preserve">
@@ -1097,16 +1097,16 @@
   <data name="Studio.Create.ManageSettings" xml:space="preserve">
     <value>管理配置</value>
   </data>
-  <data name="Wiz_Step1" xml:space="preserve">
+  <data name="Studio.Create.Step1" xml:space="preserve">
     <value>描述</value>
   </data>
-  <data name="Wiz_Step2" xml:space="preserve">
+  <data name="Studio.Create.Step2" xml:space="preserve">
     <value>组建</value>
   </data>
-  <data name="Wiz_Step3" xml:space="preserve">
+  <data name="Studio.Create.Step3" xml:space="preserve">
     <value>试运行</value>
   </data>
-  <data name="Wiz_Step4" xml:space="preserve">
+  <data name="Studio.Create.Step4" xml:space="preserve">
     <value>采用</value>
   </data>
   <data name="Studio.Create.Reply" xml:space="preserve">
@@ -1274,97 +1274,97 @@
   <data name="Studio.Teams.Resume" xml:space="preserve">
     <value>继续</value>
   </data>
-  <data name="Vm_Wizard_Freq_Once" xml:space="preserve">
+  <data name="Studio.Create.FreqOnce" xml:space="preserve">
     <value>仅一次</value>
   </data>
-  <data name="Vm_Wizard_Freq_Daily" xml:space="preserve">
+  <data name="Studio.Create.FreqDaily" xml:space="preserve">
     <value>每天</value>
   </data>
-  <data name="Vm_Wizard_Freq_Weekly" xml:space="preserve">
+  <data name="Studio.Create.FreqWeekly" xml:space="preserve">
     <value>每周</value>
   </data>
-  <data name="Vm_Wizard_Source_Folder" xml:space="preserve">
+  <data name="Studio.Create.SourceFolder" xml:space="preserve">
     <value>本机上的文件夹</value>
   </data>
-  <data name="Vm_Wizard_Source_Web" xml:space="preserve">
+  <data name="Studio.Create.SourceWeb" xml:space="preserve">
     <value>一个网站</value>
   </data>
-  <data name="Vm_Wizard_Source_Unknown" xml:space="preserve">
+  <data name="Studio.Create.SourceUnknown" xml:space="preserve">
     <value>还不知道</value>
   </data>
-  <data name="Vm_Wizard_Output_Document" xml:space="preserve">
+  <data name="Studio.Create.OutputDocument" xml:space="preserve">
     <value>一份文档</value>
   </data>
-  <data name="Vm_Wizard_Output_Table" xml:space="preserve">
+  <data name="Studio.Create.OutputTable" xml:space="preserve">
     <value>一张表格</value>
   </data>
-  <data name="Vm_Wizard_Output_Message" xml:space="preserve">
+  <data name="Studio.Create.OutputMessage" xml:space="preserve">
     <value>一条短消息</value>
   </data>
-  <data name="Vm_Wizard_Output_Other" xml:space="preserve">
+  <data name="Studio.Create.OutputOther" xml:space="preserve">
     <value>其他</value>
   </data>
-  <data name="Vm_Wizard_Brief_Frequency" xml:space="preserve">
+  <data name="Studio.Create.BriefFrequency" xml:space="preserve">
     <value>频率：{0}。</value>
   </data>
-  <data name="Vm_Wizard_Brief_Source" xml:space="preserve">
+  <data name="Studio.Create.BriefSource" xml:space="preserve">
     <value>信息所在的位置：{0}。</value>
   </data>
-  <data name="Vm_Wizard_Brief_Output" xml:space="preserve">
+  <data name="Studio.Create.BriefOutput" xml:space="preserve">
     <value>期望的结果：{0}。</value>
   </data>
-  <data name="Vm_Wizard_Brief_Shape" xml:space="preserve">
+  <data name="Studio.Create.BriefShape" xml:space="preserve">
     <value>结果应当是这样的：{0}</value>
   </data>
-  <data name="Vm_Wizard_Brief_Consigne" xml:space="preserve">
+  <data name="Studio.Create.BriefConsigne" xml:space="preserve">
     <value>对所有智能体的长期指令：{0}</value>
   </data>
-  <data name="Vm_Wizard_AgentFallback" xml:space="preserve">
+  <data name="Studio.Create.AgentFallback" xml:space="preserve">
     <value>智能体</value>
   </data>
-  <data name="Vm_Wizard_PromoteFailed" xml:space="preserve">
+  <data name="Studio.Create.PromoteFailed" xml:space="preserve">
     <value>保存失败——引擎拒绝了此次提升：{0}</value>
   </data>
-  <data name="Vm_Import_Failed" xml:space="preserve">
+  <data name="Studio.Import.Failed" xml:space="preserve">
     <value>导入失败——没有复制任何内容。请检查对源的访问权限后重试。</value>
   </data>
-  <data name="Vm_Wizard_ActivityDone" xml:space="preserve">
+  <data name="Studio.Create.ActivityDone" xml:space="preserve">
     <value>{0} — 用时 {1} 秒完成</value>
   </data>
-  <data name="Vm_Wizard_ActivityFailed" xml:space="preserve">
+  <data name="Studio.Create.ActivityFailed" xml:space="preserve">
     <value>{0} — 失败</value>
   </data>
-  <data name="Vm_Wizard_Hint_Describe" xml:space="preserve">
+  <data name="Studio.Create.HintDescribe" xml:space="preserve">
     <value>请先描述工作再继续。</value>
   </data>
-  <data name="Vm_Wizard_Hint_Outcome" xml:space="preserve">
+  <data name="Studio.Create.HintOutcome" xml:space="preserve">
     <value>格式不限：请描述期望的结果。</value>
   </data>
-  <data name="Vm_Wizard_Hint_Answers" xml:space="preserve">
+  <data name="Studio.Create.HintAnswers" xml:space="preserve">
     <value>请回答三个补充信息。</value>
   </data>
-  <data name="Vm_Wizard_Hint_Ready" xml:space="preserve">
+  <data name="Studio.Create.HintReady" xml:space="preserve">
     <value>信息齐全——我可以组建团队了。</value>
   </data>
-  <data name="Vm_Wizard_Decision_Accept" xml:space="preserve">
+  <data name="Studio.Create.DecisionAccept" xml:space="preserve">
     <value>可以</value>
   </data>
-  <data name="Vm_Wizard_Decision_Retry" xml:space="preserve">
+  <data name="Studio.Create.DecisionRetry" xml:space="preserve">
     <value>再次试运行</value>
   </data>
-  <data name="Vm_Wizard_Decision_Refine" xml:space="preserve">
+  <data name="Studio.Create.DecisionRefine" xml:space="preserve">
     <value>修正并重试</value>
   </data>
-  <data name="Vm_Wizard_Decision_Abort" xml:space="preserve">
+  <data name="Studio.Create.DecisionAbort" xml:space="preserve">
     <value>放弃</value>
   </data>
-  <data name="Vm_Teams_OnDemand" xml:space="preserve">
+  <data name="Studio.Teams.OnDemand" xml:space="preserve">
     <value>按需</value>
   </data>
-  <data name="Vm_Teams_Daily" xml:space="preserve">
+  <data name="Studio.Teams.Daily" xml:space="preserve">
     <value>每天 {0}</value>
   </data>
-  <data name="Vm_Teams_Hourly" xml:space="preserve">
+  <data name="Studio.Teams.Hourly" xml:space="preserve">
     <value>每小时</value>
   </data>
   <data name="Studio.Shell.Import" xml:space="preserve">
@@ -1451,16 +1451,16 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS" xml:space="preserve">
     <value>设置了两个互相冲突的输入来源——请只保留一个。</value>
   </data>
-  <data name="Vm_Rag_WebFallbackActive" xml:space="preserve">
+  <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>网络回退已启用：纠错循环可以抓取网页，每一页都会做提示注入校验。</value>
   </data>
-  <data name="Vm_Rag_WebFallbackTransportOff" xml:space="preserve">
+  <data name="Studio.Settings.WebFallbackTransportOff" xml:space="preserve">
     <value>未生效：纠错策略允许，但传输（Orkeon:Rag:WebFallback）仍处于关闭状态。</value>
   </data>
-  <data name="Vm_Rag_WebFallbackPolicyOff" xml:space="preserve">
+  <data name="Studio.Settings.WebFallbackPolicyOff" xml:space="preserve">
     <value>未生效：传输已开启，但纠错策略（Orkeon:Rag:Corrective:WebFallback）仍处于关闭状态。</value>
   </data>
-  <data name="Vm_Rag_WebFallbackOff" xml:space="preserve">
+  <data name="Studio.Settings.WebFallbackOff" xml:space="preserve">
     <value>已关闭。两个开关都打开，纠错循环才能访问网络。</value>
   </data>
   <data name="Studio.Settings.CardRate" xml:space="preserve">
@@ -1475,16 +1475,16 @@
   <data name="Studio.Settings.CardLlmLog" xml:space="preserve">
     <value>LLM 日志</value>
   </data>
-  <data name="Vm_Hist_OutcomeSuccess" xml:space="preserve">
+  <data name="Studio.History.OutcomeSuccess" xml:space="preserve">
     <value>顺利完成，没有错误。</value>
   </data>
-  <data name="Vm_Hist_OutcomeFailed" xml:space="preserve">
+  <data name="Studio.History.OutcomeFailed" xml:space="preserve">
     <value>失败（代码 {0}）。</value>
   </data>
-  <data name="Vm_Hist_OutcomeCancelled" xml:space="preserve">
+  <data name="Studio.History.OutcomeCancelled" xml:space="preserve">
     <value>在结束前被中断。</value>
   </data>
-  <data name="Vm_Hist_OutcomeNotStarted" xml:space="preserve">
+  <data name="Studio.History.OutcomeNotStarted" xml:space="preserve">
     <value>从未启动。</value>
   </data>
   <data name="Studio.History.Result" xml:space="preserve">
@@ -1517,13 +1517,13 @@
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve">
     <value>对工作目录的写入权限</value>
   </data>
-  <data name="Vm_Diag_AllGood" xml:space="preserve">
+  <data name="Studio.Diagnostics.AllGood" xml:space="preserve">
     <value>一切就绪。</value>
   </data>
-  <data name="Vm_Diag_FixNeeded" xml:space="preserve">
+  <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve">
     <value>启动团队前需修正一处。</value>
   </data>
-  <data name="Vm_Diag_Counts" xml:space="preserve">
+  <data name="Studio.Diagnostics.Counts" xml:space="preserve">
     <value>{0} 项检查通过、{1} 个警告、{2} 个失败。</value>
   </data>
   <data name="Studio.Diagnostics.Fix" xml:space="preserve">
@@ -1547,25 +1547,25 @@
   <data name="Studio.Trial.InputsHint" xml:space="preserve">
     <value>通过 --inputs 传给试运行；真实启动仍使用各自的输入。</value>
   </data>
-  <data name="Vm_Import_RecognizedAgents" xml:space="preserve">
+  <data name="Studio.Import.RecognizedAgents" xml:space="preserve">
     <value>{0} — {1} 个智能体</value>
   </data>
-  <data name="Vm_Import_SecretsClean" xml:space="preserve">
+  <data name="Studio.Import.SecretsClean" xml:space="preserve">
     <value>文件中没有密钥</value>
   </data>
-  <data name="Vm_Import_SecretsCleanDetail" xml:space="preserve">
+  <data name="Studio.Import.SecretsCleanDetail" xml:space="preserve">
     <value>API 密钥通过环境变量传递，这些文件里没有。</value>
   </data>
-  <data name="Vm_Import_SecretsFound" xml:space="preserve">
+  <data name="Studio.Import.SecretsFound" xml:space="preserve">
     <value>有内容看起来像粘贴的密钥</value>
   </data>
-  <data name="Vm_Import_SecretsFoundDetail" xml:space="preserve">
+  <data name="Studio.Import.SecretsFoundDetail" xml:space="preserve">
     <value>{0} 个文件包含疑似明文密钥——见下方警告。</value>
   </data>
-  <data name="Vm_Import_ToolsLater" xml:space="preserve">
+  <data name="Studio.Import.ToolsLater" xml:space="preserve">
     <value>工具</value>
   </data>
-  <data name="Vm_Import_ToolsLaterDetail" xml:space="preserve">
+  <data name="Studio.Import.ToolsLaterDetail" xml:space="preserve">
     <value>团队的工具会在首次启动时检查。</value>
   </data>
   <data name="Studio.Import.DropHint" xml:space="preserve">
@@ -1607,10 +1607,10 @@
   <data name="Studio.Settings.Intro" xml:space="preserve">
     <value>密钥存放在您的用户环境变量中，绝不写入文件。粘贴后记住它；保存后输入框即清空。</value>
   </data>
-  <data name="Vm_Config_NotSavedNeedFolder" xml:space="preserve">
+  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve">
     <value>尚未保存：请至少授权一个文件夹（「授权文件夹」标签页）——一旦有了，您的修改就会被保存。</value>
   </data>
-  <data name="Vm_Wiz_AssistantNotRunning" xml:space="preserve">
+  <data name="Studio.Create.AssistantNotRunning" xml:space="preserve">
     <value>助手当前未在运行——请启动组建（第 1 步「组建」）或恢复会话；您的问题已保留。</value>
   </data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve">
@@ -1628,25 +1628,25 @@
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
     <value>留空：30 秒。推理模型（Kimi K3、thinking 模式）通常需要 120–300 秒。</value>
   </data>
-  <data name="Vm_Picker_AlreadyMounted" xml:space="preserve">
+  <data name="Studio.Settings.AlreadyMounted" xml:space="preserve">
     <value>已授权</value>
   </data>
-  <data name="Vm_TeamMounts_Title" xml:space="preserve">
+  <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>「{0}」的文件夹</value>
   </data>
-  <data name="Vm_TeamMounts_None" xml:space="preserve">
+  <data name="Studio.Teams.None" xml:space="preserve">
     <value>没有文件夹，该团队将无法读写任何文件。</value>
   </data>
-  <data name="Vm_TeamMounts_Summary" xml:space="preserve">
+  <data name="Studio.Teams.Summary" xml:space="preserve">
     <value>{0} 个文件夹：{1}</value>
   </data>
-  <data name="Vm_AgentEditor_TitleAdd" xml:space="preserve">
+  <data name="Studio.Create.TitleAdd" xml:space="preserve">
     <value>添加代理</value>
   </data>
-  <data name="Vm_AgentEditor_TitleEdit" xml:space="preserve">
+  <data name="Studio.Create.TitleEdit" xml:space="preserve">
     <value>编辑代理</value>
   </data>
-  <data name="Vm_AgentEditor_Add" xml:space="preserve">
+  <data name="Studio.Create.Add" xml:space="preserve">
     <value>添加到团队</value>
   </data>
   <data name="Studio.Settings.PickerTitle" xml:space="preserve">
@@ -1700,13 +1700,13 @@
   <data name="Studio.Settings.AllowedFoldersConfirm" xml:space="preserve">
     <value>添加到团队</value>
   </data>
-  <data name="Vm_Wizard_DroppedDerived" xml:space="preserve">
+  <data name="Studio.Create.DroppedDerived" xml:space="preserve">
     <value>{0}：不会绑定任何文件夹——往那里写入的智能体会失败。</value>
   </data>
   <data name="Studio.Create.RestoreFolders" xml:space="preserve">
     <value>恢复</value>
   </data>
-  <data name="Vm_Run_BlockedUndeclared" xml:space="preserve">
+  <data name="Studio.Run.BlockedUndeclared" xml:space="preserve">
     <value>该团队使用了您的设置未授权的文件夹：{0}。请在「设置 › 授权文件夹」中声明它们，或将其从团队中移除。</value>
   </data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve">
@@ -1715,19 +1715,19 @@
   <data name="Studio.Create.UndeclaredLegend" xml:space="preserve">
     <value>红色标出的是不在您授权文件夹之列的文件夹。</value>
   </data>
-  <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve">
+  <data name="Studio.Settings.AlreadyAdded" xml:space="preserve">
     <value>已添加</value>
   </data>
-  <data name="Vm_AllowedFolders_Conflict" xml:space="preserve">
+  <data name="Studio.Settings.Conflict" xml:space="preserve">
     <value>{0} 已被另一个文件夹占用</value>
   </data>
-  <data name="Vm_AllowedFolders_Summary" xml:space="preserve">
+  <data name="Studio.Settings.Summary" xml:space="preserve">
     <value>已选择 {0} 个文件夹</value>
   </data>
-  <data name="Vm_AllowedFolders_Declared" xml:space="preserve">
+  <data name="Studio.Settings.Declared" xml:space="preserve">
     <value>「{0}」已加入授权文件夹</value>
   </data>
-  <data name="Vm_AllowedFolders_NotSaved" xml:space="preserve">
+  <data name="Studio.Settings.NotSaved" xml:space="preserve">
     <value>「{0}」已添加，但设置未能保存 — {1}</value>
   </data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve">
@@ -1754,7 +1754,7 @@
   <data name="Studio.Create.Wait" xml:space="preserve">
     <value>必须先完成正在进行的步骤</value>
   </data>
-  <data name="Vm_Dialog_ExportDestination" xml:space="preserve">
+  <data name="Studio.Settings.ExportDestination" xml:space="preserve">
     <value>选择团队的导出位置</value>
   </data>
   <data name="Studio.Create.TeamFolders" xml:space="preserve">
@@ -1802,28 +1802,28 @@
   <data name="Studio.Create.AddAgent" xml:space="preserve">
     <value>添加代理</value>
   </data>
-  <data name="Vm_Teams_MountRo" xml:space="preserve">
+  <data name="Studio.Teams.MountRo" xml:space="preserve">
     <value>{0}（读取）</value>
   </data>
-  <data name="Vm_Teams_MountRw" xml:space="preserve">
+  <data name="Studio.Teams.MountRw" xml:space="preserve">
     <value>{0}（读取、写入）</value>
   </data>
-  <data name="Vm_Teams_MountUnreadable" xml:space="preserve">
+  <data name="Studio.Teams.MountUnreadable" xml:space="preserve">
     <value>无法读取的文件夹</value>
   </data>
-  <data name="Vm_Teams_ToTest" xml:space="preserve">
+  <data name="Studio.Teams.ToTest" xml:space="preserve">
     <value>待试运行</value>
   </data>
-  <data name="Vm_Teams_LastRun" xml:space="preserve">
+  <data name="Studio.Teams.LastRun" xml:space="preserve">
     <value>上次执行：{0}，{1}</value>
   </data>
-  <data name="Vm_Teams_RunOk" xml:space="preserve">
+  <data name="Studio.Teams.RunOk" xml:space="preserve">
     <value>成功</value>
   </data>
-  <data name="Vm_Teams_RunFail" xml:space="preserve">
+  <data name="Studio.Teams.RunFail" xml:space="preserve">
     <value>失败</value>
   </data>
-  <data name="Vm_Teams_NeverRan" xml:space="preserve">
+  <data name="Studio.Teams.NeverRan" xml:space="preserve">
     <value>从未执行</value>
   </data>
   <data name="Studio.Teams.MountsLabel" xml:space="preserve">
@@ -1841,13 +1841,13 @@
   <data name="Studio.Teams.Test" xml:space="preserve">
     <value>试运行</value>
   </data>
-  <data name="Teams_SettingLabel" xml:space="preserve">
+  <data name="Studio.Teams.SettingLabel" xml:space="preserve">
     <value>设置：{0}</value>
   </data>
-  <data name="Vm_Run_MetaReads" xml:space="preserve">
+  <data name="Studio.Run.MetaReads" xml:space="preserve">
     <value>读取 {0}</value>
   </data>
-  <data name="Vm_Run_MetaWrites" xml:space="preserve">
+  <data name="Studio.Run.MetaWrites" xml:space="preserve">
     <value>写入 {0}</value>
   </data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve">
@@ -1856,16 +1856,16 @@
   <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve">
     <value>等待试运行…</value>
   </data>
-  <data name="Vm_Import_MountsDeclared" xml:space="preserve">
+  <data name="Studio.Import.MountsDeclared" xml:space="preserve">
     <value>已声明的文件夹</value>
   </data>
-  <data name="Vm_Import_MountsDeclaredDetail" xml:space="preserve">
+  <data name="Studio.Import.MountsDeclaredDetail" xml:space="preserve">
     <value>{0} 个文件夹：{1}</value>
   </data>
-  <data name="Vm_Import_MountsNone" xml:space="preserve">
+  <data name="Studio.Import.MountsNone" xml:space="preserve">
     <value>未声明任何文件夹</value>
   </data>
-  <data name="Vm_Import_MountsNoneDetail" xml:space="preserve">
+  <data name="Studio.Import.MountsNoneDetail" xml:space="preserve">
     <value>添加后再授权它的文件夹——「我的团队」→「更换文件夹」。</value>
   </data>
   <data name="Studio.Create.TrialCommand" xml:space="preserve">
@@ -1895,13 +1895,13 @@
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve">
     <value>尚未授权任何文件夹。在您至少授权一个之前，智能体什么也看不到。</value>
   </data>
-  <data name="Vm_Config_NotSavedWriteFailed" xml:space="preserve">
+  <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve">
     <value>未保存——无法写入文件：{0}</value>
   </data>
-  <data name="Vm_Teams_ExportedTo" xml:space="preserve">
+  <data name="Studio.Teams.ExportedTo" xml:space="preserve">
     <value>团队已导出到 {0}</value>
   </data>
-  <data name="Vm_Teams_ExportFailed" xml:space="preserve">
+  <data name="Studio.Teams.ExportFailed" xml:space="preserve">
     <value>导出被拒绝——目标已存在，或磁盘拒绝了操作。</value>
   </data>
   <data name="Studio.Create.TryTeam" xml:space="preserve">
@@ -1931,355 +1931,355 @@
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
     <value>没有进行中的会话。中断的创建会重新出现在这里。</value>
   </data>
-  <data name="Vm_Wiz_DraftStepPattern" xml:space="preserve">
+  <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>第 {0} / {1} 步 · {2}</value>
   </data>
-  <data name="Vm_Wiz_DraftTitle" xml:space="preserve">
+  <data name="Studio.Create.DraftTitle" xml:space="preserve">
     <value>创建进行中</value>
   </data>
-  <data name="Vm_Wiz_DraftWaitingTitle" xml:space="preserve">
+  <data name="Studio.Create.DraftWaitingTitle" xml:space="preserve">
     <value>助手在等您回答</value>
   </data>
-  <data name="Vm_Wiz_DraftResume" xml:space="preserve">
+  <data name="Studio.Create.DraftResume" xml:space="preserve">
     <value>继续对话</value>
   </data>
-  <data name="Vm_Chat_Title" xml:space="preserve">
+  <data name="Studio.Chat.Title" xml:space="preserve">
     <value>与助手的对话</value>
   </data>
-  <data name="Vm_Chat_Recap" xml:space="preserve">
+  <data name="Studio.Chat.Recap" xml:space="preserve">
     <value>我记下的要点</value>
   </data>
-  <data name="Vm_Chat_YourBrief" xml:space="preserve">
+  <data name="Studio.Chat.YourBrief" xml:space="preserve">
     <value>您的需求简述</value>
   </data>
-  <data name="Vm_Chat_Edit" xml:space="preserve">
+  <data name="Studio.Chat.Edit" xml:space="preserve">
     <value>编辑</value>
   </data>
-  <data name="Vm_Chat_Stop" xml:space="preserve">
+  <data name="Studio.Chat.Stop" xml:space="preserve">
     <value>停止</value>
   </data>
-  <data name="Vm_Chat_Send" xml:space="preserve">
+  <data name="Studio.Chat.Send" xml:space="preserve">
     <value>发送</value>
   </data>
-  <data name="Vm_Chat_Reply" xml:space="preserve">
+  <data name="Studio.Chat.Reply" xml:space="preserve">
     <value>回答</value>
   </data>
-  <data name="Vm_Chat_Skip" xml:space="preserve">
+  <data name="Studio.Chat.Skip" xml:space="preserve">
     <value>跳过这个问题</value>
   </data>
-  <data name="Vm_Chat_SkipAnswer" xml:space="preserve">
+  <data name="Studio.Chat.SkipAnswer" xml:space="preserve">
     <value>我不知道——你看着办吧。</value>
   </data>
-  <data name="Vm_Chat_KeyHint" xml:space="preserve">
+  <data name="Studio.Chat.KeyHint" xml:space="preserve">
     <value>Enter 发送 · Shift+Enter 换行</value>
   </data>
-  <data name="Vm_Chat_Placeholder" xml:space="preserve">
+  <data name="Studio.Chat.Placeholder" xml:space="preserve">
     <value>向助手提问…</value>
   </data>
-  <data name="Vm_Chat_Ask" xml:space="preserve">
+  <data name="Studio.Chat.Ask" xml:space="preserve">
     <value>提问</value>
   </data>
-  <data name="Vm_Chat_AskShort" xml:space="preserve">
+  <data name="Studio.Chat.AskShort" xml:space="preserve">
     <value>提问</value>
   </data>
-  <data name="Vm_Chat_AskTip" xml:space="preserve">
+  <data name="Studio.Chat.AskTip" xml:space="preserve">
     <value>向助手提问</value>
   </data>
-  <data name="Vm_Chat_SeeConversation" xml:space="preserve">
+  <data name="Studio.Chat.SeeConversation" xml:space="preserve">
     <value>查看对话</value>
   </data>
-  <data name="Vm_Chat_Close" xml:space="preserve">
+  <data name="Studio.Chat.Close" xml:space="preserve">
     <value>关闭对话</value>
   </data>
-  <data name="Vm_Chat_BriefEmpty" xml:space="preserve">
+  <data name="Studio.Chat.BriefEmpty" xml:space="preserve">
     <value>您还没有描述任何内容。</value>
   </data>
-  <data name="Vm_Chat_StripBusy" xml:space="preserve">
+  <data name="Studio.Chat.StripBusy" xml:space="preserve">
     <value>助手正在组建您的团队</value>
   </data>
-  <data name="Vm_Chat_StripAsking" xml:space="preserve">
+  <data name="Studio.Chat.StripAsking" xml:space="preserve">
     <value>助手需要您补充一点信息</value>
   </data>
-  <data name="Vm_Chat_StatusQuestionPattern" xml:space="preserve">
+  <data name="Studio.Chat.StatusQuestionPattern" xml:space="preserve">
     <value>第 {0} / {1} 个问题 · 等待您的回答</value>
   </data>
-  <data name="Vm_Chat_StatusDonePattern" xml:space="preserve">
+  <data name="Studio.Chat.StatusDonePattern" xml:space="preserve">
     <value>简报已完成 · {0} 条消息</value>
   </data>
-  <data name="Vm_Chat_StatusMessagesPattern" xml:space="preserve">
+  <data name="Studio.Chat.StatusMessagesPattern" xml:space="preserve">
     <value>{0} 条消息</value>
   </data>
-  <data name="Vm_Chat_StatusNoQuestion" xml:space="preserve">
+  <data name="Studio.Chat.StatusNoQuestion" xml:space="preserve">
     <value>暂时没有问题</value>
   </data>
-  <data name="Vm_Chat_RecapProgressPattern" xml:space="preserve">
+  <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>
-  <data name="Vm_Chat_ProfileSuffixPattern" xml:space="preserve">
+  <data name="Studio.Chat.ProfileSuffixPattern" xml:space="preserve">
     <value>{0} · {1}</value>
   </data>
-  <data name="Vm_Chat_Status1" xml:space="preserve">
+  <data name="Studio.Chat.Status1" xml:space="preserve">
     <value>正在阅读需求简述</value>
   </data>
-  <data name="Vm_Chat_Status2" xml:space="preserve">
+  <data name="Studio.Chat.Status2" xml:space="preserve">
     <value>正在分析来源</value>
   </data>
-  <data name="Vm_Chat_Status3" xml:space="preserve">
+  <data name="Studio.Chat.Status3" xml:space="preserve">
     <value>正在编排角色</value>
   </data>
-  <data name="Vm_Chat_Thinking1" xml:space="preserve">
+  <data name="Studio.Chat.Thinking1" xml:space="preserve">
     <value>我在重读您的描述…</value>
   </data>
-  <data name="Vm_Chat_Thinking2" xml:space="preserve">
+  <data name="Studio.Chat.Thinking2" xml:space="preserve">
     <value>我在查看文档的位置…</value>
   </data>
-  <data name="Vm_Chat_Thinking3" xml:space="preserve">
+  <data name="Studio.Chat.Thinking3" xml:space="preserve">
     <value>我在勾画团队的角色…</value>
   </data>
-  <data name="Vm_Chat_WrapBody" xml:space="preserve">
+  <data name="Studio.Chat.WrapBody" xml:space="preserve">
     <value>谢谢——我已有足够信息来组建团队。</value>
   </data>
-  <data name="Vm_Chat_WrapDetail" xml:space="preserve">
+  <data name="Studio.Chat.WrapDetail" xml:space="preserve">
     <value>给您看我建议的组成：代理、授权的文件夹，以及各自能做什么。</value>
   </data>
-  <data name="Vm_Chat_Q1_Fact" xml:space="preserve">
+  <data name="Studio.Chat.Q1Fact" xml:space="preserve">
     <value>文件夹位置</value>
   </data>
-  <data name="Vm_Chat_Q1_Body" xml:space="preserve">
+  <data name="Studio.Chat.Q1Body" xml:space="preserve">
     <value>这个文件夹在哪里？里面有什么？</value>
   </data>
-  <data name="Vm_Chat_Q1_Detail" xml:space="preserve">
+  <data name="Studio.Chat.Q1Detail" xml:space="preserve">
     <value>例如“文档/会议纪要”，内含 Word 或 PDF 文件。给我确切路径，我可以看一眼核实。</value>
   </data>
-  <data name="Vm_Chat_Q1_Hint" xml:space="preserve">
+  <data name="Studio.Chat.Q1Hint" xml:space="preserve">
     <value>不确定就直说：我将默认是单一文件夹中的文本文档。</value>
   </data>
-  <data name="Vm_Chat_Q1_Placeholder" xml:space="preserve">
+  <data name="Studio.Chat.Q1Placeholder" xml:space="preserve">
     <value>例如 C:\Users\me\Documents\会议纪要</value>
   </data>
-  <data name="Vm_Chat_Q1_Chip1" xml:space="preserve">
+  <data name="Studio.Chat.Q1Chip1" xml:space="preserve">
     <value>文档/会议纪要</value>
   </data>
-  <data name="Vm_Chat_Q1_Chip2" xml:space="preserve">
+  <data name="Studio.Chat.Q1Chip2" xml:space="preserve">
     <value>选择文件夹…</value>
   </data>
-  <data name="Vm_Chat_Q1_Chip3" xml:space="preserve">
+  <data name="Studio.Chat.Q1Chip3" xml:space="preserve">
     <value>还不知道</value>
   </data>
-  <data name="Vm_Chat_Q1_Value1" xml:space="preserve">
+  <data name="Studio.Chat.Q1Value1" xml:space="preserve">
     <value>文档/会议纪要</value>
   </data>
-  <data name="Vm_Chat_Q1_Value2" xml:space="preserve">
+  <data name="Studio.Chat.Q1Value2" xml:space="preserve">
     <value>待选择的文件夹</value>
   </data>
-  <data name="Vm_Chat_Q1_Value3" xml:space="preserve">
+  <data name="Studio.Chat.Q1Value3" xml:space="preserve">
     <value>稍后再定</value>
   </data>
-  <data name="Vm_Chat_Q2_Fact" xml:space="preserve">
+  <data name="Studio.Chat.Q2Fact" xml:space="preserve">
     <value>交付时间</value>
   </data>
-  <data name="Vm_Chat_Q2_Body" xml:space="preserve">
+  <data name="Studio.Chat.Q2Body" xml:space="preserve">
     <value>您想何时收到摘要？</value>
   </data>
-  <data name="Vm_Chat_Q2_Detail" xml:space="preserve">
+  <data name="Studio.Chat.Q2Detail" xml:space="preserve">
     <value>团队将在该时间自行工作，即使 Studio 已关闭。采用后可更改时间。</value>
   </data>
-  <data name="Vm_Chat_Q2_Placeholder" xml:space="preserve">
+  <data name="Studio.Chat.Q2Placeholder" xml:space="preserve">
     <value>例如：周五 17 点左右</value>
   </data>
-  <data name="Vm_Chat_Q2_Chip1" xml:space="preserve">
+  <data name="Studio.Chat.Q2Chip1" xml:space="preserve">
     <value>周五 17 点</value>
   </data>
-  <data name="Vm_Chat_Q2_Chip2" xml:space="preserve">
+  <data name="Studio.Chat.Q2Chip2" xml:space="preserve">
     <value>周一 8 点</value>
   </data>
-  <data name="Vm_Chat_Q2_Chip3" xml:space="preserve">
+  <data name="Studio.Chat.Q2Chip3" xml:space="preserve">
     <value>都可以</value>
   </data>
-  <data name="Vm_Chat_Q2_Value1" xml:space="preserve">
+  <data name="Studio.Chat.Q2Value1" xml:space="preserve">
     <value>周五 17 点</value>
   </data>
-  <data name="Vm_Chat_Q2_Value2" xml:space="preserve">
+  <data name="Studio.Chat.Q2Value2" xml:space="preserve">
     <value>周一 8 点</value>
   </data>
-  <data name="Vm_Chat_Q2_Value3" xml:space="preserve">
+  <data name="Studio.Chat.Q2Value3" xml:space="preserve">
     <value>时间不限</value>
   </data>
-  <data name="Vm_Chat_Q3_Fact" xml:space="preserve">
+  <data name="Studio.Chat.Q3Fact" xml:space="preserve">
     <value>需要遵守的限制</value>
   </data>
-  <data name="Vm_Chat_Q3_Body" xml:space="preserve">
+  <data name="Studio.Chat.Q3Body" xml:space="preserve">
     <value>有什么是团队绝不能做的吗？</value>
   </data>
-  <data name="Vm_Chat_Q3_Detail" xml:space="preserve">
+  <data name="Studio.Chat.Q3Detail" xml:space="preserve">
     <value>清晰的限制胜过含糊的指令：要忽略的文件、不可引用的信息、要避免的语气。</value>
   </data>
-  <data name="Vm_Chat_Q3_Hint" xml:space="preserve">
+  <data name="Studio.Chat.Q3Hint" xml:space="preserve">
     <value>可以跳过：那我就只读该文件夹。</value>
   </data>
-  <data name="Vm_Chat_Q3_Placeholder" xml:space="preserve">
+  <data name="Studio.Chat.Q3Placeholder" xml:space="preserve">
     <value>例如：绝不引用标记为机密的文档</value>
   </data>
-  <data name="Vm_Chat_Q3_Chip1" xml:space="preserve">
+  <data name="Studio.Chat.Q3Chip1" xml:space="preserve">
     <value>文件夹只读</value>
   </data>
-  <data name="Vm_Chat_Q3_Chip2" xml:space="preserve">
+  <data name="Studio.Chat.Q3Chip2" xml:space="preserve">
     <value>忽略草稿</value>
   </data>
-  <data name="Vm_Chat_Q3_Chip3" xml:space="preserve">
+  <data name="Studio.Chat.Q3Chip3" xml:space="preserve">
     <value>没有特别要求</value>
   </data>
-  <data name="Vm_Chat_Q3_Value1" xml:space="preserve">
+  <data name="Studio.Chat.Q3Value1" xml:space="preserve">
     <value>文件夹只读</value>
   </data>
-  <data name="Vm_Chat_Q3_Value2" xml:space="preserve">
+  <data name="Studio.Chat.Q3Value2" xml:space="preserve">
     <value>已忽略草稿</value>
   </data>
-  <data name="Vm_Chat_Q3_Value3" xml:space="preserve">
+  <data name="Studio.Chat.Q3Value3" xml:space="preserve">
     <value>无限制</value>
   </data>
-  <data name="Vm_Chat_BriefAnswerPattern" xml:space="preserve">
+  <data name="Studio.Chat.BriefAnswerPattern" xml:space="preserve">
     <value>{0}：{1}。</value>
   </data>
-  <data name="Vm_Chat_FactBrief" xml:space="preserve">
+  <data name="Studio.Chat.FactBrief" xml:space="preserve">
     <value>交付的工作</value>
   </data>
-  <data name="Vm_Chat_FactRhythm" xml:space="preserve">
+  <data name="Studio.Chat.FactRhythm" xml:space="preserve">
     <value>节奏</value>
   </data>
-  <data name="Vm_Chat_FactSource" xml:space="preserve">
+  <data name="Studio.Chat.FactSource" xml:space="preserve">
     <value>文档来源</value>
   </data>
-  <data name="Vm_Chat_FactOutput" xml:space="preserve">
+  <data name="Studio.Chat.FactOutput" xml:space="preserve">
     <value>结果的形式</value>
   </data>
-  <data name="Vm_Chat_FactComposeNote" xml:space="preserve">
+  <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>组建指令</value>
   </data>
-  <data name="Vm_Chat_FactTryNote" xml:space="preserve">
+  <data name="Studio.Chat.FactTryNote" xml:space="preserve">
     <value>试运行指令</value>
   </data>
-  <data name="Vm_Chat_FactAdoptNote" xml:space="preserve">
+  <data name="Studio.Chat.FactAdoptNote" xml:space="preserve">
     <value>采用指令</value>
   </data>
-  <data name="Vm_Chat_FactPending" xml:space="preserve">
+  <data name="Studio.Chat.FactPending" xml:space="preserve">
     <value>等待中</value>
   </data>
-  <data name="Vm_Chat_EmptyCreate" xml:space="preserve">
+  <data name="Studio.Chat.EmptyCreate" xml:space="preserve">
     <value>提出您的问题：在您要求之前，助手不会修改任何东西。</value>
   </data>
-  <data name="Vm_Chat_EmptyRun" xml:space="preserve">
+  <data name="Studio.Chat.EmptyRun" xml:space="preserve">
     <value>就当前执行提问：为什么某步很慢、失败会怎样、结果放在哪里。</value>
   </data>
-  <data name="Vm_Chat_EmptyHistory" xml:space="preserve">
+  <data name="Studio.Chat.EmptyHistory" xml:space="preserve">
     <value>就过去的执行提问：为什么失败、之后有什么变化、如何避免再次发生。</value>
   </data>
-  <data name="Vm_Chat_RuleFolders" xml:space="preserve">
+  <data name="Studio.Chat.RuleFolders" xml:space="preserve">
     <value>文件夹|目录|文件|访问|权限|读取|写入</value>
   </data>
-  <data name="Vm_Chat_RuleCost" xml:space="preserve">
+  <data name="Studio.Chat.RuleCost" xml:space="preserve">
     <value>费用|价格|收费|计费|token|贵|花钱</value>
   </data>
-  <data name="Vm_Chat_RuleDuration" xml:space="preserve">
+  <data name="Studio.Chat.RuleDuration" xml:space="preserve">
     <value>时间|时长|多久|慢|快|分钟</value>
   </data>
-  <data name="Vm_Chat_RuleError" xml:space="preserve">
+  <data name="Studio.Chat.RuleError" xml:space="preserve">
     <value>错误|失败|报错|崩溃|故障|bug</value>
   </data>
-  <data name="Vm_Chat_RuleSchedule" xml:space="preserve">
+  <data name="Studio.Chat.RuleSchedule" xml:space="preserve">
     <value>计划|排程|定时|时间|cron|自动|每天早上</value>
   </data>
-  <data name="Vm_Chat_RulePrivacy" xml:space="preserve">
+  <data name="Studio.Chat.RulePrivacy" xml:space="preserve">
     <value>机密|隐私|私密|数据|个人信息|安全|外传</value>
   </data>
-  <data name="Vm_Chat_AnswerFolders" xml:space="preserve">
+  <data name="Studio.Chat.AnswerFolders" xml:space="preserve">
     <value>代理只能看到设置中授权的文件夹。只读文件夹永远无法被修改，即使代理提出请求。</value>
   </data>
-  <data name="Vm_Chat_AnswerCost" xml:space="preserve">
+  <data name="Studio.Chat.AnswerCost" xml:space="preserve">
     <value>本地配置（Ollama）零成本。云端成本取决于交换的词数：Studio 在每次执行结束时显示消耗的 tokens。</value>
   </data>
-  <data name="Vm_Chat_AnswerDuration" xml:space="preserve">
+  <data name="Studio.Chat.AnswerDuration" xml:space="preserve">
     <value>在此数据集上，本地每次执行约需一到两分钟。技术日志记录每步耗时。</value>
   </data>
-  <data name="Vm_Chat_AnswerError" xml:space="preserve">
+  <data name="Studio.Chat.AnswerError" xml:space="preserve">
     <value>某步失败时，执行停止，输出文件夹不写入任何内容。失败会连同步骤和错误信息出现在历史记录中。</value>
   </data>
-  <data name="Vm_Chat_AnswerSchedule" xml:space="preserve">
+  <data name="Studio.Chat.AnswerSchedule" xml:space="preserve">
     <value>设了计划的团队即使 Studio 关闭也会运行，只要机器开着。可在“我的团队”中停止计划。</value>
   </data>
-  <data name="Vm_Chat_AnswerPrivacy" xml:space="preserve">
+  <data name="Studio.Chat.AnswerPrivacy" xml:space="preserve">
     <value>使用本地配置时，任何数据都不离开本机。使用云端配置时，只有发送给模型的文本会外传——文件本身绝不会。</value>
   </data>
-  <data name="Vm_Chat_ReplyStep1" xml:space="preserve">
+  <data name="Studio.Chat.ReplyStep1" xml:space="preserve">
     <value>用一句话描述这项工作，就像对同事说：您今天手工做什么，想收到什么。其余交给我——缺什么我会再问。</value>
   </data>
-  <data name="Vm_Chat_ReplyStep2" xml:space="preserve">
+  <data name="Studio.Chat.ReplyStep2" xml:space="preserve">
     <value>建议的代理分担阅读、撰写与校对。您可以去掉一个：我会重新分配角色，授权的文件夹保持不变。</value>
   </data>
-  <data name="Vm_Chat_ReplyStep3" xml:space="preserve">
+  <data name="Studio.Chat.ReplyStep3" xml:space="preserve">
     <value>试运行不动任何东西：只读、抽样文档、不保存。正是检查语气与细节程度的时机。</value>
   </data>
-  <data name="Vm_Chat_ReplyStep4" xml:space="preserve">
+  <data name="Studio.Chat.ReplyStep4" xml:space="preserve">
     <value>采用后，团队将在选定时间自行工作，即使 Studio 已关闭。每次执行都会留痕于历史记录，您可在“我的团队”中停止计划。</value>
   </data>
-  <data name="Vm_Chat_ReplyRun" xml:space="preserve">
+  <data name="Studio.Chat.ReplyRun" xml:space="preserve">
     <value>我在实时跟踪这次执行。哪个步骤停了就告诉我：我会读取技术日志，用大白话解释卡在哪里。</value>
   </data>
-  <data name="Vm_Chat_ReplyHistory" xml:space="preserve">
+  <data name="Studio.Chat.ReplyHistory" xml:space="preserve">
     <value>历史记录的每一行都保留完整日志。问我“上一次为什么失败？”，我会调出出错的步骤和错误信息。</value>
   </data>
-  <data name="Vm_Lang_System" xml:space="preserve">
+  <data name="Studio.Shell.System" xml:space="preserve">
     <value>系统</value>
   </data>
-  <data name="Vm_Lang_Chosen" xml:space="preserve">
+  <data name="Studio.Shell.Chosen" xml:space="preserve">
     <value>已选择</value>
   </data>
-  <data name="Vm_Lang_FromSystem" xml:space="preserve">
+  <data name="Studio.Shell.FromSystem" xml:space="preserve">
     <value>系统语言</value>
   </data>
-  <data name="Vm_Lang_FromChoice" xml:space="preserve">
+  <data name="Studio.Shell.FromChoice" xml:space="preserve">
     <value>已保存的选择</value>
   </data>
-  <data name="Vm_Lang_HeaderPattern" xml:space="preserve">
+  <data name="Studio.Shell.HeaderPattern" xml:space="preserve">
     <value>{0} · {1}</value>
   </data>
-  <data name="Vm_Lang_TooltipPattern" xml:space="preserve">
+  <data name="Studio.Shell.TooltipPattern" xml:space="preserve">
     <value>{0} — {1}</value>
   </data>
-  <data name="Vm_Tool_ReadScoped" xml:space="preserve">
+  <data name="Studio.Common.ReadScoped" xml:space="preserve">
     <value>读取 {0}</value>
   </data>
-  <data name="Vm_Tool_ListScoped" xml:space="preserve">
+  <data name="Studio.Common.ListScoped" xml:space="preserve">
     <value>列出 {0}</value>
   </data>
-  <data name="Vm_Tool_WriteScoped" xml:space="preserve">
+  <data name="Studio.Common.WriteScoped" xml:space="preserve">
     <value>写入 {0}</value>
   </data>
-  <data name="Vm_Tool_Llm" xml:space="preserve">
+  <data name="Studio.Common.Llm" xml:space="preserve">
     <value>用 AI 撰写</value>
   </data>
-  <data name="Vm_Tool_Web" xml:space="preserve">
+  <data name="Studio.Common.Web" xml:space="preserve">
     <value>访问网页</value>
   </data>
-  <data name="Vm_Tool_Rag" xml:space="preserve">
+  <data name="Studio.Common.Rag" xml:space="preserve">
     <value>在索引中检索</value>
   </data>
-  <data name="Vm_Tour_CounterPattern" xml:space="preserve">
+  <data name="Studio.Shell.CounterPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>
   <data name="Studio.Run.ChooseTeam" xml:space="preserve">
     <value>选择一个团队</value>
   </data>
-  <data name="Vm_Doctor_StatusOk" xml:space="preserve">
+  <data name="Studio.Diagnostics.StatusOk" xml:space="preserve">
     <value>已就绪。</value>
   </data>
-  <data name="Vm_Doctor_StatusWarning" xml:space="preserve">
+  <data name="Studio.Diagnostics.StatusWarning" xml:space="preserve">
     <value>可以使用，但值得看一眼。</value>
   </data>
-  <data name="Vm_Doctor_StatusFailure" xml:space="preserve">
+  <data name="Studio.Diagnostics.StatusFailure" xml:space="preserve">
     <value>缺失——在解决之前团队无法运行。</value>
   </data>
-  <data name="Vm_Doctor_StatusUnknown" xml:space="preserve">
+  <data name="Studio.Diagnostics.StatusUnknown" xml:space="preserve">
     <value>未检查。</value>
   </data>
 </root>

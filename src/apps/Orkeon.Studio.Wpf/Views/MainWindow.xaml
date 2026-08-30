@@ -500,7 +500,7 @@
                  (key required), then the catch-all and the echo fallback. -->
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" FontWeight="Medium"
                        Foreground="{DynamicResource InkFaintBrush}" Margin="0,0,0,6"
-                       Text="{Binding [Profile_GroupLocal], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.GroupLocal], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding LocalProviders}" ItemTemplate="{StaticResource ProviderCard}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
@@ -509,7 +509,7 @@
 
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" FontWeight="Medium"
                        Foreground="{DynamicResource InkFaintBrush}" Margin="0,12,0,6"
-                       Text="{Binding [Profile_GroupCloud], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.GroupCloud], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding CloudProviders}" ItemTemplate="{StaticResource ProviderCard}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
@@ -616,18 +616,18 @@
                   </StackPanel>
                 </DockPanel>
                 <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap"
-                           Margin="0,7,0,9" Text="{Binding [Profile_KeyExplainer], Source={x:Static services:I18n.Instance}}"/>
+                           Margin="0,7,0,9" Text="{Binding [Studio.Settings.KeyExplainer], Source={x:Static services:I18n.Instance}}"/>
                 <DockPanel>
                   <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="7,0,0,0"
                           Command="{Binding StoreKeyCommand}"
-                          Content="{Binding [Profile_KeyStore], Source={x:Static services:I18n.Instance}}"/>
+                          Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
                   <TextBox Style="{StaticResource InputMono}"
-                           ToolTip="{Binding [Profile_KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
+                           ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
                            Text="{Binding ApiKeyInput, UpdateSourceTrigger=PropertyChanged}"/>
                 </DockPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                   <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}"
-                             Text="{Binding [Profile_KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Settings.KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
                   <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5"
                              Foreground="{DynamicResource AccentBrush}" Margin="7,0,0,0"
                              Text="{Binding KeyConsoleUrl}"/>
@@ -637,7 +637,7 @@
                         Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" TextWrapping="Wrap"
                              Foreground="{DynamicResource InkFaintBrush}"
-                             Text="{Binding [Profile_KeyExpertHint], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Settings.KeyExpertHint], Source={x:Static services:I18n.Instance}}"/>
                 </Border>
               </StackPanel>
             </Border>
@@ -646,13 +646,13 @@
                         Visibility="{Binding ShowLocalNote, Converter={StaticResource BooleanToVisibility}}">
               <controls:LucideIcon Kind="circle-check" Size="13" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
               <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"
-                         Text="{Binding [Profile_LocalNote], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Settings.LocalNote], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
                         Visibility="{Binding ShowNoneNote, Converter={StaticResource BooleanToVisibility}}">
               <controls:LucideIcon Kind="info" Size="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"/>
               <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"
-                         Text="{Binding [Profile_NoneNote], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Settings.NoneNote], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" Margin="0,14,0,0"
@@ -781,7 +781,7 @@
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Act_Save], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"

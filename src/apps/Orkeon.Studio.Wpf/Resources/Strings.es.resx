@@ -38,7 +38,7 @@
   <data name="Studio.Common.Validate" xml:space="preserve">
     <value>Validar</value>
   </data>
-  <data name="Act_Save" xml:space="preserve">
+  <data name="Studio.Common.Save" xml:space="preserve">
     <value>Guardar</value>
   </data>
   <data name="Studio.Common.BaseUrl" xml:space="preserve">
@@ -344,43 +344,43 @@
   <data name="Studio.Run.CmdTitle" xml:space="preserve">
     <value>COMANDO</value>
   </data>
-  <data name="Vm_Run_StateIdle" xml:space="preserve">
+  <data name="Studio.Run.StateIdle" xml:space="preserve">
     <value>Lista para trabajar</value>
   </data>
-  <data name="Vm_Run_StateRunning" xml:space="preserve">
+  <data name="Studio.Run.StateRunning" xml:space="preserve">
     <value>Ejecución en curso</value>
   </data>
-  <data name="Vm_Run_StateDone" xml:space="preserve">
+  <data name="Studio.Run.StateDone" xml:space="preserve">
     <value>Ejecución terminada</value>
   </data>
-  <data name="Vm_Run_BadgeIdle" xml:space="preserve">
+  <data name="Studio.Run.BadgeIdle" xml:space="preserve">
     <value>en espera</value>
   </data>
-  <data name="Vm_Run_BadgeRunning" xml:space="preserve">
+  <data name="Studio.Run.BadgeRunning" xml:space="preserve">
     <value>en curso</value>
   </data>
-  <data name="Vm_Run_BadgeDone" xml:space="preserve">
+  <data name="Studio.Run.BadgeDone" xml:space="preserve">
     <value>exitosa</value>
   </data>
-  <data name="Vm_Run_BadgeFailed" xml:space="preserve">
+  <data name="Studio.Run.BadgeFailed" xml:space="preserve">
     <value>fallida</value>
   </data>
-  <data name="Vm_Run_BtnLaunch" xml:space="preserve">
+  <data name="Studio.Run.BtnLaunch" xml:space="preserve">
     <value>Lanzar ahora</value>
   </data>
-  <data name="Vm_Run_BtnRunning" xml:space="preserve">
+  <data name="Studio.Run.BtnRunning" xml:space="preserve">
     <value>En curso…</value>
   </data>
-  <data name="Vm_Run_BtnRelaunch" xml:space="preserve">
+  <data name="Studio.Run.BtnRelaunch" xml:space="preserve">
     <value>Relanzar</value>
   </data>
-  <data name="Vm_Run_CliMissing" xml:space="preserve">
+  <data name="Studio.Run.CliMissing" xml:space="preserve">
     <value>No se encuentra el motor Orkeon — ejecute el diagnóstico.</value>
   </data>
-  <data name="Vm_Run_MetaAgents" xml:space="preserve">
+  <data name="Studio.Run.MetaAgents" xml:space="preserve">
     <value>{0} agentes</value>
   </data>
-  <data name="Vm_Run_MetaProfile" xml:space="preserve">
+  <data name="Studio.Run.MetaProfile" xml:space="preserve">
     <value>ajuste {0}</value>
   </data>
   <data name="Studio.Run.ChangeTeam" xml:space="preserve">
@@ -440,433 +440,433 @@
   <data name="Studio.History.Reload" xml:space="preserve">
     <value>Recargar</value>
   </data>
-  <data name="Core_Validation_NoFindings" xml:space="preserve">
+  <data name="Studio.Diagnostics.NoFindings" xml:space="preserve">
     <value>Validación: ningún hallazgo.</value>
   </data>
-  <data name="Core_Validation_Summary" xml:space="preserve">
+  <data name="Studio.Diagnostics.Summary" xml:space="preserve">
     <value>Validación: {0} error(es), {1} advertencia(s), {2} nota(s).</value>
   </data>
-  <data name="Core_Launch_NothingRan" xml:space="preserve">
+  <data name="Studio.Run.NothingRan" xml:space="preserve">
     <value>No se ejecutó nada — {0}</value>
   </data>
-  <data name="Core_Usage_Tokens" xml:space="preserve">
+  <data name="Studio.Run.Tokens" xml:space="preserve">
     <value>{0} tokens</value>
   </data>
-  <data name="Core_Usage_Cache" xml:space="preserve">
+  <data name="Studio.Run.Cache" xml:space="preserve">
     <value>caché {0} % · {1} tokens</value>
   </data>
-  <data name="Core_Usage_Seconds" xml:space="preserve">
+  <data name="Studio.Run.Seconds" xml:space="preserve">
     <value>{0} s</value>
   </data>
-  <data name="Core_Usage_MinutesSeconds" xml:space="preserve">
+  <data name="Studio.Run.MinutesSeconds" xml:space="preserve">
     <value>{0} min {1} s</value>
   </data>
-  <data name="Core_Launch_ExitCode" xml:space="preserve">
+  <data name="Studio.Run.ExitCode" xml:space="preserve">
     <value>Código de salida {0} — {1}</value>
   </data>
-  <data name="Core_Preset_Ollama_Title" xml:space="preserve">
+  <data name="Studio.Settings.OllamaTitle" xml:space="preserve">
     <value>Ollama</value>
   </data>
-  <data name="Core_Preset_Ollama_Desc" xml:space="preserve">
+  <data name="Studio.Settings.OllamaDesc" xml:space="preserve">
     <value>Servidor Ollama local.</value>
   </data>
-  <data name="Core_Preset_Dmr_Title" xml:space="preserve">
+  <data name="Studio.Settings.DmrTitle" xml:space="preserve">
     <value>Docker Model Runner</value>
   </data>
-  <data name="Core_Preset_Dmr_Desc" xml:space="preserve">
+  <data name="Studio.Settings.DmrDesc" xml:space="preserve">
     <value>Motor llama.cpp local servido por Docker Desktop.</value>
   </data>
-  <data name="Core_Preset_OpenAI_Title" xml:space="preserve">
+  <data name="Studio.Settings.OpenAITitle" xml:space="preserve">
     <value>OpenAI</value>
   </data>
-  <data name="Core_Preset_OpenAI_Desc" xml:space="preserve">
+  <data name="Studio.Settings.OpenAIDesc" xml:space="preserve">
     <value>API en la nube de OpenAI.</value>
   </data>
-  <data name="Core_Preset_Custom_Title" xml:space="preserve">
+  <data name="Studio.Settings.CustomTitle" xml:space="preserve">
     <value>Otro compatible con OpenAI</value>
   </data>
-  <data name="Core_Preset_Custom_Desc" xml:space="preserve">
+  <data name="Studio.Settings.CustomDesc" xml:space="preserve">
     <value>DeepSeek, GLM, Mistral, … — se requieren URL base y modelo.</value>
   </data>
-  <data name="Core_Preset_None_Title" xml:space="preserve">
+  <data name="Studio.Settings.NoneTitle" xml:space="preserve">
     <value>Ninguno / sin conexión</value>
   </data>
-  <data name="Core_Preset_None_Desc" xml:space="preserve">
+  <data name="Studio.Settings.NoneDesc" xml:space="preserve">
     <value>Sin LLM: las ejecuciones usan el proveedor de eco &lt;undefined-llm&gt;.</value>
   </data>
-  <data name="Core_Provider_Anthropic_Title" xml:space="preserve">
+  <data name="Studio.Settings.AnthropicTitle" xml:space="preserve">
     <value>Anthropic</value>
   </data>
-  <data name="Core_Provider_Anthropic_Desc" xml:space="preserve">
+  <data name="Studio.Settings.AnthropicDesc" xml:space="preserve">
     <value>Claude</value>
   </data>
-  <data name="Core_Provider_DeepSeek_Title" xml:space="preserve">
+  <data name="Studio.Settings.DeepSeekTitle" xml:space="preserve">
     <value>DeepSeek</value>
   </data>
-  <data name="Core_Provider_DeepSeek_Desc" xml:space="preserve">
+  <data name="Studio.Settings.DeepSeekDesc" xml:space="preserve">
     <value>económico, muy capaz</value>
   </data>
-  <data name="Core_Provider_Gemini_Title" xml:space="preserve">
+  <data name="Studio.Settings.GeminiTitle" xml:space="preserve">
     <value>Gemini</value>
   </data>
-  <data name="Core_Provider_Gemini_Desc" xml:space="preserve">
+  <data name="Studio.Settings.GeminiDesc" xml:space="preserve">
     <value>Google</value>
   </data>
-  <data name="Core_Provider_Grok_Title" xml:space="preserve">
+  <data name="Studio.Settings.GrokTitle" xml:space="preserve">
     <value>Grok</value>
   </data>
-  <data name="Core_Provider_Grok_Desc" xml:space="preserve">
+  <data name="Studio.Settings.GrokDesc" xml:space="preserve">
     <value>x.AI</value>
   </data>
-  <data name="Core_Provider_MiniMax_Title" xml:space="preserve">
+  <data name="Studio.Settings.MiniMaxTitle" xml:space="preserve">
     <value>MiniMax</value>
   </data>
-  <data name="Core_Provider_MiniMax_Desc" xml:space="preserve">
+  <data name="Studio.Settings.MiniMaxDesc" xml:space="preserve">
     <value>familia M2, endpoints internacional + continental</value>
   </data>
-  <data name="Core_Provider_HuggingFace_Title" xml:space="preserve">
+  <data name="Studio.Settings.HuggingFaceTitle" xml:space="preserve">
     <value>HuggingFace</value>
   </data>
-  <data name="Core_Provider_HuggingFace_Desc" xml:space="preserve">
+  <data name="Studio.Settings.HuggingFaceDesc" xml:space="preserve">
     <value>enrutador multimodelo</value>
   </data>
-  <data name="Core_Provider_Kimi_Title" xml:space="preserve">
+  <data name="Studio.Settings.KimiTitle" xml:space="preserve">
     <value>Kimi</value>
   </data>
-  <data name="Core_Provider_Kimi_Desc" xml:space="preserve">
+  <data name="Studio.Settings.KimiDesc" xml:space="preserve">
     <value>Moonshot AI</value>
   </data>
-  <data name="Core_Provider_Mistral_Title" xml:space="preserve">
+  <data name="Studio.Settings.MistralTitle" xml:space="preserve">
     <value>Mistral</value>
   </data>
-  <data name="Core_Provider_Mistral_Desc" xml:space="preserve">
+  <data name="Studio.Settings.MistralDesc" xml:space="preserve">
     <value>europeo</value>
   </data>
-  <data name="Core_Provider_Qwen_Title" xml:space="preserve">
+  <data name="Studio.Settings.QwenTitle" xml:space="preserve">
     <value>Qwen</value>
   </data>
-  <data name="Core_Provider_Qwen_Desc" xml:space="preserve">
+  <data name="Studio.Settings.QwenDesc" xml:space="preserve">
     <value>Alibaba DashScope</value>
   </data>
-  <data name="Core_Provider_Together_Title" xml:space="preserve">
+  <data name="Studio.Settings.TogetherTitle" xml:space="preserve">
     <value>Together AI</value>
   </data>
-  <data name="Core_Provider_Together_Desc" xml:space="preserve">
+  <data name="Studio.Settings.TogetherDesc" xml:space="preserve">
     <value>modelos abiertos</value>
   </data>
-  <data name="Core_Provider_Zai_Title" xml:space="preserve">
+  <data name="Studio.Settings.ZaiTitle" xml:space="preserve">
     <value>Z.AI (GLM)</value>
   </data>
-  <data name="Core_Provider_Zai_Desc" xml:space="preserve">
+  <data name="Studio.Settings.ZaiDesc" xml:space="preserve">
     <value>Zhipu</value>
   </data>
-  <data name="Core_Provider_OpenAI_ShortDesc" xml:space="preserve">
+  <data name="Studio.Settings.OpenAIShortDesc" xml:space="preserve">
     <value>GPT</value>
   </data>
-  <data name="Core_Provider_Custom_ShortDesc" xml:space="preserve">
+  <data name="Studio.Settings.CustomShortDesc" xml:space="preserve">
     <value>cualquier endpoint: URL + modelo a introducir</value>
   </data>
-  <data name="Core_Provider_None_ShortDesc" xml:space="preserve">
+  <data name="Studio.Settings.NoneShortDesc" xml:space="preserve">
     <value>probar la instalación, sin modelo</value>
   </data>
-  <data name="Core_Preset_Error_CustomIncomplete" xml:space="preserve">
+  <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve">
     <value>El preset personalizado requiere a la vez una URL base y un modelo.</value>
   </data>
-  <data name="Core_Preset_Error_Unknown" xml:space="preserve">
+  <data name="Studio.Settings.ErrorUnknown" xml:space="preserve">
     <value>Preset «{0}» desconocido. Compatibles: {1}.</value>
   </data>
-  <data name="Core_Preset_Guidance_None" xml:space="preserve">
+  <data name="Studio.Settings.GuidanceNone" xml:space="preserve">
     <value>Ningún LLM configurado: las ejecuciones usarán el proveedor de eco &lt;undefined-llm&gt;. Configure uno cuando esté listo.</value>
   </data>
-  <data name="Core_Preset_Guidance_ApiKeyEnv" xml:space="preserve">
+  <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve">
     <value>Clave de API: referenciada desde el entorno — defínala con: export {0}=&lt;su-clave&gt;</value>
   </data>
-  <data name="Core_Preset_Guidance_NonDefaultEnv" xml:space="preserve">
+  <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve">
     <value>Nota: el runtime de Orkeon lee `{0}` de forma nativa; `{1}` solo la leen las sondas `orkeon init` / `orkeon llm`.</value>
   </data>
-  <data name="Core_Preset_Guidance_InlineKeyWarning" xml:space="preserve">
+  <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve">
     <value>ATENCIÓN: la clave de API se guarda en texto plano en el archivo generado. Es preferible referenciarla desde la variable de entorno {0}.</value>
   </data>
-  <data name="Core_Resolution_Step1_Title" xml:space="preserve">
+  <data name="Studio.Settings.Step1Title" xml:space="preserve">
     <value>Ruta explícita</value>
   </data>
-  <data name="Core_Resolution_Step1_Desc" xml:space="preserve">
+  <data name="Studio.Settings.Step1Desc" xml:space="preserve">
     <value>El archivo pasado al runner con --settings. Si no existe, la resolución se detiene y el runtime solo lee las variables de entorno.</value>
   </data>
-  <data name="Core_Resolution_Step2_Title" xml:space="preserve">
+  <data name="Studio.Settings.Step2Title" xml:space="preserve">
     <value>Junto al equipo</value>
   </data>
-  <data name="Core_Resolution_Step2_Desc" xml:space="preserve">
+  <data name="Studio.Settings.Step2Desc" xml:space="preserve">
     <value>{0} en el directorio que contiene la definición del equipo.</value>
   </data>
-  <data name="Core_Resolution_Step3_Title" xml:space="preserve">
+  <data name="Studio.Settings.Step3Title" xml:space="preserve">
     <value>Directorio appsettings compartido</value>
   </data>
-  <data name="Core_Resolution_Step3_Desc" xml:space="preserve">
+  <data name="Studio.Settings.Step3Desc" xml:space="preserve">
     <value>appsettings/{0}, buscado subiendo desde el directorio del equipo (la antigua ubicación _shared/ se acepta todavía durante una versión).</value>
   </data>
-  <data name="Core_Resolution_Step4_Title" xml:space="preserve">
+  <data name="Studio.Settings.Step4Title" xml:space="preserve">
     <value>Archivo global por usuario</value>
   </data>
-  <data name="Core_Resolution_Step4_Desc" xml:space="preserve">
+  <data name="Studio.Settings.Step4Desc" xml:space="preserve">
     <value>El archivo escrito por `orkeon init`: %APPDATA%\Orkeon\appsettings.json en Windows, $XDG_CONFIG_HOME/Orkeon/appsettings.json (si no ~/.config/Orkeon/appsettings.json) en otros sistemas.</value>
   </data>
-  <data name="Core_Rights_ReadOnly" xml:space="preserve">
+  <data name="Studio.Settings.RightsReadOnly" xml:space="preserve">
     <value>Solo lectura</value>
   </data>
-  <data name="Core_Rights_ReadWrite" xml:space="preserve">
+  <data name="Studio.Settings.RightsReadWrite" xml:space="preserve">
     <value>Lectura / escritura (creación y eliminación permitidas)</value>
   </data>
-  <data name="Core_Rights_ReadWriteNoDelete" xml:space="preserve">
+  <data name="Studio.Settings.ReadWriteNoDelete" xml:space="preserve">
     <value>Lectura / escritura sin eliminación</value>
   </data>
-  <data name="Core_Target_DirectoryRunNotice" xml:space="preserve">
+  <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve">
     <value>Esto es un directorio de equipo multiarchivo: su ejecución pasa por «orkeon run &lt;directorio&gt;», que requiere Orkeon &gt;= {0}. La CLI instalada junto a Studio lo admite.</value>
   </data>
-  <data name="Core_MountSemantics_Explanation" xml:space="preserve">
+  <data name="Studio.Settings.Explanation" xml:space="preserve">
     <value>El runner inyecta primero su propio montaje — el directorio de configuración del equipo como «/crew» (el directorio del script como «/script» para un equipo .ork.ts) — luego añade cada argumento --mount y escribe la lista completa como «Orkeon:FileSystem:Mounts:{index}». Por tanto, el montaje de appsettings en el índice 0 siempre queda reemplazado por el inyectado automáticamente, el primer --mount reemplaza el montaje de appsettings del índice 1, y las dos listas nunca se fusionan. Las entradas de appsettings más allá del último índice escrito siguen vigentes. El directorio de registros LLM se monta aparte, oculto a los agentes, y no desplaza nada.</value>
   </data>
-  <data name="Core_MountSemantics_ExternalMounts" xml:space="preserve">
+  <data name="Studio.Settings.ExternalMounts" xml:space="preserve">
     <value>--allow-external-mounts añade además cada ruta base de --mount a la lista blanca «PathSecurity:AdditionalAllowedDirectories», permitiendo que los montajes apunten fuera del directorio de trabajo (mismo efecto que ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value>
   </data>
-  <data name="Core_MountSemantics_ThisLaunch" xml:space="preserve">
+  <data name="Studio.Settings.ThisLaunch" xml:space="preserve">
     <value> Para este lanzamiento el runner inyecta {0} montaje(s) ({1}), por lo que el primer --mount ocupa «{2}».</value>
   </data>
-  <data name="Vm_Config_NewDocument" xml:space="preserve">
+  <data name="Studio.Settings.NewDocument" xml:space="preserve">
     <value>Nuevo documento vacío. Elija un preset para rellenar la sección Llm.</value>
   </data>
-  <data name="Vm_Config_NoFileSelected" xml:space="preserve">
+  <data name="Studio.Settings.NoFileSelected" xml:space="preserve">
     <value>Ningún archivo seleccionado.</value>
   </data>
-  <data name="Vm_Config_Loaded" xml:space="preserve">
+  <data name="Studio.Settings.Loaded" xml:space="preserve">
     <value>Cargado: {0}.</value>
   </data>
-  <data name="Vm_Config_NotSavedErrors" xml:space="preserve">
+  <data name="Studio.Settings.NotSavedErrors" xml:space="preserve">
     <value>No guardado: hay que corregir antes {0} error(es).</value>
   </data>
-  <data name="Vm_Config_NotSavedNoDestination" xml:space="preserve">
+  <data name="Studio.Settings.NotSavedNoDestination" xml:space="preserve">
     <value>No guardado: ningún destino seleccionado.</value>
   </data>
-  <data name="Vm_Config_Saved" xml:space="preserve">
+  <data name="Studio.Settings.Saved" xml:space="preserve">
     <value>Guardado en {0}.</value>
   </data>
-  <data name="Vm_Config_SavedLlmWarning" xml:space="preserve">
+  <data name="Studio.Settings.SavedLlmWarning" xml:space="preserve">
     <value>Guardado en {0}. Advertencia {1}: sin sección Llm, las ejecuciones usarán el proveedor de eco.</value>
   </data>
-  <data name="Vm_Config_NoProblem" xml:space="preserve">
+  <data name="Studio.Settings.NoProblem" xml:space="preserve">
     <value>Ningún problema detectado.</value>
   </data>
-  <data name="Vm_Config_ErrorsWarnings" xml:space="preserve">
+  <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve">
     <value>{0} error(es), {1} advertencia(s).</value>
   </data>
-  <data name="Vm_Llm_NoBaseUrl" xml:space="preserve">
+  <data name="Studio.Settings.NoBaseUrl" xml:space="preserve">
     <value>Sin URL base — el runtime recae en el proveedor de eco.</value>
   </data>
-  <data name="Vm_Llm_CustomProvider" xml:space="preserve">
+  <data name="Studio.Settings.CustomProvider" xml:space="preserve">
     <value>personalizado (host ausente de la tabla de endpoints conocidos)</value>
   </data>
-  <data name="Vm_Llm_ApiKeyRecommendation" xml:space="preserve">
+  <data name="Studio.Settings.ApiKeyRecommendation" xml:space="preserve">
     <value>Prefiera la variable de entorno {0}: el runtime la lee con prioridad sobre este archivo, así la clave nunca tiene que guardarse en claro.</value>
   </data>
-  <data name="Vm_Llm_Testing" xml:space="preserve">
+  <data name="Studio.Settings.Testing" xml:space="preserve">
     <value>Probando la conexión…</value>
   </data>
-  <data name="Vm_Diag_NoCheck" xml:space="preserve">
+  <data name="Studio.Diagnostics.NoCheck" xml:space="preserve">
     <value>orkeon doctor no reportó ninguna comprobación.</value>
   </data>
-  <data name="Vm_Diag_AllGreen" xml:space="preserve">
+  <data name="Studio.Diagnostics.AllGreen" xml:space="preserve">
     <value>{0} comprobación(es), todas en verde.</value>
   </data>
-  <data name="Vm_Diag_Findings" xml:space="preserve">
+  <data name="Studio.Diagnostics.Findings" xml:space="preserve">
     <value>{0} comprobación(es): {1} fallo(s), {2} advertencia(s).</value>
   </data>
-  <data name="Vm_Mounts_SummaryOk" xml:space="preserve">
+  <data name="Studio.Settings.SummaryOk" xml:space="preserve">
     <value>{0} montaje(s), ningún error.</value>
   </data>
-  <data name="Vm_Mounts_SummaryErrors" xml:space="preserve">
+  <data name="Studio.Settings.SummaryErrors" xml:space="preserve">
     <value>{0} montaje(s), {1} error(es).</value>
   </data>
-  <data name="Vm_Mounts_SelectCrewFirst" xml:space="preserve">
+  <data name="Studio.Settings.SelectCrewFirst" xml:space="preserve">
     <value>Seleccione primero un equipo: el runner inyecta sus propios montajes antes de cada --mount, así que la clave de configuración que ocupa cada montaje depende del equipo lanzado.</value>
   </data>
-  <data name="Vm_Mounts_ExternalWarning" xml:space="preserve">
+  <data name="Studio.Settings.ExternalWarning" xml:space="preserve">
     <value>Seguridad: esto permite que un montaje apunte a cualquier parte de la máquina, fuera del directorio de trabajo. Actívelo solo para una ruta elegida deliberadamente.</value>
   </data>
-  <data name="Vm_Mounts_EffectiveNone" xml:space="preserve">
+  <data name="Studio.Settings.EffectiveNone" xml:space="preserve">
     <value>{0} montaje(s) efectivo(s); no se reemplaza ninguna entrada de appsettings.</value>
   </data>
-  <data name="Vm_Mounts_EffectiveReplaced" xml:space="preserve">
+  <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve">
     <value>{0} montaje(s) efectivo(s); {1} entrada(s) de appsettings reemplazada(s) por índice.</value>
   </data>
-  <data name="Vm_Mounts_OriginAuto" xml:space="preserve">
+  <data name="Studio.Settings.OriginAuto" xml:space="preserve">
     <value>automático (inyectado por el runner)</value>
   </data>
-  <data name="Vm_Mounts_OriginReplaces" xml:space="preserve">
+  <data name="Studio.Settings.OriginReplaces" xml:space="preserve">
     <value>{0} (reemplaza «{1}»)</value>
   </data>
-  <data name="Vm_Launch_BinaryNotLocated" xml:space="preserve">
+  <data name="Studio.Run.BinaryNotLocated" xml:space="preserve">
     <value>La CLI orkeon aún no ha sido localizada.</value>
   </data>
-  <data name="Vm_Launch_BinaryNotFound" xml:space="preserve">
+  <data name="Studio.Run.BinaryNotFound" xml:space="preserve">
     <value>No se encuentra la CLI orkeon.</value>
   </data>
-  <data name="Vm_Launch_Ready" xml:space="preserve">
+  <data name="Studio.Run.Ready" xml:space="preserve">
     <value>Listo para lanzar.</value>
   </data>
-  <data name="Vm_Launch_NoTarget" xml:space="preserve">
+  <data name="Studio.Run.NoTarget" xml:space="preserve">
     <value>Ningún objetivo resuelto.</value>
   </data>
-  <data name="Vm_Launch_NotLaunchedErrors" xml:space="preserve">
+  <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve">
     <value>No lanzado: hay que corregir antes {0} error(es).</value>
   </data>
-  <data name="Vm_Launch_Cancelling" xml:space="preserve">
+  <data name="Studio.Run.Cancelling" xml:space="preserve">
     <value>Cancelación: se pide a la CLI que se detenga, y se la mata si no lo hace.</value>
   </data>
-  <data name="Vm_Launch_NothingToReplay" xml:space="preserve">
+  <data name="Studio.Run.NothingToReplay" xml:space="preserve">
     <value>Nada que repetir: la entrada de «{0}» no registró ningún argumento.</value>
   </data>
-  <data name="Vm_Launch_Validating" xml:space="preserve">
+  <data name="Studio.Run.Validating" xml:space="preserve">
     <value>Validación…</value>
   </data>
-  <data name="Vm_Launch_Running" xml:space="preserve">
+  <data name="Studio.Run.Running" xml:space="preserve">
     <value>Ejecución…</value>
   </data>
-  <data name="Vm_RunProgress_NothingYet" xml:space="preserve">
+  <data name="Studio.Run.NothingYet" xml:space="preserve">
     <value>Nada reportado por ahora.</value>
   </data>
-  <data name="Vm_RunProgress_TasksDone" xml:space="preserve">
+  <data name="Studio.Run.TasksDone" xml:space="preserve">
     <value>{0} tarea(s) terminada(s).</value>
   </data>
-  <data name="Vm_RunProgress_Succeeded" xml:space="preserve">
+  <data name="Studio.Run.Succeeded" xml:space="preserve">
     <value>Terminado con éxito.</value>
   </data>
-  <data name="Vm_RunProgress_Failed" xml:space="preserve">
+  <data name="Studio.Run.Failed" xml:space="preserve">
     <value>Terminado en fallo.</value>
   </data>
-  <data name="Vm_RunProgress_Cost" xml:space="preserve">
+  <data name="Studio.Run.Cost" xml:space="preserve">
     <value>{0} tokens · {1}</value>
   </data>
-  <data name="Vm_RunProgress_Watch" xml:space="preserve">
+  <data name="Studio.Run.Watch" xml:space="preserve">
     <value>Mostrar el progreso en vez de la salida bruta</value>
   </data>
-  <data name="Vm_RunProgress_Stream" xml:space="preserve">
+  <data name="Studio.Run.Stream" xml:space="preserve">
     <value>Emitir el texto generado token a token</value>
   </data>
-  <data name="Vm_RunProgress_Answer" xml:space="preserve">
+  <data name="Studio.Run.Answer" xml:space="preserve">
     <value>Responder</value>
   </data>
-  <data name="Vm_RunProgress_AgentAsks" xml:space="preserve">
+  <data name="Studio.Run.AgentAsks" xml:space="preserve">
     <value>Un agente pregunta:</value>
   </data>
-  <data name="Vm_RunProgress_Reply" xml:space="preserve">
+  <data name="Studio.Run.Reply" xml:space="preserve">
     <value>Responder</value>
   </data>
-  <data name="Vm_RunProgress_HubMessages" xml:space="preserve">
+  <data name="Studio.Run.HubMessages" xml:space="preserve">
     <value>Mensajes del hub</value>
   </data>
-  <data name="Vm_Target_None" xml:space="preserve">
+  <data name="Studio.Run.None" xml:space="preserve">
     <value>Ningún objetivo seleccionado.</value>
   </data>
-  <data name="Vm_Target_Resolved" xml:space="preserve">
+  <data name="Studio.Run.Resolved" xml:space="preserve">
     <value>{0} — orkeon run {1}</value>
   </data>
-  <data name="Vm_Target_PickScript" xml:space="preserve">
+  <data name="Studio.Run.PickScript" xml:space="preserve">
     <value>{0} script(s) encontrado(s): elija el que se ejecutará.</value>
   </data>
-  <data name="Vm_Target_DetectionFailed" xml:space="preserve">
+  <data name="Studio.Run.DetectionFailed" xml:space="preserve">
     <value>Fallo en la detección.</value>
   </data>
-  <data name="Vm_Target_KindYamlFile" xml:space="preserve">
+  <data name="Studio.Run.KindYamlFile" xml:space="preserve">
     <value>Archivo de equipo YAML</value>
   </data>
-  <data name="Vm_Target_KindScriptFile" xml:space="preserve">
+  <data name="Studio.Run.KindScriptFile" xml:space="preserve">
     <value>Archivo de equipo con script</value>
   </data>
-  <data name="Vm_Target_KindCrewDirectory" xml:space="preserve">
+  <data name="Studio.Run.KindCrewDirectory" xml:space="preserve">
     <value>Carpeta de equipo multiarchivo</value>
   </data>
-  <data name="Vm_Target_KindScriptDirectory" xml:space="preserve">
+  <data name="Studio.Run.KindScriptDirectory" xml:space="preserve">
     <value>Carpeta de equipo con script</value>
   </data>
-  <data name="Vm_Log_Lines" xml:space="preserve">
+  <data name="Studio.Run.LogLines" xml:space="preserve">
     <value>{0} línea(s).</value>
   </data>
-  <data name="Vm_Log_LinesDropped" xml:space="preserve">
+  <data name="Studio.Run.LinesDropped" xml:space="preserve">
     <value>{0} línea(s); {1} línea(s) más antigua(s) descartada(s) (límite {2}).</value>
   </data>
-  <data name="Vm_Dialog_OpenAppSettings" xml:space="preserve">
+  <data name="Studio.Settings.OpenAppSettings" xml:space="preserve">
     <value>Abrir appsettings.json</value>
   </data>
-  <data name="Vm_Dialog_SaveAppSettings" xml:space="preserve">
+  <data name="Studio.Settings.SaveAppSettings" xml:space="preserve">
     <value>Guardar appsettings.json</value>
   </data>
-  <data name="Vm_Dialog_SelectAppSettings" xml:space="preserve">
+  <data name="Studio.Settings.SelectAppSettings" xml:space="preserve">
     <value>Seleccionar un appsettings.json</value>
   </data>
-  <data name="Vm_Dialog_SelectInputsFile" xml:space="preserve">
+  <data name="Studio.Settings.SelectInputsFile" xml:space="preserve">
     <value>Seleccionar un archivo de entradas</value>
   </data>
-  <data name="Vm_Dialog_SelectLlmLogDest" xml:space="preserve">
+  <data name="Studio.Settings.SelectLlmLogDest" xml:space="preserve">
     <value>Seleccionar el destino del registro LLM</value>
   </data>
-  <data name="Vm_Dialog_SelectCrewDefinition" xml:space="preserve">
+  <data name="Studio.Settings.SelectCrewDefinition" xml:space="preserve">
     <value>Seleccionar una definición de equipo</value>
   </data>
-  <data name="Vm_Dialog_SelectCrewDirectory" xml:space="preserve">
+  <data name="Studio.Settings.SelectCrewDirectory" xml:space="preserve">
     <value>Seleccionar una carpeta de equipo</value>
   </data>
-  <data name="Vm_Dialog_SelectMountFolder" xml:space="preserve">
+  <data name="Studio.Settings.SelectMountFolder" xml:space="preserve">
     <value>Seleccionar la carpeta a montar</value>
   </data>
-  <data name="Vm_Dialog_FilterJson" xml:space="preserve">
+  <data name="Studio.Settings.FilterJson" xml:space="preserve">
     <value>Archivos JSON|*.json|Todos los archivos|*.*</value>
   </data>
-  <data name="Vm_Dialog_FilterCrew" xml:space="preserve">
+  <data name="Studio.Settings.FilterCrew" xml:space="preserve">
     <value>Definiciones de equipo|*.yaml;*.yml;*.ts;*.js|Todos los archivos|*.*</value>
   </data>
-  <data name="Vm_Dialog_FilterAll" xml:space="preserve">
+  <data name="Studio.Settings.FilterAll" xml:space="preserve">
     <value>Todos los archivos|*.*</value>
   </data>
-  <data name="Vm_Forge_Example1" xml:space="preserve">
+  <data name="Studio.Create.Example1" xml:space="preserve">
     <value>Resumir cada mañana las novedades de un sitio</value>
   </data>
-  <data name="Vm_Forge_Example2" xml:space="preserve">
+  <data name="Studio.Create.Example2" xml:space="preserve">
     <value>Producir un resumen semanal a partir de mis archivos</value>
   </data>
-  <data name="Vm_Forge_Example3" xml:space="preserve">
+  <data name="Studio.Create.Example3" xml:space="preserve">
     <value>Comparar ofertas y señalarme la mejor</value>
   </data>
-  <data name="Vm_Forge_Example4" xml:space="preserve">
+  <data name="Studio.Create.Example4" xml:space="preserve">
     <value>Convertir una carpeta de documentos en informe</value>
   </data>
-  <data name="Vm_Forge_StatusPreparing" xml:space="preserve">
+  <data name="Studio.Create.StatusPreparing" xml:space="preserve">
     <value>Estoy preparando una propuesta…</value>
   </data>
-  <data name="Vm_Forge_StatusTrying" xml:space="preserve">
+  <data name="Studio.Create.StatusTrying" xml:space="preserve">
     <value>Lo estoy probando con su ejemplo…</value>
   </data>
-  <data name="Vm_Forge_StatusJudging" xml:space="preserve">
+  <data name="Studio.Create.StatusJudging" xml:space="preserve">
     <value>Estoy comprobando el resultado frente a lo que pidió…</value>
   </data>
-  <data name="Vm_Forge_StatusReady" xml:space="preserve">
+  <data name="Studio.Create.StatusReady" xml:space="preserve">
     <value>Su solución está lista.</value>
   </data>
-  <data name="Vm_Forge_StatusFailed" xml:space="preserve">
+  <data name="Studio.Create.StatusFailed" xml:space="preserve">
     <value>Algo ha salido mal — abra los detalles para la parte técnica.</value>
   </data>
-  <data name="Vm_Forge_StatusStopped" xml:space="preserve">
+  <data name="Studio.Create.StatusStopped" xml:space="preserve">
     <value>Detenido — retómelo cuando quiera desde «Mis soluciones».</value>
   </data>
-  <data name="Vm_Forge_Attempt" xml:space="preserve">
+  <data name="Studio.Create.Attempt" xml:space="preserve">
     <value>Ensayo {0}</value>
   </data>
-  <data name="Vm_Forge_CheckUnverified" xml:space="preserve">
+  <data name="Studio.Create.CheckUnverified" xml:space="preserve">
     <value>No he podido comprobar este punto automáticamente — júzguelo usted mismo.</value>
   </data>
-  <data name="Vm_Forge_ResultScore" xml:space="preserve">
+  <data name="Studio.Create.ResultScore" xml:space="preserve">
     <value>El ensayo ha terminado (puntuación {0}).</value>
   </data>
-  <data name="Vm_Forge_StorePickTitle" xml:space="preserve">
+  <data name="Studio.Create.StorePickTitle" xml:space="preserve">
     <value>Elija dónde guardar la solución</value>
   </data>
   <data name="Studio.Shell.ModeLabel" xml:space="preserve">
@@ -1004,55 +1004,55 @@
   <data name="Studio.Common.Cancel" xml:space="preserve">
     <value>Cancelar</value>
   </data>
-  <data name="Vm_Profiles_NewName" xml:space="preserve">
+  <data name="Studio.Settings.NewName" xml:space="preserve">
     <value>Nuevo perfil</value>
   </data>
-  <data name="Profile_GroupLocal" xml:space="preserve">
+  <data name="Studio.Settings.GroupLocal" xml:space="preserve">
     <value>EN SU MÁQUINA · GRATIS, SIN CLAVE</value>
   </data>
-  <data name="Profile_GroupCloud" xml:space="preserve">
+  <data name="Studio.Settings.GroupCloud" xml:space="preserve">
     <value>EN LA NUBE · CLAVE DE API REQUERIDA</value>
   </data>
-  <data name="Profile_KeyTitleFor" xml:space="preserve">
+  <data name="Studio.Settings.KeyTitleFor" xml:space="preserve">
     <value>Clave de API {0}</value>
   </data>
-  <data name="Profile_KeyTitleService" xml:space="preserve">
+  <data name="Studio.Settings.KeyTitleService" xml:space="preserve">
     <value>Clave de API del servicio</value>
   </data>
-  <data name="Profile_KeyExplainer" xml:space="preserve">
+  <data name="Studio.Settings.KeyExplainer" xml:space="preserve">
     <value>Studio la guarda en su sesión de Windows — nunca en un archivo, nunca en una carpeta compartida.</value>
   </data>
-  <data name="Profile_KeyPlaceholder" xml:space="preserve">
+  <data name="Studio.Settings.KeyPlaceholder" xml:space="preserve">
     <value>Pegue su clave aquí (sk-…)</value>
   </data>
-  <data name="Profile_KeyStore" xml:space="preserve">
+  <data name="Studio.Settings.KeyStore" xml:space="preserve">
     <value>Recordar la clave</value>
   </data>
-  <data name="Profile_KeyStatusSet" xml:space="preserve">
+  <data name="Studio.Settings.KeyStatusSet" xml:space="preserve">
     <value>clave recordada</value>
   </data>
-  <data name="Profile_KeyStatusMissing" xml:space="preserve">
+  <data name="Studio.Settings.KeyStatusMissing" xml:space="preserve">
     <value>ninguna clave detectada</value>
   </data>
-  <data name="Profile_KeyNoKeyYet" xml:space="preserve">
+  <data name="Studio.Settings.KeyNoKeyYet" xml:space="preserve">
     <value>¿Aún sin clave?</value>
   </data>
-  <data name="Profile_KeyOnVendorSite" xml:space="preserve">
+  <data name="Studio.Settings.KeyOnVendorSite" xml:space="preserve">
     <value>en el sitio del proveedor</value>
   </data>
-  <data name="Profile_KeyExpertHint" xml:space="preserve">
+  <data name="Studio.Settings.KeyExpertHint" xml:space="preserve">
     <value>setx ORKEON_Llm__ApiKey "sk-…" — leída nativamente por el runtime, prioritaria sobre cualquier archivo</value>
   </data>
-  <data name="Profile_LocalNote" xml:space="preserve">
+  <data name="Studio.Settings.LocalNote" xml:space="preserve">
     <value>No hace falta clave — el modelo corre en su máquina, nada sale de ella.</value>
   </data>
-  <data name="Profile_NoneNote" xml:space="preserve">
+  <data name="Studio.Settings.NoneNote" xml:space="preserve">
     <value>Sin modelo, las ejecuciones responden en eco — útil para verificar la instalación.</value>
   </data>
-  <data name="Profile_KeyMissingTest" xml:space="preserve">
+  <data name="Studio.Settings.KeyMissingTest" xml:space="preserve">
     <value>Clave de API ausente — recuérdela primero</value>
   </data>
-  <data name="Vm_Profiles_CopySuffix" xml:space="preserve">
+  <data name="Studio.Settings.CopySuffix" xml:space="preserve">
     <value>copia</value>
   </data>
   <data name="Studio.Shell.Create" xml:space="preserve">
@@ -1097,16 +1097,16 @@
   <data name="Studio.Create.ManageSettings" xml:space="preserve">
     <value>Gestionar los perfiles</value>
   </data>
-  <data name="Wiz_Step1" xml:space="preserve">
+  <data name="Studio.Create.Step1" xml:space="preserve">
     <value>Describir</value>
   </data>
-  <data name="Wiz_Step2" xml:space="preserve">
+  <data name="Studio.Create.Step2" xml:space="preserve">
     <value>Componer</value>
   </data>
-  <data name="Wiz_Step3" xml:space="preserve">
+  <data name="Studio.Create.Step3" xml:space="preserve">
     <value>Probar</value>
   </data>
-  <data name="Wiz_Step4" xml:space="preserve">
+  <data name="Studio.Create.Step4" xml:space="preserve">
     <value>Adoptar</value>
   </data>
   <data name="Studio.Create.Reply" xml:space="preserve">
@@ -1274,97 +1274,97 @@
   <data name="Studio.Teams.Resume" xml:space="preserve">
     <value>Reanudar</value>
   </data>
-  <data name="Vm_Wizard_Freq_Once" xml:space="preserve">
+  <data name="Studio.Create.FreqOnce" xml:space="preserve">
     <value>Una sola vez</value>
   </data>
-  <data name="Vm_Wizard_Freq_Daily" xml:space="preserve">
+  <data name="Studio.Create.FreqDaily" xml:space="preserve">
     <value>Cada día</value>
   </data>
-  <data name="Vm_Wizard_Freq_Weekly" xml:space="preserve">
+  <data name="Studio.Create.FreqWeekly" xml:space="preserve">
     <value>Cada semana</value>
   </data>
-  <data name="Vm_Wizard_Source_Folder" xml:space="preserve">
+  <data name="Studio.Create.SourceFolder" xml:space="preserve">
     <value>Una carpeta de este PC</value>
   </data>
-  <data name="Vm_Wizard_Source_Web" xml:space="preserve">
+  <data name="Studio.Create.SourceWeb" xml:space="preserve">
     <value>Un sitio web</value>
   </data>
-  <data name="Vm_Wizard_Source_Unknown" xml:space="preserve">
+  <data name="Studio.Create.SourceUnknown" xml:space="preserve">
     <value>Aún no lo sé</value>
   </data>
-  <data name="Vm_Wizard_Output_Document" xml:space="preserve">
+  <data name="Studio.Create.OutputDocument" xml:space="preserve">
     <value>Un documento</value>
   </data>
-  <data name="Vm_Wizard_Output_Table" xml:space="preserve">
+  <data name="Studio.Create.OutputTable" xml:space="preserve">
     <value>Una tabla</value>
   </data>
-  <data name="Vm_Wizard_Output_Message" xml:space="preserve">
+  <data name="Studio.Create.OutputMessage" xml:space="preserve">
     <value>Un mensaje corto</value>
   </data>
-  <data name="Vm_Wizard_Output_Other" xml:space="preserve">
+  <data name="Studio.Create.OutputOther" xml:space="preserve">
     <value>Otra cosa</value>
   </data>
-  <data name="Vm_Wizard_Brief_Frequency" xml:space="preserve">
+  <data name="Studio.Create.BriefFrequency" xml:space="preserve">
     <value>Frecuencia: {0}.</value>
   </data>
-  <data name="Vm_Wizard_Brief_Source" xml:space="preserve">
+  <data name="Studio.Create.BriefSource" xml:space="preserve">
     <value>Dónde viven las informaciones: {0}.</value>
   </data>
-  <data name="Vm_Wizard_Brief_Output" xml:space="preserve">
+  <data name="Studio.Create.BriefOutput" xml:space="preserve">
     <value>Resultado esperado: {0}.</value>
   </data>
-  <data name="Vm_Wizard_Brief_Shape" xml:space="preserve">
+  <data name="Studio.Create.BriefShape" xml:space="preserve">
     <value>El resultado debe parecerse a: {0}</value>
   </data>
-  <data name="Vm_Wizard_Brief_Consigne" xml:space="preserve">
+  <data name="Studio.Create.BriefConsigne" xml:space="preserve">
     <value>Instrucción permanente para todos los agentes: {0}</value>
   </data>
-  <data name="Vm_Wizard_AgentFallback" xml:space="preserve">
+  <data name="Studio.Create.AgentFallback" xml:space="preserve">
     <value>Agente</value>
   </data>
-  <data name="Vm_Wizard_PromoteFailed" xml:space="preserve">
+  <data name="Studio.Create.PromoteFailed" xml:space="preserve">
     <value>El guardado ha fallado — el motor rechazó la promoción: {0}</value>
   </data>
-  <data name="Vm_Import_Failed" xml:space="preserve">
+  <data name="Studio.Import.Failed" xml:space="preserve">
     <value>La importación ha fallado — no se copió nada. Compruebe el acceso al origen e inténtelo de nuevo.</value>
   </data>
-  <data name="Vm_Wizard_ActivityDone" xml:space="preserve">
+  <data name="Studio.Create.ActivityDone" xml:space="preserve">
     <value>{0} — terminado en {1} s</value>
   </data>
-  <data name="Vm_Wizard_ActivityFailed" xml:space="preserve">
+  <data name="Studio.Create.ActivityFailed" xml:space="preserve">
     <value>{0} — en fallo</value>
   </data>
-  <data name="Vm_Wizard_Hint_Describe" xml:space="preserve">
+  <data name="Studio.Create.HintDescribe" xml:space="preserve">
     <value>Describa el trabajo para continuar.</value>
   </data>
-  <data name="Vm_Wizard_Hint_Outcome" xml:space="preserve">
+  <data name="Studio.Create.HintOutcome" xml:space="preserve">
     <value>El formato es libre: describa el resultado esperado.</value>
   </data>
-  <data name="Vm_Wizard_Hint_Answers" xml:space="preserve">
+  <data name="Studio.Create.HintAnswers" xml:space="preserve">
     <value>Responda a las tres precisiones.</value>
   </data>
-  <data name="Vm_Wizard_Hint_Ready" xml:space="preserve">
+  <data name="Studio.Create.HintReady" xml:space="preserve">
     <value>Todo está aquí — puedo componer el equipo.</value>
   </data>
-  <data name="Vm_Wizard_Decision_Accept" xml:space="preserve">
+  <data name="Studio.Create.DecisionAccept" xml:space="preserve">
     <value>Me sirve</value>
   </data>
-  <data name="Vm_Wizard_Decision_Retry" xml:space="preserve">
+  <data name="Studio.Create.DecisionRetry" xml:space="preserve">
     <value>Repetir la prueba</value>
   </data>
-  <data name="Vm_Wizard_Decision_Refine" xml:space="preserve">
+  <data name="Studio.Create.DecisionRefine" xml:space="preserve">
     <value>Corregir y reintentar</value>
   </data>
-  <data name="Vm_Wizard_Decision_Abort" xml:space="preserve">
+  <data name="Studio.Create.DecisionAbort" xml:space="preserve">
     <value>Abandonar</value>
   </data>
-  <data name="Vm_Teams_OnDemand" xml:space="preserve">
+  <data name="Studio.Teams.OnDemand" xml:space="preserve">
     <value>Bajo demanda</value>
   </data>
-  <data name="Vm_Teams_Daily" xml:space="preserve">
+  <data name="Studio.Teams.Daily" xml:space="preserve">
     <value>Cada día a las {0}</value>
   </data>
-  <data name="Vm_Teams_Hourly" xml:space="preserve">
+  <data name="Studio.Teams.Hourly" xml:space="preserve">
     <value>Cada hora</value>
   </data>
   <data name="Studio.Shell.Import" xml:space="preserve">
@@ -1451,16 +1451,16 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS" xml:space="preserve">
     <value>Hay dos fuentes de entradas en conflicto — conserve solo una.</value>
   </data>
-  <data name="Vm_Rag_WebFallbackActive" xml:space="preserve">
+  <data name="Studio.Settings.WebFallbackActive" xml:space="preserve">
     <value>Recurso web activo: el bucle correctivo puede consultar páginas, cada una validada contra la inyección de prompt.</value>
   </data>
-  <data name="Vm_Rag_WebFallbackTransportOff" xml:space="preserve">
+  <data name="Studio.Settings.WebFallbackTransportOff" xml:space="preserve">
     <value>Inactivo: la política correctiva lo permite, pero el transporte (Orkeon:Rag:WebFallback) sigue apagado.</value>
   </data>
-  <data name="Vm_Rag_WebFallbackPolicyOff" xml:space="preserve">
+  <data name="Studio.Settings.WebFallbackPolicyOff" xml:space="preserve">
     <value>Inactivo: el transporte está activado, pero la política correctiva (Orkeon:Rag:Corrective:WebFallback) sigue apagada.</value>
   </data>
-  <data name="Vm_Rag_WebFallbackOff" xml:space="preserve">
+  <data name="Studio.Settings.WebFallbackOff" xml:space="preserve">
     <value>Apagado. Ambos interruptores deben estar encendidos para que el bucle correctivo llegue a la web.</value>
   </data>
   <data name="Studio.Settings.CardRate" xml:space="preserve">
@@ -1475,16 +1475,16 @@
   <data name="Studio.Settings.CardLlmLog" xml:space="preserve">
     <value>Registro LLM</value>
   </data>
-  <data name="Vm_Hist_OutcomeSuccess" xml:space="preserve">
+  <data name="Studio.History.OutcomeSuccess" xml:space="preserve">
     <value>Terminada sin errores.</value>
   </data>
-  <data name="Vm_Hist_OutcomeFailed" xml:space="preserve">
+  <data name="Studio.History.OutcomeFailed" xml:space="preserve">
     <value>Fallida (código {0}).</value>
   </data>
-  <data name="Vm_Hist_OutcomeCancelled" xml:space="preserve">
+  <data name="Studio.History.OutcomeCancelled" xml:space="preserve">
     <value>Interrumpida antes del final.</value>
   </data>
-  <data name="Vm_Hist_OutcomeNotStarted" xml:space="preserve">
+  <data name="Studio.History.OutcomeNotStarted" xml:space="preserve">
     <value>Nunca se inició.</value>
   </data>
   <data name="Studio.History.Result" xml:space="preserve">
@@ -1517,13 +1517,13 @@
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve">
     <value>La escritura en la carpeta de trabajo</value>
   </data>
-  <data name="Vm_Diag_AllGood" xml:space="preserve">
+  <data name="Studio.Diagnostics.AllGood" xml:space="preserve">
     <value>Todo está en su sitio.</value>
   </data>
-  <data name="Vm_Diag_FixNeeded" xml:space="preserve">
+  <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve">
     <value>Un punto que corregir antes de lanzar un equipo.</value>
   </data>
-  <data name="Vm_Diag_Counts" xml:space="preserve">
+  <data name="Studio.Diagnostics.Counts" xml:space="preserve">
     <value>{0} comprobaciones superadas, {1} advertencia(s), {2} fallo(s).</value>
   </data>
   <data name="Studio.Diagnostics.Fix" xml:space="preserve">
@@ -1547,25 +1547,25 @@
   <data name="Studio.Trial.InputsHint" xml:space="preserve">
     <value>Transmitido al ensayo mediante --inputs; los lanzamientos reales conservan sus propias entradas.</value>
   </data>
-  <data name="Vm_Import_RecognizedAgents" xml:space="preserve">
+  <data name="Studio.Import.RecognizedAgents" xml:space="preserve">
     <value>{0} — {1} agente(s)</value>
   </data>
-  <data name="Vm_Import_SecretsClean" xml:space="preserve">
+  <data name="Studio.Import.SecretsClean" xml:space="preserve">
     <value>Ningún secreto en los archivos</value>
   </data>
-  <data name="Vm_Import_SecretsCleanDetail" xml:space="preserve">
+  <data name="Studio.Import.SecretsCleanDetail" xml:space="preserve">
     <value>Las claves de API viajan por el entorno, y estos archivos no contienen ninguna.</value>
   </data>
-  <data name="Vm_Import_SecretsFound" xml:space="preserve">
+  <data name="Studio.Import.SecretsFound" xml:space="preserve">
     <value>Algo se parece a una clave pegada</value>
   </data>
-  <data name="Vm_Import_SecretsFoundDetail" xml:space="preserve">
+  <data name="Studio.Import.SecretsFoundDetail" xml:space="preserve">
     <value>{0} archivo(s) contienen lo que parece un secreto en claro — vea la advertencia siguiente.</value>
   </data>
-  <data name="Vm_Import_ToolsLater" xml:space="preserve">
+  <data name="Studio.Import.ToolsLater" xml:space="preserve">
     <value>Herramientas</value>
   </data>
-  <data name="Vm_Import_ToolsLaterDetail" xml:space="preserve">
+  <data name="Studio.Import.ToolsLaterDetail" xml:space="preserve">
     <value>Las herramientas del equipo se comprueban en su primer lanzamiento.</value>
   </data>
   <data name="Studio.Import.DropHint" xml:space="preserve">
@@ -1607,10 +1607,10 @@
   <data name="Studio.Settings.Intro" xml:space="preserve">
     <value>Las claves viven en sus variables de entorno de usuario, nunca en un archivo. Pegue una clave y recuérdela; el campo se vacía una vez guardada.</value>
   </data>
-  <data name="Vm_Config_NotSavedNeedFolder" xml:space="preserve">
+  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve">
     <value>Aún no guardado: autorice al menos una carpeta (pestaña Carpetas autorizadas) — sus cambios se guardarán en cuanto haya una.</value>
   </data>
-  <data name="Vm_Wiz_AssistantNotRunning" xml:space="preserve">
+  <data name="Studio.Create.AssistantNotRunning" xml:space="preserve">
     <value>El asistente no se está ejecutando — inicie la composición (paso 1, Componer) o reanude la sesión; su pregunta se ha conservado.</value>
   </data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve">
@@ -1628,25 +1628,25 @@
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
     <value>Vacío: 30 s. Los modelos de razonamiento (Kimi K3, modos thinking) suelen necesitar 120–300 s.</value>
   </data>
-  <data name="Vm_Picker_AlreadyMounted" xml:space="preserve">
+  <data name="Studio.Settings.AlreadyMounted" xml:space="preserve">
     <value>ya autorizado</value>
   </data>
-  <data name="Vm_TeamMounts_Title" xml:space="preserve">
+  <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>Carpetas de «{0}»</value>
   </data>
-  <data name="Vm_TeamMounts_None" xml:space="preserve">
+  <data name="Studio.Teams.None" xml:space="preserve">
     <value>Sin carpeta, este equipo no podrá leer ni escribir ningún archivo.</value>
   </data>
-  <data name="Vm_TeamMounts_Summary" xml:space="preserve">
+  <data name="Studio.Teams.Summary" xml:space="preserve">
     <value>{0} carpetas: {1}</value>
   </data>
-  <data name="Vm_AgentEditor_TitleAdd" xml:space="preserve">
+  <data name="Studio.Create.TitleAdd" xml:space="preserve">
     <value>Añadir un agente</value>
   </data>
-  <data name="Vm_AgentEditor_TitleEdit" xml:space="preserve">
+  <data name="Studio.Create.TitleEdit" xml:space="preserve">
     <value>Editar el agente</value>
   </data>
-  <data name="Vm_AgentEditor_Add" xml:space="preserve">
+  <data name="Studio.Create.Add" xml:space="preserve">
     <value>Añadir al equipo</value>
   </data>
   <data name="Studio.Settings.PickerTitle" xml:space="preserve">
@@ -1700,13 +1700,13 @@
   <data name="Studio.Settings.AllowedFoldersConfirm" xml:space="preserve">
     <value>Añadir al equipo</value>
   </data>
-  <data name="Vm_Wizard_DroppedDerived" xml:space="preserve">
+  <data name="Studio.Create.DroppedDerived" xml:space="preserve">
     <value>{0}: no se le asociará ninguna carpeta — los agentes que escriban ahí fallarán.</value>
   </data>
   <data name="Studio.Create.RestoreFolders" xml:space="preserve">
     <value>Restablecer</value>
   </data>
-  <data name="Vm_Run_BlockedUndeclared" xml:space="preserve">
+  <data name="Studio.Run.BlockedUndeclared" xml:space="preserve">
     <value>Este equipo usa carpetas que sus ajustes no autorizan: {0}. Declárelas en Ajustes › Carpetas autorizadas, o retírelas del equipo.</value>
   </data>
   <data name="Studio.Run.OpenAllowedFolders" xml:space="preserve">
@@ -1715,19 +1715,19 @@
   <data name="Studio.Create.UndeclaredLegend" xml:space="preserve">
     <value>En rojo: las carpetas que no forman parte de sus carpetas autorizadas.</value>
   </data>
-  <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve">
+  <data name="Studio.Settings.AlreadyAdded" xml:space="preserve">
     <value>ya añadido</value>
   </data>
-  <data name="Vm_AllowedFolders_Conflict" xml:space="preserve">
+  <data name="Studio.Settings.Conflict" xml:space="preserve">
     <value>{0} ya lo usa otra carpeta</value>
   </data>
-  <data name="Vm_AllowedFolders_Summary" xml:space="preserve">
+  <data name="Studio.Settings.Summary" xml:space="preserve">
     <value>{0} carpeta(s) seleccionada(s)</value>
   </data>
-  <data name="Vm_AllowedFolders_Declared" xml:space="preserve">
+  <data name="Studio.Settings.Declared" xml:space="preserve">
     <value>«{0}» añadido a las carpetas autorizadas</value>
   </data>
-  <data name="Vm_AllowedFolders_NotSaved" xml:space="preserve">
+  <data name="Studio.Settings.NotSaved" xml:space="preserve">
     <value>«{0}» añadido, pero no se pudieron guardar los ajustes — {1}</value>
   </data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve">
@@ -1754,7 +1754,7 @@
   <data name="Studio.Create.Wait" xml:space="preserve">
     <value>El paso en curso debe terminar primero</value>
   </data>
-  <data name="Vm_Dialog_ExportDestination" xml:space="preserve">
+  <data name="Studio.Settings.ExportDestination" xml:space="preserve">
     <value>Elija dónde exportar el equipo</value>
   </data>
   <data name="Studio.Create.TeamFolders" xml:space="preserve">
@@ -1802,28 +1802,28 @@
   <data name="Studio.Create.AddAgent" xml:space="preserve">
     <value>Añadir un agente</value>
   </data>
-  <data name="Vm_Teams_MountRo" xml:space="preserve">
+  <data name="Studio.Teams.MountRo" xml:space="preserve">
     <value>{0} (lectura)</value>
   </data>
-  <data name="Vm_Teams_MountRw" xml:space="preserve">
+  <data name="Studio.Teams.MountRw" xml:space="preserve">
     <value>{0} (lectura, escritura)</value>
   </data>
-  <data name="Vm_Teams_MountUnreadable" xml:space="preserve">
+  <data name="Studio.Teams.MountUnreadable" xml:space="preserve">
     <value>carpeta ilegible</value>
   </data>
-  <data name="Vm_Teams_ToTest" xml:space="preserve">
+  <data name="Studio.Teams.ToTest" xml:space="preserve">
     <value>por probar</value>
   </data>
-  <data name="Vm_Teams_LastRun" xml:space="preserve">
+  <data name="Studio.Teams.LastRun" xml:space="preserve">
     <value>Última ejecución: {0}, {1}</value>
   </data>
-  <data name="Vm_Teams_RunOk" xml:space="preserve">
+  <data name="Studio.Teams.RunOk" xml:space="preserve">
     <value>exitosa</value>
   </data>
-  <data name="Vm_Teams_RunFail" xml:space="preserve">
+  <data name="Studio.Teams.RunFail" xml:space="preserve">
     <value>fallida</value>
   </data>
-  <data name="Vm_Teams_NeverRan" xml:space="preserve">
+  <data name="Studio.Teams.NeverRan" xml:space="preserve">
     <value>Nunca ejecutada</value>
   </data>
   <data name="Studio.Teams.MountsLabel" xml:space="preserve">
@@ -1841,13 +1841,13 @@
   <data name="Studio.Teams.Test" xml:space="preserve">
     <value>Probar</value>
   </data>
-  <data name="Teams_SettingLabel" xml:space="preserve">
+  <data name="Studio.Teams.SettingLabel" xml:space="preserve">
     <value>Ajuste: {0}</value>
   </data>
-  <data name="Vm_Run_MetaReads" xml:space="preserve">
+  <data name="Studio.Run.MetaReads" xml:space="preserve">
     <value>lee {0}</value>
   </data>
-  <data name="Vm_Run_MetaWrites" xml:space="preserve">
+  <data name="Studio.Run.MetaWrites" xml:space="preserve">
     <value>escribe en {0}</value>
   </data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve">
@@ -1856,16 +1856,16 @@
   <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve">
     <value>A la espera de un ensayo…</value>
   </data>
-  <data name="Vm_Import_MountsDeclared" xml:space="preserve">
+  <data name="Studio.Import.MountsDeclared" xml:space="preserve">
     <value>Carpetas declaradas</value>
   </data>
-  <data name="Vm_Import_MountsDeclaredDetail" xml:space="preserve">
+  <data name="Studio.Import.MountsDeclaredDetail" xml:space="preserve">
     <value>{0} carpeta(s): {1}</value>
   </data>
-  <data name="Vm_Import_MountsNone" xml:space="preserve">
+  <data name="Studio.Import.MountsNone" xml:space="preserve">
     <value>Ninguna carpeta declarada</value>
   </data>
-  <data name="Vm_Import_MountsNoneDetail" xml:space="preserve">
+  <data name="Studio.Import.MountsNoneDetail" xml:space="preserve">
     <value>Autorice sus carpetas después de añadirlo — Mis equipos, Cambiar las carpetas.</value>
   </data>
   <data name="Studio.Create.TrialCommand" xml:space="preserve">
@@ -1895,13 +1895,13 @@
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve">
     <value>Todavía no hay ninguna carpeta autorizada. Los agentes no verán nada mientras no autorice al menos una.</value>
   </data>
-  <data name="Vm_Config_NotSavedWriteFailed" xml:space="preserve">
+  <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve">
     <value>No guardado — no se pudo escribir el archivo: {0}</value>
   </data>
-  <data name="Vm_Teams_ExportedTo" xml:space="preserve">
+  <data name="Studio.Teams.ExportedTo" xml:space="preserve">
     <value>Equipo exportado a {0}</value>
   </data>
-  <data name="Vm_Teams_ExportFailed" xml:space="preserve">
+  <data name="Studio.Teams.ExportFailed" xml:space="preserve">
     <value>Exportación rechazada — el destino ya existe, o el disco se negó.</value>
   </data>
   <data name="Studio.Create.TryTeam" xml:space="preserve">
@@ -1931,355 +1931,355 @@
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
     <value>Ninguna sesión en curso. Una creación interrumpida reaparecerá aquí.</value>
   </data>
-  <data name="Vm_Wiz_DraftStepPattern" xml:space="preserve">
+  <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Paso {0} de {1} · {2}</value>
   </data>
-  <data name="Vm_Wiz_DraftTitle" xml:space="preserve">
+  <data name="Studio.Create.DraftTitle" xml:space="preserve">
     <value>Creación en curso</value>
   </data>
-  <data name="Vm_Wiz_DraftWaitingTitle" xml:space="preserve">
+  <data name="Studio.Create.DraftWaitingTitle" xml:space="preserve">
     <value>El asistente espera su respuesta</value>
   </data>
-  <data name="Vm_Wiz_DraftResume" xml:space="preserve">
+  <data name="Studio.Create.DraftResume" xml:space="preserve">
     <value>retomar la conversación</value>
   </data>
-  <data name="Vm_Chat_Title" xml:space="preserve">
+  <data name="Studio.Chat.Title" xml:space="preserve">
     <value>Conversación con el asistente</value>
   </data>
-  <data name="Vm_Chat_Recap" xml:space="preserve">
+  <data name="Studio.Chat.Recap" xml:space="preserve">
     <value>Lo que he anotado</value>
   </data>
-  <data name="Vm_Chat_YourBrief" xml:space="preserve">
+  <data name="Studio.Chat.YourBrief" xml:space="preserve">
     <value>SU BRIEFING</value>
   </data>
-  <data name="Vm_Chat_Edit" xml:space="preserve">
+  <data name="Studio.Chat.Edit" xml:space="preserve">
     <value>Editar</value>
   </data>
-  <data name="Vm_Chat_Stop" xml:space="preserve">
+  <data name="Studio.Chat.Stop" xml:space="preserve">
     <value>Detener</value>
   </data>
-  <data name="Vm_Chat_Send" xml:space="preserve">
+  <data name="Studio.Chat.Send" xml:space="preserve">
     <value>Enviar</value>
   </data>
-  <data name="Vm_Chat_Reply" xml:space="preserve">
+  <data name="Studio.Chat.Reply" xml:space="preserve">
     <value>Responder</value>
   </data>
-  <data name="Vm_Chat_Skip" xml:space="preserve">
+  <data name="Studio.Chat.Skip" xml:space="preserve">
     <value>Omitir esta pregunta</value>
   </data>
-  <data name="Vm_Chat_SkipAnswer" xml:space="preserve">
+  <data name="Studio.Chat.SkipAnswer" xml:space="preserve">
     <value>No lo sé — haz lo mejor posible.</value>
   </data>
-  <data name="Vm_Chat_KeyHint" xml:space="preserve">
+  <data name="Studio.Chat.KeyHint" xml:space="preserve">
     <value>Intro para enviar · Mayús+Intro para saltar de línea</value>
   </data>
-  <data name="Vm_Chat_Placeholder" xml:space="preserve">
+  <data name="Studio.Chat.Placeholder" xml:space="preserve">
     <value>Haga su pregunta al asistente…</value>
   </data>
-  <data name="Vm_Chat_Ask" xml:space="preserve">
+  <data name="Studio.Chat.Ask" xml:space="preserve">
     <value>Hacer una pregunta</value>
   </data>
-  <data name="Vm_Chat_AskShort" xml:space="preserve">
+  <data name="Studio.Chat.AskShort" xml:space="preserve">
     <value>Pregunta</value>
   </data>
-  <data name="Vm_Chat_AskTip" xml:space="preserve">
+  <data name="Studio.Chat.AskTip" xml:space="preserve">
     <value>Hacer una pregunta al asistente</value>
   </data>
-  <data name="Vm_Chat_SeeConversation" xml:space="preserve">
+  <data name="Studio.Chat.SeeConversation" xml:space="preserve">
     <value>Ver la conversación</value>
   </data>
-  <data name="Vm_Chat_Close" xml:space="preserve">
+  <data name="Studio.Chat.Close" xml:space="preserve">
     <value>Cerrar la conversación</value>
   </data>
-  <data name="Vm_Chat_BriefEmpty" xml:space="preserve">
+  <data name="Studio.Chat.BriefEmpty" xml:space="preserve">
     <value>Aún no ha descrito nada.</value>
   </data>
-  <data name="Vm_Chat_StripBusy" xml:space="preserve">
+  <data name="Studio.Chat.StripBusy" xml:space="preserve">
     <value>El asistente está componiendo su equipo</value>
   </data>
-  <data name="Vm_Chat_StripAsking" xml:space="preserve">
+  <data name="Studio.Chat.StripAsking" xml:space="preserve">
     <value>El asistente le pide una precisión</value>
   </data>
-  <data name="Vm_Chat_StatusQuestionPattern" xml:space="preserve">
+  <data name="Studio.Chat.StatusQuestionPattern" xml:space="preserve">
     <value>pregunta {0} de {1} · esperando su respuesta</value>
   </data>
-  <data name="Vm_Chat_StatusDonePattern" xml:space="preserve">
+  <data name="Studio.Chat.StatusDonePattern" xml:space="preserve">
     <value>brief completo · {0} mensaje(s)</value>
   </data>
-  <data name="Vm_Chat_StatusMessagesPattern" xml:space="preserve">
+  <data name="Studio.Chat.StatusMessagesPattern" xml:space="preserve">
     <value>{0} mensaje(s)</value>
   </data>
-  <data name="Vm_Chat_StatusNoQuestion" xml:space="preserve">
+  <data name="Studio.Chat.StatusNoQuestion" xml:space="preserve">
     <value>ninguna pregunta por ahora</value>
   </data>
-  <data name="Vm_Chat_RecapProgressPattern" xml:space="preserve">
+  <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>
-  <data name="Vm_Chat_ProfileSuffixPattern" xml:space="preserve">
+  <data name="Studio.Chat.ProfileSuffixPattern" xml:space="preserve">
     <value>{0} · {1}</value>
   </data>
-  <data name="Vm_Chat_Status1" xml:space="preserve">
+  <data name="Studio.Chat.Status1" xml:space="preserve">
     <value>leyendo el briefing</value>
   </data>
-  <data name="Vm_Chat_Status2" xml:space="preserve">
+  <data name="Studio.Chat.Status2" xml:space="preserve">
     <value>analizando la fuente</value>
   </data>
-  <data name="Vm_Chat_Status3" xml:space="preserve">
+  <data name="Studio.Chat.Status3" xml:space="preserve">
     <value>componiendo los roles</value>
   </data>
-  <data name="Vm_Chat_Thinking1" xml:space="preserve">
+  <data name="Studio.Chat.Thinking1" xml:space="preserve">
     <value>Estoy releyendo su descripción…</value>
   </data>
-  <data name="Vm_Chat_Thinking2" xml:space="preserve">
+  <data name="Studio.Chat.Thinking2" xml:space="preserve">
     <value>Estoy mirando dónde están los documentos…</value>
   </data>
-  <data name="Vm_Chat_Thinking3" xml:space="preserve">
+  <data name="Studio.Chat.Thinking3" xml:space="preserve">
     <value>Estoy esbozando los roles del equipo…</value>
   </data>
-  <data name="Vm_Chat_WrapBody" xml:space="preserve">
+  <data name="Studio.Chat.WrapBody" xml:space="preserve">
     <value>Gracias — tengo lo necesario para componer el equipo.</value>
   </data>
-  <data name="Vm_Chat_WrapDetail" xml:space="preserve">
+  <data name="Studio.Chat.WrapDetail" xml:space="preserve">
     <value>Le muestro la composición propuesta: los agentes, las carpetas autorizadas, y lo que cada uno puede hacer.</value>
   </data>
-  <data name="Vm_Chat_Q1_Fact" xml:space="preserve">
+  <data name="Studio.Chat.Q1Fact" xml:space="preserve">
     <value>Ubicación de la carpeta</value>
   </data>
-  <data name="Vm_Chat_Q1_Body" xml:space="preserve">
+  <data name="Studio.Chat.Q1Body" xml:space="preserve">
     <value>¿Dónde está esa carpeta, y qué contiene?</value>
   </data>
-  <data name="Vm_Chat_Q1_Detail" xml:space="preserve">
+  <data name="Studio.Chat.Q1Detail" xml:space="preserve">
     <value>Por ejemplo «Documentos/Actas», con archivos Word o PDF. Si me da la ruta exacta, puedo echar un vistazo para verificar.</value>
   </data>
-  <data name="Vm_Chat_Q1_Hint" xml:space="preserve">
+  <data name="Studio.Chat.Q1Hint" xml:space="preserve">
     <value>Si no está seguro, dígalo: asumiré documentos de texto en una sola carpeta.</value>
   </data>
-  <data name="Vm_Chat_Q1_Placeholder" xml:space="preserve">
+  <data name="Studio.Chat.Q1Placeholder" xml:space="preserve">
     <value>Ej. C:\Users\yo\Documentos\Actas de reunión</value>
   </data>
-  <data name="Vm_Chat_Q1_Chip1" xml:space="preserve">
+  <data name="Studio.Chat.Q1Chip1" xml:space="preserve">
     <value>Documentos/Actas de reunión</value>
   </data>
-  <data name="Vm_Chat_Q1_Chip2" xml:space="preserve">
+  <data name="Studio.Chat.Q1Chip2" xml:space="preserve">
     <value>Elegir una carpeta…</value>
   </data>
-  <data name="Vm_Chat_Q1_Chip3" xml:space="preserve">
+  <data name="Studio.Chat.Q1Chip3" xml:space="preserve">
     <value>Aún no lo sé</value>
   </data>
-  <data name="Vm_Chat_Q1_Value1" xml:space="preserve">
+  <data name="Studio.Chat.Q1Value1" xml:space="preserve">
     <value>Documentos/Actas de reunión</value>
   </data>
-  <data name="Vm_Chat_Q1_Value2" xml:space="preserve">
+  <data name="Studio.Chat.Q1Value2" xml:space="preserve">
     <value>Carpeta por elegir</value>
   </data>
-  <data name="Vm_Chat_Q1_Value3" xml:space="preserve">
+  <data name="Studio.Chat.Q1Value3" xml:space="preserve">
     <value>Por precisar más tarde</value>
   </data>
-  <data name="Vm_Chat_Q2_Fact" xml:space="preserve">
+  <data name="Studio.Chat.Q2Fact" xml:space="preserve">
     <value>Momento de entrega</value>
   </data>
-  <data name="Vm_Chat_Q2_Body" xml:space="preserve">
+  <data name="Studio.Chat.Q2Body" xml:space="preserve">
     <value>¿Cuándo quiere recibir el resumen?</value>
   </data>
-  <data name="Vm_Chat_Q2_Detail" xml:space="preserve">
+  <data name="Studio.Chat.Q2Detail" xml:space="preserve">
     <value>El equipo trabaja solo a esa hora, incluso con Studio cerrado. Podrá cambiar el horario tras la adopción.</value>
   </data>
-  <data name="Vm_Chat_Q2_Placeholder" xml:space="preserve">
+  <data name="Studio.Chat.Q2Placeholder" xml:space="preserve">
     <value>Ej.: el viernes hacia las 17 h</value>
   </data>
-  <data name="Vm_Chat_Q2_Chip1" xml:space="preserve">
+  <data name="Studio.Chat.Q2Chip1" xml:space="preserve">
     <value>Viernes a las 17 h</value>
   </data>
-  <data name="Vm_Chat_Q2_Chip2" xml:space="preserve">
+  <data name="Studio.Chat.Q2Chip2" xml:space="preserve">
     <value>Lunes a las 8 h</value>
   </data>
-  <data name="Vm_Chat_Q2_Chip3" xml:space="preserve">
+  <data name="Studio.Chat.Q2Chip3" xml:space="preserve">
     <value>Cuando sea</value>
   </data>
-  <data name="Vm_Chat_Q2_Value1" xml:space="preserve">
+  <data name="Studio.Chat.Q2Value1" xml:space="preserve">
     <value>Viernes a las 17 h</value>
   </data>
-  <data name="Vm_Chat_Q2_Value2" xml:space="preserve">
+  <data name="Studio.Chat.Q2Value2" xml:space="preserve">
     <value>Lunes a las 8 h</value>
   </data>
-  <data name="Vm_Chat_Q2_Value3" xml:space="preserve">
+  <data name="Studio.Chat.Q2Value3" xml:space="preserve">
     <value>Horario libre</value>
   </data>
-  <data name="Vm_Chat_Q3_Fact" xml:space="preserve">
+  <data name="Studio.Chat.Q3Fact" xml:space="preserve">
     <value>Límite que respetar</value>
   </data>
-  <data name="Vm_Chat_Q3_Body" xml:space="preserve">
+  <data name="Studio.Chat.Q3Body" xml:space="preserve">
     <value>¿Hay algo que el equipo no deba hacer nunca?</value>
   </data>
-  <data name="Vm_Chat_Q3_Detail" xml:space="preserve">
+  <data name="Studio.Chat.Q3Detail" xml:space="preserve">
     <value>Un límite claro vale más que una instrucción vaga: archivos que ignorar, información que no citar, tono que evitar.</value>
   </data>
-  <data name="Vm_Chat_Q3_Hint" xml:space="preserve">
+  <data name="Studio.Chat.Q3Hint" xml:space="preserve">
     <value>Puede omitirla: me limitaré entonces a la lectura sola de la carpeta.</value>
   </data>
-  <data name="Vm_Chat_Q3_Placeholder" xml:space="preserve">
+  <data name="Studio.Chat.Q3Placeholder" xml:space="preserve">
     <value>Ej.: no citar nunca los documentos marcados como confidenciales</value>
   </data>
-  <data name="Vm_Chat_Q3_Chip1" xml:space="preserve">
+  <data name="Studio.Chat.Q3Chip1" xml:space="preserve">
     <value>Solo lectura de la carpeta</value>
   </data>
-  <data name="Vm_Chat_Q3_Chip2" xml:space="preserve">
+  <data name="Studio.Chat.Q3Chip2" xml:space="preserve">
     <value>Ignorar los borradores</value>
   </data>
-  <data name="Vm_Chat_Q3_Chip3" xml:space="preserve">
+  <data name="Studio.Chat.Q3Chip3" xml:space="preserve">
     <value>Nada en particular</value>
   </data>
-  <data name="Vm_Chat_Q3_Value1" xml:space="preserve">
+  <data name="Studio.Chat.Q3Value1" xml:space="preserve">
     <value>Solo lectura de la carpeta</value>
   </data>
-  <data name="Vm_Chat_Q3_Value2" xml:space="preserve">
+  <data name="Studio.Chat.Q3Value2" xml:space="preserve">
     <value>Borradores ignorados</value>
   </data>
-  <data name="Vm_Chat_Q3_Value3" xml:space="preserve">
+  <data name="Studio.Chat.Q3Value3" xml:space="preserve">
     <value>Ningún límite</value>
   </data>
-  <data name="Vm_Chat_BriefAnswerPattern" xml:space="preserve">
+  <data name="Studio.Chat.BriefAnswerPattern" xml:space="preserve">
     <value>{0}: {1}.</value>
   </data>
-  <data name="Vm_Chat_FactBrief" xml:space="preserve">
+  <data name="Studio.Chat.FactBrief" xml:space="preserve">
     <value>El trabajo confiado</value>
   </data>
-  <data name="Vm_Chat_FactRhythm" xml:space="preserve">
+  <data name="Studio.Chat.FactRhythm" xml:space="preserve">
     <value>Ritmo</value>
   </data>
-  <data name="Vm_Chat_FactSource" xml:space="preserve">
+  <data name="Studio.Chat.FactSource" xml:space="preserve">
     <value>Fuente de los documentos</value>
   </data>
-  <data name="Vm_Chat_FactOutput" xml:space="preserve">
+  <data name="Studio.Chat.FactOutput" xml:space="preserve">
     <value>Forma del resultado</value>
   </data>
-  <data name="Vm_Chat_FactComposeNote" xml:space="preserve">
+  <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>Instrucción de composición</value>
   </data>
-  <data name="Vm_Chat_FactTryNote" xml:space="preserve">
+  <data name="Studio.Chat.FactTryNote" xml:space="preserve">
     <value>Instrucción de prueba</value>
   </data>
-  <data name="Vm_Chat_FactAdoptNote" xml:space="preserve">
+  <data name="Studio.Chat.FactAdoptNote" xml:space="preserve">
     <value>Instrucción de adopción</value>
   </data>
-  <data name="Vm_Chat_FactPending" xml:space="preserve">
+  <data name="Studio.Chat.FactPending" xml:space="preserve">
     <value>en espera</value>
   </data>
-  <data name="Vm_Chat_EmptyCreate" xml:space="preserve">
+  <data name="Studio.Chat.EmptyCreate" xml:space="preserve">
     <value>Haga su pregunta: el asistente responde sin modificar nada hasta que usted se lo pida.</value>
   </data>
-  <data name="Vm_Chat_EmptyRun" xml:space="preserve">
+  <data name="Studio.Chat.EmptyRun" xml:space="preserve">
     <value>Haga una pregunta sobre la ejecución en curso: por qué un paso es lento, qué pasa si falla, dónde acaba el resultado.</value>
   </data>
-  <data name="Vm_Chat_EmptyHistory" xml:space="preserve">
+  <data name="Studio.Chat.EmptyHistory" xml:space="preserve">
     <value>Haga una pregunta sobre una ejecución pasada: por qué falló, qué ha cambiado desde entonces, cómo evitar que se repita.</value>
   </data>
-  <data name="Vm_Chat_RuleFolders" xml:space="preserve">
+  <data name="Studio.Chat.RuleFolders" xml:space="preserve">
     <value>carpeta|archivo|fichero|acceso|permiso|leer|escribir</value>
   </data>
-  <data name="Vm_Chat_RuleCost" xml:space="preserve">
+  <data name="Studio.Chat.RuleCost" xml:space="preserve">
     <value>coste|costo|precio|pago|factur|token|caro</value>
   </data>
-  <data name="Vm_Chat_RuleDuration" xml:space="preserve">
+  <data name="Studio.Chat.RuleDuration" xml:space="preserve">
     <value>tiempo|duraci[oó]n|cu[aá]nto tarda|lento|r[aá]pido|minuto</value>
   </data>
-  <data name="Vm_Chat_RuleError" xml:space="preserve">
+  <data name="Studio.Chat.RuleError" xml:space="preserve">
     <value>error|falla|fallo|se cae|avería|bug</value>
   </data>
-  <data name="Vm_Chat_RuleSchedule" xml:space="preserve">
+  <data name="Studio.Chat.RuleSchedule" xml:space="preserve">
     <value>planific|programa|hora|cron|autom[aá]tic|ma[nñ]ana</value>
   </data>
-  <data name="Vm_Chat_RulePrivacy" xml:space="preserve">
+  <data name="Studio.Chat.RulePrivacy" xml:space="preserve">
     <value>confidencial|privad|datos|rgpd|seguridad|salir</value>
   </data>
-  <data name="Vm_Chat_AnswerFolders" xml:space="preserve">
+  <data name="Studio.Chat.AnswerFolders" xml:space="preserve">
     <value>Los agentes solo ven las carpetas autorizadas en Ajustes. Una carpeta de solo lectura no puede modificarse nunca, aunque un agente lo pida.</value>
   </data>
-  <data name="Vm_Chat_AnswerCost" xml:space="preserve">
+  <data name="Studio.Chat.AnswerCost" xml:space="preserve">
     <value>Un perfil local (Ollama) no cuesta nada. En la nube, el coste depende del número de palabras intercambiadas: Studio muestra los tokens consumidos al final de cada ejecución.</value>
   </data>
-  <data name="Vm_Chat_AnswerDuration" xml:space="preserve">
+  <data name="Studio.Chat.AnswerDuration" xml:space="preserve">
     <value>Con este conjunto de datos, cuente uno o dos minutos por ejecución en local. El registro técnico indica la duración de cada paso.</value>
   </data>
-  <data name="Vm_Chat_AnswerError" xml:space="preserve">
+  <data name="Studio.Chat.AnswerError" xml:space="preserve">
     <value>Si un paso falla, la ejecución se detiene y nada se escribe en la carpeta de salida. El fallo aparece en el historial, con el paso y el mensaje de error.</value>
   </data>
-  <data name="Vm_Chat_AnswerSchedule" xml:space="preserve">
+  <data name="Studio.Chat.AnswerSchedule" xml:space="preserve">
     <value>Un equipo programado se ejecuta incluso con Studio cerrado, mientras la máquina esté encendida. Puede detener la planificación desde Mis equipos.</value>
   </data>
-  <data name="Vm_Chat_AnswerPrivacy" xml:space="preserve">
+  <data name="Studio.Chat.AnswerPrivacy" xml:space="preserve">
     <value>Con un perfil local, ningún dato sale de la máquina. Con un perfil en la nube, solo sale el texto enviado al modelo — nunca los archivos.</value>
   </data>
-  <data name="Vm_Chat_ReplyStep1" xml:space="preserve">
+  <data name="Studio.Chat.ReplyStep1" xml:space="preserve">
     <value>Describa el trabajo en una frase, como a un colega: lo que hoy hace a mano, y lo que quiere recibir. Yo me ocupo del resto — y le pediré las precisiones que falten.</value>
   </data>
-  <data name="Vm_Chat_ReplyStep2" xml:space="preserve">
+  <data name="Studio.Chat.ReplyStep2" xml:space="preserve">
     <value>Los agentes propuestos se reparten la lectura, la redacción y la revisión. Puede quitar uno: reajustaré los roles, y las carpetas autorizadas seguirán igual.</value>
   </data>
-  <data name="Vm_Chat_ReplyStep3" xml:space="preserve">
+  <data name="Studio.Chat.ReplyStep3" xml:space="preserve">
     <value>La prueba no toca nada: solo lectura, sobre una muestra de documentos, y nada se guarda. Es el momento de verificar el tono y el nivel de detalle.</value>
   </data>
-  <data name="Vm_Chat_ReplyStep4" xml:space="preserve">
+  <data name="Studio.Chat.ReplyStep4" xml:space="preserve">
     <value>Una vez adoptado, el equipo trabaja solo a la hora elegida, incluso con Studio cerrado. Cada ejecución deja rastro en Historial, y puede detener la planificación desde Mis equipos.</value>
   </data>
-  <data name="Vm_Chat_ReplyRun" xml:space="preserve">
+  <data name="Studio.Chat.ReplyRun" xml:space="preserve">
     <value>Sigo la ejecución en directo. Si un paso se detiene, dígamelo: leo el registro técnico y le explico qué bloqueó, sin jerga.</value>
   </data>
-  <data name="Vm_Chat_ReplyHistory" xml:space="preserve">
+  <data name="Studio.Chat.ReplyHistory" xml:space="preserve">
     <value>Cada línea del historial conserva su registro completo. Pregúnteme «¿por qué falló la última?» y recupero el paso fallido y el mensaje de error.</value>
   </data>
-  <data name="Vm_Lang_System" xml:space="preserve">
+  <data name="Studio.Shell.System" xml:space="preserve">
     <value>SISTEMA</value>
   </data>
-  <data name="Vm_Lang_Chosen" xml:space="preserve">
+  <data name="Studio.Shell.Chosen" xml:space="preserve">
     <value>ELEGIDO</value>
   </data>
-  <data name="Vm_Lang_FromSystem" xml:space="preserve">
+  <data name="Studio.Shell.FromSystem" xml:space="preserve">
     <value>idioma del sistema</value>
   </data>
-  <data name="Vm_Lang_FromChoice" xml:space="preserve">
+  <data name="Studio.Shell.FromChoice" xml:space="preserve">
     <value>elección guardada</value>
   </data>
-  <data name="Vm_Lang_HeaderPattern" xml:space="preserve">
+  <data name="Studio.Shell.HeaderPattern" xml:space="preserve">
     <value>{0} · {1}</value>
   </data>
-  <data name="Vm_Lang_TooltipPattern" xml:space="preserve">
+  <data name="Studio.Shell.TooltipPattern" xml:space="preserve">
     <value>{0} — {1}</value>
   </data>
-  <data name="Vm_Tool_ReadScoped" xml:space="preserve">
+  <data name="Studio.Common.ReadScoped" xml:space="preserve">
     <value>leer {0}</value>
   </data>
-  <data name="Vm_Tool_ListScoped" xml:space="preserve">
+  <data name="Studio.Common.ListScoped" xml:space="preserve">
     <value>listar {0}</value>
   </data>
-  <data name="Vm_Tool_WriteScoped" xml:space="preserve">
+  <data name="Studio.Common.WriteScoped" xml:space="preserve">
     <value>escribir {0}</value>
   </data>
-  <data name="Vm_Tool_Llm" xml:space="preserve">
+  <data name="Studio.Common.Llm" xml:space="preserve">
     <value>redactar con la IA</value>
   </data>
-  <data name="Vm_Tool_Web" xml:space="preserve">
+  <data name="Studio.Common.Web" xml:space="preserve">
     <value>consultar una página web</value>
   </data>
-  <data name="Vm_Tool_Rag" xml:space="preserve">
+  <data name="Studio.Common.Rag" xml:space="preserve">
     <value>buscar en el índice</value>
   </data>
-  <data name="Vm_Tour_CounterPattern" xml:space="preserve">
+  <data name="Studio.Shell.CounterPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>
   <data name="Studio.Run.ChooseTeam" xml:space="preserve">
     <value>Elegir un equipo</value>
   </data>
-  <data name="Vm_Doctor_StatusOk" xml:space="preserve">
+  <data name="Studio.Diagnostics.StatusOk" xml:space="preserve">
     <value>En su sitio.</value>
   </data>
-  <data name="Vm_Doctor_StatusWarning" xml:space="preserve">
+  <data name="Studio.Diagnostics.StatusWarning" xml:space="preserve">
     <value>Utilizable, pero merece un vistazo.</value>
   </data>
-  <data name="Vm_Doctor_StatusFailure" xml:space="preserve">
+  <data name="Studio.Diagnostics.StatusFailure" xml:space="preserve">
     <value>Falta — un equipo no funcionará mientras no se arregle.</value>
   </data>
-  <data name="Vm_Doctor_StatusUnknown" xml:space="preserve">
+  <data name="Studio.Diagnostics.StatusUnknown" xml:space="preserve">
     <value>No verificado.</value>
   </data>
 </root>

@@ -38,62 +38,62 @@ public static class StudioStringKeys
     // ---- Core formatters (tranche 1) ------------------------------------
 
     /// <summary>"Validation: no findings."</summary>
-    public const string ValidationNoFindings = "Core_Validation_NoFindings";
+    public const string ValidationNoFindings = "Studio.Diagnostics.NoFindings";
 
     /// <summary>"Validation: {0} error(s), {1} warning(s), {2} note(s)."</summary>
-    public const string ValidationSummary = "Core_Validation_Summary";
+    public const string ValidationSummary = "Studio.Diagnostics.Summary";
 
     /// <summary>"Nothing ran — {0}"</summary>
-    public const string LaunchNothingRan = "Core_Launch_NothingRan";
+    public const string LaunchNothingRan = "Studio.Run.NothingRan";
 
     /// <summary>"Exit code {0} — {1}"</summary>
-    public const string LaunchExitCode = "Core_Launch_ExitCode";
+    public const string LaunchExitCode = "Studio.Run.ExitCode";
 
     // ---- Usage metric chips (Launch/UsageMetricsFormatter, W-08) ---------
 
     /// <summary>"{0} tokens"</summary>
-    public const string UsageTokens = "Core_Usage_Tokens";
+    public const string UsageTokens = "Studio.Run.Tokens";
 
     /// <summary>"cache {0} % · {1} tokens"</summary>
-    public const string UsageCache = "Core_Usage_Cache";
+    public const string UsageCache = "Studio.Run.Cache";
 
     /// <summary>"{0} s"</summary>
-    public const string UsageSeconds = "Core_Usage_Seconds";
+    public const string UsageSeconds = "Studio.Run.Seconds";
 
     /// <summary>"{0} min {1} s"</summary>
-    public const string UsageMinutesSeconds = "Core_Usage_MinutesSeconds";
+    public const string UsageMinutesSeconds = "Studio.Run.MinutesSeconds";
 
     // ---- Wizard ask feedback (Teams/CreateTeamViewModel) -----------------
 
     /// <summary>"The assistant is not running any more — …"</summary>
-    public const string WizardAssistantNotRunning = "Vm_Wiz_AssistantNotRunning";
+    public const string WizardAssistantNotRunning = "Studio.Create.AssistantNotRunning";
 
     /// <summary>The four stepper labels. They already lived in the WPF resx for the
     /// stepper itself; the registry adopts the same keys so the draft line below the nav
     /// can name a step without a second spelling of it.</summary>
-    public const string WizardStep1 = "Wiz_Step1";
+    public const string WizardStep1 = "Studio.Create.Step1";
 
     /// <summary>"Compose"</summary>
-    public const string WizardStep2 = "Wiz_Step2";
+    public const string WizardStep2 = "Studio.Create.Step2";
 
     /// <summary>"Try"</summary>
-    public const string WizardStep3 = "Wiz_Step3";
+    public const string WizardStep3 = "Studio.Create.Step3";
 
     /// <summary>"Adopt"</summary>
-    public const string WizardStep4 = "Wiz_Step4";
+    public const string WizardStep4 = "Studio.Create.Step4";
 
     /// <summary>"Step {0} of {1} · {2}" — never assembled by hand: Chinese has no
     /// « sur », and a concatenation would ship the French joiner to every culture.</summary>
-    public const string WizardDraftStepPattern = "Vm_Wiz_DraftStepPattern";
+    public const string WizardDraftStepPattern = "Studio.Create.DraftStepPattern";
 
     /// <summary>"A creation in progress"</summary>
-    public const string WizardDraftTitle = "Vm_Wiz_DraftTitle";
+    public const string WizardDraftTitle = "Studio.Create.DraftTitle";
 
     /// <summary>"The assistant is waiting for your answer"</summary>
-    public const string WizardDraftWaitingTitle = "Vm_Wiz_DraftWaitingTitle";
+    public const string WizardDraftWaitingTitle = "Studio.Create.DraftWaitingTitle";
 
     /// <summary>"resume the conversation"</summary>
-    public const string WizardDraftResume = "Vm_Wiz_DraftResume";
+    public const string WizardDraftResume = "Studio.Create.DraftResume";
 
 
     // ---- The assistant conversation (Teams/ChatThreadViewModel, 30/08 mock) ----
@@ -101,1057 +101,1057 @@ public static class StudioStringKeys
     // its keyword bank. The regex patterns are localized on purpose: the words a user
     // types to ask about cost or folders are not the same in every language.
     /// <summary>"Assistant conversation"</summary>
-    public const string ChatTitle = "Vm_Chat_Title";
+    public const string ChatTitle = "Studio.Chat.Title";
     /// <summary>"What I've noted"</summary>
-    public const string ChatRecap = "Vm_Chat_Recap";
+    public const string ChatRecap = "Studio.Chat.Recap";
     /// <summary>"YOUR BRIEF"</summary>
-    public const string ChatYourBrief = "Vm_Chat_YourBrief";
+    public const string ChatYourBrief = "Studio.Chat.YourBrief";
     /// <summary>"Edit"</summary>
-    public const string ChatEdit = "Vm_Chat_Edit";
+    public const string ChatEdit = "Studio.Chat.Edit";
     /// <summary>"Stop"</summary>
-    public const string ChatStop = "Vm_Chat_Stop";
+    public const string ChatStop = "Studio.Chat.Stop";
     /// <summary>"Send"</summary>
-    public const string ChatSend = "Vm_Chat_Send";
+    public const string ChatSend = "Studio.Chat.Send";
     /// <summary>"Reply"</summary>
-    public const string ChatReply = "Vm_Chat_Reply";
+    public const string ChatReply = "Studio.Chat.Reply";
     /// <summary>"Skip this question"</summary>
-    public const string ChatSkip = "Vm_Chat_Skip";
+    public const string ChatSkip = "Studio.Chat.Skip";
     /// <summary>"I don't know — do your best."</summary>
-    public const string ChatSkipAnswer = "Vm_Chat_SkipAnswer";
+    public const string ChatSkipAnswer = "Studio.Chat.SkipAnswer";
     /// <summary>"Enter to send · Shift+Enter for a new line"</summary>
-    public const string ChatKeyHint = "Vm_Chat_KeyHint";
+    public const string ChatKeyHint = "Studio.Chat.KeyHint";
     /// <summary>"Ask the assistant a question…"</summary>
-    public const string ChatPlaceholder = "Vm_Chat_Placeholder";
+    public const string ChatPlaceholder = "Studio.Chat.Placeholder";
     /// <summary>"Ask a question"</summary>
-    public const string ChatAsk = "Vm_Chat_Ask";
+    public const string ChatAsk = "Studio.Chat.Ask";
     /// <summary>"Question"</summary>
-    public const string ChatAskShort = "Vm_Chat_AskShort";
+    public const string ChatAskShort = "Studio.Chat.AskShort";
     /// <summary>"Ask the assistant a question"</summary>
-    public const string ChatAskTip = "Vm_Chat_AskTip";
+    public const string ChatAskTip = "Studio.Chat.AskTip";
     /// <summary>"See the conversation"</summary>
-    public const string ChatSeeConversation = "Vm_Chat_SeeConversation";
+    public const string ChatSeeConversation = "Studio.Chat.SeeConversation";
     /// <summary>"Close the conversation"</summary>
-    public const string ChatClose = "Vm_Chat_Close";
+    public const string ChatClose = "Studio.Chat.Close";
     /// <summary>"You haven't described anything yet."</summary>
-    public const string ChatBriefEmpty = "Vm_Chat_BriefEmpty";
+    public const string ChatBriefEmpty = "Studio.Chat.BriefEmpty";
     /// <summary>"The assistant is composing your team"</summary>
-    public const string ChatStripBusy = "Vm_Chat_StripBusy";
+    public const string ChatStripBusy = "Studio.Chat.StripBusy";
     /// <summary>"The assistant needs one more detail"</summary>
-    public const string ChatStripAsking = "Vm_Chat_StripAsking";
+    public const string ChatStripAsking = "Studio.Chat.StripAsking";
     /// <summary>"question {0} of {1} · waiting for your answer"</summary>
-    public const string ChatStatusQuestionPattern = "Vm_Chat_StatusQuestionPattern";
+    public const string ChatStatusQuestionPattern = "Studio.Chat.StatusQuestionPattern";
     /// <summary>"brief complete · {0} message(s)"</summary>
-    public const string ChatStatusDonePattern = "Vm_Chat_StatusDonePattern";
+    public const string ChatStatusDonePattern = "Studio.Chat.StatusDonePattern";
     /// <summary>"{0} message(s)"</summary>
-    public const string ChatStatusMessagesPattern = "Vm_Chat_StatusMessagesPattern";
+    public const string ChatStatusMessagesPattern = "Studio.Chat.StatusMessagesPattern";
     /// <summary>"no question yet"</summary>
-    public const string ChatStatusNoQuestion = "Vm_Chat_StatusNoQuestion";
+    public const string ChatStatusNoQuestion = "Studio.Chat.StatusNoQuestion";
     /// <summary>"{0} / {1}"</summary>
-    public const string ChatRecapProgressPattern = "Vm_Chat_RecapProgressPattern";
+    public const string ChatRecapProgressPattern = "Studio.Chat.RecapProgressPattern";
     /// <summary>"{0} · {1}"</summary>
-    public const string ChatProfileSuffixPattern = "Vm_Chat_ProfileSuffixPattern";
+    public const string ChatProfileSuffixPattern = "Studio.Chat.ProfileSuffixPattern";
     /// <summary>"reading the brief"</summary>
-    public const string ChatStatus1 = "Vm_Chat_Status1";
+    public const string ChatStatus1 = "Studio.Chat.Status1";
     /// <summary>"analysing the source"</summary>
-    public const string ChatStatus2 = "Vm_Chat_Status2";
+    public const string ChatStatus2 = "Studio.Chat.Status2";
     /// <summary>"composing the roles"</summary>
-    public const string ChatStatus3 = "Vm_Chat_Status3";
+    public const string ChatStatus3 = "Studio.Chat.Status3";
     /// <summary>"I'm re-reading your description…"</summary>
-    public const string ChatThinking1 = "Vm_Chat_Thinking1";
+    public const string ChatThinking1 = "Studio.Chat.Thinking1";
     /// <summary>"I'm looking at where the documents are…"</summary>
-    public const string ChatThinking2 = "Vm_Chat_Thinking2";
+    public const string ChatThinking2 = "Studio.Chat.Thinking2";
     /// <summary>"I'm sketching the team's roles…"</summary>
-    public const string ChatThinking3 = "Vm_Chat_Thinking3";
+    public const string ChatThinking3 = "Studio.Chat.Thinking3";
     /// <summary>"Thank you — I have what I need to compose the team."</summary>
-    public const string ChatWrapBody = "Vm_Chat_WrapBody";
+    public const string ChatWrapBody = "Studio.Chat.WrapBody";
     /// <summary>"I'll show you the composition I propose: the agents, the allowed fo…"</summary>
-    public const string ChatWrapDetail = "Vm_Chat_WrapDetail";
+    public const string ChatWrapDetail = "Studio.Chat.WrapDetail";
     /// <summary>"Folder location"</summary>
-    public const string ChatQ1Fact = "Vm_Chat_Q1_Fact";
+    public const string ChatQ1Fact = "Studio.Chat.Q1Fact";
     /// <summary>"Where is this folder, and what does it hold?"</summary>
-    public const string ChatQ1Body = "Vm_Chat_Q1_Body";
+    public const string ChatQ1Body = "Studio.Chat.Q1Body";
     /// <summary>"For instance « Documents/Meeting notes », with Word or PDF files. G…"</summary>
-    public const string ChatQ1Detail = "Vm_Chat_Q1_Detail";
+    public const string ChatQ1Detail = "Studio.Chat.Q1Detail";
     /// <summary>"If you are not sure, say so: I'll assume text documents in a single…"</summary>
-    public const string ChatQ1Hint = "Vm_Chat_Q1_Hint";
+    public const string ChatQ1Hint = "Studio.Chat.Q1Hint";
     /// <summary>"e.g. C:\Users\me\Documents\Meeting notes"</summary>
-    public const string ChatQ1Placeholder = "Vm_Chat_Q1_Placeholder";
+    public const string ChatQ1Placeholder = "Studio.Chat.Q1Placeholder";
     /// <summary>"Documents/Meeting notes"</summary>
-    public const string ChatQ1Chip1 = "Vm_Chat_Q1_Chip1";
+    public const string ChatQ1Chip1 = "Studio.Chat.Q1Chip1";
     /// <summary>"Pick a folder…"</summary>
-    public const string ChatQ1Chip2 = "Vm_Chat_Q1_Chip2";
+    public const string ChatQ1Chip2 = "Studio.Chat.Q1Chip2";
     /// <summary>"I don't know yet"</summary>
-    public const string ChatQ1Chip3 = "Vm_Chat_Q1_Chip3";
+    public const string ChatQ1Chip3 = "Studio.Chat.Q1Chip3";
     /// <summary>"Documents/Meeting notes"</summary>
-    public const string ChatQ1Value1 = "Vm_Chat_Q1_Value1";
+    public const string ChatQ1Value1 = "Studio.Chat.Q1Value1";
     /// <summary>"Folder to be picked"</summary>
-    public const string ChatQ1Value2 = "Vm_Chat_Q1_Value2";
+    public const string ChatQ1Value2 = "Studio.Chat.Q1Value2";
     /// <summary>"To be confirmed later"</summary>
-    public const string ChatQ1Value3 = "Vm_Chat_Q1_Value3";
+    public const string ChatQ1Value3 = "Studio.Chat.Q1Value3";
     /// <summary>"Delivery moment"</summary>
-    public const string ChatQ2Fact = "Vm_Chat_Q2_Fact";
+    public const string ChatQ2Fact = "Studio.Chat.Q2Fact";
     /// <summary>"When do you want to receive the summary?"</summary>
-    public const string ChatQ2Body = "Vm_Chat_Q2_Body";
+    public const string ChatQ2Body = "Studio.Chat.Q2Body";
     /// <summary>"The team works on its own at that hour, even with Studio closed. Yo…"</summary>
-    public const string ChatQ2Detail = "Vm_Chat_Q2_Detail";
+    public const string ChatQ2Detail = "Studio.Chat.Q2Detail";
     /// <summary>"e.g. Friday around 5 pm"</summary>
-    public const string ChatQ2Placeholder = "Vm_Chat_Q2_Placeholder";
+    public const string ChatQ2Placeholder = "Studio.Chat.Q2Placeholder";
     /// <summary>"Friday 5 pm"</summary>
-    public const string ChatQ2Chip1 = "Vm_Chat_Q2_Chip1";
+    public const string ChatQ2Chip1 = "Studio.Chat.Q2Chip1";
     /// <summary>"Monday 8 am"</summary>
-    public const string ChatQ2Chip2 = "Vm_Chat_Q2_Chip2";
+    public const string ChatQ2Chip2 = "Studio.Chat.Q2Chip2";
     /// <summary>"Whenever"</summary>
-    public const string ChatQ2Chip3 = "Vm_Chat_Q2_Chip3";
+    public const string ChatQ2Chip3 = "Studio.Chat.Q2Chip3";
     /// <summary>"Friday 5 pm"</summary>
-    public const string ChatQ2Value1 = "Vm_Chat_Q2_Value1";
+    public const string ChatQ2Value1 = "Studio.Chat.Q2Value1";
     /// <summary>"Monday 8 am"</summary>
-    public const string ChatQ2Value2 = "Vm_Chat_Q2_Value2";
+    public const string ChatQ2Value2 = "Studio.Chat.Q2Value2";
     /// <summary>"Free schedule"</summary>
-    public const string ChatQ2Value3 = "Vm_Chat_Q2_Value3";
+    public const string ChatQ2Value3 = "Studio.Chat.Q2Value3";
     /// <summary>"Limit to respect"</summary>
-    public const string ChatQ3Fact = "Vm_Chat_Q3_Fact";
+    public const string ChatQ3Fact = "Studio.Chat.Q3Fact";
     /// <summary>"Is there anything the team must never do?"</summary>
-    public const string ChatQ3Body = "Vm_Chat_Q3_Body";
+    public const string ChatQ3Body = "Studio.Chat.Q3Body";
     /// <summary>"A clear limit beats a vague instruction: files to ignore, informati…"</summary>
-    public const string ChatQ3Detail = "Vm_Chat_Q3_Detail";
+    public const string ChatQ3Detail = "Studio.Chat.Q3Detail";
     /// <summary>"You can skip: I'll then keep to reading the folder and nothing else."</summary>
-    public const string ChatQ3Hint = "Vm_Chat_Q3_Hint";
+    public const string ChatQ3Hint = "Studio.Chat.Q3Hint";
     /// <summary>"e.g. never quote documents marked confidential"</summary>
-    public const string ChatQ3Placeholder = "Vm_Chat_Q3_Placeholder";
+    public const string ChatQ3Placeholder = "Studio.Chat.Q3Placeholder";
     /// <summary>"Read-only on the folder"</summary>
-    public const string ChatQ3Chip1 = "Vm_Chat_Q3_Chip1";
+    public const string ChatQ3Chip1 = "Studio.Chat.Q3Chip1";
     /// <summary>"Ignore the drafts"</summary>
-    public const string ChatQ3Chip2 = "Vm_Chat_Q3_Chip2";
+    public const string ChatQ3Chip2 = "Studio.Chat.Q3Chip2";
     /// <summary>"Nothing in particular"</summary>
-    public const string ChatQ3Chip3 = "Vm_Chat_Q3_Chip3";
+    public const string ChatQ3Chip3 = "Studio.Chat.Q3Chip3";
     /// <summary>"Read-only on the folder"</summary>
-    public const string ChatQ3Value1 = "Vm_Chat_Q3_Value1";
+    public const string ChatQ3Value1 = "Studio.Chat.Q3Value1";
     /// <summary>"Drafts ignored"</summary>
-    public const string ChatQ3Value2 = "Vm_Chat_Q3_Value2";
+    public const string ChatQ3Value2 = "Studio.Chat.Q3Value2";
     /// <summary>"No limit"</summary>
-    public const string ChatQ3Value3 = "Vm_Chat_Q3_Value3";
+    public const string ChatQ3Value3 = "Studio.Chat.Q3Value3";
     /// <summary>"{0}: {1}."</summary>
-    public const string ChatBriefAnswerPattern = "Vm_Chat_BriefAnswerPattern";
+    public const string ChatBriefAnswerPattern = "Studio.Chat.BriefAnswerPattern";
     /// <summary>"The work you described"</summary>
-    public const string ChatFactBrief = "Vm_Chat_FactBrief";
+    public const string ChatFactBrief = "Studio.Chat.FactBrief";
     /// <summary>"Rhythm"</summary>
-    public const string ChatFactRhythm = "Vm_Chat_FactRhythm";
+    public const string ChatFactRhythm = "Studio.Chat.FactRhythm";
     /// <summary>"Document source"</summary>
-    public const string ChatFactSource = "Vm_Chat_FactSource";
+    public const string ChatFactSource = "Studio.Chat.FactSource";
     /// <summary>"Shape of the result"</summary>
-    public const string ChatFactOutput = "Vm_Chat_FactOutput";
+    public const string ChatFactOutput = "Studio.Chat.FactOutput";
     /// <summary>"Composition instruction"</summary>
-    public const string ChatFactComposeNote = "Vm_Chat_FactComposeNote";
+    public const string ChatFactComposeNote = "Studio.Chat.FactComposeNote";
     /// <summary>"Trial instruction"</summary>
-    public const string ChatFactTryNote = "Vm_Chat_FactTryNote";
+    public const string ChatFactTryNote = "Studio.Chat.FactTryNote";
     /// <summary>"Adoption instruction"</summary>
-    public const string ChatFactAdoptNote = "Vm_Chat_FactAdoptNote";
+    public const string ChatFactAdoptNote = "Studio.Chat.FactAdoptNote";
     /// <summary>"pending"</summary>
-    public const string ChatFactPending = "Vm_Chat_FactPending";
+    public const string ChatFactPending = "Studio.Chat.FactPending";
     /// <summary>"Ask your question: the assistant answers without changing anything…"</summary>
-    public const string ChatEmptyCreate = "Vm_Chat_EmptyCreate";
+    public const string ChatEmptyCreate = "Studio.Chat.EmptyCreate";
     /// <summary>"Ask about the run in progress: why a step is slow, what happens on…"</summary>
-    public const string ChatEmptyRun = "Vm_Chat_EmptyRun";
+    public const string ChatEmptyRun = "Studio.Chat.EmptyRun";
     /// <summary>"Ask about a past run: why it failed, what has changed since, how to…"</summary>
-    public const string ChatEmptyHistory = "Vm_Chat_EmptyHistory";
+    public const string ChatEmptyHistory = "Studio.Chat.EmptyHistory";
     /// <summary>"folder|file|access|permission|read|writ"</summary>
-    public const string ChatRuleFolders = "Vm_Chat_RuleFolders";
+    public const string ChatRuleFolders = "Studio.Chat.RuleFolders";
     /// <summary>"cost|price|paid|bill|token|expensive"</summary>
-    public const string ChatRuleCost = "Vm_Chat_RuleCost";
+    public const string ChatRuleCost = "Studio.Chat.RuleCost";
     /// <summary>"time|duration|how long|slow|fast|minute"</summary>
-    public const string ChatRuleDuration = "Vm_Chat_RuleDuration";
+    public const string ChatRuleDuration = "Studio.Chat.RuleDuration";
     /// <summary>"error|fail|crash|break|bug"</summary>
-    public const string ChatRuleError = "Vm_Chat_RuleError";
+    public const string ChatRuleError = "Studio.Chat.RuleError";
     /// <summary>"schedul|plan|hour|cron|automatic|morning"</summary>
-    public const string ChatRuleSchedule = "Vm_Chat_RuleSchedule";
+    public const string ChatRuleSchedule = "Studio.Chat.RuleSchedule";
     /// <summary>"confidential|privat|data|gdpr|security|leave"</summary>
-    public const string ChatRulePrivacy = "Vm_Chat_RulePrivacy";
+    public const string ChatRulePrivacy = "Studio.Chat.RulePrivacy";
     /// <summary>"Agents only see the folders allowed in Settings. A read-only folder…"</summary>
-    public const string ChatAnswerFolders = "Vm_Chat_AnswerFolders";
+    public const string ChatAnswerFolders = "Studio.Chat.AnswerFolders";
     /// <summary>"A local setting (Ollama) costs nothing. In the cloud the cost depen…"</summary>
-    public const string ChatAnswerCost = "Vm_Chat_AnswerCost";
+    public const string ChatAnswerCost = "Studio.Chat.AnswerCost";
     /// <summary>"On this dataset, count one to two minutes per run locally. The tech…"</summary>
-    public const string ChatAnswerDuration = "Vm_Chat_AnswerDuration";
+    public const string ChatAnswerDuration = "Studio.Chat.AnswerDuration";
     /// <summary>"If a step fails the run stops and nothing is written to the output…"</summary>
-    public const string ChatAnswerError = "Vm_Chat_AnswerError";
+    public const string ChatAnswerError = "Studio.Chat.AnswerError";
     /// <summary>"A scheduled team runs even with Studio closed, as long as the machi…"</summary>
-    public const string ChatAnswerSchedule = "Vm_Chat_AnswerSchedule";
+    public const string ChatAnswerSchedule = "Studio.Chat.AnswerSchedule";
     /// <summary>"With a local setting, no data leaves the machine. With a cloud sett…"</summary>
-    public const string ChatAnswerPrivacy = "Vm_Chat_AnswerPrivacy";
+    public const string ChatAnswerPrivacy = "Studio.Chat.AnswerPrivacy";
     /// <summary>"Describe the work in one sentence, as you would to a colleague: wha…"</summary>
-    public const string ChatReplyStep1 = "Vm_Chat_ReplyStep1";
+    public const string ChatReplyStep1 = "Studio.Chat.ReplyStep1";
     /// <summary>"The proposed agents share the reading, the writing and the proofrea…"</summary>
-    public const string ChatReplyStep2 = "Vm_Chat_ReplyStep2";
+    public const string ChatReplyStep2 = "Studio.Chat.ReplyStep2";
     /// <summary>"The trial touches nothing: read-only, on a sample of documents, and…"</summary>
-    public const string ChatReplyStep3 = "Vm_Chat_ReplyStep3";
+    public const string ChatReplyStep3 = "Studio.Chat.ReplyStep3";
     /// <summary>"After adoption the team works on its own at the chosen moment, even…"</summary>
-    public const string ChatReplyStep4 = "Vm_Chat_ReplyStep4";
+    public const string ChatReplyStep4 = "Studio.Chat.ReplyStep4";
     /// <summary>"I'm following the run live. If a step stops, tell me: I read the te…"</summary>
-    public const string ChatReplyRun = "Vm_Chat_ReplyRun";
+    public const string ChatReplyRun = "Studio.Chat.ReplyRun";
     /// <summary>"Every line of the history keeps its full log. Ask me « why did the…"</summary>
-    public const string ChatReplyHistory = "Vm_Chat_ReplyHistory";
+    public const string ChatReplyHistory = "Studio.Chat.ReplyHistory";
 
 
     // ---- The language picker (Shell/LanguageSelectorViewModel, T-14) ----
     /// <summary>"SYSTEM"</summary>
-    public const string LanguageSystem = "Vm_Lang_System";
+    public const string LanguageSystem = "Studio.Shell.System";
 
     /// <summary>"CHOSEN"</summary>
-    public const string LanguageChosen = "Vm_Lang_Chosen";
+    public const string LanguageChosen = "Studio.Shell.Chosen";
 
     /// <summary>"system language"</summary>
-    public const string LanguageFromSystem = "Vm_Lang_FromSystem";
+    public const string LanguageFromSystem = "Studio.Shell.FromSystem";
 
     /// <summary>"saved choice"</summary>
-    public const string LanguageFromChoice = "Vm_Lang_FromChoice";
+    public const string LanguageFromChoice = "Studio.Shell.FromChoice";
 
     /// <summary>"{0} · {1}"</summary>
-    public const string LanguageHeaderPattern = "Vm_Lang_HeaderPattern";
+    public const string LanguageHeaderPattern = "Studio.Shell.HeaderPattern";
 
     /// <summary>"{0} — {1}"</summary>
-    public const string LanguageTooltipPattern = "Vm_Lang_TooltipPattern";
+    public const string LanguageTooltipPattern = "Studio.Shell.TooltipPattern";
 
 
     // ---- Tool chips and the guided tour counter (T-15/T-18) ----
     // The fs.* tools are scoped to one folder each, and that scope is the thing the
     // user has to see — so their labels are patterns, never a bare verb.
     /// <summary>"read {0}"</summary>
-    public const string ToolReadScoped = "Vm_Tool_ReadScoped";
+    public const string ToolReadScoped = "Studio.Common.ReadScoped";
 
     /// <summary>"list {0}"</summary>
-    public const string ToolListScoped = "Vm_Tool_ListScoped";
+    public const string ToolListScoped = "Studio.Common.ListScoped";
 
     /// <summary>"write {0}"</summary>
-    public const string ToolWriteScoped = "Vm_Tool_WriteScoped";
+    public const string ToolWriteScoped = "Studio.Common.WriteScoped";
 
     /// <summary>"write with the AI"</summary>
-    public const string ToolLlm = "Vm_Tool_Llm";
+    public const string ToolLlm = "Studio.Common.Llm";
 
     /// <summary>"browse a web page"</summary>
-    public const string ToolWeb = "Vm_Tool_Web";
+    public const string ToolWeb = "Studio.Common.Web";
 
     /// <summary>"search the index"</summary>
-    public const string ToolRag = "Vm_Tool_Rag";
+    public const string ToolRag = "Studio.Common.Rag";
 
     /// <summary>"{0} / {1}"</summary>
-    public const string TourCounterPattern = "Vm_Tour_CounterPattern";
+    public const string TourCounterPattern = "Studio.Shell.CounterPattern";
 
 
     // ---- Diagnostics, in plain words (T-30) ----
     // The CLI prints its detail in English only. Novice reads these instead; the raw
     // line stays, under the mono identifier, where Expert expects it.
     /// <summary>"In place."</summary>
-    public const string DoctorStatusOk = "Vm_Doctor_StatusOk";
+    public const string DoctorStatusOk = "Studio.Diagnostics.StatusOk";
 
     /// <summary>"Usable, but worth a look."</summary>
-    public const string DoctorStatusWarning = "Vm_Doctor_StatusWarning";
+    public const string DoctorStatusWarning = "Studio.Diagnostics.StatusWarning";
 
     /// <summary>"Missing — a team will not run until this is fixed."</summary>
-    public const string DoctorStatusFailure = "Vm_Doctor_StatusFailure";
+    public const string DoctorStatusFailure = "Studio.Diagnostics.StatusFailure";
 
     /// <summary>"Not checked."</summary>
-    public const string DoctorStatusUnknown = "Vm_Doctor_StatusUnknown";
+    public const string DoctorStatusUnknown = "Studio.Diagnostics.StatusUnknown";
 
     // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
 
     /// <summary>"{0} — {1} agent(s)"</summary>
-    public const string ImportRecognizedAgents = "Vm_Import_RecognizedAgents";
+    public const string ImportRecognizedAgents = "Studio.Import.RecognizedAgents";
 
     /// <summary>"No secret in the files"</summary>
-    public const string ImportSecretsClean = "Vm_Import_SecretsClean";
+    public const string ImportSecretsClean = "Studio.Import.SecretsClean";
 
     /// <summary>"API keys travel through the environment, and these files carry none."</summary>
-    public const string ImportSecretsCleanDetail = "Vm_Import_SecretsCleanDetail";
+    public const string ImportSecretsCleanDetail = "Studio.Import.SecretsCleanDetail";
 
     /// <summary>"Something looks like a pasted key"</summary>
-    public const string ImportSecretsFound = "Vm_Import_SecretsFound";
+    public const string ImportSecretsFound = "Studio.Import.SecretsFound";
 
     /// <summary>"{0} file(s) carry what looks like an inline secret — see the warning below."</summary>
-    public const string ImportSecretsFoundDetail = "Vm_Import_SecretsFoundDetail";
+    public const string ImportSecretsFoundDetail = "Studio.Import.SecretsFoundDetail";
 
     /// <summary>"Tools"</summary>
-    public const string ImportToolsLater = "Vm_Import_ToolsLater";
+    public const string ImportToolsLater = "Studio.Import.ToolsLater";
 
     /// <summary>"The team's tools are checked at its first launch."</summary>
-    public const string ImportToolsLaterDetail = "Vm_Import_ToolsLaterDetail";
+    public const string ImportToolsLaterDetail = "Studio.Import.ToolsLaterDetail";
 
     // ---- Diagnostic verdict card (Config/DiagnosticViewModel, audit 09/20) --
 
     /// <summary>"Everything is in place."</summary>
-    public const string DiagAllGood = "Vm_Diag_AllGood";
+    public const string DiagAllGood = "Studio.Diagnostics.AllGood";
 
     /// <summary>"One point to fix before launching a team."</summary>
-    public const string DiagFixNeeded = "Vm_Diag_FixNeeded";
+    public const string DiagFixNeeded = "Studio.Diagnostics.FixNeeded";
 
     /// <summary>"{0} checks passed, {1} warning(s), {2} failure(s)."</summary>
-    public const string DiagCounts = "Vm_Diag_Counts";
+    public const string DiagCounts = "Studio.Diagnostics.Counts";
 
     // ---- History cards (Launch/LaunchHistoryViewModel, audit 06/15) ------
 
     /// <summary>"Finished without errors."</summary>
-    public const string HistOutcomeSuccess = "Vm_Hist_OutcomeSuccess";
+    public const string HistOutcomeSuccess = "Studio.History.OutcomeSuccess";
 
     /// <summary>"Failed (code {0})."</summary>
-    public const string HistOutcomeFailed = "Vm_Hist_OutcomeFailed";
+    public const string HistOutcomeFailed = "Studio.History.OutcomeFailed";
 
     /// <summary>"Interrupted before the end."</summary>
-    public const string HistOutcomeCancelled = "Vm_Hist_OutcomeCancelled";
+    public const string HistOutcomeCancelled = "Studio.History.OutcomeCancelled";
 
     /// <summary>"Never started."</summary>
-    public const string HistOutcomeNotStarted = "Vm_Hist_OutcomeNotStarted";
+    public const string HistOutcomeNotStarted = "Studio.History.OutcomeNotStarted";
 
     // ---- RAG web-fallback status (Config/RagSectionViewModel, T-08) ------
 
     /// <summary>"Web fallback active: the corrective loop may fetch pages, …"</summary>
-    public const string RagWebFallbackActive = "Vm_Rag_WebFallbackActive";
+    public const string RagWebFallbackActive = "Studio.Settings.WebFallbackActive";
 
     /// <summary>"Inactive: the corrective policy allows it, but the transport … is still off."</summary>
-    public const string RagWebFallbackTransportOff = "Vm_Rag_WebFallbackTransportOff";
+    public const string RagWebFallbackTransportOff = "Studio.Settings.WebFallbackTransportOff";
 
     /// <summary>"Inactive: the transport is on, but the corrective policy … is still off."</summary>
-    public const string RagWebFallbackPolicyOff = "Vm_Rag_WebFallbackPolicyOff";
+    public const string RagWebFallbackPolicyOff = "Studio.Settings.WebFallbackPolicyOff";
 
     /// <summary>"Off. Both switches must be turned on …"</summary>
-    public const string RagWebFallbackOff = "Vm_Rag_WebFallbackOff";
+    public const string RagWebFallbackOff = "Studio.Settings.WebFallbackOff";
 
     /// <summary>"already allowed" — the folder picker's faint note on a mounted row.</summary>
-    public const string PickerAlreadyMounted = "Vm_Picker_AlreadyMounted";
+    public const string PickerAlreadyMounted = "Studio.Settings.AlreadyMounted";
 
     /// <summary>Why the run is refused: folders no settings entry allows.</summary>
-    public const string RunBlockedUndeclared = "Vm_Run_BlockedUndeclared";
+    public const string RunBlockedUndeclared = "Studio.Run.BlockedUndeclared";
 
     /// <summary>"{0}: nothing will be bound to it — the agents writing there will fail."</summary>
-    public const string WizardDroppedDerived = "Vm_Wizard_DroppedDerived";
+    public const string WizardDroppedDerived = "Studio.Create.DroppedDerived";
 
     /// <summary>"already added" — a settings folder the team already carries.</summary>
-    public const string AllowedFoldersAlreadyAdded = "Vm_AllowedFolders_AlreadyAdded";
+    public const string AllowedFoldersAlreadyAdded = "Studio.Settings.AlreadyAdded";
 
     /// <summary>"{0} is already used by another folder" — a virtual root the team already spends.</summary>
-    public const string AllowedFoldersConflict = "Vm_AllowedFolders_Conflict";
+    public const string AllowedFoldersConflict = "Studio.Settings.Conflict";
 
     /// <summary>"{0} folder(s) selected" — the chooser's footer count.</summary>
-    public const string AllowedFoldersSummary = "Vm_AllowedFolders_Summary";
+    public const string AllowedFoldersSummary = "Studio.Settings.Summary";
 
     /// <summary>"“{0}” added to the authorized folders" — a declaration made from the chooser.</summary>
-    public const string AllowedFoldersDeclared = "Vm_AllowedFolders_Declared";
+    public const string AllowedFoldersDeclared = "Studio.Settings.Declared";
 
     /// <summary>"“{0}” added, but the settings could not be saved — {1}".</summary>
-    public const string AllowedFoldersNotSaved = "Vm_AllowedFolders_NotSaved";
+    public const string AllowedFoldersNotSaved = "Studio.Settings.NotSaved";
 
     /// <summary>"Folders of “{0}”" — the team-mounts modal title.</summary>
-    public const string TeamMountsTitle = "Vm_TeamMounts_Title";
+    public const string TeamMountsTitle = "Studio.Teams.TeamMountsTitle";
 
     /// <summary>"Without a folder, this team can neither read nor write any file."</summary>
-    public const string TeamMountsNone = "Vm_TeamMounts_None";
+    public const string TeamMountsNone = "Studio.Teams.None";
 
     /// <summary>"{0} folders: {1}" — the team-mounts footer summary.</summary>
-    public const string TeamMountsSummary = "Vm_TeamMounts_Summary";
+    public const string TeamMountsSummary = "Studio.Teams.Summary";
 
     /// <summary>"Add an agent" — the agent editor in add mode.</summary>
-    public const string AgentEditorTitleAdd = "Vm_AgentEditor_TitleAdd";
+    public const string AgentEditorTitleAdd = "Studio.Create.TitleAdd";
 
     /// <summary>"Edit the agent" — the agent editor in edit mode.</summary>
-    public const string AgentEditorTitleEdit = "Vm_AgentEditor_TitleEdit";
+    public const string AgentEditorTitleEdit = "Studio.Create.TitleEdit";
 
     /// <summary>"Add to the team" — the agent editor's save label in add mode.</summary>
-    public const string AgentEditorAdd = "Vm_AgentEditor_Add";
+    public const string AgentEditorAdd = "Studio.Create.Add";
 
     /// <summary>"Save" — the shared action verb.</summary>
-    public const string ActSave = "Act_Save";
+    public const string ActSave = "Studio.Common.Save";
 
     /// <summary>"Choose where to export the team" — the export destination browser's caption.</summary>
-    public const string DialogExportDestination = "Vm_Dialog_ExportDestination";
+    public const string DialogExportDestination = "Studio.Settings.ExportDestination";
 
     /// <summary>"{0} (read)" — a team card's read-only mount chip.</summary>
-    public const string TeamsMountRo = "Vm_Teams_MountRo";
+    public const string TeamsMountRo = "Studio.Teams.MountRo";
 
     /// <summary>"{0} (read, write)" — a team card's writable mount chip.</summary>
-    public const string TeamsMountRw = "Vm_Teams_MountRw";
+    public const string TeamsMountRw = "Studio.Teams.MountRw";
 
     /// <summary>
     /// "unreadable folder" — a mount string the parser refused. Shown instead of the string
     /// itself: the raw form carries the physical folder, which has no place on an
     /// agent-facing screen.
     /// </summary>
-    public const string TeamsMountUnreadable = "Vm_Teams_MountUnreadable";
+    public const string TeamsMountUnreadable = "Studio.Teams.MountUnreadable";
 
     /// <summary>"to try" — the badge of a team that never ran and has no schedule.</summary>
-    public const string TeamsToTest = "Vm_Teams_ToTest";
+    public const string TeamsToTest = "Studio.Teams.ToTest";
 
     /// <summary>"Last run: {0}, {1}" — the meta line's history part.</summary>
-    public const string TeamsLastRun = "Vm_Teams_LastRun";
+    public const string TeamsLastRun = "Studio.Teams.LastRun";
 
     /// <summary>"succeeded" — the last run ended well.</summary>
-    public const string TeamsRunOk = "Vm_Teams_RunOk";
+    public const string TeamsRunOk = "Studio.Teams.RunOk";
 
     /// <summary>"failed" — the last run did not.</summary>
-    public const string TeamsRunFail = "Vm_Teams_RunFail";
+    public const string TeamsRunFail = "Studio.Teams.RunFail";
 
     /// <summary>"Never ran" — no history entry names this team.</summary>
-    public const string TeamsNeverRan = "Vm_Teams_NeverRan";
+    public const string TeamsNeverRan = "Studio.Teams.NeverRan";
 
     /// <summary>"Setting: {0}" — the meta line's model-profile part.</summary>
-    public const string TeamsSettingLabel = "Teams_SettingLabel";
+    public const string TeamsSettingLabel = "Studio.Teams.SettingLabel";
 
     /// <summary>"Team exported to {0}"</summary>
-    public const string TeamsExportedTo = "Vm_Teams_ExportedTo";
+    public const string TeamsExportedTo = "Studio.Teams.ExportedTo";
 
     /// <summary>"Export refused — the destination already exists, or the disk said no."</summary>
-    public const string TeamsExportFailed = "Vm_Teams_ExportFailed";
+    public const string TeamsExportFailed = "Studio.Teams.ExportFailed";
 
     /// <summary>"Declared folders" — the import report's mounts row, when the sidecar has some.</summary>
-    public const string ImportMountsDeclared = "Vm_Import_MountsDeclared";
+    public const string ImportMountsDeclared = "Studio.Import.MountsDeclared";
 
     /// <summary>"{0} folder(s): {1}" — its detail.</summary>
-    public const string ImportMountsDeclaredDetail = "Vm_Import_MountsDeclaredDetail";
+    public const string ImportMountsDeclaredDetail = "Studio.Import.MountsDeclaredDetail";
 
     /// <summary>"No declared folder" — the sidecar names none (or there is no sidecar).</summary>
-    public const string ImportMountsNone = "Vm_Import_MountsNone";
+    public const string ImportMountsNone = "Studio.Import.MountsNone";
 
     /// <summary>"Allow its folders after adding — My teams, Change the folders."</summary>
-    public const string ImportMountsNoneDetail = "Vm_Import_MountsNoneDetail";
+    public const string ImportMountsNoneDetail = "Studio.Import.MountsNoneDetail";
 
     /// <summary>"reads {0}" — a read-only team mount, in the launcher's meta line.</summary>
-    public const string RunMetaReads = "Vm_Run_MetaReads";
+    public const string RunMetaReads = "Studio.Run.MetaReads";
 
     /// <summary>"writes to {0}" — a writable team mount, in the launcher's meta line.</summary>
-    public const string RunMetaWrites = "Vm_Run_MetaWrites";
+    public const string RunMetaWrites = "Studio.Run.MetaWrites";
 
     // ---- LLM preset catalogue (Core Presets/LlmPresets) ------------------
 
     /// <summary>"Ollama"</summary>
-    public const string PresetOllamaTitle = "Core_Preset_Ollama_Title";
+    public const string PresetOllamaTitle = "Studio.Settings.OllamaTitle";
 
     /// <summary>"Local Ollama server."</summary>
-    public const string PresetOllamaDescription = "Core_Preset_Ollama_Desc";
+    public const string PresetOllamaDescription = "Studio.Settings.OllamaDesc";
 
     /// <summary>"Docker Model Runner"</summary>
-    public const string PresetDmrTitle = "Core_Preset_Dmr_Title";
+    public const string PresetDmrTitle = "Studio.Settings.DmrTitle";
 
     /// <summary>"Local llama.cpp engine served by Docker Desktop."</summary>
-    public const string PresetDmrDescription = "Core_Preset_Dmr_Desc";
+    public const string PresetDmrDescription = "Studio.Settings.DmrDesc";
 
     /// <summary>"OpenAI"</summary>
-    public const string PresetOpenAITitle = "Core_Preset_OpenAI_Title";
+    public const string PresetOpenAITitle = "Studio.Settings.OpenAITitle";
 
     /// <summary>"OpenAI cloud API."</summary>
-    public const string PresetOpenAIDescription = "Core_Preset_OpenAI_Desc";
+    public const string PresetOpenAIDescription = "Studio.Settings.OpenAIDesc";
 
     /// <summary>"Other OpenAI-compatible"</summary>
-    public const string PresetCustomTitle = "Core_Preset_Custom_Title";
+    public const string PresetCustomTitle = "Studio.Settings.CustomTitle";
 
     /// <summary>"DeepSeek, GLM, Mistral, … — base URL and model required."</summary>
-    public const string PresetCustomDescription = "Core_Preset_Custom_Desc";
+    public const string PresetCustomDescription = "Studio.Settings.CustomDesc";
 
     /// <summary>"None / offline"</summary>
-    public const string PresetNoneTitle = "Core_Preset_None_Title";
+    public const string PresetNoneTitle = "Studio.Settings.NoneTitle";
 
     /// <summary>"No LLM: runs use the &lt;undefined-llm&gt; echo provider."</summary>
-    public const string PresetNoneDescription = "Core_Preset_None_Desc";
+    public const string PresetNoneDescription = "Studio.Settings.NoneDesc";
 
     /// <summary>"Anthropic"</summary>
-    public const string ProviderAnthropicTitle = "Core_Provider_Anthropic_Title";
+    public const string ProviderAnthropicTitle = "Studio.Settings.AnthropicTitle";
 
     /// <summary>"Claude"</summary>
-    public const string ProviderAnthropicDescription = "Core_Provider_Anthropic_Desc";
+    public const string ProviderAnthropicDescription = "Studio.Settings.AnthropicDesc";
 
     /// <summary>"DeepSeek"</summary>
-    public const string ProviderDeepSeekTitle = "Core_Provider_DeepSeek_Title";
+    public const string ProviderDeepSeekTitle = "Studio.Settings.DeepSeekTitle";
 
     /// <summary>"budget-friendly, very capable"</summary>
-    public const string ProviderDeepSeekDescription = "Core_Provider_DeepSeek_Desc";
+    public const string ProviderDeepSeekDescription = "Studio.Settings.DeepSeekDesc";
 
     /// <summary>"Gemini"</summary>
-    public const string ProviderGeminiTitle = "Core_Provider_Gemini_Title";
+    public const string ProviderGeminiTitle = "Studio.Settings.GeminiTitle";
 
     /// <summary>"Google"</summary>
-    public const string ProviderGeminiDescription = "Core_Provider_Gemini_Desc";
+    public const string ProviderGeminiDescription = "Studio.Settings.GeminiDesc";
 
     /// <summary>Provider card title: Grok.</summary>
-    public const string ProviderGrokTitle = "Core_Provider_Grok_Title";
+    public const string ProviderGrokTitle = "Studio.Settings.GrokTitle";
 
     /// <summary>Provider card description: Grok.</summary>
-    public const string ProviderGrokDescription = "Core_Provider_Grok_Desc";
+    public const string ProviderGrokDescription = "Studio.Settings.GrokDesc";
 
     /// <summary>Provider card title: MiniMax.</summary>
-    public const string ProviderMiniMaxTitle = "Core_Provider_MiniMax_Title";
+    public const string ProviderMiniMaxTitle = "Studio.Settings.MiniMaxTitle";
 
     /// <summary>Provider card description: MiniMax.</summary>
-    public const string ProviderMiniMaxDescription = "Core_Provider_MiniMax_Desc";
+    public const string ProviderMiniMaxDescription = "Studio.Settings.MiniMaxDesc";
 
 
     /// <summary>"HuggingFace"</summary>
-    public const string ProviderHuggingFaceTitle = "Core_Provider_HuggingFace_Title";
+    public const string ProviderHuggingFaceTitle = "Studio.Settings.HuggingFaceTitle";
 
     /// <summary>"multi-model router"</summary>
-    public const string ProviderHuggingFaceDescription = "Core_Provider_HuggingFace_Desc";
+    public const string ProviderHuggingFaceDescription = "Studio.Settings.HuggingFaceDesc";
 
     /// <summary>"Kimi"</summary>
-    public const string ProviderKimiTitle = "Core_Provider_Kimi_Title";
+    public const string ProviderKimiTitle = "Studio.Settings.KimiTitle";
 
     /// <summary>"Moonshot AI"</summary>
-    public const string ProviderKimiDescription = "Core_Provider_Kimi_Desc";
+    public const string ProviderKimiDescription = "Studio.Settings.KimiDesc";
 
     /// <summary>"Mistral"</summary>
-    public const string ProviderMistralTitle = "Core_Provider_Mistral_Title";
+    public const string ProviderMistralTitle = "Studio.Settings.MistralTitle";
 
     /// <summary>"European"</summary>
-    public const string ProviderMistralDescription = "Core_Provider_Mistral_Desc";
+    public const string ProviderMistralDescription = "Studio.Settings.MistralDesc";
 
     /// <summary>"Qwen"</summary>
-    public const string ProviderQwenTitle = "Core_Provider_Qwen_Title";
+    public const string ProviderQwenTitle = "Studio.Settings.QwenTitle";
 
     /// <summary>"Alibaba DashScope"</summary>
-    public const string ProviderQwenDescription = "Core_Provider_Qwen_Desc";
+    public const string ProviderQwenDescription = "Studio.Settings.QwenDesc";
 
     /// <summary>"Together AI"</summary>
-    public const string ProviderTogetherTitle = "Core_Provider_Together_Title";
+    public const string ProviderTogetherTitle = "Studio.Settings.TogetherTitle";
 
     /// <summary>"open models"</summary>
-    public const string ProviderTogetherDescription = "Core_Provider_Together_Desc";
+    public const string ProviderTogetherDescription = "Studio.Settings.TogetherDesc";
 
     /// <summary>"Z.AI (GLM)"</summary>
-    public const string ProviderZaiTitle = "Core_Provider_Zai_Title";
+    public const string ProviderZaiTitle = "Studio.Settings.ZaiTitle";
 
     /// <summary>"Zhipu"</summary>
-    public const string ProviderZaiDescription = "Core_Provider_Zai_Desc";
+    public const string ProviderZaiDescription = "Studio.Settings.ZaiDesc";
 
     /// <summary>"GPT"</summary>
-    public const string ProviderOpenAIShortDescription = "Core_Provider_OpenAI_ShortDesc";
+    public const string ProviderOpenAIShortDescription = "Studio.Settings.OpenAIShortDesc";
 
     /// <summary>"any endpoint: type the URL and the model"</summary>
-    public const string ProviderCustomShortDescription = "Core_Provider_Custom_ShortDesc";
+    public const string ProviderCustomShortDescription = "Studio.Settings.CustomShortDesc";
 
     /// <summary>"test the install, no model"</summary>
-    public const string ProviderNoneShortDescription = "Core_Provider_None_ShortDesc";
+    public const string ProviderNoneShortDescription = "Studio.Settings.NoneShortDesc";
 
     /// <summary>"The custom preset requires both a base URL and a model."</summary>
-    public const string PresetErrorCustomIncomplete = "Core_Preset_Error_CustomIncomplete";
+    public const string PresetErrorCustomIncomplete = "Studio.Settings.ErrorCustomIncomplete";
 
     /// <summary>"Unknown preset '{0}'. Supported: {1}."</summary>
-    public const string PresetErrorUnknown = "Core_Preset_Error_Unknown";
+    public const string PresetErrorUnknown = "Studio.Settings.ErrorUnknown";
 
     /// <summary>"No LLM configured: runs will use the &lt;undefined-llm&gt; echo provider. …"</summary>
-    public const string PresetGuidanceNone = "Core_Preset_Guidance_None";
+    public const string PresetGuidanceNone = "Studio.Settings.GuidanceNone";
 
     /// <summary>"API key: referenced from the environment — set it with: export {0}=&lt;your-key&gt;"</summary>
-    public const string PresetGuidanceApiKeyEnv = "Core_Preset_Guidance_ApiKeyEnv";
+    public const string PresetGuidanceApiKeyEnv = "Studio.Settings.GuidanceApiKeyEnv";
 
     /// <summary>"Note: the Orkeon runtime reads `{0}` natively; `{1}` is only read by …"</summary>
-    public const string PresetGuidanceNonDefaultEnv = "Core_Preset_Guidance_NonDefaultEnv";
+    public const string PresetGuidanceNonDefaultEnv = "Studio.Settings.GuidanceNonDefaultEnv";
 
     /// <summary>"WARNING: the API key is stored in plain text in the generated file. …"</summary>
-    public const string PresetGuidanceInlineKeyWarning = "Core_Preset_Guidance_InlineKeyWarning";
+    public const string PresetGuidanceInlineKeyWarning = "Studio.Settings.GuidanceInlineKeyWarning";
 
     // ---- Settings resolution chain (Core Storage/SettingsLocations) ------
 
     /// <summary>"Explicit path"</summary>
-    public const string ResolutionStep1Title = "Core_Resolution_Step1_Title";
+    public const string ResolutionStep1Title = "Studio.Settings.Step1Title";
 
     /// <summary>"The file passed to the runner with --settings. …"</summary>
-    public const string ResolutionStep1Description = "Core_Resolution_Step1_Desc";
+    public const string ResolutionStep1Description = "Studio.Settings.Step1Desc";
 
     /// <summary>"Next to the crew"</summary>
-    public const string ResolutionStep2Title = "Core_Resolution_Step2_Title";
+    public const string ResolutionStep2Title = "Studio.Settings.Step2Title";
 
     /// <summary>"{0} in the directory holding the crew configuration."</summary>
-    public const string ResolutionStep2Description = "Core_Resolution_Step2_Desc";
+    public const string ResolutionStep2Description = "Studio.Settings.Step2Desc";
 
     /// <summary>"Shared appsettings directory"</summary>
-    public const string ResolutionStep3Title = "Core_Resolution_Step3_Title";
+    public const string ResolutionStep3Title = "Studio.Settings.Step3Title";
 
     /// <summary>"appsettings/{0}, searched by walking up from the crew directory …"</summary>
-    public const string ResolutionStep3Description = "Core_Resolution_Step3_Desc";
+    public const string ResolutionStep3Description = "Studio.Settings.Step3Desc";
 
     /// <summary>"Global per-user file"</summary>
-    public const string ResolutionStep4Title = "Core_Resolution_Step4_Title";
+    public const string ResolutionStep4Title = "Studio.Settings.Step4Title";
 
     /// <summary>"The file written by `orkeon init`: %APPDATA%\Orkeon\appsettings.json …"</summary>
-    public const string ResolutionStep4Description = "Core_Resolution_Step4_Desc";
+    public const string ResolutionStep4Description = "Studio.Settings.Step4Desc";
 
     // ---- Mount rights labels (Core FileSystem/MountRightsTokens) ---------
 
     /// <summary>"Read only"</summary>
-    public const string RightsReadOnly = "Core_Rights_ReadOnly";
+    public const string RightsReadOnly = "Studio.Settings.RightsReadOnly";
 
     /// <summary>"Read / write (create and delete allowed)"</summary>
-    public const string RightsReadWrite = "Core_Rights_ReadWrite";
+    public const string RightsReadWrite = "Studio.Settings.RightsReadWrite";
 
     /// <summary>"Read / write without delete"</summary>
-    public const string RightsReadWriteNoDelete = "Core_Rights_ReadWriteNoDelete";
+    public const string RightsReadWriteNoDelete = "Studio.Settings.ReadWriteNoDelete";
 
     // ---- Run target prerequisites (Core Targets/RunTargetRequirements) ---
 
     /// <summary>"This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;' …"</summary>
-    public const string TargetDirectoryRunNotice = "Core_Target_DirectoryRunNotice";
+    public const string TargetDirectoryRunNotice = "Studio.Run.DirectoryRunNotice";
 
     // ---- Mount override semantics (Core Launch/MountOverrideSemantics) ---
 
     /// <summary>The full statement of the index-based <c>--mount</c> override rule.</summary>
-    public const string MountSemanticsExplanation = "Core_MountSemantics_Explanation";
+    public const string MountSemanticsExplanation = "Studio.Settings.Explanation";
 
     /// <summary>The statement of what <c>--allow-external-mounts</c> adds.</summary>
-    public const string MountSemanticsExternalMounts = "Core_MountSemantics_ExternalMounts";
+    public const string MountSemanticsExternalMounts = "Studio.Settings.ExternalMounts";
 
     /// <summary>" For this launch the runner injects {0} mount(s) ({1}), so the first --mount occupies '{2}'."</summary>
-    public const string MountSemanticsThisLaunch = "Core_MountSemantics_ThisLaunch";
+    public const string MountSemanticsThisLaunch = "Studio.Settings.ThisLaunch";
 
     // ---- Config tab (WPF ViewModel statuses) ------------------------------
 
     /// <summary>"New empty document. Pick a preset to fill in the Llm section."</summary>
-    public const string ConfigNewDocument = "Vm_Config_NewDocument";
+    public const string ConfigNewDocument = "Studio.Settings.NewDocument";
 
     /// <summary>"No file selected."</summary>
-    public const string ConfigNoFileSelected = "Vm_Config_NoFileSelected";
+    public const string ConfigNoFileSelected = "Studio.Settings.NoFileSelected";
 
     /// <summary>"Loaded {0}."</summary>
-    public const string ConfigLoaded = "Vm_Config_Loaded";
+    public const string ConfigLoaded = "Studio.Settings.Loaded";
 
     /// <summary>"Not saved: {0} error(s) must be fixed first."</summary>
-    public const string ConfigNotSavedErrors = "Vm_Config_NotSavedErrors";
+    public const string ConfigNotSavedErrors = "Studio.Settings.NotSavedErrors";
 
     /// <summary>"Not saved: no destination selected."</summary>
     /// <summary>"Not saved — the file could not be written: {0}"</summary>
-    public const string ConfigNotSavedWriteFailed = "Vm_Config_NotSavedWriteFailed";
+    public const string ConfigNotSavedWriteFailed = "Studio.Settings.NotSavedWriteFailed";
 
-    public const string ConfigNotSavedNoDestination = "Vm_Config_NotSavedNoDestination";
+    public const string ConfigNotSavedNoDestination = "Studio.Settings.NotSavedNoDestination";
 
     /// <summary>"Not saved yet: authorize at least one folder…"</summary>
-    public const string ConfigNotSavedNeedFolder = "Vm_Config_NotSavedNeedFolder";
+    public const string ConfigNotSavedNeedFolder = "Studio.Settings.NotSavedNeedFolder";
 
     /// <summary>"Saved to {0}."</summary>
-    public const string ConfigSaved = "Vm_Config_Saved";
+    public const string ConfigSaved = "Studio.Settings.Saved";
 
     /// <summary>"Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider."</summary>
-    public const string ConfigSavedLlmWarning = "Vm_Config_SavedLlmWarning";
+    public const string ConfigSavedLlmWarning = "Studio.Settings.SavedLlmWarning";
 
     /// <summary>"No problem found."</summary>
-    public const string ConfigNoProblem = "Vm_Config_NoProblem";
+    public const string ConfigNoProblem = "Studio.Settings.NoProblem";
 
     /// <summary>"{0} error(s), {1} warning(s)."</summary>
-    public const string ConfigErrorsWarnings = "Vm_Config_ErrorsWarnings";
+    public const string ConfigErrorsWarnings = "Studio.Settings.ErrorsWarnings";
 
     // ---- Llm section (WPF ViewModel) --------------------------------------
 
     /// <summary>"No base URL — the runtime falls back to the echo provider."</summary>
-    public const string LlmNoBaseUrl = "Vm_Llm_NoBaseUrl";
+    public const string LlmNoBaseUrl = "Studio.Settings.NoBaseUrl";
 
     /// <summary>"custom (host not in the known-endpoint table)"</summary>
-    public const string LlmCustomProvider = "Vm_Llm_CustomProvider";
+    public const string LlmCustomProvider = "Studio.Settings.CustomProvider";
 
     /// <summary>"Prefer the {0} environment variable: the runtime reads it with precedence …"</summary>
-    public const string LlmApiKeyRecommendation = "Vm_Llm_ApiKeyRecommendation";
+    public const string LlmApiKeyRecommendation = "Studio.Settings.ApiKeyRecommendation";
 
     /// <summary>"Testing the connection…"</summary>
-    public const string LlmTesting = "Vm_Llm_Testing";
+    public const string LlmTesting = "Studio.Settings.Testing";
 
     // ---- Diagnostic panel (WPF ViewModel) ---------------------------------
 
     /// <summary>"orkeon doctor reported no check."</summary>
-    public const string DiagNoCheck = "Vm_Diag_NoCheck";
+    public const string DiagNoCheck = "Studio.Diagnostics.NoCheck";
 
     /// <summary>"{0} check(s), all green."</summary>
-    public const string DiagAllGreen = "Vm_Diag_AllGreen";
+    public const string DiagAllGreen = "Studio.Diagnostics.AllGreen";
 
     /// <summary>"{0} check(s): {1} failure(s), {2} warning(s)."</summary>
-    public const string DiagFindings = "Vm_Diag_Findings";
+    public const string DiagFindings = "Studio.Diagnostics.Findings";
 
     // ---- Mounts editor and launch mounts (WPF ViewModels) -----------------
 
     /// <summary>"{0} mount(s), no error."</summary>
-    public const string MountsSummaryOk = "Vm_Mounts_SummaryOk";
+    public const string MountsSummaryOk = "Studio.Settings.SummaryOk";
 
     /// <summary>"{0} mount(s), {1} error(s)."</summary>
-    public const string MountsSummaryErrors = "Vm_Mounts_SummaryErrors";
+    public const string MountsSummaryErrors = "Studio.Settings.SummaryErrors";
 
     /// <summary>"Select a crew first: the runner injects its own mounts ahead of every --mount, …"</summary>
-    public const string MountsSelectCrewFirst = "Vm_Mounts_SelectCrewFirst";
+    public const string MountsSelectCrewFirst = "Studio.Settings.SelectCrewFirst";
 
     /// <summary>"Security: this lets a mount point anywhere on the machine, …"</summary>
-    public const string MountsExternalWarning = "Vm_Mounts_ExternalWarning";
+    public const string MountsExternalWarning = "Studio.Settings.ExternalWarning";
 
     /// <summary>"{0} effective mount(s); no appsettings entry is replaced."</summary>
-    public const string MountsEffectiveNone = "Vm_Mounts_EffectiveNone";
+    public const string MountsEffectiveNone = "Studio.Settings.EffectiveNone";
 
     /// <summary>"{0} effective mount(s); {1} appsettings entry(ies) replaced by index."</summary>
-    public const string MountsEffectiveReplaced = "Vm_Mounts_EffectiveReplaced";
+    public const string MountsEffectiveReplaced = "Studio.Settings.EffectiveReplaced";
 
     /// <summary>"auto (injected by the runner)"</summary>
-    public const string MountsOriginAuto = "Vm_Mounts_OriginAuto";
+    public const string MountsOriginAuto = "Studio.Settings.OriginAuto";
 
     /// <summary>"{0} (replaces «{1}»)"</summary>
-    public const string MountsOriginReplaces = "Vm_Mounts_OriginReplaces";
+    public const string MountsOriginReplaces = "Studio.Settings.OriginReplaces";
 
     // ---- Launch tab (WPF ViewModel) ----------------------------------------
 
     /// <summary>"The orkeon CLI has not been located yet."</summary>
-    public const string LaunchBinaryNotLocated = "Vm_Launch_BinaryNotLocated";
+    public const string LaunchBinaryNotLocated = "Studio.Run.BinaryNotLocated";
 
     /// <summary>"Ready to work"</summary>
-    public const string RunStateIdle = "Vm_Run_StateIdle";
+    public const string RunStateIdle = "Studio.Run.StateIdle";
 
     /// <summary>"Run in progress"</summary>
-    public const string RunStateRunning = "Vm_Run_StateRunning";
+    public const string RunStateRunning = "Studio.Run.StateRunning";
 
     /// <summary>"Run finished"</summary>
-    public const string RunStateDone = "Vm_Run_StateDone";
+    public const string RunStateDone = "Studio.Run.StateDone";
 
     /// <summary>"waiting"</summary>
-    public const string RunBadgeIdle = "Vm_Run_BadgeIdle";
+    public const string RunBadgeIdle = "Studio.Run.BadgeIdle";
 
     /// <summary>"running"</summary>
-    public const string RunBadgeRunning = "Vm_Run_BadgeRunning";
+    public const string RunBadgeRunning = "Studio.Run.BadgeRunning";
 
     /// <summary>"succeeded"</summary>
-    public const string RunBadgeDone = "Vm_Run_BadgeDone";
+    public const string RunBadgeDone = "Studio.Run.BadgeDone";
 
     /// <summary>"failed"</summary>
-    public const string RunBadgeFailed = "Vm_Run_BadgeFailed";
+    public const string RunBadgeFailed = "Studio.Run.BadgeFailed";
 
     /// <summary>"Launch now"</summary>
-    public const string RunButtonLaunch = "Vm_Run_BtnLaunch";
+    public const string RunButtonLaunch = "Studio.Run.BtnLaunch";
 
     /// <summary>"Running…"</summary>
-    public const string RunButtonRunning = "Vm_Run_BtnRunning";
+    public const string RunButtonRunning = "Studio.Run.BtnRunning";
 
     /// <summary>"Relaunch"</summary>
-    public const string RunButtonRelaunch = "Vm_Run_BtnRelaunch";
+    public const string RunButtonRelaunch = "Studio.Run.BtnRelaunch";
 
     /// <summary>"The Orkeon engine was not found — run the Diagnostic."</summary>
-    public const string RunCliMissing = "Vm_Run_CliMissing";
+    public const string RunCliMissing = "Studio.Run.CliMissing";
 
     /// <summary>"{0} agents"</summary>
-    public const string RunMetaAgents = "Vm_Run_MetaAgents";
+    public const string RunMetaAgents = "Studio.Run.MetaAgents";
 
     /// <summary>"setting {0}"</summary>
-    public const string RunMetaProfile = "Vm_Run_MetaProfile";
+    public const string RunMetaProfile = "Studio.Run.MetaProfile";
 
     /// <summary>"The orkeon CLI was not found."</summary>
-    public const string LaunchBinaryNotFound = "Vm_Launch_BinaryNotFound";
+    public const string LaunchBinaryNotFound = "Studio.Run.BinaryNotFound";
 
     /// <summary>"Ready to launch."</summary>
-    public const string LaunchReady = "Vm_Launch_Ready";
+    public const string LaunchReady = "Studio.Run.Ready";
 
     /// <summary>"No target resolved."</summary>
-    public const string LaunchNoTarget = "Vm_Launch_NoTarget";
+    public const string LaunchNoTarget = "Studio.Run.NoTarget";
 
     /// <summary>"Not launched: {0} error(s) must be fixed first."</summary>
-    public const string LaunchNotLaunchedErrors = "Vm_Launch_NotLaunchedErrors";
+    public const string LaunchNotLaunchedErrors = "Studio.Run.NotLaunchedErrors";
 
     /// <summary>"Cancelling: the CLI is asked to stop, and is killed if it does not."</summary>
-    public const string LaunchCancelling = "Vm_Launch_Cancelling";
+    public const string LaunchCancelling = "Studio.Run.Cancelling";
 
     /// <summary>"Nothing to replay: the entry for '{0}' recorded no arguments."</summary>
-    public const string LaunchNothingToReplay = "Vm_Launch_NothingToReplay";
+    public const string LaunchNothingToReplay = "Studio.Run.NothingToReplay";
 
     /// <summary>"Validating…"</summary>
-    public const string LaunchValidating = "Vm_Launch_Validating";
+    public const string LaunchValidating = "Studio.Run.Validating";
 
     /// <summary>"Running…"</summary>
-    public const string LaunchRunning = "Vm_Launch_Running";
+    public const string LaunchRunning = "Studio.Run.Running";
 
     // ---- Watched-run progress panel (BUS-06) --------------------------------
 
     /// <summary>"Nothing reported yet."</summary>
-    public const string RunProgressNothingYet = "Vm_RunProgress_NothingYet";
+    public const string RunProgressNothingYet = "Studio.Run.NothingYet";
 
     /// <summary>"{0} task(s) finished."</summary>
-    public const string RunProgressTasksDone = "Vm_RunProgress_TasksDone";
+    public const string RunProgressTasksDone = "Studio.Run.TasksDone";
 
     /// <summary>"Finished successfully."</summary>
-    public const string RunProgressSucceeded = "Vm_RunProgress_Succeeded";
+    public const string RunProgressSucceeded = "Studio.Run.Succeeded";
 
     /// <summary>"Finished with a failure."</summary>
-    public const string RunProgressFailed = "Vm_RunProgress_Failed";
+    public const string RunProgressFailed = "Studio.Run.Failed";
 
     /// <summary>"{0} tokens · {1}"</summary>
-    public const string RunProgressCost = "Vm_RunProgress_Cost";
+    public const string RunProgressCost = "Studio.Run.Cost";
 
     /// <summary>"Show progress instead of raw output"</summary>
-    public const string RunProgressWatch = "Vm_RunProgress_Watch";
+    public const string RunProgressWatch = "Studio.Run.Watch";
 
     /// <summary>"Stream generated text token by token"</summary>
-    public const string RunProgressStream = "Vm_RunProgress_Stream";
+    public const string RunProgressStream = "Studio.Run.Stream";
 
     /// <summary>"Answer"</summary>
-    public const string RunProgressAnswer = "Vm_RunProgress_Answer";
+    public const string RunProgressAnswer = "Studio.Run.Answer";
 
     /// <summary>"An agent is asking:"</summary>
-    public const string RunProgressAgentAsks = "Vm_RunProgress_AgentAsks";
+    public const string RunProgressAgentAsks = "Studio.Run.AgentAsks";
 
     /// <summary>"Reply"</summary>
-    public const string RunProgressReply = "Vm_RunProgress_Reply";
+    public const string RunProgressReply = "Studio.Run.Reply";
 
     /// <summary>"Hub messages"</summary>
-    public const string RunProgressHubMessages = "Vm_RunProgress_HubMessages";
+    public const string RunProgressHubMessages = "Studio.Run.HubMessages";
 
 
     // ---- Model profiles (settings screen, design v3) ------------------------
 
     /// <summary>"New setting" — the freshly created profile's placeholder name.</summary>
-    public const string ProfileNewName = "Vm_Profiles_NewName";
+    public const string ProfileNewName = "Studio.Settings.NewName";
 
     /// <summary>"ON YOUR MACHINE · FREE, NO KEY"</summary>
-    public const string ProfileGroupLocal = "Profile_GroupLocal";
+    public const string ProfileGroupLocal = "Studio.Settings.GroupLocal";
 
     /// <summary>"IN THE CLOUD · API KEY REQUIRED"</summary>
-    public const string ProfileGroupCloud = "Profile_GroupCloud";
+    public const string ProfileGroupCloud = "Studio.Settings.GroupCloud";
 
     /// <summary>"API key {0}"</summary>
-    public const string ProfileKeyTitleFor = "Profile_KeyTitleFor";
+    public const string ProfileKeyTitleFor = "Studio.Settings.KeyTitleFor";
 
     /// <summary>"The service's API key"</summary>
-    public const string ProfileKeyTitleService = "Profile_KeyTitleService";
+    public const string ProfileKeyTitleService = "Studio.Settings.KeyTitleService";
 
     /// <summary>"Studio keeps it in your Windows session — never in a file, never in a shared folder."</summary>
-    public const string ProfileKeyExplainer = "Profile_KeyExplainer";
+    public const string ProfileKeyExplainer = "Studio.Settings.KeyExplainer";
 
     /// <summary>"Paste your key here (sk-…)"</summary>
-    public const string ProfileKeyPlaceholder = "Profile_KeyPlaceholder";
+    public const string ProfileKeyPlaceholder = "Studio.Settings.KeyPlaceholder";
 
     /// <summary>"Remember the key"</summary>
-    public const string ProfileKeyStore = "Profile_KeyStore";
+    public const string ProfileKeyStore = "Studio.Settings.KeyStore";
 
     /// <summary>"key remembered"</summary>
-    public const string ProfileKeyStatusSet = "Profile_KeyStatusSet";
+    public const string ProfileKeyStatusSet = "Studio.Settings.KeyStatusSet";
 
     /// <summary>"no key detected"</summary>
-    public const string ProfileKeyStatusMissing = "Profile_KeyStatusMissing";
+    public const string ProfileKeyStatusMissing = "Studio.Settings.KeyStatusMissing";
 
     /// <summary>"No key yet?"</summary>
-    public const string ProfileKeyNoKeyYet = "Profile_KeyNoKeyYet";
+    public const string ProfileKeyNoKeyYet = "Studio.Settings.KeyNoKeyYet";
 
     /// <summary>"on the provider's site"</summary>
-    public const string ProfileKeyOnVendorSite = "Profile_KeyOnVendorSite";
+    public const string ProfileKeyOnVendorSite = "Studio.Settings.KeyOnVendorSite";
 
     /// <summary>The expert-only setx hint naming the runtime's native variable.</summary>
-    public const string ProfileKeyExpertHint = "Profile_KeyExpertHint";
+    public const string ProfileKeyExpertHint = "Studio.Settings.KeyExpertHint";
 
     /// <summary>"No key needed — the model runs on your machine, nothing leaves it."</summary>
-    public const string ProfileLocalNote = "Profile_LocalNote";
+    public const string ProfileLocalNote = "Studio.Settings.LocalNote";
 
     /// <summary>"Without a model, runs answer as an echo — useful to verify the install."</summary>
-    public const string ProfileNoneNote = "Profile_NoneNote";
+    public const string ProfileNoneNote = "Studio.Settings.NoneNote";
 
     /// <summary>"API key missing — remember it first"</summary>
-    public const string ProfileKeyMissingTest = "Profile_KeyMissingTest";
+    public const string ProfileKeyMissingTest = "Studio.Settings.KeyMissingTest";
 
     /// <summary>"copy" — suffix of a duplicated profile's name.</summary>
-    public const string ProfileCopySuffix = "Vm_Profiles_CopySuffix";
+    public const string ProfileCopySuffix = "Studio.Settings.CopySuffix";
 
 
     // ---- Creation wizard (design v3) ----------------------------------------
 
     /// <summary>"Once"</summary>
-    public const string WizardFreqOnce = "Vm_Wizard_Freq_Once";
+    public const string WizardFreqOnce = "Studio.Create.FreqOnce";
 
     /// <summary>"Every day"</summary>
-    public const string WizardFreqDaily = "Vm_Wizard_Freq_Daily";
+    public const string WizardFreqDaily = "Studio.Create.FreqDaily";
 
     /// <summary>"Every week"</summary>
-    public const string WizardFreqWeekly = "Vm_Wizard_Freq_Weekly";
+    public const string WizardFreqWeekly = "Studio.Create.FreqWeekly";
 
     /// <summary>"A folder on this PC"</summary>
-    public const string WizardSourceFolder = "Vm_Wizard_Source_Folder";
+    public const string WizardSourceFolder = "Studio.Create.SourceFolder";
 
     /// <summary>"A website"</summary>
-    public const string WizardSourceWeb = "Vm_Wizard_Source_Web";
+    public const string WizardSourceWeb = "Studio.Create.SourceWeb";
 
     /// <summary>"I don't know yet"</summary>
-    public const string WizardSourceUnknown = "Vm_Wizard_Source_Unknown";
+    public const string WizardSourceUnknown = "Studio.Create.SourceUnknown";
 
     /// <summary>"A document"</summary>
-    public const string WizardOutputDocument = "Vm_Wizard_Output_Document";
+    public const string WizardOutputDocument = "Studio.Create.OutputDocument";
 
     /// <summary>"A table"</summary>
-    public const string WizardOutputTable = "Vm_Wizard_Output_Table";
+    public const string WizardOutputTable = "Studio.Create.OutputTable";
 
     /// <summary>"A short message"</summary>
-    public const string WizardOutputMessage = "Vm_Wizard_Output_Message";
+    public const string WizardOutputMessage = "Studio.Create.OutputMessage";
 
     /// <summary>"Something else"</summary>
-    public const string WizardOutputOther = "Vm_Wizard_Output_Other";
+    public const string WizardOutputOther = "Studio.Create.OutputOther";
 
     /// <summary>"How often: {0}."</summary>
-    public const string WizardBriefFrequency = "Vm_Wizard_Brief_Frequency";
+    public const string WizardBriefFrequency = "Studio.Create.BriefFrequency";
 
     /// <summary>"Where the information lives: {0}."</summary>
-    public const string WizardBriefSource = "Vm_Wizard_Brief_Source";
+    public const string WizardBriefSource = "Studio.Create.BriefSource";
 
     /// <summary>"Expected result: {0}."</summary>
-    public const string WizardBriefOutput = "Vm_Wizard_Brief_Output";
+    public const string WizardBriefOutput = "Studio.Create.BriefOutput";
 
     /// <summary>"The result should look like: {0}"</summary>
-    public const string WizardBriefShape = "Vm_Wizard_Brief_Shape";
+    public const string WizardBriefShape = "Studio.Create.BriefShape";
 
     /// <summary>"Standing instruction for every agent: {0}"</summary>
-    public const string WizardBriefConsigne = "Vm_Wizard_Brief_Consigne";
+    public const string WizardBriefConsigne = "Studio.Create.BriefConsigne";
 
     /// <summary>"Agent" — the card name when the engine named no role.</summary>
-    public const string WizardAgentFallback = "Vm_Wizard_AgentFallback";
+    public const string WizardAgentFallback = "Studio.Create.AgentFallback";
 
     /// <summary>"The save failed — the engine refused the promotion: {0}"</summary>
-    public const string WizardPromoteFailed = "Vm_Wizard_PromoteFailed";
+    public const string WizardPromoteFailed = "Studio.Create.PromoteFailed";
 
     /// <summary>"The import failed — nothing was copied. Check access to the source and try again."</summary>
-    public const string ImportFailed = "Vm_Import_Failed";
+    public const string ImportFailed = "Studio.Import.Failed";
 
     /// <summary>"{0} — done in {1} s"</summary>
-    public const string WizardActivityDone = "Vm_Wizard_ActivityDone";
+    public const string WizardActivityDone = "Studio.Create.ActivityDone";
 
     /// <summary>"{0} — failed"</summary>
-    public const string WizardActivityFailed = "Vm_Wizard_ActivityFailed";
+    public const string WizardActivityFailed = "Studio.Create.ActivityFailed";
 
     /// <summary>"Describe the work to continue."</summary>
-    public const string WizardHintDescribe = "Vm_Wizard_Hint_Describe";
+    public const string WizardHintDescribe = "Studio.Create.HintDescribe";
 
     /// <summary>"The format is free: describe the expected result."</summary>
-    public const string WizardHintOutcome = "Vm_Wizard_Hint_Outcome";
+    public const string WizardHintOutcome = "Studio.Create.HintOutcome";
 
     /// <summary>"Answer the three precisions."</summary>
-    public const string WizardHintAnswers = "Vm_Wizard_Hint_Answers";
+    public const string WizardHintAnswers = "Studio.Create.HintAnswers";
 
     /// <summary>"Everything is there — I can compose the team."</summary>
-    public const string WizardHintReady = "Vm_Wizard_Hint_Ready";
+    public const string WizardHintReady = "Studio.Create.HintReady";
 
 
     // ---- My teams screen (design v3) ----------------------------------------
 
     /// <summary>"Looks good to me"</summary>
-    public const string WizardDecisionAccept = "Vm_Wizard_Decision_Accept";
+    public const string WizardDecisionAccept = "Studio.Create.DecisionAccept";
 
     /// <summary>"Run the trial again"</summary>
-    public const string WizardDecisionRetry = "Vm_Wizard_Decision_Retry";
+    public const string WizardDecisionRetry = "Studio.Create.DecisionRetry";
 
     /// <summary>"Fix and retry"</summary>
-    public const string WizardDecisionRefine = "Vm_Wizard_Decision_Refine";
+    public const string WizardDecisionRefine = "Studio.Create.DecisionRefine";
 
     /// <summary>"Abandon"</summary>
-    public const string WizardDecisionAbort = "Vm_Wizard_Decision_Abort";
+    public const string WizardDecisionAbort = "Studio.Create.DecisionAbort";
 
 
     /// <summary>"On demand"</summary>
-    public const string TeamsOnDemand = "Vm_Teams_OnDemand";
+    public const string TeamsOnDemand = "Studio.Teams.OnDemand";
 
     /// <summary>"Every day at {0}"</summary>
-    public const string TeamsDaily = "Vm_Teams_Daily";
+    public const string TeamsDaily = "Studio.Teams.Daily";
 
     /// <summary>"Every hour"</summary>
-    public const string TeamsHourly = "Vm_Teams_Hourly";
+    public const string TeamsHourly = "Studio.Teams.Hourly";
 
 
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
     /// <summary>"No target selected."</summary>
-    public const string TargetNone = "Vm_Target_None";
+    public const string TargetNone = "Studio.Run.None";
 
     /// <summary>"{0} — orkeon run {1}"</summary>
-    public const string TargetResolved = "Vm_Target_Resolved";
+    public const string TargetResolved = "Studio.Run.Resolved";
 
     /// <summary>"{0} script(s) found: pick the one to run."</summary>
-    public const string TargetPickScript = "Vm_Target_PickScript";
+    public const string TargetPickScript = "Studio.Run.PickScript";
 
     /// <summary>"Detection failed."</summary>
-    public const string TargetDetectionFailed = "Vm_Target_DetectionFailed";
+    public const string TargetDetectionFailed = "Studio.Run.DetectionFailed";
 
     /// <summary>"YAML crew file"</summary>
-    public const string TargetKindYamlFile = "Vm_Target_KindYamlFile";
+    public const string TargetKindYamlFile = "Studio.Run.KindYamlFile";
 
     /// <summary>"Scripting crew file"</summary>
-    public const string TargetKindScriptFile = "Vm_Target_KindScriptFile";
+    public const string TargetKindScriptFile = "Studio.Run.KindScriptFile";
 
     /// <summary>"Multi-file crew directory"</summary>
-    public const string TargetKindCrewDirectory = "Vm_Target_KindCrewDirectory";
+    public const string TargetKindCrewDirectory = "Studio.Run.KindCrewDirectory";
 
     /// <summary>"Scripting crew directory"</summary>
-    public const string TargetKindScriptDirectory = "Vm_Target_KindScriptDirectory";
+    public const string TargetKindScriptDirectory = "Studio.Run.KindScriptDirectory";
 
     // ---- Run log panel (WPF ViewModel) ---------------------------------------
 
     /// <summary>"{0} line(s)."</summary>
-    public const string LogLines = "Vm_Log_Lines";
+    public const string LogLines = "Studio.Run.LogLines";
 
     /// <summary>"{0} line(s); {1} older line(s) dropped (cap {2})."</summary>
-    public const string LogLinesDropped = "Vm_Log_LinesDropped";
+    public const string LogLinesDropped = "Studio.Run.LinesDropped";
 
     // ---- File dialogs (titles and filters) ------------------------------------
 
     /// <summary>"Open appsettings.json"</summary>
-    public const string DialogOpenAppSettings = "Vm_Dialog_OpenAppSettings";
+    public const string DialogOpenAppSettings = "Studio.Settings.OpenAppSettings";
 
     /// <summary>"Save appsettings.json"</summary>
-    public const string DialogSaveAppSettings = "Vm_Dialog_SaveAppSettings";
+    public const string DialogSaveAppSettings = "Studio.Settings.SaveAppSettings";
 
     /// <summary>"Select an appsettings.json"</summary>
-    public const string DialogSelectAppSettings = "Vm_Dialog_SelectAppSettings";
+    public const string DialogSelectAppSettings = "Studio.Settings.SelectAppSettings";
 
     /// <summary>"Select an inputs file"</summary>
-    public const string DialogSelectInputsFile = "Vm_Dialog_SelectInputsFile";
+    public const string DialogSelectInputsFile = "Studio.Settings.SelectInputsFile";
 
     /// <summary>"Select the LLM log destination"</summary>
-    public const string DialogSelectLlmLogDestination = "Vm_Dialog_SelectLlmLogDest";
+    public const string DialogSelectLlmLogDestination = "Studio.Settings.SelectLlmLogDest";
 
     /// <summary>"Select a crew definition"</summary>
-    public const string DialogSelectCrewDefinition = "Vm_Dialog_SelectCrewDefinition";
+    public const string DialogSelectCrewDefinition = "Studio.Settings.SelectCrewDefinition";
 
     /// <summary>"Select a crew directory"</summary>
-    public const string DialogSelectCrewDirectory = "Vm_Dialog_SelectCrewDirectory";
+    public const string DialogSelectCrewDirectory = "Studio.Settings.SelectCrewDirectory";
 
     /// <summary>"Select the folder to mount"</summary>
-    public const string DialogSelectMountFolder = "Vm_Dialog_SelectMountFolder";
+    public const string DialogSelectMountFolder = "Studio.Settings.SelectMountFolder";
 
     /// <summary>"JSON files|*.json|All files|*.*" — the pipe format is the Win32 dialog contract.</summary>
-    public const string DialogFilterJson = "Vm_Dialog_FilterJson";
+    public const string DialogFilterJson = "Studio.Settings.FilterJson";
 
     /// <summary>"Crew definitions|*.yaml;*.yml;*.ts;*.js|All files|*.*"</summary>
-    public const string DialogFilterCrew = "Vm_Dialog_FilterCrew";
+    public const string DialogFilterCrew = "Studio.Settings.FilterCrew";
 
     /// <summary>"All files|*.*"</summary>
-    public const string DialogFilterAll = "Vm_Dialog_FilterAll";
+    public const string DialogFilterAll = "Studio.Settings.FilterAll";
 
     // ── the Atelier (SPEC-ORKEON-FORGE §12, UX study §2: no framework word at level 1) ──
 
     /// <summary>"Summarize a site's news every morning"</summary>
-    public const string ForgeExample1 = "Vm_Forge_Example1";
+    public const string ForgeExample1 = "Studio.Create.Example1";
 
     /// <summary>"Produce a weekly summary from my files"</summary>
-    public const string ForgeExample2 = "Vm_Forge_Example2";
+    public const string ForgeExample2 = "Studio.Create.Example2";
 
     /// <summary>"Compare offers and flag the best one"</summary>
-    public const string ForgeExample3 = "Vm_Forge_Example3";
+    public const string ForgeExample3 = "Studio.Create.Example3";
 
     /// <summary>"Turn a folder of documents into a report"</summary>
-    public const string ForgeExample4 = "Vm_Forge_Example4";
+    public const string ForgeExample4 = "Studio.Create.Example4";
 
     /// <summary>"I am preparing a proposal…"</summary>
-    public const string ForgeStatusPreparing = "Vm_Forge_StatusPreparing";
+    public const string ForgeStatusPreparing = "Studio.Create.StatusPreparing";
 
     /// <summary>"Trying it on your example…"</summary>
-    public const string ForgeStatusTrying = "Vm_Forge_StatusTrying";
+    public const string ForgeStatusTrying = "Studio.Create.StatusTrying";
 
     /// <summary>"Checking the result against what you asked…"</summary>
-    public const string ForgeStatusJudging = "Vm_Forge_StatusJudging";
+    public const string ForgeStatusJudging = "Studio.Create.StatusJudging";
 
     /// <summary>"Your solution is ready."</summary>
-    public const string ForgeStatusReady = "Vm_Forge_StatusReady";
+    public const string ForgeStatusReady = "Studio.Create.StatusReady";
 
     /// <summary>"Something went wrong — open the details for the technical part."</summary>
-    public const string ForgeStatusFailed = "Vm_Forge_StatusFailed";
+    public const string ForgeStatusFailed = "Studio.Create.StatusFailed";
 
     /// <summary>"Stopped — you can pick it up again from My solutions."</summary>
-    public const string ForgeStatusStopped = "Vm_Forge_StatusStopped";
+    public const string ForgeStatusStopped = "Studio.Create.StatusStopped";
 
     /// <summary>"Attempt {0}"</summary>
-    public const string ForgeAttempt = "Vm_Forge_Attempt";
+    public const string ForgeAttempt = "Studio.Create.Attempt";
 
     /// <summary>"I could not check this automatically — judge for yourself."</summary>
-    public const string ForgeCheckUnverified = "Vm_Forge_CheckUnverified";
+    public const string ForgeCheckUnverified = "Studio.Create.CheckUnverified";
 
     /// <summary>"The try is done (score {0})."</summary>
-    public const string ForgeResultScore = "Vm_Forge_ResultScore";
+    public const string ForgeResultScore = "Studio.Create.ResultScore";
 
     /// <summary>"Choose where to store the solution"</summary>
-    public const string ForgeStorePickTitle = "Vm_Forge_StorePickTitle";
+    public const string ForgeStorePickTitle = "Studio.Create.StorePickTitle";
 }
 
 /// <summary>

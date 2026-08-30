@@ -202,4 +202,33 @@ public sealed partial class I18nResourceParityTests
 
     [System.Text.RegularExpressions.GeneratedRegex(@"\{(\d+)\}")]
     private static partial System.Text.RegularExpressions.Regex PlaceholderPattern();
+
+    /// <summary>
+    /// One convention, in English: <c>Studio.&lt;Screen&gt;.&lt;Label&gt;</c>. The catalogue
+    /// used to speak three dialects at once — Nav_Start, Wiz_TeamName, Core_Preset_None_Title
+    /// — and a key you cannot guess the shape of is a key someone declares twice.
+    /// <para>
+    /// The screen list is closed on purpose: a new one is a decision, not a typo, and this is
+    /// where it gets made rather than discovered later in a resx diff.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Should_Name_Every_Key_On_The_One_Convention()
+    {
+        string[] screens =
+        [
+            "Shell", "Create", "Chat", "Teams", "Import", "Trial",
+            "Run", "History", "Settings", "Diagnostics", "Common",
+        ];
+
+        var offenders = ReadEntries(Neutral).Keys
+            .Where(key => !screens.Any(screen =>
+                key.StartsWith($"Studio.{screen}.", StringComparison.Ordinal)))
+            .Order()
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            $"Keys off the Studio.<Screen>.<Label> convention: {string.Join(", ", offenders)}");
+    }
 }

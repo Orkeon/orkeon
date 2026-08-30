@@ -22,10 +22,10 @@
            dot when the assistant spoke while it was closed. -->
       <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Height="32" Padding="13,0"
               Margin="0,0,8,0" VerticalAlignment="Top" Command="{Binding Chat.ToggleCommand}"
-              ToolTip="{Binding [Vm_Chat_AskTip], Source={x:Static services:I18n.Instance}}">
+              ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}">
         <StackPanel Orientation="Horizontal">
           <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Vm_Chat_Ask], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Text="{Binding [Studio.Chat.Ask], Source={x:Static services:I18n.Instance}}"/>
           <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
                    Fill="{DynamicResource MarkBrush}"
                    Visibility="{Binding Chat.HasUnread, Converter={StaticResource BooleanToVisibility}}"/>
@@ -113,28 +113,28 @@
         <Button Style="{StaticResource StepPill}" Command="{Binding GoStep1Command}" Tag="{Binding IsStep1}">
           <StackPanel Orientation="Horizontal">
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" Opacity="0.75" Text="1" Margin="0,0,7,0" VerticalAlignment="Center"/>
-            <TextBlock VerticalAlignment="Center" Text="{Binding [Wiz_Step1], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step1], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
         <TextBlock Text="▸" FontSize="12" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
         <Button Style="{StaticResource StepPill}" Command="{Binding GoStep2Command}" Tag="{Binding IsStep2}">
           <StackPanel Orientation="Horizontal">
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" Opacity="0.75" Text="2" Margin="0,0,7,0" VerticalAlignment="Center"/>
-            <TextBlock VerticalAlignment="Center" Text="{Binding [Wiz_Step2], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step2], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
         <TextBlock Text="▸" FontSize="12" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
         <Button Style="{StaticResource StepPill}" Command="{Binding GoStep3Command}" Tag="{Binding IsStep3}">
           <StackPanel Orientation="Horizontal">
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" Opacity="0.75" Text="3" Margin="0,0,7,0" VerticalAlignment="Center"/>
-            <TextBlock VerticalAlignment="Center" Text="{Binding [Wiz_Step3], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step3], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
         <TextBlock Text="▸" FontSize="12" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
         <Button Style="{StaticResource StepPill}" Command="{Binding GoStep4Command}" Tag="{Binding IsStep4}">
           <StackPanel Orientation="Horizontal">
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" Opacity="0.75" Text="4" Margin="0,0,7,0" VerticalAlignment="Center"/>
-            <TextBlock VerticalAlignment="Center" Text="{Binding [Wiz_Step4], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step4], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
         <controls:LucideIcon Kind="loader-circle" Size="14" Foreground="{DynamicResource AccentBrush}" Margin="14,0,0,0"
@@ -339,10 +339,10 @@
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Height="30" Padding="11,0"
                       FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"
                       Foreground="{DynamicResource MarkBrush}" Command="{Binding Chat.ToggleCommand}"
-                      ToolTip="{Binding [Vm_Chat_AskTip], Source={x:Static services:I18n.Instance}}">
+                      ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="wand-2" Size="13" Margin="0,0,6,0"/>
-                  <TextBlock Text="{Binding [Vm_Chat_AskShort], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Chat.AskShort], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <TextBlock FontSize="14.5" FontWeight="Bold" VerticalAlignment="Center" TextWrapping="Wrap"

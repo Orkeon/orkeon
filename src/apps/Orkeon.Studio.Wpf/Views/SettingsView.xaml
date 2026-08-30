@@ -51,7 +51,7 @@
                 Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-            <TextBlock Text="{Binding [Act_Save], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
       </StackPanel>
@@ -253,10 +253,10 @@
                   <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                       <TextBox Style="{StaticResource InputMono}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
-                               ToolTip="{Binding [Profile_KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
+                               ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
                                Text="{Binding KeyInput, UpdateSourceTrigger=PropertyChanged}"/>
                       <Button Style="{StaticResource BtnGhost}" Command="{Binding StoreCommand}"
-                              Content="{Binding [Profile_KeyStore], Source={x:Static services:I18n.Instance}}"/>
+                              Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                     <StackPanel VerticalAlignment="Center">
                       <StackPanel Orientation="Horizontal">

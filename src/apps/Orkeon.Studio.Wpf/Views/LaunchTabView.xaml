@@ -55,10 +55,10 @@
     <Button Style="{StaticResource BtnGhost}" Height="32" Padding="13,0" Margin="0,14,0,0"
             HorizontalAlignment="Left"
             Command="{Binding DataContext.Chat.ToggleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-            ToolTip="{Binding [Vm_Chat_AskTip], Source={x:Static services:I18n.Instance}}">
+            ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}">
       <StackPanel Orientation="Horizontal">
         <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
-        <TextBlock Text="{Binding [Vm_Chat_Ask], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Text="{Binding [Studio.Chat.Ask], Source={x:Static services:I18n.Instance}}"/>
         <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
                  Fill="{DynamicResource MarkBrush}"
                  Visibility="{Binding DataContext.Chat.HasUnread, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
@@ -271,11 +271,11 @@
             </StackPanel>
             <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
                       IsChecked="{Binding Options.WatchProgress}"
-                      Content="{Binding [Vm_RunProgress_Watch], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Run.Watch], Source={x:Static services:I18n.Instance}}"/>
             <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
                       IsChecked="{Binding Options.StreamGeneratedText}"
                       IsEnabled="{Binding Options.CanStreamGeneratedText}"
-                      Content="{Binding [Vm_RunProgress_Stream], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Run.Stream], Source={x:Static services:I18n.Instance}}"/>
             <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
                       IsChecked="{Binding Options.LlmLogEnabled}"
                       Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
@@ -624,7 +624,7 @@
                        Visibility="{Binding Progress.IsChoice, Converter={StaticResource InverseBooleanToVisibility}}">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
                       Command="{Binding Progress.AnswerCommand}"
-                      Content="{Binding [Vm_RunProgress_Answer], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Run.Answer], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Text="{Binding Progress.AnswerText, UpdateSourceTrigger=PropertyChanged}"/>
             </DockPanel>
           </StackPanel>
@@ -637,7 +637,7 @@
           <StackPanel>
             <TextBlock FontSize="12" TextWrapping="Wrap"
                        Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Vm_RunProgress_AgentAsks], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Run.AgentAsks], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock FontFamily="Consolas" FontSize="11" Margin="0,4,0,0"
                        Foreground="{DynamicResource InkMutedBrush}"
                        Text="{Binding Progress.AgentRequestFrom}"/>
@@ -652,7 +652,7 @@
             <DockPanel Margin="0,8,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
                       Command="{Binding Progress.ReplyCommand}"
-                      Content="{Binding [Vm_RunProgress_Reply], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Run.Reply], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Text="{Binding Progress.ReplyText, UpdateSourceTrigger=PropertyChanged}"/>
             </DockPanel>
           </StackPanel>
@@ -662,7 +662,7 @@
         <StackPanel Margin="0,10,0,0"
                     Visibility="{Binding Progress.HasHubMessages, Converter={StaticResource BooleanToVisibility}}">
           <TextBlock Style="{StaticResource Hint}"
-                     Text="{Binding [Vm_RunProgress_HubMessages], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Run.HubMessages], Source={x:Static services:I18n.Instance}}"/>
           <Border Margin="0,4,0,0" Padding="8" CornerRadius="6"
                   Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120">
             <ScrollViewer VerticalScrollBarVisibility="Auto">

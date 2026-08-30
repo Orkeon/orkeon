@@ -156,7 +156,7 @@ public sealed class TourOverlay : Grid
         // like every other assembled label (T-15).
         _counter.Text = string.Format(
             System.Globalization.CultureInfo.CurrentCulture,
-            I18n.T("Vm_Tour_CounterPattern"), _index + 1, _steps.Count);
+            I18n.T("Studio.Shell.CounterPattern"), _index + 1, _steps.Count);
         _back.Visibility = _index > 0 ? Visibility.Visible : Visibility.Collapsed;
         _nextKeyHolder?.SetBinding(ContentControl.ContentProperty,
             new System.Windows.Data.Binding("[" + (_index == _steps.Count - 1 ? "Studio.Shell.Finish" : "Studio.Shell.Next") + "]") { Source = I18n.Instance });
