@@ -26,7 +26,7 @@ public sealed class TourOverlay : Grid
     private IReadOnlyList<TourStep> _steps = [];
     private int _index;
 
-    private readonly Path _dim = new() { Fill = new SolidColorBrush(Color.FromArgb(0x8C, 0x0B, 0x18, 0x22)) };
+    private readonly Path _dim = new();
     private readonly Rectangle _ring = new()
     {
         RadiusX = Radius, RadiusY = Radius, StrokeThickness = 2,
@@ -76,6 +76,7 @@ public sealed class TourOverlay : Grid
         _canvas.Children.Add(_pop);
 
         // theme-aware brushes
+        _dim.SetResourceReference(Shape.FillProperty, "TourScrimBrush");
         _pop.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
         _pop.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
         _ring.SetResourceReference(Shape.StrokeProperty, "AccentBrush");

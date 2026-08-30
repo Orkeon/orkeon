@@ -302,15 +302,18 @@
     <Setter Property="FontSize" Value="11"/>
   </Style>
 
-  <!-- Small ACTION button next to chips («Autoriser un dossier», «Changer les dossiers»):
+  <!-- Small ACTION chip next to chips («Autoriser un dossier», «Changer les dossiers»):
        surface fill, accent text, real hover/pressed/disabled states — the inline-template
-       pills had none (v3 D-02). Radius 10, not a pill: the pill shape is reserved for
-       chips; action buttons cap at CornerRadius 10. -->
+       pills had none (v3 D-02). ARBITRATION (30/08 mock): this one IS a pill — the mock
+       gives it min-height 24 / border-radius 12 / padding 0 11, so radius = height/2 holds.
+       The «no pill» rule of T-17 targets the VERDICT buttons («Ça me va», «Abandonner»),
+       which stay rectangles at radius 10 — not this chip. -->
   <Style x:Key="ChipAction" TargetType="Button">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="11.5"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
-    <Setter Property="Padding" Value="11,4"/>
+    <Setter Property="Height" Value="24"/>
+    <Setter Property="Padding" Value="11,0"/>
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
@@ -323,7 +326,7 @@
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="10" Padding="{TemplateBinding Padding}">
+                  CornerRadius="12" Padding="{TemplateBinding Padding}">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
           <ControlTemplate.Triggers>
@@ -352,6 +355,65 @@
     <Setter Property="Margin" Value="8,0,0,0"/>
     <Setter Property="TextWrapping" Value="NoWrap"/>
     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+  </Style>
+
+  <!-- ══ Wizard stepper pill (Décrire ▸ Composer ▸ Essayer ▸ Adopter) and the
+       selectable chip of the step-1 precisions. Both lived inline in CreateTeamView
+       until the 30/08 mock pass; règle transverse 1 says a shared defect is fixed on
+       the shared style, so they live here. Geometry is the h/2 rule with a FIXED
+       Height — 28/14 — because a Padding-only pill has no height WPF can halve. ══ -->
+  <Style x:Key="StepPill" TargetType="Button">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Height" Value="28"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border Background="{TemplateBinding Background}" CornerRadius="14" Padding="13,0">
+            <ContentPresenter VerticalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <Style x:Key="SelectableChip" TargetType="Button">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="Height" Value="28"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Margin" Value="0,0,6,6"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Bg" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="1" CornerRadius="14" Padding="12,0">
+            <ContentPresenter VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+              <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+              <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            </DataTrigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <!-- ══ Selectable "pick row" (presets, radio cards) — RadioButton ══ -->
@@ -399,8 +461,8 @@
     <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-    <Setter Property="Height" Value="27"/>
-    <Setter Property="CornerRadius" Value="13.5"/>
+    <Setter Property="Height" Value="26"/>
+    <Setter Property="CornerRadius" Value="13"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
   </Style>
@@ -416,7 +478,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
-          <Border Background="{TemplateBinding Background}" CornerRadius="12.5"
+          <Border Background="{TemplateBinding Background}" CornerRadius="12"
                   Padding="{TemplateBinding Padding}">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
@@ -499,8 +561,11 @@
                               IsHitTestVisible="False" Margin="10,0,26,0" VerticalAlignment="Center"/>
             <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                    StaysOpen="False" PopupAnimation="Fade" VerticalOffset="4">
+              <!-- Margin leaves room for the shadow: an AllowsTransparency popup clips
+                   anything drawn outside its own child bounds. -->
               <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
-                      BorderThickness="1" CornerRadius="10" Padding="0,4"
+                      BorderThickness="1" CornerRadius="10" Padding="0,4" Margin="10,0,10,14"
+                      Effect="{DynamicResource ShadowMd}"
                       MinWidth="{TemplateBinding ActualWidth}" MaxHeight="260">
                 <ScrollViewer>
                   <ItemsPresenter/>

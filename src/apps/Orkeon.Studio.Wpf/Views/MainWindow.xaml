@@ -345,7 +345,7 @@
     </Grid>
 
     <!-- ══════════ ÉDITEUR DE RÉGLAGE DE MODÈLE (overlay) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnProfileEditorBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnProfileEditorBackdropClick"
           Visibility="{Binding Settings.Profiles.IsEditorOpen, Converter={StaticResource BooleanToVisibility}}">
       <Grid.Resources>
         <views:IsEqualConverter x:Key="IsEqual"/>
@@ -386,7 +386,7 @@
       </Grid.Resources>
       <Border Width="680" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding Settings.Profiles.Editor}">
+              CornerRadius="18" DataContext="{Binding Settings.Profiles.Editor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <ScrollViewer VerticalScrollBarVisibility="Auto"
                         MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ModalBodyHeight}}">
@@ -504,7 +504,7 @@
                     Visibility="{Binding RequiresApiKey, Converter={StaticResource BooleanToVisibility}}">
               <StackPanel>
                 <DockPanel LastChildFill="False">
-                  <controls:LucideIcon Kind="key-round" Size="14" Foreground="{DynamicResource AccentBrush}"
+                  <controls:LucideIcon Kind="key" Size="14" Foreground="{DynamicResource AccentBrush}"
                                        VerticalAlignment="Center"/>
                   <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
                              Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding KeyBlockTitle}"/>
@@ -609,11 +609,11 @@
     </Grid>
 
     <!-- ══════════ DOSSIERS DE L'ÉQUIPE (overlay, F-03) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnTeamMountsBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnTeamMountsBackdropClick"
           Visibility="{Binding TeamMounts.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding TeamMounts}">
+              CornerRadius="18" DataContext="{Binding TeamMounts}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
@@ -716,11 +716,11 @@
     </Grid>
 
     <!-- ══════════ ÉDITEUR D'AGENT (overlay, F-01) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnAgentEditorBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAgentEditorBackdropClick"
           Visibility="{Binding CreateTeam.AgentEditor.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding CreateTeam.AgentEditor}">
+              CornerRadius="18" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
@@ -808,11 +808,11 @@
          Réglages › Dossiers autorisés, droits compris. Déclarer reste le geste des Réglages,
          et « Déclarer un nouveau dossier… » enchaîne sur le sélecteur, qui s'empile au-dessus
          de cet overlay — d'où l'ordre : ce Grid AVANT celui du sélecteur. -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnAllowedFoldersBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAllowedFoldersBackdropClick"
           Visibility="{Binding AllowedFolders.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding AllowedFolders}">
+              CornerRadius="18" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
@@ -933,11 +933,11 @@
     </Grid>
 
     <!-- ══════════ AUTORISER UN DOSSIER (overlay, F-03 — au-dessus des deux autres) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnFolderPickerBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnFolderPickerBackdropClick"
           Visibility="{Binding FolderPicker.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding FolderPicker}">
+              CornerRadius="18" DataContext="{Binding FolderPicker}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
@@ -1076,18 +1076,18 @@
     </Grid>
 
     <!-- ══════════ À PROPOS (overlay) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="#8C09141C" MouseLeftButtonDown="OnAboutBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAboutBackdropClick"
           Visibility="{Binding About.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="660" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="20" ClipToBounds="True">
+              CornerRadius="20" ClipToBounds="True" Effect="{DynamicResource ShadowLg}">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="250"/>
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
           <!-- illustration plate: fixed light background, the artwork is opaque -->
-          <Border Grid.Column="0" Background="#EFF3F3" CornerRadius="20,0,0,20">
+          <Border Grid.Column="0" Background="{DynamicResource IllustrationPanelBrush}" CornerRadius="20,0,0,20">
             <Image Source="/Assets/kama.png" Width="224" VerticalAlignment="Bottom" HorizontalAlignment="Center"/>
           </Border>
           <StackPanel Grid.Column="1" Margin="28,26">
@@ -1127,7 +1127,7 @@
             MouseLeftButtonDown="OnSplashClick"
             ToolTip="{Binding [Splash_Skip], Source={x:Static services:I18n.Instance}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-        <Border Background="#EFF3F3" CornerRadius="28" Padding="34,14,34,0" HorizontalAlignment="Center">
+        <Border Background="{DynamicResource IllustrationPanelBrush}" CornerRadius="28" Padding="34,14,34,0" HorizontalAlignment="Center">
           <Image Source="/Assets/kama.png" Width="280"/>
         </Border>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,26,0,0">

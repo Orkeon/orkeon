@@ -45,4 +45,18 @@
   <SolidColorBrush x:Key="ConsoleOkBrush"    Color="#7FC9AE"/>
   <SolidColorBrush x:Key="ConsoleErrBrush"   Color="#E0837A"/>
 
+  <!-- overlays and illustration plates (identical in both themes, like the console:
+       the modal veil and the tour mask are always "deep ocean at 55/62 %", and the
+       About/splash plate stays light so the mascot keeps its ground) -->
+  <SolidColorBrush x:Key="ScrimBrush"             Color="#8C09141C"/>
+  <SolidColorBrush x:Key="TourScrimBrush"         Color="#9E09141C"/>
+  <SolidColorBrush x:Key="IllustrationPanelBrush" Color="#EFF3F3"/>
+
+  <!-- ══ Elevation (see Tokens.Light.xaml). On a dark ground the navy tint reads as a
+       smudge and the light recipe disappears: pure black, carried deeper. ══ -->
+  <DropShadowEffect x:Key="ShadowMd" Color="#000000" Direction="270" ShadowDepth="8"
+                    BlurRadius="34" Opacity="0.34" RenderingBias="Quality"/>
+  <DropShadowEffect x:Key="ShadowLg" Color="#000000" Direction="270" ShadowDepth="14"
+                    BlurRadius="64" Opacity="0.55" RenderingBias="Quality"/>
+
 </ResourceDictionary>

@@ -57,6 +57,7 @@ public sealed partial class ChipShapeConformityTests
     [InlineData("ToolChip", 22.0)]
     [InlineData("MetricChip", 20.0)]
     [InlineData("BadgeBase", 20.0)]
+    [InlineData("SegmentedGroup", 26.0)]
     public void Should_Keep_Radius_At_Exactly_Half_The_Height_When_Reading_The_Pill_Styles(string styleKey, double expectedHeight)
     {
         var document = XDocument.Load(Path.Combine(WpfSourceRoot(), "Themes", "Studio.xaml"));
@@ -90,6 +91,42 @@ public sealed partial class ChipShapeConformityTests
 
         var height = double.Parse(Setter(styleKey, "Height")!, CultureInfo.InvariantCulture);
         var radius = double.Parse(Setter(styleKey, "CornerRadius")!, CultureInfo.InvariantCulture);
+
+        Assert.Equal(expectedHeight, height);
+        Assert.Equal(height / 2, radius);
+    }
+
+    [Theory]
+    [InlineData("StepPill", 28.0)]
+    [InlineData("SelectableChip", 28.0)]
+    [InlineData("ChipAction", 24.0)]
+    public void Should_Keep_Template_Radius_At_Half_The_Height_When_Reading_The_Templated_Pills(
+        string styleKey, double expectedHeight)
+    {
+        // A Button pill carries its Height as a Setter but its CornerRadius on the Border
+        // inside the ControlTemplate, so the setter walk above cannot see it. Same contract,
+        // different reading: radius = height / 2, exactly, with the height pinned.
+        var document = XDocument.Load(Path.Combine(WpfSourceRoot(), "Themes", "Studio.xaml"));
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        var style = document.Root!.Elements()
+            .Single(e => e.Name.LocalName == "Style" && (string?)e.Attribute(x + "Key") == styleKey);
+
+        var height = double.Parse(
+            style.Elements()
+                .Where(e => e.Name.LocalName == "Setter" && (string?)e.Attribute("Property") == "Height")
+                .Select(e => (string?)e.Attribute("Value"))
+                .Single()!,
+            CultureInfo.InvariantCulture);
+
+        // The outermost Border of the template is the pill; nested ones (none today) would
+        // come after it in document order.
+        var radius = double.Parse(
+            style.Descendants()
+                .Where(e => e.Name.LocalName == "Border" && e.Attribute("CornerRadius") is not null)
+                .Select(e => (string)e.Attribute("CornerRadius")!)
+                .First(),
+            CultureInfo.InvariantCulture);
 
         Assert.Equal(expectedHeight, height);
         Assert.Equal(height / 2, radius);

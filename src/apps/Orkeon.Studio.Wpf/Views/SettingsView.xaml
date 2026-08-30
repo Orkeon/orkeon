@@ -240,7 +240,7 @@
               Visibility="{Binding Profiles.HasSecrets, Converter={StaticResource BooleanToVisibility}}">
         <StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-            <controls:LucideIcon Kind="key-round" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+            <controls:LucideIcon Kind="key" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
             <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Secrets_Title], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"

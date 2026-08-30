@@ -46,4 +46,20 @@
   <SolidColorBrush x:Key="ConsoleOkBrush"    Color="#7FC9AE"/>
   <SolidColorBrush x:Key="ConsoleErrBrush"   Color="#E0837A"/>
 
+  <!-- overlays and illustration plates (identical in both themes, like the console:
+       the modal veil and the tour mask are always "deep ocean at 55/62 %", and the
+       About/splash plate stays light so the mascot keeps its ground) -->
+  <SolidColorBrush x:Key="ScrimBrush"             Color="#8C09141C"/>
+  <SolidColorBrush x:Key="TourScrimBrush"         Color="#9E09141C"/>
+  <SolidColorBrush x:Key="IllustrationPanelBrush" Color="#EFF3F3"/>
+
+  <!-- ══ Elevation. The mock lifts every floating surface off the page; WPF had none.
+       CSS → WPF: `0 Ypx Bpx rgba(r,g,b,a)` becomes Direction=270 (straight down),
+       ShadowDepth=Y, BlurRadius=B, Opacity=a. They live with the tokens rather than in
+       Studio.xaml because a shadow names a colour, and the colour differs by theme. ══ -->
+  <DropShadowEffect x:Key="ShadowMd" Color="#10293B" Direction="270" ShadowDepth="8"
+                    BlurRadius="34" Opacity="0.16" RenderingBias="Quality"/>
+  <DropShadowEffect x:Key="ShadowLg" Color="#000000" Direction="270" ShadowDepth="14"
+                    BlurRadius="64" Opacity="0.35" RenderingBias="Quality"/>
+
 </ResourceDictionary>

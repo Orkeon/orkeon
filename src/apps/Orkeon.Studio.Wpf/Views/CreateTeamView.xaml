@@ -7,58 +7,6 @@
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
-  <UserControl.Resources>
-    <!-- a step pill of the stepper -->
-    <Style x:Key="StepPill" TargetType="Button">
-      <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-      <Setter Property="FontSize" Value="12.5"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="Button">
-            <Border Background="{TemplateBinding Background}" CornerRadius="13.5" Padding="13,5">
-              <ContentPresenter VerticalAlignment="Center"/>
-            </Border>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-      <Style.Triggers>
-        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
-          <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-          <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-        </DataTrigger>
-      </Style.Triggers>
-    </Style>
-    <!-- a selectable chip of the step-1 precisions -->
-    <Style x:Key="Chip" TargetType="Button">
-      <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-      <Setter Property="FontSize" Value="12"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-      <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="Margin" Value="0,0,6,6"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="Button">
-            <Border x:Name="Bg" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
-                    BorderThickness="1" CornerRadius="13.5" Padding="12,6">
-              <ContentPresenter/>
-            </Border>
-            <ControlTemplate.Triggers>
-              <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-                <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-              </DataTrigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-  </UserControl.Resources>
   <StackPanel>
 
     <!-- header -->
@@ -264,7 +212,7 @@
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Button Style="{StaticResource Chip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
+                  <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -274,7 +222,7 @@
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Button Style="{StaticResource Chip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
+                  <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -284,7 +232,7 @@
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Button Style="{StaticResource Chip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
+                  <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
