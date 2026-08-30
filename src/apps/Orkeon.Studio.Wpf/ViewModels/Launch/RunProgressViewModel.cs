@@ -152,6 +152,9 @@ public sealed class RunProgressViewModel : ObservableObject
     /// The one-line state of the run. Deliberately says "nothing reported yet" rather than
     /// implying progress: no news is not the same as going well. A finished run appends
     /// what it cost — tokens, cache hit, duration — when the stream measured it (W-08).
+    /// <summary>Wall time of the finished run, as the stream reported it; null before it ends.</summary>
+    public long? FinalDurationMs => _model.FinalDurationMs;
+
     /// </summary>
     public string Summary
     {

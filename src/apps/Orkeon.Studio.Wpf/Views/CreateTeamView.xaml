@@ -609,9 +609,10 @@
               <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <controls:LucideIcon Kind="braces" Size="15" Foreground="{DynamicResource AccentBrush}"
                                      VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBlock Style="{StaticResource CardTitle}" VerticalAlignment="Center"
+                <TextBlock Style="{StaticResource CardHeaderTitle}"
                            Text="{Binding [Wiz_Files_Title], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock Style="{StaticResource CardHeaderMeta}" MaxWidth="260"
+                <!-- The short name, 9.5 mono; the full session path is the tooltip (T-21). -->
+                <TextBlock Style="{StaticResource CardHeaderFile}" MaxWidth="260"
                            Text="{Binding SessionSlug}" ToolTip="{Binding SessionDirectory}"/>
               </StackPanel>
             </DockPanel>
@@ -798,11 +799,24 @@
                        Text="{Binding [Wiz_TeamName], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding TeamName, UpdateSourceTrigger=PropertyChanged}"/>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,7"
-                       Text="{Binding [Wiz_AdoptProfile], Source={x:Static services:I18n.Instance}}"/>
+            <!-- T-22: «Gérer les réglages» rides the LABEL's line. Stacked under the picker
+                 it read as a fourth choice among the profiles rather than as the way out
+                 to the screen that manages them. -->
+            <DockPanel Margin="0,16,0,7">
+              <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}"
+                      VerticalAlignment="Center" Command="{Binding OpenSettingsCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [Wiz_ManageSettings], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <TextBlock Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0"
+                         Text="{Binding [Wiz_AdoptProfile], Source={x:Static services:I18n.Instance}}"/>
+            </DockPanel>
             <!-- W-07: the selected model profile as a card — «Changer» unfolds the radio
-                 rows; no select at all, exactly the mock's shape. -->
-            <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                 rows; no select at all, exactly the mock's shape. The container carries the
+                 surface pair of the mock rather than the sunk one (T-22). -->
+            <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="10" Padding="13,11" MaxWidth="480" HorizontalAlignment="Left">
               <DockPanel>
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="sparkles" Size="15"
@@ -834,13 +848,6 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" FontSize="11.5" Padding="10,5"
-                      Command="{Binding OpenSettingsCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Wiz_ManageSettings], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
             </StackPanel>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,7"

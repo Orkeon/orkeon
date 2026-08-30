@@ -7,16 +7,43 @@ using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 
+/// <summary>
+/// What a log line IS, decided by whoever produced it. Never sniffed from the text: the
+/// outcome sentence is localized, so a regex over it would colour the console in English
+/// and leave it grey in every other language.
+/// </summary>
+public enum LogLineKind
+{
+    /// <summary>Ordinary output, from the child or from Studio.</summary>
+    Output,
+
+    /// <summary>The command about to run, echoed before it does.</summary>
+    Command,
+
+    /// <summary>The closing verdict of a run that ended well.</summary>
+    Outcome,
+}
+
 /// <summary>One streamed output line, with the channel it came from.</summary>
 public sealed class LogLineViewModel
 {
     /// <summary>Wraps a line read from the child process.</summary>
-    public LogLineViewModel(ProcessOutputLine line)
+    public LogLineViewModel(ProcessOutputLine line, LogLineKind kind = LogLineKind.Output)
     {
         ArgumentNullException.ThrowIfNull(line);
 
         Line = line;
+        Kind = kind;
     }
+
+    /// <summary>What this line is — the console colours on it.</summary>
+    public LogLineKind Kind { get; }
+
+    /// <summary>Whether it is the echoed command.</summary>
+    public bool IsCommand => Kind == LogLineKind.Command;
+
+    /// <summary>Whether it is a closing verdict.</summary>
+    public bool IsOutcome => Kind == LogLineKind.Outcome;
 
     /// <summary>The underlying Core record.</summary>
     public ProcessOutputLine Line { get; }
@@ -103,11 +130,11 @@ public sealed class RunLogViewModel : ObservableObject
             _strings[StudioStringKeys.LogLinesDropped], Lines.Count, DroppedLines, MaxLines);
 
     /// <summary>Appends a streamed line, evicting the oldest once the cap is reached.</summary>
-    public void Append(ProcessOutputLine line)
+    public void Append(ProcessOutputLine line, LogLineKind kind = LogLineKind.Output)
     {
         ArgumentNullException.ThrowIfNull(line);
 
-        Lines.Add(new LogLineViewModel(line));
+        Lines.Add(new LogLineViewModel(line, kind));
 
         if (Lines.Count > MaxLines)
         {
@@ -121,6 +148,14 @@ public sealed class RunLogViewModel : ObservableObject
     /// <summary>Appends a line Studio itself produced, e.g. the command line about to run.</summary>
     public void AppendNotice(string text) =>
         Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, text));
+
+    /// <summary>Appends the command about to run — the console reads it in its own colour.</summary>
+    public void AppendCommand(string text) =>
+        Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, text), LogLineKind.Command);
+
+    /// <summary>Appends the closing verdict of a run.</summary>
+    public void AppendOutcome(string text) =>
+        Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, text), LogLineKind.Outcome);
 
     /// <summary>Appends a Studio-produced error line.</summary>
     public void AppendError(string text) =>

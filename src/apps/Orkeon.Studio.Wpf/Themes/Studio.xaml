@@ -602,6 +602,21 @@
     </Setter>
   </Style>
 
+  <!-- Card-header title: the «titre + méta mono + actions» row wants 13/700, one size
+       under the big CardTitle that opens a card. Both sit on the same centre line as the
+       meta beside them — that alignment is the whole recipe (T-20). -->
+  <Style x:Key="CardHeaderTitle" TargetType="TextBlock" BasedOn="{StaticResource CardTitle}">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+  <!-- The same meta, one size down, for a FILE name rather than a slug (T-21). Deliberately
+       a variant: CardHeaderMeta stays at 10, which is what T-20 pins everywhere else. -->
+  <Style x:Key="CardHeaderFile" TargetType="TextBlock" BasedOn="{StaticResource CardHeaderMeta}">
+    <Setter Property="FontSize" Value="9.5"/>
+  </Style>
+
   <!-- ══ Selectable "pick row" (presets, radio cards) — RadioButton ══ -->
   <Style x:Key="PickRow" TargetType="RadioButton">
     <Setter Property="Cursor" Value="Hand"/>
@@ -730,9 +745,11 @@
                   <Border x:Name="bd" Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}"
                           BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}"
                           BorderThickness="1" CornerRadius="9">
-                    <Path Data="M0,0 L4,4 8,0" Stroke="{DynamicResource InkFaintBrush}" StrokeThickness="1.6"
-                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                          HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,1,11,0"/>
+                    <!-- The real Lucide chevron rather than three hand-drawn segments, and
+                         on the muted ink the mock uses: a chevron drawn twice drifts twice. -->
+                    <controls:LucideIcon Kind="chevron-down" Size="13"
+                                         Foreground="{DynamicResource InkMutedBrush}"
+                                         HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,11,0"/>
                   </Border>
                   <ControlTemplate.Triggers>
                     <Trigger Property="IsChecked" Value="True">

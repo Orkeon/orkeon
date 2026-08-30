@@ -336,6 +336,22 @@ public static class StudioStringKeys
     /// <summary>"{0} / {1}"</summary>
     public const string TourCounterPattern = "Vm_Tour_CounterPattern";
 
+
+    // ---- Diagnostics, in plain words (T-30) ----
+    // The CLI prints its detail in English only. Novice reads these instead; the raw
+    // line stays, under the mono identifier, where Expert expects it.
+    /// <summary>"In place."</summary>
+    public const string DoctorStatusOk = "Vm_Doctor_StatusOk";
+
+    /// <summary>"Usable, but worth a look."</summary>
+    public const string DoctorStatusWarning = "Vm_Doctor_StatusWarning";
+
+    /// <summary>"Missing — a team will not run until this is fixed."</summary>
+    public const string DoctorStatusFailure = "Vm_Doctor_StatusFailure";
+
+    /// <summary>"Not checked."</summary>
+    public const string DoctorStatusUnknown = "Vm_Doctor_StatusUnknown";
+
     // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
 
     /// <summary>"{0} — {1} agent(s)"</summary>
@@ -1202,6 +1218,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardStep3] = "Try",
         [StudioStringKeys.WizardStep4] = "Adopt",
         [StudioStringKeys.WizardDraftStepPattern] = "Step {0} of {1} · {2}",
+        [StudioStringKeys.DoctorStatusOk] = "In place.",
+        [StudioStringKeys.DoctorStatusWarning] = "Usable, but worth a look.",
+        [StudioStringKeys.DoctorStatusFailure] = "Missing — a team will not run until this is fixed.",
+        [StudioStringKeys.DoctorStatusUnknown] = "Not checked.",
         [StudioStringKeys.ToolReadScoped] = "read {0}",
         [StudioStringKeys.ToolListScoped] = "list {0}",
         [StudioStringKeys.ToolWriteScoped] = "write {0}",

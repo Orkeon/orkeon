@@ -1019,4 +1019,19 @@
   <data name="Vm_Tour_CounterPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>
+  <data name="Run_ChooseTeam" xml:space="preserve">
+    <value>Choisir une équipe</value>
+  </data>
+  <data name="Vm_Doctor_StatusOk" xml:space="preserve">
+    <value>En place.</value>
+  </data>
+  <data name="Vm_Doctor_StatusWarning" xml:space="preserve">
+    <value>Utilisable, mais mérite un coup d'œil.</value>
+  </data>
+  <data name="Vm_Doctor_StatusFailure" xml:space="preserve">
+    <value>Manquant — une équipe ne tournera pas tant que ce n'est pas réglé.</value>
+  </data>
+  <data name="Vm_Doctor_StatusUnknown" xml:space="preserve">
+    <value>Non vérifié.</value>
+  </data>
 </root>

@@ -75,3 +75,44 @@ public sealed class WizardToolChipTests
         public event EventHandler? CultureChanged { add { } remove { } }
     }
 }
+
+/// <summary>
+/// The console's four brushes, and the run-cost line under a finished run (T-23, DS-8).
+/// </summary>
+public sealed class RunLogAndMetricsTests
+{
+    [Fact]
+    public void A_log_line_is_classified_by_whoever_produced_it()
+    {
+        var log = new Orkeon.Studio.Wpf.ViewModels.Launch.RunLogViewModel();
+
+        log.AppendCommand("orkeon run ./crew");
+        log.AppendOutcome("Finished without errors.");
+        log.AppendNotice("step 1/3");
+        log.AppendError("boom");
+
+        // Never sniffed from the text: the outcome sentence is localized, so a regex over
+        // it would colour the console in English and leave it grey everywhere else.
+        Assert.True(log.Lines[0].IsCommand);
+        Assert.False(log.Lines[0].IsOutcome);
+        Assert.True(log.Lines[1].IsOutcome);
+        Assert.False(log.Lines[2].IsCommand);
+        Assert.False(log.Lines[2].IsOutcome);
+        Assert.True(log.Lines[3].IsError);
+    }
+
+    [Fact]
+    public void A_metric_the_stream_did_not_measure_produces_no_chip_at_all()
+    {
+        // A zero would read as «it cost nothing», which is a different statement from
+        // «nobody counted».
+        var none = Orkeon.Studio.Core.Launch.UsageMetricsFormatter.Chips(null, null, null, null);
+        Assert.Empty(none);
+
+        var some = Orkeon.Studio.Core.Launch.UsageMetricsFormatter.Chips(12_840, 7_980, 4_860, 59_000);
+        Assert.Equal(3, some.Count);
+        Assert.Contains(some, c => c.Contains("12", StringComparison.Ordinal));
+        Assert.Contains(some, c => c.Contains("62", StringComparison.Ordinal));   // cache hit, in %
+        Assert.Contains(some, c => c.Contains("980", StringComparison.Ordinal));  // …and in tokens
+    }
+}

@@ -131,7 +131,14 @@
                                Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Name, Mode=OneWay}"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
-                  <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding Detail, Mode=OneWay}"/>
+                  <!-- T-30: the CLI's detail is English whatever the UI speaks, so Novice
+                       reads the localized sentence and Expert keeps the raw line. -->
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap"
+                             Text="{Binding StatusSentence, Mode=OneWay}"
+                             Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap"
+                             Text="{Binding Detail, Mode=OneWay}"
+                             Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                   <!-- llm-config reads the base (file + shell env); a team's named profile
                        is laid over its own launch only, so this check cannot see it. -->
                   <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" FontStyle="Italic"

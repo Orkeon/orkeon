@@ -114,10 +114,15 @@
         </ListBox>
       </DockPanel>
 
-      <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource LineFaintBrush}" HorizontalAlignment="Center"/>
+      <!-- T-30: the separator and the form appear WITH a selection, not before one. An
+           editor standing open over nothing invites the reading that something is wrong
+           with a screen the user has not touched yet. -->
+      <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource LineFaintBrush}" HorizontalAlignment="Center"
+                 Visibility="{Binding SelectedMount, Converter={StaticResource NullToVisibility}}"/>
 
       <!-- right pane: editor for the selected mount -->
-      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"
+                    Visibility="{Binding SelectedMount, Converter={StaticResource NullToVisibility}}">
         <StackPanel DataContext="{Binding SelectedMount}">
 
           <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,0,0,7"

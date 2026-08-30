@@ -109,6 +109,8 @@ public sealed class LaunchTabViewModel : ObservableObject
             _ => !IsRunning && !IsBlockedByUndeclaredFolders);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         OpenAllowedFoldersCommand = new RelayCommand(() => OpenAllowedFoldersRequested?.Invoke(this, EventArgs.Empty));
+        ChooseTeamCommand = new RelayCommand(() => ChooseTeamRequested?.Invoke(this, EventArgs.Empty));
+        CreateTeamCommand = new RelayCommand(() => CreateTeamRequested?.Invoke(this, EventArgs.Empty));
         ClearLogCommand = new RelayCommand(() => Log.Clear());
         OpenResultCommand = new RelayCommand(OpenResult, () => CanOpenResult);
         CheckOptionsCommand = new RelayCommand(() => CheckOptions());
@@ -199,7 +201,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _lastResult, value))
-                OnPropertiesChanged(nameof(ExitCode), nameof(Outcome), nameof(ExitDescription), nameof(HasResult));
+                OnPropertiesChanged(nameof(ExitCode), nameof(Outcome), nameof(ExitDescription), nameof(HasResult), nameof(ResultMetricsLine));
             RaiseRunStateChanged();
         }
     }
@@ -215,6 +217,27 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     /// <summary>The plain-language reading of the last exit code.</summary>
     public string? ExitDescription => LastResult?.Description;
+
+    /// <summary>
+    /// What the finished run cost, under the result sentence (T-23): tokens, cache hit as a
+    /// percentage AND in tokens, wall time. A metric the stream did not measure produces no
+    /// chip at all — never a zero, which would read as «it cost nothing».
+    /// </summary>
+    public string? ResultMetricsLine
+    {
+        get
+        {
+            var chips = Orkeon.Studio.Core.Launch.UsageMetricsFormatter.Chips(
+                _finalTokens is > 0 ? _finalTokens : null,
+                _finalCacheHitTokens,
+                _finalCacheMissTokens,
+                Progress.FinalDurationMs,
+                _strings,
+                CultureInfo.CurrentCulture);
+
+            return chips.Count > 0 ? string.Join(" · ", chips) : null;
+        }
+    }
 
     /// <summary>Where the co-installed CLI was found, or why it was not.</summary>
     public BinaryLocation? BinaryLocation
@@ -444,7 +467,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     {
         IsRunning = true;
 
-        Log.AppendNotice(CommandLineDisplay.Format(request.Arguments));
+        Log.AppendCommand(CommandLineDisplay.Format(request.Arguments));
         StatusMessage = dryRun
             ? _strings[StudioStringKeys.LaunchValidating]
             : _strings[StudioStringKeys.LaunchRunning];
@@ -471,7 +494,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             // the crew validated, as the terminal launcher does.
             var outcome = LaunchOutcomeFormatter.Describe(result, dryRun, _strings);
             StatusMessage = outcome;
-            Log.AppendNotice(outcome);
+            Log.AppendOutcome(outcome);
 
             // The session already recorded the run; the panel only projects its list.
             if (request.RecordInHistory)
@@ -643,8 +666,23 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>Opens the allowed-folders list — the shell lands on the settings' folders tab.</summary>
     public RelayCommand OpenAllowedFoldersCommand { get; }
 
+    /// <summary>Novice empty state: go pick a team.</summary>
+    public RelayCommand ChooseTeamCommand { get; }
+
+    /// <summary>Novice empty state: go make one.</summary>
+    public RelayCommand CreateTeamCommand { get; }
+
     /// <summary>Raised by <see cref="OpenAllowedFoldersCommand"/>.</summary>
     public event EventHandler? OpenAllowedFoldersRequested;
+
+    /// <summary>
+    /// Raised by the Novice empty state's « Choisir une équipe » — the shell brings My teams
+    /// forward. The screen used to name that place and give no way to reach it.
+    /// </summary>
+    public event EventHandler? ChooseTeamRequested;
+
+    /// <summary>Raised by its « Créer une équipe » sibling — the shell opens the wizard.</summary>
+    public event EventHandler? CreateTeamRequested;
 
     /// <summary>The team card only exists once a target resolves.</summary>
     public bool HasTeamCard => Target.IsResolved;

@@ -22,6 +22,7 @@
       <views:ZeroToVisibilityConverter x:Key="ZeroToVisibility" />
       <views:AllTrueToVisibilityConverter x:Key="AllTrueToVisibility" />
       <views:NegateConverter x:Key="Negate" />
+      <views:NullToVisibilityConverter x:Key="NullToVisibility" />
 
     </ResourceDictionary>
   </Application.Resources>

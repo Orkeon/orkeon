@@ -2267,4 +2267,19 @@
   <data name="Vm_Tour_CounterPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>
+  <data name="Run_ChooseTeam" xml:space="preserve">
+    <value>Elegir un equipo</value>
+  </data>
+  <data name="Vm_Doctor_StatusOk" xml:space="preserve">
+    <value>En su sitio.</value>
+  </data>
+  <data name="Vm_Doctor_StatusWarning" xml:space="preserve">
+    <value>Utilizable, pero merece un vistazo.</value>
+  </data>
+  <data name="Vm_Doctor_StatusFailure" xml:space="preserve">
+    <value>Falta — un equipo no funcionará mientras no se arregle.</value>
+  </data>
+  <data name="Vm_Doctor_StatusUnknown" xml:space="preserve">
+    <value>No verificado.</value>
+  </data>
 </root>

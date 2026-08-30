@@ -155,7 +155,6 @@
       </StackPanel>
     </Border>
 
-    <!-- novice empty state (T-12) -->
     <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,18,0,0" TextWrapping="Wrap"
                Text="{Binding [Run_Empty], Source={x:Static services:I18n.Instance}}">
       <TextBlock.Style>
@@ -173,6 +172,39 @@
         </Style>
       </TextBlock.Style>
     </TextBlock>
+    <!-- novice empty state (T-12), and the two ways out of it (T-29): a Novice with no
+         team resolved was being told where to click and given nothing to click. -->
+    <StackPanel Margin="0,0,0,0">
+      <StackPanel.Style>
+        <Style TargetType="StackPanel">
+          <Setter Property="Visibility" Value="Collapsed"/>
+          <Style.Triggers>
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                <Condition Binding="{Binding HasTeamCard}" Value="False"/>
+              </MultiDataTrigger.Conditions>
+              <Setter Property="Visibility" Value="Visible"/>
+            </MultiDataTrigger>
+          </Style.Triggers>
+        </Style>
+      </StackPanel.Style>
+      <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+        <Button Style="{StaticResource BtnPrimary}" Command="{Binding ChooseTeamCommand}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="brain-circuit" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+            <TextBlock Text="{Binding [Run_ChooseTeam], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+        <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding CreateTeamCommand}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </StackPanel>
+
 
     <!-- ══ Card 1 — the team ══ -->
     <Border Style="{StaticResource Card}" Margin="0,16,0,0"
@@ -660,8 +692,15 @@
               <TextBlock Text="{Binding [Run_OpenResult], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
-          <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                     VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding ExitDescription}"/>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                       TextWrapping="Wrap" Text="{Binding ExitDescription}"/>
+            <!-- T-23: what it cost, under the sentence that says how it went. Absent
+                 entirely when the stream measured nothing — a zero would be a lie. -->
+            <TextBlock Style="{StaticResource Hint}" FontSize="11.5" Margin="0,3,0,0" TextWrapping="Wrap"
+                       Text="{Binding ResultMetricsLine}"
+                       Visibility="{Binding ResultMetricsLine, Converter={StaticResource StringPresentToVisibility}}"/>
+          </StackPanel>
         </DockPanel>
       </StackPanel>
     </Border>
@@ -741,9 +780,20 @@
               <DataTemplate>
                 <TextBlock Text="{Binding Text}">
                   <TextBlock.Style>
+                    <!-- The console palette has four brushes and used two of them: the
+                         echoed command and the closing verdict were the same grey as every
+                         other line, so the two moments worth finding in a long log were the
+                         hardest to find. The classification comes from the producer, never
+                         from the text — the verdict sentence is localized. -->
                     <Style TargetType="TextBlock">
                       <Setter Property="Foreground" Value="{DynamicResource ConsoleFgBrush}"/>
                       <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsCommand}" Value="True">
+                          <Setter Property="Foreground" Value="{DynamicResource ConsoleCmdBrush}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsOutcome}" Value="True">
+                          <Setter Property="Foreground" Value="{DynamicResource ConsoleOkBrush}"/>
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsError}" Value="True">
                           <Setter Property="Foreground" Value="{DynamicResource ConsoleErrBrush}"/>
                         </DataTrigger>

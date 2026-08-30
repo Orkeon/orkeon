@@ -129,3 +129,18 @@ public sealed class NegateConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is not true;
 }
+
+/// <summary>
+/// Something present → Visible, null → Collapsed. Used for panes that only make sense once
+/// a selection exists: a form standing open over nothing reads as a screen in error.
+/// </summary>
+public sealed class NullToVisibilityConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is null ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <inheritdoc />
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException("This converter is one-way: a Visibility carries no instance.");
+}

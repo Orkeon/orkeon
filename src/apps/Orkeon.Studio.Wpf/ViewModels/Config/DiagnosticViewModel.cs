@@ -44,8 +44,22 @@ public sealed class DoctorCheckViewModel
     /// <summary>Its outcome.</summary>
     public DoctorStatus Status => Check.Status;
 
-    /// <summary>The explanation the CLI printed.</summary>
+    /// <summary>The explanation the CLI printed — English only, so it is Expert detail.</summary>
     public string Detail => Check.Detail;
+
+    /// <summary>
+    /// What the check means, in the user's own language. The CLI prints its detail in
+    /// English whatever the UI speaks, so a Novice screen quoting it verbatim is a French
+    /// or Chinese page with an English sentence in the middle of it. This says the same
+    /// thing in one line; the raw text stays, under the mono identifier, for Expert.
+    /// </summary>
+    public string StatusSentence => _strings[Status switch
+    {
+        DoctorStatus.Ok => StudioStringKeys.DoctorStatusOk,
+        DoctorStatus.Warning => StudioStringKeys.DoctorStatusWarning,
+        DoctorStatus.Failure => StudioStringKeys.DoctorStatusFailure,
+        _ => StudioStringKeys.DoctorStatusUnknown,
+    }];
 
     /// <summary>A short status glyph, so the view needs no converter.</summary>
     public string Glyph => Status switch
