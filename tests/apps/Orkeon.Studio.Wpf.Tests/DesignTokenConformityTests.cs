@@ -32,6 +32,12 @@ public sealed partial class DesignTokenConformityTests
     [GeneratedRegex("""StaticResource\s+\w*Brush\b""")]
     private static partial Regex StaticBrushPattern();
 
+    [GeneratedRegex("""Binding\s+\[([A-Za-z0-9_.\-]+)\]""")]
+    private static partial Regex IndexerKeyPattern();
+
+    [GeneratedRegex("""I18n\.T\("([^"]+)"\)""")]
+    private static partial Regex LookupKeyPattern();
+
     private static string WpfSourceRoot([CallerFilePath] string thisFile = "")
     {
         var testsDir = Path.GetDirectoryName(thisFile)!;
@@ -118,4 +124,44 @@ public sealed partial class DesignTokenConformityTests
 
         Assert.True(missing.Count == 0, $"Icon Kind with no Lucide geometry: {string.Join(", ", missing)}");
     }
+
+    /// <summary>
+    /// Every key a view asks for must exist in the catalogue. I18n answers a miss with the
+    /// key itself, so a typo — or a rename that missed one binding — ships «Studio.Run.Title»
+    /// as a visible label instead of failing anywhere a build would notice.
+    /// </summary>
+    [Fact]
+    public void Should_Resolve_Every_Key_A_View_Asks_For()
+    {
+        var catalogued = XDocument
+            .Load(Path.Combine(WpfSourceRoot(), "Resources", "Strings.resx")).Root!
+            .Elements("data")
+            .Select(d => (string?)d.Attribute("name"))
+            .Where(name => name is not null)
+            .Select(name => name!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missing = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in Sources())
+        {
+            var text = File.ReadAllText(file);
+            foreach (var pattern in new[] { IndexerKeyPattern(), LookupKeyPattern() })
+            {
+                foreach (Match match in pattern.Matches(text))
+                {
+                    if (!catalogued.Contains(match.Groups[1].Value))
+                        missing.Add($"{Path.GetFileName(file)}: {match.Groups[1].Value}");
+                }
+            }
+        }
+
+        Assert.True(missing.Count == 0, $"Keys with no catalogue entry: {string.Join(", ", missing)}");
+    }
+
+    private static IEnumerable<string> Sources() =>
+        Directory.EnumerateFiles(WpfSourceRoot(), "*.*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".xaml", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj", StringComparison.Ordinal)
+                     && !f.Contains($"{Path.DirectorySeparatorChar}bin", StringComparison.Ordinal));
 }
