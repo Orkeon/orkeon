@@ -311,6 +311,25 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T15:58:30Z | `kimi` | `kimi-k2.6` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](kimi/2026-08-30-155608-kimi-k2.6.md) |
+| 2026-08-30T15:56:58Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-155651-glm-4.6v-flash.md) |
+| 2026-08-30T15:56:51Z | `zai` | `glm-5.2` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-155608-glm-5.2.md) |
+| 2026-08-30T15:56:41Z | `anthropic` | `claude-sonnet-5` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](anthropic/2026-08-30-155608-claude-sonnet-5.md) |
+| 2026-08-30T15:54:43Z | `kimi` | `kimi-k2.6` | ❌ 10/1/1 | 1.0.0-rc.2 | [rapport](kimi/2026-08-30-155121-kimi-k2.6.md) |
+| 2026-08-30T15:53:36Z | `qwen` | `qwen3.7-plus` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](qwen/2026-08-30-155121-qwen3.7-plus.md) |
+| 2026-08-30T15:52:47Z | `grok` | `grok-4.6` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](grok/2026-08-30-155122-grok-4.6.md) |
+| 2026-08-30T15:52:35Z | `gemini` | `gemini-3.7-flash` | ✅ 11/0/1 | 1.0.0-rc.2 | [rapport](gemini/2026-08-30-155121-gemini-3.7-flash.md) |
+| 2026-08-30T15:52:26Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-155221-glm-4.6v-flash.md) |
+| 2026-08-30T15:52:21Z | `zai` | `glm-5.2` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-155121-glm-5.2.md) |
+| 2026-08-30T15:51:59Z | `openai` | `gpt-5.6-sol` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](openai/2026-08-30-155121-gpt-5.6-sol.md) |
+| 2026-08-30T15:51:56Z | `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](huggingface/2026-08-30-155155-Qwen_Qwen3-VL-30B-A3B-Instruct.md) |
+| 2026-08-30T15:51:56Z | `minimax` | `MiniMax-M2` | ❌ 7/2/3 | 1.0.0-rc.2 | [rapport](minimax/2026-08-30-155121-MiniMax-M2.md) |
+| 2026-08-30T15:51:54Z | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | ❌ 8/2/2 | 1.0.0-rc.2 | [rapport](huggingface/2026-08-30-155122-meta-llama_Llama-3.1-8B-Instruct.md) |
+| 2026-08-30T15:51:50Z | `deepseek` | `deepseek-v4-flash-vision-exp` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](deepseek/2026-08-30-155147-deepseek-v4-flash-vision-exp.md) |
+| 2026-08-30T15:51:47Z | `deepseek` | `deepseek-v4-flash` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](deepseek/2026-08-30-155121-deepseek-v4-flash.md) |
+| 2026-08-30T15:51:41Z | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | ❌ 9/1/2 | 1.0.0-rc.2 | [rapport](together/2026-08-30-155122-meta-llama_Llama-3.3-70B-Instruct-Turbo.md) |
+| 2026-08-30T15:51:39Z | `mistral` | `mistral-medium-2604` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](mistral/2026-08-30-155122-mistral-medium-2604.md) |
+| 2026-08-30T15:51:28Z | `anthropic` | `claude-sonnet-5` | ❌ 2/10/0 | 1.0.0-rc.2 | [rapport](anthropic/2026-08-30-155121-claude-sonnet-5.md) |
 | 2026-08-30T13:47:03Z | `minimax` | `MiniMax-M2` | ❌ 7/2/3 | 1.0.0-rc.2 | [rapport](minimax/2026-08-30-134626-MiniMax-M2.md) |
 | 2026-08-30T13:36:55Z | `minimax` | `MiniMax-M2` | ❌ 7/2/3 | 1.0.0-rc.2 | [rapport](minimax/2026-08-30-133614-MiniMax-M2.md) |
 | 2026-08-30T13:33:54Z | `minimax` | `MiniMax-M2` | ❌ 2/8/2 | 1.0.0-rc.2 | [rapport](minimax/2026-08-30-133347-MiniMax-M2.md) |
@@ -371,10 +390,10 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 | `ollama` | `llava` | 2026-08-30 | ✅ | M9 |
 | `openai` | `gpt-5.6-sol` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `qwen` | `qwen3.7-plus` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `together` | `Qwen/Qwen3-VL-8B-Instruct` | 2026-08-30 | ❌ | M9 |
+| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `zai` | `glm-4.6v-flash` | 2026-08-30 | ✅ | M9 |
 
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_44 campagne(s) archivée(s)._
+_63 campagne(s) archivée(s)._
