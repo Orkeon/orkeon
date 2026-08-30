@@ -29,11 +29,16 @@ public sealed class DoctorCheckViewModel
     {
         get
         {
-            var key = "Vm_Doctor_" + Name;
+            // Keyed by the CLI's own check name, so the key is computed rather than
+            // written: «Studio.Diagnostics.Check.» + what doctor called it.
+            var key = CheckKeyPrefix + Name;
             var localized = _strings[key];
             return localized == key ? Name : localized;
         }
     }
+
+    /// <summary>Namespace of the per-check overlay, e.g. <c>Studio.Diagnostics.Check.llm-config</c>.</summary>
+    public const string CheckKeyPrefix = "Studio.Diagnostics.Check.";
 
     /// <summary>The underlying Core record.</summary>
     public DoctorCheck Check { get; }

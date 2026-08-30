@@ -15,7 +15,7 @@
               Command="{Binding RestartCommand}">
         <StackPanel Orientation="Horizontal">
           <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Wiz_Restart], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Text="{Binding [Studio.Create.Restart], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </Button>
       <!-- T-08: a way into the conversation from anywhere on the screen, with the accent
@@ -32,12 +32,12 @@
         </StackPanel>
       </Button>
       <StackPanel>
-        <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Create_Title], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.Create.Title], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Scr_Create_SubNovice], Source={x:Static services:I18n.Instance}}"
+                   Text="{Binding [Studio.Create.SubNovice], Source={x:Static services:I18n.Instance}}"
                    Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
         <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Scr_Create_SubExpert], Source={x:Static services:I18n.Instance}}"
+                   Text="{Binding [Studio.Create.SubExpert], Source={x:Static services:I18n.Instance}}"
                    Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
         <!-- the assistant line: which profile drives the composing -->
         <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
@@ -54,14 +54,14 @@
             </controls:LucideIcon.Style>
           </controls:LucideIcon>
           <TextBlock Style="{StaticResource Hint}" Margin="7,0,0,0" VerticalAlignment="Center"
-                     Text="{Binding [Wiz_AssistantBy], Source={x:Static services:I18n.Instance}}"
+                     Text="{Binding [Studio.Create.AssistantBy], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding HasAssistant, Converter={StaticResource BooleanToVisibility}}"/>
           <TextBlock FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" Margin="4,0,0,0"
                      VerticalAlignment="Center" Text="{Binding Profiles.StudioProfileName}"
                      Visibility="{Binding HasAssistant, Converter={StaticResource BooleanToVisibility}}"/>
           <TextBlock Style="{StaticResource Hint}" Margin="7,0,0,0" VerticalAlignment="Center"
                      Foreground="{DynamicResource WarningBrush}"
-                     Text="{Binding [Wiz_AssistantMissing], Source={x:Static services:I18n.Instance}}"
+                     Text="{Binding [Studio.Create.AssistantMissing], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding NeedsAssistant, Converter={StaticResource BooleanToVisibility}}"/>
         </StackPanel>
       </StackPanel>
@@ -77,10 +77,10 @@
         <StackPanel Orientation="Horizontal">
           <controls:LucideIcon Kind="triangle-alert" Size="16" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
           <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0"
-                     Text="{Binding [Wiz_Gate_Title], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Create.GateTitle], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
         <TextBlock Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" Margin="0,7,0,12"
-                   Text="{Binding [Wiz_Gate_Body], Source={x:Static services:I18n.Instance}}"/>
+                   Text="{Binding [Studio.Create.GateBody], Source={x:Static services:I18n.Instance}}"/>
         <ItemsControl ItemsSource="{Binding Profiles.Profiles}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
@@ -100,7 +100,7 @@
                 Command="{Binding OpenSettingsCommand}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Wiz_ManageSettings], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
       </StackPanel>
@@ -156,7 +156,7 @@
         </controls:LucideIcon>
         <Button Style="{StaticResource BtnGhost}" FontSize="12" Margin="10,0,0,0" Command="{Binding StopCommand}"
                 Visibility="{Binding IsEngineRunning, Converter={StaticResource BooleanToVisibility}}"
-                Content="{Binding [Wiz_Stop], Source={x:Static services:I18n.Instance}}"/>
+                Content="{Binding [Studio.Create.Stop], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
 
       <!-- the assistant bar: the engine's own turns and arbitrations, on whatever step -->
@@ -172,7 +172,7 @@
           </DockPanel>
           <DockPanel Margin="24,9,0,0">
             <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding ReplyCommand}"
-                    Content="{Binding [Wiz_Reply], Source={x:Static services:I18n.Instance}}"/>
+                    Content="{Binding [Studio.Create.Reply], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding ReplyText, UpdateSourceTrigger=PropertyChanged}"/>
           </DockPanel>
         </StackPanel>
@@ -246,14 +246,14 @@
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
           <StackPanel>
             <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Wiz_Need_Title], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.NeedTitle], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,6,0,12"
-                       Text="{Binding [Wiz_Need_Sub], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.NeedSub], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" MinHeight="84" TextWrapping="Wrap" AcceptsReturn="True"
                      VerticalScrollBarVisibility="Auto"
                      Text="{Binding Need, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource Eyebrow}" Margin="0,16,0,8"
-                       Text="{Binding [Wiz_Examples], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.Examples], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Examples}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -271,11 +271,11 @@
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
           <StackPanel>
             <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Wiz_Precisions_Title], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.PrecisionsTitle], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,14"
-                       Text="{Binding [Wiz_Precisions_Sub], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.PrecisionsSub], Source={x:Static services:I18n.Instance}}"/>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Wiz_Q_Freq], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.QFreq], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding FrequencyChoices}" Margin="0,4,0,10">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
@@ -285,7 +285,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Wiz_Q_Source], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.QSource], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding SourceChoices}" Margin="0,4,0,10">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
@@ -295,7 +295,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Wiz_Q_Output], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.QOutput], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding OutputChoices}" Margin="0,4,0,10">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
@@ -305,9 +305,9 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Wiz_Outcome_Label], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.OutcomeLabel], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,6"
-                       Text="{Binding [Wiz_Outcome_Hint], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.OutcomeHint], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" MinHeight="74" TextWrapping="Wrap" AcceptsReturn="True"
                      VerticalScrollBarVisibility="Auto"
                      Text="{Binding Outcome, UpdateSourceTrigger=PropertyChanged}"/>
@@ -315,7 +315,7 @@
             <DockPanel Margin="0,14,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ComposeCommand}">
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="{Binding [Wiz_Compose], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Create.Compose], Source={x:Static services:I18n.Instance}}"/>
                   <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
                 </StackPanel>
               </Button>
@@ -325,7 +325,7 @@
         </Border>
 
         <views:StepNotesView DataContext="{Binding ComposeNotes}"
-                             Title="{Binding [Wiz_Notes_Compose], Source={x:Static services:I18n.Instance}}"/>
+                             Title="{Binding [Studio.Create.NotesCompose], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
 
       <!-- ── STEP 2 : COMPOSER ── -->
@@ -347,14 +347,14 @@
               </Button>
               <TextBlock FontSize="14.5" FontWeight="Bold" VerticalAlignment="Center" TextWrapping="Wrap"
                          Foreground="{DynamicResource InkBrush}"
-                         Text="{Binding [Wiz_Proposal_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.ProposalTitle], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
             <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
                        Text="{Binding Rationale}"/>
             <StackPanel Orientation="Horizontal" Margin="0,11,0,0"
                         Visibility="{Binding HasTools, Converter={StaticResource BooleanToVisibility}}">
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,7,0"
-                         Text="{Binding [Wiz_Tools_Label], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.ToolsLabel], Source={x:Static services:I18n.Instance}}"/>
               <ItemsControl ItemsSource="{Binding Tools}">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -374,7 +374,7 @@
             <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,1,0,0" Margin="0,13,0,0" Padding="0,12,0,0">
               <StackPanel>
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,8"
-                           Text="{Binding [Wiz_TeamFolders], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Create.TeamFolders], Source={x:Static services:I18n.Instance}}"/>
                 <WrapPanel>
                   <!-- W-04: chips the blueprint implies — read (folder-open) then write
                        (pencil); informative, no ✕ — editing an agent is what changes them. -->
@@ -462,16 +462,16 @@
                       <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
                                            VerticalAlignment="Center" Margin="0,0,6,0"/>
                       <TextBlock VerticalAlignment="Center"
-                                 Text="{Binding [Wiz_AllowFolder], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
                 </WrapPanel>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
-                           Text="{Binding [Wiz_DerivedHint], Source={x:Static services:I18n.Instance}}"
+                           Text="{Binding [Studio.Create.DerivedHint], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}"/>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
                            Foreground="{DynamicResource DangerBrush}"
-                           Text="{Binding [Wiz_UndeclaredLegend], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Create.UndeclaredLegend], Source={x:Static services:I18n.Instance}}"/>
                 <!-- A dropped agent-addressed root: nothing will back it, and the run would
                      otherwise report success and produce nothing. -->
                 <Border Background="{DynamicResource DangerWeakBrush}" CornerRadius="10" Padding="12,10" Margin="0,8,0,0"
@@ -479,13 +479,13 @@
                   <DockPanel>
                     <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="10,0,0,0"
                             Command="{Binding RestoreDerivedMountsCommand}"
-                            Content="{Binding [Wiz_RestoreFolders], Source={x:Static services:I18n.Instance}}"/>
+                            Content="{Binding [Studio.Create.RestoreFolders], Source={x:Static services:I18n.Instance}}"/>
                     <TextBlock FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"
                                Foreground="{DynamicResource DangerBrush}" Text="{Binding DroppedDerivedWarning}"/>
                   </DockPanel>
                 </Border>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
-                           Text="{Binding [Wiz_FoldersHint], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Create.FoldersHint], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Border>
           </StackPanel>
@@ -504,11 +504,11 @@
                   </Border>
                   <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Top"
                           Command="{Binding EditCommand}"
-                          ToolTip="{Binding [AgentEd_Wait], Source={x:Static services:I18n.Instance}}"
+                          ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
                           ToolTipService.ShowOnDisabled="True">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="pencil" Size="12" Margin="0,0,7,0"/>
-                      <TextBlock Text="{Binding [Wiz_Modify], Source={x:Static services:I18n.Instance}}"/>
+                      <TextBlock Text="{Binding [Studio.Create.Modify], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
                   <StackPanel>
@@ -523,7 +523,7 @@
                     <WrapPanel Margin="0,9,0,0"
                                Visibility="{Binding HasTools, Converter={StaticResource BooleanToVisibility}}">
                       <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0"
-                                 Text="{Binding [Wiz_AgentCan], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Create.AgentCan], Source={x:Static services:I18n.Instance}}"/>
                       <ItemsControl ItemsSource="{Binding Tools}">
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -550,11 +550,11 @@
         <DockPanel Margin="0,0,0,16" LastChildFill="False">
           <Button DockPanel.Dock="Left" Style="{StaticResource BtnGhost}"
                   Command="{Binding AddAgentCommand}"
-                  ToolTip="{Binding [AgentEd_Wait], Source={x:Static services:I18n.Instance}}"
+                  ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
                   ToolTipService.ShowOnDisabled="True">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Wiz_AddAgent], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Create.AddAgent], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
           <!-- The Composer pause: composing stops the engine before the trial (dry mode);
@@ -563,12 +563,12 @@
                   Command="{Binding TryTeamCommand}"
                   Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="{Binding [Wiz_TryTeam], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Create.TryTeam], Source={x:Static services:I18n.Instance}}"/>
               <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
             </StackPanel>
           </Button>
           <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,12,0"
-                     Text="{Binding [Wiz_Paused_Hint], Source={x:Static services:I18n.Instance}}"
+                     Text="{Binding [Studio.Create.PausedHint], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"/>
         </DockPanel>
 
@@ -579,7 +579,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <controls:LucideIcon Kind="triangle-alert" Size="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
               <TextBlock Style="{StaticResource CardTitle}" Margin="8,0,0,0"
-                         Text="{Binding [Wiz_Validation_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.ValidationTitle], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
             <ItemsControl ItemsSource="{Binding ValidationErrors}">
               <ItemsControl.ItemTemplate>
@@ -603,14 +603,14 @@
                       Visibility="{Binding HasCrewDefinition, Converter={StaticResource BooleanToVisibility}}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="copy" Size="11" Margin="0,0,6,0"/>
-                  <TextBlock Text="{Binding [Run_Journal_Copy], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <controls:LucideIcon Kind="braces" Size="15" Foreground="{DynamicResource AccentBrush}"
                                      VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBlock Style="{StaticResource CardHeaderTitle}"
-                           Text="{Binding [Wiz_Files_Title], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Create.FilesTitle], Source={x:Static services:I18n.Instance}}"/>
                 <!-- The short name, 9.5 mono; the full session path is the tooltip (T-21). -->
                 <TextBlock Style="{StaticResource CardHeaderFile}" MaxWidth="260"
                            Text="{Binding SessionSlug}" ToolTip="{Binding SessionDirectory}"/>
@@ -633,7 +633,7 @@
         </Border>
 
         <views:StepNotesView DataContext="{Binding ComposeNotes}"
-                             Title="{Binding [Wiz_Notes_Compose], Source={x:Static services:I18n.Instance}}"/>
+                             Title="{Binding [Studio.Create.NotesCompose], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
 
       <!-- ── STEP 3 : ESSAYER ── -->
@@ -642,13 +642,13 @@
           <StackPanel>
             <StackPanel Orientation="Horizontal">
               <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                         Text="{Binding [Wiz_Try_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.TryTitle], Source={x:Static services:I18n.Instance}}"/>
               <controls:LucideIcon Kind="loader-circle" Size="13" Foreground="{DynamicResource AccentBrush}" Margin="9,0,0,0"
                                    VerticalAlignment="Center"
                                    Visibility="{Binding RunInProgress, Converter={StaticResource BooleanToVisibility}}"/>
             </StackPanel>
             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,5,0,0"
-                       Text="{Binding [Wiz_Try_Sub], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.TrySub], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Activity}" Margin="0,12,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -669,7 +669,7 @@
           <StackPanel>
             <StackPanel Orientation="Horizontal">
               <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                         Text="{Binding [Wiz_Verdict_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.VerdictTitle], Source={x:Static services:I18n.Instance}}"/>
               <Border Margin="10,0,0,0">
                 <Border.Style>
                   <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
@@ -708,7 +708,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,8"
-                       Text="{Binding [Wiz_Checklist_Label], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.ChecklistLabel], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Checklist}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -775,7 +775,7 @@
                   Visibility="{Binding EngineCommandLine, Converter={StaticResource StringPresentToVisibility}}">
             <StackPanel>
               <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
-                         Text="{Binding [Wiz_TrialCommand], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.TrialCommand], Source={x:Static services:I18n.Instance}}"/>
               <Border Style="{StaticResource Well}">
                 <TextBlock Style="{StaticResource MonoText}" FontSize="11" TextWrapping="Wrap" Text="{Binding EngineCommandLine}"/>
               </Border>
@@ -784,7 +784,7 @@
         </StackPanel>
 
         <views:StepNotesView DataContext="{Binding TryNotes}"
-                             Title="{Binding [Wiz_Notes_Try], Source={x:Static services:I18n.Instance}}"/>
+                             Title="{Binding [Studio.Create.NotesTry], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
 
       <!-- ── STEP 4 : ADOPTER ── -->
@@ -793,10 +793,10 @@
                 Visibility="{Binding NotSaved, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel>
             <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Wiz_Adopt_Title], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.AdoptTitle], Source={x:Static services:I18n.Instance}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
-                       Text="{Binding [Wiz_TeamName], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.TeamName], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding TeamName, UpdateSourceTrigger=PropertyChanged}"/>
 
             <!-- T-22: «Gérer les réglages» rides the LABEL's line. Stacked under the picker
@@ -807,11 +807,11 @@
                       VerticalAlignment="Center" Command="{Binding OpenSettingsCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Wiz_ManageSettings], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <TextBlock Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0"
-                         Text="{Binding [Wiz_AdoptProfile], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.AdoptProfile], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
             <!-- W-07: the selected model profile as a card — «Changer» unfolds the radio
                  rows; no select at all, exactly the mock's shape. The container carries the
@@ -823,7 +823,7 @@
                                      Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,11,0"/>
                 <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5" Padding="10,5"
                         VerticalAlignment="Center" Command="{Binding ToggleAdoptProfilePickerCommand}"
-                        Content="{Binding [Wiz_Adopt_Change], Source={x:Static services:I18n.Instance}}"/>
+                        Content="{Binding [Studio.Create.AdoptChange], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
                   <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                              Text="{Binding AdoptProfileName}"/>
@@ -851,53 +851,53 @@
             </StackPanel>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,7"
-                       Text="{Binding [Wiz_Schedule_Label], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.ScheduleLabel], Source={x:Static services:I18n.Instance}}"/>
             <StackPanel>
               <RadioButton Style="{StaticResource PickRow}" GroupName="Sched" Margin="0,0,0,7"
                            IsChecked="{Binding IsOnDemand}">
                 <DockPanel LastChildFill="False">
                   <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                             Text="{Binding [Wiz_Sched_OnDemand], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Create.SchedOnDemand], Source={x:Static services:I18n.Instance}}"/>
                   <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0"
-                             Text="{Binding [Wiz_Sched_OnDemand_Hint], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Create.SchedOnDemandHint], Source={x:Static services:I18n.Instance}}"/>
                 </DockPanel>
               </RadioButton>
               <RadioButton Style="{StaticResource PickRow}" GroupName="Sched" Margin="0,0,0,7"
                            IsChecked="{Binding IsDaily}">
                 <DockPanel LastChildFill="False">
                   <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                             Text="{Binding [Wiz_Sched_Daily], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Create.SchedDaily], Source={x:Static services:I18n.Instance}}"/>
                   <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0"
-                             Text="{Binding [Wiz_Sched_Daily_Hint], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Create.SchedDailyHint], Source={x:Static services:I18n.Instance}}"/>
                 </DockPanel>
               </RadioButton>
               <RadioButton Style="{StaticResource PickRow}" GroupName="Sched"
                            IsChecked="{Binding IsHourly}">
                 <DockPanel LastChildFill="False">
                   <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                             Text="{Binding [Wiz_Sched_Hourly], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Create.SchedHourly], Source={x:Static services:I18n.Instance}}"/>
                   <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0"
-                             Text="{Binding [Wiz_Sched_Hourly_Hint], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Create.SchedHourlyHint], Source={x:Static services:I18n.Instance}}"/>
                 </DockPanel>
               </RadioButton>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
                         Visibility="{Binding NeedsScheduleTime, Converter={StaticResource BooleanToVisibility}}">
               <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"
-                         Text="{Binding [Wiz_Sched_At], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.SchedAt], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Style="{StaticResource InputMono}" Width="76" Text="{Binding ScheduleTime, UpdateSourceTrigger=PropertyChanged}"/>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="8,0,0,0"
-                         Text="{Binding [Wiz_Sched_LocalTime], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.SchedLocalTime], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
 
             <views:StepNotesView DataContext="{Binding AdoptNotes}" Margin="0,18,0,0"
-                                 Title="{Binding [Wiz_Notes_Adopt], Source={x:Static services:I18n.Instance}}"/>
+                                 Title="{Binding [Studio.Create.NotesAdopt], Source={x:Static services:I18n.Instance}}"/>
 
             <DockPanel Margin="0,18,0,0" LastChildFill="False">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveTeamCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Wiz_Save], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Create.Save], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
             </DockPanel>
@@ -910,15 +910,15 @@
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="circle-check" Size="18" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
               <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0"
-                         Text="{Binding [Wiz_Saved_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.SavedTitle], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
             <StackPanel Margin="0,14,0,0"
                         Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Wiz_Saved_Path], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.SavedPath], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource MonoText}" FontSize="11" Text="{Binding SavedPath}"/>
               <StackPanel Visibility="{Binding HasInstallCommand, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,5"
-                           Text="{Binding [Wiz_Saved_Install], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Create.SavedInstall], Source={x:Static services:I18n.Instance}}"/>
                 <Border Style="{StaticResource Well}">
                   <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Foreground="{DynamicResource InkBrush}"
                              TextWrapping="Wrap" Text="{Binding InstallCommand}"/>
@@ -928,25 +928,25 @@
             <!-- W-09: nothing is frozen — modify (step 2), re-try (step 3), re-adopt
                  the SAME folder. The faint line says so in the user's words. -->
             <TextBlock Style="{StaticResource Hint}" FontSize="11.5" TextWrapping="Wrap" Margin="0,10,0,0"
-                       Text="{Binding [Wiz_Saved_NotFrozen], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.SavedNotFrozen], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
-                       Text="{Binding [Wiz_Reopened_Note], Source={x:Static services:I18n.Instance}}"
+                       Text="{Binding [Studio.Create.ReopenedNote], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
             <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
               <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding ReopenComposeCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="pencil" Size="12" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Wiz_Saved_ModifyTeam], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Create.SavedModifyTeam], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding RetryTrialCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="rotate-ccw" Size="12" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Wiz_Saved_Retry], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Create.SavedRetry], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <Button Style="{StaticResource BtnGhost}" Command="{Binding RestartCommand}"
-                      Content="{Binding [Wiz_CreateAnother], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Create.CreateAnother], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </StackPanel>
         </Border>
@@ -961,21 +961,21 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <controls:LucideIcon Kind="circle-help" Size="14" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
               <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="8,0,0,0"
-                         Text="{Binding [Wiz_Help_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
             <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5">
               <TextBlock.Style>
                 <Style TargetType="TextBlock">
-                  <Setter Property="Text" Value="{Binding [Wiz_Help_Step1], Source={x:Static services:I18n.Instance}}"/>
+                  <Setter Property="Text" Value="{Binding [Studio.Create.HelpStep1], Source={x:Static services:I18n.Instance}}"/>
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsStep2}" Value="True">
-                      <Setter Property="Text" Value="{Binding [Wiz_Help_Step2], Source={x:Static services:I18n.Instance}}"/>
+                      <Setter Property="Text" Value="{Binding [Studio.Create.HelpStep2], Source={x:Static services:I18n.Instance}}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding IsStep3}" Value="True">
-                      <Setter Property="Text" Value="{Binding [Wiz_Help_Step3], Source={x:Static services:I18n.Instance}}"/>
+                      <Setter Property="Text" Value="{Binding [Studio.Create.HelpStep3], Source={x:Static services:I18n.Instance}}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding IsStep4}" Value="True">
-                      <Setter Property="Text" Value="{Binding [Wiz_Help_Step4], Source={x:Static services:I18n.Instance}}"/>
+                      <Setter Property="Text" Value="{Binding [Studio.Create.HelpStep4], Source={x:Static services:I18n.Instance}}"/>
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
@@ -993,7 +993,7 @@
             <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5" Click="OnToggleTech">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="eye" Size="12" Margin="0,0,6,0"/>
-                <TextBlock Text="{Binding [Wiz_Tech_Toggle], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Create.TechToggle], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
             <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5"
@@ -1001,12 +1001,12 @@
                     Visibility="{Binding RawLog.Lines.Count, Converter={StaticResource CountToVisibility}}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
-                <TextBlock Text="{Binding [Run_Journal_Copy], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
               <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
-                         Text="{Binding [Wiz_Tech_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.TechTitle], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource CardHeaderMeta}" MaxWidth="300" Text="{Binding SessionSlug}"/>
             </StackPanel>
           </DockPanel>

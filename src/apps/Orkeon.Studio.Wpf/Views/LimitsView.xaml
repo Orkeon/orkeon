@@ -25,20 +25,20 @@
           <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
             <controls:LucideIcon Kind="gauge" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
             <TextBlock Style="{StaticResource CardTitle}" ToolTip="RateLimiting"
-                     Text="{Binding [Limits_Card_Rate], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Settings.CardRate], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,-10,0,14" TextWrapping="Wrap"
-                     Text="{Binding [Limits_DefaultsApply], Source={x:Static services:I18n.Instance}}"
+                     Text="{Binding [Studio.Settings.DefaultsApply], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding RateLimiting.Exists, Converter={StaticResource InverseBooleanToVisibility}}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_MaxConcurrent], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblMaxConcurrent], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.MaxConcurrentRequests, UpdateSourceTrigger=LostFocus}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Sec_Lbl_GlobalRpm], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblGlobalRpm], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.GlobalRequestsPerMinute, UpdateSourceTrigger=LostFocus}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Sec_Lbl_ProviderRpm], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblProviderRpm], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.ProviderRequestsPerMinute, UpdateSourceTrigger=LostFocus}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Sec_Lbl_AgentRpm], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblAgentRpm], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.AgentRequestsPerMinute, UpdateSourceTrigger=LostFocus}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Sec_Lbl_QueueLimit], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblQueueLimit], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.QueueLimit, UpdateSourceTrigger=LostFocus}"/>
         </StackPanel>
       </Border>
@@ -49,28 +49,28 @@
           <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
             <controls:LucideIcon Kind="database" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
             <TextBlock Style="{StaticResource CardTitle}" ToolTip="Orkeon:Rag"
-                     Text="{Binding [Limits_Card_Rag], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Settings.CardRag], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,-10,0,14" TextWrapping="Wrap"
-                     Text="{Binding [Limits_DefaultsApply], Source={x:Static services:I18n.Instance}}"
+                     Text="{Binding [Studio.Settings.DefaultsApply], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding Rag.Exists, Converter={StaticResource InverseBooleanToVisibility}}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_RagProfile], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblRagProfile], Source={x:Static services:I18n.Instance}}"/>
           <ComboBox ItemsSource="{x:Static config:RagSectionViewModel.KnownProfiles}" SelectedItem="{Binding Rag.Profile}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Sec_Lbl_RagProvider], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblRagProvider], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding Rag.Provider, UpdateSourceTrigger=PropertyChanged}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Sec_Lbl_RagConnection], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblRagConnection], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource InputMono}" Text="{Binding Rag.ConnectionString, UpdateSourceTrigger=PropertyChanged}"/>
           <CheckBox Margin="0,12,0,0" IsChecked="{Binding Rag.HybridRetrievalEnabled}"
                     Foreground="{DynamicResource InkBrush}"
-                    Content="{Binding [Sec_Rag_Hybrid], Source={x:Static services:I18n.Instance}}"/>
+                    Content="{Binding [Studio.Settings.RagHybrid], Source={x:Static services:I18n.Instance}}"/>
           <CheckBox Margin="0,7,0,0" IsChecked="{Binding Rag.CorrectiveWebFallbackEnabled}"
                     Foreground="{DynamicResource InkBrush}"
-                    Content="{Binding [Sec_Rag_CorrectiveWebFallback], Source={x:Static services:I18n.Instance}}"/>
+                    Content="{Binding [Studio.Settings.RagCorrectiveWebFallback], Source={x:Static services:I18n.Instance}}"/>
           <CheckBox Margin="0,7,0,0" IsChecked="{Binding Rag.WebFallbackEnabled}"
                     Foreground="{DynamicResource InkBrush}"
-                    Content="{Binding [Sec_Rag_WebFallback], Source={x:Static services:I18n.Instance}}"/>
+                    Content="{Binding [Studio.Settings.RagWebFallback], Source={x:Static services:I18n.Instance}}"/>
           <TextBlock Style="{StaticResource Hint}" Margin="0,5,0,0" Text="{Binding Rag.WebFallbackStatus}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Sec_Lbl_CorrectiveMaxIterations], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblCorrectiveMaxIterations], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding Rag.CorrectiveMaxIterations, UpdateSourceTrigger=LostFocus}"/>
         </StackPanel>
       </Border>
@@ -81,12 +81,12 @@
           <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
             <controls:LucideIcon Kind="scroll-text" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
             <TextBlock Style="{StaticResource CardTitle}" ToolTip="Logging:LogLevel"
-                     Text="{Binding [Limits_Card_Logging], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Settings.CardLogging], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,-10,0,14" TextWrapping="Wrap"
-                     Text="{Binding [Limits_DefaultsApply], Source={x:Static services:I18n.Instance}}"
+                     Text="{Binding [Studio.Settings.DefaultsApply], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding Logging.Exists, Converter={StaticResource InverseBooleanToVisibility}}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Sec_Lbl_DefaultLevel], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblDefaultLevel], Source={x:Static services:I18n.Instance}}"/>
           <ComboBox ItemsSource="{x:Static config:LoggingSectionViewModel.KnownLevels}" SelectedItem="{Binding Logging.DefaultLevel}"/>
           <ItemsControl ItemsSource="{Binding Logging.Categories}" Margin="0,10,0,0">
             <ItemsControl.ItemTemplate>
@@ -104,13 +104,13 @@
             <Button Style="{StaticResource BtnGhost}" Command="{Binding Logging.AddCategoryCommand}" Margin="0,0,8,0">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Sec_AddCategory], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Settings.AddCategory], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
             <Button Style="{StaticResource BtnGhost}" Command="{Binding Logging.RemoveCategoryCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Sec_Remove], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Settings.SectionRemove], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
           </StackPanel>
@@ -123,18 +123,18 @@
           <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
             <controls:LucideIcon Kind="logs" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
             <TextBlock Style="{StaticResource CardTitle}" ToolTip="LlmLogging"
-                     Text="{Binding [Limits_Card_LlmLog], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Settings.CardLlmLog], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,-10,0,14" TextWrapping="Wrap"
-                     Text="{Binding [Limits_DefaultsApply], Source={x:Static services:I18n.Instance}}"
+                     Text="{Binding [Studio.Settings.DefaultsApply], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding LlmLogging.Exists, Converter={StaticResource InverseBooleanToVisibility}}"/>
           <CheckBox IsChecked="{Binding LlmLogging.FullEmbeddingLog}"
                     Foreground="{DynamicResource InkBrush}"
-                    Content="{Binding [Sec_LlmLog_FullEmbedding], Source={x:Static services:I18n.Instance}}"/>
+                    Content="{Binding [Studio.Settings.LlmLogFullEmbedding], Source={x:Static services:I18n.Instance}}"/>
           <CheckBox Margin="0,7,0,0" IsChecked="{Binding LlmLogging.LogStreamingExchanges}"
                     Foreground="{DynamicResource InkBrush}"
-                    Content="{Binding [Sec_LlmLog_Streaming], Source={x:Static services:I18n.Instance}}"/>
-          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Sec_Lbl_MaxBodyLength], Source={x:Static services:I18n.Instance}}"/>
+                    Content="{Binding [Studio.Settings.LlmLogStreaming], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblMaxBodyLength], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding LlmLogging.MaxBodyLengthChars, UpdateSourceTrigger=LostFocus}"/>
         </StackPanel>
       </Border>

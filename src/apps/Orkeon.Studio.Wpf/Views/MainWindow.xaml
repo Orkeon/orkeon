@@ -72,7 +72,7 @@
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" Margin="9,2,0,0" VerticalAlignment="Center"/>
           <!-- the discreet door to "À propos" (design v3: the "…" next to the brand) -->
           <Button Command="{Binding About.OpenCommand}" Cursor="Hand" Margin="7,0,0,0" VerticalAlignment="Center"
-                  ToolTip="{Binding [About_Tip], Source={x:Static services:I18n.Instance}}"
+                  ToolTip="{Binding [Studio.Shell.AboutTip], Source={x:Static services:I18n.Instance}}"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <Button.Template>
               <ControlTemplate TargetType="Button">
@@ -95,11 +95,11 @@
           <!-- global mode switch: the single control that changes how much the app shows -->
           <StackPanel x:Name="ModeSwitch" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
             <TextBlock Style="{StaticResource Eyebrow}" VerticalAlignment="Center" Margin="0,0,9,0"
-                       Text="{Binding [Mode_Label], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Shell.ModeLabel], Source={x:Static services:I18n.Instance}}"/>
             <Border Style="{StaticResource SegmentedGroup}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
               <StackPanel Orientation="Horizontal">
                 <Button Command="{Binding Mode.SetNoviceCommand}"
-                        Content="{Binding [Mode_Novice], Source={x:Static services:I18n.Instance}}">
+                        Content="{Binding [Studio.Shell.Novice], Source={x:Static services:I18n.Instance}}">
                   <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
                       <Style.Triggers>
@@ -112,7 +112,7 @@
                   </Button.Style>
                 </Button>
                 <Button Command="{Binding Mode.SetExpertCommand}"
-                        Content="{Binding [Mode_Expert], Source={x:Static services:I18n.Instance}}">
+                        Content="{Binding [Studio.Shell.Expert], Source={x:Static services:I18n.Instance}}">
                   <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
                       <Style.Triggers>
@@ -195,7 +195,7 @@
             </Popup>
           </Grid>
           <Button Style="{StaticResource IconBtn}" Click="OnStartTour" Margin="0,0,10,0" VerticalAlignment="Center"
-                  ToolTip="{Binding [Tour_Tip], Source={x:Static services:I18n.Instance}}"
+                  ToolTip="{Binding [Studio.Shell.TourTip], Source={x:Static services:I18n.Instance}}"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <controls:LucideIcon Kind="circle-help" Size="15"/>
           </Button>
@@ -235,33 +235,33 @@
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="circle-help" Size="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                 <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="7,0,0,0"
-                           Text="{Binding [Help_Title], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Shell.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
               <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,6,0,8"
-                         Text="{Binding [Help_Body], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Shell.HelpBody], Source={x:Static services:I18n.Instance}}"/>
               <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Stretch" Click="OnStartTour"
-                      Content="{Binding [Btn_GuidedTour], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Border>
           <Border x:Name="SettingsCard" DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBrush}"
                   BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="11,10"
                   Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel>
-              <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [SettingsFile_Title], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [Studio.Settings.SettingsFileTitle], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,6,0,0"
-                         Text="{Binding [SettingsFile_Global], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Settings.SettingsFileGlobal], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource MonoText}" FontSize="9.5" Margin="0,4,0,7"
                          Text="{Binding Config.Location.GlobalPath}"/>
               <StackPanel Orientation="Horizontal">
                 <Border Style="{StaticResource BadgeOk}" HorizontalAlignment="Left"
                         Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource InverseBooleanToVisibility}}">
                   <TextBlock Style="{StaticResource BadgeText}" FontSize="10"
-                             Text="{Binding [Badge_Valid], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Common.Valid], Source={x:Static services:I18n.Instance}}"/>
                 </Border>
                 <Border Style="{StaticResource BadgeFail}" HorizontalAlignment="Left"
                         Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource BadgeText}" FontSize="10"
-                             Text="{Binding [Badge_Invalid], Source={x:Static services:I18n.Instance}}"/>
+                             Text="{Binding [Studio.Common.Invalid], Source={x:Static services:I18n.Instance}}"/>
                 </Border>
               </StackPanel>
             </StackPanel>
@@ -271,14 +271,14 @@
             <!-- "Résoudre" leads: the new user's door (SPEC-ORKEON-FORGE §12.1, UX study §5) -->
             <StackPanel x:Name="NavGroupTeams">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,0,0,7"
-                       Text="{Binding [Grp_Teams], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Shell.GroupTeams], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton x:Name="NavCreate" GroupName="Nav" Style="{StaticResource NavItem}" IsChecked="True"
                          HorizontalContentAlignment="Stretch">
               <!-- T-09: a creation left mid-flight is announced on its own entry — the step
                    counter and an accent dot, pushed right like the team count below. -->
               <DockPanel LastChildFill="False">
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="wand-2" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
                             Visibility="{Binding DataContext.CreateTeam.HasDraft, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" VerticalAlignment="Center"
@@ -325,7 +325,7 @@
               <!-- T-10: the counter is pushed to the right edge, mono 10 faint, no chip -->
               <DockPanel LastChildFill="False">
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="brain-circuit" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Nav_Teams], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Studio.Shell.NavTeams], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource MonoFont}" FontSize="10"
                            Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
                            Text="{Binding DataContext.Teams.Count, RelativeSource={RelativeSource AncestorType=Window}}"/>
@@ -334,48 +334,48 @@
             <RadioButton x:Name="NavImport" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="file-json-2" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Import], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Import], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
             </StackPanel>
 
             <StackPanel x:Name="NavGroupWork">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
-                       Text="{Binding [Grp_Work], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Shell.Work], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton x:Name="NavTest" GroupName="Nav" Style="{StaticResource NavItem}"
                          Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="badge-check" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Test], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Test], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
             <RadioButton x:Name="NavRun" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="play" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Run], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Run], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
             <RadioButton x:Name="NavHistory" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="history" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_History], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.History], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
             </StackPanel>
 
             <StackPanel x:Name="NavGroupEnv">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
-                       Text="{Binding [Grp_Env], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Shell.Env], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton x:Name="NavSettings" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="sliders-horizontal" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Settings], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Settings], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </RadioButton>
             <RadioButton x:Name="NavDiag" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="stethoscope" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Nav_Diag], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Diag], Source={x:Static services:I18n.Instance}}"/>
                 <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" Margin="8,0,0,0" VerticalAlignment="Center"
                          Visibility="{Binding DataContext.Config.Diagnostic.HasIssues, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
               </StackPanel>
@@ -474,27 +474,27 @@
                        Foreground="{DynamicResource InkBrush}">
               <TextBlock.Style>
                 <Style TargetType="TextBlock">
-                  <Setter Property="Text" Value="{Binding [Profile_EditTitle], Source={x:Static services:I18n.Instance}}"/>
+                  <Setter Property="Text" Value="{Binding [Studio.Settings.EditTitle], Source={x:Static services:I18n.Instance}}"/>
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsNew}" Value="True">
-                      <Setter Property="Text" Value="{Binding [Profile_NewTitle], Source={x:Static services:I18n.Instance}}"/>
+                      <Setter Property="Text" Value="{Binding [Studio.Settings.NewTitle], Source={x:Static services:I18n.Instance}}"/>
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
               </TextBlock.Style>
             </TextBlock>
             <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
-                       Text="{Binding [Profile_EditSub], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.EditSub], Source={x:Static services:I18n.Instance}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
-                       Text="{Binding [Profile_NameLabel], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.NameLabel], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
-                       Text="{Binding [Profile_NameTaken], Source={x:Static services:I18n.Instance}}"
+                       Text="{Binding [Studio.Settings.NameTaken], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding NameCollision, Converter={StaticResource BooleanToVisibility}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
-                       Text="{Binding [Profile_ProviderLabel], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.ProviderLabel], Source={x:Static services:I18n.Instance}}"/>
 
             <!-- Provider cards, grouped as the v3 rev.2 design: local (keyless), cloud
                  (key required), then the catch-all and the echo fallback. -->
@@ -543,11 +543,11 @@
                     </Style.Triggers>
                   </Style>
                 </StackPanel.Style>
-                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Lbl_BaseUrl], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Common.BaseUrl], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMono}" Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}"/>
               </StackPanel>
               <StackPanel Grid.Column="2">
-                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Lbl_Model], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Common.Model], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMono}" Text="{Binding Model, UpdateSourceTrigger=PropertyChanged}"/>
               </StackPanel>
             </Grid>
@@ -561,18 +561,18 @@
                 <ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/>
               </Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0">
-                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Profile_Lbl_Temperature], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.ProfileLblTemperature], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMono}" Width="90" HorizontalAlignment="Left"
                          Text="{Binding TemperatureText, UpdateSourceTrigger=PropertyChanged}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                           Text="{Binding [Profile_Temperature_Hint], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Settings.TemperatureHint], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
               <StackPanel Grid.Column="2">
-                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Profile_Lbl_Timeout], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblTimeout], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMono}" Width="90" HorizontalAlignment="Left"
                          Text="{Binding TimeoutText, UpdateSourceTrigger=PropertyChanged}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                           Text="{Binding [Profile_Timeout_Hint], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Settings.TimeoutHint], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Grid>
 
@@ -660,7 +660,7 @@
               <Button Style="{StaticResource BtnGhost}" Command="{Binding TestConnectionCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Sec_TestConnection], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Settings.TestConnection], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="12,0,0,0"
@@ -676,11 +676,11 @@
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Profile_Save], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Settings.Save], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
-                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
           </Border>
         </StackPanel>
@@ -698,7 +698,7 @@
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
             <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
-                       Margin="0,6,0,0" Text="{Binding [TeamMounts_Sub], Source={x:Static services:I18n.Instance}}"/>
+                       Margin="0,6,0,0" Text="{Binding [Studio.Teams.TeamMountsSub], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -771,7 +771,7 @@
                     Command="{Binding AddCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [TeamMounts_AddAnother], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Teams.AddAnother], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
           </StackPanel>
@@ -785,7 +785,7 @@
                 </StackPanel>
               </Button>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
-                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}"/>
             </DockPanel>
@@ -805,16 +805,16 @@
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
             <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
-                       Margin="0,6,0,0" Text="{Binding [AgentEd_Sub], Source={x:Static services:I18n.Instance}}"/>
+                       Margin="0,6,0,0" Text="{Binding [Studio.Create.AgentEditorSub], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
-                       Text="{Binding [AgentEd_Name], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.Name], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
-                       Text="{Binding [AgentEd_Does], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.Does], Source={x:Static services:I18n.Instance}}"/>
             <TextBox MinHeight="66" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
                      Text="{Binding WhatItDoes, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
-                       Text="{Binding [AgentEd_Can], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.Can], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Chips}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -852,7 +852,7 @@
             <DockPanel Margin="0,10,0,0">
               <TextBlock DockPanel.Dock="Left" FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}"
                          MinWidth="132" VerticalAlignment="Center"
-                         Text="{Binding [AgentEd_Scope], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Create.Scope], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" Text="{Binding ScopeInfo}"/>
             </DockPanel>
@@ -870,11 +870,11 @@
                 </StackPanel>
               </Button>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
-                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
                       Visibility="{Binding IsNew, Converter={StaticResource InverseBooleanToVisibility}}">
                 <TextBlock Foreground="{DynamicResource DangerBrush}"
-                           Text="{Binding [AgentEd_Remove], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Create.Remove], Source={x:Static services:I18n.Instance}}"/>
               </Button>
             </DockPanel>
           </Border>
@@ -896,15 +896,15 @@
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [AllowedFolders_Title], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.AllowedFoldersTitle], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
-                       Margin="0,6,0,0" Text="{Binding [AllowedFolders_Sub], Source={x:Static services:I18n.Instance}}"/>
+                       Margin="0,6,0,0" Text="{Binding [Studio.Settings.AllowedFoldersSub], Source={x:Static services:I18n.Instance}}"/>
 
             <!-- État vide : les Réglages ne déclarent encore rien. -->
             <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="11" Padding="14,13" Margin="0,14,0,0"
                     Visibility="{Binding HasRows, Converter={StaticResource InverseBooleanToVisibility}}">
               <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
-                         Text="{Binding [AllowedFolders_Empty], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Settings.AllowedFoldersEmpty], Source={x:Static services:I18n.Instance}}"/>
             </Border>
 
             <ScrollViewer MaxHeight="264" VerticalScrollBarVisibility="Auto" Margin="0,14,0,0"
@@ -988,7 +988,7 @@
                     Command="{Binding DeclareNewCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [AllowedFolders_Declare], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Settings.Declare], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
           </StackPanel>
@@ -998,11 +998,11 @@
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [AllowedFolders_Confirm], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Settings.AllowedFoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
-                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                          Text="{Binding Summary}"/>
             </DockPanel>
@@ -1021,14 +1021,14 @@
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Picker_Title], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.PickerTitle], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
-                       Margin="0,6,0,0" Text="{Binding [Picker_Sub], Source={x:Static services:I18n.Instance}}"/>
+                       Margin="0,6,0,0" Text="{Binding [Studio.Settings.PickerSub], Source={x:Static services:I18n.Instance}}"/>
             <DockPanel Margin="0,14,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding BrowseCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="hard-drive" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Picker_Browse], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Settings.Browse], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <TextBox Style="{StaticResource InputMono}" Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"/>
@@ -1074,7 +1074,7 @@
               </ScrollViewer>
             </Border>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
-                       Text="{Binding [Picker_RightsLabel], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.RightsLabel], Source={x:Static services:I18n.Instance}}"/>
             <Button Command="{Binding PickReadOnlyCommand}" Cursor="Hand" Margin="0,0,0,8">
               <Button.Template>
                 <ControlTemplate TargetType="Button">
@@ -1085,9 +1085,9 @@
                                Stroke="{DynamicResource LineStrongBrush}" Fill="{DynamicResource PaperSunkBrush}"
                                VerticalAlignment="Center"/>
                       <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0"
-                                 Text="{Binding [Picker_ReadOnly], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Settings.PickerReadOnly], Source={x:Static services:I18n.Instance}}"/>
                       <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="11,0,0,0" VerticalAlignment="Center"
-                                 Text="{Binding [Picker_ReadOnly_Hint], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Settings.ReadOnlyHint], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Border>
                   <ControlTemplate.Triggers>
@@ -1112,9 +1112,9 @@
                                Stroke="{DynamicResource LineStrongBrush}" Fill="{DynamicResource PaperSunkBrush}"
                                VerticalAlignment="Center"/>
                       <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0"
-                                 Text="{Binding [Picker_ReadWrite], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Settings.PickerReadWrite], Source={x:Static services:I18n.Instance}}"/>
                       <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="11,0,0,0" VerticalAlignment="Center"
-                                 Text="{Binding [Picker_ReadWrite_Hint], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Settings.ReadWriteHint], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Border>
                   <ControlTemplate.Triggers>
@@ -1136,15 +1136,15 @@
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Picker_Confirm], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Settings.PickerConfirm], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
-                      Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                           Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
-                           Text="{Binding [Picker_WrittenAs], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Settings.WrittenAs], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="7,0,0,0" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" MaxWidth="260" Text="{Binding MountPreview}"/>
               </StackPanel>
@@ -1171,28 +1171,28 @@
           </Border>
           <StackPanel Grid.Column="1" Margin="28,26">
             <TextBlock Style="{StaticResource Eyebrow}"
-                       Text="{Binding [About_Eyebrow], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Shell.Eyebrow], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Text="Orkeon Studio" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
             <TextBlock Style="{StaticResource MonoText}" FontSize="11" Margin="0,8,0,0" Text="{Binding About.VersionLine}"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="21" Margin="0,16,0,0"
-                       Text="{Binding [About_Line], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Shell.Line], Source={x:Static services:I18n.Instance}}"/>
             <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                     CornerRadius="12" Padding="14,12" Margin="0,16,0,0">
               <DockPanel>
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="info" Size="15" Foreground="{DynamicResource MarkBrush}"
                                      VerticalAlignment="Top" Margin="0,1,11,0"/>
                 <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
-                           Text="{Binding [About_Kama], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding [Studio.Shell.Kama], Source={x:Static services:I18n.Instance}}"/>
               </DockPanel>
             </Border>
             <DockPanel Margin="0,20,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding About.CloseCommand}"
-                      Content="{Binding [About_Close], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
               <Button Style="{StaticResource BtnGhost}" Click="OnStartTourFromAbout" HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Btn_GuidedTour], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
             </DockPanel>
@@ -1204,7 +1204,7 @@
     <!-- ══════════ DÉMARRAGE (overlay, 5 s, clic pour passer) ══════════ -->
     <Border x:Name="Splash" Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource PaperBrush}" Cursor="Hand"
             MouseLeftButtonDown="OnSplashClick"
-            ToolTip="{Binding [Splash_Skip], Source={x:Static services:I18n.Instance}}">
+            ToolTip="{Binding [Studio.Shell.SplashSkip], Source={x:Static services:I18n.Instance}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
         <Border Background="{DynamicResource IllustrationPanelBrush}" CornerRadius="28" Padding="34,14,34,0" HorizontalAlignment="Center">
           <Image Source="/Assets/kama.png" Width="280"/>

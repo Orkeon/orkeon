@@ -42,7 +42,7 @@
                 Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Act_Validate], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Common.Validate], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
         <!-- Novice saves automatically (audit 07/16); the explicit ending of the cycle is
@@ -56,12 +56,12 @@
         </Button>
       </StackPanel>
       <StackPanel>
-        <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Settings_Title], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.Common.Title], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Scr_Settings_SubNovice], Source={x:Static services:I18n.Instance}}"
+                   Text="{Binding [Studio.Common.SubNovice], Source={x:Static services:I18n.Instance}}"
                    Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"/>
         <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Scr_Settings_SubExpert], Source={x:Static services:I18n.Instance}}"
+                   Text="{Binding [Studio.Common.SubExpert], Source={x:Static services:I18n.Instance}}"
                    Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
       </StackPanel>
     </DockPanel>
@@ -71,17 +71,17 @@
     <StackPanel Orientation="Horizontal" Margin="0,20,0,18">
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowModelCommand}"
               Tag="{Binding IsModelTab}"
-              Content="{Binding [Tab_Model], Source={x:Static services:I18n.Instance}}"/>
+              Content="{Binding [Studio.Shell.Model], Source={x:Static services:I18n.Instance}}"/>
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowFoldersCommand}"
               Tag="{Binding IsFoldersTab}"
-              Content="{Binding [Tab_Folders], Source={x:Static services:I18n.Instance}}"/>
+              Content="{Binding [Studio.Shell.Folders], Source={x:Static services:I18n.Instance}}"/>
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowLimitsCommand}"
               Tag="{Binding IsLimitsTab}"
-              Content="{Binding [Tab_Limits], Source={x:Static services:I18n.Instance}}"
+              Content="{Binding [Studio.Shell.Limits], Source={x:Static services:I18n.Instance}}"
               Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowJsonCommand}"
               Tag="{Binding IsJsonTab}"
-              Content="{Binding [Tab_Json], Source={x:Static services:I18n.Instance}}"
+              Content="{Binding [Studio.Shell.Json], Source={x:Static services:I18n.Instance}}"
               Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
     </StackPanel>
 
@@ -101,22 +101,22 @@
                       SelectedItem="{Binding Profiles.StudioProfileName}"/>
             <TextBlock Style="{StaticResource Hint}" Margin="12,0,0,0" VerticalAlignment="Center"
                        IsHitTestVisible="False"
-                       Text="{Binding [Studio_Model_Placeholder], Source={x:Static services:I18n.Instance}}"
+                       Text="{Binding [Studio.Settings.ModelPlaceholder], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Profiles.HasStudioProfile, Converter={StaticResource InverseBooleanToVisibility}}"/>
           </Grid>
           <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
             <StackPanel Orientation="Horizontal">
               <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                         Text="{Binding [Studio_Model_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Settings.ModelTitle], Source={x:Static services:I18n.Instance}}"/>
               <controls:LucideIcon Kind="triangle-alert" Size="13" Foreground="{DynamicResource WarningBrush}"
                                    Margin="8,0,0,0" VerticalAlignment="Center"
                                    Visibility="{Binding Profiles.HasStudioProfile, Converter={StaticResource InverseBooleanToVisibility}}"/>
             </StackPanel>
             <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0"
-                       Text="{Binding [Studio_Model_HintNovice], Source={x:Static services:I18n.Instance}}"
+                       Text="{Binding [Studio.Settings.ModelHintNovice], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"/>
             <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0"
-                       Text="{Binding [Studio_Model_HintExpert], Source={x:Static services:I18n.Instance}}"
+                       Text="{Binding [Studio.Settings.ModelHintExpert], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
           </StackPanel>
         </DockPanel>
@@ -130,25 +130,25 @@
                     Command="{Binding Profiles.NewProfileCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                <TextBlock Text="{Binding [Profile_New], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Settings.New], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
             <StackPanel Margin="0,0,14,0">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="sparkles" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Profile_Title], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Settings.ProfileTitle], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
               <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" TextWrapping="Wrap"
-                         Text="{Binding [Profile_HintNovice], Source={x:Static services:I18n.Instance}}"
+                         Text="{Binding [Studio.Settings.HintNovice], Source={x:Static services:I18n.Instance}}"
                          Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"/>
               <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" TextWrapping="Wrap"
-                         Text="{Binding [Profile_HintExpert], Source={x:Static services:I18n.Instance}}"
+                         Text="{Binding [Studio.Settings.HintExpert], Source={x:Static services:I18n.Instance}}"
                          Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
             </StackPanel>
           </DockPanel>
 
           <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0"
-                     Text="{Binding [Profile_Empty], Source={x:Static services:I18n.Instance}}"
+                     Text="{Binding [Studio.Settings.ProfileEmpty], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding Profiles.IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
 
           <ItemsControl ItemsSource="{Binding Profiles.Profiles}" Margin="0,10,0,0">
@@ -168,7 +168,7 @@
                       <Border Style="{StaticResource BadgeRun}" Margin="10,0,0,0"
                               Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibility}}">
                         <TextBlock Style="{StaticResource BadgeText}"
-                                   Text="{Binding [Profile_DefaultBadge], Source={x:Static services:I18n.Instance}}"/>
+                                   Text="{Binding [Studio.Settings.DefaultBadge], Source={x:Static services:I18n.Instance}}"/>
                       </Border>
                       <Border Style="{StaticResource BadgeNeutral}" Margin="10,0,0,0"
                               Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}">
@@ -177,7 +177,7 @@
                       <Border Style="{StaticResource BadgeSky}" Margin="10,0,0,0"
                               Visibility="{Binding IsStudio, Converter={StaticResource BooleanToVisibility}}">
                         <TextBlock Style="{StaticResource BadgeText}"
-                                   Text="{Binding [Profile_StudioBadge], Source={x:Static services:I18n.Instance}}"/>
+                                   Text="{Binding [Studio.Settings.StudioBadge], Source={x:Static services:I18n.Instance}}"/>
                       </Border>
                     </StackPanel>
                     <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,0" Text="{Binding Summary}"/>
@@ -186,7 +186,7 @@
                     <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
                                 Visibility="{Binding IsUsedByTeams, Converter={StaticResource BooleanToVisibility}}">
                       <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
-                                 Text="{Binding [Profile_UsedBy], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Settings.UsedBy], Source={x:Static services:I18n.Instance}}"/>
                       <ItemsControl ItemsSource="{Binding UsedByTeams}">
                         <ItemsControl.ItemsPanel>
                           <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -205,24 +205,24 @@
                     <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
                       <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding SetDefaultCommand}" Margin="0,0,7,0"
                               Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"
-                              Content="{Binding [Profile_UseDefault], Source={x:Static services:I18n.Instance}}"/>
+                              Content="{Binding [Studio.Settings.UseDefault], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding EditCommand}" Margin="0,0,7,0">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="pencil" Size="12" Margin="0,0,6,0"/>
-                          <TextBlock Text="{Binding [Profile_Edit], Source={x:Static services:I18n.Instance}}"/>
+                          <TextBlock Text="{Binding [Studio.Settings.Edit], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
                       <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding DuplicateCommand}" Margin="0,0,7,0">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
-                          <TextBlock Text="{Binding [Profile_Duplicate], Source={x:Static services:I18n.Instance}}"/>
+                          <TextBlock Text="{Binding [Studio.Settings.Duplicate], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
                       <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding DeleteCommand}"
                               Foreground="{DynamicResource DangerBrush}">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"/>
-                          <TextBlock Text="{Binding [Profile_Delete], Source={x:Static services:I18n.Instance}}"/>
+                          <TextBlock Text="{Binding [Studio.Settings.Delete], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
                     </StackPanel>
@@ -241,10 +241,10 @@
         <StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
             <controls:LucideIcon Kind="key" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-            <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Secrets_Title], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Settings.SecretsTitle], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"
-                     Text="{Binding [Secrets_Intro], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Settings.Intro], Source={x:Static services:I18n.Instance}}"/>
           <ItemsControl ItemsSource="{Binding Profiles.Secrets}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
@@ -296,11 +296,11 @@
       <!-- novice: one card per folder + "Autoriser un dossier…" (audit 08/17); the typed
            two-pane form below stays the expert tool. -->
       <StackPanel Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}">
-        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Mounts_Novice_Title], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Settings.NoviceTitle], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,14" TextWrapping="Wrap"
-                   Text="{Binding [Mounts_Novice_Intro], Source={x:Static services:I18n.Instance}}"/>
+                   Text="{Binding [Studio.Settings.NoviceIntro], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
-                   Text="{Binding [Mounts_Novice_Empty], Source={x:Static services:I18n.Instance}}"
+                   Text="{Binding [Studio.Settings.NoviceEmpty], Source={x:Static services:I18n.Instance}}"
                    Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
         <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
           <ItemsControl.ItemTemplate>
@@ -335,7 +335,7 @@
                                Text="{Binding PhysicalPath}" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,3,0,0"
                                Foreground="{DynamicResource InkFaintBrush}">
-                      <Run Text="{Binding [Mounts_SeenAs], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding VirtualPath}"/>
+                      <Run Text="{Binding [Studio.Settings.SeenAs], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding VirtualPath}"/>
                     </TextBlock>
                   </StackPanel>
                 </DockPanel>
@@ -347,7 +347,7 @@
                 Command="{Binding Config.Mounts.AllowFolderCommand}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Mounts_Allow], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Settings.Allow], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
       </StackPanel>
@@ -360,7 +360,7 @@
         <StackPanel>
           <TextBlock Style="{StaticResource Eyebrow}" Text="MOUNT STRINGS" Margin="0,0,0,5"/>
           <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
-                   Text="{Binding [Mounts_Novice_Empty], Source={x:Static services:I18n.Instance}}"
+                   Text="{Binding [Studio.Settings.NoviceEmpty], Source={x:Static services:I18n.Instance}}"
                    Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
         <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
             <ItemsControl.ItemTemplate>

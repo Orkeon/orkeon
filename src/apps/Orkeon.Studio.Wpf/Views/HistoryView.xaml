@@ -9,9 +9,9 @@
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
   <StackPanel>
 
-    <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Hist_Title], Source={x:Static services:I18n.Instance}}"/>
+    <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.History.Title], Source={x:Static services:I18n.Instance}}"/>
     <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-               Text="{Binding [Scr_Hist_Sub], Source={x:Static services:I18n.Instance}}"/>
+               Text="{Binding [Studio.History.Sub], Source={x:Static services:I18n.Instance}}"/>
 
 
     <!-- T-08: the way in, with the accent dot when the assistant spoke while it was closed. -->
@@ -36,7 +36,7 @@
                           Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
 
     <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
-               Text="{Binding [Hist_Empty], Source={x:Static services:I18n.Instance}}"
+               Text="{Binding [Studio.History.Empty], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
 
     <ItemsControl ItemsSource="{Binding Entries}"
@@ -67,13 +67,13 @@
                         Visibility="{Binding HasResultFolder, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Hist_Result], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock Text="{Binding [Studio.History.Result], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
                 <Button Style="{StaticResource BtnGhost}" Command="{Binding ReplayCommand}">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Hist_Replay], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock Text="{Binding [Studio.History.Replay], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
               </StackPanel>

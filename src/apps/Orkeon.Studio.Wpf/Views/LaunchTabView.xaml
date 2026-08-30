@@ -42,12 +42,12 @@
   <StackPanel MaxWidth="1080" HorizontalAlignment="Left">
 
     <!-- header -->
-    <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Run_Title], Source={x:Static services:I18n.Instance}}"/>
+    <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.Run.Title], Source={x:Static services:I18n.Instance}}"/>
     <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-               Text="{Binding [Scr_Run_SubNovice], Source={x:Static services:I18n.Instance}}"
+               Text="{Binding [Studio.Run.SubNovice], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
     <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-               Text="{Binding [Scr_Run_SubExpert], Source={x:Static services:I18n.Instance}}"
+               Text="{Binding [Studio.Run.SubExpert], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
 
 
@@ -80,7 +80,7 @@
                 VerticalAlignment="Center" Click="OnOpenDiagnostic">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="stethoscope" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Nav_Diag], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Shell.Diag], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
         <StackPanel Orientation="Horizontal">
@@ -115,20 +115,20 @@
       <StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
           <controls:LucideIcon Kind="compass" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-          <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Run_Target_Title], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Run.TargetTitle], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
         <DockPanel>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                   Command="{Binding Target.BrowseFolderCommand}"
-                  Content="{Binding [Run_Folder], Source={x:Static services:I18n.Instance}}"/>
+                  Content="{Binding [Studio.Run.Folder], Source={x:Static services:I18n.Instance}}"/>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                   Command="{Binding Target.BrowseFileCommand}"
-                  Content="{Binding [Run_File], Source={x:Static services:I18n.Instance}}"/>
+                  Content="{Binding [Studio.Run.File], Source={x:Static services:I18n.Instance}}"/>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                   Command="{Binding Target.DetectCommand}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="scan-search" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Run_Detect], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Run.Detect], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
           <TextBox Style="{StaticResource InputMono}" Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}"/>
@@ -147,7 +147,7 @@
                    MaxHeight="120" Margin="0,6,0,0" FontFamily="{StaticResource MonoFont}" FontSize="11.5"/>
           <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,6,0,0"
                   Command="{Binding Target.UseCandidateCommand}"
-                  Content="{Binding [Run_UseCandidate], Source={x:Static services:I18n.Instance}}"/>
+                  Content="{Binding [Studio.Run.UseCandidate], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
 
         <TextBlock Style="{StaticResource Hint}" Text="{Binding Target.DirectoryRunNotice}"
@@ -156,7 +156,7 @@
     </Border>
 
     <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,18,0,0" TextWrapping="Wrap"
-               Text="{Binding [Run_Empty], Source={x:Static services:I18n.Instance}}">
+               Text="{Binding [Studio.Run.Empty], Source={x:Static services:I18n.Instance}}">
       <TextBlock.Style>
         <Style TargetType="TextBlock">
           <Setter Property="Visibility" Value="Collapsed"/>
@@ -193,13 +193,13 @@
         <Button Style="{StaticResource BtnPrimary}" Command="{Binding ChooseTeamCommand}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="brain-circuit" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-            <TextBlock Text="{Binding [Run_ChooseTeam], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Run.ChooseTeam], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
         <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding CreateTeamCommand}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
       </StackPanel>
@@ -220,7 +220,7 @@
           </Button>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="0,0,10,0"
                   VerticalAlignment="Center" Click="OnChangeTeam"
-                  Content="{Binding [Run_ChangeTeam], Source={x:Static services:I18n.Instance}}"/>
+                  Content="{Binding [Studio.Run.ChangeTeam], Source={x:Static services:I18n.Instance}}"/>
           <StackPanel Orientation="Horizontal">
             <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource AccentWeakBrush}"
                     VerticalAlignment="Center">
@@ -244,7 +244,7 @@
           <DockPanel>
             <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="12,0,0,0" VerticalAlignment="Center"
                     Command="{Binding OpenAllowedFoldersCommand}"
-                    Content="{Binding [Run_OpenAllowedFolders], Source={x:Static services:I18n.Instance}}"/>
+                    Content="{Binding [Studio.Run.OpenAllowedFolders], Source={x:Static services:I18n.Instance}}"/>
             <controls:LucideIcon DockPanel.Dock="Left" Kind="triangle-alert" Size="15" Margin="0,0,10,0"
                                  VerticalAlignment="Center" Foreground="{DynamicResource DangerBrush}"/>
             <TextBlock FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
@@ -259,7 +259,7 @@
           <WrapPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,18,8">
               <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,8,0" VerticalAlignment="Center"
-                         Text="{Binding [Run_Lbl_Verbosity], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Run.LblVerbosity], Source={x:Static services:I18n.Instance}}"/>
               <ComboBox Width="140" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
                         SelectedItem="{Binding Options.Verbosity}">
                 <ComboBox.ItemTemplate>
@@ -278,36 +278,36 @@
                       Content="{Binding [Vm_RunProgress_Stream], Source={x:Static services:I18n.Instance}}"/>
             <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
                       IsChecked="{Binding Options.LlmLogEnabled}"
-                      Content="{Binding [Run_LlmLog], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
             <CheckBox Margin="0,0,0,8" VerticalAlignment="Center"
                       IsChecked="{Binding Options.ValidateFirst}"
-                      Content="{Binding [Run_ValidateFirst], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Run.ValidateFirst], Source={x:Static services:I18n.Instance}}"/>
           </WrapPanel>
 
           <!-- advanced options, folded -->
           <ToggleButton x:Name="AdvancedFold" Style="{StaticResource FoldToggle}">
             <TextBlock FontSize="12" FontWeight="SemiBold"
-                       Text="{Binding [Run_Advanced], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Run.Advanced], Source={x:Static services:I18n.Instance}}"/>
           </ToggleButton>
           <StackPanel Margin="13,4,0,4"
                       Visibility="{Binding IsChecked, ElementName=AdvancedFold, Converter={StaticResource BooleanToVisibility}}">
             <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Text="appsettings.json"/>
             <RadioButton Margin="0,8,0,0" GroupName="RunSettings" Checked="OnSettingsAutomaticChecked"
                          IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
-                         Content="{Binding [Run_Settings_Auto], Source={x:Static services:I18n.Instance}}"/>
+                         Content="{Binding [Studio.Run.SettingsAuto], Source={x:Static services:I18n.Instance}}"/>
             <RadioButton Margin="0,5,0,0" GroupName="RunSettings" Checked="OnSettingsExplicitChecked"
                          IsChecked="{Binding Options.IsSettingsExplicit, Mode=OneWay}"
-                         Content="{Binding [Run_Settings_Explicit], Source={x:Static services:I18n.Instance}}"/>
+                         Content="{Binding [Studio.Run.SettingsExplicit], Source={x:Static services:I18n.Instance}}"/>
             <DockPanel Margin="0,7,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                       Command="{Binding Options.BrowseSettingsCommand}"
-                      Content="{Binding [Btn_Browse], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.SettingsPath, UpdateSourceTrigger=PropertyChanged}"/>
             </DockPanel>
 
             <StackPanel Visibility="{Binding Options.AreVariablesAvailable, Converter={StaticResource BooleanToVisibility}}">
               <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
-                         Text="{Binding [Run_Vars_Title], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Run.VarsTitle], Source={x:Static services:I18n.Instance}}"/>
               <ItemsControl ItemsSource="{Binding Options.Variables}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
@@ -323,35 +323,35 @@
                 <Button Style="{StaticResource BtnGhost}" FontSize="12" Margin="0,0,8,0" Command="{Binding Options.AddVariableCommand}">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,6,0"/>
-                    <TextBlock Text="{Binding [Run_Add], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock Text="{Binding [Studio.Run.Add], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
                 <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding Options.RemoveVariableCommand}">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"/>
-                    <TextBlock Text="{Binding [Run_Remove], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock Text="{Binding [Studio.Run.Remove], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
               </StackPanel>
 
               <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0"
-                         Text="{Binding [Run_Lbl_InitialContext], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Run.LblInitialContext], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Style="{StaticResource Input}" Text="{Binding Options.InitialContext, UpdateSourceTrigger=PropertyChanged}"
                        AcceptsReturn="True" MinHeight="60" VerticalScrollBarVisibility="Auto"/>
             </StackPanel>
 
             <StackPanel Visibility="{Binding Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
               <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,0"
-                         Text="{Binding [Run_Inputs_Title], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Run_Lbl_InputsJson], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Run.InputsTitle], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Run.LblInputsJson], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.InputsJson, UpdateSourceTrigger=PropertyChanged}"
                        AcceptsReturn="True" MinHeight="60" VerticalScrollBarVisibility="Auto"/>
               <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0"
-                         Text="{Binding [Run_Lbl_InputsFile], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Run.LblInputsFile], Source={x:Static services:I18n.Instance}}"/>
               <DockPanel>
                 <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                         Command="{Binding Options.BrowseInputsFileCommand}"
-                        Content="{Binding [Btn_Browse], Source={x:Static services:I18n.Instance}}"/>
+                        Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.InputsFilePath, UpdateSourceTrigger=PropertyChanged}"/>
               </DockPanel>
             </StackPanel>
@@ -359,7 +359,7 @@
             <DockPanel Margin="0,10,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                       Command="{Binding Options.BrowseLlmLogPathCommand}"
-                      Content="{Binding [Btn_Browse], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.LlmLogPath, UpdateSourceTrigger=PropertyChanged}"/>
             </DockPanel>
           </StackPanel>
@@ -367,12 +367,12 @@
           <!-- launch mounts, folded -->
           <ToggleButton x:Name="MountsFold" Style="{StaticResource FoldToggle}">
             <TextBlock FontSize="12" FontWeight="SemiBold"
-                       Text="{Binding [Run_Tab_Mounts], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Run.TabMounts], Source={x:Static services:I18n.Instance}}"/>
           </ToggleButton>
           <StackPanel Margin="13,4,0,4"
                       Visibility="{Binding IsChecked, ElementName=MountsFold, Converter={StaticResource BooleanToVisibility}}">
             <TextBlock Style="{StaticResource CardTitle}" FontSize="13"
-                       Text="{Binding [Run_SettingsMounts_Title], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Run.SettingsMountsTitle], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Mounts.SettingsMounts}" Margin="0,7,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -383,7 +383,7 @@
 
             <CheckBox Margin="0,12,0,0"
                       IsChecked="{Binding Mounts.AllowExternalMounts}"
-                      Content="{Binding [Run_AllowExternal], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Run.AllowExternal], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}"
                        Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"/>
 
@@ -413,7 +413,7 @@
 
           <!-- the exact command, always visible in expert -->
           <TextBlock Style="{StaticResource Eyebrow}" Margin="0,10,0,5"
-                     Text="{Binding [Run_Cmd_Title], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Run.CmdTitle], Source={x:Static services:I18n.Instance}}"/>
           <Border Style="{StaticResource Well}">
             <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" TextWrapping="Wrap"
                        Text="{Binding CommandLinePreview, Mode=OneWay}"/>
@@ -423,19 +423,19 @@
             <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding ValidateCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Run_Validate], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Run.Validate], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
             <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding CancelCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="x" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Run_Cancel], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Run.Cancel], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
             <Button Style="{StaticResource BtnGhost}" Command="{Binding ClearLogCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="eraser" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Run_ClearLog], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Run.ClearLog], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
           </WrapPanel>
@@ -689,7 +689,7 @@
                   Visibility="{Binding CanOpenResult, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Run_OpenResult], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Run.OpenResult], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
           <StackPanel VerticalAlignment="Center">
@@ -715,7 +715,7 @@
                   Visibility="{Binding Log.Lines.Count, Converter={StaticResource CountToVisibility}}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
-              <TextBlock Text="{Binding [Run_Journal_Copy], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
           <ToggleButton DockPanel.Dock="Right" Style="{StaticResource FoldToggle}"
@@ -725,10 +725,10 @@
               <TextBlock FontSize="11.5">
                 <TextBlock.Style>
                   <Style TargetType="TextBlock">
-                    <Setter Property="Text" Value="{Binding [Run_Journal_Show], Source={x:Static services:I18n.Instance}}"/>
+                    <Setter Property="Text" Value="{Binding [Studio.Run.JournalShow], Source={x:Static services:I18n.Instance}}"/>
                     <Style.Triggers>
                       <DataTrigger Binding="{Binding IsJournalOpen}" Value="True">
-                        <Setter Property="Text" Value="{Binding [Run_Journal_Hide], Source={x:Static services:I18n.Instance}}"/>
+                        <Setter Property="Text" Value="{Binding [Studio.Run.JournalHide], Source={x:Static services:I18n.Instance}}"/>
                       </DataTrigger>
                     </Style.Triggers>
                   </Style>
@@ -738,11 +738,11 @@
           </ToggleButton>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
-                       Text="{Binding [Run_Journal_Title], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Run.JournalTitle], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource CardHeaderMeta}" Margin="9,0,0,0"
                        Text="{Binding Log.Lines.Count}"/>
             <TextBlock Style="{StaticResource CardHeaderMeta}" Margin="4,0,0,0"
-                       Text="{Binding [Run_Lines], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Run.RunLines], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </DockPanel>
 

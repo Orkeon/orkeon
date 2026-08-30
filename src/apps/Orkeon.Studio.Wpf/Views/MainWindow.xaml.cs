@@ -113,7 +113,7 @@ public partial class MainWindow : Window
     private void UpdateThemeButton()
     {
         ThemeIcon.Kind = ThemeManager.IsDark ? "sun" : "moon";
-        ThemeBtn.ToolTip = I18n.T(ThemeManager.IsDark ? "Theme_ToLight" : "Theme_ToDark");
+        ThemeBtn.ToolTip = I18n.T(ThemeManager.IsDark ? "Studio.Shell.ToLight" : "Studio.Shell.ToDark");
     }
 
     /// <summary>
@@ -140,11 +140,11 @@ public partial class MainWindow : Window
     {
         Tour.Start(
         [
-            new TourStep("ModeSwitch", "Tour1_Title", "Tour1_Body"),
-            new TourStep("NavGroupTeams", "Tour2_Title", "Tour2_Body"),
-            new TourStep("NavGroupWork", "Tour3_Title", "Tour3_Body"),
-            new TourStep("NavGroupEnv", "Tour4_Title", "Tour4_Body"),
-            new TourStep(null, "Tour5_Title", "Tour5_Body"),
+            new TourStep("ModeSwitch", "Studio.Shell.TourStep1Title", "Studio.Shell.TourStep1Body"),
+            new TourStep("NavGroupTeams", "Studio.Shell.TourStep2Title", "Studio.Shell.TourStep2Body"),
+            new TourStep("NavGroupWork", "Studio.Shell.TourStep3Title", "Studio.Shell.TourStep3Body"),
+            new TourStep("NavGroupEnv", "Studio.Shell.TourStep4Title", "Studio.Shell.TourStep4Body"),
+            new TourStep(null, "Studio.Shell.TourStep5Title", "Studio.Shell.TourStep5Body"),
         ]);
     }
 

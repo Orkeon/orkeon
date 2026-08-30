@@ -18,7 +18,7 @@
                    Text="{Binding Title, ElementName=Root}"/>
       </StackPanel>
       <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,7,0,12"
-                 Text="{Binding [Notes_Sub], Source={x:Static services:I18n.Instance}}"/>
+                 Text="{Binding [Studio.Create.NotesSub], Source={x:Static services:I18n.Instance}}"/>
 
       <!-- the field IS the consigne: typed text is taken as-is, no add step, no list -->
       <TextBox Style="{StaticResource Input}" MinHeight="60" TextWrapping="Wrap" AcceptsReturn="True"
@@ -29,7 +29,7 @@
                     Visibility="{Binding HasConsigne, Converter={StaticResource BooleanToVisibility}}">
           <controls:LucideIcon Kind="circle-check" Size="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
           <TextBlock Style="{StaticResource Hint}" Margin="5,0,0,0" VerticalAlignment="Center"
-                     Text="{Binding [Notes_Taken], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Create.Taken], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
         <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="10"
                    VerticalAlignment="Center" Foreground="{DynamicResource InkFaintBrush}"

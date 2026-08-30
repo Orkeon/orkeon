@@ -13,13 +13,13 @@
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Click="OnCopy">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Raw_Copy], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Settings.Copy], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <controls:LucideIcon Kind="lock" Size="12" Margin="0,0,7,0"/>
             <TextBlock Style="{StaticResource Eyebrow}" VerticalAlignment="Center"
-                       Text="{Binding [Raw_ReadOnly], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.RawJsonReadOnly], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </DockPanel>
         <TextBox Text="{Binding RawJson, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"

@@ -17,10 +17,10 @@
             <TextBlock>
               <TextBlock.Style>
                 <Style TargetType="TextBlock">
-                  <Setter Property="Text" Value="{Binding [Diag_CopyReport], Source={x:Static services:I18n.Instance}}"/>
+                  <Setter Property="Text" Value="{Binding [Studio.Diagnostics.CopyReport], Source={x:Static services:I18n.Instance}}"/>
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding ReportCopied}" Value="True">
-                      <Setter Property="Text" Value="{Binding [Diag_Copied], Source={x:Static services:I18n.Instance}}"/>
+                      <Setter Property="Text" Value="{Binding [Studio.Diagnostics.Copied], Source={x:Static services:I18n.Instance}}"/>
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
@@ -31,17 +31,17 @@
         <Button Style="{StaticResource BtnGhost}" Command="{Binding RunCommand}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="rotate-cw" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Diag_Run], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Diagnostics.Run], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
       </StackPanel>
       <StackPanel>
-        <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Diag_Title], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.Diagnostics.ScreenTitle], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Scr_Diag_SubNovice], Source={x:Static services:I18n.Instance}}"
+                   Text="{Binding [Studio.Diagnostics.SubNovice], Source={x:Static services:I18n.Instance}}"
                    Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
         <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Scr_Diag_SubExpert], Source={x:Static services:I18n.Instance}}"
+                   Text="{Binding [Studio.Diagnostics.SubExpert], Source={x:Static services:I18n.Instance}}"
                    Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
       </StackPanel>
     </DockPanel>
@@ -59,7 +59,7 @@
                 Visibility="{Binding HasIssues, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="sliders-horizontal" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Diag_Fix], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Text="{Binding [Studio.Diagnostics.Fix], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
         <StackPanel>
@@ -87,11 +87,11 @@
         <TextBlock Margin="0,0,0,12">
           <TextBlock.Style>
             <Style TargetType="TextBlock" BasedOn="{StaticResource CardTitle}">
-              <Setter Property="Text" Value="{Binding [Diag_Checks_Title], Source={x:Static services:I18n.Instance}}"/>
+              <Setter Property="Text" Value="{Binding [Studio.Diagnostics.ChecksTitle], Source={x:Static services:I18n.Instance}}"/>
               <Style.Triggers>
                 <!-- Novice (F-13): plain words, not the tool's name. -->
                 <DataTrigger Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                  <Setter Property="Text" Value="{Binding [Diag_Card_Novice], Source={x:Static services:I18n.Instance}}"/>
+                  <Setter Property="Text" Value="{Binding [Studio.Diagnostics.CardNovice], Source={x:Static services:I18n.Instance}}"/>
                 </DataTrigger>
               </Style.Triggers>
             </Style>
@@ -142,7 +142,7 @@
                   <!-- llm-config reads the base (file + shell env); a team's named profile
                        is laid over its own launch only, so this check cannot see it. -->
                   <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" FontStyle="Italic"
-                             Text="{Binding [Diag_LlmConfigHint], Source={x:Static services:I18n.Instance}}">
+                             Text="{Binding [Studio.Diagnostics.LlmConfigHint], Source={x:Static services:I18n.Instance}}">
                     <TextBlock.Style>
                       <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
                         <Setter Property="Visibility" Value="Collapsed"/>

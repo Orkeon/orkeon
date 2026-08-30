@@ -50,15 +50,15 @@ public sealed class TourOverlay : Grid
         var head = new DockPanel();
         var label = new TextBlock { FontSize = 10 };
         label.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
-        label.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[Tour_Label]") { Source = I18n.Instance });
+        label.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[Studio.Shell.TourLabel]") { Source = I18n.Instance });
         _counter.Margin = new Thickness(9, 1, 0, 0);
         head.Children.Add(label);
         head.Children.Add(_counter);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
-        Wire(_skip, "Tour_Skip", (_, _) => End());
-        Wire(_back, "Tour_Back", (_, _) => Go(_index - 1));
-        Wire(_next, "Tour_Next", (_, _) => { if (_index >= _steps.Count - 1) End(); else Go(_index + 1); });
+        Wire(_skip, "Studio.Shell.TourSkip", (_, _) => End());
+        Wire(_back, "Studio.Shell.Back", (_, _) => Go(_index - 1));
+        Wire(_next, "Studio.Shell.Next", (_, _) => { if (_index >= _steps.Count - 1) End(); else Go(_index + 1); });
         _back.Margin = _next.Margin = new Thickness(7, 0, 0, 0);
         buttons.Children.Add(_skip);
         buttons.Children.Add(_back);
@@ -92,12 +92,12 @@ public sealed class TourOverlay : Grid
 
     private void Wire(Button b, string key, RoutedEventHandler click)
     {
-        b.SetResourceReference(StyleProperty, key == "Tour_Next" ? "BtnPrimary" : "BtnGhost");
+        b.SetResourceReference(StyleProperty, key == "Studio.Shell.Next" ? "BtnPrimary" : "BtnGhost");
         b.FontSize = 12;
         b.Padding = new Thickness(10, 6, 10, 6);
         b.SetBinding(ContentControl.ContentProperty, new System.Windows.Data.Binding("[" + key + "]") { Source = I18n.Instance });
         b.Click += click;
-        if (key == "Tour_Next") _nextKeyHolder = b;
+        if (key == "Studio.Shell.Next") _nextKeyHolder = b;
     }
 
     private Button? _nextKeyHolder;
@@ -159,7 +159,7 @@ public sealed class TourOverlay : Grid
             I18n.T("Vm_Tour_CounterPattern"), _index + 1, _steps.Count);
         _back.Visibility = _index > 0 ? Visibility.Visible : Visibility.Collapsed;
         _nextKeyHolder?.SetBinding(ContentControl.ContentProperty,
-            new System.Windows.Data.Binding("[" + (_index == _steps.Count - 1 ? "Tour_Finish" : "Tour_Next") + "]") { Source = I18n.Instance });
+            new System.Windows.Data.Binding("[" + (_index == _steps.Count - 1 ? "Studio.Shell.Finish" : "Studio.Shell.Next") + "]") { Source = I18n.Instance });
 
         _dots.Children.Clear();
         for (var j = 0; j < _steps.Count; j++)

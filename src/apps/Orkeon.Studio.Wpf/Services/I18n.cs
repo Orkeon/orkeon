@@ -13,8 +13,8 @@ namespace Orkeon.Studio.Wpf.Services;
 /// <c>ViewModels/Shell/LanguageSelectorViewModel</c> where the test suite can reach them.
 /// All this does is resolve a key in a culture and tell the bindings when the culture moved.
 /// </para>
-/// XAML: Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"
-/// C#:   I18n.T("Tour_Skip");  I18n.Instance.SetLanguage("es");
+/// XAML: Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"
+/// C#:   I18n.T("Studio.Shell.TourSkip");  I18n.Instance.SetLanguage("es");
 /// </summary>
 public sealed class I18n : INotifyPropertyChanged
 {

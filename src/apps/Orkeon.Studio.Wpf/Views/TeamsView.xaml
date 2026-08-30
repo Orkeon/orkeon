@@ -14,13 +14,13 @@
               Command="{Binding CreateCommand}">
         <StackPanel Orientation="Horizontal">
           <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-          <TextBlock Text="{Binding [Teams_Create], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Text="{Binding [Studio.Teams.Create], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </Button>
       <StackPanel>
-        <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Teams_Title], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.Teams.ScreenTitle], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Scr_Teams_Sub], Source={x:Static services:I18n.Instance}}"/>
+                   Text="{Binding [Studio.Teams.ScreenSub], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </DockPanel>
 
@@ -37,19 +37,19 @@
         </Border>
         <TextBlock FontSize="14.5" FontWeight="Bold" Margin="0,12,0,0" HorizontalAlignment="Center"
                    Foreground="{DynamicResource InkBrush}"
-                   Text="{Binding [Teams_Empty_Title], Source={x:Static services:I18n.Instance}}"/>
+                   Text="{Binding [Studio.Teams.EmptyTitle], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource Hint}" FontSize="12.5" MaxWidth="420" Margin="0,6,0,0"
                    TextWrapping="Wrap" TextAlignment="Center"
-                   Text="{Binding [Teams_Empty_Body], Source={x:Static services:I18n.Instance}}"/>
+                   Text="{Binding [Studio.Teams.EmptyBody], Source={x:Static services:I18n.Instance}}"/>
         <StackPanel Orientation="Horizontal" Margin="0,16,0,0" HorizontalAlignment="Center">
           <Button Style="{StaticResource BtnPrimary}" Command="{Binding CreateCommand}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Nav_Create], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
           <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding ImportCommand}"
-                  Content="{Binding [Teams_Import], Source={x:Static services:I18n.Instance}}"/>
+                  Content="{Binding [Studio.Teams.Import], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </StackPanel>
     </Border>
@@ -72,7 +72,7 @@
                 <Button Style="{StaticResource BtnPrimary}" Command="{Binding LaunchCommand}">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="play" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                    <TextBlock Text="{Binding [Teams_Launch], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock Text="{Binding [Studio.Teams.Launch], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
                 <!-- «Modifier» took «Ouvrir»'s visible seat (amended mock, W-09):
@@ -84,10 +84,10 @@
                     <TextBlock>
                       <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                          <Setter Property="Text" Value="{Binding [Teams_Modify_Tip], Source={x:Static services:I18n.Instance}}"/>
+                          <Setter Property="Text" Value="{Binding [Studio.Teams.ModifyTip], Source={x:Static services:I18n.Instance}}"/>
                           <Style.Triggers>
                             <DataTrigger Binding="{Binding CanModify}" Value="False">
-                              <Setter Property="Text" Value="{Binding [Teams_Modify_NoSession], Source={x:Static services:I18n.Instance}}"/>
+                              <Setter Property="Text" Value="{Binding [Studio.Teams.ModifyNoSession], Source={x:Static services:I18n.Instance}}"/>
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>
@@ -96,7 +96,7 @@
                   </Button.ToolTip>
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="pencil" Size="13" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Teams_Modify], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock Text="{Binding [Studio.Teams.Modify], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
                 <!-- Novice never sees the icon row, so it needs a delete of its own — until
@@ -105,29 +105,29 @@
                         Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Teams_Delete], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
                 <StackPanel Orientation="Horizontal" Margin="8,0,0,0"
                             Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                   <Button Style="{StaticResource IconBtn}" Command="{Binding OpenCommand}" Margin="0,0,6,0"
-                          ToolTip="{Binding [Teams_Open], Source={x:Static services:I18n.Instance}}">
+                          ToolTip="{Binding [Studio.Teams.Open], Source={x:Static services:I18n.Instance}}">
                     <controls:LucideIcon Kind="folder-open" Size="13"/>
                   </Button>
                   <Button Style="{StaticResource IconBtn}" Command="{Binding TestCommand}" Margin="0,0,6,0"
-                          ToolTip="{Binding [Teams_Test], Source={x:Static services:I18n.Instance}}">
+                          ToolTip="{Binding [Studio.Teams.Test], Source={x:Static services:I18n.Instance}}">
                     <controls:LucideIcon Kind="badge-check" Size="13"/>
                   </Button>
                   <Button Style="{StaticResource IconBtn}" Command="{Binding DuplicateCommand}" Margin="0,0,6,0"
-                          ToolTip="{Binding [Teams_Duplicate], Source={x:Static services:I18n.Instance}}">
+                          ToolTip="{Binding [Studio.Teams.Duplicate], Source={x:Static services:I18n.Instance}}">
                     <controls:LucideIcon Kind="copy" Size="13"/>
                   </Button>
                   <Button Style="{StaticResource IconBtn}" Command="{Binding ExportCommand}" Margin="0,0,6,0"
-                          ToolTip="{Binding [Teams_Export], Source={x:Static services:I18n.Instance}}">
+                          ToolTip="{Binding [Studio.Teams.Export], Source={x:Static services:I18n.Instance}}">
                     <controls:LucideIcon Kind="save" Size="13"/>
                   </Button>
                   <Button Style="{StaticResource IconBtn}" Command="{Binding AskDeleteCommand}"
-                          ToolTip="{Binding [Teams_Delete], Source={x:Static services:I18n.Instance}}">
+                          ToolTip="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}">
                     <controls:LucideIcon Kind="trash-2" Size="13" Foreground="{DynamicResource DangerBrush}"/>
                   </Button>
                 </StackPanel>
@@ -138,17 +138,17 @@
                   <StackPanel Orientation="Horizontal">
                     <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                                Foreground="{DynamicResource DangerBrush}"
-                               Text="{Binding [Teams_Delete_Confirm], Source={x:Static services:I18n.Instance}}"/>
+                               Text="{Binding [Studio.Teams.DeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
                     <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
                                              Foreground="{DynamicResource DangerFgBrush}"/>
-                        <TextBlock Text="{Binding [Teams_Delete], Source={x:Static services:I18n.Instance}}"/>
+                        <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
                     <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
                             Command="{Binding CancelDeleteCommand}"
-                            Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+                            Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Border>
               </Grid>
@@ -198,10 +198,10 @@
                   <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Margin="0,0,7,4">
                     <TextBlock.Style>
                       <Style TargetType="TextBlock">
-                        <Setter Property="Text" Value="{Binding [Teams_MountsLabel], Source={x:Static services:I18n.Instance}}"/>
+                        <Setter Property="Text" Value="{Binding [Studio.Teams.MountsLabel], Source={x:Static services:I18n.Instance}}"/>
                         <Style.Triggers>
                           <DataTrigger Binding="{Binding HasMounts}" Value="False">
-                            <Setter Property="Text" Value="{Binding [Teams_NoMounts], Source={x:Static services:I18n.Instance}}"/>
+                            <Setter Property="Text" Value="{Binding [Studio.Teams.NoMounts], Source={x:Static services:I18n.Instance}}"/>
                           </DataTrigger>
                         </Style.Triggers>
                       </Style>
@@ -251,7 +251,7 @@
                       <controls:LucideIcon Kind="folder-tree" Size="11" Foreground="{DynamicResource AccentBrush}"
                                            VerticalAlignment="Center" Margin="0,0,6,0"/>
                       <TextBlock VerticalAlignment="Center"
-                                 Text="{Binding [Teams_ChangeMounts], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Teams.ChangeMounts], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
                 </WrapPanel>
@@ -269,9 +269,9 @@
     <!-- the wizard sessions still underway -->
     <StackPanel Margin="0,18,0,0">
       <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
-                 Text="{Binding [Teams_InProgress], Source={x:Static services:I18n.Instance}}"/>
+                 Text="{Binding [Studio.Teams.InProgress], Source={x:Static services:I18n.Instance}}"/>
       <TextBlock Style="{StaticResource Hint}" FontSize="12.5" Foreground="{DynamicResource InkFaintBrush}"
-                 Text="{Binding [Teams_NoSessions], Source={x:Static services:I18n.Instance}}"
+                 Text="{Binding [Studio.Teams.NoSessions], Source={x:Static services:I18n.Instance}}"
                  Visibility="{Binding HasInProgress, Converter={StaticResource InverseBooleanToVisibility}}"/>
       <ItemsControl ItemsSource="{Binding InProgress}">
         <ItemsControl.ItemTemplate>
@@ -283,11 +283,11 @@
                   <StackPanel Orientation="Horizontal"
                               Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
                     <Button Style="{StaticResource BtnGhost}" Command="{Binding ResumeCommand}"
-                            Content="{Binding [Teams_Resume], Source={x:Static services:I18n.Instance}}"/>
+                            Content="{Binding [Studio.Teams.Resume], Source={x:Static services:I18n.Instance}}"/>
                     <Button Style="{StaticResource BtnGhostDanger}" Margin="8,0,0,0" Command="{Binding AskDeleteCommand}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Teams_Session_Delete], Source={x:Static services:I18n.Instance}}"/>
+                        <TextBlock Text="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
                   </StackPanel>
@@ -297,12 +297,12 @@
                     <StackPanel Orientation="Horizontal">
                       <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                                  Foreground="{DynamicResource DangerBrush}"
-                                 Text="{Binding [Teams_Session_Delete_Confirm], Source={x:Static services:I18n.Instance}}"/>
+                                 Text="{Binding [Studio.Teams.SessionDeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}"
-                              Content="{Binding [Teams_Session_Delete], Source={x:Static services:I18n.Instance}}"/>
+                              Content="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
                               Command="{Binding CancelDeleteCommand}"
-                              Content="{Binding [Btn_Cancel], Source={x:Static services:I18n.Instance}}"/>
+                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Border>
                 </Grid>

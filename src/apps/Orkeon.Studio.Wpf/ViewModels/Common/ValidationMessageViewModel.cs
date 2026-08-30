@@ -71,8 +71,8 @@ public sealed class ValidationMessageViewModel
         }
     }
 
-    /// <summary>Resx key prefix of the per-code overlay, e.g. <c>Vm_ValMsg_WIN-01</c>.</summary>
-    public const string FriendlyKeyPrefix = "Vm_ValMsg_";
+    /// <summary>Resx key prefix of the per-code overlay, e.g. <c>Studio.Diagnostics.Code.WIN-01</c>.</summary>
+    public const string FriendlyKeyPrefix = "Studio.Diagnostics.Code.";
 
     /// <inheritdoc />
     public override string ToString() => Display;

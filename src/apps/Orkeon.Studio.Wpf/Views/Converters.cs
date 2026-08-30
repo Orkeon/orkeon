@@ -89,9 +89,9 @@ public sealed class VerbosityLabelConverter : IValueConverter
         value is int level
             ? Services.I18n.Instance[level switch
             {
-                0 => "Run_Verb_Normal",
-                1 => "Run_Verb_Detailed",
-                _ => "Run_Verb_Diagnostic",
+                0 => "Studio.Run.VerbNormal",
+                1 => "Studio.Run.VerbDetailed",
+                _ => "Studio.Run.VerbDiagnostic",
             }]
             : "";
 

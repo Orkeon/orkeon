@@ -47,13 +47,13 @@
           <Button Style="{StaticResource BtnGhost}" Command="{Binding AddMountCommand}" Margin="0,0,8,0">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Mounts_Add], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Settings.Add], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
           <Button Style="{StaticResource BtnGhost}" Command="{Binding RemoveMountCommand}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Mounts_Remove], Source={x:Static services:I18n.Instance}}"/>
+              <TextBlock Text="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
         </StackPanel>
@@ -127,24 +127,24 @@
 
           <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,0,0,7"
                      Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"
-                     Text="{Binding [Mounts_Unparsed], Source={x:Static services:I18n.Instance}}"/>
+                     Text="{Binding [Studio.Settings.Unparsed], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource InputMono}" Text="{Binding RawText, Mode=OneWay}" IsReadOnly="True"
                    Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"/>
 
           <StackPanel Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
 
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Mounts_Lbl_Physical], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblPhysical], Source={x:Static services:I18n.Instance}}"/>
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                       Command="{Binding DataContext.BrowsePhysicalPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                      Content="{Binding [Btn_Browse], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="8,0,0,0"
                       Command="{Binding DataContext.CreatePhysicalFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                      Content="{Binding [Mounts_CreateFolder], Source={x:Static services:I18n.Instance}}"/>
+                      Content="{Binding [Studio.Settings.CreateFolder], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Style="{StaticResource InputMono}" Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged}"/>
             </DockPanel>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Mounts_Lbl_Virtual], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Studio.Settings.LblVirtual], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource InputMono}" Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
             <ItemsControl ItemsSource="{x:Static mounts:MountEditorViewModel.SuggestedVirtualPaths}" Margin="0,6,0,0">
               <ItemsControl.ItemsPanel>
@@ -159,16 +159,16 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,5,0,0"
-                       Text="{Binding [Mounts_VirtualInvalid], Source={x:Static services:I18n.Instance}}"
+                       Text="{Binding [Studio.Settings.VirtualInvalid], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding IsVirtualPathValid, Converter={StaticResource InverseBooleanToVisibility}}"/>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Mounts_Lbl_Rights], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Studio.Settings.LblRights], Source={x:Static services:I18n.Instance}}"/>
             <ComboBox HorizontalAlignment="Left" MinWidth="220"
                       ItemsSource="{Binding RightsChoices}"
                       SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
 
             <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
-                       Text="{Binding [Mounts_Overrides_Title], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.OverridesTitle], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Overrides}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -190,13 +190,13 @@
                     Command="{Binding DataContext.AddOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Mounts_AddOverride], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Text="{Binding [Studio.Settings.AddOverride], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
 
             <!-- mount-string preview: exactly what lands in appsettings / on the command line -->
             <TextBlock Style="{StaticResource Eyebrow}" Margin="0,16,0,6"
-                       Text="{Binding [Mounts_Preview], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Settings.Preview], Source={x:Static services:I18n.Instance}}"/>
             <Border Style="{StaticResource Well}">
               <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" TextWrapping="Wrap"
                          Text="{Binding MountString, Mode=OneWay}"/>
