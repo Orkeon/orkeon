@@ -139,6 +139,32 @@ function Test-Prerequisites {
         }
     }
 
+    # dotnet-coverage is what MEASURES coverage now: the test projects run on
+    # Microsoft.Testing.Platform (xunit.v3 4.x, opted in via global.json), which does not
+    # implement VSTest data collectors, so --collect:"XPlat Code Coverage" is rejected
+    # rather than ignored. dotnet-coverage profiles the test processes from the outside.
+    if (-not (Get-Command dotnet-coverage -ErrorAction SilentlyContinue)) {
+        $tools = dotnet tool list -g 2>$null
+        if ($tools -match "dotnet-coverage") {
+            Log-Warn "'dotnet-coverage' installed but not in PATH. Check ~/.dotnet/tools/"
+        } else {
+            Log-Warn "'dotnet-coverage' not found globally. Installing..."
+            dotnet tool install --global dotnet-coverage
+        }
+    }
+
+    # ReportGenerator converts Cobertura to the SonarQube generic format. SonarQube 9.9
+    # LTS has no cobertura importer, and nothing produces OpenCover any more.
+    if (-not (Get-Command reportgenerator -ErrorAction SilentlyContinue)) {
+        $tools = dotnet tool list -g 2>$null
+        if ($tools -match "dotnet-reportgenerator-globaltool") {
+            Log-Warn "'reportgenerator' installed but not in PATH. Check ~/.dotnet/tools/"
+        } else {
+            Log-Warn "'reportgenerator' not found globally. Installing..."
+            dotnet tool install --global dotnet-reportgenerator-globaltool
+        }
+    }
+
     Log-Success "Prerequisites OK"
 }
 
@@ -731,7 +757,7 @@ try {
         /k:"$ProjectKey" `
         /d:sonar.host.url="$SonarHost" `
         /d:sonar.login="$SonarToken" `
-        /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" `
+        /d:sonar.coverageReportPaths="coverage/merged/SonarQube.xml" `
         /d:sonar.qualitygate.wait=true `
         /d:sonar.qualitygate.timeout="$QualityGateTimeout" `
         /d:sonar.exclusions="**/bin/**,**/obj/**,examples/**"
@@ -743,16 +769,40 @@ try {
     dotnet build $SolutionPath --configuration Release
     if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
-    # Step 7: Run tests with coverage (Bug #4 — Format=opencover)
-    Log-Info "Running tests with code coverage..."
-    dotnet test $SolutionPath --configuration Release --no-build `
-        --collect:"XPlat Code Coverage" `
-        --results-directory $CoverageDir `
-        -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+    # Step 7: Run tests with coverage
+    # `dotnet test` drives Microsoft.Testing.Platform (global.json), which knows nothing
+    # about VSTest data collectors: the --collect / DataCollectionRunSettings arguments
+    # this step used to pass are refused outright ("Zero tests ran", exit 5), and the
+    # Log-Warn below swallowed it — the analysis then imported an OpenCover report
+    # nothing had written. dotnet-coverage profiles the test processes instead.
+    # Tests run in Debug: optimized code does not map back to source lines cleanly.
+    Log-Info "Running tests with code coverage (Debug - optimized code does not map to lines)..."
+    $CoverageFile = Join-Path $CoverageDir "coverage.cobertura.xml"
+    dotnet-coverage collect `
+        --output $CoverageFile `
+        --output-format cobertura `
+        -- dotnet test $SolutionPath
 
     if ($LASTEXITCODE -ne 0) {
         Log-Warn "Some tests failed - continuing with analysis"
     }
+
+    # Step 7a: a coverage report with no data is a FAILURE, not a 0% measurement. An
+    # empty run still writes a well-formed file (with an empty <packages/>); importing
+    # it makes every coverage condition of the Quality Gate evaluate against nothing.
+    if ((-not (Test-Path $CoverageFile)) -or
+        (-not (Select-String -Path $CoverageFile -Pattern '<class ' -Quiet))) {
+        throw "No coverage was collected - the report holds no class. Aborting rather than analysing against 0%. Check that dotnet-coverage could load its profiler and that the tests actually ran."
+    }
+
+    # Step 7b: Convert Cobertura to the SonarQube generic coverage format
+    # (SonarQube 9.9 LTS does not support sonar.cs.cobertura.reportPaths).
+    Log-Info "Converting coverage report for SonarQube..."
+    reportgenerator `
+        "-reports:$CoverageFile" `
+        "-targetdir:$(Join-Path $CoverageDir 'merged')" `
+        "-reporttypes:SonarQube"
+    if ($LASTEXITCODE -ne 0) { Log-Warn "Coverage conversion failed - coverage may be incomplete" }
 
     # Step 8: SonarScanner end (Bug #3 — sonar.login)
     # With sonar.qualitygate.wait=true this step also fails when the Quality

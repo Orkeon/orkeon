@@ -113,6 +113,20 @@ check_prerequisites() {
         fi
     fi
 
+    # dotnet-coverage is what actually MEASURES coverage now. The test projects run on
+    # Microsoft.Testing.Platform (xunit.v3 4.x, opted in via global.json), which does not
+    # implement VSTest data collectors: --collect:"XPlat Code Coverage" is not ignored
+    # there, it is rejected. dotnet-coverage profiles the test processes from the
+    # outside instead, so it works whatever runner spawned them.
+    if ! command -v dotnet-coverage &>/dev/null; then
+        if dotnet tool list -g 2>/dev/null | grep -qi "dotnet-coverage"; then
+            log_warn "'dotnet-coverage' installed but not in PATH. Check ~/.dotnet/tools/"
+        else
+            log_warn "'dotnet-coverage' not found globally. Installing (required for coverage collection)..."
+            dotnet tool install --global dotnet-coverage
+        fi
+    fi
+
     if ! command -v curl &>/dev/null; then
         log_error "'curl' not found. It is required for SonarQube health checks."
         exit 1
@@ -961,22 +975,44 @@ main() {
     dotnet build "$SOLUTION_PATH" --configuration Release
 
     # Step 7: Run tests with coverage
-    # NOTE: Tests run in Debug mode — coverlet 8.x cannot instrument .NET 10 Release assemblies
-    # (Release optimizations prevent instrumentation, producing empty coverage files)
-    # The SonarScanner analysis still runs on the Release build from Step 6.
-    log_info "Running tests with code coverage (Debug mode for coverlet instrumentation)..."
-    dotnet test "$SOLUTION_PATH" \
-        --collect:"XPlat Code Coverage" \
-        --results-directory "$COVERAGE_DIR" \
-        -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura \
+    # NOTE: tests run in Debug — the Release assemblies built in Step 6 are what the
+    # scanner analyses, but optimized code does not map back to source lines cleanly
+    # enough for line coverage.
+    #
+    # The collector changed with the runner. `dotnet test` now drives
+    # Microsoft.Testing.Platform (global.json), which knows nothing about VSTest data
+    # collectors: --collect:"XPlat Code Coverage" and the DataCollectionRunSettings
+    # arguments this step used to pass are refused outright ("Zero tests ran", exit 5).
+    # The `|| log_warn` below swallowed that, and the analysis then imported a coverage
+    # report nothing had written — a Quality Gate evaluated against 0% that read as a
+    # measurement. dotnet-coverage attaches a profiler to the test processes instead.
+    log_info "Running tests with code coverage (Debug — optimized code does not map to lines)..."
+    dotnet-coverage collect \
+        --output "$COVERAGE_DIR/coverage.cobertura.xml" \
+        --output-format cobertura \
+        -- dotnet test "$SOLUTION_PATH" \
     || log_warn "Some tests failed — continuing with analysis"
+
+    # Step 7a: a coverage report with no data is a FAILURE, not a 0% measurement.
+    # An empty run writes a well-formed file whose <packages> element is empty; letting
+    # it through means every coverage condition of the Quality Gate silently evaluates
+    # against nothing. This is the check whose absence made the runner migration
+    # invisible for a whole release cycle.
+    if [ ! -s "$COVERAGE_DIR/coverage.cobertura.xml" ] \
+       || ! grep -q "<class " "$COVERAGE_DIR/coverage.cobertura.xml"; then
+        log_error "No coverage was collected — the report holds no class. Coverage conditions"
+        log_error "of the Quality Gate cannot be evaluated, so the analysis is aborted rather"
+        log_error "than run against 0%. Check that dotnet-coverage could load its profiler"
+        log_error "(it needs glibc >= 2.27 and libxml2) and that the tests actually ran."
+        exit 1
+    fi
 
     # Step 7b: Convert Cobertura → SonarQube generic coverage format
     # (SonarQube 9.9 LTS does not support sonar.cs.cobertura.reportPaths)
     log_info "Converting coverage reports for SonarQube..."
     if command -v reportgenerator &>/dev/null; then
         reportgenerator \
-            -reports:"$COVERAGE_DIR/**/coverage.cobertura.xml" \
+            -reports:"$COVERAGE_DIR/coverage.cobertura.xml" \
             -targetdir:"$COVERAGE_DIR/merged" \
             -reporttypes:SonarQube 2>/dev/null \
         && log_info "Coverage conversion complete" \
