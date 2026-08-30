@@ -56,6 +56,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.Mistral => CreateMistralProvider(config),
             LlmProviderKeys.HuggingFace or LlmProviderKeys.HuggingFaceAlias => CreateHuggingFaceProvider(config),
             LlmProviderKeys.Gemini or LlmProviderKeys.GoogleAlias => CreateGeminiProvider(config),
+            LlmProviderKeys.Grok or LlmProviderKeys.XaiAlias => CreateGrokProvider(config),
             LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
             _ => CreateOpenAIProvider(config) // Default to OpenAI
         };
@@ -84,6 +85,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.Mistral => CreateMistralProvider(config),
             LlmProviderKeys.HuggingFace or LlmProviderKeys.HuggingFaceAlias => CreateHuggingFaceProvider(config),
             LlmProviderKeys.Gemini or LlmProviderKeys.GoogleAlias => CreateGeminiProvider(config),
+            LlmProviderKeys.Grok or LlmProviderKeys.XaiAlias => CreateGrokProvider(config),
             LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
             _ => throw new NotSupportedException($"Provider type '{providerType}' is not supported.")
         };
@@ -162,6 +164,9 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         // OAuth-authenticated surface and are deliberately NOT matched here).
         if (url.Contains("generativelanguage.googleapis.com", StringComparison.Ordinal))
             return LlmProviderKeys.Gemini;
+        // x.AI (Grok): match the full host - "x.ai" bare would also hit any *x.ai domain.
+        if (url.Contains("api.x.ai", StringComparison.Ordinal))
+            return LlmProviderKeys.Grok;
         if (url.Contains("huggingface.co", StringComparison.Ordinal) || url.Contains("hf.co", StringComparison.Ordinal))
             return LlmProviderKeys.HuggingFace;
         // Z.AI (Zhipu GLM): match the full host, not the bare "z.ai" substring
@@ -216,6 +221,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return LlmProviderKeys.Zai;
         if (m.StartsWith(LlmProviderKeys.Gemini, StringComparison.Ordinal))
             return LlmProviderKeys.Gemini;
+        // Before the groq Contains check would never see it: "grok-4.6" does not contain
+        // "groq", but keeping the prefix match explicit spares the reader the double take.
+        if (m.StartsWith(LlmProviderKeys.Grok, StringComparison.Ordinal))
+            return LlmProviderKeys.Grok;
 
         return null;
     }
@@ -268,6 +277,12 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
 
         if (apiKey.StartsWith("hf_", StringComparison.Ordinal))
             return LlmProviderKeys.HuggingFace;
+
+        // x.AI keys carry the vendor's own prefix (measured 2026-08-30: refused by
+        // api.groq.com, served by api.x.ai) - the "grok"/"groq" near-homograph is exactly
+        // the confusion this inference exists to absorb.
+        if (apiKey.StartsWith("xai-", StringComparison.Ordinal))
+            return LlmProviderKeys.Grok;
 
         return null;
     }
@@ -338,6 +353,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// <summary>Creates Kimi (Moonshot AI) provider instance.</summary>
     private LlmProviderAdapter CreateKimiProvider(LlmConfig config)
         => Adapt<KimiLlmProvider>(logger => new KimiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+
+    /// <summary>Creates x.AI (Grok) provider instance.</summary>
+    private LlmProviderAdapter CreateGrokProvider(LlmConfig config)
+        => Adapt<GrokLlmProvider>(logger => new GrokLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Google Gemini provider instance.</summary>
     private LlmProviderAdapter CreateGeminiProvider(LlmConfig config)

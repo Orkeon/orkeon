@@ -1,0 +1,25 @@
+{
+  "_comment": "Settings template - Grok / x.AI (OpenAI-compatible endpoint). Copy this file WITHOUT the .example suffix (-> appsettings.grok.local.json), then fill in your key. The ${XAI_API_KEY} placeholder is NOT expanded automatically: replace it with the plain key, or leave it and override at runtime via the ORKEON_Llm__ApiKey=... environment variable. The factory auto-detects GrokLlmProvider from the api.x.ai host, and from the xai- key prefix.",
+  "_models": [
+    "grok-4.6 - current chat flagship (default; verified live 2026-08-30, 12/12 campaign)",
+    "grok-4.5, grok-4.3 - previous chat generations"
+  ],
+  "Llm": {
+    "Model": "grok-4.6",
+    "BaseUrl": "https://api.x.ai/v1",
+    "ApiKey": "${XAI_API_KEY}",
+    "Temperature": 0.2,
+    "MaxTokens": 24576,
+    "TimeoutSeconds": 600
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 16,
+    "GlobalRequestsPerMinute": 300,
+    "ProviderRequestsPerMinute": 300,
+    "AgentRequestsPerMinute": 10,
+    "QueueLimit": 512
+  },
+  "LlmLogging": {
+    "FullEmbeddingLog": false
+  }
+}

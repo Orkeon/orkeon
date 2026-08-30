@@ -37,6 +37,7 @@ public class ProviderDefaultsPinningTests
         { nameof(TogetherAiLlmProvider), "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
         { nameof(HuggingFaceLlmProvider), "meta-llama/Llama-3.1-8B-Instruct" },
         { nameof(ZaiLlmProvider), "glm-5.2" },
+        { nameof(GrokLlmProvider), "grok-4.6" },
     };
 
     public static TheoryData<string, string> PinnedDefaultBaseUrls() => new()
@@ -124,6 +125,8 @@ public class ProviderDefaultsPinningTests
         { "hf", "meta-llama/Llama-3.1-8B-Instruct" },
         { "zai", "glm-5.2" },
         { "glm", "glm-5.2" },
+        { "grok", "grok-4.6" },
+        { "xai", "grok-4.6" },
         { "zhipu", "glm-5.2" },
     };
 

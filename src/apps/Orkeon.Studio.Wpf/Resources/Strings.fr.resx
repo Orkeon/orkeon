@@ -194,6 +194,8 @@
   <data name="Core_Provider_DeepSeek_Desc" xml:space="preserve"><value>économique, très capable</value></data>
   <data name="Core_Provider_Gemini_Title" xml:space="preserve"><value>Gemini</value></data>
   <data name="Core_Provider_Gemini_Desc" xml:space="preserve"><value>Google</value></data>
+  <data name="Core_Provider_Grok_Title" xml:space="preserve"><value>Grok</value></data>
+  <data name="Core_Provider_Grok_Desc" xml:space="preserve"><value>x.AI</value></data>
   <data name="Core_Provider_Groq_Title" xml:space="preserve"><value>Groq</value></data>
   <data name="Core_Provider_Groq_Desc" xml:space="preserve"><value>réponses très rapides</value></data>
   <data name="Core_Provider_HuggingFace_Title" xml:space="preserve"><value>HuggingFace</value></data>

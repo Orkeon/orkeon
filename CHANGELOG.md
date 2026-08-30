@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Grok (x.AI), the fourteenth provider, preceded by its own proof
+
+The key supplied for "Groq" turned out to be an x.AI key (`xai-` prefix, refused by
+api.groq.com, served by api.x.ai) — and the user's intent turned out to be Grok all along.
+Before the provider existed, a full 12-mode campaign had already passed against `api.x.ai`
+through the generic OpenAI dialect with nothing but a base-url (archived under
+`llmproviders-test/custom-endpoints/`), so `GrokLlmProvider` is that measurement written
+down: OpenAI-compatible transport on `api.x.ai/v1`, `json_schema` honoured, effort-only
+thinking with the trace replayed, vision, implicit cache on the standard `cached_tokens`.
+Canonical key `grok` (alias `xai`), default model `grok-4.6` (verified live), endpoint and
+key and default in the `Orkeon.Constants.Llm` satellite, factory routing by key, by
+`api.x.ai` host, by `grok-*` model prefix and by the `xai-` key prefix — the grok/groq
+near-homograph is exactly the confusion that last inference absorbs. Studio gains the
+provider card and endpoint detection; `orkeon llm probe|models` accept it; the campaign kit
+carries its catalogue entry; docs and counts move from 13 to 14 providers everywhere the
+claims gate checks.
+
 ### Fixed — what the first real campaigns against six vendors found (2026-08-30)
 
 The first full campaigns ever run against api.openai.com, the Gemini compat surface and an

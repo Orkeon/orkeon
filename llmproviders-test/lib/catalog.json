@@ -190,6 +190,22 @@
     },
     "glm": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
     "zhipu": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
+    "grok": {
+      "label": "Grok (x.AI)",
+      "matrix": "§6.15",
+      "apiKeyEnv": "XAI_API_KEY",
+      "defaultModel": "grok-4.6",
+      "notes": [
+        "Quatorzième provider, arrivé le 2026-08-30 précédé de sa propre preuve : campagne 12/12 contre `api.x.ai` via le dialecte OpenAI générique AVANT que la classe existe (archivée sous `custom-endpoints/`). Chaque capacité déclarée est une mesure de cette campagne.",
+        "Les clés portent le préfixe `xai-` — le quasi-homographe grok/groq est exactement la confusion que l'inférence de la factory absorbe (`api.groq.com` refuse ces clés, mesuré).",
+        "Cache implicite au format standard `cached_tokens` (512 tokens, ratio 0.19 au premier passage M10)."
+      ]
+    },
+    "xai": {
+      "label": "Grok (x.AI)",
+      "matrix": "§6.15",
+      "aliasOf": "grok"
+    },
     "gemini": {
       "label": "Google Gemini",
       "matrix": "§6.13",

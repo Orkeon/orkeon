@@ -42,7 +42,7 @@ a payload the API rejected with a 4xx and re-send it once (generate and chat pat
 streaming never retries). Kimi uses it for Moonshot's `invalid temperature: only 1 is
 allowed for this model` — the mandated value is read from the rejection itself (which
 models mandate it is decided server-side, a hard-coded list would drift) and the
-substitution is logged as a structured warning. All 13 providers are
+substitution is logged as a structured warning. All 14 providers are
 `IStreamingLlmProvider`s, and `RateLimitedLlmProvider` decorates any of them. The
 per-provider matrix lives in [the provider comparison](../reference/llm-providers-comparison.md).
 

@@ -63,6 +63,12 @@ public static class LlmProviderDefaultModels
     /// <summary>Groq.</summary>
     public const string Groq = "llama-3.3-70b-versatile";
 
+    /// <summary>
+    /// Grok (x.AI) — the current chat flagship, verified live 2026-08-30 with a full 12-mode
+    /// campaign (streaming, native tools, reasoning trace, vision, implicit cache).
+    /// </summary>
+    public const string Grok = "grok-4.6";
+
     /// <summary>HuggingFace, through the Inference Providers router.</summary>
     public const string HuggingFace = "meta-llama/Llama-3.1-8B-Instruct";
 

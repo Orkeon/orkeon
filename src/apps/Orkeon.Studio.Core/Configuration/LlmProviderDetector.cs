@@ -92,6 +92,7 @@ public static class LlmProviderDetector
         // Gemini's OpenAI-compatible host. Missing until now, so Studio reported "custom" for
         // the endpoint its own preset catalogue writes — the runtime maps it to "gemini".
         Add(LlmProviderEndpoints.Gemini, LlmProviderKeys.Gemini);
+        Add(LlmProviderEndpoints.Grok, LlmProviderKeys.Grok);
 
         // The mainland-China Moonshot twin, documented on LlmEndpoints.Kimi.
         hosts[LlmProviderEndpoints.KimiChinaHost] = "kimi";

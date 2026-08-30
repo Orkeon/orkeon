@@ -15,6 +15,7 @@ or drop an `appsettings.json` next to the crew's `config.yaml`.
 | `appsettings.deepseek.local.json.example` | DeepSeek V4 Flash. |
 | `appsettings.glm.local.json.example` | Z.AI GLM-5.2. |
 | `appsettings.gemini.local.json.example` | Google Gemini (OpenAI-compatible endpoint, `gemini-3.7-flash`). |
+| `appsettings.grok.local.json.example` | Grok / x.AI (OpenAI-compatible endpoint, `grok-4.6`). |
 | `appsettings.glm-medium.local.json.example` | Z.AI GLM-5.2 with `Thinking.Effort = medium`. |
 | `appsettings.local.json.example` | Neutral template (defaults to DeepSeek); edit `BaseUrl`/`Model`/`ApiKey` for any provider. |
 

@@ -35,6 +35,7 @@ public class ProviderCapabilityPayloadTests
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(AnthropicLlmProvider), nameof(OllamaLlmProvider),
+        nameof(GrokLlmProvider),
     ];
 
     // ── The declaration itself ──────────────────────────────────────────────
@@ -77,6 +78,7 @@ public class ProviderCapabilityPayloadTests
     [InlineData(nameof(HuggingFaceLlmProvider))]
     [InlineData(nameof(ZaiLlmProvider))]
     [InlineData(nameof(DeepSeekLlmProvider))]
+    [InlineData(nameof(GrokLlmProvider))]
     public async Task ShouldSendJsonObjectConstraint_OnTheOpenAiCompatibleFamily(string providerTypeName)
     {
         var body = await ProviderProbe.CapturePayloadAsync(providerTypeName, config => config with

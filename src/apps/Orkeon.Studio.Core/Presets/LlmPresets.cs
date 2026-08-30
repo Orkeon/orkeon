@@ -151,6 +151,9 @@ public static class LlmPresets
     /// <summary>Google Gemini (OpenAI-compatible endpoint).</summary>
     public const string Gemini = LlmProviderKeys.Gemini;
 
+    /// <summary>Canonical key of the Grok (x.AI) provider.</summary>
+    public const string Grok = LlmProviderKeys.Grok;
+
     /// <summary>Groq cloud API (OpenAI-compatible).</summary>
     public const string Groq = LlmProviderKeys.Groq;
 
@@ -240,6 +243,9 @@ public static class LlmPresets
             new(Gemini, strings[StudioStringKeys.ProviderGeminiTitle], strings[StudioStringKeys.ProviderGeminiDescription],
                 LlmProviderEndpoints.Gemini, LlmProviderDefaultModels.Gemini, RequiresApiKey: true,
                 "GEMINI_API_KEY", LlmPresetKind.Cloud, "aistudio.google.com/apikey"),
+            new(Grok, strings[StudioStringKeys.ProviderGrokTitle], strings[StudioStringKeys.ProviderGrokDescription],
+                LlmProviderEndpoints.Grok, LlmProviderDefaultModels.Grok, RequiresApiKey: true,
+                "XAI_API_KEY", LlmPresetKind.Cloud, "console.x.ai"),
             new(Groq, strings[StudioStringKeys.ProviderGroqTitle], strings[StudioStringKeys.ProviderGroqDescription],
                 LlmProviderEndpoints.Groq, LlmProviderDefaultModels.Groq, RequiresApiKey: true,
                 "GROQ_API_KEY", LlmPresetKind.Cloud, "console.groq.com/keys"),

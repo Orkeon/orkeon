@@ -283,6 +283,12 @@ public static class StudioStringKeys
     /// <summary>"Google"</summary>
     public const string ProviderGeminiDescription = "Core_Provider_Gemini_Desc";
 
+    /// <summary>Provider card title: Grok.</summary>
+    public const string ProviderGrokTitle = "Core_Provider_Grok_Title";
+
+    /// <summary>Provider card description: Grok.</summary>
+    public const string ProviderGrokDescription = "Core_Provider_Grok_Desc";
+
     /// <summary>"Groq"</summary>
     public const string ProviderGroqTitle = "Core_Provider_Groq_Title";
 
@@ -989,6 +995,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProviderDeepSeekDescription] = "budget-friendly, very capable",
         [StudioStringKeys.ProviderGeminiTitle] = "Gemini",
         [StudioStringKeys.ProviderGeminiDescription] = "Google",
+        [StudioStringKeys.ProviderGrokTitle] = "Grok",
+        [StudioStringKeys.ProviderGrokDescription] = "x.AI",
         [StudioStringKeys.ProviderGroqTitle] = "Groq",
         [StudioStringKeys.ProviderGroqDescription] = "very fast responses",
         [StudioStringKeys.ProviderHuggingFaceTitle] = "HuggingFace",

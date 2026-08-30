@@ -56,3 +56,7 @@ const Orkeon.Constants.Llm.LlmProviderKeys.Zai = "zai" -> string!
 const Orkeon.Constants.Llm.LlmProviderKeys.ZhipuAlias = "zhipu" -> string!
 static Orkeon.Constants.Llm.LlmProviderKeys.Aliases.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 static Orkeon.Constants.Llm.LlmProviderKeys.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.Grok = "https://api.x.ai/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.Grok = "grok" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.XaiAlias = "xai" -> string!
+const Orkeon.Constants.Llm.LlmProviderDefaultModels.Grok = "grok-4.6" -> string!

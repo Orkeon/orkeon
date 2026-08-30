@@ -44,3 +44,13 @@ virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.MaxTokensFi
 override Orkeon.Infrastructure.LLMs.OpenAIProvider.MaxTokensFieldName.get -> string!
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.AlwaysEmitTopP.get -> bool
 override Orkeon.Infrastructure.LLMs.MistralLlmProvider.AlwaysEmitTopP.get -> bool
+Orkeon.Infrastructure.LLMs.GrokLlmProvider
+Orkeon.Infrastructure.LLMs.GrokLlmProvider.GrokLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GrokLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.GrokLlmProvider.GrokLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GrokLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.GrokLlmProvider.GrokLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.GrokLlmProvider!>? logger = null) -> void
+override Orkeon.Infrastructure.LLMs.GrokLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.GrokLlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.GrokLlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.GrokLlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.GrokLlmProvider.ProviderDisplayName.get -> string!
+const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Grok = "https://api.x.ai/v1" -> string!

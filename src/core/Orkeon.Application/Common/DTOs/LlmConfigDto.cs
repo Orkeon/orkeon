@@ -10,7 +10,7 @@ namespace Orkeon.Application.Common.DTOs;
 public sealed record LlmConfigDto
 {
     /// <summary>
-    /// LLM provider name (e.g., "openai", "anthropic", "gemini", "ollama").
+    /// LLM provider name (e.g., "openai", "anthropic", "gemini", "grok", "ollama").
     /// </summary>
     [JsonPropertyName("provider")]
     public required string Provider { get; init; }

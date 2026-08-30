@@ -58,7 +58,7 @@ Sous Windows, `run-campaign.ps1` expose exactement les mêmes options.
 
 | Option | Rôle |
 |---|---|
-| `--provider <clés>` | Une clé, ou plusieurs séparées par des virgules — `openai`, `anthropic`, `ollama`, `azure`, `groq`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini` |
+| `--provider <clés>` | Une clé, ou plusieurs séparées par des virgules — `openai`, `anthropic`, `ollama`, `azure`, `groq`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok` |
 | `--all` | Tous les providers déclarés dans le JSON |
 | `--parallel` | Lance les providers sélectionnés simultanément (voir plus bas) |
 | `--model <id\|glob>` | Un identifiant, ou un motif (`gpt-5.6-*`, `*flash*`) |
@@ -141,7 +141,7 @@ fournisseur, déclarée dans `lib/catalog.json` :
 | `groq` | `GROQ_API_KEY` | `mistral` | `MISTRAL_API_KEY` |
 | `together` · `togetherai` | `TOGETHER_API_KEY` | `huggingface` · `hf` | `HF_TOKEN` |
 | `ollama` | *aucune* | `zai` · `glm` · `zhipu` | `ZAI_API_KEY` |
-| `gemini` · `google` | `GEMINI_API_KEY` | | |
+| `gemini` · `google` | `GEMINI_API_KEY` | `grok` · `xai` | `XAI_API_KEY` |
 
 `--api-key-env` l'emporte, puis le champ `apiKeyEnv` de la configuration, puis cette
 table, et enfin `ORKEON_LLM_API_KEY`. Le défaut était auparavant `ORKEON_LLM_API_KEY`
@@ -169,6 +169,7 @@ campagne > le `defaultModel` du catalogue.
 | `huggingface` | `openai/gpt-oss-120b` | |
 | `zai` | `glm-5.2` | `glm-4.6v-flash` |
 | `gemini` | `gemini-3.7-flash` | *(le défaut voit)* |
+| `grok` | `grok-4.6` | *(le défaut voit)* |
 
 Ces identifiants viennent des sections §6.x de la matrice, **pas des défauts compilés dans
 les providers** : six d'entre eux y sont signalés retirés ou faux (G-01 à G-04, G-07, G-08).

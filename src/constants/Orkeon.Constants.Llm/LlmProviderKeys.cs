@@ -78,6 +78,12 @@ public static class LlmProviderKeys
     /// <summary>Alias of <see cref="Zai"/>.</summary>
     public const string ZhipuAlias = "zhipu";
 
+    /// <summary>Grok (x.AI). <see cref="XaiAlias"/> is the accepted alias.</summary>
+    public const string Grok = "grok";
+
+    /// <summary>Alias of <see cref="Grok"/> — the vendor's name rather than the model family's.</summary>
+    public const string XaiAlias = "xai";
+
     /// <summary>
     /// Docker Model Runner's llama.cpp OpenAI-compatible endpoint. Detected from a URL rather
     /// than written by a user, and driven through the OpenAI dialect.
@@ -94,14 +100,14 @@ public static class LlmProviderKeys
     public const string Custom = "custom";
 
     /// <summary>
-    /// The thirteen canonical keys, aliases excluded, in the order the documentation lists the
-    /// providers. A set rather than thirteen comparisons: a provider added to the factory and
+    /// The fourteen canonical keys, aliases excluded, in the order the documentation lists the
+    /// providers. A set rather than fourteen comparisons: a provider added to the factory and
     /// forgotten in the tooling is the omission that pairwise checks do not see.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
     [
         OpenAI, Ollama, Anthropic, AzureOpenAI, Groq, Mistral,
-        DeepSeek, Kimi, Qwen, Together, HuggingFace, Zai, Gemini,
+        DeepSeek, Kimi, Qwen, Together, HuggingFace, Zai, Gemini, Grok,
     ];
 
     /// <summary>
@@ -118,5 +124,6 @@ public static class LlmProviderKeys
             [GoogleAlias] = Gemini,
             [GlmAlias] = Zai,
             [ZhipuAlias] = Zai,
+            [XaiAlias] = Grok,
         };
 }

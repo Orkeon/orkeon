@@ -42,7 +42,7 @@ provider une chance d'adapter une charge utile refusée en 4xx et de la ré-éme
 fois (chemins generate et chat ; le streaming ne réessaie jamais). Kimi s'en sert pour le
 `invalid temperature: only 1 is allowed for this model` de Moonshot — la valeur imposée est
 lue dans le refus lui-même (quels modèles l'exigent est décidé côté serveur, une liste en
-dur dériverait) et la substitution est journalisée en avertissement structuré. Les 13
+dur dériverait) et la substitution est journalisée en avertissement structuré. Les 14
 providers sont des `IStreamingLlmProvider`, et `RateLimitedLlmProvider`
 décore n'importe lequel d'entre eux. La matrice par provider vit dans
 [le comparatif des providers](../reference/llm-providers-comparison.md).

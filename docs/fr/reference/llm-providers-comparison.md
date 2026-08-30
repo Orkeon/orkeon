@@ -19,6 +19,7 @@
 | **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ budget | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ✗ | ✓ | ✓ |
 
@@ -78,6 +79,10 @@ API parlent leur propre dialecte.
 - **Vision DeepSeek** : arrivée avec `deepseek-v4-flash-vision-exp` (mesuré 2026-08-30).
   Déclaré par fournisseur, réel par modèle comme partout (D-03) : le défaut
   `deepseek-v4-flash` reste texte seul et répond à une image par l'erreur du vendeur.
+- **Grok (x.AI)** : chaque capacité déclarée est une mesure en réel — une campagne complète de
+  12 modes est passée contre `api.x.ai` via le dialecte OpenAI générique avant même que la
+  classe du provider existe (2026-08-30, archivée sous `llmproviders-test/custom-endpoints/`).
+  Les clés portent le préfixe `xai-`, que la factory infère.
 - **Clés identity-linked Anthropic** : refusent toute requête sans en-tête
   `anthropic-workspace-id` (2026-08-30). Renseigner `LlmConfig.WorkspaceId`
   (CLI : `--workspace-id`) ; les clés classiques n'en ont pas besoin.

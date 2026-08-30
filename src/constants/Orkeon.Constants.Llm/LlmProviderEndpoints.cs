@@ -64,6 +64,13 @@ public static class LlmProviderEndpoints
     public const string Zai = "https://api.z.ai/api/paas/v4";
 
     /// <summary>
+    /// x.AI (Grok) API base URL (OpenAI-compatible). Verified live 2026-08-30 — a full
+    /// 12-mode campaign through the OpenAI dialect passed against this host before the
+    /// provider existed (archived under <c>llmproviders-test/custom-endpoints/</c>).
+    /// </summary>
+    public const string Grok = "https://api.x.ai/v1";
+
+    /// <summary>
     /// OpenAI's API root as the EMBEDDING clients address it — no <c>/v1</c> suffix and a
     /// trailing slash, because they append their own path. Deliberately distinct from
     /// <see cref="OpenAI"/>, which is the chat base URL: the two are not interchangeable, and
