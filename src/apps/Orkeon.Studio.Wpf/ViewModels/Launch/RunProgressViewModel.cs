@@ -11,11 +11,14 @@ namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 /// <summary>One finished task, as the progress panel shows it.</summary>
 public sealed class RunTaskViewModel
 {
+    private readonly IStudioStrings _strings;
+
     /// <summary>Wraps what the run reported about one task.</summary>
-    public RunTaskViewModel(RunTaskProgress task)
+    public RunTaskViewModel(RunTaskProgress task, IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(task);
         Task = task;
+        _strings = strings ?? EnglishStudioStrings.Instance;
     }
 
     /// <summary>The underlying Core record.</summary>
@@ -29,7 +32,10 @@ public sealed class RunTaskViewModel
 
     /// <summary>How long it took, in seconds, for a compact label.</summary>
     public string Duration =>
-        (Task.DurationMs / 1000.0).ToString("0.0", CultureInfo.CurrentCulture) + " s";
+        string.Format(
+            CultureInfo.CurrentCulture,
+            _strings[StudioStringKeys.UsageSeconds],
+            (Task.DurationMs / 1000.0).ToString("0.0", CultureInfo.CurrentCulture));
 
     /// <summary>Tokens spent, or an empty label when the run did not say.</summary>
     public string Tokens => Task.Tokens is { } tokens
@@ -223,7 +229,7 @@ public sealed class RunProgressViewModel : ObservableObject
         _model.Apply(orkeonEvent!);
 
         for (var index = before; index < _model.Tasks.Count; index++)
-            Tasks.Add(new RunTaskViewModel(_model.Tasks[index]));
+            Tasks.Add(new RunTaskViewModel(_model.Tasks[index], _strings));
 
         for (var index = hubBefore; index < _model.HubMessages.Count; index++)
             HubMessages.Add(Describe(_model.HubMessages[index]));

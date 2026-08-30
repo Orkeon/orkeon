@@ -152,7 +152,11 @@ public sealed class TourOverlay : Grid
 
         _title.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[" + step.TitleKey + "]") { Source = I18n.Instance });
         _body.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[" + step.BodyKey + "]") { Source = I18n.Instance });
-        _counter.Text = (_index + 1) + " / " + _steps.Count;
+        // A counter is a sentence too: the joiner is catalogued rather than welded in,
+        // like every other assembled label (T-15).
+        _counter.Text = string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            I18n.T("Vm_Tour_CounterPattern"), _index + 1, _steps.Count);
         _back.Visibility = _index > 0 ? Visibility.Visible : Visibility.Collapsed;
         _nextKeyHolder?.SetBinding(ContentControl.ContentProperty,
             new System.Windows.Data.Binding("[" + (_index == _steps.Count - 1 ? "Tour_Finish" : "Tour_Next") + "]") { Source = I18n.Instance });

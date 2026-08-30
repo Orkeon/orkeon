@@ -311,6 +311,31 @@ public static class StudioStringKeys
     /// <summary>"{0} — {1}"</summary>
     public const string LanguageTooltipPattern = "Vm_Lang_TooltipPattern";
 
+
+    // ---- Tool chips and the guided tour counter (T-15/T-18) ----
+    // The fs.* tools are scoped to one folder each, and that scope is the thing the
+    // user has to see — so their labels are patterns, never a bare verb.
+    /// <summary>"read {0}"</summary>
+    public const string ToolReadScoped = "Vm_Tool_ReadScoped";
+
+    /// <summary>"list {0}"</summary>
+    public const string ToolListScoped = "Vm_Tool_ListScoped";
+
+    /// <summary>"write {0}"</summary>
+    public const string ToolWriteScoped = "Vm_Tool_WriteScoped";
+
+    /// <summary>"write with the AI"</summary>
+    public const string ToolLlm = "Vm_Tool_Llm";
+
+    /// <summary>"browse a web page"</summary>
+    public const string ToolWeb = "Vm_Tool_Web";
+
+    /// <summary>"search the index"</summary>
+    public const string ToolRag = "Vm_Tool_Rag";
+
+    /// <summary>"{0} / {1}"</summary>
+    public const string TourCounterPattern = "Vm_Tour_CounterPattern";
+
     // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
 
     /// <summary>"{0} — {1} agent(s)"</summary>
@@ -1177,6 +1202,13 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardStep3] = "Try",
         [StudioStringKeys.WizardStep4] = "Adopt",
         [StudioStringKeys.WizardDraftStepPattern] = "Step {0} of {1} · {2}",
+        [StudioStringKeys.ToolReadScoped] = "read {0}",
+        [StudioStringKeys.ToolListScoped] = "list {0}",
+        [StudioStringKeys.ToolWriteScoped] = "write {0}",
+        [StudioStringKeys.ToolLlm] = "write with the AI",
+        [StudioStringKeys.ToolWeb] = "browse a web page",
+        [StudioStringKeys.ToolRag] = "search the index",
+        [StudioStringKeys.TourCounterPattern] = "{0} / {1}",
         [StudioStringKeys.LanguageSystem] = "SYSTEM",
         [StudioStringKeys.LanguageChosen] = "CHOSEN",
         [StudioStringKeys.LanguageFromSystem] = "system language",

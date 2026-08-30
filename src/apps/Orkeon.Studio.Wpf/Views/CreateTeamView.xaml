@@ -360,7 +360,11 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Border Style="{StaticResource ToolChip}" Margin="0,0,6,4">
-                      <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding}"/>
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="{Binding Icon}" Size="11" Margin="0,0,6,0"
+                                             Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding Label}"/>
+                      </StackPanel>
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -525,7 +529,11 @@
                         <ItemsControl.ItemTemplate>
                           <DataTemplate>
                             <Border Style="{StaticResource ToolChip}" Margin="0,0,6,4">
-                              <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding}"/>
+                              <StackPanel Orientation="Horizontal">
+                                <controls:LucideIcon Kind="{Binding Icon}" Size="11" Margin="0,0,6,0"
+                                                     Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding Label}"/>
+                              </StackPanel>
                             </Border>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>

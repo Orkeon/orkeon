@@ -139,10 +139,10 @@ public sealed partial class I18nResourceParityTests
     /// </summary>
     private static readonly Dictionary<string, int> TranslationDebtCeiling = new(StringComparer.Ordinal)
     {
-        ["Strings.fr.resx"] = 48,
-        ["Strings.es.resx"] = 32,
-        ["Strings.de.resx"] = 33,
-        ["Strings.zh-Hans.resx"] = 26,
+        ["Strings.fr.resx"] = 49,
+        ["Strings.es.resx"] = 33,
+        ["Strings.de.resx"] = 34,
+        ["Strings.zh-Hans.resx"] = 27,
     };
 
     [Theory]

@@ -55,7 +55,7 @@ public sealed class WizardChoice : ObservableObject
 /// <summary>One agent card of the "Composer" step — a blueprint agent, or a step-group fallback.</summary>
 public sealed class WizardAgentCard
 {
-    internal WizardAgentCard(string? key, string name, string initial, string role, IReadOnlyList<string> tools, Action<string?>? edit, Func<bool> canEdit)
+    internal WizardAgentCard(string? key, string name, string initial, string role, IReadOnlyList<WizardToolChip> tools, Action<string?>? edit, Func<bool> canEdit)
     {
         Key = key;
         Name = name;
@@ -77,8 +77,11 @@ public sealed class WizardAgentCard
     /// <summary>What the agent does, in a sentence.</summary>
     public string Role { get; }
 
-    /// <summary>The agent's own tools — the « Peut : » chips.</summary>
-    public IReadOnlyList<string> Tools { get; }
+    /// <summary>
+    /// The agent's own tools — the « Peut : » chips. Labels and glyphs, never the engine's
+    /// identifiers: «fs.read» says nothing to the person reading the card, «lire /docs» does.
+    /// </summary>
+    public IReadOnlyList<WizardToolChip> Tools { get; }
 
     /// <summary>Whether the card carries tool chips.</summary>
     public bool HasTools => Tools.Count > 0;
@@ -874,8 +877,9 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>The proposal's plain-words rationale.</summary>
     public string? Rationale => _model.Proposal?.Rationale;
 
-    /// <summary>What the team may do — the proposal's tools, verbatim.</summary>
-    public IReadOnlyList<string> Tools => _model.Proposal?.Tools ?? [];
+    /// <summary>What the team may do, in words the user can read.</summary>
+    public IReadOnlyList<WizardToolChip> Tools =>
+        [.. (_model.Proposal?.Tools ?? []).Select(tool => WizardToolChips.For(tool, _strings))];
 
     /// <summary>Whether the tools row shows.</summary>
     public bool HasTools => Tools.Count > 0;
@@ -1741,7 +1745,11 @@ public sealed class CreateTeamViewModel : ObservableObject
                     agent.Goal is { Length: > 0 } goal
                         ? goal
                         : string.Join(" ", proposal.Steps.Where(step => step.AgentRole == agent.Role).Select(step => step.Description)),
-                    agent.Tools,
+                    // The Core blueprint view carries the tool ids, not their per-agent
+                    // scope, so the chip falls back to the two mounts the wizard derives
+                    // anyway — read from /docs, write to /output. Same answer the mock's own
+                    // defaultScope gives when an agent declares none.
+                    [.. agent.Tools.Select(tool => WizardToolChips.For(tool, _strings))],
                     EditAgent,
                     () => CanEditAgents));
             }

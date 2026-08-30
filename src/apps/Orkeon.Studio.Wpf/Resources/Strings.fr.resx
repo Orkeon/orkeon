@@ -998,4 +998,25 @@
   <data name="Vm_Lang_TooltipPattern" xml:space="preserve">
     <value>{0} — {1}</value>
   </data>
+  <data name="Vm_Tool_ReadScoped" xml:space="preserve">
+    <value>lire {0}</value>
+  </data>
+  <data name="Vm_Tool_ListScoped" xml:space="preserve">
+    <value>lister {0}</value>
+  </data>
+  <data name="Vm_Tool_WriteScoped" xml:space="preserve">
+    <value>écrire {0}</value>
+  </data>
+  <data name="Vm_Tool_Llm" xml:space="preserve">
+    <value>rédiger avec l'IA</value>
+  </data>
+  <data name="Vm_Tool_Web" xml:space="preserve">
+    <value>consulter une page web</value>
+  </data>
+  <data name="Vm_Tool_Rag" xml:space="preserve">
+    <value>chercher dans l'index</value>
+  </data>
+  <data name="Vm_Tour_CounterPattern" xml:space="preserve">
+    <value>{0} / {1}</value>
+  </data>
 </root>
