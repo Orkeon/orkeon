@@ -1,15 +1,24 @@
 namespace Orkeon.Analysis.Core.Lexical;
 
 /// <summary>
-/// Reciprocal Rank Fusion over (id, score) rankings — the Analysis-side twin of
-/// <c>Orkeon.Rag.Retrieval.ReciprocalRankFusion</c> (Cormack, Clarke &amp; Buettcher
-/// 2009), duplicated rather than referenced because the dependency must keep pointing
-/// Rag → Analysis, never back. Same k, same semantics.
+/// Reciprocal Rank Fusion over (id, score) rankings (Cormack, Clarke &amp; Buettcher
+/// 2009) — the Analysis-side implementation, written here rather than referenced because
+/// the dependency must keep pointing Rag → Analysis, never back.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The fused score is a RANK aggregate, not a similarity: for two lists and k = 60 it
 /// lies in (0, 2/61], depends only on positions, and is not comparable with cosine or
 /// BM25 values. Callers must treat it as an ordering within one fusion.
+/// </para>
+/// <para>
+/// <b>Its k is its own, and it is fixed.</b> <see cref="DefaultK"/> is the constant from
+/// the paper, which is also where the RAG pipeline's default came from — the two
+/// coincide by common ancestry, not by any rule keeping them equal. The RAG side is in
+/// fact operator-tunable (<c>Orkeon:Rag:Retrieval:Hybrid:RrfK</c>), so the values already
+/// differ on any deployment that sets that key; code search deliberately exposes no such
+/// knob. Do not "resynchronize" them (ADR-009).
+/// </para>
 /// </remarks>
 public static class RankFusion
 {

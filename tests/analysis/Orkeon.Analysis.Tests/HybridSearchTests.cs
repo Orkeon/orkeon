@@ -143,6 +143,19 @@ public class Bm25CodeIndexTests
         index.Upsert(Node("1", "getUserById"));
         Assert.Empty(index.Search("+++", topK: 5));
     }
+
+    [Fact]
+    public void Out_of_range_tuning_parameters_are_refused_at_construction()
+    {
+        // Okapi BM25 only means anything for k1 >= 0 and b in [0, 1]: a negative k1
+        // inverts the term-frequency saturation, and a b outside the unit interval turns
+        // length normalization into an unbounded multiplier. Either way the index keeps
+        // answering, with scores no caller can interpret and no error to notice. The
+        // constructor is public, so the range belongs here and not in a comment.
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Bm25CodeIndex(k1: -0.1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Bm25CodeIndex(b: -0.1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Bm25CodeIndex(b: 1.1));
+    }
 }
 
 public class RankFusionTests

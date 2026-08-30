@@ -135,3 +135,17 @@ Un assemblage satellite s'expédie seul.
 - **Le texte visible par l'utilisateur.** Une formulation partagée (WIN-01) est une constante
   comme une autre, mais le texte qui appartient à la localisation de Studio passe par
   `IStudioStrings` et y reste.
+- **Les paramètres de réglage de la recherche.** `Bm25CodeIndex` (Analysis) et `Bm25Index` (Rag)
+  portent tous deux `k1 = 1.2`, `b = 0.75`, et les deux fusions de rangs portent `k = 60`. Ce sont
+  les valeurs de la littérature, atteintes séparément, pas un accord entre les deux sous-systèmes :
+  des chunks de prose et des déclarations de code n'ont pas la même distribution de longueurs, les
+  deux index ne notent jamais le même corpus, et leurs scores ne sont jamais comparés. Régler l'un
+  est un changement légitime qui ne doit PAS se propager. Les commentaires affirmaient le
+  contraire (« same k1/b defaults », « Same k ») — une promesse que rien ne tenait, et déjà fausse
+  côté RAG, réglable par l'exploitant via `Orkeon:Rag:Retrieval:Hybrid:RrfK` alors que la
+  recherche de code n'expose aucun bouton. Ils disent maintenant le vrai. **Une orthographe
+  partagée n'est pas une valeur partagée ; une *décision* partagée, si.** La seule vraie
+  duplication trouvée ici était interne à RAG — `ReciprocalRankFusion.DefaultK` et
+  `RagDefaults.RrfK`, deux déclarations du même défaut produit derrière deux classes d'options
+  liées à la *même* section de configuration — et elle n'a demandé aucun satellite : `Orkeon.Rag`
+  référence déjà le Domain qui la porte, la copie est simplement devenue une référence.

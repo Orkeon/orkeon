@@ -129,3 +129,16 @@ assembly ships alone.
   a tool name from other projects are candidates.
 - **User-facing text.** Shared wording (WIN-01) is a constant like any other, but text that
   belongs to Studio's localisation flows through `IStudioStrings` and stays there.
+- **Retrieval tuning parameters.** `Bm25CodeIndex` (Analysis) and `Bm25Index` (Rag) both carry
+  `k1 = 1.2`, `b = 0.75`, and both rank-fusion helpers carry `k = 60`. Those are the values from
+  the literature, reached independently, not an agreement between the two subsystems: prose chunks
+  and code declarations have different length distributions, the two indexes never score the same
+  corpus, and their scores are never compared. Retuning one is a legitimate change that must NOT
+  propagate. The doc comments used to claim the opposite ("same k1/b defaults", "Same k") — a
+  promise nothing enforced, and already false on the RAG side, which is operator-tunable through
+  `Orkeon:Rag:Retrieval:Hybrid:RrfK` while code search exposes no such knob. They now say what is
+  true. **A shared spelling is not a shared value; a shared *decision* is.** The one real
+  duplication measurement found here was internal to RAG — `ReciprocalRankFusion.DefaultK` and
+  `RagDefaults.RrfK`, two declarations of the same product default backing two option classes
+  bound to the *same* configuration section — and it needed no satellite: `Orkeon.Rag` already
+  references the Domain that holds it, so the copy simply became a reference.

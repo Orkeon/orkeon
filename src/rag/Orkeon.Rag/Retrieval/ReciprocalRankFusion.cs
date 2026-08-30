@@ -1,3 +1,4 @@
+using Orkeon.Domain.Constants.Rag;
 using Orkeon.Rag.Abstractions.Models;
 
 namespace Orkeon.Rag.Retrieval;
@@ -28,8 +29,15 @@ public static class ReciprocalRankFusion
     /// <summary><see cref="ScoredChunk.ScoreOrigin"/> of fused scores.</summary>
     public const string RrfScoreOrigin = "rrf";
 
-    /// <summary>The standard RRF constant (Cormack et al. 2009).</summary>
-    public const int DefaultK = 60;
+    /// <summary>
+    /// The standard RRF constant (Cormack et al. 2009). Declared once, in
+    /// <see cref="RagDefaults.RrfK"/>: the same section
+    /// (<c>Orkeon:Rag:Retrieval:Hybrid</c>) is bound by two option classes in two
+    /// projects — <see cref="HybridRetrievalOptions"/> here and <c>RagHybridOptions</c>
+    /// in Orkeon.Rag.Abstractions — and each used to carry its own copy of 60, so
+    /// changing the product default would have moved one fusion and not the other.
+    /// </summary>
+    public const int DefaultK = RagDefaults.RrfK;
 
     /// <summary>
     /// Fuses ranked candidate lists into a single ranking of at most

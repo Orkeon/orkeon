@@ -4,25 +4,35 @@ namespace Orkeon.Analysis.Core.Lexical;
 
 /// <summary>
 /// In-memory BM25 index over RaggableTree nodes — the lexical half of hybrid code
-/// search. Mirrors <c>Orkeon.Rag.Retrieval.Bm25Index</c> (same k1/b defaults, same
-/// posting/IDF/normalization structure) but is a NATIVE Analysis implementation:
-/// Analysis must not reference Orkeon.Rag (ADR-003/006 keep the dependency pointing
-/// the other way), and code needs the code-aware tokenizer
-/// (<see cref="CodeTokenizer"/>), not the prose one.
+/// search. A NATIVE Analysis implementation, not a reference to
+/// <c>Orkeon.Rag.Retrieval.Bm25Index</c>: Analysis must not reference Orkeon.Rag
+/// (ADR-003/006 keep the dependency pointing the other way), and code needs the
+/// code-aware tokenizer (<see cref="CodeTokenizer"/>), not the prose one.
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>Its tuning is its own.</b> <see cref="DefaultK1"/> and <see cref="DefaultB"/>
+/// carry the textbook Okapi values, which is also where the RAG index got its own —
+/// they coincide because both start from the literature, not because either tracks the
+/// other. Prose chunks and code declarations have different length distributions, so
+/// retuning one side is a legitimate change that must NOT be propagated to the other.
+/// Nothing enforces equality, and nothing should: this is a tuning parameter of one
+/// index, not a value two subsystems have to agree on (ADR-009).
+/// </para>
+/// <para>
 /// Indexed text per node: <c>Name + Fqn + Signature + SemanticSummary + DocComment</c> —
 /// the fields a developer's query words actually appear in. Deliberately NOT the source
 /// snippet: indexing bodies would drown declarations under their own call sites, and the
 /// vector half already captures body semantics through the embedding text.
 /// Not thread-safe by itself — the owning store serializes access (its RW lock).
+/// </para>
 /// </remarks>
 public sealed class Bm25CodeIndex
 {
-    /// <summary>Standard BM25 term-frequency saturation parameter (same as the RAG index).</summary>
+    /// <summary>Term-frequency saturation: the standard Okapi BM25 value.</summary>
     public const double DefaultK1 = 1.2;
 
-    /// <summary>Standard BM25 length-normalization parameter (same as the RAG index).</summary>
+    /// <summary>Length normalization: the standard Okapi BM25 value.</summary>
     public const double DefaultB = 0.75;
 
     private readonly double _k1;
@@ -36,8 +46,14 @@ public sealed class Bm25CodeIndex
     private readonly Dictionary<string, string[]> _termsByNode = new(StringComparer.Ordinal);
     private long _totalTokenCount;
 
+    /// <summary>Initializes an empty index.</summary>
+    /// <param name="k1">Term-frequency saturation (must be non-negative).</param>
+    /// <param name="b">Length normalization, in [0, 1].</param>
     public Bm25CodeIndex(double k1 = DefaultK1, double b = DefaultB)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(k1);
+        ArgumentOutOfRangeException.ThrowIfNegative(b);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(b, 1.0);
         _k1 = k1;
         _b = b;
     }
