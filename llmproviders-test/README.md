@@ -311,6 +311,7 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T13:32:27Z | `minimax` | `MiniMax-M2` | ❌ 2/8/2 | 1.0.0-rc.2 | [rapport](minimax/2026-08-30-133219-MiniMax-M2.md) |
 | 2026-08-30T13:23:22Z | `minimax` | `MiniMax-M2` | ❌ 2/8/2 | 1.0.0-rc.2 | [rapport](minimax/2026-08-30-132313-MiniMax-M2.md) |
 | 2026-08-30T12:46:33Z | `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](huggingface/2026-08-30-124631-Qwen_Qwen3-VL-30B-A3B-Instruct.md) |
 | 2026-08-30T12:46:30Z | `together` | `Qwen/Qwen3-VL-8B-Instruct` | ❌ 0/1/0 | 1.0.0-rc.2 | [rapport](together/2026-08-30-124627-Qwen_Qwen3-VL-8B-Instruct.md) |
@@ -373,4 +374,4 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_40 campagne(s) archivée(s)._
+_41 campagne(s) archivée(s)._
