@@ -980,4 +980,22 @@
   <data name="Vm_Chat_ReplyHistory" xml:space="preserve">
     <value>Every line of the history keeps its full log. Ask me « why did the last one fail? » and I'll pick up the offending step and the error message.</value>
   </data>
+  <data name="Vm_Lang_System" xml:space="preserve">
+    <value>SYSTEM</value>
+  </data>
+  <data name="Vm_Lang_Chosen" xml:space="preserve">
+    <value>CHOSEN</value>
+  </data>
+  <data name="Vm_Lang_FromSystem" xml:space="preserve">
+    <value>system language</value>
+  </data>
+  <data name="Vm_Lang_FromChoice" xml:space="preserve">
+    <value>saved choice</value>
+  </data>
+  <data name="Vm_Lang_HeaderPattern" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="Vm_Lang_TooltipPattern" xml:space="preserve">
+    <value>{0} — {1}</value>
+  </data>
 </root>

@@ -980,4 +980,22 @@
   <data name="Vm_Chat_ReplyHistory" xml:space="preserve">
     <value>Chaque ligne de l'historique garde son journal complet. Demandez-moi « pourquoi la dernière a échoué ? » et je reprends l'étape fautive et le message d'erreur.</value>
   </data>
+  <data name="Vm_Lang_System" xml:space="preserve">
+    <value>SYSTÈME</value>
+  </data>
+  <data name="Vm_Lang_Chosen" xml:space="preserve">
+    <value>CHOISIE</value>
+  </data>
+  <data name="Vm_Lang_FromSystem" xml:space="preserve">
+    <value>langue du système</value>
+  </data>
+  <data name="Vm_Lang_FromChoice" xml:space="preserve">
+    <value>choix enregistré</value>
+  </data>
+  <data name="Vm_Lang_HeaderPattern" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="Vm_Lang_TooltipPattern" xml:space="preserve">
+    <value>{0} — {1}</value>
+  </data>
 </root>

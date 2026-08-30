@@ -127,36 +127,73 @@
               </StackPanel>
             </Border>
           </StackPanel>
-          <!-- EN / FR -->
-          <Border Style="{StaticResource SegmentedGroup}" VerticalAlignment="Center" Margin="0,0,10,0"
-                  shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <StackPanel Orientation="Horizontal">
-              <Button Content="EN" Click="OnLangEn">
-                <Button.Style>
-                  <Style TargetType="Button" BasedOn="{StaticResource SegmentBtnMono}">
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding Language, Source={x:Static services:I18n.Instance}}" Value="en">
-                        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </Button.Style>
-              </Button>
-              <Button Content="FR" Click="OnLangFr">
-                <Button.Style>
-                  <Style TargetType="Button" BasedOn="{StaticResource SegmentBtnMono}">
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding Language, Source={x:Static services:I18n.Instance}}" Value="fr">
-                        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </Button.Style>
-              </Button>
-            </StackPanel>
-          </Border>
+          <!-- T-14: the language in force is on the button; the menu offers only the
+               OTHERS — the current one is already there, and a row that does nothing is
+               a row that asks to be clicked. The header line says whether this language
+               came from the machine or from a choice, which is the difference a user has
+               no other way of seeing. -->
+          <Grid VerticalAlignment="Center" Margin="0,0,10,0"
+                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+            <Button Style="{StaticResource LangBtn}" Command="{Binding Language.ToggleMenuCommand}">
+              <Button.ToolTip><TextBlock Text="{Binding Language.Tooltip}"/></Button.ToolTip>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Language.CurrentDisplay}" VerticalAlignment="Center"/>
+                <controls:LucideIcon Kind="chevron-down" Size="11" Margin="6,0,0,0" VerticalAlignment="Center"
+                                     RenderTransformOrigin="0.5,0.5">
+                  <controls:LucideIcon.RenderTransform><RotateTransform/></controls:LucideIcon.RenderTransform>
+                  <controls:LucideIcon.Style>
+                    <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Language.IsMenuOpen}" Value="True">
+                          <DataTrigger.EnterActions>
+                            <BeginStoryboard>
+                              <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" To="180" Duration="0:0:0.14"/>
+                              </Storyboard>
+                            </BeginStoryboard>
+                          </DataTrigger.EnterActions>
+                          <DataTrigger.ExitActions>
+                            <BeginStoryboard>
+                              <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" To="0" Duration="0:0:0.14"/>
+                              </Storyboard>
+                            </BeginStoryboard>
+                          </DataTrigger.ExitActions>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:LucideIcon.Style>
+                </controls:LucideIcon>
+              </StackPanel>
+            </Button>
+            <Popup IsOpen="{Binding Language.IsMenuOpen, Mode=TwoWay}" StaysOpen="False"
+                   Placement="Bottom" VerticalOffset="6" HorizontalOffset="-140"
+                   AllowsTransparency="True" PopupAnimation="Fade">
+              <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1" CornerRadius="12" Padding="6" MinWidth="186"
+                      Margin="10,0,10,14" Effect="{DynamicResource ShadowMd}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="9.5" Padding="8,5,8,6"
+                             Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Language.MenuHeader}"/>
+                  <ItemsControl ItemsSource="{Binding Language.Others}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Button Style="{StaticResource LangRow}" CommandParameter="{Binding Code}"
+                                Command="{Binding DataContext.Language.PickCommand, RelativeSource={RelativeSource AncestorType=Popup}}">
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" FontWeight="SemiBold" Width="20"
+                                       Foreground="{DynamicResource AccentBrush}" Text="{Binding Display}"/>
+                            <TextBlock FontSize="12.5" Margin="9,0,0,0" Foreground="{DynamicResource InkBrush}"
+                                       Text="{Binding Name}"/>
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </Popup>
+          </Grid>
           <Button Style="{StaticResource IconBtn}" Click="OnStartTour" Margin="0,0,10,0" VerticalAlignment="Center"
                   ToolTip="{Binding [Tour_Tip], Source={x:Static services:I18n.Instance}}"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">

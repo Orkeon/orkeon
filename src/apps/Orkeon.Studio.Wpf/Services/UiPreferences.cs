@@ -17,7 +17,12 @@ public sealed record UiPreferences
     /// <summary>"dark" or "light"; anything else means the default (light).</summary>
     public string? Theme { get; init; }
 
-    /// <summary>"en" or "fr"; anything else means the default (en).</summary>
+    /// <summary>
+    /// The language the user EXPLICITLY picked, or null when they never did. Null is the
+    /// meaningful value: it means the machine decides again on every start, so changing the
+    /// Windows language is still followed. A detected language must never be written here —
+    /// the first launch would freeze it forever.
+    /// </summary>
     public string? Language { get; init; }
 
     /// <summary>"novice" or "expert"; anything else means the default (novice).</summary>
@@ -45,8 +50,13 @@ public sealed record UiPreferences
         }
     }
 
-    /// <summary>Persists the current choices; a failure to write is silently accepted.</summary>
-    public static void Save(bool dark, string language, string mode)
+    /// <summary>
+    /// Persists the current choices; a failure to write is silently accepted.
+    /// <paramref name="language"/> is null unless the user picked one — passing the running
+    /// language here is the bug this signature exists to make hard: every theme or mode
+    /// toggle would then stamp the detected language into the file.
+    /// </summary>
+    public static void Save(bool dark, string? language, string mode)
     {
         try
         {

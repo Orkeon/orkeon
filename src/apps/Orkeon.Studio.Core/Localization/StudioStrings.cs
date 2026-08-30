@@ -291,6 +291,26 @@ public static class StudioStringKeys
     /// <summary>"Every line of the history keeps its full log. Ask me « why did the…"</summary>
     public const string ChatReplyHistory = "Vm_Chat_ReplyHistory";
 
+
+    // ---- The language picker (Shell/LanguageSelectorViewModel, T-14) ----
+    /// <summary>"SYSTEM"</summary>
+    public const string LanguageSystem = "Vm_Lang_System";
+
+    /// <summary>"CHOSEN"</summary>
+    public const string LanguageChosen = "Vm_Lang_Chosen";
+
+    /// <summary>"system language"</summary>
+    public const string LanguageFromSystem = "Vm_Lang_FromSystem";
+
+    /// <summary>"saved choice"</summary>
+    public const string LanguageFromChoice = "Vm_Lang_FromChoice";
+
+    /// <summary>"{0} · {1}"</summary>
+    public const string LanguageHeaderPattern = "Vm_Lang_HeaderPattern";
+
+    /// <summary>"{0} — {1}"</summary>
+    public const string LanguageTooltipPattern = "Vm_Lang_TooltipPattern";
+
     // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
 
     /// <summary>"{0} — {1} agent(s)"</summary>
@@ -1157,6 +1177,12 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardStep3] = "Try",
         [StudioStringKeys.WizardStep4] = "Adopt",
         [StudioStringKeys.WizardDraftStepPattern] = "Step {0} of {1} · {2}",
+        [StudioStringKeys.LanguageSystem] = "SYSTEM",
+        [StudioStringKeys.LanguageChosen] = "CHOSEN",
+        [StudioStringKeys.LanguageFromSystem] = "system language",
+        [StudioStringKeys.LanguageFromChoice] = "saved choice",
+        [StudioStringKeys.LanguageHeaderPattern] = "{0} · {1}",
+        [StudioStringKeys.LanguageTooltipPattern] = "{0} — {1}",
         [StudioStringKeys.ChatTitle] = "Assistant conversation",
         [StudioStringKeys.ChatRecap] = "What I've noted",
         [StudioStringKeys.ChatYourBrief] = "YOUR BRIEF",

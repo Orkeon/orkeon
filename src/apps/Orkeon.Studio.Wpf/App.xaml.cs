@@ -14,6 +14,13 @@ public partial class App : System.Windows.Application
 {
     private MainWindowViewModel? _viewModel;
 
+    /// <summary>
+    /// The language the user explicitly picked, or null while nobody has. Every other
+    /// preference write carries it, so a theme or mode toggle can never stamp a DETECTED
+    /// language into the file and freeze it there.
+    /// </summary>
+    internal static string? ExplicitLanguage { get; private set; }
+
     /// <inheritdoc />
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -37,15 +44,15 @@ public partial class App : System.Windows.Application
         // already in the right theme and language. Reading is tolerant (defaults on any failure)
         // and a smoke run only ever reads — writes happen on user toggles, which a smoke never does.
         var preferences = UiPreferences.Load();
+        ExplicitLanguage = preferences.Language;
         if (preferences.IsDark)
         {
             ThemeManager.Apply(dark: true);
         }
 
-        if (preferences.Language is "fr" or "en")
-        {
-            I18n.Instance.SetLanguage(preferences.Language);
-        }
+        // The language is NOT applied here any more: whether it comes from a stored choice
+        // or from the machine is a decision with rules, and it belongs to the ViewModel that
+        // owns them (T-13). It applies it as it resolves it, below.
 
         // The operator's CLI directory must be in force before any locator is built —
         // the ViewModel below wires the runner, the forge client and the run client.
@@ -60,11 +67,21 @@ public partial class App : System.Windows.Application
             new WpfDispatcher(Dispatcher),
             I18nStudioStrings.Instance,
             preferences.Mode,
-            mode => UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, mode),
+            mode => UiPreferences.Save(ThemeManager.IsDark, ExplicitLanguage, mode),
             shellOpener: ShellOpener.Instance,
             // The assistant's beats are timed; the ViewModels only know how to ask for
             // "later", and this is the only place that knows what later means in WPF.
-            delay: new WpfDelay(Dispatcher));
+            delay: new WpfDelay(Dispatcher),
+            // A stored language means the user picked it; null means nobody did, and the
+            // machine decides again — which is what makes a change of Windows language
+            // still get followed on the next start.
+            initialLanguage: preferences.Language,
+            persistLanguage: language =>
+            {
+                ExplicitLanguage = language;
+                UiPreferences.Save(ThemeManager.IsDark, language, preferences.Mode ?? "novice");
+            },
+            applyLanguage: I18n.Instance.SetLanguage);
 
         var window = new MainWindow { DataContext = _viewModel };
         MainWindow = window;

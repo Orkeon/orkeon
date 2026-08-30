@@ -40,9 +40,13 @@
 
   <ItemGroup>
     <!-- The localization resx are linked as plain files (not compiled resources) so the parity
-         test can diff the EN and FR key sets as XML, without referencing the WPF project. -->
+         test can diff the five key sets as XML, without referencing the WPF project. A culture
+         missing from this list is a culture the parity test silently stops checking. -->
     <None Include="../../../src/apps/Orkeon.Studio.Wpf/Resources/Strings.resx" Link="Resources\Strings.resx" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../../src/apps/Orkeon.Studio.Wpf/Resources/Strings.fr.resx" Link="Resources\Strings.fr.resx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../src/apps/Orkeon.Studio.Wpf/Resources/Strings.es.resx" Link="Resources\Strings.es.resx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../src/apps/Orkeon.Studio.Wpf/Resources/Strings.de.resx" Link="Resources\Strings.de.resx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../src/apps/Orkeon.Studio.Wpf/Resources/Strings.zh-Hans.resx" Link="Resources\Strings.zh-Hans.resx" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

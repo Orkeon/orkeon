@@ -3,13 +3,35 @@ using System.Xml.Linq;
 namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
-/// Pins the EN/FR localization contract: every visible string goes through I18n, whose lookup
-/// falls back to the raw key on a miss — so a key present in one resx and absent from the other
-/// would silently ship an untranslated label. The resx are diffed here as plain XML; no WPF
-/// involved, the suite stays runnable on the Linux runner.
+/// Pins the localization contract across the five cultures: every visible string goes through
+/// I18n, whose lookup falls back to the raw key on a miss — so a key present in one resx and
+/// absent from another would silently ship the identifier as a label. The resx are diffed here
+/// as plain XML; no WPF involved, the suite stays runnable on the Linux runner.
+/// <para>
+/// A culture absent from <see cref="Satellites"/> — and from the test csproj's None items — is
+/// a culture this suite silently stops checking, which is the one failure mode it exists to
+/// prevent. Adding a language means adding it in both places.
+/// </para>
 /// </summary>
 public sealed class I18nResourceParityTests
 {
+    /// <summary>The neutral culture: the key registry of record.</summary>
+    private const string Neutral = "Strings.resx";
+
+    /// <summary>Every satellite, by file name.</summary>
+    public static readonly string[] Satellites =
+        ["Strings.fr.resx", "Strings.es.resx", "Strings.de.resx", "Strings.zh-Hans.resx"];
+
+    /// <summary>All five, for the checks that apply to every file alike.</summary>
+    public static TheoryData<string> AllCultures()
+    {
+        var data = new TheoryData<string> { Neutral };
+        foreach (var satellite in Satellites)
+            data.Add(satellite);
+
+        return data;
+    }
+
     private static string ResourcePath(string fileName) =>
         Path.Combine(AppContext.BaseDirectory, "Resources", fileName);
 
@@ -25,48 +47,55 @@ public sealed class I18nResourceParityTests
             .ToDictionary(g => g.Key, g => (string?)g.First().Element("value") ?? "");
     }
 
-    [Fact]
-    public void Should_Have_Same_Keys_When_Comparing_French_To_English()
+    [Theory]
+    [MemberData(nameof(SatelliteCultures))]
+    public void Should_Have_Same_Keys_When_Comparing_A_Satellite_To_The_Neutral_Culture(string satellite)
     {
-        var english = ReadEntries("Strings.resx");
-        var french = ReadEntries("Strings.fr.resx");
+        var neutral = ReadEntries(Neutral);
+        var translated = ReadEntries(satellite);
 
-        var missingInFrench = english.Keys.Except(french.Keys).Order().ToList();
-        var missingInEnglish = french.Keys.Except(english.Keys).Order().ToList();
+        var missingInSatellite = neutral.Keys.Except(translated.Keys).Order().ToList();
+        var missingInNeutral = translated.Keys.Except(neutral.Keys).Order().ToList();
 
-        Assert.True(missingInFrench.Count == 0, $"Keys missing in Strings.fr.resx: {string.Join(", ", missingInFrench)}");
-        Assert.True(missingInEnglish.Count == 0, $"Keys missing in Strings.resx: {string.Join(", ", missingInEnglish)}");
+        Assert.True(missingInSatellite.Count == 0, $"Keys missing in {satellite}: {string.Join(", ", missingInSatellite)}");
+        Assert.True(missingInNeutral.Count == 0, $"Keys missing in {Neutral}: {string.Join(", ", missingInNeutral)}");
     }
 
-    [Fact]
-    public void Should_Have_No_Empty_Values_When_Reading_Both_Resx()
+    /// <summary>The four satellites, one test case each.</summary>
+    public static TheoryData<string> SatelliteCultures()
     {
-        foreach (var fileName in new[] { "Strings.resx", "Strings.fr.resx" })
-        {
-            var empty = ReadEntries(fileName)
-                .Where(e => string.IsNullOrWhiteSpace(e.Value))
-                .Select(e => e.Key)
-                .Order()
-                .ToList();
+        var data = new TheoryData<string>();
+        foreach (var satellite in Satellites)
+            data.Add(satellite);
 
-            Assert.True(empty.Count == 0, $"Empty values in {fileName}: {string.Join(", ", empty)}");
-        }
+        return data;
     }
 
-    [Fact]
-    public void Should_Have_Unique_Keys_When_Reading_Both_Resx()
+    [Theory]
+    [MemberData(nameof(AllCultures))]
+    public void Should_Have_No_Empty_Values_When_Reading_A_Culture(string fileName)
     {
-        foreach (var fileName in new[] { "Strings.resx", "Strings.fr.resx" })
-        {
-            var duplicates = XDocument.Load(ResourcePath(fileName)).Root!
-                .Elements("data")
-                .GroupBy(d => (string?)d.Attribute("name"))
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
+        var empty = ReadEntries(fileName)
+            .Where(e => string.IsNullOrWhiteSpace(e.Value))
+            .Select(e => e.Key)
+            .Order()
+            .ToList();
 
-            Assert.True(duplicates.Count == 0, $"Duplicate keys in {fileName}: {string.Join(", ", duplicates)}");
-        }
+        Assert.True(empty.Count == 0, $"Empty values in {fileName}: {string.Join(", ", empty)}");
+    }
+
+    [Theory]
+    [MemberData(nameof(AllCultures))]
+    public void Should_Have_Unique_Keys_When_Reading_A_Culture(string fileName)
+    {
+        var duplicates = XDocument.Load(ResourcePath(fileName)).Root!
+            .Elements("data")
+            .GroupBy(d => (string?)d.Attribute("name"))
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        Assert.True(duplicates.Count == 0, $"Duplicate keys in {fileName}: {string.Join(", ", duplicates)}");
     }
 
     /// <summary>
@@ -92,5 +121,40 @@ public sealed class I18nResourceParityTests
 
         static string StripMountLiterals(string value) =>
             MountPathLiterals.Aggregate(value, (text, literal) => text.Replace(literal, "", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// How many strings a satellite has not been translated yet and still carries the English
+    /// text verbatim. The design bundle covered a little over half the catalogue; the rest is
+    /// being written down language by language, and this is the number that has to keep going
+    /// down. It is a CEILING, not an assertion that everything is done: raising it is how a
+    /// regression would hide, so it may only ever be lowered.
+    /// </summary>
+    private static readonly Dictionary<string, int> TranslationDebtCeiling = new(StringComparer.Ordinal)
+    {
+        ["Strings.fr.resx"] = 48,
+        ["Strings.es.resx"] = 352,
+        ["Strings.de.resx"] = 355,
+        ["Strings.zh-Hans.resx"] = 352,
+    };
+
+    [Theory]
+    [MemberData(nameof(SatelliteCultures))]
+    public void Should_Not_Grow_The_Translation_Debt_When_Reading_A_Satellite(string satellite)
+    {
+        var neutral = ReadEntries(Neutral);
+        var translated = ReadEntries(satellite);
+
+        // A value identical to the English one is either a real cognate (« Orkeon », « JSON »)
+        // or an untranslated string. Counting both is the honest reading: the number only
+        // reaches its floor when someone has looked at every one of them.
+        var untranslated = translated
+            .Count(e => neutral.TryGetValue(e.Key, out var english)
+                     && string.Equals(english, e.Value, StringComparison.Ordinal));
+
+        Assert.True(
+            untranslated <= TranslationDebtCeiling[satellite],
+            $"{satellite}: {untranslated} strings still carry the English text, ceiling is "
+            + $"{TranslationDebtCeiling[satellite]}. Lower the ceiling when you lower the debt; never raise it.");
     }
 }

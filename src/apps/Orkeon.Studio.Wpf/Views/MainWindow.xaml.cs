@@ -47,6 +47,17 @@ public partial class MainWindow : Window
         // by hand, shows up without waiting for an adopt or an app restart.
         NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Test.RefreshTeams(); };
 
+        // Échap closes the language menu; StaysOpen=False already answers the click
+        // elsewhere. Handled on the window because the popup is not in its visual tree.
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.Escape && shell.Language.IsMenuOpen)
+            {
+                shell.Language.CloseMenuCommand.Execute(null);
+                e.Handled = true;
+            }
+        };
+
         // The conversation follows the screen it is mounted on: what a free question with
         // no keyword gets back, and what the primer says on an empty thread, both depend
         // on where the user actually stands (T-06).
@@ -94,7 +105,7 @@ public partial class MainWindow : Window
     {
         ThemeManager.Apply(!ThemeManager.IsDark);
         UpdateThemeButton();
-        UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, CurrentMode());
+        SavePreferences();
     }
 
     private void UpdateThemeButton()
@@ -103,15 +114,17 @@ public partial class MainWindow : Window
         ThemeBtn.ToolTip = I18n.T(ThemeManager.IsDark ? "Theme_ToLight" : "Theme_ToDark");
     }
 
-    // ── language ──
-    private void OnLangEn(object sender, RoutedEventArgs e) => SetLanguage("en");
-    private void OnLangFr(object sender, RoutedEventArgs e) => SetLanguage("fr");
-
-    private void SetLanguage(string language)
+    /// <summary>
+    /// Writes theme and mode, and the language ONLY if the user picked one. Passing the
+    /// running language unconditionally is what froze a detected language on the first
+    /// theme toggle — after which a change of Windows language was never followed again.
+    /// </summary>
+    private void SavePreferences()
     {
-        I18n.Instance.SetLanguage(language);
+        var shell = DataContext as ViewModels.Shell.MainWindowViewModel;
+        var chosen = shell?.Language.IsExplicitChoice == true ? shell.Language.Current : null;
+        UiPreferences.Save(ThemeManager.IsDark, chosen, CurrentMode());
         UpdateThemeButton();
-        UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, CurrentMode());
     }
 
     private string CurrentMode() =>

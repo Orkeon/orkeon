@@ -42,11 +42,21 @@ public sealed class MainWindowViewModel : ObservableObject
         IModelProfileStore? profileStore = null,
         string? teamsRoot = null,
         IShellOpener? shellOpener = null,
-        IUiDelay? delay = null)
+        IUiDelay? delay = null,
+        string? initialLanguage = null,
+        Action<string>? persistLanguage = null,
+        Action<string>? applyLanguage = null,
+        string? systemLanguage = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
         Mode = new UiModeViewModel(initialUiMode, persistUiMode);
+
+        // The language resolves before anything reads a string: an explicit choice from
+        // last time wins, otherwise the machine decides — and a detected language is
+        // applied, never written down (T-13).
+        Language = new LanguageSelectorViewModel(
+            initialLanguage, systemLanguage, applyLanguage, persistLanguage, strings);
 
         // ONE conversation for the window (T-01). Créer, Exécuter and Historique all mount
         // the same instance: recreated per screen, its history would die on the first tab
@@ -177,6 +187,9 @@ public sealed class MainWindowViewModel : ObservableObject
     /// Bound through the window ancestor on the screens that do not own it, so a change of
     /// tab hands the same thread to the next screen rather than a fresh, empty one.
     /// </summary>
+    /// <summary>Which language the app speaks, and whether that was a choice (T-13/T-14).</summary>
+    public LanguageSelectorViewModel Language { get; }
+
     public ChatThreadViewModel Chat { get; }
 
     public CreateTeamViewModel CreateTeam { get; }
@@ -235,7 +248,10 @@ public sealed class MainWindowViewModel : ObservableObject
         IModelProfileStore? profileStore = null,
         string? teamsRoot = null,
         IShellOpener? shellOpener = null,
-        IUiDelay? delay = null)
+        IUiDelay? delay = null,
+        string? initialLanguage = null,
+        Action<string>? persistLanguage = null,
+        Action<string>? applyLanguage = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -264,7 +280,10 @@ public sealed class MainWindowViewModel : ObservableObject
                 : null,
             teamsRoot,
             shellOpener,
-            delay);
+            delay,
+            initialLanguage,
+            persistLanguage,
+            applyLanguage);
     }
 
     /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history, reading the model profiles.</summary>

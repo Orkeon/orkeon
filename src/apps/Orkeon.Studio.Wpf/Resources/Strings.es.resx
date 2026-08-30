@@ -1,0 +1,2249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+
+              <data name="Nav_Diag" xml:space="preserve">
+    <value>Diagnóstico</value>
+  </data>
+  <data name="Nav_Run" xml:space="preserve">
+    <value>Ejecutar</value>
+  </data>
+  <data name="Nav_History" xml:space="preserve">
+    <value>Historial</value>
+  </data>
+  <data name="SettingsFile_Title" xml:space="preserve">
+    <value>ARCHIVO DE AJUSTES</value>
+  </data>
+  <data name="SettingsFile_Global" xml:space="preserve">
+    <value>Archivo global por usuario</value>
+  </data>
+  <data name="Badge_Valid" xml:space="preserve">
+    <value>válido</value>
+  </data>
+  <data name="Badge_Invalid" xml:space="preserve">
+    <value>invalid</value>
+  </data>
+  <data name="Act_New" xml:space="preserve">
+    <value>New</value>
+  </data>
+  <data name="Act_Open" xml:space="preserve">
+    <value>Open…</value>
+  </data>
+  <data name="Act_Reload" xml:space="preserve">
+    <value>Reload</value>
+  </data>
+  <data name="Act_Validate" xml:space="preserve">
+    <value>Validar</value>
+  </data>
+  <data name="Act_Save" xml:space="preserve">
+    <value>Guardar</value>
+  </data>
+  <data name="Lbl_BaseUrl" xml:space="preserve">
+    <value>URL base</value>
+  </data>
+  <data name="Lbl_Model" xml:space="preserve">
+    <value>Modelo</value>
+  </data>
+  <data name="Lbl_ApiKey" xml:space="preserve">
+    <value>API key</value>
+  </data>
+  <data name="Loc_Title" xml:space="preserve">
+    <value>Dónde se guarda el archivo</value>
+  </data>
+  <data name="Loc_Global" xml:space="preserve">
+    <value>Archivo global por usuario</value>
+  </data>
+  <data name="Loc_Default" xml:space="preserve">
+    <value>POR DEFECTO</value>
+  </data>
+  <data name="Loc_Custom" xml:space="preserve">
+    <value>Una ruta que yo elijo</value>
+  </data>
+  <data name="Btn_Browse" xml:space="preserve">
+    <value>Examinar…</value>
+  </data>
+  <data name="Chain_Title" xml:space="preserve">
+    <value>Qué archivo cargará realmente el runtime</value>
+  </data>
+  <data name="Chain_Hint" xml:space="preserve">
+    <value>El primer paso que coincide gana — un archivo junto al equipo prevalece silenciosamente sobre el global.</value>
+  </data>
+  <data name="Chain_SaveTarget" xml:space="preserve">
+    <value>your save target</value>
+  </data>
+  <data name="Theme_ToDark" xml:space="preserve">
+    <value>Switch to the dark theme</value>
+  </data>
+  <data name="Theme_ToLight" xml:space="preserve">
+    <value>Switch to the light theme</value>
+  </data>
+  <data name="Tour_Tip" xml:space="preserve">
+    <value>Guided tour — learn the interface</value>
+  </data>
+  <data name="Tour_Label" xml:space="preserve">
+    <value>GUIDED TOUR</value>
+  </data>
+  <data name="Tour_Skip" xml:space="preserve">
+    <value>Omitir</value>
+  </data>
+  <data name="Tour_Back" xml:space="preserve">
+    <value>Atrás</value>
+  </data>
+  <data name="Tour_Next" xml:space="preserve">
+    <value>Siguiente</value>
+  </data>
+  <data name="Tour_Finish" xml:space="preserve">
+    <value>Terminar</value>
+  </data>
+  <data name="Tour1_Title" xml:space="preserve">
+    <value>Dos modos, un solo producto</value>
+  </data>
+  <data name="Tour1_Body" xml:space="preserve">
+    <value>Novato explica cada paso y oculta la maquinaria. Experto lo muestra todo: línea de comandos, registro, JSON bruto. Cambie cuando quiera, sin perder nada.</value>
+  </data>
+  <data name="Tour2_Title" xml:space="preserve">
+    <value>Todo gira en torno a los equipos</value>
+  </data>
+  <data name="Tour2_Body" xml:space="preserve">
+    <value>Un equipo de agentes es el objeto central: usted lo crea, lo conserva, lo lanza. El resto de la aplicación solo sirve a ese objeto.</value>
+  </data>
+  <data name="Tour3_Title" xml:space="preserve">
+    <value>El trabajo diario</value>
+  </data>
+  <data name="Tour3_Body" xml:space="preserve">
+    <value>Probar antes de lanzar, ejecutar, y luego encontrar cada ejecución en el historial — con su resultado y lo necesario para repetirla idéntica.</value>
+  </data>
+  <data name="Tour4_Title" xml:space="preserve">
+    <value>El entorno, de una vez por todas</value>
+  </data>
+  <data name="Tour4_Body" xml:space="preserve">
+    <value>Solo dos ajustes: el modelo de IA y las carpetas que los agentes pueden ver. El diagnóstico le avisa cuando algo bloquea.</value>
+  </data>
+  <data name="Tour5_Title" xml:space="preserve">
+    <value>La ayuda es contextual</value>
+  </data>
+  <data name="Tour5_Body" xml:space="preserve">
+    <value>In Novice mode, each screen carries a column of explanations on the right. It steps aside in Expert mode.</value>
+  </data>
+  <data name="Val_Title" xml:space="preserve">
+    <value>Validation</value>
+  </data>
+  <data name="Sec_DetectedProvider" xml:space="preserve">
+    <value>DETECTED PROVIDER</value>
+  </data>
+  <data name="Sec_Lbl_Temperature" xml:space="preserve">
+    <value>Temperatura</value>
+  </data>
+  <data name="Sec_Lbl_MaxTokens" xml:space="preserve">
+    <value>Max tokens</value>
+  </data>
+  <data name="Sec_Lbl_TimeoutSeconds" xml:space="preserve">
+    <value>Timeout (seconds)</value>
+  </data>
+  <data name="Sec_TestConnection" xml:space="preserve">
+    <value>Probar la conexión</value>
+  </data>
+  <data name="Sec_Lbl_MaxConcurrent" xml:space="preserve">
+    <value>Solicitudes concurrentes máx.</value>
+  </data>
+  <data name="Sec_Lbl_GlobalRpm" xml:space="preserve">
+    <value>Solicitudes globales / minuto</value>
+  </data>
+  <data name="Sec_Lbl_ProviderRpm" xml:space="preserve">
+    <value>Solicitudes al proveedor / minuto</value>
+  </data>
+  <data name="Sec_Lbl_AgentRpm" xml:space="preserve">
+    <value>Solicitudes de agente / minuto</value>
+  </data>
+  <data name="Sec_Lbl_QueueLimit" xml:space="preserve">
+    <value>Queue limit</value>
+  </data>
+  <data name="Sec_Lbl_RagProfile" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="Sec_Lbl_RagProvider" xml:space="preserve">
+    <value>Proveedor</value>
+  </data>
+  <data name="Sec_Lbl_RagConnection" xml:space="preserve">
+    <value>Cadena de conexión</value>
+  </data>
+  <data name="Sec_Rag_Hybrid" xml:space="preserve">
+    <value>Recuperación híbrida (BM25 + RRF)</value>
+  </data>
+  <data name="Sec_Rag_CorrectiveWebFallback" xml:space="preserve">
+    <value>Corrective web fallback — policy</value>
+  </data>
+  <data name="Sec_Rag_WebFallback" xml:space="preserve">
+    <value>Web fallback — transport</value>
+  </data>
+  <data name="Sec_Lbl_CorrectiveMaxIterations" xml:space="preserve">
+    <value>Iteraciones correctivas máx.</value>
+  </data>
+  <data name="Sec_Lbl_DefaultLevel" xml:space="preserve">
+    <value>Default level</value>
+  </data>
+  <data name="Sec_AddCategory" xml:space="preserve">
+    <value>Add category</value>
+  </data>
+  <data name="Sec_Remove" xml:space="preserve">
+    <value>Quitar</value>
+  </data>
+  <data name="Sec_LlmLog_FullEmbedding" xml:space="preserve">
+    <value>Log full embedding payloads</value>
+  </data>
+  <data name="Sec_LlmLog_Streaming" xml:space="preserve">
+    <value>Log streaming exchanges</value>
+  </data>
+  <data name="Sec_Lbl_MaxBodyLength" xml:space="preserve">
+    <value>Max body length (chars)</value>
+  </data>
+  <data name="Mounts_Add" xml:space="preserve">
+    <value>Añadir</value>
+  </data>
+  <data name="Mounts_Remove" xml:space="preserve">
+    <value>Quitar</value>
+  </data>
+  <data name="Mounts_Unparsed" xml:space="preserve">
+    <value>This entry could not be parsed. It is kept exactly as written so nothing is lost.</value>
+  </data>
+  <data name="Mounts_Lbl_Physical" xml:space="preserve">
+    <value>Ruta física (en esta máquina)</value>
+  </data>
+  <data name="Mounts_CreateFolder" xml:space="preserve">
+    <value>Crear la carpeta</value>
+  </data>
+  <data name="Mounts_Lbl_Virtual" xml:space="preserve">
+    <value>Ruta virtual (lo que ven los agentes)</value>
+  </data>
+  <data name="Mounts_VirtualInvalid" xml:space="preserve">
+    <value>Must start with '/'.</value>
+  </data>
+  <data name="Mounts_Lbl_Rights" xml:space="preserve">
+    <value>Permisos</value>
+  </data>
+  <data name="Mounts_Overrides_Title" xml:space="preserve">
+    <value>Permisos por subruta</value>
+  </data>
+  <data name="Mounts_AddOverride" xml:space="preserve">
+    <value>Añadir una excepción</value>
+  </data>
+  <data name="Mounts_Preview" xml:space="preserve">
+    <value>MOUNT STRING</value>
+  </data>
+  <data name="Raw_ReadOnly" xml:space="preserve">
+    <value>READ-ONLY</value>
+  </data>
+  <data name="Raw_Copy" xml:space="preserve">
+    <value>Copiar</value>
+  </data>
+  <data name="Scr_Diag_Title" xml:space="preserve">
+    <value>Diagnóstico</value>
+  </data>
+  <data name="Scr_Diag_SubNovice" xml:space="preserve">
+    <value>Studio verifica que todo esté en su sitio antes de que un equipo falle a medio camino.</value>
+  </data>
+  <data name="Scr_Diag_SubExpert" xml:space="preserve">
+    <value>Ejecuta orkeon doctor: binario, archivo de ajustes, accesibilidad del LLM, montajes.</value>
+  </data>
+  <data name="Diag_Run" xml:space="preserve">
+    <value>Ejecutar el diagnóstico</value>
+  </data>
+  <data name="Diag_CopyReport" xml:space="preserve">
+    <value>Copiar el informe</value>
+  </data>
+  <data name="Diag_Checks_Title" xml:space="preserve">
+    <value>Comprobaciones</value>
+  </data>
+  <data name="Scr_Run_Title" xml:space="preserve">
+    <value>Ejecutar</value>
+  </data>
+  <data name="Scr_Run_Sub" xml:space="preserve">
+    <value>Pick a target, tune the options, watch the log stream.</value>
+  </data>
+  <data name="Scr_Run_SubNovice" xml:space="preserve">
+    <value>Un equipo, un botón. El detalle técnico sigue disponible si lo necesita.</value>
+  </data>
+  <data name="Scr_Run_SubExpert" xml:space="preserve">
+    <value>Objetivo, opciones, comando exacto y registro en directo. El dry-run valida sin efectos secundarios.</value>
+  </data>
+  <data name="Run_Target_Title" xml:space="preserve">
+    <value>Crew to run</value>
+  </data>
+  <data name="Run_Detect" xml:space="preserve">
+    <value>Detectar</value>
+  </data>
+  <data name="Run_File" xml:space="preserve">
+    <value>File…</value>
+  </data>
+  <data name="Run_Folder" xml:space="preserve">
+    <value>Folder…</value>
+  </data>
+  <data name="Run_UseCandidate" xml:space="preserve">
+    <value>Use this file</value>
+  </data>
+  <data name="Run_Tab_Options" xml:space="preserve">
+    <value>Options</value>
+  </data>
+  <data name="Run_Tab_Mounts" xml:space="preserve">
+    <value>Mounts</value>
+  </data>
+  <data name="Run_Settings_Auto" xml:space="preserve">
+    <value>Automatic (let the runtime resolve it)</value>
+  </data>
+  <data name="Run_Settings_Explicit" xml:space="preserve">
+    <value>Explicit path</value>
+  </data>
+  <data name="Run_Vars_Title" xml:space="preserve">
+    <value>Variables (-V KEY=VALUE)</value>
+  </data>
+  <data name="Run_Add" xml:space="preserve">
+    <value>Añadir</value>
+  </data>
+  <data name="Run_Remove" xml:space="preserve">
+    <value>Quitar</value>
+  </data>
+  <data name="Run_Lbl_InitialContext" xml:space="preserve">
+    <value>Initial context</value>
+  </data>
+  <data name="Run_Inputs_Title" xml:space="preserve">
+    <value>Inputs</value>
+  </data>
+  <data name="Run_Lbl_InputsJson" xml:space="preserve">
+    <value>Inline JSON (--inputs)</value>
+  </data>
+  <data name="Run_Lbl_InputsFile" xml:space="preserve">
+    <value>File (--inputs-file)</value>
+  </data>
+  <data name="Run_Diag_Title" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Run_Lbl_Verbosity" xml:space="preserve">
+    <value>Verbosity (--verbose)</value>
+  </data>
+  <data name="Run_LlmLog" xml:space="preserve">
+    <value>Log LLM exchanges (--llm-log)</value>
+  </data>
+  <data name="Run_SettingsMounts_Title" xml:space="preserve">
+    <value>Mounts already in the selected appsettings</value>
+  </data>
+  <data name="Run_AllowExternal" xml:space="preserve">
+    <value>Allow mounts outside the working directory (--allow-external-mounts)</value>
+  </data>
+  <data name="Run_Col_Key" xml:space="preserve">
+    <value>Key</value>
+  </data>
+  <data name="Run_Col_Effective" xml:space="preserve">
+    <value>Effective mount</value>
+  </data>
+  <data name="Run_Col_Origin" xml:space="preserve">
+    <value>Origin</value>
+  </data>
+  <data name="Run_Cmd_Title" xml:space="preserve">
+    <value>COMANDO</value>
+  </data>
+  <data name="Vm_Run_StateIdle" xml:space="preserve">
+    <value>Lista para trabajar</value>
+  </data>
+  <data name="Vm_Run_StateRunning" xml:space="preserve">
+    <value>Ejecución en curso</value>
+  </data>
+  <data name="Vm_Run_StateDone" xml:space="preserve">
+    <value>Ejecución terminada</value>
+  </data>
+  <data name="Vm_Run_BadgeIdle" xml:space="preserve">
+    <value>en espera</value>
+  </data>
+  <data name="Vm_Run_BadgeRunning" xml:space="preserve">
+    <value>en curso</value>
+  </data>
+  <data name="Vm_Run_BadgeDone" xml:space="preserve">
+    <value>exitosa</value>
+  </data>
+  <data name="Vm_Run_BadgeFailed" xml:space="preserve">
+    <value>failed</value>
+  </data>
+  <data name="Vm_Run_BtnLaunch" xml:space="preserve">
+    <value>Lanzar ahora</value>
+  </data>
+  <data name="Vm_Run_BtnRunning" xml:space="preserve">
+    <value>En curso…</value>
+  </data>
+  <data name="Vm_Run_BtnRelaunch" xml:space="preserve">
+    <value>Relanzar</value>
+  </data>
+  <data name="Vm_Run_CliMissing" xml:space="preserve">
+    <value>No se encuentra el motor Orkeon — ejecute el diagnóstico.</value>
+  </data>
+  <data name="Vm_Run_MetaAgents" xml:space="preserve">
+    <value>{0} agents</value>
+  </data>
+  <data name="Vm_Run_MetaProfile" xml:space="preserve">
+    <value>setting {0}</value>
+  </data>
+  <data name="Run_ChangeTeam" xml:space="preserve">
+    <value>Cambiar de equipo</value>
+  </data>
+  <data name="Run_Journal_Title" xml:space="preserve">
+    <value>Registro técnico</value>
+  </data>
+  <data name="Run_Journal_Show" xml:space="preserve">
+    <value>Mostrar</value>
+  </data>
+  <data name="Run_Journal_Hide" xml:space="preserve">
+    <value>Ocultar</value>
+  </data>
+  <data name="Run_OpenResult" xml:space="preserve">
+    <value>Abrir el resultado</value>
+  </data>
+  <data name="Run_Advanced" xml:space="preserve">
+    <value>Advanced options</value>
+  </data>
+  <data name="Run_Verb_Normal" xml:space="preserve">
+    <value>normal</value>
+  </data>
+  <data name="Run_Verb_Detailed" xml:space="preserve">
+    <value>detailed</value>
+  </data>
+  <data name="Run_Verb_Diagnostic" xml:space="preserve">
+    <value>diagnostic</value>
+  </data>
+  <data name="Run_Empty" xml:space="preserve">
+    <value>Pick a team in “My teams” — its Launch button lands here.</value>
+  </data>
+  <data name="Run_Lines" xml:space="preserve">
+    <value>lines</value>
+  </data>
+  <data name="Run_Validate" xml:space="preserve">
+    <value>Validate (dry-run)</value>
+  </data>
+  <data name="Run_Run" xml:space="preserve">
+    <value>Lanzar</value>
+  </data>
+  <data name="Run_Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="Run_ClearLog" xml:space="preserve">
+    <value>Clear log</value>
+  </data>
+  <data name="Scr_Hist_Title" xml:space="preserve">
+    <value>Historial</value>
+  </data>
+  <data name="Scr_Hist_Sub" xml:space="preserve">
+    <value>Cada ejecución se guarda localmente y puede repetirse de forma idéntica.</value>
+  </data>
+  <data name="Hist_Replay" xml:space="preserve">
+    <value>Prepare replay</value>
+  </data>
+  <data name="Hist_Reload" xml:space="preserve">
+    <value>Reload</value>
+  </data>
+  <data name="Core_Validation_NoFindings" xml:space="preserve">
+    <value>Validation: no findings.</value>
+  </data>
+  <data name="Core_Validation_Summary" xml:space="preserve">
+    <value>Validation: {0} error(s), {1} warning(s), {2} note(s).</value>
+  </data>
+  <data name="Core_Launch_NothingRan" xml:space="preserve">
+    <value>Nothing ran — {0}</value>
+  </data>
+  <data name="Core_Usage_Tokens" xml:space="preserve">
+    <value>{0} tokens</value>
+  </data>
+  <data name="Core_Usage_Cache" xml:space="preserve">
+    <value>cache {0} % · {1} tokens</value>
+  </data>
+  <data name="Core_Usage_Seconds" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="Core_Usage_MinutesSeconds" xml:space="preserve">
+    <value>{0} min {1} s</value>
+  </data>
+  <data name="Core_Launch_ExitCode" xml:space="preserve">
+    <value>Exit code {0} — {1}</value>
+  </data>
+  <data name="Core_Preset_Ollama_Title" xml:space="preserve">
+    <value>Ollama</value>
+  </data>
+  <data name="Core_Preset_Ollama_Desc" xml:space="preserve">
+    <value>Local Ollama server.</value>
+  </data>
+  <data name="Core_Preset_Dmr_Title" xml:space="preserve">
+    <value>Docker Model Runner</value>
+  </data>
+  <data name="Core_Preset_Dmr_Desc" xml:space="preserve">
+    <value>Local llama.cpp engine served by Docker Desktop.</value>
+  </data>
+  <data name="Core_Preset_OpenAI_Title" xml:space="preserve">
+    <value>OpenAI</value>
+  </data>
+  <data name="Core_Preset_OpenAI_Desc" xml:space="preserve">
+    <value>OpenAI cloud API.</value>
+  </data>
+  <data name="Core_Preset_Custom_Title" xml:space="preserve">
+    <value>Otro compatible con OpenAI</value>
+  </data>
+  <data name="Core_Preset_Custom_Desc" xml:space="preserve">
+    <value>DeepSeek, GLM, Mistral, … — base URL and model required.</value>
+  </data>
+  <data name="Core_Preset_None_Title" xml:space="preserve">
+    <value>None / offline</value>
+  </data>
+  <data name="Core_Preset_None_Desc" xml:space="preserve">
+    <value>No LLM: runs use the &lt;undefined-llm&gt; echo provider.</value>
+  </data>
+  <data name="Core_Provider_Anthropic_Title" xml:space="preserve">
+    <value>Anthropic</value>
+  </data>
+  <data name="Core_Provider_Anthropic_Desc" xml:space="preserve">
+    <value>Claude</value>
+  </data>
+  <data name="Core_Provider_DeepSeek_Title" xml:space="preserve">
+    <value>DeepSeek</value>
+  </data>
+  <data name="Core_Provider_DeepSeek_Desc" xml:space="preserve">
+    <value>económico, muy capaz</value>
+  </data>
+  <data name="Core_Provider_Gemini_Title" xml:space="preserve">
+    <value>Gemini</value>
+  </data>
+  <data name="Core_Provider_Gemini_Desc" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="Core_Provider_Grok_Title" xml:space="preserve">
+    <value>Grok</value>
+  </data>
+  <data name="Core_Provider_Grok_Desc" xml:space="preserve">
+    <value>x.AI</value>
+  </data>
+  <data name="Core_Provider_MiniMax_Title" xml:space="preserve">
+    <value>MiniMax</value>
+  </data>
+  <data name="Core_Provider_MiniMax_Desc" xml:space="preserve">
+    <value>M2 family, intl + mainland endpoints</value>
+  </data>
+  <data name="Core_Provider_HuggingFace_Title" xml:space="preserve">
+    <value>HuggingFace</value>
+  </data>
+  <data name="Core_Provider_HuggingFace_Desc" xml:space="preserve">
+    <value>enrutador multimodelo</value>
+  </data>
+  <data name="Core_Provider_Kimi_Title" xml:space="preserve">
+    <value>Kimi</value>
+  </data>
+  <data name="Core_Provider_Kimi_Desc" xml:space="preserve">
+    <value>Moonshot AI</value>
+  </data>
+  <data name="Core_Provider_Mistral_Title" xml:space="preserve">
+    <value>Mistral</value>
+  </data>
+  <data name="Core_Provider_Mistral_Desc" xml:space="preserve">
+    <value>europeo</value>
+  </data>
+  <data name="Core_Provider_Qwen_Title" xml:space="preserve">
+    <value>Qwen</value>
+  </data>
+  <data name="Core_Provider_Qwen_Desc" xml:space="preserve">
+    <value>Alibaba DashScope</value>
+  </data>
+  <data name="Core_Provider_Together_Title" xml:space="preserve">
+    <value>Together AI</value>
+  </data>
+  <data name="Core_Provider_Together_Desc" xml:space="preserve">
+    <value>modelos abiertos</value>
+  </data>
+  <data name="Core_Provider_Zai_Title" xml:space="preserve">
+    <value>Z.AI (GLM)</value>
+  </data>
+  <data name="Core_Provider_Zai_Desc" xml:space="preserve">
+    <value>Zhipu</value>
+  </data>
+  <data name="Core_Provider_OpenAI_ShortDesc" xml:space="preserve">
+    <value>GPT</value>
+  </data>
+  <data name="Core_Provider_Custom_ShortDesc" xml:space="preserve">
+    <value>cualquier endpoint: URL + modelo a introducir</value>
+  </data>
+  <data name="Core_Provider_None_ShortDesc" xml:space="preserve">
+    <value>probar la instalación, sin modelo</value>
+  </data>
+  <data name="Core_Preset_Error_CustomIncomplete" xml:space="preserve">
+    <value>The custom preset requires both a base URL and a model.</value>
+  </data>
+  <data name="Core_Preset_Error_Unknown" xml:space="preserve">
+    <value>Unknown preset '{0}'. Supported: {1}.</value>
+  </data>
+  <data name="Core_Preset_Guidance_None" xml:space="preserve">
+    <value>No LLM configured: runs will use the &lt;undefined-llm&gt; echo provider. Configure one when you are ready.</value>
+  </data>
+  <data name="Core_Preset_Guidance_ApiKeyEnv" xml:space="preserve">
+    <value>API key: referenced from the environment — set it with: export {0}=&lt;your-key&gt;</value>
+  </data>
+  <data name="Core_Preset_Guidance_NonDefaultEnv" xml:space="preserve">
+    <value>Note: the Orkeon runtime reads `{0}` natively; `{1}` is only read by the `orkeon init` / `orkeon llm` probes.</value>
+  </data>
+  <data name="Core_Preset_Guidance_InlineKeyWarning" xml:space="preserve">
+    <value>WARNING: the API key is stored in plain text in the generated file. Prefer referencing it from the {0} environment variable.</value>
+  </data>
+  <data name="Core_Resolution_Step1_Title" xml:space="preserve">
+    <value>Explicit path</value>
+  </data>
+  <data name="Core_Resolution_Step1_Desc" xml:space="preserve">
+    <value>The file passed to the runner with --settings. If it does not exist, resolution stops and the runtime falls back to environment variables only.</value>
+  </data>
+  <data name="Core_Resolution_Step2_Title" xml:space="preserve">
+    <value>Next to the crew</value>
+  </data>
+  <data name="Core_Resolution_Step2_Desc" xml:space="preserve">
+    <value>{0} in the directory holding the crew configuration.</value>
+  </data>
+  <data name="Core_Resolution_Step3_Title" xml:space="preserve">
+    <value>Shared appsettings directory</value>
+  </data>
+  <data name="Core_Resolution_Step3_Desc" xml:space="preserve">
+    <value>appsettings/{0}, searched by walking up from the crew directory (the legacy _shared/ location is still accepted for one release).</value>
+  </data>
+  <data name="Core_Resolution_Step4_Title" xml:space="preserve">
+    <value>Archivo global por usuario</value>
+  </data>
+  <data name="Core_Resolution_Step4_Desc" xml:space="preserve">
+    <value>The file written by `orkeon init`: %APPDATA%\Orkeon\appsettings.json on Windows, $XDG_CONFIG_HOME/Orkeon/appsettings.json (else ~/.config/Orkeon/appsettings.json) elsewhere.</value>
+  </data>
+  <data name="Core_Rights_ReadOnly" xml:space="preserve">
+    <value>Read only</value>
+  </data>
+  <data name="Core_Rights_ReadWrite" xml:space="preserve">
+    <value>Read / write (create and delete allowed)</value>
+  </data>
+  <data name="Core_Rights_ReadWriteNoDelete" xml:space="preserve">
+    <value>Read / write without delete</value>
+  </data>
+  <data name="Core_Target_DirectoryRunNotice" xml:space="preserve">
+    <value>This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;', which requires Orkeon &gt;= {0}. The CLI installed alongside Studio supports this.</value>
+  </data>
+  <data name="Core_MountSemantics_Explanation" xml:space="preserve">
+    <value>The runner injects its own mount first — the crew's configuration directory as '/crew' (the script's directory as '/script' for a .ork.ts crew) — then appends each --mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So the appsettings mount at index 0 is always replaced by the auto-injected one, the first --mount replaces the appsettings mount at index 1, and the two lists are never merged. Appsettings entries past the last written index stay in force. The LLM log directory is mounted separately, hidden from agents, and shifts nothing.</value>
+  </data>
+  <data name="Core_MountSemantics_ExternalMounts" xml:space="preserve">
+    <value>--allow-external-mounts additionally whitelists each --mount base path under 'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working directory (same effect as ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value>
+  </data>
+  <data name="Core_MountSemantics_ThisLaunch" xml:space="preserve">
+    <value> For this launch the runner injects {0} mount(s) ({1}), so the first --mount occupies '{2}'.</value>
+  </data>
+  <data name="Vm_Config_NewDocument" xml:space="preserve">
+    <value>New empty document. Pick a preset to fill in the Llm section.</value>
+  </data>
+  <data name="Vm_Config_NoFileSelected" xml:space="preserve">
+    <value>No file selected.</value>
+  </data>
+  <data name="Vm_Config_Loaded" xml:space="preserve">
+    <value>Loaded {0}.</value>
+  </data>
+  <data name="Vm_Config_NotSavedErrors" xml:space="preserve">
+    <value>Not saved: {0} error(s) must be fixed first.</value>
+  </data>
+  <data name="Vm_Config_NotSavedNoDestination" xml:space="preserve">
+    <value>Not saved: no destination selected.</value>
+  </data>
+  <data name="Vm_Config_Saved" xml:space="preserve">
+    <value>Saved to {0}.</value>
+  </data>
+  <data name="Vm_Config_SavedLlmWarning" xml:space="preserve">
+    <value>Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider.</value>
+  </data>
+  <data name="Vm_Config_NoProblem" xml:space="preserve">
+    <value>No problem found.</value>
+  </data>
+  <data name="Vm_Config_ErrorsWarnings" xml:space="preserve">
+    <value>{0} error(s), {1} warning(s).</value>
+  </data>
+  <data name="Vm_Llm_NoBaseUrl" xml:space="preserve">
+    <value>No base URL — the runtime falls back to the echo provider.</value>
+  </data>
+  <data name="Vm_Llm_CustomProvider" xml:space="preserve">
+    <value>custom (host not in the known-endpoint table)</value>
+  </data>
+  <data name="Vm_Llm_ApiKeyRecommendation" xml:space="preserve">
+    <value>Prefer the {0} environment variable: the runtime reads it with precedence over this file, so the key never has to be stored in clear text.</value>
+  </data>
+  <data name="Vm_Llm_Testing" xml:space="preserve">
+    <value>Testing the connection…</value>
+  </data>
+  <data name="Vm_Diag_NoCheck" xml:space="preserve">
+    <value>orkeon doctor reported no check.</value>
+  </data>
+  <data name="Vm_Diag_AllGreen" xml:space="preserve">
+    <value>{0} check(s), all green.</value>
+  </data>
+  <data name="Vm_Diag_Findings" xml:space="preserve">
+    <value>{0} check(s): {1} failure(s), {2} warning(s).</value>
+  </data>
+  <data name="Vm_Mounts_SummaryOk" xml:space="preserve">
+    <value>{0} mount(s), no error.</value>
+  </data>
+  <data name="Vm_Mounts_SummaryErrors" xml:space="preserve">
+    <value>{0} mount(s), {1} error(s).</value>
+  </data>
+  <data name="Vm_Mounts_SelectCrewFirst" xml:space="preserve">
+    <value>Select a crew first: the runner injects its own mounts ahead of every --mount, so which configuration key each mount occupies depends on the crew being launched.</value>
+  </data>
+  <data name="Vm_Mounts_ExternalWarning" xml:space="preserve">
+    <value>Security: this lets a mount point anywhere on the machine, outside the working directory. Only enable it for a path you chose deliberately.</value>
+  </data>
+  <data name="Vm_Mounts_EffectiveNone" xml:space="preserve">
+    <value>{0} effective mount(s); no appsettings entry is replaced.</value>
+  </data>
+  <data name="Vm_Mounts_EffectiveReplaced" xml:space="preserve">
+    <value>{0} effective mount(s); {1} appsettings entry(ies) replaced by index.</value>
+  </data>
+  <data name="Vm_Mounts_OriginAuto" xml:space="preserve">
+    <value>auto (injected by the runner)</value>
+  </data>
+  <data name="Vm_Mounts_OriginReplaces" xml:space="preserve">
+    <value>{0} (replaces «{1}»)</value>
+  </data>
+  <data name="Vm_Launch_BinaryNotLocated" xml:space="preserve">
+    <value>The orkeon CLI has not been located yet.</value>
+  </data>
+  <data name="Vm_Launch_BinaryNotFound" xml:space="preserve">
+    <value>The orkeon CLI was not found.</value>
+  </data>
+  <data name="Vm_Launch_Ready" xml:space="preserve">
+    <value>Ready to launch.</value>
+  </data>
+  <data name="Vm_Launch_NoTarget" xml:space="preserve">
+    <value>No target resolved.</value>
+  </data>
+  <data name="Vm_Launch_NotLaunchedErrors" xml:space="preserve">
+    <value>Not launched: {0} error(s) must be fixed first.</value>
+  </data>
+  <data name="Vm_Launch_Cancelling" xml:space="preserve">
+    <value>Cancelling: the CLI is asked to stop, and is killed if it does not.</value>
+  </data>
+  <data name="Vm_Launch_NothingToReplay" xml:space="preserve">
+    <value>Nothing to replay: the entry for '{0}' recorded no arguments.</value>
+  </data>
+  <data name="Vm_Launch_Validating" xml:space="preserve">
+    <value>Validating…</value>
+  </data>
+  <data name="Vm_Launch_Running" xml:space="preserve">
+    <value>Running…</value>
+  </data>
+  <data name="Vm_RunProgress_NothingYet" xml:space="preserve">
+    <value>Nothing reported yet.</value>
+  </data>
+  <data name="Vm_RunProgress_TasksDone" xml:space="preserve">
+    <value>{0} task(s) finished.</value>
+  </data>
+  <data name="Vm_RunProgress_Succeeded" xml:space="preserve">
+    <value>Finished successfully.</value>
+  </data>
+  <data name="Vm_RunProgress_Failed" xml:space="preserve">
+    <value>Finished with a failure.</value>
+  </data>
+  <data name="Vm_RunProgress_Cost" xml:space="preserve">
+    <value>{0} tokens · {1}</value>
+  </data>
+  <data name="Vm_RunProgress_Watch" xml:space="preserve">
+    <value>Show progress instead of raw output</value>
+  </data>
+  <data name="Vm_RunProgress_Stream" xml:space="preserve">
+    <value>Stream generated text token by token</value>
+  </data>
+  <data name="Vm_RunProgress_Answer" xml:space="preserve">
+    <value>Responder</value>
+  </data>
+  <data name="Vm_RunProgress_AgentAsks" xml:space="preserve">
+    <value>An agent is asking:</value>
+  </data>
+  <data name="Vm_RunProgress_Reply" xml:space="preserve">
+    <value>Responder</value>
+  </data>
+  <data name="Vm_RunProgress_HubMessages" xml:space="preserve">
+    <value>Hub messages</value>
+  </data>
+  <data name="Vm_Target_None" xml:space="preserve">
+    <value>No target selected.</value>
+  </data>
+  <data name="Vm_Target_Resolved" xml:space="preserve">
+    <value>{0} — orkeon run {1}</value>
+  </data>
+  <data name="Vm_Target_PickScript" xml:space="preserve">
+    <value>{0} script(s) found: pick the one to run.</value>
+  </data>
+  <data name="Vm_Target_DetectionFailed" xml:space="preserve">
+    <value>Detection failed.</value>
+  </data>
+  <data name="Vm_Target_KindYamlFile" xml:space="preserve">
+    <value>YAML crew file</value>
+  </data>
+  <data name="Vm_Target_KindScriptFile" xml:space="preserve">
+    <value>Scripting crew file</value>
+  </data>
+  <data name="Vm_Target_KindCrewDirectory" xml:space="preserve">
+    <value>Multi-file crew directory</value>
+  </data>
+  <data name="Vm_Target_KindScriptDirectory" xml:space="preserve">
+    <value>Scripting crew directory</value>
+  </data>
+  <data name="Vm_Log_Lines" xml:space="preserve">
+    <value>{0} line(s).</value>
+  </data>
+  <data name="Vm_Log_LinesDropped" xml:space="preserve">
+    <value>{0} line(s); {1} older line(s) dropped (cap {2}).</value>
+  </data>
+  <data name="Vm_Dialog_OpenAppSettings" xml:space="preserve">
+    <value>Open appsettings.json</value>
+  </data>
+  <data name="Vm_Dialog_SaveAppSettings" xml:space="preserve">
+    <value>Save appsettings.json</value>
+  </data>
+  <data name="Vm_Dialog_SelectAppSettings" xml:space="preserve">
+    <value>Select an appsettings.json</value>
+  </data>
+  <data name="Vm_Dialog_SelectInputsFile" xml:space="preserve">
+    <value>Select an inputs file</value>
+  </data>
+  <data name="Vm_Dialog_SelectLlmLogDest" xml:space="preserve">
+    <value>Select the LLM log destination</value>
+  </data>
+  <data name="Vm_Dialog_SelectCrewDefinition" xml:space="preserve">
+    <value>Select a crew definition</value>
+  </data>
+  <data name="Vm_Dialog_SelectCrewDirectory" xml:space="preserve">
+    <value>Select a crew directory</value>
+  </data>
+  <data name="Vm_Dialog_SelectMountFolder" xml:space="preserve">
+    <value>Select the folder to mount</value>
+  </data>
+  <data name="Vm_Dialog_FilterJson" xml:space="preserve">
+    <value>JSON files|*.json|All files|*.*</value>
+  </data>
+  <data name="Vm_Dialog_FilterCrew" xml:space="preserve">
+    <value>Crew definitions|*.yaml;*.yml;*.ts;*.js|All files|*.*</value>
+  </data>
+  <data name="Vm_Dialog_FilterAll" xml:space="preserve">
+    <value>All files|*.*</value>
+  </data>
+  <data name="Vm_Forge_Example1" xml:space="preserve">
+    <value>Resumir cada mañana las novedades de un sitio</value>
+  </data>
+  <data name="Vm_Forge_Example2" xml:space="preserve">
+    <value>Producir un resumen semanal a partir de mis archivos</value>
+  </data>
+  <data name="Vm_Forge_Example3" xml:space="preserve">
+    <value>Comparar ofertas y señalarme la mejor</value>
+  </data>
+  <data name="Vm_Forge_Example4" xml:space="preserve">
+    <value>Convertir una carpeta de documentos en informe</value>
+  </data>
+  <data name="Vm_Forge_StatusPreparing" xml:space="preserve">
+    <value>I am preparing a proposal…</value>
+  </data>
+  <data name="Vm_Forge_StatusTrying" xml:space="preserve">
+    <value>Trying it on your example…</value>
+  </data>
+  <data name="Vm_Forge_StatusJudging" xml:space="preserve">
+    <value>Checking the result against what you asked…</value>
+  </data>
+  <data name="Vm_Forge_StatusReady" xml:space="preserve">
+    <value>Your solution is ready.</value>
+  </data>
+  <data name="Vm_Forge_StatusFailed" xml:space="preserve">
+    <value>Something went wrong — open the details for the technical part.</value>
+  </data>
+  <data name="Vm_Forge_StatusStopped" xml:space="preserve">
+    <value>Stopped — you can pick it up again from My solutions.</value>
+  </data>
+  <data name="Vm_Forge_Attempt" xml:space="preserve">
+    <value>Attempt {0}</value>
+  </data>
+  <data name="Vm_Forge_CheckUnverified" xml:space="preserve">
+    <value>I could not check this automatically — judge for yourself.</value>
+  </data>
+  <data name="Vm_Forge_ResultScore" xml:space="preserve">
+    <value>The try is done (score {0}).</value>
+  </data>
+  <data name="Vm_Forge_StorePickTitle" xml:space="preserve">
+    <value>Choose where to store the solution</value>
+  </data>
+  <data name="Mode_Label" xml:space="preserve">
+    <value>MODE</value>
+  </data>
+  <data name="Mode_Novice" xml:space="preserve">
+    <value>Novice</value>
+  </data>
+  <data name="Mode_Expert" xml:space="preserve">
+    <value>Expert</value>
+  </data>
+  <data name="Help_Title" xml:space="preserve">
+    <value>¿Necesita ayuda?</value>
+  </data>
+  <data name="Help_Body" xml:space="preserve">
+    <value>El modo Novato explica cada paso. Pase a Experto cuando quiera verlo todo.</value>
+  </data>
+  <data name="Btn_GuidedTour" xml:space="preserve">
+    <value>Visita guiada</value>
+  </data>
+  <data name="Splash_Skip" xml:space="preserve">
+    <value>Clic para omitir</value>
+  </data>
+  <data name="About_Tip" xml:space="preserve">
+    <value>Acerca de Orkeon Studio</value>
+  </data>
+  <data name="About_Eyebrow" xml:space="preserve">
+    <value>ACERCA DE</value>
+  </data>
+  <data name="About_Line" xml:space="preserve">
+    <value>El compañero de escritorio de Orkeon: usted compone equipos de agentes, Studio los pone a trabajar — cada uno confinado a las carpetas que abrió, cada ejecución trazada.</value>
+  </data>
+  <data name="About_Kama" xml:space="preserve">
+    <value>Meet Kama, Orkeon's chameleon. He adapts to whatever he is asked — the way an agent team is composed around your need, and not the other way round.</value>
+  </data>
+  <data name="About_Close" xml:space="preserve">
+    <value>Cerrar</value>
+  </data>
+  <data name="Grp_Teams" xml:space="preserve">
+    <value>EQUIPOS DE AGENTES</value>
+  </data>
+  <data name="Grp_Work" xml:space="preserve">
+    <value>TRABAJO</value>
+  </data>
+  <data name="Grp_Env" xml:space="preserve">
+    <value>ENTORNO</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Ajustes</value>
+  </data>
+  <data name="Scr_Settings_Title" xml:space="preserve">
+    <value>Ajustes</value>
+  </data>
+  <data name="Scr_Settings_SubNovice" xml:space="preserve">
+    <value>Dos cosas por configurar: qué modelo de IA, y qué carpetas pueden ver sus agentes.</value>
+  </data>
+  <data name="Scr_Settings_SubExpert" xml:space="preserve">
+    <value>appsettings.json — formularios tipados, montajes, límites de tasa, y el archivo bruto en solo lectura.</value>
+  </data>
+  <data name="Tab_Model" xml:space="preserve">
+    <value>Modelo de IA</value>
+  </data>
+  <data name="Tab_Folders" xml:space="preserve">
+    <value>Carpetas autorizadas</value>
+  </data>
+  <data name="Tab_Limits" xml:space="preserve">
+    <value>Límites e índice</value>
+  </data>
+  <data name="Tab_Json" xml:space="preserve">
+    <value>JSON bruto</value>
+  </data>
+  <data name="Studio_Model_Title" xml:space="preserve">
+    <value>Modelo del asistente de Studio</value>
+  </data>
+  <data name="Studio_Model_HintNovice" xml:space="preserve">
+    <value>Es quien compone sus equipos y redacta los veredictos de prueba.</value>
+  </data>
+  <data name="Studio_Model_HintExpert" xml:space="preserve">
+    <value>Usado por el asistente de creación, los veredictos y las respuestas a preguntas — independiente de los modelos de los equipos.</value>
+  </data>
+  <data name="Profile_Title" xml:space="preserve">
+    <value>Qué modelo de IA usan sus agentes</value>
+  </data>
+  <data name="Profile_HintNovice" xml:space="preserve">
+    <value>Un perfil es un modelo de IA y su dirección. Cree cuantos quiera y asigne uno a cada equipo.</value>
+  </data>
+  <data name="Profile_HintExpert" xml:space="preserve">
+    <value>Perfiles LLM con nombre y reutilizables. El marcado por defecto se aplica a los equipos nuevos y se refleja en la sección Llm; la clave de API se sigue leyendo del entorno.</value>
+  </data>
+  <data name="Profile_New" xml:space="preserve">
+    <value>Nuevo perfil</value>
+  </data>
+  <data name="Profile_Empty" xml:space="preserve">
+    <value>No setting yet — create one to give your teams a model.</value>
+  </data>
+  <data name="Profile_DefaultBadge" xml:space="preserve">
+    <value>por defecto</value>
+  </data>
+  <data name="Profile_StudioBadge" xml:space="preserve">
+    <value>assistant</value>
+  </data>
+  <data name="Profile_UseDefault" xml:space="preserve">
+    <value>Usar por defecto</value>
+  </data>
+  <data name="Profile_Edit" xml:space="preserve">
+    <value>Editar</value>
+  </data>
+  <data name="Profile_Duplicate" xml:space="preserve">
+    <value>Duplicar</value>
+  </data>
+  <data name="Profile_Delete" xml:space="preserve">
+    <value>Eliminar</value>
+  </data>
+  <data name="Profile_NewTitle" xml:space="preserve">
+    <value>Nuevo perfil</value>
+  </data>
+  <data name="Profile_EditTitle" xml:space="preserve">
+    <value>Editar el perfil</value>
+  </data>
+  <data name="Profile_EditSub" xml:space="preserve">
+    <value>Un perfil tiene un nombre y puede servir a varios equipos.</value>
+  </data>
+  <data name="Profile_NameLabel" xml:space="preserve">
+    <value>Nombre del perfil</value>
+  </data>
+  <data name="Profile_NameTaken" xml:space="preserve">
+    <value>Another setting already uses this name.</value>
+  </data>
+  <data name="Profile_ProviderLabel" xml:space="preserve">
+    <value>De dónde viene el modelo</value>
+  </data>
+  <data name="Profile_Save" xml:space="preserve">
+    <value>Guardar el perfil</value>
+  </data>
+  <data name="Btn_Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="Vm_Profiles_NewName" xml:space="preserve">
+    <value>Nuevo perfil</value>
+  </data>
+  <data name="Profile_GroupLocal" xml:space="preserve">
+    <value>EN SU MÁQUINA · GRATIS, SIN CLAVE</value>
+  </data>
+  <data name="Profile_GroupCloud" xml:space="preserve">
+    <value>EN LA NUBE · CLAVE DE API REQUERIDA</value>
+  </data>
+  <data name="Profile_KeyTitleFor" xml:space="preserve">
+    <value>API key {0}</value>
+  </data>
+  <data name="Profile_KeyTitleService" xml:space="preserve">
+    <value>Clave de API del servicio</value>
+  </data>
+  <data name="Profile_KeyExplainer" xml:space="preserve">
+    <value>Studio la guarda en su sesión de Windows — nunca en un archivo, nunca en una carpeta compartida.</value>
+  </data>
+  <data name="Profile_KeyPlaceholder" xml:space="preserve">
+    <value>Pegue su clave aquí (sk-…)</value>
+  </data>
+  <data name="Profile_KeyStore" xml:space="preserve">
+    <value>Recordar la clave</value>
+  </data>
+  <data name="Profile_KeyStatusSet" xml:space="preserve">
+    <value>clave recordada</value>
+  </data>
+  <data name="Profile_KeyStatusMissing" xml:space="preserve">
+    <value>ninguna clave detectada</value>
+  </data>
+  <data name="Profile_KeyNoKeyYet" xml:space="preserve">
+    <value>¿Aún sin clave?</value>
+  </data>
+  <data name="Profile_KeyOnVendorSite" xml:space="preserve">
+    <value>en el sitio del proveedor</value>
+  </data>
+  <data name="Profile_KeyExpertHint" xml:space="preserve">
+    <value>setx ORKEON_Llm__ApiKey "sk-…" — leída nativamente por el runtime, prioritaria sobre cualquier archivo</value>
+  </data>
+  <data name="Profile_LocalNote" xml:space="preserve">
+    <value>No hace falta clave — el modelo corre en su máquina, nada sale de ella.</value>
+  </data>
+  <data name="Profile_NoneNote" xml:space="preserve">
+    <value>Sin modelo, las ejecuciones responden en eco — útil para verificar la instalación.</value>
+  </data>
+  <data name="Profile_KeyMissingTest" xml:space="preserve">
+    <value>Clave de API ausente — recuérdela primero</value>
+  </data>
+  <data name="Vm_Profiles_CopySuffix" xml:space="preserve">
+    <value>copy</value>
+  </data>
+  <data name="Nav_Create" xml:space="preserve">
+    <value>Crear un equipo</value>
+  </data>
+  <data name="Nav_Teams" xml:space="preserve">
+    <value>Mis equipos</value>
+  </data>
+  <data name="Scr_Create_Title" xml:space="preserve">
+    <value>Crear un equipo de agentes</value>
+  </data>
+  <data name="Scr_Create_SubNovice" xml:space="preserve">
+    <value>Cuatro pasos: describir la necesidad, validar la composición, probar, adoptar. Nada se escribe antes del último.</value>
+  </data>
+  <data name="Scr_Create_SubExpert" xml:space="preserve">
+    <value>Asistente de composición. La definición YAML es editable desde el paso 2; la prueba se ejecuta en dry-run.</value>
+  </data>
+  <data name="Scr_Teams_Title" xml:space="preserve">
+    <value>Mis equipos de agentes</value>
+  </data>
+  <data name="Scr_Teams_Sub" xml:space="preserve">
+    <value>Cada equipo es una carpeta autónoma en esta máquina — copiable, compartible, eliminable.</value>
+  </data>
+  <data name="Wiz_Restart" xml:space="preserve">
+    <value>Empezar de nuevo</value>
+  </data>
+  <data name="Wiz_Stop" xml:space="preserve">
+    <value>Detener</value>
+  </data>
+  <data name="Wiz_AssistantBy" xml:space="preserve">
+    <value>Asistente impulsado por</value>
+  </data>
+  <data name="Wiz_AssistantMissing" xml:space="preserve">
+    <value>Asistente sin configurar — elija su modelo abajo.</value>
+  </data>
+  <data name="Wiz_Gate_Title" xml:space="preserve">
+    <value>El asistente necesita un modelo de IA</value>
+  </data>
+  <data name="Wiz_Gate_Body" xml:space="preserve">
+    <value>Es quien compondrá su equipo y redactará los veredictos de prueba. Elija un perfil — la creación se abre justo después, y podrá cambiarlo en cualquier momento en Ajustes.</value>
+  </data>
+  <data name="Wiz_ManageSettings" xml:space="preserve">
+    <value>Gestionar los perfiles</value>
+  </data>
+  <data name="Wiz_Step1" xml:space="preserve">
+    <value>Describir</value>
+  </data>
+  <data name="Wiz_Step2" xml:space="preserve">
+    <value>Componer</value>
+  </data>
+  <data name="Wiz_Step3" xml:space="preserve">
+    <value>Probar</value>
+  </data>
+  <data name="Wiz_Step4" xml:space="preserve">
+    <value>Adoptar</value>
+  </data>
+  <data name="Wiz_Reply" xml:space="preserve">
+    <value>Responder</value>
+  </data>
+  <data name="Wiz_Need_Title" xml:space="preserve">
+    <value>¿Qué trabajo quiere confiar a este equipo?</value>
+  </data>
+  <data name="Wiz_Need_Sub" xml:space="preserve">
+    <value>Escríbalo como se lo explicaría a un colega. Sin palabras técnicas.</value>
+  </data>
+  <data name="Wiz_Examples" xml:space="preserve">
+    <value>O PARTA DE UN EJEMPLO</value>
+  </data>
+  <data name="Wiz_Precisions_Title" xml:space="preserve">
+    <value>Tres precisiones</value>
+  </data>
+  <data name="Wiz_Precisions_Sub" xml:space="preserve">
+    <value>Determinan la composición del equipo. Podrá cambiarlo todo después.</value>
+  </data>
+  <data name="Wiz_Q_Freq" xml:space="preserve">
+    <value>¿Con qué frecuencia debe hacerse este trabajo?</value>
+  </data>
+  <data name="Wiz_Q_Source" xml:space="preserve">
+    <value>¿Dónde está la información que procesar?</value>
+  </data>
+  <data name="Wiz_Q_Output" xml:space="preserve">
+    <value>¿Qué debe producir el equipo?</value>
+  </data>
+  <data name="Wiz_Outcome_Label" xml:space="preserve">
+    <value>Describa ese resultado</value>
+  </data>
+  <data name="Wiz_Outcome_Hint" xml:space="preserve">
+    <value>Secciones esperadas, longitud, tono, lo que no debe aparecer. Opcional, pero es lo que más cambia el resultado.</value>
+  </data>
+  <data name="Wiz_Compose" xml:space="preserve">
+    <value>Componer el equipo</value>
+  </data>
+  <data name="Wiz_Proposal_Title" xml:space="preserve">
+    <value>Este es el equipo que propongo</value>
+  </data>
+  <data name="Wiz_Tools_Label" xml:space="preserve">
+    <value>Puede:</value>
+  </data>
+  <data name="Wiz_Validation_Title" xml:space="preserve">
+    <value>Validation findings</value>
+  </data>
+  <data name="Wiz_Files_Title" xml:space="preserve">
+    <value>Definición generada</value>
+  </data>
+  <data name="Wiz_Try_Title" xml:space="preserve">
+    <value>Trying the team on a real case</value>
+  </data>
+  <data name="Wiz_Try_Sub" xml:space="preserve">
+    <value>A trial changes nothing definitive: the result is written into a session folder you can throw away.</value>
+  </data>
+  <data name="Wiz_Verdict_Title" xml:space="preserve">
+    <value>The verdict</value>
+  </data>
+  <data name="Wiz_Checklist_Label" xml:space="preserve">
+    <value>Frente a lo que usted pedía</value>
+  </data>
+  <data name="Wiz_Adopt_Title" xml:space="preserve">
+    <value>Su equipo está listo. ¿Cómo quiere usarlo?</value>
+  </data>
+  <data name="Wiz_TeamName" xml:space="preserve">
+    <value>Nombre del equipo</value>
+  </data>
+  <data name="Wiz_AdoptProfile" xml:space="preserve">
+    <value>Perfil de modelo</value>
+  </data>
+  <data name="Wiz_Schedule_Label" xml:space="preserve">
+    <value>¿Cuándo debe trabajar?</value>
+  </data>
+  <data name="Wiz_Sched_OnDemand" xml:space="preserve">
+    <value>Bajo demanda</value>
+  </data>
+  <data name="Wiz_Sched_OnDemand_Hint" xml:space="preserve">
+    <value>la lanzo yo mismo</value>
+  </data>
+  <data name="Wiz_Sched_Daily" xml:space="preserve">
+    <value>Cada día</value>
+  </data>
+  <data name="Wiz_Sched_Daily_Hint" xml:space="preserve">
+    <value>automáticamente, a hora fija</value>
+  </data>
+  <data name="Wiz_Sched_Hourly" xml:space="preserve">
+    <value>Every hour</value>
+  </data>
+  <data name="Wiz_Sched_Hourly_Hint" xml:space="preserve">
+    <value>automatically, around the clock</value>
+  </data>
+  <data name="Wiz_Sched_At" xml:space="preserve">
+    <value>at</value>
+  </data>
+  <data name="Wiz_Sched_LocalTime" xml:space="preserve">
+    <value>hora local de esta máquina</value>
+  </data>
+  <data name="Wiz_Save" xml:space="preserve">
+    <value>Guardar en mis equipos</value>
+  </data>
+  <data name="Wiz_Saved_Title" xml:space="preserve">
+    <value>Equipo guardado</value>
+  </data>
+  <data name="Wiz_Saved_Path" xml:space="preserve">
+    <value>Guardado en</value>
+  </data>
+  <data name="Wiz_Saved_Install" xml:space="preserve">
+    <value>Comando de planificación (mostrado, nunca ejecutado por usted)</value>
+  </data>
+  <data name="Wiz_CreateAnother" xml:space="preserve">
+    <value>Crear otro equipo</value>
+  </data>
+  <data name="Wiz_Notes_Compose" xml:space="preserve">
+    <value>Instrucción de composición</value>
+  </data>
+  <data name="Wiz_Notes_Try" xml:space="preserve">
+    <value>Instrucción de prueba</value>
+  </data>
+  <data name="Wiz_Notes_Adopt" xml:space="preserve">
+    <value>Instrucción de adopción</value>
+  </data>
+  <data name="Wiz_Tech_Title" xml:space="preserve">
+    <value>Registro técnico</value>
+  </data>
+  <data name="Wiz_Tech_Toggle" xml:space="preserve">
+    <value>Show / hide</value>
+  </data>
+  <data name="Notes_Sub" xml:space="preserve">
+    <value>Una instrucción se aplica a todos los agentes, viaja con el equipo y se convierte en un punto a verificar en la prueba.</value>
+  </data>
+  <data name="Notes_Taken" xml:space="preserve">
+    <value>Instrucción tomada tal cual.</value>
+  </data>
+  <data name="Notes_Ask_Toggle" xml:space="preserve">
+    <value>Hacer una pregunta</value>
+  </data>
+  <data name="Notes_Ask_Title" xml:space="preserve">
+    <value>Ask the assistant</value>
+  </data>
+  <data name="Notes_Ask_Hint" xml:space="preserve">
+    <value>— changes nothing without your approval</value>
+  </data>
+  <data name="Notes_Clear" xml:space="preserve">
+    <value>Borrar</value>
+  </data>
+  <data name="Teams_Create" xml:space="preserve">
+    <value>Crear un equipo</value>
+  </data>
+  <data name="Teams_Launch" xml:space="preserve">
+    <value>Lanzar</value>
+  </data>
+  <data name="Teams_Duplicate" xml:space="preserve">
+    <value>Duplicar</value>
+  </data>
+  <data name="Teams_Delete" xml:space="preserve">
+    <value>Eliminar</value>
+  </data>
+  <data name="Teams_Empty" xml:space="preserve">
+    <value>No team yet — the wizard builds the first one with you.</value>
+  </data>
+  <data name="Teams_InProgress" xml:space="preserve">
+    <value>SESIONES EN CURSO</value>
+  </data>
+  <data name="Teams_Resume" xml:space="preserve">
+    <value>Reanudar</value>
+  </data>
+  <data name="Vm_Wizard_Freq_Once" xml:space="preserve">
+    <value>Una sola vez</value>
+  </data>
+  <data name="Vm_Wizard_Freq_Daily" xml:space="preserve">
+    <value>Cada día</value>
+  </data>
+  <data name="Vm_Wizard_Freq_Weekly" xml:space="preserve">
+    <value>Cada semana</value>
+  </data>
+  <data name="Vm_Wizard_Source_Folder" xml:space="preserve">
+    <value>Una carpeta de este PC</value>
+  </data>
+  <data name="Vm_Wizard_Source_Web" xml:space="preserve">
+    <value>Un sitio web</value>
+  </data>
+  <data name="Vm_Wizard_Source_Unknown" xml:space="preserve">
+    <value>Aún no lo sé</value>
+  </data>
+  <data name="Vm_Wizard_Output_Document" xml:space="preserve">
+    <value>Un documento</value>
+  </data>
+  <data name="Vm_Wizard_Output_Table" xml:space="preserve">
+    <value>Una tabla</value>
+  </data>
+  <data name="Vm_Wizard_Output_Message" xml:space="preserve">
+    <value>Un mensaje corto</value>
+  </data>
+  <data name="Vm_Wizard_Output_Other" xml:space="preserve">
+    <value>Otra cosa</value>
+  </data>
+  <data name="Vm_Wizard_Brief_Frequency" xml:space="preserve">
+    <value>How often: {0}.</value>
+  </data>
+  <data name="Vm_Wizard_Brief_Source" xml:space="preserve">
+    <value>Where the information lives: {0}.</value>
+  </data>
+  <data name="Vm_Wizard_Brief_Output" xml:space="preserve">
+    <value>Expected result: {0}.</value>
+  </data>
+  <data name="Vm_Wizard_Brief_Shape" xml:space="preserve">
+    <value>The result should look like: {0}</value>
+  </data>
+  <data name="Vm_Wizard_Brief_Consigne" xml:space="preserve">
+    <value>Standing instruction for every agent: {0}</value>
+  </data>
+  <data name="Vm_Wizard_AgentFallback" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="Vm_Wizard_PromoteFailed" xml:space="preserve">
+    <value>The save failed — the engine refused the promotion: {0}</value>
+  </data>
+  <data name="Vm_Import_Failed" xml:space="preserve">
+    <value>The import failed — nothing was copied. Check access to the source and try again.</value>
+  </data>
+  <data name="Vm_Wizard_ActivityDone" xml:space="preserve">
+    <value>{0} — done in {1} s</value>
+  </data>
+  <data name="Vm_Wizard_ActivityFailed" xml:space="preserve">
+    <value>{0} — failed</value>
+  </data>
+  <data name="Vm_Wizard_Hint_Describe" xml:space="preserve">
+    <value>Describa el trabajo para continuar.</value>
+  </data>
+  <data name="Vm_Wizard_Hint_Outcome" xml:space="preserve">
+    <value>El formato es libre: describa el resultado esperado.</value>
+  </data>
+  <data name="Vm_Wizard_Hint_Answers" xml:space="preserve">
+    <value>Responda a las tres precisiones.</value>
+  </data>
+  <data name="Vm_Wizard_Hint_Ready" xml:space="preserve">
+    <value>Todo está aquí — puedo componer el equipo.</value>
+  </data>
+  <data name="Vm_Wizard_Decision_Accept" xml:space="preserve">
+    <value>Me sirve</value>
+  </data>
+  <data name="Vm_Wizard_Decision_Retry" xml:space="preserve">
+    <value>Repetir la prueba</value>
+  </data>
+  <data name="Vm_Wizard_Decision_Refine" xml:space="preserve">
+    <value>Corregir y reintentar</value>
+  </data>
+  <data name="Vm_Wizard_Decision_Abort" xml:space="preserve">
+    <value>Abandon</value>
+  </data>
+  <data name="Vm_Teams_OnDemand" xml:space="preserve">
+    <value>Bajo demanda</value>
+  </data>
+  <data name="Vm_Teams_Daily" xml:space="preserve">
+    <value>Every day at {0}</value>
+  </data>
+  <data name="Vm_Teams_Hourly" xml:space="preserve">
+    <value>Every hour</value>
+  </data>
+  <data name="Nav_Import" xml:space="preserve">
+    <value>Importar</value>
+  </data>
+  <data name="Nav_Test" xml:space="preserve">
+    <value>Probar</value>
+  </data>
+  <data name="Scr_Import_Title" xml:space="preserve">
+    <value>Importar un equipo</value>
+  </data>
+  <data name="Scr_Import_SubNovice" xml:space="preserve">
+    <value>¿Alguien le compartió un equipo? Indique su carpeta: Studio verifica que esté completo y sin peligro antes de añadirlo.</value>
+  </data>
+  <data name="Scr_Import_SubExpert" xml:space="preserve">
+    <value>Una definición YAML, un script .ork.ts, o una carpeta de equipo completa. Nada se copia antes de su validación.</value>
+  </data>
+  <data name="Import_Secrets_Title" xml:space="preserve">
+    <value>An API key travels inside this definition</value>
+  </data>
+  <data name="Import_Secrets_Body" xml:space="preserve">
+    <value>These files look like they carry a pasted secret. Keys belong in the environment, never inside a shared folder — clean them up before importing.</value>
+  </data>
+  <data name="Import_Add" xml:space="preserve">
+    <value>Añadir a mis equipos</value>
+  </data>
+  <data name="Scr_Test_Title" xml:space="preserve">
+    <value>Probar un equipo</value>
+  </data>
+  <data name="Scr_Test_Sub" xml:space="preserve">
+    <value>Validación en seco y luego prueba real con un juego de ejemplo. Ningún efecto secundario fuera de la carpeta de prueba.</value>
+  </data>
+  <data name="Test_Team_Label" xml:space="preserve">
+    <value>Equipo</value>
+  </data>
+  <data name="Test_Validate" xml:space="preserve">
+    <value>Validar en seco</value>
+  </data>
+  <data name="Test_Run" xml:space="preserve">
+    <value>Lanzar la prueba</value>
+  </data>
+  <data name="Test_Findings" xml:space="preserve">
+    <value>HALLAZGOS DE VALIDACIÓN</value>
+  </data>
+  <data name="Vm_ValMsg_WIN-01" xml:space="preserve">
+    <value>No Llm section: the engine will start on its built-in defaults (Ollama, local).</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-JSON" xml:space="preserve">
+    <value>The settings file is not valid JSON.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-TYPE" xml:space="preserve">
+    <value>A settings field has the wrong type.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-LLM-APIKEY" xml:space="preserve">
+    <value>An API key is written inside the file — move it to an environment variable.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-RAG-PROFILE" xml:space="preserve">
+    <value>The document-index profile named here is unknown.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-MOUNT-EMPTY" xml:space="preserve">
+    <value>No folder is allowed yet: add at least one.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-MOUNT-FORMAT" xml:space="preserve">
+    <value>A folder entry is malformed.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-MOUNT-PATH" xml:space="preserve">
+    <value>An allowed folder does not exist on this machine.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-MOUNT-COLLISION" xml:space="preserve">
+    <value>Two folders share the same internal name.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-LAUNCH-OPTION" xml:space="preserve">
+    <value>This option does not apply to the selected team.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-LAUNCH-VERBOSE" xml:space="preserve">
+    <value>The verbosity level is not valid.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-LAUNCH-VAR" xml:space="preserve">
+    <value>A variable is malformed (expected name=value).</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-LAUNCH-MOUNT" xml:space="preserve">
+    <value>An added folder line is empty.</value>
+  </data>
+  <data name="Vm_ValMsg_STUDIO-LAUNCH-INPUTS" xml:space="preserve">
+    <value>Two conflicting input sources are set — keep one.</value>
+  </data>
+  <data name="Vm_Rag_WebFallbackActive" xml:space="preserve">
+    <value>Web fallback active: the corrective loop may fetch pages, each one validated against prompt injection.</value>
+  </data>
+  <data name="Vm_Rag_WebFallbackTransportOff" xml:space="preserve">
+    <value>Inactive: the corrective policy allows it, but the transport (Orkeon:Rag:WebFallback) is still off.</value>
+  </data>
+  <data name="Vm_Rag_WebFallbackPolicyOff" xml:space="preserve">
+    <value>Inactive: the transport is on, but the corrective policy (Orkeon:Rag:Corrective:WebFallback) is still off.</value>
+  </data>
+  <data name="Vm_Rag_WebFallbackOff" xml:space="preserve">
+    <value>Apagado. Ambos interruptores deben estar encendidos para que el bucle correctivo llegue a la web.</value>
+  </data>
+  <data name="Limits_Card_Rate" xml:space="preserve">
+    <value>Tasa</value>
+  </data>
+  <data name="Limits_Card_Rag" xml:space="preserve">
+    <value>Document index</value>
+  </data>
+  <data name="Limits_Card_Logging" xml:space="preserve">
+    <value>Logging</value>
+  </data>
+  <data name="Limits_Card_LlmLog" xml:space="preserve">
+    <value>LLM journal</value>
+  </data>
+  <data name="Vm_Hist_OutcomeSuccess" xml:space="preserve">
+    <value>Finished without errors.</value>
+  </data>
+  <data name="Vm_Hist_OutcomeFailed" xml:space="preserve">
+    <value>Failed (code {0}).</value>
+  </data>
+  <data name="Vm_Hist_OutcomeCancelled" xml:space="preserve">
+    <value>Interrupted before the end.</value>
+  </data>
+  <data name="Vm_Hist_OutcomeNotStarted" xml:space="preserve">
+    <value>Never started.</value>
+  </data>
+  <data name="Hist_Result" xml:space="preserve">
+    <value>Abrir el resultado</value>
+  </data>
+  <data name="Vm_Doctor_appsettings" xml:space="preserve">
+    <value>Los ajustes son legibles</value>
+  </data>
+  <data name="Vm_Doctor_dotnet-runtime" xml:space="preserve">
+    <value>El entorno .NET</value>
+  </data>
+  <data name="Vm_Doctor_esbuild" xml:space="preserve">
+    <value>El compilador de scripts (esbuild)</value>
+  </data>
+  <data name="Vm_Doctor_llm-config" xml:space="preserve">
+    <value>Configuración del modelo</value>
+  </data>
+  <data name="Vm_Doctor_llm-reachability" xml:space="preserve">
+    <value>Conexión al modelo</value>
+  </data>
+  <data name="Vm_Doctor_local-embeddings" xml:space="preserve">
+    <value>Los embeddings locales</value>
+  </data>
+  <data name="Vm_Doctor_onnx-reranker" xml:space="preserve">
+    <value>El reordenador ONNX</value>
+  </data>
+  <data name="Vm_Doctor_tree-sitter" xml:space="preserve">
+    <value>El analizador de código (tree-sitter)</value>
+  </data>
+  <data name="Vm_Doctor_workspace-write" xml:space="preserve">
+    <value>Write access to the workspace</value>
+  </data>
+  <data name="Vm_Diag_AllGood" xml:space="preserve">
+    <value>Everything is in place.</value>
+  </data>
+  <data name="Vm_Diag_FixNeeded" xml:space="preserve">
+    <value>Un punto que corregir antes de lanzar un equipo.</value>
+  </data>
+  <data name="Vm_Diag_Counts" xml:space="preserve">
+    <value>{0} checks passed, {1} warning(s), {2} failure(s).</value>
+  </data>
+  <data name="Diag_Fix" xml:space="preserve">
+    <value>Corregir en los ajustes</value>
+  </data>
+  <data name="Mounts_Novice_Title" xml:space="preserve">
+    <value>Carpetas que los agentes pueden ver</value>
+  </data>
+  <data name="Mounts_Novice_Intro" xml:space="preserve">
+    <value>Todo el resto de su máquina les es invisible. Una carpeta de solo lectura no puede modificarse nunca.</value>
+  </data>
+  <data name="Mounts_SeenAs" xml:space="preserve">
+    <value>seen as</value>
+  </data>
+  <data name="Mounts_Allow" xml:space="preserve">
+    <value>Autorizar una carpeta…</value>
+  </data>
+  <data name="Test_Inputs_Label" xml:space="preserve">
+    <value>Sample inputs (JSON)</value>
+  </data>
+  <data name="Test_Inputs_Hint" xml:space="preserve">
+    <value>Passed to the trial as --inputs; the real launches keep their own inputs.</value>
+  </data>
+  <data name="Vm_Import_RecognizedAgents" xml:space="preserve">
+    <value>{0} — {1} agent(s)</value>
+  </data>
+  <data name="Vm_Import_SecretsClean" xml:space="preserve">
+    <value>No secret in the files</value>
+  </data>
+  <data name="Vm_Import_SecretsCleanDetail" xml:space="preserve">
+    <value>API keys travel through the environment, and these files carry none.</value>
+  </data>
+  <data name="Vm_Import_SecretsFound" xml:space="preserve">
+    <value>Something looks like a pasted key</value>
+  </data>
+  <data name="Vm_Import_SecretsFoundDetail" xml:space="preserve">
+    <value>{0} file(s) carry what looks like an inline secret — see the warning below.</value>
+  </data>
+  <data name="Vm_Import_ToolsLater" xml:space="preserve">
+    <value>Herramientas</value>
+  </data>
+  <data name="Vm_Import_ToolsLaterDetail" xml:space="preserve">
+    <value>The team's tools are checked at its first launch.</value>
+  </data>
+  <data name="Import_Drop_Hint" xml:space="preserve">
+    <value>…or drop a folder / a .yaml or .ork.ts file here</value>
+  </data>
+  <data name="Import_Report_Title" xml:space="preserve">
+    <value>RECOGNITION REPORT</value>
+  </data>
+  <data name="Import_TestFirst" xml:space="preserve">
+    <value>Probar primero</value>
+  </data>
+  <data name="Run_Browse" xml:space="preserve">
+    <value>Examinar…</value>
+  </data>
+  <data name="Profile_UsedBy" xml:space="preserve">
+    <value>Usado por</value>
+  </data>
+  <data name="Studio_Model_Placeholder" xml:space="preserve">
+    <value>— to configure —</value>
+  </data>
+  <data name="Limits_DefaultsApply" xml:space="preserve">
+    <value>Sección ausente del archivo: el motor aplica sus valores por defecto.</value>
+  </data>
+  <data name="Hist_Empty" xml:space="preserve">
+    <value>No run yet. The first launch of a team will appear here.</value>
+  </data>
+  <data name="Test_Empty" xml:space="preserve">
+    <value>Pick a team to prepare a trial.</value>
+  </data>
+  <data name="Teams_Open" xml:space="preserve">
+    <value>Open the folder</value>
+  </data>
+  <data name="Diag_LlmConfigHint" xml:space="preserve">
+    <value>Esta es la base común (archivo de ajustes + entorno de este shell). Un equipo con su propio perfil de modelo lo recibe encima, solo al lanzarse — no aparece aquí.</value>
+  </data>
+  <data name="Secrets_Title" xml:space="preserve">
+    <value>Claves de API</value>
+  </data>
+  <data name="Secrets_Intro" xml:space="preserve">
+    <value>Las claves viven en sus variables de entorno de usuario, nunca en un archivo. Pegue una clave y recuérdela; el campo se vacía una vez guardada.</value>
+  </data>
+  <data name="Vm_Config_NotSavedNeedFolder" xml:space="preserve">
+    <value>Not saved yet: authorize at least one folder (Dossiers autorisés tab) — your changes will be saved as soon as one is in place.</value>
+  </data>
+  <data name="Vm_Wiz_AssistantNotRunning" xml:space="preserve">
+    <value>The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.</value>
+  </data>
+  <data name="Run_Journal_Copy" xml:space="preserve">
+    <value>Copiar</value>
+  </data>
+  <data name="Profile_Lbl_Temperature" xml:space="preserve">
+    <value>Temperature (optional)</value>
+  </data>
+  <data name="Profile_Temperature_Hint" xml:space="preserve">
+    <value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value>
+  </data>
+  <data name="Profile_Lbl_Timeout" xml:space="preserve">
+    <value>Response timeout (s, optional)</value>
+  </data>
+  <data name="Profile_Timeout_Hint" xml:space="preserve">
+    <value>Empty: 30 s. Reasoning models (Kimi K3, thinking modes) often need 120–300 s.</value>
+  </data>
+  <data name="Vm_Picker_AlreadyMounted" xml:space="preserve">
+    <value>ya autorizado</value>
+  </data>
+  <data name="Vm_TeamMounts_Title" xml:space="preserve">
+    <value>Folders of “{0}”</value>
+  </data>
+  <data name="Vm_TeamMounts_None" xml:space="preserve">
+    <value>Sin carpeta, este equipo no podrá leer ni escribir ningún archivo.</value>
+  </data>
+  <data name="Vm_TeamMounts_Summary" xml:space="preserve">
+    <value>{0} folders: {1}</value>
+  </data>
+  <data name="Vm_AgentEditor_TitleAdd" xml:space="preserve">
+    <value>Añadir un agente</value>
+  </data>
+  <data name="Vm_AgentEditor_TitleEdit" xml:space="preserve">
+    <value>Editar el agente</value>
+  </data>
+  <data name="Vm_AgentEditor_Add" xml:space="preserve">
+    <value>Añadir al equipo</value>
+  </data>
+  <data name="Picker_Title" xml:space="preserve">
+    <value>Autorizar una carpeta</value>
+  </data>
+  <data name="Picker_Sub" xml:space="preserve">
+    <value>Elija la carpeta, y luego qué podrán hacer los agentes con ella.</value>
+  </data>
+  <data name="Picker_Browse" xml:space="preserve">
+    <value>Examinar…</value>
+  </data>
+  <data name="Picker_RightsLabel" xml:space="preserve">
+    <value>Lo que los agentes podrán hacer</value>
+  </data>
+  <data name="Picker_ReadOnly" xml:space="preserve">
+    <value>Read only</value>
+  </data>
+  <data name="Picker_ReadOnly_Hint" xml:space="preserve">
+    <value>los agentes leen, nunca modifican</value>
+  </data>
+  <data name="Picker_ReadWrite" xml:space="preserve">
+    <value>Lectura y escritura</value>
+  </data>
+  <data name="Picker_ReadWrite_Hint" xml:space="preserve">
+    <value>los agentes pueden escribir ahí sus resultados</value>
+  </data>
+  <data name="Picker_WrittenAs" xml:space="preserve">
+    <value>Se escribirá como</value>
+  </data>
+  <data name="Picker_Confirm" xml:space="preserve">
+    <value>Autorizar esta carpeta</value>
+  </data>
+  <data name="TeamMounts_Sub" xml:space="preserve">
+    <value>Marque lo que este equipo puede ver. Toda carpeta desmarcada le resulta invisible, aunque otros equipos la usen.</value>
+  </data>
+  <data name="TeamMounts_AddAnother" xml:space="preserve">
+    <value>Autorizar otra carpeta…</value>
+  </data>
+  <data name="AllowedFolders_Title" xml:space="preserve">
+    <value>Add an allowed folder</value>
+  </data>
+  <data name="AllowedFolders_Sub" xml:space="preserve">
+    <value>Pick from the folders declared in Settings › Authorized folders. The team sees them with the same rights.</value>
+  </data>
+  <data name="AllowedFolders_Empty" xml:space="preserve">
+    <value>No folder is declared yet in the settings.</value>
+  </data>
+  <data name="AllowedFolders_Declare" xml:space="preserve">
+    <value>Declare a new folder…</value>
+  </data>
+  <data name="AllowedFolders_Confirm" xml:space="preserve">
+    <value>Añadir al equipo</value>
+  </data>
+  <data name="Vm_Wizard_DroppedDerived" xml:space="preserve">
+    <value>{0}: nothing will be bound to it — the agents writing there will fail.</value>
+  </data>
+  <data name="Wiz_RestoreFolders" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="Vm_Run_BlockedUndeclared" xml:space="preserve">
+    <value>This team uses folders your settings do not allow: {0}. Declare them in Settings › Authorized folders, or remove them from the team.</value>
+  </data>
+  <data name="Run_OpenAllowedFolders" xml:space="preserve">
+    <value>Open authorized folders</value>
+  </data>
+  <data name="Wiz_UndeclaredLegend" xml:space="preserve">
+    <value>In red: folders that are not among your authorized folders.</value>
+  </data>
+  <data name="Vm_AllowedFolders_AlreadyAdded" xml:space="preserve">
+    <value>already added</value>
+  </data>
+  <data name="Vm_AllowedFolders_Conflict" xml:space="preserve">
+    <value>{0} is already used by another folder</value>
+  </data>
+  <data name="Vm_AllowedFolders_Summary" xml:space="preserve">
+    <value>{0} folder(s) selected</value>
+  </data>
+  <data name="Vm_AllowedFolders_Declared" xml:space="preserve">
+    <value>“{0}” added to the authorized folders</value>
+  </data>
+  <data name="Vm_AllowedFolders_NotSaved" xml:space="preserve">
+    <value>“{0}” added, but the settings could not be saved — {1}</value>
+  </data>
+  <data name="AgentEd_Sub" xml:space="preserve">
+    <value>Un agente hace una sola cosa. Descríbala en una frase, y abra solo las capacidades necesarias.</value>
+  </data>
+  <data name="AgentEd_Name" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="AgentEd_Does" xml:space="preserve">
+    <value>Qué hace</value>
+  </data>
+  <data name="AgentEd_Does_Placeholder" xml:space="preserve">
+    <value>Ej.: relee el resumen y verifica que cada afirmación viene de una página citada</value>
+  </data>
+  <data name="AgentEd_Can" xml:space="preserve">
+    <value>Qué puede hacer</value>
+  </data>
+  <data name="AgentEd_Scope" xml:space="preserve">
+    <value>En qué carpeta</value>
+  </data>
+  <data name="AgentEd_Remove" xml:space="preserve">
+    <value>Quitar del equipo</value>
+  </data>
+  <data name="AgentEd_Wait" xml:space="preserve">
+    <value>The step in progress must finish first</value>
+  </data>
+  <data name="Vm_Dialog_ExportDestination" xml:space="preserve">
+    <value>Choose where to export the team</value>
+  </data>
+  <data name="Wiz_TeamFolders" xml:space="preserve">
+    <value>Carpetas de este equipo</value>
+  </data>
+  <data name="Wiz_AllowFolder" xml:space="preserve">
+    <value>Autorizar una carpeta</value>
+  </data>
+  <data name="Wiz_FoldersHint" xml:space="preserve">
+    <value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value>
+  </data>
+  <data name="Wiz_DerivedHint" xml:space="preserve">
+    <value>Vienen de los agentes: se cambia lo que un agente ve editando ese agente.</value>
+  </data>
+  <data name="Teams_Modify" xml:space="preserve">
+    <value>Editar</value>
+  </data>
+  <data name="Teams_Modify_Tip" xml:space="preserve">
+    <value>Reabrir el asistente sobre este equipo</value>
+  </data>
+  <data name="Teams_Modify_NoSession" xml:space="preserve">
+    <value>No workshop session points at this team (imported, or its session was deleted).</value>
+  </data>
+  <data name="Wiz_Saved_ModifyTeam" xml:space="preserve">
+    <value>Editar el equipo</value>
+  </data>
+  <data name="Wiz_Saved_Retry" xml:space="preserve">
+    <value>Repetir la prueba</value>
+  </data>
+  <data name="Wiz_Saved_NotFrozen" xml:space="preserve">
+    <value>Nada queda fijado: aún puede editar un agente, repetir una prueba y adoptar de nuevo — el equipo guardado se actualiza, no se duplica.</value>
+  </data>
+  <data name="Wiz_Reopened_Note" xml:space="preserve">
+    <value>Re-adopting regenerates run.sh and crew/ — hand edits inside those files will be lost.</value>
+  </data>
+  <data name="Wiz_Adopt_Change" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="Wiz_AgentCan" xml:space="preserve">
+    <value>Puede:</value>
+  </data>
+  <data name="Wiz_Modify" xml:space="preserve">
+    <value>Editar</value>
+  </data>
+  <data name="Wiz_AddAgent" xml:space="preserve">
+    <value>Añadir un agente</value>
+  </data>
+  <data name="Vm_Teams_MountRo" xml:space="preserve">
+    <value>{0} (read)</value>
+  </data>
+  <data name="Vm_Teams_MountRw" xml:space="preserve">
+    <value>{0} (read, write)</value>
+  </data>
+  <data name="Vm_Teams_MountUnreadable" xml:space="preserve">
+    <value>unreadable folder</value>
+  </data>
+  <data name="Vm_Teams_ToTest" xml:space="preserve">
+    <value>por probar</value>
+  </data>
+  <data name="Vm_Teams_LastRun" xml:space="preserve">
+    <value>Last run: {0}, {1}</value>
+  </data>
+  <data name="Vm_Teams_RunOk" xml:space="preserve">
+    <value>exitosa</value>
+  </data>
+  <data name="Vm_Teams_RunFail" xml:space="preserve">
+    <value>failed</value>
+  </data>
+  <data name="Vm_Teams_NeverRan" xml:space="preserve">
+    <value>Nunca ejecutada</value>
+  </data>
+  <data name="Teams_MountsLabel" xml:space="preserve">
+    <value>Carpetas:</value>
+  </data>
+  <data name="Teams_NoMounts" xml:space="preserve">
+    <value>Sin carpeta asociada —</value>
+  </data>
+  <data name="Teams_ChangeMounts" xml:space="preserve">
+    <value>Cambiar las carpetas</value>
+  </data>
+  <data name="Teams_Export" xml:space="preserve">
+    <value>Exportar</value>
+  </data>
+  <data name="Teams_Test" xml:space="preserve">
+    <value>Probar</value>
+  </data>
+  <data name="Teams_SettingLabel" xml:space="preserve">
+    <value>Setting: {0}</value>
+  </data>
+  <data name="Vm_Run_MetaReads" xml:space="preserve">
+    <value>reads {0}</value>
+  </data>
+  <data name="Vm_Run_MetaWrites" xml:space="preserve">
+    <value>writes to {0}</value>
+  </data>
+  <data name="Run_ValidateFirst" xml:space="preserve">
+    <value>Validación en seco primero</value>
+  </data>
+  <data name="Test_Console_Empty" xml:space="preserve">
+    <value>Waiting for a trial…</value>
+  </data>
+  <data name="Vm_Import_MountsDeclared" xml:space="preserve">
+    <value>Declared folders</value>
+  </data>
+  <data name="Vm_Import_MountsDeclaredDetail" xml:space="preserve">
+    <value>{0} folder(s): {1}</value>
+  </data>
+  <data name="Vm_Import_MountsNone" xml:space="preserve">
+    <value>No declared folder</value>
+  </data>
+  <data name="Vm_Import_MountsNoneDetail" xml:space="preserve">
+    <value>Allow its folders after adding — Mes équipes, Changer les dossiers.</value>
+  </data>
+  <data name="Wiz_TrialCommand" xml:space="preserve">
+    <value>TRIAL COMMAND</value>
+  </data>
+  <data name="Diag_Copied" xml:space="preserve">
+    <value>¡Copiado!</value>
+  </data>
+  <data name="Diag_Card_Novice" xml:space="preserve">
+    <value>Comprobación de la instalación</value>
+  </data>
+  <data name="Wiz_Help_Title" xml:space="preserve">
+    <value>What this step does</value>
+  </data>
+  <data name="Wiz_Help_Step1" xml:space="preserve">
+    <value>Describe what you need in your own words — folders to read, the result you expect, how often. The assistant asks its questions until the brief is clear; nothing runs on your machine yet.</value>
+  </data>
+  <data name="Wiz_Help_Step2" xml:space="preserve">
+    <value>The assistant proposes a team: one agent per job, each with only the capacities it needs. You can edit an agent, add one, and choose which folders the team may see once adopted.</value>
+  </data>
+  <data name="Wiz_Help_Step3" xml:space="preserve">
+    <value>The team rehearses on a sample, in its own sandbox — nothing outside it is touched. The verdict tells you honestly whether the result meets what you asked at step 1.</value>
+  </data>
+  <data name="Wiz_Help_Step4" xml:space="preserve">
+    <value>Adopting stores the team as an ordinary folder under your profile. Scheduling is shown as a command, never run for you; the team then appears in Mes équipes.</value>
+  </data>
+  <data name="Mounts_Novice_Empty" xml:space="preserve">
+    <value>No folder is allowed yet. The agents will see nothing until you allow at least one.</value>
+  </data>
+  <data name="Vm_Config_NotSavedWriteFailed" xml:space="preserve">
+    <value>Not saved — the file could not be written: {0}</value>
+  </data>
+  <data name="Vm_Teams_ExportedTo" xml:space="preserve">
+    <value>Team exported to {0}</value>
+  </data>
+  <data name="Vm_Teams_ExportFailed" xml:space="preserve">
+    <value>Export refused — the destination already exists, or the disk said no.</value>
+  </data>
+  <data name="Wiz_TryTeam" xml:space="preserve">
+    <value>Probar el equipo</value>
+  </data>
+  <data name="Wiz_Paused_Hint" xml:space="preserve">
+    <value>Composed and validated — nothing has run yet.</value>
+  </data>
+  <data name="Teams_Delete_Confirm" xml:space="preserve">
+    <value>¿Eliminar este equipo?</value>
+  </data>
+  <data name="Teams_Session_Delete_Confirm" xml:space="preserve">
+    <value>Delete this draft?</value>
+  </data>
+  <data name="Teams_Session_Delete" xml:space="preserve">
+    <value>Eliminar</value>
+  </data>
+  <data name="Teams_Empty_Title" xml:space="preserve">
+    <value>Ningún equipo por ahora</value>
+  </data>
+  <data name="Teams_Empty_Body" xml:space="preserve">
+    <value>Describa un trabajo que confiar, el asistente compone el equipo y usted lo prueba antes de adoptarlo.</value>
+  </data>
+  <data name="Teams_Import" xml:space="preserve">
+    <value>Importar un equipo</value>
+  </data>
+  <data name="Teams_NoSessions" xml:space="preserve">
+    <value>Ninguna sesión en curso. Una creación interrumpida reaparecerá aquí.</value>
+  </data>
+  <data name="Vm_Wiz_DraftStepPattern" xml:space="preserve">
+    <value>Step {0} of {1} · {2}</value>
+  </data>
+  <data name="Vm_Wiz_DraftTitle" xml:space="preserve">
+    <value>Creación en curso</value>
+  </data>
+  <data name="Vm_Wiz_DraftWaitingTitle" xml:space="preserve">
+    <value>El asistente espera su respuesta</value>
+  </data>
+  <data name="Vm_Wiz_DraftResume" xml:space="preserve">
+    <value>retomar la conversación</value>
+  </data>
+  <data name="Vm_Chat_Title" xml:space="preserve">
+    <value>Conversación con el asistente</value>
+  </data>
+  <data name="Vm_Chat_Recap" xml:space="preserve">
+    <value>Lo que he anotado</value>
+  </data>
+  <data name="Vm_Chat_YourBrief" xml:space="preserve">
+    <value>SU BRIEFING</value>
+  </data>
+  <data name="Vm_Chat_Edit" xml:space="preserve">
+    <value>Editar</value>
+  </data>
+  <data name="Vm_Chat_Stop" xml:space="preserve">
+    <value>Detener</value>
+  </data>
+  <data name="Vm_Chat_Send" xml:space="preserve">
+    <value>Enviar</value>
+  </data>
+  <data name="Vm_Chat_Reply" xml:space="preserve">
+    <value>Responder</value>
+  </data>
+  <data name="Vm_Chat_Skip" xml:space="preserve">
+    <value>Omitir esta pregunta</value>
+  </data>
+  <data name="Vm_Chat_SkipAnswer" xml:space="preserve">
+    <value>No lo sé — haz lo mejor posible.</value>
+  </data>
+  <data name="Vm_Chat_KeyHint" xml:space="preserve">
+    <value>Intro para enviar · Mayús+Intro para saltar de línea</value>
+  </data>
+  <data name="Vm_Chat_Placeholder" xml:space="preserve">
+    <value>Haga su pregunta al asistente…</value>
+  </data>
+  <data name="Vm_Chat_Ask" xml:space="preserve">
+    <value>Hacer una pregunta</value>
+  </data>
+  <data name="Vm_Chat_AskShort" xml:space="preserve">
+    <value>Pregunta</value>
+  </data>
+  <data name="Vm_Chat_AskTip" xml:space="preserve">
+    <value>Hacer una pregunta al asistente</value>
+  </data>
+  <data name="Vm_Chat_SeeConversation" xml:space="preserve">
+    <value>Ver la conversación</value>
+  </data>
+  <data name="Vm_Chat_Close" xml:space="preserve">
+    <value>Close the conversation</value>
+  </data>
+  <data name="Vm_Chat_BriefEmpty" xml:space="preserve">
+    <value>Aún no ha descrito nada.</value>
+  </data>
+  <data name="Vm_Chat_StripBusy" xml:space="preserve">
+    <value>El asistente está componiendo su equipo</value>
+  </data>
+  <data name="Vm_Chat_StripAsking" xml:space="preserve">
+    <value>El asistente le pide una precisión</value>
+  </data>
+  <data name="Vm_Chat_StatusQuestionPattern" xml:space="preserve">
+    <value>question {0} of {1} · waiting for your answer</value>
+  </data>
+  <data name="Vm_Chat_StatusDonePattern" xml:space="preserve">
+    <value>brief complete · {0} message(s)</value>
+  </data>
+  <data name="Vm_Chat_StatusMessagesPattern" xml:space="preserve">
+    <value>{0} message(s)</value>
+  </data>
+  <data name="Vm_Chat_StatusNoQuestion" xml:space="preserve">
+    <value>ninguna pregunta por ahora</value>
+  </data>
+  <data name="Vm_Chat_RecapProgressPattern" xml:space="preserve">
+    <value>{0} / {1}</value>
+  </data>
+  <data name="Vm_Chat_ProfileSuffixPattern" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="Vm_Chat_Status1" xml:space="preserve">
+    <value>leyendo el briefing</value>
+  </data>
+  <data name="Vm_Chat_Status2" xml:space="preserve">
+    <value>analizando la fuente</value>
+  </data>
+  <data name="Vm_Chat_Status3" xml:space="preserve">
+    <value>componiendo los roles</value>
+  </data>
+  <data name="Vm_Chat_Thinking1" xml:space="preserve">
+    <value>Estoy releyendo su descripción…</value>
+  </data>
+  <data name="Vm_Chat_Thinking2" xml:space="preserve">
+    <value>Estoy mirando dónde están los documentos…</value>
+  </data>
+  <data name="Vm_Chat_Thinking3" xml:space="preserve">
+    <value>Estoy esbozando los roles del equipo…</value>
+  </data>
+  <data name="Vm_Chat_WrapBody" xml:space="preserve">
+    <value>Gracias — tengo lo necesario para componer el equipo.</value>
+  </data>
+  <data name="Vm_Chat_WrapDetail" xml:space="preserve">
+    <value>Le muestro la composición propuesta: los agentes, las carpetas autorizadas, y lo que cada uno puede hacer.</value>
+  </data>
+  <data name="Vm_Chat_Q1_Fact" xml:space="preserve">
+    <value>Ubicación de la carpeta</value>
+  </data>
+  <data name="Vm_Chat_Q1_Body" xml:space="preserve">
+    <value>¿Dónde está esa carpeta, y qué contiene?</value>
+  </data>
+  <data name="Vm_Chat_Q1_Detail" xml:space="preserve">
+    <value>Por ejemplo «Documentos/Actas», con archivos Word o PDF. Si me da la ruta exacta, puedo echar un vistazo para verificar.</value>
+  </data>
+  <data name="Vm_Chat_Q1_Hint" xml:space="preserve">
+    <value>Si no está seguro, dígalo: asumiré documentos de texto en una sola carpeta.</value>
+  </data>
+  <data name="Vm_Chat_Q1_Placeholder" xml:space="preserve">
+    <value>e.g. C:\Users\me\Documents\Meeting notes</value>
+  </data>
+  <data name="Vm_Chat_Q1_Chip1" xml:space="preserve">
+    <value>Documents/Meeting notes</value>
+  </data>
+  <data name="Vm_Chat_Q1_Chip2" xml:space="preserve">
+    <value>Elegir una carpeta…</value>
+  </data>
+  <data name="Vm_Chat_Q1_Chip3" xml:space="preserve">
+    <value>Aún no lo sé</value>
+  </data>
+  <data name="Vm_Chat_Q1_Value1" xml:space="preserve">
+    <value>Documents/Meeting notes</value>
+  </data>
+  <data name="Vm_Chat_Q1_Value2" xml:space="preserve">
+    <value>Carpeta por elegir</value>
+  </data>
+  <data name="Vm_Chat_Q1_Value3" xml:space="preserve">
+    <value>Por precisar más tarde</value>
+  </data>
+  <data name="Vm_Chat_Q2_Fact" xml:space="preserve">
+    <value>Delivery moment</value>
+  </data>
+  <data name="Vm_Chat_Q2_Body" xml:space="preserve">
+    <value>¿Cuándo quiere recibir el resumen?</value>
+  </data>
+  <data name="Vm_Chat_Q2_Detail" xml:space="preserve">
+    <value>El equipo trabaja solo a esa hora, incluso con Studio cerrado. Podrá cambiar el horario tras la adopción.</value>
+  </data>
+  <data name="Vm_Chat_Q2_Placeholder" xml:space="preserve">
+    <value>Ej.: el viernes hacia las 17 h</value>
+  </data>
+  <data name="Vm_Chat_Q2_Chip1" xml:space="preserve">
+    <value>Friday 5 pm</value>
+  </data>
+  <data name="Vm_Chat_Q2_Chip2" xml:space="preserve">
+    <value>Monday 8 am</value>
+  </data>
+  <data name="Vm_Chat_Q2_Chip3" xml:space="preserve">
+    <value>Whenever</value>
+  </data>
+  <data name="Vm_Chat_Q2_Value1" xml:space="preserve">
+    <value>Friday 5 pm</value>
+  </data>
+  <data name="Vm_Chat_Q2_Value2" xml:space="preserve">
+    <value>Monday 8 am</value>
+  </data>
+  <data name="Vm_Chat_Q2_Value3" xml:space="preserve">
+    <value>Free schedule</value>
+  </data>
+  <data name="Vm_Chat_Q3_Fact" xml:space="preserve">
+    <value>Límite que respetar</value>
+  </data>
+  <data name="Vm_Chat_Q3_Body" xml:space="preserve">
+    <value>¿Hay algo que el equipo no deba hacer nunca?</value>
+  </data>
+  <data name="Vm_Chat_Q3_Detail" xml:space="preserve">
+    <value>Un límite claro vale más que una instrucción vaga: archivos que ignorar, información que no citar, tono que evitar.</value>
+  </data>
+  <data name="Vm_Chat_Q3_Hint" xml:space="preserve">
+    <value>Puede omitirla: me limitaré entonces a la lectura sola de la carpeta.</value>
+  </data>
+  <data name="Vm_Chat_Q3_Placeholder" xml:space="preserve">
+    <value>Ej.: no citar nunca los documentos marcados como confidenciales</value>
+  </data>
+  <data name="Vm_Chat_Q3_Chip1" xml:space="preserve">
+    <value>Solo lectura de la carpeta</value>
+  </data>
+  <data name="Vm_Chat_Q3_Chip2" xml:space="preserve">
+    <value>Ignorar los borradores</value>
+  </data>
+  <data name="Vm_Chat_Q3_Chip3" xml:space="preserve">
+    <value>Nothing in particular</value>
+  </data>
+  <data name="Vm_Chat_Q3_Value1" xml:space="preserve">
+    <value>Solo lectura de la carpeta</value>
+  </data>
+  <data name="Vm_Chat_Q3_Value2" xml:space="preserve">
+    <value>Borradores ignorados</value>
+  </data>
+  <data name="Vm_Chat_Q3_Value3" xml:space="preserve">
+    <value>No limit</value>
+  </data>
+  <data name="Vm_Chat_BriefAnswerPattern" xml:space="preserve">
+    <value>{0}: {1}.</value>
+  </data>
+  <data name="Vm_Chat_FactBrief" xml:space="preserve">
+    <value>El trabajo confiado</value>
+  </data>
+  <data name="Vm_Chat_FactRhythm" xml:space="preserve">
+    <value>Rhythm</value>
+  </data>
+  <data name="Vm_Chat_FactSource" xml:space="preserve">
+    <value>Fuente de los documentos</value>
+  </data>
+  <data name="Vm_Chat_FactOutput" xml:space="preserve">
+    <value>Forma del resultado</value>
+  </data>
+  <data name="Vm_Chat_FactComposeNote" xml:space="preserve">
+    <value>Instrucción de composición</value>
+  </data>
+  <data name="Vm_Chat_FactTryNote" xml:space="preserve">
+    <value>Instrucción de prueba</value>
+  </data>
+  <data name="Vm_Chat_FactAdoptNote" xml:space="preserve">
+    <value>Instrucción de adopción</value>
+  </data>
+  <data name="Vm_Chat_FactPending" xml:space="preserve">
+    <value>en espera</value>
+  </data>
+  <data name="Vm_Chat_EmptyCreate" xml:space="preserve">
+    <value>Haga su pregunta: el asistente responde sin modificar nada hasta que usted se lo pida.</value>
+  </data>
+  <data name="Vm_Chat_EmptyRun" xml:space="preserve">
+    <value>Haga una pregunta sobre la ejecución en curso: por qué un paso es lento, qué pasa si falla, dónde acaba el resultado.</value>
+  </data>
+  <data name="Vm_Chat_EmptyHistory" xml:space="preserve">
+    <value>Haga una pregunta sobre una ejecución pasada: por qué falló, qué ha cambiado desde entonces, cómo evitar que se repita.</value>
+  </data>
+  <data name="Vm_Chat_RuleFolders" xml:space="preserve">
+    <value>folder|file|access|permission|read|writ</value>
+  </data>
+  <data name="Vm_Chat_RuleCost" xml:space="preserve">
+    <value>cost|price|paid|bill|token|expensive</value>
+  </data>
+  <data name="Vm_Chat_RuleDuration" xml:space="preserve">
+    <value>time|duration|how long|slow|fast|minute</value>
+  </data>
+  <data name="Vm_Chat_RuleError" xml:space="preserve">
+    <value>error|fail|crash|break|bug</value>
+  </data>
+  <data name="Vm_Chat_RuleSchedule" xml:space="preserve">
+    <value>schedul|plan|hour|cron|automatic|morning</value>
+  </data>
+  <data name="Vm_Chat_RulePrivacy" xml:space="preserve">
+    <value>confidential|privat|data|gdpr|security|leave</value>
+  </data>
+  <data name="Vm_Chat_AnswerFolders" xml:space="preserve">
+    <value>Los agentes solo ven las carpetas autorizadas en Ajustes. Una carpeta de solo lectura no puede modificarse nunca, aunque un agente lo pida.</value>
+  </data>
+  <data name="Vm_Chat_AnswerCost" xml:space="preserve">
+    <value>Un perfil local (Ollama) no cuesta nada. En la nube, el coste depende del número de palabras intercambiadas: Studio muestra los tokens consumidos al final de cada ejecución.</value>
+  </data>
+  <data name="Vm_Chat_AnswerDuration" xml:space="preserve">
+    <value>Con este conjunto de datos, cuente uno o dos minutos por ejecución en local. El registro técnico indica la duración de cada paso.</value>
+  </data>
+  <data name="Vm_Chat_AnswerError" xml:space="preserve">
+    <value>Si un paso falla, la ejecución se detiene y nada se escribe en la carpeta de salida. El fallo aparece en el historial, con el paso y el mensaje de error.</value>
+  </data>
+  <data name="Vm_Chat_AnswerSchedule" xml:space="preserve">
+    <value>Un equipo programado se ejecuta incluso con Studio cerrado, mientras la máquina esté encendida. Puede detener la planificación desde Mis equipos.</value>
+  </data>
+  <data name="Vm_Chat_AnswerPrivacy" xml:space="preserve">
+    <value>Con un perfil local, ningún dato sale de la máquina. Con un perfil en la nube, solo sale el texto enviado al modelo — nunca los archivos.</value>
+  </data>
+  <data name="Vm_Chat_ReplyStep1" xml:space="preserve">
+    <value>Describa el trabajo en una frase, como a un colega: lo que hoy hace a mano, y lo que quiere recibir. Yo me ocupo del resto — y le pediré las precisiones que falten.</value>
+  </data>
+  <data name="Vm_Chat_ReplyStep2" xml:space="preserve">
+    <value>Los agentes propuestos se reparten la lectura, la redacción y la revisión. Puede quitar uno: reajustaré los roles, y las carpetas autorizadas seguirán igual.</value>
+  </data>
+  <data name="Vm_Chat_ReplyStep3" xml:space="preserve">
+    <value>La prueba no toca nada: solo lectura, sobre una muestra de documentos, y nada se guarda. Es el momento de verificar el tono y el nivel de detalle.</value>
+  </data>
+  <data name="Vm_Chat_ReplyStep4" xml:space="preserve">
+    <value>Una vez adoptado, el equipo trabaja solo a la hora elegida, incluso con Studio cerrado. Cada ejecución deja rastro en Historial, y puede detener la planificación desde Mis equipos.</value>
+  </data>
+  <data name="Vm_Chat_ReplyRun" xml:space="preserve">
+    <value>Sigo la ejecución en directo. Si un paso se detiene, dígamelo: leo el registro técnico y le explico qué bloqueó, sin jerga.</value>
+  </data>
+  <data name="Vm_Chat_ReplyHistory" xml:space="preserve">
+    <value>Cada línea del historial conserva su registro completo. Pregúnteme «¿por qué falló la última?» y recupero el paso fallido y el mensaje de error.</value>
+  </data>
+  <data name="Vm_Lang_System" xml:space="preserve">
+    <value>SISTEMA</value>
+  </data>
+  <data name="Vm_Lang_Chosen" xml:space="preserve">
+    <value>ELEGIDO</value>
+  </data>
+  <data name="Vm_Lang_FromSystem" xml:space="preserve">
+    <value>idioma del sistema</value>
+  </data>
+  <data name="Vm_Lang_FromChoice" xml:space="preserve">
+    <value>elección guardada</value>
+  </data>
+  <data name="Vm_Lang_HeaderPattern" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="Vm_Lang_TooltipPattern" xml:space="preserve">
+    <value>{0} — {1}</value>
+  </data>
+</root>
