@@ -35,6 +35,15 @@ turned five findings into fixes. Each one is dated and pinned by an offline test
   way to send one. `LlmConfig.WorkspaceId` (a scoping identifier, not a secret, same family
   as `ApiVersion`) now travels as that header when set; classic keys change nothing. Wired
   through `orkeon llm probe --workspace-id` and the campaign kit (`workspaceId` per provider).
+- **Ollama: every buffered completion was accounted as free.** The buffered
+  `/api/generate` parse hard-coded `TokensUsed = 0` behind a comment claiming Ollama
+  provides no count in that format — while the live server returns `prompt_eval_count`
+  and `eval_count` right beside the durations the same parse was already reading. Zero
+  fed the token dimension of `AgentExecutionBudget` and the crew accounting. Found by
+  the M1 probe archiving `tokens=0` on a priced exchange; the same gap left M10's
+  diagnostic line reading "prompt tokens: unreported" for Ollama, because a tool-less
+  conversation flattens onto that very path. Both now report (`tokens=35`,
+  `prompt tokens: 2052 then 2052` on the re-run).
 - **The probe harness accused the framework twice, wrongly.** M5 rebuilt the assistant
   tool-call turn from parsed calls while the real agent loop replays the vendor's raw
   `tool_calls` fragment verbatim — Gemini rejects a replay that lost its per-call

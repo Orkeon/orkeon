@@ -154,7 +154,9 @@ public class OllamaLlmProviderTests
             response = responseText,
             done = done,
             total_duration = 1000000000L, // 1 second in nanoseconds
-            eval_duration = 500000000L    // 0.5 seconds in nanoseconds
+            eval_duration = 500000000L,   // 0.5 seconds in nanoseconds
+            prompt_eval_count = 28,
+            eval_count = 17
         };
         return JsonSerializer.Serialize(response);
     }
@@ -191,6 +193,35 @@ public class OllamaLlmProviderTests
         Assert.NotNull(result.Metadata);
         Assert.Equal(ProviderOllama, result.Metadata["provider"]);
         Assert.True((bool)result.Metadata["done"]);
+    }
+
+    /// <summary>
+    /// The buffered /api/generate parse hard-coded <c>TokensUsed = 0</c> behind a comment
+    /// claiming "Ollama doesn't provide token count in this format" — while the live server
+    /// returns <c>prompt_eval_count</c> and <c>eval_count</c> right beside the durations the
+    /// same parse was already reading (verified against a real server, 2026-08-30, where the
+    /// M1 probe archived <c>tokens=0</c> for a priced exchange). Zero here is not a cosmetic
+    /// blank: it feeds the token dimension of <c>AgentExecutionBudget</c> and the crew
+    /// accounting, so every buffered Ollama completion ran as if it were free.
+    /// </summary>
+    [Fact]
+    public async Task ShouldAccountTokens_WhenGenerateAsyncParsesTheBufferedResponse()
+    {
+        using var handler = new TestHttpMessageHandler();
+        handler.SetupResponse(HttpStatusCode.OK, CreateOllamaSuccessResponse("counted"));
+
+        var httpClient = new HttpClient(handler);
+        var httpClientFactory = new TestHttpClientFactory();
+        httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
+
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, BaseUrl = new Uri(EndpointOllamaDefault) };
+        using var provider = new OllamaLlmProvider(config, httpClientFactory, new TestLogger());
+
+        var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(28, result.PromptTokens);
+        Assert.Equal(17, result.CompletionTokens);
+        Assert.Equal(45, result.TokensUsed);
     }
 
     [Fact]

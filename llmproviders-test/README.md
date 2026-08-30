@@ -302,6 +302,8 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T10:03:33Z | `ollama` | `llava` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](ollama/2026-08-30-100320-llava.md) |
+| 2026-08-30T10:03:19Z | `ollama` | `llama3.2` | ❌ 8/3/1 | 1.0.0-rc.2 | [rapport](ollama/2026-08-30-100305-llama3.2.md) |
 | 2026-08-30T08:51:33Z | `openai` | `gpt-5.6-sol` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](openai/2026-08-30-085110-gpt-5.6-sol.md) |
 | 2026-08-30T08:44:28Z | `openai` | `gpt-5.6-sol` | ❌ 10/2/0 | 1.0.0-rc.2 | [rapport](openai/2026-08-30-084408-gpt-5.6-sol.md) |
 | 2026-08-30T08:41:30Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](zai/2026-08-30-084124-glm-4.6v-flash.md) |
@@ -341,4 +343,4 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_24 campagne(s) archivée(s)._
+_26 campagne(s) archivée(s)._

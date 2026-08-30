@@ -894,10 +894,18 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 return CreateEmptyResponse(config, "Failed to parse response");
             }
 
+            // prompt_eval_count / eval_count sit right beside the durations in the same
+            // final object; this parse read the durations and hard-coded the tokens to zero
+            // for years behind a comment claiming the format has none. Zero was not blank —
+            // it fed AgentExecutionBudget's token dimension and the crew accounting, so
+            // every buffered Ollama completion ran as if it were free (found by the M1
+            // probe archiving tokens=0 on a real exchange, 2026-08-30).
             return new LlmResponse
             {
                 Content = ollamaResponse.Response ?? string.Empty,
-                TokensUsed = 0, // Ollama doesn't provide token count in this format
+                TokensUsed = (ollamaResponse.PromptEvalCount ?? 0) + (ollamaResponse.EvalCount ?? 0),
+                PromptTokens = ollamaResponse.PromptEvalCount,
+                CompletionTokens = ollamaResponse.EvalCount,
                 Model = config.Model ?? "llama2",
                 Metadata = LlmResponseMetadata.CreateBuilder()
                     .AddProvider(Name)
@@ -1036,6 +1044,12 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
         [JsonPropertyName("eval_duration")]
         public long EvalDuration { get; set; }
+
+        [JsonPropertyName("prompt_eval_count")]
+        public int? PromptEvalCount { get; set; }
+
+        [JsonPropertyName("eval_count")]
+        public int? EvalCount { get; set; }
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "HTTP request failed for Ollama API")]
