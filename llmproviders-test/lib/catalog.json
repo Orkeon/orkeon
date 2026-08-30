@@ -209,7 +209,8 @@
         "Quinzième fiche, SANS preuve d'exécution : intégré le 2026-08-30 depuis la documentation vendeur, aucune clé disponible. La première campagne est la preuve en attente — la leçon Mistral (défaut compilé jamais servi) s'applique en entier jusqu'à un M1 vivant archivé.",
         "Deux endpoints régionaux à comptes séparés : `api.minimax.io` (international, défaut) et `api.minimaxi.com` (Chine continentale) — même motif que Kimi.",
         "Première tentative le 2026-08-30 : clé internationale valide, catalogue servi (`MiniMax-M2` vivant, générations jusqu'à `MiniMax-M3` listées), mais Token Plan épuisé — chaque mode facturé répond `insufficient_balance_error` (402), erreurs typées de bout en bout. Le transport est validé ; la campagne reste la preuve en attente, à relancer compte rechargé.",
-        "Questions ouvertes pour la première campagne : le flagship raisonneur rejoue-t-il sa trace façon DeepSeek (M5/M7 au deuxième tour) ; le cache implicite rapporte-t-il une ventilation (M10) ; `response_format` est-il servi malgré l'absence de documentation (le précédent Gemini)."
+        "Première campagne le 2026-08-30 (7/2/3 sur `MiniMax-M2`, clé `sk-api-` — les clés `sk-cp-` sont des forfaits coding à quota propre). Les trois questions tranchées : (1) la trace arrive INLINE en bloc `<think>` dans le contenu, sans champ séparé — le dialecte Orkéon l'extrait vers `reasoning_content` et la réinjecte au replay comme la doc l'exige ; (2) aucune ventilation de cache à 8k de préfixe ; (3) `response_format` accepté mais NON contraignant (schéma ignoré, json_object en clôture markdown) — la déclaration None est une mesure.",
+        "M2 et M9 rouges : comportement modèle (système ignoré sur les deux formes ; text-only, `I'm unable to view the image`). La famille VL n'apparaît pas au catalogue `/models` de la plateforme — pas de compagnon vision déclarable en l'état."
       ]
     },
     "gemini": {

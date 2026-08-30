@@ -56,6 +56,19 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     protected virtual bool AlwaysEmitTopP => false;
 
     /// <summary>
+    /// Splits an inline reasoning trace out of the visible content, for dialects that ship
+    /// one there. The base splits nothing. MiniMax is the motivating case (2026-08-30):
+    /// every reply starts with a <c>&lt;think&gt;...&lt;/think&gt;</c> block inside
+    /// <c>content</c>, no separate field — left alone, an agent speaks its private
+    /// reasoning out loud. Applied to the buffered parses and to a stream's terminal
+    /// response; the live deltas stay raw, which is how reasoning streams read anyway.
+    /// </summary>
+    /// <param name="content">The visible content as the vendor sent it.</param>
+    /// <returns>The cleaned content, and the extracted trace or null.</returns>
+    protected virtual (string Content, string? Reasoning) SplitReasoningFromContent(string content)
+        => (content, null);
+
+    /// <summary>
     /// Whether this provider composes OpenAI vision content parts (<c>text</c> +
     /// <c>image_url</c>) for messages carrying <see cref="LlmMessage.MultiModalContent"/>
     /// with non-text parts (R3.9). Providers that do not declare the capability keep their
@@ -446,13 +459,16 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// </summary>
     private LlmResponse BuildStreamedResponse(ChatStreamState state, LlmConfig effectiveConfig)
     {
+        var (finalContent, dialectReasoning) = SplitReasoningFromContent(state.Content.ToString());
         var metadata = LlmResponseMetadata.CreateBuilder().AddProvider(Name);
         if (state.Reasoning.Length > 0)
             metadata.Add("reasoning_content", state.Reasoning.ToString());
+        else if (!string.IsNullOrEmpty(dialectReasoning))
+            metadata.Add("reasoning_content", dialectReasoning);
 
         return new LlmResponse
         {
-            Content = state.Content.ToString(),
+            Content = finalContent,
             TokensUsed = state.TotalTokens,
             PromptTokens = state.PromptTokens,
             CompletionTokens = state.CompletionTokens,
@@ -1171,7 +1187,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             .FirstOrDefault()
             .GetProperty("message");
 
-        var (messageContent, reasoningFromChunks) = ExtractMessageContent(contentElement);
+        var (extractedContent, reasoningFromChunks) = ExtractMessageContent(contentElement);
+        var (messageContent, reasoningFromDialect) = SplitReasoningFromContent(extractedContent);
 
         var usage = doc.RootElement.GetProperty("usage");
         var tokensUsed = usage.GetProperty("total_tokens").GetInt32();
@@ -1196,8 +1213,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             .AddProvider(Name);
 
         ExtractResponseMetadata(doc, metadata);
-        if (!string.IsNullOrEmpty(reasoningFromChunks))
-            metadata.Add("reasoning_content", reasoningFromChunks);
+        var extractedReasoning = string.IsNullOrEmpty(reasoningFromChunks) ? reasoningFromDialect : reasoningFromChunks;
+        if (!string.IsNullOrEmpty(extractedReasoning))
+            metadata.Add("reasoning_content", extractedReasoning);
 
         return new LlmResponse
         {

@@ -55,7 +55,9 @@ public class ProviderCapabilityPayloadTests
             var capabilities = provider.Capabilities;
 
             Assert.NotSame(LlmProviderCapabilities.Unknown, capabilities);
-            Assert.Equal(providerTypeName == nameof(DeepSeekLlmProvider), capabilities.ReplaysReasoningContent);
+            Assert.Equal(
+                providerTypeName is nameof(DeepSeekLlmProvider) or nameof(MiniMaxLlmProvider),
+                capabilities.ReplaysReasoningContent);
             Assert.Equal(providerTypeName == nameof(AnthropicLlmProvider), capabilities.ExplicitPromptCaching);
             Assert.Equal(providerTypeName == nameof(DeepSeekLlmProvider), capabilities.RequiresJsonKeywordInPrompt);
         }

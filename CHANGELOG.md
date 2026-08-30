@@ -23,6 +23,24 @@ Full fleet integration otherwise: factory routing (key, both regional hosts, `mi
 model prefix), Studio card and detection, doctor, `orkeon llm probe|models`, example
 settings, counts 13 -> 14 under the claims gate.
 
+### Fixed — MiniMax speaks its mind out loud, and the dialect now separates the two
+
+The first MiniMax campaign (same day as the integration — 7/2/3 on `MiniMax-M2`, once the
+right key arrived: `sk-cp-` keys are coding-plan quotas, `sk-api-` is the API) settled all
+three recorded questions and found one real integration defect. MiniMax ships its reasoning
+INLINE: every reply opens with a `<think>...</think>` block inside `content`, no separate
+field — a one-line hello came back as 158 characters, and an agent built on it would speak
+its private reasoning out loud. The dialect now splits the block into `reasoning_content`
+(a `SplitReasoningFromContent` hook on the compatible base — the MiniMax twin of the
+Mistral chunked-content fix) and re-inlines it verbatim when replaying an assistant turn,
+because the vendor documents that history must keep the think blocks. Post-fix re-campaign:
+a 24-character hello. The other two answers: `response_format` is accepted but NON-BINDING
+(a schema is ignored, `json_object` arrives fenced in markdown — the None declaration
+graduates from caution to measurement), and the implicit cache reports no breakdown at an
+8k prefix. The standing reds are the model's: system message ignored on both shapes, and
+"I'm unable to view the image" — text-only per model (D-03), with the VL family absent from
+the platform's `/models` listing, so no vision companion is declarable yet.
+
 ### Removed — Groq, superseded by Grok (breaking, no shims)
 
 Groq was never the intended provider: the near-homograph had stood in for Grok since the

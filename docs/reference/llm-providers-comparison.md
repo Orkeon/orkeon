@@ -19,7 +19,7 @@
 | **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **MiniMax** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (undocumented) | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **MiniMax** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (accepted but non-binding — measured) | ✗ (always-on inline, split out) | ✓ | ✓ | ◐ auto | ✗ | ✓ | ✓ |
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ✗ | ✓ | ✓ |
 
@@ -72,12 +72,13 @@ their own dialect.
 - **DeepSeek vision**: arrived with `deepseek-v4-flash-vision-exp` (measured 2026-08-30). Per
   provider vs per model as everywhere (D-03): the default `deepseek-v4-flash` stays text-only
   and answers an image with the vendor's own error.
-- **MiniMax** †: the one row NOT backed by a campaign — integrated 2026-08-30 from the
-  vendor's platform documentation, no key available. `response_format` and thinking stay
-  undeclared (capability warning, never a silent drop — the Gemini precedent, upgradeable by
-  measurement); vision follows the documented VL family (per model, D-03). The first
-  campaign is the pending proof, and the compiled default `MiniMax-M2` is a claim until it
-  archives a live M1 (the Mistral lesson).
+- **MiniMax**: campaign-backed since 2026-08-30 (7/2/3, same day it was integrated). The
+  reasoning arrives INLINE — every reply opens with a `<think>` block inside `content`, no
+  separate field — and the dialect splits it out to `reasoning_content`, re-inlining it on
+  replay as the vendor documents. `response_format` is accepted but NON-BINDING (a schema is
+  ignored, `json_object` arrives fenced in markdown): the None declaration is a measurement.
+  Vision is per model (D-03): `MiniMax-M2` answers "I'm unable to view the image", and the
+  VL family does not appear on the platform's `/models` — no companion declarable yet.
 - **Grok (x.AI)**: every declared capability is a live measurement — a full 12-mode campaign
   passed against `api.x.ai` through the generic OpenAI dialect before the provider class
   existed (2026-08-30, archived under `llmproviders-test/custom-endpoints/`). Keys carry the

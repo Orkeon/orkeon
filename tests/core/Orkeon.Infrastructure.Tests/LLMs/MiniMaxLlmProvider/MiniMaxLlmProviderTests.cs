@@ -9,10 +9,9 @@ using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
-/// MiniMax provider: OpenAI-compatible transport against <c>api.minimax.io</c>. Unlike the
-/// rest of the fleet this provider is not yet campaign-backed: the pins here restate the
-/// vendor's documentation as read on 2026-08-30, and the first campaign is the pending
-/// proof (the provider doc comment records the two questions it must settle).
+/// MiniMax provider: OpenAI-compatible transport against <c>api.minimax.io</c>.
+/// Campaign-backed since 2026-08-30: every pin below restates a live measurement (the
+/// provider doc comment carries the verdicts).
 /// </summary>
 public class MiniMaxLlmProviderTests
 {
@@ -47,15 +46,17 @@ public class MiniMaxLlmProviderTests
     {
         using var provider = new MiniMaxLlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
-        // Documentation-sourced (2026-08-30), campaign pending: vision through the VL model
-        // family (per model, D-03); response_format and thinking undocumented on the compat
-        // surface, so undeclared - a JSON or thinking request gets the capability warning,
-        // never a silent drop, and a future measurement can upgrade them (Gemini precedent).
+        // Measured (2026-08-30): vision through the VL family (per model, D-03 - the text
+        // flagship answers "I'm unable to view the image"); response_format None BY
+        // MEASUREMENT (accepted but non-binding: schema ignored, json_object fenced);
+        // thinking None (always on, inline, no knob - the dialect splits the trace out).
         Assert.Equal(ResponseFormatSupport.None, provider.Capabilities.ResponseFormat);
         Assert.Equal(ThinkingSupport.None, provider.Capabilities.Thinking);
         Assert.True(provider.Capabilities.Vision);
         Assert.False(provider.Capabilities.ExplicitPromptCaching);
-        Assert.False(provider.Capabilities.ReplaysReasoningContent);
+        // True since the first campaign: the trace arrives inline (<think> in content), is
+        // split out by the dialect, and the vendor documents that history must keep it.
+        Assert.True(provider.Capabilities.ReplaysReasoningContent);
     }
 
     [Fact]
