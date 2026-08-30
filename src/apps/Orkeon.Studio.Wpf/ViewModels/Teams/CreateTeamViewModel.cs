@@ -138,7 +138,6 @@ public sealed class CreateTeamViewModel : ObservableObject
     private readonly string _workspace;
     private readonly string _teamsRoot;
     private ForgeSessionModel _model = new();
-    private readonly Queue<StepNotesViewModel> _awaitingNotes = new();
     private int _runGeneration;
     private string? _saveError;
     private int _step = 1;
@@ -168,7 +167,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         IStudioStrings? strings = null,
         string? workspaceDirectory = null,
         string? teamsRoot = null,
-        Func<IReadOnlyList<string>>? declaredMounts = null)
+        Func<IReadOnlyList<string>>? declaredMounts = null,
+        ChatThreadViewModel? chat = null)
     {
         ArgumentNullException.ThrowIfNull(profiles);
 
@@ -179,6 +179,11 @@ public sealed class CreateTeamViewModel : ObservableObject
         _strings = strings ?? EnglishStudioStrings.Instance;
         _workspace = workspaceDirectory ?? Environment.CurrentDirectory;
         _teamsRoot = teamsRoot ?? TeamCatalog.DefaultRoot();
+
+        // The conversation is the window's, not this screen's: it has to survive a tab
+        // change, and losing it on the first one is precisely the defect being fixed. A
+        // test that does not care gets a private one rather than a null check everywhere.
+        Chat = chat ?? new ChatThreadViewModel(_strings);
 
         RawLog = new RunLogViewModel(_strings);
         AgentEditor = new AgentEditorViewModel(_strings);
@@ -202,9 +207,11 @@ public sealed class CreateTeamViewModel : ObservableObject
         RestoreDerivedMountsCommand = new RelayCommand(
             () => { _droppedDerivedRoots.Clear(); RefreshMountSurfaces(); },
             () => _droppedDerivedRoots.Count > 0);
-        ComposeNotes = new StepNotesViewModel(AskAssistant);
-        TryNotes = new StepNotesViewModel(AskAssistant);
-        AdoptNotes = new StepNotesViewModel(AskAssistant);
+        // The count is the conversation's, read live: three per-step mini-threads were
+        // replaced by one thread, so each block reports on that one rather than on its own.
+        ComposeNotes = new StepNotesViewModel(ChatMessageCount);
+        TryNotes = new StepNotesViewModel(ChatMessageCount);
+        AdoptNotes = new StepNotesViewModel(ChatMessageCount);
 
         FrequencyChoices = Choices(
             (StudioStringKeys.WizardFreqOnce, "once"),
@@ -220,12 +227,48 @@ public sealed class CreateTeamViewModel : ObservableObject
             (StudioStringKeys.WizardOutputMessage, "message"),
             (StudioStringKeys.WizardOutputOther, "other"));
 
-        ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
+        // Bound after the choice groups exist: the recap and the brief chips read them.
+        Chat.Bind(
+            facts: BuildRecapFacts,
+            brief: () => _need.Trim(),
+            briefChips: () =>
+            [
+                .. new[] { FrequencyChoices, SourceChoices, OutputChoices }
+                    .Select(group => group.FirstOrDefault(c => c.IsSelected)?.Label)
+                    .Where(label => label is { Length: > 0 })
+                    .Select(label => label!),
+            ],
+            profileName: () => Profiles.Set.Studio?.Name,
+            askEngine: question => _client.SendMessage(question),
+            onInterviewComplete: answers => ComposeWithAnswersAsync(answers));
+        Chat.StopRequested += (_, _) => { if (IsEngineRunning) _client.RequestCancellation(); };
+        Chat.Turns.CollectionChanged += (_, _) =>
+        {
+            ComposeNotes.RefreshMessageCount();
+            TryNotes.RefreshMessageCount();
+            AdoptNotes.RefreshMessageCount();
+        };
+        Chat.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(ChatThreadViewModel.IsStarted))
+                RestartCommand?.RaiseCanExecuteChanged();
+        };
+
+        // T-02: the gesture no longer starts the engine. It opens the thread and asks
+        // three questions; ComposeWithAnswersAsync is what finally calls the engine, with
+        // the brief those answers enriched.
+        ComposeCommand = new AsyncRelayCommand(
+            () => { Chat.StartInterview(); return System.Threading.Tasks.Task.CompletedTask; },
+            () => CanCompose);
         TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeam);
         ReopenComposeCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 2, autoRetry: false), () => IsSaved);
         RetryTrialCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 3, autoRetry: true), () => IsSaved);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
-        RestartCommand = new RelayCommand(Restart, () => MaxStep > 1 || IsEngineRunning);
+        RestartCommand = new RelayCommand(
+            Restart,
+            // A started conversation is a creation under way too, even at step 1:
+            // abandoning it has to be possible without first reaching step 2.
+            () => MaxStep > 1 || IsEngineRunning || Chat.IsStarted);
         StopCommand = new RelayCommand(() => _client.RequestCancellation(), () => IsEngineRunning);
         ReplyCommand = new RelayCommand(Reply, () => _replyText.Trim().Length > 0 && IsEngineRunning);
         GoStep1Command = new RelayCommand(() => GoStep(1));
@@ -302,9 +345,15 @@ public sealed class CreateTeamViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _maxStep, value))
-                RestartCommand.RaiseCanExecuteChanged();
+                RestartCommand?.RaiseCanExecuteChanged();
         }
     }
+
+    /// <summary>
+    /// The conversation with the assistant — the window's, shared with Exécuter and
+    /// Historique, so leaving this screen never empties it.
+    /// </summary>
+    public ChatThreadViewModel Chat { get; }
 
     // ── the draft, as the navigation sees it (30/08 mock, T-09) ──
 
@@ -1188,6 +1237,26 @@ public sealed class CreateTeamViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// The engine call, reached only after the third interview answer (T-02). The three
+    /// answers ride into the brief here — that is the whole point of asking them before
+    /// the engine rather than after: the composition is done knowing them.
+    /// </summary>
+    private Task ComposeWithAnswersAsync(IReadOnlyList<string> interviewAnswers)
+    {
+        _interviewAnswers = interviewAnswers;
+        return PendingCompose = ComposeAsync();
+    }
+
+    /// <summary>
+    /// The engine call the interview started, so a test can wait for it. The interview
+    /// ends inside a timer callback, which has nowhere to return a Task to — this is that
+    /// return value, kept rather than discarded.
+    /// </summary>
+    internal Task? PendingCompose { get; private set; }
+
+    private IReadOnlyList<string> _interviewAnswers = [];
+
     private async Task ComposeAsync()
     {
         if (!CanCompose)
@@ -1250,6 +1319,20 @@ public sealed class CreateTeamViewModel : ObservableObject
             lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefOutput], output.Label));
         if (_outcome.Trim() is { Length: > 0 } outcome)
             lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefShape], outcome));
+        // The interview's own answers, each under the fact it answers — the assistant asked
+        // where the folder is and when the summary is due, so the brief has to carry both.
+        var questions = AssistantInterview.Build(_strings);
+        for (var index = 0; index < questions.Count && index < _interviewAnswers.Count; index++)
+        {
+            if (_interviewAnswers[index].Trim() is { Length: > 0 } answer)
+            {
+                lines.Add(string.Format(
+                    CultureInfo.CurrentCulture,
+                    _strings[StudioStringKeys.ChatBriefAnswerPattern],
+                    questions[index].Fact, answer));
+            }
+        }
+
         if (ComposeNotes.Consigne.Trim() is { Length: > 0 } consigne)
             lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefConsigne], consigne));
 
@@ -1279,6 +1362,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             _dispatcher.Post(() =>
             {
                 IsEngineRunning = false;
+                Chat.EngineFinished();
                 // An unconsumed auto-retry must die with its run: a crashed or stopped
                 // engine must never leave a pending decision to fire on a later one.
                 _autoRetryPending = false;
@@ -1358,6 +1442,11 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         _client.RequestCancellation();
         ResetProjection();
+        // The conversation belongs to the creation being abandoned — unlike ResetProjection,
+        // which also runs at the START of a compose and must leave the interview's answers
+        // exactly where the interview put them.
+        _interviewAnswers = [];
+        Chat.Reset();
         Need = "";
         Outcome = "";
         foreach (var choice in FrequencyChoices.Concat(SourceChoices).Concat(OutputChoices))
@@ -1365,9 +1454,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         ComposeNotes.Consigne = "";
         TryNotes.Consigne = "";
         AdoptNotes.Consigne = "";
-        ComposeNotes.Items.Clear();
-        TryNotes.Items.Clear();
-        AdoptNotes.Items.Clear();
+
         SyncFromModel();
     }
 
@@ -1387,7 +1474,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         // a straggler posted before the swap must not repopulate the fresh model.
         _runGeneration++;
         _model = new ForgeSessionModel();
-        _awaitingNotes.Clear();
         _saveError = null;
         RawLog.Clear();
         Activity.Clear();
@@ -1409,21 +1495,73 @@ public sealed class CreateTeamViewModel : ObservableObject
         MaxStep = 1;
     }
 
-    private bool AskAssistant(StepNotesViewModel origin, string question)
+    /// <summary>
+    /// « Ce que j'ai retenu ». The brief and the three step-1 precisions first, then one
+    /// row per interview question, then each instruction that was actually typed — an
+    /// empty instruction is not a fact the assistant is missing, so it is not listed.
+    /// </summary>
+    private IReadOnlyList<ChatRecapFact> BuildRecapFacts()
     {
-        if (!_client.SendMessage(question))
+        var pending = _strings[StudioStringKeys.ChatFactPending];
+        var facts = new List<ChatRecapFact>
         {
-            // No child is listening: the engine never started, finished, or died. Silence
-            // here reads as a dead button — say so, and keep the draft for the retry.
-            origin.Notice = _strings[StudioStringKeys.WizardAssistantNotRunning];
-            return false;
+            Fact(StudioStringKeys.ChatFactBrief, Clip(_need.Trim(), 72)),
+            Fact(StudioStringKeys.ChatFactRhythm, FrequencyChoices.FirstOrDefault(c => c.IsSelected)?.Label),
+            Fact(StudioStringKeys.ChatFactSource, SourceChoices.FirstOrDefault(c => c.IsSelected)?.Label),
+            Fact(StudioStringKeys.ChatFactOutput, OutputChoices.FirstOrDefault(c => c.IsSelected)?.Label),
+        };
+
+        var questions = AssistantInterview.Build(_strings);
+        var answers = InterviewAnswers();
+        for (var index = 0; index < questions.Count; index++)
+        {
+            facts.Add(new ChatRecapFact(
+                questions[index].Fact,
+                index < answers.Count && answers[index] is { Length: > 0 } value ? value : pending,
+                index < answers.Count && answers[index] is { Length: > 0 }));
         }
 
-        origin.Notice = null;
-        _model.AddUserMessage(question);
-        _awaitingNotes.Enqueue(origin);
-        return true;
+        foreach (var (key, note) in new[]
+        {
+            (StudioStringKeys.ChatFactComposeNote, ComposeNotes.Consigne),
+            (StudioStringKeys.ChatFactTryNote, TryNotes.Consigne),
+            (StudioStringKeys.ChatFactAdoptNote, AdoptNotes.Consigne),
+        })
+        {
+            if (note.Trim() is { Length: > 0 } typed)
+                facts.Add(new ChatRecapFact(_strings[key], Clip(typed, 72), IsKnown: true));
+        }
+
+        return facts;
+
+        ChatRecapFact Fact(string key, string? value) => new(
+            _strings[key],
+            value is { Length: > 0 } known ? known : pending,
+            value is { Length: > 0 });
     }
+
+    private string ChatMessageCount() => Chat.Turns.Count == 0
+        ? ""
+        : string.Format(
+            CultureInfo.CurrentCulture,
+            _strings[StudioStringKeys.ChatStatusMessagesPattern],
+            Chat.Turns.Count);
+
+    /// <summary>The three interview answers, in order; an unanswered one is an empty string.</summary>
+    private IReadOnlyList<string> InterviewAnswers()
+    {
+        var answers = new string[3];
+        foreach (var turn in Chat.Turns)
+        {
+            if (turn is { IsBot: false, AnswerIndex: { } index } && index < answers.Length)
+                answers[index] = turn.Body;
+        }
+
+        return [.. answers.Select(a => a ?? "")];
+    }
+
+    private static string Clip(string text, int max) =>
+        text.Length > max ? string.Concat(text.AsSpan(0, max).TrimEnd(), "…") : text;
 
     private void Reply()
     {
@@ -1466,14 +1604,19 @@ public sealed class CreateTeamViewModel : ObservableObject
             _model.Feed(orkeonEvent);
             RawLog.AppendNotice(orkeonEvent.Root.GetRawText());
 
-            // A fresh assistant turn answers the oldest waiting notes thread, else the bar.
+            // A fresh assistant turn lands in the thread (T-08). It used to surface in a bar
+            // above the form, alone and out of the reading flow — the very defect the
+            // conversation replaces. AssistantPrompt is still set for the moment: the
+            // wizard's own gating and the tests read it, and §8 of the plan allows it to
+            // survive the migration. What no longer exists is the UI that showed it there.
             if (_model.Messages.Count > beforeMessages
-                && _model.Messages[^1] is { Role: ForgeChatMessage.Assistant, Text: { } text }
-                && !(_awaitingNotes.TryDequeue(out var notes) && notes.TryDeliverAnswer(text)))
+                && _model.Messages[^1] is { Role: ForgeChatMessage.Assistant, Text: { } text })
             {
+                Chat.AddAssistantTurn(text);
                 AssistantPrompt = text;
             }
 
+            Chat.OwnerChanged();
             SyncFromModel();
         });
     }

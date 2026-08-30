@@ -46,6 +46,10 @@
   <SolidColorBrush x:Key="ConsoleOkBrush"    Color="#7FC9AE"/>
   <SolidColorBrush x:Key="ConsoleErrBrush"   Color="#E0837A"/>
 
+  <!-- The mark as a raw Color: a gradient stop cannot take a Brush, and the busy
+       hairline is a gradient sweep so it stays right at every panel width. -->
+  <Color x:Key="MarkColor">#3DA0AC</Color>
+
   <!-- overlays and illustration plates (identical in both themes, like the console:
        the modal veil and the tour mask are always "deep ocean at 55/62 %", and the
        About/splash plate stays light so the mascot keeps its ground) -->

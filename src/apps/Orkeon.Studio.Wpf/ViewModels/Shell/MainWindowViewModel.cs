@@ -41,11 +41,17 @@ public sealed class MainWindowViewModel : ObservableObject
         Action<string>? persistUiMode = null,
         IModelProfileStore? profileStore = null,
         string? teamsRoot = null,
-        IShellOpener? shellOpener = null)
+        IShellOpener? shellOpener = null,
+        IUiDelay? delay = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
         Mode = new UiModeViewModel(initialUiMode, persistUiMode);
+
+        // ONE conversation for the window (T-01). Créer, Exécuter and Historique all mount
+        // the same instance: recreated per screen, its history would die on the first tab
+        // change — which is exactly the defect the thread was introduced to fix.
+        Chat = new ChatThreadViewModel(strings, delay);
         About = new AboutViewModel(runner, dispatcher);
 
         Config = new ConfigTabViewModel(
@@ -99,7 +105,8 @@ public sealed class MainWindowViewModel : ObservableObject
             strings,
             forgeHome,
             teamsRoot,
-            declaredMounts);
+            declaredMounts,
+            Chat);
 
         Teams = new TeamsViewModel(
             teamsRoot, forgeHome, strings: strings, shellOpener: shellOpener, historyStore: historyStore,
@@ -165,6 +172,13 @@ public sealed class MainWindowViewModel : ObservableObject
     public LaunchTabViewModel Launch { get; }
 
     /// <summary>The create-a-team wizard, over the forge engine (design v3).</summary>
+    /// <summary>
+    /// The conversation with the assistant, shared by Créer, Exécuter and Historique.
+    /// Bound through the window ancestor on the screens that do not own it, so a change of
+    /// tab hands the same thread to the next screen rather than a fresh, empty one.
+    /// </summary>
+    public ChatThreadViewModel Chat { get; }
+
     public CreateTeamViewModel CreateTeam { get; }
 
     /// <summary>The My teams screen — the adopted team folders and the sessions underway.</summary>
@@ -220,7 +234,8 @@ public sealed class MainWindowViewModel : ObservableObject
         Action<string>? persistUiMode = null,
         IModelProfileStore? profileStore = null,
         string? teamsRoot = null,
-        IShellOpener? shellOpener = null)
+        IShellOpener? shellOpener = null,
+        IUiDelay? delay = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -248,7 +263,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 ? new ModelProfileFileStore(profilePath)
                 : null,
             teamsRoot,
-            shellOpener);
+            shellOpener,
+            delay);
     }
 
     /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history, reading the model profiles.</summary>

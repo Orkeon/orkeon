@@ -5,6 +5,8 @@ using System.Windows.Threading;
 using Orkeon.Studio.Wpf.Controls;
 using Orkeon.Studio.Wpf.Services;
 
+using Orkeon.Studio.Wpf.ViewModels.Teams;
+
 namespace Orkeon.Studio.Wpf.Views;
 
 public partial class MainWindow : Window
@@ -44,6 +46,19 @@ public partial class MainWindow : Window
         // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
         // by hand, shows up without waiting for an adopt or an app restart.
         NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Test.RefreshTeams(); };
+
+        // The conversation follows the screen it is mounted on: what a free question with
+        // no keyword gets back, and what the primer says on an empty thread, both depend
+        // on where the user actually stands (T-06).
+        NavRun.Checked += (_, _) => shell.Chat.SetContext(AssistantContext.Run);
+        NavHistory.Checked += (_, _) => shell.Chat.SetContext(AssistantContext.History);
+        NavCreate.Checked += (_, _) => shell.Chat.SetContext(WizardContext(shell));
+        shell.CreateTeam.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModels.Teams.CreateTeamViewModel.Step) && NavCreate.IsChecked == true)
+                shell.Chat.SetContext(WizardContext(shell));
+        };
+
         shell.Mode.PropertyChanged += (_, e) =>
         {
             // The Tester entry is expert-only: a switch back to novice while it shows would
@@ -55,6 +70,15 @@ public partial class MainWindow : Window
             }
         };
     }
+
+    private static AssistantContext WizardContext(ViewModels.Shell.MainWindowViewModel shell) =>
+        shell.CreateTeam.Step switch
+        {
+            2 => AssistantContext.WizardStep2,
+            3 => AssistantContext.WizardStep3,
+            4 => AssistantContext.WizardStep4,
+            _ => AssistantContext.WizardStep1,
+        };
 
     // ── window chrome ──
     private void OnMinimize(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);

@@ -95,6 +95,202 @@ public static class StudioStringKeys
     /// <summary>"resume the conversation"</summary>
     public const string WizardDraftResume = "Vm_Wiz_DraftResume";
 
+
+    // ---- The assistant conversation (Teams/ChatThreadViewModel, 30/08 mock) ----
+    // Every visible word of the thread, its interview, its two running registers and
+    // its keyword bank. The regex patterns are localized on purpose: the words a user
+    // types to ask about cost or folders are not the same in every language.
+    /// <summary>"Assistant conversation"</summary>
+    public const string ChatTitle = "Vm_Chat_Title";
+    /// <summary>"What I've noted"</summary>
+    public const string ChatRecap = "Vm_Chat_Recap";
+    /// <summary>"YOUR BRIEF"</summary>
+    public const string ChatYourBrief = "Vm_Chat_YourBrief";
+    /// <summary>"Edit"</summary>
+    public const string ChatEdit = "Vm_Chat_Edit";
+    /// <summary>"Stop"</summary>
+    public const string ChatStop = "Vm_Chat_Stop";
+    /// <summary>"Send"</summary>
+    public const string ChatSend = "Vm_Chat_Send";
+    /// <summary>"Reply"</summary>
+    public const string ChatReply = "Vm_Chat_Reply";
+    /// <summary>"Skip this question"</summary>
+    public const string ChatSkip = "Vm_Chat_Skip";
+    /// <summary>"I don't know — do your best."</summary>
+    public const string ChatSkipAnswer = "Vm_Chat_SkipAnswer";
+    /// <summary>"Enter to send · Shift+Enter for a new line"</summary>
+    public const string ChatKeyHint = "Vm_Chat_KeyHint";
+    /// <summary>"Ask the assistant a question…"</summary>
+    public const string ChatPlaceholder = "Vm_Chat_Placeholder";
+    /// <summary>"Ask a question"</summary>
+    public const string ChatAsk = "Vm_Chat_Ask";
+    /// <summary>"Question"</summary>
+    public const string ChatAskShort = "Vm_Chat_AskShort";
+    /// <summary>"Ask the assistant a question"</summary>
+    public const string ChatAskTip = "Vm_Chat_AskTip";
+    /// <summary>"See the conversation"</summary>
+    public const string ChatSeeConversation = "Vm_Chat_SeeConversation";
+    /// <summary>"Close the conversation"</summary>
+    public const string ChatClose = "Vm_Chat_Close";
+    /// <summary>"You haven't described anything yet."</summary>
+    public const string ChatBriefEmpty = "Vm_Chat_BriefEmpty";
+    /// <summary>"The assistant is composing your team"</summary>
+    public const string ChatStripBusy = "Vm_Chat_StripBusy";
+    /// <summary>"The assistant needs one more detail"</summary>
+    public const string ChatStripAsking = "Vm_Chat_StripAsking";
+    /// <summary>"question {0} of {1} · waiting for your answer"</summary>
+    public const string ChatStatusQuestionPattern = "Vm_Chat_StatusQuestionPattern";
+    /// <summary>"brief complete · {0} message(s)"</summary>
+    public const string ChatStatusDonePattern = "Vm_Chat_StatusDonePattern";
+    /// <summary>"{0} message(s)"</summary>
+    public const string ChatStatusMessagesPattern = "Vm_Chat_StatusMessagesPattern";
+    /// <summary>"no question yet"</summary>
+    public const string ChatStatusNoQuestion = "Vm_Chat_StatusNoQuestion";
+    /// <summary>"{0} / {1}"</summary>
+    public const string ChatRecapProgressPattern = "Vm_Chat_RecapProgressPattern";
+    /// <summary>"{0} · {1}"</summary>
+    public const string ChatProfileSuffixPattern = "Vm_Chat_ProfileSuffixPattern";
+    /// <summary>"reading the brief"</summary>
+    public const string ChatStatus1 = "Vm_Chat_Status1";
+    /// <summary>"analysing the source"</summary>
+    public const string ChatStatus2 = "Vm_Chat_Status2";
+    /// <summary>"composing the roles"</summary>
+    public const string ChatStatus3 = "Vm_Chat_Status3";
+    /// <summary>"I'm re-reading your description…"</summary>
+    public const string ChatThinking1 = "Vm_Chat_Thinking1";
+    /// <summary>"I'm looking at where the documents are…"</summary>
+    public const string ChatThinking2 = "Vm_Chat_Thinking2";
+    /// <summary>"I'm sketching the team's roles…"</summary>
+    public const string ChatThinking3 = "Vm_Chat_Thinking3";
+    /// <summary>"Thank you — I have what I need to compose the team."</summary>
+    public const string ChatWrapBody = "Vm_Chat_WrapBody";
+    /// <summary>"I'll show you the composition I propose: the agents, the allowed fo…"</summary>
+    public const string ChatWrapDetail = "Vm_Chat_WrapDetail";
+    /// <summary>"Folder location"</summary>
+    public const string ChatQ1Fact = "Vm_Chat_Q1_Fact";
+    /// <summary>"Where is this folder, and what does it hold?"</summary>
+    public const string ChatQ1Body = "Vm_Chat_Q1_Body";
+    /// <summary>"For instance « Documents/Meeting notes », with Word or PDF files. G…"</summary>
+    public const string ChatQ1Detail = "Vm_Chat_Q1_Detail";
+    /// <summary>"If you are not sure, say so: I'll assume text documents in a single…"</summary>
+    public const string ChatQ1Hint = "Vm_Chat_Q1_Hint";
+    /// <summary>"e.g. C:\Users\me\Documents\Meeting notes"</summary>
+    public const string ChatQ1Placeholder = "Vm_Chat_Q1_Placeholder";
+    /// <summary>"Documents/Meeting notes"</summary>
+    public const string ChatQ1Chip1 = "Vm_Chat_Q1_Chip1";
+    /// <summary>"Pick a folder…"</summary>
+    public const string ChatQ1Chip2 = "Vm_Chat_Q1_Chip2";
+    /// <summary>"I don't know yet"</summary>
+    public const string ChatQ1Chip3 = "Vm_Chat_Q1_Chip3";
+    /// <summary>"Documents/Meeting notes"</summary>
+    public const string ChatQ1Value1 = "Vm_Chat_Q1_Value1";
+    /// <summary>"Folder to be picked"</summary>
+    public const string ChatQ1Value2 = "Vm_Chat_Q1_Value2";
+    /// <summary>"To be confirmed later"</summary>
+    public const string ChatQ1Value3 = "Vm_Chat_Q1_Value3";
+    /// <summary>"Delivery moment"</summary>
+    public const string ChatQ2Fact = "Vm_Chat_Q2_Fact";
+    /// <summary>"When do you want to receive the summary?"</summary>
+    public const string ChatQ2Body = "Vm_Chat_Q2_Body";
+    /// <summary>"The team works on its own at that hour, even with Studio closed. Yo…"</summary>
+    public const string ChatQ2Detail = "Vm_Chat_Q2_Detail";
+    /// <summary>"e.g. Friday around 5 pm"</summary>
+    public const string ChatQ2Placeholder = "Vm_Chat_Q2_Placeholder";
+    /// <summary>"Friday 5 pm"</summary>
+    public const string ChatQ2Chip1 = "Vm_Chat_Q2_Chip1";
+    /// <summary>"Monday 8 am"</summary>
+    public const string ChatQ2Chip2 = "Vm_Chat_Q2_Chip2";
+    /// <summary>"Whenever"</summary>
+    public const string ChatQ2Chip3 = "Vm_Chat_Q2_Chip3";
+    /// <summary>"Friday 5 pm"</summary>
+    public const string ChatQ2Value1 = "Vm_Chat_Q2_Value1";
+    /// <summary>"Monday 8 am"</summary>
+    public const string ChatQ2Value2 = "Vm_Chat_Q2_Value2";
+    /// <summary>"Free schedule"</summary>
+    public const string ChatQ2Value3 = "Vm_Chat_Q2_Value3";
+    /// <summary>"Limit to respect"</summary>
+    public const string ChatQ3Fact = "Vm_Chat_Q3_Fact";
+    /// <summary>"Is there anything the team must never do?"</summary>
+    public const string ChatQ3Body = "Vm_Chat_Q3_Body";
+    /// <summary>"A clear limit beats a vague instruction: files to ignore, informati…"</summary>
+    public const string ChatQ3Detail = "Vm_Chat_Q3_Detail";
+    /// <summary>"You can skip: I'll then keep to reading the folder and nothing else."</summary>
+    public const string ChatQ3Hint = "Vm_Chat_Q3_Hint";
+    /// <summary>"e.g. never quote documents marked confidential"</summary>
+    public const string ChatQ3Placeholder = "Vm_Chat_Q3_Placeholder";
+    /// <summary>"Read-only on the folder"</summary>
+    public const string ChatQ3Chip1 = "Vm_Chat_Q3_Chip1";
+    /// <summary>"Ignore the drafts"</summary>
+    public const string ChatQ3Chip2 = "Vm_Chat_Q3_Chip2";
+    /// <summary>"Nothing in particular"</summary>
+    public const string ChatQ3Chip3 = "Vm_Chat_Q3_Chip3";
+    /// <summary>"Read-only on the folder"</summary>
+    public const string ChatQ3Value1 = "Vm_Chat_Q3_Value1";
+    /// <summary>"Drafts ignored"</summary>
+    public const string ChatQ3Value2 = "Vm_Chat_Q3_Value2";
+    /// <summary>"No limit"</summary>
+    public const string ChatQ3Value3 = "Vm_Chat_Q3_Value3";
+    /// <summary>"{0}: {1}."</summary>
+    public const string ChatBriefAnswerPattern = "Vm_Chat_BriefAnswerPattern";
+    /// <summary>"The work you described"</summary>
+    public const string ChatFactBrief = "Vm_Chat_FactBrief";
+    /// <summary>"Rhythm"</summary>
+    public const string ChatFactRhythm = "Vm_Chat_FactRhythm";
+    /// <summary>"Document source"</summary>
+    public const string ChatFactSource = "Vm_Chat_FactSource";
+    /// <summary>"Shape of the result"</summary>
+    public const string ChatFactOutput = "Vm_Chat_FactOutput";
+    /// <summary>"Composition instruction"</summary>
+    public const string ChatFactComposeNote = "Vm_Chat_FactComposeNote";
+    /// <summary>"Trial instruction"</summary>
+    public const string ChatFactTryNote = "Vm_Chat_FactTryNote";
+    /// <summary>"Adoption instruction"</summary>
+    public const string ChatFactAdoptNote = "Vm_Chat_FactAdoptNote";
+    /// <summary>"pending"</summary>
+    public const string ChatFactPending = "Vm_Chat_FactPending";
+    /// <summary>"Ask your question: the assistant answers without changing anything…"</summary>
+    public const string ChatEmptyCreate = "Vm_Chat_EmptyCreate";
+    /// <summary>"Ask about the run in progress: why a step is slow, what happens on…"</summary>
+    public const string ChatEmptyRun = "Vm_Chat_EmptyRun";
+    /// <summary>"Ask about a past run: why it failed, what has changed since, how to…"</summary>
+    public const string ChatEmptyHistory = "Vm_Chat_EmptyHistory";
+    /// <summary>"folder|file|access|permission|read|writ"</summary>
+    public const string ChatRuleFolders = "Vm_Chat_RuleFolders";
+    /// <summary>"cost|price|paid|bill|token|expensive"</summary>
+    public const string ChatRuleCost = "Vm_Chat_RuleCost";
+    /// <summary>"time|duration|how long|slow|fast|minute"</summary>
+    public const string ChatRuleDuration = "Vm_Chat_RuleDuration";
+    /// <summary>"error|fail|crash|break|bug"</summary>
+    public const string ChatRuleError = "Vm_Chat_RuleError";
+    /// <summary>"schedul|plan|hour|cron|automatic|morning"</summary>
+    public const string ChatRuleSchedule = "Vm_Chat_RuleSchedule";
+    /// <summary>"confidential|privat|data|gdpr|security|leave"</summary>
+    public const string ChatRulePrivacy = "Vm_Chat_RulePrivacy";
+    /// <summary>"Agents only see the folders allowed in Settings. A read-only folder…"</summary>
+    public const string ChatAnswerFolders = "Vm_Chat_AnswerFolders";
+    /// <summary>"A local setting (Ollama) costs nothing. In the cloud the cost depen…"</summary>
+    public const string ChatAnswerCost = "Vm_Chat_AnswerCost";
+    /// <summary>"On this dataset, count one to two minutes per run locally. The tech…"</summary>
+    public const string ChatAnswerDuration = "Vm_Chat_AnswerDuration";
+    /// <summary>"If a step fails the run stops and nothing is written to the output…"</summary>
+    public const string ChatAnswerError = "Vm_Chat_AnswerError";
+    /// <summary>"A scheduled team runs even with Studio closed, as long as the machi…"</summary>
+    public const string ChatAnswerSchedule = "Vm_Chat_AnswerSchedule";
+    /// <summary>"With a local setting, no data leaves the machine. With a cloud sett…"</summary>
+    public const string ChatAnswerPrivacy = "Vm_Chat_AnswerPrivacy";
+    /// <summary>"Describe the work in one sentence, as you would to a colleague: wha…"</summary>
+    public const string ChatReplyStep1 = "Vm_Chat_ReplyStep1";
+    /// <summary>"The proposed agents share the reading, the writing and the proofrea…"</summary>
+    public const string ChatReplyStep2 = "Vm_Chat_ReplyStep2";
+    /// <summary>"The trial touches nothing: read-only, on a sample of documents, and…"</summary>
+    public const string ChatReplyStep3 = "Vm_Chat_ReplyStep3";
+    /// <summary>"After adoption the team works on its own at the chosen moment, even…"</summary>
+    public const string ChatReplyStep4 = "Vm_Chat_ReplyStep4";
+    /// <summary>"I'm following the run live. If a step stops, tell me: I read the te…"</summary>
+    public const string ChatReplyRun = "Vm_Chat_ReplyRun";
+    /// <summary>"Every line of the history keeps its full log. Ask me « why did the…"</summary>
+    public const string ChatReplyHistory = "Vm_Chat_ReplyHistory";
+
     // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
 
     /// <summary>"{0} — {1} agent(s)"</summary>
@@ -961,6 +1157,101 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardStep3] = "Try",
         [StudioStringKeys.WizardStep4] = "Adopt",
         [StudioStringKeys.WizardDraftStepPattern] = "Step {0} of {1} · {2}",
+        [StudioStringKeys.ChatTitle] = "Assistant conversation",
+        [StudioStringKeys.ChatRecap] = "What I've noted",
+        [StudioStringKeys.ChatYourBrief] = "YOUR BRIEF",
+        [StudioStringKeys.ChatEdit] = "Edit",
+        [StudioStringKeys.ChatStop] = "Stop",
+        [StudioStringKeys.ChatSend] = "Send",
+        [StudioStringKeys.ChatReply] = "Reply",
+        [StudioStringKeys.ChatSkip] = "Skip this question",
+        [StudioStringKeys.ChatSkipAnswer] = "I don't know — do your best.",
+        [StudioStringKeys.ChatKeyHint] = "Enter to send · Shift+Enter for a new line",
+        [StudioStringKeys.ChatPlaceholder] = "Ask the assistant a question…",
+        [StudioStringKeys.ChatAsk] = "Ask a question",
+        [StudioStringKeys.ChatAskShort] = "Question",
+        [StudioStringKeys.ChatAskTip] = "Ask the assistant a question",
+        [StudioStringKeys.ChatSeeConversation] = "See the conversation",
+        [StudioStringKeys.ChatClose] = "Close the conversation",
+        [StudioStringKeys.ChatBriefEmpty] = "You haven't described anything yet.",
+        [StudioStringKeys.ChatStripBusy] = "The assistant is composing your team",
+        [StudioStringKeys.ChatStripAsking] = "The assistant needs one more detail",
+        [StudioStringKeys.ChatStatusQuestionPattern] = "question {0} of {1} · waiting for your answer",
+        [StudioStringKeys.ChatStatusDonePattern] = "brief complete · {0} message(s)",
+        [StudioStringKeys.ChatStatusMessagesPattern] = "{0} message(s)",
+        [StudioStringKeys.ChatStatusNoQuestion] = "no question yet",
+        [StudioStringKeys.ChatRecapProgressPattern] = "{0} / {1}",
+        [StudioStringKeys.ChatProfileSuffixPattern] = "{0} · {1}",
+        [StudioStringKeys.ChatStatus1] = "reading the brief",
+        [StudioStringKeys.ChatStatus2] = "analysing the source",
+        [StudioStringKeys.ChatStatus3] = "composing the roles",
+        [StudioStringKeys.ChatThinking1] = "I'm re-reading your description…",
+        [StudioStringKeys.ChatThinking2] = "I'm looking at where the documents are…",
+        [StudioStringKeys.ChatThinking3] = "I'm sketching the team's roles…",
+        [StudioStringKeys.ChatWrapBody] = "Thank you — I have what I need to compose the team.",
+        [StudioStringKeys.ChatWrapDetail] = "I'll show you the composition I propose: the agents, the allowed folders, and what each of them can do.",
+        [StudioStringKeys.ChatQ1Fact] = "Folder location",
+        [StudioStringKeys.ChatQ1Body] = "Where is this folder, and what does it hold?",
+        [StudioStringKeys.ChatQ1Detail] = "For instance « Documents/Meeting notes », with Word or PDF files. Give me the exact path and I can take a look to check.",
+        [StudioStringKeys.ChatQ1Hint] = "If you are not sure, say so: I'll assume text documents in a single folder.",
+        [StudioStringKeys.ChatQ1Placeholder] = "e.g. C:\\Users\\me\\Documents\\Meeting notes",
+        [StudioStringKeys.ChatQ1Chip1] = "Documents/Meeting notes",
+        [StudioStringKeys.ChatQ1Chip2] = "Pick a folder…",
+        [StudioStringKeys.ChatQ1Chip3] = "I don't know yet",
+        [StudioStringKeys.ChatQ1Value1] = "Documents/Meeting notes",
+        [StudioStringKeys.ChatQ1Value2] = "Folder to be picked",
+        [StudioStringKeys.ChatQ1Value3] = "To be confirmed later",
+        [StudioStringKeys.ChatQ2Fact] = "Delivery moment",
+        [StudioStringKeys.ChatQ2Body] = "When do you want to receive the summary?",
+        [StudioStringKeys.ChatQ2Detail] = "The team works on its own at that hour, even with Studio closed. You can change the schedule after adoption.",
+        [StudioStringKeys.ChatQ2Placeholder] = "e.g. Friday around 5 pm",
+        [StudioStringKeys.ChatQ2Chip1] = "Friday 5 pm",
+        [StudioStringKeys.ChatQ2Chip2] = "Monday 8 am",
+        [StudioStringKeys.ChatQ2Chip3] = "Whenever",
+        [StudioStringKeys.ChatQ2Value1] = "Friday 5 pm",
+        [StudioStringKeys.ChatQ2Value2] = "Monday 8 am",
+        [StudioStringKeys.ChatQ2Value3] = "Free schedule",
+        [StudioStringKeys.ChatQ3Fact] = "Limit to respect",
+        [StudioStringKeys.ChatQ3Body] = "Is there anything the team must never do?",
+        [StudioStringKeys.ChatQ3Detail] = "A clear limit beats a vague instruction: files to ignore, information not to quote, a tone to avoid.",
+        [StudioStringKeys.ChatQ3Hint] = "You can skip: I'll then keep to reading the folder and nothing else.",
+        [StudioStringKeys.ChatQ3Placeholder] = "e.g. never quote documents marked confidential",
+        [StudioStringKeys.ChatQ3Chip1] = "Read-only on the folder",
+        [StudioStringKeys.ChatQ3Chip2] = "Ignore the drafts",
+        [StudioStringKeys.ChatQ3Chip3] = "Nothing in particular",
+        [StudioStringKeys.ChatQ3Value1] = "Read-only on the folder",
+        [StudioStringKeys.ChatQ3Value2] = "Drafts ignored",
+        [StudioStringKeys.ChatQ3Value3] = "No limit",
+        [StudioStringKeys.ChatBriefAnswerPattern] = "{0}: {1}.",
+        [StudioStringKeys.ChatFactBrief] = "The work you described",
+        [StudioStringKeys.ChatFactRhythm] = "Rhythm",
+        [StudioStringKeys.ChatFactSource] = "Document source",
+        [StudioStringKeys.ChatFactOutput] = "Shape of the result",
+        [StudioStringKeys.ChatFactComposeNote] = "Composition instruction",
+        [StudioStringKeys.ChatFactTryNote] = "Trial instruction",
+        [StudioStringKeys.ChatFactAdoptNote] = "Adoption instruction",
+        [StudioStringKeys.ChatFactPending] = "pending",
+        [StudioStringKeys.ChatEmptyCreate] = "Ask your question: the assistant answers without changing anything until you ask it to.",
+        [StudioStringKeys.ChatEmptyRun] = "Ask about the run in progress: why a step is slow, what happens on a failure, where the result lands.",
+        [StudioStringKeys.ChatEmptyHistory] = "Ask about a past run: why it failed, what has changed since, how to keep it from happening again.",
+        [StudioStringKeys.ChatRuleFolders] = "folder|file|access|permission|read|writ",
+        [StudioStringKeys.ChatRuleCost] = "cost|price|paid|bill|token|expensive",
+        [StudioStringKeys.ChatRuleDuration] = "time|duration|how long|slow|fast|minute",
+        [StudioStringKeys.ChatRuleError] = "error|fail|crash|break|bug",
+        [StudioStringKeys.ChatRuleSchedule] = "schedul|plan|hour|cron|automatic|morning",
+        [StudioStringKeys.ChatRulePrivacy] = "confidential|privat|data|gdpr|security|leave",
+        [StudioStringKeys.ChatAnswerFolders] = "Agents only see the folders allowed in Settings. A read-only folder can never be modified, even if an agent asks for it.",
+        [StudioStringKeys.ChatAnswerCost] = "A local setting (Ollama) costs nothing. In the cloud the cost depends on how many words are exchanged: Studio shows the tokens spent at the end of every run.",
+        [StudioStringKeys.ChatAnswerDuration] = "On this dataset, count one to two minutes per run locally. The technical log gives the duration of each step.",
+        [StudioStringKeys.ChatAnswerError] = "If a step fails the run stops and nothing is written to the output folder. The failure appears in the history, with the step and the error message.",
+        [StudioStringKeys.ChatAnswerSchedule] = "A scheduled team runs even with Studio closed, as long as the machine is on. You can stop the schedule from My teams.",
+        [StudioStringKeys.ChatAnswerPrivacy] = "With a local setting, no data leaves the machine. With a cloud setting, only the text sent to the model leaves — never the files themselves.",
+        [StudioStringKeys.ChatReplyStep1] = "Describe the work in one sentence, as you would to a colleague: what you do by hand today, and what you want to receive. I'll take care of the rest — and I'll ask for the details that are missing.",
+        [StudioStringKeys.ChatReplyStep2] = "The proposed agents share the reading, the writing and the proofreading. You can drop one: I'll rebalance the roles, and the allowed folders will stay the same.",
+        [StudioStringKeys.ChatReplyStep3] = "The trial touches nothing: read-only, on a sample of documents, and nothing is saved. This is the moment to check the tone and the level of detail.",
+        [StudioStringKeys.ChatReplyStep4] = "After adoption the team works on its own at the chosen moment, even with Studio closed. Every run leaves a trace in History, and you can stop the schedule from My teams.",
+        [StudioStringKeys.ChatReplyRun] = "I'm following the run live. If a step stops, tell me: I read the technical log and explain what blocked, without jargon.",
+        [StudioStringKeys.ChatReplyHistory] = "Every line of the history keeps its full log. Ask me « why did the last one fail? » and I'll pick up the offending step and the error message.",
         [StudioStringKeys.WizardDraftTitle] = "A creation in progress",
         [StudioStringKeys.WizardDraftWaitingTitle] = "The assistant is waiting for your answer",
         [StudioStringKeys.WizardDraftResume] = "resume the conversation",

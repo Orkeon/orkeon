@@ -61,7 +61,10 @@ public partial class App : System.Windows.Application
             I18nStudioStrings.Instance,
             preferences.Mode,
             mode => UiPreferences.Save(ThemeManager.IsDark, I18n.Instance.Language, mode),
-            shellOpener: ShellOpener.Instance);
+            shellOpener: ShellOpener.Instance,
+            // The assistant's beats are timed; the ViewModels only know how to ask for
+            // "later", and this is the only place that knows what later means in WPF.
+            delay: new WpfDelay(Dispatcher));
 
         var window = new MainWindow { DataContext = _viewModel };
         MainWindow = window;

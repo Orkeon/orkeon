@@ -18,6 +18,19 @@
           <TextBlock Text="{Binding [Wiz_Restart], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </Button>
+      <!-- T-08: a way into the conversation from anywhere on the screen, with the accent
+           dot when the assistant spoke while it was closed. -->
+      <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Height="32" Padding="13,0"
+              Margin="0,0,8,0" VerticalAlignment="Top" Command="{Binding Chat.ToggleCommand}"
+              ToolTip="{Binding [Vm_Chat_AskTip], Source={x:Static services:I18n.Instance}}">
+        <StackPanel Orientation="Horizontal">
+          <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
+          <TextBlock Text="{Binding [Vm_Chat_Ask], Source={x:Static services:I18n.Instance}}"/>
+          <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
+                   Fill="{DynamicResource MarkBrush}"
+                   Visibility="{Binding Chat.HasUnread, Converter={StaticResource BooleanToVisibility}}"/>
+        </StackPanel>
+      </Button>
       <StackPanel>
         <TextBlock Style="{StaticResource H1}" Text="{Binding [Scr_Create_Title], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
@@ -165,6 +178,51 @@
         </StackPanel>
       </Border>
 
+      <!-- T-04: with the conversation closed, its state stays in the flow rather than
+           disappearing with it — otherwise the assistant works, or waits, and the screen
+           says nothing. It goes away the moment the thread is open: two headers saying the
+           same thing is worse than none. -->
+      <Border Padding="16,14" Margin="0,0,0,16"
+              Visibility="{Binding Chat.IsLive, Converter={StaticResource BooleanToVisibility}}">
+        <Border.Style>
+          <Style TargetType="Border" BasedOn="{StaticResource Card}">
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding Chat.IsAsking}" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Border.Style>
+        <DockPanel>
+          <Border DockPanel.Dock="Left" Width="30" Height="30" CornerRadius="15" Margin="0,0,13,0"
+                  VerticalAlignment="Center" Background="{DynamicResource AccentWeakBrush}">
+            <controls:LucideIcon Kind="wand-2" Size="15" Foreground="{DynamicResource MarkBrush}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <Button DockPanel.Dock="Right" Height="34" Padding="14,0" VerticalAlignment="Center"
+                  Command="{Binding Chat.OpenCommand}" Content="{Binding Chat.StripAction}">
+            <Button.Style>
+              <Style TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Chat.IsAsking}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AccentFgBrush}"/>
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding Chat.StripTitle}"/>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,2,0,0"
+                       Foreground="{DynamicResource InkFaintBrush}" TextTrimming="CharacterEllipsis"
+                       Text="{Binding Chat.Status}"/>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
       <!-- The novice help rail (F-10): the step's plain-words explainer on the right;
            questions to the assistant live in each step's notes panel. -->
       <Grid>
@@ -172,7 +230,17 @@
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <StackPanel Grid.Column="0">
+
+        <!-- T-07: the conversation takes the CONTENT column, it does not float over the
+             screen. The help rail beside it keeps its 300 px and stays readable — an
+             overlay, or a panel with a constant width, covers it the moment the window
+             is resized. The width comes from the grid; nothing here names one. -->
+        <views:ChatThreadView Grid.Column="0" VerticalAlignment="Top" Margin="0,0,0,16"
+                              DataContext="{Binding Chat}"
+                              Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
+
+        <StackPanel Grid.Column="0"
+                    Visibility="{Binding Chat.IsClosed, Converter={StaticResource BooleanToVisibility}}">
       <!-- ── STEP 1 : DÉCRIRE ── -->
       <StackPanel Visibility="{Binding IsStep1, Converter={StaticResource BooleanToVisibility}}">
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
@@ -264,8 +332,23 @@
       <StackPanel Visibility="{Binding IsStep2, Converter={StaticResource BooleanToVisibility}}">
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
           <StackPanel>
-            <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Wiz_Proposal_Title], Source={x:Static services:I18n.Instance}}"/>
+            <!-- T-08: the short «Question» sits on the TITLE's line only. The explanation
+                 below keeps the card's full width — sharing the line with a button leaves
+                 the Novice column about 375 px and the paragraph runs to six lines. -->
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Height="30" Padding="11,0"
+                      FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"
+                      Foreground="{DynamicResource MarkBrush}" Command="{Binding Chat.ToggleCommand}"
+                      ToolTip="{Binding [Vm_Chat_AskTip], Source={x:Static services:I18n.Instance}}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="wand-2" Size="13" Margin="0,0,6,0"/>
+                  <TextBlock Text="{Binding [Vm_Chat_AskShort], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <TextBlock FontSize="14.5" FontWeight="Bold" VerticalAlignment="Center" TextWrapping="Wrap"
+                         Foreground="{DynamicResource InkBrush}"
+                         Text="{Binding [Wiz_Proposal_Title], Source={x:Static services:I18n.Instance}}"/>
+            </DockPanel>
             <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
                        Text="{Binding Rationale}"/>
             <StackPanel Orientation="Horizontal" Margin="0,11,0,0"

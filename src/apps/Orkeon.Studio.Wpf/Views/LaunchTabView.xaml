@@ -50,6 +50,28 @@
                Text="{Binding [Scr_Run_SubExpert], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
 
+
+    <!-- T-08: the way in, with the accent dot when the assistant spoke while it was closed. -->
+    <Button Style="{StaticResource BtnGhost}" Height="32" Padding="13,0" Margin="0,14,0,0"
+            HorizontalAlignment="Left"
+            Command="{Binding DataContext.Chat.ToggleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+            ToolTip="{Binding [Vm_Chat_AskTip], Source={x:Static services:I18n.Instance}}">
+      <StackPanel Orientation="Horizontal">
+        <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
+        <TextBlock Text="{Binding [Vm_Chat_Ask], Source={x:Static services:I18n.Instance}}"/>
+        <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
+                 Fill="{DynamicResource MarkBrush}"
+                 Visibility="{Binding DataContext.Chat.HasUnread, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+      </StackPanel>
+    </Button>
+
+    <!-- T-07: the conversation, third mount point. Capped at 700 px because this screen's
+         content is a single column of cards rather than a content/help pair — the cap is
+         the mock's, and it is on the panel, never on what it sits above. -->
+    <views:ChatThreadView MaxWidth="700" HorizontalAlignment="Left" Margin="0,16,0,0"
+                          DataContext="{Binding DataContext.Chat, RelativeSource={RelativeSource AncestorType=Window}}"
+                          Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
+
     <!-- CLI missing: a calm, actionable banner — never a raw English block (T-07) -->
     <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource WarningBrush}" Margin="0,16,0,0"
             Visibility="{Binding CliBanner, Converter={StaticResource StringPresentToVisibility}}">

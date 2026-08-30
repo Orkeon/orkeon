@@ -249,6 +249,94 @@
     </Setter>
   </Style>
 
+  <!-- ══ The conversation panel's own pieces (30/08 mock, ChatThread.dc.html) ══ -->
+
+  <!-- The recap header is a full-width row that toggles, not a button that looks like one. -->
+  <Style x:Key="RecapHeader" TargetType="Button">
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="bd" Background="{DynamicResource SurfaceBrush}" Padding="16,10"
+                  BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,0,0,1">
+            <ContentPresenter/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- A quick reply under a question. A true pill: 26 high, radius exactly 13. -->
+  <Style x:Key="QuickChip" TargetType="Button">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="Height" Value="26"/>
+    <Setter Property="Margin" Value="0,0,6,6"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="bd" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="1" CornerRadius="13" Padding="12,0">
+            <ContentPresenter VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The precision chips under the pinned brief: 22 high, radius exactly 11. -->
+  <Style x:Key="BriefChip" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Height" Value="22"/>
+    <Setter Property="CornerRadius" Value="11"/>
+    <Setter Property="Padding" Value="10,0"/>
+    <Setter Property="Margin" Value="0,0,5,5"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+  </Style>
+
+  <!-- Text that acts: no chrome at all, underlined on hover. Used for «Modifier» on the
+       brief card and «Passer cette question» under the input. -->
+  <Style x:Key="LinkBtn" TargetType="Button">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="bd" Background="Transparent" BorderThickness="0,0,0,1" BorderBrush="Transparent">
+            <ContentPresenter VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="bd" Property="BorderBrush" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- ══ Inputs ══ -->
   <Style x:Key="Input" TargetType="TextBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>

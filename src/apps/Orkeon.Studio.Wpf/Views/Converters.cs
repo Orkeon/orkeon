@@ -40,8 +40,18 @@ public sealed class IsEqualConverter : IMultiValueConverter
 public sealed class StringPresentToVisibilityConverter : IValueConverter
 {
     /// <inheritdoc />
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is string { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+    /// <remarks>
+    /// Pass <c>invert</c> as the parameter for the other direction — a placeholder that
+    /// shows only while the field is empty is the same question read backwards.
+    /// </remarks>
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var present = value is string { Length: > 0 };
+        if (string.Equals(parameter as string, "invert", StringComparison.OrdinalIgnoreCase))
+            present = !present;
+
+        return present ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     /// <inheritdoc />
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>

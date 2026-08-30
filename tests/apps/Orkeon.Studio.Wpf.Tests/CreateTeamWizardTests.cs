@@ -52,6 +52,25 @@ public class CreateTeamWizardTests
         return (vm, processes, profiles);
     }
 
+    /// <summary>
+    /// « Composer l'équipe » from the outside: the gesture opens the conversation, the
+    /// three interview answers go in, and the engine is only reached after the third.
+    /// The tests below all want the engine, so they all come through here.
+    /// </summary>
+    private static async Task Compose(CreateTeamViewModel vm)
+    {
+        await vm.ComposeCommand.ExecuteAsync();
+
+        for (var i = 0; i < 3 && vm.Chat.IsAsking; i++)
+        {
+            vm.Chat.Draft = $"réponse {i + 1}";
+            vm.Chat.SendCommand.Execute(null);
+        }
+
+        if (vm.PendingCompose is { } pending)
+            await pending;
+    }
+
     private static void FillStepOne(CreateTeamViewModel vm)
     {
         vm.Need = "une veille documentaire";
@@ -85,7 +104,7 @@ public class CreateTeamWizardTests
 
         FillStepOne(vm);
         Assert.Equal("Everything is there — I can compose the team.", vm.Step1Hint);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         // The brief folds the precisions into the engine's opening turn…
         var need = processes.LastRequest!.Arguments[1];
@@ -114,7 +133,7 @@ public class CreateTeamWizardTests
         ]);
 
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         // Composing asked the engine for the dry boundary: generate, validate, stop.
         Assert.Contains("--dry", processes.Requests[0].Arguments);
@@ -149,7 +168,7 @@ public class CreateTeamWizardTests
             Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
         ]);
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         Assert.True(vm.CanEditAgents);
         Assert.True(vm.Agents[0].EditCommand.CanExecute(null));
@@ -281,8 +300,11 @@ public class CreateTeamWizardTests
     }
 
     [Fact]
-    public async Task A_notes_question_travels_down_stdin_and_the_reply_lands_in_its_thread()
+    public async Task A_free_question_travels_down_stdin_while_the_engine_is_listening()
     {
+        // The channel the three per-step mini-threads used is not lost with them: the one
+        // conversation still sends down stdin whenever a forge session is listening. What
+        // changed is where the question is typed, and that its history survives the step.
         var (vm, processes, _) = Build();
         processes.OutputToEmit.AddRange(
         [
@@ -291,23 +313,31 @@ public class CreateTeamWizardTests
         ]);
         processes.WhileRunning = () =>
         {
-            vm.ComposeNotes.QuestionDraft = "que se passe-t-il si un fichier est illisible ?";
-            vm.ComposeNotes.AskCommand.Execute(null);
+            vm.Chat.Draft = "que se passe-t-il si un fichier est illisible ?";
+            vm.Chat.SendCommand.Execute(null);
         };
 
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         Assert.Contains(
             """{"kind":"user.message","text":"que se passe-t-il si un fichier est illisible ?"}""",
             processes.InputLines);
-        var exchange = Assert.Single(vm.ComposeNotes.Items);
-        Assert.False(exchange.HasAnswer);   // scripted stream had no turn left to answer with
+
+        // It is in the thread as the user's own turn, waiting for the engine's answer —
+        // the scripted stream had no turn left to give it one.
+        Assert.Contains(
+            vm.Chat.Turns,
+            t => !t.IsBot && t.Body == "que se passe-t-il si un fichier est illisible ?");
     }
 
     [Fact]
-    public async Task An_unsolicited_assistant_turn_lands_in_the_bar_not_in_a_thread()
+    public async Task An_unsolicited_assistant_turn_lands_in_the_conversation()
     {
+        // Inverted by the 30/08 mock (T-01/T-08). This test used to assert the opposite —
+        // that the turn surfaced in a bar above the form — which is the ergonomic defect
+        // the thread replaces: a question arriving outside the reading flow, alone, with
+        // nothing behind it saying what the assistant had already understood.
         var (vm, processes, _) = Build();
         processes.OutputToEmit.AddRange(
         [
@@ -316,11 +346,10 @@ public class CreateTeamWizardTests
         ]);
 
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
-        Assert.True(vm.HasAssistantPrompt);
-        Assert.Equal("Quel dossier faut-il lire ?", vm.AssistantPrompt);
-        Assert.Empty(vm.ComposeNotes.Items);
+        var turn = Assert.Single(vm.Chat.Turns, t => t.IsBot && t.Body == "Quel dossier faut-il lire ?");
+        Assert.True(turn.IsBot);
     }
 
     [Fact]
@@ -343,7 +372,7 @@ public class CreateTeamWizardTests
 
         FillStepOne(vm);
         vm.TryNotes.Consigne = "n'analyser que les fichiers de la semaine";
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         Assert.Equal(3, vm.Step);
         var line = Assert.Single(vm.Checklist);
@@ -373,7 +402,7 @@ public class CreateTeamWizardTests
                 Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
             ]);
             FillStepOne(vm);
-            await vm.ComposeCommand.ExecuteAsync();
+            await Compose(vm);
 
             Assert.Equal(4, vm.Step);
             vm.TeamName = "Ma veille quotidienne";
@@ -425,7 +454,7 @@ public class CreateTeamWizardTests
                 Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
             ]);
             FillStepOne(vm);
-            await vm.ComposeCommand.ExecuteAsync();
+            await Compose(vm);
             vm.TeamName = "Ma veille";
 
             // The engine exits without a `promoted` event: nothing landed on disk.
@@ -454,7 +483,7 @@ public class CreateTeamWizardTests
             Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
         ]);
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
         vm.TeamName = "Ma veille";
         Assert.True(vm.CanSaveTeam);
 
@@ -477,7 +506,7 @@ public class CreateTeamWizardTests
             Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
         ]);
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
         Assert.Equal(4, vm.MaxStep);
         vm.TeamName = "Ancien nom";
 
@@ -485,7 +514,7 @@ public class CreateTeamWizardTests
         processes.OutputToEmit.Clear();
         processes.OutputToEmit.Add(
             Out("""{"v":2,"seq":1,"ts":"t","kind":"stage.entered","stage":"brief","iteration":1}"""));
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         Assert.Equal(1, vm.Step);
         Assert.Equal(1, vm.MaxStep);
@@ -610,7 +639,7 @@ public class CreateTeamWizardTests
             Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
         ]);
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         Assert.Contains(vm.DerivedMounts, m => m.VirtualPath == "/output" && m.IsReadWrite);
 
@@ -653,7 +682,7 @@ public class CreateTeamWizardTests
             Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
         ]);
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         Assert.Contains(vm.DerivedMounts, m => m.VirtualPath == "/workspace" && !m.IsReadWrite);
 
@@ -686,7 +715,7 @@ public class CreateTeamWizardTests
             Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
         ]);
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         // Nothing claimed yet: the derived chip carries the information.
         Assert.Contains(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/output");
@@ -736,7 +765,7 @@ public class CreateTeamWizardTests
             Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
         ]);
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         Assert.Equal(["/workspace", "/output"], vm.UnclaimedDerivedMounts.Select(m => m.VirtualPath));
         Assert.False(vm.HasDroppedDerivedRoots);
@@ -777,7 +806,7 @@ public class CreateTeamWizardTests
             Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
         ]);
         FillStepOne(vm);
-        await vm.ComposeCommand.ExecuteAsync();
+        await Compose(vm);
 
         Assert.Contains(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/workspace");
 
@@ -802,25 +831,24 @@ public class CreateTeamWizardTests
 public sealed class AskWithoutEngineTests
 {
     [Fact]
-    public void The_panel_says_the_assistant_is_not_running_and_keeps_the_draft()
+    public void With_nobody_listening_the_local_bank_answers_rather_than_the_thread_going_quiet()
     {
-        var notes = new StepNotesViewModel((origin, _) =>
-        {
-            // What CreateTeamViewModel.AskAssistant does when ForgeClient.SendMessage
-            // returns false: name the refusal, refuse the send.
-            origin.Notice = EnglishStudioStrings.Instance[StudioStringKeys.WizardAssistantNotRunning];
-            return false;
-        });
+        // The guarantee behind the owner's escalation — « je pose une question a
+        // l'assistant, rien ne se passe » — used to be met by a notice explaining that
+        // nothing had been sent. It is now met by an actual answer: with no forge session
+        // listening, the keyword bank replies, which is the thing the notice was standing
+        // in for. What must never happen is silence, and it still cannot.
+        var chat = new ChatThreadViewModel();
+        chat.SetContext(AssistantContext.WizardStep1);
+        chat.OpenCommand.Execute(null);
 
-        notes.QuestionDraft = "Peut-elle lire des PDF ?";
-        notes.AskCommand.Execute(null);
+        chat.Draft = "can it read PDF files in that folder?";
+        chat.SendCommand.Execute(null);
 
-        Assert.NotNull(notes.Notice);
-        Assert.Equal("Peut-elle lire des PDF ?", notes.QuestionDraft); // kept for the retry
-        Assert.Empty(notes.Items);                                     // nothing pretended sent
-
-        // Typing again clears the notice.
-        notes.QuestionDraft = "Peut-elle lire des PDF et des CSV ?";
-        Assert.Null(notes.Notice);
+        Assert.Equal(2, chat.Turns.Count);
+        Assert.False(chat.Turns[0].IsBot);
+        Assert.True(chat.Turns[1].IsBot);
+        Assert.NotEmpty(chat.Turns[1].Body);
+        Assert.Equal("", chat.Draft);   // sent, not kept: it went somewhere
     }
 }

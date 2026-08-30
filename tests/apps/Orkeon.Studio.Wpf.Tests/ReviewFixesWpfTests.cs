@@ -43,12 +43,19 @@ public sealed class ReviewFixesWpfTests : IDisposable
         Assert.True(wizard.HasTeamMounts);
 
         // RestartCommand is gated on MaxStep/IsEngineRunning; ComposeAsync is the real
-        // entry that resets the projection for a fresh session — same code path.
+        // entry that resets the projection for a fresh session — same code path. Since
+        // the 30/08 mock that entry is behind the interview: the gesture opens the
+        // conversation, and the engine hears about it after the third answer.
         wizard.Need = "une veille";
         wizard.Outcome = "un résumé";
         foreach (var choice in wizard.FrequencyChoices.Take(1).Concat(wizard.SourceChoices.Take(1)).Concat(wizard.OutputChoices.Take(1)))
             choice.SelectCommand.Execute(null);
         wizard.ComposeCommand.Execute(null);
+        for (var i = 0; i < 3 && wizard.Chat.IsAsking; i++)
+        {
+            wizard.Chat.Draft = "réponse";
+            wizard.Chat.SendCommand.Execute(null);
+        }
 
         // The previous team's folder authorizations were approved for THAT team only.
         // (EngineCommandLine is legitimately repopulated by the new session's own start.)

@@ -219,6 +219,14 @@ public sealed class NavigationDraftTests
         Assert.False(vm.IsAssistantWaiting);
 
         await vm.ComposeCommand.ExecuteAsync();
+        for (var i = 0; i < 3 && vm.Chat.IsAsking; i++)
+        {
+            vm.Chat.Draft = "réponse";
+            vm.Chat.SendCommand.Execute(null);
+        }
+
+        if (vm.PendingCompose is { } pending)
+            await pending;
 
         // The draft is no longer merely "in progress": someone is waiting on the user,
         // and the nav has to say which of the two it is.
