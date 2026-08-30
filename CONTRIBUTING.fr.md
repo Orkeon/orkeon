@@ -66,6 +66,14 @@ dotnet test Orkeon.sln
 > `dotnet build Orkeon.sln -p:SkipScriptingNpmInstall=true` — le build réussit quand
 > même et esbuild est résolu depuis le `PATH` au runtime.
 
+> **Les tests tournent sur Microsoft.Testing.Platform**, activé par `global.json` — le SDK
+> .NET 10 refuse purement et simplement d'exécuter ces projets via VSTest. Les commandes
+> courantes ne changent pas, mais deux choses mordent dès qu'on restreint une exécution :
+> un `--filter` qui ne correspond à **aucun** test dans un module y est une erreur (code 8),
+> pas un succès vide — une exécution sur toute la solution ne doit donc jamais exclure un
+> projet par son nom ; et les options propres à VSTest (`--collect`, `--logger`, `--blame`)
+> sont rejetées comme arguments inconnus.
+
 ## Structure du projet
 
 La solution compte **39 projets src répartis en 12 zones**, chacun reflété par un

@@ -12,6 +12,14 @@ Orkeon is a C# framework for creating and managing AI agent teams that collabora
 
 ### Build and Test
 
+> **The test runner is Microsoft.Testing.Platform, not VSTest.** `global.json` opts the
+> repo in (`"test": { "runner": "Microsoft.Testing.Platform" }`); without it the .NET 10
+> SDK refuses to run these projects at all ("Testing with VSTest target is no longer
+> supported"). Two consequences when writing a command: a `--filter` that matches zero
+> tests in a module is an **error** (exit 8), not an empty success — so never exclude a
+> project by name from a solution-wide run; and VSTest-only flags (`--collect`,
+> `--logger`, `--blame`) are rejected as unknown arguments.
+
 ```bash
 # Build Domain project (compiles successfully)
 dotnet build src/core/Orkeon.Domain/Orkeon.Domain.csproj
@@ -96,7 +104,7 @@ docker compose -f docker-compose.sonarqube.yml down     # Stop
 
 **Key details:**
 - Scripts use `sonar.login` (not `sonar.token`) for SonarQube 9.9 LTS compatibility
-- Coverage uses OpenCover format (`Format=opencover`, glob `**/coverage.opencover.xml`)
+- Coverage is collected by `dotnet-coverage` (Cobertura), converted to the SonarQube generic format by ReportGenerator. The VSTest collector `--collect:"XPlat Code Coverage"` no longer works: the test projects run on Microsoft.Testing.Platform, which does not implement data collectors. A run that measures nothing now **aborts** instead of importing an empty report
 - `sonar-project.properties` was removed — all parameters are passed via CLI to avoid conflicts
 - Report includes: coverage per project/directory, all issues, all code smells by project, security hotspots
 - Requires `jq` for report generation (analysis works without it)
@@ -552,7 +560,7 @@ The repository contains **39 src projects** and **34 test projects**, plus two s
 - Focus on the V1 feature surface, not speculative additions
 - `sonar-project.properties` has been removed (caused scanner conflicts — all params passed via CLI)
 - SonarQube 9.9 LTS: use `sonar.login` (not `sonar.token`) for authentication
-- Use `Format=opencover` for SonarQube coverage collection
+- Coverage collection goes through `dotnet-coverage collect -- dotnet test ...` (Cobertura → SonarQube generic); `--collect:"XPlat Code Coverage"` is rejected by the Microsoft.Testing.Platform runner
 
 ## Typed Request/Response Architecture
 

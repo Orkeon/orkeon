@@ -6,6 +6,17 @@
 # Docker daemon of a hosted ubuntu runner and tens of minutes. A red run is
 # VISIBLE: it opens (or comments) a pinned tracking issue instead of dying in
 # a log nobody reads.
+#
+# Two things this run inherits from Microsoft.Testing.Platform (global.json):
+#   - selecting one category across the whole solution leaves MOST modules with zero
+#     matching tests, and MTP calls that an error (exit 8) per module. Hence
+#     --ignore-exit-code 8, plus an explicit check that the run as a whole executed
+#     something: tolerating "zero tests" per module must not make "zero tests anywhere"
+#     — a mistyped filter — look green.
+#   - Embeddings.Local is left out: its 8 ONNX tests crash the process at exit 139
+#     after passing, and ci.yml already runs exactly those on every push with a guard
+#     that tells that crash apart from a real failure. Repeating them here would only
+#     mean a nightly that is red for a reason we already accept.
 name: Integration (nightly)
 on:
   schedule:
@@ -39,10 +50,19 @@ jobs:
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
       - name: Run Integration + Slow suites (Testcontainers)
-        run: >
-          dotnet test Orkeon.sln -c Release --no-build
-          --filter "Category=Integration|Category=Slow"
-          --logger "console;verbosity=minimal"
+        run: |
+          set +e
+          out="$(dotnet test Orkeon.sln -c Release --no-build \
+            --filter "(Category=Integration|Category=Slow)&FullyQualifiedName!~Orkeon.Tools.Embeddings.Local" \
+            -- --ignore-exit-code 8 2>&1)"
+          rc=$?
+          echo "$out"
+          total="$(printf '%s\n' "$out" | sed -n 's/^[[:space:]]*total:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' | tail -1)"
+          if [ "${total:-0}" -eq 0 ]; then
+            echo "::error::The nightly filter selected no test at all across the solution — the suites are not passing, they are not running."
+            exit 1
+          fi
+          exit $rc
       - name: Surface the failure as a tracking issue
         if: failure()
         env:

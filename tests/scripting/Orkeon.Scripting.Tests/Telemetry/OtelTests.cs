@@ -85,12 +85,22 @@ public sealed class OtelTests
             using var engine = new Engine();
             var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
-            await facade.complete("hello", null);
+            // A prompt whose LENGTH no other test in this assembly produces: the
+            // ActivityListener is process-global, and this test used to take the first
+            // llm-call span it saw. Under a parallel run that was somebody else's — a
+            // concurrent act() loop, whose span is tagged llm.method=act — and the
+            // assertion failed on a span this test never emitted (same idiom as
+            // crew_run/agent_run/tool_call above, which all discriminate by tag).
+            const string Prompt = "otel-probe-unique-prompt-length";
 
-            var span = Snapshot(spans).FirstOrDefault(s => s.OperationName == ScriptingActivitySource.LlmCallSpan);
+            await facade.complete(Prompt, null);
+
+            var span = Snapshot(spans)
+                .Where(s => s.OperationName == ScriptingActivitySource.LlmCallSpan)
+                .FirstOrDefault(s => s.TagObjects.Any(
+                    kv => kv.Key == "llm.prompt.length" && Equals(kv.Value, Prompt.Length)));
             Assert.NotNull(span);
             Assert.Contains(span!.Tags, kv => kv.Key == "llm.method" && kv.Value == "complete");
-            Assert.Contains(span.TagObjects, kv => kv.Key == "llm.prompt.length" && Equals(kv.Value, 5));
         }
         finally { listener.Dispose(); }
     }

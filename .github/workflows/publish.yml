@@ -18,8 +18,11 @@
 # Hosted runners only have ~14 GB free disk; this repo's native deps need more, so
 # the first step frees ~20 GB. The test phase runs unit + fast tests only — it
 # EXCLUDES Category=Integration (Testcontainers DB tests that pull GBs of DB images
-# and caused "No space left on device"), Category=Slow, and the embeddings assembly
-# (SIGSEGVs at teardown, exit 139 — re-run separately as a non-blocking step).
+# and caused "No space left on device") and Category=Slow, the latter carrying the 8
+# Embeddings.Local tests whose native ONNX runtime crashes the process after they pass
+# (exit 139); those run in a step of their own that tolerates that one shape.
+# `dotnet test` drives Microsoft.Testing.Platform (global.json), not VSTest — see
+# ci.yml's header for what that changes about filters and flags.
 name: Publish packages
 on: { push: { tags: [ 'v*' ] } }
 # id-token is required by the NuGet.org Trusted Publishing OIDC exchange.
@@ -56,26 +59,30 @@ jobs:
         with: { dotnet-version: '10.0.x' }
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
-      # Unit + fast tests only (see header for what's excluded and why).
-      - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow&FullyQualifiedName!~Orkeon.Tools.Embeddings.Local"
-      # Embeddings assembly alone: only the known crash-after-green teardown
-      # SIGSEGV is tolerated; real failures block the release (PUB-17 T3 —
-      # same guard as ci.yml). The 139 surfaces either as dotnet test's own
-      # exit code or wrapped by VSTest ("Test process crashed with exit code
-      # 139", dotnet test exiting 1) — both shapes are accepted, always
-      # requiring a clean "Passed!" summary with zero failures.
-      - name: Test Embeddings.Local (tolerate teardown SIGSEGV only after green results)
+      # Unit + fast tests only, same split as ci.yml (which documents it in full):
+      # Microsoft.Testing.Platform via global.json, no by-name project exclusion —
+      # a filter matching zero tests in a module is an error there, not a no-op.
+      - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
+      # The 8 ONNX tests of Embeddings.Local, alone: they pass and the native runtime
+      # then crashes the process (exit 139). Only that shape is tolerated — every
+      # discovered test accounted for, none failed — so a real failure still blocks the
+      # release (PUB-17 T3, same guard as ci.yml).
+      - name: Test Embeddings.Local ONNX suite (tolerate the crash only after green results)
         run: |
           set +e
-          out="$(dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build 2>&1)"
+          out="$(dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build --filter "Category=Integration|Category=Slow" 2>&1)"
           rc=$?
           echo "$out"
           if [ $rc -eq 0 ]; then exit 0; fi
-          if echo "$out" | grep -q "Passed!" && ! echo "$out" | grep -qE "Failed:[[:space:]]*[1-9]" \
-             && { [ $rc -eq 139 ] || echo "$out" | grep -q "crashed with exit code 139"; }; then
-            echo "::warning::Embeddings.Local: all tests passed; ONNX teardown SIGSEGV tolerated (known issue)."
+          field() { printf '%s\n' "$out" | sed -n "s/^[[:space:]]*$1:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p" | tail -1; }
+          total=$(field total); failed=$(field failed); ok=$(field succeeded); skipped=$(field skipped)
+          : "${total:=0}"; : "${failed:=-1}"; : "${ok:=0}"; : "${skipped:=0}"
+          if { [ "$rc" -eq 139 ] || printf '%s\n' "$out" | grep -q "Exit code: 139"; } \
+             && [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$((ok + skipped))" -eq "$total" ]; then
+            echo "::warning::Embeddings.Local: $ok/$total ONNX tests passed; native-runtime crash at exit 139 tolerated (known issue, PUB-17/SONAR-14)."
             exit 0
           fi
+          echo "::error::Embeddings.Local run failed (exit $rc, $failed failed, $ok/$total accounted for) — not the known post-green ONNX crash. Release blocked."
           exit $rc
       - run: dotnet pack  Orkeon.sln -c Release -o artifacts /p:ContinuousIntegrationBuild=true
       # Orkeon.Runners.Shared already lives inside Orkeon.sln, so the pack above emits it too;

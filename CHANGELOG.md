@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `dotnet test` runs again, and the tests it skipped are back
+
+The .NET 10 SDK stopped honouring the VSTest target for Microsoft.Testing.Platform test
+projects. Every `dotnet test` in this repo answered *"Testing with VSTest target is no longer
+supported by Microsoft.Testing.Platform on .NET 10 SDK and later"* and ran nothing — CI, the
+release pipeline, the nightly and the SonarQube script alike. `global.json` now opts into the new
+runner (`"test": { "runner": "Microsoft.Testing.Platform" }`), which is the only supported answer;
+the per-project `TestingPlatformDotnetTestSupport` property no longer does it.
+
+Three things follow from the new runner, and each was a live defect rather than a rename:
+
+- **A filter matching zero tests in a module is an error there** (exit 8), not an empty success.
+  CI excluded `Orkeon.Tools.Embeddings.Local.Tests` by name from a solution-wide filter, which
+  under MTP means "load that module, match nothing, fail". The exclusion is gone: measurement
+  showed the SIGSEGV that motivated it comes from that assembly's **8 `Category=Slow` tests** —
+  the ones that boot the real ONNX model — and from those alone (3/3 crash with only them, 5/5
+  clean without them). Its other 28 tests now run with everyone else's instead of being skipped,
+  and the 8 get a step whose guard reads the runner's own accounting: the crash is tolerated only
+  when every discovered test was accounted for and none failed, so a run that dies mid-suite stays
+  red. The previous guard accepted that case.
+- **The nightly needs the opposite tolerance.** Selecting one category across the whole solution
+  leaves most modules empty by construction, so it passes `--ignore-exit-code 8` — plus an
+  explicit check that the run executed something, because tolerating "zero tests" per module must
+  not let "zero tests anywhere" look green. Its VSTest-only `--logger` argument is gone.
+- **Coverage was measured by a collector the runner does not implement.**
+  `--collect:"XPlat Code Coverage"` is refused outright (exit 5), `scripts/sonar-analyze.*`
+  swallowed the failure with `|| log_warn`, and the analysis went on to import a report nothing
+  had written — a Quality Gate evaluating coverage conditions against 0% and reading as a
+  measurement. Collection moves to `dotnet-coverage` (Cobertura → SonarQube generic via
+  ReportGenerator, in both the shell and PowerShell scripts), and a report holding no class now
+  **aborts** the analysis instead of being imported.
+
+One flaky test surfaced with the new scheduler and is fixed rather than tolerated:
+`OtelTests.llm_call_emits_a_span_with_method_and_prompt_length_tags` took the first LLM-call span
+it saw from a process-global `ActivityListener`, so under a parallel run it asserted on a
+concurrent `act()` loop's span. Its three neighbours already discriminated by a unique tag; it now
+does too.
+
+### Fixed — BM25: the guard the code index never had, and two comments that promised too much
+
+`Bm25CodeIndex` (Analysis) accepted any `k1`/`b` through its public constructor. A negative `k1`
+inverts the term-frequency saturation and a `b` outside `[0, 1]` turns length normalization into
+an unbounded multiplier: the index kept answering, with scores no caller could interpret and no
+error to notice. It now validates exactly as its prose twin `Bm25Index` (Rag) always did.
+
+The two implementations' doc comments claimed they were kept in step — *"same k1/b defaults"*,
+*"Same k, same semantics"*. Nothing enforced it, and on the fusion constant it was already false:
+the RAG side is operator-tunable through `Orkeon:Rag:Retrieval:Hybrid:RrfK` while code search
+exposes no such knob. The comments now say what is true — the values come from the literature, the
+two indexes never score the same corpus, and retuning one must not propagate. ADR-009 records why
+these are not satellite candidates: a shared spelling is not a shared value.
+
+The one real duplication there was internal to RAG. `ReciprocalRankFusion.DefaultK` and
+`RagDefaults.RrfK` were two declarations of the same product default, backing two option classes
+bound to the **same** configuration section (`Orkeon:Rag:Retrieval:Hybrid`) from two projects — so
+changing the default would have moved one fusion and not the other. `Orkeon.Rag` already
+references the Domain that holds it; the copy is now a reference, and the published value is
+unchanged.
+
 ### Added — satellites for the constants two projects must agree on (ADR-009)
 
 `Orkeon.Studio.Core` may not reference `Orkeon.Infrastructure` or `Orkeon.Hosting`, and the
