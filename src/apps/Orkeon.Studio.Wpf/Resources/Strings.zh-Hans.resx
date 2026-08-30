@@ -2282,4 +2282,7 @@
   <data name="Studio.Diagnostics.StatusUnknown" xml:space="preserve">
     <value>未检查。</value>
   </data>
+  <data name="Studio.Create.DraftJoinerPattern" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
 </root>

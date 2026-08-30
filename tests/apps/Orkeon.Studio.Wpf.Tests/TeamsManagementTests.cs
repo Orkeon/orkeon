@@ -249,4 +249,48 @@ public sealed class NavigationDraftTests
         Assert.Contains(nameof(vm.DraftLine), raised);
         Assert.Contains(nameof(vm.DraftStepShort), raised);
     }
+
+    [Fact]
+    public async Task A_started_conversation_is_a_draft_even_before_the_form_is_filled()
+    {
+        var vm = Wizard(withAssistant: true);
+        vm.Need = "une veille documentaire";
+        vm.FrequencyChoices[1].SelectCommand.Execute(null);
+        vm.SourceChoices[0].SelectCommand.Execute(null);
+        vm.OutputChoices[0].SelectCommand.Execute(null);
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.True(vm.Chat.IsStarted);
+        Assert.True(vm.HasDraft);
+
+        // Someone is waiting on the user, and the nav has to say which — the count would
+        // only say how much has been said, which is not what to do next.
+        Assert.True(vm.IsAssistantWaiting);
+        Assert.Contains("resume the conversation", vm.DraftLine, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Once_nobody_is_waiting_the_line_counts_the_conversation_instead()
+    {
+        var vm = Wizard(withAssistant: true);
+        vm.Need = "une veille documentaire";
+        vm.FrequencyChoices[1].SelectCommand.Execute(null);
+        vm.SourceChoices[0].SelectCommand.Execute(null);
+        vm.OutputChoices[0].SelectCommand.Execute(null);
+
+        await vm.ComposeCommand.ExecuteAsync();
+        for (var i = 0; i < 3 && vm.Chat.IsAsking; i++)
+        {
+            vm.Chat.Draft = "réponse";
+            vm.Chat.SendCommand.Execute(null);
+        }
+
+        if (vm.PendingCompose is { } pending)
+            await pending;
+
+        Assert.NotEmpty(vm.Chat.Turns);
+        Assert.False(vm.Chat.IsAsking);
+        Assert.Contains("message", vm.DraftLine, StringComparison.OrdinalIgnoreCase);
+    }
 }

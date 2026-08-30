@@ -247,6 +247,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         Chat.StopRequested += (_, _) => { if (IsEngineRunning) _client.RequestCancellation(); };
         Chat.Turns.CollectionChanged += (_, _) =>
         {
+            RaiseDraftChanged();
             ComposeNotes.RefreshMessageCount();
             TryNotes.RefreshMessageCount();
             AdoptNotes.RefreshMessageCount();
@@ -255,6 +256,16 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             if (e.PropertyName is nameof(ChatThreadViewModel.IsStarted))
                 RestartCommand?.RaiseCanExecuteChanged();
+
+            // The nav's draft block reads the conversation too: «l'assistant attend votre
+            // réponse» is the state a user must never walk away from without seeing.
+            if (e.PropertyName is nameof(ChatThreadViewModel.IsStarted)
+                or nameof(ChatThreadViewModel.IsBusy)
+                or nameof(ChatThreadViewModel.IsAsking)
+                or nameof(ChatThreadViewModel.UnreadCount))
+            {
+                RaiseDraftChanged();
+            }
         };
 
         // T-02: the gesture no longer starts the engine. It opens the thread and asks
@@ -364,10 +375,12 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// Whether an unfinished creation exists: something typed, a step passed, or the
     /// assistant mid-thread. Leaving the wizard must never be the same as losing it.
     /// </summary>
-    public bool HasDraft => !IsSaved && (_step > 1 || _need.Trim().Length > 0 || IsEngineRunning);
+    public bool HasDraft =>
+        !IsSaved && (_step > 1 || _need.Trim().Length > 0 || IsEngineRunning || Chat.IsStarted);
 
     /// <summary>Whether the assistant is the one holding the draft up.</summary>
-    public bool IsAssistantWaiting => HasDraft && (IsEngineRunning || HasAssistantPrompt);
+    public bool IsAssistantWaiting =>
+        HasDraft && (IsEngineRunning || HasAssistantPrompt || Chat.IsBusy || Chat.IsAsking || Chat.HasUnread);
 
     /// <summary>The nav entry's own counter — «2/4», mono, no chip.</summary>
     public string DraftStepShort =>
@@ -387,8 +400,16 @@ public sealed class CreateTeamViewModel : ObservableObject
         get
         {
             var tail = _strings[StepNameKey(_step)];
+
+            // Waiting wins over counting: «reprendre la discussion» is what to DO, the
+            // message count is only what there is. Never both on one line.
             if (IsAssistantWaiting)
-                tail += " · " + _strings[StudioStringKeys.WizardDraftResume];
+                tail = Join(tail, _strings[StudioStringKeys.WizardDraftResume]);
+            else if (Chat.Turns.Count > 0)
+                tail = Join(tail, string.Format(
+                    CultureInfo.CurrentCulture,
+                    _strings[StudioStringKeys.ChatStatusMessagesPattern],
+                    Chat.Turns.Count));
 
             return string.Format(
                 CultureInfo.CurrentCulture,
@@ -396,6 +417,9 @@ public sealed class CreateTeamViewModel : ObservableObject
                 _step, StepCount, tail);
         }
     }
+
+    private string Join(string left, string right) => string.Format(
+        CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardDraftJoinerPattern], left, right);
 
     private const int StepCount = 4;
 

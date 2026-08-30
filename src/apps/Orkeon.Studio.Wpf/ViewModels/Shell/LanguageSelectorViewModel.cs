@@ -49,6 +49,7 @@ public sealed class LanguageSelectorViewModel : ObservableObject
     /// <param name="systemLanguage">The OS UI language; defaults to this machine's.</param>
     /// <param name="apply">Switches the running catalogue.</param>
     /// <param name="persist">Records an explicit choice. Never called for a detected one.</param>
+    /// <param name="strings">The catalogue the header line and the tooltip are written in.</param>
     public LanguageSelectorViewModel(
         string? storedChoice = null,
         string? systemLanguage = null,

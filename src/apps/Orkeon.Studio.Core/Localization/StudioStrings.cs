@@ -352,6 +352,11 @@ public static class StudioStringKeys
     /// <summary>"Not checked."</summary>
     public const string DoctorStatusUnknown = "Studio.Diagnostics.StatusUnknown";
 
+
+    /// <summary>"{0} · {1}" — the draft line is built from parts, and even the dot
+    /// between them is a per-culture decision rather than a C# operator.</summary>
+    public const string WizardDraftJoinerPattern = "Studio.Create.DraftJoinerPattern";
+
     // ---- Import recognition report (Teams/ImportTeamViewModel, audit 04/12) --
 
     /// <summary>"{0} — {1} agent(s)"</summary>
@@ -1218,6 +1223,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardStep3] = "Try",
         [StudioStringKeys.WizardStep4] = "Adopt",
         [StudioStringKeys.WizardDraftStepPattern] = "Step {0} of {1} · {2}",
+        [StudioStringKeys.WizardDraftJoinerPattern] = "{0} · {1}",
         [StudioStringKeys.DoctorStatusOk] = "In place.",
         [StudioStringKeys.DoctorStatusWarning] = "Usable, but worth a look.",
         [StudioStringKeys.DoctorStatusFailure] = "Missing — a team will not run until this is fixed.",

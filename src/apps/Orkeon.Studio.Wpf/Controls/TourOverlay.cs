@@ -123,6 +123,10 @@ public sealed class TourOverlay : Grid
         Dispatcher.BeginInvoke(Layout, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1863",
+        Justification = "The format string is the CURRENT culture's: caching a CompositeFormat "
+                      + "here would keep rendering the previous language's shape after a hot switch, "
+                      + "which is the one thing this counter must not do.")]
     private void Layout()
     {
         var step = _steps[_index];
@@ -153,7 +157,9 @@ public sealed class TourOverlay : Grid
         _title.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[" + step.TitleKey + "]") { Source = I18n.Instance });
         _body.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[" + step.BodyKey + "]") { Source = I18n.Instance });
         // A counter is a sentence too: the joiner is catalogued rather than welded in,
-        // like every other assembled label (T-15).
+        // like every other assembled label (T-15). CompositeFormat is deliberately NOT
+        // cached: the pattern changes with the language, and a cached one would keep
+        // rendering the previous culture's shape after a hot switch.
         _counter.Text = string.Format(
             System.Globalization.CultureInfo.CurrentCulture,
             I18n.T("Studio.Shell.CounterPattern"), _index + 1, _steps.Count);
