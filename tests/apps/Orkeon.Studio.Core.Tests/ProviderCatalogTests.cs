@@ -28,7 +28,7 @@ public sealed class ProviderCatalogTests
             LlmPresets.Ollama, LlmPresets.OpenAI, LlmPresets.Anthropic,
             LlmPresets.Mistral, LlmPresets.DeepSeek, LlmPresets.Kimi,
             LlmPresets.Qwen, LlmPresets.Together, LlmPresets.HuggingFace, LlmPresets.Zai,
-            LlmPresets.Gemini, LlmPresets.Grok,
+            LlmPresets.Gemini, LlmPresets.Grok, LlmPresets.MiniMax,
         ];
 
         Assert.All(expected, id => Assert.Contains(id, ids));

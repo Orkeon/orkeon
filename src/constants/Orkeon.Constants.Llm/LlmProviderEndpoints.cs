@@ -69,6 +69,20 @@ public static class LlmProviderEndpoints
     public const string Grok = "https://api.x.ai/v1";
 
     /// <summary>
+    /// MiniMax international API base URL (OpenAI-compatible). From the vendor's platform
+    /// documentation, 2026-08-30 — no campaign has validated it yet. The mainland-China twin
+    /// is served from <see cref="MiniMaxChinaHost"/>; like Kimi's regional split, a key
+    /// issued for one platform is not accepted by the other.
+    /// </summary>
+    public const string MiniMax = "https://api.minimax.io/v1";
+
+    /// <summary>
+    /// Host of MiniMax's mainland-China endpoint. Separate accounts, separate keys: naming
+    /// the host lets a caller recognise which region a configured base URL points at.
+    /// </summary>
+    public const string MiniMaxChinaHost = "api.minimaxi.com";
+
+    /// <summary>
     /// OpenAI's API root as the EMBEDDING clients address it — no <c>/v1</c> suffix and a
     /// trailing slash, because they append their own path. Deliberately distinct from
     /// <see cref="OpenAI"/>, which is the chat base URL: the two are not interchangeable, and

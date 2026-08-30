@@ -154,6 +154,9 @@ public static class LlmPresets
     /// <summary>Canonical key of the Grok (x.AI) provider.</summary>
     public const string Grok = LlmProviderKeys.Grok;
 
+    /// <summary>Canonical key of the MiniMax provider.</summary>
+    public const string MiniMax = LlmProviderKeys.MiniMax;
+
     /// <summary>HuggingFace Inference Providers router.</summary>
     public const string HuggingFace = LlmProviderKeys.HuggingFace;
 
@@ -243,6 +246,9 @@ public static class LlmPresets
             new(Grok, strings[StudioStringKeys.ProviderGrokTitle], strings[StudioStringKeys.ProviderGrokDescription],
                 LlmProviderEndpoints.Grok, LlmProviderDefaultModels.Grok, RequiresApiKey: true,
                 "XAI_API_KEY", LlmPresetKind.Cloud, "console.x.ai"),
+            new(MiniMax, strings[StudioStringKeys.ProviderMiniMaxTitle], strings[StudioStringKeys.ProviderMiniMaxDescription],
+                LlmProviderEndpoints.MiniMax, LlmProviderDefaultModels.MiniMax, RequiresApiKey: true,
+                "MINIMAX_API_KEY", LlmPresetKind.Cloud, "platform.minimax.io"),
             new(Together, strings[StudioStringKeys.ProviderTogetherTitle], strings[StudioStringKeys.ProviderTogetherDescription],
                 LlmProviderEndpoints.Together, LlmProviderDefaultModels.Together, RequiresApiKey: true,
                 "TOGETHER_API_KEY", LlmPresetKind.Cloud, "api.together.ai"),

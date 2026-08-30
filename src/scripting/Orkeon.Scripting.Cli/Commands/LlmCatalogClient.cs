@@ -30,6 +30,7 @@ internal static class LlmCatalogClient
         "qwen", "mistral", "huggingface", "hf", "zai", "glm", "zhipu",
         "gemini", "google",
         "grok", "xai",
+        "minimax",
     };
 
     /// <summary>Default base URL per provider key, mirroring what the factory would use.</summary>
@@ -53,6 +54,7 @@ internal static class LlmCatalogClient
         ["google"] = LlmEndpoints.Gemini,
         ["grok"] = LlmEndpoints.Grok,
         ["xai"] = LlmEndpoints.Grok,
+        ["minimax"] = LlmEndpoints.MiniMax,
         ["ollama"] = LlmEndpoints.OllamaDefault,
     };
 

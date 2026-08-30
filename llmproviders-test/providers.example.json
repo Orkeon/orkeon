@@ -87,6 +87,12 @@
       "models": ["grok-4.6"]
     },
 
+    "minimax": {
+      "_comment": "Aucune campagne encore : fiche documentaire. Endpoint continental : baseUrl https://api.minimaxi.com/v1.",
+      "apiKeyEnv": "MINIMAX_API_KEY",
+      "models": ["MiniMax-M2"]
+    },
+
     "gemini": {
       "_comment": "Endpoint de compatibilite OpenAI de Google, pas Vertex AI. M8 s'y exerce pleinement depuis le 2026-08-30 (json_object et json_schema acceptes, schema valide cote serveur).",
       "apiKeyEnv": "GEMINI_API_KEY",

@@ -1,0 +1,25 @@
+{
+  "_comment": "Settings template - MiniMax (OpenAI-compatible endpoint, international). Copy this file WITHOUT the .example suffix (-> appsettings.minimax.local.json), then fill in your key. The ${MINIMAX_API_KEY} placeholder is NOT expanded automatically: replace it with the plain key, or leave it and override at runtime via the ORKEON_Llm__ApiKey=... environment variable. Mainland-China accounts use https://api.minimaxi.com/v1 (separate keys per region). The factory auto-detects MiniMaxLlmProvider from either host.",
+  "_models": [
+    "MiniMax-M2 - flagship per vendor documentation 2026-08-30 (NOT yet campaign-verified)",
+    "MiniMax-VL family - vision models (per model, D-03)"
+  ],
+  "Llm": {
+    "Model": "MiniMax-M2",
+    "BaseUrl": "https://api.minimax.io/v1",
+    "ApiKey": "${MINIMAX_API_KEY}",
+    "Temperature": 0.2,
+    "MaxTokens": 24576,
+    "TimeoutSeconds": 600
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 16,
+    "GlobalRequestsPerMinute": 300,
+    "ProviderRequestsPerMinute": 300,
+    "AgentRequestsPerMinute": 10,
+    "QueueLimit": 512
+  },
+  "LlmLogging": {
+    "FullEmbeddingLog": false
+  }
+}

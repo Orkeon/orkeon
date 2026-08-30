@@ -37,6 +37,9 @@ public static class LlmEndpoints
     /// <summary>x.AI (Grok) OpenAI-compatible endpoint. Verified live 2026-08-30.</summary>
     public const string Grok = LlmProviderEndpoints.Grok;
 
+    /// <summary>MiniMax OpenAI-compatible endpoint (international). Documentation-sourced, campaign pending.</summary>
+    public const string MiniMax = LlmProviderEndpoints.MiniMax;
+
     /// <summary>Qwen (Alibaba DashScope) OpenAI-compatible endpoint.</summary>
     public const string Qwen = LlmProviderEndpoints.Qwen;
 

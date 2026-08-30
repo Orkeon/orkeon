@@ -35,7 +35,7 @@ public class ProviderCapabilityPayloadTests
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(AnthropicLlmProvider), nameof(OllamaLlmProvider),
-        nameof(GrokLlmProvider),
+        nameof(GrokLlmProvider), nameof(MiniMaxLlmProvider),
     ];
 
     // ── The declaration itself ──────────────────────────────────────────────

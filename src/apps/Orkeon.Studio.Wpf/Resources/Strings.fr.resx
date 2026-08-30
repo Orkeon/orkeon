@@ -196,6 +196,8 @@
   <data name="Core_Provider_Gemini_Desc" xml:space="preserve"><value>Google</value></data>
   <data name="Core_Provider_Grok_Title" xml:space="preserve"><value>Grok</value></data>
   <data name="Core_Provider_Grok_Desc" xml:space="preserve"><value>x.AI</value></data>
+  <data name="Core_Provider_MiniMax_Title" xml:space="preserve"><value>MiniMax</value></data>
+  <data name="Core_Provider_MiniMax_Desc" xml:space="preserve"><value>famille M2, endpoints intl + continental</value></data>
   <data name="Core_Provider_HuggingFace_Title" xml:space="preserve"><value>HuggingFace</value></data>
   <data name="Core_Provider_HuggingFace_Desc" xml:space="preserve"><value>routeur multi-modèles</value></data>
   <data name="Core_Provider_Kimi_Title" xml:space="preserve"><value>Kimi</value></data>

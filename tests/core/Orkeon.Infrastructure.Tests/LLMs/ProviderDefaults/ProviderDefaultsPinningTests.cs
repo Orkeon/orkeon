@@ -37,6 +37,7 @@ public class ProviderDefaultsPinningTests
         { nameof(HuggingFaceLlmProvider), "meta-llama/Llama-3.1-8B-Instruct" },
         { nameof(ZaiLlmProvider), "glm-5.2" },
         { nameof(GrokLlmProvider), "grok-4.6" },
+        { nameof(MiniMaxLlmProvider), "MiniMax-M2" },
     };
 
     public static TheoryData<string, string> PinnedDefaultBaseUrls() => new()
@@ -47,6 +48,7 @@ public class ProviderDefaultsPinningTests
         { nameof(QwenLlmProvider), "https://dashscope.aliyuncs.com/compatible-mode/v1" },
         { nameof(MistralLlmProvider), "https://api.mistral.ai/v1" },
         { nameof(GrokLlmProvider), "https://api.x.ai/v1" },
+        { nameof(MiniMaxLlmProvider), "https://api.minimax.io/v1" },
         { nameof(TogetherAiLlmProvider), "https://api.together.xyz/v1" },
         { nameof(HuggingFaceLlmProvider), "https://router.huggingface.co/v1" },
         { nameof(ZaiLlmProvider), "https://api.z.ai/api/paas/v4" },
@@ -125,6 +127,7 @@ public class ProviderDefaultsPinningTests
         { "glm", "glm-5.2" },
         { "grok", "grok-4.6" },
         { "xai", "grok-4.6" },
+        { "minimax", "MiniMax-M2" },
         { "zhipu", "glm-5.2" },
     };
 

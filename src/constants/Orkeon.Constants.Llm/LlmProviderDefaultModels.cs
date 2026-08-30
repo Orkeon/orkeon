@@ -67,6 +67,14 @@ public static class LlmProviderDefaultModels
     /// </summary>
     public const string Grok = "grok-4.6";
 
+    /// <summary>
+    /// MiniMax — the current flagship per the vendor's platform documentation (2026-08-30).
+    /// UNVERIFIED BY CAMPAIGN: no key has been available; the Mistral lesson
+    /// (a compiled default the API never served, found by the first real call) applies in
+    /// full until a campaign archives a live M1 on this identifier.
+    /// </summary>
+    public const string MiniMax = "MiniMax-M2";
+
     /// <summary>HuggingFace, through the Inference Providers router.</summary>
     public const string HuggingFace = "meta-llama/Llama-3.1-8B-Instruct";
 

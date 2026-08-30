@@ -92,6 +92,7 @@ public static class LlmProviderDetector
         // the endpoint its own preset catalogue writes — the runtime maps it to "gemini".
         Add(LlmProviderEndpoints.Gemini, LlmProviderKeys.Gemini);
         Add(LlmProviderEndpoints.Grok, LlmProviderKeys.Grok);
+        Add(LlmProviderEndpoints.MiniMax, LlmProviderKeys.MiniMax);
 
         // The mainland-China Moonshot twin, documented on LlmEndpoints.Kimi.
         hosts[LlmProviderEndpoints.KimiChinaHost] = "kimi";

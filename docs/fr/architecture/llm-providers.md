@@ -21,6 +21,7 @@ Fournisseurs implémentés :
 | Z.AI (Zhipu GLM) | `ZaiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Google Gemini | `GeminiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Grok (x.AI) | `GrokLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| MiniMax | `MiniMaxLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
 Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`, `ChatClientToBasicLlmProviderAdapter`) sont disponibles dans `Orkeon.Infrastructure.LLMs.Adapters` pour intégrer d'autres fournisseurs compatibles avec l'interface `IChatClient`.
 

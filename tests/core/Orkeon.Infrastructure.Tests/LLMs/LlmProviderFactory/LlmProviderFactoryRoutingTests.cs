@@ -89,11 +89,14 @@ public class LlmProviderFactoryRoutingTests
     // Gemini (PUB-15): model-prefix and OpenAI-compatible host routing.
     [InlineData("gemini-3.7-flash", null, "gemini")]
     [InlineData("grok-4.6", null, "grok")]
+    [InlineData("MiniMax-M2", null, "minimax")]
     [InlineData("unknown-model", null, "OpenAI")]
     [InlineData(null, "https://api.deepseek.com", "deepseek")]
     [InlineData(null, "https://api.z.ai/api/paas/v4", "zai")]
     [InlineData(null, "https://generativelanguage.googleapis.com/v1beta/openai", "gemini")]
     [InlineData(null, "https://api.x.ai/v1", "grok")]
+    [InlineData(null, "https://api.minimax.io/v1", "minimax")]
+    [InlineData(null, "https://api.minimaxi.com/v1", "minimax")]
     [InlineData(null, "https://api.mistral.ai/v1", "mistral")]
     [InlineData(null, "https://my-resource.openai.azure.com", "azure-openai")]
     public void ShouldRouteToExpectedProvider(string? model, string? baseUrl, string expectedProvider)

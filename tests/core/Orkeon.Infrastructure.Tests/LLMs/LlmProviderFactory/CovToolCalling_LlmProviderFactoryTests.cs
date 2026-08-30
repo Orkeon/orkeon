@@ -36,6 +36,7 @@ public class CovToolCalling_LlmProviderFactoryTests
     [InlineData("azure-openai")]
     [InlineData("grok")]
     [InlineData("xai")]
+    [InlineData("minimax")]
     [InlineData("together")]
     [InlineData("togetherai")]
     [InlineData("qwen")]

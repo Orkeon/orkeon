@@ -289,6 +289,12 @@ public static class StudioStringKeys
     /// <summary>Provider card description: Grok.</summary>
     public const string ProviderGrokDescription = "Core_Provider_Grok_Desc";
 
+    /// <summary>Provider card title: MiniMax.</summary>
+    public const string ProviderMiniMaxTitle = "Core_Provider_MiniMax_Title";
+
+    /// <summary>Provider card description: MiniMax.</summary>
+    public const string ProviderMiniMaxDescription = "Core_Provider_MiniMax_Desc";
+
 
     /// <summary>"HuggingFace"</summary>
     public const string ProviderHuggingFaceTitle = "Core_Provider_HuggingFace_Title";
@@ -992,6 +998,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProviderGeminiDescription] = "Google",
         [StudioStringKeys.ProviderGrokTitle] = "Grok",
         [StudioStringKeys.ProviderGrokDescription] = "x.AI",
+        [StudioStringKeys.ProviderMiniMaxTitle] = "MiniMax",
+        [StudioStringKeys.ProviderMiniMaxDescription] = "M2 family, intl + mainland endpoints",
         [StudioStringKeys.ProviderHuggingFaceTitle] = "HuggingFace",
         [StudioStringKeys.ProviderHuggingFaceDescription] = "multi-model router",
         [StudioStringKeys.ProviderKimiTitle] = "Kimi",

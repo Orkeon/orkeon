@@ -70,6 +70,7 @@ public sealed class ConstantDriftTests
             [LlmPresets.DeepSeek] = LlmEndpoints.DeepSeek,
             [LlmPresets.Gemini] = LlmEndpoints.Gemini,
             [LlmPresets.Grok] = LlmEndpoints.Grok,
+            [LlmPresets.MiniMax] = LlmEndpoints.MiniMax,
             [LlmPresets.HuggingFace] = LlmEndpoints.HuggingFace,
             [LlmPresets.Kimi] = LlmEndpoints.Kimi,
             [LlmPresets.Mistral] = LlmEndpoints.Mistral,

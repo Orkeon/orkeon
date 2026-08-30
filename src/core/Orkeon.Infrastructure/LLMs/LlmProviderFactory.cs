@@ -56,6 +56,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.HuggingFace or LlmProviderKeys.HuggingFaceAlias => CreateHuggingFaceProvider(config),
             LlmProviderKeys.Gemini or LlmProviderKeys.GoogleAlias => CreateGeminiProvider(config),
             LlmProviderKeys.Grok or LlmProviderKeys.XaiAlias => CreateGrokProvider(config),
+            LlmProviderKeys.MiniMax => CreateMiniMaxProvider(config),
             LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
             _ => CreateOpenAIProvider(config) // Default to OpenAI
         };
@@ -84,6 +85,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.HuggingFace or LlmProviderKeys.HuggingFaceAlias => CreateHuggingFaceProvider(config),
             LlmProviderKeys.Gemini or LlmProviderKeys.GoogleAlias => CreateGeminiProvider(config),
             LlmProviderKeys.Grok or LlmProviderKeys.XaiAlias => CreateGrokProvider(config),
+            LlmProviderKeys.MiniMax => CreateMiniMaxProvider(config),
             LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
             _ => throw new NotSupportedException($"Provider type '{providerType}' is not supported.")
         };
@@ -163,6 +165,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         // x.AI (Grok): match the full host - "x.ai" bare would also hit any *x.ai domain.
         if (url.Contains("api.x.ai", StringComparison.Ordinal))
             return LlmProviderKeys.Grok;
+        // MiniMax: international (minimax.io) and mainland (minimaxi.com) hosts.
+        if (url.Contains("api.minimax.io", StringComparison.Ordinal)
+            || url.Contains("api.minimaxi.com", StringComparison.Ordinal))
+            return LlmProviderKeys.MiniMax;
         if (url.Contains("huggingface.co", StringComparison.Ordinal) || url.Contains("hf.co", StringComparison.Ordinal))
             return LlmProviderKeys.HuggingFace;
         // Z.AI (Zhipu GLM): match the full host, not the bare "z.ai" substring
@@ -217,6 +223,8 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return LlmProviderKeys.Gemini;
         if (m.StartsWith(LlmProviderKeys.Grok, StringComparison.Ordinal))
             return LlmProviderKeys.Grok;
+        if (m.StartsWith(LlmProviderKeys.MiniMax, StringComparison.Ordinal))
+            return LlmProviderKeys.MiniMax;
 
         return null;
     }
@@ -341,6 +349,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// <summary>Creates Kimi (Moonshot AI) provider instance.</summary>
     private LlmProviderAdapter CreateKimiProvider(LlmConfig config)
         => Adapt<KimiLlmProvider>(logger => new KimiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+
+    /// <summary>Creates MiniMax provider instance.</summary>
+    private LlmProviderAdapter CreateMiniMaxProvider(LlmConfig config)
+        => Adapt<MiniMaxLlmProvider>(logger => new MiniMaxLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates x.AI (Grok) provider instance.</summary>
     private LlmProviderAdapter CreateGrokProvider(LlmConfig config)

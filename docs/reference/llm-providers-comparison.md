@@ -19,6 +19,7 @@
 | **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **MiniMax** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (undocumented) | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ✗ | ✓ | ✓ |
 
@@ -71,6 +72,12 @@ their own dialect.
 - **DeepSeek vision**: arrived with `deepseek-v4-flash-vision-exp` (measured 2026-08-30). Per
   provider vs per model as everywhere (D-03): the default `deepseek-v4-flash` stays text-only
   and answers an image with the vendor's own error.
+- **MiniMax** †: the one row NOT backed by a campaign — integrated 2026-08-30 from the
+  vendor's platform documentation, no key available. `response_format` and thinking stay
+  undeclared (capability warning, never a silent drop — the Gemini precedent, upgradeable by
+  measurement); vision follows the documented VL family (per model, D-03). The first
+  campaign is the pending proof, and the compiled default `MiniMax-M2` is a claim until it
+  archives a live M1 (the Mistral lesson).
 - **Grok (x.AI)**: every declared capability is a live measurement — a full 12-mode campaign
   passed against `api.x.ai` through the generic OpenAI dialect before the provider class
   existed (2026-08-30, archived under `llmproviders-test/custom-endpoints/`). Keys carry the

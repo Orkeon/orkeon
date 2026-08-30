@@ -41,6 +41,7 @@ public static class ProviderDefaults
         [LlmProviderKeys.GoogleAlias] = LlmProviderDefaultModels.Gemini,
         [LlmProviderKeys.Grok] = LlmProviderDefaultModels.Grok,
         [LlmProviderKeys.XaiAlias] = LlmProviderDefaultModels.Grok,
+        [LlmProviderKeys.MiniMax] = LlmProviderDefaultModels.MiniMax,
         [LlmProviderKeys.Zai] = LlmProviderDefaultModels.Zai,
         [LlmProviderKeys.GlmAlias] = LlmProviderDefaultModels.Zai,
         [LlmProviderKeys.ZhipuAlias] = LlmProviderDefaultModels.Zai,

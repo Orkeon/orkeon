@@ -57,3 +57,7 @@ const Orkeon.Constants.Llm.LlmProviderEndpoints.Grok = "https://api.x.ai/v1" -> 
 const Orkeon.Constants.Llm.LlmProviderKeys.Grok = "grok" -> string!
 const Orkeon.Constants.Llm.LlmProviderKeys.XaiAlias = "xai" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Grok = "grok-4.6" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.MiniMax = "https://api.minimax.io/v1" -> string!
+const Orkeon.Constants.Llm.LlmProviderEndpoints.MiniMaxChinaHost = "api.minimaxi.com" -> string!
+const Orkeon.Constants.Llm.LlmProviderKeys.MiniMax = "minimax" -> string!
+const Orkeon.Constants.Llm.LlmProviderDefaultModels.MiniMax = "MiniMax-M2" -> string!

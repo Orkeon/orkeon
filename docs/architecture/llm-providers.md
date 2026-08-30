@@ -21,6 +21,7 @@ Implemented providers:
 | Z.AI (Zhipu GLM) | `ZaiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Google Gemini | `GeminiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Grok (x.AI) | `GrokLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| MiniMax | `MiniMaxLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
 Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`, `ChatClientToBasicLlmProviderAdapter`) are available in `Orkeon.Infrastructure.LLMs.Adapters` to integrate other providers compatible with the `IChatClient` interface.
 

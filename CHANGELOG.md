@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — MiniMax, the fourteenth provider — the first documentation-first integration
+
+Unlike Grok, which arrived preceded by its own live campaign, MiniMax arrives with no key
+and says so everywhere: `MiniMaxLlmProvider` (OpenAI-compatible, `api.minimax.io/v1`
+international with the `api.minimaxi.com` mainland twin named, the Kimi pattern), canonical
+key `minimax`, default model `MiniMax-M2` — every declaration sourced from the vendor's
+platform documentation dated 2026-08-30 and marked campaign-pending in the code, the
+comparison table (a † row), and the campaign catalogue. `response_format` and thinking stay
+undeclared (capability warning, never a silent drop — the Gemini precedent, upgradeable the
+day a key arrives); vision follows the documented VL family per D-03. The catalogue entry
+records the three questions the first campaign must settle: DeepSeek-style reasoning
+replay, cache breakdown, and whether `response_format` works despite being undocumented.
+Full fleet integration otherwise: factory routing (key, both regional hosts, `minimax-*`
+model prefix), Studio card and detection, doctor, `orkeon llm probe|models`, example
+settings, counts 13 -> 14 under the claims gate.
+
 ### Removed — Groq, superseded by Grok (breaking, no shims)
 
 Groq was never the intended provider: the near-homograph had stood in for Grok since the

@@ -79,6 +79,9 @@ public static class LlmProviderKeys
     /// <summary>Grok (x.AI). <see cref="XaiAlias"/> is the accepted alias.</summary>
     public const string Grok = "grok";
 
+    /// <summary>MiniMax.</summary>
+    public const string MiniMax = "minimax";
+
     /// <summary>Alias of <see cref="Grok"/> — the vendor's name rather than the model family's.</summary>
     public const string XaiAlias = "xai";
 
@@ -98,14 +101,14 @@ public static class LlmProviderKeys
     public const string Custom = "custom";
 
     /// <summary>
-    /// The thirteen canonical keys, aliases excluded, in the order the documentation lists the
-    /// providers. A set rather than thirteen comparisons: a provider added to the factory and
+    /// The fourteen canonical keys, aliases excluded, in the order the documentation lists the
+    /// providers. A set rather than fourteen comparisons: a provider added to the factory and
     /// forgotten in the tooling is the omission that pairwise checks do not see.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
     [
         OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral,
-        DeepSeek, Kimi, Qwen, Together, HuggingFace, Zai, Gemini, Grok,
+        DeepSeek, Kimi, Qwen, Together, HuggingFace, Zai, Gemini, Grok, MiniMax,
     ];
 
     /// <summary>
