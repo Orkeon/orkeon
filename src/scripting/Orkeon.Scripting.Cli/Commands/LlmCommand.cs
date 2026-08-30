@@ -175,6 +175,10 @@ internal static class LlmCommand
         }
         catch (Exception ex) when (
             ex is NotSupportedException or HttpRequestException or System.Text.Json.JsonException
+            // A structurally unexpected body (an array where an object was assumed) surfaces
+            // from JsonElement accessors as InvalidOperationException - Together's bare-array
+            // catalogue crashed the command through this gap on 2026-08-30.
+            or InvalidOperationException
             // An HttpClient timeout surfaces as a TaskCanceledException nobody asked for.
             // Reporting it as "cancelled" would tell the operator they pressed Ctrl+C.
             or TaskCanceledException)

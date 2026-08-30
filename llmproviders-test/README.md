@@ -160,12 +160,12 @@ campagne > le `defaultModel` du catalogue.
 | `anthropic` | `claude-sonnet-5` | |
 | `azure` | *(aucun — voir plus bas)* | |
 | `ollama` | `llama3.2` | `llava` |
-| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | |
+| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | *(non-serverless seulement — voir catalogue)* |
 | `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |
 | `kimi` | `kimi-k2.6` | |
 | `qwen` | `qwen3.7-plus` | |
 | `mistral` | `mistral-medium-2604` | |
-| `huggingface` | `openai/gpt-oss-120b` | |
+| `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` |
 | `zai` | `glm-5.2` | `glm-4.6v-flash` |
 | `gemini` | `gemini-3.7-flash` | *(le défaut voit)* |
 | `grok` | `grok-4.6` | *(le défaut voit)* |
@@ -310,6 +310,10 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 
 | Horodatage (UTC) | Provider | Modèle | ✅/❌/➖ | Version | Rapport |
 |---|---|---|---|---|---|
+| 2026-08-30T12:46:33Z | `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | ✅ 1/0/0 | 1.0.0-rc.2 | [rapport](huggingface/2026-08-30-124631-Qwen_Qwen3-VL-30B-A3B-Instruct.md) |
+| 2026-08-30T12:46:30Z | `together` | `Qwen/Qwen3-VL-8B-Instruct` | ❌ 0/1/0 | 1.0.0-rc.2 | [rapport](together/2026-08-30-124627-Qwen_Qwen3-VL-8B-Instruct.md) |
+| 2026-08-30T12:45:22Z | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | ❌ 8/2/2 | 1.0.0-rc.2 | [rapport](huggingface/2026-08-30-124456-meta-llama_Llama-3.1-8B-Instruct.md) |
+| 2026-08-30T12:45:16Z | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | ❌ 9/1/2 | 1.0.0-rc.2 | [rapport](together/2026-08-30-124456-meta-llama_Llama-3.3-70B-Instruct-Turbo.md) |
 | 2026-08-30T12:04:24Z | `grok` | `grok-4.6` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](grok/2026-08-30-120310-grok-4.6.md) |
 | 2026-08-30T11:34:05Z | `qwen` | `qwen3.7-plus` | ✅ 12/0/0 | 1.0.0-rc.2 | [rapport](qwen/2026-08-30-113159-qwen3.7-plus.md) |
 | 2026-08-30T11:26:05Z | `qwen` | `qwen3.7-plus` | ❌ 11/1/0 | 1.0.0-rc.2 | [rapport](qwen/2026-08-30-112358-qwen3.7-plus.md) |
@@ -354,14 +358,16 @@ la ligne du tableau modèles §6. Le remplissage de la matrice (LLM-08/C4) est m
 | `deepseek` | `deepseek-v4-flash-vision-exp` | 2026-08-30 | ✅ | M9 |
 | `gemini` | `gemini-3.7-flash` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `grok` | `grok-4.6` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | 2026-08-30 | ✅ | M9 |
 | `kimi` | `kimi-k2.6` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `mistral` | `mistral-medium-2604` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `ollama` | `llava` | 2026-08-30 | ✅ | M9 |
 | `openai` | `gpt-5.6-sol` | 2026-08-30 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `qwen` | `qwen3.7-plus` | 2026-08-30 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `together` | `Qwen/Qwen3-VL-8B-Instruct` | 2026-08-30 | ❌ | M9 |
 | `zai` | `glm-4.6v-flash` | 2026-08-30 | ✅ | M9 |
 
 ---
 
 _Index régénéré par `lib/recap.sh` ou `lib/recap.ps1` depuis les rapports présents sur disque._
-_35 campagne(s) archivée(s)._
+_39 campagne(s) archivée(s)._

@@ -140,6 +140,18 @@ first real proof: a full 12/12 campaign against `api.x.ai` (`grok-4.6`), archive
 `llmproviders-test/custom-endpoints/`. The key supplied as "Groq" was an x.AI key
 (`xai-` prefix, refused by api.groq.com, served by api.x.ai) — measured, not assumed.
 
+Together and HuggingFace, first campaigns (the last two keys): 9/1/2 and 8/2/2 — no Orkeon
+defect on either. The one harness defect was found before the campaigns could even start:
+Together answers `GET /models` with a bare JSON array, no `data` envelope, and the first
+real call crashed `orkeon llm models` with an unhandled `InvalidOperationException` — the
+parser now reads both shapes and the command's catch treats a malformed body as a typed
+error (red test first, on the vendor's verbatim shape). The oldest suspicion of the effort
+is settled by measurement: HuggingFace's compiled default `meta-llama/Llama-3.1-8B-Instruct`,
+long flagged unreachable through the router, answers M1 alive — the campaign catalogue
+realigns on it. Both M9 reds are the D-03 pattern; HuggingFace's vision companion
+(`Qwen3-VL-30B-A3B-Instruct`) reads the image, while Together's four vision candidates are
+all non-serverless on the measured tier (dedicated-endpoint only, failure archived as proof).
+
 Campaign verdicts, same day: Kimi's open M3 "stream refused" of August did not reproduce
 (4/4 green, replays included); Z.AI's implicit context cache missed once in-campaign
 (0 cached tokens) and hit on both replays (1984 tokens, ratio 0.97) — server behaviour, not

@@ -173,7 +173,18 @@ internal static class LlmCatalogClient
 
     private static List<string> ReadOpenAiStyleData(JsonDocument document)
     {
-        if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+        // Together answers with a BARE array - no data envelope (measured 2026-08-30; the
+        // first real call crashed here, TryGetProperty being invalid on an array root).
+        var root = document.RootElement;
+        var data = root.ValueKind == JsonValueKind.Array
+            ? root
+            : root.ValueKind == JsonValueKind.Object
+                && root.TryGetProperty("data", out var envelope)
+                && envelope.ValueKind == JsonValueKind.Array
+                ? envelope
+                : default;
+
+        if (data.ValueKind != JsonValueKind.Array)
             return [];
 
         return data.EnumerateArray()

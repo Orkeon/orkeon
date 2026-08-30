@@ -23,6 +23,10 @@ public sealed class LlmCatalogClientTests
     private const string OllamaBody =
         """{"models":[{"name":"llama3.2:latest"},{"name":"qwen3:8b"}]}""";
 
+    /// <summary>Together's real shape (2026-08-30): a BARE array, no data envelope.</summary>
+    private const string TogetherBody =
+        """[{"id":"meta-llama/Llama-3.3-70B-Instruct-Turbo"},{"id":"Qwen/Qwen2.5-72B"}]""";
+
     private static async Task<IReadOnlyList<string>> ListAsync(
         StubHttpMessageHandler handler, string provider, string? apiKey = "unused-in-tests")
     {
@@ -33,6 +37,24 @@ public sealed class LlmCatalogClientTests
     }
 
     // ── Dialects ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Together answers <c>GET /models</c> with a bare JSON array — no <c>data</c> envelope.
+    /// The first real call (2026-08-30) crashed the command with an unhandled
+    /// <c>InvalidOperationException</c> out of <c>TryGetProperty</c> on an array root:
+    /// the parser assumed the envelope, and the command's catch list did not cover the
+    /// escape. Both halves are pinned here — the shape parses, and a malformed body is a
+    /// typed error, never a crash.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReadTheTogetherCatalogue_FromItsBareArray()
+    {
+        using var handler = new StubHttpMessageHandler(TogetherBody);
+
+        var models = await ListAsync(handler, "together");
+
+        Assert.Equal(["Qwen/Qwen2.5-72B", "meta-llama/Llama-3.3-70B-Instruct-Turbo"], models);
+    }
 
     [Fact]
     public async Task ShouldReadTheOpenAiCatalogue_FromTheDataArray()

@@ -160,12 +160,12 @@ campagne > le `defaultModel` du catalogue.
 | `anthropic` | `claude-sonnet-5` | |
 | `azure` | *(aucun — voir plus bas)* | |
 | `ollama` | `llama3.2` | `llava` |
-| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | |
+| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | *(non-serverless seulement — voir catalogue)* |
 | `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |
 | `kimi` | `kimi-k2.6` | |
 | `qwen` | `qwen3.7-plus` | |
 | `mistral` | `mistral-medium-2604` | |
-| `huggingface` | `openai/gpt-oss-120b` | |
+| `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` |
 | `zai` | `glm-5.2` | `glm-4.6v-flash` |
 | `gemini` | `gemini-3.7-flash` | *(le défaut voit)* |
 | `grok` | `grok-4.6` | *(le défaut voit)* |

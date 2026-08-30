@@ -94,6 +94,7 @@
       "apiKeyEnv": "TOGETHER_API_KEY",
       "defaultModel": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
       "notes": [
+        "Le défaut `Llama-3.3-70B-Instruct-Turbo` est texte seul : son M9 rouge est la preuve D-03 (campagne 2026-08-30). Pas de compagnon vision déclarable : les 4 modèles vision testés (`Qwen3-VL-8B`, `Qwen2.5-VL-72B`, `Llama-4-Scout`, `Llama-4-Maverick`) sont tous non-serverless sur le tier mesuré — endpoint dédié payant requis, rapport d'échec archivé comme preuve.",
         "Endpoint et modèle par défaut à jour. Un passage M1–M5 suffit.",
         "Together sert DeepSeek-V4-Pro à 512 K là où DeepSeek le sert à 1 M — écart de service à vérifier en M11."
       ]
@@ -159,8 +160,11 @@
       "label": "HuggingFace",
       "matrix": "§6.11",
       "apiKeyEnv": "HF_TOKEN",
-      "defaultModel": "openai/gpt-oss-120b",
+      "defaultModel": "meta-llama/Llama-3.1-8B-Instruct",
+      "visionModel": "Qwen/Qwen3-VL-30B-A3B-Instruct",
       "notes": [
+        "Le routeur résout l'identifiant vers le partenaire (le M9 de campagne répond au nom `Meta-Llama-3.1-8B-Instruct-Turbo`) : le défaut est texte seul, son M9 rouge est la preuve D-03, le compagnon `Qwen3-VL-30B-A3B-Instruct` apporte le complément.",
+        "Le défaut compilé `meta-llama/Llama-3.1-8B-Instruct`, longtemps signalé inatteignable via le routeur, est INNOCENTÉ : M1 vivant mesuré le 2026-08-30 (20 tokens, 1.5 s). Le catalogue s'aligne sur lui — la campagne valide ce que la plateforme livre.",
         "G-01 fermé : l'ancien `api-inference.huggingface.co` est supprimé, le défaut est `router.huggingface.co/v1`.",
         "Exercer en plus un suffixe de routage (`:cheapest`, `:fastest`, `:<provider>`) — G-23.",
         "Le contexte et la sortie effectifs dépendent du fournisseur routé, pas du modèle : `GET /v1/models` donne les valeurs par fournisseur."
