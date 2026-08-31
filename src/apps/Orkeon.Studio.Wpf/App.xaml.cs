@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Windows;
 using Orkeon.Studio.Wpf.Services;
+using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.Views;
 
@@ -23,12 +25,40 @@ public partial class App : System.Windows.Application
     private string? ChosenLanguage =>
         _viewModel?.Language.IsExplicitChoice == true ? _viewModel.Language.Current : null;
 
+    /// <summary>
+    /// Says a fault out loud instead of letting it disappear. The window stays up — one broken
+    /// gesture is not a reason to lose the work in progress — but the failure is on stderr for a
+    /// terminal or CI run and in front of the user, who would otherwise be left clicking a
+    /// control that has silently stopped answering.
+    /// </summary>
+    private static void ReportFault(Exception exception)
+    {
+        var detail = exception.ToString();
+        Console.Error.WriteLine(detail);
+        MessageBox.Show(
+            string.Create(CultureInfo.CurrentCulture, $"{exception.GetType().Name}\n\n{exception.Message}"),
+            "Orkeon Studio",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
     /// <inheritdoc />
     protected override void OnStartup(StartupEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
 
         base.OnStartup(e);
+
+        // A command that throws must never again be a button that quietly stops working.
+        // WPF calls ICommand.Execute and ignores what it returns, so an async command body's
+        // exception has nowhere to go on its own; this hands it to the dispatcher, where the
+        // handler below reports it.
+        AsyncRelayCommand.FaultHandler = ex => Dispatcher.BeginInvoke(new Action(() => ReportFault(ex)));
+        DispatcherUnhandledException += (_, args) =>
+        {
+            args.Handled = true;
+            ReportFault(args.Exception);
+        };
 
         var arguments = StartupArguments.Parse(e.Args);
 
