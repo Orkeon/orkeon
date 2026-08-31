@@ -148,8 +148,6 @@ public sealed class CreateTeamViewModel : ObservableObject
     private string _need = "";
     private string _outcome = "";
     private string _statusMessage = "";
-    private string? _assistantPrompt;
-    private string _replyText = "";
     private bool _isEngineRunning;
     private bool _isTechOpen;
     private string _teamName = "";
@@ -242,8 +240,16 @@ public sealed class CreateTeamViewModel : ObservableObject
                     .Select(label => label!),
             ],
             profileName: () => Profiles.Set.Studio?.Name,
-            askEngine: question => _client.SendMessage(question),
-            onInterviewComplete: answers => ComposeWithAnswersAsync(answers));
+            // The projection must hear what the user said too, or a resumed session
+            // rebuilds a conversation with every question and none of the answers.
+            askEngine: question =>
+            {
+                if (!_client.SendMessage(question))
+                    return false;
+
+                _model.AddUserMessage(question);
+                return true;
+            });
         Chat.StopRequested += (_, _) => { if (IsEngineRunning) _client.RequestCancellation(); };
         // «Edit» on the brief card means the form, not just a hidden panel. Without this the
         // pencil closed the thread and dropped the user back on whatever step they were on,
@@ -272,12 +278,9 @@ public sealed class CreateTeamViewModel : ObservableObject
             }
         };
 
-        // T-02: the gesture no longer starts the engine. It opens the thread and asks
-        // three questions; ComposeWithAnswersAsync is what finally calls the engine, with
-        // the brief those answers enriched.
-        ComposeCommand = new AsyncRelayCommand(
-            () => { Chat.StartInterview(); return System.Threading.Tasks.Task.CompletedTask; },
-            () => CanCompose);
+        // The gesture IS the engine. The questions belong to the model, asked during its
+        // brief stage; a local questionnaire played first only interviewed the user twice.
+        ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
         TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeam);
         ReopenComposeCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 2, autoRetry: false), () => IsSaved);
         RetryTrialCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 3, autoRetry: true), () => IsSaved);
@@ -286,9 +289,11 @@ public sealed class CreateTeamViewModel : ObservableObject
             Restart,
             // A started conversation is a creation under way too, even at step 1:
             // abandoning it has to be possible without first reaching step 2.
-            () => MaxStep > 1 || IsEngineRunning || Chat.IsStarted);
+            // Not IsStarted: an engine that died mid-interview clears it, and the user
+            // would be left staring at a conversation with no way to abandon it. Anything
+            // said is a creation under way.
+            () => MaxStep > 1 || IsEngineRunning || !Chat.IsEmpty);
         StopCommand = new RelayCommand(() => _client.RequestCancellation(), () => IsEngineRunning);
-        ReplyCommand = new RelayCommand(Reply, () => _replyText.Trim().Length > 0 && IsEngineRunning);
         GoStep1Command = new RelayCommand(() => GoStep(1));
         GoStep2Command = new RelayCommand(() => GoStep(2));
         GoStep3Command = new RelayCommand(() => GoStep(3));
@@ -380,11 +385,11 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// assistant mid-thread. Leaving the wizard must never be the same as losing it.
     /// </summary>
     public bool HasDraft =>
-        !IsSaved && (_step > 1 || _need.Trim().Length > 0 || IsEngineRunning || Chat.IsStarted);
+        !IsSaved && (_step > 1 || _need.Trim().Length > 0 || IsEngineRunning || !Chat.IsEmpty);
 
     /// <summary>Whether the assistant is the one holding the draft up.</summary>
     public bool IsAssistantWaiting =>
-        HasDraft && (IsEngineRunning || HasAssistantPrompt || Chat.IsBusy || Chat.IsAsking || Chat.HasUnread);
+        HasDraft && (IsEngineRunning || Chat.IsBusy || Chat.IsAsking || Chat.HasUnread);
 
     /// <summary>The nav entry's own counter — «2/4», mono, no chip.</summary>
     public string DraftStepShort =>
@@ -529,7 +534,10 @@ public sealed class CreateTeamViewModel : ObservableObject
     public string Step1Hint =>
         _need.Trim().Length == 0 ? _strings[StudioStringKeys.WizardHintDescribe]
         : OutcomeRequired && _outcome.Trim().Length == 0 ? _strings[StudioStringKeys.WizardHintOutcome]
-        : !CanCompose && !IsEngineRunning ? _strings[StudioStringKeys.WizardHintAnswers]
+        // A greyed button under «Everything is there — I can compose the team» is a lie:
+        // the engine is already composing, and what it wants is an answer in the thread.
+        : IsEngineRunning ? _strings[StudioStringKeys.WizardHintComposing]
+        : !CanCompose ? _strings[StudioStringKeys.WizardHintAnswers]
         : _strings[StudioStringKeys.WizardHintReady];
 
     /// <summary>Fills the need box from an example.</summary>
@@ -553,7 +561,6 @@ public sealed class CreateTeamViewModel : ObservableObject
             RaiseDraftChanged();
             ComposeCommand.RaiseCanExecuteChanged();
             StopCommand.RaiseCanExecuteChanged();
-            ReplyCommand.RaiseCanExecuteChanged();
             RestartCommand.RaiseCanExecuteChanged();
             SaveTeamCommand.RaiseCanExecuteChanged();
         }
@@ -568,40 +575,6 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>The shell's way in: a resume failure must land on this screen's status line.</summary>
     internal void ReportStatus(string message) => StatusMessage = message;
-
-    /// <summary>
-    /// The assistant's latest turn that belongs to no notes thread — the interview channel.
-    /// Null when the assistant said nothing new.
-    /// </summary>
-    public string? AssistantPrompt
-    {
-        get => _assistantPrompt;
-        private set
-        {
-            if (SetProperty(ref _assistantPrompt, value))
-            {
-                OnPropertyChanged(nameof(HasAssistantPrompt));
-                RaiseDraftChanged();
-            }
-        }
-    }
-
-    /// <summary>Whether the assistant bar shows.</summary>
-    public bool HasAssistantPrompt => _assistantPrompt is { Length: > 0 };
-
-    /// <summary>The reply being typed under the assistant bar.</summary>
-    public string ReplyText
-    {
-        get => _replyText;
-        set
-        {
-            if (SetProperty(ref _replyText, value))
-                ReplyCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    /// <summary>Answers the assistant's turn.</summary>
-    public RelayCommand ReplyCommand { get; }
 
     /// <summary>The engine's pending arbitrations, as buttons; empty while none is owed.</summary>
     public ObservableCollection<WizardDecision> Decisions { get; } = [];
@@ -1271,44 +1244,17 @@ public sealed class CreateTeamViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// The engine call, reached only after the third interview answer (T-02). The three
-    /// answers ride into the brief here — that is the whole point of asking them before
-    /// the engine rather than after: the composition is done knowing them.
-    /// </summary>
-    private Task ComposeWithAnswersAsync(IReadOnlyList<string> interviewAnswers)
-    {
-        _interviewAnswers = interviewAnswers;
-
-        // The interview is over and the thread has closed behind it, so a compose the engine
-        // refuses here would leave the user in front of a wizard that did nothing and a
-        // conversation that says it is done. Rather than drop it silently, hand the column
-        // back to the conversation — every answer is still in it, and « Composer l'équipe »
-        // picks up from there without asking again.
-        if (!CanCompose)
-        {
-            Chat.OpenCommand.Execute(null);
-            return PendingCompose = System.Threading.Tasks.Task.CompletedTask;
-        }
-
-        return PendingCompose = ComposeAsync();
-    }
-
-    /// <summary>
-    /// The engine call the interview started, so a test can wait for it. The interview
-    /// ends inside a timer callback, which has nowhere to return a Task to — this is that
-    /// return value, kept rather than discarded.
-    /// </summary>
-    internal Task? PendingCompose { get; private set; }
-
-    private IReadOnlyList<string> _interviewAnswers = [];
-
     private async Task ComposeAsync()
     {
         if (!CanCompose)
             return;
 
         ResetProjection();
+
+        // The thread takes the column for the whole brief stage: every question from here
+        // is the model's, and the answers go back down the same pipe.
+        Chat.StartSession();
+
         var brief = ComposeBrief();
         _model.AddUserMessage(brief);
         SessionActivated?.Invoke(this, EventArgs.Empty);
@@ -1365,20 +1311,8 @@ public sealed class CreateTeamViewModel : ObservableObject
             lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefOutput], output.Label));
         if (_outcome.Trim() is { Length: > 0 } outcome)
             lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefShape], outcome));
-        // The interview's own answers, each under the fact it answers — the assistant asked
-        // where the folder is and when the summary is due, so the brief has to carry both.
-        var questions = AssistantInterview.Build(_strings);
-        for (var index = 0; index < questions.Count && index < _interviewAnswers.Count; index++)
-        {
-            if (_interviewAnswers[index].Trim() is { Length: > 0 } answer)
-            {
-                lines.Add(string.Format(
-                    CultureInfo.CurrentCulture,
-                    _strings[StudioStringKeys.ChatBriefAnswerPattern],
-                    questions[index].Fact, answer));
-            }
-        }
-
+        // Nothing is spliced in here any more: what the model still needs it asks for
+        // itself during the brief stage, and the answers reach it as real user messages.
         if (ComposeNotes.Consigne.Trim() is { Length: > 0 } consigne)
             lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefConsigne], consigne));
 
@@ -1417,7 +1351,11 @@ public sealed class CreateTeamViewModel : ObservableObject
                     return;
 
                 IsEngineRunning = false;
-                Chat.EngineFinished();
+
+                // Gone before the brief was accepted: a crash, a non-zero exit, a missing
+                // binary, a Stop. The thread would otherwise keep showing a question with a
+                // composer writing into a closed pipe.
+                Chat.EngineFinished(interrupted: Chat.IsStarted && !Chat.IsDone);
                 // An unconsumed auto-retry must die with its run: a crashed or stopped
                 // engine must never leave a pending decision to fire on a later one.
                 _autoRetryPending = false;
@@ -1500,7 +1438,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         // The conversation belongs to the creation being abandoned — unlike ResetProjection,
         // which also runs at the START of a compose and must leave the interview's answers
         // exactly where the interview put them.
-        _interviewAnswers = [];
         Chat.Reset();
         Need = "";
         Outcome = "";
@@ -1536,7 +1473,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         Agents.Clear();
         Decisions.Clear();
         IsSaved = false;
-        AssistantPrompt = null;
         TeamName = "";
         // The adoption fields too (review, lot 7): a reopened team seeds profile and
         // schedule — without this reset they would leak into the NEXT session's sidecar.
@@ -1566,16 +1502,6 @@ public sealed class CreateTeamViewModel : ObservableObject
             Fact(StudioStringKeys.ChatFactOutput, OutputChoices.FirstOrDefault(c => c.IsSelected)?.Label),
         };
 
-        var questions = AssistantInterview.Build(_strings);
-        var answers = InterviewAnswers();
-        for (var index = 0; index < questions.Count; index++)
-        {
-            facts.Add(new ChatRecapFact(
-                questions[index].Fact,
-                index < answers.Count && answers[index] is { Length: > 0 } value ? value : pending,
-                index < answers.Count && answers[index] is { Length: > 0 }));
-        }
-
         foreach (var (key, note) in new[]
         {
             (StudioStringKeys.ChatFactComposeNote, ComposeNotes.Consigne),
@@ -1602,32 +1528,8 @@ public sealed class CreateTeamViewModel : ObservableObject
             _strings[StudioStringKeys.ChatStatusMessagesPattern],
             Chat.Turns.Count);
 
-    /// <summary>The three interview answers, in order; an unanswered one is an empty string.</summary>
-    private IReadOnlyList<string> InterviewAnswers()
-    {
-        var answers = new string[3];
-        foreach (var turn in Chat.Turns)
-        {
-            if (turn is { IsBot: false, AnswerIndex: { } index } && index < answers.Length)
-                answers[index] = turn.Body;
-        }
-
-        return [.. answers.Select(a => a ?? "")];
-    }
-
     private static string Clip(string text, int max) =>
         text.Length > max ? string.Concat(text.AsSpan(0, max).TrimEnd(), "…") : text;
-
-    private void Reply()
-    {
-        var text = _replyText.Trim();
-        if (text.Length == 0 || !_client.SendMessage(text))
-            return;
-
-        _model.AddUserMessage(text);
-        ReplyText = "";
-        AssistantPrompt = null;
-    }
 
     private void Decide(string value)
     {
@@ -1659,16 +1561,18 @@ public sealed class CreateTeamViewModel : ObservableObject
             _model.Feed(orkeonEvent);
             RawLog.AppendNotice(orkeonEvent.Root.GetRawText());
 
-            // A fresh assistant turn lands in the thread (T-08). It used to surface in a bar
-            // above the form, alone and out of the reading flow — the very defect the
-            // conversation replaces. AssistantPrompt is still set for the moment: the
-            // wizard's own gating and the tests read it, and §8 of the plan allows it to
-            // survive the migration. What no longer exists is the UI that showed it there.
+            // The model submitted a brief: the interview is over, and the thread says so
+            // before handing the column back to the wizard.
+            if (orkeonEvent.Kind == ForgeEventKinds.BriefReady)
+                Chat.BriefAccepted();
+
+            // The assistant's turn lands in the thread, and only there. It used to be
+            // copied into a bar above the form as well — a bar with no gate on it, so it
+            // was the only surface the user ever saw the question on.
             if (_model.Messages.Count > beforeMessages
                 && _model.Messages[^1] is { Role: ForgeChatMessage.Assistant, Text: { } text })
             {
                 Chat.AddAssistantTurn(text);
-                AssistantPrompt = text;
             }
 
             Chat.OwnerChanged();

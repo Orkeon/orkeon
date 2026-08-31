@@ -50,50 +50,123 @@ public class ChatThreadViewModelTests
         chat.SendCommand.Execute(null);
     }
 
+    private static string Assistant(string text) =>
+        $$"""{"v":2,"seq":3,"ts":"t","kind":"assistant.message","text":"{{text}}"}""";
+
+    private const string BriefReady =
+        """{"v":2,"seq":9,"ts":"t","kind":"brief.ready","brief":{"goal":"g"}}""";
+
+    /// <summary>
+    /// The inversion. This test used to assert the opposite — that the click asked three
+    /// questions and the engine heard nothing until the third answer — which is exactly
+    /// the defect: the user was interviewed twice, once by a local script and once by the
+    /// model, on two different surfaces.
+    /// </summary>
     [Fact]
-    public async Task Composing_asks_three_questions_before_the_engine_hears_anything()
+    public async Task Composing_starts_the_engine_and_the_questions_come_off_the_wire()
     {
         var (vm, processes) = Build();
+        var open = false;
+        string? asked = null;
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(Assistant("Where does this folder live?")));
+            // Read while the child is alive: that is when the brief stage is blocking.
+            open = vm.Chat.IsOpen;
+            asked = vm.Chat.Turns.Single(t => t.IsBot).Body;
+        };
 
         await vm.ComposeCommand.ExecuteAsync();
 
-        // The whole point of T-02: the click opens the conversation, it does not start a run.
-        Assert.Empty(processes.Requests);
-        Assert.True(vm.Chat.IsOpen);
-        Assert.True(vm.Chat.IsAsking);
-        Assert.Equal(0, vm.Chat.PendingQuestionIndex);
-
-        Answer(vm.Chat, "Documents/Comptes-rendus");
-        Assert.Empty(processes.Requests);
-        Assert.Equal(1, vm.Chat.PendingQuestionIndex);
-
-        Answer(vm.Chat, "Vendredi 17 h");
-        Assert.Empty(processes.Requests);
-
-        Answer(vm.Chat, "Lecture seule du dossier");
-        if (vm.PendingCompose is { } pending)
-            await pending;
-
-        // Third answer in, and only now: one run, one brief, carrying all three answers.
+        // The click IS the run, and the brief carries the wizard's own words — nothing
+        // is spliced in from a questionnaire that no longer exists.
         var request = Assert.Single(processes.Requests);
-        var brief = request.Arguments[1];
-        Assert.Contains("Documents/Comptes-rendus", brief, StringComparison.Ordinal);
-        Assert.Contains("Vendredi 17 h", brief, StringComparison.Ordinal);
-        Assert.Contains("Lecture seule du dossier", brief, StringComparison.Ordinal);
-        Assert.Contains("une veille documentaire", brief, StringComparison.Ordinal);
+        Assert.Contains("une veille documentaire", request.Arguments[1], StringComparison.Ordinal);
+        Assert.True(open);
+
+        // The model's question is a bubble in the thread and nowhere else.
+        Assert.Equal("Where does this folder live?", asked);
     }
 
     [Fact]
-    public async Task The_closing_bubble_is_said_once_and_the_column_goes_back_to_the_wizard()
+    public async Task An_assistant_turn_with_nothing_after_it_is_the_assistant_waiting()
     {
-        var (vm, _) = Build();
+        var (vm, processes) = Build();
+        bool asking = false, busy = true;
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(Assistant("Which folder?")));
+            asking = vm.Chat.IsAsking;
+            busy = vm.Chat.IsBusy;
+        };
+
         await vm.ComposeCommand.ExecuteAsync();
 
-        Answer(vm.Chat, "un dossier");
-        Answer(vm.Chat, "vendredi");
-        Answer(vm.Chat, "rien");
-        if (vm.PendingCompose is { } pending)
-            await pending;
+        // No event says "your turn": the brief stage emits and then blocks on stdin, so
+        // the local mirror is "the last bubble is the assistant's and nothing is in flight".
+        Assert.True(asking);
+        Assert.False(busy);
+    }
+
+    [Fact]
+    public async Task An_answer_travels_down_stdin_as_a_user_message()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(Assistant("Which folder?")));
+            Answer(vm.Chat, "Documents/Comptes-rendus");
+        };
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.Contains(
+            processes.InputLines,
+            l => l.Contains("\"kind\":\"user.message\"", StringComparison.Ordinal)
+              && l.Contains("Documents/Comptes-rendus", StringComparison.Ordinal));
+        Assert.Contains(vm.Chat.Turns, t => !t.IsBot && t.Body == "Documents/Comptes-rendus");
+    }
+
+    /// <summary>
+    /// However many the model wants: the pack asks it for three to five, the stage allows
+    /// twenty-four, and Studio counts none of them.
+    /// </summary>
+    [Fact]
+    public async Task The_engine_asks_as_many_questions_as_it_likes()
+    {
+        var (vm, processes) = Build();
+        var script = new Queue<string>(["Q2", "Q3", "Q4", "Q5"]);
+        processes.OnInputLine = _ =>
+        {
+            if (script.Count > 0)
+                processes.Emit(Out(Assistant(script.Dequeue())));
+        };
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(Assistant("Q1")));
+            for (var i = 0; i < 4; i++)
+                Answer(vm.Chat, $"réponse {i}");
+        };
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        // Five questions, four answers — plus the farewell the dying child leaves behind.
+        Assert.Equal(5, vm.Chat.Turns.Count(t => t.IsBot && t.Body.Length > 0 && t.Body.StartsWith('Q')));
+        Assert.Equal(4, vm.Chat.Turns.Count(t => !t.IsBot));
+    }
+
+    [Fact]
+    public async Task brief_ready_closes_the_interview_and_hands_the_column_back()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(Assistant("Which folder?")));
+            Answer(vm.Chat, "un dossier");
+            processes.Emit(Out(BriefReady));
+        };
+
+        await vm.ComposeCommand.ExecuteAsync();
 
         Assert.True(vm.Chat.IsDone);
         Assert.False(vm.Chat.IsAsking);
@@ -101,55 +174,52 @@ public class ChatThreadViewModelTests
         Assert.Single(vm.Chat.Turns, t => t.IsClosing);
     }
 
+    /// <summary>
+    /// Past brief.ready the engine is composing a blueprint and no longer reads stdin, so
+    /// a message arriving there is narration. Treating it as a question would leave the
+    /// composer claiming "thinking" for the rest of the run.
+    /// </summary>
     [Fact]
-    public async Task A_quick_reply_records_its_value_not_its_label()
+    public async Task A_turn_arriving_after_the_brief_is_not_a_question()
     {
         var (vm, processes) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(BriefReady));
+            processes.Emit(Out(Assistant("Composing the roles…")));
+        };
+
         await vm.ComposeCommand.ExecuteAsync();
 
-        // « Choisir un dossier… » is an invitation; the fact it records is « Dossier à choisir ».
-        var chip = vm.Chat.Chips[1];
-        Assert.NotEqual(chip.Label, chip.Value);
-        vm.Chat.PickChipCommand.Execute(chip.Value);
-
-        Answer(vm.Chat, "vendredi");
-        Answer(vm.Chat, "rien");
-        if (vm.PendingCompose is { } pending)
-            await pending;
-
-        var brief = Assert.Single(processes.Requests).Arguments[1];
-        Assert.Contains(chip.Value, brief, StringComparison.Ordinal);
-        Assert.DoesNotContain(chip.Label, brief, StringComparison.Ordinal);
+        Assert.True(vm.Chat.IsDone);
+        Assert.False(vm.Chat.IsAsking);
     }
 
     [Fact]
     public async Task Stopping_keeps_every_turn_and_restarts_nothing()
     {
         var (vm, processes) = Build();
-        await vm.ComposeCommand.ExecuteAsync();
-        Answer(vm.Chat, "un dossier");
+        processes.WhileRunning = () => processes.Emit(Out(Assistant("Which folder?")));
 
+        await vm.ComposeCommand.ExecuteAsync();
         var before = vm.Chat.Turns.Count;
         vm.Chat.StopCommand.Execute(null);
+
 
         Assert.Equal(before, vm.Chat.Turns.Count);
         Assert.True(vm.Chat.IsOpen);
         Assert.False(vm.Chat.IsBusy);
-        Assert.Empty(processes.Requests);
     }
 
     [Fact]
     public async Task An_assistant_turn_arriving_on_a_closed_thread_is_counted_as_unread()
     {
-        var (vm, _) = Build();
-        await vm.ComposeCommand.ExecuteAsync();
-        Answer(vm.Chat, "un dossier");
-        Answer(vm.Chat, "vendredi");
-        Answer(vm.Chat, "rien");
-        if (vm.PendingCompose is { } pending)
-            await pending;
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(BriefReady));
 
-        // The interview ended and closed the thread behind it.
+        await vm.ComposeCommand.ExecuteAsync();
+
+        // brief.ready closed the thread behind the interview.
         Assert.False(vm.Chat.IsOpen);
         Assert.Equal(0, vm.Chat.UnreadCount);
 
@@ -162,20 +232,18 @@ public class ChatThreadViewModelTests
         Assert.False(vm.Chat.HasUnread);
     }
 
+    /// <summary>
+    /// The recap is the wizard's own fields now: the three interview rows went with the
+    /// interview, and what the model learns it keeps in its own brief.
+    /// </summary>
     [Fact]
-    public async Task The_recap_fills_in_as_the_answers_arrive()
+    public void The_recap_reads_the_form_and_marks_what_is_still_missing()
     {
         var (vm, _) = Build();
-        await vm.ComposeCommand.ExecuteAsync();
 
-        var before = vm.Chat.Facts.Count(f => f.IsKnown);
-        Answer(vm.Chat, "Documents/Comptes-rendus");
-
-        var after = vm.Chat.Facts;
-        Assert.Equal(before + 1, after.Count(f => f.IsKnown));
-        Assert.Contains(after, f => f.Value == "Documents/Comptes-rendus" && f.IsKnown);
-        // A fact nobody has answered reads as pending, not as an empty line.
-        Assert.Contains(after, f => !f.IsKnown && f.Value.Length > 0);
+        var facts = vm.Chat.Facts;
+        Assert.Contains(facts, f => f.IsKnown && f.Value.Contains("veille", StringComparison.Ordinal));
+        Assert.All(facts, f => Assert.NotEqual(0, f.Value.Length));
     }
 
     [Fact]
@@ -308,24 +376,30 @@ public sealed class ChatCatalogueSwitchTests
             brief: () => "",
             briefChips: () => [],
             profileName: () => null,
-            askEngine: _ => false,
-            onInterviewComplete: _ => { });
+            askEngine: _ => false);
 
-        chat.StartInterview();
+        chat.StartSession();
+        chat.AddAssistantTurn("Where does this folder live?");
         chat.Draft = "Documents/Comptes-rendus";
         chat.SendCommand.Execute(null);
+        chat.BriefAccepted();
 
-        var question = chat.Turns[0];
+        var asked = chat.Turns[0];
         var typed = chat.Turns[1];
-        Assert.StartsWith("en:", question.Body, StringComparison.Ordinal);
-        Assert.Equal("Documents/Comptes-rendus", typed.Body);
+        var closing = Assert.Single(chat.Turns, t => t.IsClosing);
+        Assert.StartsWith("en:", closing.Body, StringComparison.Ordinal);
 
         strings.Switch("fr:");
 
-        Assert.StartsWith("fr:", question.Body, StringComparison.Ordinal);
-        Assert.Equal("Documents/Comptes-rendus", typed.Body);   // the user's words, untouched
+        // Studio's own words follow the catalogue.
+        Assert.StartsWith("fr:", closing.Body, StringComparison.Ordinal);
         Assert.StartsWith("fr:", chat.Placeholder, StringComparison.Ordinal);
         Assert.StartsWith("fr:", chat.Primer, StringComparison.Ordinal);
+
+        // What the user typed is theirs — and so is what the MODEL said. An LLM sentence
+        // has no key, and inventing one would rewrite a stranger's words.
+        Assert.Equal("Documents/Comptes-rendus", typed.Body);
+        Assert.Equal("Where does this folder live?", asked.Body);
     }
 }
 
@@ -363,14 +437,13 @@ public sealed class ChatThreadEdgeTests
     }
 
     private static ChatThreadViewModel Thread(
-        Action<IReadOnlyList<string>>? onDone = null,
-        Orkeon.Studio.Wpf.ViewModels.Mvvm.IUiDelay? delay = null)
+        Orkeon.Studio.Wpf.ViewModels.Mvvm.IUiDelay? delay = null,
+        Func<string, bool>? askEngine = null)
     {
         var chat = new ChatThreadViewModel(strings: null, delay: delay);
         chat.Bind(
             facts: () => [], brief: () => "", briefChips: () => [],
-            profileName: () => null, askEngine: _ => false,
-            onInterviewComplete: onDone ?? (_ => { }));
+            profileName: () => null, askEngine: askEngine ?? (_ => false));
         return chat;
     }
 
@@ -380,85 +453,66 @@ public sealed class ChatThreadEdgeTests
         chat.SendCommand.Execute(null);
     }
 
+    /// <summary>
+    /// Send used to call CancelPending, and the callback pending at that exact moment was
+    /// the one handing the column back. The guard that defended against it is gone because
+    /// the cancel is gone: the property is now structural, which is worth pinning.
+    /// </summary>
     [Fact]
-    public void A_message_typed_during_the_closing_pause_cannot_cancel_the_hand_over()
+    public void A_message_typed_during_the_closing_pause_does_not_cancel_the_handback()
     {
-        // Send cancels the pending delays — and the delay pending at that exact moment is
-        // the one that starts the engine. The thread would sit «done» for ever.
-        IReadOnlyList<string>? handed = null;
-        var chat = Thread(a => handed = a);
+        var delay = new ManualDelay();
+        var chat = Thread(delay);
 
-        chat.StartInterview();
-        Answer(chat, "un dossier");
-        Answer(chat, "vendredi");
-        Answer(chat, "rien");
+        chat.StartSession();
+        chat.AddAssistantTurn("Which folder?");
+        chat.BriefAccepted();
 
-        Assert.NotNull(handed);
-        Assert.Equal(3, handed!.Count);
-        Assert.Equal("rien", handed[2]);
+        Assert.True(chat.IsOpen);          // the closing pause is still pending
+        Answer(chat, "une dernière chose");
+        delay.Elapse();
+
+        Assert.False(chat.IsOpen);
     }
 
     [Fact]
-    public void Stopping_mid_thought_takes_the_unasked_question_with_it()
+    public void Stopping_mid_thought_leaves_no_question_on_the_table()
     {
         var delay = new ManualDelay();
-        var chat = Thread(delay: delay);
+        var chat = Thread(delay, askEngine: _ => true);
 
-        chat.StartInterview();
-        delay.Elapse();                       // the first question is asked
+        chat.StartSession();
+        chat.AddAssistantTurn("Which folder?");
         Assert.True(chat.IsAsking);
 
-        Answer(chat, "un dossier");           // answered; the assistant starts thinking
+        Answer(chat, "un dossier");        // answered; the assistant starts thinking
         Assert.True(chat.IsBusy);
         Assert.False(chat.IsAsking);
 
-        // Stop lands HERE, in the pause. The counter already points at question 2, but its
-        // bubble is what makes it a question — and it was never pushed. Offering its three
-        // quick replies would be an answer box for a question nobody asked.
+        // Stop lands HERE, in the pause: nothing is in flight and no bubble is owed an
+        // answer, so the composer must not claim one is.
         chat.StopCommand.Execute(null);
 
         Assert.False(chat.IsBusy);
         Assert.False(chat.IsAsking);
-        Assert.Empty(chat.Chips);
         Assert.DoesNotContain(chat.Turns, t => t.IsClosing);
     }
 
-    [Fact]
-    public void A_message_typed_in_the_closing_pause_is_kept_and_the_engine_still_starts()
-    {
-        var delay = new ManualDelay();
-        IReadOnlyList<string>? handed = null;
-        var chat = Thread(a => handed = a, delay);
-
-        chat.StartInterview();
-        delay.Elapse();
-        Answer(chat, "un dossier"); delay.Elapse();
-        Answer(chat, "vendredi");   delay.Elapse();
-        Answer(chat, "rien");       delay.Elapse();   // closing bubble, hand-over now pending
-
-        Assert.Null(handed);
-        chat.Draft = "une dernière chose";
-        chat.SendCommand.Execute(null);
-
-        // The send is refused rather than swallowed: the draft is still there to send a
-        // second later, and the hand-over it would have cancelled still happens.
-        Assert.Equal("une dernière chose", chat.Draft);
-        delay.Elapse();
-        Assert.NotNull(handed);
-        Assert.Equal(3, handed!.Count);
-    }
-
+    /// <summary>This is now the DEFINITION of IsAsking, so it is the test that matters most.</summary>
     [Fact]
     public void A_question_is_only_on_the_table_once_its_bubble_exists()
     {
         var chat = Thread();
 
         Assert.False(chat.IsAsking);
-        chat.StartInterview();
+        chat.StartSession();
 
-        // The inline delay plays every beat at once, so the first bubble is already pushed.
+        // Started, but the engine has not said anything yet: nobody is waiting on the user.
+        Assert.False(chat.IsAsking);
+        Assert.True(chat.IsBusy);
+
+        chat.AddAssistantTurn("Which folder?");
         Assert.True(chat.IsAsking);
-        Assert.Equal(3, chat.Chips.Count);
         Assert.Single(chat.Turns);
     }
 }
@@ -475,7 +529,7 @@ public sealed class ChatEditBriefTests
     public void Edit_closes_the_thread_and_asks_to_go_back_to_the_form()
     {
         var chat = new ChatThreadViewModel();
-        chat.StartInterview();
+        chat.StartSession();
         var asked = 0;
         chat.EditBriefRequested += (_, _) => asked++;
 
@@ -489,7 +543,7 @@ public sealed class ChatEditBriefTests
     public void Dismissing_the_panel_is_not_a_request_to_edit()
     {
         var chat = new ChatThreadViewModel();
-        chat.StartInterview();
+        chat.StartSession();
         var asked = 0;
         chat.EditBriefRequested += (_, _) => asked++;
 
@@ -497,5 +551,95 @@ public sealed class ChatEditBriefTests
 
         Assert.False(chat.IsOpen);
         Assert.Equal(0, asked);
+    }
+}
+
+/// <summary>
+/// What the screen says when the engine leaves before the brief is accepted. It used to say
+/// nothing at all: the spinner stopped, the assistant's last question stayed on screen, and
+/// the composer went on writing into a closed pipe.
+/// </summary>
+public sealed class EngineDepartureTests
+{
+    private static ProcessOutputLine Out(string json) =>
+        ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, json);
+
+    private static string Assistant(string text) =>
+        $$"""{"v":2,"seq":3,"ts":"t","kind":"assistant.message","text":"{{text}}"}""";
+
+    private const string BriefReady =
+        """{"v":2,"seq":9,"ts":"t","kind":"brief.ready","brief":{"goal":"g"}}""";
+
+    private static (CreateTeamViewModel Vm, FakeProcessLauncher Processes) Build()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
+        var profiles = new ModelProfilesViewModel(new InMemoryModelProfileStore(), llm, probe: new FakeLlmEndpointProbe());
+        profiles.CommitEdit(
+            new ModelProfile { Name = "Local", Provider = "Ollama", Model = "qwen2.5:14b", BaseUrl = "http://localhost:11434/v1" },
+            previousName: null);
+        profiles.StudioProfileName = "Local";
+
+        var processes = new FakeProcessLauncher();
+        var vm = new CreateTeamViewModel(
+            profiles,
+            new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            dispatcher: null,
+            strings: null,
+            workspaceDirectory: "/ws",
+            teamsRoot: "/teams");
+        vm.Need = "une veille documentaire";
+        vm.FrequencyChoices[1].SelectCommand.Execute(null);
+        vm.SourceChoices[0].SelectCommand.Execute(null);
+        vm.OutputChoices[0].SelectCommand.Execute(null);
+        return (vm, processes);
+    }
+
+    [Fact]
+    public async Task An_engine_that_dies_before_the_brief_says_so_in_the_thread()
+    {
+        var (vm, processes) = Build();
+        processes.ExitCode = 2;
+        processes.WhileRunning = () => processes.Emit(Out(Assistant("Which folder?")));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.False(vm.Chat.IsBusy);
+        Assert.False(vm.Chat.IsStarted);
+        Assert.False(vm.Chat.IsLive);       // the strip stops claiming someone is waiting
+        Assert.False(vm.Chat.IsAsking);     // and the composer stops offering to answer
+        Assert.NotEqual("Which folder?", vm.Chat.Turns[^1].Body);
+    }
+
+    [Fact]
+    public async Task An_engine_that_finished_its_brief_leaves_the_thread_alone()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(Assistant("Which folder?")));
+            processes.Emit(Out(BriefReady));
+        };
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        // It left because it was done, not because it broke: nothing to apologise for.
+        Assert.True(vm.Chat.IsDone);
+        Assert.Single(vm.Chat.Turns, t => t.IsClosing);
+        Assert.Equal(2, vm.Chat.Turns.Count);
+    }
+
+    [Fact]
+    public async Task The_hint_under_a_disabled_compose_button_says_the_assistant_is_working()
+    {
+        var (vm, processes) = Build();
+        var hint = "";
+        processes.WhileRunning = () => hint = vm.Step1Hint;
+
+        var resting = vm.Step1Hint;
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.NotEqual(resting, hint);
+        Assert.NotEmpty(hint);
     }
 }

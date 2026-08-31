@@ -141,8 +141,6 @@ public static class StudioStringKeys
     public const string ChatStripBusy = "Studio.Chat.StripBusy";
     /// <summary>"The assistant needs one more detail"</summary>
     public const string ChatStripAsking = "Studio.Chat.StripAsking";
-    /// <summary>"question {0} of {1} · waiting for your answer"</summary>
-    public const string ChatStatusQuestionPattern = "Studio.Chat.StatusQuestionPattern";
     /// <summary>"brief complete · {0} message(s)"</summary>
     public const string ChatStatusDonePattern = "Studio.Chat.StatusDonePattern";
     /// <summary>"{0} message(s)"</summary>
@@ -175,72 +173,6 @@ public static class StudioStringKeys
     public const string ChatWrapBody = "Studio.Chat.WrapBody";
     /// <summary>"I'll show you the composition I propose: the agents, the allowed fo…"</summary>
     public const string ChatWrapDetail = "Studio.Chat.WrapDetail";
-    /// <summary>"Folder location"</summary>
-    public const string ChatQ1Fact = "Studio.Chat.Q1Fact";
-    /// <summary>"Where is this folder, and what does it hold?"</summary>
-    public const string ChatQ1Body = "Studio.Chat.Q1Body";
-    /// <summary>"For instance « Documents/Meeting notes », with Word or PDF files. G…"</summary>
-    public const string ChatQ1Detail = "Studio.Chat.Q1Detail";
-    /// <summary>"If you are not sure, say so: I'll assume text documents in a single…"</summary>
-    public const string ChatQ1Hint = "Studio.Chat.Q1Hint";
-    /// <summary>"e.g. C:\Users\me\Documents\Meeting notes"</summary>
-    public const string ChatQ1Placeholder = "Studio.Chat.Q1Placeholder";
-    /// <summary>"Documents/Meeting notes"</summary>
-    public const string ChatQ1Chip1 = "Studio.Chat.Q1Chip1";
-    /// <summary>"Pick a folder…"</summary>
-    public const string ChatQ1Chip2 = "Studio.Chat.Q1Chip2";
-    /// <summary>"I don't know yet"</summary>
-    public const string ChatQ1Chip3 = "Studio.Chat.Q1Chip3";
-    /// <summary>"Documents/Meeting notes"</summary>
-    public const string ChatQ1Value1 = "Studio.Chat.Q1Value1";
-    /// <summary>"Folder to be picked"</summary>
-    public const string ChatQ1Value2 = "Studio.Chat.Q1Value2";
-    /// <summary>"To be confirmed later"</summary>
-    public const string ChatQ1Value3 = "Studio.Chat.Q1Value3";
-    /// <summary>"Delivery moment"</summary>
-    public const string ChatQ2Fact = "Studio.Chat.Q2Fact";
-    /// <summary>"When do you want to receive the summary?"</summary>
-    public const string ChatQ2Body = "Studio.Chat.Q2Body";
-    /// <summary>"The team works on its own at that hour, even with Studio closed. Yo…"</summary>
-    public const string ChatQ2Detail = "Studio.Chat.Q2Detail";
-    /// <summary>"e.g. Friday around 5 pm"</summary>
-    public const string ChatQ2Placeholder = "Studio.Chat.Q2Placeholder";
-    /// <summary>"Friday 5 pm"</summary>
-    public const string ChatQ2Chip1 = "Studio.Chat.Q2Chip1";
-    /// <summary>"Monday 8 am"</summary>
-    public const string ChatQ2Chip2 = "Studio.Chat.Q2Chip2";
-    /// <summary>"Whenever"</summary>
-    public const string ChatQ2Chip3 = "Studio.Chat.Q2Chip3";
-    /// <summary>"Friday 5 pm"</summary>
-    public const string ChatQ2Value1 = "Studio.Chat.Q2Value1";
-    /// <summary>"Monday 8 am"</summary>
-    public const string ChatQ2Value2 = "Studio.Chat.Q2Value2";
-    /// <summary>"Free schedule"</summary>
-    public const string ChatQ2Value3 = "Studio.Chat.Q2Value3";
-    /// <summary>"Limit to respect"</summary>
-    public const string ChatQ3Fact = "Studio.Chat.Q3Fact";
-    /// <summary>"Is there anything the team must never do?"</summary>
-    public const string ChatQ3Body = "Studio.Chat.Q3Body";
-    /// <summary>"A clear limit beats a vague instruction: files to ignore, informati…"</summary>
-    public const string ChatQ3Detail = "Studio.Chat.Q3Detail";
-    /// <summary>"You can skip: I'll then keep to reading the folder and nothing else."</summary>
-    public const string ChatQ3Hint = "Studio.Chat.Q3Hint";
-    /// <summary>"e.g. never quote documents marked confidential"</summary>
-    public const string ChatQ3Placeholder = "Studio.Chat.Q3Placeholder";
-    /// <summary>"Read-only on the folder"</summary>
-    public const string ChatQ3Chip1 = "Studio.Chat.Q3Chip1";
-    /// <summary>"Ignore the drafts"</summary>
-    public const string ChatQ3Chip2 = "Studio.Chat.Q3Chip2";
-    /// <summary>"Nothing in particular"</summary>
-    public const string ChatQ3Chip3 = "Studio.Chat.Q3Chip3";
-    /// <summary>"Read-only on the folder"</summary>
-    public const string ChatQ3Value1 = "Studio.Chat.Q3Value1";
-    /// <summary>"Drafts ignored"</summary>
-    public const string ChatQ3Value2 = "Studio.Chat.Q3Value2";
-    /// <summary>"No limit"</summary>
-    public const string ChatQ3Value3 = "Studio.Chat.Q3Value3";
-    /// <summary>"{0}: {1}."</summary>
-    public const string ChatBriefAnswerPattern = "Studio.Chat.BriefAnswerPattern";
     /// <summary>"The work you described"</summary>
     public const string ChatFactBrief = "Studio.Chat.FactBrief";
     /// <summary>"Rhythm"</summary>
@@ -1272,7 +1204,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatBriefEmpty] = "You haven't described anything yet.",
         [StudioStringKeys.ChatStripBusy] = "The assistant is composing your team",
         [StudioStringKeys.ChatStripAsking] = "The assistant needs one more detail",
-        [StudioStringKeys.ChatStatusQuestionPattern] = "question {0} of {1} · waiting for your answer",
         [StudioStringKeys.ChatStatusDonePattern] = "brief complete · {0} message(s)",
         [StudioStringKeys.ChatStatusMessagesPattern] = "{0} message(s)",
         [StudioStringKeys.ChatStatusNoQuestion] = "no question yet",
@@ -1289,39 +1220,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatThinking3] = "I'm sketching the team's roles…",
         [StudioStringKeys.ChatWrapBody] = "Thank you — I have what I need to compose the team.",
         [StudioStringKeys.ChatWrapDetail] = "I'll show you the composition I propose: the agents, the allowed folders, and what each of them can do.",
-        [StudioStringKeys.ChatQ1Fact] = "Folder location",
-        [StudioStringKeys.ChatQ1Body] = "Where is this folder, and what does it hold?",
-        [StudioStringKeys.ChatQ1Detail] = "For instance « Documents/Meeting notes », with Word or PDF files. Give me the exact path and I can take a look to check.",
-        [StudioStringKeys.ChatQ1Hint] = "If you are not sure, say so: I'll assume text documents in a single folder.",
-        [StudioStringKeys.ChatQ1Placeholder] = "e.g. C:\\Users\\me\\Documents\\Meeting notes",
-        [StudioStringKeys.ChatQ1Chip1] = "Documents/Meeting notes",
-        [StudioStringKeys.ChatQ1Chip2] = "Pick a folder…",
-        [StudioStringKeys.ChatQ1Chip3] = "I don't know yet",
-        [StudioStringKeys.ChatQ1Value1] = "Documents/Meeting notes",
-        [StudioStringKeys.ChatQ1Value2] = "Folder to be picked",
-        [StudioStringKeys.ChatQ1Value3] = "To be confirmed later",
-        [StudioStringKeys.ChatQ2Fact] = "Delivery moment",
-        [StudioStringKeys.ChatQ2Body] = "When do you want to receive the summary?",
-        [StudioStringKeys.ChatQ2Detail] = "The team works on its own at that hour, even with Studio closed. You can change the schedule after adoption.",
-        [StudioStringKeys.ChatQ2Placeholder] = "e.g. Friday around 5 pm",
-        [StudioStringKeys.ChatQ2Chip1] = "Friday 5 pm",
-        [StudioStringKeys.ChatQ2Chip2] = "Monday 8 am",
-        [StudioStringKeys.ChatQ2Chip3] = "Whenever",
-        [StudioStringKeys.ChatQ2Value1] = "Friday 5 pm",
-        [StudioStringKeys.ChatQ2Value2] = "Monday 8 am",
-        [StudioStringKeys.ChatQ2Value3] = "Free schedule",
-        [StudioStringKeys.ChatQ3Fact] = "Limit to respect",
-        [StudioStringKeys.ChatQ3Body] = "Is there anything the team must never do?",
-        [StudioStringKeys.ChatQ3Detail] = "A clear limit beats a vague instruction: files to ignore, information not to quote, a tone to avoid.",
-        [StudioStringKeys.ChatQ3Hint] = "You can skip: I'll then keep to reading the folder and nothing else.",
-        [StudioStringKeys.ChatQ3Placeholder] = "e.g. never quote documents marked confidential",
-        [StudioStringKeys.ChatQ3Chip1] = "Read-only on the folder",
-        [StudioStringKeys.ChatQ3Chip2] = "Ignore the drafts",
-        [StudioStringKeys.ChatQ3Chip3] = "Nothing in particular",
-        [StudioStringKeys.ChatQ3Value1] = "Read-only on the folder",
-        [StudioStringKeys.ChatQ3Value2] = "Drafts ignored",
-        [StudioStringKeys.ChatQ3Value3] = "No limit",
-        [StudioStringKeys.ChatBriefAnswerPattern] = "{0}: {1}.",
         [StudioStringKeys.ChatFactBrief] = "The work you described",
         [StudioStringKeys.ChatFactRhythm] = "Rhythm",
         [StudioStringKeys.ChatFactSource] = "Document source",

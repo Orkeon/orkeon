@@ -1937,9 +1937,6 @@
   <data name="Studio.Chat.StripAsking" xml:space="preserve">
     <value>助手需要您补充一点信息</value>
   </data>
-  <data name="Studio.Chat.StatusQuestionPattern" xml:space="preserve">
-    <value>第 {0} / {1} 个问题 · 等待您的回答</value>
-  </data>
   <data name="Studio.Chat.StatusDonePattern" xml:space="preserve">
     <value>简报已完成 · {0} 条消息</value>
   </data>
@@ -1990,105 +1987,6 @@
   </data>
   <data name="Studio.Chat.WrapDetail" xml:space="preserve">
     <value>给您看我建议的组成：智能体、授权的文件夹，以及各自能做什么。</value>
-  </data>
-  <data name="Studio.Chat.Q1Fact" xml:space="preserve">
-    <value>文件夹位置</value>
-  </data>
-  <data name="Studio.Chat.Q1Body" xml:space="preserve">
-    <value>这个文件夹在哪里？里面有什么？</value>
-  </data>
-  <data name="Studio.Chat.Q1Detail" xml:space="preserve">
-    <value>例如“文档/会议纪要”，内含 Word 或 PDF 文件。给我确切路径，我可以看一眼核实。</value>
-  </data>
-  <data name="Studio.Chat.Q1Hint" xml:space="preserve">
-    <value>不确定就直说：我将默认是单一文件夹中的文本文档。</value>
-  </data>
-  <data name="Studio.Chat.Q1Placeholder" xml:space="preserve">
-    <value>例如 C:\Users\me\Documents\会议纪要</value>
-  </data>
-  <data name="Studio.Chat.Q1Chip1" xml:space="preserve">
-    <value>文档/会议纪要</value>
-  </data>
-  <data name="Studio.Chat.Q1Chip2" xml:space="preserve">
-    <value>选择文件夹…</value>
-  </data>
-  <data name="Studio.Chat.Q1Chip3" xml:space="preserve">
-    <value>还不知道</value>
-  </data>
-  <data name="Studio.Chat.Q1Value1" xml:space="preserve">
-    <value>文档/会议纪要</value>
-  </data>
-  <data name="Studio.Chat.Q1Value2" xml:space="preserve">
-    <value>待选择的文件夹</value>
-  </data>
-  <data name="Studio.Chat.Q1Value3" xml:space="preserve">
-    <value>稍后再定</value>
-  </data>
-  <data name="Studio.Chat.Q2Fact" xml:space="preserve">
-    <value>交付时间</value>
-  </data>
-  <data name="Studio.Chat.Q2Body" xml:space="preserve">
-    <value>您想何时收到摘要？</value>
-  </data>
-  <data name="Studio.Chat.Q2Detail" xml:space="preserve">
-    <value>团队将在该时间自行工作，即使 Studio 已关闭。采用后可更改时间。</value>
-  </data>
-  <data name="Studio.Chat.Q2Placeholder" xml:space="preserve">
-    <value>例如：周五 17 点左右</value>
-  </data>
-  <data name="Studio.Chat.Q2Chip1" xml:space="preserve">
-    <value>周五 17 点</value>
-  </data>
-  <data name="Studio.Chat.Q2Chip2" xml:space="preserve">
-    <value>周一 8 点</value>
-  </data>
-  <data name="Studio.Chat.Q2Chip3" xml:space="preserve">
-    <value>都可以</value>
-  </data>
-  <data name="Studio.Chat.Q2Value1" xml:space="preserve">
-    <value>周五 17 点</value>
-  </data>
-  <data name="Studio.Chat.Q2Value2" xml:space="preserve">
-    <value>周一 8 点</value>
-  </data>
-  <data name="Studio.Chat.Q2Value3" xml:space="preserve">
-    <value>时间不限</value>
-  </data>
-  <data name="Studio.Chat.Q3Fact" xml:space="preserve">
-    <value>需要遵守的限制</value>
-  </data>
-  <data name="Studio.Chat.Q3Body" xml:space="preserve">
-    <value>有什么是团队绝不能做的吗？</value>
-  </data>
-  <data name="Studio.Chat.Q3Detail" xml:space="preserve">
-    <value>清晰的限制胜过含糊的指令：要忽略的文件、不可引用的信息、要避免的语气。</value>
-  </data>
-  <data name="Studio.Chat.Q3Hint" xml:space="preserve">
-    <value>可以跳过：那我就只读该文件夹。</value>
-  </data>
-  <data name="Studio.Chat.Q3Placeholder" xml:space="preserve">
-    <value>例如：绝不引用标记为机密的文档</value>
-  </data>
-  <data name="Studio.Chat.Q3Chip1" xml:space="preserve">
-    <value>文件夹只读</value>
-  </data>
-  <data name="Studio.Chat.Q3Chip2" xml:space="preserve">
-    <value>忽略草稿</value>
-  </data>
-  <data name="Studio.Chat.Q3Chip3" xml:space="preserve">
-    <value>没有特别要求</value>
-  </data>
-  <data name="Studio.Chat.Q3Value1" xml:space="preserve">
-    <value>文件夹只读</value>
-  </data>
-  <data name="Studio.Chat.Q3Value2" xml:space="preserve">
-    <value>已忽略草稿</value>
-  </data>
-  <data name="Studio.Chat.Q3Value3" xml:space="preserve">
-    <value>无限制</value>
-  </data>
-  <data name="Studio.Chat.BriefAnswerPattern" xml:space="preserve">
-    <value>{0}：{1}。</value>
   </data>
   <data name="Studio.Chat.FactBrief" xml:space="preserve">
     <value>交付的工作</value>

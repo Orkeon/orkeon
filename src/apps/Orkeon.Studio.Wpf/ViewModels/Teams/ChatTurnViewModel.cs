@@ -19,7 +19,6 @@ public sealed class ChatTurnViewModel : ObservableObject
     private readonly string _body;
     private readonly string _detail;
     private readonly string _hint;
-    private readonly int? _questionIndex;
     private readonly string? _bodyKey;
 
     internal ChatTurnViewModel(
@@ -28,8 +27,6 @@ public sealed class ChatTurnViewModel : ObservableObject
         string body,
         string detail = "",
         string hint = "",
-        int? answerIndex = null,
-        int? questionIndex = null,
         string? bodyKey = null,
         bool isClosing = false)
     {
@@ -38,9 +35,7 @@ public sealed class ChatTurnViewModel : ObservableObject
         _body = body;
         _detail = detail;
         _hint = hint;
-        _questionIndex = questionIndex;
         IsBot = isBot;
-        AnswerIndex = answerIndex;
         IsClosing = isClosing;
     }
 
@@ -65,12 +60,6 @@ public sealed class ChatTurnViewModel : ObservableObject
     /// <summary>Whether a hint line exists.</summary>
     public bool HasHint => Hint.Length > 0;
 
-    /// <summary>
-    /// Which interview question this turn answers, when it answers one. The recap reads it:
-    /// a fact is «known» because some turn carries its index, not because a counter says so.
-    /// </summary>
-    public int? AnswerIndex { get; }
-
     /// <summary>The closing bubble — success ground, said once, when the brief is complete.</summary>
     public bool IsClosing { get; }
 
@@ -84,16 +73,6 @@ public sealed class ChatTurnViewModel : ObservableObject
         // language switch like everything else the assistant said rather than typed.
         if (_bodyKey is { } bodyKey)
             return part == "Body" ? _strings[bodyKey] : "";
-
-        if (_questionIndex is { } index)
-        {
-            // A miss returns the key itself — which is how the whole interview once rendered
-            // as «Vm_Chat_Q1_Body». Q2 has no Hint by design, so a miss is expected there and
-            // must read as «no line», never as an identifier printed at the user.
-            var key = $"Studio.Chat.Q{index + 1}{part}";
-            var value = _strings[key];
-            return value == key ? "" : value;
-        }
 
         if (!IsClosing)
             return null;

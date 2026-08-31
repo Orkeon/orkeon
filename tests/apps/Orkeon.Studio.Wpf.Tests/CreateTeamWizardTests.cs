@@ -53,23 +53,11 @@ public class CreateTeamWizardTests
     }
 
     /// <summary>
-    /// « Composer l'équipe » from the outside: the gesture opens the conversation, the
-    /// three interview answers go in, and the engine is only reached after the third.
-    /// The tests below all want the engine, so they all come through here.
+    /// « Composer l'équipe » from the outside. The gesture IS the engine now: there is no
+    /// local questionnaire to drain first, and whatever the model wants to ask it asks
+    /// down the wire once the run is under way.
     /// </summary>
-    private static async Task Compose(CreateTeamViewModel vm)
-    {
-        await vm.ComposeCommand.ExecuteAsync();
-
-        for (var i = 0; i < 3 && vm.Chat.IsAsking; i++)
-        {
-            vm.Chat.Draft = $"réponse {i + 1}";
-            vm.Chat.SendCommand.Execute(null);
-        }
-
-        if (vm.PendingCompose is { } pending)
-            await pending;
-    }
+    private static Task Compose(CreateTeamViewModel vm) => vm.ComposeCommand.ExecuteAsync();
 
     private static void FillStepOne(CreateTeamViewModel vm)
     {
@@ -313,6 +301,9 @@ public class CreateTeamWizardTests
         ]);
         processes.WhileRunning = () =>
         {
+            // The composer is locked while the assistant is thinking, so the model
+            // speaks first — which is also the only moment a user could type.
+            processes.Emit(Out("""{"v":2,"seq":3,"ts":"t","kind":"assistant.message","text":"Quel dossier ?"}"""));
             vm.Chat.Draft = "que se passe-t-il si un fichier est illisible ?";
             vm.Chat.SendCommand.Execute(null);
         };

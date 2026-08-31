@@ -731,9 +731,6 @@
   <data name="Studio.Chat.StripAsking" xml:space="preserve">
     <value>L'assistant vous demande une précision</value>
   </data>
-  <data name="Studio.Chat.StatusQuestionPattern" xml:space="preserve">
-    <value>question {0} sur {1} · en attente de votre réponse</value>
-  </data>
   <data name="Studio.Chat.StatusDonePattern" xml:space="preserve">
     <value>brief complet · {0} message(s)</value>
   </data>
@@ -784,105 +781,6 @@
   </data>
   <data name="Studio.Chat.WrapDetail" xml:space="preserve">
     <value>Je vous montre la composition proposée : les agents, les dossiers autorisés, et ce que chacun peut faire.</value>
-  </data>
-  <data name="Studio.Chat.Q1Fact" xml:space="preserve">
-    <value>Emplacement du dossier</value>
-  </data>
-  <data name="Studio.Chat.Q1Body" xml:space="preserve">
-    <value>Où se trouve ce dossier, et que contient-il ?</value>
-  </data>
-  <data name="Studio.Chat.Q1Detail" xml:space="preserve">
-    <value>Par exemple « Documents/Comptes-rendus », avec des fichiers Word ou PDF. Si vous me donnez le chemin exact, je peux y jeter un œil pour vérifier.</value>
-  </data>
-  <data name="Studio.Chat.Q1Hint" xml:space="preserve">
-    <value>Si vous ne savez pas trop, dites-le : je partirai du principe qu'il s'agit de documents texte dans un dossier unique.</value>
-  </data>
-  <data name="Studio.Chat.Q1Placeholder" xml:space="preserve">
-    <value>Ex. C:\Users\moi\Documents\Comptes-rendus</value>
-  </data>
-  <data name="Studio.Chat.Q1Chip1" xml:space="preserve">
-    <value>Documents/Comptes-rendus</value>
-  </data>
-  <data name="Studio.Chat.Q1Chip2" xml:space="preserve">
-    <value>Choisir un dossier…</value>
-  </data>
-  <data name="Studio.Chat.Q1Chip3" xml:space="preserve">
-    <value>Je ne sais pas encore</value>
-  </data>
-  <data name="Studio.Chat.Q1Value1" xml:space="preserve">
-    <value>Documents/Comptes-rendus</value>
-  </data>
-  <data name="Studio.Chat.Q1Value2" xml:space="preserve">
-    <value>Dossier à choisir</value>
-  </data>
-  <data name="Studio.Chat.Q1Value3" xml:space="preserve">
-    <value>À préciser plus tard</value>
-  </data>
-  <data name="Studio.Chat.Q2Fact" xml:space="preserve">
-    <value>Moment de livraison</value>
-  </data>
-  <data name="Studio.Chat.Q2Body" xml:space="preserve">
-    <value>À quel moment voulez-vous recevoir la synthèse ?</value>
-  </data>
-  <data name="Studio.Chat.Q2Detail" xml:space="preserve">
-    <value>L'équipe travaille seule à cette heure-là, même Studio fermé. Vous pourrez changer l'horaire après l'adoption.</value>
-  </data>
-  <data name="Studio.Chat.Q2Placeholder" xml:space="preserve">
-    <value>Ex. le vendredi vers 17 h</value>
-  </data>
-  <data name="Studio.Chat.Q2Chip1" xml:space="preserve">
-    <value>Vendredi 17 h</value>
-  </data>
-  <data name="Studio.Chat.Q2Chip2" xml:space="preserve">
-    <value>Lundi 8 h</value>
-  </data>
-  <data name="Studio.Chat.Q2Chip3" xml:space="preserve">
-    <value>Peu importe</value>
-  </data>
-  <data name="Studio.Chat.Q2Value1" xml:space="preserve">
-    <value>Vendredi 17 h</value>
-  </data>
-  <data name="Studio.Chat.Q2Value2" xml:space="preserve">
-    <value>Lundi 8 h</value>
-  </data>
-  <data name="Studio.Chat.Q2Value3" xml:space="preserve">
-    <value>Horaire libre</value>
-  </data>
-  <data name="Studio.Chat.Q3Fact" xml:space="preserve">
-    <value>Limite à respecter</value>
-  </data>
-  <data name="Studio.Chat.Q3Body" xml:space="preserve">
-    <value>Y a-t-il quelque chose que l'équipe ne doit jamais faire ?</value>
-  </data>
-  <data name="Studio.Chat.Q3Detail" xml:space="preserve">
-    <value>Une limite claire vaut mieux qu'une consigne vague : fichiers à ignorer, informations à ne pas citer, ton à éviter.</value>
-  </data>
-  <data name="Studio.Chat.Q3Hint" xml:space="preserve">
-    <value>Vous pouvez passer : je m'en tiendrai alors à la lecture seule du dossier.</value>
-  </data>
-  <data name="Studio.Chat.Q3Placeholder" xml:space="preserve">
-    <value>Ex. ne jamais citer les documents marqués confidentiels</value>
-  </data>
-  <data name="Studio.Chat.Q3Chip1" xml:space="preserve">
-    <value>Lecture seule du dossier</value>
-  </data>
-  <data name="Studio.Chat.Q3Chip2" xml:space="preserve">
-    <value>Ignorer les brouillons</value>
-  </data>
-  <data name="Studio.Chat.Q3Chip3" xml:space="preserve">
-    <value>Rien de particulier</value>
-  </data>
-  <data name="Studio.Chat.Q3Value1" xml:space="preserve">
-    <value>Lecture seule du dossier</value>
-  </data>
-  <data name="Studio.Chat.Q3Value2" xml:space="preserve">
-    <value>Brouillons ignorés</value>
-  </data>
-  <data name="Studio.Chat.Q3Value3" xml:space="preserve">
-    <value>Aucune limite</value>
-  </data>
-  <data name="Studio.Chat.BriefAnswerPattern" xml:space="preserve">
-    <value>{0} : {1}.</value>
   </data>
   <data name="Studio.Chat.FactBrief" xml:space="preserve">
     <value>Le travail confié</value>

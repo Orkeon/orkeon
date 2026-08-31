@@ -133,6 +133,13 @@ public sealed class TeamsManagementTests
 /// </summary>
 public sealed class NavigationDraftTests
 {
+    private static Orkeon.Studio.Core.Process.ProcessOutputLine Out(string json) =>
+        Orkeon.Studio.Core.Process.ProcessOutputLine.Now(
+            Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput, json);
+
+    private static string Assistant(string text) =>
+        $$"""{"v":2,"seq":3,"ts":"t","kind":"assistant.message","text":"{{text}}"}""";
+
     private static CreateTeamViewModel Wizard(
         bool withAssistant = false, Doubles.FakeProcessLauncher? processes = null)
     {
@@ -198,15 +205,6 @@ public sealed class NavigationDraftTests
     public async Task The_draft_notice_changes_register_when_the_assistant_is_the_one_waiting()
     {
         var processes = new Doubles.FakeProcessLauncher();
-        processes.OutputToEmit.AddRange(
-        [
-            Orkeon.Studio.Core.Process.ProcessOutputLine.Now(
-                Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput,
-                """{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
-            Orkeon.Studio.Core.Process.ProcessOutputLine.Now(
-                Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput,
-                """{"v":2,"seq":2,"ts":"t","kind":"assistant.message","text":"Quel dossier faut-il lire ?"}"""),
-        ]);
 
         var vm = Wizard(withAssistant: true, processes: processes);
         vm.Need = "une veille documentaire";
@@ -218,22 +216,27 @@ public sealed class NavigationDraftTests
         Assert.True(vm.HasDraft);
         Assert.False(vm.IsAssistantWaiting);
 
-        await vm.ComposeCommand.ExecuteAsync();
-        for (var i = 0; i < 3 && vm.Chat.IsAsking; i++)
+        bool asking = false, waiting = false;
+        string title = "", line = "";
+        processes.WhileRunning = () =>
         {
-            vm.Chat.Draft = "réponse";
-            vm.Chat.SendCommand.Execute(null);
-        }
+            processes.Emit(Out(Assistant("Quel dossier faut-il lire ?")));
 
-        if (vm.PendingCompose is { } pending)
-            await pending;
+            // Read while the child is alive: the brief stage is blocking on stdin there.
+            asking = vm.Chat.IsAsking;
+            waiting = vm.IsAssistantWaiting;
+            title = vm.DraftTitle;
+            line = vm.DraftLine;
+        };
+        await vm.ComposeCommand.ExecuteAsync();
 
         // The draft is no longer merely "in progress": someone is waiting on the user,
-        // and the nav has to say which of the two it is.
-        Assert.True(vm.HasAssistantPrompt);
-        Assert.True(vm.IsAssistantWaiting);
-        Assert.NotEqual(resting, vm.DraftTitle);
-        Assert.Contains("resume the conversation", vm.DraftLine, StringComparison.Ordinal);
+        // and the nav has to say which of the two it is. The question stands in the
+        // conversation — the only place it is shown now.
+        Assert.True(asking);
+        Assert.True(waiting);
+        Assert.NotEqual(resting, title);
+        Assert.Contains("resume the conversation", line, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -253,41 +256,54 @@ public sealed class NavigationDraftTests
     [Fact]
     public async Task A_started_conversation_is_a_draft_even_before_the_form_is_filled()
     {
-        var vm = Wizard(withAssistant: true);
+        var processes = new Doubles.FakeProcessLauncher();
+        var vm = Wizard(withAssistant: true, processes);
         vm.Need = "une veille documentaire";
         vm.FrequencyChoices[1].SelectCommand.Execute(null);
         vm.SourceChoices[0].SelectCommand.Execute(null);
         vm.OutputChoices[0].SelectCommand.Execute(null);
 
+        // The engine asks its first question and then blocks — the state the nav describes,
+        // and it only exists while the child is alive.
+        bool started = false, draft = false, waiting = false;
+        string line = "";
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(Assistant("Which folder?")));
+            started = vm.Chat.IsStarted;
+            draft = vm.HasDraft;
+            waiting = vm.IsAssistantWaiting;
+            line = vm.DraftLine;
+        };
         await vm.ComposeCommand.ExecuteAsync();
 
-        Assert.True(vm.Chat.IsStarted);
-        Assert.True(vm.HasDraft);
+        Assert.True(started);
+        Assert.True(draft);
 
         // Someone is waiting on the user, and the nav has to say which — the count would
         // only say how much has been said, which is not what to do next.
-        Assert.True(vm.IsAssistantWaiting);
-        Assert.Contains("resume the conversation", vm.DraftLine, StringComparison.Ordinal);
+        Assert.True(waiting);
+        Assert.Contains("resume the conversation", line, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task Once_nobody_is_waiting_the_line_counts_the_conversation_instead()
     {
-        var vm = Wizard(withAssistant: true);
+        var processes = new Doubles.FakeProcessLauncher();
+        var vm = Wizard(withAssistant: true, processes);
         vm.Need = "une veille documentaire";
         vm.FrequencyChoices[1].SelectCommand.Execute(null);
         vm.SourceChoices[0].SelectCommand.Execute(null);
         vm.OutputChoices[0].SelectCommand.Execute(null);
 
-        await vm.ComposeCommand.ExecuteAsync();
-        for (var i = 0; i < 3 && vm.Chat.IsAsking; i++)
+        // Asked and answered: the conversation has content, but nobody is owed a reply.
+        processes.WhileRunning = () =>
         {
-            vm.Chat.Draft = "réponse";
+            processes.Emit(Out(Assistant("Which folder?")));
+            vm.Chat.Draft = "Documents";
             vm.Chat.SendCommand.Execute(null);
-        }
-
-        if (vm.PendingCompose is { } pending)
-            await pending;
+        };
+        await vm.ComposeCommand.ExecuteAsync();
 
         Assert.NotEmpty(vm.Chat.Turns);
         Assert.False(vm.Chat.IsAsking);

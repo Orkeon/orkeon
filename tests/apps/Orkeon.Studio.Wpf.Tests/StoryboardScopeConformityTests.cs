@@ -15,7 +15,7 @@ namespace Orkeon.Studio.Wpf.Tests;
 /// <para>
 /// That is exactly how it was found. The chat panel's slide-in was begun by a DataTrigger on
 /// IsOpen inside a Border.Style; the throw came out of the IsOpen setter, up through
-/// StartInterview, and into the Task <c>AsyncRelayCommand.Execute</c> discards — so «Compose a
+/// StartSession, and into the Task <c>AsyncRelayCommand.Execute</c> discards — so «Compose a
 /// team» was a live, ungreyed button that did nothing whatsoever. A storyboard with no
 /// TargetName addresses the styled element itself, which is what these animations want anyway.
 /// </para>

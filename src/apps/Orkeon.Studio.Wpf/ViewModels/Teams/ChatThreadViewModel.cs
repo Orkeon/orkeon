@@ -14,15 +14,18 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 /// assistant had already understood.
 /// </para>
 /// <para>
-/// It owns the composition interview: « Composer l'équipe » no longer starts the engine, it
-/// opens this thread, asks three questions, and only then hands the enriched brief over.
-/// The engine call itself stays where it was — the thread wraps around it, never replaces it.
+/// It asks nothing of its own. « Composer l'équipe » starts the engine, and the engine's
+/// brief stage is the interview: ForgeStages emits an assistant.message, blocks on stdin,
+/// and loops until the model submits a brief. Every question here is the model's, however
+/// many it wants; every reply goes down that pipe. The thread once played three scripted
+/// questions BEFORE the engine started, so the user was interviewed twice, by two
+/// mechanisms, on two surfaces.
 /// </para>
 /// </summary>
 public sealed class ChatThreadViewModel : ObservableObject
 {
-    private static readonly TimeSpan FirstThink = TimeSpan.FromMilliseconds(2300);
-    private static readonly TimeSpan NextThink = TimeSpan.FromMilliseconds(1900);
+    private static readonly TimeSpan BeatOne = TimeSpan.FromMilliseconds(900);
+    private static readonly TimeSpan BeatTwo = TimeSpan.FromMilliseconds(1800);
     private static readonly TimeSpan LocalAnswer = TimeSpan.FromMilliseconds(1600);
     private static readonly TimeSpan ClosingPause = TimeSpan.FromMilliseconds(1500);
 
@@ -30,8 +33,6 @@ public sealed class ChatThreadViewModel : ObservableObject
     private readonly IUiDelay _delay;
     private readonly AssistantAnswers _answers;
 
-    private IReadOnlyList<AssistantQuestion> _questions;
-    private Action<IReadOnlyList<string>>? _onInterviewComplete;
     private Func<string, bool>? _askEngine;
     private Func<IReadOnlyList<ChatRecapFact>>? _facts;
     private Func<string>? _brief;
@@ -44,10 +45,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     private bool _isStarted;
     private bool _isRecapExpanded;
     private int _unreadCount;
-    private int _pendingQuestionIndex;
     private int _tick;
-    private bool _questionOnTheTable;
-    private bool _handingOver;
     private string _draft = "";
     private AssistantContext _context = AssistantContext.WizardStep1;
 
@@ -57,7 +55,6 @@ public sealed class ChatThreadViewModel : ObservableObject
         _strings = strings ?? EnglishStudioStrings.Instance;
         _delay = delay ?? ImmediateUiDelay.Instance;
         _answers = new AssistantAnswers(_strings);
-        _questions = AssistantInterview.Build(_strings);
         _strings.CultureChanged += (_, _) => ReloadCatalogue();
 
         OpenCommand = new RelayCommand(Open);
@@ -67,9 +64,11 @@ public sealed class ChatThreadViewModel : ObservableObject
         ToggleRecapCommand = new RelayCommand(() => IsRecapExpanded = !_isRecapExpanded);
         StopCommand = new RelayCommand(Stop, () => _isBusy);
         SendCommand = new RelayCommand(() => Send(_draft), () => _draft.Trim().Length > 0 && !_isBusy);
+        // Not a predetermined answer to a predetermined question: « I don't know — do your
+        // best » answers ANY question the model can ask, and it is the only way out for
+        // someone stuck on one.
         SkipCommand = new RelayCommand(
             () => Send(_strings[StudioStringKeys.ChatSkipAnswer]), () => IsAsking);
-        PickChipCommand = new RelayCommand(value => Send(value as string ?? ""), _ => IsAsking);
     }
 
     /// <summary>Raised when the user asks to leave the thread and go back to the form.</summary>
@@ -130,9 +129,19 @@ public sealed class ChatThreadViewModel : ObservableObject
         private set => SetProperty(ref _isStarted, value);
     }
 
-    /// <summary>Whether a question is on the table right now.</summary>
+    /// <summary>
+    /// Whether the assistant is waiting on the user right now.
+    /// <para>
+    /// There is no event for this, and none is invented: the brief stage emits then BLOCKS
+    /// on stdin, so the local mirror of «blocked» is «the last bubble is the assistant's and
+    /// nothing is in flight». <c>_isStarted</c> keeps the local answer bank on the Run and
+    /// History screens from lighting it; <c>!_isDone</c> matters because after brief.ready
+    /// the engine has moved on to the blueprint and is no longer reading stdin — a message
+    /// arriving there is narration, not a question.
+    /// </para>
+    /// </summary>
     public bool IsAsking =>
-        _questionOnTheTable && !_isBusy && !_isDone && _pendingQuestionIndex < _questions.Count;
+        _isStarted && !_isBusy && !_isDone && Turns.Count > 0 && Turns[^1].IsBot;
 
     /// <summary>How many assistant turns arrived while the thread was closed.</summary>
     public int UnreadCount
@@ -147,9 +156,6 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>Whether the access button carries its accent dot.</summary>
     public bool HasUnread => _unreadCount > 0;
-
-    /// <summary>Which question is owed an answer.</summary>
-    public int PendingQuestionIndex => _pendingQuestionIndex;
 
     /// <summary>What is being typed.</summary>
     public string Draft
@@ -182,13 +188,9 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// <summary>The primer, anchored to the screen the thread is mounted on.</summary>
     public string Primer => _answers.Primer(_context);
 
-    /// <summary>The quick replies of the question on the table; empty when none is.</summary>
-    public IReadOnlyList<AssistantChip> Chips =>
-        IsAsking ? _questions[_pendingQuestionIndex].Chips : [];
-
-    /// <summary>What the input suggests — the question's own example, else the neutral invitation.</summary>
-    public string Placeholder =>
-        IsAsking ? _questions[_pendingQuestionIndex].Placeholder : _strings[StudioStringKeys.ChatPlaceholder];
+    /// <summary>What the input suggests — answering a standing question, else the invitation.</summary>
+    public string Placeholder => _strings[
+        IsAsking ? StudioStringKeys.ChatPlaceholderAnswer : StudioStringKeys.ChatPlaceholder];
 
     /// <summary>« Répondre » while a question stands, « Envoyer » otherwise.</summary>
     public string SendLabel =>
@@ -213,8 +215,9 @@ public sealed class ChatThreadViewModel : ObservableObject
                     : beat;
             }
 
+            // No «n of 3» any more: only the model knows how many questions it will ask.
             if (IsAsking)
-                return Format(StudioStringKeys.ChatStatusQuestionPattern, _pendingQuestionIndex + 1, _questions.Count);
+                return _strings[StudioStringKeys.ChatStatusWaiting];
 
             if (_isDone)
                 return Format(StudioStringKeys.ChatStatusDonePattern, Turns.Count);
@@ -299,30 +302,24 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// <summary>Answers the question with «do your best» and moves on.</summary>
     public RelayCommand SkipCommand { get; }
 
-    /// <summary>Answers with a quick reply's recorded value.</summary>
-    public RelayCommand PickChipCommand { get; }
-
     // ── wiring, from the owner ─────────────────────────────────────────────
 
     /// <summary>
     /// Hands the thread everything it must ask the owner rather than know: the recap rows,
-    /// the brief and its chips, the assistant's profile name, the engine channel, and what
-    /// to do once the three answers are in.
+    /// the brief and its chips, the assistant's profile name, and the engine channel.
     /// </summary>
     public void Bind(
         Func<IReadOnlyList<ChatRecapFact>> facts,
         Func<string> brief,
         Func<IReadOnlyList<string>> briefChips,
         Func<string?> profileName,
-        Func<string, bool> askEngine,
-        Action<IReadOnlyList<string>> onInterviewComplete)
+        Func<string, bool> askEngine)
     {
         _facts = facts;
         _brief = brief;
         _briefChips = briefChips;
         _profileName = profileName;
         _askEngine = askEngine;
-        _onInterviewComplete = onInterviewComplete;
     }
 
     /// <summary>Where the thread now sits — it decides the primer and the free-question fallback.</summary>
@@ -336,14 +333,12 @@ public sealed class ChatThreadViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Re-reads every catalogued word. The questions still to ask, the status beats, the
-    /// primer — and every bubble already on screen that was said from the catalogue. What
-    /// the user typed is left exactly as they typed it.
+    /// Re-reads every catalogued word: the status beats, the primer, and every bubble on
+    /// screen that was said from the catalogue. What the user typed is left exactly as they
+    /// typed it — and so is what the model said, which is not ours to re-key.
     /// </summary>
     public void ReloadCatalogue()
     {
-        _questions = AssistantInterview.Build(_strings);
-
         foreach (var turn in Turns)
             turn.Retranslate();
 
@@ -360,46 +355,61 @@ public sealed class ChatThreadViewModel : ObservableObject
         IsBusy = false;
     }
 
-    /// <summary>Tells the thread the engine finished, so the header stops claiming it is working.</summary>
-    public void EngineFinished()
+    /// <summary>
+    /// The engine is gone. <paramref name="interrupted"/> means it left before the brief was
+    /// accepted — a crash, a non-zero exit, a missing binary, a Stop. Clearing the spinner
+    /// and saying nothing left the thread showing a question with a composer that wrote into
+    /// a closed pipe, which is worse now that the interview IS the thread.
+    /// <para>
+    /// Note there is no CancelPending here: the only pending callbacks are the beats, which
+    /// their own <c>_isBusy</c> guard neutralises, and a closing pause that must be allowed
+    /// to finish.
+    /// </para>
+    /// </summary>
+    public void EngineFinished(bool interrupted = false)
     {
-        _delay.CancelPending();
         IsBusy = false;
+        if (!interrupted)
+            return;
+
+        // From the catalogue, not resolved into the turn: a language switch rewrites what
+        // the assistant said, here as everywhere.
+        Push(new ChatTurnViewModel(_strings, isBot: true, "", bodyKey: StudioStringKeys.ChatSessionEnded));
+        IsStarted = false;
+        RaiseDerived();
+    }
+
+    /// <summary>
+    /// The engine accepted the brief (<c>brief.ready</c>): the interview is over, said out
+    /// loud, and the column goes back to the wizard. Idempotent — the event may be replayed
+    /// by a session rehydration.
+    /// </summary>
+    public void BriefAccepted()
+    {
+        if (_isDone)
+            return;
+
+        IsBusy = false;
+        IsDone = true;
+        Push(new ChatTurnViewModel(_strings, isBot: true, "", isClosing: true));
+        RaiseDerived();
+        _delay.After(ClosingPause, Close);
     }
 
     /// <summary>Notifies the recap and the brief card that their source moved.</summary>
     public void OwnerChanged() =>
         OnPropertiesChanged(nameof(Facts), nameof(RecapProgress), nameof(Brief), nameof(BriefChips));
 
-    // ── the interview ──────────────────────────────────────────────────────
+    // ── the session ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// « Composer l'équipe ». Opens the thread and asks; the engine is not started here —
-    /// it is started by the callback, after the third answer, with the enriched brief.
+    /// « Composer l'équipe » — the engine is starting. The thread takes the column and
+    /// shows the assistant thinking; every question after this comes off the wire.
     /// </summary>
-    public void StartInterview()
+    public void StartSession()
     {
-        // Pressed again after the brief is complete — «recompose with what I already told
-        // you». The conversation is not replayed: the answers it collected are handed
-        // straight back to the engine, and the thread stays where the user left it.
-        if (_isDone)
-        {
-            _onInterviewComplete?.Invoke(CollectedAnswers());
-            return;
-        }
-
-        // Pressed again mid-interview: bring the question back, do not ask it twice.
-        if (_isStarted)
-        {
-            Open();
-            return;
-        }
-
         _delay.CancelPending();
         Turns.Clear();
-        _pendingQuestionIndex = 0;
-        _questionOnTheTable = false;
-        _handingOver = false;
         _tick = 0;
         Draft = "";
         IsDone = false;
@@ -408,8 +418,9 @@ public sealed class ChatThreadViewModel : ObservableObject
         UnreadCount = 0;
         IsOpen = true;
         IsBusy = true;
+        StartBeats();
         OnPropertyChanged(nameof(IsEmpty));
-        Think(0, FirstThink);
+        RaiseDerived();
     }
 
     /// <summary>Clears the thread whole — the wizard restarting takes its conversation with it.</summary>
@@ -417,9 +428,6 @@ public sealed class ChatThreadViewModel : ObservableObject
     {
         _delay.CancelPending();
         Turns.Clear();
-        _pendingQuestionIndex = 0;
-        _questionOnTheTable = false;
-        _handingOver = false;
         _tick = 0;
         Draft = "";
         IsStarted = false;
@@ -431,96 +439,58 @@ public sealed class ChatThreadViewModel : ObservableObject
         RaiseDerived();
     }
 
-    private void Think(int questionIndex, TimeSpan duration)
+    /// <summary>
+    /// Walks the «thinking» line through its three beats while the assistant works. Each
+    /// callback checks <c>_isBusy</c>, so a reply that lands first freezes the line where it
+    /// is rather than moving it after the fact.
+    /// </summary>
+    private void StartBeats()
     {
-        _delay.After(duration * 0.32, () => { _tick = 1; RaiseDerived(); });
-        _delay.After(duration * 0.66, () => { _tick = 2; RaiseDerived(); });
-        _delay.After(duration, () =>
-        {
-            _tick = 0;
-
-            if (questionIndex < _questions.Count)
-            {
-                _pendingQuestionIndex = questionIndex;
-                _questionOnTheTable = true;
-                IsBusy = false;
-                // The turn keeps the question's INDEX, not its sentence: a language switch
-                // has to rewrite what is already on screen.
-                Push(new ChatTurnViewModel(_strings, isBot: true, "", questionIndex: questionIndex));
-                Draft = "";
-                return;
-            }
-
-            // The brief is complete. The closing bubble is said, then the column goes back
-            // to the wizard — and only now does the engine hear about any of this.
-            IsBusy = false;
-            IsDone = true;
-            Push(new ChatTurnViewModel(_strings, isBot: true, "", isClosing: true));
-
-            var answers = CollectedAnswers();
-            _handingOver = true;
-            RaiseDerived();
-            _delay.After(ClosingPause, () =>
-            {
-                _handingOver = false;
-                Close();
-                _onInterviewComplete?.Invoke(answers);
-            });
-        });
-    }
-
-    private string[] CollectedAnswers()
-    {
-        var answers = new string[_questions.Count];
-        foreach (var turn in Turns)
-        {
-            if (turn is { IsBot: false, AnswerIndex: { } index } && index < answers.Length)
-                answers[index] = turn.Body;
-        }
-
-        return answers;
+        _tick = 0;
+        _delay.After(BeatOne, () => { if (_isBusy) { _tick = 1; RaiseDerived(); } });
+        _delay.After(BeatTwo, () => { if (_isBusy) { _tick = 2; RaiseDerived(); } });
     }
 
     private void Send(string text)
     {
         var said = (text ?? "").Trim();
-
-        // While the hand-off to the engine is pending, a Send would call CancelPending below
-        // and take the composition with it — the thread would sit «done» and the engine would
-        // never hear a word. The draft is kept, not swallowed: it goes out a second later.
-        if (said.Length == 0 || _isBusy || _handingOver)
+        if (said.Length == 0 || _isBusy)
             return;
 
-        _delay.CancelPending();
-
-        // Mid-interview: the turn answers the question on the table, and the next one follows.
-        if (_isStarted && !_isDone)
-        {
-            var index = _pendingQuestionIndex;
-            Push(new ChatTurnViewModel(_strings, isBot: false, said, answerIndex: index));
-            Draft = "";
-            _questionOnTheTable = false;
-            _pendingQuestionIndex = index + 1;
-            _tick = 0;
-            IsBusy = true;
-            Think(_pendingQuestionIndex, NextThink);
-            return;
-        }
-
-        // A free question. The engine wins whenever one is listening — a canned line would
-        // be a downgrade of an answer the app already knows how to get. The bank speaks
-        // only where there is no session at all.
+        // No CancelPending: its only job was killing the scripted beats, and it would now
+        // eat the closing pause — the thread would sit «done» with the column never handed
+        // back. The beats defend themselves through their own _isBusy guard.
         Push(new ChatTurnViewModel(_strings, isBot: false, said));
         Draft = "";
 
-        if (_askEngine?.Invoke(said) == true)
+        // The engine wins whenever one is listening — a canned line would be a downgrade of
+        // an answer the app already knows how to get. The bank speaks only where there is no
+        // session at all: before Compose, and on the Run and History screens.
+        if (_askEngine is { } ask)
         {
-            IsBusy = true;
-            return;
+            // Claim the wait BEFORE handing the message over. The reply can come back from
+            // inside that call, and setting the flag afterwards would leave the thread
+            // saying it is thinking about an answer it is already showing.
+            //
+            // Only the brief stage reads stdin: past brief.ready nobody is listening, so
+            // claiming «thinking» there would lock the composer for the rest of the run.
+            if (!_isDone)
+                IsBusy = true;
+
+            if (ask(said))
+            {
+                if (_isBusy)
+                    StartBeats();
+
+                return;
+            }
+
+            IsBusy = false;
         }
 
         var answerKey = _answers.AnswerKey(said, _context);
         IsBusy = true;
+        StartBeats();
         _delay.After(LocalAnswer, () =>
         {
             IsBusy = false;
@@ -532,11 +502,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     {
         // Everything said stays said, the thread stays open, and nothing restarts on its
         // own: a Stop that quietly resumed a second later would be worse than no Stop.
-        // The question being prepared goes with it — offering quick replies to a question
-        // whose bubble was never pushed is an answer box for a question nobody asked.
         _delay.CancelPending();
-        _handingOver = false;
-        _questionOnTheTable = false;
         IsBusy = false;
         StopRequested?.Invoke(this, EventArgs.Empty);
     }
@@ -580,7 +546,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         string.Format(CultureInfo.CurrentCulture, _strings[key], arguments);
 
     private void RaiseDerived() => OnPropertiesChanged(
-        nameof(IsAsking), nameof(Chips), nameof(Placeholder), nameof(SendLabel),
+        nameof(IsAsking), nameof(Placeholder), nameof(SendLabel),
         nameof(Status), nameof(Thinking), nameof(StripTitle), nameof(StripAction),
         nameof(IsLive), nameof(Facts), nameof(RecapProgress), nameof(Brief),
         nameof(BriefChips), nameof(Primer));
