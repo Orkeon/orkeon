@@ -12,6 +12,9 @@ public sealed class OrkeonBinaryLocatorTests
 {
     private static readonly string[] UnixNames = ["orkeon"];
 
+    /// <summary>What <see cref="OrkeonBinaryLocator.DefaultFileNames"/> yields on Windows.</summary>
+    private static readonly string[] WindowsNames = ["orkeon.exe"];
+
     [Fact]
     public void The_binary_next_to_studio_is_found_first()
     {
@@ -71,9 +74,11 @@ public sealed class OrkeonBinaryLocatorTests
         Assert.Equal(BinarySource.NotFound, location.Source);
         Assert.NotNull(location.Error);
 
-        // The message must name the missing tool, say what breaks, and say what to do.
+        // The message must name the missing tool, say what breaks, and say what to do. «Not
+        // located on this machine» over «not found»: the reader is being told the search ended,
+        // not that some particular path was empty.
         Assert.Contains("orkeon", location.Error, StringComparison.Ordinal);
-        Assert.Contains("not found", location.Error, StringComparison.Ordinal);
+        Assert.Contains("was not located on this machine", location.Error, StringComparison.Ordinal);
         Assert.Contains("reinstall", location.Error, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("PATH", location.Error, StringComparison.Ordinal);
         Assert.Contains(probe.BaseDirectory, location.Error, StringComparison.Ordinal);
@@ -111,9 +116,77 @@ public sealed class OrkeonBinaryLocatorTests
         var names = OrkeonBinaryLocator.DefaultFileNames();
 
         if (OperatingSystem.IsWindows())
-            Assert.Equal(["orkeon.exe", "orkeon"], names);
+            Assert.Equal(["orkeon.exe"], names);
         else
             Assert.Equal(["orkeon"], names);
+    }
+
+    /// <summary>
+    /// A checkout shared between Windows and WSL leaves the Linux apphost — plain <c>orkeon</c>,
+    /// no extension — in the very <c>bin/</c> directory the development-tree lookup walks. Windows
+    /// cannot start that file, so claiming it was found turned «the CLI is not installed», a state
+    /// Studio knows how to present and how to disable its launch features for, into a Win32
+    /// «The specified executable is not a valid application for this OS platform» thrown at the
+    /// user mid-launch. It must read as not found.
+    /// </summary>
+    [Fact]
+    public void A_build_for_another_platform_does_not_count_as_finding_the_binary()
+    {
+        var installDir = Path.Combine("C:", "Program Files", "Orkeon");
+        var probe = new FakeExecutableProbe { BaseDirectory = installDir }
+            .WithFile(Path.Combine(installDir, "orkeon"));
+
+        var location = new OrkeonBinaryLocator(probe, WindowsNames).Locate();
+
+        Assert.False(location.Found);
+        Assert.Equal(BinarySource.NotFound, location.Source);
+        Assert.Null(location.Path);
+    }
+
+    [Fact]
+    public void The_failure_names_the_build_for_another_platform_it_walked_past()
+    {
+        var installDir = Path.Combine("C:", "Program Files", "Orkeon");
+        var probe = new FakeExecutableProbe { BaseDirectory = installDir }
+            .WithFile(Path.Combine(installDir, "orkeon"));
+
+        var error = new OrkeonBinaryLocator(probe, WindowsNames).Locate().Error;
+
+        // Telling someone «not found» while a file called orkeon sits in the folder they are
+        // staring at is the least useful true sentence available.
+        Assert.NotNull(error);
+        Assert.Contains("was not located on this machine", error, StringComparison.Ordinal);
+        Assert.Contains(Path.Combine(installDir, "orkeon"), error, StringComparison.Ordinal);
+        Assert.Contains("another", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_windows_executable_still_wins_over_a_neighbouring_foreign_build()
+    {
+        var installDir = Path.Combine("C:", "Program Files", "Orkeon");
+        var probe = new FakeExecutableProbe { BaseDirectory = installDir }
+            .WithFile(Path.Combine(installDir, "orkeon"))
+            .WithFile(Path.Combine(installDir, "orkeon.exe"));
+
+        var location = new OrkeonBinaryLocator(probe, WindowsNames).Locate();
+
+        Assert.True(location.Found);
+        Assert.Equal(Path.Combine(installDir, "orkeon.exe"), location.Path);
+        Assert.Null(location.Error);
+    }
+
+    /// <summary>The unix lookup accepts the bare name, so it must not diagnose one as foreign.</summary>
+    [Fact]
+    public void The_unix_lookup_is_not_confused_by_the_extension_less_name()
+    {
+        var installDir = Path.Combine("/", "opt", "orkeon");
+        var probe = new FakeExecutableProbe { BaseDirectory = installDir }
+            .WithFile(Path.Combine(installDir, "orkeon"));
+
+        var location = new OrkeonBinaryLocator(probe, UnixNames).Locate();
+
+        Assert.True(location.Found);
+        Assert.Null(location.Error);
     }
 
     [Fact]

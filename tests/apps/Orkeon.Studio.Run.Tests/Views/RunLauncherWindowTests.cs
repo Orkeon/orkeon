@@ -118,7 +118,7 @@ public class RunLauncherWindowTests
         var fixture = new LauncherFixture();
         using var window = new RunLauncherWindow(fixture.Build());
 
-        Assert.Contains("was not found", window.StatusText, StringComparison.Ordinal);
+        Assert.Contains("was not located on this machine", window.StatusText, StringComparison.Ordinal);
     }
 
     [Fact]

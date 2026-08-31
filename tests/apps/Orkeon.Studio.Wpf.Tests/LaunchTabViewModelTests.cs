@@ -716,7 +716,7 @@ public sealed class LaunchTabViewModelTests
         await tab.InitializeAsync(TestContext.Current.CancellationToken);
 
         Assert.False(tab.IsBinaryAvailable);
-        Assert.Contains("not found", tab.BinaryStatus, StringComparison.Ordinal);
+        Assert.Contains("was not located on this machine", tab.BinaryStatus, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -841,6 +841,47 @@ public sealed class LaunchScreenFacetsTests
         var installed = Build();
         await installed.InitializeAsync(TestContext.Current.CancellationToken);
         Assert.Null(installed.CliBanner);
+    }
+
+    /// <summary>
+    /// The banner alone is not enough. A run IS an invocation of the orkeon CLI, so with no CLI
+    /// on the machine every launch button has to be dead — not live and apologetic after the
+    /// click. This is the shape the failure took in the field: a shared Windows/WSL checkout put
+    /// a Linux apphost where Studio looked, the launch went ahead, and the user got
+    /// «The specified executable is not a valid application for this OS platform» from the
+    /// middle of a run.
+    /// </summary>
+    [Fact]
+    public void A_missing_cli_disables_every_command_that_would_invoke_it()
+    {
+        var probe = new FakeTargetProbe().WithFile("/crews/veille.yaml");
+        var tab = Build(probe, executables: new FakeExecutableProbe());
+        tab.Target.Select("/crews/veille.yaml");
+
+        // The target resolves - the only thing standing in the way is the absent tool.
+        Assert.True(tab.Target.IsResolved);
+        Assert.False(tab.IsBinaryAvailable);
+
+        Assert.False(tab.RunCommand.CanExecute(null));
+        Assert.False(tab.ValidateCommand.CanExecute(null));
+        Assert.False(tab.ReplayCommand.CanExecute(null));
+
+        // And it says so, naming the machine rather than some path the reader never chose.
+        Assert.NotNull(tab.CliBanner);
+        Assert.Contains("was not located on this machine", tab.BinaryStatus, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_installed_cli_leaves_the_same_commands_live()
+    {
+        var probe = new FakeTargetProbe().WithFile("/crews/veille.yaml");
+        var tab = Build(probe);
+        tab.Target.Select("/crews/veille.yaml");
+
+        Assert.True(tab.IsBinaryAvailable);
+        Assert.True(tab.RunCommand.CanExecute(null));
+        Assert.True(tab.ValidateCommand.CanExecute(null));
+        Assert.True(tab.ReplayCommand.CanExecute(null));
     }
 
     [Fact]

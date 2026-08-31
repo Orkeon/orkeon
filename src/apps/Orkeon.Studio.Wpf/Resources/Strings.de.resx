@@ -339,7 +339,7 @@
     <value>Erneut starten</value>
   </data>
   <data name="Studio.Run.CliMissing" xml:space="preserve">
-    <value>Die Orkeon-Engine ist nicht auffindbar — führen Sie die Diagnose aus.</value>
+    <value>Die ausführbare Datei orkeon wurde auf diesem Computer nicht gefunden – der Start ist deaktiviert. Führen Sie die Diagnose aus.</value>
   </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve">
     <value>{0} Agenten</value>

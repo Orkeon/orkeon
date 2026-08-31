@@ -67,7 +67,7 @@ public sealed class SystemProcessLauncher : IProcessLauncher
         }
         catch (Win32Exception ex)
         {
-            return ProcessRunResult.NotStarted($"Cannot start {request.FileName}: {ex.Message}");
+            return ProcessRunResult.NotStarted(Explain(request.FileName, ex));
         }
         catch (InvalidOperationException ex)
         {
@@ -114,6 +114,32 @@ public sealed class SystemProcessLauncher : IProcessLauncher
             ? ProcessRunResult.FromCancellation(rawExitCode, termination, stopwatch.Elapsed)
             : ProcessRunResult.FromExitCode(rawExitCode, stopwatch.Elapsed);
     }
+
+    /// <summary>Windows: the file is not a program this machine can run (ERROR_BAD_EXE_FORMAT).</summary>
+    private const int BadExecutableFormat = 193;
+
+    /// <summary>Windows: the program is built for a different processor architecture.</summary>
+    private const int WrongMachineType = 216;
+
+    /// <summary>
+    /// Turns the operating system's refusal into a sentence that says what to do about it.
+    /// <para>
+    /// The locator is supposed to keep this from ever happening — it only offers a path the
+    /// current platform can execute — but a binary can also be truncated, replaced, or built for
+    /// another architecture between the probe and the launch. When that is what went wrong,
+    /// «The specified executable is not a valid application for this OS platform» is a true
+    /// sentence that leaves the reader with nothing to do; say instead that the CLI could not be
+    /// located here, which is the state Studio actually falls back to.
+    /// </para>
+    /// </summary>
+    private static string Explain(string fileName, Win32Exception ex) =>
+        ex.NativeErrorCode is BadExecutableFormat or WrongMachineType
+            ? $"The orkeon command-line tool was not located on this machine. The file at " +
+              $"{fileName} exists but is not a program this computer can run — it is built for " +
+              $"another platform or architecture, or it is incomplete. Reinstall the Orkeon " +
+              $"package, or in a checkout rebuild the CLI for this machine: " +
+              $"dotnet build src/scripting/Orkeon.Scripting.Cli."
+            : $"Cannot start {fileName}: {ex.Message}";
 
     private static ProcessStartInfo BuildStartInfo(ProcessLaunchRequest request)
     {

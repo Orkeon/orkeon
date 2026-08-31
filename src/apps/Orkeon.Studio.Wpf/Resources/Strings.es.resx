@@ -339,7 +339,7 @@
     <value>Relanzar</value>
   </data>
   <data name="Studio.Run.CliMissing" xml:space="preserve">
-    <value>No se encuentra el motor Orkeon — ejecute el diagnóstico.</value>
+    <value>No se ha localizado el ejecutable orkeon en este equipo: el lanzamiento está desactivado. Ejecute el diagnóstico.</value>
   </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve">
     <value>{0} agentes</value>

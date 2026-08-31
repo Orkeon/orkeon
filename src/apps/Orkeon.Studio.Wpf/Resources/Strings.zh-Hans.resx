@@ -339,7 +339,7 @@
     <value>重新启动</value>
   </data>
   <data name="Studio.Run.CliMissing" xml:space="preserve">
-    <value>找不到 Orkeon 引擎——请运行诊断。</value>
+    <value>未在本机上找到 orkeon 可执行文件——启动已禁用。请运行诊断。</value>
   </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve">
     <value>{0} 个智能体</value>

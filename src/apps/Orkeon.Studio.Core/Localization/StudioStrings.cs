@@ -1386,7 +1386,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunButtonLaunch] = "Launch now",
         [StudioStringKeys.RunButtonRunning] = "Running…",
         [StudioStringKeys.RunButtonRelaunch] = "Relaunch",
-        [StudioStringKeys.RunCliMissing] = "The Orkeon engine was not found — run the Diagnostic.",
+        [StudioStringKeys.RunCliMissing] = "The orkeon executable was not located on this machine — launching is disabled. Run the Diagnostic.",
         [StudioStringKeys.RunMetaAgents] = "{0} agents",
         [StudioStringKeys.RunMetaProfile] = "setting {0}",
 

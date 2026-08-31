@@ -131,7 +131,7 @@
   <data name="Studio.Run.BtnLaunch" xml:space="preserve"><value>Lancer maintenant</value></data>
   <data name="Studio.Run.BtnRunning" xml:space="preserve"><value>En cours…</value></data>
   <data name="Studio.Run.BtnRelaunch" xml:space="preserve"><value>Relancer</value></data>
-  <data name="Studio.Run.CliMissing" xml:space="preserve"><value>Le moteur Orkeon est introuvable — lancez le diagnostic.</value></data>
+  <data name="Studio.Run.CliMissing" xml:space="preserve"><value>L'exécutable orkeon n'a pas été localisé sur cette machine — le lancement est désactivé. Lancez le diagnostic.</value></data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve"><value>{0} agents</value></data>
   <data name="Studio.Run.MetaProfile" xml:space="preserve"><value>réglage {0}</value></data>
   <data name="Studio.Run.ChangeTeam" xml:space="preserve"><value>Changer d'équipe</value></data>

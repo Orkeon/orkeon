@@ -86,6 +86,13 @@ public sealed class OrkeonBinaryLocator
     private readonly string? _explicitDirectory;
     private readonly Func<string, string?> _environment;
 
+    /// <summary>
+    /// The first build for another platform walked past during the current <see cref="Locate"/>,
+    /// if any: a file named exactly <c>orkeon</c> on a Windows machine, which cannot be started
+    /// there. Kept so the failure can name it instead of claiming nothing was seen.
+    /// </summary>
+    private string? _foreignBuild;
+
     /// <summary>Creates a locator over <paramref name="probe"/>.</summary>
     /// <param name="probe">File-system and <c>PATH</c> access used for the lookup.</param>
     /// <param name="fileNames">
@@ -110,10 +117,22 @@ public sealed class OrkeonBinaryLocator
     public static OrkeonBinaryLocator ForCurrentMachine() =>
         new(PhysicalExecutableProbe.Instance, explicitDirectory: DirectoryOverride);
 
-    /// <summary>The executable names to try on the current platform.</summary>
+    /// <summary>
+    /// The executable names to try on the current platform.
+    /// <para>
+    /// Windows takes <c>orkeon.exe</c> and ONLY that. An extension-less file cannot be
+    /// started there at all — CreateProcess needs a PE with a recognised extension — so the
+    /// one thing a bare <c>orkeon</c> can be on a Windows machine is a foreign build: a
+    /// checkout shared with WSL or a container has the Linux apphost sitting in the very
+    /// <c>bin/</c> directory the development-tree lookup probes. Accepting it turned «the CLI
+    /// is not installed», which Studio knows how to say and how to disable features for, into
+    /// «The specified executable is not a valid application for this OS platform» thrown at
+    /// the user from the middle of a launch.
+    /// </para>
+    /// </summary>
     public static IReadOnlyList<string> DefaultFileNames() =>
         OperatingSystem.IsWindows()
-            ? [ExecutableBaseName + ".exe", ExecutableBaseName]
+            ? [ExecutableBaseName + ".exe"]
             : [ExecutableBaseName];
 
     /// <summary>
@@ -124,6 +143,7 @@ public sealed class OrkeonBinaryLocator
     public BinaryLocation Locate()
     {
         var probed = new List<string>();
+        _foreignBuild = null;
 
         // 1. The directory the operator named beats everything: an explicit choice must
         //    never lose to whatever happens to sit next to Studio.
@@ -160,12 +180,33 @@ public sealed class OrkeonBinaryLocator
                 return new BinaryLocation { Path = found, Source = BinarySource.DevelopmentTree, ProbedPaths = probed };
         }
 
+        // Telling someone «not found» while a file called orkeon sits in the directory they
+        // are looking at is the least useful true sentence available. Name what was seen.
+        if (_foreignBuild is { } foreign)
+        {
+            return new BinaryLocation
+            {
+                Source = BinarySource.NotFound,
+                ProbedPaths = probed,
+                Error =
+                    $"The `{ExecutableBaseName}` command-line tool was not located on this machine. " +
+                    $"There is a file called `{ExecutableBaseName}` at {foreign}, but it carries no " +
+                    $"executable extension, so this system cannot run it — it is a build for another " +
+                    $"platform, which happens when the same checkout is built from WSL or a " +
+                    $"container. Build the CLI for Windows " +
+                    $"(dotnet build src\\scripting\\Orkeon.Scripting.Cli), or point --cli-dir or " +
+                    $"{DirectoryEnvironmentVariable} at a directory holding {ExecutableBaseName}.exe. " +
+                    $"Until then, everything that runs a crew stays unavailable.",
+            };
+        }
+
         return new BinaryLocation
         {
             Source = BinarySource.NotFound,
             ProbedPaths = probed,
             Error =
-                $"The `{ExecutableBaseName}` command-line tool was not found. Studio runs crews by " +
+                $"The `{ExecutableBaseName}` command-line tool was not located on this machine. " +
+                $"Studio runs crews by " +
                 $"invoking it, so nothing can be launched until it is installed. Looked, in order: " +
                 $"the --cli-dir argument, next to Studio ({_probe.BaseDirectory}), the " +
                 $"{DirectoryEnvironmentVariable} environment variable, PATH, and the development " +
@@ -271,7 +312,24 @@ public sealed class OrkeonBinaryLocator
             }
         }
 
+        NoteForeignBuild(directory);
         found = null;
         return false;
+    }
+
+    /// <summary>
+    /// Records a Linux/macOS apphost sitting where a Windows one was expected. The question is
+    /// not «are we on Windows» but «is the bare name one we accept»: where it is, a hit would
+    /// have returned above and we never arrive here holding a runnable file. That keeps the
+    /// diagnosis a property of the configured names, so the suite can exercise it anywhere.
+    /// </summary>
+    private void NoteForeignBuild(string directory)
+    {
+        if (_foreignBuild is not null || _fileNames.Contains(ExecutableBaseName, StringComparer.OrdinalIgnoreCase))
+            return;
+
+        var bare = System.IO.Path.Combine(directory, ExecutableBaseName);
+        if (_probe.FileExists(bare))
+            _foreignBuild = bare;
     }
 }

@@ -106,7 +106,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         // whose whole promise is that it changes nothing.
         ReplayCommand = new AsyncRelayCommand(
             parameter => parameter is LaunchHistoryEntry entry ? ReplayAsync(entry) : Task.CompletedTask,
-            _ => !IsRunning && !IsBlockedByUndeclaredFolders);
+            _ => IsBinaryAvailable && !IsRunning && !IsBlockedByUndeclaredFolders);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         OpenAllowedFoldersCommand = new RelayCommand(() => OpenAllowedFoldersRequested?.Invoke(this, EventArgs.Empty));
         ChooseTeamCommand = new RelayCommand(() => ChooseTeamRequested?.Invoke(this, EventArgs.Empty));
@@ -114,6 +114,13 @@ public sealed class LaunchTabViewModel : ObservableObject
         ClearLogCommand = new RelayCommand(() => Log.Clear());
         OpenResultCommand = new RelayCommand(OpenResult, () => CanOpenResult);
         CheckOptionsCommand = new RelayCommand(() => CheckOptions());
+
+        // Locate the CLI now rather than only in InitializeAsync. The lookup is a synchronous
+        // filesystem probe either way, and settling it here keeps the launch buttons from
+        // spending the first frames enabled — offering a run that cannot happen — before the
+        // answer lands. InitializeAsync still refreshes it: an install can happen while Studio
+        // is open, and the Diagnostic screen re-runs it.
+        BinaryLocation = _runner.LocateBinary();
 
         RefreshPreview();
     }
@@ -245,8 +252,16 @@ public sealed class LaunchTabViewModel : ObservableObject
         get => _binaryLocation;
         private set
         {
-            if (SetProperty(ref _binaryLocation, value))
-                OnPropertiesChanged(nameof(IsBinaryAvailable), nameof(BinaryStatus), nameof(CliBanner));
+            if (!SetProperty(ref _binaryLocation, value))
+                return;
+
+            OnPropertiesChanged(nameof(IsBinaryAvailable), nameof(BinaryStatus), nameof(CliBanner));
+
+            // The probe finishes after the window is up: without this the buttons keep the
+            // enabled state they were born with.
+            RunCommand.RaiseCanExecuteChanged();
+            ValidateCommand.RaiseCanExecuteChanged();
+            ReplayCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -378,7 +393,11 @@ public sealed class LaunchTabViewModel : ObservableObject
     private RunLaunchOptions BuildOptions(bool validate = false) =>
         Options.ToOptions(Mounts.ToMountArguments(), Mounts.AllowExternalMounts, validate);
 
-    private bool CanLaunch() => !IsRunning && Target.IsResolved && !IsBlockedByUndeclaredFolders;
+    // A launch is an invocation of the orkeon CLI, so an absent CLI is a refusal, not a
+    // late failure: a live Run button that answers a click with «the tool was not located»
+    // is a button that lied about being available. The banner says what is wrong; the
+    // commands must agree with it.
+    private bool CanLaunch() => IsBinaryAvailable && !IsRunning && Target.IsResolved && !IsBlockedByUndeclaredFolders;
 
     private async Task<ProcessRunResult?> LaunchAsync(bool validate, CancellationToken cancellationToken)
     {
