@@ -245,6 +245,10 @@ public sealed class CreateTeamViewModel : ObservableObject
             askEngine: question => _client.SendMessage(question),
             onInterviewComplete: answers => ComposeWithAnswersAsync(answers));
         Chat.StopRequested += (_, _) => { if (IsEngineRunning) _client.RequestCancellation(); };
+        // «Edit» on the brief card means the form, not just a hidden panel. Without this the
+        // pencil closed the thread and dropped the user back on whatever step they were on,
+        // with the brief as unreachable as it was a moment earlier.
+        Chat.EditBriefRequested += (_, _) => GoStep(1);
         Chat.Turns.CollectionChanged += (_, _) =>
         {
             RaiseDraftChanged();

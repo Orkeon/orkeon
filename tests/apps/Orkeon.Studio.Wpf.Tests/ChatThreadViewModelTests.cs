@@ -462,3 +462,40 @@ public sealed class ChatThreadEdgeTests
         Assert.Single(chat.Turns);
     }
 }
+
+/// <summary>
+/// The pencil on the pinned brief card. It shared <c>CloseCommand</c> with the header's cross,
+/// so «Edit» was a second «dismiss»: the panel went away and the brief stayed exactly as
+/// unreachable as it had been. The intent it was supposed to carry —
+/// <c>EditBriefRequested</c> — was raised by every close and listened to by nobody.
+/// </summary>
+public sealed class ChatEditBriefTests
+{
+    [Fact]
+    public void Edit_closes_the_thread_and_asks_to_go_back_to_the_form()
+    {
+        var chat = new ChatThreadViewModel();
+        chat.StartInterview();
+        var asked = 0;
+        chat.EditBriefRequested += (_, _) => asked++;
+
+        chat.EditBriefCommand.Execute(null);
+
+        Assert.False(chat.IsOpen);
+        Assert.Equal(1, asked);
+    }
+
+    [Fact]
+    public void Dismissing_the_panel_is_not_a_request_to_edit()
+    {
+        var chat = new ChatThreadViewModel();
+        chat.StartInterview();
+        var asked = 0;
+        chat.EditBriefRequested += (_, _) => asked++;
+
+        chat.CloseCommand.Execute(null);
+
+        Assert.False(chat.IsOpen);
+        Assert.Equal(0, asked);
+    }
+}
