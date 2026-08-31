@@ -9,6 +9,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools;
 using Orkeon.Scripting;
+using Orkeon.Scripting.Configuration;
 using Orkeon.Scripting.Toolchain;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
@@ -110,9 +111,11 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         // descriptions — a closed list the blueprint prompt shows and validation enforces.
         _crewTools = ForgeSandbox.SelectCrewTools(tools);
 
+        var configuration = services.GetRequiredService<IConfiguration>();
         var engineFactory = new JsEngineFactory(
+            limits: ResolveLimits(configuration),
             loggerFactory: loggerFactory,
-            configuration: services.GetRequiredService<IConfiguration>(),
+            configuration: configuration,
             builtInTools: tools,
             llmProvider: services.GetService<ILlmProvider>(),
             permissionGate: services.GetService<IPermissionGate>(),
@@ -126,6 +129,39 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             PassThroughTranspiler.Instance,
             engineFactory,
             loggerFactory.CreateLogger<ScriptHost>());
+    }
+
+    /// <summary>
+    /// The interview's default wall-clock ceiling per assistant turn, matching the
+    /// <c>wallTime: 600</c> the pack declares for itself.
+    /// </summary>
+    private static readonly TimeSpan DefaultTurnTimeout = TimeSpan.FromSeconds(600);
+
+    /// <summary>
+    /// The engine limits for one assistant turn.
+    /// <para>
+    /// This used to be omitted entirely, which silently discarded
+    /// <c>Orkeon:Scripting:Limits</c> and pinned every turn to the 30 s untrusted-script
+    /// default. Jint's TimeoutInterval is WALL CLOCK, not JS CPU time: the stopwatch keeps
+    /// running while the host awaits the LLM. So a single slow model reply, or one wasted
+    /// round trip on a refused tool call, killed the session mid-interview with a bare
+    /// "The operation has timed out." — and the pack's own 600 s budget was unreachable.
+    /// </para>
+    /// <para>
+    /// A configured value always wins. Absence is read from the key itself rather than by
+    /// comparing against <see cref="ScriptingLimitsOptions.ExecutionTimeout"/>'s default,
+    /// which would be indistinguishable from someone deliberately asking for 30 s.
+    /// </para>
+    /// </summary>
+    internal static ScriptingLimitsOptions ResolveLimits(IConfiguration configuration)
+    {
+        var limits = configuration.GetSection(ScriptingLimitsOptions.SectionName)
+            .Get<ScriptingLimitsOptions>() ?? new ScriptingLimitsOptions();
+
+        var configured = configuration[$"{ScriptingLimitsOptions.SectionName}:ExecutionTimeout"];
+        return string.IsNullOrWhiteSpace(configured)
+            ? limits with { ExecutionTimeout = DefaultTurnTimeout }
+            : limits;
     }
 
     /// <inheritdoc />

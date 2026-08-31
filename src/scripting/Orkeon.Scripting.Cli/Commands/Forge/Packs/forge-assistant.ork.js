@@ -80,6 +80,16 @@ function stableHeader() {
   for (var i = 0; i < catalogue.length; i++)
     lines.push("- " + catalogue[i]);
 
+  // Every path is absolute in virtual space; there is no working directory to be relative
+  // to. Without this the model guesses "." on its first read, the mount registry refuses
+  // it, and a whole round trip is spent learning what one sentence could have said.
+  lines.push("");
+  lines.push("Paths are absolute and start at a mount. There is no current directory:");
+  lines.push("- /workspace — the user's project, read-only");
+  lines.push("- /forge — this session's own folder, writable");
+  lines.push("- /output — where deliverables go, writable");
+  lines.push("A relative path such as \".\" or \"src\" is refused.");
+
   return lines.join("\n");
 }
 

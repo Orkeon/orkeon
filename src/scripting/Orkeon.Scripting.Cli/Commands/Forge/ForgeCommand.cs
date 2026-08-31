@@ -3,6 +3,7 @@ using Orkeon.Constants.FileSystem;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
@@ -274,7 +275,7 @@ internal static class ForgeCommand
 #pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
         catch (Exception ex)
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: {ex.Message}").ConfigureAwait(false);
+            await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
             return ExitRuntimeError;
         }
 #pragma warning restore CA1031
@@ -391,6 +392,21 @@ internal static class ForgeCommand
                 $"{FileSystemMount.Quote(session.Directory)}:{RunnerVirtualRoots.Forge}:rw",
                 $"{FileSystemMount.Quote(outputDirectory)}:{RunnerVirtualRoots.Output}:rw",
             ],
+            // stdout carries the --events jsonl protocol. The default preset writes
+            // warnings there, so one line like «Access denied by registry for virtual path
+            // '.'» lands in the middle of the event stream and every consumer has to guess
+            // which lines are events. Warnings still matter — they go to stderr.
+            configureLogging: (_, logging) =>
+            {
+                logging.AddSimpleConsole(o =>
+                {
+                    o.SingleLine = true;
+                    o.TimestampFormat = "HH:mm:ss.fff ";
+                });
+                logging.Services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(
+                    o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+                logging.SetMinimumLevel(LogLevel.Warning);
+            },
             configureServices: (_, services) =>
             {
                 services.AddSingleton(box);
@@ -640,4 +656,22 @@ internal static class ForgeCommand
     /// <summary>States print in the protocol's lowercase spelling; unknown strings pass through.</summary>
     private static string SpellState(string state) =>
         Enum.TryParse<ForgeState>(state, out var parsed) ? ForgeEventWriter.Spell(parsed) : state;
+
+    /// <summary>
+    /// Turns an exception into a line the reader can act on.
+    /// <para>
+    /// A bare <see cref="TimeoutException"/> carries the framework's default sentence — «The
+    /// operation has timed out.» — which names nothing and suggests nothing. On this path it
+    /// means the scripting engine's wall-clock ceiling ended an assistant turn, LLM latency
+    /// included, so say which knob raises it.
+    /// </para>
+    /// </summary>
+    private static string Explain(Exception exception) => exception switch
+    {
+        TimeoutException => "the assistant's turn ran past the scripting engine's time limit. "
+            + "The session is saved — resume it, or raise "
+            + "Orkeon:Scripting:Limits:ExecutionTimeout if the model is simply slow.",
+        _ => exception.Message,
+    };
+
 }

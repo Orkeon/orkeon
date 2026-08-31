@@ -83,6 +83,9 @@ internal sealed class ForgeEngine
     /// <summary>A budget dimension ran out (SPEC §4.2): hard stop, session resumable.</summary>
     public const string CodeBudgetExhausted = "FORGE-BUDGET-EXHAUSTED";
 
+    /// <summary>A stage threw something nobody expected — reported, never swallowed.</summary>
+    public const string CodeEngineCrashed = "FORGE-ENGINE-CRASHED";
+
     private readonly ForgeSession _session;
     private readonly ForgeEventWriter _events;
     private readonly Dictionary<ForgeState, IForgeStageRunner> _runners;
@@ -231,6 +234,16 @@ internal sealed class ForgeEngine
             Checkpoint();
             throw;
         }
+#pragma warning disable CA1031 // the engine boundary: an unexpected throw must still leave a saved session and a closed protocol
+        catch (Exception ex)
+        {
+            // Anything else used to escape straight past Checkpoint() AND SessionFinished:
+            // the wire ended mid-sentence with no verdict, and the session lost whatever
+            // the last stage had done. A consumer waiting on session.finished waited for
+            // ever. Report it the way every other failure is reported.
+            return Fail(CodeEngineCrashed, $"{ex.GetType().Name}: {ex.Message}");
+        }
+#pragma warning restore CA1031
 
         ForgeEngineResult Finish(ForgeState state)
         {

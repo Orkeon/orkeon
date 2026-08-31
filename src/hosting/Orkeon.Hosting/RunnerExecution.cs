@@ -919,7 +919,15 @@ public static partial class RunnerExecution
         var tools = sp.GetServices<IBaseTool>().ToList();
         var llmProvider = sp.GetService<ILlmProvider>();
 
+        // Bind the configured limits rather than letting the all-optional overload apply
+        // the 30 s untrusted-script default: omitting this discarded
+        // Orkeon:Scripting:Limits entirely, so a .ork.ts crew was silently capped at 30 s
+        // of WALL CLOCK — LLM latency included — no matter what the operator configured.
+        var scriptLimits = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptingLimitsOptions.SectionName)
+            .Get<Orkeon.Scripting.Configuration.ScriptingLimitsOptions>();
+
         var engineFactory = new JsEngineFactory(
+            limits: scriptLimits,
             loggerFactory: loggerFactory,
             configuration: configuration,
             builtInTools: tools,
