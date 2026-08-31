@@ -2102,9 +2102,6 @@
   <data name="Studio.Common.WriteScoped" xml:space="preserve">
     <value>写入 {0}</value>
   </data>
-  <data name="Studio.Common.Llm" xml:space="preserve">
-    <value>用 AI 撰写</value>
-  </data>
   <data name="Studio.Common.Web" xml:space="preserve">
     <value>访问网页</value>
   </data>

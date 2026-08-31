@@ -23,36 +23,42 @@ public sealed record WizardToolChip(string Label, string Icon);
 /// </summary>
 public static class WizardToolChips
 {
-    /// <summary>Builds a chip for one tool, with the folder it is scoped to when it has one.</summary>
-    public static WizardToolChip For(string toolId, IStudioStrings strings, string? scope = null)
+    /// <summary>
+    /// Builds a chip for one tool, with the mount it is scoped to when it has one.
+    /// <para>
+    /// The identifiers here are the ones the engine actually emits. They were <c>fs.read</c>,
+    /// <c>fs.list</c> and <c>fs.write</c> — spellings that exist nowhere else in the
+    /// repository — so every real blueprint fell through to the neutral branch and the agent
+    /// cards read «file_read» with a braces glyph instead of «lit /workspace». The test suite
+    /// only ever fed the invented ids, which is why it stayed green.
+    /// </para>
+    /// </summary>
+    /// <param name="toolId">The engine's own identifier.</param>
+    /// <param name="strings">The catalogue — the label is never the raw id.</param>
+    /// <param name="readScope">The mount a reading tool addresses; the caller knows it.</param>
+    /// <param name="writeScope">The mount a writing tool addresses.</param>
+    public static WizardToolChip For(
+        string toolId, IStudioStrings strings, string? readScope = null, string? writeScope = null)
     {
         ArgumentNullException.ThrowIfNull(strings);
 
-        var (patternKey, icon, scoped) = (toolId ?? "") switch
+        var (patternKey, icon, scope) = (toolId ?? "") switch
         {
-            "fs.read" => (StudioStringKeys.ToolReadScoped, "folder-open", true),
-            "fs.list" => (StudioStringKeys.ToolListScoped, "eye", true),
-            "fs.write" => (StudioStringKeys.ToolWriteScoped, "pencil", true),
-            "llm.complete" => (StudioStringKeys.ToolLlm, "sparkles", false),
-            "web.fetch" => (StudioStringKeys.ToolWeb, "route", false),
-            "rag.search" => (StudioStringKeys.ToolRag, "scan-search", false),
-            _ => ("", "braces", false),
+            "file_read" or "pdf_reader" => (StudioStringKeys.ToolReadScoped, "folder-open", readScope),
+            "directory_read" or "directory_search" => (StudioStringKeys.ToolListScoped, "eye", readScope),
+            "file_write" => (StudioStringKeys.ToolWriteScoped, "pencil", writeScope),
+            "web_scrape" or "http_api" => (StudioStringKeys.ToolWeb, "route", null),
+            "rag_search" or "rag_ingest" or "rag_eval" => (StudioStringKeys.ToolRag, "scan-search", null),
+            _ => ("", "braces", null),
         };
 
         if (patternKey.Length == 0)
             return new WizardToolChip(toolId ?? "", icon);
 
-        return scoped
-            ? new WizardToolChip(
-                string.Format(CultureInfo.CurrentCulture, strings[patternKey], scope ?? DefaultScope(toolId!)),
-                icon)
-            : new WizardToolChip(strings[patternKey], icon);
+        // A scoped tool whose mount the caller could not name says what it does, without
+        // inventing a folder: the old code answered «/docs» whatever the blueprint said.
+        return scope is { Length: > 0 }
+            ? new WizardToolChip(string.Format(CultureInfo.CurrentCulture, strings[patternKey], scope), icon)
+            : new WizardToolChip(strings[patternKey].Replace(" {0}", "", StringComparison.Ordinal), icon);
     }
-
-    /// <summary>
-    /// Where a filesystem tool points when the blueprint says nothing: reading and listing
-    /// look at the documents, writing goes to the output — the two mounts the wizard derives.
-    /// </summary>
-    private static string DefaultScope(string toolId) =>
-        string.Equals(toolId, "fs.write", StringComparison.Ordinal) ? "/output" : "/docs";
 }

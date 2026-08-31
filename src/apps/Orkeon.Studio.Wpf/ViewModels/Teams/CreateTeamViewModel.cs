@@ -933,7 +933,20 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>What the team may do, in words the user can read.</summary>
     public IReadOnlyList<WizardToolChip> Tools =>
-        [.. (_model.Proposal?.Tools ?? []).Select(tool => WizardToolChips.For(tool, _strings))];
+        [.. (_model.Proposal?.Tools ?? [])
+            .Select(tool => WizardToolChips.For(tool, _strings, ReadScope(), WriteScope()))];
+
+    /// <summary>
+    /// The mount a reading tool addresses, taken from what the blueprint actually implies.
+    /// Null when the blueprint implies none — better a chip that says «lit des fichiers»
+    /// than one that names a folder nobody chose.
+    /// </summary>
+    private string? ReadScope() =>
+        _model.DerivedMounts.FirstOrDefault(m => !m.IsReadWrite)?.VirtualPath;
+
+    /// <summary>The mount a writing tool addresses, same rule.</summary>
+    private string? WriteScope() =>
+        _model.DerivedMounts.FirstOrDefault(m => m.IsReadWrite)?.VirtualPath;
 
     /// <summary>Whether the tools row shows.</summary>
     public bool HasTools => Tools.Count > 0;
@@ -1785,11 +1798,8 @@ public sealed class CreateTeamViewModel : ObservableObject
                     agent.Goal is { Length: > 0 } goal
                         ? goal
                         : string.Join(" ", proposal.Steps.Where(step => step.AgentRole == agent.Role).Select(step => step.Description)),
-                    // The Core blueprint view carries the tool ids, not their per-agent
-                    // scope, so the chip falls back to the two mounts the wizard derives
-                    // anyway — read from /docs, write to /output. Same answer the mock's own
-                    // defaultScope gives when an agent declares none.
-                    [.. agent.Tools.Select(tool => WizardToolChips.For(tool, _strings))],
+                    // Scoped to the mounts the blueprint really implies, not to a constant.
+                    [.. agent.Tools.Select(tool => WizardToolChips.For(tool, _strings, ReadScope(), WriteScope()))],
                     EditAgent,
                     () => CanEditAgents));
             }

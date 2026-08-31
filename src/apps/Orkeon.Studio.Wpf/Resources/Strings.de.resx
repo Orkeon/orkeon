@@ -2102,9 +2102,6 @@
   <data name="Studio.Common.WriteScoped" xml:space="preserve">
     <value>{0} schreiben</value>
   </data>
-  <data name="Studio.Common.Llm" xml:space="preserve">
-    <value>mit der KI schreiben</value>
-  </data>
   <data name="Studio.Common.Web" xml:space="preserve">
     <value>eine Webseite abrufen</value>
   </data>

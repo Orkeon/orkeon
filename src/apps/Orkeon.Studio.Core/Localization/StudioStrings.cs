@@ -265,8 +265,6 @@ public static class StudioStringKeys
     /// <summary>"write {0}"</summary>
     public const string ToolWriteScoped = "Studio.Common.WriteScoped";
 
-    /// <summary>"write with the AI"</summary>
-    public const string ToolLlm = "Studio.Common.Llm";
 
     /// <summary>"browse a web page"</summary>
     public const string ToolWeb = "Studio.Common.Web";
@@ -1175,7 +1173,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ToolReadScoped] = "read {0}",
         [StudioStringKeys.ToolListScoped] = "list {0}",
         [StudioStringKeys.ToolWriteScoped] = "write {0}",
-        [StudioStringKeys.ToolLlm] = "write with the AI",
         [StudioStringKeys.ToolWeb] = "browse a web page",
         [StudioStringKeys.ToolRag] = "search the index",
         [StudioStringKeys.TourCounterPattern] = "{0} / {1}",

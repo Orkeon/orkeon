@@ -181,6 +181,42 @@ public sealed class ForgeYamlRendererTests : IDisposable
         Assert.Equal(["collecte"], tasks["resume"].Dependencies!);
     }
 
+    /// <summary>
+    /// These files are meant to be read and edited by hand. YamlDotNet's default handling
+    /// wrote every unset property as a bare <c>key:</c> line — eight under the crew and nine
+    /// under each task — so the three lines carrying the design were outnumbered by the ones
+    /// carrying nothing. The round-trip test above could never catch it: the semantics are
+    /// identical either way.
+    /// </summary>
+    [Fact]
+    public void The_rendered_files_carry_no_key_nobody_set()
+    {
+        ForgeYamlRenderer.Render(CompileValid(), _sessionDirectory);
+
+        foreach (var file in Directory.EnumerateFiles(
+                     Path.Combine(_sessionDirectory, "crew"), "*.yaml", SearchOption.AllDirectories))
+        {
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                if (!line.TrimEnd().EndsWith(':') || line.TrimStart().StartsWith('-'))
+                    continue;
+
+                // A trailing colon is legitimate when something follows: a mapping indented
+                // deeper, or a sequence — which YamlDotNet writes with its dashes at the
+                // SAME indentation as the key that owns them.
+                var indent = line.Length - line.TrimStart().Length;
+                var next = i + 1 < lines.Length ? lines[i + 1] : "";
+                var nextIndent = next.Length - next.TrimStart().Length;
+                var opensABlock = next.Trim().Length > 0
+                    && (nextIndent > indent || (nextIndent == indent && next.TrimStart().StartsWith('-')));
+
+                Assert.True(opensABlock, $"{Path.GetFileName(file)} writes an empty key: {line.Trim()}");
+            }
+        }
+    }
+
     [Fact]
     public void A_re_render_leaves_no_stale_entity_behind()
     {

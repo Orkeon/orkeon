@@ -896,9 +896,6 @@
   <data name="Studio.Common.WriteScoped" xml:space="preserve">
     <value>écrire {0}</value>
   </data>
-  <data name="Studio.Common.Llm" xml:space="preserve">
-    <value>rédiger avec l'IA</value>
-  </data>
   <data name="Studio.Common.Web" xml:space="preserve">
     <value>consulter une page web</value>
   </data>

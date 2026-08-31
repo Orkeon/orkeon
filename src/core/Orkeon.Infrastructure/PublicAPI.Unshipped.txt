@@ -78,3 +78,4 @@ const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.MiniMax = "https://api.mi
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.SplitReasoningFromContent(string! content) -> (string! Content, string? Reasoning)
 override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.SplitReasoningFromContent(string! content) -> (string! Content, string? Reasoning)
 override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.EnrichAssistantMessage(System.Collections.Generic.Dictionary<string!, object?>! messageDict, Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage! source) -> void
+Orkeon.Infrastructure.Serialization.YamlDotNetSerializer.SerializeWithoutNulls<T>(T obj) -> string!

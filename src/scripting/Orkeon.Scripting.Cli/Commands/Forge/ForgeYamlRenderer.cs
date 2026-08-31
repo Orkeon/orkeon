@@ -42,17 +42,21 @@ internal static class ForgeYamlRenderer
         Directory.CreateDirectory(Path.Combine(crewDirectory, "agents"));
         Directory.CreateDirectory(Path.Combine(crewDirectory, "tasks"));
 
+        // Without the keys nobody set. These files are meant to be read and edited by hand,
+        // and the default handling wrote every unset property as a bare `key:` — eight under
+        // the crew, nine under each task, so the lines that carry the design were outnumbered
+        // by the ones that carry nothing. The loader is tolerant of their absence.
         var serializer = new YamlDotNetSerializer();
         var written = new List<string>
         {
-            Write(sessionDirectory, Path.Combine(CrewDirectoryName, "config.yaml"), serializer.Serialize(compilation.Settings)),
+            Write(sessionDirectory, Path.Combine(CrewDirectoryName, "config.yaml"), serializer.SerializeWithoutNulls(compilation.Settings)),
         };
 
         foreach (var (key, agent) in compilation.Agents.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-            written.Add(Write(sessionDirectory, Path.Combine(CrewDirectoryName, "agents", key + ".yaml"), serializer.Serialize(agent)));
+            written.Add(Write(sessionDirectory, Path.Combine(CrewDirectoryName, "agents", key + ".yaml"), serializer.SerializeWithoutNulls(agent)));
 
         foreach (var (key, task) in compilation.Tasks.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-            written.Add(Write(sessionDirectory, Path.Combine(CrewDirectoryName, "tasks", key + ".yaml"), serializer.Serialize(task)));
+            written.Add(Write(sessionDirectory, Path.Combine(CrewDirectoryName, "tasks", key + ".yaml"), serializer.SerializeWithoutNulls(task)));
 
         return written;
     }
