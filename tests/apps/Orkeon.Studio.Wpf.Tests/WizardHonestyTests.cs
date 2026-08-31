@@ -151,6 +151,74 @@ public sealed class WizardHonestyTests
         Assert.True(line.HasDetail);
     }
 
+    /// <summary>
+    /// The owner's own screenshot: score 0,70, a green «passing» badge, and four «?» beside
+    /// it. Every one of those is honest — 0.70 is the deterministic fallback's constant and
+    /// no per-criterion verdict exists without an LLM judge — but the card never said so, so
+    /// the reader was left with an enigma.
+    /// </summary>
+    [Fact]
+    public async Task A_mechanical_verdict_says_it_judged_nothing_line_by_line()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(
+            """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.7,"passing":true,"judge":"deterministic","findings":[],"suggestions":[]}"""));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.True(vm.HasVerdict);
+        Assert.True(vm.VerdictIsMechanical);
+    }
+
+    [Fact]
+    public async Task An_llm_verdict_is_not_called_mechanical()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(
+            """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.9,"passing":true,"judge":"llm","findings":[],"suggestions":[]}"""));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.False(vm.VerdictIsMechanical);
+    }
+
+    /// <summary>
+    /// The engine computes these, puts them on the wire, and Studio.Core parses them. Nothing
+    /// showed them — so «Corriger et réessayer» asked the user to invent the correction the
+    /// judge had already written.
+    /// </summary>
+    [Fact]
+    public async Task What_the_engine_suggests_reaches_the_screen()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(
+            """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.4,"passing":false,"judge":"llm","findings":[],"suggestions":[{"target":"redacteur","change":"citer le fichier source","reason":"un critère l'exige"}]}"""));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.True(vm.HasSuggestions);
+        var line = Assert.Single(vm.Suggestions);
+        Assert.Contains("redacteur", line, StringComparison.Ordinal);
+        Assert.Contains("citer le fichier source", line, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A mechanical finding carries the run's own error as evidence — precisely the crash
+    /// text step 3 could not show. It travelled on the wire and was dropped at the projection.
+    /// </summary>
+    [Fact]
+    public async Task A_findings_evidence_reaches_the_checklist()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(
+            """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.0,"passing":false,"judge":"deterministic","findings":[{"id":"F-RUN","severity":"blocking","statement":"Le run a échoué","evidence":"file_write: access denied"}],"suggestions":[]}"""));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        var line = Assert.Single(vm.Checklist, l => l.Statement.Contains("échoué", StringComparison.Ordinal));
+        Assert.Contains("access denied", line.Detail ?? "", StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task The_engines_own_error_survives_the_generic_apology()
     {

@@ -40,13 +40,41 @@ public sealed record ForgeProposal(
 /// deliverable roots, the read side from the reading tools — exactly what the trial
 /// sandbox mounts. Informative, not removable: editing an agent is what changes it.
 /// </summary>
-public sealed record ForgeDerivedMount(string VirtualPath, bool IsReadWrite);
+/// <summary>A mount the blueprint implies, and who implied it.</summary>
+/// <param name="VirtualPath">The name the agents address.</param>
+/// <param name="IsReadWrite">Whether anything writes there.</param>
+/// <param name="Agents">
+/// The roles that read or write it — PROVENANCE, never permission. The runtime mounts one flat
+/// list per host, so no agent is confined to its own folder; this only answers «why does this
+/// mount exist». The blueprint carries it per agent and per task, and the derivation used to
+/// throw it away by flattening every agent's tools into one union.
+/// </param>
+public sealed record ForgeDerivedMount(
+    string VirtualPath, bool IsReadWrite, IReadOnlyList<string>? Agents = null);
 
 /// <summary>One completed task of the running try.</summary>
 public sealed record ForgeTaskProgress(string? TaskId, string? AgentRole, bool Success, long DurationMs);
 
 /// <summary>One finding of the verdict, as the checklist will show it.</summary>
-public sealed record ForgeFindingView(string? Id, string Severity, string? Acceptance, string Statement);
+/// <param name="Id">The finding's own identifier, when the judge gave one.</param>
+/// <param name="Severity">How much it matters — blocking, or not.</param>
+/// <param name="Acceptance">The criterion it answers, when it answers one.</param>
+/// <param name="Statement">What is wrong, in the judge's words.</param>
+/// <param name="Evidence">
+/// What the judge saw — the run's own error or output for a mechanical finding. It travels on
+/// the wire and used to be dropped here, which is why a crashed trial had a statement and
+/// nothing to back it.
+/// </param>
+public sealed record ForgeFindingView(
+    string? Id, string Severity, string? Acceptance, string Statement, string? Evidence = null)
+{
+    /// <summary>Wire spelling of a finding that must not be waved through.</summary>
+    public const string SeverityBlocking = "blocking";
+
+    /// <summary>Whether this finding blocks — a minor one must not look the same.</summary>
+    public bool IsBlocking =>
+        string.Equals(Severity, SeverityBlocking, StringComparison.OrdinalIgnoreCase);
+}
 
 /// <summary>One suggestion of the verdict.</summary>
 public sealed record ForgeSuggestionView(string? Target, string? Change, string? Reason);
@@ -353,7 +381,7 @@ public sealed class ForgeSessionModel
             var orphaned = string.IsNullOrWhiteSpace(finding.Acceptance)
                 || !_criteria.Any(c => string.Equals(c.Id, finding.Acceptance, StringComparison.OrdinalIgnoreCase));
             if (orphaned)
-                items.Add(new ForgeChecklistItem(finding.Statement, false, null));
+                items.Add(new ForgeChecklistItem(finding.Statement, false, finding.Evidence));
         }
 
         foreach (var criterion in _criteria)
@@ -361,7 +389,12 @@ public sealed class ForgeSessionModel
             var finding = verdict.Findings.FirstOrDefault(f =>
                 string.Equals(f.Acceptance, criterion.Id, StringComparison.OrdinalIgnoreCase));
             items.Add(finding is not null
-                ? new ForgeChecklistItem(criterion.Statement, false, finding.Statement)
+                ? new ForgeChecklistItem(
+                    criterion.Statement,
+                    false,
+                    finding.Evidence is { Length: > 0 } evidence
+                        ? $"{finding.Statement} — {evidence}"
+                        : finding.Statement)
                 : new ForgeChecklistItem(
                     criterion.Statement,
                     verdict.Judge == ForgeVerdictView.JudgeLlm ? true : null,
@@ -459,7 +492,7 @@ public sealed class ForgeSessionModel
         }
 
         Proposal = new ForgeProposal(steps, ReadString(blueprint, "rationale"), tools, agentViews);
-        DerivedMounts = DeriveMounts(tools, blueprint);
+        DerivedMounts = DeriveMounts(agentViews, roles, blueprint);
     }
 
     /// <summary>
@@ -475,12 +508,24 @@ public sealed class ForgeSessionModel
     /// below arrived on the CLI copy alone; <c>ForgeDerivedMountTests</c> now pins the pair.
     /// </para>
     /// </summary>
-    private static List<ForgeDerivedMount> DeriveMounts(IReadOnlyList<string> tools, JsonElement blueprint)
+    private static List<ForgeDerivedMount> DeriveMounts(
+        IReadOnlyList<ForgeAgentView> agents,
+        Dictionary<string, string> roles,
+        JsonElement blueprint)
     {
         var mounts = new List<ForgeDerivedMount>();
 
-        if (tools.Contains("file_read", StringComparer.Ordinal) || tools.Contains("directory_read", StringComparer.Ordinal))
-            mounts.Add(new ForgeDerivedMount("/workspace", IsReadWrite: false));
+        // Per agent, not over the union: the union answered «somebody reads» and the screen
+        // could only repeat it. Named, it answers «who», which is the question asked.
+        var readers = agents
+            .Where(a => a.Tools.Contains("file_read", StringComparer.Ordinal)
+                     || a.Tools.Contains("directory_read", StringComparer.Ordinal))
+            .Select(a => a.Role)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (readers.Count > 0)
+            mounts.Add(new ForgeDerivedMount("/workspace", IsReadWrite: false, readers));
 
         if (blueprint.TryGetProperty("tasks", out var tasks) && tasks.ValueKind == JsonValueKind.Array)
         {
@@ -519,15 +564,37 @@ public sealed class ForgeSessionModel
                 // keeps the read-only one, so the chip promising a write was a lie. The CLI
                 // deduped on the name alone and lost the write entirely. Both now hold the
                 // same rule — one root, one mount, write wins.
+                // The task's own agent — sitting in the same JsonElement as the deliverable
+                // and, until now, never read.
+                var writer = ReadString(task, "agent") is { } key && roles.TryGetValue(key, out var role)
+                    ? role
+                    : null;
+
                 var existing = mounts.FindIndex(m => string.Equals(m.VirtualPath, root, StringComparison.Ordinal));
                 if (existing < 0)
-                    mounts.Add(new ForgeDerivedMount(root, IsReadWrite: true));
-                else if (!mounts[existing].IsReadWrite)
-                    mounts[existing] = mounts[existing] with { IsReadWrite = true };
+                {
+                    mounts.Add(new ForgeDerivedMount(
+                        root, IsReadWrite: true, writer is null ? [] : [writer]));
+                }
+                else
+                {
+                    var merged = Merge(mounts[existing].Agents, writer);
+                    mounts[existing] = mounts[existing] with { IsReadWrite = true, Agents = merged };
+                }
             }
         }
 
         return mounts;
+    }
+
+    /// <summary>Adds a role to a mount's provenance, once.</summary>
+    private static List<string> Merge(IReadOnlyList<string>? existing, string? role)
+    {
+        var merged = existing is null ? [] : new List<string>(existing);
+        if (role is { Length: > 0 } && !merged.Contains(role, StringComparer.Ordinal))
+            merged.Add(role);
+
+        return merged;
     }
 
     private void ReadVerdict(OrkeonEvent orkeonEvent)
@@ -543,7 +610,8 @@ public sealed class ForgeSessionModel
                     ReadString(finding, "id"),
                     ReadString(finding, "severity") ?? "",
                     ReadString(finding, "acceptance"),
-                    ReadString(finding, "statement") ?? ""));
+                    ReadString(finding, "statement") ?? "",
+                    ReadString(finding, "evidence")));
             }
         }
 

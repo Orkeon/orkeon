@@ -1958,6 +1958,12 @@
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>Der Assistent stellt zusammen – antworten Sie ihm in der Unterhaltung.</value>
   </data>
+  <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
+    <value>Es stand kein Prüfer zur Verfügung: Die Kriterien unten wurden nicht einzeln geprüft – urteilen Sie selbst.</value>
+  </data>
+  <data name="Studio.Create.Suggestions" xml:space="preserve">
+    <value>Was die Engine zu ändern vorschlägt</value>
+  </data>
   <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>

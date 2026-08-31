@@ -961,6 +961,12 @@ public static class StudioStringKeys
     /// <summary>The line under the compose button while the engine interviews.</summary>
     public const string WizardHintComposing = "Studio.Create.HintComposing";
 
+    /// <summary>Header over what the engine suggests changing.</summary>
+    public const string WizardSuggestions = "Studio.Create.Suggestions";
+
+    /// <summary>Said when no LLM judge ran and the criteria carry no per-line verdict.</summary>
+    public const string WizardJudgeMechanical = "Studio.Create.JudgeMechanical";
+
 
     // ---- My teams screen (design v3) ----------------------------------------
 
@@ -1488,6 +1494,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintAnswers] = "Answer the three precisions.",
         [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
         [StudioStringKeys.WizardHintComposing] = "The assistant is composing — answer it in the conversation.",
+        [StudioStringKeys.WizardSuggestions] = "What the engine suggests changing",
+        [StudioStringKeys.WizardJudgeMechanical] = "No judge was available, so the criteria below were not checked one by one — read them yourself.",
 
         [StudioStringKeys.WizardDecisionAccept] = "Looks good to me",
         [StudioStringKeys.WizardDecisionRetry] = "Run the trial again",

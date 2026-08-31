@@ -752,6 +752,12 @@
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>L'assistant compose — répondez-lui dans la discussion.</value>
   </data>
+  <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
+    <value>Aucun juge n'était disponible : les critères ci-dessous n'ont pas été vérifiés un par un — jugez vous-même.</value>
+  </data>
+  <data name="Studio.Create.Suggestions" xml:space="preserve">
+    <value>Ce que le moteur suggère de changer</value>
+  </data>
   <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>

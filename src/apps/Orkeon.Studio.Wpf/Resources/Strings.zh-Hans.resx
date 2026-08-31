@@ -1958,6 +1958,12 @@
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>助手正在组建团队——请在对话中回答。</value>
   </data>
+  <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
+    <value>没有可用的评审：以下标准未逐条核对——请自行判断。</value>
+  </data>
+  <data name="Studio.Create.Suggestions" xml:space="preserve">
+    <value>引擎建议修改的内容</value>
+  </data>
   <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>

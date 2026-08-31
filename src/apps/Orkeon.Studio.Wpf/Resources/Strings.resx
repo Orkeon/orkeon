@@ -752,6 +752,12 @@
   <data name="Studio.Create.HintComposing" xml:space="preserve">
     <value>The assistant is composing — answer it in the conversation.</value>
   </data>
+  <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
+    <value>No judge was available, so the criteria below were not checked one by one — read them yourself.</value>
+  </data>
+  <data name="Studio.Create.Suggestions" xml:space="preserve">
+    <value>What the engine suggests changing</value>
+  </data>
   <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>
   </data>

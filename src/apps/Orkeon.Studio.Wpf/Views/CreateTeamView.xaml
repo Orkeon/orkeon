@@ -387,6 +387,11 @@
                               </controls:LucideIcon.Style>
                             </controls:LucideIcon>
                             <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding VirtualPath}"/>
+                            <!-- Who implied it. Provenance, not permission: the runtime mounts
+                                 one flat list, so no agent is confined to its own folder. -->
+                            <TextBlock Style="{StaticResource ToolChipText}" Margin="6,0,0,0"
+                                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Agents}"
+                                       Visibility="{Binding HasAgents, Converter={StaticResource BooleanToVisibility}}"/>
                             <Button Width="16" Height="16" Margin="6,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0"
                                     Command="{Binding DataContext.RemoveDerivedMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                                     CommandParameter="{Binding VirtualPath}">
@@ -749,6 +754,11 @@
             </ItemsControl>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,8"
                        Text="{Binding [Studio.Create.ChecklistLabel], Source={x:Static services:I18n.Instance}}"/>
+            <!-- Without an LLM judge there is no per-criterion verdict, so every line below
+                 reads «?». Honest, and completely opaque unless the card says why. -->
+            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Visibility="{Binding VerdictIsMechanical, Converter={StaticResource BooleanToVisibility}}"
+                       Text="{Binding [Studio.Create.JudgeMechanical], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Checklist}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -780,6 +790,27 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <!-- What the engine already worked out. «Corriger et réessayer» used to ask the
+                 user to invent a correction the judge had computed and put on the wire. -->
+            <StackPanel Margin="0,14,0,0"
+                        Visibility="{Binding HasSuggestions, Converter={StaticResource BooleanToVisibility}}">
+              <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
+                         Text="{Binding [Studio.Create.Suggestions], Source={x:Static services:I18n.Instance}}"/>
+              <ItemsControl ItemsSource="{Binding Suggestions}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Margin="0,3">
+                      <controls:LucideIcon DockPanel.Dock="Left" Kind="wand-2" Size="13"
+                                           Foreground="{DynamicResource MarkBrush}"
+                                           VerticalAlignment="Top" Margin="0,2,9,0"/>
+                      <TextBlock FontSize="12.5" Foreground="{DynamicResource InkBrush}"
+                                 TextWrapping="Wrap" Text="{Binding}"/>
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
             <!-- the arbitration lives HERE, in the verdict card (v3 W-02): «Ça me va»
                  primary, everything else secondary — never navy pills at the top of
                  the page. -->

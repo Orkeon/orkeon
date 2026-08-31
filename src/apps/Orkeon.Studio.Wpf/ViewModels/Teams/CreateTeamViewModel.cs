@@ -131,13 +131,22 @@ public sealed class WizardDecision
 }
 
 /// <summary>
-/// One chip of the team-folders list standing for a folder the blueprint itself implies.
-/// It always reads as undeclared: the folder behind it is created inside the team at adoption,
-/// so it is by construction not one of the settings' authorized folders.
+/// One chip of the team-folders list standing for a mount the blueprint itself implies.
+/// It is not red: it carries no physical path, so it was never compared to the authorized
+/// folders — and the folder bound behind it at adoption is the team's own, which the launcher
+/// exempts by design.
 /// </summary>
 /// <param name="VirtualPath">The root the agents address, and the remove command's parameter.</param>
 /// <param name="IsReadWrite">Drives the pencil / folder-open icon.</param>
-public sealed record DerivedMountChip(string VirtualPath, bool IsReadWrite);
+/// <param name="Agents">
+/// The roles behind it, joined for display — PROVENANCE, never permission: the runtime mounts
+/// one flat list per host, so this says why the mount exists, not who is confined to it.
+/// </param>
+public sealed record DerivedMountChip(string VirtualPath, bool IsReadWrite, string Agents = "")
+{
+    /// <summary>Whether the chip can say who implied it.</summary>
+    public bool HasAgents => Agents.Length > 0;
+}
 
 /// <summary>
 /// The "create a team" wizard (design v3): four steps — Describe, Compose, Try,
@@ -730,7 +739,10 @@ public sealed class CreateTeamViewModel : ObservableObject
             [
                 .. _model.DerivedMounts
                     .Where(d => !claimed.Contains(d.VirtualPath) && !_droppedDerivedRoots.Contains(d.VirtualPath))
-                    .Select(d => new DerivedMountChip(d.VirtualPath, d.IsReadWrite)),
+                    .Select(d => new DerivedMountChip(
+                        d.VirtualPath,
+                        d.IsReadWrite,
+                        string.Join(", ", d.Agents ?? []))),
             ];
         }
     }
@@ -1000,6 +1012,33 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>The ✔/✘ checklist against the user's own criteria.</summary>
     public ObservableCollection<WizardChecklistLine> Checklist { get; } = [];
+
+    /// <summary>
+    /// What the engine suggests changing. It computes these, puts them on the wire and
+    /// Studio.Core parses them — and nothing displayed them, so «Corriger et réessayer»
+    /// asked the user to invent a correction the engine had already written.
+    /// </summary>
+    public IReadOnlyList<string> Suggestions =>
+    [
+        .. (_model.Verdict?.Suggestions ?? [])
+            .Select(s => string.Join(" — ", new[] { s.Target, s.Change, s.Reason }
+                .Where(part => part is { Length: > 0 })))
+            .Where(line => line.Length > 0),
+    ];
+
+    /// <summary>Whether the engine had anything to suggest.</summary>
+    public bool HasSuggestions => Suggestions.Count > 0;
+
+    /// <summary>
+    /// Whether the verdict came from the deterministic fallback rather than an LLM judge.
+    /// <para>
+    /// It matters because of what the checklist then looks like: with no LLM judge there is
+    /// no per-criterion verdict, so every line reads «?» — honest, and completely opaque
+    /// unless the screen says why. The score is a constant in that case too.
+    /// </para>
+    /// </summary>
+    public bool VerdictIsMechanical =>
+        _model.Verdict is { } v && !string.Equals(v.Judge, ForgeVerdictView.JudgeLlm, StringComparison.Ordinal);
 
     /// <summary>"score 0,78" under the verdict title.</summary>
     public string VerdictScore =>
@@ -1769,6 +1808,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             nameof(RunInProgress), nameof(Attempt), nameof(Verdict), nameof(HasVerdict),
             nameof(VerdictScore), nameof(VerdictPassing), nameof(TokensSpent),
             nameof(VerdictMetricChips), nameof(HasVerdictMetrics),
+            nameof(Suggestions), nameof(HasSuggestions), nameof(VerdictIsMechanical),
             nameof(SessionSlug), nameof(SessionDirectory),
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(SavedPath), nameof(InstallCommand), nameof(HasInstallCommand),

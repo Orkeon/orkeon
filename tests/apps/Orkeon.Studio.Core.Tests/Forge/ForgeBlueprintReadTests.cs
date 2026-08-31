@@ -58,16 +58,50 @@ public sealed class ForgeBlueprintReadTests
         var model = Feed(
             """{"v":2,"seq":1,"ts":"t","kind":"blueprint.ready","blueprint":{"agents":[{"key":"a","role":"R","tools":["file_read","file_write"]}],"tasks":[{"key":"t1","agent":"a","deliverable":"/output/rapport.md"},{"key":"t2","agent":"a","deliverable":"/output/annexe.md"},{"key":"t3","agent":"a","deliverable":"sans-racine.md"}]},"iteration":1}""");
 
-        Assert.Equal(
-            [new ForgeDerivedMount("/workspace", false), new ForgeDerivedMount("/output", true)],
-            model.DerivedMounts);
+        // Compared field by field: the record now carries the roles behind each mount, and
+        // a record's equality over a list is by reference.
+        Assert.Equal(["/workspace", "/output"], model.DerivedMounts.Select(m => m.VirtualPath));
+        Assert.Equal([false, true], model.DerivedMounts.Select(m => m.IsReadWrite));
+    }
+
+    /// <summary>
+    /// Which agent implied which mount. The blueprint says it — per agent for the tools, per
+    /// task for the deliverable — and the derivation used to flatten every agent's tools into
+    /// one union, so the screen could only ever answer «somebody reads».
+    /// <para>
+    /// Provenance, never permission: the runtime mounts one flat list per host.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Each_derived_mount_names_the_agents_behind_it()
+    {
+        var model = Feed(
+            """{"v":2,"seq":1,"ts":"t","kind":"blueprint.ready","blueprint":{"agents":[{"key":"lecteur","role":"Lecteur","tools":["file_read"]},{"key":"redacteur","role":"Rédacteur","tools":["file_write"]}],"tasks":[{"key":"t1","agent":"redacteur","deliverable":"/output/rapport.md"}]},"iteration":1}""");
+
+        var workspace = Assert.Single(model.DerivedMounts, m => m.VirtualPath == "/workspace");
+        Assert.Equal(["Lecteur"], workspace.Agents);          // only the one holding a read tool
+
+        var output = Assert.Single(model.DerivedMounts, m => m.VirtualPath == "/output");
+        Assert.Equal(["Rédacteur"], output.Agents);           // the task's own agent
+    }
+
+    [Fact]
+    public void One_mount_written_by_two_agents_names_both_once()
+    {
+        var model = Feed(
+            """{"v":2,"seq":1,"ts":"t","kind":"blueprint.ready","blueprint":{"agents":[{"key":"a","role":"A","tools":["file_write"]},{"key":"b","role":"B","tools":["file_write"]}],"tasks":[{"key":"t1","agent":"a","deliverable":"/output/x.md"},{"key":"t2","agent":"b","deliverable":"/output/y.md"},{"key":"t3","agent":"a","deliverable":"/output/z.md"}]},"iteration":1}""");
+
+        var output = Assert.Single(model.DerivedMounts, m => m.VirtualPath == "/output");
+        Assert.Equal(["A", "B"], output.Agents);
     }
 
     [Fact]
     public void An_edited_blueprint_recomputes_the_derived_mounts()
     {
         var model = Feed(Blueprint);
-        Assert.Equal([new ForgeDerivedMount("/workspace", false)], model.DerivedMounts);
+        var initial = Assert.Single(model.DerivedMounts);
+        Assert.Equal("/workspace", initial.VirtualPath);
+        Assert.False(initial.IsReadWrite);
 
         // The re-emitted blueprint (after an edit) drops every reading tool and gains a
         // deliverable: the chips follow the agents, they are never sticky.
@@ -76,7 +110,9 @@ public sealed class ForgeBlueprintReadTests
             out var edited));
         model.Feed(edited!);
 
-        Assert.Equal([new ForgeDerivedMount("/sortie", true)], model.DerivedMounts);
+        var after = Assert.Single(model.DerivedMounts);
+        Assert.Equal("/sortie", after.VirtualPath);
+        Assert.True(after.IsReadWrite);
     }
 
     [Fact]
