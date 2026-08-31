@@ -47,9 +47,6 @@
   <data name="Studio.Common.Model" xml:space="preserve">
     <value>模型</value>
   </data>
-  <data name="Studio.Common.ApiKey" xml:space="preserve">
-    <value>API 密钥</value>
-  </data>
   <data name="Studio.Settings.LocationTitle" xml:space="preserve">
     <value>文件保存在哪里</value>
   </data>
@@ -108,7 +105,7 @@
     <value>一切围绕团队</value>
   </data>
   <data name="Studio.Shell.TourStep2Body" xml:space="preserve">
-    <value>代理团队是核心对象：您创建它、保有它、启动它。应用的其余部分都为它服务。</value>
+    <value>智能体团队是核心对象：您创建它、保有它、启动它。应用的其余部分都为它服务。</value>
   </data>
   <data name="Studio.Shell.TourStep3Title" xml:space="preserve">
     <value>日常工作</value>
@@ -120,28 +117,13 @@
     <value>环境，一次配好</value>
   </data>
   <data name="Studio.Shell.TourStep4Body" xml:space="preserve">
-    <value>只有两项设置：AI 模型和代理可见的文件夹。出现阻碍时诊断会提醒您。</value>
+    <value>只有两项设置：AI 模型和智能体可见的文件夹。出现阻碍时诊断会提醒您。</value>
   </data>
   <data name="Studio.Shell.TourStep5Title" xml:space="preserve">
     <value>帮助与上下文相关</value>
   </data>
   <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
     <value>在新手模式下，每个界面右侧都有一栏说明。切换到专家模式后它会隐去。</value>
-  </data>
-  <data name="Studio.Diagnostics.ValidationTitle" xml:space="preserve">
-    <value>校验</value>
-  </data>
-  <data name="Studio.Settings.DetectedProvider" xml:space="preserve">
-    <value>检测到的提供方</value>
-  </data>
-  <data name="Studio.Settings.SectionLblTemperature" xml:space="preserve">
-    <value>温度</value>
-  </data>
-  <data name="Studio.Settings.LblMaxTokens" xml:space="preserve">
-    <value>最大 token 数</value>
-  </data>
-  <data name="Studio.Settings.LblTimeoutSeconds" xml:space="preserve">
-    <value>超时（秒）</value>
   </data>
   <data name="Studio.Settings.TestConnection" xml:space="preserve">
     <value>测试连接</value>
@@ -156,7 +138,7 @@
     <value>供应商请求 / 分钟</value>
   </data>
   <data name="Studio.Settings.LblAgentRpm" xml:space="preserve">
-    <value>代理请求 / 分钟</value>
+    <value>智能体请求 / 分钟</value>
   </data>
   <data name="Studio.Settings.LblQueueLimit" xml:space="preserve">
     <value>队列上限</value>
@@ -216,7 +198,7 @@
     <value>创建文件夹</value>
   </data>
   <data name="Studio.Settings.LblVirtual" xml:space="preserve">
-    <value>虚拟路径（代理所见）</value>
+    <value>虚拟路径（智能体所见）</value>
   </data>
   <data name="Studio.Settings.VirtualInvalid" xml:space="preserve">
     <value>必须以「/」开头。</value>
@@ -260,9 +242,6 @@
   <data name="Studio.Run.Title" xml:space="preserve">
     <value>执行</value>
   </data>
-  <data name="Studio.Run.Sub" xml:space="preserve">
-    <value>选择目标、调整选项、实时查看日志。</value>
-  </data>
   <data name="Studio.Run.SubNovice" xml:space="preserve">
     <value>一个团队，一个按钮。需要时技术细节仍然可查。</value>
   </data>
@@ -283,9 +262,6 @@
   </data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve">
     <value>使用此文件</value>
-  </data>
-  <data name="Studio.Run.TabOptions" xml:space="preserve">
-    <value>选项</value>
   </data>
   <data name="Studio.Run.TabMounts" xml:space="preserve">
     <value>挂载</value>
@@ -317,9 +293,6 @@
   <data name="Studio.Run.LblInputsFile" xml:space="preserve">
     <value>文件（--inputs-file）</value>
   </data>
-  <data name="Studio.Run.DiagTitle" xml:space="preserve">
-    <value>诊断</value>
-  </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
     <value>详细程度（--verbose）</value>
   </data>
@@ -331,15 +304,6 @@
   </data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve">
     <value>允许工作目录之外的挂载（--allow-external-mounts）</value>
-  </data>
-  <data name="Studio.Run.ColKey" xml:space="preserve">
-    <value>键</value>
-  </data>
-  <data name="Studio.Run.ColEffective" xml:space="preserve">
-    <value>生效的挂载</value>
-  </data>
-  <data name="Studio.Run.ColOrigin" xml:space="preserve">
-    <value>来源</value>
   </data>
   <data name="Studio.Run.CmdTitle" xml:space="preserve">
     <value>命令</value>
@@ -419,9 +383,6 @@
   <data name="Studio.Run.Validate" xml:space="preserve">
     <value>校验（dry-run）</value>
   </data>
-  <data name="Studio.Run.Run" xml:space="preserve">
-    <value>启动</value>
-  </data>
   <data name="Studio.Run.Cancel" xml:space="preserve">
     <value>取消</value>
   </data>
@@ -436,9 +397,6 @@
   </data>
   <data name="Studio.History.Replay" xml:space="preserve">
     <value>准备重放</value>
-  </data>
-  <data name="Studio.History.Reload" xml:space="preserve">
-    <value>重新加载</value>
   </data>
   <data name="Studio.Diagnostics.NoFindings" xml:space="preserve">
     <value>校验：无任何发现。</value>
@@ -897,7 +855,7 @@
     <value>关于</value>
   </data>
   <data name="Studio.Shell.Line" xml:space="preserve">
-    <value>Orkeon 的桌面伴侣：您组建代理团队，Studio 让它们工作——每个团队只限于您开放的文件夹，每次执行都有迹可查。</value>
+    <value>Orkeon 的桌面伴侣：您组建智能体团队，Studio 让它们工作——每个团队只限于您开放的文件夹，每次执行都有迹可查。</value>
   </data>
   <data name="Studio.Shell.Kama" xml:space="preserve">
     <value>这是 Orkeon 的变色龙 Kama。它会适应别人对它的要求——就像智能体团队是围绕您的需求组建的，而不是反过来。</value>
@@ -906,7 +864,7 @@
     <value>关闭</value>
   </data>
   <data name="Studio.Shell.GroupTeams" xml:space="preserve">
-    <value>代理团队</value>
+    <value>智能体团队</value>
   </data>
   <data name="Studio.Shell.Work" xml:space="preserve">
     <value>工作</value>
@@ -921,7 +879,7 @@
     <value>设置</value>
   </data>
   <data name="Studio.Common.SubNovice" xml:space="preserve">
-    <value>要设置两件事：用哪个 AI 模型，以及代理能看哪些文件夹。</value>
+    <value>要设置两件事：用哪个 AI 模型，以及智能体能看哪些文件夹。</value>
   </data>
   <data name="Studio.Common.SubExpert" xml:space="preserve">
     <value>appsettings.json —— 类型化表单、挂载、速率限制，以及只读的原始文件。</value>
@@ -948,7 +906,7 @@
     <value>供创建助手、结论与问答使用——独立于各团队的模型。</value>
   </data>
   <data name="Studio.Settings.ProfileTitle" xml:space="preserve">
-    <value>代理使用哪个 AI 模型</value>
+    <value>智能体使用哪个 AI 模型</value>
   </data>
   <data name="Studio.Settings.HintNovice" xml:space="preserve">
     <value>配置 = 一个 AI 模型加它的地址。想建多少建多少，并分配给每个团队。</value>
@@ -1062,7 +1020,7 @@
     <value>我的团队</value>
   </data>
   <data name="Studio.Create.Title" xml:space="preserve">
-    <value>创建代理团队</value>
+    <value>创建智能体团队</value>
   </data>
   <data name="Studio.Create.SubNovice" xml:space="preserve">
     <value>四步：描述需求、确认组成、试运行、采用。最后一步之前不写入任何内容。</value>
@@ -1071,7 +1029,7 @@
     <value>组建助手。YAML 定义从第 2 步起可编辑；试运行以 dry-run 方式执行。</value>
   </data>
   <data name="Studio.Teams.ScreenTitle" xml:space="preserve">
-    <value>我的代理团队</value>
+    <value>我的智能体团队</value>
   </data>
   <data name="Studio.Teams.ScreenSub" xml:space="preserve">
     <value>每个团队都是本机上的独立文件夹——可复制、可分享、可删除。</value>
@@ -1236,22 +1194,10 @@
     <value>显示 / 隐藏</value>
   </data>
   <data name="Studio.Create.NotesSub" xml:space="preserve">
-    <value>指令适用于所有代理，随团队一起保存，并成为试运行时的检查点。</value>
+    <value>指令适用于所有智能体，随团队一起保存，并成为试运行时的检查点。</value>
   </data>
   <data name="Studio.Create.Taken" xml:space="preserve">
     <value>指令原样生效。</value>
-  </data>
-  <data name="Studio.Create.AskToggle" xml:space="preserve">
-    <value>提问</value>
-  </data>
-  <data name="Studio.Create.AskTitle" xml:space="preserve">
-    <value>询问助手</value>
-  </data>
-  <data name="Studio.Create.AskHint" xml:space="preserve">
-    <value>— 未经您同意不会更改任何内容</value>
-  </data>
-  <data name="Studio.Create.Clear" xml:space="preserve">
-    <value>清除</value>
   </data>
   <data name="Studio.Teams.Create" xml:space="preserve">
     <value>创建团队</value>
@@ -1264,9 +1210,6 @@
   </data>
   <data name="Studio.Teams.Delete" xml:space="preserve">
     <value>删除</value>
-  </data>
-  <data name="Studio.Teams.Empty" xml:space="preserve">
-    <value>暂无团队——助手会和您一起搭建第一个。</value>
   </data>
   <data name="Studio.Teams.InProgress" xml:space="preserve">
     <value>进行中的会话</value>
@@ -1530,7 +1473,7 @@
     <value>到设置中修正</value>
   </data>
   <data name="Studio.Settings.NoviceTitle" xml:space="preserve">
-    <value>代理可见的文件夹</value>
+    <value>智能体可见的文件夹</value>
   </data>
   <data name="Studio.Settings.NoviceIntro" xml:space="preserve">
     <value>机器上的其他一切对它们不可见。只读文件夹永远无法被修改。</value>
@@ -1641,10 +1584,10 @@
     <value>{0} 个文件夹：{1}</value>
   </data>
   <data name="Studio.Create.TitleAdd" xml:space="preserve">
-    <value>添加代理</value>
+    <value>添加智能体</value>
   </data>
   <data name="Studio.Create.TitleEdit" xml:space="preserve">
-    <value>编辑代理</value>
+    <value>编辑智能体</value>
   </data>
   <data name="Studio.Create.Add" xml:space="preserve">
     <value>添加到团队</value>
@@ -1653,25 +1596,25 @@
     <value>授权一个文件夹</value>
   </data>
   <data name="Studio.Settings.PickerSub" xml:space="preserve">
-    <value>先选文件夹，再选代理能对它做什么。</value>
+    <value>先选文件夹，再选智能体能对它做什么。</value>
   </data>
   <data name="Studio.Settings.Browse" xml:space="preserve">
     <value>浏览…</value>
   </data>
   <data name="Studio.Settings.RightsLabel" xml:space="preserve">
-    <value>代理将能做什么</value>
+    <value>智能体将能做什么</value>
   </data>
   <data name="Studio.Settings.PickerReadOnly" xml:space="preserve">
     <value>只读</value>
   </data>
   <data name="Studio.Settings.ReadOnlyHint" xml:space="preserve">
-    <value>代理只读，绝不修改</value>
+    <value>智能体只读，绝不修改</value>
   </data>
   <data name="Studio.Settings.PickerReadWrite" xml:space="preserve">
     <value>读和写</value>
   </data>
   <data name="Studio.Settings.ReadWriteHint" xml:space="preserve">
-    <value>代理可以把结果写到这里</value>
+    <value>智能体可以把结果写到这里</value>
   </data>
   <data name="Studio.Settings.WrittenAs" xml:space="preserve">
     <value>将写作</value>
@@ -1731,16 +1674,13 @@
     <value>「{0}」已添加，但设置未能保存 — {1}</value>
   </data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve">
-    <value>一个代理只做一件事。用一句话描述它，并只开放必需的能力。</value>
+    <value>一个智能体只做一件事。用一句话描述它，并只开放必需的能力。</value>
   </data>
   <data name="Studio.Create.Name" xml:space="preserve">
     <value>名称</value>
   </data>
   <data name="Studio.Create.Does" xml:space="preserve">
     <value>它做什么</value>
-  </data>
-  <data name="Studio.Create.DoesPlaceholder" xml:space="preserve">
-    <value>例如：复核摘要，核实每条论断都出自被引用的页面</value>
   </data>
   <data name="Studio.Create.Can" xml:space="preserve">
     <value>它能做什么</value>
@@ -1767,7 +1707,7 @@
     <value>这些文件夹会在采纳时随团队一起记录——而试运行本身在自己的沙箱中进行。</value>
   </data>
   <data name="Studio.Create.DerivedHint" xml:space="preserve">
-    <value>它们来自各个代理：修改某个代理即可改变它能看到的内容。</value>
+    <value>它们来自各个智能体：修改某个智能体即可改变它能看到的内容。</value>
   </data>
   <data name="Studio.Teams.Modify" xml:space="preserve">
     <value>编辑</value>
@@ -1785,7 +1725,7 @@
     <value>再次试运行</value>
   </data>
   <data name="Studio.Create.SavedNotFrozen" xml:space="preserve">
-    <value>一切都未定死：您仍可编辑代理、再次试运行、重新采用——保存的团队会被更新，而不是复制。</value>
+    <value>一切都未定死：您仍可编辑智能体、再次试运行、重新采用——保存的团队会被更新，而不是复制。</value>
   </data>
   <data name="Studio.Create.ReopenedNote" xml:space="preserve">
     <value>重新采纳会重新生成产出文件——run.sh 和 YAML 定义——其中手工修改的内容会丢失。</value>
@@ -1800,7 +1740,7 @@
     <value>编辑</value>
   </data>
   <data name="Studio.Create.AddAgent" xml:space="preserve">
-    <value>添加代理</value>
+    <value>添加智能体</value>
   </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
     <value>{0}（读取）</value>
@@ -2040,7 +1980,7 @@
     <value>谢谢——我已有足够信息来组建团队。</value>
   </data>
   <data name="Studio.Chat.WrapDetail" xml:space="preserve">
-    <value>给您看我建议的组成：代理、授权的文件夹，以及各自能做什么。</value>
+    <value>给您看我建议的组成：智能体、授权的文件夹，以及各自能做什么。</value>
   </data>
   <data name="Studio.Chat.Q1Fact" xml:space="preserve">
     <value>文件夹位置</value>
@@ -2175,25 +2115,25 @@
     <value>就过去的执行提问：为什么失败、之后有什么变化、如何避免再次发生。</value>
   </data>
   <data name="Studio.Chat.RuleFolders" xml:space="preserve">
-    <value>文件夹|目录|文件|访问|权限|读取|写入</value>
+    <value>文件夹|目录|文件|访问|权限|读取|读|写入|写|修改</value>
   </data>
   <data name="Studio.Chat.RuleCost" xml:space="preserve">
-    <value>费用|价格|收费|计费|token|贵|花钱</value>
+    <value>费用|收费|计费|价格|多少钱|钱|贵|花钱|付费|token</value>
   </data>
   <data name="Studio.Chat.RuleDuration" xml:space="preserve">
-    <value>时间|时长|多久|慢|快|分钟</value>
+    <value>时长|多久|多长|时间|慢|快|分钟</value>
   </data>
   <data name="Studio.Chat.RuleError" xml:space="preserve">
-    <value>错误|失败|报错|崩溃|故障|bug</value>
+    <value>错|失败|崩溃|故障|异常|bug</value>
   </data>
   <data name="Studio.Chat.RuleSchedule" xml:space="preserve">
-    <value>计划|排程|定时|时间|cron|自动|每天早上</value>
+    <value>计划|排程|定时|定期|cron|自动|每天|早上</value>
   </data>
   <data name="Studio.Chat.RulePrivacy" xml:space="preserve">
-    <value>机密|隐私|私密|数据|个人信息|安全|外传</value>
+    <value>机密|隐私|私密|数据|个人信息|安全|外传|泄</value>
   </data>
   <data name="Studio.Chat.AnswerFolders" xml:space="preserve">
-    <value>代理只能看到设置中授权的文件夹。只读文件夹永远无法被修改，即使代理提出请求。</value>
+    <value>智能体只能看到设置中授权的文件夹。只读文件夹永远无法被修改，即使智能体提出请求。</value>
   </data>
   <data name="Studio.Chat.AnswerCost" xml:space="preserve">
     <value>本地配置（Ollama）零成本。云端成本取决于交换的词数：Studio 在每次执行结束时显示消耗的 tokens。</value>
@@ -2214,7 +2154,7 @@
     <value>用一句话描述这项工作，就像对同事说：您今天手工做什么，想收到什么。其余交给我——缺什么我会再问。</value>
   </data>
   <data name="Studio.Chat.ReplyStep2" xml:space="preserve">
-    <value>建议的代理分担阅读、撰写与校对。您可以去掉一个：我会重新分配角色，授权的文件夹保持不变。</value>
+    <value>建议的智能体分担阅读、撰写与校对。您可以去掉一个：我会重新分配角色，授权的文件夹保持不变。</value>
   </data>
   <data name="Studio.Chat.ReplyStep3" xml:space="preserve">
     <value>试运行不动任何东西：只读、抽样文档、不保存。正是检查语气与细节程度的时机。</value>

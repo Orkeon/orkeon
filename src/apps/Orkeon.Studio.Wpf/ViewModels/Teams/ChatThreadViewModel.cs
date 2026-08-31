@@ -46,6 +46,8 @@ public sealed class ChatThreadViewModel : ObservableObject
     private int _unreadCount;
     private int _pendingQuestionIndex;
     private int _tick;
+    private bool _questionOnTheTable;
+    private bool _handingOver;
     private string _draft = "";
     private AssistantContext _context = AssistantContext.WizardStep1;
 
@@ -128,7 +130,8 @@ public sealed class ChatThreadViewModel : ObservableObject
     }
 
     /// <summary>Whether a question is on the table right now.</summary>
-    public bool IsAsking => _isStarted && !_isBusy && !_isDone && _pendingQuestionIndex < _questions.Count;
+    public bool IsAsking =>
+        _questionOnTheTable && !_isBusy && !_isDone && _pendingQuestionIndex < _questions.Count;
 
     /// <summary>How many assistant turns arrived while the thread was closed.</summary>
     public int UnreadCount
@@ -387,6 +390,8 @@ public sealed class ChatThreadViewModel : ObservableObject
         _delay.CancelPending();
         Turns.Clear();
         _pendingQuestionIndex = 0;
+        _questionOnTheTable = false;
+        _handingOver = false;
         _tick = 0;
         Draft = "";
         IsDone = false;
@@ -405,6 +410,8 @@ public sealed class ChatThreadViewModel : ObservableObject
         _delay.CancelPending();
         Turns.Clear();
         _pendingQuestionIndex = 0;
+        _questionOnTheTable = false;
+        _handingOver = false;
         _tick = 0;
         Draft = "";
         IsStarted = false;
@@ -427,6 +434,7 @@ public sealed class ChatThreadViewModel : ObservableObject
             if (questionIndex < _questions.Count)
             {
                 _pendingQuestionIndex = questionIndex;
+                _questionOnTheTable = true;
                 IsBusy = false;
                 // The turn keeps the question's INDEX, not its sentence: a language switch
                 // has to rewrite what is already on screen.
@@ -442,8 +450,11 @@ public sealed class ChatThreadViewModel : ObservableObject
             Push(new ChatTurnViewModel(_strings, isBot: true, "", isClosing: true));
 
             var answers = CollectedAnswers();
+            _handingOver = true;
+            RaiseDerived();
             _delay.After(ClosingPause, () =>
             {
+                _handingOver = false;
                 Close();
                 _onInterviewComplete?.Invoke(answers);
             });
@@ -465,7 +476,11 @@ public sealed class ChatThreadViewModel : ObservableObject
     private void Send(string text)
     {
         var said = (text ?? "").Trim();
-        if (said.Length == 0 || _isBusy)
+
+        // While the hand-off to the engine is pending, a Send would call CancelPending below
+        // and take the composition with it — the thread would sit «done» and the engine would
+        // never hear a word. The draft is kept, not swallowed: it goes out a second later.
+        if (said.Length == 0 || _isBusy || _handingOver)
             return;
 
         _delay.CancelPending();
@@ -476,6 +491,7 @@ public sealed class ChatThreadViewModel : ObservableObject
             var index = _pendingQuestionIndex;
             Push(new ChatTurnViewModel(_strings, isBot: false, said, answerIndex: index));
             Draft = "";
+            _questionOnTheTable = false;
             _pendingQuestionIndex = index + 1;
             _tick = 0;
             IsBusy = true;
@@ -495,12 +511,12 @@ public sealed class ChatThreadViewModel : ObservableObject
             return;
         }
 
-        var answer = _answers.Answer(said, _context);
+        var answerKey = _answers.AnswerKey(said, _context);
         IsBusy = true;
         _delay.After(LocalAnswer, () =>
         {
             IsBusy = false;
-            Push(new ChatTurnViewModel(_strings, isBot: true, answer));
+            Push(new ChatTurnViewModel(_strings, isBot: true, "", bodyKey: answerKey));
         });
     }
 
@@ -508,7 +524,11 @@ public sealed class ChatThreadViewModel : ObservableObject
     {
         // Everything said stays said, the thread stays open, and nothing restarts on its
         // own: a Stop that quietly resumed a second later would be worse than no Stop.
+        // The question being prepared goes with it — offering quick replies to a question
+        // whose bubble was never pushed is an answer box for a question nobody asked.
         _delay.CancelPending();
+        _handingOver = false;
+        _questionOnTheTable = false;
         IsBusy = false;
         StopRequested?.Invoke(this, EventArgs.Empty);
     }

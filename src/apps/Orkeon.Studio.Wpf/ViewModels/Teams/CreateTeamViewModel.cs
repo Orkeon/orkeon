@@ -575,8 +575,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         private set
         {
             if (SetProperty(ref _assistantPrompt, value))
+            {
                 OnPropertyChanged(nameof(HasAssistantPrompt));
                 RaiseDraftChanged();
+            }
         }
     }
 
@@ -1273,6 +1275,18 @@ public sealed class CreateTeamViewModel : ObservableObject
     private Task ComposeWithAnswersAsync(IReadOnlyList<string> interviewAnswers)
     {
         _interviewAnswers = interviewAnswers;
+
+        // The interview is over and the thread has closed behind it, so a compose the engine
+        // refuses here would leave the user in front of a wizard that did nothing and a
+        // conversation that says it is done. Rather than drop it silently, hand the column
+        // back to the conversation — every answer is still in it, and « Composer l'équipe »
+        // picks up from there without asking again.
+        if (!CanCompose)
+        {
+            Chat.OpenCommand.Execute(null);
+            return PendingCompose = System.Threading.Tasks.Task.CompletedTask;
+        }
+
         return PendingCompose = ComposeAsync();
     }
 

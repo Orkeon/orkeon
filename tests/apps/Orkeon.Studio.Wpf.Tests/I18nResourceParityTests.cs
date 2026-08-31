@@ -134,12 +134,18 @@ public sealed partial class I18nResourceParityTests
     /// <para>
     /// It stays a CEILING rather than an equality: a new English string lands here before
     /// anyone translates it, and this is what says so out loud instead of letting a
-    /// half-translated app look finished. It may only ever be lowered.
+    /// half-translated app look finished.
+    /// </para>
+    /// <para>
+    /// The rule, stated exactly, because «only ever lowered» is not it: raise the number ONLY
+    /// in the same commit that adds the English strings it counts, and lower it in the commit
+    /// that translates them. What must never happen is a raise that pays for a REGRESSION —
+    /// a satellite quietly losing ground with no new English behind it.
     /// </para>
     /// </summary>
     private static readonly Dictionary<string, int> TranslationDebtCeiling = new(StringComparer.Ordinal)
     {
-        ["Strings.fr.resx"] = 50,
+        ["Strings.fr.resx"] = 47,
         ["Strings.es.resx"] = 34,
         ["Strings.de.resx"] = 35,
         ["Strings.zh-Hans.resx"] = 28,

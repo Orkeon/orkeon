@@ -45,15 +45,27 @@ public static class AssistantInterview
         ];
     }
 
+    /// <summary>
+    /// Namespace of the interview's own entries. Built rather than written because a question
+    /// has eleven of them and the shape never varies — but that is also why the catalogue
+    /// rename walked straight past it: an interpolated key is invisible to a text sweep.
+    /// The interview suite now reads every one of them back, so a key that resolves to
+    /// itself fails a test instead of being asked out loud.
+    /// </summary>
+    private const string Prefix = "Studio.Chat.";
+
     private static AssistantQuestion Question(IStudioStrings strings, string n, string? hintKey) => new(
-        strings[$"Vm_Chat_{n}_Fact"],
-        strings[$"Vm_Chat_{n}_Body"],
-        strings[$"Vm_Chat_{n}_Detail"],
+        Text(strings, n, "Fact"),
+        Text(strings, n, "Body"),
+        Text(strings, n, "Detail"),
         hintKey is null ? "" : strings[hintKey],
-        strings[$"Vm_Chat_{n}_Placeholder"],
+        Text(strings, n, "Placeholder"),
         [
-            new AssistantChip(strings[$"Vm_Chat_{n}_Chip1"], strings[$"Vm_Chat_{n}_Value1"]),
-            new AssistantChip(strings[$"Vm_Chat_{n}_Chip2"], strings[$"Vm_Chat_{n}_Value2"]),
-            new AssistantChip(strings[$"Vm_Chat_{n}_Chip3"], strings[$"Vm_Chat_{n}_Value3"]),
+            new AssistantChip(Text(strings, n, "Chip1"), Text(strings, n, "Value1")),
+            new AssistantChip(Text(strings, n, "Chip2"), Text(strings, n, "Value2")),
+            new AssistantChip(Text(strings, n, "Chip3"), Text(strings, n, "Value3")),
         ]);
+
+    private static string Text(IStudioStrings strings, string question, string part) =>
+        strings[Prefix + question + part];
 }

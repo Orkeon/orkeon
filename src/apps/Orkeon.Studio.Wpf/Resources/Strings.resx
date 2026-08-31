@@ -23,7 +23,6 @@
 
         <data name="Studio.Common.BaseUrl" xml:space="preserve"><value>Base URL</value></data>
   <data name="Studio.Common.Model" xml:space="preserve"><value>Model</value></data>
-  <data name="Studio.Common.ApiKey" xml:space="preserve"><value>API key</value></data>
   
   <data name="Studio.Settings.LocationTitle" xml:space="preserve"><value>Where the file is saved</value></data>
   <data name="Studio.Settings.LocationGlobal" xml:space="preserve"><value>Global per-user file</value></data>
@@ -56,13 +55,8 @@
   <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>Help is contextual</value></data>
   <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>In Novice mode, each screen carries a column of explanations on the right. It steps aside in Expert mode.</value></data>
                 
-  <data name="Studio.Diagnostics.ValidationTitle" xml:space="preserve"><value>Validation</value></data>
 
-      <data name="Studio.Settings.DetectedProvider" xml:space="preserve"><value>DETECTED PROVIDER</value></data>
-  <data name="Studio.Settings.SectionLblTemperature" xml:space="preserve"><value>Temperature</value></data>
-  <data name="Studio.Settings.LblMaxTokens" xml:space="preserve"><value>Max tokens</value></data>
-  <data name="Studio.Settings.LblTimeoutSeconds" xml:space="preserve"><value>Timeout (seconds)</value></data>
-  <data name="Studio.Settings.TestConnection" xml:space="preserve"><value>Test connection</value></data>
+      <data name="Studio.Settings.TestConnection" xml:space="preserve"><value>Test connection</value></data>
   <data name="Studio.Settings.LblMaxConcurrent" xml:space="preserve"><value>Max concurrent requests</value></data>
   <data name="Studio.Settings.LblGlobalRpm" xml:space="preserve"><value>Global requests / minute</value></data>
   <data name="Studio.Settings.LblProviderRpm" xml:space="preserve"><value>Provider requests / minute</value></data>
@@ -105,7 +99,6 @@
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve"><value>Checks</value></data>
 
   <data name="Studio.Run.Title" xml:space="preserve"><value>Run</value></data>
-  <data name="Studio.Run.Sub" xml:space="preserve"><value>Pick a target, tune the options, watch the log stream.</value></data>
   <data name="Studio.Run.SubNovice" xml:space="preserve"><value>One team, one button. The technical detail stays available when you need it.</value></data>
   <data name="Studio.Run.SubExpert" xml:space="preserve"><value>Target, options, the exact command and the streamed journal. The dry run validates with no side effects.</value></data>
   <data name="Studio.Run.TargetTitle" xml:space="preserve"><value>Crew to run</value></data>
@@ -113,7 +106,6 @@
   <data name="Studio.Run.File" xml:space="preserve"><value>File…</value></data>
   <data name="Studio.Run.Folder" xml:space="preserve"><value>Folder…</value></data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve"><value>Use this file</value></data>
-  <data name="Studio.Run.TabOptions" xml:space="preserve"><value>Options</value></data>
   <data name="Studio.Run.TabMounts" xml:space="preserve"><value>Mounts</value></data>
   <data name="Studio.Run.SettingsAuto" xml:space="preserve"><value>Automatic (let the runtime resolve it)</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve"><value>Explicit path</value></data>
@@ -124,14 +116,10 @@
   <data name="Studio.Run.InputsTitle" xml:space="preserve"><value>Inputs</value></data>
   <data name="Studio.Run.LblInputsJson" xml:space="preserve"><value>Inline JSON (--inputs)</value></data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve"><value>File (--inputs-file)</value></data>
-  <data name="Studio.Run.DiagTitle" xml:space="preserve"><value>Diagnostics</value></data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve"><value>Verbosity (--verbose)</value></data>
   <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Log LLM exchanges (--llm-log)</value></data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Mounts already in the selected appsettings</value></data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Allow mounts outside the working directory (--allow-external-mounts)</value></data>
-  <data name="Studio.Run.ColKey" xml:space="preserve"><value>Key</value></data>
-  <data name="Studio.Run.ColEffective" xml:space="preserve"><value>Effective mount</value></data>
-  <data name="Studio.Run.ColOrigin" xml:space="preserve"><value>Origin</value></data>
   <data name="Studio.Run.CmdTitle" xml:space="preserve"><value>COMMAND</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Ready to work</value></data>
   <data name="Studio.Run.StateRunning" xml:space="preserve"><value>Run in progress</value></data>
@@ -158,14 +146,12 @@
   <data name="Studio.Run.Empty" xml:space="preserve"><value>Pick a team in “My teams” — its Launch button lands here.</value></data>
   <data name="Studio.Run.RunLines" xml:space="preserve"><value>lines</value></data>
   <data name="Studio.Run.Validate" xml:space="preserve"><value>Validate (dry-run)</value></data>
-  <data name="Studio.Run.Run" xml:space="preserve"><value>Run</value></data>
   <data name="Studio.Run.Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Studio.Run.ClearLog" xml:space="preserve"><value>Clear log</value></data>
 
   <data name="Studio.History.Title" xml:space="preserve"><value>History</value></data>
   <data name="Studio.History.Sub" xml:space="preserve"><value>Every run is recorded locally and can be replayed identically.</value></data>
   <data name="Studio.History.Replay" xml:space="preserve"><value>Prepare replay</value></data>
-  <data name="Studio.History.Reload" xml:space="preserve"><value>Reload</value></data>
 
   <!-- STUDIO-11: strings fabricated below the view layer (Core formatters via IStudioStrings) -->
   <data name="Studio.Diagnostics.NoFindings" xml:space="preserve"><value>Validation: no findings.</value></data>
@@ -439,15 +425,10 @@
 <data name="Studio.Create.TechToggle" xml:space="preserve"><value>Show / hide</value></data>
 <data name="Studio.Create.NotesSub" xml:space="preserve"><value>An instruction applies to every agent, travels with the team, and becomes a point to check at trial time.</value></data>
 <data name="Studio.Create.Taken" xml:space="preserve"><value>Instruction taken as written.</value></data>
-<data name="Studio.Create.AskToggle" xml:space="preserve"><value>Ask a question</value></data>
-<data name="Studio.Create.AskTitle" xml:space="preserve"><value>Ask the assistant</value></data>
-<data name="Studio.Create.AskHint" xml:space="preserve"><value>— changes nothing without your approval</value></data>
-<data name="Studio.Create.Clear" xml:space="preserve"><value>Clear</value></data>
 <data name="Studio.Teams.Create" xml:space="preserve"><value>Create a team</value></data>
 <data name="Studio.Teams.Launch" xml:space="preserve"><value>Launch</value></data>
 <data name="Studio.Teams.Duplicate" xml:space="preserve"><value>Duplicate</value></data>
 <data name="Studio.Teams.Delete" xml:space="preserve"><value>Delete</value></data>
-<data name="Studio.Teams.Empty" xml:space="preserve"><value>No team yet — the wizard builds the first one with you.</value></data>
 <data name="Studio.Teams.InProgress" xml:space="preserve"><value>SESSIONS UNDERWAY</value></data>
 <data name="Studio.Teams.Resume" xml:space="preserve"><value>Resume</value></data>
 <data name="Studio.Create.FreqOnce" xml:space="preserve"><value>Once</value></data>
@@ -605,7 +586,6 @@
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve"><value>An agent does one thing. Describe it in one sentence, then open only the capacities it needs.</value></data>
   <data name="Studio.Create.Name" xml:space="preserve"><value>Name</value></data>
   <data name="Studio.Create.Does" xml:space="preserve"><value>What it does</value></data>
-  <data name="Studio.Create.DoesPlaceholder" xml:space="preserve"><value>E.g. rereads the summary and checks every claim against a cited page</value></data>
   <data name="Studio.Create.Can" xml:space="preserve"><value>What it can do</value></data>
   <data name="Studio.Create.Scope" xml:space="preserve"><value>On which folder</value></data>
   <data name="Studio.Create.Remove" xml:space="preserve"><value>Remove from the team</value></data>
@@ -942,7 +922,7 @@
     <value>schedul|plan|hour|cron|automatic|morning</value>
   </data>
   <data name="Studio.Chat.RulePrivacy" xml:space="preserve">
-    <value>confidential|privat|data|gdpr|security|leave</value>
+    <value>confidential|privat|data|gdpr|secur|leave</value>
   </data>
   <data name="Studio.Chat.AnswerFolders" xml:space="preserve">
     <value>Agents only see the folders allowed in Settings. A read-only folder can never be modified, even if an agent asks for it.</value>

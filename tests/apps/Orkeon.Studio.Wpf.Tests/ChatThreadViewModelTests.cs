@@ -248,7 +248,16 @@ public class ChatThreadViewModelTests
         // One instance for the window (T-01). A per-screen thread would lose its history
         // on the first tab change, which is the whole reason it is a window-lifetime object.
         Assert.Same(shell.Chat, shell.CreateTeam.Chat);
-        Assert.NotSame(shell.Chat, shell.Test.Launcher.GetType());
+
+        // Exécuter and Tester run over SEPARATE launchers — the trial is a rehearsal with no
+        // history of its own — and neither owns a conversation: they reach the window's one
+        // through the ancestor, so there is nothing here for a second copy to hide in.
+        Assert.NotSame(shell.Launch, shell.Test.Launcher);
+        Assert.Null(typeof(Orkeon.Studio.Wpf.ViewModels.Launch.LaunchTabViewModel).GetProperty("Chat"));
+
+        // And it is genuinely shared state: what one screen says, the other screen holds.
+        shell.Chat.AddAssistantTurn("une précision");
+        Assert.Single(shell.CreateTeam.Chat.Turns);
     }
 
     [Fact]
@@ -317,5 +326,139 @@ public sealed class ChatCatalogueSwitchTests
         Assert.Equal("Documents/Comptes-rendus", typed.Body);   // the user's words, untouched
         Assert.StartsWith("fr:", chat.Placeholder, StringComparison.Ordinal);
         Assert.StartsWith("fr:", chat.Primer, StringComparison.Ordinal);
+    }
+}
+
+/// <summary>
+/// The two state-machine holes a review found: a message typed at the wrong instant used to
+/// take the whole composition with it, and a Stop used to leave quick replies on the table
+/// for a question that was never asked.
+/// </summary>
+public sealed class ChatThreadEdgeTests
+{
+    /// <summary>
+    /// A delay that holds its callbacks until told. The default inline one plays every beat
+    /// at once, which is what makes the suite fast — but it also means there is never a
+    /// pause to interrupt, and «Stop pressed mid-thought» is exactly a pause being
+    /// interrupted. This is the seam that makes that instant reachable.
+    /// </summary>
+    private sealed class ManualDelay : Orkeon.Studio.Wpf.ViewModels.Mvvm.IUiDelay
+    {
+        private readonly List<Action> _pending = [];
+
+        public void After(TimeSpan delay, Action action) => _pending.Add(action);
+
+        public void CancelPending() => _pending.Clear();
+
+        /// <summary>Fires everything queued, in order.</summary>
+        public void Elapse()
+        {
+            var due = _pending.ToList();
+            _pending.Clear();
+            foreach (var action in due)
+                action();
+        }
+
+        public int Pending => _pending.Count;
+    }
+
+    private static ChatThreadViewModel Thread(
+        Action<IReadOnlyList<string>>? onDone = null,
+        Orkeon.Studio.Wpf.ViewModels.Mvvm.IUiDelay? delay = null)
+    {
+        var chat = new ChatThreadViewModel(strings: null, delay: delay);
+        chat.Bind(
+            facts: () => [], brief: () => "", briefChips: () => [],
+            profileName: () => null, askEngine: _ => false,
+            onInterviewComplete: onDone ?? (_ => { }));
+        return chat;
+    }
+
+    private static void Answer(ChatThreadViewModel chat, string text)
+    {
+        chat.Draft = text;
+        chat.SendCommand.Execute(null);
+    }
+
+    [Fact]
+    public void A_message_typed_during_the_closing_pause_cannot_cancel_the_hand_over()
+    {
+        // Send cancels the pending delays — and the delay pending at that exact moment is
+        // the one that starts the engine. The thread would sit «done» for ever.
+        IReadOnlyList<string>? handed = null;
+        var chat = Thread(a => handed = a);
+
+        chat.StartInterview();
+        Answer(chat, "un dossier");
+        Answer(chat, "vendredi");
+        Answer(chat, "rien");
+
+        Assert.NotNull(handed);
+        Assert.Equal(3, handed!.Count);
+        Assert.Equal("rien", handed[2]);
+    }
+
+    [Fact]
+    public void Stopping_mid_thought_takes_the_unasked_question_with_it()
+    {
+        var delay = new ManualDelay();
+        var chat = Thread(delay: delay);
+
+        chat.StartInterview();
+        delay.Elapse();                       // the first question is asked
+        Assert.True(chat.IsAsking);
+
+        Answer(chat, "un dossier");           // answered; the assistant starts thinking
+        Assert.True(chat.IsBusy);
+        Assert.False(chat.IsAsking);
+
+        // Stop lands HERE, in the pause. The counter already points at question 2, but its
+        // bubble is what makes it a question — and it was never pushed. Offering its three
+        // quick replies would be an answer box for a question nobody asked.
+        chat.StopCommand.Execute(null);
+
+        Assert.False(chat.IsBusy);
+        Assert.False(chat.IsAsking);
+        Assert.Empty(chat.Chips);
+        Assert.DoesNotContain(chat.Turns, t => t.IsClosing);
+    }
+
+    [Fact]
+    public void A_message_typed_in_the_closing_pause_is_kept_and_the_engine_still_starts()
+    {
+        var delay = new ManualDelay();
+        IReadOnlyList<string>? handed = null;
+        var chat = Thread(a => handed = a, delay);
+
+        chat.StartInterview();
+        delay.Elapse();
+        Answer(chat, "un dossier"); delay.Elapse();
+        Answer(chat, "vendredi");   delay.Elapse();
+        Answer(chat, "rien");       delay.Elapse();   // closing bubble, hand-over now pending
+
+        Assert.Null(handed);
+        chat.Draft = "une dernière chose";
+        chat.SendCommand.Execute(null);
+
+        // The send is refused rather than swallowed: the draft is still there to send a
+        // second later, and the hand-over it would have cancelled still happens.
+        Assert.Equal("une dernière chose", chat.Draft);
+        delay.Elapse();
+        Assert.NotNull(handed);
+        Assert.Equal(3, handed!.Count);
+    }
+
+    [Fact]
+    public void A_question_is_only_on_the_table_once_its_bubble_exists()
+    {
+        var chat = Thread();
+
+        Assert.False(chat.IsAsking);
+        chat.StartInterview();
+
+        // The inline delay plays every beat at once, so the first bubble is already pushed.
+        Assert.True(chat.IsAsking);
+        Assert.Equal(3, chat.Chips.Count);
+        Assert.Single(chat.Turns);
     }
 }

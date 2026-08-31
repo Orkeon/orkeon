@@ -264,7 +264,7 @@ public static class StudioStringKeys
     public const string ChatRuleError = "Studio.Chat.RuleError";
     /// <summary>"schedul|plan|hour|cron|automatic|morning"</summary>
     public const string ChatRuleSchedule = "Studio.Chat.RuleSchedule";
-    /// <summary>"confidential|privat|data|gdpr|security|leave"</summary>
+    /// <summary>"confidential|privat|data|gdpr|secur|leave"</summary>
     public const string ChatRulePrivacy = "Studio.Chat.RulePrivacy";
     /// <summary>"Agents only see the folders allowed in Settings. A read-only folder…"</summary>
     public const string ChatAnswerFolders = "Studio.Chat.AnswerFolders";
@@ -1323,7 +1323,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatRuleDuration] = "time|duration|how long|slow|fast|minute",
         [StudioStringKeys.ChatRuleError] = "error|fail|crash|break|bug",
         [StudioStringKeys.ChatRuleSchedule] = "schedul|plan|hour|cron|automatic|morning",
-        [StudioStringKeys.ChatRulePrivacy] = "confidential|privat|data|gdpr|security|leave",
+        [StudioStringKeys.ChatRulePrivacy] = "confidential|privat|data|gdpr|secur|leave",
         [StudioStringKeys.ChatAnswerFolders] = "Agents only see the folders allowed in Settings. A read-only folder can never be modified, even if an agent asks for it.",
         [StudioStringKeys.ChatAnswerCost] = "A local setting (Ollama) costs nothing. In the cloud the cost depends on how many words are exchanged: Studio shows the tokens spent at the end of every run.",
         [StudioStringKeys.ChatAnswerDuration] = "On this dataset, count one to two minutes per run locally. The technical log gives the duration of each step.",

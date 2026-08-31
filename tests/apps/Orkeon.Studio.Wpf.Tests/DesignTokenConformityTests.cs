@@ -32,11 +32,25 @@ public sealed partial class DesignTokenConformityTests
     [GeneratedRegex("""StaticResource\s+\w*Brush\b""")]
     private static partial Regex StaticBrushPattern();
 
+    // Three shapes reach a key, and the third is the one that hides: a binding built in C#
+    // writes the indexer INSIDE a string — new Binding("[Studio.Shell.TourLabel]") — so a
+    // pattern anchored on `Binding [` walks straight past it.
     [GeneratedRegex("""Binding\s+\[([A-Za-z0-9_.\-]+)\]""")]
     private static partial Regex IndexerKeyPattern();
 
     [GeneratedRegex("""I18n\.T\("([^"]+)"\)""")]
     private static partial Regex LookupKeyPattern();
+
+    [GeneratedRegex("""Binding\("\[([A-Za-z0-9_.\-]+)\]"\)""")]
+    private static partial Regex CodeBoundKeyPattern();
+
+    // A key ASSEMBLED at runtime — _strings[$"Studio.Chat.Q{n}Body"] — is the shape that
+    // escaped the catalogue rename and had the assistant ask «Vm_Chat_Q1_Body» out loud.
+    // A text sweep can never resolve one, so instead of trying, this suite refuses the
+    // OLD dialect anywhere in an interpolation: whatever a key is built from, it may not
+    // be built from a prefix the catalogue no longer answers to.
+    [GeneratedRegex("\\$?\"[^\"]*\\b(Vm_|Core_|Wiz_|Scr_|Sec_)[^\"]*\"")]
+    private static partial Regex LegacyKeyShapePattern();
 
     private static string WpfSourceRoot([CallerFilePath] string thisFile = "")
     {
@@ -146,7 +160,7 @@ public sealed partial class DesignTokenConformityTests
         foreach (var file in Sources())
         {
             var text = File.ReadAllText(file);
-            foreach (var pattern in new[] { IndexerKeyPattern(), LookupKeyPattern() })
+            foreach (var pattern in new[] { IndexerKeyPattern(), LookupKeyPattern(), CodeBoundKeyPattern() })
             {
                 foreach (Match match in pattern.Matches(text))
                 {
@@ -164,4 +178,35 @@ public sealed partial class DesignTokenConformityTests
             .Where(f => f.EndsWith(".xaml", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal))
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj", StringComparison.Ordinal)
                      && !f.Contains($"{Path.DirectorySeparatorChar}bin", StringComparison.Ordinal));
+
+    /// <summary>
+    /// No source file may still name a key of the pre-rename dialect, in any shape —
+    /// literal, interpolated, or concatenated. The literal ones a rename sweep finds on its
+    /// own; the assembled ones it walks straight past, which is exactly how the whole
+    /// composition interview came to ask its questions in raw identifiers while every test
+    /// stayed green.
+    /// </summary>
+    [Fact]
+    public void Should_Not_Name_A_Key_Of_The_Old_Dialect_Anywhere()
+    {
+        var offenders = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in Sources())
+        {
+            foreach (Match match in LegacyKeyShapePattern().Matches(File.ReadAllText(file)))
+            {
+                // The prefixes also appear in ordinary prose and in identifiers that have
+                // nothing to do with the catalogue; only a resource-shaped string counts.
+                var literal = match.Value.Trim('$', '"');
+                if (literal.Contains(' ', StringComparison.Ordinal))
+                    continue;
+
+                offenders.Add($"{Path.GetFileName(file)}: {literal}");
+            }
+        }
+
+        Assert.True(
+            offenders.Count == 0,
+            $"Keys still on the pre-rename dialect: {string.Join(", ", offenders)}");
+    }
 }

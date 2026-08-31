@@ -50,19 +50,27 @@ public sealed class AssistantAnswers(IStudioStrings strings)
 
     private readonly IStudioStrings _strings = strings;
 
-    /// <summary>The first rule the question matches, else the answer for where the user stands.</summary>
-    public string Answer(string question, AssistantContext context)
+    /// <summary>
+    /// The KEY of the first rule the question matches, else the key for where the user
+    /// stands. The key rather than the text: the bubble that shows it has to be able to
+    /// re-read it when the language changes, like every other thing the assistant said.
+    /// </summary>
+    public string AnswerKey(string question, AssistantContext context)
     {
         var asked = (question ?? "").Trim();
 
         foreach (var (rule, answer) in Bank)
         {
             if (Matches(asked, _strings[rule]))
-                return _strings[answer];
+                return answer;
         }
 
-        return _strings[Fallback(context)];
+        return Fallback(context);
     }
+
+    /// <summary>The answer itself, resolved now — for a caller with nothing to re-read it.</summary>
+    public string Answer(string question, AssistantContext context) =>
+        _strings[AnswerKey(question, context)];
 
     /// <summary>The primer a thread with nothing in it shows, per screen.</summary>
     public string Primer(AssistantContext context) => _strings[context switch

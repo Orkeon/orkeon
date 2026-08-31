@@ -49,14 +49,17 @@ public sealed record ForgeSolutionSummary
 /// <summary>
 /// Reads the workspace's forge sessions straight off the disk —
 /// <c>.orkeon/forge/&lt;slug&gt;/session.json</c>, the layout SPEC-ORKEON-FORGE §4.1 fixes.
-/// Read-only and tolerant: a corrupt session appears with what could be read, never blocks
-/// the list (the CLI's own <c>forge list</c> discipline). The file shape is re-declared
+/// Tolerant: a corrupt session appears with what could be read, never blocks the list (the
+/// CLI's own <c>forge list</c> discipline). Reading is all it did until <c>Delete</c>, which
+/// discards an abandoned draft — the one write, and it removes rather than produces. The file shape is re-declared
 /// here because Studio.Core does not reference the CLI; <c>ForgeSessionCatalogTests</c>
 /// pins it against a verbatim fixture.
 /// </summary>
 [SuppressVfsCompliance(
-    "EXCEPTION-BOOTSTRAP: Studio is a host application reading the CLI's session files on the " +
-    "physical disk, before any VFS mount exists.")]
+    "EXCEPTION-BOOTSTRAP: Studio is a host application reading — and, for an abandoned draft, " +
+    "deleting — the CLI's session files on the physical disk, before any VFS mount exists. " +
+    "The write is a recursive delete of one session directory the user asked to discard; it " +
+    "never touches crew data, which is why it stays outside the VFS like the rest of this type.")]
 public static class ForgeSessionCatalog
 {
     /// <summary>Session root, relative to a workspace — the CLI's spelling.</summary>

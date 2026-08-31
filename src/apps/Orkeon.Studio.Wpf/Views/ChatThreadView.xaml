@@ -13,7 +13,10 @@
     <!-- The busy hairline. A gradient sweep rather than a moving rectangle: it is the one
          shape that stays right at every panel width, and the mock's rail is 30 % wide. -->
     <Storyboard x:Key="SweepStoryboard" RepeatBehavior="Forever">
-      <DoubleAnimation Storyboard.TargetName="SweepBrush" Storyboard.TargetProperty="Transform.X"
+      <!-- TargetName IS the TranslateTransform, so the path is its own X. «Transform.X»
+           would name a property a TranslateTransform does not have, and WPF resolves a
+           storyboard path when it STARTS — an exception the first time the assistant works. -->
+      <DoubleAnimation Storyboard.TargetName="SweepBrush" Storyboard.TargetProperty="X"
                        From="-1.2" To="1.2" Duration="0:0:1.6"/>
     </Storyboard>
 
@@ -52,11 +55,20 @@
     <Border.RenderTransform>
       <TranslateTransform x:Name="Slot"/>
     </Border.RenderTransform>
-    <Border.Triggers>
-      <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-        <BeginStoryboard Storyboard="{StaticResource SlotStoryboard}"/>
-      </EventTrigger>
-    </Border.Triggers>
+    <!-- The slot-in plays every time the thread TAKES the column, not once when the control
+         is first built: toggling Visibility never raises Loaded again, so an EventTrigger
+         there animates the first open and no other. -->
+    <Border.Style>
+      <Style TargetType="Border">
+        <Style.Triggers>
+          <DataTrigger Binding="{Binding IsOpen}" Value="True">
+            <DataTrigger.EnterActions>
+              <BeginStoryboard Storyboard="{StaticResource SlotStoryboard}"/>
+            </DataTrigger.EnterActions>
+          </DataTrigger>
+        </Style.Triggers>
+      </Style>
+    </Border.Style>
 
     <DockPanel>
 

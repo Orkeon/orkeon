@@ -178,8 +178,12 @@
                   <ItemsControl ItemsSource="{Binding Language.Others}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
+                        <!-- Anchored on the ItemsControl, not on the Popup: a Popup's child
+                             lives in its own visual tree, so walking up to the Popup itself
+                             relies on the logical hop. The ItemsControl is an ancestor in the
+                             ordinary way and carries the same inherited DataContext. -->
                         <Button Style="{StaticResource LangRow}" CommandParameter="{Binding Code}"
-                                Command="{Binding DataContext.Language.PickCommand, RelativeSource={RelativeSource AncestorType=Popup}}">
+                                Command="{Binding DataContext.Language.PickCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                           <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" FontWeight="SemiBold" Width="20"
                                        Foreground="{DynamicResource AccentBrush}" Text="{Binding Display}"/>

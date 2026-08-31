@@ -47,9 +47,6 @@
   <data name="Studio.Common.Model" xml:space="preserve">
     <value>Modelo</value>
   </data>
-  <data name="Studio.Common.ApiKey" xml:space="preserve">
-    <value>Clave API</value>
-  </data>
   <data name="Studio.Settings.LocationTitle" xml:space="preserve">
     <value>Dónde se guarda el archivo</value>
   </data>
@@ -102,7 +99,7 @@
     <value>Dos modos, un solo producto</value>
   </data>
   <data name="Studio.Shell.TourStep1Body" xml:space="preserve">
-    <value>Novato explica cada paso y oculta la maquinaria. Experto lo muestra todo: línea de comandos, registro, JSON bruto. Cambie cuando quiera, sin perder nada.</value>
+    <value>Principiante explica cada paso y oculta la maquinaria. Experto lo muestra todo: línea de comandos, registro, JSON bruto. Cambie cuando quiera, sin perder nada.</value>
   </data>
   <data name="Studio.Shell.TourStep2Title" xml:space="preserve">
     <value>Todo gira en torno a los equipos</value>
@@ -127,21 +124,6 @@
   </data>
   <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
     <value>En modo Principiante, cada pantalla lleva una columna de explicaciones a la derecha. Desaparece en modo Experto.</value>
-  </data>
-  <data name="Studio.Diagnostics.ValidationTitle" xml:space="preserve">
-    <value>Validación</value>
-  </data>
-  <data name="Studio.Settings.DetectedProvider" xml:space="preserve">
-    <value>PROVEEDOR DETECTADO</value>
-  </data>
-  <data name="Studio.Settings.SectionLblTemperature" xml:space="preserve">
-    <value>Temperatura</value>
-  </data>
-  <data name="Studio.Settings.LblMaxTokens" xml:space="preserve">
-    <value>Tokens máx.</value>
-  </data>
-  <data name="Studio.Settings.LblTimeoutSeconds" xml:space="preserve">
-    <value>Tiempo de espera (segundos)</value>
   </data>
   <data name="Studio.Settings.TestConnection" xml:space="preserve">
     <value>Probar la conexión</value>
@@ -260,9 +242,6 @@
   <data name="Studio.Run.Title" xml:space="preserve">
     <value>Ejecutar</value>
   </data>
-  <data name="Studio.Run.Sub" xml:space="preserve">
-    <value>Elija un objetivo, ajuste las opciones, siga el registro en directo.</value>
-  </data>
   <data name="Studio.Run.SubNovice" xml:space="preserve">
     <value>Un equipo, un botón. El detalle técnico sigue disponible si lo necesita.</value>
   </data>
@@ -283,9 +262,6 @@
   </data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve">
     <value>Usar este archivo</value>
-  </data>
-  <data name="Studio.Run.TabOptions" xml:space="preserve">
-    <value>Opciones</value>
   </data>
   <data name="Studio.Run.TabMounts" xml:space="preserve">
     <value>Montajes</value>
@@ -317,9 +293,6 @@
   <data name="Studio.Run.LblInputsFile" xml:space="preserve">
     <value>Archivo (--inputs-file)</value>
   </data>
-  <data name="Studio.Run.DiagTitle" xml:space="preserve">
-    <value>Diagnóstico</value>
-  </data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve">
     <value>Verbosidad (--verbose)</value>
   </data>
@@ -331,15 +304,6 @@
   </data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve">
     <value>Permitir montajes fuera del directorio de trabajo (--allow-external-mounts)</value>
-  </data>
-  <data name="Studio.Run.ColKey" xml:space="preserve">
-    <value>Clave</value>
-  </data>
-  <data name="Studio.Run.ColEffective" xml:space="preserve">
-    <value>Montaje efectivo</value>
-  </data>
-  <data name="Studio.Run.ColOrigin" xml:space="preserve">
-    <value>Origen</value>
   </data>
   <data name="Studio.Run.CmdTitle" xml:space="preserve">
     <value>COMANDO</value>
@@ -419,9 +383,6 @@
   <data name="Studio.Run.Validate" xml:space="preserve">
     <value>Validar (dry-run)</value>
   </data>
-  <data name="Studio.Run.Run" xml:space="preserve">
-    <value>Lanzar</value>
-  </data>
   <data name="Studio.Run.Cancel" xml:space="preserve">
     <value>Cancelar</value>
   </data>
@@ -436,9 +397,6 @@
   </data>
   <data name="Studio.History.Replay" xml:space="preserve">
     <value>Preparar la repetición</value>
-  </data>
-  <data name="Studio.History.Reload" xml:space="preserve">
-    <value>Recargar</value>
   </data>
   <data name="Studio.Diagnostics.NoFindings" xml:space="preserve">
     <value>Validación: ningún hallazgo.</value>
@@ -882,7 +840,7 @@
     <value>¿Necesita ayuda?</value>
   </data>
   <data name="Studio.Shell.HelpBody" xml:space="preserve">
-    <value>El modo Novato explica cada paso. Pase a Experto cuando quiera verlo todo.</value>
+    <value>El modo Principiante explica cada paso. Pase a Experto cuando quiera verlo todo.</value>
   </data>
   <data name="Studio.Common.GuidedTour" xml:space="preserve">
     <value>Visita guiada</value>
@@ -1241,18 +1199,6 @@
   <data name="Studio.Create.Taken" xml:space="preserve">
     <value>Instrucción tomada tal cual.</value>
   </data>
-  <data name="Studio.Create.AskToggle" xml:space="preserve">
-    <value>Hacer una pregunta</value>
-  </data>
-  <data name="Studio.Create.AskTitle" xml:space="preserve">
-    <value>Preguntar al asistente</value>
-  </data>
-  <data name="Studio.Create.AskHint" xml:space="preserve">
-    <value>— no modifica nada sin su aprobación</value>
-  </data>
-  <data name="Studio.Create.Clear" xml:space="preserve">
-    <value>Borrar</value>
-  </data>
   <data name="Studio.Teams.Create" xml:space="preserve">
     <value>Crear un equipo</value>
   </data>
@@ -1264,9 +1210,6 @@
   </data>
   <data name="Studio.Teams.Delete" xml:space="preserve">
     <value>Eliminar</value>
-  </data>
-  <data name="Studio.Teams.Empty" xml:space="preserve">
-    <value>Ningún equipo por ahora — el asistente construye el primero con usted.</value>
   </data>
   <data name="Studio.Teams.InProgress" xml:space="preserve">
     <value>SESIONES EN CURSO</value>
@@ -1739,9 +1682,6 @@
   <data name="Studio.Create.Does" xml:space="preserve">
     <value>Qué hace</value>
   </data>
-  <data name="Studio.Create.DoesPlaceholder" xml:space="preserve">
-    <value>Ej.: relee el resumen y verifica que cada afirmación viene de una página citada</value>
-  </data>
   <data name="Studio.Create.Can" xml:space="preserve">
     <value>Qué puede hacer</value>
   </data>
@@ -2175,22 +2115,22 @@
     <value>Haga una pregunta sobre una ejecución pasada: por qué falló, qué ha cambiado desde entonces, cómo evitar que se repita.</value>
   </data>
   <data name="Studio.Chat.RuleFolders" xml:space="preserve">
-    <value>carpeta|archivo|fichero|acceso|permiso|leer|escribir</value>
+    <value>carpeta|archivo|fichero|acces|permis|leer|lectura|escrib|modific</value>
   </data>
   <data name="Studio.Chat.RuleCost" xml:space="preserve">
-    <value>coste|costo|precio|pago|factur|token|caro</value>
+    <value>cost|cuest|precio|pago|pagar|factur|token|caro|dinero</value>
   </data>
   <data name="Studio.Chat.RuleDuration" xml:space="preserve">
-    <value>tiempo|duraci[oó]n|cu[aá]nto tarda|lento|r[aá]pido|minuto</value>
+    <value>tiempo|duraci|dura |tarda|lent|r[aá]pid|minuto</value>
   </data>
   <data name="Studio.Chat.RuleError" xml:space="preserve">
-    <value>error|falla|fallo|se cae|avería|bug</value>
+    <value>error|falla|fall[oa]|fracas|se cae|ca[ií]d|aver[ií]a|bug|problema</value>
   </data>
   <data name="Studio.Chat.RuleSchedule" xml:space="preserve">
-    <value>planific|programa|hora|cron|autom[aá]tic|ma[nñ]ana</value>
+    <value>planific|programa|program|\bhora|cron|autom[aá]tic|ma[nñ]ana|cada d[ií]a</value>
   </data>
   <data name="Studio.Chat.RulePrivacy" xml:space="preserve">
-    <value>confidencial|privad|datos|rgpd|seguridad|salir</value>
+    <value>confidencial|privad|privacidad|datos|rgpd|segur|sale|salen|salir</value>
   </data>
   <data name="Studio.Chat.AnswerFolders" xml:space="preserve">
     <value>Los agentes solo ven las carpetas autorizadas en Ajustes. Una carpeta de solo lectura no puede modificarse nunca, aunque un agente lo pida.</value>
