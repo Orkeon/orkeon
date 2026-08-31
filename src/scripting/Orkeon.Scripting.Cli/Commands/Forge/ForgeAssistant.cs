@@ -65,5 +65,16 @@ internal sealed record ForgeAssistantReply
 internal interface IForgeAssistant
 {
     /// <summary>Runs one turn.</summary>
-    Task<ForgeAssistantReply> NextAsync(ForgeAssistantRequest request, CancellationToken cancellationToken);
+    /// <param name="request">Everything the turn needs.</param>
+    /// <param name="spent">
+    /// Called as the turn spends, with the turn's RUNNING total. One assistant turn is not
+    /// one model call — the interview reads the user's disk before answering, so a single
+    /// turn can be eight calls and a minute of silence. Without this the meter only moved
+    /// when the turn ended, which is when the user has stopped waiting. Null observes nothing.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the turn.</param>
+    Task<ForgeAssistantReply> NextAsync(
+        ForgeAssistantRequest request,
+        Action<ForgeUsageSnapshot>? spent,
+        CancellationToken cancellationToken);
 }

@@ -67,6 +67,53 @@ public sealed class ForgeUsageSplitTests
         Assert.Equal(360, turn.EstimatedTokens);
     }
 
+    /// <summary>
+    /// The owner asked for the meter «au chunk si c'est possible». It is: the tally is also
+    /// the delta sink, so a response being written moves the figure as it arrives — marked
+    /// «≈», because until the provider's own count lands the descending side is the
+    /// runtime's estimate of the text it has seen.
+    /// </summary>
+    [Fact]
+    public void A_response_being_streamed_moves_the_meter_chunk_by_chunk()
+    {
+        var tally = new ForgeUsageTally();
+        var readings = new List<ForgeUsageSnapshot>();
+        tally.Changed += readings.Add;
+
+        ILlmDeltaSink sink = tally;
+        sink.OnDelta(new string('a', 350));
+        sink.OnDelta(new string('b', 350));
+
+        Assert.Equal(2, readings.Count);
+        Assert.True(readings[0].CompletionTokens > 0);
+        Assert.True(readings[1].CompletionTokens > readings[0].CompletionTokens);
+        // Every in-flight token is an estimate, and the snapshot says so.
+        Assert.True(tally.Snapshot.HasEstimate);
+        Assert.Equal(tally.Snapshot.CompletionTokens, tally.Snapshot.EstimatedTokens);
+    }
+
+    /// <summary>
+    /// And the provider's own figure replaces the estimate rather than stacking on top of
+    /// it — a meter that counted a streamed response twice would be worse than a frozen one.
+    /// </summary>
+    [Fact]
+    public void The_measurement_replaces_the_chunk_estimate_it_stood_in_for()
+    {
+        var tally = new ForgeUsageTally();
+        ILlmDeltaSink sink = tally;
+        sink.OnDelta(new string('a', 700));
+        var streamed = tally.Snapshot;
+        Assert.True(streamed.CompletionTokens > 0);
+
+        tally.Record(new CostUsageEvent { PromptTokens = 900, CompletionTokens = 210 });
+
+        var settled = tally.Snapshot;
+        Assert.Equal(900, settled.PromptTokens);
+        Assert.Equal(210, settled.CompletionTokens);
+        // The provider counted, so nothing is approximate any more and the «≈» goes away.
+        Assert.Equal(0, settled.EstimatedTokens);
+    }
+
     [Fact]
     public void The_budget_meters_the_total_and_remembers_the_split()
     {

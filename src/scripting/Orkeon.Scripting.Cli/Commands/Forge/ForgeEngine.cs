@@ -185,25 +185,11 @@ internal sealed class ForgeEngine
                 budget.RegisterTokens(outcome.Usage);
 
                 // The cost lives (UX study §7): every stage that spent tokens tells the
-                // client where the meter stands — cumulative, with the remaining allowance
-                // when one is set. USD is the client's business (it knows the pricing).
-                // The split travels with it: a user watching a compose wants to see what
-                // is going UP and what is coming BACK, not one number that only grows.
-                // `estimated` says how much of the total the runtime had to approximate
-                // because the provider reported nothing — a figure a screen must mark.
+                // client where the meter stands. Nothing is pending here — the budget has
+                // just been charged the whole stage — so this closes the meter on the
+                // figures a long stage was already streaming through ForgeCost.Emit.
                 if (outcome.Usage.TotalTokens > 0)
-                {
-                    _events.Emit("cost.updated", new
-                    {
-                        tokens = budget.ConsumedTokens,
-                        promptTokens = budget.ConsumedPromptTokens,
-                        completionTokens = budget.ConsumedCompletionTokens,
-                        estimatedTokens = budget.ConsumedEstimatedTokens,
-                        budgetRemaining = budget.MaxTokens > 0
-                            ? Math.Max(0, budget.MaxTokens - budget.ConsumedTokens)
-                            : (long?)null,
-                    });
-                }
+                    ForgeCost.Emit(_events, budget, pending: default);
 
                 // Looping back is what iterations meter: the budget arbitrates before the
                 // machine moves, so a refused cycle costs nothing and the session stays

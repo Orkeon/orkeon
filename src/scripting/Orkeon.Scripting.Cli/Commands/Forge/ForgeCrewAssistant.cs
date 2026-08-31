@@ -166,7 +166,9 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
 
     /// <inheritdoc />
     public async Task<ForgeAssistantReply> NextAsync(
-        ForgeAssistantRequest request, CancellationToken cancellationToken)
+        ForgeAssistantRequest request,
+        Action<ForgeUsageSnapshot>? spent,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -176,11 +178,55 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         _box.Reset();
         var before = _tally.Snapshot;
 
-        var result = await _scriptHost.RunFromFileAsync(
-            _packPhysicalPath, _packVirtualPath, cancellationToken, BuildInputsJson(request))
-            .ConfigureAwait(false);
+        // Every model call — and every streamed chunk — reports the turn's running total.
+        // One turn is several calls (the assistant reads the workspace before answering),
+        // so a meter that waits for the turn to end is frozen exactly while the user waits.
+        //
+        // Throttled, because a chunk arrives every few milliseconds and one protocol event
+        // per chunk would drown the NDJSON stream the client also reads for everything else.
+        // TickCount64 is monotonic and needs no clock: this is a rate limit, not a decision.
+        var lastEmitted = Environment.TickCount64 - MeterIntervalMs;
+        void OnChanged(ForgeUsageSnapshot total)
+        {
+            var now = Environment.TickCount64;
+            if (now - lastEmitted < MeterIntervalMs)
+                return;
 
-        var usage = _tally.Snapshot.Since(before);
+            lastEmitted = now;
+            spent!(total.Since(before));
+        }
+
+        if (spent is not null)
+            _tally.Changed += OnChanged;
+
+        try
+        {
+            var result = await _scriptHost.RunFromFileAsync(
+                _packPhysicalPath, _packVirtualPath, cancellationToken, BuildInputsJson(request))
+                .ConfigureAwait(false);
+
+            var usage = _tally.Snapshot.Since(before);
+            // The closing reading is never throttled: whatever the rate limit swallowed,
+            // the turn's true total must reach the client before the turn is over.
+            spent?.Invoke(usage);
+            return Read(result, usage);
+        }
+        finally
+        {
+            if (spent is not null)
+                _tally.Changed -= OnChanged;
+        }
+    }
+
+    /// <summary>
+    /// How often the meter may reach the protocol stream while a turn is running. Fast
+    /// enough to read as live, slow enough that the stream stays a log and not a firehose.
+    /// </summary>
+    private const long MeterIntervalMs = 250;
+
+    /// <summary>Turns the script's handoff into the reply the stage reads.</summary>
+    private ForgeAssistantReply Read(object? result, ForgeUsageSnapshot usage)
+    {
         var (briefJson, blueprintJson) = _box.Take();
 
         if (briefJson is not null)

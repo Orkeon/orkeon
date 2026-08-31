@@ -53,8 +53,14 @@ internal sealed class BriefStage : IForgeStageRunner
 
         for (var turn = 0; turn < MaxTurns; turn++)
         {
+            // Live, per model call, not at the stage boundary. The interview is ONE stage
+            // of up to twenty-four turns, and one turn is several calls — the meter used to
+            // stand at zero for the whole conversation and then jump. `charged` is what the
+            // budget already holds; the engine charges this stage once, at the end.
+            var charged = usage;
             var reply = await _assistant.NextAsync(
                 new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = userMessage, Errors = errors },
+                partial => ForgeCost.Emit(events, session.Document.Budget, charged.Plus(partial)),
                 cancellationToken).ConfigureAwait(false);
             usage = usage.Plus(reply.Usage);
 
@@ -171,6 +177,9 @@ internal sealed class BlueprintStage : IForgeStageRunner
         var usage = default(ForgeUsageSnapshot);
         for (var attempt = 1; attempt <= MaxSubmissionAttempts; attempt++)
         {
+            // Same live meter as the interview: this phase has no user to answer, so its
+            // one attempt is the longest silence of the whole cycle.
+            var charged = usage;
             var reply = await _assistant.NextAsync(
                 new ForgeAssistantRequest
                 {
@@ -179,6 +188,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
                     PreviousBlueprint = previous,
                     Errors = errors,
                 },
+                partial => ForgeCost.Emit(events, session.Document.Budget, charged.Plus(partial)),
                 cancellationToken).ConfigureAwait(false);
             usage = usage.Plus(reply.Usage);
 

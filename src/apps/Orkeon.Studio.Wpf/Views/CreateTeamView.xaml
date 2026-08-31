@@ -137,6 +137,29 @@
             <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step4], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
+        <!-- The session meter, up and down. It lives here rather than in a step's card
+             because it counts the whole session, and this row is the only one on screen at
+             every step — including step 1, where the interview spends most of it. -->
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0"
+                    ToolTip="{Binding Progress.TokensUpLabel}"
+                    Visibility="{Binding Progress.HasTokens, Converter={StaticResource BooleanToVisibility}}">
+          <TextBlock Style="{StaticResource MonoText}" FontSize="10" VerticalAlignment="Center" Margin="0,0,2,0"
+                     Foreground="{DynamicResource InkFaintBrush}" Text="≈"
+                     Visibility="{Binding Progress.TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
+          <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
+                               Foreground="{DynamicResource InkMutedBrush}"/>
+          <TextBlock Style="{StaticResource MonoText}" FontSize="10" Margin="3,0,0,0" VerticalAlignment="Center"
+                     Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Progress.TokensUp}"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0"
+                    ToolTip="{Binding Progress.TokensDownLabel}"
+                    Visibility="{Binding Progress.HasTokens, Converter={StaticResource BooleanToVisibility}}">
+          <controls:LucideIcon Kind="arrow-down" Size="11" VerticalAlignment="Center"
+                               Foreground="{DynamicResource InkMutedBrush}"/>
+          <TextBlock Style="{StaticResource MonoText}" FontSize="10" Margin="3,0,0,0" VerticalAlignment="Center"
+                     Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Progress.TokensDown}"/>
+        </StackPanel>
+
         <controls:LucideIcon Kind="loader-circle" Size="14" Foreground="{DynamicResource AccentBrush}" Margin="14,0,0,0"
                              VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"
                              Visibility="{Binding IsEngineWorking, Converter={StaticResource BooleanToVisibility}}">

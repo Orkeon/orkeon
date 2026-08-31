@@ -84,3 +84,4 @@ static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Completion(Orkeon.Do
 static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(string? prompt) -> int
 static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage!>? messages) -> int
 static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Reported(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response) -> bool
+static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.FromCharacterCount(long characters) -> long

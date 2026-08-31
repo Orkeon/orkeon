@@ -129,6 +129,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
 
         var reply = await assistant.NextAsync(
             new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "je veux une veille fournisseur" },
+            spent: null,
             TestContext.Current.CancellationToken);
 
         Assert.Equal("Bonjour ! Quel problème résolvons-nous ?", reply.Message);
@@ -160,6 +161,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
 
         var reply = await assistant.NextAsync(
             new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "vas-y" },
+            spent: null,
             TestContext.Current.CancellationToken);
 
         Assert.NotNull(reply.BriefJson);
@@ -185,6 +187,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
                 Brief = brief,
                 Errors = ["FORGE-TOOL-UNKNOWN: agent 'x' names tool 'ghost_tool', which is not in the catalogue."],
             },
+            spent: null,
             TestContext.Current.CancellationToken);
 
         Assert.NotNull(reply.Message);

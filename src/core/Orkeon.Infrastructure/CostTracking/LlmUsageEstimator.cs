@@ -22,7 +22,8 @@ namespace Orkeon.Infrastructure.CostTracking;
 /// </summary>
 public static class LlmUsageEstimator
 {
-    private static readonly EnhancedTokenCounter Counter = new(Options.Create(new TokenCounterOptions()));
+    private static readonly TokenCounterOptions Settings = new();
+    private static readonly EnhancedTokenCounter Counter = new(Options.Create(Settings));
 
     /// <summary>
     /// Whether the provider said anything at all about what a call cost. «No usage» and
@@ -55,4 +56,18 @@ public static class LlmUsageEstimator
         ArgumentNullException.ThrowIfNull(response);
         return Counter.CountTokens(response.Content);
     }
+
+    /// <summary>
+    /// The descending side of a response still being streamed, from the number of characters
+    /// received so far.
+    /// <para>
+    /// Counting each chunk on its own and adding the results would inflate the figure badly:
+    /// the estimate rounds up, and an SSE chunk is often three or four characters, so every
+    /// chunk would score a whole token. The characters are accumulated and converted ONCE.
+    /// </para>
+    /// </summary>
+    /// <param name="characters">Characters of generated text received so far.</param>
+    public static long FromCharacterCount(long characters) => characters <= 0
+        ? 0
+        : (long)Math.Ceiling(characters / (double)Settings.CharsPerToken);
 }

@@ -412,6 +412,12 @@ internal static class ForgeCommand
                 services.AddSingleton(box);
                 services.AddSingleton(tally);
                 services.AddSingleton<ILlmUsageSink>(tally);
+                // Registering a delta sink is what puts the assistant on the provider's
+                // streaming path, and that is the point: the meter then moves with each
+                // chunk instead of once a whole response has been written. The
+                // OpenAI-compatible base reassembles tool_calls from stream fragments for
+                // exactly this loop, so brief_submit / blueprint_submit are unaffected.
+                services.AddSingleton<ILlmDeltaSink>(tally);
                 services.AddSingleton<Orkeon.Application.Crew.ICrewExecutionHook>(observer);
                 services.AddSingleton<IBaseTool>(new BriefSubmitTool(box));
                 services.AddSingleton<IBaseTool>(new BlueprintSubmitTool(box));

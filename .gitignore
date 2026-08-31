@@ -439,3 +439,4 @@ sonarqube/
 # run straight from a clone.
 !examples/forge/promote-demo/.orkeon/
 /.github/copilot-instructions.md
+/temp

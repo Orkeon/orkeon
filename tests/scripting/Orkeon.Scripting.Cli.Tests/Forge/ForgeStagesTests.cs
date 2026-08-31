@@ -12,16 +12,20 @@ internal sealed class ScriptedAssistant : IForgeAssistant
     public List<ForgeAssistantRequest> Requests { get; } = [];
 
     /// <summary>Queues a conversation turn.</summary>
-    public ScriptedAssistant Says(string message)
+    /// <param name="message">What the assistant says.</param>
+    /// <param name="usage">What the turn cost; default is a free turn.</param>
+    public ScriptedAssistant Says(string message, ForgeUsageSnapshot usage = default)
     {
-        _replies.Enqueue(new ForgeAssistantReply { Message = message });
+        _replies.Enqueue(new ForgeAssistantReply { Message = message, Usage = usage });
         return this;
     }
 
     /// <summary>Queues a <c>brief_submit</c>.</summary>
-    public ScriptedAssistant SubmitsBrief(string json)
+    /// <param name="json">The submitted brief.</param>
+    /// <param name="usage">What the turn cost; default is a free turn.</param>
+    public ScriptedAssistant SubmitsBrief(string json, ForgeUsageSnapshot usage = default)
     {
-        _replies.Enqueue(new ForgeAssistantReply { BriefJson = json });
+        _replies.Enqueue(new ForgeAssistantReply { BriefJson = json, Usage = usage });
         return this;
     }
 
@@ -32,13 +36,31 @@ internal sealed class ScriptedAssistant : IForgeAssistant
         return this;
     }
 
+    /// <summary>The mid-turn readings each queued reply announces before it returns.</summary>
+    public List<ForgeUsageSnapshot> Steps { get; } = [];
+
     /// <inheritdoc />
-    public Task<ForgeAssistantReply> NextAsync(ForgeAssistantRequest request, CancellationToken cancellationToken)
+    public Task<ForgeAssistantReply> NextAsync(
+        ForgeAssistantRequest request,
+        Action<ForgeUsageSnapshot>? spent,
+        CancellationToken cancellationToken)
     {
         Requests.Add(request);
-        return Task.FromResult(_replies.Count > 0
-            ? _replies.Dequeue()
-            : new ForgeAssistantReply());
+        var reply = _replies.Count > 0 ? _replies.Dequeue() : new ForgeAssistantReply();
+
+        // A real turn is several model calls. The double reports the turn's spend in two
+        // instalments so a caller that only listens to the RETURN value fails the test.
+        if (spent is not null && reply.Usage.TotalTokens > 0)
+        {
+            var half = new ForgeUsageSnapshot(
+                reply.Usage.PromptTokens / 2, reply.Usage.CompletionTokens / 2, reply.Usage.EstimatedTokens / 2);
+            Steps.Add(half);
+            spent(half);
+            Steps.Add(reply.Usage);
+            spent(reply.Usage);
+        }
+
+        return Task.FromResult(reply);
     }
 }
 
@@ -256,5 +278,45 @@ public sealed class ForgeStagesTests : IDisposable
         var request = Assert.Single(second.Requests);
         Assert.Equal(ForgeAssistantPhase.Blueprint, request.Phase);
         Assert.Equal("Résumer chaque matin les nouvelles offres du fournisseur", request.Brief!.Goal);
+    }
+
+    /// <summary>
+    /// The owner's report, on a screenshot of step 1 mid-interview: «toujours pas les tokens
+    /// échangés en live». The meter was emitted by the ENGINE, once a stage returned — and an
+    /// interview is one stage of up to twenty-four turns, each of which is itself several
+    /// model calls (the assistant reads the workspace before answering). So it stood at zero
+    /// for the whole conversation and then jumped in one step.
+    /// <para>
+    /// It now reports on every model call: the scripted assistant announces its spend in two
+    /// instalments, and a caller that only reads the RETURN value fails this test.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task The_meter_moves_on_every_model_call_not_once_at_the_end()
+    {
+        var assistant = new ScriptedAssistant()
+            .Says("Quel est le fournisseur ?", new ForgeUsageSnapshot(900, 120, 0))
+            .SubmitsBrief(ForgeDocuments.ValidBrief, new ForgeUsageSnapshot(300, 40, 0));
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, new BriefStage(assistant, new ScriptedUserChannel("exemple.fr")))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        var totals = Events()
+            .Where(e => e.GetProperty("kind").GetString() == "cost.updated")
+            .Select(e => e.GetProperty("tokens").GetInt64())
+            .ToList();
+
+        // Two calls per turn, two turns — plus the engine's closing reading at the boundary.
+        // Cumulative and monotonic: a meter that resets between turns is not a meter.
+        Assert.Equal([510, 1020, 1190, 1360, 1360], totals);
+
+        var last = Events().Last(e => e.GetProperty("kind").GetString() == "cost.updated");
+        Assert.Equal(1200, last.GetProperty("promptTokens").GetInt64());
+        Assert.Equal(160, last.GetProperty("completionTokens").GetInt64());
+
+        // And the budget was charged ONCE, by the engine, for the whole stage: the live
+        // readings add the pending spend without ever paying for it a second time.
+        Assert.Equal(1360, session.Document.Budget.ConsumedTokens);
     }
 }

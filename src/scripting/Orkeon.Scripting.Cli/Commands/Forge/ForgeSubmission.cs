@@ -2,6 +2,7 @@ using System.Text.Json;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
+using Orkeon.Infrastructure.CostTracking;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
 
@@ -246,20 +247,51 @@ internal readonly record struct ForgeUsageSnapshot(
 /// the split arrived on every event and was destroyed one line later — which is why the
 /// protocol could only ever carry a grand total.
 /// </para>
+/// <para>
+/// It is also the <see cref="ILlmDeltaSink"/>, which is what makes the meter move WHILE a
+/// response is being written rather than once it is finished. Registering a delta sink is
+/// what puts the assistant on the provider's streaming path; the OpenAI-compatible base
+/// reassembles <c>tool_calls</c> from the stream fragments precisely so the scripted
+/// <c>act</c> loop keeps working over it, so the interview's submissions are unaffected.
+/// </para>
 /// </summary>
-internal sealed class ForgeUsageTally : ILlmUsageSink
+internal sealed class ForgeUsageTally : ILlmUsageSink, ILlmDeltaSink
 {
     private readonly Lock _gate = new();
-    private ForgeUsageSnapshot _tally;
+    private ForgeUsageSnapshot _committed;
+    private long _inFlightCharacters;
 
-    /// <summary>What has been recorded since the tally was created.</summary>
+    /// <summary>
+    /// Raised whenever the meter moves — on a recorded call AND on every streamed chunk.
+    /// This is what lets a long turn report as it goes instead of only when it returns.
+    /// </summary>
+    public event Action<ForgeUsageSnapshot>? Changed;
+
+    /// <summary>
+    /// What has been spent since the tally was created, including the response currently
+    /// being streamed. The in-flight part is an approximation of the descending side and is
+    /// counted as estimated — so a client marks it «≈» until the provider's own figure
+    /// replaces it.
+    /// </summary>
     public ForgeUsageSnapshot Snapshot
     {
-        get { lock (_gate) return _tally; }
+        get { lock (_gate) return Current(); }
     }
 
     /// <summary>Both directions together, since the tally was created.</summary>
     public long TotalTokens => Snapshot.TotalTokens;
+
+    /// <summary>Committed plus in-flight. Caller holds the lock.</summary>
+    private ForgeUsageSnapshot Current()
+    {
+        var inFlight = LlmUsageEstimator.FromCharacterCount(_inFlightCharacters);
+        return inFlight == 0
+            ? _committed
+            : new ForgeUsageSnapshot(
+                _committed.PromptTokens,
+                _committed.CompletionTokens + inFlight,
+                _committed.EstimatedTokens + inFlight);
+    }
 
     /// <inheritdoc />
     public void Record(CostUsageEvent usage)
@@ -268,12 +300,46 @@ internal sealed class ForgeUsageTally : ILlmUsageSink
             return;
 
         var spent = (long)usage.PromptTokens + usage.CompletionTokens;
+        ForgeUsageSnapshot updated;
         lock (_gate)
         {
-            _tally = new ForgeUsageSnapshot(
-                _tally.PromptTokens + usage.PromptTokens,
-                _tally.CompletionTokens + usage.CompletionTokens,
-                _tally.EstimatedTokens + (usage.Estimated ? spent : 0));
+            _committed = new ForgeUsageSnapshot(
+                _committed.PromptTokens + usage.PromptTokens,
+                _committed.CompletionTokens + usage.CompletionTokens,
+                _committed.EstimatedTokens + (usage.Estimated ? spent : 0));
+            // The measurement replaces the chunk estimate it was standing in for. The
+            // figure may settle a little below what the stream was showing; that is the
+            // estimate being corrected, and it is exactly what the «≈» announced.
+            _inFlightCharacters = 0;
+            updated = _committed;
         }
+
+        // Outside the lock: a subscriber writes to the protocol stream, and holding the
+        // tally's lock across that would put the LLM latency path behind stdout.
+        Changed?.Invoke(updated);
+    }
+
+    /// <inheritdoc />
+    public void OnDelta(string delta)
+    {
+        if (string.IsNullOrEmpty(delta))
+            return;
+
+        ForgeUsageSnapshot updated;
+        lock (_gate)
+        {
+            _inFlightCharacters += delta.Length;
+            updated = Current();
+        }
+
+        Changed?.Invoke(updated);
+    }
+
+    /// <summary>
+    /// End of a streamed turn. Nothing to do: the usage event that follows is what commits
+    /// the real figure, and clearing here would make the meter dip and jump back.
+    /// </summary>
+    public void OnTurnCompleted()
+    {
     }
 }
