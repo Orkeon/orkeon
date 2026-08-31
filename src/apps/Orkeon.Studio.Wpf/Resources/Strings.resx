@@ -381,7 +381,6 @@
 <data name="Studio.Create.Step2" xml:space="preserve"><value>Compose</value></data>
 <data name="Studio.Create.Step3" xml:space="preserve"><value>Try</value></data>
 <data name="Studio.Create.Step4" xml:space="preserve"><value>Adopt</value></data>
-<data name="Studio.Create.Reply" xml:space="preserve"><value>Reply</value></data>
 <data name="Studio.Create.NeedTitle" xml:space="preserve"><value>What work do you want to hand to this team?</value></data>
 <data name="Studio.Create.NeedSub" xml:space="preserve"><value>Write it the way you would explain it to a colleague. No technical words needed.</value></data>
 <data name="Studio.Create.Examples" xml:space="preserve"><value>OR START FROM AN EXAMPLE</value></data>
@@ -743,6 +742,18 @@
   </data>
   <data name="Studio.Chat.StatusNoQuestion" xml:space="preserve">
     <value>no question yet</value>
+  </data>
+  <data name="Studio.Chat.StatusWaiting" xml:space="preserve">
+    <value>waiting for your answer</value>
+  </data>
+  <data name="Studio.Chat.PlaceholderAnswer" xml:space="preserve">
+    <value>Answer the assistant…</value>
+  </data>
+  <data name="Studio.Chat.SessionEnded" xml:space="preserve">
+    <value>The assistant stopped before the brief was finished. Start again when you are ready.</value>
+  </data>
+  <data name="Studio.Create.HintComposing" xml:space="preserve">
+    <value>The assistant is composing — answer it in the conversation.</value>
   </data>
   <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>

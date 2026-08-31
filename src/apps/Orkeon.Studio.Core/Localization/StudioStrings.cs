@@ -122,6 +122,9 @@ public static class StudioStringKeys
     public const string ChatKeyHint = "Studio.Chat.KeyHint";
     /// <summary>"Ask the assistant a question…"</summary>
     public const string ChatPlaceholder = "Studio.Chat.Placeholder";
+
+    /// <summary>The composer watermark under an open question.</summary>
+    public const string ChatPlaceholderAnswer = "Studio.Chat.PlaceholderAnswer";
     /// <summary>"Ask a question"</summary>
     public const string ChatAsk = "Studio.Chat.Ask";
     /// <summary>"Question"</summary>
@@ -146,6 +149,12 @@ public static class StudioStringKeys
     public const string ChatStatusMessagesPattern = "Studio.Chat.StatusMessagesPattern";
     /// <summary>"no question yet"</summary>
     public const string ChatStatusNoQuestion = "Studio.Chat.StatusNoQuestion";
+
+    /// <summary>Said in the thread when the engine stops mid-interview.</summary>
+    public const string ChatSessionEnded = "Studio.Chat.SessionEnded";
+
+    /// <summary>The status line while the assistant waits on the user.</summary>
+    public const string ChatStatusWaiting = "Studio.Chat.StatusWaiting";
     /// <summary>"{0} / {1}"</summary>
     public const string ChatRecapProgressPattern = "Studio.Chat.RecapProgressPattern";
     /// <summary>"{0} · {1}"</summary>
@@ -1019,6 +1028,9 @@ public static class StudioStringKeys
     /// <summary>"Everything is there — I can compose the team."</summary>
     public const string WizardHintReady = "Studio.Create.HintReady";
 
+    /// <summary>The line under the compose button while the engine interviews.</summary>
+    public const string WizardHintComposing = "Studio.Create.HintComposing";
+
 
     // ---- My teams screen (design v3) ----------------------------------------
 
@@ -1264,6 +1276,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatStatusDonePattern] = "brief complete · {0} message(s)",
         [StudioStringKeys.ChatStatusMessagesPattern] = "{0} message(s)",
         [StudioStringKeys.ChatStatusNoQuestion] = "no question yet",
+        [StudioStringKeys.ChatSessionEnded] = "The assistant stopped before the brief was finished. Start again when you are ready.",
+        [StudioStringKeys.ChatPlaceholderAnswer] = "Answer the assistant…",
+        [StudioStringKeys.ChatStatusWaiting] = "waiting for your answer",
         [StudioStringKeys.ChatRecapProgressPattern] = "{0} / {1}",
         [StudioStringKeys.ChatProfileSuffixPattern] = "{0} · {1}",
         [StudioStringKeys.ChatStatus1] = "reading the brief",
@@ -1577,6 +1592,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintOutcome] = "The format is free: describe the expected result.",
         [StudioStringKeys.WizardHintAnswers] = "Answer the three precisions.",
         [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
+        [StudioStringKeys.WizardHintComposing] = "The assistant is composing — answer it in the conversation.",
 
         [StudioStringKeys.WizardDecisionAccept] = "Looks good to me",
         [StudioStringKeys.WizardDecisionRetry] = "Run the trial again",

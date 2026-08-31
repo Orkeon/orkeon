@@ -272,35 +272,6 @@
     </Setter>
   </Style>
 
-  <!-- A quick reply under a question. A true pill: 26 high, radius exactly 13. -->
-  <Style x:Key="QuickChip" TargetType="Button">
-    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="12"/>
-    <Setter Property="FontWeight" Value="SemiBold"/>
-    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-    <Setter Property="Height" Value="26"/>
-    <Setter Property="Margin" Value="0,0,6,6"/>
-    <Setter Property="Cursor" Value="Hand"/>
-    <Setter Property="SnapsToDevicePixels" Value="True"/>
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="Button">
-          <Border x:Name="bd" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
-                  BorderThickness="1" CornerRadius="13" Padding="12,0">
-            <ContentPresenter VerticalAlignment="Center"/>
-          </Border>
-          <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-            </Trigger>
-          </ControlTemplate.Triggers>
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
-  </Style>
-
   <!-- The precision chips under the pinned brief: 22 high, radius exactly 11. -->
   <Style x:Key="BriefChip" TargetType="Border">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>

@@ -159,25 +159,6 @@
                 Content="{Binding [Studio.Create.Stop], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
 
-      <!-- the assistant bar: the engine's own turns and arbitrations, on whatever step -->
-      <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="12" Padding="14,12" Margin="0,0,0,16"
-              Visibility="{Binding HasAssistantPrompt, Converter={StaticResource BooleanToVisibility}}">
-        <StackPanel>
-          <DockPanel>
-            <controls:LucideIcon DockPanel.Dock="Left" Kind="wand-2" Size="14" Foreground="{DynamicResource MarkBrush}"
-                                 VerticalAlignment="Top" Margin="0,2,10,0"/>
-            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" LineHeight="19"
-                       Text="{Binding AssistantPrompt}"/>
-          </DockPanel>
-          <DockPanel Margin="24,9,0,0">
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding ReplyCommand}"
-                    Content="{Binding [Studio.Create.Reply], Source={x:Static services:I18n.Instance}}"/>
-            <TextBox Style="{StaticResource Input}" Text="{Binding ReplyText, UpdateSourceTrigger=PropertyChanged}"/>
-          </DockPanel>
-        </StackPanel>
-      </Border>
-
       <!-- T-04: with the conversation closed, its state stays in the flow rather than
            disappearing with it — otherwise the assistant works, or waits, and the screen
            says nothing. It goes away the moment the thread is open: two headers saying the

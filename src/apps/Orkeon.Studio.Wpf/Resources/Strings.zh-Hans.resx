@@ -1067,9 +1067,6 @@
   <data name="Studio.Create.Step4" xml:space="preserve">
     <value>采用</value>
   </data>
-  <data name="Studio.Create.Reply" xml:space="preserve">
-    <value>回答</value>
-  </data>
   <data name="Studio.Create.NeedTitle" xml:space="preserve">
     <value>您想交给这个团队什么工作？</value>
   </data>
@@ -1951,6 +1948,18 @@
   </data>
   <data name="Studio.Chat.StatusNoQuestion" xml:space="preserve">
     <value>暂时没有问题</value>
+  </data>
+  <data name="Studio.Chat.StatusWaiting" xml:space="preserve">
+    <value>等待您的回答</value>
+  </data>
+  <data name="Studio.Chat.PlaceholderAnswer" xml:space="preserve">
+    <value>回答助手…</value>
+  </data>
+  <data name="Studio.Chat.SessionEnded" xml:space="preserve">
+    <value>助手在完成简报前中断了。您可以随时重新开始。</value>
+  </data>
+  <data name="Studio.Create.HintComposing" xml:space="preserve">
+    <value>助手正在组建团队——请在对话中回答。</value>
   </data>
   <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>

@@ -1067,9 +1067,6 @@
   <data name="Studio.Create.Step4" xml:space="preserve">
     <value>Adoptar</value>
   </data>
-  <data name="Studio.Create.Reply" xml:space="preserve">
-    <value>Responder</value>
-  </data>
   <data name="Studio.Create.NeedTitle" xml:space="preserve">
     <value>¿Qué trabajo quiere confiar a este equipo?</value>
   </data>
@@ -1951,6 +1948,18 @@
   </data>
   <data name="Studio.Chat.StatusNoQuestion" xml:space="preserve">
     <value>ninguna pregunta por ahora</value>
+  </data>
+  <data name="Studio.Chat.StatusWaiting" xml:space="preserve">
+    <value>esperando tu respuesta</value>
+  </data>
+  <data name="Studio.Chat.PlaceholderAnswer" xml:space="preserve">
+    <value>Responde al asistente…</value>
+  </data>
+  <data name="Studio.Chat.SessionEnded" xml:space="preserve">
+    <value>El asistente se detuvo antes de terminar el resumen. Vuelve a empezar cuando quieras.</value>
+  </data>
+  <data name="Studio.Create.HintComposing" xml:space="preserve">
+    <value>El asistente está componiendo: respóndele en la conversación.</value>
   </data>
   <data name="Studio.Chat.RecapProgressPattern" xml:space="preserve">
     <value>{0} / {1}</value>

@@ -27,6 +27,26 @@ public sealed class FakeProcessLauncher : IProcessLauncher
     /// </summary>
     public Action? WhileRunning { get; set; }
 
+    /// <summary>
+    /// Called with each line the caller writes to stdin, while the "child" is alive.
+    /// <para>
+    /// The forge brief stage is a conversation, not a script: ForgeStages emits an
+    /// assistant.message, BLOCKS on stdin, and only then emits the next one. Replaying a
+    /// fixed list of output cannot express that — a test needs to answer the answer. Pair
+    /// this with <see cref="Emit"/> to script the real loop.
+    /// </para>
+    /// </summary>
+    public Action<string>? OnInputLine { get; set; }
+
+    /// <summary>
+    /// Pushes one line into the live output stream, mid-run. Only meaningful from inside
+    /// <see cref="WhileRunning"/> or <see cref="OnInputLine"/>; outside a run there is no
+    /// listener and the line is dropped, which is exactly what a dead child would do.
+    /// </summary>
+    public void Emit(ProcessOutputLine line) => _onOutput?.Invoke(line);
+
+    private Action<ProcessOutputLine>? _onOutput;
+
     public Task<ProcessRunResult> RunAsync(
         ProcessLaunchRequest request,
         Action<ProcessOutputLine>? onOutput = null,
@@ -34,11 +54,21 @@ public sealed class FakeProcessLauncher : IProcessLauncher
     {
         Requests.Add(request);
 
-        request.OnInputReady?.Invoke(new RecordingInputWriter(this));
-        WhileRunning?.Invoke();
+        _onOutput = onOutput;
+        try
+        {
+            request.OnInputReady?.Invoke(new RecordingInputWriter(this));
+            WhileRunning?.Invoke();
 
-        foreach (var line in OutputToEmit)
-            onOutput?.Invoke(line);
+            foreach (var line in OutputToEmit)
+                onOutput?.Invoke(line);
+        }
+        finally
+        {
+            // The child is gone: a later Emit must fall on the floor rather than reach a
+            // conversation that has moved on.
+            _onOutput = null;
+        }
 
         if (HonourCancellation && cancellationToken.IsCancellationRequested)
         {
@@ -56,6 +86,7 @@ public sealed class FakeProcessLauncher : IProcessLauncher
         public bool TryWriteLine(string line)
         {
             owner.InputLines.Add(line);
+            owner.OnInputLine?.Invoke(line);
             return true;
         }
 

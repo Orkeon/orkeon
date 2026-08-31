@@ -1391,6 +1391,12 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     private async Task RunEngineAsync(ForgeStartRequest request)
     {
+        // OnEvent and OnRaw already discard anything from a superseded run; the finally
+        // below did not, so a dying child could reach back and switch off the run that
+        // replaced it. Harmless while it only cleared a flag — not once it can push a
+        // farewell into a conversation that has already started over.
+        var generation = _runGeneration;
+
         IsEngineRunning = true;
         _lastStderr = null;
         // « COMMANDE DE L'ESSAI » (F-09, expert): the engine invocation, replayable in a
@@ -1407,6 +1413,9 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             _dispatcher.Post(() =>
             {
+                if (generation != _runGeneration)
+                    return;
+
                 IsEngineRunning = false;
                 Chat.EngineFinished();
                 // An unconsumed auto-retry must die with its run: a crashed or stopped
