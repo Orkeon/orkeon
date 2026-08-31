@@ -93,6 +93,23 @@ public sealed class WizardAgentCard
 /// <summary>One line of the trial checklist.</summary>
 public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail);
 
+/// <summary>
+/// One line of the trial's activity list.
+/// <para>
+/// It used to be a bare string, so the template had nothing to key on and every line — a
+/// failed task included — was drawn with a green check. The sentence said «failed» while the
+/// icon said «done».
+/// </para>
+/// </summary>
+/// <param name="Text">What happened, in the user's words.</param>
+/// <param name="Detail">The task id, when the role alone cannot tell two tasks apart.</param>
+/// <param name="Success">Whether it went well — the icon and its colour follow.</param>
+public sealed record WizardActivityLine(string Text, string Detail, bool Success)
+{
+    /// <summary>Whether the task id is worth showing beside the role.</summary>
+    public bool HasDetail => Detail.Length > 0;
+}
+
 /// <summary>One arbitration button, generated from the engine's own options.</summary>
 public sealed class WizardDecision
 {
@@ -276,6 +293,11 @@ public sealed class CreateTeamViewModel : ObservableObject
             {
                 RaiseDraftChanged();
             }
+
+            // The brief interview is an engine blocked on stdin: while a question stands,
+            // the top-of-screen spinner must stop claiming the engine is working.
+            if (e.PropertyName is nameof(ChatThreadViewModel.IsAsking))
+                OnPropertiesChanged(nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(TrialInProgress));
         };
 
         // The gesture IS the engine. The questions belong to the model, asked during its
@@ -557,7 +579,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (!SetProperty(ref _isEngineRunning, value))
                 return;
 
-            OnPropertiesChanged(nameof(CanCompose), nameof(CanSaveTeam));
+            OnPropertiesChanged(nameof(CanCompose), nameof(CanSaveTeam), nameof(IsEngineWorking), nameof(TrialInProgress));
             RaiseDraftChanged();
             ComposeCommand.RaiseCanExecuteChanged();
             StopCommand.RaiseCanExecuteChanged();
@@ -565,6 +587,34 @@ public sealed class CreateTeamViewModel : ObservableObject
             SaveTeamCommand.RaiseCanExecuteChanged();
         }
     }
+
+    /// <summary>
+    /// Whether the engine is blocked on the user rather than working.
+    /// <para>
+    /// Read from the model, not from <c>DecisionPending</c> below: the ViewModel's copy skips
+    /// the <c>edit</c> option, so an edit-only arbitration would read as «not waiting».
+    /// </para>
+    /// </summary>
+    public bool IsEngineWaitingOnUser => _model.DecisionPending || Chat.IsAsking;
+
+    /// <summary>
+    /// Whether the trial is genuinely under way.
+    /// <para>
+    /// <c>RunInProgress</c> alone is set by <c>run.started</c> and cleared only by
+    /// <c>run.finished</c> — which never arrives if the child dies, so the indicator stayed
+    /// lit for ever after a crash and only «Recommencer» put it out. Requiring the engine to
+    /// be working covers the crash, the kill and the arbitration in one predicate.
+    /// </para>
+    /// </summary>
+    public bool TrialInProgress => RunInProgress && IsEngineWorking;
+
+    /// <summary>
+    /// Whether the engine is actually working. <see cref="IsEngineRunning"/> only means the
+    /// child process is alive — and it is very much alive while blocked on stdin, waiting for
+    /// an arbitration or an answer. A spinner turning then tells the user to keep waiting for
+    /// something that is waiting for them.
+    /// </summary>
+    public bool IsEngineWorking => IsEngineRunning && !IsEngineWaitingOnUser;
 
     /// <summary>Plain status sentence (engine refusals land here in clear words).</summary>
     public string StatusMessage
@@ -793,6 +843,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         OnPropertiesChanged(
             nameof(HasTeamMounts),
             nameof(TeamMountChips),
+            nameof(HasUndeclaredTeamMounts),
             nameof(UnclaimedDerivedMounts),
             nameof(HasDerivedMounts),
             nameof(DroppedDerivedRoots),
@@ -887,6 +938,24 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Whether the tools row shows.</summary>
     public bool HasTools => Tools.Count > 0;
 
+    /// <summary>
+    /// Whether any bound folder really sits outside the authorized ones — the only thing the
+    /// red legend can honestly be about. It used to be shown unconditionally, beside chips
+    /// that carry no physical path at all and were therefore never compared to anything.
+    /// </summary>
+    public bool HasUndeclaredTeamMounts => TeamMountChips.Any(c => c.IsUndeclared);
+
+    /// <summary>
+    /// Whether the engine has actually proposed a team. The proposal card used to render
+    /// unconditionally, so between «entered the blueprint stage» and «blueprint.ready» the
+    /// screen showed a confident «Voici l'équipe que je propose» over nothing at all — and the
+    /// only sentence with substance in it was a red warning about unauthorized folders.
+    /// </summary>
+    public bool HasProposal => _model.Proposal is not null;
+
+    /// <summary>Whether the render produced anything to show under «Définition générée».</summary>
+    public bool HasGeneratedDefinition => HasCrewDefinition || HasFiles;
+
     /// <summary>Crew files written by the render, session-relative — expert only.</summary>
     public IReadOnlyList<string> Files => _model.Files;
 
@@ -905,7 +974,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     public bool RunInProgress => _model.RunInProgress;
 
     /// <summary>The try's activity, in plain language, completion order.</summary>
-    public ObservableCollection<string> Activity { get; } = [];
+    public ObservableCollection<WizardActivityLine> Activity { get; } = [];
 
     /// <summary>1-based number of the running (or last) try.</summary>
     public int Attempt => _model.RunNumber ?? _model.Iteration;
@@ -1602,7 +1671,9 @@ public sealed class CreateTeamViewModel : ObservableObject
             return;
         }
 
-        if (result.ExitCode != 0 && _model.FinishedStatus is null && _lastStderr is { } stderr)
+        // Not gated on FinishedStatus being null any more: a session that reported «failed»
+        // still leaves its reason on stderr, and that reason outranks the generic sentence.
+        if (result.ExitCode != 0 && _lastStderr is { } stderr)
             StatusMessage = stderr;
     }
 
@@ -1616,10 +1687,11 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     private void SyncFromModel()
     {
-        // A fresh recoverable engine error must reach the status line (review D3): a
-        // refused blueprint edit (FORGE-BLUEPRINT-INVALID) is otherwise invisible in
-        // novice mode — the editor closes and nothing says why nothing changed.
-        if (_model.LastError is { Recoverable: true } error && !ReferenceEquals(error, _surfacedError))
+        // A fresh engine error must reach the status line (review D3): a refused blueprint
+        // edit (FORGE-BLUEPRINT-INVALID) is otherwise invisible in novice mode — the editor
+        // closes and nothing says why nothing changed. Recoverable OR NOT: the unrecoverable
+        // ones used to be dropped on the floor, which is the half the user never saw.
+        if (_model.LastError is { } error && !ReferenceEquals(error, _surfacedError))
         {
             _surfacedError = error;
             StatusMessage = error.Message is { Length: > 0 } ? $"{error.Code}: {error.Message}" : error.Code;
@@ -1657,16 +1729,28 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (_teamName.Length == 0 && _model.Title is { Length: > 0 } title)
             TeamName = ShortName(title);
 
+        // «Quelque chose s'est mal passé» must not replace the sentence that says WHAT.
+        // A failed session used to overwrite the engine's own error — the one line with
+        // enough in it to act on — with a generic apology.
         StatusMessage = _saveError ?? _model.FinishedStatus switch
         {
             "ready" => _strings[StudioStringKeys.ForgeStatusReady],
-            "failed" => _strings[StudioStringKeys.ForgeStatusFailed],
+            "failed" when _model.LastError is null && _lastStderr is null
+                => _strings[StudioStringKeys.ForgeStatusFailed],
             "abandoned" or "paused" => _strings[StudioStringKeys.ForgeStatusStopped],
             _ => StatusMessage,
         };
 
+        // The mount surfaces move with the blueprint too: a new set of derived roots arrives
+        // with every blueprint.ready, and after a refine the dropped-roots banner goes stale
+        // for the same reason. This used to be raised only by user gestures, so the chips
+        // appeared when the user happened to touch something else — while HasDerivedMounts,
+        // being in the batch below, re-evaluated and showed the hint that explains them.
+        RefreshMountSurfaces();
+
         OnPropertiesChanged(
-            nameof(Rationale), nameof(Tools), nameof(HasTools),
+            nameof(Rationale), nameof(Tools), nameof(HasTools), nameof(HasProposal),
+            nameof(HasGeneratedDefinition), nameof(HasUndeclaredTeamMounts),
             nameof(DerivedMounts), nameof(HasDerivedMounts),
             nameof(Files), nameof(HasFiles), nameof(ValidationOk), nameof(ValidationErrors),
             nameof(RunInProgress), nameof(Attempt), nameof(Verdict), nameof(HasVerdict),
@@ -1675,7 +1759,8 @@ public sealed class CreateTeamViewModel : ObservableObject
             nameof(SessionSlug), nameof(SessionDirectory),
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(SavedPath), nameof(InstallCommand), nameof(HasInstallCommand),
-            nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam));
+            nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam),
+            nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking));
         SaveTeamCommand.RaiseCanExecuteChanged();
         AddAgentCommand.RaiseCanExecuteChanged();
         TryTeamCommand.RaiseCanExecuteChanged();
@@ -1733,12 +1818,18 @@ public sealed class CreateTeamViewModel : ObservableObject
         var fallback = _strings[StudioStringKeys.WizardAgentFallback];
         foreach (var task in _model.Activity)
         {
+            // The task id joins the role rather than replacing it: a crew where one agent
+            // owns two tasks rendered the same sentence twice, with nothing to tell the
+            // reader which of the two had just finished.
             var role = task.AgentRole ?? task.TaskId ?? fallback;
-            Activity.Add(task.Success
+            var text = task.Success
                 ? string.Format(
                     CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardActivityDone],
                     role, Math.Round(task.DurationMs / 1000.0, 1))
-                : string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardActivityFailed], role));
+                : string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardActivityFailed], role);
+
+            var detail = task.AgentRole is not null && task.TaskId is { Length: > 0 } id ? id : "";
+            Activity.Add(new WizardActivityLine(text, detail, task.Success));
         }
     }
 

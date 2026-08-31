@@ -52,6 +52,28 @@ public static class DeclaredMounts
     }
 
     /// <summary>
+    /// Whether one team mount is vouched for: declared in the settings, or bound inside the
+    /// team's own folder.
+    /// <para>
+    /// The same question <see cref="BlockingFolders"/> asks per entry, exposed because the
+    /// screens were asking a narrower one. A team's own <c>/output</c> and <c>/workspace</c>
+    /// read red on the wizard and on the folders modal while the launcher — using the rule
+    /// below — let them through without a word. One rule, or the screens disagree about the
+    /// same folder.
+    /// </para>
+    /// </summary>
+    public static bool IsVouchedFor(
+        string mountString, IReadOnlyList<string> declaredMounts, string? teamDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(declaredMounts);
+
+        if (!MountDefinition.TryParse(mountString, out var mount, out _) || mount is null)
+            return false;
+
+        return IsDeclared(mountString, declaredMounts) || IsInsideTeam(mount.PhysicalPath, teamDirectory);
+    }
+
+    /// <summary>
     /// The mounts of <paramref name="teamMounts"/> that must stop a launch: a folder neither
     /// declared in the settings nor living inside the team's own directory. Returned as the
     /// virtual paths the agents address, because that is what a screen may name (ADR-008).

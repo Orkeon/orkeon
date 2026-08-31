@@ -114,22 +114,32 @@ public sealed class ModalDialogsTests
         Assert.Contains("neither read nor write", dialog.Summary, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Red means one thing: this folder is outside what the machine allows. It used to also
+    /// mean «the team made this folder itself», which the launcher explicitly refuses to
+    /// warn about — so a team's own /output read red here and green on Exécuter, about the
+    /// very same folder.
+    /// </summary>
     [Fact]
-    public void A_team_folder_the_settings_do_not_declare_reads_red_and_stays_removable()
+    public void A_folder_outside_the_allowed_ones_reads_red_and_the_teams_own_does_not()
     {
         var dialog = new TeamMountsDialogViewModel(
             saveMounts: (_, _) => { },
             declaredMounts: () => ["/data/docs:/docs:ro"]);
 
-        // /docs comes from the settings; /output is created inside the team at adoption and is
-        // never declared — red is the only way the row can say that, and it stays removable.
-        dialog.Open("/teams/veille", "Veille", ["/data/docs:/docs:ro", "/teams/veille/output:/output:rw"]);
+        dialog.Open("/teams/veille", "Veille",
+        [
+            "/data/docs:/docs:ro",                  // declared in the settings
+            "/teams/veille/output:/output:rw",      // the team's own, bound at adoption
+            "/elsewhere:/archives:ro",              // genuinely outside the allow-list
+        ]);
 
         Assert.False(dialog.Rows.Single(r => r.VirtualPath == "/docs").IsUndeclared);
-        Assert.True(dialog.Rows.Single(r => r.VirtualPath == "/output").IsUndeclared);
+        Assert.False(dialog.Rows.Single(r => r.VirtualPath == "/output").IsUndeclared);
+        Assert.True(dialog.Rows.Single(r => r.VirtualPath == "/archives").IsUndeclared);
 
-        dialog.Rows.Single(r => r.VirtualPath == "/output").IsChecked = false;
-        Assert.Equal(["/data/docs:/docs:ro"], dialog.CheckedMounts);
+        dialog.Rows.Single(r => r.VirtualPath == "/archives").IsChecked = false;
+        Assert.Equal(["/data/docs:/docs:ro", "/teams/veille/output:/output:rw"], dialog.CheckedMounts);
     }
 
     // ── Agent editor ──

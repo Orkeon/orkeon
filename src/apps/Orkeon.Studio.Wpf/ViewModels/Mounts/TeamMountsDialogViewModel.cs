@@ -174,7 +174,11 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
     private TeamMountRowViewModel Row(string mountString) => new(
         mountString,
         MountDefinition.TryParse(mountString, out var mount, out _) ? mount : null,
-        !MountLabels.IsDeclared(mountString, _declaredMounts()),
+        // The team's own folders are vouched for by being the team's, exactly as the launcher
+        // has it. Asking only «is it declared» painted a team's own /output red here while
+        // Exécuter let it through.
+        !Orkeon.Studio.Core.FileSystem.DeclaredMounts.IsVouchedFor(
+            mountString, _declaredMounts(), _teamDirectory),
         this,
         _strings);
 
