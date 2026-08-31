@@ -9,7 +9,12 @@ internal sealed class ScriptedRunner : IForgeStageRunner
     private readonly Func<ForgeSession, ForgeStageOutcome> _outcome;
 
     public ScriptedRunner(ForgeState stage, ForgeTrigger trigger, long tokens = 0)
-        : this(stage, _ => new ForgeStageOutcome { Trigger = trigger, TokensConsumed = tokens }) { }
+        : this(stage, _ => new ForgeStageOutcome
+        {
+            Trigger = trigger,
+            // Everything on the ascending side: what this fixture meters is the total.
+            Usage = new ForgeUsageSnapshot(tokens, 0, 0),
+        }) { }
 
     public ScriptedRunner(ForgeState stage, Func<ForgeSession, ForgeStageOutcome> outcome)
     {
@@ -227,5 +232,40 @@ public sealed class ForgeEngineTests : IDisposable
         // The brief's trigger still moved the machine — only the *next* stage was refused.
         Assert.Equal(ForgeState.Blueprint, session.State);
         Assert.Equal(0, ((ScriptedRunner)runners[1]).Visits);
+    }
+
+    /// <summary>
+    /// The client cannot show what the wire does not carry. The split reached the engine and
+    /// stopped there: cost.updated said «tokens» and nothing else, so Studio's ↑/↓ meter had
+    /// no source and stood empty through a whole session.
+    /// </summary>
+    [Fact]
+    public async Task What_a_stage_spent_reaches_the_wire_split_by_direction()
+    {
+        var session = ForgeSession.Create(_workspace, "demo");
+        var runners = new List<IForgeStageRunner>
+        {
+            new ScriptedRunner(ForgeState.Brief, _ => new ForgeStageOutcome
+            {
+                Trigger = ForgeTrigger.BriefSubmitted,
+                Usage = new ForgeUsageSnapshot(900, 120, 0),
+            }),
+            new ScriptedRunner(ForgeState.Blueprint, _ => new ForgeStageOutcome
+            {
+                Trigger = ForgeTrigger.Fail,
+                FailureCode = "STOP",
+                Detail = "enough for this test",
+            }),
+        };
+
+        await Engine(session, runners).RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var cost = Events().Single(e => e.GetProperty("kind").GetString() == "cost.updated");
+        Assert.Equal(1020, cost.GetProperty("tokens").GetInt64());
+        Assert.Equal(900, cost.GetProperty("promptTokens").GetInt64());
+        Assert.Equal(120, cost.GetProperty("completionTokens").GetInt64());
+        // Nothing was approximated here, and the event says zero rather than staying silent:
+        // «no estimate» is a fact the client needs to NOT mark the figures with a «≈».
+        Assert.Equal(0, cost.GetProperty("estimatedTokens").GetInt64());
     }
 }

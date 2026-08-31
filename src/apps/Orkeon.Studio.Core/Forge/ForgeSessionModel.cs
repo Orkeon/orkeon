@@ -96,6 +96,12 @@ public sealed record ForgeVerdictView(
     /// <summary>Tokens the last trial consumed; null when unmeasured (W-08).</summary>
     public long? Tokens { get; init; }
 
+    /// <summary>The ascending half of the last trial; null when unmeasured.</summary>
+    public long? PromptTokens { get; init; }
+
+    /// <summary>The descending half of the last trial; null when unmeasured.</summary>
+    public long? CompletionTokens { get; init; }
+
     /// <summary>Cache-served prompt tokens of the last trial — a partition, never additive.</summary>
     public long? CacheHitTokens { get; init; }
 
@@ -196,6 +202,25 @@ public sealed class ForgeSessionModel
 
     /// <summary>Cumulative tokens spent, from <c>cost.updated</c>.</summary>
     public long TokensSpent { get; private set; }
+
+    /// <summary>
+    /// The ascending half of <see cref="TokensSpent"/> — everything sent to the models.
+    /// Zero while nothing has been spent; the engine reports both halves together.
+    /// </summary>
+    public long PromptTokens { get; private set; }
+
+    /// <summary>The descending half — everything the models sent back.</summary>
+    public long CompletionTokens { get; private set; }
+
+    /// <summary>
+    /// How much of <see cref="TokensSpent"/> the engine had to approximate, because a
+    /// provider returned no usage of its own. Nonzero means the figures on screen are
+    /// estimates and must be shown as such.
+    /// </summary>
+    public long EstimatedTokens { get; private set; }
+
+    /// <summary>Whether any part of the meter is an approximation rather than a report.</summary>
+    public bool TokensAreEstimated => EstimatedTokens > 0;
 
     /// <summary>Remaining token allowance, when the session has one.</summary>
     public long? TokensRemaining { get; private set; }
@@ -313,6 +338,11 @@ public sealed class ForgeSessionModel
 
             case ForgeEventKinds.CostUpdated:
                 TokensSpent = orkeonEvent.GetInt64("tokens") ?? TokensSpent;
+                // The split is cumulative like the total, and absent from an older
+                // session's stream — keeping the previous reading beats zeroing a meter.
+                PromptTokens = orkeonEvent.GetInt64("promptTokens") ?? PromptTokens;
+                CompletionTokens = orkeonEvent.GetInt64("completionTokens") ?? CompletionTokens;
+                EstimatedTokens = orkeonEvent.GetInt64("estimatedTokens") ?? EstimatedTokens;
                 TokensRemaining = orkeonEvent.GetInt64("budgetRemaining");
                 break;
 
@@ -640,6 +670,8 @@ public sealed class ForgeSessionModel
             // about it: null shows no chip, never a zero.
             DurationMs = orkeonEvent.GetInt64("durationMs"),
             Tokens = orkeonEvent.GetInt64("tokens"),
+            PromptTokens = orkeonEvent.GetInt64("promptTokens"),
+            CompletionTokens = orkeonEvent.GetInt64("completionTokens"),
             CacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens"),
             CacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens"),
         };

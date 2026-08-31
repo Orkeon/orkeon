@@ -1961,6 +1961,57 @@
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>No había ningún juez disponible: los criterios siguientes no se verificaron uno a uno; júzguelos usted mismo.</value>
   </data>
+  <data name="Studio.Create.StageBrief" xml:space="preserve">
+    <value>Estoy anotando lo que quiere…</value>
+  </data>
+  <data name="Studio.Create.StageBlueprint" xml:space="preserve">
+    <value>Estoy componiendo el equipo…</value>
+  </data>
+  <data name="Studio.Create.StageRender" xml:space="preserve">
+    <value>Estoy escribiendo los archivos del equipo…</value>
+  </data>
+  <data name="Studio.Create.StageValidate" xml:space="preserve">
+    <value>Estoy comprobando la definición…</value>
+  </data>
+  <data name="Studio.Create.StageTest" xml:space="preserve">
+    <value>El equipo trabaja en su entorno aislado…</value>
+  </data>
+  <data name="Studio.Create.StageDiagnose" xml:space="preserve">
+    <value>Estoy leyendo el resultado…</value>
+  </data>
+  <data name="Studio.Create.StageVerdict" xml:space="preserve">
+    <value>Estoy preparando el informe…</value>
+  </data>
+  <data name="Studio.Create.StagePromote" xml:space="preserve">
+    <value>Estoy guardando el equipo…</value>
+  </data>
+  <data name="Studio.Create.StageWorking" xml:space="preserve">
+    <value>Trabajando…</value>
+  </data>
+  <data name="Studio.Create.StageIdle" xml:space="preserve">
+    <value>Detenido.</value>
+  </data>
+  <data name="Studio.Create.WaitingOnYou" xml:space="preserve">
+    <value>Estoy esperando su respuesta.</value>
+  </data>
+  <data name="Studio.Create.TokensUp" xml:space="preserve">
+    <value>Tokens enviados al modelo</value>
+  </data>
+  <data name="Studio.Create.TokensDown" xml:space="preserve">
+    <value>Tokens recibidos del modelo</value>
+  </data>
+  <data name="Studio.Create.TokensEstimated" xml:space="preserve">
+    <value>Estimación: este proveedor no informa el recuento de tokens.</value>
+  </data>
+  <data name="Studio.Create.FilesWritten" xml:space="preserve">
+    <value>{0} archivo(s) escrito(s)</value>
+  </data>
+  <data name="Studio.Create.DefinitionValid" xml:space="preserve">
+    <value>definición comprobada</value>
+  </data>
+  <data name="Studio.Create.DefinitionInvalid" xml:space="preserve">
+    <value>definición rechazada</value>
+  </data>
   <data name="Studio.Create.Suggestions" xml:space="preserve">
     <value>Lo que el motor sugiere cambiar</value>
   </data>

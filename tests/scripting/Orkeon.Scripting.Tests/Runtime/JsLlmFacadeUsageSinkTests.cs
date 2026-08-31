@@ -150,18 +150,67 @@ public sealed class JsLlmFacadeUsageSinkTests
         Assert.Equal(80, e.PromptTokens);
     }
 
+    /// <summary>
+    /// A response with no usage at all used to be dropped on the floor — no event, no meter
+    /// movement, and a client reading «0 tokens» through a whole session with a provider
+    /// that simply does not count. Silence is not evidence that nothing was spent, so the
+    /// runtime counts it itself and SAYS that the figure is its own.
+    /// <para>
+    /// «No usage» still never reads as «zero tokens»: it reads as an approximation, which
+    /// is what it is, and <c>Estimated</c> is how every consumer downstream can tell.
+    /// </para>
+    /// </summary>
     [Fact]
-    public async Task A_response_with_no_usage_at_all_reports_nothing()
+    public async Task A_response_with_no_usage_at_all_is_estimated_and_marked_as_such()
     {
-        // "No usage" and "zero tokens" must not read the same way — same contract as
-        // the stream observations.
         using var engine = new Engine();
         var sink = new RecordingUsageSink();
-        var facade = Facade(engine, new ScriptedProvider(new LlmResponse { Content = "ok" }), sink);
+        var facade = Facade(engine, new ScriptedProvider(new LlmResponse { Content = "une réponse" }), sink);
+
+        await facade.complete("dis-moi quelque chose d'assez long pour compter", null);
+
+        var e = Assert.Single(sink.Events);
+        Assert.True(e.Estimated);
+        Assert.True(e.PromptTokens > 0);
+        Assert.True(e.CompletionTokens > 0);
+    }
+
+    [Fact]
+    public async Task A_provider_that_counts_is_taken_at_its_word_never_estimated_over()
+    {
+        using var engine = new Engine();
+        var sink = new RecordingUsageSink();
+        var facade = Facade(engine, new ScriptedProvider(WithUsage("ok", 100, 20)), sink);
 
         await facade.complete("hello", null);
 
-        Assert.Empty(sink.Events);
+        var e = Assert.Single(sink.Events);
+        Assert.False(e.Estimated);
+        Assert.Equal(100, e.PromptTokens);
+        Assert.Equal(20, e.CompletionTokens);
+    }
+
+    /// <summary>
+    /// The chat paths estimate from the CONVERSATION, message overhead included — a chat
+    /// costs more than the concatenation of its texts, and the estimate must not pretend
+    /// otherwise.
+    /// </summary>
+    [Fact]
+    public async Task A_silent_chat_is_estimated_from_the_whole_conversation()
+    {
+        using var engine = new Engine();
+        var sink = new RecordingUsageSink();
+        var facade = Facade(engine, new ScriptedProvider(new LlmResponse { Content = "ok" }), sink);
+        var messages = EvalOptions(engine, "[{role:'system',content:'" + new string('a', 350)
+            + "'},{role:'user',content:'" + new string('b', 350) + "'}]");
+
+        await facade.chat(messages, null);
+
+        var e = Assert.Single(sink.Events);
+        Assert.True(e.Estimated);
+        // 700 characters at ~3.5 per token, plus the per-message overhead: comfortably
+        // above what either message would score alone.
+        Assert.True(e.PromptTokens >= 200, $"prompt estimate was {e.PromptTokens}");
     }
 
     [Fact]

@@ -46,7 +46,7 @@ internal sealed class BriefStage : IForgeStageRunner
         if (session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName) is not null)
             return new ForgeStageOutcome { Trigger = ForgeTrigger.BriefSubmitted };
 
-        long tokens = 0;
+        var usage = default(ForgeUsageSnapshot);
         var submissionAttempts = 0;
         var userMessage = _initialNeed;
         IReadOnlyList<string>? errors = null;
@@ -56,7 +56,7 @@ internal sealed class BriefStage : IForgeStageRunner
             var reply = await _assistant.NextAsync(
                 new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = userMessage, Errors = errors },
                 cancellationToken).ConfigureAwait(false);
-            tokens += reply.TokensConsumed;
+            usage = usage.Plus(reply.Usage);
 
             if (reply.BriefJson is { } json)
             {
@@ -65,7 +65,7 @@ internal sealed class BriefStage : IForgeStageRunner
                     session.SaveArtifact(ForgeSession.BriefFileName, brief);
                     session.Document.Title ??= Truncate(brief!.Goal!, 60);
                     events.Emit("brief.ready", new { brief });
-                    return new ForgeStageOutcome { Trigger = ForgeTrigger.BriefSubmitted, TokensConsumed = tokens };
+                    return new ForgeStageOutcome { Trigger = ForgeTrigger.BriefSubmitted, Usage = usage };
                 }
 
                 submissionAttempts++;
@@ -79,7 +79,7 @@ internal sealed class BriefStage : IForgeStageRunner
                     return new ForgeStageOutcome
                     {
                         Trigger = ForgeTrigger.Fail,
-                        TokensConsumed = tokens,
+                        Usage = usage,
                         FailureCode = ForgeErrorCodes.BriefIncomplete,
                         Detail = $"No schema-valid brief after {MaxSubmissionAttempts} submissions.",
                     };
@@ -111,7 +111,7 @@ internal sealed class BriefStage : IForgeStageRunner
                 return new ForgeStageOutcome
                 {
                     Trigger = ForgeTrigger.Fail,
-                    TokensConsumed = tokens,
+                    Usage = usage,
                     FailureCode = ForgeErrorCodes.BriefIncomplete,
                     Detail = "The assistant produced empty turns.",
                 };
@@ -121,7 +121,7 @@ internal sealed class BriefStage : IForgeStageRunner
         return new ForgeStageOutcome
         {
             Trigger = ForgeTrigger.Fail,
-            TokensConsumed = tokens,
+            Usage = usage,
             FailureCode = ForgeErrorCodes.BriefIncomplete,
             Detail = $"The interview did not converge within {MaxTurns} turns.",
         };
@@ -168,7 +168,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
         var previous = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
         var errors = session.TryLoadArtifact<ForgeRepairState>(ForgeSession.RepairFileName)?.Errors;
 
-        long tokens = 0;
+        var usage = default(ForgeUsageSnapshot);
         for (var attempt = 1; attempt <= MaxSubmissionAttempts; attempt++)
         {
             var reply = await _assistant.NextAsync(
@@ -180,7 +180,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
                     Errors = errors,
                 },
                 cancellationToken).ConfigureAwait(false);
-            tokens += reply.TokensConsumed;
+            usage = usage.Plus(reply.Usage);
 
             if (reply.BlueprintJson is { } json)
             {
@@ -188,7 +188,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
                 {
                     session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
                     events.Emit("blueprint.ready", new { blueprint, iteration = session.Document.Iteration });
-                    return new ForgeStageOutcome { Trigger = ForgeTrigger.BlueprintSubmitted, TokensConsumed = tokens };
+                    return new ForgeStageOutcome { Trigger = ForgeTrigger.BlueprintSubmitted, Usage = usage };
                 }
 
                 events.Error(
@@ -209,7 +209,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
         return new ForgeStageOutcome
         {
             Trigger = ForgeTrigger.Fail,
-            TokensConsumed = tokens,
+            Usage = usage,
             FailureCode = ForgeErrorCodes.BlueprintInvalid,
             Detail = $"No schema-valid blueprint after {MaxSubmissionAttempts} submissions.",
         };

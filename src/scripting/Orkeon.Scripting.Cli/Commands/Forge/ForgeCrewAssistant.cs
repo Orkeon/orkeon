@@ -174,25 +174,25 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             _session.AppendTranscript("user", userMessage);
 
         _box.Reset();
-        var tokensBefore = _tally.TotalTokens;
+        var before = _tally.Snapshot;
 
         var result = await _scriptHost.RunFromFileAsync(
             _packPhysicalPath, _packVirtualPath, cancellationToken, BuildInputsJson(request))
             .ConfigureAwait(false);
 
-        var tokens = _tally.TotalTokens - tokensBefore;
+        var usage = _tally.Snapshot.Since(before);
         var (briefJson, blueprintJson) = _box.Take();
 
         if (briefJson is not null)
-            return new ForgeAssistantReply { BriefJson = briefJson, TokensConsumed = tokens };
+            return new ForgeAssistantReply { BriefJson = briefJson, Usage = usage };
         if (blueprintJson is not null)
-            return new ForgeAssistantReply { BlueprintJson = blueprintJson, TokensConsumed = tokens };
+            return new ForgeAssistantReply { BlueprintJson = blueprintJson, Usage = usage };
 
         var message = ReadFinalOutput(result);
         if (message is { Length: > 0 })
             _session.AppendTranscript("assistant", message);
 
-        return new ForgeAssistantReply { Message = message, TokensConsumed = tokens };
+        return new ForgeAssistantReply { Message = message, Usage = usage };
     }
 
     private string BuildInputsJson(ForgeAssistantRequest request)

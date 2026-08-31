@@ -43,7 +43,7 @@ public sealed class ForgeSessionTests : IDisposable
         created.SetState(ForgeState.Validate);
         created.SetStatus(ForgeSessionStatus.Active);
         created.Document.Budget.RegisterIteration();
-        created.Document.Budget.RegisterTokens(1234);
+        created.Document.Budget.RegisterTokens(new ForgeUsageSnapshot(1000, 234, 0));
         created.Save(FixedNow);
 
         Assert.True(ForgeSession.TryLoad(created.Directory, out var loaded, out var error), error);

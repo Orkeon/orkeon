@@ -115,6 +115,8 @@ internal sealed class TestStage : IForgeStageRunner
             outputPath = relativeOutput,
             durationMs = run.DurationMs,
             tokens = run.Tokens,
+            promptTokens = run.PromptTokens,
+            completionTokens = run.CompletionTokens,
             cacheHitTokens = run.CacheHitTokens,
             cacheMissTokens = run.CacheMissTokens,
         });
@@ -122,9 +124,22 @@ internal sealed class TestStage : IForgeStageRunner
         return new ForgeStageOutcome
         {
             Trigger = ForgeTrigger.TestCompleted,
-            TokensConsumed = run.Tokens ?? 0,
+            Usage = TrialUsage(run),
         };
     }
+
+    /// <summary>
+    /// What the trial itself cost, as the budget will charge it. A run that reported only
+    /// a grand total puts everything on the ascending side rather than inventing a split:
+    /// the budget meters the sum either way, and a half-known figure is not improved by
+    /// halving it arbitrarily.
+    /// </summary>
+    private static ForgeUsageSnapshot TrialUsage(ForgeTestRun run) => run switch
+    {
+        { PromptTokens: { } up, CompletionTokens: { } down } => new ForgeUsageSnapshot(up, down, 0),
+        { Tokens: { } total } => new ForgeUsageSnapshot(total, 0, 0),
+        _ => default,
+    };
 
     private static void SnapshotOutputs(string sessionDirectory, string runDirectory)
     {
@@ -212,7 +227,7 @@ internal sealed class DiagnoseStage : IForgeStageRunner
 
         EmitVerdictReady(events, verdict, run);
 
-        return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, TokensConsumed = judgement.Tokens };
+        return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, Usage = judgement.Usage };
     }
 
     /// <summary>
@@ -231,6 +246,8 @@ internal sealed class DiagnoseStage : IForgeStageRunner
             judge = verdict.Judge,
             durationMs = run?.DurationMs,
             tokens = run?.Tokens,
+            promptTokens = run?.PromptTokens,
+            completionTokens = run?.CompletionTokens,
             cacheHitTokens = run?.CacheHitTokens,
             cacheMissTokens = run?.CacheMissTokens,
         });

@@ -47,6 +47,24 @@ internal sealed class ForgeBudget
     [JsonPropertyName("consumedTokens")]
     public long ConsumedTokens { get; set; }
 
+    /// <summary>
+    /// The ascending half of <see cref="ConsumedTokens"/> — everything sent to the model.
+    /// Persisted like the total, so a resumed session keeps showing the same split.
+    /// </summary>
+    [JsonPropertyName("consumedPromptTokens")]
+    public long ConsumedPromptTokens { get; set; }
+
+    /// <summary>The descending half — everything the model sent back.</summary>
+    [JsonPropertyName("consumedCompletionTokens")]
+    public long ConsumedCompletionTokens { get; set; }
+
+    /// <summary>
+    /// How much of <see cref="ConsumedTokens"/> the runtime had to approximate, because
+    /// the provider returned no usage. Zero means the whole meter is the provider's own.
+    /// </summary>
+    [JsonPropertyName("consumedEstimatedTokens")]
+    public long ConsumedEstimatedTokens { get; set; }
+
     /// <summary>Wall-clock seconds consumed so far, across resumes.</summary>
     [JsonPropertyName("consumedWallSeconds")]
     public long ConsumedWallSeconds { get; set; }
@@ -58,11 +76,21 @@ internal sealed class ForgeBudget
     /// <summary>Registers the start of a cycle.</summary>
     public void RegisterIteration() => ConsumedIterations++;
 
-    /// <summary>Adds LLM token consumption.</summary>
-    public void RegisterTokens(long tokens)
+    /// <summary>
+    /// Adds LLM token consumption. The budget arbitrates on the total; the split it also
+    /// keeps is what the client shows while the user waits, and an approximated share is
+    /// tracked separately so a screen can say the figure is one.
+    /// </summary>
+    public void RegisterTokens(ForgeUsageSnapshot usage)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(tokens);
-        ConsumedTokens += tokens;
+        ArgumentOutOfRangeException.ThrowIfNegative(usage.PromptTokens);
+        ArgumentOutOfRangeException.ThrowIfNegative(usage.CompletionTokens);
+        ArgumentOutOfRangeException.ThrowIfNegative(usage.EstimatedTokens);
+
+        ConsumedPromptTokens += usage.PromptTokens;
+        ConsumedCompletionTokens += usage.CompletionTokens;
+        ConsumedEstimatedTokens += usage.EstimatedTokens;
+        ConsumedTokens += usage.TotalTokens;
     }
 
     /// <summary>Adds elapsed wall-clock time.</summary>
@@ -97,6 +125,9 @@ internal sealed class ForgeBudget
         maxWallSeconds = MaxWallSeconds,
         consumedIterations = ConsumedIterations,
         consumedTokens = ConsumedTokens,
+        consumedPromptTokens = ConsumedPromptTokens,
+        consumedCompletionTokens = ConsumedCompletionTokens,
+        consumedEstimatedTokens = ConsumedEstimatedTokens,
         consumedWallSeconds = ConsumedWallSeconds,
     };
 }

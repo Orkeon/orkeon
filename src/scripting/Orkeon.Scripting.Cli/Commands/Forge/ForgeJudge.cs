@@ -18,13 +18,13 @@ internal interface IForgeJudge
 
 /// <summary>
 /// What one judging attempt produced: a verdict — or null when no judge could run — and
-/// the tokens it cost either way (a failed parse was still paid for, so it is still
-/// charged to the session budget).
+/// what it cost either way (a failed parse was still paid for, so it is still charged to
+/// the session budget).
 /// </summary>
-internal sealed record ForgeJudgement(ForgeVerdict? Verdict, long Tokens)
+internal sealed record ForgeJudgement(ForgeVerdict? Verdict, ForgeUsageSnapshot Usage)
 {
     /// <summary>No judge available, nothing spent.</summary>
-    public static readonly ForgeJudgement Unavailable = new(null, 0);
+    public static readonly ForgeJudgement Unavailable = new(null, default);
 }
 
 /// <summary>
@@ -62,30 +62,51 @@ internal sealed class LlmForgeJudge : IForgeJudge
         if (_provider.Capabilities.ResponseFormat != ResponseFormatSupport.None)
             config = config with { ResponseFormat = LlmResponseFormat.JsonObject() };
 
-        long tokens = 0;
+        var usage = default(ForgeUsageSnapshot);
         string? parseError = null;
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var response = await _provider.ChatAsync(
-                [
-                    LlmMessage.System(SystemPrompt),
-                    new LlmMessage { Role = "user", Content = BuildBody(brief, output, parseError) },
-                ],
-                config,
-                cancellationToken).ConfigureAwait(false);
-            tokens += response.TokensUsed;
+            LlmMessage[] prompt =
+            [
+                LlmMessage.System(SystemPrompt),
+                new LlmMessage { Role = "user", Content = BuildBody(brief, output, parseError) },
+            ];
+            var response = await _provider.ChatAsync(prompt, config, cancellationToken).ConfigureAwait(false);
+            usage = usage.Plus(Measure(response, prompt));
 
             if (ForgeVerdict.TryParse(response.Content, out var verdict, out var errors))
-                return new ForgeJudgement(verdict, tokens);
+                return new ForgeJudgement(verdict, usage);
 
             parseError = string.Join(" ", errors);
         }
 
         // Two unparsable responses: the judge is effectively unavailable for this run —
         // but the attempts were paid for.
-        return new ForgeJudgement(null, tokens);
+        return new ForgeJudgement(null, usage);
+    }
+
+    /// <summary>
+    /// What one judging call cost, split by direction. The judge talks to the provider
+    /// directly — no usage sink sits between them — so it does its own reading, and falls
+    /// back to an estimate when the provider reports nothing rather than counting zero.
+    /// </summary>
+    private static ForgeUsageSnapshot Measure(LlmResponse response, IReadOnlyList<LlmMessage> prompt)
+    {
+        if (!Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Reported(response))
+        {
+            var estimatedPrompt = Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(prompt);
+            var estimatedCompletion = Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Completion(response);
+            return new ForgeUsageSnapshot(
+                estimatedPrompt, estimatedCompletion, estimatedPrompt + estimatedCompletion);
+        }
+
+        var promptTokens = response.PromptTokens ?? 0;
+        return new ForgeUsageSnapshot(
+            promptTokens,
+            response.CompletionTokens ?? Math.Max(0, response.TokensUsed - promptTokens),
+            0);
     }
 
     /// <summary>Stable across runs — a prompt-cache prefix, like the assistant's header.</summary>

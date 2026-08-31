@@ -25,7 +25,7 @@ public class ForgeBudgetTests
     public void Zero_means_unlimited_for_tokens_and_wall_time()
     {
         var budget = new ForgeBudget();
-        budget.RegisterTokens(1_000_000);
+        budget.RegisterTokens(Up(1_000_000));
         budget.RegisterWallTime(TimeSpan.FromHours(10));
 
         Assert.Null(budget.ExhaustedDimension());
@@ -35,7 +35,7 @@ public class ForgeBudgetTests
     public void The_exhausted_dimension_is_named()
     {
         var tokens = new ForgeBudget { MaxTokens = 100 };
-        tokens.RegisterTokens(100);
+        tokens.RegisterTokens(Up(100));
         Assert.Equal(ForgeBudgetDimension.Tokens, tokens.ExhaustedDimension());
 
         var wall = new ForgeBudget { MaxWallSeconds = 60 };
@@ -47,13 +47,13 @@ public class ForgeBudgetTests
     public void Consumption_accumulates_across_registrations()
     {
         var budget = new ForgeBudget { MaxTokens = 1000 };
-        budget.RegisterTokens(400);
-        budget.RegisterTokens(400);
+        budget.RegisterTokens(Up(400));
+        budget.RegisterTokens(Up(400));
 
         Assert.Null(budget.ExhaustedDimension());
         Assert.Equal(800, budget.ConsumedTokens);
 
-        budget.RegisterTokens(400);
+        budget.RegisterTokens(Up(400));
         Assert.Equal(ForgeBudgetDimension.Tokens, budget.ExhaustedDimension());
     }
 
@@ -64,6 +64,12 @@ public class ForgeBudgetTests
         budget.RegisterWallTime(TimeSpan.FromSeconds(-5));
         Assert.Equal(0, budget.ConsumedWallSeconds);
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => budget.RegisterTokens(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => budget.RegisterTokens(Up(-1)));
     }
+
+    /// <summary>
+    /// A reading with everything on the ascending side: these tests meter the TOTAL, and
+    /// the direction the tokens travelled is beside their point.
+    /// </summary>
+    private static ForgeUsageSnapshot Up(long tokens) => new(tokens, 0, 0);
 }

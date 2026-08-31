@@ -968,6 +968,62 @@ public static class StudioStringKeys
     public const string WizardJudgeMechanical = "Studio.Create.JudgeMechanical";
 
 
+    // ---- The progress card of steps 2 and 3 ---------------------------------
+    // What the engine is doing while the column would otherwise be blank. One key per
+    // wire stage: the user reads a sentence, never «blueprint».
+
+    /// <summary>"I am noting what you want."</summary>
+    public const string ComposeStageBrief = "Studio.Create.StageBrief";
+
+    /// <summary>"I am composing the team…"</summary>
+    public const string ComposeStageBlueprint = "Studio.Create.StageBlueprint";
+
+    /// <summary>"I am writing the team's files…"</summary>
+    public const string ComposeStageRender = "Studio.Create.StageRender";
+
+    /// <summary>"I am checking the definition…"</summary>
+    public const string ComposeStageValidate = "Studio.Create.StageValidate";
+
+    /// <summary>"The team is working in its sandbox…"</summary>
+    public const string ComposeStageTest = "Studio.Create.StageTest";
+
+    /// <summary>"I am reading the result…"</summary>
+    public const string ComposeStageDiagnose = "Studio.Create.StageDiagnose";
+
+    /// <summary>"I am preparing the report…"</summary>
+    public const string ComposeStageVerdict = "Studio.Create.StageVerdict";
+
+    /// <summary>"I am saving the team…"</summary>
+    public const string ComposeStagePromote = "Studio.Create.StagePromote";
+
+    /// <summary>The stage this build cannot name — honest about working, not about what.</summary>
+    public const string ComposeStageWorking = "Studio.Create.StageWorking";
+
+    /// <summary>"Stopped."</summary>
+    public const string ComposeStageIdle = "Studio.Create.StageIdle";
+
+    /// <summary>"I am waiting for your answer."</summary>
+    public const string ComposeWaitingOnYou = "Studio.Create.WaitingOnYou";
+
+    /// <summary>Accessible name of the ascending token chip.</summary>
+    public const string ComposeTokensUp = "Studio.Create.TokensUp";
+
+    /// <summary>Accessible name of the descending token chip.</summary>
+    public const string ComposeTokensDown = "Studio.Create.TokensDown";
+
+    /// <summary>What the «≈» in front of a token figure means.</summary>
+    public const string ComposeTokensEstimated = "Studio.Create.TokensEstimated";
+
+    /// <summary>"{0} file(s) written"</summary>
+    public const string ComposeFilesWritten = "Studio.Create.FilesWritten";
+
+    /// <summary>"definition checked"</summary>
+    public const string ComposeDefinitionValid = "Studio.Create.DefinitionValid";
+
+    /// <summary>"definition refused"</summary>
+    public const string ComposeDefinitionInvalid = "Studio.Create.DefinitionInvalid";
+
+
     // ---- My teams screen (design v3) ----------------------------------------
 
     /// <summary>"Looks good to me"</summary>
@@ -1487,6 +1543,23 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardAgentFallback] = "Agent",
         [StudioStringKeys.WizardPromoteFailed] = "The save failed — the engine refused the promotion: {0}",
         [StudioStringKeys.ImportFailed] = "The import failed — nothing was copied. Check access to the source and try again.",
+        [StudioStringKeys.ComposeStageBrief] = "I am noting what you want…",
+        [StudioStringKeys.ComposeStageBlueprint] = "I am composing the team…",
+        [StudioStringKeys.ComposeStageRender] = "I am writing the team's files…",
+        [StudioStringKeys.ComposeStageValidate] = "I am checking the definition…",
+        [StudioStringKeys.ComposeStageTest] = "The team is working in its sandbox…",
+        [StudioStringKeys.ComposeStageDiagnose] = "I am reading the result…",
+        [StudioStringKeys.ComposeStageVerdict] = "I am preparing the report…",
+        [StudioStringKeys.ComposeStagePromote] = "I am saving the team…",
+        [StudioStringKeys.ComposeStageWorking] = "Working…",
+        [StudioStringKeys.ComposeStageIdle] = "Stopped.",
+        [StudioStringKeys.ComposeWaitingOnYou] = "I am waiting for your answer.",
+        [StudioStringKeys.ComposeTokensUp] = "Tokens sent to the model",
+        [StudioStringKeys.ComposeTokensDown] = "Tokens received from the model",
+        [StudioStringKeys.ComposeTokensEstimated] = "Estimate: this provider does not report token counts.",
+        [StudioStringKeys.ComposeFilesWritten] = "{0} file(s) written",
+        [StudioStringKeys.ComposeDefinitionValid] = "definition checked",
+        [StudioStringKeys.ComposeDefinitionInvalid] = "definition refused",
         [StudioStringKeys.WizardActivityDone] = "{0} — done in {1} s",
         [StudioStringKeys.WizardActivityFailed] = "{0} — failed",
         [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",

@@ -601,6 +601,9 @@ internal static class ForgeCommand
             MaxWallSeconds = options.MaxSeconds ?? current.MaxWallSeconds,
             ConsumedIterations = current.ConsumedIterations,
             ConsumedTokens = current.ConsumedTokens,
+            ConsumedPromptTokens = current.ConsumedPromptTokens,
+            ConsumedCompletionTokens = current.ConsumedCompletionTokens,
+            ConsumedEstimatedTokens = current.ConsumedEstimatedTokens,
             ConsumedWallSeconds = current.ConsumedWallSeconds,
         };
 

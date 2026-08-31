@@ -206,15 +206,60 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
 }
 
 /// <summary>
+/// What a stretch of the session cost, split by direction: what went UP to the model and
+/// what came back DOWN. Studio shows the two separately (↑/↓) while the user waits, so
+/// the grand total alone is not enough to carry.
+/// </summary>
+/// <param name="PromptTokens">Ascending — everything sent to the model.</param>
+/// <param name="CompletionTokens">Descending — everything the model sent back.</param>
+/// <param name="EstimatedTokens">
+/// How much of the sum the runtime had to approximate because the provider reported no
+/// usage. Zero means every figure is the provider's own.
+/// </param>
+internal readonly record struct ForgeUsageSnapshot(
+    long PromptTokens, long CompletionTokens, long EstimatedTokens)
+{
+    /// <summary>Both directions together — the one number the budget meters.</summary>
+    public long TotalTokens => PromptTokens + CompletionTokens;
+
+    /// <summary>Whether any part of this was approximated rather than reported.</summary>
+    public bool HasEstimate => EstimatedTokens > 0;
+
+    /// <summary>What was spent between <paramref name="before"/> and this reading.</summary>
+    public ForgeUsageSnapshot Since(ForgeUsageSnapshot before) => new(
+        PromptTokens - before.PromptTokens,
+        CompletionTokens - before.CompletionTokens,
+        EstimatedTokens - before.EstimatedTokens);
+
+    /// <summary>This reading plus <paramref name="other"/> — a stage accumulating its turns.</summary>
+    public ForgeUsageSnapshot Plus(ForgeUsageSnapshot other) => new(
+        PromptTokens + other.PromptTokens,
+        CompletionTokens + other.CompletionTokens,
+        EstimatedTokens + other.EstimatedTokens);
+}
+
+/// <summary>
 /// Thread-safe token tally over the host's <see cref="ILlmUsageSink"/> port: the assistant
 /// wrapper reads the delta around each turn to charge the session budget.
+/// <para>
+/// The two directions are kept apart here. They used to be added together on arrival —
+/// the split arrived on every event and was destroyed one line later — which is why the
+/// protocol could only ever carry a grand total.
+/// </para>
 /// </summary>
 internal sealed class ForgeUsageTally : ILlmUsageSink
 {
-    private long _totalTokens;
+    private readonly Lock _gate = new();
+    private ForgeUsageSnapshot _tally;
 
-    /// <summary>Tokens recorded since the tally was created.</summary>
-    public long TotalTokens => Interlocked.Read(ref _totalTokens);
+    /// <summary>What has been recorded since the tally was created.</summary>
+    public ForgeUsageSnapshot Snapshot
+    {
+        get { lock (_gate) return _tally; }
+    }
+
+    /// <summary>Both directions together, since the tally was created.</summary>
+    public long TotalTokens => Snapshot.TotalTokens;
 
     /// <inheritdoc />
     public void Record(CostUsageEvent usage)
@@ -222,6 +267,13 @@ internal sealed class ForgeUsageTally : ILlmUsageSink
         if (usage is null)
             return;
 
-        Interlocked.Add(ref _totalTokens, usage.PromptTokens + usage.CompletionTokens);
+        var spent = (long)usage.PromptTokens + usage.CompletionTokens;
+        lock (_gate)
+        {
+            _tally = new ForgeUsageSnapshot(
+                _tally.PromptTokens + usage.PromptTokens,
+                _tally.CompletionTokens + usage.CompletionTokens,
+                _tally.EstimatedTokens + (usage.Estimated ? spent : 0));
+        }
     }
 }

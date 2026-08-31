@@ -755,6 +755,57 @@
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>No judge was available, so the criteria below were not checked one by one — read them yourself.</value>
   </data>
+  <data name="Studio.Create.StageBrief" xml:space="preserve">
+    <value>I am noting what you want…</value>
+  </data>
+  <data name="Studio.Create.StageBlueprint" xml:space="preserve">
+    <value>I am composing the team…</value>
+  </data>
+  <data name="Studio.Create.StageRender" xml:space="preserve">
+    <value>I am writing the team's files…</value>
+  </data>
+  <data name="Studio.Create.StageValidate" xml:space="preserve">
+    <value>I am checking the definition…</value>
+  </data>
+  <data name="Studio.Create.StageTest" xml:space="preserve">
+    <value>The team is working in its sandbox…</value>
+  </data>
+  <data name="Studio.Create.StageDiagnose" xml:space="preserve">
+    <value>I am reading the result…</value>
+  </data>
+  <data name="Studio.Create.StageVerdict" xml:space="preserve">
+    <value>I am preparing the report…</value>
+  </data>
+  <data name="Studio.Create.StagePromote" xml:space="preserve">
+    <value>I am saving the team…</value>
+  </data>
+  <data name="Studio.Create.StageWorking" xml:space="preserve">
+    <value>Working…</value>
+  </data>
+  <data name="Studio.Create.StageIdle" xml:space="preserve">
+    <value>Stopped.</value>
+  </data>
+  <data name="Studio.Create.WaitingOnYou" xml:space="preserve">
+    <value>I am waiting for your answer.</value>
+  </data>
+  <data name="Studio.Create.TokensUp" xml:space="preserve">
+    <value>Tokens sent to the model</value>
+  </data>
+  <data name="Studio.Create.TokensDown" xml:space="preserve">
+    <value>Tokens received from the model</value>
+  </data>
+  <data name="Studio.Create.TokensEstimated" xml:space="preserve">
+    <value>Estimate: this provider does not report token counts.</value>
+  </data>
+  <data name="Studio.Create.FilesWritten" xml:space="preserve">
+    <value>{0} file(s) written</value>
+  </data>
+  <data name="Studio.Create.DefinitionValid" xml:space="preserve">
+    <value>definition checked</value>
+  </data>
+  <data name="Studio.Create.DefinitionInvalid" xml:space="preserve">
+    <value>definition refused</value>
+  </data>
   <data name="Studio.Create.Suggestions" xml:space="preserve">
     <value>What the engine suggests changing</value>
   </data>

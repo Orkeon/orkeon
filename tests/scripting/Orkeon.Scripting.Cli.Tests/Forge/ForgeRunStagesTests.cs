@@ -83,7 +83,8 @@ internal sealed class FakeJudge : IForgeJudge
     {
         Calls++;
         return Task.FromResult(new ForgeJudgement(
-            _verdicts.Count > 0 ? _verdicts.Dequeue() : null, TokensPerCall));
+            _verdicts.Count > 0 ? _verdicts.Dequeue() : null,
+            new ForgeUsageSnapshot(TokensPerCall, 0, 0)));
     }
 }
 
@@ -597,7 +598,7 @@ public class LlmForgeJudgeTests
         Assert.NotNull(verdict);
         Assert.True(verdict!.Passing);
         Assert.Equal(ForgeVerdict.JudgeLlm, verdict.Judge);
-        Assert.Equal(120, judgement.Tokens);   // the ScriptedLlmProvider's per-answer usage
+        Assert.Equal(120, judgement.Usage.TotalTokens);   // the ScriptedLlmProvider's per-answer usage
 
         // The criteria travelled in the judge's body, by id and in the user's words.
         var messages = Assert.Single(provider.Chats);
@@ -616,7 +617,7 @@ public class LlmForgeJudgeTests
             .JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
 
         Assert.NotNull(judgement.Verdict);
-        Assert.Equal(240, judgement.Tokens);   // both attempts were paid for
+        Assert.Equal(240, judgement.Usage.TotalTokens);   // both attempts were paid for
         Assert.Equal(2, provider.Chats.Count);
         Assert.Contains("rejected", provider.Chats[1][^1].Content, StringComparison.OrdinalIgnoreCase);
     }
@@ -630,7 +631,7 @@ public class LlmForgeJudgeTests
             .JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
 
         Assert.Null(judgement.Verdict);
-        Assert.Equal(240, judgement.Tokens);   // unavailable is not free — it was attempted
+        Assert.Equal(240, judgement.Usage.TotalTokens);   // unavailable is not free — it was attempted
     }
 
     [Fact]
@@ -640,6 +641,6 @@ public class LlmForgeJudgeTests
             .JudgeAsync(Brief(), "le résumé", TestContext.Current.CancellationToken);
 
         Assert.Null(judgement.Verdict);
-        Assert.Equal(0, judgement.Tokens);
+        Assert.Equal(0, judgement.Usage.TotalTokens);
     }
 }

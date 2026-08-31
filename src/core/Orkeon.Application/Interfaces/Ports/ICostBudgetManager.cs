@@ -35,6 +35,14 @@ public record CostUsageEvent
     public long? CacheMissTokens { get; init; }
 
     /// <summary>
+    /// True when the token counts are an APPROXIMATION the runtime computed itself,
+    /// because the provider returned no usage at all. Callers that display a figure must
+    /// say so (Studio prefixes it with «≈»); callers that bill or budget on it are
+    /// deliberately biased high — an estimate trips a budget early, never late.
+    /// </summary>
+    public bool Estimated { get; init; }
+
+    /// <summary>
     /// Pre-calculated cost in USD. If zero, the manager will auto-calculate from the pricing registry.
     /// </summary>
     public decimal Cost { get; init; }

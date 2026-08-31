@@ -133,7 +133,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
 
         Assert.Equal("Bonjour ! Quel problème résolvons-nous ?", reply.Message);
         Assert.Null(reply.BriefJson);
-        Assert.True(reply.TokensConsumed > 0);
+        Assert.True(reply.Usage.TotalTokens > 0);
 
         var transcript = _session.LoadTranscript();
         Assert.Equal(["user", "assistant"], transcript.Select(t => t.Role));

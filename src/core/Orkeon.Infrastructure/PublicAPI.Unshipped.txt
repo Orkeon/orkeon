@@ -79,3 +79,8 @@ virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.SplitReason
 override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.SplitReasoningFromContent(string! content) -> (string! Content, string? Reasoning)
 override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.EnrichAssistantMessage(System.Collections.Generic.Dictionary<string!, object?>! messageDict, Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage! source) -> void
 Orkeon.Infrastructure.Serialization.YamlDotNetSerializer.SerializeWithoutNulls<T>(T obj) -> string!
+Orkeon.Infrastructure.CostTracking.LlmUsageEstimator
+static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Completion(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response) -> int
+static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(string? prompt) -> int
+static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage!>? messages) -> int
+static Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Reported(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response) -> bool

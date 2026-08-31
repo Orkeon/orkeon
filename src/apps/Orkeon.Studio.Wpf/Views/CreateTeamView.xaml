@@ -311,6 +311,10 @@
 
       <!-- ── STEP 2 : COMPOSER ── -->
       <StackPanel Visibility="{Binding IsStep2, Converter={StaticResource BooleanToVisibility}}">
+        <!-- First, because between entering step 2 and blueprint.ready it is the ONLY thing
+             on the column. That gap is what the owner saw as a frozen screen. -->
+        <views:ComposeProgressView DataContext="{Binding Progress}"/>
+
         <!-- Only once there IS a proposal: the stepper reaches step 2 when the engine enters
              the blueprint stage, which is well before blueprint.ready. This card used to
              render regardless, so «Voici l'équipe que je propose» sat over an empty card. -->
@@ -645,6 +649,8 @@
 
       <!-- ── STEP 3 : ESSAYER ── -->
       <StackPanel Visibility="{Binding IsStep3, Converter={StaticResource BooleanToVisibility}}">
+        <views:ComposeProgressView DataContext="{Binding Progress}"/>
+
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
           <StackPanel>
             <StackPanel Orientation="Horizontal">

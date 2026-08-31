@@ -33,6 +33,17 @@ internal sealed record ForgeTestRun
     public long? Tokens { get; init; }
 
     /// <summary>
+    /// The ascending half of <see cref="Tokens"/> — everything the crew sent to its
+    /// models. Null when the run measured nothing; never a fabricated zero.
+    /// </summary>
+    [JsonPropertyName("promptTokens")]
+    public long? PromptTokens { get; init; }
+
+    /// <summary>The descending half — everything the models sent back; null when unmeasured.</summary>
+    [JsonPropertyName("completionTokens")]
+    public long? CompletionTokens { get; init; }
+
+    /// <summary>
     /// Prompt tokens served from the provider's cache — a partition of the prompt side,
     /// never additive to <see cref="Tokens"/>; null when unmeasured (W-08).
     /// </summary>
@@ -125,6 +136,10 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
             TaskCount = output.TaskOutputs.Count,
             DurationMs = (long)output.Duration.TotalMilliseconds,
             Tokens = output.TokensUsed?.TotalTokens,
+            // The split was measured all along and thrown away here: the crew's own
+            // TokenUsage carries both halves, and only the sum reached the protocol.
+            PromptTokens = output.TokensUsed?.PromptTokens,
+            CompletionTokens = output.TokensUsed?.CompletionTokens,
             CacheHitTokens = output.TokensUsed?.CacheHitTokens,
             CacheMissTokens = output.TokensUsed?.CacheMissTokens,
             Error = failed ? output.FinalOutput : null,

@@ -9,8 +9,11 @@ internal sealed record ForgeStageOutcome
     /// <summary>The trigger to fire; the machine says whether it is legal.</summary>
     public required ForgeTrigger Trigger { get; init; }
 
-    /// <summary>LLM tokens the stage consumed, charged to the session budget.</summary>
-    public long TokensConsumed { get; init; }
+    /// <summary>
+    /// What the stage consumed, split by direction and marked when approximated — charged
+    /// to the session budget, and shown to the user while they wait.
+    /// </summary>
+    public ForgeUsageSnapshot Usage { get; init; }
 
     /// <summary>Carried into the failure message when <see cref="Trigger"/> is <see cref="ForgeTrigger.Fail"/>.</summary>
     public string? Detail { get; init; }
@@ -179,16 +182,23 @@ internal sealed class ForgeEngine
                 _events.StageEntered(state, _session.Document.Iteration);
 
                 var outcome = await runner.RunAsync(_session, _events, cancellationToken).ConfigureAwait(false);
-                budget.RegisterTokens(outcome.TokensConsumed);
+                budget.RegisterTokens(outcome.Usage);
 
                 // The cost lives (UX study §7): every stage that spent tokens tells the
                 // client where the meter stands — cumulative, with the remaining allowance
                 // when one is set. USD is the client's business (it knows the pricing).
-                if (outcome.TokensConsumed > 0)
+                // The split travels with it: a user watching a compose wants to see what
+                // is going UP and what is coming BACK, not one number that only grows.
+                // `estimated` says how much of the total the runtime had to approximate
+                // because the provider reported nothing — a figure a screen must mark.
+                if (outcome.Usage.TotalTokens > 0)
                 {
                     _events.Emit("cost.updated", new
                     {
                         tokens = budget.ConsumedTokens,
+                        promptTokens = budget.ConsumedPromptTokens,
+                        completionTokens = budget.ConsumedCompletionTokens,
+                        estimatedTokens = budget.ConsumedEstimatedTokens,
                         budgetRemaining = budget.MaxTokens > 0
                             ? Math.Max(0, budget.MaxTokens - budget.ConsumedTokens)
                             : (long?)null,

@@ -47,8 +47,11 @@ internal sealed record ForgeAssistantReply
     /// <summary>The raw JSON handed to <c>blueprint_submit</c>, when the turn submitted a blueprint.</summary>
     public string? BlueprintJson { get; init; }
 
-    /// <summary>LLM tokens the turn consumed, charged to the session budget.</summary>
-    public long TokensConsumed { get; init; }
+    /// <summary>
+    /// What the turn consumed, split by direction and marked when approximated — charged
+    /// to the session budget, and shown to the user while they wait.
+    /// </summary>
+    public ForgeUsageSnapshot Usage { get; init; }
 }
 
 /// <summary>

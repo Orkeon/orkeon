@@ -234,6 +234,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         RestoreDerivedMountsCommand = new RelayCommand(
             () => { _droppedDerivedRoots.Clear(); RefreshMountSurfaces(); },
             () => _droppedDerivedRoots.Count > 0);
+        Progress = new ComposeProgressViewModel(_strings);
         // The count is the conversation's, read live: three per-step mini-threads were
         // replaced by one thread, so each block reports on that one rather than on its own.
         ComposeNotes = new StepNotesViewModel(ChatMessageCount);
@@ -360,6 +361,12 @@ public sealed class CreateTeamViewModel : ObservableObject
     public RunLogViewModel RawLog { get; }
 
     /// <summary>The "Consigne de composition" block.</summary>
+    /// <summary>
+    /// The card that fills the wait on steps 2 and 3 — what the engine is doing, what the
+    /// model last said, and what it has cost, up and down.
+    /// </summary>
+    public ComposeProgressViewModel Progress { get; }
+
     public StepNotesViewModel ComposeNotes { get; }
 
     /// <summary>The "Consigne d'essai" block.</summary>
@@ -589,6 +596,10 @@ public sealed class CreateTeamViewModel : ObservableObject
                 return;
 
             OnPropertiesChanged(nameof(CanCompose), nameof(CanSaveTeam), nameof(IsEngineWorking), nameof(TrialInProgress));
+            // The card's first and last readings come from here: the engine starting and
+            // the engine dying are both silent on the event stream, and both change what
+            // the card must say.
+            SyncProgress();
             RaiseDraftChanged();
             ComposeCommand.RaiseCanExecuteChanged();
             StopCommand.RaiseCanExecuteChanged();
@@ -1767,6 +1778,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         SyncActivity();
         SyncChecklist();
         SyncDecisions();
+        SyncProgress();
 
         // «Refaire un essai» answers the reopened arbitration itself (W-09): the flag is
         // cleared BEFORE deciding — Decide re-enters this sync.
@@ -1861,6 +1873,24 @@ public sealed class CreateTeamViewModel : ObservableObject
                 canEdit: static () => false));
         }
     }
+
+    /// <summary>
+    /// Feeds the progress card. Everything it shows is already on the stream — the card
+    /// exists because none of it was reaching the screen between two milestones.
+    /// </summary>
+    private void SyncProgress() => Progress.Update(new ComposeProgress(
+        _model.Stage,
+        IsEngineRunning,
+        IsEngineWaitingOnUser,
+        _model.FinishedStatus is not null,
+        // The model's own last words. A user turn is not narration — it is what the user
+        // just typed, and echoing it back as «what the engine is saying» would be a lie.
+        _model.Messages.LastOrDefault(m => m.Role == ForgeChatMessage.Assistant)?.Text,
+        _model.Files.Count,
+        _model.ValidationOk,
+        _model.PromptTokens,
+        _model.CompletionTokens,
+        _model.TokensAreEstimated));
 
     private void SyncActivity()
     {
