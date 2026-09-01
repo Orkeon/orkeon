@@ -30,7 +30,7 @@ dotnet add package Orkeon.Tools --prerelease  # optional: the built-in tool fami
 The scripting CLI ships as a .NET tool:
 
 ```bash
-dotnet tool install -g orkeon --prerelease
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease
 orkeon run crew.ork.ts
 ```
 

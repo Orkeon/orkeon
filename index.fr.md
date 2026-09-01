@@ -32,7 +32,7 @@ dotnet add package Orkeon.Tools --prerelease  # optionnel : les familles d'outil
 La CLI de scripting est distribuée comme outil .NET :
 
 ```bash
-dotnet tool install -g orkeon --prerelease
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease
 orkeon run crew.ork.ts
 ```
 
