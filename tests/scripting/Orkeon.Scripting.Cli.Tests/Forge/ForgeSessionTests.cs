@@ -144,7 +144,15 @@ public sealed class ForgeSessionTests : IDisposable
     {
         // W-09: a promoted session reopens; an abandoned one only if it has a verdict —
         // one abort after a reopen must never strand the team forever.
+        //
+        // The fixture writes the verdict, which the test's own name assumes and which every
+        // promoted session carried before adoption-without-a-trial existed. A session that
+        // reached Ready WITHOUT one now reopens at the dry pause instead, because the
+        // arbitration's first act is to read the file it has not got.
         var promoted = ForgeSession.Create(_workspace, "promue");
+        promoted.SaveArtifact(
+            ForgeSession.VerdictFileName,
+            new ForgeVerdict { Score = 0.8, Judge = ForgeVerdict.JudgeDeterministic });
         promoted.SetState(ForgeState.Promoted);
         promoted.SetStatus(ForgeSessionStatus.Promoted);
         promoted.Save(FixedNow);
@@ -157,7 +165,7 @@ public sealed class ForgeSessionTests : IDisposable
             StringComparison.OrdinalIgnoreCase);
 
         var abandonedWithVerdict = ForgeSession.Create(_workspace, "avec-verdict");
-        abandonedWithVerdict.SaveArtifact("verdict.json", new ForgeVerdict { Score = 0.5, Judge = ForgeVerdict.JudgeDeterministic });
+        abandonedWithVerdict.SaveArtifact(ForgeSession.VerdictFileName, new ForgeVerdict { Score = 0.5, Judge = ForgeVerdict.JudgeDeterministic });
         abandonedWithVerdict.SetState(ForgeState.Abandoned);
         abandonedWithVerdict.SetStatus(ForgeSessionStatus.Abandoned);
         abandonedWithVerdict.Save(FixedNow);
@@ -172,4 +180,91 @@ public sealed class ForgeSessionTests : IDisposable
         var active = ForgeSession.Create(_workspace, "active");
         Assert.False(active.TryReopen(FixedNow));
     }
+    /// <summary>
+    /// Adoption without a trial (lot 3 §5): the dry pause is the one place a rendered,
+    /// validated crew exists and nothing has run, and the session may go straight to Ready
+    /// from there.
+    /// <para>
+    /// Ready used to have exactly one predecessor — an accepted verdict — so keeping the team
+    /// as generated required sitting through an execution. Nothing downstream ever needed it:
+    /// <c>verdict.json</c> is optional at promotion and the card knows how to say there is
+    /// none. The move gets its own trigger so the history never reads as a verdict that was
+    /// not earned.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_session_paused_before_its_trial_can_be_adopted_without_running_it()
+    {
+        var session = ForgeSession.Create(_workspace, "demo", now: FixedNow);
+        session.SetState(ForgeState.Test);
+        session.Save(FixedNow);
+
+        Assert.True(session.TryAdoptWithoutTrial(FixedNow));
+        Assert.Equal(ForgeState.Ready, session.State);
+        Assert.Equal(ForgeSessionStatus.Ready, session.Status);
+
+        // Saved, and recorded under its own name rather than as an acceptance.
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "demo", out var reloaded, out _));
+        Assert.Equal(ForgeState.Ready, reloaded!.State);
+
+        var history = File.ReadAllLines(Path.Combine(session.Directory, ForgeSession.HistoryFileName));
+        var last = JsonDocument.Parse(history[^1]).RootElement;
+        Assert.Equal("Test", last.GetProperty("from").GetString());
+        Assert.Equal("TrialSkipped", last.GetProperty("trigger").GetString());
+        Assert.Equal("Ready", last.GetProperty("to").GetString());
+    }
+
+    /// <summary>
+    /// Anywhere else it is refused: the machine has one edge to Ready that skips the trial,
+    /// and it starts at the pause. A session still interviewing has no crew to adopt.
+    /// </summary>
+    [Fact]
+    public void Adoption_without_a_trial_is_refused_away_from_the_pause()
+    {
+        foreach (var state in new[] { ForgeState.Brief, ForgeState.Blueprint, ForgeState.Verdict })
+        {
+            var session = ForgeSession.Create(_workspace, "demo-" + state, now: FixedNow);
+            session.SetState(state);
+            session.Save(FixedNow);
+
+            Assert.False(session.TryAdoptWithoutTrial(FixedNow));
+            Assert.Equal(state, session.State);
+            Assert.Equal(ForgeSessionStatus.Active, session.Status);
+        }
+    }
+
+    /// <summary>
+    /// A team adopted without a trial has no verdict, so reopening it cannot land on the
+    /// arbitration: that stage's first act is to read a <c>verdict.json</c> that was never
+    /// written. It lands on the dry pause instead — the boundary that team came from, where
+    /// the same two answers are on offer again.
+    /// </summary>
+    [Fact]
+    public void A_promoted_session_with_no_verdict_reopens_at_the_pause_not_the_arbitration()
+    {
+        var session = ForgeSession.Create(_workspace, "sans-essai", now: FixedNow);
+        session.SetStatus(ForgeSessionStatus.Promoted);
+        session.SetState(ForgeState.Promoted);
+        session.Save(FixedNow);
+
+        Assert.False(session.HasVerdict);
+        Assert.True(session.TryReopen(FixedNow));
+        Assert.Equal(ForgeState.Test, session.State);
+        Assert.Equal(ForgeSessionStatus.Active, session.Status);
+    }
+
+    /// <summary>With a verdict on disk, the reopen still lands on the arbitration.</summary>
+    [Fact]
+    public void A_promoted_session_with_a_verdict_still_reopens_at_the_arbitration()
+    {
+        var session = ForgeSession.Create(_workspace, "avec-essai", now: FixedNow);
+        session.SaveArtifact(ForgeSession.VerdictFileName, new { score = 0.8, passing = true });
+        session.SetStatus(ForgeSessionStatus.Promoted);
+        session.SetState(ForgeState.Promoted);
+        session.Save(FixedNow);
+
+        Assert.True(session.TryReopen(FixedNow));
+        Assert.Equal(ForgeState.Verdict, session.State);
+    }
+
 }

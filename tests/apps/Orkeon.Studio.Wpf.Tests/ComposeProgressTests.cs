@@ -225,4 +225,38 @@ public sealed class ComposeProgressTests
 
         Assert.Equal(["definition refused"], vm.Progress.Facts);
     }
+
+    /// <summary>
+    /// Which engine build answered, on the line that already names the assistant. Studio
+    /// does not embed the CLI — it launches whichever <c>orkeon</c> its locator finds first —
+    /// so a session driven by a stale binary otherwise looks exactly like a working one that
+    /// happens to report nothing. That ambiguity is what this line removes.
+    /// </summary>
+    [Fact]
+    public async Task The_engine_build_that_answered_is_named()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(
+            """{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false,"engine":"1.0.0-rc.2"}"""));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.True(vm.HasEngineVersion);
+        Assert.Equal("1.0.0-rc.2", vm.EngineVersion);
+        Assert.Contains("1.0.0-rc.2", vm.EngineLabel, StringComparison.Ordinal);
+    }
+
+    /// <summary>An engine too old to announce itself says nothing rather than «engine ?».</summary>
+    [Fact]
+    public async Task An_engine_that_does_not_announce_itself_shows_no_version()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(
+            """{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.False(vm.HasEngineVersion);
+        Assert.Empty(vm.EngineLabel);
+    }
 }

@@ -60,6 +60,13 @@ internal sealed record ForgeCommandOptions
     /// </summary>
     public bool Edit { get; init; }
 
+    /// <summary>
+    /// <c>--adopt</c> (resume only): take the team as generated, without running a trial.
+    /// Offline and instantaneous — the crew is already rendered and validated at the dry
+    /// pause, and promotion needs no trial artefact. It skips evidence, never checks.
+    /// </summary>
+    public bool Adopt { get; init; }
+
     /// <summary><c>--max-iterations</c>.</summary>
     public int? MaxIterations { get; init; }
 
@@ -150,6 +157,10 @@ internal sealed record ForgeCommandOptions
                     options = options with { Edit = true };
                     continue;
 
+                case "--adopt":
+                    options = options with { Adopt = true };
+                    continue;
+
                 case "--max-iterations":
                     if (!TryTakeValue(args, ref i, out var iterations)
                         || !int.TryParse(iterations, NumberStyles.None, CultureInfo.InvariantCulture, out var maxIterations)
@@ -198,6 +209,10 @@ internal sealed record ForgeCommandOptions
             return options with { Error = "--to, --schedule and --with-settings only apply to `forge promote`." };
         if (options.Edit && options.ResumeSlug is null)
             return options with { Error = "--edit only applies to `forge resume`." };
+        if (options.Adopt && options.ResumeSlug is null)
+            return options with { Error = "--adopt only applies to `forge resume`." };
+        if (options.Adopt && options.Edit)
+            return options with { Error = "--adopt and --edit are two different answers to the same pause." };
 
         return options with { Need = needWords.Count > 0 ? string.Join(' ', needWords) : null };
     }
@@ -264,7 +279,13 @@ internal static class ForgeCommand
 
         try
         {
-            return await RunCycleAsync(workspace, options).ConfigureAwait(false);
+            // Inside the guard, like the cycle: adoption writes the history and the session
+            // file, and a disk that refuses either must come back as the CLI's own exit
+            // code with a closed event stream — not as an unhandled exception that leaves a
+            // client waiting forever for a session.finished that will never come.
+            return options.Adopt
+                ? await AdoptAsync(workspace, options).ConfigureAwait(false)
+                : await RunCycleAsync(workspace, options).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -512,12 +533,78 @@ internal static class ForgeCommand
         {
             await Console.Out.WriteLineAsync(
                 $"Generated and validated under {Path.Combine(session.Directory, ForgeYamlRenderer.CrewDirectoryName)}."
-                + $" Resume without --dry to test it: orkeon forge resume {session.Document.Slug}")
+                + $" Try it: orkeon forge resume {session.Document.Slug}"
+                + $" — or keep it as it is, without a trial: orkeon forge resume {session.Document.Slug} --adopt")
                 .ConfigureAwait(false);
         }
 
         return result.ExitCode;
     }
+
+    /// <summary>
+    /// <c>forge resume &lt;slug&gt; --adopt</c>: take the team as generated, without running
+    /// a trial. Fully offline — no host, no LLM, no run directory.
+    /// <para>
+    /// The pause this answers is the one <c>--dry</c> leaves behind: the crew is rendered
+    /// and it passed validation, and the only thing the trial would add is evidence about
+    /// how it behaves. Promotion never needed that evidence — <c>verdict.json</c> is
+    /// optional and the generated card already says «no verdict recorded» when there is
+    /// none — so the trial was a toll, not a check. Refusing to pay it is the user's call;
+    /// the session records that it was skipped rather than pretending a verdict was earned.
+    /// </para>
+    /// </summary>
+    private static async Task<int> AdoptAsync(string workspace, ForgeCommandOptions options)
+    {
+        if (!ForgeSession.TryLoadBySlug(workspace, options.ResumeSlug!, out var session, out var loadError))
+        {
+            await Console.Error.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
+            return ExitError;
+        }
+
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
+        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        events.SessionStarted(session!, resumed: true);
+
+        if (!session!.TryAdoptWithoutTrial(DateTimeOffset.UtcNow))
+        {
+            var detail =
+                $"session '{options.ResumeSlug}' is {session.Document.Status} at "
+                + $"'{ForgeEventWriter.Spell(session.State)}' — adoption without a trial answers the "
+                + "pause left by --dry, where the crew is generated and validated and nothing has run.";
+            // Recoverable, and finished on the status the session ACTUALLY holds: nothing
+            // moved on disk, so calling the session failed would strand a client on a
+            // verdict about the session rather than about the command it just refused.
+            events.Error(ForgeErrorCodes.InvalidState, detail, recoverable: true);
+            events.SessionFinished(StatusWord(session), ExitError);
+            if (!options.Events)
+                await Console.Error.WriteLineAsync($"orkeon forge: {detail}").ConfigureAwait(false);
+            return ExitError;
+        }
+
+        events.SessionFinished("ready", 0);
+        if (!options.Events)
+        {
+            await Console.Out.WriteLineAsync(
+                $"Adopted without a trial. Ship it with: orkeon forge promote {session.Document.Slug} --to <directory>")
+                .ConfigureAwait(false);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// The protocol's word for where a session stands, for a command that refused to move it.
+    /// «failed» is reserved for a session that actually broke; a session that is merely not
+    /// where the command applies is still exactly as resumable as it was a moment ago.
+    /// </summary>
+    private static string StatusWord(ForgeSession session) => session.Status switch
+    {
+        ForgeSessionStatus.Ready => "ready",
+        ForgeSessionStatus.Abandoned => "abandoned",
+        ForgeSessionStatus.Promoted => "promoted",
+        ForgeSessionStatus.Failed => "failed",
+        _ => "paused",
+    };
 
     /// <summary>
     /// <c>forge promote &lt;slug&gt; --to &lt;dir&gt;</c> (SPEC §11): ships a Ready session

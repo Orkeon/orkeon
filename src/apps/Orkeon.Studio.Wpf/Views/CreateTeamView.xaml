@@ -63,6 +63,12 @@
                      Foreground="{DynamicResource WarningBrush}"
                      Text="{Binding [Studio.Create.AssistantMissing], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding NeedsAssistant, Converter={StaticResource BooleanToVisibility}}"/>
+          <!-- Which engine build answered. Studio does not embed the CLI — it launches
+               whichever one its locator finds first — so without this a session driven by a
+               stale binary looks exactly like a working one with nothing to report. -->
+          <TextBlock Style="{StaticResource Hint}" Margin="9,0,0,0" VerticalAlignment="Center"
+                     Text="{Binding EngineLabel}"
+                     Visibility="{Binding HasEngineVersion, Converter={StaticResource BooleanToVisibility}}"/>
         </StackPanel>
       </StackPanel>
     </DockPanel>
@@ -387,106 +393,109 @@
               <StackPanel>
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,8"
                            Text="{Binding [Studio.Create.TeamFolders], Source={x:Static services:I18n.Instance}}"/>
-                <WrapPanel>
-                  <!-- W-04: chips the blueprint implies — read (folder-open) then write
-                       (pencil); informative, no ✕ — editing an agent is what changes them. -->
-                  <ItemsControl ItemsSource="{Binding UnclaimedDerivedMounts}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <!-- Not red. These carry no physical path, so they were never compared
-                             to the authorized folders — and the folder bound behind them at
-                             adoption is the team's own, which the launcher explicitly exempts.
-                             Painting them red warned about the one thing that always works. -->
-                        <Border Style="{StaticResource ToolChip}" Margin="0,0,7,7">
+                <!-- One line per mount point (F-01, lot 3): the name the agents address, who
+                     addresses it, and the folder behind it — or the button that says there is
+                     none yet. Two rows of chips could show WHAT the team would mount and never
+                     WHERE, so an implied root could only be answered at adoption, by a folder
+                     created inside the team and left empty. -->
+                <ItemsControl ItemsSource="{Binding MountRows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Margin="0,0,0,6" Padding="10,7" CornerRadius="8"
+                              Background="{DynamicResource PaperSunkBrush}">
+                        <Border.Style>
+                          <Style TargetType="Border">
+                            <Style.Triggers>
+                              <!-- Red is for a physical folder genuinely outside the settings'
+                                   authorized list — never for a root with no folder behind it. -->
+                              <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </Border.Style>
+                        <DockPanel LastChildFill="True">
+                          <!-- Foreground is a Setter, not a local value: a local value beats
+                               every style trigger, so setting it inline would have made the
+                               red below unreachable — the trigger would sit there looking
+                               correct and never fire once. -->
+                          <controls:LucideIcon DockPanel.Dock="Left" Size="12" VerticalAlignment="Center" Margin="0,0,8,0">
+                            <controls:LucideIcon.Style>
+                              <Style TargetType="controls:LucideIcon">
+                                <Setter Property="Kind" Value="folder-open"/>
+                                <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                                    <Setter Property="Kind" Value="pencil"/>
+                                  </DataTrigger>
+                                  <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </controls:LucideIcon.Style>
+                          </controls:LucideIcon>
+                          <!-- Removing a bound folder gives the mount point back to the blueprint;
+                               removing a bare implied root drops it, which the banner then explains. -->
+                          <Button DockPanel.Dock="Right" Width="18" Height="18" Margin="8,0,0,0" Cursor="Hand"
+                                  Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                                  Command="{Binding DataContext.RemoveTeamMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                                  CommandParameter="{Binding MountString}"
+                                  Visibility="{Binding IsBound, Converter={StaticResource BooleanToVisibility}}">
+                            <controls:LucideIcon Kind="x" Size="11" Foreground="{DynamicResource InkFaintBrush}"/>
+                          </Button>
+                          <Button DockPanel.Dock="Right" Width="18" Height="18" Margin="8,0,0,0" Cursor="Hand"
+                                  Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                                  Command="{Binding DataContext.RemoveDerivedMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                                  CommandParameter="{Binding VirtualPath}"
+                                  Visibility="{Binding IsBound, Converter={StaticResource InverseBooleanToVisibility}}">
+                            <controls:LucideIcon Kind="x" Size="11" Foreground="{DynamicResource InkFaintBrush}"/>
+                          </Button>
+                          <!-- The folder behind the mount point, or the gesture that names one. -->
+                          <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center"
+                                  Command="{Binding DataContext.BindMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                                  CommandParameter="{Binding VirtualPath}"
+                                  Content="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"
+                                  Visibility="{Binding CanChooseFolder, Converter={StaticResource BooleanToVisibility}}"/>
+                          <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="11"
+                                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240"
+                                     Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Folder}"
+                                     ToolTip="{Binding Folder}"
+                                     Visibility="{Binding HasFolder, Converter={StaticResource BooleanToVisibility}}"/>
                           <StackPanel Orientation="Horizontal">
-                            <controls:LucideIcon Size="11" Foreground="{DynamicResource InkMutedBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,6,0">
-                              <controls:LucideIcon.Style>
-                                <Style TargetType="controls:LucideIcon">
-                                  <Setter Property="Kind" Value="folder-open"/>
-                                  <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
-                                      <Setter Property="Kind" Value="pencil"/>
-                                    </DataTrigger>
-                                  </Style.Triggers>
-                                </Style>
-                              </controls:LucideIcon.Style>
-                            </controls:LucideIcon>
-                            <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding VirtualPath}"/>
-                            <!-- Who implied it. Provenance, not permission: the runtime mounts
+                            <TextBlock Style="{StaticResource ToolChipText}" VerticalAlignment="Center"
+                                       Text="{Binding VirtualPath}"/>
+                            <!-- Who addresses it. Provenance, not permission: the runtime mounts
                                  one flat list, so no agent is confined to its own folder. -->
-                            <TextBlock Style="{StaticResource ToolChipText}" Margin="6,0,0,0"
+                            <TextBlock Style="{StaticResource ToolChipText}" Margin="7,0,0,0" VerticalAlignment="Center"
                                        Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Agents}"
                                        Visibility="{Binding HasAgents, Converter={StaticResource BooleanToVisibility}}"/>
-                            <Button Width="16" Height="16" Margin="6,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0"
-                                    Command="{Binding DataContext.RemoveDerivedMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
-                                    CommandParameter="{Binding VirtualPath}">
-                              <controls:LucideIcon Kind="x" Size="10" Foreground="{DynamicResource InkFaintBrush}"/>
-                            </Button>
                           </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <!-- The folders the user allowed: shown the way the agents address them
-                       (/output (lecture, écriture)), never as the raw physical:virtual:rights
-                       string — the picker and the sidecar are where the disk path belongs. -->
-                  <ItemsControl ItemsSource="{Binding TeamMountChips}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Border Margin="0,0,7,7">
-                          <Border.Style>
-                            <Style TargetType="Border" BasedOn="{StaticResource ToolChip}">
-                              <Style.Triggers>
-                                <!-- Not in « Réglages › Dossiers autorisés ». -->
-                                <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
-                                  <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
-                                </DataTrigger>
-                              </Style.Triggers>
-                            </Style>
-                          </Border.Style>
-                          <StackPanel Orientation="Horizontal">
-                            <controls:LucideIcon Size="11" Foreground="{DynamicResource InkMutedBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,6,0">
-                              <controls:LucideIcon.Style>
-                                <Style TargetType="controls:LucideIcon">
-                                  <Setter Property="Kind" Value="folder-open"/>
-                                  <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
-                                      <Setter Property="Kind" Value="pencil"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
-                                      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-                                    </DataTrigger>
-                                  </Style.Triggers>
-                                </Style>
-                              </controls:LucideIcon.Style>
-                            </controls:LucideIcon>
-                            <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding Label}"/>
-                            <Button Width="16" Height="16" Margin="6,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0"
-                                    Command="{Binding DataContext.RemoveTeamMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
-                                    CommandParameter="{Binding MountString}">
-                              <controls:LucideIcon Kind="x" Size="10" Foreground="{DynamicResource InkFaintBrush}"/>
-                            </Button>
-                          </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <Button Style="{StaticResource ChipAction}" Command="{Binding AllowFolderCommand}">
-                    <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
-                      <TextBlock VerticalAlignment="Center"
-                                 Text="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                  </Button>
-                </WrapPanel>
+                        </DockPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Style="{StaticResource ChipAction}" HorizontalAlignment="Left" Margin="0,2,0,0"
+                        Command="{Binding AllowFolderCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                         VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock VerticalAlignment="Center"
+                               Text="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
                            Text="{Binding [Studio.Create.DerivedHint], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}"/>
+                <!-- What the promoted FORGE.md already says, said in time: a read root the
+                     user did not bind is backed at adoption by the team's own empty input/,
+                     and nothing ever copies documents into it. -->
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
+                           Foreground="{DynamicResource WarningBrush}"
+                           Text="{Binding [Studio.Create.FillInputFolder], Source={x:Static services:I18n.Instance}}"
+                           Visibility="{Binding NeedsInputFolder, Converter={StaticResource BooleanToVisibility}}"/>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
                            Foreground="{DynamicResource DangerBrush}"
                            Visibility="{Binding HasUndeclaredTeamMounts, Converter={StaticResource BooleanToVisibility}}"
@@ -586,6 +595,14 @@
               <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
             </StackPanel>
           </Button>
+          <!-- The other answer to the same pause. Ready used to have exactly one way in —
+               an accepted verdict — so keeping the team as generated meant sitting through
+               an execution first. The label says what it skips: a report, not a check. -->
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0"
+                  Command="{Binding AdoptWithoutTrialCommand}"
+                  ToolTip="{Binding [Studio.Create.AdoptWithoutTrialTip], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"
+                  Content="{Binding [Studio.Create.AdoptWithoutTrial], Source={x:Static services:I18n.Instance}}"/>
           <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,12,0"
                      Text="{Binding [Studio.Create.PausedHint], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"/>

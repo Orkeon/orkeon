@@ -173,4 +173,84 @@ public sealed class AllowedFolderChooserTests
         Assert.All(chooser.Rows, row => Assert.False(row.IsChecked));
         Assert.False(chooser.CanConfirm);
     }
+
+    /// <summary>
+    /// The targeted open: the modal answers ONE mount point, and the folder it hands back is
+    /// bound behind that name — not behind the one the settings happened to declare.
+    /// <para>
+    /// Without this, a root the blueprint implies could never be answered: every declared
+    /// entry carries its own virtual name, so «Autoriser un dossier» could only ever add
+    /// <c>/docs</c>, and <c>/workspace</c> stayed unbound until adoption backed it with an
+    /// empty folder inside the team.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_targeted_open_judges_the_rows_on_the_target_and_takes_one_folder()
+    {
+        var chooser = Chooser(Docs, Out);
+        var added = new List<MountDefinition>();
+
+        // The team already spends /workspace on something else — that is the thing being
+        // replaced — AND it already carries /output, which the second row happens to be
+        // declared on. Neither may disqualify a row: what matters is where the pick LANDS,
+        // and every pick here lands on /workspace.
+        chooser.Open(["/data/old:/workspace:ro", "/data/out:/output:rw"], added.Add, targetVirtualPath: "/workspace");
+
+        Assert.True(chooser.IsBindingOneMount);
+        Assert.Contains("/workspace", chooser.Title, StringComparison.Ordinal);
+        Assert.All(chooser.Rows, r => Assert.True(r.IsSelectable, r.UnavailableNote));
+
+        // One mount point takes one folder: the second tick replaces the first.
+        chooser.Rows[0].IsChecked = true;
+        chooser.Rows[1].IsChecked = true;
+        Assert.False(chooser.Rows[0].IsChecked);
+        Assert.True(chooser.Rows[1].IsChecked);
+
+        chooser.ConfirmCommand.Execute(null);
+
+        // The folder and the RIGHTS come from the settings, verbatim; only the name the
+        // agents use is the team's to choose — and the caller is what applies it.
+        var picked = Assert.Single(added);
+        Assert.Equal("/data/out", picked.PhysicalPath);
+        Assert.Equal(MountRights.ReadWrite, picked.Rights);
+        Assert.Equal("/output", picked.VirtualPath);
+        Assert.Null(chooser.TargetVirtualPath);
+    }
+
+    /// <summary>
+    /// The one refusal a targeted open keeps: the folder already sitting behind that very
+    /// mount point. Picking it again changes nothing, and the row says so.
+    /// </summary>
+    [Fact]
+    public void A_targeted_open_still_refuses_the_folder_already_behind_that_mount_point()
+    {
+        var chooser = Chooser(Docs, Out);
+        chooser.Open(["/data/docs:/workspace:ro"], _ => { }, targetVirtualPath: "/workspace");
+
+        Assert.False(chooser.Rows[0].IsSelectable);
+        Assert.True(chooser.Rows[0].HasNote);
+        Assert.True(chooser.Rows[1].IsSelectable);
+    }
+
+    /// <summary>The untargeted open keeps its multiple choice and its own heading.</summary>
+    [Fact]
+    public void The_untargeted_open_still_takes_several_folders()
+    {
+        var chooser = Chooser(Docs, Out);
+        var added = new List<MountDefinition>();
+        chooser.Open([], added.Add);
+
+        Assert.False(chooser.IsBindingOneMount);
+        Assert.Equal(
+            Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance[
+                Orkeon.Studio.Core.Localization.StudioStringKeys.AllowedFoldersTitle],
+            chooser.Title);
+
+        chooser.Rows[0].IsChecked = true;
+        chooser.Rows[1].IsChecked = true;
+        Assert.True(chooser.Rows[0].IsChecked);
+
+        chooser.ConfirmCommand.Execute(null);
+        Assert.Equal(2, added.Count);
+    }
 }

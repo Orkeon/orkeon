@@ -73,6 +73,14 @@ internal static class ForgeStateMachineFactory
             // directory, a fresh verdict, not a single LLM compose token.
             .AddTransition(ForgeState.Verdict, ForgeTrigger.RetryRequested, ForgeState.Test)
 
+            // Adoption without a trial. Ready had exactly one predecessor — a verdict that
+            // was accepted — so a user who wanted the team as generated had to sit through
+            // an execution to be allowed to keep it. Nothing downstream requires the trial:
+            // the crew is rendered and validated at the dry pause, and promotion treats the
+            // verdict as optional. This is the edge that says so, kept distinct from
+            // Accepted so the history never claims a verdict that was never earned.
+            .AddTransition(ForgeState.Test, ForgeTrigger.TrialSkipped, ForgeState.Ready)
+
             // The user may stop at the arbitration point.
             .AddTransition(ForgeState.Verdict, ForgeTrigger.Abandon, ForgeState.Abandoned);
 

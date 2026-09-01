@@ -89,6 +89,19 @@ internal enum ForgeTrigger
     /// </summary>
     BlueprintEdited,
 
+    /// <summary>
+    /// The user adopted the team without running a trial, from the dry pause.
+    /// <para>
+    /// The crew is rendered and validated at that boundary — that is what the pause is —
+    /// and promotion consumes no trial artefact: <c>verdict.json</c> is optional and the
+    /// generated card already knows how to say «no verdict recorded». What the trial buys
+    /// is evidence, and a user who does not want to pay for it is entitled to say so; what
+    /// it must never do is buy it silently, which is why this is its own trigger and its own
+    /// line in the history rather than an <see cref="Accepted"/> with nothing behind it.
+    /// </para>
+    /// </summary>
+    TrialSkipped,
+
     /// <summary>The user stopped the cycle.</summary>
     Abandon,
 

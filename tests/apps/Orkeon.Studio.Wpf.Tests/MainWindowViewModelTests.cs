@@ -165,7 +165,7 @@ public sealed class MainWindowViewModelTests
         // An entry no settings folder backs — an imported sidecar, a settings entry since deleted.
         window.CreateTeam.TeamMounts.Add("/elsewhere/archives:/archives:ro");
 
-        var chips = window.CreateTeam.TeamMountChips;
+        var chips = window.CreateTeam.MountRows;
         Assert.False(chips.Single(c => c.MountString.StartsWith("/data/docs", StringComparison.Ordinal)).IsUndeclared);
         Assert.True(chips.Single(c => c.MountString.StartsWith("/elsewhere", StringComparison.Ordinal)).IsUndeclared);
     }

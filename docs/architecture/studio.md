@@ -69,6 +69,19 @@ carries, or whose virtual root another folder already spends, says so and
 cannot be picked — two mounts on one root is not a merge the runtime performs,
 it is one it drops.
 
+The wizard's block is **one line per mount point** (lot 3): the name the agents
+address, who addresses it — provenance, never permission — and the folder behind
+it, or « Choisir le dossier… » when there is none yet. That button opens the same
+chooser **targeted at that virtual path**: the picked entry keeps its folder and
+its rights, and only the name the agents use for it is the team's to choose. A
+targeted open takes ONE folder and judges its rows where the pick will LAND, not
+on the root the settings happened to declare — otherwise every folder the team
+already uses elsewhere would refuse itself. Without that gesture an
+agent-implied root could only ever be answered at adoption, by a folder created
+inside the team and left empty: which is why the card also says, while there is
+still time, that a reading team with no folder chosen will be given its own empty
+`input/` and that nothing copies documents into it.
+
 Declaring is the settings' own gesture, and the chooser's « Déclarer un nouveau
 dossier… » is one door to it: it closes and lands on « Réglages › Dossiers
 autorisés », on that tab and not merely on that screen. One door, so a folder
@@ -128,6 +141,23 @@ validates it in full, re-renders deterministically (zero LLM tokens, same
 iteration) and pauses again at the same boundary, so the Composer repaints with
 the amended team. While the assistant composes or a trial runs, the buttons wait
 with the engine.
+
+The same dry pause carries a second answer beside « Essayer l'équipe »:
+« Adopter sans essayer » (`forge resume --adopt`), which moves the session
+straight to Ready — offline, no run directory, zero tokens. `Ready` used to have
+exactly one predecessor, an accepted verdict, so keeping the team as generated
+required sitting through an execution that nothing downstream consumed:
+`verdict.json` is optional at promotion and the generated `FORGE.md` already
+knows how to say « no verdict recorded ». What the trial buys is *evidence*, not
+permission, so the button's tooltip says exactly that, and the transition gets
+its own trigger (`TrialSkipped`) so the session history never reads as a verdict
+that was never earned.
+
+Which engine answered is on screen too, beside the assistant's name («&nbsp;moteur
+1.0.0-rc.2&nbsp;», from `session.started`). Studio does not embed the CLI — it
+launches whichever `orkeon` its locator finds first, co-installed, on `PATH` or
+built from the checkout — so without that line a session driven by a stale binary
+is indistinguishable from a working one that happens to have nothing to report.
 
 ### What a run costs, on screen (remediation v3)
 

@@ -108,7 +108,7 @@ public class ForgeSessionModelTests
         var model = new ForgeSessionModel();
         string[] stream =
         [
-            """{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}""",
+            """{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false,"engine":"1.0.0-rc.2"}""",
             """{"v":2,"seq":2,"ts":"t","kind":"stage.entered","stage":"brief","iteration":1}""",
             """{"v":2,"seq":3,"ts":"t","kind":"assistant.message","text":"Quel est le fournisseur ?"}""",
             """{"v":2,"seq":4,"ts":"t","kind":"brief.ready","brief":{"goal":"Résumer chaque matin les offres","acceptance":[{"id":"A1","statement":"Le résumé cite ses sources","kind":"must"},{"id":"A2","statement":"Moins d'une page","kind":"should"}]}}""",
@@ -140,6 +140,9 @@ public class ForgeSessionModelTests
         var model = FullCycle();
 
         Assert.Equal("veille", model.Slug);
+        // Which build answered. It is the first thing to read when a screen shows nothing:
+        // an engine that reports nothing and one too old to report look the same otherwise.
+        Assert.Equal("1.0.0-rc.2", model.EngineVersion);
         // The blueprint's short crew name supersedes the brief's goal sentence as the
         // title: the adoption slug derives from it (a goal-length slug made 200-char folders).
         Assert.Equal("veille", model.Title);

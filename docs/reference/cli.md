@@ -53,6 +53,7 @@ orkeon forge "summarize my supplier's new offers every morning"   # start from a
 orkeon forge                                   # start with the interview
 orkeon forge list                              # list the workspace's sessions
 orkeon forge resume <slug>                     # pick a session up exactly where it stopped
+orkeon forge resume <slug> --adopt             # keep the team as generated, without a trial
 orkeon forge promote <slug> --to <dir>         # ship a ready session as an ordinary folder
 ```
 
@@ -67,6 +68,7 @@ Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forg
 | `--auto` | Arbitrate non-conforming verdicts without a human, within the budget. |
 | `--dry` | Stop after validation — generate and validate, never execute. Resume without `--dry` to try it. |
 | `--edit` | *(resume)* Amend the blueprint of a session paused before its trial: the amended JSON goes down the channel (`blueprint.edited` on stdin in `--events` mode, one pasted line in the terminal), is validated in full, then re-rendered deterministically — zero LLM tokens, same iteration. With `--dry`, the session pauses again at the same boundary. At the arbitration, use the `edit` decision instead. |
+| `--adopt` | *(resume)* Take the team as generated, without running a trial: a session paused by `--dry` goes straight to Ready. Fully offline — no host, no LLM, no run directory, zero tokens. It skips the **evidence** a trial produces, never a check: the crew is rendered and validated at that pause, and promotion never consumed a trial artefact (`verdict.json` is optional and `FORGE.md` says «no verdict recorded»). Refused anywhere else, with `FORGE-INVALID-STATE`. |
 | `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | The budget (default 3 iterations; `0` = unlimited tokens/time). Resuming may raise it; consumption always carries over. |
 | `--settings <path>` | Same semantics as `orkeon run` — **long form only**: the forge parser is bespoke and defines no short aliases. |
 | `--pack <dir>` | Override the embedded prompt pack. |

@@ -89,6 +89,9 @@ public sealed class ForgeEngineTests : IDisposable
 
         var events = Events();
         Assert.Equal("session.started", events[0].GetProperty("kind").GetString());
+        // Which build answered. Without it a client cannot tell an engine that reports
+        // nothing from one too old to report it — two states that look identical on screen.
+        Assert.False(string.IsNullOrWhiteSpace(events[0].GetProperty("engine").GetString()));
         Assert.Equal(
             ["brief", "blueprint", "render", "validate", "test", "diagnose", "verdict"],
             events.Where(e => e.GetProperty("kind").GetString() == "stage.entered")

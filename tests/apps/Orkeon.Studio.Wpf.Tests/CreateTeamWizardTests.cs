@@ -708,9 +708,8 @@ public class CreateTeamWizardTests
         FillStepOne(vm);
         await Compose(vm);
 
-        // Nothing claimed yet: the derived chip carries the information.
-        Assert.Contains(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/output");
-        Assert.Empty(vm.TeamMountChips);
+        // Nothing bound yet: the row names the mount point and offers to answer it.
+        Assert.Contains(vm.MountRows, r => r is { VirtualPath: "/output", IsBound: false });
 
         var chosen = new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
@@ -720,15 +719,15 @@ public class CreateTeamWizardTests
         };
         vm.AddTeamMount(chosen);
 
-        // Claimed: one chip, the removable one.
-        Assert.Single(vm.TeamMountChips);
-        Assert.DoesNotContain(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/output");
+        // Bound: ONE row for the mount point, carrying the folder and removable.
+        var bound = Assert.Single(vm.MountRows, r => r.VirtualPath == "/output");
+        Assert.True(bound.IsBound);
+        Assert.Equal(Path.Combine("/data", "sorties"), bound.Folder);
 
         vm.RemoveTeamMountCommand.Execute(chosen.ToMountString());
 
-        // Removed: the derived chip is back on screen, which is exactly what the save records.
-        Assert.Empty(vm.TeamMountChips);
-        Assert.Contains(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/output");
+        // Removed: the mount point is back to unanswered, which is what the save records.
+        Assert.Contains(vm.MountRows, r => r is { VirtualPath: "/output", IsBound: false });
         Assert.Contains(
             vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille")),
             m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
@@ -758,12 +757,12 @@ public class CreateTeamWizardTests
         FillStepOne(vm);
         await Compose(vm);
 
-        Assert.Equal(["/workspace", "/output"], vm.UnclaimedDerivedMounts.Select(m => m.VirtualPath));
+        Assert.Equal(["/workspace", "/output"], vm.MountRows.Select(r => r.VirtualPath));
         Assert.False(vm.HasDroppedDerivedRoots);
 
         vm.RemoveDerivedMountCommand.Execute("/output");
 
-        Assert.Equal(["/workspace"], vm.UnclaimedDerivedMounts.Select(m => m.VirtualPath));
+        Assert.Equal(["/workspace"], vm.MountRows.Select(r => r.VirtualPath));
         Assert.Equal(["/output"], vm.DroppedDerivedRoots);
         Assert.True(vm.HasDroppedDerivedRoots);
         Assert.Contains("/output", vm.DroppedDerivedWarning, StringComparison.Ordinal);
@@ -799,7 +798,7 @@ public class CreateTeamWizardTests
         FillStepOne(vm);
         await Compose(vm);
 
-        Assert.Contains(vm.UnclaimedDerivedMounts, m => m.VirtualPath == "/workspace");
+        Assert.Contains(vm.MountRows, r => r is { VirtualPath: "/workspace", IsBound: false });
 
         vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
@@ -807,14 +806,157 @@ public class CreateTeamWizardTests
             VirtualPath = "/output",
             Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite,
         });
-        Assert.False(Assert.Single(vm.TeamMountChips).IsUndeclared);
+        Assert.False(Assert.Single(vm.MountRows, r => r.IsBound).IsUndeclared);
 
         vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
             PhysicalPath = "/elsewhere/archives",
             VirtualPath = "/archives",
         });
-        Assert.True(vm.TeamMountChips.Single(c => c.MountString.StartsWith("/elsewhere", StringComparison.Ordinal)).IsUndeclared);
+        Assert.True(vm.MountRows.Single(r => r.MountString.StartsWith("/elsewhere", StringComparison.Ordinal)).IsUndeclared);
+    }
+
+    /// <summary>
+    /// Binding a folder behind a mount point the blueprint implied — the gesture the card had
+    /// no way to express.
+    /// <para>
+    /// The row for <c>/workspace</c> existed and said who addressed it; what it could not say
+    /// is WHERE. So a reading team was adopted with its own empty <c>input/</c> behind that
+    /// root, and its first task — «find under /workspace the folder containing the notes» —
+    /// found nothing. Answering the row is what puts a real folder there, at adoption, in the
+    /// sidecar.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_folder_can_be_bound_behind_a_mount_point_the_agents_imply()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read"]}],"tasks":[{"key":"t","description":"d","agent":"a"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await Compose(vm);
+
+        // Unanswered: the row says so, and so does the sentence about input/.
+        var before = Assert.Single(vm.MountRows);
+        Assert.Equal("/workspace", before.VirtualPath);
+        Assert.False(before.HasFolder);
+        Assert.True(vm.NeedsInputFolder);
+
+        // The row's gesture asks the shell for a folder, naming the mount point it answers.
+        string? asked = null;
+        vm.AllowFolderRequested += (_, e) => asked = e.TargetVirtualPath;
+        vm.BindMountCommand.Execute("/workspace");
+        Assert.Equal("/workspace", asked);
+
+        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = Path.Combine("/data", "notes"),
+            VirtualPath = "/docs",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+        });
+
+        // One row still, now carrying the folder — and the rights the settings declared.
+        var bound = Assert.Single(vm.MountRows);
+        Assert.Equal("/workspace", bound.VirtualPath);
+        Assert.Equal(Path.Combine("/data", "notes"), bound.Folder);
+        Assert.False(bound.IsReadWrite);
+        Assert.False(vm.NeedsInputFolder);
+
+        // And the save records the user's folder, not the empty one inside the team.
+        var mounts = vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille"));
+        Assert.Contains(mounts, m => m.StartsWith(Path.Combine("/data", "notes"), StringComparison.Ordinal)
+            && m.EndsWith(":/workspace:ro", StringComparison.Ordinal));
+        Assert.DoesNotContain(mounts, m => m.Contains(Path.Combine("veille", "input"), StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A mount string the parser refuses still gets a line — dropping it silently would hide
+    /// a mount the team will carry — but it offers no binding: what it displays is a message,
+    /// not a virtual path, and targeting the chooser at it would bind a folder behind that
+    /// message. All it can offer is its own removal.
+    /// </summary>
+    [Fact]
+    public void An_unreadable_mount_is_listed_but_offers_no_folder_to_choose()
+    {
+        var (vm, _, _) = Build();
+        vm.TeamMounts.Add("this is not a mount string");
+
+        var row = Assert.Single(vm.MountRows);
+        Assert.True(row.IsUnreadable);
+        Assert.True(row.IsUndeclared);
+        Assert.True(row.IsBound);
+        Assert.False(row.CanChooseFolder);
+        Assert.Equal("this is not a mount string", row.MountString);
+    }
+
+    /// <summary>
+    /// The other answer to the dry pause, from Studio: « Adopter sans essayer » resumes the
+    /// same session with <c>--adopt</c>. It is offered exactly when the trial is — the pause
+    /// is where both answers exist — and it runs the engine offline, without a trial.
+    /// </summary>
+    [Fact]
+    public async Task Adopting_without_a_trial_resumes_the_paused_session_with_adopt()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await Compose(vm);
+
+        // Both answers to the pause are offered, and by the same gate.
+        Assert.True(vm.CanTryTeam);
+        Assert.True(vm.AdoptWithoutTrialCommand.CanExecute(null));
+
+        processes.OutputToEmit.Clear();
+        processes.OutputToEmit.Add(
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
+        vm.TeamName = "veille";
+
+        await vm.AdoptWithoutTrialCommand.ExecuteAsync();
+
+        var argv = processes.Requests[^1].Arguments;
+        Assert.Equal(["forge", "resume", "veille", "--events", "jsonl", "--adopt"], argv);
+
+        // Ready: the team may be saved, and the pause's two buttons are gone.
+        Assert.True(vm.CanSaveTeam);
+        Assert.False(vm.CanTryTeam);
+    }
+
+    /// <summary>A mount point takes one folder: binding again replaces, never accumulates.</summary>
+    [Fact]
+    public async Task Binding_a_mount_point_twice_replaces_the_folder_behind_it()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read"]}],"tasks":[{"key":"t","description":"d","agent":"a"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await Compose(vm);
+
+        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/data/first", VirtualPath = "/docs",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+        });
+        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/data/second", VirtualPath = "/docs",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+        });
+
+        var row = Assert.Single(vm.MountRows);
+        Assert.Equal("/data/second", row.Folder);
+        Assert.Single(vm.TeamMounts);
     }
 }
 
@@ -842,4 +984,5 @@ public sealed class AskWithoutEngineTests
         Assert.NotEmpty(chat.Turns[1].Body);
         Assert.Equal("", chat.Draft);   // sent, not kept: it went somewhere
     }
+
 }

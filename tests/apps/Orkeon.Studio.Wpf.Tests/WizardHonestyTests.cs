@@ -51,7 +51,7 @@ public sealed class WizardHonestyTests
     /// <summary>
     /// The defect the owner photographed: the hint that explains the chips appeared while the
     /// chips did not. HasDerivedMounts was in the notification batch and re-evaluated;
-    /// UnclaimedDerivedMounts — the one the list binds — was not, so WPF kept its empty
+    /// MountRows — the one the list binds — was not, so WPF kept its empty
     /// snapshot until some unrelated gesture happened to refresh it.
     /// </summary>
     [Fact]
@@ -71,8 +71,8 @@ public sealed class WizardHonestyTests
 
         await vm.ComposeCommand.ExecuteAsync();
 
-        Assert.NotEmpty(vm.UnclaimedDerivedMounts);
-        Assert.Contains(nameof(vm.UnclaimedDerivedMounts), raised, StringComparer.Ordinal);
+        Assert.NotEmpty(vm.MountRows);
+        Assert.Contains(nameof(vm.MountRows), raised, StringComparer.Ordinal);
         Assert.Contains(nameof(vm.HasDerivedMounts), raised, StringComparer.Ordinal);
     }
 

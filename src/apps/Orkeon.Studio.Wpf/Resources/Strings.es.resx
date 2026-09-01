@@ -1628,6 +1628,7 @@
   <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve">
     <value>Añadir una carpeta autorizada</value>
   </data>
+  <data name="Studio.Settings.BindTitle" xml:space="preserve"><value>¿Qué carpeta hay detrás de {0}?</value></data>
   <data name="Studio.Settings.AllowedFoldersSub" xml:space="preserve">
     <value>Elija entre las carpetas declaradas en Ajustes › Carpetas autorizadas. El equipo las verá con los mismos derechos.</value>
   </data>
@@ -1700,6 +1701,7 @@
   <data name="Studio.Create.AllowFolder" xml:space="preserve">
     <value>Autorizar una carpeta</value>
   </data>
+  <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Elegir la carpeta…</value></data>
   <data name="Studio.Create.FoldersHint" xml:space="preserve">
     <value>Estas carpetas se registran con el equipo en el momento de la adopción — el ensayo, en cambio, corre en su propio entorno aislado.</value>
   </data>
@@ -2002,6 +2004,18 @@
   </data>
   <data name="Studio.Create.TokensEstimated" xml:space="preserve">
     <value>Estimación: este proveedor no informa el recuento de tokens.</value>
+  </data>
+  <data name="Studio.Create.EngineVersion" xml:space="preserve">
+    <value>motor {0}</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrial" xml:space="preserve">
+    <value>Adoptar sin probar</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
+    <value>El equipo está generado y verificado. La prueba produce un informe sobre su comportamiento; adoptar ahora prescinde de ese informe, nada más.</value>
+  </data>
+  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
+    <value>Este equipo lee. Elija la carpeta que debe leer o, al adoptarlo, recibirá su propia carpeta «input» vacía, y nada copiará sus documentos en ella.</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>{0} archivo(s) escrito(s)</value>

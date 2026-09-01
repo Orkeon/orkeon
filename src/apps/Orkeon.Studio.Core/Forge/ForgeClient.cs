@@ -44,6 +44,14 @@ public sealed record ForgeStartRequest
     /// pauses again at the same boundary. Only meaningful with <see cref="ResumeSlug"/>.
     /// </summary>
     public string? EditedBlueprintJson { get; init; }
+
+    /// <summary>
+    /// <c>--adopt</c>: take the team as generated, without running a trial. Answers the same
+    /// dry pause as <see cref="EditedBlueprintJson"/>, and is offline and instantaneous —
+    /// the engine moves the session to Ready and exits. Only meaningful with
+    /// <see cref="ResumeSlug"/>.
+    /// </summary>
+    public bool Adopt { get; init; }
 }
 
 /// <summary>
@@ -110,6 +118,9 @@ public static class ForgeArgumentsBuilder
 
         if (!string.IsNullOrWhiteSpace(request.EditedBlueprintJson))
             arguments.Add("--edit");
+
+        if (request.Adopt)
+            arguments.Add("--adopt");
 
         return arguments;
     }

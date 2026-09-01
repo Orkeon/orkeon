@@ -131,21 +131,68 @@ public sealed class WizardDecision
 }
 
 /// <summary>
-/// One chip of the team-folders list standing for a mount the blueprint itself implies.
-/// It is not red: it carries no physical path, so it was never compared to the authorized
-/// folders — and the folder bound behind it at adoption is the team's own, which the launcher
-/// exempts by design.
+/// What « Autoriser un dossier » and « Choisir le dossier… » ask of the shell.
 /// </summary>
-/// <param name="VirtualPath">The root the agents address, and the remove command's parameter.</param>
-/// <param name="IsReadWrite">Drives the pencil / folder-open icon.</param>
-/// <param name="Agents">
-/// The roles behind it, joined for display — PROVENANCE, never permission: the runtime mounts
-/// one flat list per host, so this says why the mount exists, not who is confined to it.
-/// </param>
-public sealed record DerivedMountChip(string VirtualPath, bool IsReadWrite, string Agents = "")
+/// <remarks>
+/// <c>TargetVirtualPath</c> null means «add a folder as the settings declare it». The
+/// difference is the whole feature: without a target the chooser can only ever add the root
+/// the settings named, which is never the root the blueprint implied.
+/// </remarks>
+public sealed class AllowFolderRequestedEventArgs(string? targetVirtualPath) : EventArgs
 {
-    /// <summary>Whether the chip can say who implied it.</summary>
+    /// <summary>The mount point to bind; null to add a folder as the settings declare it.</summary>
+    public string? TargetVirtualPath { get; } = targetVirtualPath;
+}
+
+/// <summary>
+/// One line of the team's folders: a mount point, who addresses it, and what sits behind it.
+/// <para>
+/// The card used to be two rows of chips — the roots the blueprint implies, and the folders
+/// the user allowed — with no way to say that a given folder sits behind a given root. So an
+/// implied root could only ever be answered at adoption, by a folder created inside the team
+/// and left empty. One line per mount point is what makes the answer sayable: the name the
+/// agents use on the left, the folder on the right, and «Choose the folder…» when there is
+/// none yet.
+/// </para>
+/// </summary>
+/// <param name="VirtualPath">The name the agents address, e.g. <c>/workspace</c>.</param>
+/// <param name="IsReadWrite">Whether the team writes there, or only reads.</param>
+/// <param name="Agents">Who addresses it, joined for display — PROVENANCE, never permission.</param>
+/// <param name="Folder">The folder behind it; empty while the mount point is unanswered.</param>
+/// <param name="MountString">
+/// The team mount this row stands for, for removal; empty on a row the blueprint implies and
+/// nothing backs yet — such a row has nothing to remove but its own root.
+/// </param>
+/// <param name="IsUndeclared">Whether the bound folder is outside the settings' authorized list.</param>
+/// <param name="IsUnreadable">
+/// Whether the entry behind this row is a mount string the parser refuses. Such a row has no
+/// virtual spelling of its own (ADR-008), so it names no mount point that could be answered:
+/// all it can offer is its own removal.
+/// </param>
+public sealed record MountRow(
+    string VirtualPath,
+    bool IsReadWrite,
+    string Agents = "",
+    string Folder = "",
+    string MountString = "",
+    bool IsUndeclared = false,
+    bool IsUnreadable = false)
+{
+    /// <summary>Whether the row can say who addresses this mount point.</summary>
     public bool HasAgents => Agents.Length > 0;
+
+    /// <summary>Whether a folder is bound behind it.</summary>
+    public bool HasFolder => Folder.Length > 0;
+
+    /// <summary>Whether the row stands for a folder the user bound, rather than a bare implied root.</summary>
+    public bool IsBound => MountString.Length > 0;
+
+    /// <summary>
+    /// Whether the row offers « Choisir le dossier… ». An unreadable entry does not: its
+    /// displayed name is a message, not a virtual path, and targeting the chooser at it would
+    /// bind the picked folder behind that message.
+    /// </summary>
+    public bool CanChooseFolder => !HasFolder && !IsUnreadable;
 }
 
 /// <summary>
@@ -215,7 +262,15 @@ public sealed class CreateTeamViewModel : ObservableObject
         RawLog = new RunLogViewModel(_strings);
         AgentEditor = new AgentEditorViewModel(_strings);
         AddAgentCommand = new RelayCommand(() => EditAgent(null), () => CanEditAgents);
-        AllowFolderCommand = new RelayCommand(() => AllowFolderRequested?.Invoke(this, EventArgs.Empty));
+        AllowFolderCommand = new RelayCommand(
+            () => AllowFolderRequested?.Invoke(this, new AllowFolderRequestedEventArgs(null)));
+        BindMountCommand = new RelayCommand(
+            parameter =>
+            {
+                if (parameter is string virtualPath)
+                    AllowFolderRequested?.Invoke(this, new AllowFolderRequestedEventArgs(virtualPath));
+            },
+            parameter => parameter is string);
         ToggleAdoptProfilePickerCommand = new RelayCommand(() => IsAdoptProfilePickerOpen = !IsAdoptProfilePickerOpen);
         PickAdoptProfileCommand = new RelayCommand(parameter =>
         {
@@ -314,6 +369,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         // brief stage; a local questionnaire played first only interviewed the user twice.
         ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
         TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeam);
+        AdoptWithoutTrialCommand = new AsyncRelayCommand(AdoptWithoutTrialAsync, () => CanTryTeam);
         ReopenComposeCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 2, autoRetry: false), () => IsSaved);
         RetryTrialCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 3, autoRetry: true), () => IsSaved);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
@@ -359,6 +415,26 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>Level 3: the raw stream — stderr, stray lines, every protocol line.</summary>
     public RunLogViewModel RawLog { get; }
+
+    /// <summary>
+    /// Which engine build answered — «1.0.0-rc.2», or empty until a session says.
+    /// <para>
+    /// Studio does not embed the engine: it launches whichever <c>orkeon</c> its locator
+    /// finds first, which may be co-installed, on PATH, or built from this checkout. Naming
+    /// it here is what lets a reader tell a screen that shows nothing because the engine
+    /// reported nothing from one that shows nothing because the engine is old.
+    /// </para>
+    /// </summary>
+    public string EngineVersion => _model.EngineVersion ?? string.Empty;
+
+    /// <summary>Whether an engine build is known — gates the version on the assistant line.</summary>
+    public bool HasEngineVersion => EngineVersion.Length > 0;
+
+    /// <summary>«moteur 1.0.0-rc.2», ready to sit next to the assistant's name.</summary>
+    public string EngineLabel => HasEngineVersion
+        ? string.Format(
+            CultureInfo.CurrentCulture, _strings[StudioStringKeys.ComposeEngineVersion], EngineVersion)
+        : string.Empty;
 
     /// <summary>The "Consigne de composition" block.</summary>
     /// <summary>
@@ -595,7 +671,12 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (!SetProperty(ref _isEngineRunning, value))
                 return;
 
-            OnPropertiesChanged(nameof(CanCompose), nameof(CanSaveTeam), nameof(IsEngineWorking), nameof(TrialInProgress));
+            // CanTryTeam gates BOTH answers to the dry pause, and it reads IsEngineRunning:
+            // the engine dying is the moment those two buttons become offerable, and it is
+            // silent on the event stream — nothing else would raise them.
+            OnPropertiesChanged(
+                nameof(CanCompose), nameof(CanSaveTeam), nameof(IsEngineWorking),
+                nameof(TrialInProgress), nameof(CanTryTeam));
             // The card's first and last readings come from here: the engine starting and
             // the engine dying are both silent on the event stream, and both change what
             // the card must say.
@@ -605,6 +686,8 @@ public sealed class CreateTeamViewModel : ObservableObject
             StopCommand.RaiseCanExecuteChanged();
             RestartCommand.RaiseCanExecuteChanged();
             SaveTeamCommand.RaiseCanExecuteChanged();
+            TryTeamCommand.RaiseCanExecuteChanged();
+            AdoptWithoutTrialCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -696,26 +779,6 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// </summary>
     public ObservableCollection<string> TeamMounts { get; } = [];
 
-    /// <summary>
-    /// The same list, spelled for the screen: virtual path plus rights, exactly as the team
-    /// cards and the agent editor say it. The mount strings stay the serialization shape —
-    /// they carry the physical folder, which belongs in the picker and the sidecar, not on a
-    /// chip next to « Ils viennent des agents » (ADR-008).
-    /// </summary>
-    public IReadOnlyList<TeamMountChip> TeamMountChips
-    {
-        get
-        {
-            var declared = _declaredMounts();
-            return [.. TeamMounts.Select(mountString =>
-            {
-                var (label, readWrite) = MountLabels.Describe(mountString, _strings);
-                return new TeamMountChip(
-                    label, readWrite, mountString, IsUndeclared: !MountLabels.IsDeclared(mountString, declared));
-            })];
-        }
-    }
-
     /// <summary>Whether any team mount is listed.</summary>
     public bool HasTeamMounts => TeamMounts.Count > 0;
 
@@ -727,39 +790,86 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// </summary>
     public IReadOnlyList<ForgeDerivedMount> DerivedMounts => _model.DerivedMounts;
 
+    /// <summary>Whether the blueprint implies any mount point no folder of yours backs yet.</summary>
+    public bool HasDerivedMounts => MountRows.Any(r => !r.IsBound);
+
     /// <summary>
-    /// The derived mounts the screen still has something to say about: the ones no explicit
-    /// « Autoriser un dossier » already claims, minus the ones the user dropped. A root claimed
-    /// by the user is shown once, as the chip that will win at save — showing it twice invited
-    /// the user to remove one of the two and watch the other quietly take its place.
+    /// The team's folders, one line per mount point: what the blueprint implies and what the
+    /// user bound, merged on the name the agents actually use.
     /// <para>
-    /// They always read as undeclared: the folder behind them is created inside the team at
-    /// adoption, so it is by construction not one of the settings' authorized folders.
+    /// A mount the user bound wins its root — that binding IS the answer to the implied one,
+    /// and showing both would show the same mount point twice. A root the user dropped
+    /// appears in neither: it has its own banner, which says what dropping it costs.
     /// </para>
     /// </summary>
-    public IReadOnlyList<DerivedMountChip> UnclaimedDerivedMounts
+    public IReadOnlyList<MountRow> MountRows
     {
         get
         {
-            var claimed = TeamMounts
-                .Select(m => MountDefinition.TryParse(m, out var parsed, out _) ? parsed?.VirtualPath : null)
-                .Where(virtualPath => virtualPath is not null)
-                .ToHashSet(StringComparer.Ordinal);
+            var declared = _declaredMounts();
+            var rows = new List<MountRow>();
+            var claimed = new HashSet<string>(StringComparer.Ordinal);
 
-            return
-            [
-                .. _model.DerivedMounts
-                    .Where(d => !claimed.Contains(d.VirtualPath) && !_droppedDerivedRoots.Contains(d.VirtualPath))
-                    .Select(d => new DerivedMountChip(
-                        d.VirtualPath,
-                        d.IsReadWrite,
-                        string.Join(", ", d.Agents ?? []))),
-            ];
+            foreach (var mountString in TeamMounts)
+            {
+                if (!MountDefinition.TryParse(mountString, out var mount, out _) || mount is null)
+                {
+                    // ADR-008: an entry the parser refuses has no virtual spelling, and its
+                    // raw form carries the folder on this machine. It still gets a line —
+                    // silently dropping it would hide a mount the team will actually carry.
+                    rows.Add(new MountRow(
+                        MountLabels.Unreadable(_strings), IsReadWrite: false,
+                        MountString: mountString, IsUndeclared: true, IsUnreadable: true));
+                    continue;
+                }
+
+                claimed.Add(mount.VirtualPath);
+                rows.Add(new MountRow(
+                    mount.VirtualPath,
+                    mount.Rights == MountRights.ReadWrite,
+                    Agents: AgentsOf(mount.VirtualPath),
+                    Folder: mount.PhysicalPath,
+                    MountString: mountString,
+                    IsUndeclared: !MountLabels.IsDeclared(mountString, declared)));
+            }
+
+            foreach (var derived in _model.DerivedMounts)
+            {
+                if (claimed.Contains(derived.VirtualPath) || _droppedDerivedRoots.Contains(derived.VirtualPath))
+                    continue;
+
+                rows.Add(new MountRow(
+                    derived.VirtualPath,
+                    derived.IsReadWrite,
+                    Agents: string.Join(", ", derived.Agents ?? [])));
+            }
+
+            return rows;
         }
     }
 
-    /// <summary>Whether the blueprint implies any mount the user has not claimed or dropped.</summary>
-    public bool HasDerivedMounts => UnclaimedDerivedMounts.Count > 0;
+    /// <summary>Whether the card has any line to show at all.</summary>
+    public bool HasMountRows => MountRows.Count > 0;
+
+    /// <summary>Who the blueprint says addresses <paramref name="virtualPath"/>, joined for display.</summary>
+    private string AgentsOf(string virtualPath) => string.Join(
+        ", ",
+        _model.DerivedMounts
+            .FirstOrDefault(d => string.Equals(d.VirtualPath, virtualPath, StringComparison.Ordinal))
+            ?.Agents ?? []);
+
+    /// <summary>
+    /// Whether the team will READ a mount that no folder of yours backs — the one case where
+    /// a team runs, reports success, and has seen nothing.
+    /// <para>
+    /// Adoption binds an unclaimed read root to a folder INSIDE the team (<c>input/</c>),
+    /// created empty, and nothing ever copies anything into it. The promoted card says so;
+    /// the screen that generates the team never did, and its own tasks read «find under
+    /// /workspace the folder containing the notes». Saying it here is saying it in time.
+    /// </para>
+    /// </summary>
+    public bool NeedsInputFolder =>
+        MountRows.Any(r => r is { HasFolder: false, IsReadWrite: false, IsUnreadable: false });
 
     /// <summary>
     /// The virtual roots the blueprint addresses and the user dropped anyway. Nothing will be
@@ -799,8 +909,50 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Puts every dropped agent-addressed root back — the way out of a wrong ✕.</summary>
     public RelayCommand RestoreDerivedMountsCommand { get; }
 
-    /// <summary>Raised by « Autoriser un dossier » — the shell opens the shared folder picker.</summary>
-    public event EventHandler? AllowFolderRequested;
+    /// <summary>
+    /// Raised by « Autoriser un dossier » and by a row's « Choisir le dossier… » — the shell
+    /// opens the shared chooser, on the named mount point when the request carries one.
+    /// </summary>
+    public event EventHandler<AllowFolderRequestedEventArgs>? AllowFolderRequested;
+
+    /// <summary>
+    /// The gesture that answers ONE mount point: it takes the row's virtual path and comes
+    /// back with the folder the user picked, bound to that name.
+    /// </summary>
+    public RelayCommand BindMountCommand { get; }
+
+    /// <summary>
+    /// Binds <paramref name="mount"/>'s folder and rights behind <paramref name="targetVirtualPath"/>,
+    /// replacing whatever was there.
+    /// <para>
+    /// The settings entry is carried over in the sense that matters — its folder and its
+    /// RIGHTS — and only the name the agents use for it is the team's to choose. A mount
+    /// point takes one folder, so an earlier binding on the same root is removed rather than
+    /// added beside: the runtime does not merge two mounts on one root, it drops one.
+    /// </para>
+    /// </summary>
+    /// <param name="targetVirtualPath">The mount point being answered.</param>
+    /// <param name="mount">The folder the user picked, as the settings declare it.</param>
+    public void BindTeamMount(string targetVirtualPath, MountDefinition mount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetVirtualPath);
+        ArgumentNullException.ThrowIfNull(mount);
+
+        foreach (var existing in TeamMounts.ToList())
+        {
+            if (MountDefinition.TryParse(existing, out var parsed, out _)
+                && string.Equals(parsed?.VirtualPath, targetVirtualPath, StringComparison.Ordinal))
+            {
+                TeamMounts.Remove(existing);
+            }
+        }
+
+        // Answering a root the blueprint implied un-drops it: the user just said what sits
+        // behind it, which is the opposite of dropping it.
+        _droppedDerivedRoots.Remove(targetVirtualPath);
+        TeamMounts.Add((mount with { VirtualPath = targetVirtualPath }).ToMountString());
+        RefreshMountSurfaces();
+    }
 
     /// <summary>
     /// The mount strings the sidecar records: the folders the user allowed, plus the write
@@ -865,9 +1017,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         RestoreDerivedMountsCommand.RaiseCanExecuteChanged();
         OnPropertiesChanged(
             nameof(HasTeamMounts),
-            nameof(TeamMountChips),
+            nameof(MountRows),
+            nameof(HasMountRows),
+            nameof(NeedsInputFolder),
             nameof(HasUndeclaredTeamMounts),
-            nameof(UnclaimedDerivedMounts),
             nameof(HasDerivedMounts),
             nameof(DroppedDerivedRoots),
             nameof(HasDroppedDerivedRoots),
@@ -879,6 +1032,9 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(mount);
         TeamMounts.Add(mount.ToMountString());
+        // Claiming a root un-drops it, whichever gesture claimed it: the banner otherwise
+        // went on warning that nothing would be bound to a root the user had just bound.
+        _droppedDerivedRoots.Remove(mount.VirtualPath);
         RefreshMountSurfaces();
     }
 
@@ -979,7 +1135,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// red legend can honestly be about. It used to be shown unconditionally, beside chips
     /// that carry no physical path at all and were therefore never compared to anything.
     /// </summary>
-    public bool HasUndeclaredTeamMounts => TeamMountChips.Any(c => c.IsUndeclared);
+    public bool HasUndeclaredTeamMounts => MountRows.Any(r => r.IsUndeclared);
 
     /// <summary>
     /// Whether the engine has actually proposed a team. The proposal card used to render
@@ -1241,6 +1397,18 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>The "try the team" button — the trial, as an explicit click at the Compose pause.</summary>
     public AsyncRelayCommand TryTeamCommand { get; }
 
+    /// <summary>
+    /// The other answer to the same pause: keep the team as generated, without a trial.
+    /// <para>
+    /// It is offered beside the trial rather than instead of it, and its label says what it
+    /// skips. Nothing downstream needs the trial — the crew is rendered and validated here,
+    /// and the promoted card already knows how to say «no verdict recorded» — so the trial
+    /// was buying evidence, not permission. A user who does not want the evidence is
+    /// entitled to say so, once, in words.
+    /// </para>
+    /// </summary>
+    public AsyncRelayCommand AdoptWithoutTrialCommand { get; }
+
     /// <summary>Promotes the session into the teams folder and writes the Studio sidecar.</summary>
     public AsyncRelayCommand SaveTeamCommand { get; }
 
@@ -1417,6 +1585,24 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             ResumeSlug = slug,
             WorkingDirectory = _workspace,
+            EnvironmentOverrides = AssistantEnvironment(),
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The "adopt as generated" gesture — resumes the paused session with --adopt: the
+    /// engine moves it to Ready and exits, offline, without a run and without a token.
+    /// </summary>
+    private async Task AdoptWithoutTrialAsync()
+    {
+        if (!CanTryTeam || _model.Slug is not { } slug)
+            return;
+
+        await RunEngineAsync(new ForgeStartRequest
+        {
+            ResumeSlug = slug,
+            WorkingDirectory = _workspace,
+            Adopt = true,
             EnvironmentOverrides = AssistantEnvironment(),
         }).ConfigureAwait(false);
     }
@@ -1815,13 +2001,14 @@ public sealed class CreateTeamViewModel : ObservableObject
         OnPropertiesChanged(
             nameof(Rationale), nameof(Tools), nameof(HasTools), nameof(HasProposal),
             nameof(HasGeneratedDefinition), nameof(HasUndeclaredTeamMounts),
-            nameof(DerivedMounts), nameof(HasDerivedMounts),
+            nameof(DerivedMounts),
             nameof(Files), nameof(HasFiles), nameof(ValidationOk), nameof(ValidationErrors),
             nameof(RunInProgress), nameof(Attempt), nameof(Verdict), nameof(HasVerdict),
             nameof(VerdictScore), nameof(VerdictPassing), nameof(TokensSpent),
             nameof(VerdictMetricChips), nameof(HasVerdictMetrics),
             nameof(Suggestions), nameof(HasSuggestions), nameof(VerdictIsMechanical),
             nameof(SessionSlug), nameof(SessionDirectory),
+            nameof(EngineVersion), nameof(HasEngineVersion), nameof(EngineLabel),
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(SavedPath), nameof(InstallCommand), nameof(HasInstallCommand),
             nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam),
@@ -1829,6 +2016,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         SaveTeamCommand.RaiseCanExecuteChanged();
         AddAgentCommand.RaiseCanExecuteChanged();
         TryTeamCommand.RaiseCanExecuteChanged();
+        AdoptWithoutTrialCommand.RaiseCanExecuteChanged();
     }
 
     private void SyncAgents()

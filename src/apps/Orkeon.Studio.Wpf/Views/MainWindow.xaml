@@ -900,7 +900,7 @@
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Studio.Settings.AllowedFoldersTitle], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding Title}"/>
             <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Settings.AllowedFoldersSub], Source={x:Static services:I18n.Instance}}"/>
 

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,9 +14,19 @@ using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
-/// <summary>Scripted <see cref="ILlmProvider"/>: a queue of canned responses, calls recorded.</summary>
-internal sealed class ScriptedLlmProvider : ILlmProvider
+/// <summary>
+/// Scripted <see cref="ILlmProvider"/>: a queue of canned responses, calls recorded.
+/// <para>
+/// It streams, like every provider the forge actually talks to. That is not decoration:
+/// registering a delta sink is what puts the assistant on the SSE path, so a double that
+/// only answers in one buffered piece exercises a branch production never takes.
+/// </para>
+/// </summary>
+internal sealed class ScriptedLlmProvider : ILlmProvider, IStreamingLlmProvider
 {
+    /// <summary>Characters per streamed fragment — an SSE chunk is a few characters, not a line.</summary>
+    private const int ChunkSize = 5;
+
     private readonly Queue<LlmResponse> _responses = new();
 
     /// <summary>Every chat call's messages, in call order.</summary>
@@ -78,6 +89,36 @@ internal sealed class ScriptedLlmProvider : ILlmProvider
 
     private LlmResponse Next() =>
         _responses.Count > 0 ? _responses.Dequeue() : new LlmResponse { Content = "(out of script)" };
+
+    /// <inheritdoc />
+    public bool SupportsStreaming => true;
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<string> GenerateStreamingAsync(
+        string prompt, LlmConfig? config = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask.ConfigureAwait(false);
+        yield return Next().Content;
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
+        LlmMessage[] messages, LlmConfig? config = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask.ConfigureAwait(false);
+        Chats.Add(messages);
+        var response = Next();
+
+        for (var at = 0; at < response.Content.Length; at += ChunkSize)
+        {
+            yield return LlmStreamEvent.Content(
+                response.Content.Substring(at, Math.Min(ChunkSize, response.Content.Length - at)));
+        }
+
+        yield return LlmStreamEvent.Complete(response);
+    }
 }
 
 /// <summary>
@@ -113,6 +154,9 @@ public sealed class ForgeCrewAssistantTests : IDisposable
             .AddSingleton(_box)
             .AddSingleton(_tally)
             .AddSingleton<ILlmUsageSink>(_tally)
+            // Registered exactly as ForgeCommand does: production puts the tally on both
+            // ports, and a fixture that only wires one cannot see a break in the other.
+            .AddSingleton<ILlmDeltaSink>(_tally)
             .AddSingleton<IBaseTool>(new BriefSubmitTool(_box))
             .AddSingleton<IBaseTool>(new BlueprintSubmitTool(_box))
             .AddSingleton<ILlmProvider>(provider)
@@ -214,4 +258,103 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         var restored = ForgePack.Ensure(_session.Directory);
         Assert.Contains("orkeon-script", File.ReadAllText(restored), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The owner's report, third round — «pas de tokens montant / descendant pendant la
+    /// phase», with the interview visibly running.
+    /// <para>
+    /// Every seam between the model call and the wire had its own test, and all of them were
+    /// green: the tally splits, the stage reports, the engine emits, Studio binds. None of
+    /// them ran the REAL assistant against a REAL stage, which is the only place a live meter
+    /// can actually go missing. This is that test — the production assistant, the embedded
+    /// pack, a real <see cref="BriefStage"/> and a real writer — and <c>cost.updated</c> must
+    /// be on the wire BEFORE <c>brief.ready</c>, because a meter that only reports once the
+    /// waiting is over is the defect, not the fix.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task The_meter_reaches_the_wire_during_the_interview_and_not_only_at_its_end()
+    {
+        var provider = new ScriptedLlmProvider()
+            .Answers("Quel problème résolvons-nous ?")
+            .CallsTool("brief_submit", new
+            {
+                goal = "Résumer les offres du fournisseur",
+                acceptance = new[] { new { id = "A1", statement = "Cite ses sources", kind = "must" } },
+            })
+            .Answers("C'est envoyé.");
+
+        using var output = new StringWriter();
+        var events = new ForgeEventWriter(output, new FakeOrkeonClock());
+        var stage = new BriefStage(
+            Build(provider), new ScriptedUserChannel("vas-y"), initialNeed: "une veille fournisseur");
+
+        var outcome = await stage.RunAsync(_session, events, TestContext.Current.CancellationToken);
+        Assert.Equal(ForgeTrigger.BriefSubmitted, outcome.Trigger);
+
+        var kinds = Lines(output).Select(line => line.GetProperty("kind").GetString()!).ToList();
+        var first = kinds.IndexOf("cost.updated");
+        Assert.True(first >= 0, "the interview never metered anything: " + string.Join(", ", kinds));
+        Assert.True(
+            first < kinds.IndexOf("brief.ready"),
+            "the meter only reported once the brief was in: " + string.Join(", ", kinds));
+
+        // And the two directions travel apart, which is what the screen shows. Not on the
+        // FIRST line: that one is a reply still being written, whose only knowable half is
+        // the descending estimate — the ascending count exists once the call comes back.
+        var costs = Lines(output)
+            .Where(line => line.GetProperty("kind").GetString() == "cost.updated")
+            .ToList();
+        Assert.Contains(
+            costs,
+            line => line.GetProperty("promptTokens").GetInt64() > 0
+                && line.GetProperty("completionTokens").GetInt64() > 0);
+        Assert.All(costs, line => Assert.True(line.GetProperty("tokens").GetInt64()
+            == line.GetProperty("promptTokens").GetInt64() + line.GetProperty("completionTokens").GetInt64(),
+            DumpCosts(output)));
+    }
+
+    /// <summary>
+    /// The finest granularity of the meter: a fragment of a reply that is still being
+    /// written already moves the figure. The in-flight part is an approximation, so the line
+    /// carries <c>estimatedTokens</c> — that is the «≈» the screen shows until the
+    /// provider's own count lands and replaces it.
+    /// </summary>
+    [Fact]
+    public async Task A_reply_still_being_written_already_moves_the_meter()
+    {
+        var provider = new ScriptedLlmProvider()
+            .Answers("Je regarde votre dossier avant de vous répondre, un instant.")
+            .CallsTool("brief_submit", new
+            {
+                goal = "Résumer les offres du fournisseur",
+                acceptance = new[] { new { id = "A1", statement = "Cite ses sources", kind = "must" } },
+            })
+            .Answers("C'est envoyé.");
+
+        using var output = new StringWriter();
+        var stage = new BriefStage(
+            Build(provider), new ScriptedUserChannel("vas-y"), initialNeed: "une veille fournisseur");
+
+        await stage.RunAsync(
+            _session, new ForgeEventWriter(output, new FakeOrkeonClock()), TestContext.Current.CancellationToken);
+
+        var costs = Lines(output)
+            .Where(line => line.GetProperty("kind").GetString() == "cost.updated")
+            .ToList();
+
+        Assert.NotEmpty(costs);
+        Assert.Contains(costs, line => line.GetProperty("estimatedTokens").GetInt64() > 0);
+    }
+
+    private static string DumpCosts(StringWriter output) => string.Join(
+        "\n",
+        Lines(output).Where(l => l.GetProperty("kind").GetString() == "cost.updated").Select(l => l.GetRawText()));
+
+    private static IReadOnlyList<JsonElement> Lines(StringWriter output) =>
+    [
+        .. output.ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonDocument.Parse(line).RootElement),
+    ];
 }

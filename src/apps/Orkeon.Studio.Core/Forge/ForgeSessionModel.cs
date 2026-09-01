@@ -200,6 +200,17 @@ public sealed class ForgeSessionModel
     /// <summary>Completed tasks of the current try, in completion order.</summary>
     public IReadOnlyList<ForgeTaskProgress> Activity => _activity;
 
+    /// <summary>
+    /// Which build of the engine answered, from <c>session.started</c>.
+    /// <para>
+    /// Null means the engine did not say — which is itself the news: every build from
+    /// 1.0.0-rc.2 on announces itself, so silence here means the binary the launcher found
+    /// predates the field. A screen that shows a figure the engine never sent, or fails to
+    /// show one it did, is diagnosed from this line first.
+    /// </para>
+    /// </summary>
+    public string? EngineVersion { get; private set; }
+
     /// <summary>Cumulative tokens spent, from <c>cost.updated</c>.</summary>
     public long TokensSpent { get; private set; }
 
@@ -276,6 +287,7 @@ public sealed class ForgeSessionModel
                 Directory = orkeonEvent.GetString("dir");
                 Format = orkeonEvent.GetString("format");
                 Resumed = orkeonEvent.GetBool("resumed") ?? false;
+                EngineVersion = orkeonEvent.GetString("engine");
                 FinishedStatus = null;
                 break;
 

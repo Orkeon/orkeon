@@ -150,8 +150,16 @@ public sealed class MainWindowViewModel : ObservableObject
             picker?.PickFolder(effectiveStrings[Orkeon.Studio.Core.Localization.StudioStringKeys.DialogExportDestination]);
         TeamMounts.AddRequested += (_, _) =>
             AllowedFolders.Open([.. TeamMounts.Rows.Select(r => r.MountString)], TeamMounts.AddMount);
-        CreateTeam.AllowFolderRequested += (_, _) =>
-            AllowedFolders.Open([.. CreateTeam.TeamMounts], CreateTeam.AddTeamMount);
+        // Two gestures, one modal. Without a target the chooser adds the settings entry as
+        // declared; with one it answers that mount point, and the picked folder is bound
+        // behind the name the agents actually use.
+        CreateTeam.AllowFolderRequested += (_, e) =>
+            AllowedFolders.Open(
+                [.. CreateTeam.TeamMounts],
+                e.TargetVirtualPath is { } target
+                    ? mount => CreateTeam.BindTeamMount(target, mount)
+                    : CreateTeam.AddTeamMount,
+                e.TargetVirtualPath);
         // The settings ARE the declaration screen: theirs is the one button that still opens
         // the disk picker directly.
         Config.Mounts.FolderPickRequested += (_, _) =>

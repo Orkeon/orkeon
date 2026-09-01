@@ -26,6 +26,10 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
             dir = session.Directory,
             format = session.Document.Format,
             resumed,
+            // Which build is answering. A client that shows it can tell «this engine reports
+            // nothing» from «this engine is too old to report it» — two states that look
+            // identical on screen and are fixed in completely different ways.
+            engine = ForgeEngineVersion.Current,
             budget = session.Document.Budget.ToEventPayload(),
         });
     }

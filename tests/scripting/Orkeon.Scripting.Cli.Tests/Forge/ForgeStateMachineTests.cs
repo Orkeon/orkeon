@@ -116,4 +116,20 @@ public class ForgeStateMachineTests
 
         Assert.False(machine.IsCircuitBroken);
     }
+    /// <summary>
+    /// The edge that lets a user keep the team without paying for a trial. It leaves the dry
+    /// pause, and only that: from anywhere else there is nothing rendered to adopt.
+    /// </summary>
+    [Fact]
+    public void The_dry_pause_may_go_straight_to_ready()
+    {
+        Assert.True(ForgeStateMachineFactory.Create(ForgeState.Test).CanFire(ForgeTrigger.TrialSkipped));
+        Assert.False(ForgeStateMachineFactory.Create(ForgeState.Brief).CanFire(ForgeTrigger.TrialSkipped));
+        Assert.False(ForgeStateMachineFactory.Create(ForgeState.Verdict).CanFire(ForgeTrigger.TrialSkipped));
+
+        var machine = ForgeStateMachineFactory.Create(ForgeState.Test);
+        machine.Fire(ForgeTrigger.TrialSkipped);
+        Assert.Equal(ForgeState.Ready, machine.CurrentState);
+    }
+
 }

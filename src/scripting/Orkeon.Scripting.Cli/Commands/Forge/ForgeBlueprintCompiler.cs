@@ -179,4 +179,7 @@ internal static class ForgeErrorCodes
 
     /// <summary>The promotion could not write its folder; the session stays Ready, retryable.</summary>
     public const string PromoteFailed = "FORGE-PROMOTE-FAILED";
+
+    /// <summary>A command was asked of a session that is not where that command applies.</summary>
+    public const string InvalidState = "FORGE-INVALID-STATE";
 }

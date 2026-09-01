@@ -376,6 +376,12 @@ public static class StudioStringKeys
     /// <summary>"{0} folder(s) selected" — the chooser's footer count.</summary>
     public const string AllowedFoldersSummary = "Studio.Settings.Summary";
 
+    /// <summary>"Add an allowed folder" — the chooser's heading on the untargeted open.</summary>
+    public const string AllowedFoldersTitle = "Studio.Settings.AllowedFoldersTitle";
+
+    /// <summary>"Which folder sits behind {0}?" — the chooser's heading when binding one mount point.</summary>
+    public const string AllowedFoldersBindTitle = "Studio.Settings.BindTitle";
+
     /// <summary>"“{0}” added to the authorized folders" — a declaration made from the chooser.</summary>
     public const string AllowedFoldersDeclared = "Studio.Settings.Declared";
 
@@ -1014,6 +1020,18 @@ public static class StudioStringKeys
     /// <summary>What the «≈» in front of a token figure means.</summary>
     public const string ComposeTokensEstimated = "Studio.Create.TokensEstimated";
 
+    /// <summary>"engine {0}" — which build of the CLI answered this session.</summary>
+    public const string ComposeEngineVersion = "Studio.Create.EngineVersion";
+
+    /// <summary>"Adopt without trying" — the other answer to the dry pause.</summary>
+    public const string ComposeAdoptWithoutTrial = "Studio.Create.AdoptWithoutTrial";
+
+    /// <summary>What adopting without a trial gives up, said before the click.</summary>
+    public const string ComposeAdoptWithoutTrialTip = "Studio.Create.AdoptWithoutTrialTip";
+
+    /// <summary>That a reading team gets an empty folder unless one is chosen or filled.</summary>
+    public const string ComposeFillInputFolder = "Studio.Create.FillInputFolder";
+
     /// <summary>"{0} file(s) written"</summary>
     public const string ComposeFilesWritten = "Studio.Create.FilesWritten";
 
@@ -1185,6 +1203,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.AllowedFoldersAlreadyAdded] = "already added",
         [StudioStringKeys.AllowedFoldersConflict] = "{0} is already used by another folder",
         [StudioStringKeys.AllowedFoldersSummary] = "{0} folder(s) selected",
+        [StudioStringKeys.AllowedFoldersTitle] = "Add an allowed folder",
+        [StudioStringKeys.AllowedFoldersBindTitle] = "Which folder sits behind {0}?",
         [StudioStringKeys.AllowedFoldersDeclared] = "“{0}” added to the authorized folders",
         [StudioStringKeys.AllowedFoldersNotSaved] = "“{0}” added, but the settings could not be saved — {1}",
         [StudioStringKeys.TeamMountsTitle] = "Folders of “{0}”",
@@ -1557,6 +1577,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ComposeTokensUp] = "Tokens sent to the model",
         [StudioStringKeys.ComposeTokensDown] = "Tokens received from the model",
         [StudioStringKeys.ComposeTokensEstimated] = "Estimate: this provider does not report token counts.",
+        [StudioStringKeys.ComposeEngineVersion] = "engine {0}",
+        [StudioStringKeys.ComposeAdoptWithoutTrial] = "Adopt without trying",
+        [StudioStringKeys.ComposeAdoptWithoutTrialTip] = "The team is generated and checked. Trying it produces a report on how it behaves; adopting now skips that report, nothing else.",
+        [StudioStringKeys.ComposeFillInputFolder] = "This team reads. Choose the folder it should read, or it will be given its own empty «input» folder at adoption — and nothing copies your documents into it.",
         [StudioStringKeys.ComposeFilesWritten] = "{0} file(s) written",
         [StudioStringKeys.ComposeDefinitionValid] = "definition checked",
         [StudioStringKeys.ComposeDefinitionInvalid] = "definition refused",

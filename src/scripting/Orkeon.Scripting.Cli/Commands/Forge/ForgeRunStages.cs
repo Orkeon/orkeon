@@ -222,8 +222,8 @@ internal sealed class DiagnoseStage : IForgeStageRunner
         }
 
         var runDirectory = Path.Combine(TestStage.RunsDirectoryName, run.Run.ToString(CultureInfo.InvariantCulture));
-        session.SaveArtifact(Path.Combine(runDirectory, "verdict.json"), verdict);
-        session.SaveArtifact("verdict.json", verdict);
+        session.SaveArtifact(Path.Combine(runDirectory, ForgeSession.VerdictFileName), verdict);
+        session.SaveArtifact(ForgeSession.VerdictFileName, verdict);
 
         EmitVerdictReady(events, verdict, run);
 
@@ -354,7 +354,7 @@ internal sealed class VerdictStage : IForgeStageRunner
     public async Task<ForgeStageOutcome> RunAsync(
         ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
     {
-        var verdict = session.TryLoadArtifact<ForgeVerdict>("verdict.json");
+        var verdict = session.TryLoadArtifact<ForgeVerdict>(ForgeSession.VerdictFileName);
         if (verdict is null)
         {
             return new ForgeStageOutcome

@@ -1628,6 +1628,7 @@
   <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve">
     <value>Erlaubten Ordner hinzufügen</value>
   </data>
+  <data name="Studio.Settings.BindTitle" xml:space="preserve"><value>Welcher Ordner steht hinter {0}?</value></data>
   <data name="Studio.Settings.AllowedFoldersSub" xml:space="preserve">
     <value>Wählen Sie aus den in Einstellungen › Erlaubte Ordner deklarierten Ordnern. Das Team sieht sie mit denselben Rechten.</value>
   </data>
@@ -1700,6 +1701,7 @@
   <data name="Studio.Create.AllowFolder" xml:space="preserve">
     <value>Ordner freigeben</value>
   </data>
+  <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Ordner wählen…</value></data>
   <data name="Studio.Create.FoldersHint" xml:space="preserve">
     <value>Diese Ordner werden bei der Übernahme mit dem Team gespeichert — der Versuch selbst läuft in seiner eigenen Sandbox.</value>
   </data>
@@ -2002,6 +2004,18 @@
   </data>
   <data name="Studio.Create.TokensEstimated" xml:space="preserve">
     <value>Schätzung: Dieser Anbieter meldet keine Tokenzahlen.</value>
+  </data>
+  <data name="Studio.Create.EngineVersion" xml:space="preserve">
+    <value>Engine {0}</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrial" xml:space="preserve">
+    <value>Ohne Test übernehmen</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
+    <value>Das Team ist erzeugt und geprüft. Der Test liefert einen Bericht über sein Verhalten; wer jetzt übernimmt, verzichtet auf diesen Bericht, sonst nichts.</value>
+  </data>
+  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
+    <value>Dieses Team liest. Wählen Sie den Ordner, den es lesen soll — sonst erhält es bei der Übernahme seinen eigenen leeren Ordner «input», und nichts kopiert Ihre Dokumente hinein.</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>{0} Datei(en) geschrieben</value>

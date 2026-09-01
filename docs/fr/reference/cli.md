@@ -53,6 +53,7 @@ orkeon forge "résumer chaque matin les nouvelles offres de mon fournisseur"   #
 orkeon forge                                   # ouvrir sur l'entretien
 orkeon forge list                              # lister les sessions du workspace
 orkeon forge resume <slug>                     # reprendre une session exactement là où elle s'est arrêtée
+orkeon forge resume <slug> --adopt             # garder l'équipe telle quelle, sans essai
 orkeon forge promote <slug> --to <dir>         # sortir une session prête en dossier ordinaire
 ```
 
@@ -67,6 +68,7 @@ Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la for
 | `--auto` | Arbitre les verdicts non conformes sans humain, dans les limites du budget. |
 | `--dry` | S'arrête après la validation — génère et valide, n'exécute jamais. Reprenez sans `--dry` pour essayer. |
 | `--edit` | *(resume)* Amende le blueprint d'une session en pause avant son essai : le JSON amendé passe par le canal (`blueprint.edited` sur stdin en mode `--events`, une ligne collée dans le terminal), est validé intégralement, puis re-rendu de façon déterministe — zéro token LLM, même itération. Avec `--dry`, la session se remet en pause à la même frontière. À l'arbitrage, utilisez plutôt la décision `edit`. |
+| `--adopt` | *(resume)* Garde l'équipe telle qu'elle a été générée, sans essai : une session mise en pause par `--dry` passe directement à Ready. Entièrement hors ligne — pas d'hôte, pas de LLM, pas de dossier d'exécution, zéro jeton. Ce qui est sauté, ce sont les **preuves** que produit un essai, jamais un contrôle : à cette pause le crew est rendu et validé, et la promotion n'a jamais consommé d'artefact d'essai (`verdict.json` est facultatif et `FORGE.md` écrit « aucun verdict enregistré »). Refusé partout ailleurs, avec `FORGE-INVALID-STATE`. |
 | `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | Le budget (défaut 3 itérations ; `0` = jetons/temps illimités). Une reprise peut le relever ; la consommation est toujours reportée. |
 | `--settings <path>` | Mêmes sémantiques qu'`orkeon run` — **forme longue uniquement** : le parseur du forge est artisanal et ne définit aucun alias court. |
 | `--pack <dir>` | Surcharge le pack de prompts embarqué. |

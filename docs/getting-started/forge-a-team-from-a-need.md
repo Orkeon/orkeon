@@ -6,10 +6,11 @@ You do not want to build an agent team — you want to solve a concrete problem.
 
 ```
 Brief ──▶ Blueprint ──▶ Render ──▶ Validate ──▶ Test ──▶ Diagnose ──▶ Verdict
-              ▲                        │                                 │
-              └────── refine ◀─────────┴──── (validation errors) ────────┤ (not conforming)
-                                                                         ▼
-                                                                   Ready ──▶ Promote
+              ▲                        │          │                      │
+              └────── refine ◀─────────┴──── (validation errors) ───────┤ (not conforming)
+                                                  │                      ▼
+                                                  └─────────────▶ Ready ──▶ Promote
+                                                   (adopt without trying)
 ```
 
 ## Prerequisites
@@ -59,9 +60,12 @@ orkeon forge list                      # what is in progress, what is ready
 orkeon forge resume supplier-watch     # pick up exactly where it stopped
 orkeon forge "..." --dry               # generate and validate only — never execute
 orkeon forge resume supplier-watch --edit --dry   # amend the plan at the pause, re-render, pause again
+orkeon forge resume supplier-watch --adopt        # keep the team as generated, without a trial
 ```
 
 At the `--dry` pause you can amend the plan before ever trying it: `resume --edit` reads the amended blueprint from the channel, validates it in full, re-renders deterministically — zero LLM tokens, same iteration — and with `--dry` pauses again at the same boundary. This is what Studio's « Modifier » does on the Composer step's agent cards.
+
+The same pause takes a second answer: `resume --adopt` keeps the team as generated and goes straight to `Ready` — offline, no run directory, zero tokens. What it skips is the **evidence** a trial produces, never a check: the crew is rendered and validated at that pause, and promotion never consumed a trial artefact — `FORGE.md` simply says «&nbsp;no verdict was recorded&nbsp;». It is Studio's « Adopter sans essayer », beside « Essayer l'équipe ».
 
 ## Two formats, one generation
 

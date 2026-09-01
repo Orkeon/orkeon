@@ -406,6 +406,12 @@ internal sealed class ForgeSession
             File.Delete(path);
     }
 
+    /// <summary>The stored diagnosis of the last trial, at the session root.</summary>
+    public const string VerdictFileName = "verdict.json";
+
+    /// <summary>Whether a trial of this session has been judged and the verdict kept.</summary>
+    public bool HasVerdict => File.Exists(Path.Combine(Directory, VerdictFileName));
+
     /// <summary>Adopts a state transition into the document (the caller saves when ready).</summary>
     public void SetState(ForgeState state) => Document.State = state.ToString();
 
@@ -413,20 +419,72 @@ internal sealed class ForgeSession
     /// The reopen (W-09): anything that reached a verdict can be re-arbitrated — a
     /// promoted session for the modify / re-try / re-adopt cycle, and an abandoned one so
     /// a single abort after a reopen does not strand the team forever. Coerces the session
-    /// back to the arbitration and saves; false when this session has nothing to reopen.
-    /// The coercion lives here, at the command level's disposal — the state machine keeps
-    /// its terminal states terminal, exactly like promote's own transition.
+    /// back and saves; false when this session has nothing to reopen. The coercion lives
+    /// here, at the command level's disposal — the state machine keeps its terminal states
+    /// terminal, exactly like promote's own transition.
+    /// <para>
+    /// Where it lands depends on whether a verdict exists. One does → the arbitration, which
+    /// re-announces it and offers the same choices. None does — a team adopted without a
+    /// trial — → the dry pause, which is the boundary that team actually came from and
+    /// where the same two answers are on offer again: try it, or keep it as it is. Sending
+    /// it to the arbitration instead would have re-entered a stage whose first act is to
+    /// read a <c>verdict.json</c> that was never written, and stranded the team on
+    /// <c>FORGE-SESSION-CORRUPT</c>.
+    /// </para>
     /// </summary>
     public bool TryReopen(DateTimeOffset now)
     {
+        var hasVerdict = HasVerdict;
         var eligible = Status == ForgeSessionStatus.Promoted
-            || (Status == ForgeSessionStatus.Abandoned && File.Exists(Path.Combine(Directory, "verdict.json")));
+            || (Status == ForgeSessionStatus.Abandoned && hasVerdict);
         if (!eligible)
             return false;
 
-        AppendHistory(State, ForgeTrigger.Reopen, ForgeState.Verdict, now);
-        SetState(ForgeState.Verdict);
+        var target = hasVerdict ? ForgeState.Verdict : ForgeState.Test;
+        AppendHistory(State, ForgeTrigger.Reopen, target, now);
+        SetState(target);
         SetStatus(ForgeSessionStatus.Active);
+        Save(now);
+        return true;
+    }
+
+    /// <summary>
+    /// Adoption without a trial: a session paused at the dry boundary goes straight to
+    /// Ready. False when this session is not at that boundary — the only place where a
+    /// rendered, validated crew exists and nothing has been executed yet.
+    /// <para>
+    /// The move is checked against the machine rather than asserted here, so the map of
+    /// legal moves stays the single authority on what may follow what; this method only
+    /// applies what the machine allowed and records it under its own trigger.
+    /// </para>
+    /// </summary>
+    /// <param name="now">The instant to stamp on the history line.</param>
+    public bool TryAdoptWithoutTrial(DateTimeOffset now)
+    {
+        // BudgetExhausted adopts too, and it is the case that matters most: a user whose
+        // budget ran out at the pause is precisely the one who cannot pay for a trial, and
+        // adopting costs nothing at all. Refusing there would have left the team stranded
+        // behind a toll it could no longer pay.
+        if (Status is not (ForgeSessionStatus.Active or ForgeSessionStatus.BudgetExhausted))
+            return false;
+
+        var machine = ForgeStateMachineFactory.Create(State);
+        if (!machine.CanFire(ForgeTrigger.TrialSkipped))
+            return false;
+
+        machine.Fire(ForgeTrigger.TrialSkipped);
+        AppendHistory(State, ForgeTrigger.TrialSkipped, machine.CurrentState, now);
+        SetState(machine.CurrentState);
+        SetStatus(ForgeSessionStatus.Ready);
+
+        // The pause is reachable AFTER a verdict — an amended blueprint and a refine both
+        // re-enter Test — and nothing on the loop back clears the previous cycle's
+        // diagnosis. Adopting from there with the file still on disk would hand the
+        // promoted card a score, a pass/fail and findings earned by a crew that no longer
+        // exists. This team has no verdict; the card knows how to say exactly that.
+        DeleteArtifact(VerdictFileName);
+        DeleteArtifact(TestStage.LastRunFileName);
+
         Save(now);
         return true;
     }

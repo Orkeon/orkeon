@@ -568,6 +568,7 @@
   <data name="Studio.Teams.TeamMountsSub" xml:space="preserve"><value>Tick what this team may see. Any unticked folder becomes invisible to it, even if other teams use it.</value></data>
   <data name="Studio.Teams.AddAnother" xml:space="preserve"><value>Allow another folder…</value></data>
   <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve"><value>Add an allowed folder</value></data>
+  <data name="Studio.Settings.BindTitle" xml:space="preserve"><value>Which folder sits behind {0}?</value></data>
   <data name="Studio.Settings.AllowedFoldersSub" xml:space="preserve"><value>Pick from the folders declared in Settings › Authorized folders. The team sees them with the same rights.</value></data>
   <data name="Studio.Settings.AllowedFoldersEmpty" xml:space="preserve"><value>No folder is declared yet in the settings.</value></data>
   <data name="Studio.Settings.Declare" xml:space="preserve"><value>Declare a new folder…</value></data>
@@ -592,6 +593,7 @@
   <data name="Studio.Settings.ExportDestination" xml:space="preserve"><value>Choose where to export the team</value></data>
   <data name="Studio.Create.TeamFolders" xml:space="preserve"><value>This team's folders</value></data>
   <data name="Studio.Create.AllowFolder" xml:space="preserve"><value>Allow a folder</value></data>
+  <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Choose the folder…</value></data>
   <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value></data>
   <data name="Studio.Create.DerivedHint" xml:space="preserve"><value>They come from the agents: editing an agent is what changes what it sees.</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modify</value></data>
@@ -796,6 +798,18 @@
   </data>
   <data name="Studio.Create.TokensEstimated" xml:space="preserve">
     <value>Estimate: this provider does not report token counts.</value>
+  </data>
+  <data name="Studio.Create.EngineVersion" xml:space="preserve">
+    <value>engine {0}</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrial" xml:space="preserve">
+    <value>Adopt without trying</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
+    <value>The team is generated and checked. Trying it produces a report on how it behaves; adopting now skips that report, nothing else.</value>
+  </data>
+  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
+    <value>This team reads. Choose the folder it should read, or it will be given its own empty «input» folder at adoption — and nothing copies your documents into it.</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>{0} file(s) written</value>

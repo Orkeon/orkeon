@@ -6,10 +6,11 @@ Vous ne voulez pas construire une équipe d'agents — vous voulez résoudre un 
 
 ```
 Brief ──▶ Blueprint ──▶ Render ──▶ Validate ──▶ Test ──▶ Diagnose ──▶ Verdict
-              ▲                        │                                 │
+              ▲                        │          │                      │
               └───── correction ◀──────┴── (erreurs de validation) ──────┤ (non conforme)
-                                                                         ▼
-                                                                   Ready ──▶ Promote
+                                                  │                      ▼
+                                                  └─────────────▶ Ready ──▶ Promote
+                                                   (adopter sans essayer)
 ```
 
 ## Prérequis
@@ -59,9 +60,12 @@ orkeon forge list                        # ce qui est en cours, ce qui est prêt
 orkeon forge resume veille-fournisseur   # reprendre exactement là où c'était
 orkeon forge "..." --dry                 # générer et valider seulement — jamais exécuter
 orkeon forge resume supplier-watch --edit --dry   # amender le plan à la pause, re-rendre, re-pauser
+orkeon forge resume supplier-watch --adopt        # garder l'équipe telle quelle, sans essai
 ```
 
 À la pause `--dry`, vous pouvez amender le plan avant même de l'essayer : `resume --edit` lit le blueprint amendé sur le canal, le valide intégralement, re-rend de façon déterministe — zéro jeton LLM, même itération — et avec `--dry` se remet en pause à la même frontière. C'est ce que fait le « Modifier » de Studio sur les cartes d'agent de l'étape Composer.
+
+La même pause accepte une seconde réponse : `resume --adopt` garde l'équipe telle qu'elle a été générée et passe directement à `Ready` — hors ligne, sans dossier d'exécution, zéro jeton. Ce qui est sauté, ce sont les **preuves** que produit un essai, jamais un contrôle : à cette pause le crew est rendu et validé, et la promotion n'a jamais consommé d'artefact d'essai — `FORGE.md` écrit simplement «&nbsp;aucun verdict enregistré&nbsp;». C'est l'« Adopter sans essayer » de Studio, à côté d'« Essayer l'équipe ».
 
 ## Deux formats, une seule génération
 

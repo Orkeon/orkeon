@@ -70,6 +70,20 @@ l'équipe porte déjà, ou dont la racine virtuelle est déjà prise par un autr
 dossier, le dit et ne peut pas être choisie — deux montages sur une même racine
 ne sont pas fusionnés par le runtime, l'un est perdu.
 
+Le bloc du wizard est **une ligne par point de montage** (lot 3) : le nom que
+les agents adressent, qui l'adresse — provenance, jamais permission — et le
+dossier derrière, ou « Choisir le dossier… » quand il n'y en a pas encore. Ce
+bouton ouvre le même sélecteur **ciblé sur ce chemin virtuel** : l'entrée
+retenue garde son dossier et ses droits, et seul le nom que les agents lui
+donnent revient à l'équipe. Une ouverture ciblée prend UN dossier et juge ses
+lignes là où le choix va **atterrir**, pas sur la racine que les réglages ont
+déclarée — sans quoi chaque dossier déjà employé ailleurs se refuserait
+lui-même. Sans ce geste, une racine impliquée par les agents ne pouvait être
+répondue qu'à l'adoption, par un dossier créé dans l'équipe et laissé vide :
+c'est pourquoi la carte dit aussi, tant qu'il est temps, qu'une équipe qui lit
+sans dossier choisi recevra son propre `input/` vide et que rien n'y copiera
+vos documents.
+
 Déclarer reste le geste des réglages, et « Déclarer un nouveau dossier… » est
 une porte vers eux : le sélecteur se ferme et l'écran bascule sur
 « Réglages › Dossiers autorisés », sur cet onglet et pas seulement sur cet
@@ -135,6 +149,25 @@ façon déterministe (zéro jeton LLM, même itération) et se remet en pause à
 même frontière, si bien que le Composer se repeint avec l'équipe amendée.
 Pendant que l'assistant compose ou qu'un essai tourne, les boutons attendent
 avec le moteur.
+
+La même pause « dry » porte une seconde réponse à côté d'« Essayer l'équipe » :
+« Adopter sans essayer » (`forge resume --adopt`), qui fait passer la session
+directement à Ready — hors ligne, sans dossier d'exécution, zéro jeton. `Ready`
+n'avait qu'un seul prédécesseur, un verdict accepté : garder l'équipe telle
+qu'elle avait été générée obligeait donc à subir une exécution que rien en aval
+ne consomme — `verdict.json` est facultatif à la promotion et le `FORGE.md`
+généré sait déjà écrire « aucun verdict enregistré ». Ce qu'un essai achète,
+ce sont des *preuves*, pas une permission : l'infobulle du bouton le dit
+exactement, et la transition reçoit son propre déclencheur (`TrialSkipped`)
+pour que l'historique de la session ne se lise jamais comme un verdict qui n'a
+jamais été gagné.
+
+Quel moteur a répondu est également à l'écran, à côté du nom de l'assistant
+(«&nbsp;moteur 1.0.0-rc.2&nbsp;», depuis `session.started`). Studio n'embarque
+pas le CLI — il lance le premier `orkeon` que son localisateur trouve :
+co-installé, sur le `PATH`, ou construit depuis le dépôt — de sorte que sans
+cette ligne, une session pilotée par un binaire périmé est indiscernable d'une
+session qui fonctionne et n'a simplement rien à rapporter.
 
 ### Ce qu'un run a coûté, à l'écran (remédiation v3)
 

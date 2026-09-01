@@ -568,6 +568,7 @@
   <data name="Studio.Teams.TeamMountsSub" xml:space="preserve"><value>Cochez ce que cette équipe peut voir. Tout dossier décoché lui devient invisible, même si d'autres équipes l'utilisent.</value></data>
   <data name="Studio.Teams.AddAnother" xml:space="preserve"><value>Autoriser un autre dossier…</value></data>
   <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve"><value>Ajouter un dossier autorisé</value></data>
+  <data name="Studio.Settings.BindTitle" xml:space="preserve"><value>Quel dossier se trouve derrière {0} ?</value></data>
   <data name="Studio.Settings.AllowedFoldersSub" xml:space="preserve"><value>Choisissez parmi les dossiers déclarés dans Réglages › Dossiers autorisés. L'équipe les verra avec les mêmes droits.</value></data>
   <data name="Studio.Settings.AllowedFoldersEmpty" xml:space="preserve"><value>Aucun dossier n'est encore déclaré dans les réglages.</value></data>
   <data name="Studio.Settings.Declare" xml:space="preserve"><value>Déclarer un nouveau dossier…</value></data>
@@ -592,6 +593,7 @@
   <data name="Studio.Settings.ExportDestination" xml:space="preserve"><value>Choisissez où exporter l'équipe</value></data>
   <data name="Studio.Create.TeamFolders" xml:space="preserve"><value>Dossiers de cette équipe</value></data>
   <data name="Studio.Create.AllowFolder" xml:space="preserve"><value>Autoriser un dossier</value></data>
+  <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Choisir le dossier…</value></data>
   <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>Ces dossiers seront enregistrés avec l'équipe au moment de l'adoption — l'essai, lui, tourne dans son bac à sable.</value></data>
   <data name="Studio.Create.DerivedHint" xml:space="preserve"><value>Ils viennent des agents : c'est en modifiant un agent que vous changez ce qu'il voit.</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modifier</value></data>
@@ -796,6 +798,18 @@
   </data>
   <data name="Studio.Create.TokensEstimated" xml:space="preserve">
     <value>Estimation : ce fournisseur ne compte pas les jetons.</value>
+  </data>
+  <data name="Studio.Create.EngineVersion" xml:space="preserve">
+    <value>moteur {0}</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrial" xml:space="preserve">
+    <value>Adopter sans essayer</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
+    <value>L'équipe est générée et vérifiée. L'essai produit un rapport sur son comportement ; adopter maintenant se passe de ce rapport, rien d'autre.</value>
+  </data>
+  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
+    <value>Cette équipe lit. Choisissez le dossier qu'elle doit lire, sinon elle recevra à l'adoption son propre dossier « input » vide — et rien n'y copiera vos documents.</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>{0} fichier(s) écrit(s)</value>

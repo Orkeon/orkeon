@@ -77,12 +77,29 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
             if (value && !IsSelectable)
                 return;
 
-            if (SetProperty(ref _isChecked, value))
-                _owner.RowToggled();
+            if (!SetProperty(ref _isChecked, value))
+                return;
+
+            // One mount point takes one folder: when the modal was opened to bind a named
+            // virtual path, ticking a second row would silently overwrite the first.
+            if (value && _owner.TargetVirtualPath is not null)
+                _owner.KeepOnly(this);
+
+            _owner.RowToggled();
         }
     }
 
     internal void CheckSilently() => _isChecked = IsSelectable;
+
+    /// <summary>Clears the tick without re-entering the owner — used to enforce single choice.</summary>
+    internal void UncheckSilently()
+    {
+        if (!_isChecked)
+            return;
+
+        _isChecked = false;
+        OnPropertyChanged(nameof(IsChecked));
+    }
 }
 
 /// <summary>
@@ -164,17 +181,57 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
     public event EventHandler? OpenSettingsRequested;
 
     /// <summary>
+    /// The virtual path the picked folder will be bound to, when the modal was opened to
+    /// answer one mount point rather than to add a folder of the user's choosing.
+    /// <para>
+    /// The declared entry is still carried over verbatim in the sense that matters — its
+    /// folder and its RIGHTS — and only the name the agents use for it changes. That name
+    /// is not a permission: the settings say a folder may be read or written, and a team
+    /// says which of its mount points that folder sits behind. Conflating the two is what
+    /// left every agent-implied root unbindable, backed at adoption by an empty folder
+    /// inside the team.
+    /// </para>
+    /// <para>Null on the untargeted open, which adds the entry exactly as declared.</para>
+    /// </summary>
+    public string? TargetVirtualPath { get; private set; }
+
+    /// <summary>Whether this open is answering one mount point — the modal then takes ONE folder.</summary>
+    public bool IsBindingOneMount => TargetVirtualPath is not null;
+
+    /// <summary>
+    /// The modal's own heading: the generic «allow a folder», or the mount point being
+    /// answered — a user who clicked «Choose the folder…» on one row must not have to
+    /// remember which row it was.
+    /// </summary>
+    public string Title => TargetVirtualPath is { } target
+        ? string.Format(
+            CultureInfo.CurrentCulture, _strings[StudioStringKeys.AllowedFoldersBindTitle], target)
+        : _strings[StudioStringKeys.AllowedFoldersTitle];
+
+    /// <summary>
     /// Shows the modal. <paramref name="alreadyOnTarget"/> are the mount strings the team
     /// already carries — they drive the "already added" and virtual-root notes;
     /// <paramref name="onAdd"/> receives one call per checked folder.
     /// </summary>
-    public void Open(IReadOnlyList<string> alreadyOnTarget, Action<MountDefinition> onAdd)
+    /// <param name="alreadyOnTarget">The mount strings the team already carries.</param>
+    /// <param name="onAdd">Receives one call per checked folder, as the settings declare it.</param>
+    /// <param name="targetVirtualPath">
+    /// The mount point being answered, when the modal was opened from one. The rows are then
+    /// judged against THAT root rather than each entry's own — every pick lands there — and
+    /// the choice is single. Null opens the plain "allow a folder" modal.
+    /// </param>
+    public void Open(
+        IReadOnlyList<string> alreadyOnTarget,
+        Action<MountDefinition> onAdd,
+        string? targetVirtualPath = null)
     {
         ArgumentNullException.ThrowIfNull(alreadyOnTarget);
         ArgumentNullException.ThrowIfNull(onAdd);
 
         _alreadyOnTarget = alreadyOnTarget;
         _onAdd = onAdd;
+        TargetVirtualPath = targetVirtualPath;
+        OnPropertiesChanged(nameof(TargetVirtualPath), nameof(IsBindingOneMount), nameof(Title));
         // A fresh open starts on a clean selection: Rebuild carries the ticks over, which is
         // what a declaration made mid-selection needs and what a reopen must not inherit.
         Rows.Clear();
@@ -204,10 +261,22 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
             onAdd?.Invoke(mount);
     }
 
+    /// <summary>Enforces the single choice of a targeted open.</summary>
+    internal void KeepOnly(AllowedFolderRowViewModel kept)
+    {
+        foreach (var row in Rows)
+        {
+            if (!ReferenceEquals(row, kept))
+                row.UncheckSilently();
+        }
+    }
+
     private void Close()
     {
         _onAdd = null;
+        TargetVirtualPath = null;
         IsOpen = false;
+        OnPropertiesChanged(nameof(TargetVirtualPath), nameof(IsBindingOneMount), nameof(Title));
     }
 
     /// <summary>Rebuilds the rows from the settings, keeping what is already ticked.</summary>
@@ -249,13 +318,23 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
         if (mount is null)
             return MountLabels.Unreadable(_strings);
 
-        if (!takenRoots.TryGetValue(mount.VirtualPath, out var takenBy))
+        // Where this row would LAND. A targeted open moves every pick onto the mount point
+        // being answered, so judging the row on the root the settings happened to declare
+        // would refuse it for a collision it is not going to cause — and would refuse it
+        // most reliably on the folders the team already uses elsewhere.
+        var root = TargetVirtualPath ?? mount.VirtualPath;
+        if (!takenRoots.TryGetValue(root, out var takenBy))
             return null;
 
-        // Same folder on the same root: the team already has it. A different folder on the
-        // same root is a collision, and the row says which one it is by its virtual name.
-        return string.Equals(takenBy, mount.PhysicalPath.TrimEnd('/', '\\'), StringComparison.OrdinalIgnoreCase)
-            ? _strings[StudioStringKeys.AllowedFoldersAlreadyAdded]
+        // Same folder on the same root: the team already has it, and picking it changes nothing.
+        if (string.Equals(takenBy, mount.PhysicalPath.TrimEnd('/', '\\'), StringComparison.OrdinalIgnoreCase))
+            return _strings[StudioStringKeys.AllowedFoldersAlreadyAdded];
+
+        // A different folder on a root the team already spends is a collision the runtime
+        // resolves by silently dropping one — EXCEPT when that root is the one being
+        // answered, where replacing what sits behind it is the whole point of the gesture.
+        return TargetVirtualPath is not null
+            ? null
             : string.Format(
                 CultureInfo.CurrentCulture,
                 _strings[StudioStringKeys.AllowedFoldersConflict], mount.VirtualPath);

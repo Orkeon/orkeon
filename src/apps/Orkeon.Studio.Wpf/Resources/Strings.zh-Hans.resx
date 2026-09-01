@@ -1628,6 +1628,7 @@
   <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve">
     <value>添加授权文件夹</value>
   </data>
+  <data name="Studio.Settings.BindTitle" xml:space="preserve"><value>{0} 背后是哪个文件夹？</value></data>
   <data name="Studio.Settings.AllowedFoldersSub" xml:space="preserve">
     <value>从「设置 › 授权文件夹」中已声明的文件夹里选择。团队将以相同的权限看到它们。</value>
   </data>
@@ -1700,6 +1701,7 @@
   <data name="Studio.Create.AllowFolder" xml:space="preserve">
     <value>授权一个文件夹</value>
   </data>
+  <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>选择文件夹…</value></data>
   <data name="Studio.Create.FoldersHint" xml:space="preserve">
     <value>这些文件夹会在采纳时随团队一起记录——而试运行本身在自己的沙箱中进行。</value>
   </data>
@@ -2002,6 +2004,18 @@
   </data>
   <data name="Studio.Create.TokensEstimated" xml:space="preserve">
     <value>估算值：该提供方不返回令牌用量。</value>
+  </data>
+  <data name="Studio.Create.EngineVersion" xml:space="preserve">
+    <value>引擎 {0}</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrial" xml:space="preserve">
+    <value>不试运行直接采用</value>
+  </data>
+  <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
+    <value>团队已生成并通过校验。试运行只会给出一份行为报告；现在采用就是放弃这份报告，仅此而已。</value>
+  </data>
+  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
+    <value>这个团队要读取文件。请选择它应当读取的文件夹，否则采用时它只会得到自己那个空的「input」文件夹，而且不会有任何东西把您的文档复制进去。</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>已写入 {0} 个文件</value>

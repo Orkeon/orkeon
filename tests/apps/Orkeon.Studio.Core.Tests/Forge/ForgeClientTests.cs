@@ -39,6 +39,12 @@ public class ForgeClientTests
                 SettingsPath = "/ws/appsettings.json",
                 Auto = true,
             }));
+
+        // Adoption without a trial: the same resume, told to stop at Ready instead of
+        // running the crew. The engine refuses it anywhere but the dry pause.
+        Assert.Equal(
+            ["forge", "resume", "veille", "--events", "jsonl", "--adopt"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", Adopt = true }));
     }
 
     [Fact]

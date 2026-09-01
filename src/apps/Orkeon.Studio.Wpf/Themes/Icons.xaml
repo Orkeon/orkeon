@@ -47,7 +47,7 @@
   <Geometry x:Key="Lucide.circle-help">M2,12 a10,10 0 1 0 20,0 a10,10 0 1 0 -20,0 M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3 M12 17h.01</Geometry>
   <Geometry x:Key="Lucide.arrow-left">m12 19-7-7 7-7 M19 12H5</Geometry>
   <Geometry x:Key="Lucide.arrow-up">m5 12 7-7 7 7 M12 19V5</Geometry>
-  <Geometry x:Key="Lucide.arrow-down">M12 5v14 m19 12-7 7-7-7</Geometry>
+  <Geometry x:Key="Lucide.arrow-down">M12 5v14 M19 12l-7 7-7-7</Geometry>
   <Geometry x:Key="Lucide.arrow-right">M5 12h14 M12 5 l7 7-7 7</Geometry>
   <Geometry x:Key="Lucide.check">M20 6 9 17l-5-5</Geometry>
   <Geometry x:Key="Lucide.plug-zap">M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z M2 22 l3-3 M7.5 13.5 10 11 M10.5 16.5 13 14 M18 3 l-4 4h6l-4 4</Geometry>
