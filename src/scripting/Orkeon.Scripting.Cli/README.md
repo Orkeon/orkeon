@@ -11,7 +11,7 @@ dotnet tool install --global Orkeon.Scripting.Cli --prerelease
 orkeon doctor
 ```
 
-> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+> Published to NuGet.org as part of the consolidated lineup (from `v1.0.0-rc.3`; earlier versions reached the GitHub Packages feed only) — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 Self-contained installers (Windows zip/MSI, Debian package, macOS tarball) are also published on the [releases page](https://github.com/Orkeon/orkeon/releases) — no .NET SDK required there.
 

@@ -6,11 +6,7 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 
 ## Install
 
-```
-dotnet add package Orkeon.Cli.Abstractions --prerelease
-```
-
-> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+This project is no longer distributed as a NuGet package — reference it from source (`ProjectReference` inside this repository); its assembly ships through the release artifacts. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Documentation
 
