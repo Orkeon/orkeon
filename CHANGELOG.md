@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the screenshot campaign photographs an application in use, not an empty one
+
+`orkeon-studio --capture-screens <dir>` existed to be the fidelity reference against the v3
+mock, and could not be: it built the window over `CreateForCurrentMachine`, so on a clean
+machine every shot was an empty card — no team, no history, no session, a wizard frozen on
+step 1. Twenty-two images over roughly a hundred visual states, one theme out of the two the
+v3 remediation promised, and no test at all beyond argument parsing.
+
+The campaign now builds the window over a **seeded scenario in a throwaway temp directory** and
+walks every screen and every gated state of it, in both modes and both themes, plus a language
+sweep over the densest screens.
+
+- **Two worlds, never one mutated into the other.** A populated machine (three adopted teams —
+  one of which names a folder nobody declared —, seven past runs, four forge sessions, four
+  model profiles, a declared folder that genuinely does not exist on disk, a doctor with one
+  warning and one failure) and a first-run machine with nothing on it and no CLI installed.
+  "Empty versus populated" is a thing a stop declares rather than a teardown that must
+  un-populate a list.
+- **The real loaders, over seeded files.** `TeamCatalog`, `ForgeSessionCatalog`, the file-backed
+  history and profile stores, the physical settings, directory and target probes — all of them,
+  pointed at the sandbox. Only the process boundary is doubled, because it has no other seam.
+  `ForgeSessionHydrator` rebuilds a whole wizard session from five JSON files, so the Composer,
+  the mount rows and both verdicts are photographable with **no child process anywhere**.
+- **The catalogue is data, and it is asserted.** Each stop declares where it stands, what it
+  arranges, why that state is worth a pixel, and which ViewModel gates it claims to light up.
+  The whole campaign is replayed headless on the Linux runner and every claim is checked — so a
+  stop that stops reaching its state fails the build instead of writing a confident picture of
+  the wrong screen. Writing those assertions immediately caught four wrong claims, including a
+  stacked-modal state this application does not have.
+- **Conformity guards**, in the idiom of the suite's existing ones: every sidebar entry maps to a
+  capture screen, every scrim modal is opened by some stop, every endless storyboard has a pose,
+  every guided-tour step names an element that exists.
+- **Output that cannot lie.** Per-stop fault barrier; geometry, non-uniformity, expected-panel
+  and binding-error checks; a differs-from-the-previous-shot digest that catches the likeliest
+  failure of all, a stop that changed nothing; atomic writes; failed shots quarantined under
+  `failed/`; and a `manifest.json` carrying each image's reason, its SHA-256 — so re-running the
+  campaign after a UI change and diffing two manifests names the exact screens that moved.
+
+### Fixed — five defects the campaign was hiding
+
+Found while making the collection trustworthy; each produced, or was about to produce, an image
+that looked like evidence.
+
+- **The startup plate would have bled into every shot.** `SkipSplashForCapture` ran a
+  zero-duration animation and set `Visibility` from its `Completed` handler — and a zero
+  *duration* is not a synchronous completion: `BeginAnimation` attaches the clock and the media
+  context ticks it on the next render pass. It worked only because the settle slept 120 ms
+  afterwards. Replaced by a direct pose/hide pair, alongside a `PoseSplashForCapture` that
+  photographs a plate a user could actually have seen instead of five pixels of progress bar.
+- **The theme button contradicted its own window in dark mode.** The icon and tooltip were
+  refreshed only from the toggle handler, so applying the theme any other way left a moon in the
+  title bar — the first place a reviewer looks. `ApplyThemeForCapture` does both, and
+  deliberately does not touch the operator's stored preferences.
+- **The language menu could never appear.** It is the app's only `Popup`, hosted in its own
+  `HwndSource` and therefore invisible to `RenderTargetBitmap`: its shot would have been a
+  chevron rotated to 180° above nothing. Popups are now composited into the window's image, with
+  the computed placement asserted inside the window's bounds rather than trusted.
+- **The settle proved nothing.** WPF orders `Loaded` below `Render`, so the second dispatcher
+  fence returned immediately and `Task.Delay(120)` was the only thing creating slack. Replaced by
+  a bindings drain, a layout loop that repeats until layout stops dirtying itself, bounded
+  composition ticks and an idle drain — with an unstable layout recorded rather than ignored.
+- **A failed shot was invisible and inflated the count.** `Save` returned silently on a
+  zero-size window *after* the index had been incremented, and the count printed on stdout was
+  the stop count, not the file count.
+
+Also: the collection is captured at 1440×900 rather than 1024×768. At the old size the content
+column is 752 DIP and the panels declare maximum widths of 880, 1000 and 1080 — so none of them
+ever bound, and every image ever produced showed the narrowest layout the app can make, which is
+not the one the mock was drawn for. `captures/` joins `.gitignore`.
+
 ### Fixed — the pre-push audit: what forty-one reviewers found in the campaign season's own commits
 
 A six-dimension adversarial audit of the fifteen unpushed commits (token/cache accounting,

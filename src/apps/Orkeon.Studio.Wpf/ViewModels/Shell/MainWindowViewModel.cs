@@ -1,6 +1,7 @@
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.History;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
@@ -46,7 +47,9 @@ public sealed class MainWindowViewModel : ObservableObject
         string? initialLanguage = null,
         Action<string>? persistLanguage = null,
         Action<string>? applyLanguage = null,
-        string? systemLanguage = null)
+        string? systemLanguage = null,
+        ILlmEndpointProbe? llmProbe = null,
+        IApiKeyStore? keyStore = null)
     {
         var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
@@ -71,7 +74,10 @@ public sealed class MainWindowViewModel : ObservableObject
             runner,
             dispatcher,
             globalPathOverride,
-            llmProbe: null,
+            // Injected rather than hard-coded null: the screenshot campaign passes a probe that
+            // answers offline, which is what makes "the connection was tested" photographable AND
+            // makes a live HTTP call from a headless run structurally impossible.
+            llmProbe,
             strings);
 
         // The settings' folder list is read live everywhere it is needed: a team folder that is
@@ -104,7 +110,7 @@ public sealed class MainWindowViewModel : ObservableObject
         var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace ?? DefaultForgeHome(teamsHome));
         Settings = new SettingsScreenViewModel(
             Config,
-            new ModelProfilesViewModel(profileStore, Config.Llm, strings,
+            new ModelProfilesViewModel(profileStore, Config.Llm, strings, llmProbe, keyStore,
                 loadTeams: () => TeamCatalog.List(teamsHome)),
             Mode);
 

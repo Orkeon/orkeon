@@ -401,12 +401,12 @@
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavImport, Converter={StaticResource BooleanToVisibility}}">
-          <views:ImportTeamView MaxWidth="880" DataContext="{Binding Import}"/>
+          <views:ImportTeamView x:Name="ImportPanel" MaxWidth="880" DataContext="{Binding Import}"/>
         </ScrollViewer>
         <!-- Tester is a two-column layout with a full-height console (audit 13): its host is
              a Grid, not a ScrollViewer — an infinite vertical measure would collapse the console. -->
         <Grid Visibility="{Binding IsChecked, ElementName=NavTest, Converter={StaticResource BooleanToVisibility}}">
-          <views:TestTeamView MaxWidth="1080" Margin="30,24,30,32" DataContext="{Binding Test}"/>
+          <views:TestTeamView x:Name="TestPanel" MaxWidth="1080" Margin="30,24,30,32" DataContext="{Binding Test}"/>
         </Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">
@@ -422,7 +422,7 @@
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource BooleanToVisibility}}">
-          <views:HistoryView MaxWidth="880" DataContext="{Binding Launch.History}"/>
+          <views:HistoryView x:Name="HistoryPanel" MaxWidth="880" DataContext="{Binding Launch.History}"/>
         </ScrollViewer>
       </Grid>
     </Grid>
@@ -1237,7 +1237,7 @@
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" FontSize="12" Margin="11,10,0,0" VerticalAlignment="Center"/>
         </StackPanel>
         <Border Width="220" Height="3" CornerRadius="1.5" Background="{DynamicResource LineBrush}" Margin="0,24,0,0">
-          <Rectangle Height="3" HorizontalAlignment="Left" Fill="{DynamicResource AccentBrush}" RadiusX="1.5" RadiusY="1.5" Width="0">
+          <Rectangle x:Name="SplashProgress" Height="3" HorizontalAlignment="Left" Fill="{DynamicResource AccentBrush}" RadiusX="1.5" RadiusY="1.5" Width="0">
             <Rectangle.Triggers>
               <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                 <BeginStoryboard>

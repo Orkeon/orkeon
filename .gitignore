@@ -440,3 +440,7 @@ sonarqube/
 !examples/forge/promote-demo/.orkeon/
 /.github/copilot-instructions.md
 /temp
+
+# Screenshot campaigns (orkeon-studio --capture-screens): hundreds of PNG per run, regenerated
+# in one command on any Windows machine. The reference collection lives in backstage, never here.
+captures/

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Orkeon.Studio.Wpf.Services;
+using Orkeon.Studio.Wpf.Services.Capture;
 
 namespace Orkeon.Studio.Wpf.Controls;
 
@@ -102,11 +103,16 @@ public sealed class TourOverlay : Grid
 
     private Button? _nextKeyHolder;
 
-    public void Start(IReadOnlyList<TourStep> steps)
+    /// <summary>
+    /// Shows the tour from <paramref name="startIndex"/>. The index is a parameter rather than
+    /// always zero because the screenshot campaign photographs every stop: without it only the
+    /// first of the five is reachable from outside.
+    /// </summary>
+    public void Start(IReadOnlyList<TourStep> steps, int startIndex = 0)
     {
         _steps = steps;
         Visibility = Visibility.Visible;
-        Go(0);
+        Go(startIndex);
     }
 
     public void End()
@@ -212,21 +218,6 @@ public sealed class TourOverlay : Grid
         if (window.FindName(name) is FrameworkElement direct)
             return direct;
 
-        return FindByName(window, name);
-    }
-
-    private static FrameworkElement? FindByName(DependencyObject root, string name)
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (child is FrameworkElement fe && fe.Name == name)
-                return fe;
-
-            if (FindByName(child, name) is { } nested)
-                return nested;
-        }
-
-        return null;
+        return CaptureVisualTree.FindByName(window, name);
     }
 }

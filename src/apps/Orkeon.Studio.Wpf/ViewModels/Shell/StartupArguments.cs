@@ -12,8 +12,14 @@ public sealed record StartupArguments
     public const string SmokeExitSwitch = "--smoke-exit";
 
     /// <summary>
-    /// The screenshot-campaign switch: walk every screen in both modes, save one PNG per
-    /// stop into the given directory, exit. Runs on Windows only — the app itself does.
+    /// The screenshot-campaign switch: build the window over a seeded scenario, walk every screen
+    /// and every gated state of it in both modes and both themes, save one PNG per stop into the
+    /// given directory with a manifest beside them, exit.
+    /// <para>
+    /// The scenario is invented and thrown away: the campaign never reads the operator's teams,
+    /// history, settings or preferences, and never writes them. That is what makes the collection
+    /// the same on any machine. Runs on Windows only — the app itself does.
+    /// </para>
     /// </summary>
     public const string CaptureScreensSwitch = "--capture-screens";
 

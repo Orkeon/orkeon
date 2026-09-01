@@ -11,6 +11,9 @@ namespace Orkeon.Studio.Wpf.Views;
 
 public partial class MainWindow : Window
 {
+    /// <summary>The splash progress bar at full travel, as the markup declares it.</summary>
+    private const double SplashProgressWidth = 220;
+
     private bool _splashDismissed;
 
     public MainWindow()
@@ -136,17 +139,16 @@ public partial class MainWindow : Window
 
 
     // ── guided tour (v3: five stops — the mode, the three sidebar groups, the help column) ──
-    private void OnStartTour(object sender, RoutedEventArgs e)
-    {
-        Tour.Start(
-        [
-            new TourStep("ModeSwitch", "Studio.Shell.TourStep1Title", "Studio.Shell.TourStep1Body"),
-            new TourStep("NavGroupTeams", "Studio.Shell.TourStep2Title", "Studio.Shell.TourStep2Body"),
-            new TourStep("NavGroupWork", "Studio.Shell.TourStep3Title", "Studio.Shell.TourStep3Body"),
-            new TourStep("NavGroupEnv", "Studio.Shell.TourStep4Title", "Studio.Shell.TourStep4Body"),
-            new TourStep(null, "Studio.Shell.TourStep5Title", "Studio.Shell.TourStep5Body"),
-        ]);
-    }
+    private void OnStartTour(object sender, RoutedEventArgs e) => Tour.Start(TourSteps);
+
+    /// <summary>
+    /// The overlay's own step type, projected from the catalogue the campaign reads too. The
+    /// literals used to live here; two consumers of one list is what keeps a new stop from
+    /// existing on screen and nowhere in the collection.
+    /// </summary>
+    internal static IReadOnlyList<TourStep> TourSteps { get; } =
+        [.. ViewModels.Shell.GuidedTourCatalog.Steps.Select(
+            step => new TourStep(step.TargetName, step.TitleKey, step.BodyKey))];
 
     private void OnAboutBackdropClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -199,22 +201,73 @@ public partial class MainWindow : Window
     // ── startup screen ──
     // Five seconds, clickable through: the design's startup plate. The dismissal is animation
     // only — nothing waits on it, and a smoke run closes the window regardless.
+    private DispatcherTimer? _splashTimer;
+
     private void BeginSplash()
     {
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4.55) };
-        timer.Tick += (_, _) =>
+        // Kept in a field so a capture campaign can stop it: a 4,55 s tick landing between two
+        // shots is a state change nobody asked for, and a timer holding a closed window alive is
+        // a loose end even when the guard makes it a no-op.
+        _splashTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4.55) };
+        _splashTimer.Tick += (_, _) =>
         {
-            timer.Stop();
+            _splashTimer.Stop();
             DismissSplash(TimeSpan.FromMilliseconds(450));
         };
-        timer.Start();
+        _splashTimer.Start();
     }
 
     private void OnSplashClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
         DismissSplash(TimeSpan.FromMilliseconds(150));
 
-    /// <summary>The screenshot campaign needs the plate gone instantly, not animated away.</summary>
-    internal void SkipSplashForCapture() => DismissSplash(TimeSpan.Zero);
+    /// <summary>
+    /// The startup plate, posed for a shot: a plate a user could actually have seen, rather than
+    /// the few pixels the progress bar happens to have drawn by the time the campaign gets there.
+    /// </summary>
+    internal void PoseSplashForCapture(double progress = 0.62)
+    {
+        _splashTimer?.Stop();
+        SplashProgress.BeginAnimation(WidthProperty, null);
+        SplashProgress.Width = SplashProgressWidth * progress;
+        Splash.BeginAnimation(OpacityProperty, null);
+        Splash.Opacity = 1;
+        Splash.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// The plate gone, with no animation involved at all.
+    /// <para>
+    /// This replaces a version that ran a zero-length <see cref="DoubleAnimation"/> and set the
+    /// visibility from its <c>Completed</c> handler. A zero DURATION is not a synchronous
+    /// completion: <c>BeginAnimation</c> only attaches the clock, and the media context ticks it on
+    /// the next render pass — so on return the plate was still fully opaque, and every shot taken
+    /// before that tick was a picture of the splash screen. It worked only because the settle slept
+    /// afterwards, which is exactly what the campaign no longer does.
+    /// </para>
+    /// </summary>
+    internal void HideSplashForCapture()
+    {
+        _splashDismissed = true;
+        _splashTimer?.Stop();
+        Splash.BeginAnimation(OpacityProperty, null);
+        Splash.Opacity = 0;
+        Splash.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// The theme for a capture: the tokens AND the button that names them.
+    /// <para>
+    /// <see cref="ThemeManager.Apply"/> on its own leaves the title bar showing a moon in dark
+    /// mode, because the icon and its tooltip are refreshed only from the toggle handler — a title
+    /// bar contradicting its own window, in the first place a reviewer looks. Deliberately does NOT
+    /// call <c>SavePreferences</c>: a campaign must leave the operator's stored theme as it found it.
+    /// </para>
+    /// </summary>
+    internal void ApplyThemeForCapture(bool dark)
+    {
+        ThemeManager.Apply(dark);
+        UpdateThemeButton();
+    }
 
     private void DismissSplash(TimeSpan fade)
     {

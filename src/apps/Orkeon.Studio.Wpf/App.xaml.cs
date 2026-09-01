@@ -72,6 +72,30 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (arguments.CaptureScreensDirectory is { } captureDirectory)
+        {
+            // The campaign owns its own windows, its own worlds and its own appearance, so it runs
+            // ABOVE everything below: no stored preference is read, no --cli-dir override is
+            // honoured, and no shell over the operator's real disk is ever built. That is what
+            // makes the collection the same on any machine — and what makes it impossible for a
+            // screenshot run to touch the operator's teams, history or settings.
+            //
+            // OnExplicitShutdown is load-bearing: the default closes the process the moment the
+            // first pass's window closes, which would ship a campaign that silently produces one
+            // pass out of eight.
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            // RenderTargetBitmap always rasterises in software; forcing the on-screen pipeline to
+            // match removes a real source of machine-to-machine variation, because a drop shadow
+            // does not render the same at hardware tier 2 and tier 0.
+            System.Windows.Media.RenderOptions.ProcessRenderMode =
+                System.Windows.Interop.RenderMode.SoftwareOnly;
+
+            _ = Dispatcher.BeginInvoke(() => RunCaptureCampaignAsync(captureDirectory));
+
+            return;
+        }
+
         // Presentation preferences are applied before the window exists so the first render is
         // already in the right theme and language. Reading is tolerant (defaults on any failure)
         // and a smoke run only ever reads — writes happen on user toggles, which a smoke never does.
@@ -135,36 +159,41 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (arguments.CaptureScreensDirectory is { } captureDirectory)
-        {
-            // Screenshot campaign: initialize like a real session (teams, history, doctor all
-            // populated from this machine), then walk every screen and leave. Exit code 0 with
-            // the image count on stdout; any failure exits 1 with the reason on stderr.
-            _ = Dispatcher.BeginInvoke(() => RunCaptureCampaignAsync(window, _viewModel, captureDirectory));
-
-            return;
-        }
-
         _ = _viewModel.InitializeAsync();
     }
 
+    /// <summary>
+    /// The headless campaign, end to end. A stop that fails is reported and the walk continues — a
+    /// campaign that half-works is far more useful than one that dies at image twelve — but the
+    /// process still exits 1, with every failed stop named on stderr.
+    /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031",
         Justification = "Top-level fault barrier of the headless campaign: any failure must " +
-                        "become exit code 1 with a message, never a dead window.")]
-    private async Task RunCaptureCampaignAsync(MainWindow window, MainWindowViewModel shell, string directory)
+                        "become exit code 1 with a message, never a dead process.")]
+    private async Task RunCaptureCampaignAsync(string directory)
     {
         try
         {
-            await shell.InitializeAsync();
-            var count = await ScreenCaptureRunner.RunAsync(window, shell, directory);
-            await Console.Out.WriteLineAsync($"capture-screens: {count} image(s) written to {directory}");
-            window.Close();
-            Shutdown(0);
+            var report = await Services.Capture.CaptureCampaign.RunAsync(
+                new Services.Capture.CaptureOptions { Directory = directory });
+
+            await Console.Out.WriteLineAsync(
+                $"capture-screens: {report.Written}/{report.Planned} image(s) written to {directory}");
+
+            if (report.Failures.Count > 0)
+            {
+                await Console.Error.WriteLineAsync(
+                    $"capture-screens: {report.Failures.Count} stop(s) failed "
+                    + $"(the seeded worlds were at {report.SandboxRoot}):");
+                foreach (var failure in report.Failures)
+                    await Console.Error.WriteLineAsync($"  {failure.Pass} / {failure.Stop}: {failure.Reason}");
+            }
+
+            Shutdown(report.Failures.Count == 0 ? 0 : 1);
         }
         catch (Exception exception)
         {
-            await Console.Error.WriteLineAsync($"capture-screens failed: {exception.Message}");
-            window.Close();
+            await Console.Error.WriteLineAsync($"capture-screens failed: {exception}");
             Shutdown(1);
         }
     }
