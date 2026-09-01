@@ -73,7 +73,7 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
         Assert.Contains(sessions, session => session.Slug == StudioFixture.DryPauseSessionSlug);
         Assert.Contains(sessions, session => session.Slug == StudioFixture.FailingSessionSlug);
 
-        // Three in progress and one adopted: the two faces «Mes équipes» shows side by side.
+        // Three in progress and one adopted: the two faces My teams shows side by side.
         Assert.Equal(3, sessions.Count(session => session.CanResume));
         Assert.Single(sessions, session => session.CanRelaunch);
     }

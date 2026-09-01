@@ -6,7 +6,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 /// <summary>
 /// A machine that either has the CLI installed or does not, on purpose.
 /// <para>
-/// The absent case is not an edge: it is the first-run screen — the banner on Exécuter, the
+/// The absent case is not an edge: it is the first-run screen — the banner on Run, the
 /// diagnostic that cannot answer, the Tester screen that refuses. None of it is photographable
 /// against a real probe on a developer's machine, where the binary is always there.
 /// </para>

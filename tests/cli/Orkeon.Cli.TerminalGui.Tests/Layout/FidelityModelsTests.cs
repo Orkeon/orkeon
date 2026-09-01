@@ -47,7 +47,7 @@ public class BannerComposerTests
 {
     private static BannerInfo Info(string model = "kimi-k3 (1M context) · api.moonshot.ai") => new()
     {
-        ProductLine = "Orkéon Coding Agent — orkeon-repl 0.9.2",
+        ProductLine = "Orkeon Coding Agent — orkeon-repl 0.9.2",
         ModelLine = model,
         WorkspaceLine = "/workspace",
         Tips = ["Switch models anytime with /model.", "+more · /status"],
@@ -58,7 +58,7 @@ public class BannerComposerTests
     {
         var lines = BannerComposer.Compose(Info(), GlyphSet.Unicode);
         var text = string.Join("\n", lines);
-        Assert.Contains("Orkéon Coding Agent", text, StringComparison.Ordinal);
+        Assert.Contains("Orkeon Coding Agent", text, StringComparison.Ordinal);
         Assert.Contains("kimi-k3", text, StringComparison.Ordinal);
         Assert.Contains("/workspace", text, StringComparison.Ordinal);
         Assert.Contains("/model", text, StringComparison.Ordinal);

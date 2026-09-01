@@ -2,11 +2,11 @@
 
 # Campagnes de validation des providers LLM
 
-Ce dossier porte les **preuves d'exécution réelle** des 14 providers LLM d'Orkéon : les
+Ce dossier porte les **preuves d'exécution réelle** des 14 providers LLM d'Orkeon : les
 scripts qui lancent les campagnes, et le rapport archivé de chacune.
 
 > **Pourquoi ce dossier existe.** Le dépôt compte ≈ 400 tests unitaires sur les providers
-> LLM, et **tous parlent à un handler HTTP mocké**. Un mock prouve qu'Orkéon envoie ce
+> LLM, et **tous parlent à un handler HTTP mocké**. Un mock prouve qu'Orkeon envoie ce
 > qu'on croit ; il ne prouve pas que le fournisseur l'accepte. C'est la seconde preuve qui
 > se construit ici.
 >
@@ -197,7 +197,7 @@ identifiant. Mesuré deux fois le 2026-08-02 — `glm-5.2` renvoie `1210` là o�
 
 Le modèle par défaut **garde son M9 et garde son rouge** : ce rouge *est* la preuve de D-03,
 et le supprimer masquerait précisément l'écart que la matrice existe pour suivre. Le
-compagnon ajoute le fait complémentaire — que le chemin multimodal d'Orkéon fonctionne — que
+compagnon ajoute le fait complémentaire — que le chemin multimodal d'Orkeon fonctionne — que
 ni l'un ni l'autre ne donne seul.
 
 Uniquement sur le chemin automatique : un `--model` explicite est un choix, et le
@@ -236,7 +236,7 @@ seule ne peut pas donner :
 | Aplatie | Tableau `messages` | Lecture |
 |---|---|---|
 | ✅ | ✅ | Rien à signaler |
-| ❌ | ✅ | **Défaut d'Orkéon** — c'est l'aplatissement qui a perdu le modèle |
+| ❌ | ✅ | **Défaut d'Orkeon** — c'est l'aplatissement qui a perdu le modèle |
 | ✅ | ❌ | Inspecter la charge utile du chemin structuré, **mais sans conclure trop vite** (voir ci-dessous) |
 | ❌ | ❌ | L'instruction est bien parvenue à l'API des deux façons : **le modèle ne la suit pas** |
 
@@ -255,7 +255,7 @@ seule ne peut pas donner :
 > en test** (`OllamaChatEndpointTests.ShouldCarryTheConfiguredSystemMessage_OnTheStructuredPath`) :
 > Ollama construit son propre payload `/api/chat` et y prépose correctement le message système.
 > L'instruction parvient donc bien au modèle, qui ne la suit pas dès qu'un catalogue d'outils
-> partage son contexte. **Comportement du modèle, pas défaut d'Orkéon** — mais c'est le test qui
+> partage son contexte. **Comportement du modèle, pas défaut d'Orkeon** — mais c'est le test qui
 > le dit, pas une lecture de code faite une fois.
 
 ## Reproductibilité — la température

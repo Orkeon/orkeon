@@ -1,6 +1,8 @@
 [submodule "experiments"]
 	path = experiments
 	url = https://github.com/Orkeon/experiments.git
+	update = none
 [submodule "backstage"]
 	path = backstage
 	url = https://github.com/Orkeon/backstage.git
+	update = none

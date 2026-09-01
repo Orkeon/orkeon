@@ -53,7 +53,7 @@ public class CreateTeamWizardTests
     }
 
     /// <summary>
-    /// « Composer l'équipe » from the outside. The gesture IS the engine now: there is no
+    /// The compose-the-team button from the outside. The gesture IS the engine now: there is no
     /// local questionnaire to drain first, and whatever the model wants to ask it asks
     /// down the wire once the run is under way.
     /// </summary>

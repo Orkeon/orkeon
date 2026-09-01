@@ -61,7 +61,7 @@ public sealed class MainWindowViewModel : ObservableObject
         Language = new LanguageSelectorViewModel(
             initialLanguage, systemLanguage, applyLanguage, persistLanguage, strings);
 
-        // ONE conversation for the window (T-01). Créer, Exécuter and Historique all mount
+        // ONE conversation for the window (T-01). Create, Run and History all mount
         // the same instance: recreated per screen, its history would die on the first tab
         // change — which is exactly the defect the thread was introduced to fix.
         Chat = new ChatThreadViewModel(strings, delay);
@@ -197,7 +197,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>The create-a-team wizard, over the forge engine (design v3).</summary>
     /// <summary>
-    /// The conversation with the assistant, shared by Créer, Exécuter and Historique.
+    /// The conversation with the assistant, shared by Create, Run and History.
     /// Bound through the window ancestor on the screens that do not own it, so a change of
     /// tab hands the same thread to the next screen rather than a fresh, empty one.
     /// </summary>

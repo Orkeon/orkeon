@@ -7,7 +7,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 /// The assistant conversation — a whole panel that had never been photographed once, on any of
 /// the three screens it mounts on.
 /// <para>
-/// One instance is shared by Créer, Exécuter and Historique, and it answers differently on each:
+/// One instance is shared by Create, Run and History, and it answers differently on each:
 /// the primer changes, and the pinned brief card belongs to the wizard alone. That is three
 /// screens' worth of design behind one property.
 /// </para>

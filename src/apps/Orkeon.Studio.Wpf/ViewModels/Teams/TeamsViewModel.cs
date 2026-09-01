@@ -169,7 +169,7 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Disarms the confirmation and puts the action row back.</summary>
     public RelayCommand CancelDeleteCommand { get; }
 
-    /// <summary>Whether this card is showing its « Supprimer cette équipe ? » banner.</summary>
+    /// <summary>Whether this card is showing its delete-this-team confirmation banner.</summary>
     public bool IsConfirmingDelete
     {
         get => _isConfirmingDelete;

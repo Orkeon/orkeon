@@ -6,7 +6,7 @@
 | **Modèle** | `Qwen/Qwen3-VL-30B-A3B-Instruct` |
 | **Endpoint** | `router.huggingface.co` |
 | **Horodatage (UTC)** | 2026-08-30T12:46:33Z |
-| **Version Orkéon** | 1.0.0-rc.2 |
+| **Version Orkeon** | 1.0.0-rc.2 |
 | **Commit** | `8942d304` |
 | **Modes exercés** | M9 |
 | **Température** | 0 |

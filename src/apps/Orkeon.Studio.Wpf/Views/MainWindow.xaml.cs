@@ -52,7 +52,7 @@ public partial class MainWindow : Window
         // by hand, shows up without waiting for an adopt or an app restart.
         NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Test.RefreshTeams(); };
 
-        // Échap closes the language menu; StaysOpen=False already answers the click
+        // Escape closes the language menu; StaysOpen=False already answers the click
         // elsewhere. Handled on the window because the popup is not in its visual tree.
         PreviewKeyDown += (_, e) =>
         {

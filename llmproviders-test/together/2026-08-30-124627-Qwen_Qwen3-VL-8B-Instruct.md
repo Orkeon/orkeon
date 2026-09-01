@@ -6,7 +6,7 @@
 | **Modèle** | `Qwen/Qwen3-VL-8B-Instruct` |
 | **Endpoint** | `api.together.xyz` |
 | **Horodatage (UTC)** | 2026-08-30T12:46:30Z |
-| **Version Orkéon** | 1.0.0-rc.2 |
+| **Version Orkeon** | 1.0.0-rc.2 |
 | **Commit** | `8942d304` |
 | **Modes exercés** | M9 |
 | **Température** | 0 |

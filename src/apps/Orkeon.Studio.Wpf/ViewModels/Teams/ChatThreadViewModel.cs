@@ -14,7 +14,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 /// assistant had already understood.
 /// </para>
 /// <para>
-/// It asks nothing of its own. « Composer l'équipe » starts the engine, and the engine's
+/// It asks nothing of its own. The compose-the-team button starts the engine, and the engine's
 /// brief stage is the interview: ForgeStages emits an assistant.message, blocks on stdin,
 /// and loops until the model submits a brief. Every question here is the model's, however
 /// many it wants; every reply goes down that pipe. The thread once played three scripted
@@ -192,7 +192,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     public string Placeholder => _strings[
         IsAsking ? StudioStringKeys.ChatPlaceholderAnswer : StudioStringKeys.ChatPlaceholder];
 
-    /// <summary>« Répondre » while a question stands, « Envoyer » otherwise.</summary>
+    /// <summary>The reply label while a question stands, the send label otherwise.</summary>
     public string SendLabel =>
         _strings[IsAsking ? StudioStringKeys.ChatReply : StudioStringKeys.ChatSend];
 
@@ -240,7 +240,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     public string StripTitle =>
         _strings[_isBusy ? StudioStringKeys.ChatStripBusy : StudioStringKeys.ChatStripAsking];
 
-    /// <summary>« Répondre » when a question waits, « Voir la discussion » otherwise.</summary>
+    /// <summary>The reply label when a question waits, the see-the-conversation label otherwise.</summary>
     public string StripAction =>
         _strings[IsAsking ? StudioStringKeys.ChatReply : StudioStringKeys.ChatSeeConversation];
 
@@ -403,7 +403,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     // ── the session ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// « Composer l'équipe » — the engine is starting. The thread takes the column and
+    /// The compose-the-team gesture — the engine is starting. The thread takes the column and
     /// shows the assistant thinking; every question after this comes off the wire.
     /// </summary>
     public void StartSession()

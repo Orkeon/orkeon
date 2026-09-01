@@ -64,7 +64,7 @@ declare global {
     interface LlmStream extends AsyncIterable<string> {
         /**
          * Terminal token counts, or `null` when the provider reported none —
-         * which is NOT the same as a call that used nothing. Orkéon asks for
+         * which is NOT the same as a call that used nothing. Orkeon asks for
          * usage (`stream_options.include_usage`); a provider may ignore it.
          * `null` until the stream ends.
          */
@@ -84,7 +84,7 @@ declare global {
         readonly tokensUsed: number;
         /**
          * `null` when the provider reported no usage for the stream — which is not
-         * the same as zero. Orkéon asks for it (`stream_options.include_usage`),
+         * the same as zero. Orkeon asks for it (`stream_options.include_usage`),
          * but a provider may ignore the request.
          */
         readonly promptTokens: number | null;

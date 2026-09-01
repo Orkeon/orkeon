@@ -3,7 +3,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>Exécuter.</summary>
+/// <summary>The Run screen.</summary>
 internal static class RunStops
 {
     /// <summary>The stops.</summary>

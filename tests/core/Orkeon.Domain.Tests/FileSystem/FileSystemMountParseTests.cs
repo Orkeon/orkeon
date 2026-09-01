@@ -18,9 +18,9 @@ public class FileSystemMountParseTests
     [Fact]
     public void Parse_WindowsDriveLetter_ParsesCorrectly()
     {
-        var mount = FileSystemMount.Parse(@"C:\Users\Cyril:/workspace:rw");
+        var mount = FileSystemMount.Parse(@"C:\Users\Demo:/workspace:rw");
 
-        Assert.Equal(@"C:\Users\Cyril", mount.BasePath);
+        Assert.Equal(@"C:\Users\Demo", mount.BasePath);
         Assert.Equal("/workspace", mount.VirtualPath);
         Assert.Equal(FileAccessRights.ReadWrite, mount.DefaultRights);
     }

@@ -117,7 +117,7 @@ public sealed class ModalDialogsTests
     /// <summary>
     /// Red means one thing: this folder is outside what the machine allows. It used to also
     /// mean «the team made this folder itself», which the launcher explicitly refuses to
-    /// warn about — so a team's own /output read red here and green on Exécuter, about the
+    /// warn about — so a team's own /output read red here and green on Run, about the
     /// very same folder.
     /// </summary>
     [Fact]
@@ -233,7 +233,7 @@ public sealed class ModalDialogsTests
         editor.Open(
             Blueprint,
             "collecteur",
-            [@"C:\Users\cyril\Factures:/factures:ro", @"C:\Users\cyril\Sorties:/output:rw"],
+            [@"C:\Users\demo\Factures:/factures:ro", @"C:\Users\demo\Sorties:/output:rw"],
             _ => { });
 
         Assert.DoesNotContain(@"C:\", editor.ScopeInfo, StringComparison.Ordinal);
@@ -249,7 +249,7 @@ public sealed class ModalDialogsTests
     public void An_unreadable_mount_is_named_as_such_rather_than_dumped()
     {
         var editor = new AgentEditorViewModel();
-        editor.Open(Blueprint, "collecteur", [@"C:\Users\cyril\Factures"], _ => { });
+        editor.Open(Blueprint, "collecteur", [@"C:\Users\demo\Factures"], _ => { });
 
         Assert.DoesNotContain(@"C:\", editor.ScopeInfo, StringComparison.Ordinal);
     }

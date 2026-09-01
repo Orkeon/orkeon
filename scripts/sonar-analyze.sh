@@ -966,7 +966,7 @@ main() {
         /d:sonar.coverageReportPaths="coverage/merged/SonarQube.xml" \
         /d:sonar.qualitygate.wait=true \
         /d:sonar.qualitygate.timeout="$QUALITY_GATE_TIMEOUT" \
-        /d:sonar.exclusions="**/bin/**,**/obj/**,examples/**,project/experiments/**,**/*.html,**/*.py" \
+        /d:sonar.exclusions="**/bin/**,**/obj/**,examples/**,experiments/**,**/*.html,**/*.py" \
         /d:sonar.typescript.file.suffixes=".disabled-no-first-party-ts" \
         /d:sonar.javascript.file.suffixes=".disabled-no-first-party-js"
 

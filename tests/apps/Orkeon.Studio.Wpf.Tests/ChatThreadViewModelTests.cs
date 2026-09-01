@@ -317,7 +317,7 @@ public class ChatThreadViewModelTests
         // on the first tab change, which is the whole reason it is a window-lifetime object.
         Assert.Same(shell.Chat, shell.CreateTeam.Chat);
 
-        // Exécuter and Tester run over SEPARATE launchers — the trial is a rehearsal with no
+        // The Run and Test screens run over SEPARATE launchers — the trial is a rehearsal with no
         // history of its own — and neither owns a conversation: they reach the window's one
         // through the ancestor, so there is nothing here for a second copy to hide in.
         Assert.NotSame(shell.Launch, shell.Test.Launcher);
@@ -345,8 +345,8 @@ public class ChatThreadViewModelTests
 }
 
 /// <summary>
-/// The hot language switch reaches the conversation too (recette §9: « aucun texte resté
-/// en français »). A bubble the assistant said from the catalogue is rewritten; a bubble
+/// The hot language switch reaches the conversation too (recette §9: no text left in
+/// the old language). A bubble the assistant said from the catalogue is rewritten; a bubble
 /// the user typed is theirs and stays exactly as typed.
 /// </summary>
 public sealed class ChatCatalogueSwitchTests

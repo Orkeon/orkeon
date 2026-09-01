@@ -145,8 +145,8 @@ public sealed class ComposeProgressTests
     }
 
     /// <summary>
-    /// The owner's report, verbatim: «je n'ai pas le compteur token haut et bas qui
-    /// apparaît». It never appeared because the protocol carried one grand total and no XAML
+    /// The owner's report, in substance: the up-and-down token counter never shows
+    /// up. It never appeared because the protocol carried one grand total and no XAML
     /// bound even that.
     /// </summary>
     [Fact]

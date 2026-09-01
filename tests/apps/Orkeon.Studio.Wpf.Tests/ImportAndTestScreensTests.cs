@@ -126,7 +126,7 @@ public sealed class ImportRecognitionReportTests
         {
             File.WriteAllText(
                 Path.Combine(directory, StudioTeamMetadata.FileName),
-                """{"name":"veille","mounts":["C:\\Users\\cyril\\Factures:/factures:ro"]}""");
+                """{"name":"veille","mounts":["C:\\Users\\demo\\Factures:/factures:ro"]}""");
 
             var probe = new FakeTargetProbe()
                 .WithDirectory(directory)

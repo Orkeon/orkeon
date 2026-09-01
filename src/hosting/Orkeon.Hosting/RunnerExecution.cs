@@ -1005,7 +1005,7 @@ public static partial class RunnerExecution
     [LoggerMessage(EventId = 9, Level = LogLevel.Error, Message = "Failed to process question #{Number}")]
     private static partial void LogQuestionFailed(ILogger logger, Exception ex, int number);
 
-    [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "Crew definition detected as Orkéon Scripting DSL — loading via ScriptHost.")]
+    [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "Crew definition detected as Orkeon Scripting DSL — loading via ScriptHost.")]
     private static partial void LogScriptedCrewDetected(ILogger logger);
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Information, Message = "Adapted JsCrew '{CrewName}' to CrewConfiguration ({AgentCount} agent(s), {TaskCount} task(s)).")]

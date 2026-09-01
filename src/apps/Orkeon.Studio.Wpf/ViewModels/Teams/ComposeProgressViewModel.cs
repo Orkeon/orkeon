@@ -35,7 +35,7 @@ public sealed record ComposeProgress(
 /// verdict.
 /// <para>
 /// Those two stretches used to be blank. The engine was working — sometimes for a minute —
-/// and the screen showed an empty column with a small immobile arc beside «Arrêter»: no way
+/// and the screen showed an empty column with a small immobile arc beside the stop button: no way
 /// to tell a session that is thinking from one that has died. This card is what fills them,
 /// and it says three things only, all of which the stream already carries: WHAT the engine
 /// is doing, what the model last SAID, and what it has COST so far, up and down.

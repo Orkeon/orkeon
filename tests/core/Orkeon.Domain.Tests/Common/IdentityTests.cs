@@ -242,7 +242,6 @@ public class IdentityTests
 
         // Assert
         Assert.NotNull(memoryId);
-        // FIXME: // FIXME: // FIXME: // FIXME: Assert.Equal(memoryId.Value, guidValue); // constructor signature changed // constructor signature changed // constructor signature changed // constructor signature changed
         Assert.Equal(memoryId.ToString(), stringValue);
     }
 

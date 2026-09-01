@@ -6,7 +6,7 @@
 | **Modèle** | `deepseek-v4-flash-vision-exp` |
 | **Endpoint** | `api.deepseek.com` |
 | **Horodatage (UTC)** | 2026-08-30T08:40:44Z |
-| **Version Orkéon** | 1.0.0-rc.2 |
+| **Version Orkeon** | 1.0.0-rc.2 |
 | **Commit** | `db61e0dc` |
 | **Modes exercés** | M9 |
 | **Température** | 0 |

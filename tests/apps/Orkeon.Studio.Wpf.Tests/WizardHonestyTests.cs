@@ -184,7 +184,7 @@ public sealed class WizardHonestyTests
 
     /// <summary>
     /// The engine computes these, puts them on the wire, and Studio.Core parses them. Nothing
-    /// showed them — so «Corriger et réessayer» asked the user to invent the correction the
+    /// showed them — so the fix-and-retry button asked the user to invent the correction the
     /// judge had already written.
     /// </summary>
     [Fact]

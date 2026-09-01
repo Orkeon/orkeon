@@ -349,8 +349,8 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (e.PropertyName is nameof(ChatThreadViewModel.IsStarted))
                 RestartCommand?.RaiseCanExecuteChanged();
 
-            // The nav's draft block reads the conversation too: «l'assistant attend votre
-            // réponse» is the state a user must never walk away from without seeing.
+            // The nav's draft block reads the conversation too: the assistant awaiting your
+            // reply is the state a user must never walk away from without seeing.
             if (e.PropertyName is nameof(ChatThreadViewModel.IsStarted)
                 or nameof(ChatThreadViewModel.IsBusy)
                 or nameof(ChatThreadViewModel.IsAsking)
@@ -487,7 +487,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The conversation with the assistant — the window's, shared with Exécuter and
+    /// The conversation with the assistant — the window's, shared with Run and
     /// Historique, so leaving this screen never empties it.
     /// </summary>
     public ChatThreadViewModel Chat { get; }
@@ -515,7 +515,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         : StudioStringKeys.WizardDraftTitle];
 
     /// <summary>
-    /// «Étape 2 sur 4 · Composer», assembled from a per-culture pattern — Chinese has no
+    /// The step line — number, total and stage name assembled from a per-culture pattern — Chinese has no
     /// « sur » and a concatenation would ship the French joiner everywhere.
     /// </summary>
     public string DraftLine
@@ -1140,12 +1140,12 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>
     /// Whether the engine has actually proposed a team. The proposal card used to render
     /// unconditionally, so between «entered the blueprint stage» and «blueprint.ready» the
-    /// screen showed a confident «Voici l'équipe que je propose» over nothing at all — and the
+    /// screen showed a confident here-is-the-team-I-propose headline over nothing at all — and the
     /// only sentence with substance in it was a red warning about unauthorized folders.
     /// </summary>
     public bool HasProposal => _model.Proposal is not null;
 
-    /// <summary>Whether the render produced anything to show under «Définition générée».</summary>
+    /// <summary>Whether the render produced anything to show under the generated-definition heading.</summary>
     public bool HasGeneratedDefinition => HasCrewDefinition || HasFiles;
 
     /// <summary>Crew files written by the render, session-relative — expert only.</summary>
@@ -1182,7 +1182,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>
     /// What the engine suggests changing. It computes these, puts them on the wire and
-    /// Studio.Core parses them — and nothing displayed them, so «Corriger et réessayer»
+    /// Studio.Core parses them — and nothing displayed them, so the fix-and-retry button
     /// asked the user to invent a correction the engine had already written.
     /// </summary>
     public IReadOnlyList<string> Suggestions =>
@@ -1979,7 +1979,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (_teamName.Length == 0 && _model.Title is { Length: > 0 } title)
             TeamName = ShortName(title);
 
-        // «Quelque chose s'est mal passé» must not replace the sentence that says WHAT.
+        // The generic something-went-wrong line must not replace the sentence that says WHAT.
         // A failed session used to overwrite the engine's own error — the one line with
         // enough in it to act on — with a generic apology.
         StatusMessage = _saveError ?? _model.FinishedStatus switch

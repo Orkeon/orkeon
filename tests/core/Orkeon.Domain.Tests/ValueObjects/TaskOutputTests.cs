@@ -624,7 +624,6 @@ public class UserService
 
         // Assert
         Assert.Equal(emptyTaskId, output.TaskId);
-        // FIXME: // FIXME: // FIXME: // FIXME: Assert.Equal(Guid.Empty, output.TaskId!.Value); // constructor signature changed // constructor signature changed // constructor signature changed // constructor signature changed
     }
 
     [Fact]

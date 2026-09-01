@@ -281,8 +281,8 @@ public sealed class ForgeStagesTests : IDisposable
     }
 
     /// <summary>
-    /// The owner's report, on a screenshot of step 1 mid-interview: «toujours pas les tokens
-    /// échangés en live». The meter was emitted by the ENGINE, once a stage returned — and an
+    /// The owner's report, on a screenshot of step 1 mid-interview: still no live view of
+    /// the tokens exchanged. The meter was emitted by the ENGINE, once a stage returned — and an
     /// interview is one stage of up to twenty-four turns, each of which is itself several
     /// model calls (the assistant reads the workspace before answering). So it stood at zero
     /// for the whole conversation and then jumped in one step.

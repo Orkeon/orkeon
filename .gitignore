@@ -394,13 +394,10 @@ dummy/
 
 # Log files in examples
 examples/**/logs/
-project/experiments/**/logs/
-project/experiments/**/runner-output-*.txt
 
 # Backup files
 *.bak
 .claude/worktrees/
-.env.sonarsonarqube/
 .env.sonar
 
 # DocFX generated site

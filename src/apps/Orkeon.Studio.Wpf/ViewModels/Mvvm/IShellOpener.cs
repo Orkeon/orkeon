@@ -13,7 +13,7 @@ public interface IShellOpener
 /// <summary>
 /// An opener that does nothing, mirroring <c>NullPathPicker</c>.
 /// <para>
-/// Not the same as passing no opener at all: the screens gate their «Ouvrir le résultat» buttons on
+/// Not the same as passing no opener at all: the screens gate their open-the-result buttons on
 /// having one, so a null opener hides the very controls a screenshot campaign is there to
 /// photograph. This one keeps them on screen and opens nothing.
 /// </para>

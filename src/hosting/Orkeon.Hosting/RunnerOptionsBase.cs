@@ -19,7 +19,7 @@ public abstract class RunnerOptionsBase
     /// </summary>
     [Option('c', "config", Required = false,
         HelpText = "Path to the crew definition. Accepts .yaml (YAML loader), .ork.ts " +
-                   "(Orkéon Scripting DSL, loaded via Jint + esbuild), or a directory holding a " +
+                   "(Orkeon Scripting DSL, loaded via Jint + esbuild), or a directory holding a " +
                    "multi-file YAML crew (config.yaml + agents/ + tasks/). " +
                    "Required unless --list-tools is used.")]
     public string ConfigPath { get; set; } = "";

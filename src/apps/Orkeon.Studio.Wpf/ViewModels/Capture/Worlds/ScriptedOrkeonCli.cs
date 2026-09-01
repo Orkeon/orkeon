@@ -12,7 +12,7 @@ internal sealed record CliAnswer(int ExitCode, IReadOnlyList<string> Lines);
 /// <para>
 /// Everything else the seeded world offers travels the real code path over real files, because
 /// every store that matters takes an explicit path. A process does not, and four families of
-/// screens live behind one — the diagnostic verdict, the About version line, «Exécuter» in
+/// screens live behind one — the diagnostic verdict, the About version line, the Run screen in
 /// flight, and the wizard's live states, which no artefact on disk can reproduce because they
 /// only exist while a stream is open.
 /// </para>

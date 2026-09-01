@@ -200,7 +200,7 @@ public sealed class FinalMessageResolverTests : IDisposable
         // Real shape from R30 attempt-02 D — model prefaced its YAML with
         // a prose summary of its set arithmetic before emitting `name:`.
         const string payload =
-            "No Orkéon file reads returned hits. The mapping's section 2.c provides all needed resolution data.\n\n" +
+            "No Orkeon file reads returned hits. The mapping's section 2.c provides all needed resolution data.\n\n" +
             "**Set arithmetic:**\n- S_yaml = 12\n\n" +
             "name: orkeon_demo_resolved\n" +
             "goal: do something\n";
@@ -211,7 +211,7 @@ public sealed class FinalMessageResolverTests : IDisposable
         var written = await File.ReadAllTextAsync(Path.Combine(_tempDir, "04-resolved.yaml"), TestContext.Current.CancellationToken);
         Assert.StartsWith("name: orkeon_demo_resolved", written);
         Assert.DoesNotContain("Set arithmetic", written);
-        Assert.DoesNotContain("No Orkéon file reads", written);
+        Assert.DoesNotContain("No Orkeon file reads", written);
     }
 
     [Fact]
@@ -242,7 +242,7 @@ public sealed class FinalMessageResolverTests : IDisposable
         // Real shape from R30 attempt-02 B — model prefaced the mapping
         // markdown with reasoning prose before the `# 02-...` header.
         const string payload =
-            "I now have the full TS architecture analysis and Orkéon surface data. " +
+            "I now have the full TS architecture analysis and Orkeon surface data. " +
             "Let me produce the final deliverable.\n\n" +
             "# 02-orkeon-mapping\n\n" +
             "## 1. Mapping table\n";

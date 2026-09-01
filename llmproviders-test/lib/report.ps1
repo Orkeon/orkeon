@@ -68,7 +68,7 @@ $add = { param($text) $lines.Add([string]$text) }
 & $add "| **Modèle** | ``$($c.model)`` |"
 & $add "| **Endpoint** | ``$($c.endpointHost)`` |"
 & $add "| **Horodatage (UTC)** | $stamp |"
-& $add "| **Version Orkéon** | $($c.orkeonVersion) |"
+& $add "| **Version Orkeon** | $($c.orkeonVersion) |"
 & $add "| **Commit** | ``$commit`` |"
 & $add "| **Modes exercés** | $modesRun |"
 # Older campaigns predate the field; "non épinglée" is the honest rendering of a run whose

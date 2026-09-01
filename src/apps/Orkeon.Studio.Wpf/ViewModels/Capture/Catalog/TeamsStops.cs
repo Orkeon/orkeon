@@ -2,7 +2,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>Mes équipes, full and empty.</summary>
+/// <summary>My teams, full and empty.</summary>
 internal static class TeamsStops
 {
     /// <summary>The stops.</summary>

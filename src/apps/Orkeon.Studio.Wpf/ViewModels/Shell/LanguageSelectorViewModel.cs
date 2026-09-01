@@ -7,7 +7,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Shell;
 /// <summary>One language the menu can offer: its code, its name in its own language.</summary>
 /// <param name="Code">Two-letter code, lowercase — the culture the app switches to.</param>
 /// <param name="Display">Uppercase code for the badge («FR»).</param>
-/// <param name="Name">The language's own name («Français», «中文»).</param>
+/// <param name="Name">The language's own name, in that language («中文» for Chinese).</param>
 public sealed record LanguageOption(string Code, string Display, string Name);
 
 /// <summary>
@@ -101,7 +101,7 @@ public sealed class LanguageSelectorViewModel : ObservableObject
         [.. Supported.Where(l => !string.Equals(l.Code, _current, StringComparison.Ordinal))];
 
     /// <summary>
-    /// «SYSTÈME · Français» / «CHOISIE · Français» — the popup's first line. Where the
+    /// The system-or-chosen marker with the current language's name — the popup's first line. Where the
     /// current language came from is the one thing the badge cannot say, and it decides
     /// whether changing the Windows language will still be followed.
     /// </summary>
@@ -111,7 +111,7 @@ public sealed class LanguageSelectorViewModel : ObservableObject
         _strings[_isExplicit ? StudioStringKeys.LanguageChosen : StudioStringKeys.LanguageSystem],
         CurrentName);
 
-    /// <summary>«Français — langue du système» / «— choix enregistré», on the button.</summary>
+    /// <summary>The language name with its source — system language or recorded choice — on the button.</summary>
     public string Tooltip => string.Format(
         CultureInfo.CurrentCulture,
         _strings[StudioStringKeys.LanguageTooltipPattern],
@@ -131,7 +131,7 @@ public sealed class LanguageSelectorViewModel : ObservableObject
     /// <summary>Opens and closes the popup.</summary>
     public RelayCommand ToggleMenuCommand { get; }
 
-    /// <summary>Closes it — the click elsewhere, and Échap.</summary>
+    /// <summary>Closes it — the click elsewhere, and Escape.</summary>
     public RelayCommand CloseMenuCommand { get; }
 
     private void Pick(string code)

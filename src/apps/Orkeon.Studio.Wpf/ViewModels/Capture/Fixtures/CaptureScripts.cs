@@ -128,8 +128,8 @@ internal static class CaptureScripts
 
     /// <summary>
     /// A compose that reaches the dry pause: the proposal arrives, and the stream closes on
-    /// <c>paused</c> — the state where the wizard offers both «Essayer l'équipe» and
-    /// «Adopter sans essai».
+    /// <c>paused</c> — the state where the wizard offers both the try-the-team and the
+    /// adopt-without-trial buttons.
     /// </summary>
     public static IReadOnlyList<string> ForgeComposeToDryPause { get; } =
     [
@@ -140,7 +140,7 @@ internal static class CaptureScripts
         """{"v":2,"seq":5,"ts":"2026-08-28T06:40:44Z","kind":"stage.entered","stage":"blueprint"}""",
     ];
 
-    /// <summary>A run that goes all the way through, for the Exécuter screen.</summary>
+    /// <summary>A run that goes all the way through, for the Run screen.</summary>
     public static IReadOnlyList<string> RunToSuccess { get; } =
     [
         """{"v":2,"seq":1,"ts":"2026-08-28T07:10:00Z","kind":"run.started","crew":"veille-concurrentielle","tasks":3}""",

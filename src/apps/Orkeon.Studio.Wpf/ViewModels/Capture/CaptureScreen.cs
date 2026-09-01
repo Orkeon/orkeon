@@ -6,10 +6,10 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture;
 /// </summary>
 internal enum CaptureScreen
 {
-    /// <summary>Créer une équipe.</summary>
+    /// <summary>The create-a-team wizard.</summary>
     Create,
 
-    /// <summary>Mes équipes.</summary>
+    /// <summary>My teams.</summary>
     Teams,
 
     /// <summary>Importer.</summary>
@@ -18,22 +18,22 @@ internal enum CaptureScreen
     /// <summary>Tester — expert only.</summary>
     Test,
 
-    /// <summary>Exécuter.</summary>
+    /// <summary>Run.</summary>
     Run,
 
     /// <summary>Historique.</summary>
     History,
 
-    /// <summary>Réglages, on the model tab.</summary>
+    /// <summary>Settings, on the model tab.</summary>
     SettingsModel,
 
-    /// <summary>Réglages, on the authorized-folders tab.</summary>
+    /// <summary>Settings, on the authorized-folders tab.</summary>
     SettingsFolders,
 
-    /// <summary>Réglages, on the limits tab — expert only.</summary>
+    /// <summary>Settings, on the limits tab — expert only.</summary>
     SettingsLimits,
 
-    /// <summary>Réglages, on the raw-JSON tab — expert only.</summary>
+    /// <summary>Settings, on the raw-JSON tab — expert only.</summary>
     SettingsJson,
 
     /// <summary>Diagnostic.</summary>
@@ -66,7 +66,7 @@ internal enum CaptureCategory
     /// <summary>The create-a-team wizard.</summary>
     Wizard,
 
-    /// <summary>Mes équipes.</summary>
+    /// <summary>My teams.</summary>
     Teams,
 
     /// <summary>Importer.</summary>
@@ -75,13 +75,13 @@ internal enum CaptureCategory
     /// <summary>The expert trial screen.</summary>
     TestScreen,
 
-    /// <summary>Exécuter.</summary>
+    /// <summary>Run.</summary>
     Run,
 
     /// <summary>Historique.</summary>
     History,
 
-    /// <summary>Réglages and its four tabs.</summary>
+    /// <summary>Settings and its four tabs.</summary>
     Settings,
 
     /// <summary>Diagnostic.</summary>

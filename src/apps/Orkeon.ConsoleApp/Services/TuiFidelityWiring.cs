@@ -53,7 +53,7 @@ internal static class TuiFidelityWiring
 
         return new BannerInfo
         {
-            ProductLine = $"Orkéon Coding Agent — orkeon-repl {version}",
+            ProductLine = $"Orkeon Coding Agent — orkeon-repl {version}",
             ModelLine = modelLine,
             WorkspaceLine = "/workspace",
             Tips =

@@ -5,7 +5,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 /// <summary>
 /// An endpoint probe that answers without a network.
 /// <para>
-/// Two things at once. It makes «la connexion a été testée» photographable — the real probe would
+/// Two things at once. It makes the connection-was-tested verdict photographable — the real probe would
 /// need a live model behind a real URL — and it makes an outbound HTTP call from a headless
 /// campaign structurally impossible rather than a rule somebody has to remember.
 /// </para>

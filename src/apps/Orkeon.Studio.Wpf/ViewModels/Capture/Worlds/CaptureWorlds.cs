@@ -7,8 +7,8 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 /// <summary>
 /// The two machines the campaign walks, and the throwaway tree they live in.
 /// <para>
-/// Both are built up front and never mutated into each other. That is what turns «vide contre
-/// peuplé» into something a stop declares rather than something it has to undo — and a teardown
+/// Both are built up front and never mutated into each other. That is what turns empty versus
+/// populated into something a stop declares rather than something it has to undo — and a teardown
 /// that forgets to un-populate a list is a whole class of wrong screenshot this design cannot
 /// produce.
 /// </para>

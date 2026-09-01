@@ -3,7 +3,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>Réglages and its four tabs.</summary>
+/// <summary>Settings and its four tabs.</summary>
 internal static class SettingsStops
 {
     /// <summary>The stops.</summary>

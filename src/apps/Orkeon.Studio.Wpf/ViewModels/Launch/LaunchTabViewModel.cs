@@ -695,12 +695,12 @@ public sealed class LaunchTabViewModel : ObservableObject
     public event EventHandler? OpenAllowedFoldersRequested;
 
     /// <summary>
-    /// Raised by the Novice empty state's « Choisir une équipe » — the shell brings My teams
+    /// Raised by the Novice empty state's choose-a-team button — the shell brings My teams
     /// forward. The screen used to name that place and give no way to reach it.
     /// </summary>
     public event EventHandler? ChooseTeamRequested;
 
-    /// <summary>Raised by its « Créer une équipe » sibling — the shell opens the wizard.</summary>
+    /// <summary>Raised by its create-a-team sibling — the shell opens the wizard.</summary>
     public event EventHandler? CreateTeamRequested;
 
     /// <summary>The team card only exists once a target resolves.</summary>

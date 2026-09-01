@@ -91,7 +91,7 @@ internal static class LlmProbeReport
         sb.AppendLine();
         sb.Append("- **Horodatage (UTC)** : ")
           .AppendLine(context.TimestampUtc.ToString("u", CultureInfo.InvariantCulture));
-        sb.Append("- **Version Orkéon** : ").AppendLine(context.OrkeonVersion);
+        sb.Append("- **Version Orkeon** : ").AppendLine(context.OrkeonVersion);
         sb.Append("- **Commit** : ").AppendLine(string.IsNullOrWhiteSpace(context.Commit) ? "non fourni" : context.Commit);
         sb.Append("- **Endpoint** : ").AppendLine(context.EndpointHost);
         sb.Append("- **Température** : ")

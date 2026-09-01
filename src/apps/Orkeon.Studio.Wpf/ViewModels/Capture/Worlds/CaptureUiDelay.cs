@@ -7,7 +7,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 /// <para>
 /// Immediate by default, like the tests' own delay — a campaign that waited on a wall clock would
 /// photograph whichever beat happened to have landed. But a state that exists only BETWEEN two
-/// beats is still a screen: «l'assistant réfléchit» is the sweeping hairline, the pulsing halo and
+/// beats is still a screen: the assistant-is-thinking beat is the sweeping hairline, the pulsing halo and
 /// the three dots, and it lasts exactly as long as the pause does. Holding lets a stop stand in
 /// that pause; releasing lets the thread finish its sentence.
 /// </para>
