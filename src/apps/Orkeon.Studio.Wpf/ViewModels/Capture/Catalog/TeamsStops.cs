@@ -33,6 +33,29 @@ internal static class TeamsStops
 
         new()
         {
+            Name = "equipes-sessions-en-cours",
+            Category = CaptureCategory.Teams,
+            Screen = CaptureScreen.Teams,
+            Because = "«Sessions en cours» under the team list: three creations stopped part-way, "
+                    + "each with the step it reached and the two ways out.",
+            Covers = ["Teams.HasInProgress"],
+            SweepsLanguages = true,
+        },
+
+        new()
+        {
+            Name = "equipes-session-suppression",
+            Category = CaptureCategory.Teams,
+            Screen = CaptureScreen.Teams,
+            Because = "An abandoned draft being discarded: the session card's own confirmation, "
+                    + "which is a different row from the team card's.",
+            Covers = ["Teams.InProgress[0].IsConfirmingDelete"],
+            Arrange = CaptureAction.Sync(static c => c.Shell.Teams.InProgress[0].AskDeleteCommand.Execute(null)),
+            Teardown = CaptureAction.Sync(static c => c.Shell.Teams.InProgress[0].CancelDeleteCommand.Execute(null)),
+        },
+
+        new()
+        {
             Name = "equipes-suppression",
             Category = CaptureCategory.Teams,
             Screen = CaptureScreen.Teams,

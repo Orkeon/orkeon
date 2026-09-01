@@ -2,6 +2,37 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture;
 
+/// <summary>
+/// Waiting on a condition rather than on a clock.
+/// <para>
+/// An arrange that slept would be a guess twice over: too short on a loaded machine, and pure
+/// waste on a fast one, several hundred times over. The timeout is the only wall clock, and
+/// reaching it is a failure with the condition's own source text in the message.
+/// </para>
+/// </summary>
+internal static class CaptureWait
+{
+    /// <summary>How long a condition has to become true before the stop is called failed.</summary>
+    private static readonly TimeSpan Limit = TimeSpan.FromSeconds(10);
+
+    /// <summary>Yields until <paramref name="condition"/> holds, or throws saying which one did not.</summary>
+    public static async Task UntilAsync(
+        Func<bool> condition,
+        [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(condition))] string? description = null)
+    {
+        ArgumentNullException.ThrowIfNull(condition);
+
+        var deadline = DateTimeOffset.UtcNow + Limit;
+        while (!condition())
+        {
+            if (DateTimeOffset.UtcNow > deadline)
+                throw new TimeoutException($"the campaign waited for {description} and it never became true");
+
+            await Task.Yield();
+        }
+    }
+}
+
 /// <summary>Ready-made arrange bodies, so a stop that only navigates says so in one word.</summary>
 internal static class CaptureAction
 {

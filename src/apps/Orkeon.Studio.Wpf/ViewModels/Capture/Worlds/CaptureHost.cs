@@ -16,12 +16,6 @@ internal sealed record CaptureHost
     /// <summary>Where ViewModel work is marshalled.</summary>
     public required IUiDispatcher Dispatcher { get; init; }
 
-    /// <summary>
-    /// The assistant's timed beats. Immediate on purpose: a campaign that waited on wall-clock
-    /// delays would photograph whichever beat happened to have landed.
-    /// </summary>
-    public IUiDelay Delay { get; init; } = ImmediateUiDelay.Instance;
-
     /// <summary>The string catalogue — resx-backed in the app, English inline in the tests.</summary>
     public IStudioStrings? Strings { get; init; }
 

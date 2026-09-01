@@ -64,6 +64,20 @@ public sealed class CapturePlannerTests
         Assert.All(shots, shot => Assert.Equal(UiModeViewModel.Novice, shot.Appearance.Mode));
     }
 
+    /// <summary>
+    /// The size of the collection, pinned. Not a rule about how big it should be — a way of making
+    /// a change to it a visible line in a diff, so nobody grows the campaign from three hundred
+    /// images to a thousand without noticing, and nobody shrinks it without saying why.
+    /// </summary>
+    [Fact]
+    public void The_collection_is_the_size_the_catalogue_says()
+    {
+        var plan = CapturePlanner.Plan(CaptureCatalog.All, CaptureMatrix.Default);
+
+        Assert.Equal(48, CaptureCatalog.All.Count);
+        Assert.Equal(250, plan.Count);
+    }
+
     [Fact]
     public void The_manifest_round_trips_through_its_own_json()
     {

@@ -46,12 +46,33 @@ internal static class CaptureShellBuilder
             profileStore: world.ProfileStore,
             teamsRoot: world.TeamsRoot,
             shellOpener: NullShellOpener.Instance,
-            delay: host.Delay,
+            delay: world.Delay,
             initialLanguage: host.Language,
             persistLanguage: null,
             applyLanguage: host.ApplyLanguage,
             systemLanguage: host.Language,
             llmProbe: world.LlmProbe,
             keyStore: world.KeyStore);
+    }
+
+    /// <summary>
+    /// The work a shell needs before it can be photographed: its own deferred loaders, and the
+    /// settings document.
+    /// <para>
+    /// The settings have to be asked for. Nothing in Studio loads them at startup — the shell
+    /// initialises the launcher, the profiles, the doctor and the team list, and not the
+    /// configuration — yet the declared folders are read LIVE from it everywhere: the wizard's
+    /// mount rows, the team cards' chips, the folder chooser, and the refusal to launch a team
+    /// whose folders nobody declared. Left unloaded, every screen of the collection would show a
+    /// machine that has declared nothing, and every team would read as blocked.
+    /// </para>
+    /// </summary>
+    public static async Task PrepareAsync(MainWindowViewModel shell, CaptureWorld world, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(shell);
+        ArgumentNullException.ThrowIfNull(world);
+
+        await shell.InitializeAsync(cancellationToken);
+        await shell.Config.LoadAsync(world.SettingsPath, cancellationToken);
     }
 }

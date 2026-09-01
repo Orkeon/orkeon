@@ -6,6 +6,9 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture;
 /// <summary>What an arrange is handed. The window is deliberately absent.</summary>
 internal sealed class CaptureContext
 {
+    /// <summary>How long held work has to finish before the stop is called faulty.</summary>
+    private static readonly TimeSpan DrainLimit = TimeSpan.FromSeconds(15);
+
     private readonly List<Task> _held = [];
 
     /// <summary>The window's ViewModel, over a seeded world.</summary>
@@ -41,8 +44,11 @@ internal sealed class CaptureContext
 
         // A parked run that ends in a fault is the stop's business, not the campaign's: the
         // per-stop barrier upstream already reported it, and re-throwing here would take the
-        // teardown down with it.
-        await Task.WhenAll(held).ContinueWith(
-            static _ => { }, TaskScheduler.Default);
+        // teardown down with it. The timeout is the other half: a stop that parks a run and never
+        // releases it is a bug in the stop, and it has to read as one instead of hanging a
+        // campaign somebody left running.
+        var all = Task.WhenAll(held).ContinueWith(static _ => { }, TaskScheduler.Default);
+        if (await Task.WhenAny(all, Task.Delay(DrainLimit)) != all)
+            throw new TimeoutException("a stop parked work it never released");
     }
 }

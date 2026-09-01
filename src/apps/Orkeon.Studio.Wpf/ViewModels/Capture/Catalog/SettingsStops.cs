@@ -45,6 +45,21 @@ internal static class SettingsStops
 
         new()
         {
+            Name = "reglages-dossiers-selection",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsFolders,
+            Modes = CaptureModes.Expert,
+            Because = "The expert mount editor with a row selected: the right pane and its "
+                    + "separator only exist once something is picked, so the unselected shot shows "
+                    + "half the screen.",
+            Covers = ["Config.Mounts.SelectedMount"],
+            Arrange = CaptureAction.Sync(static c =>
+                c.Shell.Config.Mounts.SelectedMount = c.Shell.Config.Mounts.Mounts[0]),
+            Teardown = CaptureAction.Sync(static c => c.Shell.Config.Mounts.SelectedMount = null),
+        },
+
+        new()
+        {
             Name = "reglages-limites",
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsLimits,
@@ -82,4 +97,5 @@ internal static class SettingsStops
                 c.Shell.Settings.Profiles.Editor?.CancelCommand.Execute(null)),
         },
     ];
+
 }

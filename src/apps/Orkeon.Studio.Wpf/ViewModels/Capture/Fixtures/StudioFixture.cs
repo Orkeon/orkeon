@@ -49,6 +49,16 @@ internal static class StudioFixture
     /// <summary>What the user wants back.</summary>
     public const string Outcome = "Une note de dix lignes dans sortie/, en français.";
 
+    /// <summary>What the assistant has said, so a thread with turns in it is worth reading.</summary>
+    public static IReadOnlyList<string> AssistantTurns { get; } =
+    [
+        "Bonjour. Décrivez-moi ce que vous voulez obtenir, avec vos mots — je m'occupe de la forme.",
+        "D'accord : une note quotidienne à partir de ce que vos concurrents publient. "
+        + "Dans quel dossier vos sources arrivent-elles ?",
+        "Parfait. Je compose une équipe de trois : un veilleur qui lit, un analyste qui trie, "
+        + "un rédacteur qui écrit la note.",
+    ];
+
     /// <summary>Pinned so two runs of the campaign produce the same dates.</summary>
     private static readonly DateTimeOffset Now = new(2026, 8, 28, 7, 12, 0, TimeSpan.Zero);
 

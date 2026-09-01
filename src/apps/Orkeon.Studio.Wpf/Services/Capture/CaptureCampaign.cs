@@ -155,7 +155,7 @@ internal static class CaptureCampaign
             window.Show();
 
             await WaitForFirstRenderAsync(window);
-            await shell.InitializeAsync();
+            await CaptureShellBuilder.PrepareAsync(shell, world);
             window.HideSplashForCapture();
             window.ApplyThemeForCapture(appearance.IsDark);
             AlignCulture(window, appearance.Language);

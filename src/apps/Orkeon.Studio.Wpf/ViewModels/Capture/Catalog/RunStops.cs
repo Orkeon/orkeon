@@ -46,5 +46,47 @@ internal static class RunStops
             Arrange = CaptureAction.Sync(static c =>
                 c.Shell.Launch.Target.Select(c.World.TeamDirectory(StudioFixture.BlockedTeamSlug))),
         },
+
+        new()
+        {
+            Name = "executer-en-cours",
+            Category = CaptureCategory.Run,
+            Screen = CaptureScreen.Run,
+            Because = "A run in flight — the plain-language progress card moving, the tone badge, "
+                    + "the token meter and the technical journal filling. It exists only while a "
+                    + "stream is open, so no artefact on disk can reproduce it: the scripted CLI is "
+                    + "held open across this shot and released by the next one.",
+            Covers = ["Launch.IsRunning", "Launch.HasTeamCard"],
+            Arrange = static async c =>
+            {
+                c.Shell.Launch.Target.Select(c.World.TeamDirectory("veille-concurrentielle"));
+                c.World.Cli.Hold("run");
+                c.HoldUntilTeardown(c.Shell.Launch.RunCommand.ExecuteAsync());
+                await CaptureWait.UntilAsync(() => c.Shell.Launch.IsRunning);
+            },
+            // The stop owns its whole run: a held child released by the NEXT stop would leave the
+            // walk waiting on a task nothing in this stop can finish.
+            Teardown = static async c =>
+            {
+                c.World.Cli.Release();
+                await CaptureWait.UntilAsync(() => !c.Shell.Launch.IsRunning);
+            },
+        },
+
+        new()
+        {
+            Name = "executer-termine",
+            Category = CaptureCategory.Run,
+            Screen = CaptureScreen.Run,
+            Because = "The same run, finished: the badge in its success tone, the «ouvrir le "
+                    + "résultat» action live, and the journal holding what the stream said.",
+            CoversFalse = ["Launch.IsRunning"],
+            SweepsLanguages = true,
+            Arrange = static async c =>
+            {
+                c.Shell.Launch.Target.Select(c.World.TeamDirectory("veille-concurrentielle"));
+                await c.Shell.Launch.RunCommand.ExecuteAsync();
+            },
+        },
     ];
 }

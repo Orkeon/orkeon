@@ -23,6 +23,7 @@ internal static class CaptureCatalog
         .. SettingsStops.All,
         .. DiagnosticStops.All,
         .. ModalStops.All,
+        .. AssistantStops.All,
     ];
 
     /// <summary>The stops that belong to one pass.</summary>

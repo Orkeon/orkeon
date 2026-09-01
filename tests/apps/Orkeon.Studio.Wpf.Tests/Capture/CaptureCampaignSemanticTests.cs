@@ -139,7 +139,8 @@ public sealed class CaptureCampaignSemanticTests : IAsyncLifetime
                 Mode = appearance.Mode,
             });
 
-            await shell.InitializeAsync(TestContext.Current.CancellationToken);
+            await CaptureShellBuilder.PrepareAsync(
+                shell, _worlds.For(kind), TestContext.Current.CancellationToken);
 
             if (string.Equals(appearance.Mode, UiModeViewModel.Expert, StringComparison.Ordinal))
                 shell.Mode.SetExpertCommand.Execute(null);

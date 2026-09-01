@@ -52,6 +52,9 @@ internal sealed class CaptureWorld
     /// <summary>The key store that cannot reach the operator's environment.</summary>
     public EphemeralApiKeyStore KeyStore { get; } = new();
 
+    /// <summary>The assistant's beats, holdable so a state between two of them can be photographed.</summary>
+    public CaptureUiDelay Delay { get; } = new();
+
     /// <summary>A runner wired to this world's CLI and locator.</summary>
     public OrkeonProcessRunner Runner => new(Cli, Locator);
 
