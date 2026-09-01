@@ -75,22 +75,18 @@ internal static class CaptureCampaign
         var written = 0;
         var dpiScale = 1d;
 
-        foreach (var appearance in options.Matrix.Passes)
+        // Walked pass by pass, straight off the plan: the planner already decided the order and
+        // the destination of every shot, and re-deriving either here is how the two would drift.
+        foreach (var pass in plan.GroupBy(item => item.Appearance))
         {
-            var stops = CaptureCatalog.For(appearance, options.Matrix);
-            if (stops.Count == 0)
-                continue;
-
-            var stages = await OpenStagesAsync(worlds, appearance, options);
+            var stages = await OpenStagesAsync(worlds, pass.Key, options);
             dpiScale = VisualTreeHelper.GetDpi(stages.Values.First().Surface.Window).DpiScaleX;
 
             string? previousSha = null;
-            foreach (var stop in stops)
+            foreach (var item in pass)
             {
-                var item = plan.First(p => p.Stop == stop && p.Appearance == appearance);
-                var stage = stages[stop.World];
-
-                var (image, sha) = await TakeAsync(stage, item, options, bindings, previousSha);
+                var (image, sha) = await TakeAsync(
+                    stages[item.Stop.World], item, options, bindings, previousSha);
                 images.Add(image);
 
                 if (string.Equals(image.Status, "written", StringComparison.Ordinal))
@@ -101,7 +97,7 @@ internal static class CaptureCampaign
                 else
                 {
                     failures.Add(new CaptureFailure(
-                        stop.Name, appearance.Folder, string.Join(" ; ", image.Problems)));
+                        item.Stop.Name, pass.Key.Folder, string.Join(" ; ", image.Problems)));
                 }
             }
 
