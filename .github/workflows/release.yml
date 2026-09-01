@@ -17,14 +17,17 @@ name: Release installers
 on:
   push: { tags: [ 'v*' ] }
   workflow_dispatch:
-# actions: write — the installers job prunes this repo's leftover workflow
-# artifacts (all of them 1-day couriers) before uploading ~1 GB of new ones;
-# without the prune, storage quota leftovers from earlier runs can fail the
-# upload outright (quota is only recalculated every 6-12 h).
-permissions: { contents: write, actions: write }
+# Least privilege: the workflow default is read-only; `installers` elevates
+# actions: write for the artifact prune above its steps, and `release` elevates
+# contents: write to publish the GitHub Release. Smoke/msi jobs run repo scripts
+# and get no write scope at all.
+permissions: { contents: read }
 jobs:
   installers:
     runs-on: ubuntu-latest
+    # actions: write — prunes this workflow's leftover courier artifacts (see the
+    # prune step) before uploading ~1 GB of new ones.
+    permissions: { contents: read, actions: write }
     steps:
       - name: Free up runner disk space
         run: |
@@ -32,31 +35,32 @@ jobs:
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           echo "Après:"; df -h / | tail -1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { fetch-depth: 0 }
 
       # Every artifact this workflow uploads is a 1-day courier between jobs,
       # but GitHub recalculates storage only every 6-12 h — leftovers from a
       # couple of back-to-back runs can hit the account quota and fail the
-      # upload steps outright (observed live). Delete this repo's previous
-      # workflow artifacts up front; anything older than 2 h cannot belong to
-      # a run that is still consuming it (this workflow's jobs finish well
-      # inside that, and ci.yml uploads nothing).
+      # upload steps outright (observed live). Delete this workflow's previous
+      # courier artifacts up front; anything older than 2 h cannot belong to a
+      # run that is still consuming it. The name filter keeps other workflows'
+      # artifacts alive — rag-eval.yml publishes 3-day report bundles that an
+      # unfiltered prune used to delete before their retention expired.
       - name: Prune leftover workflow artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cutoff="$(date -u -d '2 hours ago' +%Y-%m-%dT%H:%M:%SZ)"
           gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100" --paginate \
-            --jq ".artifacts[] | select(.expired == false and .created_at < \"$cutoff\") | .id" \
+            --jq ".artifacts[] | select(.expired == false and .created_at < \"$cutoff\") | select(.name | test(\"^(orkeon-|release-assets$)\")) | .id" \
           | while read -r id; do
               gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id" >/dev/null \
                 && echo "deleted stale artifact $id"
             done
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with: { dotnet-version: '10.0.x' }
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
@@ -122,14 +126,14 @@ jobs:
       # compressed, so the default level 6 only burns CPU on both ends. They
       # exist to carry payloads between jobs of this one run, hence the
       # one-day retention.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: orkeon-cli-win-x64
           path: artifacts/installers/orkeon-cli-*-win-x64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: orkeon-cli-osx
           path: artifacts/installers/orkeon-cli-*-osx-*.tar.gz
@@ -141,7 +145,7 @@ jobs:
       # only published archive that carries the two Studio TUIs on a runner we
       # actually have — smoke-macos exercises run-smoke-tarball.sh with
       # `--studio absent`, and nothing exercised the `present` side.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: orkeon-linux
           path: |
@@ -156,7 +160,7 @@ jobs:
       # osx tarballs, the full linux-arm64 tarball and the checksums. (The
       # linux-x64 exclusion pattern would also match a cli linux tarball, but
       # this workflow never builds one — the cli step targets win + osx only.)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-assets
           path: |
@@ -180,8 +184,8 @@ jobs:
     needs: installers
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-cli-win-x64
           path: artifacts
@@ -199,7 +203,7 @@ jobs:
           ./scripts/smoke-onboarding/run-smoke.ps1 -ArchivePath $zip.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke" -Keep
           exit $LASTEXITCODE
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: orkeon-smoke-windows-logs
@@ -218,10 +222,10 @@ jobs:
     needs: installers
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with: { dotnet-version: '10.0.x' }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-cli-win-x64
           path: artifacts
@@ -377,7 +381,7 @@ jobs:
           if ($userPathEntriesAfter -contains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') still on the user PATH after uninstall." }
           Write-Host 'PASS path-removed -- bin\ entry gone'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: orkeon-msi-logs
@@ -385,7 +389,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: orkeon-msi
           path: |
@@ -412,8 +416,8 @@ jobs:
     needs: installers
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-linux
           path: artifacts
@@ -448,7 +452,7 @@ jobs:
             --work-dir "$RUNNER_TEMP/orkeon-smoke-tarball" \
             --keep
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: orkeon-smoke-linux-tarball-logs
@@ -467,8 +471,8 @@ jobs:
     needs: installers
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-cli-osx
           path: artifacts
@@ -495,7 +499,7 @@ jobs:
             --work-dir "$RUNNER_TEMP/orkeon-smoke" \
             --keep
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: orkeon-smoke-macos-logs
@@ -520,31 +524,33 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ installers, smoke-windows, smoke-deb, smoke-macos, msi ]
     if: startsWith(github.ref, 'refs/tags/')
+    # contents: write — publishes the GitHub Release and its assets.
+    permissions: { contents: write }
     steps:
       # Reassemble the full artefact set: release-assets is the complement,
       # the three per-smoke artifacts carry the rest (each archive was
       # uploaded exactly once — see the installers job).
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: release-assets
           path: artifacts/installers
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-cli-win-x64
           path: artifacts/installers
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-cli-osx
           path: artifacts/installers
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-linux
           path: artifacts/installers
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-msi
           path: artifacts/installers
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
             artifacts/installers/*.tar.gz
@@ -580,18 +586,18 @@ jobs:
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           echo "Après:"; df -h / | tail -1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Resolve version tag (strip leading v)
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push orkeon-runners image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: Dockerfile.runners
