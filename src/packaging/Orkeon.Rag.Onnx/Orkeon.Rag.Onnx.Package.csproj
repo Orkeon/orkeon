@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PUB-25 wrapper: packs the Orkeon.Rag.Onnx assembly with a nuspec dependency on the
+       `Orkeon` umbrella (its direct project dependencies ship inside that package).
+       The real project keeps normal ProjectReferences so in-repo consumers are untouched;
+       only this wrapper carries the PrivateAssets="all" + embed pattern.
+       scripts/check-package-closure.py guards the declared externals. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Opt-in ONNX cross-encoder reranker for the Orkeon RAG pipeline (ms-marco-MiniLM-L-6-v2, offline; AddOrkeonOnnxReranker).</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonIconFamily>rag</OrkeonIconFamily>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedWrappedAssembly</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\rag\Orkeon.Rag.Onnx\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx\Orkeon.Rag.Onnx.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
+  </ItemGroup>
+
+  <!-- Externals of the wrapped assembly that `Orkeon` does not already carry. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+  </ItemGroup>
+
+  <Target Name="OrkeonEmbedWrappedAssembly" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <_OrkeonWrapped Include="@(ReferenceCopyLocalPaths)"
+                      Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
+                                 And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
+                                 And '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Rag.Onnx'" />
+      <TfmSpecificPackageFile Include="@(_OrkeonWrapped)" PackagePath="lib/$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The public PackageId equals the wrapped assembly's name, which is also the real
+       project's restore name — two projects may not share a restore identity in one
+       solution, so the id is applied at pack time only. -->
+  <Target Name="OrkeonWrapperPackageIdentity" BeforeTargets="_GetAbsoluteOutputPathsForPack;_GetOutputItemsFromPack;GenerateNuspec">
+    <PropertyGroup>
+      <PackageId>Orkeon.Rag.Onnx</PackageId>
+    </PropertyGroup>
+  </Target>
+
+</Project>

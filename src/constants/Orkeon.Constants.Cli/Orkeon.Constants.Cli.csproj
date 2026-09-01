@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Constants.Cli</PackageId>
+    <!-- PUB-25: out of the published set — consumed only by in-repo executables (source reference); re-promote if the Hosting/Cli family ever ships to NuGet.org. -->
+    <IsPackable>false</IsPackable>
     <Description>Shared CLI vocabulary for Orkeon: the option names the runners accept and the tooling predicts. Depends on nothing.</Description>
     <PackageTags>AI;Agents;Orkeon;Constants;Cli</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

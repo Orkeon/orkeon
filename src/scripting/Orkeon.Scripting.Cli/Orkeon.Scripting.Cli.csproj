@@ -63,4 +63,21 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
+
+  <!-- PUB-24 P1: the tool package used to weigh 262.5 MB — above the nuget.org limit
+       (250 MB) — because Microsoft.ML.OnnxRuntime ships iOS (.xcframework.zip) and
+       Android (.aar) natives that a dotnet CLI tool can never load. Strip them from
+       the package payload; desktop RIDs (win/linux/osx) stay untouched. -->
+  <Target Name="OrkeonTrimMobileNativesFromToolPackage" AfterTargets="PackTool">
+    <ItemGroup>
+      <_OrkeonMobileNative Include="@(TfmSpecificPackageFile)"
+                           Condition="$([System.String]::Copy('%(TfmSpecificPackageFile.Identity)').Contains('/runtimes/ios'))
+                                      Or $([System.String]::Copy('%(TfmSpecificPackageFile.Identity)').Contains('/runtimes/android'))
+                                      Or $([System.String]::Copy('%(TfmSpecificPackageFile.PackagePath)').Contains('runtimes/ios'))
+                                      Or $([System.String]::Copy('%(TfmSpecificPackageFile.PackagePath)').Contains('runtimes/android'))" />
+      <TfmSpecificPackageFile Remove="@(_OrkeonMobileNative)" />
+    </ItemGroup>
+    <Message Importance="high" Text="OrkeonTrim: removed @(_OrkeonMobileNative-&gt;Count()) mobile native file(s) from the tool package" />
+  </Target>
+
 </Project>

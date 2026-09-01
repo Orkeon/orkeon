@@ -7,6 +7,8 @@
 
     <!-- Package Metadata (package-specific overrides) -->
     <PackageId>Orkeon.Application</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Application layer for Orkeon - Use cases, services, and orchestration logic for collaborative AI agent teams.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Application;UseCases;Orchestration</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

@@ -17,7 +17,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Orkeon Contributors</Authors>
     <VersionPrefix>1.0.0</VersionPrefix>
-    <VersionSuffix>rc.2</VersionSuffix>
+    <VersionSuffix>rc.3</VersionSuffix>
     <!-- CS0618: Terminal.Gui v2.1.0 deprecated the static Application.* APIs.
          AddClaimCommand/AddClaimDialog use them deliberately — see the matching
          NoWarn in Orkeon.Cli.TerminalGui.csproj and Orkeon.Examples.Shared.csproj. -->

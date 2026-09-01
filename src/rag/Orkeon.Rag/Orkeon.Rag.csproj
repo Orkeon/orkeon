@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Rag</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Implementations for the Orkeon RAG subsystem: chunking, loaders, retrieval, reranking, ingestion, evaluation, and named-component factories.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;RAG;Retrieval</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

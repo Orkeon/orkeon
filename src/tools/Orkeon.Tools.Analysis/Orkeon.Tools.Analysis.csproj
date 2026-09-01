@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Tools.Analysis</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon.Tools` umbrella package (src/packaging/Orkeon.Tools) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Agent tools wrapping the Orkeon RaggableTree analysis pipeline (map, detail, search, graph, flow, impact, complexity, statement, admin).</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Analysis;RaggableTree</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

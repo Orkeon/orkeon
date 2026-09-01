@@ -1,0 +1,78 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PUB-25: the `Orkeon.Tools` umbrella package — the seven built-in tool families
+       in one nupkg, kept separate from `Orkeon` only because of dependency weight
+       (the Data tools pull database drivers, PDF and spreadsheet libraries that a
+       consumer who never uses them should not inherit).
+
+       Same mechanics as src/packaging/Orkeon: PrivateAssets="all" ProjectReferences
+       are embedded by the target below (whitelist — their transitive core assemblies
+       come from the `Orkeon` package dependency instead), and the tool families'
+       extra external dependencies are re-declared for the nuspec.
+       scripts/check-package-closure.py guards the drift. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Orkeon.Tools</PackageId>
+    <Description>The built-in tool families for Orkeon agents in one package: file system, web and HTTP, structured data (CSV, PDF, XLSX, XML, databases), code execution, EventHub messaging, RAG search and ingestion, and RaggableTree codebase analysis.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonIconFamily>tools</OrkeonIconFamily>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedToolAssemblies</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <!-- The one real nuspec dependency: the framework package that carries the core
+       assemblies these tools compile against. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
+  </ItemGroup>
+
+  <!-- Embedded tool families (IsPackable=false individually). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.EventHub\Orkeon.Tools.EventHub.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.FileSystem\Orkeon.Tools.FileSystem.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Rag\Orkeon.Tools.Rag.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- External dependencies of the tool families that `Orkeon` does not already carry
+       (versions from Directory.Packages.props; drift guarded by the closure check). -->
+  <ItemGroup>
+    <PackageReference Include="AngleSharp" />
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="Gremlin.Net" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="MongoDB.Driver" />
+    <PackageReference Include="MySqlConnector" />
+    <PackageReference Include="Neo4j.Driver" />
+    <PackageReference Include="SharpCompress" />
+    <PackageReference Include="Snappier" />
+  </ItemGroup>
+
+  <Target Name="OrkeonEmbedToolAssemblies" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <!-- Whitelist: only the seven tool assemblies. Their transitive project outputs
+           (Orkeon.Domain, Orkeon.Application, …) ship inside the `Orkeon` package. -->
+      <_OrkeonToolEmbedded Include="@(ReferenceCopyLocalPaths)"
+                           Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
+                                      And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
+                                      And ('%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Analysis'
+                                        Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Code'
+                                        Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Data'
+                                        Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.EventHub'
+                                        Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.FileSystem'
+                                        Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Rag'
+                                        Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Web')" />
+      <TfmSpecificPackageFile Include="@(_OrkeonToolEmbedded)" PackagePath="lib/$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

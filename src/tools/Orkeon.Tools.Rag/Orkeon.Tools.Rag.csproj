@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Tools.Rag</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon.Tools` umbrella package (src/packaging/Orkeon.Tools) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Agent tools for the Orkeon RAG subsystem (rag_search, rag_ingest, rag_eval) over Orkeon.Rag.Abstractions (IRagPipeline, IIngestionPipeline, IRagEvalHarness).</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;RAG;Retrieval</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Analysis.Abstractions</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Abstractions for Orkeon RaggableTree: interfaces, DTOs, and domain models used for multi-language code analysis.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Analysis;RaggableTree;Abstractions</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

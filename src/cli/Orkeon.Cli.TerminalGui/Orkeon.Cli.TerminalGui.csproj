@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Cli.TerminalGui</PackageId>
+    <!-- PUB-25: NuGet distribution deferred (never a supported channel); its dependencies now live inside the `Orkeon` package, so a standalone nupkg would not be restorable. -->
+    <IsPackable>false</IsPackable>
     <Description>Terminal.Gui v2-based split-pane console (REPL + dedicated logs pane) for Orkeon interactive runners.</Description>
     <PackageTags>AI;Agents;Orkeon;Cli;TerminalGui;TUI</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Rag.Abstractions</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Abstractions for the Orkeon RAG subsystem: retrieval, chunking, reranking, ingestion and pipeline contracts, DTOs, and options.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;RAG;Retrieval;Abstractions</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

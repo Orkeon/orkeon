@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Analysis</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Infrastructure implementations for Orkeon RaggableTree: Tree-sitter parsers, language adapters, dependency graph, and pipeline orchestration.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Analysis;RaggableTree;TreeSitter</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

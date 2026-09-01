@@ -7,10 +7,10 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ## Install
 
 ```
-dotnet add package Orkeon.Rag --prerelease
+dotnet add package Orkeon --prerelease
 ```
 
-> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+> This assembly ships inside the [`Orkeon`](https://www.nuget.org/packages/Orkeon) umbrella package — the whole framework in one install; it is no longer a standalone NuGet package. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Documentation
 

@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Constants.Configuration</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Shared configuration vocabulary for Orkeon: Orkeon:* setting keys, settings file locations and shared operator messages. Depends on nothing.</Description>
     <PackageTags>AI;Agents;Orkeon;Constants;Configuration</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

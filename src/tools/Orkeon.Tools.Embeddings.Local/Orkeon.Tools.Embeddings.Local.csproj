@@ -5,7 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <PackageId>Orkeon.Tools.Embeddings.Local</PackageId>
+    <!-- PUB-25: packed by the src/packaging/Orkeon.Tools.Embeddings.Local wrapper (nuspec depends on the `Orkeon` umbrella). -->
+    <IsPackable>false</IsPackable>
     <Description>Local on-device embedding provider for Orkeon, based on SmartComponents.LocalEmbeddings (BGE-micro-v2 ONNX, 384 dims, CPU). No network, no API key.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Embeddings;Local;ONNX;BGE</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

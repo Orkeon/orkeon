@@ -9,7 +9,7 @@
     
     <!-- NuGet Package Properties -->
     <VersionPrefix>1.0.0</VersionPrefix>
-    <VersionSuffix>rc.2</VersionSuffix>
+    <VersionSuffix>rc.3</VersionSuffix>
     <Authors>Orkeon Contributors</Authors>
     <Company>Orkeon</Company>
     <Product>Orkeon</Product>
@@ -76,7 +76,10 @@
     <!-- An undeclared public API change is a build error, not an opinion. -->
     <WarningsAsErrors Condition="'$(OrkeonFreezePublicApi)' == 'true'">$(WarningsAsErrors);RS0016;RS0017</WarningsAsErrors>
   </PropertyGroup>
-  <ItemGroup Condition="'$(OrkeonFreezePublicApi)' == 'true' AND '$(IsPackable)' != 'false'">
+  <!-- PUB-25: the freeze no longer keys on IsPackable — libraries shipped inside the
+       Orkeon umbrella package are IsPackable=false yet their surface stays frozen.
+       Executables opt out explicitly via OrkeonFreezePublicApi=false. -->
+  <ItemGroup Condition="'$(OrkeonFreezePublicApi)' == 'true'">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
     <AdditionalFiles Include="$(MSBuildProjectDirectory)/PublicAPI.Shipped.txt" />
     <AdditionalFiles Include="$(MSBuildProjectDirectory)/PublicAPI.Unshipped.txt" />

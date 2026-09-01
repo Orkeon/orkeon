@@ -7,8 +7,10 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ## Install
 
 ```
-dotnet add package Orkeon.Infrastructure --prerelease
+dotnet add package Orkeon --prerelease
 ```
+
+> This assembly ships inside the [`Orkeon`](https://www.nuget.org/packages/Orkeon) umbrella package — the whole framework in one install; it is no longer a standalone NuGet package. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Documentation
 

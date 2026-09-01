@@ -7,6 +7,11 @@
             "src/core/Orkeon.Domain/bin/Release/net10.0/Orkeon.Domain.dll",
             "src/core/Orkeon.Application/bin/Release/net10.0/Orkeon.Application.dll",
             "src/core/Orkeon.Infrastructure/bin/Release/net10.0/Orkeon.Infrastructure.dll",
+            "src/constants/Orkeon.Constants.Llm/bin/Release/net10.0/Orkeon.Constants.Llm.dll",
+            "src/constants/Orkeon.Constants.FileSystem/bin/Release/net10.0/Orkeon.Constants.FileSystem.dll",
+            "src/constants/Orkeon.Constants.Configuration/bin/Release/net10.0/Orkeon.Constants.Configuration.dll",
+            "src/constants/Orkeon.Constants.Protocol/bin/Release/net10.0/Orkeon.Constants.Protocol.dll",
+            "src/constants/Orkeon.Constants.Cli/bin/Release/net10.0/Orkeon.Constants.Cli.dll",
             "src/tools/Orkeon.Tools.Abstractions/bin/Release/net10.0/Orkeon.Tools.Abstractions.dll",
             "src/tools/Orkeon.Tools.Analysis/bin/Release/net10.0/Orkeon.Tools.Analysis.dll",
             "src/tools/Orkeon.Tools.Code/bin/Release/net10.0/Orkeon.Tools.Code.dll",
@@ -34,7 +39,7 @@
         }
       ],
       "dest": "api",
-      "namespaceLayout": "nested",
+      "namespaceLayout": "flattened",
       "memberLayout": "samePage"
     }
   ],

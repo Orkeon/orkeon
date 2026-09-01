@@ -6,6 +6,8 @@
 
     <!-- Package Metadata -->
     <PackageId>Orkeon.Tools.Data</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon.Tools` umbrella package (src/packaging/Orkeon.Tools) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Data processing tools for Orkeon agents (JSON, CSV, PDF, XML, SQLite, MongoDB)</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Data;JSON;CSV;PDF;XML;SQLite;MongoDB</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

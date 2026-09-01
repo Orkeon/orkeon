@@ -6,6 +6,8 @@
 
     <!-- Package Metadata -->
     <PackageId>Orkeon.Tools.Web</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon.Tools` umbrella package (src/packaging/Orkeon.Tools) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Web tools for Orkeon agents (HTTP API, Web Scraping)</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Web;HTTP;Scraping</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

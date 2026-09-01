@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Tools.EventHub</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon.Tools` umbrella package (src/packaging/Orkeon.Tools) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>EventHub agent tools for Orkeon: publish_event, post_message, send_request, reply_to, receive_message, wait_for_event, get_last_value.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;EventHub;Messaging</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

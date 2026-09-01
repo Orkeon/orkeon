@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PUB-25 wrapper: packs the Orkeon.Tools.Embeddings.Local assembly with a nuspec
+       dependency on the `Orkeon` umbrella. Kept out of the umbrella itself because it
+       pins SmartComponents.LocalEmbeddings, a pre-release of an archived upstream —
+       embedding it would poison the stable line (NU5104). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Opt-in local on-device embeddings for Orkeon (SmartComponents BGE-micro-v2 ONNX, 384 dims, CPU, no API key).</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonIconFamily>tools</OrkeonIconFamily>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedWrappedAssembly</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\tools\Orkeon.Tools.Embeddings.Local\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
+  </ItemGroup>
+
+  <!-- Externals of the wrapped assembly that `Orkeon` does not already carry. -->
+  <ItemGroup>
+    <PackageReference Include="SmartComponents.LocalEmbeddings" />
+  </ItemGroup>
+
+  <Target Name="OrkeonEmbedWrappedAssembly" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <_OrkeonWrapped Include="@(ReferenceCopyLocalPaths)"
+                      Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
+                                 And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
+                                 And '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Embeddings.Local'" />
+      <TfmSpecificPackageFile Include="@(_OrkeonWrapped)" PackagePath="lib/$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The public PackageId equals the wrapped assembly's name, which is also the real
+       project's restore name — two projects may not share a restore identity in one
+       solution, so the id is applied at pack time only. -->
+  <!-- SmartComponents' contentFiles (the BGE-micro-v2 weights) flow into this project's
+       Content and pack would REDISTRIBUTE them — something this repository deliberately
+       does not do (Go/NoGo 2026-08, blocker 1). Consumers get the weights transitively
+       from the SmartComponents dependency itself; strip them from this package. -->
+  <Target Name="OrkeonStripUpstreamContentFromPackage" BeforeTargets="GenerateNuspec">
+    <ItemGroup>
+      <_PackageFiles Remove="@(_PackageFiles)"
+                     Condition="$([System.String]::Copy('%(_PackageFiles.Identity)').Contains('smartcomponents'))" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="OrkeonWrapperPackageIdentity" BeforeTargets="_GetAbsoluteOutputPathsForPack;_GetOutputItemsFromPack;GenerateNuspec">
+    <PropertyGroup>
+      <PackageId>Orkeon.Tools.Embeddings.Local</PackageId>
+    </PropertyGroup>
+  </Target>
+
+</Project>

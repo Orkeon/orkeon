@@ -24,7 +24,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <PackageId>Orkeon.Rag.Onnx</PackageId>
+    <!-- PUB-25: packed by the src/packaging/Orkeon.Rag.Onnx wrapper (nuspec depends on the `Orkeon` umbrella). -->
+    <IsPackable>false</IsPackable>
     <Description>Opt-in ONNX cross-encoder reranker (ms-marco-MiniLM-L-6-v2, Apache-2.0 model) for the Orkeon RAG subsystem. Reference Orkeon.Rag.Onnx.Model for guaranteed-offline embedded weights.</Description>
     <PackageTags>AI;Orkeon;RAG;Reranking;CrossEncoder;ONNX;MSMARCO</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

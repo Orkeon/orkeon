@@ -1,6 +1,7 @@
 # Publishes NuGet packages on a v* tag: every packable to GitHub Packages (the
-# experiments/ feed), plus the three core libraries to NuGet.org — the v1 public set
-# per docs/reference/publication-matrix.md.
+# internal tooling feed), plus the consolidated v1 public set to NuGet.org (PUB-25):
+# the `Orkeon` umbrella, `Orkeon.Tools`, and the opt-ins — per
+# docs/reference/publication-matrix.md.
 #
 # NuGet.org auth is Trusted Publishing (OIDC): a nuget.org policy for
 # Orkeon/orkeon + publish.yml exchanges this job's OIDC token for a short-lived
@@ -26,7 +27,7 @@
 name: Publish packages
 on: { push: { tags: [ 'v*' ] } }
 # id-token is required by the NuGet.org Trusted Publishing OIDC exchange.
-permissions: { contents: write, packages: write, id-token: write }
+permissions: { contents: read, packages: write, id-token: write }
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -39,7 +40,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           echo "Après:"; df -h / | tail -1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { fetch-depth: 0 }
       # Anti-0.9.1 guard: the tag decides nothing — the packed version comes from
       # src/Directory.Build.props, so a tag that doesn't match it would re-pack an
@@ -55,7 +56,7 @@ jobs:
             exit 1
           fi
           echo "Tag v$tag matches props version $version."
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with: { dotnet-version: '10.0.x' }
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
@@ -85,6 +86,11 @@ jobs:
           echo "::error::Embeddings.Local run failed (exit $rc, $failed failed, $ok/$total accounted for) — not the known post-green ONNX crash. Release blocked."
           exit $rc
       - run: dotnet pack  Orkeon.sln -c Release -o artifacts /p:ContinuousIntegrationBuild=true
+      # Package-closure gate (PUB-25): the public lineup must be restorable (no Orkeon.*
+      # dependency outside the lineup — the rc.1/rc.2 NU1101 incident), and the umbrella
+      # packages' hand-declared external dependencies must match their embedded projects.
+      - name: Check package closure
+        run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli
       # Orkeon.Runners.Shared already lives inside Orkeon.sln, so the pack above emits it too;
       # this second pack is a harmless safety net (push uses --skip-duplicate).
       - run: dotnet pack  examples/runners/_shared/Orkeon.Examples.Shared.csproj -c Release -o artifacts
@@ -97,31 +103,32 @@ jobs:
           --source "https://nuget.pkg.github.com/Orkeon/index.json"
           --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
       # NuGet.org — the public v1 set only (docs/reference/publication-matrix.md):
-      # the three core libraries. Expanding this list is a maintainer decision
-      # recorded in the matrix, not a workflow edit made in passing.
+      # the `Orkeon` umbrella (the whole framework in one package), `Orkeon.Tools`,
+      # and the three opt-ins. Expanding this list is a maintainer decision recorded
+      # in the matrix, not a workflow edit made in passing. Keep it in sync with the
+      # closure-gate lineup above.
       - name: Warn when NuGet.org publishing is not configured
         if: env.NUGET_USER == ''
         run: echo "::warning::NuGet.org publish SKIPPED — the NUGET_USER repository variable is not set. Owner action -- on nuget.org create a Trusted Publishing policy (repo Orkeon/orkeon, workflow publish.yml), then set NUGET_USER to the policy's package owner (Settings > Secrets and variables > Actions > Variables)."
       - name: NuGet.org login (Trusted Publishing — OIDC, short-lived key)
         if: env.NUGET_USER != ''
         id: nuget-login
-        uses: NuGet/login@v1
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
         with:
           user: ${{ env.NUGET_USER }}
-      - name: Push core packages to NuGet.org
+      - name: Push the v1 lineup to NuGet.org
         if: env.NUGET_USER != ''
         env:
           NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
-          # Satellites FIRST: since ADR-009 Orkeon.Domain carries a runtime reference to
-          # Orkeon.Constants.Llm, so pushing Domain before it would publish a package whose
-          # dependency cannot be restored. NuGet does not order pushes for us.
+          # `Orkeon` FIRST: the other lineup packages depend on it, and NuGet does not
+          # order pushes for us — pushing a dependent before its dependency would expose
+          # a package whose restore fails (the rc.1/rc.2 incident).
           #
-          # No PackageId nests under any of these prefixes (see the matrix), so the simple
-          # globs are exact.
-          for id in Orkeon.Constants.Llm Orkeon.Constants.FileSystem Orkeon.Constants.Configuration Orkeon.Constants.Protocol Orkeon.Constants.Cli \
-                    Orkeon.Domain Orkeon.Application Orkeon.Infrastructure; do
-            dotnet nuget push "artifacts/${id}.*.nupkg" \
+          # The [0-9] in the glob keeps `Orkeon.*.nupkg` from swallowing Orkeon.Tools & co:
+          # it anchors the match to the version segment.
+          for id in Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli; do
+            dotnet nuget push "artifacts/${id}.[0-9]*.nupkg" \
               --source "https://api.nuget.org/v3/index.json" \
               --api-key "$NUGET_API_KEY" --skip-duplicate
           done

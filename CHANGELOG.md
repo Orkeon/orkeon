@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — one `Orkeon` package instead of a per-layer NuGet lineup (PUB-25) **[breaking — packaging only]**
+
+The Domain/Application/Infrastructure split is an internal discipline, not a
+distribution contract — and shipping it as three packages had already produced
+one real incident (rc.1/rc.2 published on NuGet.org with five unrestorable
+`Orkeon.*` dependencies). Distribution is now consolidated; the 39-project
+source layout, namespaces, and per-assembly PublicAPI freeze are untouched, so
+**consumer code compiles as-is** — only the install line changes.
+
+- **`Orkeon`** (new): the whole framework in one package — eleven embedded
+  assemblies (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`,
+  `Orkeon.Rag(.Abstractions)`, `Orkeon.Analysis(.Abstractions)`,
+  `Orkeon.Tools.Abstractions`, and the three constants satellites of the core
+  graph). Migration: uninstall the per-layer packages, `dotnet add package
+  Orkeon --prerelease`.
+- **`Orkeon.Tools`** (new): the seven built-in tool families in one package,
+  separate from `Orkeon` only for dependency weight (database drivers, PDF and
+  spreadsheet libraries live here). Depends on `Orkeon`.
+- `Orkeon.Rag.Onnx` and `Orkeon.Tools.Embeddings.Local` now depend on the
+  `Orkeon` package instead of the discontinued per-layer ones.
+- The per-layer, per-family and deferred-library packages (`Orkeon.Domain`,
+  `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.*`,
+  `Orkeon.Tools.<family>`, `Orkeon.Cli.*`, `Orkeon.Scripting`,
+  `Orkeon.Hosting`, `Orkeon.Plugins`) are no longer packed; the published
+  rc.1/rc.2 of the three core packages are to be unlisted on NuGet.org.
+- `publish.yml` pushes the new lineup (`Orkeon`, `Orkeon.Tools`, the ONNX
+  reranker pair, the local-embeddings tool package, and the `orkeon` dotnet
+  tool) and a new gate — `scripts/check-package-closure.py` — fails the
+  workflow if a lineup package depends on an `Orkeon.*` id outside the lineup
+  or if an umbrella's hand-declared external dependencies drift from its
+  embedded projects.
+
+### Fixed — publishing hygiene ahead of the public opening
+
+- Release builds emit **embedded portable PDBs** again (`DebugSymbols=false`
+  had silently disabled emission, shipping non-debuggable packages with no
+  SourceLink attachment point); `EmbedUntrackedSources` is on.
+- The `orkeon` dotnet tool package no longer bundles the iOS/Android
+  onnxruntime natives a CLI tool can never load: 262.5 MB → 144 MB, back under
+  the nuget.org size limit.
+- The docfx API reference now covers the five `Orkeon.Constants.*` assemblies,
+  and `namespaceLayout: flattened` removes the 26 dead breadcrumb links the
+  nested layout generated.
+
 ### Changed — the screenshot campaign photographs an application in use, not an empty one
 
 `orkeon-studio --capture-screens <dir>` existed to be the fidelity reference against the v3
@@ -2091,7 +2135,7 @@ it without a restart. The verb re-draws every fifteen seconds on long turns
 (`StatusLineFormatter.VerbFor`), the leading glyph animates through spinner frames
 (`✢ ✳ ✶ ✻`, ASCII `| / - \`) at four steps per second (`SpinnerFrame`), and the
 status-line timer tightened from 1 s to 250 ms accordingly. Defaults unchanged: the
-six Orkéon gerunds.
+six Orkeon gerunds.
 
 ### Fixed — agents pane: live work only, finished agents leave immediately
 

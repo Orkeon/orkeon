@@ -12,6 +12,8 @@
          service, container image), so it ships through the publish matrix rather than
          through NuGet. GATE-05 owns those entries. -->
     <IsPackable>false</IsPackable>
+    <!-- A daemon executable's surface is not a contract (same rationale as src/apps). -->
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
 
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>

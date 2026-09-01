@@ -10,7 +10,7 @@
     <!-- Align the shipped runner lib with the framework version: the examples tree
          does not inherit src/Directory.Build.props (which carries the version). -->
     <VersionPrefix>1.0.0</VersionPrefix>
-    <VersionSuffix>rc.2</VersionSuffix>
+    <VersionSuffix>rc.3</VersionSuffix>
   </PropertyGroup>
 
   <ItemGroup>

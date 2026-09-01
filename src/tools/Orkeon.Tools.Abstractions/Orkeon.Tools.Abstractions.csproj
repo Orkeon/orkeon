@@ -6,6 +6,8 @@
 
     <!-- Package Metadata (package-specific overrides) -->
     <PackageId>Orkeon.Tools.Abstractions</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Base classes and abstractions for building Orkeon tools - typed pipeline, validation, rate limiting, and telemetry support.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Tools;Abstractions</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

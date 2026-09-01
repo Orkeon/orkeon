@@ -42,7 +42,13 @@
          RID explicitly at publish time: `dotnet publish -c Release -r linux-x64`. -->
     <!--<PublishReadyToRun>true</PublishReadyToRun>-->
     <!--<PublishAot>true</PublishAot>-->
-    <DebugSymbols>false</DebugSymbols>
+    <!-- PUB-24 P1: emit embedded portable PDBs in Release. DebugSymbols=false used to
+         disable emission entirely (DebugType=embedded was inert), shipping non-debuggable
+         packages: no step-into, no line numbers in stack traces, and the SDK's implicit
+         SourceLink had nothing to attach to. Embedded PDBs ride inside each DLL — no
+         extra artifact, deterministic builds keep their Reproducible entry. -->
+    <DebugSymbols>true</DebugSymbols>
     <DebugType>embedded</DebugType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 </Project>

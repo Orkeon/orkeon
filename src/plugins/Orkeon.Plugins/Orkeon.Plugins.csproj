@@ -8,6 +8,8 @@
          Version, authors, license, repository URL, etc. are inherited from
          src/Directory.Build.props — single version source (R1.6 / R1.9). -->
     <PackageId>Orkeon.Plugins</PackageId>
+    <!-- PUB-25: NuGet distribution deferred (never a supported channel); its dependencies now live inside the `Orkeon` package, so a standalone nupkg would not be restorable. -->
+    <IsPackable>false</IsPackable>
     <Description>Plugin system for Orkeon — directory-based discovery, isolated collectible AssemblyLoadContext loading, and opt-in DI activation (AddOrkeonPlugins) so third-party assemblies can contribute tools and providers.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Plugins;Extensions</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

@@ -7,6 +7,8 @@
 
     <!-- Package Metadata (package-specific overrides) -->
     <PackageId>Orkeon.Scripting</PackageId>
+    <!-- PUB-25: NuGet distribution deferred (never a supported channel); its dependencies now live inside the `Orkeon` package, so a standalone nupkg would not be restorable. -->
+    <IsPackable>false</IsPackable>
     <Description>TypeScript-syntax scripting DSL for Orkeon - Jint-based runtime that lets developers describe agents, crews, FSM and graph orchestrations in `.ork.ts` files without touching C# or YAML.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Scripting;DSL;TypeScript;Jint</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

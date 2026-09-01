@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Constants.FileSystem</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Shared filesystem vocabulary for Orkeon: virtual mount roots and conventional folder and file names. Depends on nothing.</Description>
     <PackageTags>AI;Agents;Orkeon;Constants;FileSystem</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

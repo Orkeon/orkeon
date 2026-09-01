@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Constants.Protocol</PackageId>
+    <!-- PUB-25: out of the published set — consumed only by in-repo executables (source reference); re-promote if the Hosting/Cli family ever ships to NuGet.org. -->
+    <IsPackable>false</IsPackable>
     <Description>Shared wire vocabulary for Orkeon: the event kinds a run streams between the runner process and whatever is watching it. Depends on nothing.</Description>
     <PackageTags>AI;Agents;Orkeon;Constants;Protocol</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

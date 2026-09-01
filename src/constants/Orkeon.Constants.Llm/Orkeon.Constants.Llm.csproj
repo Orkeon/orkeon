@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Constants.Llm</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon` umbrella package (src/packaging/Orkeon) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
     <Description>Shared LLM vocabulary for Orkeon: provider endpoints, default models, provider ids and wire field names. Depends on nothing.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Constants</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

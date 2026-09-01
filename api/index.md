@@ -9,6 +9,7 @@ Browse by namespace:
 - **`Orkeon.Domain`** — entities, value objects, domain events, core interfaces.
 - **`Orkeon.Application`** — use cases, ports, DTOs, orchestration services.
 - **`Orkeon.Infrastructure`** — LLM providers, memory stores, orchestration strategies, VFS.
+- **`Orkeon.Constants.*`** — the shared-constants satellites (LLM endpoints and wire fields, virtual mount roots, configuration keys, run-event kinds, run option names).
 - **`Orkeon.Tools.*`** — the agent tool suites and their abstractions.
 - **`Orkeon.Rag.*`** — the RAG subsystem (contracts, pipeline, ONNX reranker).
 - **`Orkeon.Analysis.*`** — RaggableTree semantic codebase analysis.

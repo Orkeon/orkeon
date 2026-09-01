@@ -6,6 +6,8 @@
 
     <!-- Package Metadata -->
     <PackageId>Orkeon.Hosting</PackageId>
+    <!-- PUB-25: NuGet distribution deferred (never a supported channel); its dependencies now live inside the `Orkeon` package, so a standalone nupkg would not be restorable. -->
+    <IsPackable>false</IsPackable>
     <Description>Host bootstrap for Orkeon runners and CLIs — appsettings resolution, VFS mounts, LLM provider wiring, standard tool registration, LLM exchange logging, graceful shutdown, and one-shot / interactive crew execution flows.</Description>
     <PackageTags>AI;Agents;LLM;Orkeon;Hosting;Runner;CLI</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Orkeon.Cli</PackageId>
+    <!-- PUB-25: NuGet distribution deferred (never a supported channel); its dependencies now live inside the `Orkeon` package, so a standalone nupkg would not be restorable. -->
+    <IsPackable>false</IsPackable>
     <Description>Reusable common commands (help, exit, clear) for Orkeon interactive runners.</Description>
     <PackageTags>AI;Agents;Orkeon;Cli</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
