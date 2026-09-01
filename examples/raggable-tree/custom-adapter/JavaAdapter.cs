@@ -93,7 +93,7 @@ public sealed class JavaAdapter : ILanguageAdapter
         return $"{declarationNode.Type} {name}";
     }
 
-    public string? ResolveImportPath(string importPath, string currentFilePath)
+    public string? ResolveImportPath(string importPath, string currentVirtualFilePath)
     {
         if (string.IsNullOrEmpty(importPath)) return null;
         if (importPath.StartsWith("java.", StringComparison.Ordinal)) return null;

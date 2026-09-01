@@ -107,6 +107,7 @@ internal static class Program
     }
 
     /// <summary>Runs one question through both pipelines and prints rankings + the hybrid run's stage traces.</summary>
+#pragma warning disable CA1859 // the example deliberately takes IRagPipeline: consuming the abstraction is the point
     private static async Task CompareAsync(IRagPipeline vectorOnly, IRagPipeline hybrid, string question)
     {
         Console.WriteLine($"Q: \"{question}\"");
@@ -128,6 +129,7 @@ internal static class Program
         }
     }
 
+#pragma warning restore CA1859
     private static void PrintCitations(RagAnswer answer)
     {
         foreach (var citation in answer.Citations)

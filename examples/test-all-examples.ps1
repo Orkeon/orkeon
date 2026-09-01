@@ -1,5 +1,5 @@
 # test-all-examples.ps1
-# Automated test runner for all 101 Orkeon examples
+# Automated test runner for all 105 Orkeon examples
 # Uses Docker Desktop Models (ai/granite-4.0-h-tiny) via localhost:12434
 #
 # Usage:
@@ -41,6 +41,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Build OK" -ForegroundColor Green
 
+# Non-trading examples run on the `orkeon` CLI, which lives in the root solution.
+$OrkeonCliDll = Join-Path $RepoRoot "src\scripting\Orkeon.Scripting.Cli\bin\Release\net10.0\orkeon.dll"
+Write-Host "`n=== Building the orkeon CLI ===" -ForegroundColor Cyan
+$cliBuild = dotnet build (Join-Path $RepoRoot "src\scripting\Orkeon.Scripting.Cli\Orkeon.Scripting.Cli.csproj") --configuration Release --verbosity quiet 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "BUILD FAILED (orkeon CLI)" -ForegroundColor Red
+    $cliBuild | Write-Host
+    exit 1
+}
+
 if ($Level -eq "build") {
     Write-Host "`n=== Build-only mode: done ===" -ForegroundColor Green
     exit 0
@@ -68,7 +78,8 @@ else {
             $_.FullName -notmatch "_legacy" -and
             $_.FullName -notmatch "_shared" -and
             $_.FullName -notmatch "runners" -and
-            $_.FullName -notmatch "\.vs"
+            $_.FullName -notmatch "\.vs" -and
+            $_.FullName -notmatch "\.orkeon"
         } |
         ForEach-Object {
             $rel = $_.Directory.FullName.Replace($searchPath, "").TrimStart("\", "/")
@@ -103,12 +114,17 @@ foreach ($example in $exampleDirs) {
         $configPath = $exampleDir
     }
 
-    # Determine runner
+    # Determine how to run it: trading crews use the dedicated trading runner
+    # (`--config <yaml>`); everything else runs on the `orkeon` CLI.
     $cat = ($example -split "[/\\]")[0]
-    if ($cat -eq "03-finance-trading") {
-        $runner = Join-Path $ScriptDir "runners\trading"
-    } else {
-        $runner = Join-Path $ScriptDir "runners\standard"
+    $isTrading = ($cat -eq "03-finance-trading")
+    if ($isTrading -and $Level -eq "load") {
+        # The CLI cannot resolve the trading-specific tools and the trading runner has
+        # no --validate: skip at this level rather than fail for the wrong reason.
+        Write-Host "[$index/$total] $example " -NoNewline
+        Write-Host "SKIP (trading runner has no --validate; covered at -Level run)" -ForegroundColor Yellow
+        $results += [PSCustomObject]@{ Index = $index; Example = $example; Status = "SKIP"; Duration = 0; Warnings = 0; Error = "" }
+        continue
     }
 
     $shortName = $example -replace "^[0-9]+-[^/\\]+[/\\]", ""
@@ -120,7 +136,14 @@ foreach ($example in $exampleDirs) {
     $warnings = @()
 
     try {
-        $dotnetArgs = @("run", "--project", $runner, "--no-build", "--configuration", "Release", "--", "--config", $configPath)
+        if ($isTrading) {
+            $dotnetArgs = @("run", "--project", (Join-Path $ScriptDir "runners\trading"), "--no-build", "--configuration", "Release", "--", "--config", $configPath)
+        } else {
+            $dotnetArgs = @($OrkeonCliDll, "run", $configPath)
+            # Level `load` = config parses and agents/tasks/tools resolve, no LLM call:
+            # `orkeon run --validate` does exactly that and exits non-zero on a broken config.
+            if ($Level -eq "load") { $dotnetArgs += "--validate" }
+        }
         if ($Settings) {
             $dotnetArgs += "--settings"
             $dotnetArgs += $Settings

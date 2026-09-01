@@ -97,7 +97,7 @@ await foreach (var thought in streamingService.StreamExecutionAsync(agent, task,
     };
 
     if (thought.Type == AgentThought.ThoughtType.Reasoning &&
-        !thought.Content.StartsWith("Starting task"))
+        !thought.Content.StartsWith("Starting task", StringComparison.Ordinal))
     {
         // Stream tokens inline
         Console.Write(thought.Content);

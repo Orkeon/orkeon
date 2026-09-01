@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-all-examples.sh
-# Automated test runner for all 101 Orkeon examples
+# Automated test runner for all 105 Orkeon examples
 # Uses Docker Desktop Models (ai/granite-4.0-h-tiny) via localhost:12434
 #
 # Usage:
@@ -104,7 +104,8 @@ else
         -not -path "*/_legacy/*" \
         -not -path "*/_shared/*" \
         -not -path "*/runners/*" \
-        -not -path "*/.vs/*" | sort)
+        -not -path "*/.vs/*" \
+        -not -path "*/.orkeon/*" | sort)
 fi
 
 TOTAL=${#EXAMPLES[@]}
@@ -135,10 +136,27 @@ for example in "${EXAMPLES[@]}"; do
     # (`orkeon run <yaml>`, config passed positionally after the `run` verb).
     cat_dir="${example%%/*}"
     if [ "$cat_dir" = "03-finance-trading" ]; then
+        # Level `load` validates through the `orkeon` CLI, which cannot resolve the
+        # trading-specific tools (they live in Orkeon.Trading.Tools, registered only by
+        # the trading runner) — and that runner has no --validate. Skip rather than fail.
+        if [ "$LEVEL" = "load" ]; then
+            printf "[%d/%d] %-60s " "$INDEX" "$TOTAL" "$example"
+            echo -e "${YELLOW}SKIP${NC} (trading runner has no --validate; covered at --level run)"
+            R_EXAMPLES+=("$example"); R_STATUS+=("SKIP"); R_DURATION+=("0")
+            R_WARNINGS+=("0"); R_ERROR+=("")
+            continue
+        fi
         run_cmd=(dotnet run --project "$SCRIPT_DIR/runners/trading" --no-build \
                  --configuration Release -- --config "$config_path")
     else
         run_cmd=(dotnet "$ORKEON_CLI_DLL" run "$config_path")
+        # Level `load` = config parses, agents/tasks/tools resolve — no LLM call, no
+        # network: `orkeon run --validate` does exactly that in ~2 s and exits non-zero
+        # on a broken config. (The old marker grep — "Successfully created crew" — is a
+        # string the CLI stopped emitting, which made this level fail systematically.)
+        if [ "$LEVEL" = "load" ]; then
+            run_cmd+=(--validate)
+        fi
     fi
 
     printf "[%d/%d] %-60s " "$INDEX" "$TOTAL" "$example"
@@ -159,7 +177,7 @@ for example in "${EXAMPLES[@]}"; do
 
     end_time=$(date +%s%N)
     duration_ms=$(( (end_time - start_time) / 1000000 ))
-    duration_s=$(echo "scale=1; $duration_ms / 1000" | bc 2>/dev/null || echo "${duration_ms}ms")
+    duration_s=$(echo "scale=1; $duration_ms / 1000" | bc 2>/dev/null || echo "$((duration_ms / 1000))")
 
     output=$(cat "$tmpfile")
     rm -f "$tmpfile"
