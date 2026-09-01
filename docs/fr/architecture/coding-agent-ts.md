@@ -5,7 +5,11 @@
 L'agent de codage est un assistant de codage agentique (à la Claude Code) construit **sur la
 pile scriptée d'Orkeon** — le registre de slash-commands `*.cmd.ts` (`Orkeon.Cli.Commands.Scripting`),
 le runtime de crew `crew.ork.ts` (`Orkeon.Scripting`), et les outils C# `ToolBase`. Il fait
-l'objet de `experiments/07-orkeon-coding-agent-ts/` (le submodule compagnon `experiments`) (spec + plan + résultats).
+l'objet de `experiments/07-orkeon-coding-agent-ts/` (spec + plan + résultats).
+
+> Les renvois `experiments/` de cette page pointent vers le **submodule privé `experiments`**
+> des mainteneurs — il n'est pas disponible dans un clone public du dépôt. L'architecture
+> documentée ici est publique ; les sources et scripts de l'expérimentation ne le sont pas.
 
 ## Architecture : plan de contrôle vs moteur
 
@@ -95,7 +99,10 @@ désormais construite avec les outils intégrés (et le provider LLM), donc
 `tools.<camelCase>(params)` fonctionne dans les handlers `.cmd.ts` comme dans les crews.
 C'est ainsi que `/cost`, `/diff`, `/memory`, … appellent directement les outils.
 
-## Exécution
+## Exécution (mainteneurs uniquement)
+
+Les scripts de lancement vivent dans le submodule privé `experiments` ; cette section ne
+concerne donc que les mainteneurs ayant le submodule à disposition :
 
 ```bash
 # REPL (loads the 57 commands)
@@ -107,5 +114,5 @@ bash experiments/07-orkeon-coding-agent-ts/run-crew.sh crews/git-commit/crew.ork
 
 Le REPL a besoin d'une clé LLM pour les crews/la boucle. Les 57 commandes et le lancement de
 crew sont exercés par des tests automatisés (la suite TypeScript `command-surface.test.ts`,
-`ScriptHostFacadeTests`) sans clé. Voir
-`experiments/07-orkeon-coding-agent-ts/RESULTS.md` pour la matrice d'acceptation.
+`ScriptHostFacadeTests`) sans clé. La matrice d'acceptation vit dans
+`experiments/07-orkeon-coding-agent-ts/RESULTS.md` (submodule privé `experiments`).

@@ -25,9 +25,8 @@ parallèle, consensuelle, graphe ou autonome).
 ## Installation
 
 ```bash
-dotnet add package Orkeon.Domain --prerelease
-dotnet add package Orkeon.Application --prerelease
-dotnet add package Orkeon.Infrastructure --prerelease
+dotnet add package Orkeon --prerelease        # le framework complet en un seul paquet
+dotnet add package Orkeon.Tools --prerelease  # optionnel : les familles d'outils intégrés
 ```
 
 La CLI de scripting est distribuée comme outil .NET :
@@ -37,8 +36,9 @@ dotnet tool install -g orkeon --prerelease
 orkeon run crew.ork.ts
 ```
 
-Voir la [section installation du README](README.fr.md) pour les autres packages, publiés sur
-GitHub Packages plutôt que sur nuget.org.
+Voir la [matrice de publication](docs/fr/reference/publication-matrix.md) pour le lineup
+complet (dont les paquets opt-in reranker ONNX et embeddings locaux) et la
+[section installation du README](README.fr.md) pour les canaux CLI et conteneur.
 
 ## Projet
 

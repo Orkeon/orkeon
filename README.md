@@ -110,7 +110,7 @@ Runner, Ollama, or a model embedded in the container image) — see the
 |---|---|---|
 | **Run crews with zero install** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — interactive shell, 105 bundled examples (`orkeon-example run 1`), local-model ready | [Container guide](docs/getting-started/three-ways-to-run-orkeon.md#3-container) |
 | **Install the `orkeon` CLI** | Windows and Debian/Ubuntu: the quickstarts below. Other platforms: grab the archive from the [releases](https://github.com/Orkeon/orkeon/releases) (`linux-arm64`, `osx-x64/arm64`), then `./install.sh` | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
-| **Embed Orkeon in your app** | `dotnet add package Orkeon.Domain --prerelease` (+ `Orkeon.Application`, `Orkeon.Infrastructure`). The opt-in packs (`Orkeon.Rag`, `Orkeon.Tools.*`, `Orkeon.Hosting`, …) are published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages) — see the [publication matrix](docs/reference/publication-matrix.md) | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
+| **Embed Orkeon in your app** | `dotnet add package Orkeon --prerelease` — the complete framework in one package. Optionally add `Orkeon.Tools` (the built-in tool families) and the opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local`) — see the [publication matrix](docs/reference/publication-matrix.md). The `orkeon` CLI tool and the container image above are unchanged | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
 | **Hack on the framework** | `git clone` + `dotnet build Orkeon.sln` | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
 
 **Windows** — download `orkeon-cli-<version>-win-x64.zip` (or the `.msi`) from the [releases](https://github.com/Orkeon/orkeon/releases); it is self-contained, no .NET needed:
@@ -201,7 +201,7 @@ Orkeon follows Clean Architecture with three concentric layers:
 - **Application**: Use cases and orchestration logic. Defines interfaces (ports) implemented by Infrastructure.
 - **Infrastructure**: LLM providers, memory stores, tool implementations, and all external integrations.
 
-Around the core, dedicated packages cover hosting (`Orkeon.Hosting`, plus the `orkeon-host` service daemon of `Orkeon.Host` and the `orkeon run --events jsonl` run event bus), plugins (`Orkeon.Plugins`), Roslyn source generators (`Orkeon.Generators`), the VFS-compliance analyzer (`Orkeon.Compliance.Vfs`), the TypeScript-syntax scripting DSL (`Orkeon.Scripting` plus the `orkeon` CLI tool), tool packs (`Orkeon.Tools.*`), and the RaggableTree semantic code-analysis engine (`Orkeon.Analysis`).
+Around the core, dedicated projects cover hosting (`Orkeon.Hosting`, plus the `orkeon-host` service daemon of `Orkeon.Host` and the `orkeon run --events jsonl` run event bus), plugins (`Orkeon.Plugins`), Roslyn source generators (`Orkeon.Generators`), the VFS-compliance analyzer (`Orkeon.Compliance.Vfs`), the TypeScript-syntax scripting DSL (`Orkeon.Scripting` plus the `orkeon` CLI tool), the tool families (`Orkeon.Tools.*`, shipped together as the `Orkeon.Tools` package), and the RaggableTree semantic code-analysis engine (`Orkeon.Analysis`, shipped inside the `Orkeon` package).
 
 ---
 
@@ -234,7 +234,7 @@ Around the core, dedicated packages cover hosting (`Orkeon.Hosting`, plus the `o
 
 ## Project Status
 
-Orkeon is **1.0.0-rc.2** on .NET 10 — the V1 release candidate. Recent milestones: the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 14, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax).
+`main` is preparing **1.0.0-rc.3** on .NET 10 — the V1 release candidate; the latest tag is `v1.0.0-rc.2` (2026-08-25), which predates the Grok and MiniMax providers. Recent milestones: the NuGet distribution consolidated into a single `Orkeon` package (plus `Orkeon.Tools` and a few opt-ins — see the [publication matrix](docs/reference/publication-matrix.md)); the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 14, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax).
 
 Every pull request is gated in CI:
 

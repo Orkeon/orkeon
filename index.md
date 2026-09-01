@@ -23,9 +23,8 @@ strategies (sequential, hierarchical, parallel, consensual, graph, or autonomous
 ## Install
 
 ```bash
-dotnet add package Orkeon.Domain --prerelease
-dotnet add package Orkeon.Application --prerelease
-dotnet add package Orkeon.Infrastructure --prerelease
+dotnet add package Orkeon --prerelease        # the complete framework in one package
+dotnet add package Orkeon.Tools --prerelease  # optional: the built-in tool families
 ```
 
 The scripting CLI ships as a .NET tool:
@@ -35,8 +34,9 @@ dotnet tool install -g orkeon --prerelease
 orkeon run crew.ork.ts
 ```
 
-See the [installation section of the README](README.md) for the other packages, which are
-published to GitHub Packages rather than nuget.org.
+See the [publication matrix](docs/reference/publication-matrix.md) for the full lineup
+(the opt-in ONNX reranker and local-embeddings packages included) and the
+[installation section of the README](README.md) for the CLI and container channels.
 
 ## Project
 

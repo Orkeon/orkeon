@@ -265,7 +265,7 @@ La collaboration entre agents est également supportée au niveau domaine : `Age
 
 ```
 Orkeon.sln
-├── src/                            # 37 projets, 12 zones
+├── src/                            # 43 projets, 13 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entités, value objects, interfaces, événements
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
@@ -289,6 +289,7 @@ Orkeon.sln
 │   ├── generators/                 # Orkeon.Generators (générateurs de source)
 │   ├── constants/                  # Satellites de constantes PARTAGEES, zero dependance d'execution (ADR-009)
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (analyseur Roslyn)
+│   ├── packaging/                  # Projets d'empaquetage NuGet (Orkeon, Orkeon.Tools + 2 wrappers opt-in)
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/      # REPL interactif (`orkeon-repl`)
 │       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)

@@ -7,11 +7,7 @@ the prompt.
 
 ## Install
 
-```
-dotnet add package Orkeon.Cli.TerminalGui --prerelease
-```
-
-> This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+This project is no longer distributed as a NuGet package — reference it from source (`ProjectReference` inside this repository); its assembly ships through the release artifacts. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 
 ## What it does
@@ -235,15 +231,23 @@ diagnosing terminal-specific keystroke routing issues.
   `MainMenuRunner` and `QaRunner` (which inherit `InteractiveRunnerBase`)
   are wired correctly.
 
-## Smoke test
+## Smoke test (maintainers only)
+
+The manual smoke drives the claim-verification interactive runner through the launch script
+of the **private `experiments` submodule** (it supplies the crew config and the claims corpus
+the public repository does not ship). With the submodule checked out:
 
 ```bash
 # Auto: TUI on a real terminal, plain on a pipe.
-bash project/experiments/05-claim-verification/run-interactive.sh -s deepseek.local
+bash experiments/05-claim-verification/run-interactive.sh -s deepseek.local
 
 # Force plain (legacy behavior).
-bash project/experiments/05-claim-verification/run-interactive.sh -s deepseek.local --ui plain
+bash experiments/05-claim-verification/run-interactive.sh -s deepseek.local --ui plain
 
 # Pipe → auto-falls back to plain.
-echo "list" | bash project/experiments/05-claim-verification/run-interactive.sh -s deepseek.local
+echo "list" | bash experiments/05-claim-verification/run-interactive.sh -s deepseek.local
 ```
+
+Without the submodule, the same three behaviors (auto-TUI on a terminal, forced plain via
+`--ui plain`, pipe fallback to plain) are covered by the automated suite:
+`dotnet test tests/cli/Orkeon.Cli.TerminalGui.Tests/Orkeon.Cli.TerminalGui.Tests.csproj`.

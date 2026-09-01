@@ -87,6 +87,7 @@ checkout, invoke it via its project (no install needed — it also picks up your
 local code changes):
 
 ```bash
+mkdir -p out
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run \
   examples/01-enterprise/01-research-assistant/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \

@@ -6,52 +6,94 @@ Ce fichier est la source de vérité unique pour **les projets publiés sur NuGe
 workflows (`ci.yml` validation, `publish.yml` pack + push sur tag, `release.yml` installateurs)
 ne divergent plus jamais (OSS-011 / R8.3).
 
-> **Statut — proposition, en attente de confirmation du mainteneur.** Seules les trois
-> bibliothèques cœur sont câblées vers NuGet.org aujourd'hui (PUB-03, 2026-08-17) ; le
-> premier push réel partira au prochain tag `v*` une fois le Trusted Publishing configuré
-> côté propriétaire (politique nuget.org + variable `NUGET_USER`) — d'ici là les étapes
-> avertissent et ne font rien. La décision **D3** (les jumeaux de
-> nommage scripting) est **tranchée** — PUB-02, 2026-08-17,
+> **Statut — lineup consolidé implémenté (PUB-25, 2026-09-01).** La distribution est un
+> paquet `Orkeon` plus une poignée d'opt-ins, câblés dans `publish.yml` et gardés par le
+> gate `scripts/check-package-closure.py` ; le premier push de ce lineup part au tag
+> `v1.0.0-rc.3`. Le Trusted Publishing vers NuGet.org est **opérationnel** — les paquets
+> par couche désormais abandonnés `Orkeon.Domain` / `Orkeon.Application` /
+> `Orkeon.Infrastructure` y ont publié `1.0.0-rc.1` (2026-08-18) et `1.0.0-rc.2`
+> (2026-08-25), et seront délistés une fois le nouveau lineup publié (voir les actions
+> propriétaire plus bas). La décision **D3** (les jumeaux de nommage scripting) est
+> **tranchée** — PUB-02, 2026-08-17,
 > [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md) : la bibliothèque de
 > commandes a été renommée `Orkeon.Cli.Scripting` → `Orkeon.Cli.Commands.Scripting` avant
-> qu'une publication NuGet ne fige l'ancien nom. L'extension au-delà du cœur n'attend plus que
-> la confirmation par le mainteneur de l'intention produit ci-dessous.
+> qu'une publication NuGet ne fige l'ancien nom.
 
-## Publié en v1 (aujourd'hui)
+## Le lineup NuGet.org
+
+Un paquet installe le framework entier ; tout le reste du lineup est un opt-in tenu à part
+uniquement pour ce qu'il imposerait à chaque consommateur (poids des dépendances, natifs,
+un amont en pré-release).
 
 | PackageId | Pourquoi |
 |---|---|
-| `Orkeon.Domain` | Entités et interfaces cœur. Depuis ADR-009 il porte une référence runtime, vers `Orkeon.Constants.Llm`, qui doit donc être poussé avant lui — `publish.yml` ordonne les pushes explicitement. |
-| `Orkeon.Constants.Llm`, `Orkeon.Constants.FileSystem`, `Orkeon.Constants.Configuration`, `Orkeon.Constants.Protocol`, `Orkeon.Constants.Cli` | Satellites de constantes PARTAGÉES (ADR-009) : le vocabulaire sur lequel deux projets doivent s'accorder, déclaré une seule fois, sans aucune dépendance runtime. Publiés en v1 **et nécessairement** — `Orkeon.Domain` dépend d'`Orkeon.Constants.Llm`, donc les différer publierait un paquet cœur dont la dépendance ne se restaure pas. |
-| `Orkeon.Application` | Cas d'usage, ports, orchestration. |
-| `Orkeon.Infrastructure` | Adaptateurs (LLM, mémoire, stratégies). Documenté comme installable dans le README ; c'est pourquoi `release.yml` a été corrigé pour le packager. |
+| `Orkeon` | Le paquet ombrelle — les onze assemblies de la fermeture du cœur (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration}`, `Orkeon.Tools.Abstractions`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag.Abstractions`, `Orkeon.Analysis`, `Orkeon.Rag`) embarquées dans un seul nupkg. Une installation = le framework complet : agents, crews, six modes d'orchestration, 14 fournisseurs LLM, 6 stores mémoire, RAG, RaggableTree. Le découpage Clean Architecture reste une discipline d'arborescence source, pas un contrat de distribution. |
+| `Orkeon.Tools` | Les sept familles d'outils intégrés (`Analysis`, `Code`, `Data`, `EventHub`, `FileSystem`, `Rag`, `Web`) dans un seul nupkg. Séparé d'`Orkeon` **uniquement pour le poids des dépendances** : les outils Data tirent des drivers de bases de données, des bibliothèques PDF et tableur qu'un consommateur qui ne s'en sert jamais ne devrait pas hériter. Dépend d'`Orkeon`. |
+| `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Paire opt-in du reranker cross-encoder ONNX (runtime + poids int8 embarqués) — poussés ensemble ; charge native onnxruntime. Dépendent d'`Orkeon`. |
+| `Orkeon.Tools.Embeddings.Local` | Embeddings locaux sur la machine (BGE-micro-v2 ONNX). Reste **hors de l'ombrelle** parce qu'il porte une dépendance SmartComponents en pré-release, d'un amont archivé — l'inclure dans `Orkeon` imposerait cette pré-release à chaque consommateur. Dépend d'`Orkeon`. |
+| `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org depuis l'exclusion des natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger : 262,5 Mo → 144 Mo, sous la limite de taille de nuget.org. |
 
-## Proposé pour une version ultérieure (différé)
+### Comment les projets d'empaquetage sont construits
 
-L'écosystème annoncé (la famille d'outils, le tool CLI `orkeon`, hosting, plugins) est censé être
-installable, mais retenu jusqu'à ce que les paquets cœur soient éprouvés sur NuGet (D3 est
-tranchée — ADR-007). Chaque entrée ci-dessous est `IsPackable=true` et atterrit donc déjà sur le **feed
-interne GitHub Packages** via `publish.yml` (voir plus bas), mais n'est **pas** poussée vers
-NuGet.org par un workflow pour l'instant.
+- Les nupkgs du lineup sortent de **projets d'empaquetage** dédiés sous `src/packaging/` —
+  quatre au total : les ombrelles `Orkeon` et `Orkeon.Tools`, plus les **wrappers**
+  `Orkeon.Rag.Onnx.Package` et `Orkeon.Tools.Embeddings.Local.Package`, qui packent les deux
+  assemblies opt-in avec une dépendance nuspec sur l'ombrelle `Orkeon`. Les projets de
+  bibliothèques embarqués sont eux-mêmes `IsPackable=false` et leur arborescence source,
+  leurs namespaces et leur gel PublicAPI par assembly sont intouchés ; les projets opt-in
+  réels gardent des `ProjectReference` normales, les consommateurs in-repo ne voient donc
+  aucune différence — seuls les wrappers portent le motif d'embarquement ci-dessous.
+- Chaque projet d'empaquetage référence son ou ses projets embarqués avec
+  `PrivateAssets="all"` (ce qui les tient hors de la liste de dépendances du nuspec) et packe
+  leurs DLL+XML dans `lib/`. Comme `PrivateAssets="all"` empêche aussi les `PackageReference`
+  externes des projets embarqués de remonter dans le nuspec, l'**union de ces références est
+  re-déclarée à la main** dans le csproj d'empaquetage.
+- `scripts/check-package-closure.py` (lancé par `publish.yml` juste après le pack) fait
+  échouer le workflow si (1) un paquet du lineup déclare une dépendance `Orkeon.*` hors du
+  lineup — la classe d'incident NU1101 — ou (2) les externes re-déclarés d'une ombrelle
+  dérivent de ce que ses projets embarqués exigent réellement.
+- `publish.yml` pousse **`Orkeon` en premier** : les autres paquets du lineup en dépendent et
+  NuGet n'ordonne pas les pushes ; pousser un dépendant d'abord exposerait un paquet dont la
+  restauration échoue.
 
-| PackageId | Note |
-|---|---|
-| `Orkeon.Tools.Abstractions`, `Orkeon.Tools.Analysis`, `Orkeon.Tools.Code`, `Orkeon.Tools.Data`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Tools.EventHub`, `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Rag`, `Orkeon.Tools.Web` | Famille d'outils — publier en lot une fois le cœur stabilisé. |
-| `Orkeon.Rag.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Sous-système RAG (RAG-02…06, ADR-006). `Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model` forment la paire cross-encoder opt-in (runtime + poids int8 embarqués) — publier les deux ensemble. |
-| `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions` | RaggableTree. |
-| `Orkeon.Cli`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui` | Bibliothèques CLI. |
-| `Orkeon.Cli.Commands.Scripting` | Renommé depuis `Orkeon.Cli.Scripting` (D3 tranchée — ADR-007, 2026-08-17) avant toute publication. |
-| `Orkeon.Scripting`, `Orkeon.Scripting.Cli` | `Orkeon.Scripting.Cli` est le tool dotnet `orkeon` (`PackAsTool`) ; nom conservé par l'ADR-007 (le PackageId est la commande d'installation). |
-| `Orkeon.Hosting` | Hôte d'empaquetage (créé par R1.5) — candidat sérieux à livrer avec le lot cœur. |
-| `Orkeon.Plugins` | Système de plugins. |
-| `Orkeon.ConsoleApp` | Le tool dotnet `orkeon-repl` (`PackAsTool`) — livré aujourd'hui via les archives de release. |
+## Paquets abandonnés
 
-## Publiés sur GitHub Packages pour `experiments/` (dotnet tools)
+Les PackageIds suivants ne sont **plus packés** (`IsPackable=false`) : `Orkeon.Domain`,
+`Orkeon.Application`, `Orkeon.Infrastructure`, les cinq satellites `Orkeon.Constants.*`, les
+sept paquets `Orkeon.Tools.<famille>`, `Orkeon.Cli`, `Orkeon.Cli.Abstractions`,
+`Orkeon.Cli.Commands.Scripting`, `Orkeon.Cli.TerminalGui`, `Orkeon.Scripting`,
+`Orkeon.Hosting`, `Orkeon.Plugins`.
 
-`publish.yml` (tag `v*`) packe `Orkeon.sln` et pousse chaque projet packable vers
-**GitHub Packages** (`nuget.pkg.github.com/Orkeon`) avec `--skip-duplicate`. C'est ce feed que
-`experiments/` consomme en mode packages. Les runners interactifs sont livrés en dotnet tools
-pour qu'aucun launcher n'exige un clone source :
+**Migration** : le code source et les namespaces sont inchangés, le code consommateur compile
+donc tel quel — seule l'installation change. Désinstallez les paquets par couche et
+`dotnet add package Orkeon --prerelease` (ajoutez `Orkeon.Tools` si vous utilisiez un paquet
+`Orkeon.Tools.<famille>` autre qu'`Embeddings.Local`).
+
+## État réel de NuGet.org, et actions propriétaire restantes
+
+`orkeon.domain`, `orkeon.application` et `orkeon.infrastructure` **sont publiés** sur
+NuGet.org : `1.0.0-rc.1` (2026-08-18) et `1.0.0-rc.2` (2026-08-25), poussés par `publish.yml`
+via le Trusted Publishing. `Orkeon.Application` et `Orkeon.Infrastructure` n'y sont pas
+restaurables (`NU1101`) : ils déclarent cinq dépendances `Orkeon.*` jamais publiées —
+l'incident qui a motivé le gate de fermeture ci-dessus.
+
+Actions propriétaire restantes :
+
+1. **Délister** les paquets par couche `rc.1` / `rc.2` sur NuGet.org — *après* la publication
+   du nouveau lineup au tag `v1.0.0-rc.3` (délister d'abord ne laisserait rien d'installable).
+2. **Réserver le préfixe `Orkeon`** sur nuget.org — l'ID nu `Orkeon` ET la famille
+   `Orkeon.*`.
+3. Rien d'autre : la variable de dépôt `NUGET_USER` et la politique de Trusted Publishing
+   sont déjà opérationnelles (les pushes rc.1/rc.2 le prouvent).
+
+## Publiés sur GitHub Packages
+
+`publish.yml` (tag `v*`) packe `Orkeon.sln` et pousse **chaque projet packable** vers
+**GitHub Packages** (`nuget.pkg.github.com/Orkeon`) avec `--skip-duplicate`. Soit le lineup
+NuGet.org ci-dessus **plus** les paquets build-time et runners qui restent hors de NuGet.org :
+`Orkeon.ConsoleApp`, `Orkeon.Generators`, `Orkeon.Compliance.Vfs`, et les trois packables
+d'`examples/runners`. C'est ce feed que `experiments/` consomme en mode packages. Les runners
+interactifs sont livrés en dotnet tools pour qu'aucun launcher n'exige un clone source :
 
 | PackageId | Commande tool | Projet source |
 |---|---|---|
@@ -120,7 +162,7 @@ Le CLI `orkeon` est distribué via **sept canaux** :
 
 | Canal | Artefact | Runtime | Public |
 |---|---|---|---|
-| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. **Attend le go écosystème NuGet.org** (D3 tranchée — ADR-007) : le câblage en place (PUB-03) ne pousse que les trois bibliothèques cœur ; promouvoir le tool est une décision de matrice |
+| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. Fait partie du lineup NuGet.org (PUB-25) — publiable depuis que le paquet est passé de 262,5 Mo à 144 Mo (natifs onnxruntime iOS/Android exclus) ; premier push au tag `v1.0.0-rc.3` |
 | Zip Windows + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | onboarding Windows — le canal recommandé. Livre `orkeon-studio` (Orkeon Studio WPF) à côté du CLI |
 | MSI Windows (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, installation au double-clic et entrée « Applications installées ». Livre `orkeon-studio` avec un raccourci menu Démarrer. Un canal à la fois : le MSI refuse de s'installer par-dessus une install zip |
 | Paquet Debian | `orkeon_<version>_amd64.deb` | self-contained | onboarding Debian / Ubuntu — le canal recommandé. Livre les TUI `orkeon-studio-config` / `orkeon-studio-run` à côté du CLI |
@@ -163,34 +205,33 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
 
 | PackageId | Note |
 |---|---|
-| `Orkeon.Generators` | Source generator — consommé au build. |
-| `Orkeon.Compliance.Vfs` | Analyseur Roslyn — consommé au build. |
+| `Orkeon.Generators` | Source generator — consommé au build. GitHub Packages uniquement. |
+| `Orkeon.Compliance.Vfs` | Analyseur Roslyn — consommé au build. GitHub Packages uniquement. |
 | `Orkeon.Host` | `IsPackable=false` — livré uniquement comme binaire `orkeon-host` dans les archives de release. |
 | `Orkeon.Studio.{Core,Config,Run,Wpf}` | `IsPackable=false` — livrés uniquement via les installeurs de release (voir [Orkeon Studio](../architecture/studio.md)). |
 
 ## Câblage de la publication
 
 - Tout le packaging et le push NuGet vivent dans **`publish.yml`** (tag `v*`) :
-  `dotnet pack Orkeon.sln` (+ les tools runners) piloté par `IsPackable`, poussé vers
-  **GitHub Packages** avec `--skip-duplicate` (ré-exécutions idempotentes), puis les **trois
-  paquets cœur** (le tableau « Publié en v1 » ci-dessus) vers **NuGet.org**. `ci.yml` valide
+  `dotnet pack Orkeon.sln` (+ les tools runners) piloté par `IsPackable`, le gate
+  `scripts/check-package-closure.py` sur les artefacts packés, un push de tout vers
+  **GitHub Packages** avec `--skip-duplicate` (ré-exécutions idempotentes), puis le **lineup
+  NuGet.org** (le tableau ci-dessus, `Orkeon` en premier) vers **NuGet.org**. `ci.yml` valide
   (build + tests) et ne package rien ; `release.yml` construit les archives d'installation et
   l'image conteneur, sans packaging NuGet.
 - L'authentification NuGet.org est le **Trusted Publishing (OIDC)** — aucune clé API longue
   durée. Une politique nuget.org (dépôt `Orkeon/orkeon`, workflow `publish.yml`) permet à
   `NuGet/login` d'échanger le jeton OIDC du job contre une clé éphémère ; les étapes sont
   conditionnées à la **variable de dépôt `NUGET_USER`** (le profil nuget.org propriétaire de
-  la politique — actions propriétaire : créer la politique, poser la variable, et réserver le
-  préfixe d'ID `Orkeon.*`). Tant que la variable n'existe pas, les étapes émettent un
-  avertissement et ne font rien — **rien n'a encore atterri sur NuGet.org** ; le premier push
-  réel partira au prochain tag `v*` après cette configuration. Étendre le périmètre NuGet.org
-  au-delà des trois
-  paquets cœur reste conditionné à la confirmation par le mainteneur de la matrice ci-dessus
-  (D3 tranchée — ADR-007), et passe d'abord par une édition de la matrice, jamais par une
-  retouche de workflow en passant.
+  la politique). Les deux sont **en place et éprouvées** — les pushes rc.1/rc.2 sont passés
+  par ce chemin ; si la variable venait à disparaître, les étapes émettraient un
+  avertissement et ne feraient rien plutôt que de faire échouer le tag.
+  Étendre le lineup NuGet.org est une décision de mainteneur consignée d'abord dans cette
+  matrice (et reflétée dans la liste du lineup du workflow + les arguments du gate de
+  fermeture), jamais une retouche de workflow en passant.
 - `publish.yml` **refuse un tag qui ne correspond pas à la version de
   `src/Directory.Build.props`**. Leçon de l'incident 0.9.1-beta (voir CHANGELOG 0.9.2-beta) :
   les tags `v0.9.1-beta.rc*` ont re-packé la version inchangée des props et
   `--skip-duplicate` a sauté chaque push en silence — une « release » qui n'a rien publié.
   Le garde maintient `--skip-duplicate` honnête.
-- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.2`) ; les seuls projets qui la surchargent sont les trois packables d'`examples/runners` (deux tools dotnet plus la bibliothèque partagée), à bumper au pas à chaque release — le garde-fou de tag du workflow de publication ne vérifie que le fichier props, leur bump est donc une étape de checklist de release, pas une contrainte outillée.
+- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.3`) ; les seuls projets qui la surchargent sont les trois packables d'`examples/runners` (deux tools dotnet plus la bibliothèque partagée), à bumper au pas à chaque release — le garde-fou de tag du workflow de publication ne vérifie que le fichier props, leur bump est donc une étape de checklist de release, pas une contrainte outillée.

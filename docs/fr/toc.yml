@@ -8,6 +8,8 @@
       href: getting-started/three-ways-to-run-orkeon.md
     - name: Exécuter votre premier exemple
       href: getting-started/run-your-first-example.md
+    - name: Forger une équipe à partir d'un besoin
+      href: getting-started/forge-a-team-from-a-need.md
     - name: Vue d'ensemble
       href: getting-started/overview.md
     - name: Bootstrap et exécution
@@ -26,6 +28,8 @@
       href: architecture/domain-events.md
     - name: EventHub et cycle de vie des crews
       href: architecture/event-hub-and-crew-lifecycle.md
+    - name: Bus d'événements du run
+      href: architecture/run-event-bus.md
     - name: Sécurité, résilience et plugins
       href: architecture/security.md
     - name: Conformité VFS
@@ -42,6 +46,8 @@
       href: architecture/mcp.md
     - name: Orkeon Studio
       href: architecture/studio.md
+    - name: Host de service et passerelle de chat
+      href: architecture/service-host.md
     - name: Référence YAML
       href: architecture/yaml-schema.md
     - name: RaggableTree — graphe sémantique
@@ -120,6 +126,10 @@
       href: adr/ADR-006-rag-subsystem.md
     - name: ADR-007 — Renommage Cli.Commands.Scripting (D3)
       href: adr/ADR-007-d3-renommage-cli-commands-scripting.md
+    - name: ADR-008 — Les chemins virtuels sont la seule monnaie
+      href: adr/ADR-008-virtual-paths-are-the-only-currency.md
+    - name: ADR-009 — Satellites de constantes partagées
+      href: adr/ADR-009-shared-constants-satellites.md
     - name: ADR — Graphe sémantique RaggableTree
       href: architecture/raggable-tree-adr.md
 - name: Gabarits

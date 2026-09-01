@@ -4,7 +4,7 @@ Each file is a self-contained `.ork.ts` (TypeScript-syntax) script runnable thro
 the `orkeon` CLI:
 
 ```bash
-dotnet run --project src/Orkeon.Scripting.Cli -- run examples/scripting/01-hello-world.ork.ts
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/01-hello-world.ork.ts
 ```
 
 All examples fall back to the `UndefinedLlm` echo provider when no real provider is
@@ -32,5 +32,5 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
   --mount "$(mktemp -d)":/output:rw --allow-external-mounts
 ```
 
-See [`project/features/scripting-dsl/INDEX.md`](../../project/features/scripting-dsl/INDEX.md)
+See the [scripting DSL architecture guide](../../docs/architecture/scripting.md)
 for the full DSL reference.

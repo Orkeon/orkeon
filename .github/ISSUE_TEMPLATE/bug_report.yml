@@ -12,7 +12,7 @@ body:
     attributes:
       label: Orkeon version
       description: "`orkeon --version`, the NuGet package version, or the commit SHA for a source build."
-      placeholder: "1.0.0-rc.1"
+      placeholder: "e.g. 1.0.0"
     validations:
       required: true
   - type: dropdown

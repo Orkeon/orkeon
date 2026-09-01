@@ -88,6 +88,7 @@ des sources, invoquez-la via son projet (aucune installation — elle embarque a
 vos modifications locales) :
 
 ```bash
+mkdir -p out
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run \
   examples/01-enterprise/01-research-assistant/config.yaml \
   --settings examples/appsettings/appsettings.deepseek.local.json \

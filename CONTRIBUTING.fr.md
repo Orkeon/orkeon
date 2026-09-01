@@ -60,6 +60,11 @@ dotnet build Orkeon.sln
 dotnet test Orkeon.sln
 ```
 
+> **Note** — `backstage/` et `experiments/` sont des **sous-modules privés des mainteneurs** :
+> clonez **sans** `--recursive` (comme ci-dessus). Le build, les tests et tout le flux de
+> contribution s'en passent ; un échec de `git submodule update` sur ces deux chemins est
+> attendu et sans conséquence.
+
 > **Le premier build touche le réseau une fois** : la couche scripting provisionne
 > une petite toolchain esbuild (`npm ci` sous `tools/scripting-esbuild/`, strictement
 > depuis le lockfile commité). Pour l'éviter (CI, machines sans npm) :
@@ -76,8 +81,9 @@ dotnet test Orkeon.sln
 
 ## Structure du projet
 
-La solution compte **39 projets src répartis en 12 zones**, chacun reflété par un
-projet de tests (plus `tests/e2e`, `tests/examples`, `tests/shared`) :
+La solution compte **43 projets src répartis en 13 zones**, chacun reflété par un
+projet de tests (plus `tests/e2e`, `tests/examples`, `tests/shared` ; les quatre projets
+`src/packaging/` sont de pur empaquetage et n'ont pas de miroir de tests) :
 
 ### Les commentaires sont en anglais, et jamais accentués
 
@@ -107,6 +113,8 @@ src/
 ├── plugins/     # Orkeon.Plugins (chargement de plugins au runtime)
 ├── generators/  # Orkeon.Generators (générateurs de source)
 ├── analyzers/   # Orkeon.Compliance.Vfs (analyseur Roslyn VFS-only)
+├── packaging/   # Projets d'empaquetage NuGet (PUB-25) : Orkeon (le framework en un nupkg), Orkeon.Tools,
+│                #   + les wrappers Rag.Onnx / Tools.Embeddings.Local dépendant de l'ombrelle Orkeon
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
 examples/        # 105 exemples embarqués (9 catégories + vitrines) — solution dédiée
