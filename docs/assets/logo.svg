@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 138 32" width="138" height="32" role="img" aria-label="Orkeon">
+  <!-- Mark: an "O" ring with one orbiting agent dot -->
+  <circle cx="16" cy="16" r="10" fill="none" stroke="#6E56CF" stroke-width="4"/>
+  <circle cx="24.5" cy="7.5" r="3.2" fill="#6E56CF"/>
+  <!-- Wordmark -->
+  <text x="34" y="22.5" font-family="'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif" font-size="19" font-weight="600" letter-spacing="0.3" fill="#6E56CF">Orkeon</text>
+</svg>

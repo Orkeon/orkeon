@@ -1,12 +1,30 @@
 # Third-Party Notices
 
 This file lists third-party dependencies that require an explicit license notice.
+
+**Inclusion criterion** — an entry exists here for a dependency that meets at least
+one of: (a) its bits are **redistributed** by this repository's packages or release
+artifacts (embedded model weights, assemblies bundled into the installers), so its
+license's notice obligations attach to us; (b) its package metadata is missing or
+misleading and the license **provenance had to be established** by hand
+(SmartComponents, bge-micro-v2); or (c) it records an explicit **licensing
+decision** (AngleSharp replacing the LGPL-3.0 Fizzler pair). Ordinary NuGet
+dependencies that are merely referenced in `Directory.Packages.props` and carry
+their own accurate upstream license metadata get no entry. Note the deliberate
+asymmetry for Apache-2.0 dependencies: the ones this repository redistributes
+(Apache.Arrow, section 5; the ms-marco model, section 7) get the full license text
+and — per Apache-2.0 §4(d) — their upstream `NOTICE` propagated here, while
+Apache-2.0 packages that are only referenced (e.g. OpenTelemetry, Gremlin.Net)
+intentionally get no entry, because §4(d)'s obligations attach to redistribution.
+
 Sections 1-3 cover the `local-embeddings` feature
 (`src/tools/Orkeon.Tools.Embeddings.Local/` + `src/analysis/Orkeon.Analysis.Abstractions/DependencyInjection/LocalEmbeddingOptions.cs`),
 all distributed under the MIT License. Section 4 covers the HTML/CSS engine of
 `src/tools/Orkeon.Tools.Web/`, distributed under the MIT License. Section 5 covers
 the LanceDB remote integration (`src/core/Orkeon.Infrastructure/Memory/LanceDb/`),
-distributed under the Apache License 2.0. Section 7 covers the cross-encoder
+distributed under the Apache License 2.0. Section 6 covers the embedded ECMAScript
+interpreter of the scripting DSL (`src/scripting/Orkeon.Scripting/`), distributed
+under the BSD 2-Clause License. Section 7 covers the cross-encoder
 reranker model embedded in `src/rag/Orkeon.Rag.Onnx.Model/`, distributed under
 the Apache License 2.0.
 
@@ -116,7 +134,7 @@ Intelligence) is itself published under MIT per its Hugging Face metadata
 
 ## 3. Microsoft.Extensions.AI.Abstractions
 
-- **Version**: `10.6.0` (pinned in `Directory.Packages.props`)
+- **Version**: `10.9.0` (pinned in `Directory.Packages.props`)
 - **License**: MIT
 - **Source**: https://github.com/dotnet/extensions
 - **NuGet**: https://www.nuget.org/packages/Microsoft.Extensions.AI.Abstractions
@@ -140,7 +158,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## 4. AngleSharp
 
-- **Version**: `1.5.0` (pinned in `Directory.Packages.props`)
+- **Version**: `1.7.2` (pinned in `Directory.Packages.props`)
 - **License**: MIT (SPDX: `MIT`, per the package's `<license type="expression">` element
   and GitHub's license detection) — Copyright (c) 2013 - 2026 AngleSharp
 - **Source**: https://github.com/AngleSharp/AngleSharp
@@ -184,7 +202,7 @@ SOFTWARE.
 ```
 
 Note (dependency footprint): on `net10.0` — the repository's target framework —
-`AngleSharp 1.5.0` declares **no** package dependencies (its
+`AngleSharp 1.7.2` declares **no** package dependencies (its
 `System.Text.Encoding.CodePages` dependency only applies to the
 `netstandard2.0` / `.NET Framework` target groups).
 
@@ -443,12 +461,12 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ## 6. Jint
 
-- **Version**: `4.10.0` (pinned in `Directory.Packages.props`)
+- **Version**: `4.16.1` (pinned in `Directory.Packages.props`)
 - **License**: BSD 2-Clause "Simplified" License (SPDX: `BSD-2-Clause`)
 - **Copyright**: Copyright (c) 2013, Sebastien Ros — All rights reserved.
 - **Source**: https://github.com/sebastienros/jint
 - **NuGet**: https://www.nuget.org/packages/Jint
-- **License text**: https://github.com/sebastienros/jint/blob/v4.10.0/LICENSE.txt
+- **License text**: https://github.com/sebastienros/jint/blob/v4.16.1/LICENSE.txt
 - **Role**: Embedded ECMAScript interpreter that executes the TypeScript-syntax
   scripting DSL (`.ork.ts`): `src/scripting/Orkeon.Scripting` transpiles scripts via
   esbuild and runs them on the Jint engine (e.g.

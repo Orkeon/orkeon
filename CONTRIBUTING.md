@@ -84,18 +84,6 @@ The solution has **43 src projects across 13 zones**, each mirrored by a test
 project (plus `tests/e2e`, `tests/examples`, `tests/shared`; the four `src/packaging/`
 projects are packaging-only and have no test mirror):
 
-### Comments are English, and never accented
-
-An invariant, enforced by `scripts/check-comment-accents.py` in CI: every comment is in
-English and carries no accented letter. Studio's interface is in French, so the trap is a
-comment quoting a UI label — **translate the label, do not strip its accents**: a comment
-citing `"Modele d'IA"` names something the product never displays. Name the role instead
-(`the model-settings tab`). An accent-stripped French sentence is still French, only worse.
-
-Only comment lines are in scope. User-facing strings keep their accents. So does typography
-the repository uses everywhere — em dashes, ellipses, arrows, guillemets: none of those are
-accented letters.
-
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (Clean Architecture core)
@@ -151,6 +139,18 @@ public class AgentService : IAgentService
 }
 ```
 
+### Comments are English, and never accented
+
+An invariant, enforced by `scripts/check-comment-accents.py` in CI: every comment is in
+English and carries no accented letter. Studio's interface is in French, so the trap is a
+comment quoting a UI label — **translate the label, do not strip its accents**: a comment
+citing `"Modele d'IA"` names something the product never displays. Name the role instead
+(`the model-settings tab`). An accent-stripped French sentence is still French, only worse.
+
+Only comment lines are in scope. User-facing strings keep their accents. So does typography
+the repository uses everywhere — em dashes, ellipses, arrows, guillemets: none of those are
+accented letters.
+
 ### Documentation
 
 * Add XML documentation to all public APIs
@@ -162,7 +162,8 @@ public class AgentService : IAgentService
 The documentation is maintained in English and French in parallel. Any PR that adds, renames,
 or removes a file under `docs/**.md` (outside `docs/fr/`) **must** make the matching change to
 its French mirror under `docs/fr/`, and any change to a root community file (`README.md`,
-`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`) **must** update its `*.fr.md` mirror.
+`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, and the site landing
+page `index.md`) **must** update its `*.fr.md` mirror.
 The `scripts/check-docs-parity.sh` script verifies this: it fails when a mirror is missing —
 run it locally before opening the PR. **This is a CI gate**: `ci.yml` runs the script on
 every push and pull request, so a missing mirror fails the build. The script checks file existence, not content
@@ -204,7 +205,7 @@ public async Task Agent_Should_Execute_Task_Successfully()
 - [ ] Additional language adapters for RaggableTree (`ILanguageAdapter`: Java, Ruby, PHP…)
 - [ ] MCP interop testing against reference servers (MCP Inspector)
 - [ ] Performance optimizations
-- [ ] Documentation improvements (see the EN/FR parity contract below)
+- [ ] Documentation improvements (see the EN/FR parity contract above)
 
 ### Medium Priority
 - [ ] Additional tools (calendar, ticketing, messaging beyond Slack/Email)

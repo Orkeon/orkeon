@@ -2,6 +2,20 @@
 
 105 use cases demonstrating Orkeon's capabilities, from enterprise classics to experimental AI agent orchestrations.
 
+## Language policy
+
+The framework documentation under `docs/` is bilingual — English with a full French
+mirror under `docs/fr/`, enforced by a CI parity gate. This examples catalog follows a
+deliberately lighter rule: it is community-grade material, and per-example READMEs and
+summaries may be written in English or French (today a substantial share of them are
+French, and the two coexist without translation). Contributions are accepted in either
+language, and translating an existing example README is never required. Code,
+identifiers, YAML keys, and tool names are always English.
+
+> **FR** — La documentation du framework (`docs/`) est bilingue à parité stricte ; les
+> READMEs d'exemples, eux, peuvent être rédigés en anglais ou en français au choix du
+> contributeur — seuls le code et les identifiants restent en anglais.
+
 ## Run in Docker (simplest path)
 
 All 105 examples ship inside the `ghcr.io/orkeon/orkeon-runners` image with an

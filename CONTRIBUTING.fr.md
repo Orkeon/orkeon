@@ -85,19 +85,6 @@ La solution compte **43 projets src répartis en 13 zones**, chacun reflété pa
 projet de tests (plus `tests/e2e`, `tests/examples`, `tests/shared` ; les quatre projets
 `src/packaging/` sont de pur empaquetage et n'ont pas de miroir de tests) :
 
-### Les commentaires sont en anglais, et jamais accentués
-
-Un invariant, tenu par `scripts/check-comment-accents.py` en CI : tout commentaire est en
-anglais et ne porte aucune lettre accentuée. L'interface de Studio étant en français, le
-piège est le commentaire qui cite un libellé : **traduisez le libellé, n'enlevez pas ses
-accents** — un commentaire citant `"Modele d'IA"` nomme quelque chose que le produit
-n'affiche jamais. Nommez plutôt le rôle (`the model-settings tab`). Une phrase française
-désaccentuée reste du français, en pire.
-
-Seules les lignes de commentaire sont concernées. Les chaînes visibles par l'utilisateur
-gardent leurs accents, tout comme la typographie employée partout dans le dépôt — tirets
-cadratins, points de suspension, flèches, guillemets : ce ne sont pas des lettres accentuées.
-
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (cœur Clean Architecture)
@@ -153,6 +140,19 @@ public class AgentService : IAgentService
 }
 ```
 
+### Les commentaires sont en anglais, et jamais accentués
+
+Un invariant, tenu par `scripts/check-comment-accents.py` en CI : tout commentaire est en
+anglais et ne porte aucune lettre accentuée. L'interface de Studio étant en français, le
+piège est le commentaire qui cite un libellé : **traduisez le libellé, n'enlevez pas ses
+accents** — un commentaire citant `"Modele d'IA"` nomme quelque chose que le produit
+n'affiche jamais. Nommez plutôt le rôle (`the model-settings tab`). Une phrase française
+désaccentuée reste du français, en pire.
+
+Seules les lignes de commentaire sont concernées. Les chaînes visibles par l'utilisateur
+gardent leurs accents, tout comme la typographie employée partout dans le dépôt — tirets
+cadratins, points de suspension, flèches, guillemets : ce ne sont pas des lettres accentuées.
+
 ### Documentation
 
 * Ajoutez une documentation XML à toutes les APIs publiques
@@ -164,7 +164,8 @@ public class AgentService : IAgentService
 La documentation est maintenue en anglais et en français en parallèle. Toute PR qui ajoute,
 renomme ou supprime un fichier sous `docs/**.md` (hors `docs/fr/`) **doit** appliquer le même
 changement à son miroir français sous `docs/fr/`, et toute modification d'un fichier
-communautaire racine (`README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`)
+communautaire racine (`README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
+`SUPPORT.md`, ainsi que la page d'accueil du site `index.md`)
 **doit** mettre à jour son miroir `*.fr.md`. Le script `scripts/check-docs-parity.sh` le
 vérifie : il échoue dès qu'un miroir manque — exécutez-le localement avant d'ouvrir la PR.
 **C'est un gate CI** : `ci.yml` exécute le script à chaque push et pull request, un miroir
@@ -208,7 +209,7 @@ public async Task Agent_Should_Execute_Task_Successfully()
 - [ ] Adaptateurs de langage supplémentaires pour RaggableTree (`ILanguageAdapter` : Java, Ruby, PHP…)
 - [ ] Tests d'interop MCP contre les serveurs de référence (MCP Inspector)
 - [ ] Optimisations de performance
-- [ ] Améliorations de la documentation (voir le contrat de parité EN/FR ci-dessous)
+- [ ] Améliorations de la documentation (voir le contrat de parité EN/FR ci-dessus)
 
 ### Priorité moyenne
 - [ ] Outils supplémentaires (calendrier, ticketing, messagerie au-delà de Slack/Email)
