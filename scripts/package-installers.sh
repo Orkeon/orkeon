@@ -90,7 +90,15 @@ fi
 # --- esbuild version (single source of truth: the lockfile) -------------------
 ESBUILD_VERSION="$(grep -A1 '"node_modules/esbuild"' "$REPO_ROOT/tools/scripting-esbuild/package-lock.json" 2>/dev/null \
   | sed -n 's/.*"version": "\([^"]*\)".*/\1/p' | head -1)"
-ESBUILD_VERSION="${ESBUILD_VERSION:-0.24.0}"
+ESBUILD_VERSION="${ESBUILD_VERSION:-0.25.12}"
+
+# Expected sha512 integrity (base64, without the "sha512-" prefix) of the
+# @esbuild platform package, straight from the lockfile — the tarball fetched
+# at packaging time must match what npm resolved and audited.
+esbuild_lock_integrity() { # $1=npm-rid
+  grep -A5 "\"node_modules/@esbuild/$1\"" "$REPO_ROOT/tools/scripting-esbuild/package-lock.json" 2>/dev/null \
+    | sed -n 's/.*"integrity": "sha512-\([^"]*\)".*/\1/p' | head -1
+}
 
 # --- App table: name | csproj (repo-relative) | apphost assembly name | self-contained | rids
 # self-contained=true bundles the .NET runtime so end users need no SDK/runtime
@@ -176,7 +184,7 @@ mkdir -p "$STAGE" "$CACHE"
 echo "==> Packaging Orkeon $VERSION ($APP_SET set, esbuild $ESBUILD_VERSION) for: $RIDS"
 
 fetch_esbuild() { # $1=rid $2=dest-dir
-  local npmrid dest tgz pkgdir bin
+  local npmrid dest tgz pkgdir bin expected actual
   npmrid="$(esbuild_npm_rid "$1")" || { echo "No esbuild mapping for RID $1" >&2; return 1; }
   dest="$2"
   pkgdir="$CACHE/$npmrid-$ESBUILD_VERSION"
@@ -184,6 +192,20 @@ fetch_esbuild() { # $1=rid $2=dest-dir
     tgz="$CACHE/$npmrid-$ESBUILD_VERSION.tgz"
     echo "    fetching @esbuild/$npmrid@$ESBUILD_VERSION"
     curl -fsSL "https://registry.npmjs.org/@esbuild/$npmrid/-/$npmrid-$ESBUILD_VERSION.tgz" -o "$tgz"
+    # Verify the tarball against the sha512 pinned in package-lock.json before
+    # trusting anything inside it.
+    expected="$(esbuild_lock_integrity "$npmrid")"
+    if [[ -z "$expected" ]]; then
+      echo "No sha512 integrity for @esbuild/$npmrid in tools/scripting-esbuild/package-lock.json — refusing to package an unverifiable esbuild." >&2
+      rm -f "$tgz"
+      return 1
+    fi
+    actual="$(openssl dgst -sha512 -binary "$tgz" | openssl base64 -A)"
+    if [[ "$actual" != "$expected" ]]; then
+      echo "Integrity mismatch for @esbuild/$npmrid@$ESBUILD_VERSION: expected sha512-$expected, got sha512-$actual" >&2
+      rm -f "$tgz"
+      return 1
+    fi
     mkdir -p "$pkgdir"
     tar -xzf "$tgz" -C "$pkgdir"
   fi

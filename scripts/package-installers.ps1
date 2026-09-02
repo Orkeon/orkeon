@@ -53,8 +53,9 @@ if (-not $Version) {
 if (-not $Version) { throw 'Could not resolve a version; pass -Version.' }
 
 # --- esbuild version from the lockfile ----------------------------------------
-$EsbuildVersion = '0.24.0'
+$EsbuildVersion = '0.25.12'
 $lock = Join-Path $RepoRoot 'tools\scripting-esbuild\package-lock.json'
+$lockJson = $null
 if (Test-Path $lock) {
     # npm lockfiles key the root package on "" — ConvertFrom-Json only accepts
     # empty property names with -AsHashtable (PowerShell 7.3+ throws otherwise).
@@ -157,6 +158,22 @@ foreach ($rid in $Rids) {
         $tgz = Join-Path $Cache "$npmRid-$EsbuildVersion.tgz"
         Write-Host "    fetching @esbuild/$npmRid@$EsbuildVersion"
         Invoke-WebRequest "https://registry.npmjs.org/@esbuild/$npmRid/-/$npmRid-$EsbuildVersion.tgz" -OutFile $tgz
+        # Verify the tarball against the sha512 pinned in package-lock.json before
+        # trusting anything inside it (mirrors fetch_esbuild in package-installers.sh).
+        $lockEntry = if ($lockJson) { $lockJson['packages']["node_modules/@esbuild/$npmRid"] } else { $null }
+        $expected = if ($lockEntry) { $lockEntry['integrity'] } else { $null }
+        if (-not $expected -or -not $expected.StartsWith('sha512-')) {
+            Remove-Item -Force $tgz
+            throw "No sha512 integrity for @esbuild/$npmRid in tools/scripting-esbuild/package-lock.json - refusing to package an unverifiable esbuild."
+        }
+        $hashHex = (Get-FileHash -Algorithm SHA512 $tgz).Hash
+        $hashBytes = [byte[]]::new($hashHex.Length / 2)
+        for ($i = 0; $i -lt $hashBytes.Length; $i++) { $hashBytes[$i] = [Convert]::ToByte($hashHex.Substring($i * 2, 2), 16) }
+        $actual = 'sha512-' + [Convert]::ToBase64String($hashBytes)
+        if ($actual -ne $expected) {
+            Remove-Item -Force $tgz
+            throw "Integrity mismatch for @esbuild/$npmRid@${EsbuildVersion}: expected $expected, got $actual"
+        }
         New-Item -ItemType Directory -Force -Path $pkgDir | Out-Null
         tar -xzf $tgz -C $pkgDir
         if ($LASTEXITCODE -ne 0) { throw "tar extraction failed for $tgz" }

@@ -54,15 +54,24 @@ echo "Documentation parity check passed: all docs have their bilingual mirror."
 # --- informational content-drift report (never fails the build) ------------------------
 # The parity contract is existence-only by design; this surfaces mirrors whose line
 # counts diverge enough to suggest one side fell behind (DOC-02/F3).
+# The threshold is relative: French prose naturally runs a few percent longer than
+# the English original, so a fixed line count alone false-positives on long files.
+# A pair is flagged only when the delta exceeds BOTH the absolute floor (so short
+# files are not flagged for a reworded paragraph) AND the percentage of the larger
+# side (so long files tolerate proportional wording drift while a genuinely missing
+# section still trips it).
 DRIFT_THRESHOLD=${DRIFT_THRESHOLD:-15}
+DRIFT_THRESHOLD_PCT=${DRIFT_THRESHOLD_PCT:-7}
 drift=0
 while IFS= read -r f; do
   en="docs/$f"; fr="docs/fr/$f"
   [ -f "$fr" ] || continue
   en_lc=$(wc -l < "$en"); fr_lc=$(wc -l < "$fr")
   delta=$((en_lc - fr_lc)); [ "$delta" -lt 0 ] && delta=$((-delta))
-  if [ "$delta" -gt "$DRIFT_THRESHOLD" ]; then
-    [ "$drift" -eq 0 ] && echo "::notice::EN/FR content drift (informational, threshold ${DRIFT_THRESHOLD} lines):"
+  max_lc=$en_lc; [ "$fr_lc" -gt "$max_lc" ] && max_lc=$fr_lc
+  pct_allowance=$((max_lc * DRIFT_THRESHOLD_PCT / 100))
+  if [ "$delta" -gt "$DRIFT_THRESHOLD" ] && [ "$delta" -gt "$pct_allowance" ]; then
+    [ "$drift" -eq 0 ] && echo "::notice::EN/FR content drift (informational, threshold ${DRIFT_THRESHOLD} lines and ${DRIFT_THRESHOLD_PCT}% of the larger file):"
     note "$en ($en_lc) vs $fr ($fr_lc) — Δ$delta"
     drift=$((drift + 1))
   fi

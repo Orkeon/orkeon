@@ -75,7 +75,7 @@
     <PropertyGroup>
       <_ScriptingEsbuildRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\..\tools\scripting-esbuild'))</_ScriptingEsbuildRoot>
       <_ScriptingEsbuildNodeModules>$(_ScriptingEsbuildRoot)\node_modules</_ScriptingEsbuildNodeModules>
-      <_EsbuildVersion>0.24.0</_EsbuildVersion>
+      <_EsbuildVersion>0.25.12</_EsbuildVersion>
 
       <_EsbuildOs Condition="$([MSBuild]::IsOSPlatform('Windows'))">win32</_EsbuildOs>
       <_EsbuildOs Condition="$([MSBuild]::IsOSPlatform('OSX'))">darwin</_EsbuildOs>

@@ -193,14 +193,23 @@ RUN dotnet publish examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.cspro
 # mirroring scripts/package-installers.sh, and expose it below via
 # ORKEON_ESBUILD_PATH so every app finds it regardless of its base directory.
 # The version is read from the lockfile (single source of truth), with the same
-# 0.24.0 fallback the packaging script uses.
+# 0.25.12 fallback the packaging script uses. The downloaded tarball is verified
+# against the sha512 integrity pinned in the lockfile (coreutils only — the SDK
+# image has no npm) before anything inside it is trusted.
 COPY tools/scripting-esbuild/package-lock.json ./esbuild-lock.json
 RUN ESBUILD_VERSION="$(grep -A1 '"node_modules/esbuild"' esbuild-lock.json \
       | sed -n 's/.*"version": "\([^"]*\)".*/\1/p' | head -1)" \
-    && ESBUILD_VERSION="${ESBUILD_VERSION:-0.24.0}" \
+    && ESBUILD_VERSION="${ESBUILD_VERSION:-0.25.12}" \
     && echo "Fetching @esbuild/linux-x64@${ESBUILD_VERSION}" \
     && curl -fsSL "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-${ESBUILD_VERSION}.tgz" \
          -o /tmp/esbuild.tgz \
+    && EXPECTED_B64="$(grep -A5 '"node_modules/@esbuild/linux-x64"' esbuild-lock.json \
+         | sed -n 's/.*"integrity": "sha512-\([^"]*\)".*/\1/p' | head -1)" \
+    && test -n "$EXPECTED_B64" \
+    && EXPECTED_HEX="$(printf '%s' "$EXPECTED_B64" | base64 -d | od -An -v -tx1 | tr -d ' \n')" \
+    && ACTUAL_HEX="$(sha512sum /tmp/esbuild.tgz | cut -d' ' -f1)" \
+    && { [ "$ACTUAL_HEX" = "$EXPECTED_HEX" ] \
+         || { echo "Integrity mismatch for @esbuild/linux-x64@${ESBUILD_VERSION}" >&2; exit 1; }; } \
     && mkdir -p /app/esbuild-bin \
     && tar -xzf /tmp/esbuild.tgz -C /tmp \
     && cp /tmp/package/bin/esbuild /app/esbuild-bin/esbuild \

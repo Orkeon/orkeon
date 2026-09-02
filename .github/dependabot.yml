@@ -24,3 +24,17 @@ updates:
     schedule:
       interval: weekly
       day: monday
+
+  # Base images of the root Dockerfile and Dockerfile.runners.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+
+  # Base images of the deploy stack (Dockerfile.host).
+  - package-ecosystem: docker
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
