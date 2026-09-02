@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Orkeon.Examples.Interactive": {
-      "commandName": "Project",
-      "commandLineArgs": " -v 1 -c ../../../../../01-enterprise/16-interactive-qa/config.yaml -s ../../../../../_shared/appsettings.minmax.local.json"
-    }
-  }
-}

@@ -183,16 +183,6 @@ You'll see each lifecycle step (`Main entered`, `Host.Build()`,
 attach, `Ctrl+C captured`, …). Use `TUI_DRIVER=ansi|dotnet|windows` to
 override the driver pick.
 
-For pure key-event debugging, run the standalone probe:
-
-```bash
-dotnet run --project examples/runners/tui-keytest
-```
-
-It boots Terminal.Gui exactly like the TUI host and writes every key event
-arriving at `Application.KeyDown` to `/tmp/tui-keytest.log` — useful when
-diagnosing terminal-specific keystroke routing issues.
-
 ## Known limitations
 
 - **Tests crash inside xUnit (TUI-12 → TUI-18).** Terminal.Gui v2.0.1's
@@ -224,29 +214,11 @@ diagnosing terminal-specific keystroke routing issues.
   HttpLlmProviderBase does, so once the orchestrator decides to exit it
   cancels the live HTTP call quickly. Workaround: 2×Ctrl+C force-quits.
   Fix is a framework-level audit (out of scope for the TUI).
-- **`examples/runners/interactive` (standalone Q&A) writes to `Console.*`
-  directly** through `RunnerExecution.RunInteractiveLoopAsync`. It accepts
-  the `--ui` flag transparently but TUI mode would be ineffective until that
-  helper is refactored to use `IConsoleAdapter`. ConsoleApp's
-  `MainMenuRunner` and `QaRunner` (which inherit `InteractiveRunnerBase`)
-  are wired correctly.
-
-## Smoke test (maintainers only)
-
-The manual smoke drives the claim-verification interactive runner through the launch script
-of the **private `experiments` submodule** (it supplies the crew config and the claims corpus
-the public repository does not ship). With the submodule checked out:
-
-```bash
-# Auto: TUI on a real terminal, plain on a pipe.
-bash experiments/05-claim-verification/run-interactive.sh -s deepseek.local
-
-# Force plain (legacy behavior).
-bash experiments/05-claim-verification/run-interactive.sh -s deepseek.local --ui plain
-
-# Pipe → auto-falls back to plain.
-echo "list" | bash experiments/05-claim-verification/run-interactive.sh -s deepseek.local
-```
+- **`RunnerExecution.RunInteractiveLoopAsync` writes to `Console.*`
+  directly.** It accepts the `--ui` flag transparently but TUI mode would be
+  ineffective until that helper is refactored to use `IConsoleAdapter`.
+  ConsoleApp's `MainMenuRunner` and `QaRunner` (which inherit
+  `InteractiveRunnerBase`) are wired correctly.
 
 Without the submodule, the same three behaviors (auto-TUI on a terminal, forced plain via
 `--ui plain`, pipe fallback to plain) are covered by the automated suite:

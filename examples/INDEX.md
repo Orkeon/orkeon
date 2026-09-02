@@ -15,7 +15,6 @@ Numbered examples are executed through a runner project in `examples/runners/`:
 |--------|---------|
 | `standard` | Default runner for all categories except finance/trading. |
 | `trading` | Adds 44 specialized trading tools; used by **03 - Finance & Trading**. |
-| `interactive` | Human-in-the-loop console runners (e.g. `interactive-claim-verification`, `interactive-interview-spec-forge`) for the interactive examples. |
 
 Run any example with `bash examples/run-example.sh <runner> <category>/<example>` (see `examples/README.md`).
 

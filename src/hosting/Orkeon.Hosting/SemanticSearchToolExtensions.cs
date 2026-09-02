@@ -27,8 +27,8 @@ namespace Orkeon.Hosting;
 /// <c>"Tool 'semantic_search' not found in registry; skipping."</c>.
 ///
 /// Registered on the shared runner's <see cref="RunnerExecution.RunOneShotAsync"/>
-/// configureServices callback (the <c>orkeon run</c> YAML path and the trading /
-/// interview-spec-forge runners) so crews that reference it resolve it.
+/// configureServices callback (the <c>orkeon run</c> YAML path and the trading
+/// runner) so crews that reference it resolve it.
 ///
 /// Embedding resolution note (RAG-01/C4) : the hash-based stub is no longer the
 /// implicit default. The Application-port <see cref="IEmbeddingProvider"/> resolves

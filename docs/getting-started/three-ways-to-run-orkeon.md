@@ -74,10 +74,6 @@ The multi-app archive is the only one that carries more than the CLI:
 | `orkeon-slim` | The same CLI, framework-dependent and much smaller | needs .NET 10 |
 | `orkeon-trading` | Trading showcase runner — `orkeon-trading --config <config.yaml>`; adds 44 specialized trading tools | self-contained |
 | `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) | needs .NET 10 |
-| `orkeon-interactive` | Interactive Terminal.Gui runner | needs .NET 10 |
-| `orkeon-claim-verify` | Interactive claim-verification runner | needs .NET 10 |
-| `orkeon-spec-forge` | Interactive interview / spec-forge runner | needs .NET 10 |
-| `orkeon-tui-keytest` | Terminal.Gui key-diagnostic utility | needs .NET 10 |
 | `orkeon-host` | The service host daemon — registers crews and serves them long-running (systemd / Windows service, chat gateway, Discord channel; see [the service host](../architecture/service-host.md)) | self-contained |
 | `orkeon-studio` | **Orkeon Studio**, the desktop app — Windows archives only (see [below](#orkeon-studio-the-graphical-way-in)) | self-contained |
 | `orkeon-studio-config` / `orkeon-studio-run` | **Orkeon Studio** in the terminal: settings editor and crew launcher | self-contained |
@@ -438,8 +434,7 @@ docker run --rm \
 
 The entry point **is** `orkeon`, so everything after the image name is CLI
 arguments (`run <config> …`). To launch a different runner, set the
-`ORKEON_RUNNER` env var — `trading`, `repl`, `interactive`, `claim-verify`,
-`spec-forge`, `tui-keytest`, or `shell`:
+`ORKEON_RUNNER` env var — `trading`, `repl`, or `shell`:
 
 ```bash
 docker run --rm -e ORKEON_RUNNER=trading \

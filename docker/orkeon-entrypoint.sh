@@ -38,12 +38,8 @@ case "${ORKEON_RUNNER:-orkeon}" in
   orkeon)       set -- dotnet /app/runners/orkeon/orkeon.dll "$@" ;;
   trading)      set -- dotnet /app/runners/trading/Orkeon.Examples.Trading.Runner.dll "$@" ;;
   repl)         set -- dotnet /app/runners/repl/Orkeon.ConsoleApp.dll "$@" ;;
-  interactive)  set -- dotnet /app/runners/interactive/Orkeon.Examples.Interactive.dll "$@" ;;
-  claim-verify) set -- dotnet /app/runners/claim-verify/Orkeon.Examples.Interactive.ClaimVerification.dll "$@" ;;
-  spec-forge)   set -- dotnet /app/runners/spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.dll "$@" ;;
-  tui-keytest)  set -- dotnet /app/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.dll "$@" ;;
   shell)        cd /workspace && set -- zsh "$@" ;;
-  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|trading|repl|interactive|claim-verify|spec-forge|tui-keytest|shell)" >&2; exit 2 ;;
+  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|trading|repl|shell)" >&2; exit 2 ;;
 esac
 
 # --- Privilege drop --------------------------------------------------------------

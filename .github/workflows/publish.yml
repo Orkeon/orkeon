@@ -94,10 +94,6 @@ jobs:
       # Orkeon.Runners.Shared already lives inside Orkeon.sln, so the pack above emits it too;
       # this second pack is a harmless safety net (push uses --skip-duplicate).
       - run: dotnet pack  examples/runners/_shared/Orkeon.Examples.Shared.csproj -c Release -o artifacts
-      # Interactive runner dotnet tools consumed by experiments/ in packages mode
-      # (orkeon-claim-verify, orkeon-spec-forge). Same safety-net rationale.
-      - run: dotnet pack  examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj -c Release -o artifacts
-      - run: dotnet pack  examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj -c Release -o artifacts
       - run: >
           dotnet nuget push "artifacts/*.nupkg"
           --source "https://nuget.pkg.github.com/Orkeon/index.json"

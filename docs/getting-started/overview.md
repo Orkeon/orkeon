@@ -293,7 +293,7 @@ Orkeon.sln
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
 │       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)
-├── tests/                          # 34 projects (src mirrors + e2e, examples, shared)
+├── tests/                          # 33 projects (src mirrors + e2e, shared)
 ├── examples/                       # 105 bundled examples (9 categories + showcases)
 └── docs/                           # Documentation (EN + docs/fr mirror)
 ```

@@ -77,11 +77,7 @@ L'archive multi-apps est la seule à embarquer plus que le CLI :
 | `orkeon-slim` | Le même CLI, framework-dependent et bien plus petit | requiert .NET 10 |
 | `orkeon-trading` | Runner de la vitrine trading — `orkeon-trading --config <config.yaml>` ; ajoute 44 outils de trading spécialisés | self-contained |
 | `orkeon-repl` | Console REPL interactive complète (tous les outils intégrés, analyse de code, embeddings locaux) | requiert .NET 10 |
-| `orkeon-interactive` | Runner Terminal.Gui interactif | requiert .NET 10 |
-| `orkeon-claim-verify` | Runner interactif de vérification d'affirmations | requiert .NET 10 |
-| `orkeon-spec-forge` | Runner interactif d'interview / spec-forge | requiert .NET 10 |
 | `orkeon-host` | Le daemon d'hébergement — enregistre des crews et les sert en continu (systemd / service Windows, passerelle de chat, canal Discord ; voir [le service host](../architecture/service-host.md)) | autonome |
-| `orkeon-tui-keytest` | Utilitaire de diagnostic clavier Terminal.Gui | requiert .NET 10 |
 | `orkeon-studio` | **Orkeon Studio**, l'application de bureau — archives Windows uniquement (voir [plus bas](#orkeon-studio-la-voie-graphique)) | self-contained |
 | `orkeon-studio-config` / `orkeon-studio-run` | **Orkeon Studio** dans le terminal : éditeur de settings et lanceur de crew | self-contained |
 
@@ -461,8 +457,7 @@ docker run --rm \
 
 Le point d'entrée **est** `orkeon`, donc tout ce qui suit le nom de l'image est
 un argument du CLI (`run <config> …`). Pour lancer un autre runner, définissez
-la variable d'environnement `ORKEON_RUNNER` — `trading`, `repl`, `interactive`,
-`claim-verify`, `spec-forge`, `tui-keytest`, ou `shell` :
+la variable d'environnement `ORKEON_RUNNER` — `trading`, `repl`, ou `shell` :
 
 ```bash
 docker run --rm -e ORKEON_RUNNER=trading \

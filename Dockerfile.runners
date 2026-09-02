@@ -5,8 +5,7 @@
 # apps are framework-dependent inside the image (the .NET runtime ships in the
 # base image). Which executable runs is chosen by the ORKEON_RUNNER env var:
 #
-#   orkeon (default) | trading | repl | interactive | claim-verify
-#                    | spec-forge | tui-keytest | shell
+#   orkeon (default) | trading | repl | shell
 #
 # Build:
 #   docker build -f Dockerfile.runners -t orkeon-runners .
@@ -55,9 +54,8 @@
 #     --config examples/03-finance-trading/<example>/config.yaml \
 #     --settings /app/appsettings.local.json
 #
-# The interactive runners (repl, interactive, claim-verify, spec-forge,
-# tui-keytest) are Terminal.Gui/console apps that read from stdin — they REQUIRE
-# an interactive TTY, so run them with `docker run -it`:
+# The REPL is a Terminal.Gui app that reads from stdin — it REQUIRES an
+# interactive TTY, so run it with `docker run -it`:
 #   docker run -it --rm -e ORKEON_RUNNER=repl ghcr.io/orkeon/orkeon-runners
 # NOTE (terminfo): the runtime:10.0 base image is Debian-slim and ships a minimal
 # terminfo database. Terminal.Gui apps generally cope (they fall back to a basic
@@ -159,30 +157,6 @@ RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj \
       -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o /app/runners/repl --nologo
-# Interactive split-pane runner.
-RUN dotnet publish examples/runners/interactive/Orkeon.Examples.Interactive.csproj \
-      -c Release -r linux-x64 --self-contained false \
-      -p:SkipScriptingNpmInstall=true \
-      -p:ErrorOnDuplicatePublishOutputFiles=false \
-      -o /app/runners/interactive --nologo
-# Interactive claim-verification runner.
-RUN dotnet publish examples/runners/interactive-claim-verification/Orkeon.Examples.Interactive.ClaimVerification.csproj \
-      -c Release -r linux-x64 --self-contained false \
-      -p:SkipScriptingNpmInstall=true \
-      -p:ErrorOnDuplicatePublishOutputFiles=false \
-      -o /app/runners/claim-verify --nologo
-# Interactive interview / spec-forge runner.
-RUN dotnet publish examples/runners/interactive-interview-spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.csproj \
-      -c Release -r linux-x64 --self-contained false \
-      -p:SkipScriptingNpmInstall=true \
-      -p:ErrorOnDuplicatePublishOutputFiles=false \
-      -o /app/runners/spec-forge --nologo
-# Terminal.Gui key-test harness.
-RUN dotnet publish examples/runners/tui-keytest/Orkeon.Examples.TuiKeyTest.csproj \
-      -c Release -r linux-x64 --self-contained false \
-      -p:SkipScriptingNpmInstall=true \
-      -p:ErrorOnDuplicatePublishOutputFiles=false \
-      -o /app/runners/tui-keytest --nologo
 
 # esbuild binary — required at runtime by `orkeon run script.ork.ts` (the .ork.ts
 # transpile path; the YAML path never touches it). The transpiler resolves the
@@ -242,11 +216,7 @@ RUN apt-get update \
 RUN set -e; \
     for pair in "orkeon:orkeon/orkeon.dll" \
                 "orkeon-trading:trading/Orkeon.Examples.Trading.Runner.dll" \
-                "orkeon-repl:repl/Orkeon.ConsoleApp.dll" \
-                "orkeon-interactive:interactive/Orkeon.Examples.Interactive.dll" \
-                "orkeon-claim-verify:claim-verify/Orkeon.Examples.Interactive.ClaimVerification.dll" \
-                "orkeon-spec-forge:spec-forge/Orkeon.Examples.Interactive.InterviewSpecForge.dll" \
-                "orkeon-tui-keytest:tui-keytest/Orkeon.Examples.TuiKeyTest.dll"; do \
+                "orkeon-repl:repl/Orkeon.ConsoleApp.dll"; do \
       name="${pair%%:*}"; dll="${pair#*:}"; \
       printf '%s\n' '#!/bin/sh' "exec dotnet /app/runners/$dll \"\$@\"" > "/usr/local/bin/$name"; \
       chmod +x "/usr/local/bin/$name"; \
@@ -282,7 +252,7 @@ RUN mkdir -p /etc/orkeon/zsh && cat /etc/orkeon/banner.txt > /etc/orkeon/motd &&
   '    orkeon run <config> --list-tools        print the tool registry' \
   '    orkeon --help                           every flag explained' \
   '    orkeon-trading --config <crew.yaml>     trading showcase (+44 tools)' \
-  '    orkeon-repl · orkeon-interactive · orkeon-claim-verify · orkeon-spec-forge' \
+  '    orkeon-repl                             full interactive REPL console' \
   '' \
   '  \033[1;36mPaths\033[0m' \
   '    /workspace              your project (bind mount — you are here)' \
@@ -293,7 +263,7 @@ RUN mkdir -p /etc/orkeon/zsh && cat /etc/orkeon/banner.txt > /etc/orkeon/motd &&
   '    orkeon run /workspace/crews/my-crew/config.yaml --settings /workspace/appsettings.local.json --mount /workspace/data:/data:ro /workspace/output:/output:rw' \
   '    \033[2madd\033[0m --llm-log-path /workspace/output/llm-logs \033[2mto log every LLM exchange (.jsonl)\033[0m' \
   '' \
-  '  \033[1;36mCopy/paste in the TUI runners\033[0m \033[2m(repl, interactive)\033[0m' \
+  '  \033[1;36mCopy/paste in the TUI runners\033[0m \033[2m(repl)\033[0m' \
   '    copy: Ctrl+C on a selection reaches your host clipboard (OSC 52)' \
   '    paste from host: Ctrl+Shift+V (terminal-side paste)' \
   '' \

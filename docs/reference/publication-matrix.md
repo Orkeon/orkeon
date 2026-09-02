@@ -89,15 +89,12 @@ Remaining owner actions:
 `publish.yml` (tag `v*`) packs `Orkeon.sln` and pushes **every packable project** to
 **GitHub Packages** (`nuget.pkg.github.com/Orkeon`) with `--skip-duplicate`. That is the
 NuGet.org lineup above **plus** the build-time and runner packages that stay off NuGet.org:
-`Orkeon.ConsoleApp`, `Orkeon.Generators`, `Orkeon.Compliance.Vfs`, and the three
-`examples/runners` packables. This feed is what `experiments/` consumes in packages mode. The
-interactive runners ship as dotnet tools so no launcher needs a source clone:
+`Orkeon.ConsoleApp`, `Orkeon.Generators`, `Orkeon.Compliance.Vfs`, and the
+`examples/runners/_shared` packable. This feed is what `experiments/` consumes in packages mode:
 
 | PackageId | Tool command | Source project |
 |---|---|---|
 | `Orkeon.Runners.Shared` | — (library) | `examples/runners/_shared` |
-| `Orkeon.Runners.ClaimVerification` | `orkeon-claim-verify` | `examples/runners/interactive-claim-verification` |
-| `Orkeon.Runners.InterviewSpecForge` | `orkeon-spec-forge` | `examples/runners/interactive-interview-spec-forge` |
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
 | `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
 

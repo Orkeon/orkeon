@@ -194,7 +194,7 @@ def section_is_curated(section_lines: list[str]) -> bool:
         return True
     if any(re.match(r"^###\s+\S", ln) for ln in section_lines):
         return True
-    if "runners/interactive" in text or "src/apps" in text:
+    if "src/apps" in text:
         return True
     # Any legacy examples/runners/* reference is hand-curated now — leave it for manual review.
     if re.search(r"examples/runners/[\w-]+", text):

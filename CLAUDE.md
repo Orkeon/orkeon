@@ -446,7 +446,7 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **43 src projects** and **34 test projects**, plus two solutions:
+The repository contains **43 src projects** and **33 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
@@ -506,7 +506,7 @@ The repository contains **43 src projects** and **34 test projects**, plus two s
 │       ├── Orkeon.Studio.Core/   # Studio: shared core (settings model, target detection, process runner, localization port)
 │       ├── Orkeon.Studio.Run/    # Studio: run TUI
 │       └── Orkeon.Studio.Wpf/    # Studio: WPF desktop app (net10.0-windows, AssemblyName=Orkeon.Studio, IsPackable=false ×4)
-├── tests/                        # 34 projects
+├── tests/                        # 33 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
 │   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Commands.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
@@ -518,7 +518,6 @@ The repository contains **43 src projects** and **34 test projects**, plus two s
 │   ├── plugins/                  # Orkeon.Plugins.Tests
 │   ├── apps/                     # Orkeon.ConsoleApp.Tests, Orkeon.Studio.{Config,Core,Run,Wpf}.Tests
 │   ├── e2e/                      # Orkeon.E2E.Tests
-│   ├── examples/                 # Orkeon.Examples.Runners.Tests
 │   └── shared/                   # Orkeon.Tests.Shared (common test fixtures)
 ├── examples/                     # Orkeon.Examples.sln (separate solution)
 │   ├── 01-enterprise/ … 09-experimental/  # 9 thematic example categories
