@@ -126,14 +126,14 @@ jobs:
       # compressed, so the default level 6 only burns CPU on both ends. They
       # exist to carry payloads between jobs of this one run, hence the
       # one-day retention.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-cli-win-x64
           path: artifacts/installers/orkeon-cli-*-win-x64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-cli-osx
           path: artifacts/installers/orkeon-cli-*-osx-*.tar.gz
@@ -145,7 +145,7 @@ jobs:
       # only published archive that carries the two Studio TUIs on a runner we
       # actually have — smoke-macos exercises run-smoke-tarball.sh with
       # `--studio absent`, and nothing exercised the `present` side.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-linux
           path: |
@@ -160,7 +160,7 @@ jobs:
       # osx tarballs, the full linux-arm64 tarball and the checksums. (The
       # linux-x64 exclusion pattern would also match a cli linux tarball, but
       # this workflow never builds one — the cli step targets win + osx only.)
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-assets
           path: |
@@ -203,7 +203,7 @@ jobs:
           ./scripts/smoke-onboarding/run-smoke.ps1 -ArchivePath $zip.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke" -Keep
           exit $LASTEXITCODE
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-smoke-windows-logs
@@ -381,7 +381,7 @@ jobs:
           if ($userPathEntriesAfter -contains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') still on the user PATH after uninstall." }
           Write-Host 'PASS path-removed -- bin\ entry gone'
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-msi-logs
@@ -389,7 +389,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-msi
           path: |
@@ -452,7 +452,7 @@ jobs:
             --work-dir "$RUNNER_TEMP/orkeon-smoke-tarball" \
             --keep
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-smoke-linux-tarball-logs
@@ -499,7 +499,7 @@ jobs:
             --work-dir "$RUNNER_TEMP/orkeon-smoke" \
             --keep
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-smoke-macos-logs
