@@ -56,7 +56,7 @@ jobs:
       # build-free like its two neighbours, so it runs before setup-dotnet.
       - name: Check comments carry no accented letter
         run: python3 scripts/check-comment-accents.py
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with: { dotnet-version: '10.0.x' }
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
