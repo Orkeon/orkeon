@@ -68,6 +68,14 @@ bash examples/run-example.sh rag/crew-yaml
 dotnet run --project examples/rag/crew-yaml
 ```
 
+The same `crew.yaml` also runs as-is in the stock CLI (this host exists only to
+prove the YAML `rag:`/`knowledge:` path offline, without an LLM):
+
+```bash
+orkeon run examples/rag/crew-yaml/crew.yaml --mount examples/rag/crew-yaml/data:/kb:ro --validate
+# Drop --validate to run the crew for real (needs a configured LLM)
+```
+
 ## Expected output (truncated)
 
 ```

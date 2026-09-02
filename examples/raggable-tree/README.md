@@ -8,5 +8,5 @@ back to `dotnet run --project …` for them.
 | Example | What it shows |
 |---------|---------------|
 | [`basic-indexing/`](basic-indexing/) | The smallest end-to-end run: index a directory, inspect the 6-level graph |
-| [`crew-yaml/`](crew-yaml/) | A YAML-defined crew consuming a RaggableTree index through the analysis tools |
+| [`crew-yaml/`](crew-yaml/) | A YAML-defined crew consuming a RaggableTree index through the analysis tools — pure YAML, run by the stock `orkeon` CLI |
 | [`custom-adapter/`](custom-adapter/) | Teaching RaggableTree a new language by implementing `ILanguageAdapter` |

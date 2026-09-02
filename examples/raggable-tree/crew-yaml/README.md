@@ -1,58 +1,50 @@
 # RaggableTree — Crew from YAML
 
-> Builds a RaggableTree index and shows how a YAML-defined crew consumes it. The
-> `crew.yaml` here declares a 3-agent hierarchical crew (navigator, analyst,
-> flow_tracer) wired to the RaggableTree agent tools.
+> A 3-agent hierarchical crew (navigator, analyst, flow_tracer) wired to the
+> RaggableTree analysis tools, declared entirely in `crew.yaml` and run by the
+> stock `orkeon` CLI — no C# host needed. The runner registers the RaggableTree
+> subsystem and its 15 agent tools by default.
 
 ## What it does
 
-- Loads `crew.yaml`, which describes the RaggableTree settings **and** a
-  `codebase-explorer` crew (3 agents, `hierarchical` process, a tool allow-list
-  and a budget guardrail).
-- Mounts a target directory read-only at `/src` and builds the index with the
-  TypeScript and C# adapters.
-- Prints the resulting node/edge counts and explains how the crew's tools
-  (`codebase_map`, `symbol_detail`, `flow_trace`, …) consume that index.
-
-This program builds and explains the index; wiring the crew to an actual runner
-to answer questions is left as the next step (the YAML is ready for it). See the
-[RaggableTree guide](../../../docs/architecture/raggable-tree.md).
+- `crew.yaml` declares the `codebase-explorer` crew: the navigator (manager)
+  indexes the mounted tree on demand with `index_codebase`, then the crew
+  answers architectural questions through the analysis tools (`codebase_map`,
+  `symbol_detail`, `flow_trace`, `impact_analysis`, …).
+- The target codebase is mounted read-only at `/src` with `--mount`; analysed
+  languages are auto-detected per `index_codebase` call.
 
 ## Prerequisites
 
-- .NET SDK ≥ 10.0.300
-- The `crew.yaml` references `${OPENAI_API_KEY}` for its embedding provider. The
-  indexing performed by this example does not call it, but wiring the crew to a
-  runner would — export it before running the crew for real.
-
-## Required data
-
-None to provide. The example indexes the directory you pass (or the current
-directory by default). `crew.yaml` is copied next to the built binary.
+An LLM (any configured provider — see `examples/appsettings/`). Indexing itself
+needs no API key; running the crew does.
 
 ## Run it
 
 ```bash
-# Uses ./crew.yaml and indexes the current directory
-dotnet run --project examples/raggable-tree/crew-yaml
+# Validate the crew offline (no LLM call): 3 agents, 12 tools resolved
+orkeon run examples/raggable-tree/crew-yaml/crew.yaml --mount .:/src:ro --validate
 
-# Or pass a YAML path and a directory to index
-dotnet run --project examples/raggable-tree/crew-yaml -- crew.yaml /path/to/a/codebase
+# Run it against the codebase of your choice
+orkeon run examples/raggable-tree/crew-yaml/crew.yaml --mount /path/to/a/codebase:/src:ro
 ```
 
-## Expected output
+From a source checkout, replace `orkeon` with
+`dotnet run --project src/scripting/Orkeon.Scripting.Cli --`.
 
+## Tuning the index
+
+The crew file carries only the crew; infrastructure knobs (embedding backend,
+index mode, exclude globs) live in the optional `RaggableTree` section of
+`--settings`, e.g.:
+
+```json
+{ "RaggableTree": { "IndexMode": "Frozen", "Exclude": ["node_modules", "bin", "obj"] } }
 ```
-Loading crew config from crew.yaml
-Indexing /path/to/a/codebase (mounted at /src)
-Indexed <n> nodes, <n> edges.
-The YAML file declares a 3-agent crew (navigator, analyst, flow_tracer)
-that consumes the produced index via the RaggableTree tools registered by
-AddRaggableTreeTools. Wire the crew runner of your choice to execute it.
-```
+
+Opt out entirely with `"RaggableTree": { "Enabled": false }`.
 
 ## Approx. duration & cost
 
-- **Duration**: seconds for a small tree.
-- **Cost**: none for indexing (the crew itself, if run, would use embeddings + an LLM).
-</content>
+- **Duration**: seconds to index a small tree, then LLM latency per question.
+- **Cost**: indexing is free (local fingerprints); the crew run uses your LLM.
