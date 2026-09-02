@@ -59,7 +59,7 @@ Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) attaches a
 | **`orkeon-<version>-win-x64.msi`** | the same two, per-user MSI, with an "Orkeon Studio" Start-menu shortcut | none — self-contained | Windows, if you'd rather double-click and get an "Installed apps" entry |
 | **`orkeon_<version>_amd64.deb`** | the `orkeon` CLI at `/usr/bin/orkeon` + the two **Orkeon Studio** terminal apps | none — self-contained | **Debian / Ubuntu: the recommended download** |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS onboarding channel stays CLI-only) | none — self-contained | **macOS**, Apple Silicon and Intel respectively |
-| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **every** launcher (`orkeon`, `orkeon-repl`, `orkeon-trading`, the TUI runners…) + the Studio apps their platform supports + `install.sh` / `install.ps1` | mixed — see the command table below | The REPL, the TUI runners, the trading showcase |
+| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **every** launcher (`orkeon`, `orkeon-repl`, `orkeon-trading`, `orkeon-host`…) + the Studio apps their platform supports + `install.sh` / `install.ps1` | mixed — see the command table below | The REPL, the service host, the trading showcase |
 | **`dotnet tool install --global Orkeon.Scripting.Cli`** | the `orkeon` CLI | .NET 10 **SDK** | Getting just the CLI on a dev box that already builds .NET |
 
 `<rid>` is `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) or
@@ -125,7 +125,7 @@ sudo apt remove orkeon
 ```
 
 The multi-app `tar.gz` + `install.sh` is the per-user alternative (and the only
-option for `linux-arm64`, or when you want the REPL and the TUI runners):
+option for `linux-arm64`, or when you want the REPL and the trading showcase):
 
 ```bash
 tar -xzf orkeon-<version>-linux-x64.tar.gz
@@ -180,7 +180,7 @@ cd orkeon-cli-<version>-osx-arm64
 > still killed or refused afterwards, the manual escape hatch is
 > `xattr -dr com.apple.quarantine ~/.local/lib/orkeon`.
 
-The multi-app `tar.gz` (REPL, TUI runners, trading showcase) is available for
+The multi-app `tar.gz` (REPL, service host, trading showcase) is available for
 both macOS architectures too, and needs the .NET 10 runtime for the
 framework-dependent launchers it carries — `install.sh` prints the
 [download link](https://dotnet.microsoft.com/download/dotnet/10.0) when it is
@@ -471,7 +471,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
   install [Orkeon Studio](#orkeon-studio-the-graphical-way-in) — a window (or a
   full-screen terminal app) over the same configuration file and the same
   `orkeon run`.
-- **Want the REPL, the TUI runners, or the trading showcase?** The multi-app
+- **Want the REPL, the service host, or the trading showcase?** The multi-app
   archive (way 2) — and install the .NET 10 runtime, which those launchers need.
 - **Modifying Orkeon or running arbitrary examples?** Run from source (way 1).
 - **CI / reproducible / no local toolchain?** Container (way 3).

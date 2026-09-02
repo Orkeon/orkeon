@@ -61,7 +61,7 @@ Chaque [GitHub Release](https://github.com/Orkeon/orkeon/releases) attache un
 | **`orkeon-<version>-win-x64.msi`** | les deux mêmes, MSI per-user, avec un raccourci menu Démarrer « Orkeon Studio » | aucun — self-contained | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
 | **`orkeon_<version>_amd64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + les deux applications terminal **Orkeon Studio** | aucun — self-contained | **Debian / Ubuntu : le téléchargement recommandé** |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (pas de Studio en V1 — le canal d'onboarding macOS reste CLI seul) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
-| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-trading`, les runners TUI…) + les applications Studio que la plateforme supporte + `install.sh` / `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL, les runners TUI, la vitrine trading |
+| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-trading`, `orkeon-host`…) + les applications Studio que la plateforme supporte + `install.sh` / `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL, l'hôte de service, la vitrine trading |
 | **`dotnet tool install --global Orkeon.Scripting.Cli`** | le seul CLI `orkeon` | **SDK** .NET 10 | Obtenir uniquement le CLI sur un poste qui compile déjà du .NET |
 
 `<rid>` vaut `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) ou
@@ -132,7 +132,7 @@ sudo apt remove orkeon
 ```
 
 Le `tar.gz` multi-apps + `install.sh` est l'alternative per-user (et la seule
-option pour `linux-arm64`, ou quand vous voulez le REPL et les runners TUI) :
+option pour `linux-arm64`, ou quand vous voulez le REPL et la vitrine trading) :
 
 ```bash
 tar -xzf orkeon-<version>-linux-x64.tar.gz
@@ -189,7 +189,7 @@ cd orkeon-cli-<version>-osx-arm64
 > tuée ou refusée, l'échappatoire manuelle est
 > `xattr -dr com.apple.quarantine ~/.local/lib/orkeon`.
 
-Le `tar.gz` multi-apps (REPL, runners TUI, vitrine trading) existe aussi pour
+Le `tar.gz` multi-apps (REPL, hôte de service, vitrine trading) existe aussi pour
 les deux architectures macOS, et requiert le runtime .NET 10 pour les launchers
 framework-dependent qu'il embarque — `install.sh` affiche le
 [lien de téléchargement](https://dotnet.microsoft.com/download/dotnet/10.0)
@@ -496,7 +496,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
   mêmes paquets installent [Orkeon Studio](#orkeon-studio-la-voie-graphique) —
   une fenêtre (ou une application terminal plein écran) par-dessus le même
   fichier de configuration et le même `orkeon run`.
-- **Vous voulez le REPL, les runners TUI, ou la vitrine trading ?** L'archive
+- **Vous voulez le REPL, l'hôte de service, ou la vitrine trading ?** L'archive
   multi-apps (voie 2) — et installez le runtime .NET 10, dont ces launchers ont
   besoin.
 - **Vous modifiez Orkeon ou exécutez des exemples arbitraires ?** Depuis les
