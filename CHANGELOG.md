@@ -50,6 +50,19 @@ source layout, namespaces, and per-assembly PublicAPI freeze are untouched, so
 - The docfx API reference now covers the five `Orkeon.Constants.*` assemblies,
   and `namespaceLayout: flattened` removes the 26 dead breadcrumb links the
   nested layout generated.
+- A missing `--mount` source directory now fails with a clean actionable
+  `ERROR:` line and exit 1 — in the YAML runner, `--validate`, `--list-tools`
+  and `orkeon run` alike — instead of a raw dependency-injection stack trace.
+- `CrewConfigurationMapper` reports skipped tools and failed LLM-provider
+  resolution through an optional `ILogger` (source-generated warnings) instead
+  of writing to the console from the Application layer; the `ExampleCallbacks`
+  demo handlers moved out of the published `Orkeon.Application` assembly into
+  the test suite that was their only consumer.
+- Supply-chain hardening: a root `nuget.config` pins nuget.org as the only
+  package source (with wildcard source mapping); esbuild moves to `^0.25.12`
+  (GHSA-67mh-4wv8-2f99) and every packaging-time esbuild tarball download now
+  verifies the sha512 integrity recorded in the lockfile; Dependabot watches
+  the Docker base images (root + deploy).
 
 ### Changed — the screenshot campaign photographs an application in use, not an empty one
 
