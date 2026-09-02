@@ -34,11 +34,21 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Free up runner disk space
+        # The 2026-09-01 run died at "0 MB free": Release build of the full solution
+        # + NuGet cache + the Testcontainers images (mssql alone unpacks to ~2.5 GB)
+        # need more headroom than the historical short list provided. None of the
+        # trees below is used by this job (dotnet lives in /usr/share/dotnet, and
+        # the runner's actions ship their own Node in externals/).
         run: |
-          echo "Avant:"; df -h / | tail -1
-          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          echo "Before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /opt/hostedtoolcache /usr/lib/jvm /usr/lib/google-cloud-sdk /opt/az /usr/share/az_* \
+            /usr/share/miniconda /usr/local/julia* /usr/local/lib/node_modules \
+            /usr/local/share/powershell /opt/microsoft/powershell /usr/local/share/chromium \
+            /opt/google/chrome /usr/lib/firefox
           sudo docker image prune --all --force >/dev/null 2>&1 || true
-          echo "Après:"; df -h / | tail -1
+          sudo apt-get clean >/dev/null 2>&1 || true
+          echo "After:"; df -h / | tail -1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with: { dotnet-version: '10.0.x' }
@@ -54,12 +64,15 @@ jobs:
           set +e
           out="$(dotnet test Orkeon.sln -c Release --no-build \
             --filter "(Category=Integration|Category=Slow)&FullyQualifiedName!~Orkeon.Tools.Embeddings.Local" \
-            -- --ignore-exit-code 8 2>&1)"
+            -- --ignore-exit-code 8 --no-ansi 2>&1)"
           rc=$?
           echo "$out"
-          total="$(printf '%s\n' "$out" | sed -n 's/^[[:space:]]*total:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' | tail -1)"
+          # MTP colors its summary; strip ANSI escapes before parsing "total:" so the
+          # guard reads the real count (the 2026-09-01 run mis-reported "no test at
+          # all" on a run that executed 99 because ESC[m defeated the anchor).
+          total="$(printf '%s\n' "$out" | sed -e 's/\x1b\[[0-9;]*m//g' | sed -n 's/^[[:space:]]*total:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' | tail -1)"
           if [ "${total:-0}" -eq 0 ]; then
-            echo "::error::The nightly filter selected no test at all across the solution — the suites are not passing, they are not running."
+            echo "::error::No parsable test total for this run — either the filter selected nothing solution-wide, or the summary is missing. Check the log above before trusting any other diagnosis."
             exit 1
           fi
           exit $rc
