@@ -1,6 +1,6 @@
 # 16 - Interactive Q&A Session
 
-An interactive crew that answers user questions in a conversational loop, with web search, source citations, and automatic language detection.
+A crew that answers user questions with web search, source citations, and automatic language detection — one question per run through the stock `orkeon` CLI.
 
 ## Concept
 
@@ -12,7 +12,7 @@ This example demonstrates how to build an **interactive session** where:
    - **Knowledge Researcher** — searches the web (`web_search`) and scrapes authoritative pages (`web_scrape`) to gather relevant, sourced information
    - **Answer Composer** — synthesizes a clear, well-structured response in the same language as the question, with inline source citations
 3. The answer is displayed with a `## Sources` section listing all referenced URLs
-4. The loop continues until the user types `stop`
+4. Run it again for the next question — each invocation answers one
 
 ## Features
 
@@ -23,22 +23,13 @@ This example demonstrates how to build an **interactive session** where:
 
 ## Running
 
-### Via the interactive runner
-
 ```bash
-orkeon-interactive \
-  -c examples/01-enterprise/16-interactive-qa/config.yaml \
-  -s examples/appsettings/appsettings.json \
+orkeon run examples/01-enterprise/16-interactive-qa/config.yaml \
+  --settings examples/appsettings/appsettings.json \
   -v 1
 ```
 
-### Via the `orkeon` CLI (single question)
-
-```bash
-orkeon run examples/01-enterprise/16-interactive-qa/config.yaml
-```
-
-**LLM profile** — the `-s` / `--settings` file above is one of the ready-made profiles in [`examples/appsettings/`](../../appsettings/README.md). Copy a `*.example` template (drop the `.example` suffix) and add your key, or point it at any other profile (OpenAI, GLM, local Docker Model Runner). First run? See [Run your first example](../../../docs/getting-started/run-your-first-example.md).
+**LLM profile** — the `--settings` file above is one of the ready-made profiles in [`examples/appsettings/`](../../appsettings/README.md). Copy a `*.example` template (drop the `.example` suffix) and add your key, or point it at any other profile (OpenAI, GLM, local Docker Model Runner). First run? See [Run your first example](../../../docs/getting-started/run-your-first-example.md).
 
 **Data** — this example does not ship sample data yet; see [docs/reference/example-data-policy.md](../../../docs/reference/example-data-policy.md).
 

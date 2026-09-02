@@ -14,7 +14,7 @@ This project is no longer distributed as a NuGet package — reference it from s
 
 - Implements `IConsoleAdapter` (from `Orkeon.Cli.Abstractions`) on top of a
   Terminal.Gui v2 split-pane window. Existing runners using the abstraction
-  (`ClaimVerifierRunner`, `MainMenuRunner`, `QaRunner`) get the new UI for free.
+  (`MainMenuRunner`, `QaRunner`) get the new UI for free.
 - Provides an `ILoggerProvider` that pushes log entries into the logs pane
   with a stable `HH:mm:ss [LVL] CategoryShort: Message` format.
 - Publishes itself as a process-wide `AmbientLoggerProvider` so child
@@ -175,7 +175,7 @@ If the TUI starts but doesn't render or a shortcut doesn't fire, set
 `TUI_DIAG=1` to print a structured diagnostic trace on stderr:
 
 ```bash
-TUI_DIAG=1 SKIP_BUILD=1 bash run-interactive.sh -s deepseek.local
+TUI_DIAG=1 dotnet run --project src/apps/Orkeon.ConsoleApp
 ```
 
 You'll see each lifecycle step (`Main entered`, `Host.Build()`,
@@ -220,6 +220,6 @@ override the driver pick.
   ConsoleApp's `MainMenuRunner` and `QaRunner` (which inherit
   `InteractiveRunnerBase`) are wired correctly.
 
-Without the submodule, the same three behaviors (auto-TUI on a terminal, forced plain via
+The three UI behaviors (auto-TUI on a terminal, forced plain via
 `--ui plain`, pipe fallback to plain) are covered by the automated suite:
 `dotnet test tests/cli/Orkeon.Cli.TerminalGui.Tests/Orkeon.Cli.TerminalGui.Tests.csproj`.

@@ -196,7 +196,7 @@ Write-Host ("Commands: " + ((Get-ChildItem -LiteralPath $binDir -Filter '*.cmd')
 # .NET 10 runtime check -- only meaningful for framework-dependent binaries.
 # Self-contained publishes bundle the runtime, hostfxr.dll included. The
 # multi-app archive mixes both kinds (`orkeon` is self-contained; orkeon-repl
-# and the interactive runners are not), so every app directory under libexec\
+# is not), so every app directory under libexec\
 # is checked -- framework-dependent as soon as ONE of them lacks hostfxr.dll.
 # esbuild-bin holds no .NET app and is skipped; no app directories at all
 # means nothing to warn about. POSIX mirror: needs_dotnet_runtime in install.sh.

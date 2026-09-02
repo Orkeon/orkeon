@@ -179,7 +179,7 @@ not contiguous — [INDEX.md](INDEX.md) is the authoritative list.
 - [`cli-ts-commands/`](cli-ts-commands/) — TypeScript CLI command examples (`*.cmd.ts`)
 - [`local-embeddings/`](local-embeddings/) — on-device embeddings example
 - [`crew-multifile/`](crew-multifile/) — a crew split across multiple YAML files
-- [`runners/`](runners/) — the runner hosts (trading, interactive, TUI) used by the examples
+- [`runners/`](runners/) — the runner hosts (the trading runner + the shared `_shared` library)
 - [`others/`](others/) — miscellaneous fixtures
 
 ## Solution

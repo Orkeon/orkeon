@@ -138,10 +138,12 @@ for example in "${EXAMPLES[@]}"; do
     if [ "$cat_dir" = "03-finance-trading" ]; then
         # Level `load` validates through the `orkeon` CLI, which cannot resolve the
         # trading-specific tools (they live in Orkeon.Trading.Tools, registered only by
-        # the trading runner) — and that runner has no --validate. Skip rather than fail.
+        # the trading runner). CI covers finance instead: scripts/validate-all-examples.sh
+        # loads every finance config through the trading runner's own --validate.
+        # Here, skip rather than fail; --level run exercises them for real.
         if [ "$LEVEL" = "load" ]; then
             printf "[%d/%d] %-60s " "$INDEX" "$TOTAL" "$example"
-            echo -e "${YELLOW}SKIP${NC} (trading runner has no --validate; covered at --level run)"
+            echo -e "${YELLOW}SKIP${NC} (finance validates in CI via validate-all-examples.sh; here at --level run)"
             R_EXAMPLES+=("$example"); R_STATUS+=("SKIP"); R_DURATION+=("0")
             R_WARNINGS+=("0"); R_ERROR+=("")
             continue

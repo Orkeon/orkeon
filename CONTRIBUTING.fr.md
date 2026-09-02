@@ -82,7 +82,7 @@ dotnet test Orkeon.sln
 ## Structure du projet
 
 La solution compte **43 projets src répartis en 13 zones**, chacun reflété par un
-projet de tests (plus `tests/e2e`, `tests/examples`, `tests/shared` ; les quatre projets
+projet de tests (plus `tests/e2e`, `tests/shared` ; les quatre projets
 `src/packaging/` sont de pur empaquetage et n'ont pas de miroir de tests) :
 
 ```

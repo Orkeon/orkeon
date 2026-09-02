@@ -258,15 +258,15 @@ def render(cats: list[Category]) -> str:
     # Runners note.
     a("## Runners")
     a("")
-    a("Numbered examples are executed through a runner project in `examples/runners/`:")
+    a("Numbered examples run on the stock `orkeon` CLI; only the finance category needs the dedicated runner project in `examples/runners/`:")
     a("")
     a("| Runner | Purpose |")
     a("|--------|---------|")
-    a("| `standard` | Default runner for all categories except finance/trading. |")
+    a("| `standard` | The stock `orkeon` CLI (`orkeon run <config.yaml>`) — every category except finance/trading. |")
     a("| `trading` | Adds 44 specialized trading tools; used by **03 - Finance & Trading**. |")
     a("")
-    a("Run any example with `bash examples/run-example.sh <runner> <category>/<example>` "
-      "(see `examples/README.md`).")
+    a("Run any example with `bash examples/run-example.sh <category>/<example>` "
+      "(the matching runner is picked automatically; see `examples/README.md`).")
     a("")
 
     # Category summary.
@@ -304,7 +304,7 @@ def render(cats: list[Category]) -> str:
     a("")
     a("| Folder | Kind | Notes |")
     a("|--------|------|-------|")
-    a("| [`raggable-tree/`](raggable-tree/) | C# programs | RaggableTree indexing: `basic-indexing`, `crew-yaml`, `custom-adapter`. |")
+    a("| [`raggable-tree/`](raggable-tree/) | C# programs + YAML crew | RaggableTree indexing: `basic-indexing`, `custom-adapter` (C#); `crew-yaml` (pure YAML, stock `orkeon` CLI). |")
     a("| [`scripting/`](scripting/) | `.ork.ts` scripts | TypeScript-syntax scripting DSL samples (hello-world → FSM/graph, `08-rag.ork.ts` for `rag.ingest`/`rag.query`). |")
     a("| [`cli-ts-commands/`](cli-ts-commands/) | `.cmd.ts` / `.ork.ts` | TypeScript CLI command examples. |")
     a("| [`local-embeddings/`](local-embeddings/) | C# program | On-device BGE-micro-v2 ONNX embeddings. |")

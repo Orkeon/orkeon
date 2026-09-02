@@ -2,8 +2,9 @@
 
 Runnable demos of the RaggableTree semantic code graph (`src/analysis/` — see
 the [RaggableTree guide](../../docs/architecture/raggable-tree.md)). Each
-sub-example has its own README; they are C# projects, so `run-example.sh` falls
-back to `dotnet run --project …` for them.
+sub-example has its own README; `basic-indexing/` and `custom-adapter/` are C#
+projects (`run-example.sh` falls back to `dotnet run --project …`), while
+`crew-yaml/` is a pure YAML crew for the stock `orkeon` CLI.
 
 | Example | What it shows |
 |---------|---------------|

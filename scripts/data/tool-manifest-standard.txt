@@ -1,5 +1,5 @@
-# Runtime tool manifest — STANDARD runner (one tool name per line).
-# Regenerate via: dotnet run --project examples/runners/standard -- --list-tools 2>/dev/null > scripts/data/tool-manifest-standard.txt
+# Runtime tool manifest — standard `orkeon` CLI registry (one tool name per line).
+# Regenerate via: dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run --list-tools 2>/dev/null > scripts/data/tool-manifest-standard.txt
 # Consumed by scripts/lint-example-configs.py as the default manifest for all categories except 03-finance-trading.
 arcadedb_query
 cache_search
