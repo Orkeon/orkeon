@@ -31,6 +31,7 @@ public partial class ScopedCrewExecutionStateManager : ICrewExecutionStateManage
     private readonly TimeSpan _cleanupInterval = OrchestrationDefaults.CleanupInterval;
     private readonly SemaphoreSlim _stateLock = new(1, 1);
     private readonly CrewExecutionStatePersistenceOptions _persistence;
+    private readonly TimeProvider _clock;
     private int _missingStoreWarned;
 
     /// <summary>
@@ -42,17 +43,24 @@ public partial class ScopedCrewExecutionStateManager : ICrewExecutionStateManage
     /// Optional durable-persistence options. When omitted (or <c>Enabled = false</c>),
     /// states are kept in memory only — the historical, backward-compatible behavior.
     /// </param>
+    /// <param name="clock">
+    /// Optional clock used to compute expiry cutoffs. Defaults to
+    /// <see cref="TimeProvider.System"/>; tests inject a controllable provider so
+    /// expiry can be exercised without real waiting.
+    /// </param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget timer callback: a failure during periodic cleanup is logged and swallowed so it cannot fault the timer thread or crash the host.")]
     public ScopedCrewExecutionStateManager(
         IServiceScopeFactory scopeFactory,
         ILogger<ScopedCrewExecutionStateManager> logger,
-        IOptions<CrewExecutionStatePersistenceOptions>? persistenceOptions = null)
+        IOptions<CrewExecutionStatePersistenceOptions>? persistenceOptions = null,
+        TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(scopeFactory);
         _scopeFactory = scopeFactory;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _persistence = persistenceOptions?.Value ?? new CrewExecutionStatePersistenceOptions();
+        _clock = clock ?? TimeProvider.System;
         _states = new ConcurrentDictionary<ExecutionId, CrewExecutionState>();
 
         // Periodic cleanup — fire-and-forget with exception logging
@@ -292,7 +300,7 @@ public partial class ScopedCrewExecutionStateManager : ICrewExecutionStateManage
         TimeSpan maxAge,
         CancellationToken cancellationToken = default)
     {
-        var cutoffTime = DateTime.UtcNow - maxAge;
+        var cutoffTime = _clock.GetUtcNow().UtcDateTime - maxAge;
         var expiredIds = new List<ExecutionId>();
 
         foreach (var kvp in _states)

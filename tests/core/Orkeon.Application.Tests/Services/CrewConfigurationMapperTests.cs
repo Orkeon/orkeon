@@ -343,24 +343,42 @@ public class CrewConfigurationMapperTests
     public void ShouldHandleGracefully_WhenUsingToDomainCrewWithInvalidToolName()
     {
         // Arrange
-        var configuration = CreateTestCrewConfiguration() with { Verbose = true }; // Enable verbose to see warning
+        var configuration = CreateTestCrewConfiguration();
+        var agentConfig = CreateTestAgentConfiguration() with { Tools = ["nonexistent_tool"] };
+        configuration = configuration with { Agents = [agentConfig] };
+
+        // A resolver that THROWS for the unknown name (a resolver returning null is the
+        // silent-skip path; the warning is for resolvers that fail loudly).
+        Func<string, IBaseTool> toolResolver =
+            name => throw new InvalidOperationException($"Unknown tool: {name}");
+        var llmProviderFactory = new TestLlmProviderFactory();
+        var logger = new Fixtures.TestLogger<CrewConfigurationMapperTests>();
+
+        // Act
+        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory, logger: logger);
+
+        // Assert — the failure is handled gracefully and reported as a logger warning.
+        Assert.NotNull(crew);
+        Assert.Single(crew.Agents);
+        Assert.True(logger.HasLoggedWarning());
+        Assert.True(logger.HasLoggedMessage("Could not resolve tool 'nonexistent_tool'"));
+    }
+
+    [Fact]
+    public void ShouldNotThrow_WhenUsingToDomainCrewWithInvalidToolNameAndNoLogger()
+    {
+        // Arrange — without a logger the mapper stays silent (NullLogger default).
+        var configuration = CreateTestCrewConfiguration();
         var agentConfig = CreateTestAgentConfiguration() with { Tools = ["nonexistent_tool"] };
         configuration = configuration with { Agents = [agentConfig] };
 
         var toolResolver = CreateToolResolver();
         var llmProviderFactory = new TestLlmProviderFactory();
 
-        var originalOut = Console.Out;
-        using var consoleOutput = new StringWriter();
-        Console.SetOut(consoleOutput);
-
         // Act
         var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
 
         // Assert
-        var output = consoleOutput.ToString();
-        Console.SetOut(originalOut);
-        // Tool resolution failure is handled gracefully
         Assert.NotNull(crew);
         Assert.Single(crew.Agents);
     }
@@ -919,26 +937,24 @@ public class CrewConfigurationMapperTests
     {
         // Arrange
         var agentConfig = CreateTestAgentConfiguration() with { LlmConfig = LlmConfig.Create("failing-model") };
-        var configuration = CreateTestCrewConfiguration() with { Verbose = true, Agents = [agentConfig] };
+        var configuration = CreateTestCrewConfiguration() with { Agents = [agentConfig] };
 
         var toolResolver = CreateToolResolver();
         var llmProviderFactory = new TestLlmProviderFactory();
+        var logger = new Fixtures.TestLogger<CrewConfigurationMapperTests>();
 
         // The TestLlmProviderFactory already handles throwing for failing-model in its Create method
 
-        var originalOut = Console.Out;
-        using var consoleOutput = new StringWriter();
-        Console.SetOut(consoleOutput);
-
         // Act
-        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory);
+        var crew = configuration.ToDomainCrew(toolResolver, llmProviderFactory, logger: logger);
 
         // Assert
-        Console.SetOut(originalOut);
         // Crew should still be created even with LLM provider failure
         Assert.NotNull(crew);
-        // Verify that the provider creation was attempted
+        // Verify that the provider creation was attempted and the failure logged as a warning
         Assert.Contains("failing-model", llmProviderFactory.CreateCalls[0]);
+        Assert.True(logger.HasLoggedWarning());
+        Assert.True(logger.HasLoggedMessage("Could not create LLM provider for agent"));
     }
 
     #endregion

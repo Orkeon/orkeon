@@ -137,7 +137,8 @@ public static partial class RunnerExecution
         if (!EnsureExternalMountsAllowed(opts, isScript ? null : configDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
                 cliMounts, settingsPath,
-                targetVirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
+                targetVirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
+            || !EnsureMountSourcesExist(cliMounts, settingsPath))
         {
             errorCode = 1;
             return false;
@@ -288,6 +289,56 @@ public static partial class RunnerExecution
                 $"ERROR: '{clash}' is a virtual root reserved by the runner: this command mounts "
                 + $"it for itself (reserved here: {string.Join(", ", reserved)}). Give this mount "
                 + "another virtual name.");
+            Console.Error.WriteLine($"       mount       : {mountString}");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Refuses a mount whose host-side base path does not exist, whether it was written as a
+    /// <c>--mount</c> argument or declared in the settings file. Without this the missing
+    /// directory surfaces as a raw <see cref="DirectoryNotFoundException"/> thrown out of the
+    /// <c>FileSystemRegistry</c> DI factory — a stack trace, where the operator made a simple
+    /// configuration mistake that one actionable line (and a <c>mkdir</c>) fixes.
+    /// <para>
+    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree"/>: the settings file
+    /// is read HERE from <paramref name="settingsPath"/>, so no caller can forget it. Probing
+    /// the physical path is bootstrap work by definition — the check exists precisely because
+    /// the VFS registry (and thus <c>IFileSystemService</c>) cannot be built over it yet.
+    /// </para>
+    /// </summary>
+    /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
+    /// <param name="settingsPath">Resolved settings file whose declared mounts also count, or
+    /// <see langword="null"/> when the command resolves none.</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    public static bool EnsureMountSourcesExist(
+        IEnumerable<string> userMounts,
+        string? settingsPath)
+    {
+        ArgumentNullException.ThrowIfNull(userMounts);
+
+        foreach (var mountString in userMounts.Concat(RunnerSettings.ReadDeclaredMounts(settingsPath)))
+        {
+            FileSystemMount mount;
+            try
+            {
+                mount = FileSystemMount.Parse(mountString);
+            }
+            catch (Exception ex) when (ex is FormatException or ArgumentException)
+            {
+                // Malformed strings are reported by the mount parser at host build time,
+                // with its own precise message. Not this guard's.
+                continue;
+            }
+
+            if (Directory.Exists(mount.BasePath))
+                continue;
+
+            Console.Error.WriteLine(
+                $"ERROR: mount source directory does not exist: {mount.BasePath}. "
+                + "Create it first (mkdir -p) or point the mount at an existing directory.");
             Console.Error.WriteLine($"       mount       : {mountString}");
             return false;
         }

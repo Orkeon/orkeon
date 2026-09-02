@@ -63,6 +63,20 @@ public sealed class ScopedCrewExecutionStateManagerTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// Manual <see cref="TimeProvider"/> whose UTC now only moves when <see cref="Advance"/>
+    /// is called, so expiry cutoffs are computed deterministically instead of racing the
+    /// real clock under CI load.
+    /// </summary>
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _utcNow = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+
+        public void Advance(TimeSpan delta) => _utcNow += delta;
+    }
+
     #endregion
 
     #region Test Helpers
@@ -81,11 +95,12 @@ public sealed class ScopedCrewExecutionStateManagerTests : IDisposable
 
     private ScopedCrewExecutionStateManager CreateManager(
         TestServiceScopeFactory? scopeFactory = null,
-        TestLogger? logger = null)
+        TestLogger? logger = null,
+        TimeProvider? clock = null)
     {
         var factory = scopeFactory ?? new TestServiceScopeFactory();
         var log = logger ?? new TestLogger();
-        var manager = new ScopedCrewExecutionStateManager(factory, log);
+        var manager = new ScopedCrewExecutionStateManager(factory, log, clock: clock);
         _disposables.Add(manager);
         return manager;
     }
@@ -428,31 +443,34 @@ public sealed class ScopedCrewExecutionStateManagerTests : IDisposable
     [Fact]
     public async System.Threading.Tasks.Task ShouldRemoveOldStates_WhenUsingCleanupExpiredExecutionsAsyncWithExpiredStates()
     {
-        // Arrange
+        // Arrange — a manual clock makes expiry deterministic: the old version of this
+        // test raced the real clock (Task.Delay + a 30 ms window) and flaked under load.
         var logger = new TestLogger();
-        var manager = CreateManager(logger: logger);
+        var clock = new ManualTimeProvider();
+        var manager = CreateManager(logger: logger, clock: clock);
         var crewId = CreateTestCrewId();
 
-        // Create and complete a state
+        // A completed state: its EndTime is stamped "now" by the state itself.
         var expiredState = await manager.CreateStateAsync(crewId, TestContext.Current.CancellationToken);
         await manager.CompleteExecutionAsync(expiredState.Id, TestContext.Current.CancellationToken);
 
-        // Small delay to make sure expired state is older
-        await System.Threading.Tasks.Task.Delay(50, TestContext.Current.CancellationToken);
+        // A running state: Running executions are never expired nor abandoned,
+        // whatever their age, so this one must survive any cutoff.
+        var activeState = await manager.CreateStateAsync(crewId, TestContext.Current.CancellationToken);
+        await manager.UpdateStateAsync(
+            activeState.Id, s => s.Status = ExecutionState.Running, TestContext.Current.CancellationToken);
 
-        // Create a recent state (should not be cleaned up)
-        var recentState = await manager.CreateStateAsync(crewId, TestContext.Current.CancellationToken);
+        // Move the injected clock far past both timestamps: the completed state is now
+        // deterministically older than the max age, with no real-time sleep involved.
+        clock.Advance(TimeSpan.FromHours(2));
 
-        // Act - cleanup with a time window that should only remove the expired state
-        await manager.CleanupExpiredExecutionsAsync(TimeSpan.FromMilliseconds(30), TestContext.Current.CancellationToken);
+        // Act
+        await manager.CleanupExpiredExecutionsAsync(TimeSpan.FromHours(1), TestContext.Current.CancellationToken);
 
         // Assert
-        // Verify logging of cleanup operation
-        Assert.True(logger.HasLoggedInfo("Cleaning up"));
-
-        // Recent state should still exist (created after the delay)
-        var stillExistingState = await manager.GetStateAsync(recentState.Id, TestContext.Current.CancellationToken);
-        Assert.NotNull(stillExistingState);
+        Assert.True(logger.HasLoggedInfo("Cleaning up 1 expired executions"));
+        Assert.Null(await manager.GetStateAsync(expiredState.Id, TestContext.Current.CancellationToken));
+        Assert.NotNull(await manager.GetStateAsync(activeState.Id, TestContext.Current.CancellationToken));
     }
 
     [Fact]

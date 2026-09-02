@@ -125,3 +125,50 @@ Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitTokens.get -> long?
 Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitTokens.init -> void
 Orkeon.Application.Interfaces.Services.TokenUsage.CacheMissTokens.get -> long?
 Orkeon.Application.Interfaces.Services.TokenUsage.CacheMissTokens.init -> void
+*REMOVED*Orkeon.Application.Callback.BusinessLogicCallbackHandler
+*REMOVED*Orkeon.Application.Callback.BusinessLogicCallbackHandler.BusinessLogicCallbackHandler() -> void
+*REMOVED*Orkeon.Application.Callback.BusinessLogicCallbackHandler.GetExecutionLog() -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Callback.ConsoleCallbackHandler
+*REMOVED*Orkeon.Application.Callback.ConsoleCallbackHandler.ConsoleCallbackHandler() -> void
+*REMOVED*Orkeon.Application.Callback.MetricsCallbackHandler
+*REMOVED*Orkeon.Application.Callback.MetricsCallbackHandler.GetAverageExecutionTime() -> double
+*REMOVED*Orkeon.Application.Callback.MetricsCallbackHandler.GetLatestMetric() -> Orkeon.Application.Callback.TaskMetric?
+*REMOVED*Orkeon.Application.Callback.MetricsCallbackHandler.GetMetrics() -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Callback.TaskMetric!>!
+*REMOVED*Orkeon.Application.Callback.MetricsCallbackHandler.GetSuccessRate() -> double
+*REMOVED*Orkeon.Application.Callback.MetricsCallbackHandler.MetricsCallbackHandler() -> void
+*REMOVED*Orkeon.Application.Callback.TaskMetric
+*REMOVED*Orkeon.Application.Callback.TaskMetric.Duration.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Callback.TaskMetric.Duration.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskMetric.EndTime.get -> System.DateTime
+*REMOVED*Orkeon.Application.Callback.TaskMetric.EndTime.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskMetric.StartTime.get -> System.DateTime
+*REMOVED*Orkeon.Application.Callback.TaskMetric.StartTime.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskMetric.StepsExecuted.get -> int
+*REMOVED*Orkeon.Application.Callback.TaskMetric.StepsExecuted.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskMetric.Success.get -> bool
+*REMOVED*Orkeon.Application.Callback.TaskMetric.Success.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskMetric.TaskId.get -> string!
+*REMOVED*Orkeon.Application.Callback.TaskMetric.TaskId.init -> void
+*REMOVED*Orkeon.Application.Callback.TaskMetric.TaskMetric() -> void
+*REMOVED*Orkeon.Application.Callback.TaskMetric.TaskMetric(Orkeon.Application.Callback.TaskMetric! original) -> void
+*REMOVED*override Orkeon.Application.Callback.BusinessLogicCallbackHandler.OnStepCompletedAsync(Orkeon.Application.Callback.StepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.BusinessLogicCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.BusinessLogicCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.ConsoleCallbackHandler.OnStepCompletedAsync(Orkeon.Application.Callback.StepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.ConsoleCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.ConsoleCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.ConsoleCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.MetricsCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.MetricsCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.MetricsCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Application.Callback.TaskMetric.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Callback.TaskMetric.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Callback.TaskMetric.ToString() -> string!
+*REMOVED*static Orkeon.Application.Callback.TaskMetric.operator !=(Orkeon.Application.Callback.TaskMetric? left, Orkeon.Application.Callback.TaskMetric? right) -> bool
+*REMOVED*static Orkeon.Application.Callback.TaskMetric.operator ==(Orkeon.Application.Callback.TaskMetric? left, Orkeon.Application.Callback.TaskMetric? right) -> bool
+*REMOVED*static Orkeon.Application.Crew.CrewConfigurationMapper.ToDomainCrew(this Orkeon.Domain.Configuration.CrewConfiguration! configuration, System.Func<string!, Orkeon.Domain.Tools.IBaseTool!>! toolResolver, Orkeon.Application.Interfaces.Ports.ILlmProviderFactory! llmProviderFactory, System.Action<Orkeon.Domain.Agent.Agent!>? agentPostProcessor = null, System.Action<Orkeon.Domain.Task.CrewTask!>? taskPostProcessor = null) -> Orkeon.Domain.Crew.Crew!
+*REMOVED*virtual Orkeon.Application.Callback.TaskMetric.<Clone>$() -> Orkeon.Application.Callback.TaskMetric!
+*REMOVED*virtual Orkeon.Application.Callback.TaskMetric.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Callback.TaskMetric.Equals(Orkeon.Application.Callback.TaskMetric? other) -> bool
+*REMOVED*virtual Orkeon.Application.Callback.TaskMetric.PrintMembers(System.Text.StringBuilder! builder) -> bool
+static Orkeon.Application.Crew.CrewConfigurationMapper.ToDomainCrew(this Orkeon.Domain.Configuration.CrewConfiguration! configuration, System.Func<string!, Orkeon.Domain.Tools.IBaseTool!>! toolResolver, Orkeon.Application.Interfaces.Ports.ILlmProviderFactory! llmProviderFactory, System.Action<Orkeon.Domain.Agent.Agent!>? agentPostProcessor = null, System.Action<Orkeon.Domain.Task.CrewTask!>? taskPostProcessor = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> Orkeon.Domain.Crew.Crew!

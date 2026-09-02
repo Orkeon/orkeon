@@ -112,15 +112,11 @@ public static partial class CallbackExamples
     public static ICallbackHandler CreateCompositeCallbackHandler(ILogger<LoggingCallbackHandler> logger)
     {
         var loggingHandler = new LoggingCallbackHandler(logger);
-        var metricsHandler = new MetricsCallbackHandler();
-        var businessHandler = new BusinessLogicCallbackHandler();
-        var consoleHandler = new ConsoleCallbackHandler();
+        var workflowHandler = new CustomWorkflowCallbackHandler("example-workflow", logger);
 
         return new CompositeCallbackHandler(
             loggingHandler,
-            metricsHandler,
-            businessHandler,
-            consoleHandler
+            workflowHandler
         );
     }
 

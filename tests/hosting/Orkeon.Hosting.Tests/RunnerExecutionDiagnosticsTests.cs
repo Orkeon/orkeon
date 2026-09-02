@@ -8,13 +8,15 @@ namespace Orkeon.Hosting.Tests;
 /// <summary>
 /// In-process behavioural tests for the diagnostic runner modes
 /// (<see cref="RunnerExecution.RunValidateAsync"/> and
-/// <see cref="RunnerExecution.RunListToolsAsync"/>). Each test builds a real host, so the
-/// cases live in a single class (xUnit runs a class's tests sequentially) because they
-/// redirect the process-global <see cref="Console"/> streams.
+/// <see cref="RunnerExecution.RunListToolsAsync"/>). Each test builds a real host, and the
+/// class joins <see cref="ConsoleSerialCollection"/> because it redirects the
+/// process-global <see cref="Console"/> streams — another class doing the same in
+/// parallel steals its captured output.
 ///
 /// RaggableTree is disabled via a temp appsettings.json so the on-device embedding model
 /// (ONNX) is never loaded — keeping the host lightweight and avoiding a native teardown.
 /// </summary>
+[Collection(ConsoleSerialCollection.Name)]
 public sealed class RunnerExecutionDiagnosticsTests : IDisposable
 {
     private sealed class TestOptions : RunnerOptionsBase { }

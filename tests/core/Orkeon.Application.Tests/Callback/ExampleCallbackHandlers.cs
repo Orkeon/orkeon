@@ -1,8 +1,14 @@
+using Orkeon.Application.Callback;
 using Orkeon.Domain.Common;
 using System.Globalization;
 using SystemTask = System.Threading.Tasks.Task;
 
-namespace Orkeon.Application.Callback;
+namespace Orkeon.Application.Tests.Callbacks;
+
+// Concrete BaseCallbackHandler subclasses exercising the callback pipeline
+// (contexts, overrides, composite dispatch). They used to ship inside
+// Orkeon.Application as demo material; they are test support now, because the
+// published assembly is not the place for example implementations.
 
 /// <summary>
 /// Example callback implementation for progress tracking and metrics.

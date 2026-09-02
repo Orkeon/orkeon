@@ -551,6 +551,12 @@ internal static partial class RunCommand
                 RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
             return Program.ExitScriptError;
 
+        // Same guard as the YAML runner: a mount whose host-side directory is missing would
+        // otherwise surface as a DirectoryNotFoundException thrown out of the
+        // FileSystemRegistry DI factory — a stack trace for a mkdir-sized mistake.
+        if (!RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath))
+            return Program.ExitScriptError;
+
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
         // the source through the same IFileSystemService the tools will see. We add it as
         // an "allowed-external" mount regardless of cwd because the script is the input.
