@@ -18,7 +18,7 @@ internal static class Program
 
         if (!File.Exists(yamlPath))
         {
-            Console.Error.WriteLine($"YAML not found: {yamlPath}");
+            await Console.Error.WriteLineAsync($"YAML not found: {yamlPath}");
             return 1;
         }
 
@@ -26,7 +26,7 @@ internal static class Program
         Console.WriteLine($"Indexing {physicalRoot} (mounted at {virtualRoot})");
 
         var mount = new FileSystemMount(physicalRoot, virtualRoot, FileAccessRights.ReadOnly);
-        var registry = new FileSystemRegistry([mount]);
+        using var registry = new FileSystemRegistry([mount]);
         IFileSystemService fs = new FileSystemService(registry, new AllowAllPathValidator(), NullLogger<FileSystemService>.Instance);
 
         var builder = new RaggableTreeBuilder(
