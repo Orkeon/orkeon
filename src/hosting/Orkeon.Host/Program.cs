@@ -26,7 +26,7 @@ if (args.Contains("--help", StringComparer.Ordinal) || args.Contains("-h", Strin
 orkeon-host — the Orkeon service host: hosts crews as a daemon and answers chat channels.
 
 Usage:
-  orkeon-host [--settings <file>] [--mount <physical>:<virtual>:<ro|rw|rwnd>]... [--allow-external-mounts]
+  orkeon-host [--settings <file>] [--working-dir <dir>] [--mount <physical>:<virtual>:<ro|rw|rwnd>]... [--allow-external-mounts]
 
 Options:
   -s, --settings <file>     Configuration file (JSON). Defaults to ./appsettings.json,
@@ -36,6 +36,9 @@ Options:
                             path starts with '/' — a physical path is never a virtual path.
                             Quote a segment containing ':' or ';': "C:\src":/workspace:ro.
                             Hosted crew directories are mounted automatically, read-only.
+      --working-dir <dir>   Directory to move to before anything is read. Relative settings
+                            and crew paths resolve against it. A Windows service starts in
+                            System32 — this flag is how it leaves it.
       --allow-external-mounts
                             Allow mounts outside the working directory.
   -h, --help                Show this help and exit.
@@ -59,6 +62,25 @@ if (args.Contains("--version", StringComparer.Ordinal))
 
 var settingsPath = ArgumentValue(args, "--settings") ?? ArgumentValue(args, "-s");
 var mounts = ArgumentValues(args, "--mount").Concat(ArgumentValues(args, "-m")).ToList();
+
+// --working-dir is applied before anything else touches the disk: the settings probe below,
+// the boot configuration and the host itself all resolve relative paths against the current
+// directory, and a Windows service starts in System32 — this flag is how it leaves it.
+// Applied unconditionally (not only under the SCM): a terminal `--working-dir` must mean the
+// same thing, and that is also what makes the behavior testable off Windows.
+var workingDirectory = ArgumentValue(args, "--working-dir");
+var lastWorkingDirFlag = Array.LastIndexOf(args, "--working-dir");
+if (lastWorkingDirFlag >= 0 && lastWorkingDirFlag == args.Length - 1)
+{
+    await Console.Error.WriteLineAsync("orkeon-host: --working-dir requires a path.").ConfigureAwait(false);
+    return HostConfigurationException.ExitCode;
+}
+
+if (workingDirectory is not null && StartupProbes.TryApplyWorkingDirectory(workingDirectory) is string workingDirError)
+{
+    await Console.Error.WriteLineAsync($"orkeon-host: {workingDirError}").ConfigureAwait(false);
+    return HostConfigurationException.ExitCode;
+}
 
 // A --settings with no value used to become a silent null, and a typo'd path was silently
 // ignored by the host builder — the daemon then started with zero crews and the operator got
@@ -212,6 +234,22 @@ internal static class StartupProbes
 {
     /// <summary>Whether the operator-supplied settings file exists on the physical disk.</summary>
     public static bool SettingsFileExists(string path) => File.Exists(path);
+
+    /// <summary>
+    /// Applies <c>--working-dir</c>: moves the process to <paramref name="path"/> so every
+    /// later relative resolution — the settings probe, <see cref="BuildBootConfiguration"/>,
+    /// the host built afterwards — reads from where the operator said, not from wherever the
+    /// process happened to start (System32, under the Windows SCM).
+    /// </summary>
+    /// <returns>An error message when the directory does not exist; null when applied.</returns>
+    public static string? TryApplyWorkingDirectory(string path)
+    {
+        if (!Directory.Exists(path))
+            return $"working directory not found: {path}";
+
+        Directory.SetCurrentDirectory(path);
+        return null;
+    }
 
     /// <summary>
     /// The configuration the daemon boots from — the one that decides which crew directories
