@@ -167,26 +167,35 @@ the daemon and its deployment assets. The real executable is
 wrapper — never register the wrapper with the SCM. The registration script
 ships in the archive's `deploy\windows\` folder:
 
+Extract the archive under `C:\Program Files\Orkeon`, put your configuration
+under `C:\ProgramData\Orkeon` (the mirrors of `/opt/orkeon` and `/etc/orkeon`),
+and run the bundled script — those paths are its defaults:
+
 ```powershell
-.\deploy\windows\install-service.ps1 `
-  -ExecutablePath 'C:\Program Files\Orkeon\libexec\orkeon-host\orkeon-host.exe' `
-  -SettingsPath   'C:\ProgramData\Orkeon\appsettings.json'
+.\deploy\windows\install-service.ps1 -EnvironmentSecrets @{ ORKEON_DISCORD_TOKEN = '...' }
 Start-Service -Name Orkeon
 ```
 
-Use **absolute paths** everywhere — in both parameters and inside the settings
-file: a Windows service starts in `System32`, and the host resolves its
-configuration against the current directory.
+The service runs as the virtual account `NT SERVICE\Orkeon` — the mirror of
+the unit's `User=orkeon`: no password to manage, its own SID, Modify on
+`ProgramData\Orkeon` and read-only everywhere else. The registration passes
+`--working-dir C:\ProgramData\Orkeon`, so relative paths in the settings file
+— crew directories included — resolve there, the mirror of
+`WorkingDirectory=/var/lib/orkeon`. (A Windows service is born in `System32`;
+the flag is how it leaves it.)
 
-Recovery mirrors the systemd policy as closely as the SCM allows: the script
-arms restart-on-crash twice, then stop. The SCM cannot filter exit codes, so
-there is no equivalent of `RestartPreventExitStatus=78` — a refused
-configuration shows up as a stopped service, not a restart loop. Secrets stay
-environment variables named by the configuration — set them in the machine or
-service-account environment, never on the registration command line. The service
-runs as LocalSystem today, and error messages go to stderr, which the SCM does
-not surface: to read a configuration error, run the executable in a terminal
-with the same arguments.
+Secrets go in the service's own `Environment` value (`REG_MULTI_SZ` under the
+service key) — `-EnvironmentSecrets` writes it — which only the SCM reads and
+only administrators open: the closest mirror of `EnvironmentFile`. Restart the
+service after changing them, same contract as systemd.
+
+Recovery mirrors the systemd policy as closely as the SCM allows: restart on
+crash twice, then stop. The SCM cannot filter exit codes, so there is no
+equivalent of `RestartPreventExitStatus=78` — but a refused configuration ends
+in an orderly stop, which crash-only recovery never restarts, and the refusal
+is written to the **Application event log** (source `Orkeon`), the one place a
+service operator actually reads. `install-service.ps1 -Uninstall` removes the
+service and leaves `ProgramData\Orkeon` to you.
 
 ### Container
 

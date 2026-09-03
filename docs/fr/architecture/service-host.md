@@ -170,28 +170,36 @@ le daemon et ses artefacts de déploiement. L'exécutable réel est
 de terminal — ne jamais enregistrer le wrapper auprès du SCM. Le script
 d'enregistrement est livré dans le dossier `deploy\windows\` de l'archive :
 
+Extrayez l'archive sous `C:\Program Files\Orkeon`, posez votre configuration
+sous `C:\ProgramData\Orkeon` (les miroirs de `/opt/orkeon` et `/etc/orkeon`),
+puis lancez le script embarqué — ces chemins sont ses défauts :
+
 ```powershell
-.\deploy\windows\install-service.ps1 `
-  -ExecutablePath 'C:\Program Files\Orkeon\libexec\orkeon-host\orkeon-host.exe' `
-  -SettingsPath   'C:\ProgramData\Orkeon\appsettings.json'
+.\deploy\windows\install-service.ps1 -EnvironmentSecrets @{ ORKEON_DISCORD_TOKEN = '...' }
 Start-Service -Name Orkeon
 ```
 
-Utilisez des chemins **absolus** partout — dans les deux paramètres et dans le
-fichier de settings : un service Windows démarre dans `System32`, et le host
-résout sa configuration sur le répertoire courant.
+Le service tourne sous le compte virtuel `NT SERVICE\Orkeon` — le miroir du
+`User=orkeon` de l'unité : aucun mot de passe à gérer, son propre SID, Modify
+sur `ProgramData\Orkeon` et lecture seule partout ailleurs. L'enregistrement
+passe `--working-dir C:\ProgramData\Orkeon` : les chemins relatifs du fichier
+de settings — répertoires de crews compris — s'y résolvent, miroir de
+`WorkingDirectory=/var/lib/orkeon`. (Un service Windows naît dans `System32` ;
+le drapeau est ce qui l'en fait sortir.)
+
+Les secrets vont dans la valeur `Environment` du service (`REG_MULTI_SZ` sous
+sa clé) — `-EnvironmentSecrets` l'écrit — que seul le SCM lit et que seuls les
+administrateurs ouvrent : le miroir le plus proche d'`EnvironmentFile`.
+Redémarrez le service après un changement, même contrat que systemd.
 
 Le redémarrage reflète la politique systemd d'aussi près que le SCM le permet :
-le script arme deux redémarrages sur crash, puis l'arrêt. Le SCM ne sait pas
-filtrer les codes de sortie — il n'existe donc pas d'équivalent de
-`RestartPreventExitStatus=78` : une configuration refusée se lit comme un
-service arrêté, pas comme une boucle de redémarrage. Les secrets restent des
-variables d'environnement nommées par la configuration — à poser dans
-l'environnement machine ou du compte de service, jamais sur la ligne de commande
-d'enregistrement. Le service tourne en
-LocalSystem aujourd'hui, et les messages d'erreur partent sur stderr, que le
-SCM n'affiche pas : pour lire une erreur de configuration, lancez l'exécutable
-dans un terminal avec les mêmes arguments.
+deux redémarrages sur crash, puis l'arrêt. Le SCM ne sait pas filtrer les codes
+de sortie — pas d'équivalent de `RestartPreventExitStatus=78` — mais une
+configuration refusée se termine par un arrêt ordonné, que la récupération
+crash-only ne redémarre jamais, et le refus est écrit dans le **journal
+d'événements Application** (source `Orkeon`), le seul endroit qu'un exploitant
+de service lit vraiment. `install-service.ps1 -Uninstall` retire le service et
+vous laisse `ProgramData\Orkeon`.
 
 ### Conteneur
 
