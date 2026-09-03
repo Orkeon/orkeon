@@ -181,7 +181,9 @@ configuration against the current directory.
 Recovery mirrors the systemd policy as closely as the SCM allows: the script
 arms restart-on-crash twice, then stop. The SCM cannot filter exit codes, so
 there is no equivalent of `RestartPreventExitStatus=78` — a refused
-configuration shows up as a stopped service, not a restart loop. The service
+configuration shows up as a stopped service, not a restart loop. Secrets stay
+environment variables named by the configuration — set them in the machine or
+service-account environment, never on the registration command line. The service
 runs as LocalSystem today, and error messages go to stderr, which the SCM does
 not surface: to read a configuration error, run the executable in a terminal
 with the same arguments.

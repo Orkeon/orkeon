@@ -7,8 +7,9 @@ Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI a
 **If `bin/` holds `orkeon` alone** (the CLI archive): none. It is self-contained —
 the .NET runtime ships inside it.
 
-**If `bin/` holds every launcher** (the multi-app archive): `orkeon` and
-`orkeon-trading` are self-contained, the rest are **framework-dependent** and
+**If `bin/` holds every launcher** (the multi-app archive): `orkeon`,
+`orkeon-trading`, `orkeon-host` and the Orkeon Studio apps are self-contained;
+`orkeon-slim` and `orkeon-repl` are **framework-dependent** and
 require the **.NET 10 runtime** (`Microsoft.NETCore.App 10.x`). Install it from
 <https://dotnet.microsoft.com/download/dotnet/10.0>, then verify with
 `dotnet --list-runtimes`. The installers below check for it: `install.sh` prints
@@ -61,7 +62,7 @@ first row below. The multi-app archive ships every command in this table.
 | `orkeon-slim` | Same CLI as `orkeon`, framework-dependent (smaller; requires the .NET 10 runtime). Pick this if you already have .NET 10. |
 | `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) |
 | `orkeon-trading` | Trading example runner for `examples/03-finance-trading` (self-contained) |
-| `orkeon-host` | The crew service host daemon — not a shell command: register it with your service manager (see `deploy/` in this archive and `docs/architecture/service-host.md`). Self-contained. |
+| `orkeon-host` | The crew service host daemon. Register it with your service manager rather than running it from a shell — see `deploy/` in this archive and `docs/architecture/service-host.md` (the `bin` wrapper exists for terminal diagnostics only). Self-contained. |
 
 ## Layout & esbuild
 
@@ -69,6 +70,7 @@ first row below. The multi-app archive ships every command in this table.
 bin/                     thin launchers (the only directory that goes on your PATH)
 libexec/                 one self-contained publish per application
 libexec/esbuild-bin/esbuild   shared esbuild binary used to transpile .ork.ts scripts
+deploy/                  service-host deployment assets (systemd unit, SCM registration script) — multi-app archive only
 VERSION                  plain-text version string (drives the Add/Remove Programs entry)
 appsettings.sample.json  reference-only config sample, see "First run" above
 ```

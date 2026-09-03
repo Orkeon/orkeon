@@ -185,7 +185,10 @@ Le redémarrage reflète la politique systemd d'aussi près que le SCM le permet
 le script arme deux redémarrages sur crash, puis l'arrêt. Le SCM ne sait pas
 filtrer les codes de sortie — il n'existe donc pas d'équivalent de
 `RestartPreventExitStatus=78` : une configuration refusée se lit comme un
-service arrêté, pas comme une boucle de redémarrage. Le service tourne en
+service arrêté, pas comme une boucle de redémarrage. Les secrets restent des
+variables d'environnement nommées par la configuration — à poser dans
+l'environnement machine ou du compte de service, jamais sur la ligne de commande
+d'enregistrement. Le service tourne en
 LocalSystem aujourd'hui, et les messages d'erreur partent sur stderr, que le
 SCM n'affiche pas : pour lire une erreur de configuration, lancez l'exécutable
 dans un terminal avec les mêmes arguments.

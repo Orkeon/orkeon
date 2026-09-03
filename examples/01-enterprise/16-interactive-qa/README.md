@@ -4,9 +4,9 @@ A crew that answers user questions with web search, source citations, and automa
 
 ## Concept
 
-This example demonstrates how to build an **interactive session** where:
+This example demonstrates a **question-answering crew** where:
 
-1. The user types a question (in any language)
+1. You pass the question (in any language) with `--var question="…"`
 2. A crew of three agents collaborates to produce an answer:
    - **Question Analyst** — breaks down and classifies the question, detects the language
    - **Knowledge Researcher** — searches the web (`web_search`) and scrapes authoritative pages (`web_scrape`) to gather relevant, sourced information
@@ -25,9 +25,13 @@ This example demonstrates how to build an **interactive session** where:
 
 ```bash
 orkeon run examples/01-enterprise/16-interactive-qa/config.yaml \
+  --var question="How do solar panels work?" \
   --settings examples/appsettings/appsettings.json \
   -v 1
 ```
+
+The tasks consume the question through their `{question}` placeholder — without
+`--var`, the crew would analyze the literal string `{question}`.
 
 **LLM profile** — the `--settings` file above is one of the ready-made profiles in [`examples/appsettings/`](../../appsettings/README.md). Copy a `*.example` template (drop the `.example` suffix) and add your key, or point it at any other profile (OpenAI, GLM, local Docker Model Runner). First run? See [Run your first example](../../../docs/getting-started/run-your-first-example.md).
 
@@ -59,4 +63,3 @@ The crew uses three agents in a sequential pipeline. You can customize:
 
 - **Agent behaviors** in `config.yaml` (backstory, tools, max iterations)
 - **LLM settings** in `appsettings.json` (model, temperature, max tokens)
-- **Stop words** via the `--stop` CLI argument (default: `stop`, `quit`, `exit`)

@@ -1,7 +1,7 @@
 # 16. Interactive Q&A Session
 # Use case: A crew that answers one user question per run with cited web research
-# The crew is designed for a conversational loop: each iteration receives a user question
-# via InitialContext and returns a comprehensive answer.
+# Each run receives the user question through the {question} template variable
+# (orkeon run --var question="...") and returns a comprehensive answer.
 
 name: "interactive-qa"
 goal: "Answer user questions accurately and helpfully in an interactive session"

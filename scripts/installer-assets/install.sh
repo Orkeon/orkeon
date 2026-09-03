@@ -182,7 +182,7 @@ echo "Commands linked in $BIN_DIR: $LINKED"
 # self-contained publish bundles its own, libhostfxr included. Its presence next
 # to an installed app is how the two are told apart (the POSIX mirror of the
 # hostfxr.dll test in install.ps1). The multi-app archive mixes both kinds --
-# `orkeon` is self-contained while `orkeon-repl` is not -- so the check looks
+# `orkeon` is self-contained while `orkeon-slim` and `orkeon-repl` are not -- so the check looks
 # at every app and warns as soon as one of them needs
 # a runtime that isn't there.
 
