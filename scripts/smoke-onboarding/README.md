@@ -1,6 +1,6 @@
 # Onboarding smoke tests
 
-This directory holds five smokes. They answer two different questions, so read
+This directory holds six smokes. They answer two different questions, so read
 the one that matches yours:
 
 | Script | Question it answers | Runs where |
@@ -10,6 +10,7 @@ the one that matches yours:
 | `run-smoke-deb.sh` | Does the **published `.deb`** install through apt, run and remove cleanly? (LIN-02) | `ubuntu-latest`, in `release.yml` |
 | `run-smoke-tarball.sh` | Does the **published `.tar.gz`** install through `install.sh`, run and uninstall cleanly? (MAC-02) | `macos-latest`, in `release.yml`; also locally on Linux |
 | `run-smoke-service.ps1` | Does the **service host in the published full archive** register under `NT SERVICE\Orkeon`, start on a relative crew path, refuse a bad config without looping, and uninstall cleanly? (WINSVC-02) | `windows-latest`, in `release.yml` |
+| `run-smoke-service-msi.ps1` | Does the **per-machine service host MSI** install silently, register the same service, survive a silent reinstall of itself, and uninstall leaving the operator's `ProgramData\Orkeon` alone? (WINSVC-02 P3) | `windows-latest`, in `release.yml` (job `msi`) |
 
 The rest of this page documents `run-smoke.sh`; the three released-artefact
 smokes are covered in [their own section](#released-artefact-smokes-win-06--lin-02--mac-02)
@@ -143,6 +144,13 @@ an SCM restart loop **and** lands in the Application event log, and a reversible
 live in `lib\service-windows.ps1`, shared with the MSI service channel so the
 two cannot drift. It needs administrator rights and a machine without an
 existing `Program Files\Orkeon` — a disposable CI runner, not your workstation.
+
+`run-smoke-service-msi.ps1` is its MSI twin: silent install, the same shared
+assertions from `lib\service-windows.ps1`, a silent reinstall of the same MSI
+(the proof that the one-registrar-at-a-time guard lets our own upgrades
+through), and an uninstall that removes service, payload and ARP entry while
+`ProgramData\Orkeon` survives. Same administrator and disposable-machine
+requirements.
 
 ## Released-artefact smokes (WIN-06 / LIN-02 / MAC-02)
 
