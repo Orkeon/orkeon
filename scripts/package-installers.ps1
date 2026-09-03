@@ -79,6 +79,9 @@ $Apps = @(
     @{ Name = 'orkeon-studio';        Csproj = 'src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj';       Apphost = 'Orkeon.Studio';        SelfContained = $true; Rids = @('win-x64') }
     @{ Name = 'orkeon-studio-config'; Csproj = 'src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj'; Apphost = 'Orkeon.Studio.Config'; SelfContained = $true }
     @{ Name = 'orkeon-studio-run';    Csproj = 'src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj';       Apphost = 'Orkeon.Studio.Run';    SelfContained = $true }
+    # The service host (GATE-05). Self-contained: a daemon supervised by systemd or the
+    # Windows SCM must not depend on a runtime someone may upgrade underneath it.
+    @{ Name = 'orkeon-host';          Csproj = 'src/hosting/Orkeon.Host/Orkeon.Host.csproj';                Apphost = 'orkeon-host';          SelfContained = $true }
 )
 
 # -AppSet cli ships the onboarding binary plus the Orkeon Studio apps for the
@@ -194,6 +197,12 @@ foreach ($rid in $Rids) {
     # Reference config only. The live one lives in %APPDATA%\Orkeon; this copy is
     # here to be read, not loaded.
     Copy-Item (Join-Path $RepoRoot 'examples/appsettings/appsettings.json') (Join-Path $root 'appsettings.sample.json')
+    # Deployment assets (GATE-05/WINSVC-01): the systemd unit and the SCM
+    # registration script ship with the daemon they install. Full set only (the
+    # cli set has no orkeon-host; the MSI harvests the cli tree).
+    if ($AppSet -eq 'full') {
+        Copy-Item -Recurse (Join-Path $RepoRoot 'deploy') (Join-Path $root 'deploy')
+    }
     if ($rid -like 'win-*') {
         Copy-Item (Join-Path $Assets 'install.ps1') (Join-Path $root 'install.ps1')
     } else {

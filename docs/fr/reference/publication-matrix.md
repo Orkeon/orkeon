@@ -112,7 +112,7 @@ remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 
 | Artefact | Produit par | Contenu | Runtime |
 |---|---|---|---|
-| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (`--app-set full` par défaut) | tous les launchers CLI + les apps Orkeon Studio admises par leur filtre RID (le WPF `orkeon-studio` est réservé à `win-x64` ; les deux TUI partout) + un esbuild partagé | mixte : `orkeon`, `orkeon-trading`, `orkeon-host` et les apps Studio self-contained, les autres framework-dependent |
+| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (`--app-set full` par défaut) | tous les launchers CLI + les apps Orkeon Studio admises par leur filtre RID (le WPF `orkeon-studio` est réservé à `win-x64` ; les deux TUI partout) + un esbuild partagé + l'arbre `deploy/` (unité systemd, script d'enregistrement SCM, Dockerfile.host) | mixte : `orkeon`, `orkeon-trading`, `orkeon-host` et les apps Studio self-contained, les autres framework-dependent |
 | `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | le CLI `orkeon` + `orkeon-studio` (Orkeon Studio WPF) + `install.ps1` | self-contained |
 | `orkeon_<version>_amd64.deb` | `package-deb.sh` (réutilise l'arbre de staging `linux-x64` — un publish, deux paquets) | le CLI `orkeon` en `/usr/bin/orkeon` + les TUI Studio en `/usr/bin/orkeon-studio-config` et `/usr/bin/orkeon-studio-run` | self-contained ; `Depends` uniquement sur des bibliothèques système (alternations libicu / libssl), jamais sur `dotnet-runtime-*` |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, portée per-user), moissonnant le zip CLI extrait | le CLI `orkeon` + `orkeon-studio` (WPF, avec un raccourci menu Démarrer « Orkeon Studio »), même publish élagué que le zip | self-contained |
@@ -124,7 +124,7 @@ remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 
 `orkeon-host` est livré dans l'archive complète (`--app-set full`), self-contained : un daemon supervisé par systemd ou le SCM Windows ne doit pas dépendre d'un runtime que quelqu'un peut mettre à jour sous ses pieds. Ce n'est **pas** un dotnet tool — il s'installe en service, il ne s'invoque pas depuis un shell.
 
-Ses artefacts de déploiement vivent dans [`deploy/`](https://github.com/orkeon/orkeon/tree/main/deploy) : une unité systemd (`Type=notify`, redémarrage sur échec, watchdog, durcie), un script PowerShell qui l'enregistre auprès du SCM, et un Dockerfile. Aucun des trois ne porte de secret — le jeton du bot et les clés d'API sont nommés par variable d'environnement dans la configuration et fournis par la machine, donc une unité ou une couche d'image peut être lue par n'importe qui sans rien divulguer.
+Ses artefacts de déploiement vivent dans [`deploy/`](https://github.com/orkeon/orkeon/tree/main/deploy) et sont livrés dans l'archive complète aux côtés du daemon : une unité systemd (`Type=notify`, redémarrage sur échec — les erreurs de configuration sortent en 78 et ne bouclent pas —, durcie), un script PowerShell qui l'enregistre auprès du SCM, et un Dockerfile. Aucun des trois ne porte de secret — le jeton du bot et les clés d'API sont nommés par variable d'environnement dans la configuration et fournis par la machine, donc une unité ou une couche d'image peut être lue par n'importe qui sans rien divulguer.
 
 Deux fichiers de sommes plutôt qu'un : le job ubuntu `installers` écrit `SHA256SUMS` avant que
 le MSI n'existe — il est construit plus tard, sur `windows-latest`. Chaque fichier de sommes

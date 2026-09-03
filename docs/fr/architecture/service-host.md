@@ -164,12 +164,31 @@ Les secrets vont dans `/etc/orkeon/orkeon-host.env`, lisible du seul utilisateur
 
 ### Windows
 
+L'archive **complète** (`orkeon-<version>-win-x64.zip` — pas le zip CLI) porte
+le daemon et ses artefacts de déploiement. L'exécutable réel est
+`libexec\orkeon-host\orkeon-host.exe` ; `bin\orkeon-host.cmd` est un wrapper
+de terminal — ne jamais enregistrer le wrapper auprès du SCM. Le script
+d'enregistrement est livré dans le dossier `deploy\windows\` de l'archive :
+
 ```powershell
 .\deploy\windows\install-service.ps1 `
-  -ExecutablePath C:\Orkeon\orkeon-host.exe `
-  -SettingsPath   C:\Orkeon\appsettings.json
+  -ExecutablePath 'C:\Program Files\Orkeon\libexec\orkeon-host\orkeon-host.exe' `
+  -SettingsPath   'C:\ProgramData\Orkeon\appsettings.json'
 Start-Service -Name Orkeon
 ```
+
+Utilisez des chemins **absolus** partout — dans les deux paramètres et dans le
+fichier de settings : un service Windows démarre dans `System32`, et le host
+résout sa configuration sur le répertoire courant.
+
+Le redémarrage reflète la politique systemd d'aussi près que le SCM le permet :
+le script arme deux redémarrages sur crash, puis l'arrêt. Le SCM ne sait pas
+filtrer les codes de sortie — il n'existe donc pas d'équivalent de
+`RestartPreventExitStatus=78` : une configuration refusée se lit comme un
+service arrêté, pas comme une boucle de redémarrage. Le service tourne en
+LocalSystem aujourd'hui, et les messages d'erreur partent sur stderr, que le
+SCM n'affiche pas : pour lire une erreur de configuration, lancez l'exécutable
+dans un terminal avec les mêmes arguments.
 
 ### Conteneur
 

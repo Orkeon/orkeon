@@ -161,12 +161,30 @@ Secrets go in `/etc/orkeon/orkeon-host.env`, readable only by the service user. 
 
 ### Windows
 
+The **full** archive (`orkeon-<version>-win-x64.zip` — not the CLI zip) carries
+the daemon and its deployment assets. The real executable is
+`libexec\orkeon-host\orkeon-host.exe`; `bin\orkeon-host.cmd` is a terminal
+wrapper — never register the wrapper with the SCM. The registration script
+ships in the archive's `deploy\windows\` folder:
+
 ```powershell
 .\deploy\windows\install-service.ps1 `
-  -ExecutablePath C:\Orkeon\orkeon-host.exe `
-  -SettingsPath   C:\Orkeon\appsettings.json
+  -ExecutablePath 'C:\Program Files\Orkeon\libexec\orkeon-host\orkeon-host.exe' `
+  -SettingsPath   'C:\ProgramData\Orkeon\appsettings.json'
 Start-Service -Name Orkeon
 ```
+
+Use **absolute paths** everywhere — in both parameters and inside the settings
+file: a Windows service starts in `System32`, and the host resolves its
+configuration against the current directory.
+
+Recovery mirrors the systemd policy as closely as the SCM allows: the script
+arms restart-on-crash twice, then stop. The SCM cannot filter exit codes, so
+there is no equivalent of `RestartPreventExitStatus=78` — a refused
+configuration shows up as a stopped service, not a restart loop. The service
+runs as LocalSystem today, and error messages go to stderr, which the SCM does
+not surface: to read a configuration error, run the executable in a terminal
+with the same arguments.
 
 ### Container
 

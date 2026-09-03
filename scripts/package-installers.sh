@@ -274,6 +274,13 @@ for RID in $RIDS; do
   # Reference config only. The live one lives in %APPDATA%\Orkeon (or
   # $XDG_CONFIG_HOME/orkeon); this copy is here to be read, not loaded.
   cp "$REPO_ROOT/examples/appsettings/appsettings.json" "$ROOT/appsettings.sample.json"
+  # Deployment assets (GATE-05/WINSVC-01): the systemd unit and the SCM
+  # registration script ship with the daemon they install. Full set only — the
+  # cli set has no orkeon-host, and the MSI harvests the cli tree
+  # (Package.wxs <Files>), which must not grow service payloads.
+  if [[ "$APP_SET" == "full" ]]; then
+    cp -R "$REPO_ROOT/deploy" "$ROOT/deploy"
+  fi
   if [[ "$RID" == win-* ]]; then
     cp "$ASSETS/install.ps1" "$ROOT/install.ps1"
   else
