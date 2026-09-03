@@ -258,16 +258,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-  # Builds the per-user MSI (WIN-07) from the same CLI zip artefact
-  # smoke-windows uses, then runs its own install / orkeon doctor / uninstall
-  # smoke. A separate job rather than folding into smoke-windows: it needs the
-  # zip *as a wix harvest source* (extracted, not just installed) plus the wix
-  # toolchain, and a wix authoring regression should not be indistinguishable
-  # from a ZIP-channel regression in the job list.
+  # Builds the TWO MSIs — the per-user CLI MSI (WIN-07) from the CLI zip, and
+  # the per-machine service host MSI (WINSVC-02 P3) from the FULL zip — then
+  # runs each one's own install / smoke / uninstall. One job, not two: one wix
+  # restore, one Windows runner, and SHA256SUMS.msi is an append-in-order file
+  # covering both (build-msi.ps1 writes it, build-msi-service.ps1 appends). A
+  # separate job from smoke-windows still: the zips are wix harvest sources
+  # here (extracted, not installed), and a wix authoring regression should not
+  # be indistinguishable from a ZIP-channel regression in the job list.
   msi:
     runs-on: windows-latest
     needs: installers
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
@@ -275,6 +277,10 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: orkeon-cli-win-x64
+          path: artifacts
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: orkeon-win-x64
           path: artifacts
 
       # build-msi.ps1 harvests a tree whose root directly contains bin\ and
@@ -307,7 +313,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $msi = (Get-ChildItem artifacts\installers -Filter 'orkeon-*-win-x64.msi' | Select-Object -First 1).FullName
+          $msi = (Get-ChildItem artifacts\installers -Filter 'orkeon-*-win-x64.msi' | Where-Object Name -NotLike 'orkeon-host-*' | Select-Object -First 1).FullName
           if (-not $msi) { throw 'No orkeon-*-win-x64.msi produced.' }
           $installDir = Join-Path $env:LOCALAPPDATA 'Programs\Orkeon'
           $orkeonCmd = Join-Path $installDir 'bin\orkeon.cmd'
@@ -427,6 +433,37 @@ jobs:
           $userPathEntriesAfter = @((Get-UserPathRaw) -split ';' | Where-Object { $_ })
           if ($userPathEntriesAfter -contains (Join-Path $installDir 'bin')) { throw "$(Join-Path $installDir 'bin') still on the user PATH after uninstall." }
           Write-Host 'PASS path-removed -- bin\ entry gone'
+
+      # ---- The per-machine service host MSI (WINSVC-02 P3) ----------------
+      - name: Extract the full zip as the service-MSI harvest source
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem artifacts -Filter 'orkeon-*-win-x64.zip' | Where-Object Name -NotLike 'orkeon-cli-*' | Select-Object -First 1
+          if (-not $zip) { throw 'No full orkeon-*-win-x64.zip in the downloaded artefact.' }
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath artifacts\_extract_full -Force
+          $roots = @(Get-ChildItem artifacts\_extract_full -Directory)
+          if ($roots.Count -ne 1) { throw "Expected exactly one top-level folder in the archive, found $($roots.Count)." }
+          "STAGE_DIR_FULL=$($roots[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build the service host MSI
+        shell: pwsh
+        run: ./scripts/build-msi-service.ps1 -StageDir "$env:STAGE_DIR_FULL" -OutDir artifacts\installers
+
+      - name: Smoke — install the service MSI, start on an offline crew, reinstall, uninstall
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem artifacts\installers -Filter 'orkeon-host-*-win-x64.msi' | Select-Object -First 1
+          if (-not $msi) { throw 'No orkeon-host-*-win-x64.msi was built.' }
+          ./scripts/smoke-onboarding/run-smoke-service-msi.ps1 -MsiPath $msi.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke-service-msi" -Keep
+          exit $LASTEXITCODE
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: orkeon-smoke-service-msi-logs
+          path: ${{ runner.temp }}/orkeon-smoke-service-msi/logs
+          if-no-files-found: ignore
+          retention-days: 1
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
