@@ -41,6 +41,9 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <!-- WINSVC-02: direct (not merely transitive) because StartupFailureReporting writes
+         to the event log before the generic host - and its AddEventLog wiring - exists. -->
+    <PackageReference Include="System.Diagnostics.EventLog" />
   </ItemGroup>
 
 </Project>

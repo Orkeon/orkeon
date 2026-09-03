@@ -21,6 +21,10 @@
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
     <PackageVersion Include="System.Threading.RateLimiting" Version="10.0.11" />
+    <!-- WINSVC-02: startup failures (exit 78) are reported to the Windows event log before
+         the host or any ILogger exists. Already transitive at this exact version via
+         Microsoft.Extensions.Hosting.WindowsServices - a different pin would conflict. -->
+    <PackageVersion Include="System.Diagnostics.EventLog" Version="10.0.11" />
   </ItemGroup>
   <ItemGroup Label="Microsoft.Extensions.AI">
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.9.0" />

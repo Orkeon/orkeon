@@ -72,13 +72,13 @@ var workingDirectory = ArgumentValue(args, "--working-dir");
 var lastWorkingDirFlag = Array.LastIndexOf(args, "--working-dir");
 if (lastWorkingDirFlag >= 0 && lastWorkingDirFlag == args.Length - 1)
 {
-    await Console.Error.WriteLineAsync("orkeon-host: --working-dir requires a path.").ConfigureAwait(false);
+    StartupFailureReporter.Report("orkeon-host: --working-dir requires a path.");
     return HostConfigurationException.ExitCode;
 }
 
 if (workingDirectory is not null && StartupProbes.TryApplyWorkingDirectory(workingDirectory) is string workingDirError)
 {
-    await Console.Error.WriteLineAsync($"orkeon-host: {workingDirError}").ConfigureAwait(false);
+    StartupFailureReporter.Report($"orkeon-host: {workingDirError}");
     return HostConfigurationException.ExitCode;
 }
 
@@ -94,13 +94,13 @@ if (workingDirectory is not null && StartupProbes.TryApplyWorkingDirectory(worki
 var lastSettingsFlag = Math.Max(Array.LastIndexOf(args, "--settings"), Array.LastIndexOf(args, "-s"));
 if (lastSettingsFlag >= 0 && lastSettingsFlag == args.Length - 1)
 {
-    await Console.Error.WriteLineAsync("orkeon-host: --settings requires a path.").ConfigureAwait(false);
+    StartupFailureReporter.Report("orkeon-host: --settings requires a path.");
     return HostConfigurationException.ExitCode;
 }
 
 if (settingsPath is not null && !StartupProbes.SettingsFileExists(settingsPath))
 {
-    await Console.Error.WriteLineAsync($"orkeon-host: settings file not found: {settingsPath}").ConfigureAwait(false);
+    StartupFailureReporter.Report($"orkeon-host: settings file not found: {settingsPath}");
     return HostConfigurationException.ExitCode;
 }
 
@@ -126,7 +126,7 @@ foreach (var mount in mounts)
     }
     catch (Exception ex) when (ex is FormatException or ArgumentException)
     {
-        await Console.Error.WriteLineAsync($"orkeon-host: invalid --mount '{mount}': {ex.Message}").ConfigureAwait(false);
+        StartupFailureReporter.Report($"orkeon-host: invalid --mount '{mount}': {ex.Message}");
         return HostConfigurationException.ExitCode;
     }
 }
@@ -140,10 +140,33 @@ foreach (var mount in mounts)
 // settingsPath, not just --mount: the daemon is the most settings-driven entry point in the
 // repo and was the one the guard could not see, so a /crews claimed in appsettings.json met the
 // host's own crew mount and came back as "Duplicate virtual paths" out of a DI factory.
-if (!RunnerExecution.EnsureReservedRootsAreFree(
-        mounts, settingsPath, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]))
+// EnsureReservedRootsAreFree writes its own refusal to Console.Error (it is shared with
+// three CLI commands) — captured here so the message also reaches the event log under the
+// SCM, then re-emitted so the terminal and journald contracts stay byte-identical.
+var realError = Console.Error;
+using var reservedRootsCapture = new StringWriter();
+bool reservedRootsFree;
+Console.SetError(reservedRootsCapture);
+try
 {
+    reservedRootsFree = RunnerExecution.EnsureReservedRootsAreFree(
+        mounts, settingsPath, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]);
+}
+finally
+{
+    Console.SetError(realError);
+}
+
+if (!reservedRootsFree)
+{
+    var captured = reservedRootsCapture.ToString().TrimEnd();
+    StartupFailureReporter.Report(
+        captured.Length > 0 ? captured : "orkeon-host: a reserved virtual root is already claimed.");
     return HostConfigurationException.ExitCode;
+}
+else if (reservedRootsCapture.GetStringBuilder().Length > 0)
+{
+    await Console.Error.WriteAsync(reservedRootsCapture.ToString()).ConfigureAwait(false);
 }
 
 mounts.AddRange(crewPlan.Mounts);
@@ -205,8 +228,9 @@ catch (HostConfigurationException ex)
 {
     // A refused configuration fails the START — before READY=1 ever went out — and exits 78,
     // which the systemd unit excludes from restarts: looping on a typo every ten seconds
-    // would bury the one message the operator needs.
-    await Console.Error.WriteLineAsync($"orkeon-host: {ex.Message}").ConfigureAwait(false);
+    // would bury the one message the operator needs. Under the SCM that message also goes to
+    // the Application event log — stderr is invisible there.
+    StartupFailureReporter.Report($"orkeon-host: {ex.Message}");
     return HostConfigurationException.ExitCode;
 }
 
