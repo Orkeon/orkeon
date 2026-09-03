@@ -117,11 +117,12 @@ scripting DSL).
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI + `orkeon-studio` (WPF, with an "Orkeon Studio" Start-menu shortcut), same pruned publish as the zip | self-contained |
 | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | `package-installers.sh --app-set cli --rids osx-arm64 osx-x64` (cross-published from the ubuntu runner) | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS channel stays CLI-only) | self-contained |
 | `SHA256SUMS` | the `installers` job's packaging scripts (`package-deb.sh` refreshes its own line) | one line per artifact above **except the MSI** | — |
-| `SHA256SUMS.msi` | `build-msi.ps1`, in the `msi` job | the MSI alone | — |
+| `orkeon-host-<version>-win-x64.msi` | `build-msi-service.ps1` (WiX, per-machine scope), harvesting the extracted full zip | the self-contained `orkeon-host` publish alone, registered as the `Orkeon` service under `NT SERVICE\Orkeon` (no CLI, no wrapper, no `deploy/` — the package registers declaratively) | self-contained |
+| `SHA256SUMS.msi` | `build-msi.ps1` then `build-msi-service.ps1`, in order, in the `msi` job | the two MSIs | — |
 
 ### The service host
 
-`orkeon-host` ships inside the full archive (`--app-set full`), self-contained: a daemon supervised by systemd or the Windows SCM must not depend on a runtime someone may upgrade underneath it. It is **not** a dotnet tool — it is installed as a service, not invoked from a shell.
+`orkeon-host` ships inside the full archive (`--app-set full`), self-contained: a daemon supervised by systemd or the Windows SCM must not depend on a runtime someone may upgrade underneath it. It is **not** a dotnet tool — it is installed as a service, not invoked from a shell. On Windows it also ships as its own **per-machine MSI** (`orkeon-host-<version>-win-x64.msi`), a separate product from the per-user CLI MSI: the two coexist, and the package registers the service declaratively — same account, same paths, same recovery as the script channel.
 
 Its deployment artifacts live in [`deploy/`](https://github.com/orkeon/orkeon/tree/main/deploy) and ship inside the full archive next to the daemon: a systemd unit (`Type=notify`, restart on failure — config errors exit 78 and do not loop, hardened), a PowerShell script registering it with the SCM, and a Dockerfile. None of the three carries a secret — the bot token and the API keys are named by environment variable in the configuration and provided by the machine, so a unit file or an image layer can be read by anyone without leaking anything.
 
@@ -135,9 +136,13 @@ the job that produced the artifact it covers.
 the package; `smoke-macos` (a `macos-latest`, Apple-silicon runner) extracts the `osx-arm64`
 tarball, installs it with `install.sh` and walks the same chain before uninstalling; the `msi`
 job runs its own `msiexec /i /qn` → `orkeon doctor --json` → `msiexec /x /qn` chain, asserting
-the install directory, the ARP entry and the user `PATH` entry appear and then disappear. All
-four install from the **job** artifacts, never from the Release, so a broken payload is caught
-before anything is published — the `release` job `needs` all of them.
+the install directory, the ARP entry and the user `PATH` entry appear and then disappear.
+`smoke-windows-service` installs the **full** win-x64 zip's service channel — virtual account,
+`--working-dir` proven with a relative crew path, a refused configuration that stops without
+looping and lands in the event log — and the `msi` job smokes the service MSI the same way,
+plus a silent reinstall of itself. All of them install from the **job** artifacts, never from
+the Release, so a broken payload is caught before anything is published — the `release` job
+`needs` them all.
 
 `smoke-macos` is also the only place the Gatekeeper and code-signing story is exercised: an
 unsigned, quarantined or malformed native library (`libtree-sitter*.dylib`, onnxruntime, the

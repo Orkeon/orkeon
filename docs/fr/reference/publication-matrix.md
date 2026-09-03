@@ -118,11 +118,12 @@ remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, portée per-user), moissonnant le zip CLI extrait | le CLI `orkeon` + `orkeon-studio` (WPF, avec un raccourci menu Démarrer « Orkeon Studio »), même publish élagué que le zip | self-contained |
 | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | `package-installers.sh --app-set cli --rids osx-arm64 osx-x64` (cross-publiés depuis le runner ubuntu) | le seul CLI `orkeon` + `install.sh` (pas de Studio en V1 — le canal macOS reste CLI seul) | self-contained |
 | `SHA256SUMS` | les scripts d'empaquetage du job `installers` (`package-deb.sh` rafraîchit sa propre ligne) | une ligne par artefact ci-dessus **sauf le MSI** | — |
-| `SHA256SUMS.msi` | `build-msi.ps1`, dans le job `msi` | le MSI seul | — |
+| `orkeon-host-<version>-win-x64.msi` | `build-msi-service.ps1` (WiX, portée per-machine), moissonnant le zip complet extrait | le seul publish self-contained `orkeon-host`, enregistré comme service `Orkeon` sous `NT SERVICE\Orkeon` (pas de CLI, pas de wrapper, pas de `deploy/` — le paquet enregistre déclarativement) | self-contained |
+| `SHA256SUMS.msi` | `build-msi.ps1` puis `build-msi-service.ps1`, dans l'ordre, dans le job `msi` | les deux MSI | — |
 
 ### Le host de service
 
-`orkeon-host` est livré dans l'archive complète (`--app-set full`), self-contained : un daemon supervisé par systemd ou le SCM Windows ne doit pas dépendre d'un runtime que quelqu'un peut mettre à jour sous ses pieds. Ce n'est **pas** un dotnet tool — il s'installe en service, il ne s'invoque pas depuis un shell.
+`orkeon-host` est livré dans l'archive complète (`--app-set full`), self-contained : un daemon supervisé par systemd ou le SCM Windows ne doit pas dépendre d'un runtime que quelqu'un peut mettre à jour sous ses pieds. Ce n'est **pas** un dotnet tool — il s'installe en service, il ne s'invoque pas depuis un shell. Sous Windows il est aussi livré comme **MSI per-machine** dédié (`orkeon-host-<version>-win-x64.msi`), produit distinct du MSI per-user du CLI : les deux coexistent, et le paquet enregistre le service déclarativement — même compte, mêmes chemins, même politique de redémarrage que le canal script.
 
 Ses artefacts de déploiement vivent dans [`deploy/`](https://github.com/orkeon/orkeon/tree/main/deploy) et sont livrés dans l'archive complète aux côtés du daemon : une unité systemd (`Type=notify`, redémarrage sur échec — les erreurs de configuration sortent en 78 et ne bouclent pas —, durcie), un script PowerShell qui l'enregistre auprès du SCM, et un Dockerfile. Aucun des trois ne porte de secret — le jeton du bot et les clés d'API sont nommés par variable d'environnement dans la configuration et fournis par la machine, donc une unité ou une couche d'image peut être lue par n'importe qui sans rien divulguer.
 
@@ -137,9 +138,13 @@ paquet ; `smoke-macos` (runner `macos-latest`, Apple Silicon) extrait l'archive 
 l'installe via `install.sh` et déroule la même chaîne avant de désinstaller ; le job `msi`
 déroule sa propre chaîne `msiexec /i /qn` → `orkeon doctor --json` → `msiexec /x /qn`, en
 vérifiant que le répertoire d'installation, l'entrée ARP et l'entrée de `PATH` utilisateur
-apparaissent puis disparaissent. Tous quatre installent depuis les artefacts **de job**, jamais
-depuis la Release : une charge utile cassée est donc attrapée avant toute publication — le job
-`release` les a tous en `needs`.
+apparaissent puis disparaissent. `smoke-windows-service` installe le canal service du zip
+win-x64 **complet** — compte virtuel, `--working-dir` prouvé par un chemin de crew relatif,
+configuration refusée qui s'arrête sans boucler et atterrit dans le journal d'événements — et
+le job `msi` smoke le MSI service de la même façon, plus une réinstallation silencieuse de
+lui-même. Tous installent depuis les artefacts **de job**, jamais depuis la Release : une
+charge utile cassée est donc attrapée avant toute publication — le job `release` les a tous en
+`needs`.
 
 `smoke-macos` est aussi le seul endroit où l'histoire Gatekeeper / signature est éprouvée : une
 bibliothèque native non signée, en quarantaine ou malformée (`libtree-sitter*.dylib`,

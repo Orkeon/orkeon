@@ -167,9 +167,17 @@ the daemon and its deployment assets. The real executable is
 wrapper — never register the wrapper with the SCM. The registration script
 ships in the archive's `deploy\windows\` folder:
 
-Extract the archive under `C:\Program Files\Orkeon`, put your configuration
-under `C:\ProgramData\Orkeon` (the mirrors of `/opt/orkeon` and `/etc/orkeon`),
-and run the bundled script — those paths are its defaults:
+Two channels install the same service. The quickest is the dedicated
+**per-machine MSI** — `orkeon-host-<version>-win-x64.msi`, a separate product
+from the per-user CLI MSI — which lays out the same paths and registers the
+same service declaratively (double-click, or `msiexec /i ... /qn`). Everything
+below about the account, the paths, secrets, recovery and the event log holds
+for both channels; only the registration mechanics differ.
+
+For the script channel: extract the archive under `C:\Program Files\Orkeon`,
+put your configuration under `C:\ProgramData\Orkeon` (the mirrors of
+`/opt/orkeon` and `/etc/orkeon`), and run the bundled script — those paths are
+its defaults:
 
 ```powershell
 .\deploy\windows\install-service.ps1 -EnvironmentSecrets @{ ORKEON_DISCORD_TOKEN = '...' }

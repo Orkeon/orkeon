@@ -170,9 +170,17 @@ le daemon et ses artefacts de déploiement. L'exécutable réel est
 de terminal — ne jamais enregistrer le wrapper auprès du SCM. Le script
 d'enregistrement est livré dans le dossier `deploy\windows\` de l'archive :
 
-Extrayez l'archive sous `C:\Program Files\Orkeon`, posez votre configuration
-sous `C:\ProgramData\Orkeon` (les miroirs de `/opt/orkeon` et `/etc/orkeon`),
-puis lancez le script embarqué — ces chemins sont ses défauts :
+Deux canaux installent le même service. Le plus rapide est le **MSI
+per-machine** dédié — `orkeon-host-<version>-win-x64.msi`, produit distinct du
+MSI per-user du CLI — qui pose les mêmes chemins et enregistre le même service
+déclarativement (double-clic, ou `msiexec /i ... /qn`). Tout ce qui suit sur le
+compte, les chemins, les secrets, la récupération et le journal d'événements
+vaut pour les deux canaux ; seule la mécanique d'enregistrement diffère.
+
+Pour le canal script : extrayez l'archive sous `C:\Program Files\Orkeon`,
+posez votre configuration sous `C:\ProgramData\Orkeon` (les miroirs de
+`/opt/orkeon` et `/etc/orkeon`), puis lancez le script embarqué — ces chemins
+sont ses défauts :
 
 ```powershell
 .\deploy\windows\install-service.ps1 -EnvironmentSecrets @{ ORKEON_DISCORD_TOKEN = '...' }
