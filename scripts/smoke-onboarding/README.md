@@ -1,6 +1,6 @@
 # Onboarding smoke tests
 
-This directory holds four smokes. They answer two different questions, so read
+This directory holds five smokes. They answer two different questions, so read
 the one that matches yours:
 
 | Script | Question it answers | Runs where |
@@ -9,6 +9,7 @@ the one that matches yours:
 | `run-smoke.ps1` | Does the **published Windows archive** install, run and uninstall on a real Windows box? (WIN-06) | `windows-latest`, in `release.yml` |
 | `run-smoke-deb.sh` | Does the **published `.deb`** install through apt, run and remove cleanly? (LIN-02) | `ubuntu-latest`, in `release.yml` |
 | `run-smoke-tarball.sh` | Does the **published `.tar.gz`** install through `install.sh`, run and uninstall cleanly? (MAC-02) | `macos-latest`, in `release.yml`; also locally on Linux |
+| `run-smoke-service.ps1` | Does the **service host in the published full archive** register under `NT SERVICE\Orkeon`, start on a relative crew path, refuse a bad config without looping, and uninstall cleanly? (WINSVC-02) | `windows-latest`, in `release.yml` |
 
 The rest of this page documents `run-smoke.sh`; the three released-artefact
 smokes are covered in [their own section](#released-artefact-smokes-win-06--lin-02--mac-02)
@@ -127,6 +128,21 @@ The script exits `0` when no non-skipped scenario failed, `1` otherwise.
   only active run time, matching the acceptance criterion.
 
 ---
+
+## The Windows service smoke (WINSVC-02)
+
+`run-smoke-service.ps1` proves the **service channel** of the full win-x64
+archive on a real SCM: layout (exe under `libexec\`, `deploy\` assets, the
+terminal wrapper that must never be registered), registration under the virtual
+account with `--settings`/`--working-dir` in a quoted ImagePath and secrets in
+the service's `Environment` value, start/stability/stop on an offline crew
+declared with a **relative** path (the end-to-end proof of `--working-dir` — a
+service is born in System32), a refused configuration that ends Stopped without
+an SCM restart loop **and** lands in the Application event log, and a reversible
+`-Uninstall` that leaves `ProgramData\Orkeon` to the operator. Its assertions
+live in `lib\service-windows.ps1`, shared with the MSI service channel so the
+two cannot drift. It needs administrator rights and a machine without an
+existing `Program Files\Orkeon` — a disposable CI runner, not your workstation.
 
 ## Released-artefact smokes (WIN-06 / LIN-02 / MAC-02)
 
