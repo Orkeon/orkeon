@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Orkeon Service Host — per-machine MSI (WINSVC-02 P3).
+
+  Second install channel for the service host, next to the full ZIP +
+  deploy\windows\install-service.ps1. A Windows service disqualifies the CLI's
+  per-user MSI wholesale — it needs HKLM, elevation and a path outside any user
+  profile — so this is a SEPARATE product (its own UpgradeCode, its own ARP
+  entry "Orkeon Service Host"), not a feature of Package.wxs: the two coexist
+  by construction (different scopes, hives and upgrade families) and never
+  guard against each other. The only guard below is against a service already
+  registered by the ZIP channel's script — one registrar at a time.
+
+  Payload: the self-contained orkeon-host publish alone, harvested from the
+  extracted FULL archive tree (libexec\orkeon-host\**) — byte-identical to the
+  ZIP channel, zero second publish. Deliberately absent: the CLI (that is the
+  per-user MSI's product), bin\orkeon-host.cmd (a terminal wrapper has no
+  business in a service package) and deploy\ (a second registration path would
+  fight the ServiceInstall below).
+
+  What the ZIP channel scripts do imperatively, this package does declaratively:
+    ServiceInstall under NT SERVICE\Orkeon (the table passes a NULL password to
+    CreateService, which accepts a virtual account — the sc.exe detour the
+    script needs does not exist here; constraint: the account's suffix MUST
+    equal the service name), the settings and working-dir flags in Arguments,
+    crash-only recovery via util:ServiceConfig, ProgramData\Orkeon created
+    with Modify for the service account (util:PermissionEx ADDS an ACE — it is
+    LockPermissions that would replace the ACL — and util's deferred
+    SecureObjects runs after InstallServices, when the virtual SID resolves),
+    and the Application event-log source the virtual account could not create
+    on first write. No Start="install": a freshly installed host has no
+    operator configuration yet and would exit 78, turning every install into
+    msiexec error 1920 — register, let the operator configure, then start.
+    Secrets: NONE here, ever — msiexec properties land verbatim in /l*v logs,
+    and WriteRegistryValues runs before InstallServices anyway. The documented
+    path stays the service's Environment value, set after install.
+
+  Built by scripts/build-msi-service.ps1, which supplies:
+    OrkeonVersion      x.y.z only (MSI ProductVersion accepts no suffix)
+    OrkeonVersionFull  the full version string, kept in ARPCOMMENTS and the
+                        .msi filename
+    HostPublishDir     <full-archive tree>\libexec\orkeon-host
+    StageRoot          the full-archive tree root (LICENSE.md, VERSION,
+                        appsettings.sample.json)
+
+  Same WiX v5.0.2 doctrine as Package.wxs (see its header: v5 pinned in
+  .config\dotnet-tools.json, v6/v7 gated by the OSMF EULA (WIX7015), schema
+  namespace stays "v4", no heat). Adds WixToolset.Util.wixext — same
+  major.minor.patch as wix itself — for ServiceConfig, PermissionEx and
+  EventSource.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!--
+    UpgradeCode — GENERATED ONCE (2026-09-03, WINSVC-02 P3 authoring).
+    NEVER REGENERATE — and never reuse Package.wxs's: the two products must
+    install, upgrade and uninstall independently.
+  -->
+  <?define OrkeonServiceUpgradeCode = "83EBF6EC-C5F7-44A7-8447-B98CD41C242B" ?>
+
+  <Package Name="Orkeon Service Host"
+           Manufacturer="Orkeon"
+           Version="$(var.OrkeonVersion)"
+           UpgradeCode="$(var.OrkeonServiceUpgradeCode)"
+           Scope="perMachine"
+           Language="1033"
+           InstallerVersion="500">
+
+    <SummaryInformation Keywords="Installer" Description="Orkeon Service Host $(var.OrkeonVersionFull) — per-machine setup" />
+
+    <!-- Same pre-release reality as the CLI MSI: two builds can share x.y.z. -->
+    <MajorUpgrade
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="A newer version of the Orkeon Service Host is already installed. Uninstall it first if you need to downgrade." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPCOMMENTS" Value="Orkeon Service Host $(var.OrkeonVersionFull)" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Orkeon/orkeon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/Orkeon/orkeon#readme" />
+    <!-- ARPNOMODIFY is already set by WixUI_Minimal (WIX0091 if declared twice). -->
+    <Property Id="ARPNOREPAIR" Value="1" />
+
+    <!-- ==================================================================
+         One service registrar at a time: refuse a first install while a
+         service named 'Orkeon' registered by the ZIP channel's
+         install-service.ps1 exists. Our own upgrades pass through
+         WIX_UPGRADE_DETECTED — which requires FindRelatedProducts to run
+         BEFORE LaunchConditions in the silent execute sequence (by default
+         LaunchConditions is sequenced first there, so every silent major
+         upgrade would block on its own service). The resequencing below is
+         what the double-msiexec step of the smoke proves.
+         ================================================================== -->
+    <Property Id="ORKEONSERVICEPRESENT" Secure="yes">
+      <RegistrySearch Id="OrkeonServiceKeySearch"
+                       Root="HKLM"
+                       Key="SYSTEM\CurrentControlSet\Services\Orkeon"
+                       Name="ImagePath"
+                       Type="raw" />
+    </Property>
+    <Launch Condition="Installed OR WIX_UPGRADE_DETECTED OR NOT ORKEONSERVICEPRESENT"
+            Message="A service named 'Orkeon' is already registered (deploy\windows\install-service.ps1). Remove it first (install-service.ps1 -Uninstall), then run this installer again — one service registrar at a time." />
+    <InstallExecuteSequence>
+      <FindRelatedProducts Before="LaunchConditions" />
+    </InstallExecuteSequence>
+
+    <!-- ==================================================================
+         Layout — the exact documented paths of the ZIP channel, so there is
+         ONE canonical executable path whatever the channel:
+           C:\Program Files\Orkeon\libexec\orkeon-host\orkeon-host.exe
+           C:\ProgramData\Orkeon  (configuration + working directory)
+         ================================================================== -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Orkeon">
+        <Directory Id="LibexecFolder" Name="libexec">
+          <Directory Id="HostFolder" Name="orkeon-host" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="OrkeonDataFolder" Name="Orkeon" />
+    </StandardDirectory>
+
+    <!-- The publish, minus the exe: the exe needs its own component below,
+         because ServiceInstall must live in the component whose KeyPath is
+         the service binary, and <Files> cannot host it. -->
+    <ComponentGroup Id="HostPayloadComponents" Directory="HostFolder">
+      <!-- WIX0004: Exclude is a child element in WiX v5, not an attribute. -->
+      <Files Include="$(var.HostPublishDir)\**">
+        <Exclude Files="$(var.HostPublishDir)\orkeon-host.exe" />
+      </Files>
+    </ComponentGroup>
+
+    <!-- Reference files at the install root, same as the archive ships. -->
+    <ComponentGroup Id="RootDocsComponents" Directory="INSTALLFOLDER">
+      <Files Include="$(var.StageRoot)\LICENSE.md" />
+      <Files Include="$(var.StageRoot)\VERSION" />
+      <Files Include="$(var.StageRoot)\appsettings.sample.json" />
+    </ComponentGroup>
+
+    <!--
+      The service itself. Arguments is a Formatted field: ProgramData is never
+      hard-coded. GUID generated once (2026-09-03) — stable across releases.
+    -->
+    <Component Id="HostServiceComponent" Directory="HostFolder" Guid="9D3C1A76-24DB-4E2A-97D1-5B2FAD60C11F">
+      <File Id="OrkeonHostExe" Source="$(var.HostPublishDir)\orkeon-host.exe" KeyPath="yes" />
+      <ServiceInstall Id="OrkeonService"
+                      Name="Orkeon"
+                      DisplayName="Orkeon service host"
+                      Description="Hosts Orkeon crews and the chat gateway."
+                      Type="ownProcess"
+                      Start="auto"
+                      ErrorControl="normal"
+                      Vital="yes"
+                      Account="NT SERVICE\Orkeon"
+                      Arguments="--settings &quot;[CommonAppDataFolder]Orkeon\appsettings.json&quot; --working-dir &quot;[CommonAppDataFolder]Orkeon&quot;">
+        <!-- Crash-only, twice, then stop — the util CA mirror of
+             `sc.exe failure reset= 86400 actions= restart/10000/restart/30000/none/0`,
+             with one assumed approximation: a single 10 s delay instead of 10/30 s. -->
+        <util:ServiceConfig FirstFailureActionType="restart"
+                            SecondFailureActionType="restart"
+                            ThirdFailureActionType="none"
+                            RestartServiceDelayInSeconds="10"
+                            ResetPeriodInDays="1" />
+      </ServiceInstall>
+      <ServiceControl Id="OrkeonServiceControl" Name="Orkeon" Stop="both" Remove="uninstall" Wait="yes" />
+    </Component>
+
+    <!--
+      ProgramData\Orkeon: created at install, Modify ADDED for the virtual
+      account (PermissionEx appends an ACE; util's deferred SecureObjects runs
+      after InstallServices, when NT SERVICE\Orkeon resolves). NO RemoveFolder
+      and no RemoveFile anywhere near it: the operator's configuration survives
+      an uninstall, mirror of /etc/orkeon — the smoke asserts it.
+    -->
+    <Component Id="DataFolderComponent" Directory="OrkeonDataFolder" Guid="4E7B2C90-8A15-4F63-BD2E-0C9A17D5E842">
+      <CreateFolder>
+        <util:PermissionEx User="Orkeon" Domain="NT SERVICE"
+                           GenericRead="yes" GenericWrite="yes" GenericExecute="yes" Delete="yes" />
+      </CreateFolder>
+    </Component>
+
+    <!--
+      Application event-log source 'Orkeon' — the administrator context of the
+      install creates what the virtual account could not on first write, and
+      the uninstall takes it back out. A missing message file would only
+      degrade Event Viewer rendering, never the write itself.
+    -->
+    <Component Id="EventLogSourceComponent" Directory="OrkeonDataFolder" Guid="A1F08D24-63E7-49B5-8C41-7ED90B2C5F13">
+      <RegistryValue Root="HKLM" Key="Software\Orkeon\ServiceMsi" Name="EventSource" Type="integer" Value="1" KeyPath="yes" />
+      <util:EventSource Log="Application"
+                        Name="Orkeon"
+                        EventMessageFile="[WindowsFolder]Microsoft.NET\Framework64\v4.0.30319\EventLogMessages.dll" />
+    </Component>
+
+    <Feature Id="ServiceHostFeature" Title="Orkeon Service Host" Level="1">
+      <ComponentGroupRef Id="HostPayloadComponents" />
+      <ComponentGroupRef Id="RootDocsComponents" />
+      <ComponentRef Id="HostServiceComponent" />
+      <ComponentRef Id="DataFolderComponent" />
+      <ComponentRef Id="EventLogSourceComponent" />
+    </Feature>
+
+    <!-- License + progress + exit only, like the CLI MSI: the paths are fixed. -->
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
+              Value="Create C:\ProgramData\Orkeon\appsettings.json, put secrets in the service's Environment value, then: Start-Service Orkeon" />
+
+  </Package>
+</Wix>
