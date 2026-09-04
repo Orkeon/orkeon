@@ -36,9 +36,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES_ROOT = REPO_ROOT / "examples"
 
-# The 10 showcase examples, curated by hand — never touched by this script.
+# The showcase examples plus hand-curated run sections — never touched by this
+# script. 16-interactive-qa's block carries a --var question=... the generic
+# template cannot express (the tasks consume a {question} placeholder).
 VITRINES = {
     "01-enterprise/01-research-assistant",
+    "01-enterprise/16-interactive-qa",
     "02-science-research/19-experimental-data",
     "03-finance-trading/34-portfolio-consensus",
     "03-finance-trading/40-invoice-processing",
@@ -298,7 +301,8 @@ def main() -> int:
     readmes = sorted(
         p
         for p in EXAMPLES_ROOT.glob("0*-*/*/README.md")
-        if re.match(r"^\d", p.parent.name) and (p.parent / "config.yaml").is_file()
+        if re.match(r"^\d", p.parent.name)
+        and ((p.parent / "config.yaml").is_file() or (p.parent / "main.ork.ts").is_file())
     )
     result = Result()
     for readme in readmes:
