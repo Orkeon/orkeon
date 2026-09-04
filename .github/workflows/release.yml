@@ -126,14 +126,14 @@ jobs:
       # compressed, so the default level 6 only burns CPU on both ends. They
       # exist to carry payloads between jobs of this one run, hence the
       # one-day retention.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-cli-win-x64
           path: artifacts/installers/orkeon-cli-*-win-x64.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-cli-osx
           path: artifacts/installers/orkeon-cli-*-osx-*.tar.gz
@@ -145,7 +145,7 @@ jobs:
       # only published archive that carries the two Studio TUIs on a runner we
       # actually have — smoke-macos exercises run-smoke-tarball.sh with
       # `--studio absent`, and nothing exercised the `present` side.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-linux
           path: |
@@ -157,7 +157,7 @@ jobs:
       # The FULL win-x64 zip in its own artefact so the service smoke pulls only
       # what it needs (WINSVC-02). The glob would also match the cli zip — same
       # exclusion trick as release-assets below.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-win-x64
           path: |
@@ -174,7 +174,7 @@ jobs:
       # linux tarball, but this workflow never builds one — the cli step
       # targets win + osx only. The full-win exclusion subsumes the cli-win
       # one; both stay so each mirrors its artefact.)
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-assets
           path: |
@@ -218,7 +218,7 @@ jobs:
           ./scripts/smoke-onboarding/run-smoke.ps1 -ArchivePath $zip.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke" -Keep
           exit $LASTEXITCODE
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-smoke-windows-logs
@@ -250,7 +250,7 @@ jobs:
           ./scripts/smoke-onboarding/run-smoke-service.ps1 -ArchivePath $zip.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke-service" -Keep
           exit $LASTEXITCODE
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-smoke-windows-service-logs
@@ -457,7 +457,7 @@ jobs:
           ./scripts/smoke-onboarding/run-smoke-service-msi.ps1 -MsiPath $msi.FullName -WorkDir "${{ runner.temp }}/orkeon-smoke-service-msi" -Keep
           exit $LASTEXITCODE
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-smoke-service-msi-logs
@@ -465,7 +465,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-msi-logs
@@ -473,7 +473,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: orkeon-msi
           path: |
@@ -536,7 +536,7 @@ jobs:
             --work-dir "$RUNNER_TEMP/orkeon-smoke-tarball" \
             --keep
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-smoke-linux-tarball-logs
@@ -583,7 +583,7 @@ jobs:
             --work-dir "$RUNNER_TEMP/orkeon-smoke" \
             --keep
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: orkeon-smoke-macos-logs
