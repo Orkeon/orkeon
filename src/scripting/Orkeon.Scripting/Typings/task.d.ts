@@ -16,6 +16,16 @@ declare global {
         withContexts(tasks: readonly Task<unknown, unknown>[]): this;
         expect(schema: JsonSchema): this;
         withTaskTool(tool: Tool<unknown, unknown>): this;
+        /** YAML parity `humanInput: true` — the task pauses for the human-input provider. */
+        humanInput(value?: boolean): this;
+        /** YAML parity `asyncExecution: true` — the task may run concurrently with its siblings. */
+        asyncExecution(value?: boolean): this;
+        /**
+         * YAML parity task-level `tools:` — names, `toolBuilder()` instances, or an
+         * array mixing both. Instances are registered with the runtime registry by
+         * the loader, so their names resolve like built-ins.
+         */
+        tools(value: string | Tool<unknown, unknown> | readonly (string | Tool<unknown, unknown>)[]): this;
         /**
          * First-class deliverable contract — mirror of YAML's `deliverable: { ... }`
          * block. The framework writes the produced output to `path` and (when the

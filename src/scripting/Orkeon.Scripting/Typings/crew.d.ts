@@ -48,6 +48,8 @@ declare global {
 
     interface CrewBuilder {
         name(value: string): this;
+        /** The crew goal; when omitted, one is synthesized from the name. */
+        goal(value: string): this;
         process(value: Process): this;
         withAgent(agent: Agent<unknown, unknown> | ((b: AgentBuilder) => AgentBuilder)): this;
         withAgents(agents: readonly Agent<unknown, unknown>[]): this;
@@ -57,6 +59,8 @@ declare global {
         budget(opts: ExecutionBudget): this;
         graph(graph: StateGraph<unknown>): this;
         verbose(value?: boolean): this;
+        /** YAML parity `memory: true` — the crew keeps a shared memory scope. */
+        memory(value?: boolean): this;
         when(predicate: () => boolean): this;
         onCrewStart(hook: (ctx: ExecutionContext) => Promise<void> | void): this;
         onCrewComplete(hook: (ctx: ExecutionContext, result: CrewResult) => Promise<void> | void): this;
