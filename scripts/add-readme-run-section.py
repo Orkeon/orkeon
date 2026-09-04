@@ -95,8 +95,11 @@ def rel_example(readme: Path) -> str:
 
 
 def is_finance(rel: str) -> bool:
-    """Finance/trading examples run on the dedicated ``orkeon-trading`` runner."""
-    return rel.startswith("03-finance-trading/")
+    """Finance/trading examples still on YAML run on the dedicated
+    ``orkeon-trading`` runner; once migrated to a TypeScript crew (EX-01,
+    ``main.ork.ts``) they run on the stock CLI like everyone else."""
+    return (rel.startswith("03-finance-trading/")
+            and not (EXAMPLES_ROOT / rel / "main.ork.ts").is_file())
 
 
 def is_french(text: str) -> bool:
@@ -110,7 +113,9 @@ def build_block(rel: str, french: bool) -> str:
     ``03-finance-trading/*`` keep the specialized ``orkeon-trading --config <config>``
     runner (it adds the 44 trading tools the base CLI does not carry).
     """
-    config = f"examples/{rel}/config.yaml"
+    config = (f"examples/{rel}/main.ork.ts"
+              if (EXAMPLES_ROOT / rel / "main.ork.ts").is_file()
+              else f"examples/{rel}/config.yaml")
     settings = "examples/appsettings/appsettings.deepseek.local.json"
     if is_finance(rel):
         command = (

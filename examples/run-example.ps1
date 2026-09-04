@@ -15,6 +15,14 @@ $ConfigPath = "examples/$ExamplePath/config.yaml"
 $ExampleDir = "examples/$ExamplePath"
 
 if (-not (Test-Path $ConfigPath)) {
+    # Migrated examples declare their crew in TypeScript (EX-01): one main.ork.ts,
+    # run by the orkeon CLI. esbuild is required, so the npm bootstrap stays ON.
+    $TsCrew = Join-Path $ExampleDir "main.ork.ts"
+    if (Test-Path $TsCrew) {
+        Write-Host "Running $ExamplePath with the orkeon CLI (TypeScript crew)..."
+        & dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release -- run $TsCrew @(if ($Settings) { @("--settings", $Settings) })
+        exit $LASTEXITCODE
+    }
     # Code-driven examples (e.g. rag/basic-ingestion) ship a console project
     # instead of a config.yaml crew: run the folder's csproj directly.
     $Csproj = Get-ChildItem -Path $ExampleDir -Filter *.csproj -File -ErrorAction SilentlyContinue | Select-Object -First 1

@@ -27,6 +27,7 @@ Usage:
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -90,6 +91,29 @@ def read_runner(readme: Path) -> str:
 
 def _indent(line: str) -> int:
     return len(line) - len(line.lstrip(" "))
+
+
+TS_HEADER_RE = re.compile(r"^//\s*orkeon-example:\s*(\{.*\})\s*$", re.MULTILINE)
+
+
+def parse_ts_crew(ts: Path):
+    """Metadata of a migrated TypeScript crew (EX-01): the one-line
+    `// orkeon-example: {"process": ..., "agents": N, "tasks": N, "tools": [...]}`
+    JSON header when present, else counts derived from the builder calls."""
+    text = ts.read_text(encoding="utf-8", errors="replace")
+    m = TS_HEADER_RE.search(text)
+    if m:
+        try:
+            d = json.loads(m.group(1))
+            return (d.get("process"), int(d.get("agents", 0)),
+                    int(d.get("tasks", 0)), list(d.get("tools", [])))
+        except (ValueError, TypeError):
+            pass
+    proc = re.search(r"\.process\(\s*\"([a-z]+)\"\s*\)", text)
+    tool_blobs = " ".join(re.findall(r"\.tools\(\[(.*?)\]\)", text, re.DOTALL))
+    tools = sorted(set(re.findall(r"\"([a-z0-9_]+)\"", tool_blobs)))
+    return (proc.group(1) if proc else None,
+            text.count("agentBuilder("), text.count("taskBuilder("), tools)
 
 
 def parse_config(cfg: Path) -> tuple[str, int, int, list[str]]:
@@ -185,15 +209,17 @@ def collect_category(cat_dir: Path) -> Category:
             continue
         m = EXAMPLE_RE.match(sub.name)
         cfg = sub / "config.yaml"
-        if not m or not cfg.is_file():
+        ts = sub / "main.ork.ts"
+        if not m or not (cfg.is_file() or ts.is_file()):
             continue
         number = int(m.group(1))
         slug = m.group(2)
         readme = sub / "README.md"
-        process, agents, tasks, tools = parse_config(cfg)
+        process, agents, tasks, tools = (
+            parse_config(cfg) if cfg.is_file() else parse_ts_crew(ts))
         extras = [
             p for p in sub.iterdir()
-            if p.name not in ("config.yaml", "README.md")
+            if p.name not in ("config.yaml", "main.ork.ts", "README.md")
             and p.name not in ("bin", "obj", "obj-linux")
         ]
         cat.examples.append(Example(

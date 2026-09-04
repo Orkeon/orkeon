@@ -66,7 +66,11 @@ if [[ "${1:-}" == "__worker" ]]; then
     # Trading crews load through the dedicated trading runner (`--config <yaml>`);
     # everything else validates through the `orkeon` CLI (`orkeon run <yaml> --validate`,
     # config passed positionally after the `run` verb).
-    if [[ "$config" == *"/03-finance-trading/"* ]]; then
+    if [[ "$config" == *.ork.ts ]]; then
+        # A migrated TypeScript crew validates through the orkeon CLI whatever its
+        # category: its custom tools travel inside the script (EX-01).
+        cmd=(dotnet "$ORK_DLL" run "$config" --validate)
+    elif [[ "$config" == *"/03-finance-trading/"* ]]; then
         cmd=(dotnet "$TRD_DLL" --config "$config" --validate)
     else
         cmd=(dotnet "$ORK_DLL" run "$config" --validate)
@@ -128,7 +132,9 @@ fi
 
 # Collect the 105 bundled example configs (numbered category dirs only; the lone
 # others/effect/.../fixtures/config.yaml is an unrelated test fixture).
-mapfile -t ALL_CONFIGS < <(find examples -name config.yaml | grep -E 'examples/0[0-9]-' | sort)
+# main.ork.ts is the TypeScript crew definition of a migrated example (EX-01):
+# same catalog, same validation, through `orkeon run <ts> --validate`.
+mapfile -t ALL_CONFIGS < <(find examples \( -name config.yaml -o -name main.ork.ts \) | grep -E 'examples/0[0-9]-' | sort)
 
 # Normalise excludes into a newline list of substrings.
 declare -a EXCL=()

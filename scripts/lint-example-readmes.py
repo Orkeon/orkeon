@@ -179,7 +179,7 @@ def iter_examples():
         for sub in sorted(cat.iterdir()):
             if not sub.is_dir() or not EXAMPLE_RE.match(sub.name):
                 continue
-            if (sub / "config.yaml").is_file():
+            if (sub / "config.yaml").is_file() or (sub / "main.ork.ts").is_file():
                 yield sub / "README.md"
 
 

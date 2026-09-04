@@ -42,7 +42,7 @@ find_matches() {
             set -- "$EXAMPLES_ROOT"/0[1-9]-*/*"$id"* ;;
     esac
     for d in "$@"; do
-        [ -f "$d/config.yaml" ] && echo "$d"
+        if [ -f "$d/config.yaml" ] || [ -f "$d/main.ork.ts" ]; then echo "$d"; fi
     done
     return 0
 }
@@ -163,7 +163,7 @@ cmd_list() {
         cat_name=$(basename "$cat_dir")
         # sort -n: glob order is lexicographic, which puts 102 before 66.
         for d in "$cat_dir"*/; do
-            [ -f "$d/config.yaml" ] || continue
+            [ -f "$d/config.yaml" ] || [ -f "$d/main.ork.ts" ] || continue
             name=$(basename "$d")
             case "$name" in
                 *"$filter"*|"") ;;
@@ -178,7 +178,7 @@ cmd_show() {
     [ $# -ge 1 ] || die "usage: orkeon-example show <id>"
     dir=$(resolve "$1")
     [ -f "$dir/README.md" ] && cat "$dir/README.md" && echo
-    echo "config: $dir/config.yaml"
+    if [ -f "$dir/config.yaml" ]; then echo "config: $dir/config.yaml"; else echo "config: $dir/main.ork.ts"; fi
     echo "run it: orkeon-example run $1"
 }
 
@@ -206,6 +206,8 @@ cmd_run() {
     [ $# -ge 1 ] || die "usage: orkeon-example run <id> [runner args...]"
     dir=$(resolve "$1"); shift
     cfg="$dir/config.yaml"
+    # Migrated examples carry a TypeScript crew instead (EX-01).
+    [ -f "$cfg" ] || cfg="$dir/main.ork.ts"
     extra=$(settings_args "$@")
     # Preflight only when the run will actually call the LLM and we know which
     # settings apply — --validate/--list-tools never hit the endpoint, and a
@@ -228,6 +230,9 @@ cmd_run() {
     echo "[orkeon-example] $(basename "$dir") — file output (if any) lands under /output;"
     echo "[orkeon-example] start the container with -v \$PWD/out:/output to keep it."
     # $extra/$mount_args are unquoted on purpose: word-split into flag + value.
+    case "$cfg" in
+        *.ork.ts) exec orkeon run "$cfg" $extra $mount_args "$@" ;;
+    esac
     case "$dir" in
         */03-finance-trading/*) exec orkeon-trading --config "$cfg" $extra $mount_args "$@" ;;
         *)                      exec orkeon run "$cfg" $extra $mount_args "$@" ;;
@@ -240,7 +245,7 @@ usage() {
     echo "Categories:"
     for cat_dir in "$EXAMPLES_ROOT"/0[1-9]-*/; do
         [ -d "$cat_dir" ] || continue
-        n=$(find "$cat_dir" -maxdepth 2 -name config.yaml 2>/dev/null | grep -c . || true)
+        n=$(find "$cat_dir" -maxdepth 2 \( -name config.yaml -o -name main.ork.ts \) 2>/dev/null | grep -c . || true)
         printf '  %-25s %s examples\n' "$(basename "$cat_dir")" "$n"
     done
 }

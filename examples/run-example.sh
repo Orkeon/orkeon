@@ -20,6 +20,13 @@ CONFIG_PATH="examples/${EXAMPLE_PATH}/config.yaml"
 EXAMPLE_DIR="examples/${EXAMPLE_PATH}"
 
 if [ ! -f "$CONFIG_PATH" ]; then
+  # Migrated examples declare their crew in TypeScript (EX-01): one main.ork.ts,
+  # run by the orkeon CLI. esbuild is required, so the npm bootstrap stays ON.
+  if [ -f "$EXAMPLE_DIR/main.ork.ts" ]; then
+    echo "Running $EXAMPLE_PATH with the orkeon CLI (TypeScript crew)..."
+    exec dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release \
+      -- run "$EXAMPLE_DIR/main.ork.ts" $SETTINGS_ARG
+  fi
   # Code-driven examples (e.g. rag/basic-ingestion) ship a console project
   # instead of a config.yaml crew: run the folder's csproj directly.
   CSPROJ=$(find "$EXAMPLE_DIR" -maxdepth 1 -name '*.csproj' 2>/dev/null | head -n 1)

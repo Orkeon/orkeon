@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import re
 import subprocess
 import sys
@@ -250,6 +251,57 @@ def lint_config(cfg: Path, allowed: set[str]) -> list[Finding]:
     return findings
 
 
+TS_HEADER_RE = re.compile(r"^//\s*orkeon-example:\s*(\{.*\})\s*$", re.MULTILINE)
+KNOWN_PROCESSES = {"sequential", "hierarchical", "parallel", "consensual", "graph", "autonomous"}
+MODULE_TOOLS_DIR_NAME = "_tools"
+
+
+def module_tool_names(examples_root: Path) -> set[str]:
+    """Tool names declared by the shared TypeScript module (EX-01):
+    every `.name("x")` in examples/03-finance-trading/_tools/*.ts."""
+    names: set[str] = set()
+    module = examples_root / "03-finance-trading" / MODULE_TOOLS_DIR_NAME
+    if not module.is_dir():
+        return names
+    for ts in module.glob("*.ts"):
+        names.update(re.findall(r"\.name\(\s*\"([a-z0-9_]+)\"\s*\)", ts.read_text(encoding="utf-8", errors="replace")))
+    return names
+
+
+def lint_script(ts: Path, allowed: set[str]) -> list[Finding]:
+    """Light lint of a migrated TypeScript crew: the metadata header must be a
+    valid JSON one-liner with a known process, and every QUOTED tool name in the
+    script (the .tools([...]) YAML-parity surface) must exist — either a built-in
+    from the standard manifest or a tool the shared _tools module declares.
+    Instance-based wiring (withAutonomousTool) carries its own names and is
+    guaranteed by `orkeon run --validate` in CI, not here."""
+    findings: list[Finding] = []
+    text = ts.read_text(encoding="utf-8", errors="replace")
+
+    m = TS_HEADER_RE.search(text)
+    if not m:
+        findings.append(Finding("error", 0,
+            "missing the `// orkeon-example: {\"process\": ...}` metadata header"))
+    else:
+        try:
+            header = json.loads(m.group(1))
+            proc = header.get("process")
+            if proc not in KNOWN_PROCESSES:
+                findings.append(Finding("error", 0,
+                    f"header declares unknown process '{proc}' (expected one of {sorted(KNOWN_PROCESSES)})"))
+        except ValueError as exc:
+            findings.append(Finding("error", 0, f"metadata header is not valid JSON: {exc}"))
+
+    tool_blobs = " ".join(re.findall(r"\.tools\(\[(.*?)\]\)", text, re.DOTALL))
+    for name in sorted(set(re.findall(r"\"([a-z0-9_]+)\"", tool_blobs))):
+        if name in allowed:
+            continue
+        suggestion = difflib.get_close_matches(name, sorted(allowed), n=1)
+        hint = f" (did you mean '{suggestion[0]}'?)" if suggestion else ""
+        findings.append(Finding("error", 0, f"unknown tool name '{name}'{hint}"))
+    return findings
+
+
 def category_runner(category: str) -> str:
     return "trading" if category == TRADING_CATEGORY else "standard"
 
@@ -264,6 +316,10 @@ def iter_examples():
             cfg = sub / "config.yaml"
             if cfg.is_file():
                 yield cat.name, cfg
+                continue
+            ts = sub / "main.ork.ts"
+            if ts.is_file():
+                yield cat.name, ts
 
 
 def main() -> int:
@@ -305,10 +361,15 @@ def main() -> int:
     n_warn = 0
     files_with_findings = 0
 
+    script_allowed = standard_allowed | module_tool_names(EXAMPLES)
+
     for category, cfg in iter_examples():
         total += 1
-        allowed = trading_allowed if category_runner(category) == "trading" else standard_allowed
-        findings = lint_config(cfg, allowed)
+        if cfg.suffix == ".ts":
+            findings = lint_script(cfg, script_allowed)
+        else:
+            allowed = trading_allowed if category_runner(category) == "trading" else standard_allowed
+            findings = lint_config(cfg, allowed)
         if not findings:
             continue
         files_with_findings += 1
@@ -324,7 +385,7 @@ def main() -> int:
                 n_warn += 1
 
     print(f"\n{'─' * 60}")
-    print(f"Linted {total} config.yaml — {n_err} error(s), {n_warn} warning(s) "
+    print(f"Linted {total} example config(s) — {n_err} error(s), {n_warn} warning(s) "
           f"across {files_with_findings} file(s).")
     return 1 if n_err else 0
 

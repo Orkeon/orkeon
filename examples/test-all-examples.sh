@@ -100,7 +100,7 @@ else
         if [ -z "$CATEGORY" ] || [[ "$rel" == ${CATEGORY}* ]]; then
             EXAMPLES+=("$rel")
         fi
-    done < <(find "$SCRIPT_DIR" -name "config.yaml" \
+    done < <(find "$SCRIPT_DIR" \( -name "config.yaml" -o -name "main.ork.ts" \) \
         -not -path "*/_legacy/*" \
         -not -path "*/_shared/*" \
         -not -path "*/runners/*" \
@@ -125,9 +125,13 @@ for example in "${EXAMPLES[@]}"; do
     INDEX=$((INDEX + 1))
     config_path="$SCRIPT_DIR/$example/config.yaml"
 
+    # A migrated example declares its crew in TypeScript (EX-01) — one entry file,
+    # run and validated through the orkeon CLI whatever the category.
+    if [ -f "$SCRIPT_DIR/$example/main.ork.ts" ]; then
+        config_path="$SCRIPT_DIR/$example/main.ork.ts"
     # A multi-file crew keeps its agents/tasks in sibling folders, so its config.yaml
     # is only the crew settings: the runner must be given the DIRECTORY, not the file.
-    if [ -d "$SCRIPT_DIR/$example/agents" ] || [ -d "$SCRIPT_DIR/$example/tasks" ]; then
+    elif [ -d "$SCRIPT_DIR/$example/agents" ] || [ -d "$SCRIPT_DIR/$example/tasks" ]; then
         config_path="$SCRIPT_DIR/$example"
     fi
 
@@ -135,7 +139,7 @@ for example in "${EXAMPLES[@]}"; do
     # (`--config <yaml>`); everything else runs on the `orkeon` CLI
     # (`orkeon run <yaml>`, config passed positionally after the `run` verb).
     cat_dir="${example%%/*}"
-    if [ "$cat_dir" = "03-finance-trading" ]; then
+    if [ "$cat_dir" = "03-finance-trading" ] && [[ "$config_path" != *.ork.ts ]]; then
         # Level `load` validates through the `orkeon` CLI, which cannot resolve the
         # trading-specific tools (they live in Orkeon.Trading.Tools, registered only by
         # the trading runner). CI covers finance instead: scripts/validate-all-examples.sh
