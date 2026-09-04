@@ -5,9 +5,9 @@ Scans every ``examples/NN-category/NN-slug/config.yaml`` and checks:
 
   (a) TOOL NAMES  — every name in an agent's ``tools:`` block must exist in the runtime
       tool manifest for that example's runner. Unknown names are ERRORS, with a
-      closest-match suggestion (difflib). The runner is ``trading`` for the
-      ``03-finance-trading`` category (allowed set = standard ∪ trading) and
-      ``standard`` for every other category.
+      closest-match suggestion (difflib). One manifest for every category;
+      TypeScript crews (``main.ork.ts``) are linted against the manifest plus
+      the names the shared ``_tools`` module declares (EX-01).
 
   (b) DATA PATHS  — relative file/dir paths ending in a data extension
       (.csv/.json/.txt/.pdf/.xlsx/.docx/.xml/.md) that are mentioned in task
@@ -25,9 +25,8 @@ mini-parser used by generate_examples_index.py, so this runs in CI without PyYAM
 
 Usage:
   python3 scripts/lint-example-configs.py
-  python3 scripts/lint-example-configs.py --manifest path/to/standard.txt \
-                                          --trading-manifest path/to/trading.txt
-  python3 scripts/lint-example-configs.py --list-tools   # regenerate manifests from runners
+  python3 scripts/lint-example-configs.py --manifest path/to/standard.txt
+  python3 scripts/lint-example-configs.py --list-tools   # regenerate the manifest from the CLI
 """
 from __future__ import annotations
 
@@ -44,10 +43,6 @@ EXAMPLES = ROOT / "examples"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
 DEFAULT_STANDARD_MANIFEST = DATA_DIR / "tool-manifest-standard.txt"
-DEFAULT_TRADING_MANIFEST = DATA_DIR / "tool-manifest-trading.txt"
-
-# Category whose examples run on the trading runner (standard ∪ trading tools).
-TRADING_CATEGORY = "03-finance-trading"
 
 CATEGORY_RE = re.compile(r"^\d{2}-")
 EXAMPLE_RE = re.compile(r"^(\d+)-(.+)$")
@@ -72,13 +67,14 @@ def load_manifest(path: Path) -> set[str]:
 
 
 def manifest_from_list_tools(runner: str) -> set[str] | None:
-    """Best-effort invocation of a runner's ``--list-tools`` contract."""
-    proj = EXAMPLES / "runners" / runner
+    """Best-effort invocation of the stock CLI's ``run --list-tools`` contract."""
+    _ = runner  # single registry now; kept for call-site stability
+    proj = ROOT / "src" / "scripting" / "Orkeon.Scripting.Cli"
     if not proj.is_dir():
         return None
     try:
         out = subprocess.run(
-            ["dotnet", "run", "--project", str(proj), "--", "--list-tools"],
+            ["dotnet", "run", "--project", str(proj), "--", "run", "--list-tools"],
             capture_output=True, text=True, timeout=600, cwd=str(ROOT),
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -302,10 +298,6 @@ def lint_script(ts: Path, allowed: set[str]) -> list[Finding]:
     return findings
 
 
-def category_runner(category: str) -> str:
-    return "trading" if category == TRADING_CATEGORY else "standard"
-
-
 def iter_examples():
     for cat in sorted(EXAMPLES.iterdir()):
         if not cat.is_dir() or not CATEGORY_RE.match(cat.name):
@@ -325,9 +317,7 @@ def iter_examples():
 def main() -> int:
     ap = argparse.ArgumentParser(description="Lint example config.yaml tool names / structure.")
     ap.add_argument("--manifest", type=Path, default=DEFAULT_STANDARD_MANIFEST,
-                    help="standard runner tool manifest (one name per line)")
-    ap.add_argument("--trading-manifest", type=Path, default=DEFAULT_TRADING_MANIFEST,
-                    help="trading runner extra-tools manifest (one name per line)")
+                    help="standard tool manifest (one name per line)")
     ap.add_argument("--list-tools", action="store_true",
                     help="regenerate manifests by invoking each runner's --list-tools")
     ap.add_argument("--root", type=Path, default=None,
@@ -340,21 +330,14 @@ def main() -> int:
 
     if args.list_tools:
         std = manifest_from_list_tools("standard")
-        trd = manifest_from_list_tools("trading")
         if std is None:
-            print("warning: --list-tools failed for standard runner; falling back to committed manifest",
+            print("warning: --list-tools failed; falling back to committed manifest",
                   file=sys.stderr)
             std = load_manifest(args.manifest)
-        if trd is None:
-            print("warning: --list-tools failed for trading runner; falling back to committed manifest",
-                  file=sys.stderr)
-            trd = load_manifest(args.trading_manifest)
     else:
         std = load_manifest(args.manifest)
-        trd = load_manifest(args.trading_manifest)
 
     standard_allowed = set(std)
-    trading_allowed = set(std) | set(trd)
 
     total = 0
     n_err = 0
@@ -368,8 +351,7 @@ def main() -> int:
         if cfg.suffix == ".ts":
             findings = lint_script(cfg, script_allowed)
         else:
-            allowed = trading_allowed if category_runner(category) == "trading" else standard_allowed
-            findings = lint_config(cfg, allowed)
+            findings = lint_config(cfg, standard_allowed)
         if not findings:
             continue
         files_with_findings += 1

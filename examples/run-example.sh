@@ -38,17 +38,7 @@ if [ ! -f "$CONFIG_PATH" ]; then
   exit 1
 fi
 
-# Pick the runner: the 03-finance-trading examples reference the trading tool pack
-# and use the dedicated trading runner (`--config <yaml>`); everything else runs on
-# the `orkeon` CLI (`orkeon run <yaml>`), which loads a YAML crew through the same
-# one-shot host as the trading runner.
-CATEGORY=$(echo "$EXAMPLE_PATH" | cut -d'/' -f1)
-if [ "$CATEGORY" = "03-finance-trading" ]; then
-  echo "Running $EXAMPLE_PATH with the trading runner..."
-  dotnet run --project examples/runners/trading -- --config "$CONFIG_PATH" $SETTINGS_ARG
-else
-  echo "Running $EXAMPLE_PATH with the orkeon CLI..."
-  # YAML crews don't need esbuild; skip the scripting npm bootstrap during build.
-  dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release \
-    -p:SkipScriptingNpmInstall=true -- run "$CONFIG_PATH" $SETTINGS_ARG
-fi
+echo "Running $EXAMPLE_PATH with the orkeon CLI..."
+# YAML crews don't need esbuild; skip the scripting npm bootstrap during build.
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -c Release \
+  -p:SkipScriptingNpmInstall=true -- run "$CONFIG_PATH" $SETTINGS_ARG

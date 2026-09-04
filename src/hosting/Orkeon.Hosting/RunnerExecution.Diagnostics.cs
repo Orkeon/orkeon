@@ -13,7 +13,7 @@ namespace Orkeon.Hosting;
 /// Diagnostic (non-executing) runner modes shared by all runners: <c>--validate</c>
 /// (dry-run crew load, no LLM probe / no kickoff) and <c>--list-tools</c> (runtime tool
 /// registry dump). Both honour the runner's <c>configureServices</c> hook so runner-specific
-/// tools (e.g. <c>semantic_search</c>, trading tools) appear exactly as at runtime.
+/// tools (e.g. <c>semantic_search</c>) appear exactly as at runtime.
 /// The class-level VFS-compliance suppression lives on the primary partial
 /// (RunnerExecution.cs) and covers this file too.
 /// </summary>

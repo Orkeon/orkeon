@@ -220,7 +220,7 @@ dotnet_diagnostic.CA5359.severity = error
 #   - CA1826: Enumerable methods on indexable collections -> direct indexing /
 #     list patterns ('FirstOrDefault()' -> 'is [var first, ..] ? first : null').
 #   - CA2016: forward the in-scope CancellationToken to the called overload.
-# ~280 sites cleared (the bulk in examples/03-finance-trading/Orkeon.Trading.Tools).
+# ~280 sites cleared at the time (the bulk was in the since-retired trading tools assembly).
 # None are in the default analysis set, so enabling them here enforces them in the
 # normal build without AnalysisMode=All. CA1822 (mark static) is again NOT taken:
 # its residual tail is public API surface / Jint-exposed members — see the B5 note
@@ -266,9 +266,9 @@ dotnet_diagnostic.SYSLIB1045.severity = error
 # safety rules are deliberately KEPT visible and were resorbed to zero in the final
 # wave (2026-06-15): CA1031 (catch-all), CA2000 / CA1849 / CA1001 (disposal &
 # sync-over-async) and CA1822 are REALLY fixed and frozen as errors below; only
-# CA5394 (insecure RNG) is neutralised — the Orkeon.Trading.Tools mock data
-# providers seed pseudo-random market/sentiment/tick data for a demo, where a
-# crypto RNG carries no benefit and would defeat reproducibility. Vendored
+# every waiver
+# has been lifted since (the last, CA5394, left with the C# trading tools —
+# their TypeScript successors use a seeded PRNG, EX-01). Vendored
 # third-party trees under examples/others/ carry their own root .editorconfig and
 # are unaffected.
 [examples/**.cs]
@@ -306,10 +306,6 @@ dotnet_diagnostic.CA1823.severity = none
 # CA1031 (broad catch): demo runners use fault barriers so a sample step's failure
 # is shown, not fatal. src resolved CA1031 per-site (wave 2b); neutralised in demo.
 dotnet_diagnostic.CA1031.severity = none
-# CA5394 (insecure System.Random): demo mock data providers seed pseudo-random
-# market/sentiment/tick values for illustration — crypto RNG carries no benefit and
-# would defeat reproducibility. src froze CA5394 (3 justified non-security uses).
-dotnet_diagnostic.CA5394.severity = none
 
 # Correctness / resource-safety families resorbed to zero in the examples tree
 # (R6.9 Palier B final wave, 2026-06-15) with REAL fixes and frozen as errors:

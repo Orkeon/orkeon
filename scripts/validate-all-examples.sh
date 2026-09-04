@@ -2,11 +2,10 @@
 #
 # validate-all-examples.sh — dry-run every bundled example crew.
 #
-# Builds the `orkeon` CLI and the trading example runner ONCE, then runs each example's
-# config.yaml through their `--validate` dry-run (resolve settings, build the host, load
-# the crew with strict tool resolution — no LLM probe, no kickoff). The trading runner
-# is used for the 03-finance-trading examples (they reference the trading tool pack);
-# the `orkeon` CLI (`orkeon run <yaml> --validate`) is used for everything else.
+# Builds the `orkeon` CLI ONCE, then runs each example's crew definition —
+# config.yaml or main.ork.ts — through `--validate` (resolve settings, build the
+# host, load the crew with strict tool resolution — no LLM probe, no kickoff).
+# TypeScript crews carry their custom tools inside the script (EX-01).
 #
 # Output: a per-config OK/FAIL table plus a final tally. Exits non-zero if any FAIL.
 #
@@ -51,9 +50,7 @@ SAMPLE="${VALIDATE_SAMPLE:-}"
 EXPLICIT_CONFIGS=""
 
 ORK_PROJ="src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj"
-TRD_PROJ="examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj"
 ORK_DLL="src/scripting/Orkeon.Scripting.Cli/bin/Release/net10.0/orkeon.dll"
-TRD_DLL="examples/runners/trading/bin/Release/net10.0/Orkeon.Examples.Trading.Runner.dll"
 
 # ---------------------------------------------------------------------------
 # Worker mode: `validate-all-examples.sh __worker <config> <resultfile>`
@@ -63,18 +60,7 @@ if [[ "${1:-}" == "__worker" ]]; then
     config="$2"
     resultfile="$3"
 
-    # Trading crews load through the dedicated trading runner (`--config <yaml>`);
-    # everything else validates through the `orkeon` CLI (`orkeon run <yaml> --validate`,
-    # config passed positionally after the `run` verb).
-    if [[ "$config" == *.ork.ts ]]; then
-        # A migrated TypeScript crew validates through the orkeon CLI whatever its
-        # category: its custom tools travel inside the script (EX-01).
-        cmd=(dotnet "$ORK_DLL" run "$config" --validate)
-    elif [[ "$config" == *"/03-finance-trading/"* ]]; then
-        cmd=(dotnet "$TRD_DLL" --config "$config" --validate)
-    else
-        cmd=(dotnet "$ORK_DLL" run "$config" --validate)
-    fi
+    cmd=(dotnet "$ORK_DLL" run "$config" --validate)
 
     # Capture combined output; --validate prints "VALIDATION OK:"/"VALIDATION FAILED:".
     out="$(timeout "$PER_TIMEOUT" "${cmd[@]}" 2>&1)"
@@ -113,20 +99,17 @@ fi
 echo "==> validate-all-examples (jobs=$JOBS, per-config timeout=${PER_TIMEOUT}s)"
 
 if [[ "${VALIDATE_SKIP_BUILD:-0}" != "1" ]]; then
-    echo "==> Building runners (Release)..."
-    # YAML crews don't need esbuild; skip the scripting npm bootstrap during build.
-    if ! dotnet build "$ORK_PROJ" -c Release --nologo -v quiet -p:SkipScriptingNpmInstall=true; then
+    echo "==> Building the orkeon CLI (Release)..."
+    # The TypeScript crews need esbuild at validation time, so the scripting npm
+    # bootstrap must run with the build (EX-01) — do NOT skip it here.
+    if ! dotnet build "$ORK_PROJ" -c Release --nologo -v quiet; then
         echo "ERROR: failed to build orkeon CLI" >&2; exit 3
-    fi
-    if ! dotnet build "$TRD_PROJ" -c Release --nologo -v quiet; then
-        echo "ERROR: failed to build trading runner" >&2; exit 3
     fi
 fi
 
-if [[ ! -f "$ORK_DLL" || ! -f "$TRD_DLL" ]]; then
-    echo "ERROR: runner binaries not found (build failed or VALIDATE_SKIP_BUILD set too early)" >&2
+if [[ ! -f "$ORK_DLL" ]]; then
+    echo "ERROR: runner binary not found (build failed or VALIDATE_SKIP_BUILD set too early)" >&2
     echo "       orkeon CLI: $ORK_DLL" >&2
-    echo "       trading   : $TRD_DLL" >&2
     exit 3
 fi
 

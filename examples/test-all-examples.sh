@@ -135,34 +135,15 @@ for example in "${EXAMPLES[@]}"; do
         config_path="$SCRIPT_DIR/$example"
     fi
 
-    # Build the run command: trading crews use the dedicated trading runner
-    # (`--config <yaml>`); everything else runs on the `orkeon` CLI
-    # (`orkeon run <yaml>`, config passed positionally after the `run` verb).
-    cat_dir="${example%%/*}"
-    if [ "$cat_dir" = "03-finance-trading" ] && [[ "$config_path" != *.ork.ts ]]; then
-        # Level `load` validates through the `orkeon` CLI, which cannot resolve the
-        # trading-specific tools (they live in Orkeon.Trading.Tools, registered only by
-        # the trading runner). CI covers finance instead: scripts/validate-all-examples.sh
-        # loads every finance config through the trading runner's own --validate.
-        # Here, skip rather than fail; --level run exercises them for real.
-        if [ "$LEVEL" = "load" ]; then
-            printf "[%d/%d] %-60s " "$INDEX" "$TOTAL" "$example"
-            echo -e "${YELLOW}SKIP${NC} (finance validates in CI via validate-all-examples.sh; here at --level run)"
-            R_EXAMPLES+=("$example"); R_STATUS+=("SKIP"); R_DURATION+=("0")
-            R_WARNINGS+=("0"); R_ERROR+=("")
-            continue
-        fi
-        run_cmd=(dotnet run --project "$SCRIPT_DIR/runners/trading" --no-build \
-                 --configuration Release -- --config "$config_path")
-    else
-        run_cmd=(dotnet "$ORKEON_CLI_DLL" run "$config_path")
-        # Level `load` = config parses, agents/tasks/tools resolve — no LLM call, no
-        # network: `orkeon run --validate` does exactly that in ~2 s and exits non-zero
-        # on a broken config. (The old marker grep — "Successfully created crew" — is a
-        # string the CLI stopped emitting, which made this level fail systematically.)
-        if [ "$LEVEL" = "load" ]; then
-            run_cmd+=(--validate)
-        fi
+    # Every crew — YAML or TypeScript — runs on the `orkeon` CLI (the definition
+    # passed positionally after the `run` verb; TS crews carry their own tools).
+    run_cmd=(dotnet "$ORKEON_CLI_DLL" run "$config_path")
+    # Level `load` = config parses, agents/tasks/tools resolve — no LLM call, no
+    # network: `orkeon run --validate` does exactly that in ~2 s and exits non-zero
+    # on a broken config. (The old marker grep — "Successfully created crew" — is a
+    # string the CLI stopped emitting, which made this level fail systematically.)
+    if [ "$LEVEL" = "load" ]; then
+        run_cmd+=(--validate)
     fi
 
     printf "[%d/%d] %-60s " "$INDEX" "$TOTAL" "$example"

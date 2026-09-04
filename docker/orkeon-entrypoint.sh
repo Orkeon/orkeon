@@ -36,10 +36,9 @@ fi
 # --- Runner dispatch ------------------------------------------------------------
 case "${ORKEON_RUNNER:-orkeon}" in
   orkeon)       set -- dotnet /app/runners/orkeon/orkeon.dll "$@" ;;
-  trading)      set -- dotnet /app/runners/trading/Orkeon.Examples.Trading.Runner.dll "$@" ;;
   repl)         set -- dotnet /app/runners/repl/Orkeon.ConsoleApp.dll "$@" ;;
   shell)        cd /workspace && set -- zsh "$@" ;;
-  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|trading|repl|shell)" >&2; exit 2 ;;
+  *) echo "Unknown ORKEON_RUNNER=$ORKEON_RUNNER (expected: orkeon|repl|shell)" >&2; exit 2 ;;
 esac
 
 # --- Privilege drop --------------------------------------------------------------

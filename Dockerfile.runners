@@ -5,7 +5,7 @@
 # apps are framework-dependent inside the image (the .NET runtime ships in the
 # base image). Which executable runs is chosen by the ORKEON_RUNNER env var:
 #
-#   orkeon (default) | trading | repl | shell
+#   orkeon (default) | repl | shell
 #
 # Build:
 #   docker build -f Dockerfile.runners -t orkeon-runners .
@@ -47,13 +47,6 @@
 #     ghcr.io/orkeon/orkeon-runners run /script/my.ork.ts
 #
 # --- Selecting another runner ------------------------------------------------
-# Trading batch runner (uses the older --config flag):
-#   docker run --rm -e ORKEON_RUNNER=trading \
-#     -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-#     ghcr.io/orkeon/orkeon-runners \
-#     --config examples/03-finance-trading/<example>/config.yaml \
-#     --settings /app/appsettings.local.json
-#
 # The REPL is a Terminal.Gui app that reads from stdin — it REQUIRES an
 # interactive TTY, so run it with `docker run -it`:
 #   docker run -it --rm -e ORKEON_RUNNER=repl ghcr.io/orkeon/orkeon-runners
@@ -67,7 +60,7 @@
 # The image ships 105 example crews under /app/examples plus a helper that makes
 # running them a one-liner from the interactive shell (or via docker run):
 #   orkeon-example list                 browse them
-#   orkeon-example run 1                run one by number (03 category → trading)
+#   orkeon-example run 1                run one by number
 #   orkeon-example show 42              print an example's README
 #   orkeon-example settings             show which LLM settings apply and why
 # Interactive session (recommended first contact):
@@ -121,7 +114,7 @@ WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props ./
 
 # Full framework + examples sources. The runners' project graph spans src/core,
-# src/hosting, src/scripting, examples/runners/* and examples/03-finance-trading,
+# src/hosting, src/scripting and the examples tree,
 # so the whole tree is copied rather than an enumerated per-csproj list (kept
 # robust as references evolve). .dockerignore strips bin/obj/.git/artifacts/
 # node_modules and non-README *.md from the context.
@@ -145,12 +138,6 @@ RUN dotnet publish src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.cspro
       -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o /app/runners/orkeon --nologo
-# Trading batch runner.
-RUN dotnet publish examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj \
-      -c Release -r linux-x64 --self-contained false \
-      -p:SkipScriptingNpmInstall=true \
-      -p:ErrorOnDuplicatePublishOutputFiles=false \
-      -o /app/runners/trading --nologo
 # REPL console app (src/apps/Orkeon.ConsoleApp).
 RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj \
       -c Release -r linux-x64 --self-contained false \
@@ -210,12 +197,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Command wrappers on PATH — the same command names the release archives
-# install (orkeon, orkeon-trading, orkeon-repl, …), so the interactive shell
+# install (orkeon, orkeon-repl, …), so the interactive shell
 # and any `docker exec` can invoke runners directly instead of spelling out
 # `dotnet /app/runners/<x>/<y>.dll`.
 RUN set -e; \
     for pair in "orkeon:orkeon/orkeon.dll" \
-                "orkeon-trading:trading/Orkeon.Examples.Trading.Runner.dll" \
                 "orkeon-repl:repl/Orkeon.ConsoleApp.dll"; do \
       name="${pair%%:*}"; dll="${pair#*:}"; \
       printf '%s\n' '#!/bin/sh' "exec dotnet /app/runners/$dll \"\$@\"" > "/usr/local/bin/$name"; \
@@ -251,7 +237,6 @@ RUN mkdir -p /etc/orkeon/zsh && cat /etc/orkeon/banner.txt > /etc/orkeon/motd &&
   '    orkeon run <config> --validate          dry-run: config + tool check' \
   '    orkeon run <config> --list-tools        print the tool registry' \
   '    orkeon --help                           every flag explained' \
-  '    orkeon-trading --config <crew.yaml>     trading showcase (+44 tools)' \
   '    orkeon-repl                             full interactive REPL console' \
   '' \
   '  \033[1;36mPaths\033[0m' \

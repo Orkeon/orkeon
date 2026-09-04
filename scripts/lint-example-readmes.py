@@ -60,11 +60,6 @@ LAUNCH_CMD_RES = [
         r"dotnet\s+run\s+--project\s+\S*Scripting\.Cli\S*\s+--\s+run\s+" + _CONFIG,
         re.IGNORECASE | re.DOTALL,
     ),
-    # orkeon-trading … --config|-c <config>    (the specialized trading runner)
-    re.compile(
-        r"\borkeon-[\w-]+\b.*?(?:--config|(?<!\w)-c)\s+" + _CONFIG,
-        re.IGNORECASE | re.DOTALL,
-    ),
     # legacy fallback: dotnet run --project <x> … --config|-c <config>
     re.compile(
         r"dotnet\s+run\s+--project\s+\S+.*?(?:--config|(?<!\w)-c)\s+" + _CONFIG,

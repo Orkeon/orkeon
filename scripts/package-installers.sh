@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds per-OS installer archives (tar.gz / zip) containing all Orkeon CLI
 # executables, published per RID. Some ship self-contained (the `orkeon`
-# onboarding binary, `orkeon-trading`), the rest framework-dependent — see APPS.
+# onboarding binary), the rest framework-dependent — see APPS.
 #
 # Usage:
 #   scripts/package-installers.sh [--version X.Y.Z[-suffix]] [--rids "linux-x64 ..."]
@@ -105,7 +105,6 @@ esbuild_lock_integrity() { # $1=npm-rid
 # install. The `orkeon` CLI ships in two flavours from the *same* csproj:
 #   - `orkeon`      self-contained — the onboarding channel, no .NET runtime needed;
 #   - `orkeon-slim` framework-dependent — smaller, for devs who already have .NET 10.
-# `orkeon-trading` opts into self-contained too; the remaining CLI tools stay
 # framework-dependent. Both `orkeon` flavours share the one bundled esbuild
 # (see fetch_esbuild below — fetched once per RID into libexec/esbuild-bin).
 # The optional 5th column is a space-separated RID filter: empty = publish for
@@ -116,7 +115,6 @@ APPS=(
   "orkeon|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|true"
   "orkeon-slim|src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj|orkeon|false"
   "orkeon-repl|src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj|Orkeon.ConsoleApp|false"
-  "orkeon-trading|examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj|Orkeon.Examples.Trading.Runner|true"
   "orkeon-studio|src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj|Orkeon.Studio|true|win-x64"
   "orkeon-studio-config|src/apps/Orkeon.Studio.Config/Orkeon.Studio.Config.csproj|Orkeon.Studio.Config|true|"
   "orkeon-studio-run|src/apps/Orkeon.Studio.Run/Orkeon.Studio.Run.csproj|Orkeon.Studio.Run|true|"

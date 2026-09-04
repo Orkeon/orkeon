@@ -5,7 +5,6 @@ Item P1-3 (rollout): each numbered example under ``examples/0N-*/NN-name/`` gets
 standard, copy-pasteable launch section:
 
   * the exact launch command — ``orkeon run <config>`` for regular examples,
-    ``orkeon-trading --config <config>`` for the ``03-finance-trading`` showcase,
   * a pointer to the appsettings LLM profiles and the getting-started guide,
   * a note about the example-data policy.
 
@@ -14,7 +13,7 @@ Design goals
 * **Idempotent** — the generated block is wrapped in sentinel comments; a second run
   regenerates an identical block and rewrites nothing.
 * **Non-destructive** — a *simple* existing ``## Run`` section (a single ``orkeon run`` /
-  ``orkeon-trading`` command) is upgraded in place; a *curated* run section (mounts, ``###``
+  legacy command) is upgraded in place; a *curated* run section (mounts, ``###``
   sub-steps, or a legacy ``examples/runners/*`` command) is left untouched and reported so
   it can be handled by hand.
 * **Language-aware** — French READMEs get a ``## Lancer`` section, English ones ``## Run it``.
@@ -97,14 +96,6 @@ def rel_example(readme: Path) -> str:
     return readme.parent.relative_to(EXAMPLES_ROOT).as_posix()
 
 
-def is_finance(rel: str) -> bool:
-    """Finance/trading examples still on YAML run on the dedicated
-    ``orkeon-trading`` runner; once migrated to a TypeScript crew (EX-01,
-    ``main.ork.ts``) they run on the stock CLI like everyone else."""
-    return (rel.startswith("03-finance-trading/")
-            and not (EXAMPLES_ROOT / rel / "main.ork.ts").is_file())
-
-
 def is_french(text: str) -> bool:
     return len(FR_MARKER_RE.findall(text)) >= 2
 
@@ -112,48 +103,29 @@ def is_french(text: str) -> bool:
 def build_block(rel: str, french: bool) -> str:
     """The canonical Run-it block, sentinel-wrapped, including its own H2 header.
 
-    Non-finance examples launch through the ``orkeon`` CLI (``orkeon run <config>``);
-    ``03-finance-trading/*`` keep the specialized ``orkeon-trading --config <config>``
-    runner (it adds the 44 trading tools the base CLI does not carry).
+    Every example launches through the ``orkeon`` CLI — YAML crews by their
+    ``config.yaml``, TypeScript crews (EX-01) by their ``main.ork.ts``.
     """
     config = (f"examples/{rel}/main.ork.ts"
               if (EXAMPLES_ROOT / rel / "main.ork.ts").is_file()
               else f"examples/{rel}/config.yaml")
     settings = "examples/appsettings/appsettings.deepseek.local.json"
-    if is_finance(rel):
-        command = (
-            "```bash\n"
-            f"orkeon-trading --config {config} \\\n"
-            f"  --settings {settings}\n"
-            "```"
-        )
-        intro_en = (
-            "With the **`orkeon-trading`** runner (it adds 44 specialized trading "
-            "tools on top of the standard toolset) — or, from a source checkout, "
-            "`dotnet run --project examples/runners/trading -- --config …`:"
-        )
-        intro_fr = (
-            "Avec le *runner* **`orkeon-trading`** (il ajoute 44 outils de trading "
-            "spécialisés au socle standard) — ou, depuis un clone du dépôt, "
-            "`dotnet run --project examples/runners/trading -- --config …` :"
-        )
-    else:
-        command = (
-            "```bash\n"
-            f"orkeon run {config} \\\n"
-            f"  --settings {settings}\n"
-            "```"
-        )
-        intro_en = (
-            "With the installed `orkeon` CLI (release archive or "
-            "`dotnet tool install`) — or, from a source checkout, `dotnet run "
-            "--project src/scripting/Orkeon.Scripting.Cli -- run …`:"
-        )
-        intro_fr = (
-            "Avec la CLI `orkeon` installée (archive de version ou "
-            "`dotnet tool install`) — ou, depuis un clone du dépôt, `dotnet run "
-            "--project src/scripting/Orkeon.Scripting.Cli -- run …` :"
-        )
+    command = (
+        "```bash\n"
+        f"orkeon run {config} \\\n"
+        f"  --settings {settings}\n"
+        "```"
+    )
+    intro_en = (
+        "With the installed `orkeon` CLI (release archive or "
+        "`dotnet tool install`) — or, from a source checkout, `dotnet run "
+        "--project src/scripting/Orkeon.Scripting.Cli -- run …`:"
+    )
+    intro_fr = (
+        "Avec la CLI `orkeon` installée (archive de version ou "
+        "`dotnet tool install`) — ou, depuis un clone du dépôt, `dotnet run "
+        "--project src/scripting/Orkeon.Scripting.Cli -- run …` :"
+    )
     if french:
         body = (
             "## Lancer\n\n"
@@ -208,7 +180,7 @@ def section_is_curated(section_lines: list[str]) -> bool:
     if re.search(r"examples/runners/[\w-]+", text):
         return True
     # Has no recognizable launch command at all -> treat as curated/ambiguous, don't clobber.
-    if not any(tok in text for tok in ("orkeon run", "orkeon-trading", "dotnet run")):
+    if not any(tok in text for tok in ("orkeon run", "dotnet run")):
         return True
     return False
 

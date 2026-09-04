@@ -73,7 +73,6 @@ $Apps = @(
     @{ Name = 'orkeon';              Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon';                                       SelfContained = $true }
     @{ Name = 'orkeon-slim';         Csproj = 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj';                                    Apphost = 'orkeon';                                       SelfContained = $false }
     @{ Name = 'orkeon-repl';         Csproj = 'src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj';                                               Apphost = 'Orkeon.ConsoleApp';                            SelfContained = $false }
-    @{ Name = 'orkeon-trading';      Csproj = 'examples/runners/trading/Orkeon.Examples.Trading.Runner.csproj';                                    Apphost = 'Orkeon.Examples.Trading.Runner';               SelfContained = $true }
     # Rids (optional) is a RID filter: absent/empty = publish for every RID; the
     # WPF orkeon-studio can only target Windows RIDs, hence the filter.
     @{ Name = 'orkeon-studio';        Csproj = 'src/apps/Orkeon.Studio.Wpf/Orkeon.Studio.Wpf.csproj';       Apphost = 'Orkeon.Studio';        SelfContained = $true; Rids = @('win-x64') }

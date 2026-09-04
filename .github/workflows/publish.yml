@@ -91,9 +91,6 @@ jobs:
       # packages' hand-declared external dependencies must match their embedded projects.
       - name: Check package closure
         run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli
-      # Orkeon.Runners.Shared already lives inside Orkeon.sln, so the pack above emits it too;
-      # this second pack is a harmless safety net (push uses --skip-duplicate).
-      - run: dotnet pack  examples/runners/_shared/Orkeon.Examples.Shared.csproj -c Release -o artifacts
       - run: >
           dotnet nuget push "artifacts/*.nupkg"
           --source "https://nuget.pkg.github.com/Orkeon/index.json"

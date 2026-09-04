@@ -284,15 +284,12 @@ def render(cats: list[Category]) -> str:
     # Runners note.
     a("## Runners")
     a("")
-    a("Numbered examples run on the stock `orkeon` CLI; only the finance category needs the dedicated runner project in `examples/runners/`:")
-    a("")
-    a("| Runner | Purpose |")
-    a("|--------|---------|")
-    a("| `standard` | The stock `orkeon` CLI (`orkeon run <config.yaml>`) — every category except finance/trading. |")
-    a("| `trading` | Adds 44 specialized trading tools; used by **03 - Finance & Trading**. |")
+    a("Every numbered example runs on the stock `orkeon` CLI — YAML crews as "
+      "`orkeon run <config.yaml>`, TypeScript crews (EX-01) as "
+      "`orkeon run <main.ork.ts>` with their tools inside the script.")
     a("")
     a("Run any example with `bash examples/run-example.sh <category>/<example>` "
-      "(the matching runner is picked automatically; see `examples/README.md`).")
+      "(see `examples/README.md`).")
     a("")
 
     # Category summary.

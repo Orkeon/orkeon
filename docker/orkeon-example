@@ -230,13 +230,7 @@ cmd_run() {
     echo "[orkeon-example] $(basename "$dir") — file output (if any) lands under /output;"
     echo "[orkeon-example] start the container with -v \$PWD/out:/output to keep it."
     # $extra/$mount_args are unquoted on purpose: word-split into flag + value.
-    case "$cfg" in
-        *.ork.ts) exec orkeon run "$cfg" $extra $mount_args "$@" ;;
-    esac
-    case "$dir" in
-        */03-finance-trading/*) exec orkeon-trading --config "$cfg" $extra $mount_args "$@" ;;
-        *)                      exec orkeon run "$cfg" $extra $mount_args "$@" ;;
-    esac
+    exec orkeon run "$cfg" $extra $mount_args "$@"
 }
 
 usage() {

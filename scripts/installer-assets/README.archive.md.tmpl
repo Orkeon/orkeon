@@ -8,7 +8,7 @@ Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI a
 the .NET runtime ships inside it.
 
 **If `bin/` holds every launcher** (the multi-app archive): `orkeon`,
-`orkeon-trading`, `orkeon-host` and the Orkeon Studio apps are self-contained;
+`orkeon-host` and the Orkeon Studio apps are self-contained;
 `orkeon-slim` and `orkeon-repl` are **framework-dependent** and
 require the **.NET 10 runtime** (`Microsoft.NETCore.App 10.x`). Install it from
 <https://dotnet.microsoft.com/download/dotnet/10.0>, then verify with
@@ -61,7 +61,6 @@ first row below. The multi-app archive ships every command in this table.
 | `orkeon` | **The entry point** — runs everything the retired `orkeon-examples` did and more. `orkeon run crew.yaml` executes the YAML crews under `examples/`; `orkeon run script.ork.ts` runs the `.ork.ts` scripting DSL. Self-contained (no .NET runtime needed). |
 | `orkeon-slim` | Same CLI as `orkeon`, framework-dependent (smaller; requires the .NET 10 runtime). Pick this if you already have .NET 10. |
 | `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) |
-| `orkeon-trading` | Trading example runner for `examples/03-finance-trading` (self-contained) |
 | `orkeon-host` | The crew service host daemon. Register it with your service manager rather than running it from a shell — see `deploy/` in this archive and `docs/architecture/service-host.md` (the `bin` wrapper exists for terminal diagnostics only). Self-contained. |
 
 ## Layout & esbuild

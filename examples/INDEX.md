@@ -9,14 +9,9 @@ Auto-generated index of the **105** numbered crew examples shipped under `exampl
 
 ## Runners
 
-Numbered examples run on the stock `orkeon` CLI; only the finance category needs the dedicated runner project in `examples/runners/`:
+Every numbered example runs on the stock `orkeon` CLI — YAML crews as `orkeon run <config.yaml>`, TypeScript crews (EX-01) as `orkeon run <main.ork.ts>` with their tools inside the script.
 
-| Runner | Purpose |
-|--------|---------|
-| `standard` | The stock `orkeon` CLI (`orkeon run <config.yaml>`) — every category except finance/trading. |
-| `trading` | Adds 44 specialized trading tools; used by **03 - Finance & Trading**. |
-
-Run any example with `bash examples/run-example.sh <category>/<example>` (the matching runner is picked automatically; see `examples/README.md`).
+Run any example with `bash examples/run-example.sh <category>/<example>` (see `examples/README.md`).
 
 ## Categories
 
