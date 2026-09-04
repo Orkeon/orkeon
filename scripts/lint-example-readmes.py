@@ -8,8 +8,7 @@ Scans every ``examples/NN-category/NN-slug/README.md`` and checks:
   (b) LAUNCH      — the README contains a launch section (a heading such as
       ``## Run`` / ``## Run it`` / ``## Lancer`` / ``## Running`` …) that carries a
       recognized launch command — ``orkeon run <config>`` (or the from-source
-      ``dotnet run --project …Orkeon.Scripting.Cli -- run <config>``), or the
-      ``orkeon-trading --config <config>`` trading runner — and that config path
+      ``dotnet run --project …Orkeon.Scripting.Cli -- run <config>``) — and that config path
       resolves to a file that exists on disk. A missing or broken launch command is an
       ERROR; a launch command that exists but sits outside a recognized heading is a
       WARNING.
@@ -132,7 +131,7 @@ def lint_readme(readme: Path) -> list[Finding]:
         findings.append(Finding(
             "error", 0,
             "no launch command found "
-            "('orkeon run <config>' / 'orkeon-trading --config …' / "
+            "('orkeon run <config>' / "
             "'dotnet run --project …Scripting.Cli -- run <config>')",
         ))
     else:

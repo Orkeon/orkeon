@@ -15,7 +15,7 @@ ce que vous acceptez d'installer :
 
 Les trois pilotent le même **CLI `orkeon`** et acceptent les mêmes flags. La
 config de la crew est l'argument positionnel de `orkeon run <config>` (le runner
-`orkeon-trading` la prend en `--config` à la place) ; les flags optionnels
+; les flags optionnels
 (`--settings`, `-v`, `--mount`, `--var`, `--llm-log`, …) sont documentés une
 seule fois, en détail, dans
 [Lancer votre premier exemple](./run-your-first-example.md#chaque-flag-expliqué).
@@ -43,7 +43,7 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run \
 
 C'est la voie la plus souple — elle peut exécuter **tous** les exemples et prend
 en compte vos modifications locales. Les exemples finance passent par
-`examples/03-finance-trading` sur le runner `orkeon-trading`. Guide complet,
+Guide complet,
 configuration des profils LLM et dépannage :
 [Lancer votre premier exemple](./run-your-first-example.md).
 
@@ -61,7 +61,7 @@ Chaque [GitHub Release](https://github.com/Orkeon/orkeon/releases) attache un
 | **`orkeon-<version>-win-x64.msi`** | les deux mêmes, MSI per-user, avec un raccourci menu Démarrer « Orkeon Studio » | aucun — self-contained | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
 | **`orkeon_<version>_amd64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + les deux applications terminal **Orkeon Studio** | aucun — self-contained | **Debian / Ubuntu : le téléchargement recommandé** |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (pas de Studio en V1 — le canal d'onboarding macOS reste CLI seul) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
-| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-trading`, `orkeon-host`…) + les applications Studio que la plateforme supporte + `install.sh` / `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL, l'hôte de service, la vitrine trading |
+| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-host`…) + les applications Studio que la plateforme supporte + `install.sh` / `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL et l'hôte de service |
 | **`dotnet tool install --global Orkeon.Scripting.Cli`** | le seul CLI `orkeon` | **SDK** .NET 10 | Obtenir uniquement le CLI sur un poste qui compile déjà du .NET |
 
 `<rid>` vaut `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) ou
@@ -75,14 +75,13 @@ L'archive multi-apps est la seule à embarquer plus que le CLI :
 |---|---|---|
 | `orkeon` | **Le CLI principal et le point d'entrée par défaut** — `orkeon run <config.yaml>` pour tout exemple hors finance, ou `orkeon run script.ork.ts` pour le DSL de scripting | self-contained |
 | `orkeon-slim` | Le même CLI, framework-dependent et bien plus petit | requiert .NET 10 |
-| `orkeon-trading` | Runner de la vitrine trading — `orkeon-trading --config <config.yaml>` ; ajoute 44 outils de trading spécialisés | self-contained |
 | `orkeon-repl` | Console REPL interactive complète (tous les outils intégrés, analyse de code, embeddings locaux) | requiert .NET 10 |
 | `orkeon-host` | Le daemon d'hébergement — enregistre des crews et les sert en continu (unité systemd, service Windows via le script embarqué ou son MSI per-machine dédié, passerelle de chat, canal Discord ; voir [le service host](../architecture/service-host.md)) | autonome |
 | `orkeon-studio` | **Orkeon Studio**, l'application de bureau — archives Windows uniquement (voir [plus bas](#orkeon-studio-la-voie-graphique)) | self-contained |
 | `orkeon-studio-config` / `orkeon-studio-run` | **Orkeon Studio** dans le terminal : éditeur de settings et lanceur de crew | self-contained |
 
 > **Le prérequis runtime, en une ligne.** Les paquets CLI (zip, MSI, `.deb`), les
-> launchers `orkeon` / `orkeon-trading` et les applications Orkeon Studio
+> launcher `orkeon` et les applications Orkeon Studio
 > embarquent leur propre runtime et n'exigent aucune installation .NET. Tout le
 > reste de l'archive multi-apps — et
 > le tool dotnet — requiert le
@@ -132,7 +131,7 @@ sudo apt remove orkeon
 ```
 
 Le `tar.gz` multi-apps + `install.sh` est l'alternative per-user (et la seule
-option pour `linux-arm64`, ou quand vous voulez le REPL et la vitrine trading) :
+option pour `linux-arm64`, ou quand vous voulez le REPL et l'hôte de service) :
 
 ```bash
 tar -xzf orkeon-<version>-linux-x64.tar.gz
@@ -189,7 +188,7 @@ cd orkeon-cli-<version>-osx-arm64
 > tuée ou refusée, l'échappatoire manuelle est
 > `xattr -dr com.apple.quarantine ~/.local/lib/orkeon`.
 
-Le `tar.gz` multi-apps (REPL, hôte de service, vitrine trading) existe aussi pour
+Le `tar.gz` multi-apps (REPL, hôte de service) existe aussi pour
 les deux architectures macOS, et requiert le runtime .NET 10 pour les launchers
 framework-dependent qu'il embarque — `install.sh` affiche le
 [lien de téléchargement](https://dotnet.microsoft.com/download/dotnet/10.0)
@@ -290,7 +289,6 @@ sans disposition reconnue : Orkeon ne devine jamais lequel vous vouliez. Voir
 [YAML et builders](./yaml-and-builders.md) pour la disposition elle-même.
 
 Pour une vitrine finance/trading, prenez le runner spécialisé :
-`orkeon-trading --config chemin/vers/config.yaml --settings …`.
 
 Vous pouvez aussi exécuter une commande directement depuis l'archive extraite,
 sans installer : `./libexec/orkeon/orkeon run …`.
@@ -352,7 +350,7 @@ orkeon-example show 42         # lire d'abord le README d'un exemple
 ```
 
 `orkeon-example run` résout le numéro vers sa config, dispatche automatiquement
-la catégorie `03-finance-trading` vers `orkeon-trading`, monte `/output` pour
+monte `/output` pour
 les résultats fichiers, et choisit les settings LLM pour vous (section
 suivante). Quand un numéro existe dans deux catégories (`16`, `102`), il liste
 les candidats — qualifiez avec la catégorie : `orkeon-example run 02/16`.
@@ -472,7 +470,7 @@ dans `/workspace`) — pratique pour fouiller les exemples embarqués ou débogu
 des montages. Une bannière d'accueil liste les commandes et chemins disponibles
 (supprimez-la avec `-e ORKEON_NO_BANNER=1`), et chaque runner est sur le PATH
 sous les mêmes noms que dans les archives de release (`orkeon`,
-`orkeon-trading`, `orkeon-repl`, …) :
+`orkeon-repl`, …) :
 
 ```bash
 docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
@@ -496,7 +494,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
   mêmes paquets installent [Orkeon Studio](#orkeon-studio-la-voie-graphique) —
   une fenêtre (ou une application terminal plein écran) par-dessus le même
   fichier de configuration et le même `orkeon run`.
-- **Vous voulez le REPL, l'hôte de service, ou la vitrine trading ?** L'archive
+- **Vous voulez le REPL ou l'hôte de service ?** L'archive
   multi-apps (voie 2) — et installez le runtime .NET 10, dont ces launchers ont
   besoin.
 - **Vous modifiez Orkeon ou exécutez des exemples arbitraires ?** Depuis les

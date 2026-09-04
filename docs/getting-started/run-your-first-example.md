@@ -102,20 +102,14 @@ That single command runs the crew end-to-end and exits. The writer agent's
 > **Installed the CLI?** With a [release archive](./three-ways-to-run-orkeon.md)
 > or `dotnet tool install`, the same run is just:
 > `orkeon run examples/01-enterprise/01-research-assistant/config.yaml --settings … --mount ./out:/output:rw -v 1`.
->
-> **Finance / trading examples** (`examples/03-finance-trading/*`) run on the
-> specialized `orkeon-trading` runner instead — `orkeon-trading --config
-> examples/03-finance-trading/<name>/config.yaml --settings …` — which adds the
-> 44 trading tools the base CLI does not carry.
 
 ## Every flag, explained
 
-The `orkeon` CLI and the specialized runners share the same base options. The
-ones you will actually reach for:
+The `orkeon` CLI options you will actually reach for:
 
 | Flag | Short | What it does |
 |---|---|---|
-| `<config>` (positional) | — | **Required.** The crew definition passed to `orkeon run <config>` — a `.yaml` file or an `.ork.ts` [scripting](../architecture/scripting.md) file. The `orkeon-trading` runner takes it as `--config <path>` / `-c` instead. |
+| `<config>` (positional) | — | **Required.** The crew definition passed to `orkeon run <config>` — a `.yaml` file or an `.ork.ts` [scripting](../architecture/scripting.md) file. |
 | `--settings <path>` | `-s` | Path to the `appsettings.json` holding LLM config. Optional — see [settings resolution](#how-settings-are-resolved). |
 | `--verbose <0-2>` | `-v` | Verbosity. `0` (default) = quiet, `1` = LLM & tool exchanges, `2` = full debug. |
 | `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro` or `rw`. Several mounts go **space-separated after a single flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |

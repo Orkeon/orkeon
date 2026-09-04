@@ -103,11 +103,6 @@ c'est-à-dire votre répertoire local `./out`.
 > **CLI installée ?** Avec une [archive de release](./three-ways-to-run-orkeon.md)
 > ou `dotnet tool install`, la même exécution devient :
 > `orkeon run examples/01-enterprise/01-research-assistant/config.yaml --settings … --mount ./out:/output:rw -v 1`.
->
-> **Exemples finance / trading** (`examples/03-finance-trading/*`) : ils tournent
-> sur le runner spécialisé `orkeon-trading` — `orkeon-trading --config
-> examples/03-finance-trading/<nom>/config.yaml --settings …` — qui ajoute les
-> 44 outils de trading que la CLI de base n'embarque pas.
 
 ## Chaque flag, expliqué
 
@@ -116,7 +111,7 @@ Celles que vous utiliserez vraiment :
 
 | Flag | Court | Ce qu'il fait |
 |---|---|---|
-| `<config>` (positionnel) | — | **Requis.** La définition de crew passée à `orkeon run <config>` — un fichier `.yaml` ou un fichier `.ork.ts` de [scripting](../architecture/scripting.md). Le runner `orkeon-trading` la prend en `--config <chemin>` / `-c`. |
+| `<config>` (positionnel) | — | **Requis.** La définition de crew passée à `orkeon run <config>` — un fichier `.yaml` ou un fichier `.ork.ts` de [scripting](../architecture/scripting.md). |
 | `--settings <chemin>` | `-s` | Chemin de l'`appsettings.json` portant la config LLM. Optionnel — voir la [résolution des settings](#comment-les-settings-sont-résolus). |
 | `--verbose <0-2>` | `-v` | Verbosité. `0` (défaut) = silencieux, `1` = échanges LLM & outils, `2` = debug complet. |
 | `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro` ou `rw`. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |

@@ -55,12 +55,11 @@ Everything about local models (DMR, Ollama, context sizes, troubleshooting):
 
 ## Runner Architecture
 
-Examples are **data-driven**: each example is a directory containing a `config.yaml` (crew definition). The **`orkeon` CLI** loads the configuration and executes the crew.
+Examples are **data-driven**: each example is a directory containing its crew definition — a `config.yaml`, or a `main.ork.ts` TypeScript crew (EX-01) carrying its own tools. The **`orkeon` CLI** loads it and executes the crew.
 
 | Command | Scope | Purpose |
 |--------|-------|---------|
-| **`orkeon run <config.yaml>`** | all non-finance examples | The default entry point — general-purpose toolset (FileSystem, Web, Data, Code). Available as an installed binary, a `dotnet tool`, or `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …` from a source checkout |
-| **the trading runner** (`dotnet run --project examples/runners/trading -- --config <config.yaml>`) | `03-finance-trading/*` | Adds 44 specialized trading tools on top of the standard toolset — `run-example.sh` dispatches to it automatically |
+| **`orkeon run <config.yaml \| main.ork.ts>`** | every example | The single entry point — general-purpose toolset (FileSystem, Web, Data, Code). Available as an installed binary, a `dotnet tool`, or `dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …` from a source checkout |
 
 ## LLM Configuration
 
@@ -157,7 +156,7 @@ The full generated catalog (process, agents, tools per example) lives in [INDEX.
 |---|----------|----------|-------------|
 | 01 | [Enterprise](01-enterprise/) | 16 | Enterprise classics — research, code review, email, reports, support, interactive Q&A |
 | 02 | [Science & Research](02-science-research/) | 15 | Science & research — meta-analysis, debates, genomics, knowledge graphs |
-| 03 | [Finance & Trading](03-finance-trading/) | 15 | Finance & trading — algo trading, fraud detection, compliance, ESG (+ the `Orkeon.Trading.Tools` pack) |
+| 03 | [Finance & Trading](03-finance-trading/) | 15 | Finance & trading — algo trading, fraud detection, compliance, ESG (TypeScript crews + the shared `_tools/` module) |
 | 04 | [Health & Wellness](04-health-wellness/) | 10 | Health & wellness — diagnosis, nutrition, clinical trials, telemedicine |
 | 05 | [Education](05-education/) | 10 | Education & training — tutoring, exams, gamification, mentoring |
 | 06 | [Engineering & DevOps](06-engineering-devops/) | 12 | Engineering & DevOps — CI/CD, incident response, chaos engineering, TS-scripted codebase crews |
@@ -165,8 +164,8 @@ The full generated catalog (process, agents, tools per example) lives in [INDEX.
 | 08 | [IoT & Smart Systems](08-iot-smart-systems/) | 10 | IoT, physical world & smart systems — smart home, fleet, energy |
 | 09 | [Experimental](09-experimental/) | 7 | Avant-garde & experimental — self-adaptive crews, civilization sim, graph orchestration, streaming |
 
-The counts above are crew examples (directories with a `config.yaml`); tool
-packs (`Orkeon.Trading.Tools`) and standalone demo projects (`streaming-demo`,
+The counts above are crew examples (directories with a `config.yaml` or a
+`main.ork.ts`); standalone demo projects (`streaming-demo`,
 `llm-response-format`) are excluded. The numbered prefixes are historical and
 not contiguous — [INDEX.md](INDEX.md) is the authoritative list.
 
@@ -179,7 +178,6 @@ not contiguous — [INDEX.md](INDEX.md) is the authoritative list.
 - [`cli-ts-commands/`](cli-ts-commands/) — TypeScript CLI command examples (`*.cmd.ts`)
 - [`local-embeddings/`](local-embeddings/) — on-device embeddings example
 - [`crew-multifile/`](crew-multifile/) — a crew split across multiple YAML files
-- [`runners/`](runners/) — the runner hosts (the trading runner + the shared `_shared` library)
 - [`others/`](others/) — miscellaneous fixtures
 
 ## Solution

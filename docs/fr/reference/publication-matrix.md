@@ -91,12 +91,11 @@ Actions propriétaire restantes :
 `publish.yml` (tag `v*`) packe `Orkeon.sln` et pousse **chaque projet packable** vers
 **GitHub Packages** (`nuget.pkg.github.com/Orkeon`) avec `--skip-duplicate`. Soit le lineup
 NuGet.org ci-dessus **plus** les paquets build-time et runners qui restent hors de NuGet.org :
-`Orkeon.ConsoleApp`, `Orkeon.Generators`, `Orkeon.Compliance.Vfs`, et le packable
-`examples/runners/_shared`. C'est ce feed que `experiments/` consomme en mode packages :
+`Orkeon.ConsoleApp`, `Orkeon.Generators` et `Orkeon.Compliance.Vfs`. C'est ce feed
+que `experiments/` consomme en mode packages :
 
 | PackageId | Commande tool | Projet source |
 |---|---|---|
-| `Orkeon.Runners.Shared` | — (bibliothèque) | `examples/runners/_shared` |
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
 | `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
 
@@ -112,7 +111,7 @@ remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 
 | Artefact | Produit par | Contenu | Runtime |
 |---|---|---|---|
-| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (`--app-set full` par défaut) | tous les launchers CLI + les apps Orkeon Studio admises par leur filtre RID (le WPF `orkeon-studio` est réservé à `win-x64` ; les deux TUI partout) + un esbuild partagé + l'arbre `deploy/` (unité systemd, script d'enregistrement SCM, Dockerfile.host) | mixte : `orkeon`, `orkeon-trading`, `orkeon-host` et les apps Studio self-contained, les autres framework-dependent |
+| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (`--app-set full` par défaut) | tous les launchers CLI + les apps Orkeon Studio admises par leur filtre RID (le WPF `orkeon-studio` est réservé à `win-x64` ; les deux TUI partout) + un esbuild partagé + l'arbre `deploy/` (unité systemd, script d'enregistrement SCM, Dockerfile.host) | mixte : `orkeon`, `orkeon-host` et les apps Studio self-contained, les autres framework-dependent |
 | `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | le CLI `orkeon` + `orkeon-studio` (Orkeon Studio WPF) + `install.ps1` | self-contained |
 | `orkeon_<version>_amd64.deb` | `package-deb.sh` (réutilise l'arbre de staging `linux-x64` — un publish, deux paquets) | le CLI `orkeon` en `/usr/bin/orkeon` + les TUI Studio en `/usr/bin/orkeon-studio-config` et `/usr/bin/orkeon-studio-run` | self-contained ; `Depends` uniquement sur des bibliothèques système (alternations libicu / libssl), jamais sur `dotnet-runtime-*` |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, portée per-user), moissonnant le zip CLI extrait | le CLI `orkeon` + `orkeon-studio` (WPF, avec un raccourci menu Démarrer « Orkeon Studio »), même publish élagué que le zip | self-contained |
@@ -170,7 +169,7 @@ Le CLI `orkeon` est distribué via **sept canaux** :
 | Paquet Debian | `orkeon_<version>_amd64.deb` | self-contained | onboarding Debian / Ubuntu — le canal recommandé. Livre les TUI `orkeon-studio-config` / `orkeon-studio-run` à côté du CLI |
 | Archive macOS + `install.sh` | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | self-contained | onboarding macOS aujourd'hui ; `install.sh` retire l'attribut de quarantaine Gatekeeper et re-signe en ad-hoc les Mach-O que `codesign -v` rejette |
 | Homebrew | les mêmes archives osx, via `installers/homebrew/orkeon.rb` | self-contained | macOS, une fois le tap créé — **pas encore publié**, voir ci-dessous |
-| Archive d'installation multi-apps | launchers `orkeon` / `orkeon-slim` | `orkeon` self-contained, `orkeon-slim` framework-dependent | devs voulant aussi le REPL, les runners TUI ou la vitrine trading |
+| Archive d'installation multi-apps | launchers `orkeon` / `orkeon-slim` | `orkeon` self-contained, `orkeon-slim` framework-dependent | devs voulant aussi le REPL ou l'hôte de service |
 
 **Homebrew — formule dans le repo, tap pas encore créé.** `installers/homebrew/orkeon.rb` est
 une formule binaire : elle télécharge l'archive osx correspondant à l'architecture de la
@@ -193,7 +192,7 @@ n'est pas signé.
 
 Toutes les variantes sont construites depuis le même csproj
 `src/scripting/Orkeon.Scripting.Cli` et partagent l'unique esbuild embarqué.
-`orkeon-trading` est également self-contained ; les autres launchers CLI restent
+Les autres launchers CLI restent
 framework-dependent — `install.sh` et `install.ps1` détectent ce cas et affichent les
 commandes d'installation du runtime plutôt que d'échouer au premier lancement.
 

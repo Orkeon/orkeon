@@ -24,7 +24,7 @@
 - **Agents**: <n> — brief role list
 - **Tools**: `tool_a`, `tool_b`, …
 - **Key features**: what this example demonstrates (task dependencies, memory, A2A, …)
-- **Runner**: `orkeon` CLI (default) | `orkeon-trading` (finance) | …
+- **Runner**: `orkeon` CLI
 
 ## Prerequisites
 
@@ -77,9 +77,6 @@ docker run --rm \
   --mount /output:/output:rw
 ```
 
-> **Finance / trading example?** Swap the CLI for `orkeon-trading --config
-> examples/<path>/config.yaml …` (it adds the 44 trading tools). In the
-> container, select it with `-e ORKEON_RUNNER=trading`.
 > Flag reference: [Run your first example](../getting-started/run-your-first-example.md#every-flag-explained)
 > (adjust the relative path once this file lives in an example folder).
 

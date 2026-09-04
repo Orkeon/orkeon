@@ -89,12 +89,10 @@ Remaining owner actions:
 `publish.yml` (tag `v*`) packs `Orkeon.sln` and pushes **every packable project** to
 **GitHub Packages** (`nuget.pkg.github.com/Orkeon`) with `--skip-duplicate`. That is the
 NuGet.org lineup above **plus** the build-time and runner packages that stay off NuGet.org:
-`Orkeon.ConsoleApp`, `Orkeon.Generators`, `Orkeon.Compliance.Vfs`, and the
-`examples/runners/_shared` packable. This feed is what `experiments/` consumes in packages mode:
+`Orkeon.ConsoleApp`, `Orkeon.Generators` and `Orkeon.Compliance.Vfs`. This feed is what `experiments/` consumes in packages mode:
 
 | PackageId | Tool command | Source project |
 |---|---|---|
-| `Orkeon.Runners.Shared` | — (library) | `examples/runners/_shared` |
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
 | `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
 
@@ -111,7 +109,7 @@ scripting DSL).
 
 | Artifact | Built by | Contents | Runtime |
 |---|---|---|---|
-| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every CLI launcher + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon`, `orkeon-trading`, `orkeon-host` and the Studio apps self-contained, the rest framework-dependent |
+| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every CLI launcher + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon`, `orkeon-host` and the Studio apps self-contained, the rest framework-dependent |
 | `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `orkeon-studio` (WPF Orkeon Studio) + `install.ps1` | self-contained |
 | `orkeon_<version>_amd64.deb` | `package-deb.sh` (reuses the `linux-x64` staging tree — one publish, two packages) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (libicu / libssl alternations), never on `dotnet-runtime-*` |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI + `orkeon-studio` (WPF, with an "Orkeon Studio" Start-menu shortcut), same pruned publish as the zip | self-contained |
@@ -189,7 +187,7 @@ before that. Submission to homebrew-core and a `.pkg` installer stay out of scop
 project is code-signed.
 
 All flavours are built from the same `src/scripting/Orkeon.Scripting.Cli` csproj and share
-the one bundled esbuild. `orkeon-trading` is likewise self-contained; the remaining CLI
+the one bundled esbuild. The remaining CLI
 launchers stay framework-dependent — `install.sh` and `install.ps1` detect that case and
 print the runtime install commands rather than failing at first launch.
 

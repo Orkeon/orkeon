@@ -4,11 +4,10 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
-    <!-- Examples and demo runners are NOT shipped as NuGet packages, so
+    <!-- Example projects are NOT shipped as NuGet packages, so
          `dotnet pack Orkeon.sln` (which includes a few example projects) does not
-         emit parasite packages. One runner project opts back in with
-         <IsPackable>true</IsPackable>: Orkeon.Runners.Shared (_shared, library),
-         pushed by publish.yml. -->
+         emit parasite packages. No example opts back in anymore (the last,
+         Orkeon.Runners.Shared, retired with the trading stack - EX-01). -->
     <IsPackable>false</IsPackable>
     <!-- Examples deliberately showcase experimental surfaces (Autonomous, A2A,
          corrective RAG, MCP); the ORKEXP diagnostics target consumers outside
