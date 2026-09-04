@@ -526,7 +526,7 @@ The repository contains **43 src projects** and **33 test projects**, plus two s
 │   ├── scripting/                # .ork.ts scripting examples
 │   ├── cli-ts-commands/          # TypeScript CLI command examples
 │   ├── local-embeddings/         # Local embedding example
-│   ├── runners/, _shared/, others/
+│   ├── others/
 │   ├── Orkeon.Examples.sln
 │   └── run-example.sh / run-example.ps1 / test-all-examples.*
 ├── tools/
