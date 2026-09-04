@@ -1,5 +1,6 @@
 using Jint;
 using Jint.Native;
+using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
@@ -10,6 +11,19 @@ namespace Orkeon.Scripting.Builders;
 /// Fluent builder exposed to JS as <c>toolBuilder()</c>. Captures the configuration
 /// supplied by the script and produces a <see cref="JsTool"/> on <see cref="build"/>.
 /// </summary>
+/// <remarks>
+/// <c>withSchema</c> accepts two shapes and reads them with full fidelity (EX-01 —
+/// the schema is what the LLM sees, losing fields degrades every tool call):
+/// <list type="bullet">
+/// <item><description>a bare JSON schema — <c>{ type, properties, required }</c>;</description></item>
+/// <item><description>the typings' pair — <c>{ input: &lt;schema&gt;, output: &lt;schema&gt; }</c>,
+/// where <c>input</c> feeds the parameters and <c>output</c> becomes the tool's
+/// return schema.</description></item>
+/// </list>
+/// Per property: <c>type</c>, <c>description</c>, <c>required</c> (from the schema's
+/// list), <c>default</c>, <c>enum</c>, <c>format</c>, <c>items.type</c>/<c>items.format</c>
+/// and <c>example</c> all reach <see cref="ParameterSchema"/>.
+/// </remarks>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591
 public sealed class JsToolBuilder
@@ -17,6 +31,7 @@ public sealed class JsToolBuilder
     private readonly Engine _engine;
     private string? _name;
     private string? _description;
+    private string? _access;
     private JsValue? _schema;
     private JsValue? _execute;
 
@@ -29,6 +44,14 @@ public sealed class JsToolBuilder
     public JsToolBuilder description(string value) { _description = value; return this; }
     public JsToolBuilder withSchema(JsValue schema) { _schema = schema; return this; }
     public JsToolBuilder execute(JsValue fn) { _execute = fn; return this; }
+
+    /// <summary>
+    /// Declared access class for permission gates: "read", "edit" or "execute".
+    /// Undeclared stays <see cref="ToolAccess.Unspecified"/>, which gates treat
+    /// fail-closed — declare it and an autonomous read-only tool stops being
+    /// classified as a write.
+    /// </summary>
+    public JsToolBuilder access(string value) { _access = value; return this; }
 
     public JsTool build()
     {
@@ -44,18 +67,37 @@ public sealed class JsToolBuilder
             ? BuildSchemaFromJsValue(_name!, _description!, _schema!)
             : new ToolSchema(_name!, _description!, new Dictionary<string, ParameterSchema>());
 
-        return new JsTool(_name!, _description!, schema, hasSchema, _engine, _execute);
+        return new JsTool(_name!, _description!, schema, hasSchema, _engine, _execute, ParseAccess(_access));
     }
+
+    private static ToolAccess ParseAccess(string? value) => value?.ToUpperInvariant() switch
+    {
+        null => ToolAccess.Unspecified,
+        "READ" => ToolAccess.Read,
+        "EDIT" => ToolAccess.Edit,
+        "EXECUTE" => ToolAccess.Execute,
+        _ => throw new InvalidScriptException(
+            $"toolBuilder().access(...) accepts 'read', 'edit' or 'execute' (got '{value}')."),
+    };
 
     private static ToolSchema BuildSchemaFromJsValue(string name, string description, JsValue schema)
     {
         var parameters = new Dictionary<string, ParameterSchema>();
+        Dictionary<string, object?>? returns = null;
         if (schema.IsObject())
         {
-            var requiredSet = ReadRequiredSet(schema.Get("required"));
-            PopulateParameters(schema.Get("properties"), requiredSet, parameters);
+            // {input, output} (the typings' shape) or a bare JSON schema.
+            var input = schema.Get("input");
+            var output = schema.Get("output");
+            var effective = input.IsObject() ? input : schema;
+
+            var requiredSet = ReadRequiredSet(effective.Get("required"));
+            PopulateParameters(effective.Get("properties"), requiredSet, parameters);
+
+            if (output.IsObject())
+                returns = ToPlainDictionary(output);
         }
-        return new ToolSchema(name, description, parameters);
+        return new ToolSchema(name, description, parameters, returns);
     }
 
     private static HashSet<string> ReadRequiredSet(JsValue required)
@@ -85,10 +127,67 @@ public sealed class JsToolBuilder
         {
             var key = prop.Key.ToString()!;
             var spec = prop.Value.Value;
-            var type = spec.IsObject() && spec.Get("type").IsString() ? spec.Get("type").AsString() : "string";
-            var desc = spec.IsObject() && spec.Get("description").IsString() ? spec.Get("description").AsString() : "";
-            parameters[key] = new ParameterSchema(type, desc, requiredSet.Contains(key));
+            if (!spec.IsObject())
+            {
+                parameters[key] = new ParameterSchema("string", "", requiredSet.Contains(key));
+                continue;
+            }
+
+            string? itemsType = null;
+            string? itemsFormat = null;
+            var items = spec.Get("items");
+            if (items.IsObject())
+            {
+                itemsType = GetString(items, "type");
+                itemsFormat = GetString(items, "format");
+            }
+
+            parameters[key] = new ParameterSchema(
+                GetString(spec, "type") ?? "string",
+                GetString(spec, "description") ?? "",
+                requiredSet.Contains(key),
+                Default: GetObject(spec, "default"),
+                Enum: ReadEnumValues(spec.Get("enum")),
+                Format: GetString(spec, "format"),
+                ItemsType: itemsType,
+                ItemsFormat: itemsFormat,
+                Example: GetObject(spec, "example"));
         }
+    }
+
+    private static string? GetString(JsValue obj, string key)
+    {
+        var v = obj.Get(key);
+        return v.IsString() ? v.AsString() : null;
+    }
+
+    private static object? GetObject(JsValue obj, string key)
+    {
+        var v = obj.Get(key);
+        return v.IsUndefined() || v.IsNull() ? null : v.ToObject();
+    }
+
+    private static List<object>? ReadEnumValues(JsValue value)
+    {
+        if (value is not Jint.Native.Array.ArrayInstance arr)
+            return null;
+
+        var values = new List<object>();
+        var len = (uint)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
+        for (uint i = 0; i < len; i++)
+        {
+            var v = arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToObject();
+            if (v is not null) values.Add(v);
+        }
+        return values.Count > 0 ? values : null;
+    }
+
+    private static Dictionary<string, object?> ToPlainDictionary(JsValue obj)
+    {
+        var dict = new Dictionary<string, object?>();
+        foreach (var prop in obj.AsObject().GetOwnProperties())
+            dict[prop.Key.ToString()!] = prop.Value.Value.ToObject();
+        return dict;
     }
 }
 #pragma warning restore CS1591

@@ -97,4 +97,90 @@ public sealed class ToolBuilderTests
             e.Level == Microsoft.Extensions.Logging.LogLevel.Warning &&
             e.Message.Contains("noSchemaTool")));
     }
+
+    [Fact]
+    public void ToolBuilder_withSchema_reads_every_field_of_a_bare_json_schema()
+    {
+        var tool = Eval<JsTool>(NewEngine(), """
+            toolBuilder()
+              .name("var_calculation")
+              .description("Computes VaR")
+              .withSchema({
+                  type: "object",
+                  properties: {
+                      confidence: { type: "number", description: "Confidence level", default: 0.95,
+                                    enum: [0.9, 0.95, 0.99], example: 0.95 },
+                      method: { type: "string", description: "Method", format: "identifier" },
+                      prices: { type: "array", description: "Series", items: { type: "number" } }
+                  },
+                  required: ["prices"]
+              })
+              .execute((input) => 0)
+              .build();
+            """);
+
+        var confidence = tool.Schema.Parameters["confidence"];
+        Assert.Equal("number", confidence.Type);
+        Assert.False(confidence.Required);
+        Assert.Equal(0.95d, confidence.Default);
+        Assert.Equal(0.95d, confidence.Example);
+        Assert.NotNull(confidence.Enum);
+        Assert.Equal(3, confidence.Enum!.Count);
+        Assert.Equal("identifier", tool.Schema.Parameters["method"].Format);
+        var prices = tool.Schema.Parameters["prices"];
+        Assert.True(prices.Required);
+        Assert.Equal("array", prices.Type);
+        Assert.Equal("number", prices.ItemsType);
+    }
+
+    [Fact]
+    public void ToolBuilder_withSchema_accepts_the_typings_input_output_shape()
+    {
+        // tool.d.ts declares { input, output } — passing that shape used to
+        // produce ZERO parameters. Both directions must land now.
+        var tool = Eval<JsTool>(NewEngine(), """
+            toolBuilder()
+              .name("shaped")
+              .description("d.ts-shaped schema")
+              .withSchema({
+                  input: {
+                      type: "object",
+                      properties: { q: { type: "string", description: "query" } },
+                      required: ["q"]
+                  },
+                  output: { type: "object", properties: { hits: { type: "integer" } } }
+              })
+              .execute((input) => ({ hits: 1 }))
+              .build();
+            """);
+
+        Assert.True(tool.HasExplicitSchema);
+        var q = tool.Schema.Parameters["q"];
+        Assert.Equal("string", q.Type);
+        Assert.True(q.Required);
+        Assert.NotNull(tool.Schema.Returns);
+        Assert.True(tool.Schema.Returns!.ContainsKey("properties"));
+    }
+
+    [Fact]
+    public void ToolBuilder_access_maps_to_the_domain_enum_and_rejects_junk()
+    {
+        var tool = Eval<JsTool>(NewEngine(), """
+            toolBuilder().name("t").description("d").access("read")
+              .execute((i) => i).build();
+            """);
+        Assert.Equal(Orkeon.Domain.Tools.ToolAccess.Read, tool.Access);
+
+        var undeclared = Eval<JsTool>(NewEngine(), """
+            toolBuilder().name("t").description("d").execute((i) => i).build();
+            """);
+        Assert.Equal(Orkeon.Domain.Tools.ToolAccess.Unspecified, undeclared.Access);
+
+        ThrowsContaining<InvalidScriptException>(
+            () => NewEngine().Evaluate("""
+                toolBuilder().name("t").description("d").access("root")
+                  .execute((i) => i).build();
+                """),
+            "access");
+    }
 }

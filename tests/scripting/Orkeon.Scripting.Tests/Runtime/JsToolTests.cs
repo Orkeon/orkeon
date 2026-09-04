@@ -152,4 +152,81 @@ public sealed class JsToolTests
 
         Assert.False(tool.ValidateInput("{bad"));
     }
+
+    [Fact]
+    public async Task CallAsync_serializes_concurrent_calls_on_the_same_engine()
+    {
+        // The engine is single-threaded; a parallel crew fires tool calls concurrently.
+        // The per-engine gate must serialize them: max observed concurrency == 1.
+        var engine = NewEngine();
+        var probe = new ConcurrencyProbe();
+        engine.SetValue("probe", probe);
+        var tool = BuildTool(engine, """
+            (input) => {
+                probe.enter();
+                let s = 0;
+                for (let i = 0; i < 200000; i++) s += i;
+                probe.exit();
+                return s;
+            }
+            """);
+
+        var calls = Enumerable.Range(0, 6).Select(_ => tool.CallAsync(
+            new ToolCallRequest("echo", new Dictionary<string, object?>()),
+            TestContext.Current.CancellationToken));
+        var responses = await Task.WhenAll(calls);
+
+        Assert.All(responses, r => Assert.True(r.Success));
+        Assert.Equal(1, probe.MaxConcurrent);
+        Assert.Equal(6, probe.Entered);
+    }
+
+    [Fact]
+    public void execute_is_callable_from_a_script_and_returns_the_raw_result()
+    {
+        // The 06-custom-tool example's pattern: a tool built in the script is
+        // called back from a script body. Jint member resolution is ordinal, so
+        // the lowercase `execute` member is what makes `myTool.execute(...)` real.
+        var engine = NewEngine();
+        var tool = BuildTool(engine, "(input) => ({ shouted: String(input.word).toUpperCase() })");
+        engine.SetValue("theTool", tool);
+
+        var result = engine.Evaluate("theTool.execute({ word: 'orkeon' }).shouted");
+
+        Assert.Equal("ORKEON", result.AsString());
+    }
+
+    [Fact]
+    public void name_and_description_are_visible_from_scripts()
+    {
+        var engine = NewEngine();
+        var tool = BuildTool(engine, "(i) => i");
+        engine.SetValue("theTool", tool);
+
+        Assert.Equal("echo", engine.Evaluate("theTool.name").AsString());
+        Assert.Equal("Echo tool", engine.Evaluate("theTool.description").AsString());
+    }
+
+    private sealed class ConcurrencyProbe
+    {
+        private int _current;
+        public int MaxConcurrent;
+        public int Entered;
+
+#pragma warning disable IDE1006 // JS-facing members
+        public void enter()
+        {
+            var now = Interlocked.Increment(ref _current);
+            Interlocked.Increment(ref Entered);
+            int seen;
+            do
+            {
+                seen = Volatile.Read(ref MaxConcurrent);
+                if (now <= seen) return;
+            } while (Interlocked.CompareExchange(ref MaxConcurrent, now, seen) != seen);
+        }
+
+        public void exit() => Interlocked.Decrement(ref _current);
+#pragma warning restore IDE1006
+    }
 }

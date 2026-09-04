@@ -3,3 +3,8 @@ static Orkeon.Scripting.JsEngineFactory.ApplyInteropPolicy(Jint.Options! options
 *REMOVED*Orkeon.Scripting.Bindings.JsLlmNamespace.groq.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
 Orkeon.Scripting.Bindings.JsLlmNamespace.grok.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
 Orkeon.Scripting.Bindings.JsLlmNamespace.minimax.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Builders.JsToolBuilder.access(string! value) -> Orkeon.Scripting.Builders.JsToolBuilder!
+Orkeon.Scripting.Runtime.JsTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+Orkeon.Scripting.Runtime.JsTool.name.get -> string!
+Orkeon.Scripting.Runtime.JsTool.description.get -> string!
+Orkeon.Scripting.Runtime.JsTool.execute(Jint.Native.JsValue! input, Jint.Native.JsValue? ctx = null) -> Jint.Native.JsValue!
