@@ -158,4 +158,51 @@ public sealed class RunCommandTests : IDisposable
 
         Assert.Equal(0, exit);
     }
+
+    [Fact]
+    public async Task Cli_runs_a_declarative_crew_through_the_orchestration_pipeline()
+    {
+        // F6: a bare `orkeon run crew.ork.ts` on a script that hands off
+        // `globalThis.crew` must take the FULL pipeline, not the flat agent loop.
+        // The proof is the task deliverable: the flat loop ignores deliverables,
+        // only the orchestration pipeline writes them.
+        var scriptPath = WriteScript("crew.ork.ts", """
+            /// <reference orkeon-script="1.0" />
+            const writer = agentBuilder().name("writer").role("Writer").goal("Write a note").build();
+            const note = taskBuilder()
+                .agent(writer)
+                .description("Write a one-line note")
+                .expectedOutput("A note")
+                .deliverable({ path: "/output/note.md", source: "final_message", format: "markdown" })
+                .build();
+            const crew = crewBuilder().name("declarative").goal("Prove the pipeline path")
+                .withAgent(writer).withTask(note).build();
+            (globalThis as any).crew = crew;
+            """);
+
+        // The pipeline's banner is the discriminator: the shared one-shot runner
+        // prints "=== Crew Output ===", the flat script path prints a JSON result
+        // blob. (The offline echo provider yields an empty final message, so the
+        // deliverable file itself is not a reliable witness here.)
+        var originalOut = Console.Out;
+        using var captured = new StringWriter();
+        Console.SetOut(captured);
+        int exit;
+        try
+        {
+            exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            {
+                ScriptPath = scriptPath,
+                Mounts = new[] { $"{_outDir}:/output:rw" },
+                AllowExternalMounts = true,
+            });
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        Assert.Equal(0, exit);
+        Assert.Contains("=== Crew Output ===", captured.ToString(), StringComparison.Ordinal);
+    }
 }

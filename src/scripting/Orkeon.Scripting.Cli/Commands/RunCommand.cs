@@ -297,6 +297,19 @@ internal static partial class RunCommand
         if (IsYamlConfig(options.ScriptPath))
             return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
 
+        // A .ork.ts that hands its crew off via `globalThis.crew = …` is a DECLARATIVE
+        // crew definition, not a procedural script: it runs through the same shared
+        // one-shot pipeline as YAML (strict tool resolution — script tools included —
+        // deliverables, telemetry, AUTO_SUMMARY), where the lean script path would
+        // execute a flat agent loop that ignores tasks, process and manager (EX-01/F6).
+        // The handoff is detected on the SOURCE, so the script is evaluated exactly
+        // once, by the pipeline.
+        if (RunnerExecution.IsScriptedCrewDefinition(options.ScriptPath)
+            && await DeclaresCrewHandoffAsync(options.ScriptPath).ConfigureAwait(false))
+        {
+            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
+        }
+
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>
         {
@@ -719,6 +732,25 @@ internal static partial class RunCommand
         await (observed is null ? Console.Out : Console.Error)
             .WriteLineAsync(SerializeRunResult(result)).ConfigureAwait(false);
         return Program.ExitOk;
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\bglobalThis\b[^\r\n]{0,60}?\.\s*crew\s*=")]
+    private static partial System.Text.RegularExpressions.Regex CrewHandoffPattern();
+
+    /// <summary>
+    /// Whether the entry script declares the <c>globalThis.crew = …</c> handoff —
+    /// spelled either bare or through the <c>(globalThis as any)</c> TypeScript cast.
+    /// A source-text sniff, deliberately: evaluating the script to find out would run
+    /// its top level twice on the pipeline path.
+    /// </summary>
+    private static async Task<bool> DeclaresCrewHandoffAsync(string scriptPath)
+    {
+        // OUT-OF-SCOPE: sniffing the user-supplied entry script before any host exists —
+        // the same pre-VFS read the --inputs-file option performs.
+        if (!File.Exists(scriptPath))
+            return false;
+        var source = await File.ReadAllTextAsync(scriptPath).ConfigureAwait(false);
+        return CrewHandoffPattern().IsMatch(source);
     }
 
     /// <summary>
