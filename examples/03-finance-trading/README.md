@@ -2,7 +2,7 @@
 
 Finance and trading use cases: algorithmic trading, fraud detection, credit scoring, portfolio optimization, KYC/AML compliance, and ESG analysis.
 
-**Runner**: `trading` (includes 44 specialized trading tools in addition to standard tools)
+**Runner**: `standard` — every crew is a TypeScript definition (`main.ork.ts`) carrying its trading tools from the shared [`_tools/`](_tools/) module (27 tools, EX-01)
 
 | # | Example | Process | Quality |
 |---|---------|---------|---------|

@@ -12,7 +12,7 @@
 - **Key features**: multi-format extraction, `ComponentBase` typed pipeline with
   tolerant JSON converters, three-way matching (invoice ↔ PO ↔ goods receipt),
   exception reporting
-- **Runner**: `trading` (provides `audit_trail` and `dashboard_metrics`)
+- **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/)) (provides `audit_trail` and `dashboard_metrics`)
 
 ## Prerequisites
 
@@ -37,13 +37,13 @@ is available but the shipped data is file-based).
 
 ## Run it
 
-With the **`orkeon-trading`** runner (it adds 44 specialized trading tools on top
-of the standard toolset) — or, from a source checkout,
-`dotnet run --project examples/runners/trading -- --config …`:
+With the installed `orkeon` CLI (the trading tools ship inside the crew's own
+TypeScript module) — or, from a source checkout,
+`dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …`:
 
 ```bash
 mkdir -p out
-orkeon-trading --config examples/03-finance-trading/40-invoice-processing/config.yaml \
+orkeon run examples/03-finance-trading/40-invoice-processing/main.ork.ts \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --mount examples/03-finance-trading/40-invoice-processing/data:/data:ro ./out:/output:rw
 ```

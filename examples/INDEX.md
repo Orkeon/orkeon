@@ -24,7 +24,7 @@ Run any example with `bash examples/run-example.sh <category>/<example>` (the ma
 |----------|:--------:|--------|
 | [01 - Classiques Entreprise (1-16)](#01---classiques-entreprise-1-16) | 16 | `standard` |
 | [02 - Sciences & Recherche (16-30)](#02---sciences--recherche-16-30) | 15 | `standard` |
-| [03 - Finance & Trading (31-45)](#03---finance--trading-31-45) | 15 | `trading` |
+| [03 - Finance & Trading (31-45)](#03---finance--trading-31-45) | 15 | `standard` |
 | [04 - Sante & Bien-etre (46-55)](#04---sante--bien-etre-46-55) | 10 | `standard` |
 | [05 - Education & Formation (56-65)](#05---education--formation-56-65) | 10 | `standard` |
 | [06 - Ingenierie & DevOps (66-75, 102-103)](#06---ingenierie--devops-66-75-102-103) | 12 | `standard` |
@@ -79,25 +79,25 @@ Runner: `standard` · 15 examples · folder [`02-science-research/`](02-science-
 
 ## 03 - Finance & Trading (31-45)
 
-Runner: `trading` · 15 examples · folder [`03-finance-trading/`](03-finance-trading/)
+Runner: `standard` · 15 examples · folder [`03-finance-trading/`](03-finance-trading/)
 
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
 | 31 | [31. Trading Algorithmique Multi-Strategies](03-finance-trading/31-algo-trading/) | Hierarchical | 8 | 7 | `http_api`, `json_tool`, `csv_reader`, `file_write`, `relational_database_query`, `technical_indicators`, `market_regime_classification`, `arima_prediction`, `ensemble_prediction`, `backtesting`, `var_calculation`, `cvar_calculation`, `mean_variance_optimization`, `portfolio_rebalancing`, `twap_execution`, `vwap_execution`, `smart_order_routing` | ✅ |
-| 32 | [32. Detection de Fraude en Temps Reel](03-finance-trading/32-fraud-detection/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `pattern_recognition`, `correlation_analysis`, `file_write`, `alert_management`, `audit_trail` | ✅ |
-| 33 | [33. Scoring de Credit Validation Humaine](03-finance-trading/33-credit-scoring/) | Sequential | 5 | 5 | `http_api`, `csv_reader`, `json_tool`, `fundamental_data`, `relational_database_query`, `file_write`, `factor_exposure`, `var_calculation` | ✅ |
-| 34 | [34. Portfolio Optimization by Consensus](03-finance-trading/34-portfolio-consensus/) | Consensual | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `technical_indicators`, `correlation_analysis`, `file_write`, `mean_variance_optimization`, `risk_parity`, `hierarchical_risk_parity`, `black_litterman` | ✅ |
+| 32 | [32. Detection de Fraude en Temps Reel](03-finance-trading/32-fraud-detection/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `file_write`, `pattern_recognition`, `correlation_analysis`, `alert_management`, `audit_trail` | ✅ |
+| 33 | [33. Scoring de Credit Validation Humaine](03-finance-trading/33-credit-scoring/) | Sequential | 5 | 5 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write`, `fundamental_data`, `factor_exposure`, `var_calculation` | ✅ |
+| 34 | [34. Portfolio Optimization by Consensus](03-finance-trading/34-portfolio-consensus/) | Consensual | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write`, `technical_indicators`, `correlation_analysis`, `mean_variance_optimization`, `risk_parity`, `hierarchical_risk_parity`, `black_litterman` | ✅ |
 | 35 | [35. Reconciliation Comptable Multi-Sources](03-finance-trading/35-accounting-reconciliation/) | Parallel | 5 | 5 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write`, `audit_trail`, `dashboard_metrics` | ✅ |
-| 36 | [36. Prevision de Tresorerie Auto-Corrective](03-finance-trading/36-cash-flow-forecast/) | Sequential | 3 | 4 | `csv_reader`, `json_tool`, `relational_database_query`, `http_api`, `file_write`, `arima_prediction`, `prophet_prediction`, `ensemble_prediction` | ✅ |
-| 37 | [37. Conformite KYC/AML Triple Securite](03-finance-trading/37-kyc-aml-compliance/) | Hierarchical | 4 | 3 | `compliance_check`, `regulatory_reporting`, `http_api`, `pdf_reader`, `json_tool`, `audit_trail` | ✅ |
-| 38 | [38. Analyse de Contrats avec Chunking](03-finance-trading/38-contract-analysis/) | Parallel | 3 | 3 | `pdf_reader`, `json_tool`, `csv_reader`, `regulatory_reporting`, `audit_trail`, `file_write` | ✅ |
-| 39 | [39. Robo-Advisor Profilage Interactif](03-finance-trading/39-robo-advisor/) | Sequential | 4 | 4 | `json_tool`, `human_input`, `http_api`, `csv_reader`, `mean_variance_optimization`, `risk_parity`, `file_write`, `portfolio_rebalancing` | ✅ |
+| 36 | [36. Prevision de Tresorerie Auto-Corrective](03-finance-trading/36-cash-flow-forecast/) | Sequential | 4 | 4 | `csv_reader`, `json_tool`, `relational_database_query`, `http_api`, `file_write`, `arima_prediction`, `prophet_prediction`, `ensemble_prediction` | ✅ |
+| 37 | [37. Conformite KYC/AML Triple Securite](03-finance-trading/37-kyc-aml-compliance/) | Hierarchical | 4 | 3 | `http_api`, `pdf_reader`, `json_tool`, `compliance_check`, `regulatory_reporting`, `audit_trail` | ✅ |
+| 38 | [38. Analyse de Contrats avec Chunking](03-finance-trading/38-contract-analysis/) | Parallel | 3 | 3 | `pdf_reader`, `json_tool`, `csv_reader`, `file_write`, `regulatory_reporting`, `audit_trail` | ✅ |
+| 39 | [39. Robo-Advisor Profilage Interactif](03-finance-trading/39-robo-advisor/) | Sequential | 4 | 4 | `json_tool`, `human_input`, `http_api`, `csv_reader`, `file_write`, `mean_variance_optimization`, `risk_parity`, `portfolio_rebalancing` | ✅ |
 | 40 | [40. Automated Invoice Processing](03-finance-trading/40-invoice-processing/) | Sequential | 3 | 3 | `pdf_reader`, `csv_reader`, `json_tool`, `file_write`, `relational_database_query`, `audit_trail`, `dashboard_metrics` | ✅ |
-| 41 | [41. Detection de Delit d'Initie](03-finance-trading/41-insider-trading-detection/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `pattern_recognition`, `correlation_analysis`, `file_write`, `regulatory_reporting`, `audit_trail` | ✅ |
-| 42 | [42. Pricing Dynamique Arbitrage Hierarchique](03-finance-trading/42-dynamic-pricing/) | Hierarchical | 4 | 3 | `http_api`, `csv_reader`, `json_tool`, `market_regime_classification`, `alternative_data`, `web_scrape`, `file_write`, `dashboard_metrics` | ✅ |
+| 41 | [41. Detection de Delit d'Initie](03-finance-trading/41-insider-trading-detection/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `file_write`, `pattern_recognition`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
+| 42 | [42. Pricing Dynamique Arbitrage Hierarchique](03-finance-trading/42-dynamic-pricing/) | Hierarchical | 4 | 3 | `http_api`, `csv_reader`, `json_tool`, `web_scrape`, `file_write`, `market_regime_classification`, `alternative_data`, `dashboard_metrics` | ✅ |
 | 43 | [43. Optimisation Fiscale Multi-Juridictions](03-finance-trading/43-tax-optimization/) | Parallel | 5 | 5 | `http_api`, `pdf_reader`, `json_tool`, `csv_reader`, `file_write`, `regulatory_reporting`, `audit_trail` | ✅ |
-| 44 | [44. Analyse ESG Scoring Reproductible](03-finance-trading/44-esg-scoring/) | Parallel | 5 | 5 | `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `alternative_data`, `file_write`, `dashboard_metrics` | ✅ |
-| 45 | [45. Stress Testing Reglementaire Rejouable](03-finance-trading/45-stress-testing/) | Sequential | 4 | 4 | `csv_reader`, `http_api`, `json_tool`, `stress_testing`, `relational_database_query`, `file_write`, `var_calculation`, `cvar_calculation`, `factor_exposure`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
+| 44 | [44. Analyse ESG Scoring Reproductible](03-finance-trading/44-esg-scoring/) | Parallel | 5 | 5 | `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`, `alternative_data`, `dashboard_metrics` | ✅ |
+| 45 | [45. Stress Testing Reglementaire Rejouable](03-finance-trading/45-stress-testing/) | Sequential | 4 | 4 | `csv_reader`, `http_api`, `json_tool`, `relational_database_query`, `file_write`, `stress_testing`, `var_calculation`, `cvar_calculation`, `factor_exposure`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
 
 ## 04 - Sante & Bien-etre (46-55)
 

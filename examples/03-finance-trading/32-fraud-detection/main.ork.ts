@@ -1,0 +1,107 @@
+/// <reference orkeon-script="1.0" />
+// orkeon-example: {"process":"parallel","agents":4,"tasks":4,"tools":["http_api","json_tool","relational_database_query","semantic_search","file_write","pattern_recognition","correlation_analysis","alert_management","audit_trail"]}
+//
+// 32. Detection de Fraude en Temps Reel
+// Use case: ObserverAgent surveille un flux continu de transactions avec detection
+// d'anomalies par comparaison semantique vectorielle
+// Source: project/marketing/content-strategy/101-USE-CASES.md #32
+
+import { pickTools } from "../_tools/index.ts";
+
+const surveillance = agentBuilder()
+    .name("surveillance")
+    .role("Transaction Surveillance Observer")
+    .goal("Continuously monitor incoming transaction streams and flag anomalies")
+    .backstory(`Specialized observer agent running 24/7 on transaction feeds. Compares each
+transaction against known fraud patterns stored in encrypted Redis vector memory.
+Triggers alerts when cosine similarity with known fraud patterns exceeds threshold.`)
+    .tools(["http_api", "json_tool"])
+    .allowDelegation(false)
+    .maxIterations(15)
+    .verbose(true)
+    .build();
+
+const patternDetector = agentBuilder()
+    .name("pattern_detector")
+    .role("Pattern Detection Analyst")
+    .goal("Identify fraud patterns by analyzing transaction clusters and behavioral anomalies")
+    .backstory(`Data scientist specialized in anomaly detection and behavioral analytics.
+Uses statistical methods and semantic similarity to identify unusual transaction
+patterns that deviate from established baselines.`)
+    .tools(["relational_database_query", "json_tool", "semantic_search"])
+    .withAutonomousTools(pickTools("pattern_recognition", "correlation_analysis"))
+    .allowDelegation(false)
+    .maxIterations(10)
+    .verbose(true)
+    .build();
+
+const investigator = agentBuilder()
+    .name("investigator")
+    .role("Fraud Investigator")
+    .goal("Deep-dive into flagged transactions to confirm or dismiss fraud suspicion")
+    .backstory(`Experienced fraud investigator with expertise in tracing money flows,
+analyzing beneficiary networks, and correlating multiple data sources
+to build a complete picture of suspicious activity.`)
+    .tools(["http_api", "relational_database_query", "json_tool"])
+    .allowDelegation(false)
+    .maxIterations(10)
+    .verbose(true)
+    .build();
+
+const alerter = agentBuilder()
+    .name("alerter")
+    .role("Alert and Reporting Agent")
+    .goal("Generate structured fraud alerts and compliance reports")
+    .backstory(`Compliance reporting specialist who formats investigation findings into
+structured alerts for the fraud operations team. Ensures all reports
+contain required regulatory fields and audit trail entries.`)
+    .tools(["json_tool", "file_write"])
+    .withAutonomousTools(pickTools("alert_management", "audit_trail"))
+    .allowDelegation(false)
+    .maxIterations(10)
+    .verbose(true)
+    .build();
+
+const monitorTransactions = taskBuilder()
+    .name("monitor_transactions")
+    .agent(surveillance)
+    .description("Monitor incoming transaction stream in real-time. Compare each transaction against known fraud patterns using vector similarity search in encrypted memory. Flag transactions with similarity score above 0.85.")
+    .expectedOutput("JSON array of flagged transactions with similarity scores and matched fraud patterns")
+    .asyncExecution(true)
+    .build();
+
+const detectPatterns = taskBuilder()
+    .name("detect_patterns")
+    .agent(patternDetector)
+    .description("Analyze flagged transactions to identify pattern clusters. Look for velocity anomalies, geographic inconsistencies, amount irregularities, and beneficiary network patterns.")
+    .expectedOutput("Pattern analysis report with identified clusters, risk scores, and pattern classifications")
+    .withContext(monitorTransactions)
+    .build();
+
+const investigateCases = taskBuilder()
+    .name("investigate_cases")
+    .agent(investigator)
+    .description("For high-risk flagged patterns, perform deep investigation. Trace transaction chains, verify beneficiary identities, and cross-reference with external watchlists.")
+    .expectedOutput("Investigation report with evidence summary, transaction chain visualization, and fraud probability assessment")
+    .withContext(detectPatterns)
+    .build();
+
+const generateAlerts = taskBuilder()
+    .name("generate_alerts")
+    .agent(alerter)
+    .description("Generate structured fraud alerts with full audit trail. Include all evidence, pattern matches, investigation findings, and recommended actions. Write to encrypted storage.")
+    .expectedOutput("Structured alert reports in JSON format with complete audit trail, SAR-ready formatting")
+    .withContext(investigateCases)
+    .build();
+
+const crew = crewBuilder()
+    .name("fraud-detection")
+    .goal("Monitor transaction flows in real-time to detect fraudulent patterns using semantic vector matching and encrypted memory")
+    .process("parallel")
+    .memory(true)
+    .verbose(true)
+    .withAgents([surveillance, patternDetector, investigator, alerter])
+    .withTasks([monitorTransactions, detectPatterns, investigateCases, generateAlerts])
+    .build();
+
+(globalThis as any).crew = crew;

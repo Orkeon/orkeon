@@ -14,7 +14,7 @@
 - **Key features**: consensual process with weighted voting, long-term memory of
   analyst track records, quantitative optimizers as agent tools, risk validation
   as the final gate
-- **Runner**: `trading` (adds the quantitative finance tools)
+- **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/)) (adds the quantitative finance tools)
 
 ## Prerequisites
 
@@ -34,13 +34,13 @@ Ships a small synthetic dataset (regenerate with
 
 ## Run it
 
-With the **`orkeon-trading`** runner (it adds 44 specialized trading tools on top
-of the standard toolset) — or, from a source checkout,
-`dotnet run --project examples/runners/trading -- --config …`:
+With the installed `orkeon` CLI (the trading tools ship inside the crew's own
+TypeScript module) — or, from a source checkout,
+`dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run …`:
 
 ```bash
 mkdir -p out
-orkeon-trading --config examples/03-finance-trading/34-portfolio-consensus/config.yaml \
+orkeon run examples/03-finance-trading/34-portfolio-consensus/main.ork.ts \
   --settings examples/appsettings/appsettings.deepseek.local.json \
   --mount examples/03-finance-trading/34-portfolio-consensus/data:/data:ro ./out:/output:rw
 ```
