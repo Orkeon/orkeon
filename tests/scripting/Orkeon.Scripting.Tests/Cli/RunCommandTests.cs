@@ -123,4 +123,39 @@ public sealed class RunCommandTests : IDisposable
             Directory.Delete(externalDir, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task Cli_validate_resolves_script_defined_tools_through_the_pipeline()
+    {
+        // EX-01's central proof: a toolBuilder() tool attached to an agent survives
+        // the adapter, gets registered with the runtime registry by the loader, and
+        // passes CrewFactory's STRICT tool resolution — the exact spot that used to
+        // fail with "unknown tool(s)".
+        var scriptPath = WriteScript("crew.ork.ts", """
+            /// <reference orkeon-script="1.0" />
+            const indicator = toolBuilder()
+                .name("spike_indicator")
+                .description("Computes a number")
+                .withSchema({ type: "object", properties: { n: { type: "number", description: "n" } }, required: ["n"] })
+                .execute((input) => ({ doubled: input.n * 2 }))
+                .build();
+            const analyst = agentBuilder().name("analyst").role("Analyst").goal("Analyze")
+                .tools(["json_tool"]).withAutonomousTool(indicator).build();
+            const work = taskBuilder().agent(analyst).description("Analyze").expectedOutput("A result").build();
+            const crew = crewBuilder().name("script-tools").goal("Prove first-class script tools")
+                .withAgent(analyst).withTask(work).build();
+            (globalThis as any).crew = crew;
+            """);
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = scriptPath,
+            Validate = true,
+            // The validate path goes through the shared runner, whose workspace guard
+            // refuses a script outside the test process' cwd without this opt-in.
+            AllowExternalMounts = true,
+        });
+
+        Assert.Equal(0, exit);
+    }
 }

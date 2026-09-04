@@ -39,6 +39,15 @@ public sealed class JsTask
     /// <summary>Whether the captured schema is strict.</summary>
     internal bool ResponseSchemaStrict { get; }
 
+    /// <summary>YAML parity <c>humanInput</c> flag captured by <c>taskBuilder().humanInput(...)</c>.</summary>
+    internal bool HumanInputFlag { get; }
+
+    /// <summary>YAML parity <c>asyncExecution</c> flag captured by <c>taskBuilder().asyncExecution(...)</c>.</summary>
+    internal bool AsyncExecutionFlag { get; }
+
+    /// <summary>Task-level tools (names or <see cref="JsTool"/> instances) captured by <c>taskBuilder().tools(...)</c>.</summary>
+    internal IReadOnlyList<JsValue> Tools { get; }
+
     internal JsTask(
         string name,
         DomainCrewTask domain,
@@ -61,6 +70,9 @@ public sealed class JsTask
         ResponseSchemaName = metadata.ResponseSchemaName;
         ResponseSchema = metadata.ResponseSchema;
         ResponseSchemaStrict = metadata.ResponseSchemaStrict;
+        HumanInputFlag = metadata.HumanInput;
+        AsyncExecutionFlag = metadata.AsyncExecution;
+        Tools = metadata.Tools;
     }
 }
 #pragma warning restore CS1591

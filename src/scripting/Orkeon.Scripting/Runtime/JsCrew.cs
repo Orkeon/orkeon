@@ -52,6 +52,7 @@ public sealed class JsCrew
     internal JsAgent? Manager { get; }
     internal IReadOnlyDictionary<string, object?> Budget { get; }
     internal bool Verbose { get; }
+    internal bool Memory { get; }
     /// <summary>Tasks captured by <c>crewBuilder().withTask(...)</c>. Exposed for the
     /// JS→orchestrator adapter; each entry is normally a <see cref="JsTask"/>.</summary>
     internal IReadOnlyList<object> Tasks => _tasks;
@@ -66,6 +67,7 @@ public sealed class JsCrew
         Manager = definition.Manager;
         Budget = definition.Budget;
         Verbose = definition.Verbose;
+        Memory = definition.Memory;
         _logger = definition.Logger ?? NullLogger.Instance;
         _llmProvider = definition.LlmProvider;
         _builtInTools = definition.BuiltInTools;

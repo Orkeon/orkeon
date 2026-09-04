@@ -67,6 +67,7 @@ public static class JsCrewConfigurationAdapter
             Goal = ResolveCrewGoal(crew),
             Process = ParseProcessType(crew.Process),
             Verbose = crew.Verbose,
+            Memory = crew.Memory,
             ManagerAgentId = managerId,
             Agents = agentConfigs,
             Tasks = taskConfigs,
@@ -101,10 +102,11 @@ public static class JsCrewConfigurationAdapter
             Goal = builder.AgentGoal ?? string.Empty,
             Backstory = builder.AgentBackstoryText ?? string.Empty,
             // .tools(["file_read", ...]) is the canonical YAML-parity surface —
-            // names resolve through IToolRegistry at runtime. We also accept strings
-            // historically passed through .withAutonomousTool(...) for backward
-            // compatibility; raw JsTool instances stay on the script-runtime side and
-            // are intentionally skipped (no IToolRegistry equivalent).
+            // names resolve through IToolRegistry at runtime. Strings passed through
+            // .withAutonomousTool(...) are accepted for backward compatibility, and
+            // JsTool INSTANCES now contribute their names too: the loader registers
+            // the instances with the runtime registry before the crew is created
+            // (CollectScriptTools), so the names resolve like any built-in (EX-01).
             Tools = CollectAgentToolNames(builder),
             AllowDelegation = builder.AllowDelegationFlag,
             MaxIterations = builder.MaxIterationsValue,
@@ -147,6 +149,9 @@ public static class JsCrewConfigurationAdapter
             Deliverable = MapDeliverable(jsTask.DeliverableSpec),
             Context = ExtractTaskContext(jsTask),
             LlmOverride = BuildTaskLlmOverride(jsTask),
+            HumanInput = jsTask.HumanInputFlag,
+            AsyncExecution = jsTask.AsyncExecutionFlag,
+            RequiredTools = CollectToolNames(jsTask.Tools, seed: null),
         };
     }
 
@@ -312,21 +317,56 @@ public static class JsCrewConfigurationAdapter
                 names.Add(name);
         }
 
-        // 2. Back-compat: string entries previously passed through .withAutonomousTool*.
-        //    JsTool wrappers (in-script-defined tools) are intentionally ignored: they
-        //    can't be resolved from IToolRegistry.
-        foreach (var tool in builder.AutonomousTools)
+        // 2. Tool values from .withAutonomousTool*: strings (back-compat) and JsTool
+        //    instances alike contribute their name — the instances themselves are
+        //    registered by the loader (CollectScriptTools) before resolution runs.
+        return CollectToolNames(builder.AutonomousTools, seed: names);
+    }
+
+    private static IReadOnlyList<string> CollectToolNames(IReadOnlyList<JsValue> values, List<string>? seed)
+    {
+        var names = seed ?? new List<string>();
+        foreach (var tool in values)
         {
             if (tool is null || tool.IsUndefined() || tool.IsNull()) continue;
-            if (tool.IsString())
-            {
-                var name = tool.AsString();
-                if (!string.IsNullOrWhiteSpace(name) && !names.Contains(name, StringComparer.Ordinal))
-                    names.Add(name);
-            }
+            string? name = null;
+            if (tool.IsString()) name = tool.AsString();
+            else if (tool.ToObject() is JsTool jsTool) name = jsTool.Name;
+            if (!string.IsNullOrWhiteSpace(name) && !names.Contains(name!, StringComparer.Ordinal))
+                names.Add(name!);
+        }
+        return names.Count > 0 ? names : Array.Empty<string>();
+    }
+
+    /// <summary>
+    /// Every <c>toolBuilder()</c> instance the crew references — through
+    /// <c>agentBuilder().withAutonomousTool(...)</c> or <c>taskBuilder().tools([...])</c> —
+    /// deduplicated by reference. The loader registers them with the runtime
+    /// <c>IToolRegistry</c> BEFORE <c>ICrewFactory.CreateFromConfigAsync</c> runs, so the
+    /// names emitted by <see cref="ToConfiguration"/> resolve under strict tool
+    /// resolution exactly like built-ins (EX-01; precedent: MCP tools register the same way).
+    /// </summary>
+    public static IReadOnlyList<JsTool> CollectScriptTools(JsCrew crew)
+    {
+        ArgumentNullException.ThrowIfNull(crew);
+        var tools = new List<JsTool>();
+
+        void AddValue(JsValue? value)
+        {
+            if (value is null || value.IsUndefined() || value.IsNull()) return;
+            if (value.ToObject() is JsTool tool && !tools.Any(t => ReferenceEquals(t, tool)))
+                tools.Add(tool);
         }
 
-        return names.Count > 0 ? names : Array.Empty<string>();
+        foreach (var agent in crew.agents)
+            foreach (var raw in agent.Builder.AutonomousTools)
+                AddValue(raw);
+
+        foreach (var jsTask in crew.Tasks.OfType<JsTask>())
+            foreach (var raw in jsTask.Tools)
+                AddValue(raw);
+
+        return tools;
     }
 
     private static string ResolveCrewGoal(JsCrew crew)

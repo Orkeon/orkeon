@@ -37,6 +37,7 @@ public sealed partial class JsCrewBuilder
     private readonly Dictionary<string, object?> _budget = new();
     private object? _graph;
     private bool _verbose;
+    private bool _memory;
     private JsValue? _onCrewStart, _onCrewComplete, _onCrewError;
 
     public JsCrewBuilder(
@@ -129,6 +130,9 @@ public sealed partial class JsCrewBuilder
         return this;
     }
 
+    /// <summary>YAML parity <c>memory: true</c> — the crew keeps a shared memory scope.</summary>
+    public JsCrewBuilder memory(bool value = true) { _memory = value; return this; }
+
     public JsCrewBuilder verbose() { _verbose = true; return this; }
     public JsCrewBuilder verbose(bool value) { _verbose = value; return this; }
     public JsCrewBuilder when(JsValue predicate) { _ = predicate; return this; }
@@ -154,6 +158,7 @@ public sealed partial class JsCrewBuilder
             Manager = _manager,
             Budget = _budget,
             Verbose = _verbose,
+            Memory = _memory,
             Logger = _logger,
             LlmProvider = _llmProvider,
             BuiltInTools = _builtInTools,

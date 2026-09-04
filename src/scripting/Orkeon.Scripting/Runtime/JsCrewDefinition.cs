@@ -36,4 +36,7 @@ internal sealed record JsCrewDefinition
     public Orkeon.Application.Interfaces.Ports.ILlmUsageSink? UsageSink { get; init; }
 
     public string? Goal { get; init; }
+
+    /// <summary>YAML parity <c>memory: true</c> — the crew keeps a shared memory scope.</summary>
+    public bool Memory { get; init; }
 }

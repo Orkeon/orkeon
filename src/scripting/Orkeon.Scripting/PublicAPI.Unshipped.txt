@@ -8,3 +8,8 @@ Orkeon.Scripting.Runtime.JsTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 Orkeon.Scripting.Runtime.JsTool.name.get -> string!
 Orkeon.Scripting.Runtime.JsTool.description.get -> string!
 Orkeon.Scripting.Runtime.JsTool.execute(Jint.Native.JsValue! input, Jint.Native.JsValue? ctx = null) -> Jint.Native.JsValue!
+Orkeon.Scripting.Builders.JsTaskBuilder.humanInput(bool value = true) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.asyncExecution(bool value = true) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.tools(Jint.Native.JsValue! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsCrewBuilder.memory(bool value = true) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.CollectScriptTools(Orkeon.Scripting.Runtime.JsCrew! crew) -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Runtime.JsTool!>!

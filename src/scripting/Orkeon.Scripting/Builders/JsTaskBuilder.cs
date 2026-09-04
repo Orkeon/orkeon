@@ -24,6 +24,9 @@ public sealed class JsTaskBuilder
     private JsValue? _expectSchema;
     private JsValue? _taskTool;
     private JsValue? _deliverableSpec;
+    private bool _humanInput;
+    private bool _asyncExecution;
+    private readonly List<JsValue> _tools = new();
     private string? _responseFormat;
     private string? _responseSchemaName;
     private JsValue? _responseSchema;
@@ -58,6 +61,32 @@ public sealed class JsTaskBuilder
                 var raw = arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToObject();
                 if (raw is JsTask t) _context.Add(t);
             }
+        }
+        return this;
+    }
+
+    /// <summary>YAML parity <c>humanInput: true</c> — the task pauses for the human-input provider.</summary>
+    public JsTaskBuilder humanInput(bool value = true) { _humanInput = value; return this; }
+
+    /// <summary>YAML parity <c>asyncExecution: true</c> — the task may run concurrently with its siblings.</summary>
+    public JsTaskBuilder asyncExecution(bool value = true) { _asyncExecution = value; return this; }
+
+    /// <summary>
+    /// YAML parity task-level <c>tools:</c> — a name, a <c>toolBuilder()</c> tool, or an
+    /// array mixing both. Names resolve through the runtime registry; instances are
+    /// registered by the loader before the crew is created.
+    /// </summary>
+    public JsTaskBuilder tools(JsValue value)
+    {
+        if (value is Jint.Native.Array.ArrayInstance arr)
+        {
+            var len = (uint)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
+            for (uint i = 0; i < len; i++)
+                _tools.Add(arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+        else if (value is not null && !value.IsUndefined() && !value.IsNull())
+        {
+            _tools.Add(value);
         }
         return this;
     }
@@ -147,6 +176,9 @@ public sealed class JsTaskBuilder
             ResponseSchemaName = _responseSchemaName,
             ResponseSchema = _responseSchema,
             ResponseSchemaStrict = _responseSchemaStrict,
+            HumanInput = _humanInput,
+            AsyncExecution = _asyncExecution,
+            Tools = _tools,
         });
     }
 }

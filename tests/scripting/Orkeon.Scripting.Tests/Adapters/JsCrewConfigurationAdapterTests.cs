@@ -16,6 +16,7 @@ public sealed class JsCrewConfigurationAdapterTests
 {
     private static readonly string[] ExpectedBuiltinTools = ["file_read", "count_pattern"];
     private static readonly string[] ExpectedSingleTool = ["web_scrape"];
+    private static readonly string[] ExpectedTaskTools = ["json_tool", "script_tool"];
 
     private static Engine NewEngine() => new JsEngineFactory().Create();
 
@@ -389,5 +390,56 @@ public sealed class JsCrewConfigurationAdapterTests
             foreach (var dep in t.Dependencies)
                 Assert.Contains(config.Tasks, x => x.Id.Equals(dep));
         });
+    }
+
+    [Fact]
+    public void Adapt_maps_memory_humanInput_asyncExecution_and_task_tools()
+    {
+        // The four YAML-parity gaps EX-01 closed, plus first-class script tools:
+        // instance names reach the config, and CollectScriptTools hands the loader
+        // the instances to register before strict resolution runs.
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, """
+            const indicator = toolBuilder()
+                .name("script_tool")
+                .description("Computes a number")
+                .withSchema({ type: "object", properties: { n: { type: "number", description: "n" } }, required: ["n"] })
+                .execute((input) => ({ doubled: input.n * 2 }))
+                .build();
+
+            const analyst = agentBuilder()
+                .name("analyst").role("Analyst").goal("Analyze")
+                .withAutonomousTool(indicator)
+                .build();
+
+            const work = taskBuilder()
+                .name("work").agent(analyst)
+                .description("Do the work").expectedOutput("A result")
+                .humanInput(true)
+                .asyncExecution(true)
+                .tools(["json_tool", indicator])
+                .build();
+
+            crewBuilder()
+                .name("gaps").goal("Close the gaps")
+                .memory(true)
+                .withAgent(analyst)
+                .withTask(work)
+                .build();
+            """);
+
+        var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
+
+        Assert.True(config.Memory);
+        var task = Assert.Single(config.Tasks);
+        Assert.True(task.HumanInput);
+        Assert.True(task.AsyncExecution);
+        Assert.Equal(ExpectedTaskTools, task.RequiredTools);
+        var agent = Assert.Single(config.Agents);
+        Assert.Contains("script_tool", agent.Tools);
+
+        var scriptTools = JsCrewConfigurationAdapter.CollectScriptTools(crew);
+        var tool = Assert.Single(scriptTools);
+        Assert.Equal("script_tool", tool.Name);
     }
 }

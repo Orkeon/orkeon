@@ -1011,6 +1011,30 @@ public static partial class RunnerExecution
         LogScriptedCrewDetected(logger);
         var jsCrew = await scriptHost.LoadCrewFromFileAsync(physicalPath, virtualPath, ct).ConfigureAwait(false);
         var crewConfig = JsCrewConfigurationAdapter.ToConfiguration(jsCrew);
+
+        // Script-defined tools become first-class (EX-01): register the instances with
+        // the runtime registry BEFORE the factory's strict resolution runs — the same
+        // late-registration path MCP tools use. Shadowing an already-registered name is
+        // refused loudly: silently replacing a built-in is exactly the kind of surprise
+        // strict resolution exists to prevent.
+        var scriptTools = JsCrewConfigurationAdapter.CollectScriptTools(jsCrew);
+        if (scriptTools.Count > 0)
+        {
+            var registry = sp.GetRequiredService<Orkeon.Domain.Tools.IToolRegistry>();
+            foreach (var tool in scriptTools)
+            {
+                var existing = await registry.GetToolByNameAsync(tool.Name).ConfigureAwait(false);
+                if (existing is not null && !ReferenceEquals(existing, tool))
+                {
+                    throw new InvalidOperationException(
+                        $"Script tool '{tool.Name}' collides with an already-registered tool of the same name. "
+                        + "Rename the script tool — shadowing a registered tool is refused.");
+                }
+                _ = await registry.RegisterToolAsync(tool).ConfigureAwait(false);
+            }
+            LogRegisteredScriptTools(logger, scriptTools.Count, jsCrew.name);
+        }
+
         LogAdaptedJsCrew(logger, jsCrew.name, crewConfig.Agents.Count, crewConfig.Tasks.Count);
         return await factory.CreateFromConfigAsync(crewConfig, ct).ConfigureAwait(false);
     }
@@ -1061,6 +1085,9 @@ public static partial class RunnerExecution
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Information, Message = "Adapted JsCrew '{CrewName}' to CrewConfiguration ({AgentCount} agent(s), {TaskCount} task(s)).")]
     private static partial void LogAdaptedJsCrew(ILogger logger, string crewName, int agentCount, int taskCount);
+
+    [LoggerMessage(EventId = 12, Level = LogLevel.Information, Message = "Registered {Count} script-defined tool(s) from crew '{CrewName}' with the runtime tool registry.")]
+    private static partial void LogRegisteredScriptTools(ILogger logger, int count, string crewName);
 
     private sealed class CompositeDisposable : IDisposable
     {

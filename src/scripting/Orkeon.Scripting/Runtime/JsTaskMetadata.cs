@@ -27,4 +27,13 @@ internal sealed record JsTaskMetadata
 
     /// <summary>Whether the captured schema is strict. Defaults to true.</summary>
     public bool ResponseSchemaStrict { get; init; } = true;
+
+    /// <summary>YAML parity <c>humanInput: true</c> — the task pauses for the human-input provider.</summary>
+    public bool HumanInput { get; init; }
+
+    /// <summary>YAML parity <c>asyncExecution: true</c> — the task may run concurrently with its siblings.</summary>
+    public bool AsyncExecution { get; init; }
+
+    /// <summary>Task-level <c>tools:</c> — names or <see cref="JsTool"/> instances the task requires.</summary>
+    public IReadOnlyList<JsValue> Tools { get; init; } = [];
 }
